@@ -4,15 +4,42 @@
 
 完整产品与架构设计见 [`docs/design/README.md`](docs/design/README.md)，本次脚手架实施记录见 [`docs/superpowers/plans/2026-08-19-initial-architecture.md`](docs/superpowers/plans/2026-08-19-initial-architecture.md)。
 
-## 目录
+## 工程结构
 
 ```text
-apps/web/           Next.js 16 + React 19 + Ant Design
-apps/api/           NestJS 11 REST API 与 OpenAPI
-apps/worker/        BullMQ/Redis 异步任务进程
-packages/database/  Prisma 7 schema 与 PostgreSQL 客户端工厂
-docs/               产品、页面、数据模型和技术设计
+apps/
+├── web/                         Next.js 16 + React 19 + Ant Design
+│   └── src/
+│       ├── app/
+│       │   ├── (auth)/          登录、注册
+│       │   ├── (account)/       待加入公司、工作区选择
+│       │   ├── (platform)/      平台管理员页面
+│       │   └── (workspace)/     公司工作区与动态对象页面
+│       ├── components/          layout、table、form、feedback、ui
+│       ├── features/            auth、tenant、member、object、record
+│       ├── lib/                 API、认证、环境、查询基础设施
+│       └── types/               Web 层类型出口
+├── api/                         NestJS 11 REST API 与 OpenAPI
+│   └── src/
+│       ├── modules/             auth、tenant、membership、object、record 等领域
+│       ├── common/              guard、filter、pipe、interceptor、decorator
+│       ├── infrastructure/      database、queue 等外部设施适配边界
+│       └── config/              API 配置边界
+└── worker/                      BullMQ/Redis 异步任务进程
+    └── src/
+        ├── config/              Worker 配置
+        ├── jobs/                任务定义
+        ├── queues/              队列注册
+        ├── processors/          任务处理器
+        └── infrastructure/      外部设施适配边界
+packages/
+├── database/                    Prisma 7 schema 与 PostgreSQL 客户端工厂
+├── contracts/                   跨应用共享的通用平台契约
+└── tenant-templates/            通用模板与首家公司业务模板
+docs/                            产品、页面、数据模型和技术设计
 ```
+
+Web 只通过 API 获取业务数据；`packages/database` 仅供 API 与 Worker 使用。通用平台契约与特定公司模板分包，防止首家公司的流程进入平台核心。
 
 ## 环境要求
 
@@ -70,4 +97,4 @@ docker compose down
 
 ## 当前边界
 
-本里程碑只提供可运行的工程基础、健康接口、核心多租户 schema 和 Worker 运行时。注册登录、租户权限、动态记录 CRUD、飞书与电话 Bot 将按照设计文档在后续里程碑实现。
+本里程碑提供可运行的工程基础、完整页面/模块目录边界、健康接口、核心多租户 schema 和 Worker 运行时。页面目前是架构占位，不伪造业务数据；注册登录、租户权限、动态记录 CRUD、飞书与电话 Bot 将按照设计文档在后续里程碑实现。
