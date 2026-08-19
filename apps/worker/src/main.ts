@@ -3,7 +3,7 @@ import { Redis } from "ioredis";
 import { fileURLToPath } from "node:url";
 import pino from "pino";
 
-import { loadWorkerConfig } from "./config.js";
+import { loadWorkerConfig } from "./config/index.js";
 
 const logger = pino({ name: "crm-worker" });
 

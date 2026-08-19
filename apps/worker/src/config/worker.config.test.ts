@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { loadWorkerConfig } from "./config.js";
+import { loadWorkerConfig } from "./worker.config.js";
 
 describe("loadWorkerConfig", () => {
   it("rejects a missing Redis URL", () => {
