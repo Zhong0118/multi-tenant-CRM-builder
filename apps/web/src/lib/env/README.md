@@ -1,3 +1,3 @@
 # Environment boundary
 
-Only explicitly public Web environment variables may be parsed here. `DATABASE_URL` and server secrets are forbidden.
+Only explicitly public Web environment variables may be parsed here. Server-side database connection details and other secrets are forbidden.
