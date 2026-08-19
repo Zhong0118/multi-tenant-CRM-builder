@@ -42,7 +42,11 @@ export default function Home() {
         </section>
 
         <Card className={styles.ledger} bordered>
-          <Flex justify="space-between" align="center" className={styles.cardHead}>
+          <Flex
+            justify="space-between"
+            align="center"
+            className={styles.cardHead}
+          >
             <Space size={8}>
               <DatabaseOutlined />
               <Typography.Text strong>系统账本轨</Typography.Text>

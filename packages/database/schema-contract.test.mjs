@@ -22,6 +22,9 @@ test("defines the core multi-tenant CRM models", async () => {
     assert.match(schema, new RegExp(`model\\s+${model}\\s+\\{`));
   }
 
-  assert.match(schema, /model\s+Record[\s\S]*tenantId\s+String\s+@map\("tenant_id"\)/);
+  assert.match(
+    schema,
+    /model\s+Record[\s\S]*tenantId\s+String\s+@map\("tenant_id"\)/,
+  );
   assert.match(schema, /data\s+Json\s+@default\("\{\}"\)\s+@db\.JsonB/);
 });

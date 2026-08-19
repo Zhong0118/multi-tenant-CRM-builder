@@ -17,8 +17,9 @@ body {
   min-height: 100%;
   color: var(--foreground);
   background: var(--background);
-  font-family: "IBM Plex Sans", "Noto Sans SC", "PingFang SC",
-    "Microsoft YaHei", sans-serif;
+  font-family:
+    "IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei",
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

@@ -1,9 +1,16 @@
+import { config as loadEnv } from "dotenv";
 import { Redis } from "ioredis";
+import { fileURLToPath } from "node:url";
 import pino from "pino";
 
 import { loadWorkerConfig } from "./config.js";
 
 const logger = pino({ name: "crm-worker" });
+
+loadEnv({
+  path: fileURLToPath(new URL("../../../.env", import.meta.url)),
+  quiet: true,
+});
 
 async function start() {
   const config = loadWorkerConfig(process.env);

@@ -3,8 +3,8 @@ packages:
   - packages/*
 
 allowBuilds:
-  '@prisma/engines': true
-  '@scarf/scarf': false
+  "@prisma/engines": true
+  "@scarf/scarf": false
   esbuild: true
   msgpackr-extract: false
   prisma: true

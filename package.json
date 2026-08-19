@@ -12,7 +12,7 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
     "build": "pnpm -r --if-present build",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check package.json pnpm-workspace.yaml tsconfig.base.json compose.yaml apps packages --ignore-path .gitignore"
   },
   "devDependencies": {
     "prettier": "^3.6.2",
