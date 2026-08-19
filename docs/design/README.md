@@ -1,6 +1,6 @@
 # CRM 平台设计文件索引
 
-版本：0.1
+版本：0.2
 日期：2026-08-19
 状态：待产品方审阅
 
@@ -20,12 +20,14 @@
 - [总设计规格](../superpowers/specs/2026-08-19-multi-tenant-crm-platform-design.md)
 - [ADR-0001：采用配置型平台而非万能低代码](../adr/0001-configured-platform-over-universal-low-code.md)
 - [ADR-0002：共享数据库与混合记录模型](../adr/0002-shared-database-hybrid-record-model.md)
+- [ADR-0003：用户通过邀请加入租户](../adr/0003-users-join-tenants-by-invitation.md)
 
 ## 双层设计
 
 ```text
 通用平台 MVP
-├── 租户与成员
+├── 手机号注册与独立用户
+├── 租户邀请与成员
 ├── 业务对象/字段配置
 ├── 表格、表单、详情与活动
 ├── ALL / OWN 数据范围
