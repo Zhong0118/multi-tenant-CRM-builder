@@ -1,0 +1,293 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+  LOCKED
+}
+
+enum TenantStatus {
+  DRAFT
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum MemberRole {
+  TENANT_ADMIN
+  EMPLOYEE
+}
+
+enum MemberStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  REVOKED
+  EXPIRED
+}
+
+enum VerificationPurpose {
+  REGISTER
+  RESET_PASSWORD
+  CHANGE_PHONE
+}
+
+enum ChallengeStatus {
+  PENDING
+  CONSUMED
+  EXPIRED
+  LOCKED
+}
+
+enum ObjectKind {
+  GENERIC
+  LEAD
+  OPPORTUNITY
+  CUSTOMER
+  JOURNAL
+}
+
+enum ObjectStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum FieldType {
+  TEXT
+  TEXTAREA
+  PHONE
+  EMAIL
+  NUMBER
+  MONEY
+  DATE
+  DATETIME
+  SINGLE_SELECT
+  MULTI_SELECT
+  MEMBER
+  BOOLEAN
+  ATTACHMENT
+}
+
+enum FieldStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum RecordSource {
+  MANUAL
+  IMPORT
+  FEISHU
+  PHONE_BOT
+  API
+}
+
+model User {
+  id                  String             @id @default(uuid(7)) @db.Uuid
+  displayName         String             @map("display_name") @db.VarChar(100)
+  email               String?            @unique @db.VarChar(320)
+  phone               String             @unique @db.VarChar(32)
+  phoneVerifiedAt     DateTime           @map("phone_verified_at") @db.Timestamptz(3)
+  passwordHash        String             @map("password_hash")
+  isPlatformAdmin     Boolean            @default(false) @map("is_platform_admin")
+  status              UserStatus         @default(ACTIVE)
+  lastLoginAt         DateTime?          @map("last_login_at") @db.Timestamptz(3)
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  members             TenantMember[]
+  sessions            Session[]
+  targetInvitations   TenantInvitation[] @relation("InvitationTargetUser")
+  createdInvitations  TenantInvitation[] @relation("InvitationCreatedBy")
+  acceptedInvitations TenantInvitation[] @relation("InvitationAcceptedBy")
+
+  @@map("users")
+}
+
+model Tenant {
+  id          String             @id @default(uuid(7)) @db.Uuid
+  name        String             @db.VarChar(200)
+  code        String             @unique @db.VarChar(64)
+  status      TenantStatus       @default(DRAFT)
+  timezone    String             @default("Asia/Shanghai") @db.VarChar(64)
+  locale      String             @default("zh-CN") @db.VarChar(16)
+  settings    Json               @default("{}") @db.JsonB
+  activatedAt DateTime?          @map("activated_at") @db.Timestamptz(3)
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  members     TenantMember[]
+  invitations TenantInvitation[]
+  objects     ObjectDefinition[]
+  fields      FieldDefinition[]
+  records     Record[]
+
+  @@map("tenants")
+}
+
+model TenantMember {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  tenantId       String       @map("tenant_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  role           MemberRole
+  status         MemberStatus @default(ACTIVE)
+  employeeNo     String?      @map("employee_no") @db.VarChar(64)
+  joinedAt       DateTime?    @map("joined_at") @db.Timestamptz(3)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  ownedRecords   Record[]     @relation("RecordOwner")
+  createdRecords Record[]     @relation("RecordCreator")
+
+  @@unique([tenantId, userId])
+  @@unique([tenantId, id])
+  @@unique([tenantId, employeeNo])
+  @@index([tenantId, status])
+  @@map("tenant_members")
+}
+
+model TenantInvitation {
+  id                  String           @id @default(uuid(7)) @db.Uuid
+  tenantId            String           @map("tenant_id") @db.Uuid
+  targetPhone         String           @map("target_phone") @db.VarChar(32)
+  targetUserId        String?          @map("target_user_id") @db.Uuid
+  role                MemberRole
+  permissionOverrides Json?            @map("permission_overrides") @db.JsonB
+  invitationCodeHash  String           @map("invitation_code_hash")
+  status              InvitationStatus @default(PENDING)
+  createdByUserId     String           @map("created_by_user_id") @db.Uuid
+  expiresAt           DateTime         @map("expires_at") @db.Timestamptz(3)
+  acceptedByUserId    String?          @map("accepted_by_user_id") @db.Uuid
+  acceptedAt          DateTime?        @map("accepted_at") @db.Timestamptz(3)
+  createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant              Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  targetUser          User?            @relation("InvitationTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
+  createdBy           User             @relation("InvitationCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  acceptedBy          User?            @relation("InvitationAcceptedBy", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, targetPhone, status])
+  @@index([targetUserId, status])
+  @@map("tenant_invitations")
+}
+
+model VerificationChallenge {
+  id           String              @id @default(uuid(7)) @db.Uuid
+  phone        String              @db.VarChar(32)
+  purpose      VerificationPurpose
+  codeHash     String              @map("code_hash")
+  status       ChallengeStatus     @default(PENDING)
+  attemptCount Int                 @default(0) @map("attempt_count") @db.SmallInt
+  expiresAt    DateTime            @map("expires_at") @db.Timestamptz(3)
+  consumedAt   DateTime?           @map("consumed_at") @db.Timestamptz(3)
+  requestIp    String              @map("request_ip") @db.Inet
+  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([phone, purpose, createdAt(sort: Desc)])
+  @@map("verification_challenges")
+}
+
+model Session {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  tokenHash     String    @unique @map("token_hash")
+  expiresAt     DateTime  @map("expires_at") @db.Timestamptz(3)
+  lastUsedAt    DateTime? @map("last_used_at") @db.Timestamptz(3)
+  ip            String?   @db.Inet
+  deviceSummary String?   @map("device_summary") @db.VarChar(300)
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("sessions")
+}
+
+model ObjectDefinition {
+  id                      String            @id @default(uuid(7)) @db.Uuid
+  tenantId                String            @map("tenant_id") @db.Uuid
+  name                    String            @db.VarChar(100)
+  code                    String            @db.VarChar(64)
+  kind                    ObjectKind        @default(GENERIC)
+  titleFieldKey           String            @map("title_field_key") @db.VarChar(64)
+  icon                    String?           @db.VarChar(64)
+  status                  ObjectStatus      @default(DRAFT)
+  settings                Json              @default("{}") @db.JsonB
+  sourceTemplateVersionId String?           @map("source_template_version_id") @db.Uuid
+  version                 Int               @default(1)
+  createdAt               DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt               DateTime?         @map("deleted_at") @db.Timestamptz(3)
+  tenant                  Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  fields                  FieldDefinition[]
+  records                 Record[]
+
+  @@unique([tenantId, code])
+  @@unique([tenantId, id])
+  @@index([tenantId, status])
+  @@map("object_definitions")
+}
+
+model FieldDefinition {
+  id           String           @id @default(uuid(7)) @db.Uuid
+  tenantId     String           @map("tenant_id") @db.Uuid
+  objectId     String           @map("object_id") @db.Uuid
+  fieldKey     String           @map("field_key") @db.VarChar(64)
+  label        String           @db.VarChar(100)
+  type         FieldType
+  required     Boolean          @default(false)
+  isSystem     Boolean          @default(false) @map("is_system")
+  isSensitive  Boolean          @default(false) @map("is_sensitive")
+  defaultValue Json?            @map("default_value") @db.JsonB
+  validation   Json             @default("{}") @db.JsonB
+  config       Json             @default("{}") @db.JsonB
+  sortOrder    Int              @default(0) @map("sort_order")
+  status       FieldStatus      @default(ACTIVE)
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  object       ObjectDefinition @relation(fields: [tenantId, objectId], references: [tenantId, id], onDelete: Restrict)
+
+  @@unique([tenantId, objectId, fieldKey])
+  @@index([tenantId, objectId, status, sortOrder])
+  @@map("field_definitions")
+}
+
+model Record {
+  id                     String           @id @default(uuid(7)) @db.Uuid
+  tenantId               String           @map("tenant_id") @db.Uuid
+  objectId               String           @map("object_id") @db.Uuid
+  recordNo               BigInt           @map("record_no")
+  ownerMemberId          String?          @map("owner_member_id") @db.Uuid
+  statusKey              String?          @map("status_key") @db.VarChar(64)
+  title                  String           @db.VarChar(300)
+  data                   Json             @default("{}") @db.JsonB
+  source                 RecordSource     @default(MANUAL)
+  createdByMemberId      String?          @map("created_by_member_id") @db.Uuid
+  createdByIntegrationId String?          @map("created_by_integration_id") @db.Uuid
+  version                Int              @default(1)
+  createdAt              DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt              DateTime?        @map("deleted_at") @db.Timestamptz(3)
+  tenant                 Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  object                 ObjectDefinition @relation(fields: [tenantId, objectId], references: [tenantId, id], onDelete: Restrict)
+  owner                  TenantMember?    @relation("RecordOwner", fields: [tenantId, ownerMemberId], references: [tenantId, id], onDelete: Restrict)
+  createdBy              TenantMember?    @relation("RecordCreator", fields: [tenantId, createdByMemberId], references: [tenantId, id], onDelete: Restrict)
+
+  @@unique([tenantId, objectId, recordNo])
+  @@index([tenantId, objectId, deletedAt, updatedAt(sort: Desc)])
+  @@index([tenantId, objectId, ownerMemberId, deletedAt, updatedAt(sort: Desc)])
+  @@index([tenantId, objectId, statusKey, deletedAt])
+  @@map("records")
+}
