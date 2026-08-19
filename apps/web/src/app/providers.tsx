@@ -1,22 +1,14 @@
 "use client";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConfigProvider } from "antd";
 import zhCN from "antd/locale/zh_CN";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
+
+import { QueryProvider } from "@/lib/query/query-provider";
 
 export function Providers({ children }: { children: ReactNode }) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: { refetchOnWindowFocus: false, staleTime: 30_000 },
-        },
-      }),
-  );
-
   return (
-    <QueryClientProvider client={queryClient}>
+    <QueryProvider>
       <ConfigProvider
         locale={zhCN}
         theme={{
@@ -35,6 +27,6 @@ export function Providers({ children }: { children: ReactNode }) {
       >
         {children}
       </ConfigProvider>
-    </QueryClientProvider>
+    </QueryProvider>
   );
 }

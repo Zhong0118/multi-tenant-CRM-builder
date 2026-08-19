@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "pnpm test:unit && pnpm test:architecture",
+    "test:unit": "vitest run",
     "test:architecture": "node --test architecture-contract.test.mjs"
   },
   "dependencies": {

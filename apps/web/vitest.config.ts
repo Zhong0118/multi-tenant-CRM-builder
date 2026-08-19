@@ -11,6 +11,7 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    exclude: ["architecture-contract.test.mjs", "node_modules/**"],
     setupFiles: ["./src/test/setup.ts"],
   },
 });
