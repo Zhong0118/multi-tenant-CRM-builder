@@ -28,7 +28,10 @@ test("shared packages keep generic contracts separate from tenant templates", as
 
   await Promise.all(
     expectedFiles.map(async (relativePath) => {
-      const contents = await readFile(new URL(relativePath, packageRoot), "utf8");
+      const contents = await readFile(
+        new URL(relativePath, packageRoot),
+        "utf8",
+      );
       assert.ok(contents.length > 0, `${relativePath} must not be empty`);
     }),
   );
