@@ -94,6 +94,12 @@ enum RecordSource {
   API
 }
 
+enum AuditActorType {
+  USER
+  INTEGRATION
+  SYSTEM
+}
+
 model User {
   id                  String             @id @default(uuid(7)) @db.Uuid
   displayName         String             @map("display_name") @db.VarChar(100)
@@ -290,4 +296,24 @@ model Record {
   @@index([tenantId, objectId, ownerMemberId, deletedAt, updatedAt(sort: Desc)])
   @@index([tenantId, objectId, statusKey, deletedAt])
   @@map("records")
+}
+
+model AuditLog {
+  id           String         @id @default(uuid(7)) @db.Uuid
+  tenantId     String?        @map("tenant_id") @db.Uuid
+  actorType    AuditActorType @map("actor_type")
+  actorId      String?        @map("actor_id") @db.Uuid
+  action       String         @db.VarChar(100)
+  resourceType String         @map("resource_type") @db.VarChar(100)
+  resourceId   String?        @map("resource_id") @db.Uuid
+  before       Json?          @db.JsonB
+  after        Json?          @db.JsonB
+  reason       String?
+  requestId    String         @map("request_id") @db.VarChar(100)
+  ip           String?        @db.Inet
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([resourceType, resourceId])
+  @@map("audit_logs")
 }

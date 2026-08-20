@@ -43,3 +43,23 @@ test("separates migration and runtime database credentials", async () => {
   assert.match(env, /^DATABASE_URL=/m);
   assert.match(prismaConfig, /DATABASE_ADMIN_URL/);
 });
+
+test("defines append-only audit and tenant RLS", async () => {
+  const schema = await readFile(schemaUrl, "utf8");
+
+  assert.match(schema, /model AuditLog \{/);
+  assert.match(schema, /enum AuditActorType \{/);
+
+  const migration = await readFile(
+    new URL(
+      "./prisma/migrations/0001_account_workspace/migration.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.match(migration, /CREATE UNIQUE INDEX.*tenant_invitations.*PENDING/is);
+  assert.match(migration, /ENABLE ROW LEVEL SECURITY/);
+  assert.match(migration, /FORCE ROW LEVEL SECURITY/);
+  assert.match(migration, /current_setting\('app\.tenant_id'/);
+});
