@@ -6,6 +6,7 @@ import {
   Length,
   Matches,
   MaxLength,
+  IsInt,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -36,6 +37,17 @@ export class ChangeTenantStatusDto {
   reason?: string;
 }
 
+export class FirstAdminInvitationResponseDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiProperty({ example: '+8613800138000' }) targetPhone!: string;
+  @ApiProperty({ enum: ['TENANT_ADMIN'] }) role!: 'TENANT_ADMIN';
+  @ApiProperty({
+    enum: ['PENDING', 'ACCEPTED', 'DECLINED', 'REVOKED', 'EXPIRED'],
+  })
+  status!: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'REVOKED' | 'EXPIRED';
+  @ApiProperty({ type: String, format: 'date-time' }) expiresAt!: Date;
+}
+
 export class PlatformTenantResponseDto {
   @ApiProperty({ format: 'uuid' }) id!: string;
   @ApiProperty() name!: string;
@@ -48,4 +60,9 @@ export class PlatformTenantResponseDto {
   activatedAt?: Date;
   @ApiPropertyOptional({ type: String, format: 'date-time' }) createdAt?: Date;
   @ApiPropertyOptional({ type: String, format: 'date-time' }) updatedAt?: Date;
+  @ApiProperty({ minimum: 0 })
+  @IsInt()
+  activeAdminCount!: number;
+  @ApiPropertyOptional({ type: FirstAdminInvitationResponseDto })
+  firstAdminInvitation?: FirstAdminInvitationResponseDto;
 }

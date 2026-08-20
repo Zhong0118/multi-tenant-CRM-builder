@@ -450,6 +450,18 @@ export interface components {
       firstAdminPhone: string;
       name: string;
     };
+    FirstAdminInvitationResponseDto: {
+      /** Format: date-time */
+      expiresAt: string;
+      /** Format: uuid */
+      id: string;
+      /** @enum {string} */
+      role: "TENANT_ADMIN";
+      /** @enum {string} */
+      status: "PENDING" | "ACCEPTED" | "DECLINED" | "REVOKED" | "EXPIRED";
+      /** @example +8613800138000 */
+      targetPhone: string;
+    };
     ForgotPasswordDto: {
       deviceKey: string;
       /** @example 13800138000 */
@@ -518,9 +530,11 @@ export interface components {
     PlatformTenantResponseDto: {
       /** Format: date-time */
       activatedAt?: string;
+      activeAdminCount: number;
       code: string;
       /** Format: date-time */
       createdAt?: string;
+      firstAdminInvitation?: components["schemas"]["FirstAdminInvitationResponseDto"];
       /** Format: uuid */
       id: string;
       locale?: string;

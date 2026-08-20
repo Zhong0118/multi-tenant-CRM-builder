@@ -1,0 +1,87 @@
+"use client";
+
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Alert, Button, Form, Input, Select } from "antd";
+import { useState } from "react";
+
+import { toApiError } from "@/lib/api/api-error";
+
+import { memberApi, type MemberApi } from "./member-table";
+import styles from "./members.module.css";
+
+export function InviteMemberForm({
+  tenantCode,
+  api = memberApi,
+}: {
+  tenantCode: string;
+  api?: MemberApi;
+}) {
+  const queryClient = useQueryClient();
+  const [phone, setPhone] = useState("");
+  const [role, setRole] = useState<"TENANT_ADMIN" | "EMPLOYEE">("EMPLOYEE");
+  const [error, setError] = useState<string>();
+  const [sent, setSent] = useState(false);
+  const validPhone = /^1[3-9]\d{9}$/.test(phone);
+  const mutation = useMutation({
+    mutationFn: () => api.invite(tenantCode, { phone, role }),
+    onSuccess: async () => {
+      setSent(true);
+      setPhone("");
+      await queryClient.invalidateQueries({
+        queryKey: ["workspace", tenantCode, "invitations"],
+        exact: false,
+      });
+    },
+    onError: (caught) => {
+      const apiError = toApiError(caught);
+      setError(`${apiError.message}（请求编号：${apiError.requestId}）`);
+    },
+  });
+
+  return (
+    <section className={styles.invitePanel} aria-labelledby="invite-heading">
+      <div>
+        <span className={styles.eyebrow}>CONTROLLED ACCESS</span>
+        <h2 id="invite-heading">邀请新成员</h2>
+        <p>对方使用自己的手机号账号接受邀请，无需由管理员设置密码。</p>
+      </div>
+      {error ? <Alert type="error" showIcon title={error} /> : null}
+      {sent ? <Alert type="success" showIcon title="邀请已发送" /> : null}
+      <div className={styles.inviteFields}>
+        <Form.Item label="成员手机号" htmlFor="member-phone">
+          <Input
+            id="member-phone"
+            value={phone}
+            inputMode="tel"
+            onChange={(event) => {
+              setPhone(event.target.value);
+              setSent(false);
+            }}
+          />
+        </Form.Item>
+        <Form.Item label="成员角色" htmlFor="member-role">
+          <Select
+            id="member-role"
+            value={role}
+            onChange={setRole}
+            options={[
+              { label: "员工", value: "EMPLOYEE" },
+              { label: "公司管理员", value: "TENANT_ADMIN" },
+            ]}
+          />
+        </Form.Item>
+        <Button
+          type="primary"
+          disabled={!validPhone}
+          loading={mutation.isPending}
+          onClick={() => {
+            setError(undefined);
+            mutation.mutate();
+          }}
+        >
+          发送邀请
+        </Button>
+      </div>
+    </section>
+  );
+}

@@ -22,6 +22,14 @@ export interface PlatformTenant {
   activatedAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
+  activeAdminCount: number;
+  firstAdminInvitation?: {
+    id: string;
+    targetPhone: string;
+    role: 'TENANT_ADMIN';
+    status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'REVOKED' | 'EXPIRED';
+    expiresAt: Date;
+  };
 }
 
 export interface PlatformTenantStore {
@@ -34,7 +42,13 @@ export interface PlatformTenantStore {
     createdByUserId: string;
     expiresAt: Date;
     role: 'TENANT_ADMIN';
-  }): Promise<{ id: string; status: 'PENDING' }>;
+  }): Promise<{
+    id: string;
+    targetPhone: string;
+    role: 'TENANT_ADMIN';
+    status: 'PENDING';
+    expiresAt: Date;
+  }>;
   countActiveAdmins(tenantId: string): Promise<number>;
   findTenant(id: string): Promise<PlatformTenant | null>;
   listTenants(): Promise<PlatformTenant[]>;
@@ -84,7 +98,7 @@ export class TenantsService {
         code: input.code,
       });
       await store.enterTenant(tenant.id);
-      await store.createFirstAdminInvitation({
+      const firstAdminInvitation = await store.createFirstAdminInvitation({
         tenantId: tenant.id,
         targetPhone,
         invitationCodeHash: sha256(this.tokenGenerator()),
@@ -103,7 +117,7 @@ export class TenantsService {
         requestId: input.requestId,
         ip: input.ip,
       });
-      return tenant;
+      return { ...tenant, activeAdminCount: 0, firstAdminInvitation };
     });
   }
 

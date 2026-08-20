@@ -53,7 +53,16 @@ describe('Platform tenant API (e2e)', () => {
         firstAdminPhone: tenantAdminPhone,
       })
       .expect(201);
-    expect(created.body).toMatchObject({ code: tenantCode, status: 'DRAFT' });
+    expect(created.body).toMatchObject({
+      code: tenantCode,
+      status: 'DRAFT',
+      activeAdminCount: 0,
+      firstAdminInvitation: {
+        targetPhone: '+8613922224444',
+        role: 'TENANT_ADMIN',
+        status: 'PENDING',
+      },
+    });
     const tenantId: unknown = Reflect.get(created.body as object, 'id');
     if (typeof tenantId !== 'string') throw new Error('Expected tenant id');
 
@@ -94,12 +103,24 @@ describe('Platform tenant API (e2e)', () => {
       },
     });
     await platform
+      .get(`/api/v1/platform/tenants/${tenantId}`)
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toMatchObject({
+          activeAdminCount: 1,
+          firstAdminInvitation: { id: invitation.id, status: 'PENDING' },
+        });
+      });
+    await platform
       .patch(`/api/v1/platform/tenants/${tenantId}/status`)
       .set('Origin', origin)
       .send({ status: 'ACTIVE', reason: '首位管理员已就绪' })
       .expect(200)
       .expect((response) => {
-        expect(response.body).toMatchObject({ status: 'ACTIVE' });
+        expect(response.body).toMatchObject({
+          status: 'ACTIVE',
+          activeAdminCount: 1,
+        });
       });
 
     await firstAdmin.get('/api/v1/me').expect(200);

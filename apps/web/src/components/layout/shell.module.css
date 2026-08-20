@@ -19,6 +19,10 @@
   color: #162532 !important;
 }
 
+.content {
+  min-width: 0;
+}
+
 .shellEyebrow {
   color: #0f766e !important;
   font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif;
@@ -29,12 +33,17 @@
 
 @media (max-width: 767px) {
   .shell {
-    display: block;
+    flex-direction: column !important;
   }
 
   .sidebar {
     width: 100%;
+    flex: 0 0 auto;
     border-right: 0;
     border-bottom: 1px solid #d8e0e6;
+  }
+
+  .content {
+    width: 100% !important;
   }
 }

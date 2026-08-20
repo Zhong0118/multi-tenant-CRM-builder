@@ -1,0 +1,125 @@
+import Link from "next/link";
+
+import { TenantStatusActions } from "@/features/tenants/tenant-status-actions";
+import styles from "@/features/tenants/tenants.module.css";
+import { toApiError } from "@/lib/api/api-error";
+import { createServerApiClient } from "@/lib/api/server-client";
+
+const tenantStatusText = {
+  DRAFT: "草稿",
+  ACTIVE: "运行中",
+  SUSPENDED: "已暂停",
+  CLOSED: "已关闭",
+} as const;
+const invitationStatusText = {
+  PENDING: "等待接受",
+  ACCEPTED: "已接受",
+  DECLINED: "已拒绝",
+  REVOKED: "已撤销",
+  EXPIRED: "已过期",
+} as const;
+
+export interface TenantDetailPageProps {
+  params: Promise<{ tenantId: string }>;
+}
+
+export default async function TenantDetailPage({
+  params,
+}: TenantDetailPageProps) {
+  const { tenantId } = await params;
+  const client = await createServerApiClient();
+  const {
+    data: tenant,
+    error,
+    response,
+  } = await client.GET("/api/v1/platform/tenants/{tenantId}", {
+    params: { path: { tenantId } },
+  });
+  if (!tenant) {
+    const apiError = toApiError(error, response.status);
+    throw Object.assign(new Error(apiError.message), apiError);
+  }
+  const invitationAccepted = tenant.firstAdminInvitation?.status === "ACCEPTED";
+  const activeAdminReady = tenant.activeAdminCount > 0;
+
+  return (
+    <main className={styles.page}>
+      <header className={styles.pageHeader}>
+        <div>
+          <span className={styles.eyebrow}>ACTIVATION LEDGER</span>
+          <h1>{tenant.name}</h1>
+          <p className={styles.intro}>工作空间代码：{tenant.code}</p>
+        </div>
+        <Link href="/platform/tenants">返回公司列表</Link>
+      </header>
+      <div className={styles.detailLayout}>
+        <section className={styles.detailPanel}>
+          <dl className={styles.detailLedger}>
+            <div>
+              <dt>公司状态</dt>
+              <dd>{tenantStatusText[tenant.status]}</dd>
+            </div>
+            <div>
+              <dt>首管手机号</dt>
+              <dd>
+                {tenant.firstAdminInvitation?.targetPhone ?? "未创建邀请"}
+              </dd>
+            </div>
+            <div>
+              <dt>首管邀请</dt>
+              <dd>
+                {tenant.firstAdminInvitation
+                  ? invitationStatusText[tenant.firstAdminInvitation.status]
+                  : "未创建"}
+              </dd>
+            </div>
+            <div>
+              <dt>活跃管理员</dt>
+              <dd>{tenant.activeAdminCount} 位</dd>
+            </div>
+            <div>
+              <dt>激活时间</dt>
+              <dd>{formatDate(tenant.activatedAt)}</dd>
+            </div>
+          </dl>
+          <div className={styles.gate} aria-label="激活门槛">
+            <Gate ready title="公司草稿已建立" />
+            <Gate ready={invitationAccepted} title="首位管理员已接受邀请" />
+            <Gate ready={activeAdminReady} title="至少一位管理员处于活跃状态" />
+          </div>
+        </section>
+        <aside>
+          <section className={styles.checkpoints}>
+            <h2>激活判定</h2>
+            <p className={styles.intro}>
+              {activeAdminReady
+                ? "管理员门槛已满足，可以执行激活。"
+                : "等待首位管理员接受邀请后，平台管理员方可激活。"}
+            </p>
+          </section>
+          <TenantStatusActions tenant={tenant} />
+        </aside>
+      </div>
+    </main>
+  );
+}
+
+function Gate({ ready, title }: { ready: boolean; title: string }) {
+  return (
+    <div className={`${styles.gateItem} ${ready ? styles.gateReady : ""}`}>
+      <span className={styles.gateMark}>{ready ? "✓" : "·"}</span>
+      <div>
+        <strong>{title}</strong>
+        <p className={styles.intro}>{ready ? "已满足" : "待完成"}</p>
+      </div>
+    </div>
+  );
+}
+
+function formatDate(value?: string): string {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat("zh-CN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}

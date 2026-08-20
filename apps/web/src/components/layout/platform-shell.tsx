@@ -10,11 +10,11 @@ import styles from "./shell.module.css";
 
 export function PlatformShell({ children }: { children: ReactNode }) {
   return (
-    <Layout className={styles.shell}>
+    <Layout className={styles.shell} hasSider>
       <aside className={styles.sidebar}>
         <Typography.Title level={4}>平台后台</Typography.Title>
         <nav aria-label="平台导航">
-          <Space direction="vertical">
+          <Space orientation="vertical">
             {platformNavigation.map((item) => (
               <Link key={item.href} href={item.href}>
                 {item.label}
@@ -23,7 +23,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
           </Space>
         </nav>
       </aside>
-      <Layout.Content>{children}</Layout.Content>
+      <Layout.Content className={styles.content}>{children}</Layout.Content>
     </Layout>
   );
 }

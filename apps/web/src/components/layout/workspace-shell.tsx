@@ -22,7 +22,7 @@ export function WorkspaceShell({
   role,
 }: WorkspaceShellProps) {
   return (
-    <Layout className={styles.shell}>
+    <Layout className={styles.shell} hasSider>
       <aside className={styles.sidebar}>
         <Typography.Text className={styles.shellEyebrow}>
           CURRENT WORKSPACE
@@ -42,7 +42,7 @@ export function WorkspaceShell({
           </Space>
         </nav>
       </aside>
-      <Layout.Content>{children}</Layout.Content>
+      <Layout.Content className={styles.content}>{children}</Layout.Content>
     </Layout>
   );
 }

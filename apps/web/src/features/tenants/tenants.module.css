@@ -1,0 +1,172 @@
+.page {
+  max-width: 1080px;
+  padding: 48px clamp(22px, 5vw, 64px) 72px;
+}
+.pageHeader {
+  display: flex;
+  gap: 24px;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 30px;
+}
+.eyebrow {
+  color: #0f766e;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+}
+.page h1 {
+  margin: 6px 0 8px;
+  color: #162532;
+  font-size: clamp(30px, 4vw, 42px);
+  letter-spacing: -0.03em;
+}
+.intro,
+.statusActions > p {
+  color: #526473;
+  line-height: 1.7;
+}
+.registry,
+.createPanel,
+.detailPanel,
+.statusActions {
+  border: 1px solid #d8e0e6;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(22, 37, 50, 0.05);
+}
+.registry {
+  width: 100%;
+  border-collapse: collapse;
+}
+.registry th,
+.registry td {
+  padding: 15px 18px;
+  border-bottom: 1px solid #e7ecef;
+  text-align: left;
+}
+.registry th {
+  color: #526473;
+  background: #f7f9fa;
+  font-size: 12px;
+}
+.registry tr:last-child td {
+  border-bottom: 0;
+}
+.tenantLink {
+  color: #0f766e;
+  font-weight: 650;
+}
+.createLayout,
+.detailLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(250px, 0.75fr);
+  gap: 22px;
+  align-items: start;
+}
+.createPanel,
+.detailPanel,
+.statusActions {
+  padding: 28px;
+}
+.createForm :global(.ant-alert),
+.statusActions :global(.ant-alert),
+.statusActions :global(.ant-input) {
+  margin-bottom: 18px;
+}
+.checkpoints {
+  border-left: 3px solid #0f766e;
+  padding: 6px 0 6px 24px;
+}
+.checkpoints h2,
+.statusActions h2 {
+  margin-bottom: 12px;
+  color: #162532;
+  font-size: 20px;
+}
+.checkpoints ol {
+  display: grid;
+  gap: 18px;
+  padding-left: 20px;
+  color: #526473;
+  line-height: 1.6;
+}
+.checkpoints strong {
+  display: block;
+  color: #162532;
+}
+.creationResult {
+  padding: 10px 0 !important;
+}
+.resultLedger,
+.detailLedger {
+  overflow: hidden;
+  border: 1px solid #d8e0e6;
+  border-radius: 4px;
+  text-align: left;
+}
+.resultLedger div,
+.detailLedger div {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  border-bottom: 1px solid #e7ecef;
+}
+.resultLedger div:last-child,
+.detailLedger div:last-child {
+  border-bottom: 0;
+}
+.resultLedger dt,
+.resultLedger dd,
+.detailLedger dt,
+.detailLedger dd {
+  padding: 12px 14px;
+}
+.resultLedger dt,
+.detailLedger dt {
+  color: #526473;
+  background: #f7f9fa;
+  font-weight: 600;
+}
+.gate {
+  display: grid;
+  gap: 14px;
+  margin-top: 24px;
+}
+.gateItem {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+.gateMark {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid #b7c3cb;
+  border-radius: 50%;
+  color: #526473;
+  font-size: 12px;
+}
+.gateReady .gateMark {
+  border-color: #0f766e;
+  color: #fff;
+  background: #0f766e;
+}
+.statusActions {
+  margin-top: 22px;
+}
+@media (max-width: 760px) {
+  .pageHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .createLayout,
+  .detailLayout {
+    grid-template-columns: 1fr;
+  }
+  .registry {
+    display: block;
+    overflow-x: auto;
+  }
+}

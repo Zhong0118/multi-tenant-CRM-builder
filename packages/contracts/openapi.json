@@ -113,6 +113,32 @@
         "required": ["id", "status"],
         "type": "object"
       },
+      "FirstAdminInvitationResponseDto": {
+        "properties": {
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "role": {
+            "enum": ["TENANT_ADMIN"],
+            "type": "string"
+          },
+          "status": {
+            "enum": ["PENDING", "ACCEPTED", "DECLINED", "REVOKED", "EXPIRED"],
+            "type": "string"
+          },
+          "targetPhone": {
+            "example": "+8613800138000",
+            "type": "string"
+          }
+        },
+        "required": ["id", "targetPhone", "role", "status", "expiresAt"],
+        "type": "object"
+      },
       "ForgotPasswordDto": {
         "properties": {
           "deviceKey": {
@@ -289,12 +315,19 @@
             "format": "date-time",
             "type": "string"
           },
+          "activeAdminCount": {
+            "minimum": 0,
+            "type": "number"
+          },
           "code": {
             "type": "string"
           },
           "createdAt": {
             "format": "date-time",
             "type": "string"
+          },
+          "firstAdminInvitation": {
+            "$ref": "#/components/schemas/FirstAdminInvitationResponseDto"
           },
           "id": {
             "format": "uuid",
@@ -318,7 +351,7 @@
             "type": "string"
           }
         },
-        "required": ["id", "name", "code", "status"],
+        "required": ["id", "name", "code", "status", "activeAdminCount"],
         "type": "object"
       },
       "RegisterDto": {

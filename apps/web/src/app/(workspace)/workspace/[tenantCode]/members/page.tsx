@@ -1,7 +1,64 @@
-import { PagePlaceholder } from "@/components/layout/page-placeholder";
+import { InviteMemberForm } from "@/features/members/invite-member-form";
+import {
+  MemberTable,
+  type InvitationPage,
+  type TenantMember,
+} from "@/features/members/member-table";
+import styles from "@/features/members/members.module.css";
+import { toApiError } from "@/lib/api/api-error";
+import { createServerApiClient } from "@/lib/api/server-client";
+import { requireWorkspace } from "@/lib/auth/require-workspace";
 
-export default function MembersPage() {
+export interface MembersPageProps {
+  params: Promise<{ tenantCode: string }>;
+}
+
+export default async function MembersPage({ params }: MembersPageProps) {
+  const { tenantCode } = await params;
+  const workspace = await requireWorkspace(tenantCode);
+  let members: TenantMember[] = [];
+  let invitationPage: InvitationPage = { items: [] };
+
+  if (workspace.role === "TENANT_ADMIN") {
+    const client = await createServerApiClient();
+    const [memberResult, invitationResult] = await Promise.all([
+      client.GET("/api/v1/workspaces/{tenantCode}/members", {
+        params: { path: { tenantCode } },
+      }),
+      client.GET("/api/v1/workspaces/{tenantCode}/invitations", {
+        params: { path: { tenantCode }, query: {} },
+      }),
+    ]);
+    if (!memberResult.data) throwApiResult(memberResult);
+    if (!invitationResult.data) throwApiResult(invitationResult);
+    members = memberResult.data;
+    invitationPage = invitationResult.data;
+  }
+
   return (
-    <PagePlaceholder title="成员管理" description="管理当前公司的成员。" />
+    <main className={styles.page}>
+      <header className={styles.pageHeader}>
+        <span className={styles.eyebrow}>PEOPLE & ACCESS</span>
+        <h1>成员管理</h1>
+        <p>邀请本公司员工，并控制现有成员的工作空间访问权限。</p>
+      </header>
+      {workspace.role === "TENANT_ADMIN" ? (
+        <InviteMemberForm tenantCode={tenantCode} />
+      ) : null}
+      <MemberTable
+        tenantCode={tenantCode}
+        viewerRole={workspace.role}
+        initialMembers={members}
+        initialInvitationPage={invitationPage}
+      />
+    </main>
   );
+}
+
+function throwApiResult(result: {
+  error?: unknown;
+  response: Response;
+}): never {
+  const apiError = toApiError(result.error, result.response.status);
+  throw Object.assign(new Error(apiError.message), apiError);
 }
