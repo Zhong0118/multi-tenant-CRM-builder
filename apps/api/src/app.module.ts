@@ -2,6 +2,10 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { join } from 'node:path';
 
+import { ApiExceptionFilter } from './common/errors/api-exception.filter';
+import { OriginGuard } from './common/security/origin.guard';
+import { RequestIdMiddleware } from './common/security/request-id.middleware';
+import { DatabaseModule } from './infrastructure/database/database.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { DashboardsModule } from './modules/dashboards/dashboards.module';
@@ -24,6 +28,7 @@ import { HealthModule } from './modules/health/health.module';
       envFilePath: join(__dirname, '../../..', '.env'),
       isGlobal: true,
     }),
+    DatabaseModule,
     AuditModule,
     AuthModule,
     DashboardsModule,
@@ -40,5 +45,6 @@ import { HealthModule } from './modules/health/health.module';
     ViewsModule,
     HealthModule,
   ],
+  providers: [ApiExceptionFilter, OriginGuard, RequestIdMiddleware],
 })
 export class AppModule {}

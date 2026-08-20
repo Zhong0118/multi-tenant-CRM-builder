@@ -1,0 +1,35 @@
+export const API_ERROR_CODES = [
+  'AUTH_REQUIRED',
+  'INVALID_CREDENTIALS',
+  'VERIFICATION_INVALID',
+  'VERIFICATION_EXPIRED',
+  'INVITATION_NOT_FOUND',
+  'INVITATION_EXPIRED',
+  'INVITATION_PHONE_MISMATCH',
+  'MEMBERSHIP_INACTIVE',
+  'TENANT_INACTIVE',
+  'WORKSPACE_FORBIDDEN',
+  'RATE_LIMITED',
+  'CSRF_REJECTED',
+  'VALIDATION_FAILED',
+  'INTERNAL_ERROR',
+] as const;
+
+export type ApiErrorCode = (typeof API_ERROR_CODES)[number];
+
+export const API_ERROR_MESSAGES: Record<ApiErrorCode, string> = {
+  AUTH_REQUIRED: '请先登录。',
+  INVALID_CREDENTIALS: '手机号或密码不正确。',
+  VERIFICATION_INVALID: '验证码不正确。',
+  VERIFICATION_EXPIRED: '验证码已失效，请重新获取。',
+  INVITATION_NOT_FOUND: '未找到该邀请。',
+  INVITATION_EXPIRED: '该邀请已失效，请联系公司管理员重新邀请。',
+  INVITATION_PHONE_MISMATCH: '该邀请与当前账号手机号不匹配。',
+  MEMBERSHIP_INACTIVE: '你的公司成员账号当前不可用。',
+  TENANT_INACTIVE: '该公司工作区当前不可用。',
+  WORKSPACE_FORBIDDEN: '你无权访问该公司工作区。',
+  RATE_LIMITED: '操作过于频繁，请稍后再试。',
+  CSRF_REJECTED: '请求来源不受信任，请刷新页面后重试。',
+  VALIDATION_FAILED: '提交内容有误，请检查后重试。',
+  INTERNAL_ERROR: '服务暂时不可用，请稍后重试。',
+};

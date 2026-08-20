@@ -1,0 +1,60 @@
+import { ValidationPipe, type INestApplication } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { NestFactory } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
+import type { NextFunction, Request, Response } from 'express';
+import helmet from 'helmet';
+import { pinoHttp } from 'pino-http';
+
+import { AppModule } from './app.module';
+import { ApiExceptionFilter } from './common/errors/api-exception.filter';
+import { OriginGuard } from './common/security/origin.guard';
+import { RequestIdMiddleware } from './common/security/request-id.middleware';
+
+export async function createApp(): Promise<INestApplication> {
+  const app = await NestFactory.create(AppModule);
+  const config = app.get(ConfigService);
+  const requestId = app.get(RequestIdMiddleware);
+  const nodeEnv = config.get<string>('NODE_ENV', 'development');
+  const webOrigins = config
+    .get<string>('WEB_ORIGIN', 'http://localhost:3000')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  app.setGlobalPrefix('api/v1');
+  app.use((request: Request, response: Response, next: NextFunction) =>
+    requestId.use(request, response, next),
+  );
+  app.use(helmet());
+  app.use(pinoHttp());
+  app.use(cookieParser());
+  app.useGlobalPipes(
+    new ValidationPipe({
+      forbidNonWhitelisted: true,
+      transform: true,
+      whitelist: true,
+    }),
+  );
+  app.useGlobalGuards(app.get(OriginGuard));
+  app.useGlobalFilters(app.get(ApiExceptionFilter));
+  app.enableCors({ credentials: true, origin: webOrigins });
+  app.enableShutdownHooks();
+
+  if (nodeEnv !== 'production') {
+    const openApiConfig = new DocumentBuilder()
+      .setTitle('Multi-tenant CRM API')
+      .setDescription('多租户 CRM 平台 REST API')
+      .setVersion('1.0')
+      .build();
+    SwaggerModule.setup(
+      'api/docs',
+      app,
+      SwaggerModule.createDocument(app, openApiConfig),
+    );
+  }
+
+  await app.init();
+  return app;
+}
