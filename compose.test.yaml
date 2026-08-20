@@ -1,0 +1,23 @@
+name: multi-tenant-crm-test
+
+services:
+  postgres-test:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: crm_test
+      POSTGRES_PASSWORD: crm
+      POSTGRES_USER: crm
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql
+      - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crm -d crm_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+volumes:
+  postgres_test_data:

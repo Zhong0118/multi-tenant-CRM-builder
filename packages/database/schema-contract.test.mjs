@@ -28,3 +28,18 @@ test("defines the core multi-tenant CRM models", async () => {
   );
   assert.match(schema, /data\s+Json\s+@default\("\{\}"\)\s+@db\.JsonB/);
 });
+
+test("separates migration and runtime database credentials", async () => {
+  const env = await readFile(
+    new URL("../../.env.example", import.meta.url),
+    "utf8",
+  );
+  const prismaConfig = await readFile(
+    new URL("./prisma.config.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(env, /^DATABASE_ADMIN_URL=/m);
+  assert.match(env, /^DATABASE_URL=/m);
+  assert.match(prismaConfig, /DATABASE_ADMIN_URL/);
+});
