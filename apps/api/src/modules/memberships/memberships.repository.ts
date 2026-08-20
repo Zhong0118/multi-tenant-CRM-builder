@@ -38,7 +38,9 @@ export class PrismaMembershipsRepository
     return this.database.transaction(async (transaction) => {
       await transaction.$queryRawUnsafe(SET_USER, context.userId);
       await transaction.$queryRawUnsafe(SET_TENANT, context.tenantId);
-      return work(new PrismaMembershipStore(transaction, this.audit));
+      return work(
+        new PrismaMembershipStore(transaction, this.audit, context.tenantId),
+      );
     });
   }
 
@@ -98,7 +100,14 @@ class PrismaMembershipStore implements MembershipStore {
   constructor(
     private readonly transaction: Prisma.TransactionClient,
     private readonly audit: AuditService,
+    private readonly tenantId: string,
   ) {}
+
+  async lockAdminRoster(): Promise<void> {
+    await this.transaction.$queryRaw`
+      SELECT pg_advisory_xact_lock(hashtextextended(${this.tenantId}, 0))::text
+    `;
+  }
 
   async listMembers(page: MemberPageQuery) {
     const [members, total, activeAdminCount] = await Promise.all([

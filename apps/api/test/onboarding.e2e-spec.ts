@@ -151,7 +151,7 @@ describe('Invitation and workspace onboarding (e2e)', () => {
     const platformUser = await admin.user.findUniqueOrThrow({
       where: { phone: normalized(platformPhone) },
     });
-    await admin.tenantMember.create({
+    const platformMember = await admin.tenantMember.create({
       data: {
         tenantId: tenantA,
         userId: platformUser.id,
@@ -163,11 +163,44 @@ describe('Invitation and workspace onboarding (e2e)', () => {
     const memberA = await admin.tenantMember.findUniqueOrThrow({
       where: { tenantId_userId: { tenantId: tenantA, userId: userARecord.id } },
     });
-    await userA
-      .patch(`/api/v1/workspaces/${tenantACode}/members/${memberA.id}`)
-      .set('Origin', origin)
-      .send({ status: 'DISABLED' })
-      .expect(200);
+    const concurrentDisables = await Promise.all([
+      userA
+        .patch(`/api/v1/workspaces/${tenantACode}/members/${memberA.id}`)
+        .set('Origin', origin)
+        .send({ status: 'DISABLED' }),
+      userA
+        .patch(`/api/v1/workspaces/${tenantACode}/members/${platformMember.id}`)
+        .set('Origin', origin)
+        .send({ status: 'DISABLED' }),
+    ]);
+    expect(concurrentDisables.map(({ status }) => status).sort()).toEqual([
+      200, 409,
+    ]);
+    await expect(
+      admin.tenantMember.count({
+        where: {
+          tenantId: tenantA,
+          role: 'TENANT_ADMIN',
+          status: 'ACTIVE',
+        },
+      }),
+    ).resolves.toBe(1);
+
+    const refreshedMemberA = await admin.tenantMember.findUniqueOrThrow({
+      where: { id: memberA.id },
+    });
+    if (refreshedMemberA.status === 'ACTIVE') {
+      await userA
+        .patch(`/api/v1/workspaces/${tenantACode}/members/${platformMember.id}`)
+        .set('Origin', origin)
+        .send({ status: 'ACTIVE' })
+        .expect(200);
+      await userA
+        .patch(`/api/v1/workspaces/${tenantACode}/members/${memberA.id}`)
+        .set('Origin', origin)
+        .send({ status: 'DISABLED' })
+        .expect(200);
+    }
     await userA
       .get('/api/v1/me/workspaces')
       .expect(200)

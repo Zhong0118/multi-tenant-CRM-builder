@@ -4,6 +4,7 @@ import type { components } from "@crm/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Popconfirm, Result, Space, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { toApiError } from "@/lib/api/api-error";
@@ -113,15 +114,20 @@ export function MemberTable({
   initialMemberPage,
   initialInvitationPage,
   api = memberApi,
+  navigate,
 }: {
   tenantCode: string;
   viewerRole: "TENANT_ADMIN" | "EMPLOYEE";
   initialMemberPage: TenantMemberPage;
   initialInvitationPage: InvitationPage;
   api?: MemberApi;
+  navigate?: (path: string) => void;
 }) {
+  const router = useRouter();
   const queryClient = useQueryClient();
-  const [memberPageNumber, setMemberPageNumber] = useState(1);
+  const [memberPageNumber, setMemberPageNumber] = useState(
+    initialMemberPage.page,
+  );
   const [page, setPage] = useState(1);
   const [cursors, setCursors] = useState<Array<string | undefined>>([
     undefined,
@@ -133,7 +139,10 @@ export function MemberTable({
   const membersQuery = useQuery({
     queryKey: [...membersQueryKey, memberPageNumber],
     queryFn: () => api.listMembers(tenantCode, memberPageNumber),
-    initialData: memberPageNumber === 1 ? initialMemberPage : undefined,
+    initialData:
+      memberPageNumber === initialMemberPage.page
+        ? initialMemberPage
+        : undefined,
     staleTime: Number.POSITIVE_INFINITY,
     enabled: viewerRole === "TENANT_ADMIN",
   });
@@ -160,7 +169,13 @@ export function MemberTable({
       action === "resend"
         ? api.resend(tenantCode, id)
         : api.revoke(tenantCode, id),
-    onSuccess: () => void refresh("invitations"),
+    onSuccess: (_data, variables) => {
+      if (variables.action === "revoke") {
+        setPage(1);
+        setCursors([undefined]);
+      }
+      void refresh("invitations");
+    },
     onMutate: () => setError(undefined),
     onError: showError,
   });
@@ -365,7 +380,12 @@ export function MemberTable({
             pageSize: 20,
             total: membersQuery.data?.total ?? 0,
             showSizeChanger: false,
-            onChange: setMemberPageNumber,
+            onChange: (nextPage) => {
+              setMemberPageNumber(nextPage);
+              (navigate ?? router.push)(
+                `/workspace/${tenantCode}/members?page=${nextPage}`,
+              );
+            },
           }}
         />
       </section>

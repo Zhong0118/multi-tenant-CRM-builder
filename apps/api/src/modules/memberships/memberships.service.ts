@@ -68,6 +68,7 @@ export interface InvitationPage {
 
 export interface MembershipStore {
   listMembers(page: MemberPageQuery): Promise<TenantMemberPage>;
+  lockAdminRoster(): Promise<void>;
   listInvitations(page: InvitationPageQuery): Promise<InvitationPage>;
   createInvitation(input: {
     tenantId: string;
@@ -164,6 +165,7 @@ export class MembershipsService {
   ) {
     this.assertAdmin(context);
     return await this.repository.withTenant(context, async (store) => {
+      await store.lockAdminRoster();
       const member = await store.findMember(memberId);
       if (!member) throw new ApiException('MEMBERSHIP_INACTIVE', 404);
       if (

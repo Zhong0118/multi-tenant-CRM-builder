@@ -1,6 +1,5 @@
-import { InviteMemberForm } from "@/features/members/invite-member-form";
+import { MemberAdministration } from "@/features/members/member-administration";
 import {
-  MemberTable,
   type InvitationPage,
   type TenantMemberPage,
 } from "@/features/members/member-table";
@@ -11,14 +10,19 @@ import { requireWorkspace } from "@/lib/auth/require-workspace";
 
 export interface MembersPageProps {
   params: Promise<{ tenantCode: string }>;
+  searchParams: Promise<{ page?: string }>;
 }
 
-export default async function MembersPage({ params }: MembersPageProps) {
+export default async function MembersPage({
+  params,
+  searchParams,
+}: MembersPageProps) {
   const { tenantCode } = await params;
+  const page = parsePage((await searchParams).page);
   const workspace = await requireWorkspace(tenantCode);
   let memberPage: TenantMemberPage = {
     items: [],
-    page: 1,
+    page,
     limit: 20,
     total: 0,
     activeAdminCount: 0,
@@ -29,7 +33,7 @@ export default async function MembersPage({ params }: MembersPageProps) {
     const client = await createServerApiClient();
     const [memberResult, invitationResult] = await Promise.all([
       client.GET("/api/v1/workspaces/{tenantCode}/members", {
-        params: { path: { tenantCode }, query: { page: 1, limit: 20 } },
+        params: { path: { tenantCode }, query: { page, limit: 20 } },
       }),
       client.GET("/api/v1/workspaces/{tenantCode}/invitations", {
         params: { path: { tenantCode }, query: {} },
@@ -48,10 +52,8 @@ export default async function MembersPage({ params }: MembersPageProps) {
         <h1>成员管理</h1>
         <p>邀请本公司员工，并控制现有成员的工作空间访问权限。</p>
       </header>
-      {workspace.role === "TENANT_ADMIN" ? (
-        <InviteMemberForm tenantCode={tenantCode} />
-      ) : null}
-      <MemberTable
+      <MemberAdministration
+        key={page}
         tenantCode={tenantCode}
         viewerRole={workspace.role}
         initialMemberPage={memberPage}
@@ -59,6 +61,12 @@ export default async function MembersPage({ params }: MembersPageProps) {
       />
     </main>
   );
+}
+
+function parsePage(value?: string): number {
+  if (!value || !/^\d+$/.test(value)) return 1;
+  const page = Number(value);
+  return Number.isSafeInteger(page) && page > 0 ? page : 1;
 }
 
 function throwApiResult(result: {

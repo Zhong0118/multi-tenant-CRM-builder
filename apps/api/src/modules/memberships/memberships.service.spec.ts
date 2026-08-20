@@ -15,6 +15,7 @@ const admin: TenantContext = {
 
 class MemoryMembershipStore implements MembershipStore {
   activeAdminCount = 1;
+  adminRosterLocked = false;
   invitationCreated = false;
   invitationPage?: { cursor?: string; limit: number };
   memberPage?: { page: number; limit: number };
@@ -48,6 +49,10 @@ class MemoryMembershipStore implements MembershipStore {
   }
   countActiveAdmins() {
     return Promise.resolve(this.activeAdminCount);
+  }
+  lockAdminRoster() {
+    this.adminRosterLocked = true;
+    return Promise.resolve();
   }
   updateMemberStatus(_id: string, status: 'ACTIVE' | 'DISABLED') {
     this.member.status = status;
@@ -127,12 +132,13 @@ describe('MembershipsService', () => {
   });
 
   it('does not disable the last active tenant administrator', async () => {
-    const { service } = serviceFor();
+    const { service, store } = serviceFor();
     await expect(
       service.changeMemberStatus(admin, admin.memberId, 'DISABLED', {
         requestId: 'req-1',
       }),
     ).rejects.toMatchObject({ code: 'TENANT_ADMIN_REQUIRED' });
+    expect(store.adminRosterLocked).toBe(true);
   });
 
   it('keeps inactive memberships visible in the personal workspace list', async () => {

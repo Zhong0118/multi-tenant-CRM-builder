@@ -12,9 +12,11 @@ import styles from "./members.module.css";
 export function InviteMemberForm({
   tenantCode,
   api = memberApi,
+  onInvitationCreated,
 }: {
   tenantCode: string;
   api?: MemberApi;
+  onInvitationCreated?: () => void;
 }) {
   const queryClient = useQueryClient();
   const [phone, setPhone] = useState("");
@@ -27,6 +29,7 @@ export function InviteMemberForm({
     onSuccess: async () => {
       setSent(true);
       setPhone("");
+      onInvitationCreated?.();
       await queryClient.invalidateQueries({
         queryKey: ["workspace", tenantCode, "invitations"],
         exact: false,

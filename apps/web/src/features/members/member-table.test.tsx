@@ -2,6 +2,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 import { InviteMemberForm } from "./invite-member-form";
 import {
   MemberTable,
@@ -121,8 +125,13 @@ describe("MemberTable", () => {
 
   it("invites a member by phone and role", async () => {
     const api = memberApi();
+    const onInvitationCreated = vi.fn();
     const { client } = renderWithQuery(
-      <InviteMemberForm tenantCode="northwind" api={api} />,
+      <InviteMemberForm
+        tenantCode="northwind"
+        api={api}
+        onInvitationCreated={onInvitationCreated}
+      />,
     );
     const invalidate = vi.spyOn(client, "invalidateQueries");
 
@@ -141,5 +150,29 @@ describe("MemberTable", () => {
       queryKey: ["workspace", "northwind", "invitations"],
       exact: false,
     });
+    expect(onInvitationCreated).toHaveBeenCalledOnce();
+  });
+
+  it("writes member pagination to the page URL", () => {
+    const navigate = vi.fn();
+    renderWithQuery(
+      <MemberTable
+        tenantCode="northwind"
+        viewerRole="TENANT_ADMIN"
+        initialMemberPage={{ ...initialMemberPage, total: 21 }}
+        initialInvitationPage={{ items: invitations }}
+        api={memberApi()}
+        navigate={navigate}
+      />,
+    );
+
+    const next = screen
+      .getAllByRole("button", { name: "right" })
+      .find((button) => !button.hasAttribute("disabled"));
+    expect(next).toBeTruthy();
+    fireEvent.click(next!);
+    expect(navigate).toHaveBeenCalledWith(
+      "/workspace/northwind/members?page=2",
+    );
   });
 });
