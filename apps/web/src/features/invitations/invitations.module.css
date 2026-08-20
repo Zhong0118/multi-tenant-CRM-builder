@@ -1,0 +1,88 @@
+.detail,
+.invitationCard {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #d8e0e6;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(22, 37, 50, 0.05);
+}
+.detail {
+  padding: 30px;
+}
+.statusRail,
+.cardRail {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #0f766e;
+}
+.detailHeader,
+.cardMain {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.detailHeader {
+  margin-bottom: 24px;
+}
+.detailHeader h2,
+.cardTitle {
+  margin: 5px 0 0 !important;
+  color: #162532 !important;
+}
+.eyebrow {
+  color: #0f766e !important;
+  font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+.actionArea {
+  margin-top: 24px;
+}
+.stateResult {
+  margin-top: 22px;
+}
+.actionArea :global(.ant-alert) {
+  margin-bottom: 18px;
+}
+.invitationCard {
+  padding: 24px 24px 20px 28px;
+}
+.cardMain {
+  margin-bottom: 12px;
+}
+.cardLink {
+  height: auto;
+  padding: 0;
+  font-weight: 650;
+}
+.listHeader {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.listHeader h2 {
+  color: #162532;
+  font-size: 20px;
+}
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+@media (max-width: 560px) {
+  .detail {
+    padding: 22px 18px 22px 22px;
+  }
+  .detailHeader,
+  .cardMain {
+    gap: 12px;
+  }
+  .cardGrid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -110,10 +110,17 @@ describe('MembershipsService', () => {
     ).rejects.toMatchObject({ code: 'TENANT_ADMIN_REQUIRED' });
   });
 
-  it('excludes disabled memberships from enterable workspaces', async () => {
+  it('keeps inactive memberships visible in the personal workspace list', async () => {
     const { service } = serviceFor();
     await expect(service.listWorkspaces('user-1')).resolves.toEqual([
-      expect.objectContaining({ tenantCode: 'active' }),
+      expect.objectContaining({
+        tenantCode: 'active',
+        memberStatus: 'ACTIVE',
+      }),
+      expect.objectContaining({
+        tenantCode: 'disabled',
+        memberStatus: 'DISABLED',
+      }),
     ]);
   });
 

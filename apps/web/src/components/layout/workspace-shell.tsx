@@ -1,6 +1,6 @@
 "use client";
 
-import { Layout, Space, Typography } from "antd";
+import { Layout, Space, Tag, Typography } from "antd";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -11,16 +11,29 @@ import styles from "./shell.module.css";
 export interface WorkspaceShellProps {
   children: ReactNode;
   tenantCode: string;
+  tenantName: string;
+  role: "TENANT_ADMIN" | "EMPLOYEE";
 }
 
-export function WorkspaceShell({ children, tenantCode }: WorkspaceShellProps) {
+export function WorkspaceShell({
+  children,
+  tenantCode,
+  tenantName,
+  role,
+}: WorkspaceShellProps) {
   return (
     <Layout className={styles.shell}>
       <aside className={styles.sidebar}>
-        <Typography.Title level={4}>工作空间</Typography.Title>
-        <Typography.Text type="secondary">{tenantCode}</Typography.Text>
+        <Typography.Text className={styles.shellEyebrow}>
+          CURRENT WORKSPACE
+        </Typography.Text>
+        <Typography.Title level={4}>{tenantName}</Typography.Title>
+        <Space wrap size={6}>
+          <Tag>{role === "TENANT_ADMIN" ? "公司管理员" : "员工"}</Tag>
+          <Typography.Text type="secondary">{tenantCode}</Typography.Text>
+        </Space>
         <nav aria-label="工作空间导航">
-          <Space direction="vertical">
+          <Space orientation="vertical">
             {workspaceNavigation(tenantCode).map((item) => (
               <Link key={item.href} href={item.href}>
                 {item.label}

@@ -14,6 +14,19 @@
   margin-top: 24px;
 }
 
+.sidebar h4 {
+  margin: 7px 0 12px !important;
+  color: #162532 !important;
+}
+
+.shellEyebrow {
+  color: #0f766e !important;
+  font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
 @media (max-width: 767px) {
   .shell {
     display: block;

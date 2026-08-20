@@ -1,0 +1,59 @@
+.home {
+  max-width: 860px;
+  padding: 52px clamp(22px, 5vw, 64px);
+}
+.home h1 {
+  margin: 7px 0 12px !important;
+  color: #162532 !important;
+  font-size: clamp(30px, 4vw, 44px) !important;
+  letter-spacing: -0.03em;
+}
+.home > p {
+  max-width: 680px;
+  color: #526473;
+  line-height: 1.75;
+}
+.eyebrow {
+  color: #0f766e !important;
+  font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+}
+.identity {
+  margin-top: 30px;
+  overflow: hidden;
+  border: 1px solid #d8e0e6;
+  border-radius: 6px;
+  background: #fff;
+}
+.identity div {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.35fr) minmax(0, 1fr);
+  border-bottom: 1px solid #d8e0e6;
+}
+.identity div:last-child {
+  border-bottom: 0;
+}
+.identity dt,
+.identity dd {
+  padding: 13px 16px;
+}
+.identity dt {
+  color: #526473;
+  background: #f7f9fa;
+  font-weight: 600;
+}
+.identity dd {
+  border-left: 1px solid #d8e0e6;
+  color: #162532;
+}
+@media (max-width: 520px) {
+  .identity div {
+    grid-template-columns: 1fr;
+  }
+  .identity dd {
+    border-top: 1px solid #d8e0e6;
+    border-left: 0;
+  }
+}

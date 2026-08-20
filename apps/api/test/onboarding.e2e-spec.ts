@@ -124,6 +124,19 @@ describe('Invitation and workspace onboarding (e2e)', () => {
       .send({ status: 'DISABLED' })
       .expect(200);
     await userA
+      .get('/api/v1/me/workspaces')
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              tenantCode: tenantACode,
+              memberStatus: 'DISABLED',
+            }),
+          ]),
+        );
+      });
+    await userA
       .get(`/api/v1/workspaces/${tenantACode}`)
       .expect(403)
       .expect((response) => {

@@ -1,0 +1,60 @@
+.accountPage {
+  min-height: 100vh;
+  padding: 46px clamp(18px, 6vw, 88px) 72px;
+  background: #f4f7f9;
+}
+.accountHeader,
+.accountContent {
+  max-width: 1080px;
+  margin-inline: auto;
+}
+.accountHeader {
+  display: flex;
+  gap: 28px;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 30px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #d8e0e6;
+}
+.accountHeader h1 {
+  margin: 6px 0 8px;
+  color: #162532;
+  font-size: clamp(29px, 4vw, 42px);
+  letter-spacing: -0.03em;
+}
+.accountHeader p {
+  max-width: 650px;
+  color: #526473;
+  line-height: 1.7;
+}
+.eyebrow {
+  color: #0f766e;
+  font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+}
+.accountActions {
+  display: flex;
+  flex: none;
+  gap: 10px;
+}
+.notice {
+  margin-bottom: 20px;
+}
+.detailWidth {
+  max-width: 760px;
+}
+@media (max-width: 680px) {
+  .accountPage {
+    padding: 30px 16px 50px;
+  }
+  .accountHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .accountActions {
+    flex-wrap: wrap;
+  }
+}

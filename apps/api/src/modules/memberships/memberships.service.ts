@@ -93,13 +93,8 @@ export class MembershipsService {
     private readonly tokenGenerator: () => string,
   ) {}
 
-  async listWorkspaces(userId: string): Promise<WorkspaceSummary[]> {
-    const workspaces = await this.repository.listWorkspaces(userId);
-    return workspaces.filter(
-      (workspace) =>
-        workspace.memberStatus === 'ACTIVE' &&
-        workspace.tenantStatus === 'ACTIVE',
-    );
+  listWorkspaces(userId: string): Promise<WorkspaceSummary[]> {
+    return this.repository.listWorkspaces(userId);
   }
 
   listMembers(context: TenantContext) {

@@ -2,7 +2,7 @@ import type { components } from "@crm/contracts";
 
 type Workspace = Pick<
   components["schemas"]["WorkspaceSummaryResponseDto"],
-  "tenantCode"
+  "tenantCode" | "tenantStatus" | "memberStatus"
 >;
 
 export interface PostLoginRouteInput {
@@ -18,12 +18,17 @@ export function resolvePostLoginRoute({
   isPlatformAdmin = false,
   canAccessReturnTo,
 }: PostLoginRouteInput): string {
+  const activeWorkspaces = workspaces.filter(
+    (workspace) =>
+      workspace.tenantStatus === "ACTIVE" &&
+      workspace.memberStatus === "ACTIVE",
+  );
   const safeReturnTo = toSafeRelativePath(returnTo);
   if (
     safeReturnTo &&
     isAuthorizedPath(
       safeReturnTo,
-      workspaces,
+      activeWorkspaces,
       isPlatformAdmin,
       canAccessReturnTo,
     )
@@ -31,9 +36,9 @@ export function resolvePostLoginRoute({
     return safeReturnTo;
   }
 
-  if (workspaces.length === 0) return "/waiting";
-  if (workspaces.length === 1) {
-    return `/workspace/${encodeURIComponent(workspaces[0].tenantCode)}`;
+  if (activeWorkspaces.length === 0) return "/waiting";
+  if (activeWorkspaces.length === 1) {
+    return `/workspace/${encodeURIComponent(activeWorkspaces[0].tenantCode)}`;
   }
   return "/workspaces";
 }

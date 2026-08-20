@@ -45,7 +45,7 @@ export class PrismaMembershipsRepository
     return this.database.transaction(async (transaction) => {
       await transaction.$queryRawUnsafe(SET_USER, userId);
       const members = await transaction.tenantMember.findMany({
-        where: { userId, status: 'ACTIVE' },
+        where: { userId },
         include: { tenant: true },
         orderBy: [{ tenant: { name: 'asc' } }, { id: 'asc' }],
       });
