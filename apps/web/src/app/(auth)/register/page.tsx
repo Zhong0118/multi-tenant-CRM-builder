@@ -1,5 +1,21 @@
-import { PagePlaceholder } from "@/components/layout/page-placeholder";
+import Link from "next/link";
+
+import { AuthShell } from "@/features/auth/auth-shell";
+import { RegisterForm } from "@/features/auth/register-form";
 
 export default function RegisterPage() {
-  return <PagePlaceholder title="创建账号" description="注册独立用户账号。" />;
+  return (
+    <AuthShell
+      eyebrow="ACCOUNT / 01"
+      title="创建个人账号"
+      description="账号先独立存在；公司管理员邀请后，你即可进入对应工作区。"
+      footer={
+        <>
+          已有账号？ <Link href="/login">直接登录</Link>
+        </>
+      }
+    >
+      <RegisterForm />
+    </AuthShell>
+  );
 }

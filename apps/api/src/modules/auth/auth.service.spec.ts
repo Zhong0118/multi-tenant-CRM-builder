@@ -475,10 +475,11 @@ describe('AuthService credentials and reset', () => {
       tokenHash: 'must-never-leave-the-api',
       expiresAt: new Date('2026-09-20T00:00:00.000Z'),
       deviceSummary: 'Safari on macOS',
+      ip: '203.0.113.42',
       createdAt: new Date('2026-08-20T00:00:00.000Z'),
     });
 
-    const sessions = await fixture.service.listSessions('user-1');
+    const sessions = await fixture.service.listSessions('user-1', 'session-1');
 
     expect(sessions).toEqual([
       {
@@ -486,6 +487,8 @@ describe('AuthService credentials and reset', () => {
         expiresAt: new Date('2026-09-20T00:00:00.000Z'),
         lastUsedAt: undefined,
         deviceSummary: 'Safari on macOS',
+        ipSummary: '203.0.113.42',
+        isCurrent: true,
         createdAt: new Date('2026-08-20T00:00:00.000Z'),
         revokedAt: undefined,
       },

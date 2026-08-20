@@ -159,7 +159,7 @@ export class MeController {
   @Get('sessions')
   @ApiOkResponse({ type: SessionResponseDto, isArray: true })
   sessions(@CurrentSession() current: SessionPrincipal) {
-    return this.auth.listSessions(current.user.id);
+    return this.auth.listSessions(current.user.id, current.sessionId);
   }
 
   @Delete('sessions/:sessionId')

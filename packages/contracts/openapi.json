@@ -399,6 +399,12 @@
             "format": "uuid",
             "type": "string"
           },
+          "ipSummary": {
+            "type": "string"
+          },
+          "isCurrent": {
+            "type": "boolean"
+          },
           "lastUsedAt": {
             "format": "date-time",
             "type": "string"
@@ -408,7 +414,7 @@
             "type": "string"
           }
         },
-        "required": ["id", "expiresAt", "createdAt"],
+        "required": ["id", "expiresAt", "isCurrent", "createdAt"],
         "type": "object"
       },
       "TenantInvitationResponseDto": {

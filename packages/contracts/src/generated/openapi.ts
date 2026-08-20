@@ -557,6 +557,8 @@ export interface components {
       expiresAt: string;
       /** Format: uuid */
       id: string;
+      ipSummary?: string;
+      isCurrent: boolean;
       /** Format: date-time */
       lastUsedAt?: string;
       /** Format: date-time */

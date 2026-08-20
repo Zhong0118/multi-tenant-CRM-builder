@@ -72,6 +72,8 @@ export interface PublicSession {
   expiresAt: Date;
   lastUsedAt?: Date;
   deviceSummary?: string;
+  ipSummary?: string;
+  isCurrent: boolean;
   createdAt: Date;
   revokedAt?: Date;
 }
@@ -262,13 +264,18 @@ export class AuthService {
     });
   }
 
-  async listSessions(userId: string): Promise<PublicSession[]> {
+  async listSessions(
+    userId: string,
+    currentSessionId: string,
+  ): Promise<PublicSession[]> {
     const sessions = await this.repository.listSessionsByUser(userId);
     return sessions.map((session) => ({
       id: session.id,
       expiresAt: session.expiresAt,
       lastUsedAt: session.lastUsedAt,
       deviceSummary: session.deviceSummary,
+      ipSummary: session.ip,
+      isCurrent: session.id === currentSessionId,
       createdAt: session.createdAt,
       revokedAt: session.revokedAt,
     }));

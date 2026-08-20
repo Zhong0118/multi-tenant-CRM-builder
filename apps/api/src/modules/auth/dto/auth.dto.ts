@@ -146,6 +146,8 @@ export class SessionResponseDto {
   @ApiPropertyOptional({ type: String, format: 'date-time' })
   lastUsedAt?: Date;
   @ApiPropertyOptional() deviceSummary?: string;
+  @ApiPropertyOptional() ipSummary?: string;
+  @ApiProperty() isCurrent!: boolean;
   @ApiProperty({ type: String, format: 'date-time' }) createdAt!: Date;
   @ApiPropertyOptional({ type: String, format: 'date-time' }) revokedAt?: Date;
 }
