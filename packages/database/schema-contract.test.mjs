@@ -63,3 +63,17 @@ test("defines append-only audit and tenant RLS", async () => {
   assert.match(migration, /FORCE ROW LEVEL SECURITY/);
   assert.match(migration, /current_setting\('app\.tenant_id'/);
 });
+
+test("allows a verified user to discover invitations sent before registration", async () => {
+  const migration = await readFile(
+    new URL(
+      "./prisma/migrations/0002_invitation_phone_access/migration.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.match(migration, /target_phone/);
+  assert.match(migration, /users.*phone/is);
+  assert.match(migration, /current_setting\('app\.user_id', true\)/);
+});
