@@ -220,6 +220,7 @@ POST   /api/v1/auth/reset-password
 GET    /api/v1/me
 GET    /api/v1/me/sessions
 DELETE /api/v1/me/sessions/:sessionId
+PATCH  /api/v1/me/password
 ```
 
 ### 9.2 邀请与工作空间
@@ -235,7 +236,9 @@ GET  /api/v1/me/workspaces
 ### 9.3 租户成员管理
 
 ```text
+GET   /api/v1/workspaces/:tenantCode
 GET   /api/v1/workspaces/:tenantCode/members
+GET   /api/v1/workspaces/:tenantCode/invitations
 POST  /api/v1/workspaces/:tenantCode/invitations
 POST  /api/v1/workspaces/:tenantCode/invitations/:id/resend
 POST  /api/v1/workspaces/:tenantCode/invitations/:id/revoke
@@ -245,6 +248,7 @@ PATCH /api/v1/workspaces/:tenantCode/members/:memberId
 ### 9.4 平台租户开通
 
 ```text
+GET   /api/v1/platform/tenants
 POST  /api/v1/platform/tenants
 GET   /api/v1/platform/tenants/:tenantId
 PATCH /api/v1/platform/tenants/:tenantId/status
