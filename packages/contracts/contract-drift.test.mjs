@@ -17,7 +17,15 @@ test("contains the first account and workspace routes", async () => {
   );
   assert.equal(
     document.components.schemas.RegisterDto.properties.password.minLength,
-    8,
+    10,
+  );
+  assert.equal(
+    document.components.schemas.RegisterDto.properties.password.maxLength,
+    72,
+  );
+  assert.equal(
+    document.components.schemas.RegisterDto.properties.password.pattern,
+    "^(?=.*[A-Za-z])(?=.*\\d)[\\s\\S]*$",
   );
 
   const workspaceOperation =

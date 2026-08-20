@@ -43,8 +43,9 @@
           },
           "newPassword": {
             "format": "password",
-            "maxLength": 200,
-            "minLength": 8,
+            "maxLength": 72,
+            "minLength": 10,
+            "pattern": "^(?=.*[A-Za-z])(?=.*\\d)[\\s\\S]*$",
             "type": "string"
           }
         },
@@ -339,8 +340,9 @@
           },
           "password": {
             "format": "password",
-            "maxLength": 200,
-            "minLength": 8,
+            "maxLength": 72,
+            "minLength": 10,
+            "pattern": "^(?=.*[A-Za-z])(?=.*\\d)[\\s\\S]*$",
             "type": "string"
           },
           "phone": {
@@ -367,8 +369,9 @@
           },
           "newPassword": {
             "format": "password",
-            "maxLength": 200,
-            "minLength": 8,
+            "maxLength": 72,
+            "minLength": 10,
+            "pattern": "^(?=.*[A-Za-z])(?=.*\\d)[\\s\\S]*$",
             "type": "string"
           },
           "phone": {

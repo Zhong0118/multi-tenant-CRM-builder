@@ -125,7 +125,7 @@ describe('Platform tenant API (e2e)', () => {
         phone,
         code: verificationCode,
         displayName,
-        password: 'test-password',
+        password: 'test-password1',
         deviceSummary: 'E2E',
       })
       .expect(201);

@@ -52,7 +52,7 @@ describe('Auth API (e2e)', () => {
         phone,
         code,
         displayName: '测试用户',
-        password: 'old-password',
+        password: 'old-password1',
         deviceSummary: 'Chrome / macOS',
       })
       .expect(201);
@@ -74,7 +74,7 @@ describe('Auth API (e2e)', () => {
       .set('Origin', origin)
       .send({
         phone,
-        password: 'old-password',
+        password: 'old-password1',
         deviceKey: 'browser-two',
         deviceSummary: 'Safari / iPhone',
       })
@@ -108,7 +108,7 @@ describe('Auth API (e2e)', () => {
     await second
       .post('/api/v1/auth/reset-password')
       .set('Origin', origin)
-      .send({ phone, code, newPassword: 'new-password' })
+      .send({ phone, code, newPassword: 'new-password1' })
       .expect(200);
     await second.get('/api/v1/me').expect(401);
 
@@ -117,7 +117,7 @@ describe('Auth API (e2e)', () => {
       .set('Origin', origin)
       .send({
         phone,
-        password: 'old-password',
+        password: 'old-password1',
         deviceKey: 'browser-three',
         deviceSummary: 'Firefox',
       })
@@ -127,7 +127,7 @@ describe('Auth API (e2e)', () => {
       .set('Origin', origin)
       .send({
         phone,
-        password: 'new-password',
+        password: 'new-password1',
         deviceKey: 'browser-three',
         deviceSummary: 'Firefox',
       })
@@ -148,7 +148,7 @@ describe('Auth API (e2e)', () => {
         phone,
         code,
         displayName: '测试用户',
-        password: 'old-password',
+        password: 'old-password1',
         deviceSummary: 'Chrome',
       })
       .expect(201);

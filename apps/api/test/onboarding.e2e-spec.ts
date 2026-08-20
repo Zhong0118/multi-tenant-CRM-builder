@@ -151,7 +151,7 @@ describe('Invitation and workspace onboarding (e2e)', () => {
         phone,
         code,
         displayName,
-        password: 'test-password',
+        password: 'test-password1',
         deviceSummary: 'E2E',
       })
       .expect(201);

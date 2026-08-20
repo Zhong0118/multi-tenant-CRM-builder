@@ -4,9 +4,12 @@ import {
   IsNotEmpty,
   IsString,
   Length,
+  Matches,
   MaxLength,
-  MinLength,
 } from 'class-validator';
+
+export const STRONG_PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d)[\s\S]*$/;
+export const PASSWORD_LENGTH_PATTERN = /^[\s\S]{10,72}$/u;
 
 export class VerificationChallengeDto {
   @ApiProperty({ example: '13800138000' })
@@ -37,10 +40,15 @@ export class RegisterDto {
   @IsString()
   @Length(1, 100)
   displayName!: string;
-  @ApiProperty({ minLength: 8, maxLength: 200, format: 'password' })
+  @ApiProperty({
+    minLength: 10,
+    maxLength: 72,
+    format: 'password',
+    pattern: STRONG_PASSWORD_PATTERN.source,
+  })
   @IsString()
-  @MinLength(8)
-  @MaxLength(200)
+  @Matches(PASSWORD_LENGTH_PATTERN)
+  @Matches(STRONG_PASSWORD_PATTERN)
   password!: string;
   @ApiProperty({ maxLength: 300 })
   @IsString()
@@ -87,10 +95,15 @@ export class ResetPasswordDto {
   @IsString()
   @Length(6, 6)
   code!: string;
-  @ApiProperty({ minLength: 8, maxLength: 200, format: 'password' })
+  @ApiProperty({
+    minLength: 10,
+    maxLength: 72,
+    format: 'password',
+    pattern: STRONG_PASSWORD_PATTERN.source,
+  })
   @IsString()
-  @MinLength(8)
-  @MaxLength(200)
+  @Matches(PASSWORD_LENGTH_PATTERN)
+  @Matches(STRONG_PASSWORD_PATTERN)
   newPassword!: string;
 }
 
@@ -99,10 +112,15 @@ export class ChangePasswordDto {
   @IsString()
   @MaxLength(200)
   currentPassword!: string;
-  @ApiProperty({ minLength: 8, maxLength: 200, format: 'password' })
+  @ApiProperty({
+    minLength: 10,
+    maxLength: 72,
+    format: 'password',
+    pattern: STRONG_PASSWORD_PATTERN.source,
+  })
   @IsString()
-  @MinLength(8)
-  @MaxLength(200)
+  @Matches(PASSWORD_LENGTH_PATTERN)
+  @Matches(STRONG_PASSWORD_PATTERN)
   newPassword!: string;
 }
 
