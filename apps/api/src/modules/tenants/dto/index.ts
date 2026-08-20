@@ -1,2 +1,1 @@
-/** Tenants request and response DTOs are exported from this boundary. */
-export {};
+export * from './platform-tenant.dto';

@@ -1,4 +1,68 @@
-import { Controller } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import type { Request } from 'express';
 
-@Controller('tenants')
-export class TenantsController {}
+import { CurrentSession } from '../../common/auth/current-user.decorator';
+import { PlatformAdminGuard } from '../../common/auth/platform-admin.guard';
+import { SessionAuthGuard } from '../auth/session-auth.guard';
+import type { SessionPrincipal } from '../auth/session.service';
+import { ChangeTenantStatusDto, CreatePlatformTenantDto } from './dto';
+import { TenantsService } from './tenants.service';
+
+interface RequestWithId extends Request {
+  requestId?: string;
+}
+
+@UseGuards(SessionAuthGuard, PlatformAdminGuard)
+@Controller('platform/tenants')
+export class TenantsController {
+  constructor(private readonly tenants: TenantsService) {}
+
+  @Get()
+  list(@CurrentSession() current: SessionPrincipal) {
+    return this.tenants.list(current.user);
+  }
+
+  @Post()
+  create(
+    @CurrentSession() current: SessionPrincipal,
+    @Body() dto: CreatePlatformTenantDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.tenants.createTenant(current.user, {
+      ...dto,
+      requestId: request.requestId ?? 'req_unknown',
+      ip: request.ip,
+    });
+  }
+
+  @Get(':tenantId')
+  detail(
+    @CurrentSession() current: SessionPrincipal,
+    @Param('tenantId') tenantId: string,
+  ) {
+    return this.tenants.detail(current.user, tenantId);
+  }
+
+  @Patch(':tenantId/status')
+  changeStatus(
+    @CurrentSession() current: SessionPrincipal,
+    @Param('tenantId') tenantId: string,
+    @Body() dto: ChangeTenantStatusDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.tenants.changeStatus(current.user, tenantId, dto.status, {
+      reason: dto.reason,
+      requestId: request.requestId ?? 'req_unknown',
+      ip: request.ip,
+    });
+  }
+}
