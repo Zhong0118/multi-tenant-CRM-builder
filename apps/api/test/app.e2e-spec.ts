@@ -7,6 +7,8 @@ describe('Health API (e2e)', () => {
   let app: INestApplication<App>;
 
   beforeEach(async () => {
+    process.env.NODE_ENV = 'test';
+    process.env.DEV_VERIFICATION_CODE = '123456';
     app = (await createApp()) as INestApplication<App>;
   });
 

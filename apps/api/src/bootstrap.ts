@@ -5,10 +5,10 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import type { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
-import { pinoHttp } from 'pino-http';
 
 import { AppModule } from './app.module';
 import { ApiExceptionFilter } from './common/errors/api-exception.filter';
+import { createHttpLogger } from './common/security/http-logger';
 import { OriginGuard } from './common/security/origin.guard';
 import { RequestIdMiddleware } from './common/security/request-id.middleware';
 
@@ -28,7 +28,7 @@ export async function createApp(): Promise<INestApplication> {
     requestId.use(request, response, next),
   );
   app.use(helmet());
-  app.use(pinoHttp());
+  app.use(createHttpLogger());
   app.use(cookieParser());
   app.useGlobalPipes(
     new ValidationPipe({
