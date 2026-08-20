@@ -12,12 +12,14 @@ import { browserApiClient } from "@/lib/api/browser-client";
 import styles from "./members.module.css";
 
 export type TenantMember = components["schemas"]["TenantMemberResponseDto"];
+export type TenantMemberPage =
+  components["schemas"]["TenantMemberPageResponseDto"];
 export type TenantInvitation =
   components["schemas"]["TenantInvitationResponseDto"];
 export type InvitationPage = components["schemas"]["InvitationPageResponseDto"];
 
 export interface MemberApi {
-  listMembers(tenantCode: string): Promise<TenantMember[]>;
+  listMembers(tenantCode: string, page: number): Promise<TenantMemberPage>;
   listInvitations(tenantCode: string, cursor?: string): Promise<InvitationPage>;
   invite(
     tenantCode: string,
@@ -48,10 +50,10 @@ async function dataOrThrow<T>(result: {
 }
 
 export const memberApi: MemberApi = {
-  async listMembers(tenantCode) {
+  async listMembers(tenantCode, page) {
     return dataOrThrow(
       await browserApiClient.GET("/api/v1/workspaces/{tenantCode}/members", {
-        params: { path: { tenantCode } },
+        params: { path: { tenantCode }, query: { page, limit: 20 } },
       }),
     );
   },
@@ -108,17 +110,18 @@ export const memberApi: MemberApi = {
 export function MemberTable({
   tenantCode,
   viewerRole,
-  initialMembers,
+  initialMemberPage,
   initialInvitationPage,
   api = memberApi,
 }: {
   tenantCode: string;
   viewerRole: "TENANT_ADMIN" | "EMPLOYEE";
-  initialMembers: TenantMember[];
+  initialMemberPage: TenantMemberPage;
   initialInvitationPage: InvitationPage;
   api?: MemberApi;
 }) {
   const queryClient = useQueryClient();
+  const [memberPageNumber, setMemberPageNumber] = useState(1);
   const [page, setPage] = useState(1);
   const [cursors, setCursors] = useState<Array<string | undefined>>([
     undefined,
@@ -128,9 +131,9 @@ export function MemberTable({
   const membersQueryKey = ["workspace", tenantCode, "members"] as const;
   const invitationsQueryKey = ["workspace", tenantCode, "invitations"] as const;
   const membersQuery = useQuery({
-    queryKey: membersQueryKey,
-    queryFn: () => api.listMembers(tenantCode),
-    initialData: initialMembers,
+    queryKey: [...membersQueryKey, memberPageNumber],
+    queryFn: () => api.listMembers(tenantCode, memberPageNumber),
+    initialData: memberPageNumber === 1 ? initialMemberPage : undefined,
     staleTime: Number.POSITIVE_INFINITY,
     enabled: viewerRole === "TENANT_ADMIN",
   });
@@ -144,7 +147,7 @@ export function MemberTable({
   const refresh = (scope: "members" | "invitations") =>
     queryClient.invalidateQueries({
       queryKey: ["workspace", tenantCode, scope],
-      exact: scope === "members",
+      exact: false,
     });
   const invitationMutation = useMutation({
     mutationFn: ({
@@ -158,6 +161,7 @@ export function MemberTable({
         ? api.resend(tenantCode, id)
         : api.revoke(tenantCode, id),
     onSuccess: () => void refresh("invitations"),
+    onMutate: () => setError(undefined),
     onError: showError,
   });
   const memberMutation = useMutation({
@@ -169,6 +173,7 @@ export function MemberTable({
       status: "ACTIVE" | "DISABLED";
     }) => api.changeMemberStatus(tenantCode, id, status),
     onSuccess: () => void refresh("members"),
+    onMutate: () => setError(undefined),
     onError: showError,
   });
 
@@ -187,9 +192,7 @@ export function MemberTable({
     );
   }
 
-  const activeAdminCount = membersQuery.data.filter(
-    (member) => member.role === "TENANT_ADMIN" && member.status === "ACTIVE",
-  ).length;
+  const activeAdminCount = membersQuery.data?.activeAdminCount ?? 0;
   const memberColumns: ColumnsType<TenantMember> = [
     {
       title: "成员",
@@ -350,14 +353,20 @@ export function MemberTable({
             <span className={styles.eyebrow}>ACCESS ROSTER</span>
             <h2 id="members-heading">成员名册</h2>
           </div>
-          <span>{membersQuery.data.length} 位成员</span>
+          <span>{membersQuery.data?.total ?? 0} 位成员</span>
         </div>
         <Table
           rowKey="id"
           columns={memberColumns}
-          dataSource={membersQuery.data}
+          dataSource={membersQuery.data?.items ?? []}
           loading={membersQuery.isFetching}
-          pagination={{ pageSize: 20, showSizeChanger: false }}
+          pagination={{
+            current: memberPageNumber,
+            pageSize: 20,
+            total: membersQuery.data?.total ?? 0,
+            showSizeChanger: false,
+            onChange: setMemberPageNumber,
+          }}
         />
       </section>
     </div>

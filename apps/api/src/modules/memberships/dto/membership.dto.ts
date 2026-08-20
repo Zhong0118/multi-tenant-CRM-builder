@@ -32,7 +32,24 @@ export class InvitationPageQueryDto {
   @IsOptional()
   @IsUUID()
   cursor?: string;
-  @ApiPropertyOptional({ minimum: 1, maximum: 100, default: 20 })
+  @ApiPropertyOptional({ type: Number, minimum: 1, maximum: 100, default: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit = 20;
+}
+
+export class MemberPageQueryDto {
+  @ApiPropertyOptional({ type: Number, minimum: 1, default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page = 1;
+
+  @ApiPropertyOptional({ type: Number, minimum: 1, maximum: 100, default: 20 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -64,6 +81,15 @@ export class TenantMemberResponseDto {
   status!: 'ACTIVE' | 'DISABLED';
   @ApiPropertyOptional() displayName?: string;
   @ApiPropertyOptional({ example: '+8613800138000' }) phone?: string;
+}
+
+export class TenantMemberPageResponseDto {
+  @ApiProperty({ type: TenantMemberResponseDto, isArray: true })
+  items!: TenantMemberResponseDto[];
+  @ApiProperty({ minimum: 1 }) page!: number;
+  @ApiProperty({ minimum: 1, maximum: 100 }) limit!: number;
+  @ApiProperty({ minimum: 0 }) total!: number;
+  @ApiProperty({ minimum: 0 }) activeAdminCount!: number;
 }
 
 export class TenantInvitationResponseDto {

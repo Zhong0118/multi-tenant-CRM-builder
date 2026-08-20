@@ -38,6 +38,36 @@ test("contains the first account and workspace routes", async () => {
         parameter.required === true,
     ),
   );
+  for (const name of ["page", "limit"]) {
+    assert.ok(
+      workspaceOperation.parameters.some(
+        (parameter) =>
+          parameter.in === "query" &&
+          parameter.name === name &&
+          parameter.schema.type === "number",
+      ),
+    );
+  }
+  assert.deepEqual(
+    workspaceOperation.responses["200"].content["application/json"].schema,
+    { $ref: "#/components/schemas/TenantMemberPageResponseDto" },
+  );
+
+  const tenantList = document.paths["/api/v1/platform/tenants"].get;
+  for (const name of ["page", "limit"]) {
+    assert.ok(
+      tenantList.parameters.some(
+        (parameter) =>
+          parameter.in === "query" &&
+          parameter.name === name &&
+          parameter.schema.type === "number",
+      ),
+    );
+  }
+  assert.deepEqual(
+    tenantList.responses["200"].content["application/json"].schema,
+    { $ref: "#/components/schemas/PlatformTenantPageResponseDto" },
+  );
 
   const invitationList =
     document.paths["/api/v1/workspaces/{tenantCode}/invitations"].get;

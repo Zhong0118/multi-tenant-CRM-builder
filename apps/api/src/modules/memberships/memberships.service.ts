@@ -33,6 +33,19 @@ export interface TenantMemberSummary {
   phone?: string;
 }
 
+export interface MemberPageQuery {
+  page: number;
+  limit: number;
+}
+
+export interface TenantMemberPage {
+  items: TenantMemberSummary[];
+  page: number;
+  limit: number;
+  total: number;
+  activeAdminCount: number;
+}
+
 export interface InvitationPageQuery {
   cursor?: string;
   limit: number;
@@ -54,7 +67,7 @@ export interface InvitationPage {
 }
 
 export interface MembershipStore {
-  listMembers(): Promise<TenantMemberSummary[]>;
+  listMembers(page: MemberPageQuery): Promise<TenantMemberPage>;
   listInvitations(page: InvitationPageQuery): Promise<InvitationPage>;
   createInvitation(input: {
     tenantId: string;
@@ -97,8 +110,11 @@ export class MembershipsService {
     return this.repository.listWorkspaces(userId);
   }
 
-  listMembers(context: TenantContext) {
-    return this.repository.withTenant(context, (store) => store.listMembers());
+  async listMembers(context: TenantContext, page: MemberPageQuery) {
+    this.assertAdmin(context);
+    return await this.repository.withTenant(context, (store) =>
+      store.listMembers(page),
+    );
   }
 
   listInvitations(context: TenantContext, page: InvitationPageQuery) {

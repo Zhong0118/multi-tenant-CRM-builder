@@ -2,7 +2,7 @@ import { InviteMemberForm } from "@/features/members/invite-member-form";
 import {
   MemberTable,
   type InvitationPage,
-  type TenantMember,
+  type TenantMemberPage,
 } from "@/features/members/member-table";
 import styles from "@/features/members/members.module.css";
 import { toApiError } from "@/lib/api/api-error";
@@ -16,14 +16,20 @@ export interface MembersPageProps {
 export default async function MembersPage({ params }: MembersPageProps) {
   const { tenantCode } = await params;
   const workspace = await requireWorkspace(tenantCode);
-  let members: TenantMember[] = [];
+  let memberPage: TenantMemberPage = {
+    items: [],
+    page: 1,
+    limit: 20,
+    total: 0,
+    activeAdminCount: 0,
+  };
   let invitationPage: InvitationPage = { items: [] };
 
   if (workspace.role === "TENANT_ADMIN") {
     const client = await createServerApiClient();
     const [memberResult, invitationResult] = await Promise.all([
       client.GET("/api/v1/workspaces/{tenantCode}/members", {
-        params: { path: { tenantCode } },
+        params: { path: { tenantCode }, query: { page: 1, limit: 20 } },
       }),
       client.GET("/api/v1/workspaces/{tenantCode}/invitations", {
         params: { path: { tenantCode }, query: {} },
@@ -31,7 +37,7 @@ export default async function MembersPage({ params }: MembersPageProps) {
     ]);
     if (!memberResult.data) throwApiResult(memberResult);
     if (!invitationResult.data) throwApiResult(invitationResult);
-    members = memberResult.data;
+    memberPage = memberResult.data;
     invitationPage = invitationResult.data;
   }
 
@@ -48,7 +54,7 @@ export default async function MembersPage({ params }: MembersPageProps) {
       <MemberTable
         tenantCode={tenantCode}
         viewerRole={workspace.role}
-        initialMembers={members}
+        initialMemberPage={memberPage}
         initialInvitationPage={invitationPage}
       />
     </main>

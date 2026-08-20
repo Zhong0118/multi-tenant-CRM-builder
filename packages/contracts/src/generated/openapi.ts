@@ -506,7 +506,6 @@ export interface components {
       /** @example true */
       accepted: boolean;
     };
-    Object: Record<string, never>;
     PersonalInvitationResponseDto: {
       /** Format: uuid */
       acceptedByUserId?: string;
@@ -526,6 +525,12 @@ export interface components {
       /** Format: uuid */
       tenantId: string;
       tenantName?: string;
+    };
+    PlatformTenantPageResponseDto: {
+      items: components["schemas"]["PlatformTenantResponseDto"][];
+      limit: number;
+      page: number;
+      total: number;
     };
     PlatformTenantResponseDto: {
       /** Format: date-time */
@@ -593,6 +598,13 @@ export interface components {
       targetPhone: string;
       /** Format: uuid */
       targetUserId?: Record<string, never> | null;
+    };
+    TenantMemberPageResponseDto: {
+      activeAdminCount: number;
+      items: components["schemas"]["TenantMemberResponseDto"][];
+      limit: number;
+      page: number;
+      total: number;
     };
     TenantMemberResponseDto: {
       displayName?: string;
@@ -986,7 +998,10 @@ export interface operations {
   };
   TenantsController_list: {
     parameters: {
-      query?: never;
+      query?: {
+        limit?: number;
+        page?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -998,7 +1013,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PlatformTenantResponseDto"][];
+          "application/json": components["schemas"]["PlatformTenantPageResponseDto"];
         };
       };
     };
@@ -1097,7 +1112,7 @@ export interface operations {
     parameters: {
       query?: {
         cursor?: string;
-        limit?: components["schemas"]["Object"];
+        limit?: number;
       };
       header?: never;
       path: {
@@ -1188,7 +1203,10 @@ export interface operations {
   };
   MembershipsController_members: {
     parameters: {
-      query?: never;
+      query?: {
+        limit?: number;
+        page?: number;
+      };
       header?: never;
       path: {
         tenantCode: unknown;
@@ -1202,7 +1220,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["TenantMemberResponseDto"][];
+          "application/json": components["schemas"]["TenantMemberPageResponseDto"];
         };
       };
     };

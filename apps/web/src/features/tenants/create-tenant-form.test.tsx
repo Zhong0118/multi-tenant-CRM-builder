@@ -8,6 +8,7 @@ vi.mock("next/navigation", () => ({
 
 import { CreateTenantForm, type TenantApi } from "./create-tenant-form";
 import { TenantStatusActions } from "./tenant-status-actions";
+import { TenantTable } from "./tenant-table";
 
 function renderWithQuery(ui: React.ReactNode) {
   return render(
@@ -102,5 +103,52 @@ describe("TenantStatusActions", () => {
 
     expect(screen.getByRole("button", { name: "激活公司" })).toBeDisabled();
     expect(screen.getByText("至少需要 1 位活跃公司管理员")).toBeInTheDocument();
+  });
+
+  it("does not offer reactivation for a closed company", () => {
+    renderWithQuery(
+      <TenantStatusActions
+        tenant={{
+          id: "tenant-a",
+          name: "北辰客户服务",
+          code: "northwind",
+          status: "CLOSED",
+          activeAdminCount: 1,
+        }}
+        api={tenantApi()}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "激活公司" }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("TenantTable", () => {
+  it("writes server pagination to the page URL", () => {
+    const navigate = vi.fn();
+    render(
+      <TenantTable
+        navigate={navigate}
+        data={{
+          items: [
+            {
+              id: "tenant-a",
+              name: "北辰客户服务",
+              code: "northwind",
+              status: "DRAFT",
+              activeAdminCount: 0,
+            },
+          ],
+          page: 1,
+          limit: 20,
+          total: 21,
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "right" }));
+    expect(navigate).toHaveBeenCalledWith("/platform/tenants?page=2");
   });
 });

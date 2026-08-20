@@ -31,12 +31,15 @@ export function TenantStatusActions({
         reason: reason.trim() || undefined,
       }),
     onSuccess: () => router.refresh(),
+    onMutate: () => setError(undefined),
     onError: (caught) => {
       const apiError = toApiError(caught);
       setError(`${apiError.message}（请求编号：${apiError.requestId}）`);
     },
   });
   const canActivate = tenant.activeAdminCount > 0;
+  const canRenderActivate =
+    tenant.status === "DRAFT" || tenant.status === "SUSPENDED";
 
   return (
     <section className={styles.statusActions} aria-labelledby="status-actions">
@@ -54,7 +57,7 @@ export function TenantStatusActions({
         rows={3}
       />
       <Space wrap>
-        {tenant.status !== "ACTIVE" ? (
+        {canRenderActivate ? (
           <Button
             type="primary"
             disabled={!canActivate}

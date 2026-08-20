@@ -7,7 +7,10 @@ import {
   Matches,
   MaxLength,
   IsInt,
+  Max,
+  Min,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreatePlatformTenantDto {
@@ -35,6 +38,23 @@ export class ChangeTenantStatusDto {
   @IsString()
   @MaxLength(1000)
   reason?: string;
+}
+
+export class PlatformTenantPageQueryDto {
+  @ApiPropertyOptional({ type: Number, minimum: 1, default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page = 1;
+
+  @ApiPropertyOptional({ type: Number, minimum: 1, maximum: 100, default: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit = 20;
 }
 
 export class FirstAdminInvitationResponseDto {
@@ -65,4 +85,12 @@ export class PlatformTenantResponseDto {
   activeAdminCount!: number;
   @ApiPropertyOptional({ type: FirstAdminInvitationResponseDto })
   firstAdminInvitation?: FirstAdminInvitationResponseDto;
+}
+
+export class PlatformTenantPageResponseDto {
+  @ApiProperty({ type: PlatformTenantResponseDto, isArray: true })
+  items!: PlatformTenantResponseDto[];
+  @ApiProperty({ minimum: 1 }) page!: number;
+  @ApiProperty({ minimum: 1, maximum: 100 }) limit!: number;
+  @ApiProperty({ minimum: 0 }) total!: number;
 }

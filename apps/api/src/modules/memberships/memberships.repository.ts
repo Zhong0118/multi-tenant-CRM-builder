@@ -12,6 +12,7 @@ import { AuditService } from '../audit/audit.service';
 import type {
   InvitationPage,
   InvitationPageQuery,
+  MemberPageQuery,
   MembershipsRepository,
   MembershipStore,
   TenantMemberSummary,
@@ -99,20 +100,32 @@ class PrismaMembershipStore implements MembershipStore {
     private readonly audit: AuditService,
   ) {}
 
-  async listMembers(): Promise<TenantMemberSummary[]> {
-    const members = await this.transaction.tenantMember.findMany({
-      include: { user: { select: { displayName: true, phone: true } } },
-      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-    });
-    return members.map((member) => ({
-      id: member.id,
-      userId: member.userId,
-      tenantId: member.tenantId,
-      role: member.role,
-      status: member.status,
-      displayName: member.user.displayName,
-      phone: member.user.phone,
-    }));
+  async listMembers(page: MemberPageQuery) {
+    const [members, total, activeAdminCount] = await Promise.all([
+      this.transaction.tenantMember.findMany({
+        include: { user: { select: { displayName: true, phone: true } } },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        skip: (page.page - 1) * page.limit,
+        take: page.limit,
+      }),
+      this.transaction.tenantMember.count(),
+      this.countActiveAdmins(),
+    ]);
+    return {
+      items: members.map((member) => ({
+        id: member.id,
+        userId: member.userId,
+        tenantId: member.tenantId,
+        role: member.role,
+        status: member.status,
+        displayName: member.user.displayName,
+        phone: member.user.phone,
+      })),
+      page: page.page,
+      limit: page.limit,
+      total,
+      activeAdminCount,
+    };
   }
 
   async listInvitations(page: InvitationPageQuery): Promise<InvitationPage> {

@@ -10,6 +10,7 @@ const code = '123456';
 const platformPhone = '13933330000';
 const userAPhone = '13933331111';
 const userBPhone = '13933332222';
+const employeePhone = '13933334444';
 const tenantACode = 'e2e-onboarding-a';
 const tenantBCode = 'e2e-onboarding-b';
 
@@ -39,6 +40,20 @@ describe('Invitation and workspace onboarding (e2e)', () => {
     });
 
     const tenantA = await createTenant(platform, tenantACode, userAPhone);
+    await platform
+      .get('/api/v1/platform/tenants?page=1&limit=20')
+      .expect(200)
+      .expect((response) => {
+        const body: unknown = response.body;
+        expect(body).toMatchObject({ page: 1, limit: 20 });
+        if (!isRecord(body)) throw new Error('Expected tenant page');
+        expect(typeof body.total).toBe('number');
+        expect(body.items).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ id: tenantA, code: tenantACode }),
+          ]),
+        );
+      });
     const userA = await register(userAPhone, '公司 A 管理员');
     const invitationsA = await userA.get('/api/v1/me/invitations').expect(200);
     const invitationAId = firstId(invitationsA.body);
@@ -69,7 +84,7 @@ describe('Invitation and workspace onboarding (e2e)', () => {
     await userA
       .post(`/api/v1/workspaces/${tenantACode}/invitations`)
       .set('Origin', origin)
-      .send({ phone: '13933334444', role: 'EMPLOYEE' })
+      .send({ phone: employeePhone, role: 'EMPLOYEE' })
       .expect(201);
     await userA
       .post(`/api/v1/workspaces/${tenantACode}/invitations`)
@@ -91,6 +106,23 @@ describe('Invitation and workspace onboarding (e2e)', () => {
     expect(secondPageBody.items).toHaveLength(1);
     expect(secondPageBody.items[0]?.id).not.toBe(firstPageBody.items[0]?.id);
 
+    const employee = await register(employeePhone, '公司 A 员工');
+    const employeeInvitations = await employee
+      .get('/api/v1/me/invitations')
+      .expect(200);
+    await employee
+      .post(
+        `/api/v1/me/invitations/${firstId(employeeInvitations.body)}/accept`,
+      )
+      .set('Origin', origin)
+      .expect(201);
+    await employee
+      .get(`/api/v1/workspaces/${tenantACode}/members`)
+      .expect(403)
+      .expect((response) => {
+        expect(response.body).toMatchObject({ code: 'WORKSPACE_FORBIDDEN' });
+      });
+
     const tenantB = await createTenant(platform, tenantBCode, userBPhone);
     const userB = await register(userBPhone, '公司 B 管理员');
     const invitationsB = await userB.get('/api/v1/me/invitations').expect(200);
@@ -100,7 +132,20 @@ describe('Invitation and workspace onboarding (e2e)', () => {
       .expect(201);
     await activate(platform, tenantB);
 
-    await userA.get(`/api/v1/workspaces/${tenantACode}/members`).expect(200);
+    await userA
+      .get(`/api/v1/workspaces/${tenantACode}/members?page=1&limit=20`)
+      .expect(200)
+      .expect((response) => {
+        const body: unknown = response.body;
+        expect(body).toMatchObject({
+          page: 1,
+          limit: 20,
+          activeAdminCount: 1,
+        });
+        if (!isRecord(body)) throw new Error('Expected member page');
+        expect(typeof body.total).toBe('number');
+        expect(Array.isArray(body.items)).toBe(true);
+      });
     await userA.get(`/api/v1/workspaces/${tenantBCode}/members`).expect(403);
 
     const platformUser = await admin.user.findUniqueOrThrow({
@@ -200,7 +245,9 @@ describe('Invitation and workspace onboarding (e2e)', () => {
 });
 
 async function cleanup(database: PrismaClient): Promise<void> {
-  const phones = [platformPhone, userAPhone, userBPhone].map(normalized);
+  const phones = [platformPhone, userAPhone, userBPhone, employeePhone].map(
+    normalized,
+  );
   const tenants = await database.tenant.findMany({
     where: { code: { in: [tenantACode, tenantBCode] } },
     select: { id: true },
@@ -264,6 +311,10 @@ function invitationPage(body: unknown): {
 
 function isUnknownArray(value: unknown): value is unknown[] {
   return Array.isArray(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
 
 function normalized(phone: string): string {

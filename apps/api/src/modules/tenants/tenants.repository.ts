@@ -9,6 +9,7 @@ import type {
   PlatformTenant,
   PlatformTenantRepository,
   PlatformTenantStore,
+  TenantPageQuery,
   TenantStatus,
 } from './tenants.service';
 
@@ -32,8 +33,8 @@ export class PrismaPlatformTenantRepository implements PlatformTenantRepository 
     });
   }
 
-  list(actorId: string): Promise<PlatformTenant[]> {
-    return this.transaction(actorId, (store) => store.listTenants());
+  list(actorId: string, page: TenantPageQuery) {
+    return this.transaction(actorId, (store) => store.listTenants(page));
   }
 
   find(actorId: string, tenantId: string): Promise<PlatformTenant | null> {
@@ -118,16 +119,26 @@ class PrismaPlatformTenantStore implements PlatformTenantStore {
     return this.enrichTenant(tenant);
   }
 
-  async listTenants(): Promise<PlatformTenant[]> {
-    const tenants = await this.transaction.tenant.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
+  async listTenants(page: TenantPageQuery) {
+    const [tenants, total] = await Promise.all([
+      this.transaction.tenant.findMany({
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (page.page - 1) * page.limit,
+        take: page.limit,
+      }),
+      this.transaction.tenant.count(),
+    ]);
     const enriched: PlatformTenant[] = [];
     for (const tenant of tenants) {
       await this.enterTenant(tenant.id);
       enriched.push(await this.enrichTenant(tenant));
     }
-    return enriched;
+    return {
+      items: enriched,
+      page: page.page,
+      limit: page.limit,
+      total,
+    };
   }
 
   async updateTenantStatus(

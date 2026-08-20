@@ -17,6 +17,7 @@ class MemoryMembershipStore implements MembershipStore {
   activeAdminCount = 1;
   invitationCreated = false;
   invitationPage?: { cursor?: string; limit: number };
+  memberPage?: { page: number; limit: number };
   member: TenantMemberSummary = {
     id: 'member-admin',
     userId: admin.userId,
@@ -24,8 +25,15 @@ class MemoryMembershipStore implements MembershipStore {
     role: 'TENANT_ADMIN',
     status: 'ACTIVE',
   };
-  listMembers() {
-    return Promise.resolve([this.member]);
+  listMembers(page: { page: number; limit: number }) {
+    this.memberPage = page;
+    return Promise.resolve({
+      items: [this.member],
+      page: page.page,
+      limit: page.limit,
+      total: 1,
+      activeAdminCount: 1,
+    });
   }
   listInvitations(page: { cursor?: string; limit: number }) {
     this.invitationPage = page;
@@ -87,6 +95,23 @@ function serviceFor(store = new MemoryMembershipStore()) {
 }
 
 describe('MembershipsService', () => {
+  it('does not allow an employee to read the member roster', async () => {
+    const { service, store } = serviceFor();
+    await expect(
+      service.listMembers(
+        { ...admin, role: 'EMPLOYEE' },
+        { page: 1, limit: 20 },
+      ),
+    ).rejects.toMatchObject({ code: 'WORKSPACE_FORBIDDEN' });
+    expect(store.memberPage).toBeUndefined();
+  });
+
+  it('passes controlled page pagination to the member store', async () => {
+    const { service, store } = serviceFor();
+    await service.listMembers(admin, { page: 2, limit: 50 });
+    expect(store.memberPage).toEqual({ page: 2, limit: 50 });
+  });
+
   it('does not allow an employee to invite', async () => {
     const { service } = serviceFor();
     await expect(

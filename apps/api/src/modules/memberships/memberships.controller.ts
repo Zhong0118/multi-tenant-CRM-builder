@@ -38,7 +38,9 @@ import {
   InvitationPageQueryDto,
   InvitationResentResponseDto,
   MembershipActionResponseDto,
+  MemberPageQueryDto,
   TenantMemberResponseDto,
+  TenantMemberPageResponseDto,
   WorkspaceSummaryResponseDto,
 } from './dto';
 import { MembershipsService } from './memberships.service';
@@ -71,9 +73,12 @@ export class MembershipsController {
   @Get('workspaces/:tenantCode/members')
   @UseGuards(SessionAuthGuard, WorkspaceGuard)
   @ApiParam({ name: 'tenantCode' })
-  @ApiOkResponse({ type: TenantMemberResponseDto, isArray: true })
-  members(@CurrentTenant() context: TenantContext) {
-    return this.memberships.listMembers(context);
+  @ApiOkResponse({ type: TenantMemberPageResponseDto })
+  members(
+    @CurrentTenant() context: TenantContext,
+    @Query() query: MemberPageQueryDto,
+  ) {
+    return this.memberships.listMembers(context, query);
   }
 
   @Get('workspaces/:tenantCode/invitations')

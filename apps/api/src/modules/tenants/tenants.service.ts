@@ -11,6 +11,10 @@ export const TENANT_CLOCK = Symbol('TENANT_CLOCK');
 export const INVITATION_TOKEN_GENERATOR = Symbol('INVITATION_TOKEN_GENERATOR');
 
 export type TenantStatus = 'DRAFT' | 'ACTIVE' | 'SUSPENDED' | 'CLOSED';
+export interface TenantPageQuery {
+  page: number;
+  limit: number;
+}
 
 export interface PlatformTenant {
   id: string;
@@ -32,6 +36,13 @@ export interface PlatformTenant {
   };
 }
 
+export interface PlatformTenantPage {
+  items: PlatformTenant[];
+  page: number;
+  limit: number;
+  total: number;
+}
+
 export interface PlatformTenantStore {
   createTenant(input: { name: string; code: string }): Promise<PlatformTenant>;
   enterTenant(tenantId: string): Promise<void>;
@@ -51,7 +62,7 @@ export interface PlatformTenantStore {
   }>;
   countActiveAdmins(tenantId: string): Promise<number>;
   findTenant(id: string): Promise<PlatformTenant | null>;
-  listTenants(): Promise<PlatformTenant[]>;
+  listTenants(page: TenantPageQuery): Promise<PlatformTenantPage>;
   updateTenantStatus(id: string, status: TenantStatus): Promise<PlatformTenant>;
   appendAudit(event: AuditEvent): Promise<void>;
 }
@@ -61,7 +72,7 @@ export interface PlatformTenantRepository {
     actorId: string,
     work: (store: PlatformTenantStore) => Promise<T>,
   ): Promise<T>;
-  list(actorId: string): Promise<PlatformTenant[]>;
+  list(actorId: string, page: TenantPageQuery): Promise<PlatformTenantPage>;
   find(actorId: string, tenantId: string): Promise<PlatformTenant | null>;
 }
 
@@ -121,8 +132,11 @@ export class TenantsService {
     });
   }
 
-  list(actor: AuthenticatedUser): Promise<PlatformTenant[]> {
-    return this.repository.list(actor.id);
+  list(
+    actor: AuthenticatedUser,
+    page: TenantPageQuery,
+  ): Promise<PlatformTenantPage> {
+    return this.repository.list(actor.id, page);
   }
 
   async detail(
@@ -143,6 +157,9 @@ export class TenantsService {
     return this.repository.transaction(actor.id, async (store) => {
       const before = await store.findTenant(tenantId);
       if (!before) throw new ApiException('TENANT_NOT_FOUND', 404);
+      if (!canTransition(before.status, status)) {
+        throw new ApiException('TENANT_STATUS_TRANSITION_INVALID', 409);
+      }
       await store.enterTenant(tenantId);
       if (
         status === 'ACTIVE' &&
@@ -167,6 +184,15 @@ export class TenantsService {
       return after;
     });
   }
+}
+
+function canTransition(from: TenantStatus, to: TenantStatus): boolean {
+  if (from === to) return true;
+  if (from === 'CLOSED') return false;
+  if (to === 'CLOSED') return true;
+  if (from === 'DRAFT') return to === 'ACTIVE';
+  if (from === 'ACTIVE') return to === 'SUSPENDED';
+  return from === 'SUSPENDED' && to === 'ACTIVE';
 }
 
 export function generateInvitationToken(): string {

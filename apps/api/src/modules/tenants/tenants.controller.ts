@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -25,6 +26,8 @@ import {
   ChangeTenantStatusDto,
   CreatePlatformTenantDto,
   PlatformTenantResponseDto,
+  PlatformTenantPageQueryDto,
+  PlatformTenantPageResponseDto,
 } from './dto';
 import { TenantsService } from './tenants.service';
 
@@ -40,9 +43,12 @@ export class TenantsController {
   constructor(private readonly tenants: TenantsService) {}
 
   @Get()
-  @ApiOkResponse({ type: PlatformTenantResponseDto, isArray: true })
-  list(@CurrentSession() current: SessionPrincipal) {
-    return this.tenants.list(current.user);
+  @ApiOkResponse({ type: PlatformTenantPageResponseDto })
+  list(
+    @CurrentSession() current: SessionPrincipal,
+    @Query() query: PlatformTenantPageQueryDto,
+  ) {
+    return this.tenants.list(current.user, query);
   }
 
   @Post()

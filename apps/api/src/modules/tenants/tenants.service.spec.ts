@@ -23,6 +23,7 @@ class MemoryStore implements PlatformTenantStore {
     expiresAt: Date;
   };
   activeAdminCount = 0;
+  tenantPage?: { page: number; limit: number };
   audits: string[] = [];
 
   createTenant(input: { name: string; code: string }) {
@@ -69,14 +70,18 @@ class MemoryStore implements PlatformTenantStore {
         : null,
     );
   }
-  listTenants() {
-    return Promise.resolve(
-      this.tenants.map((tenant) => ({
+  listTenants(page: { page: number; limit: number }) {
+    this.tenantPage = page;
+    return Promise.resolve({
+      items: this.tenants.map((tenant) => ({
         ...tenant,
         activeAdminCount: this.activeAdminCount,
         firstAdminInvitation: this.firstAdminInvitation,
       })),
-    );
+      page: page.page,
+      limit: page.limit,
+      total: this.tenants.length,
+    });
   }
   updateTenantStatus(
     id: string,
@@ -103,7 +108,8 @@ function fixture() {
       _actorId: string,
       work: (tx: PlatformTenantStore) => Promise<T>,
     ) => work(store),
-    list: () => store.listTenants(),
+    list: (_actorId: string, page: { page: number; limit: number }) =>
+      store.listTenants(page),
     find: (_actorId: string, id: string) => store.findTenant(id),
   };
   return {
@@ -117,6 +123,12 @@ function fixture() {
 }
 
 describe('TenantsService', () => {
+  it('passes controlled page pagination to the tenant store', async () => {
+    const { service, store } = fixture();
+    await service.list(platformAdmin, { page: 3, limit: 20 });
+    expect(store.tenantPage).toEqual({ page: 3, limit: 20 });
+  });
+
   it('creates a draft tenant and first-admin invitation atomically', async () => {
     const { service, store } = fixture();
     const result = await service.createTenant(platformAdmin, {
@@ -188,6 +200,26 @@ describe('TenantsService', () => {
       }),
     ).resolves.toMatchObject({ status: 'ACTIVE' });
     expect(store.audits).toContain('platform.tenant.status_changed');
+  });
+
+  it('treats a closed tenant as terminal', async () => {
+    const { service, store } = fixture();
+    const tenant = await service.createTenant(platformAdmin, {
+      name: '示例公司',
+      code: 'sample-company',
+      firstAdminPhone: '13800138000',
+      requestId: 'req-1',
+    });
+    store.activeAdminCount = 1;
+    await service.changeStatus(platformAdmin, tenant.id, 'CLOSED', {
+      requestId: 'req-2',
+    });
+
+    await expect(
+      service.changeStatus(platformAdmin, tenant.id, 'ACTIVE', {
+        requestId: 'req-3',
+      }),
+    ).rejects.toMatchObject({ code: 'TENANT_STATUS_TRANSITION_INVALID' });
   });
 
   it('rejects invalid workspace codes before opening a transaction', async () => {

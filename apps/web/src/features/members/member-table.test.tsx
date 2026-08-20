@@ -45,7 +45,13 @@ const invitations: TenantInvitation[] = [
 
 function memberApi(): MemberApi {
   return {
-    listMembers: vi.fn().mockResolvedValue(members),
+    listMembers: vi.fn().mockResolvedValue({
+      items: members,
+      page: 1,
+      limit: 20,
+      total: 2,
+      activeAdminCount: 1,
+    }),
     listInvitations: vi.fn().mockResolvedValue({ items: invitations }),
     invite: vi.fn().mockResolvedValue({ id: "invite-b", status: "PENDING" }),
     resend: vi.fn().mockResolvedValue({
@@ -70,13 +76,21 @@ function renderWithQuery(ui: React.ReactNode) {
   };
 }
 
+const initialMemberPage = {
+  items: members,
+  page: 1,
+  limit: 20,
+  total: 2,
+  activeAdminCount: 1,
+};
+
 describe("MemberTable", () => {
   it("shows a no-access result to employees", () => {
     renderWithQuery(
       <MemberTable
         tenantCode="northwind"
         viewerRole="EMPLOYEE"
-        initialMembers={members}
+        initialMemberPage={initialMemberPage}
         initialInvitationPage={{ items: invitations }}
         api={memberApi()}
       />,
@@ -91,7 +105,7 @@ describe("MemberTable", () => {
       <MemberTable
         tenantCode="northwind"
         viewerRole="TENANT_ADMIN"
-        initialMembers={members}
+        initialMemberPage={initialMemberPage}
         initialInvitationPage={{ items: invitations }}
         api={memberApi()}
       />,
