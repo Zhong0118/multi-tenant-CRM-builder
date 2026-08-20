@@ -110,8 +110,7 @@ test("requires user context and exposes only the user's own membership", async (
 });
 
 test("prevents cross-tenant invitation reads and member mutations", async () => {
-  const { memberB, tenantA, tenantB, userA } =
-    await createIsolationFixture();
+  const { memberB, tenantA, tenantB, userA } = await createIsolationFixture();
 
   const invitations = await withSettings(runtime, { userId: userA.id }, (tx) =>
     tx.tenantInvitation.findMany({ select: { tenantId: true } }),
@@ -121,14 +120,11 @@ test("prevents cross-tenant invitation reads and member mutations", async () => 
   assert.ok(!invitations.some(({ tenantId }) => tenantId === tenantB.id));
 
   await assert.rejects(() =>
-    withSettings(
-      runtime,
-      { userId: userA.id, tenantId: tenantA.id },
-      (tx) =>
-        tx.tenantMember.update({
-          where: { id: memberB.id },
-          data: { status: "DISABLED" },
-        }),
+    withSettings(runtime, { userId: userA.id, tenantId: tenantA.id }, (tx) =>
+      tx.tenantMember.update({
+        where: { id: memberB.id },
+        data: { status: "DISABLED" },
+      }),
     ),
   );
 });
@@ -148,21 +144,16 @@ test("keeps audit rows append-only for the runtime role", async () => {
   });
 
   await assert.rejects(() =>
-    withSettings(
-      runtime,
-      { userId: userA.id, tenantId: tenantA.id },
-      (tx) =>
-        tx.auditLog.update({
-          where: { id: audit.id },
-          data: { reason: "must not change" },
-        }),
+    withSettings(runtime, { userId: userA.id, tenantId: tenantA.id }, (tx) =>
+      tx.auditLog.update({
+        where: { id: audit.id },
+        data: { reason: "must not change" },
+      }),
     ),
   );
   await assert.rejects(() =>
-    withSettings(
-      runtime,
-      { userId: userA.id, tenantId: tenantA.id },
-      (tx) => tx.auditLog.delete({ where: { id: audit.id } }),
+    withSettings(runtime, { userId: userA.id, tenantId: tenantA.id }, (tx) =>
+      tx.auditLog.delete({ where: { id: audit.id } }),
     ),
   );
 });
