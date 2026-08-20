@@ -9,12 +9,23 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import {
+  ApiCookieAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { CurrentSession } from '../../common/auth/current-user.decorator';
 import { PlatformAdminGuard } from '../../common/auth/platform-admin.guard';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
 import type { SessionPrincipal } from '../auth/session.service';
-import { ChangeTenantStatusDto, CreatePlatformTenantDto } from './dto';
+import {
+  ChangeTenantStatusDto,
+  CreatePlatformTenantDto,
+  PlatformTenantResponseDto,
+} from './dto';
 import { TenantsService } from './tenants.service';
 
 interface RequestWithId extends Request {
@@ -22,16 +33,20 @@ interface RequestWithId extends Request {
 }
 
 @UseGuards(SessionAuthGuard, PlatformAdminGuard)
+@ApiTags('platform-tenants')
+@ApiCookieAuth('crm_session')
 @Controller('platform/tenants')
 export class TenantsController {
   constructor(private readonly tenants: TenantsService) {}
 
   @Get()
+  @ApiOkResponse({ type: PlatformTenantResponseDto, isArray: true })
   list(@CurrentSession() current: SessionPrincipal) {
     return this.tenants.list(current.user);
   }
 
   @Post()
+  @ApiCreatedResponse({ type: PlatformTenantResponseDto })
   create(
     @CurrentSession() current: SessionPrincipal,
     @Body() dto: CreatePlatformTenantDto,
@@ -45,6 +60,8 @@ export class TenantsController {
   }
 
   @Get(':tenantId')
+  @ApiParam({ name: 'tenantId', format: 'uuid' })
+  @ApiOkResponse({ type: PlatformTenantResponseDto })
   detail(
     @CurrentSession() current: SessionPrincipal,
     @Param('tenantId') tenantId: string,
@@ -53,6 +70,8 @@ export class TenantsController {
   }
 
   @Patch(':tenantId/status')
+  @ApiParam({ name: 'tenantId', format: 'uuid' })
+  @ApiOkResponse({ type: PlatformTenantResponseDto })
   changeStatus(
     @CurrentSession() current: SessionPrincipal,
     @Param('tenantId') tenantId: string,

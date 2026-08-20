@@ -12,6 +12,8 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
     "build": "pnpm -r --if-present build",
+    "contracts:generate": "pnpm --filter @crm/api openapi:generate && pnpm --filter @crm/contracts generate && prettier --write packages/contracts/openapi.json packages/contracts/src/generated/openapi.ts",
+    "contracts:check": "pnpm contracts:generate && git diff --exit-code -- packages/contracts/openapi.json packages/contracts/src/generated/openapi.ts",
     "format:check": "prettier --check package.json pnpm-workspace.yaml tsconfig.base.json compose.yaml apps packages --ignore-path .gitignore"
   },
   "devDependencies": {

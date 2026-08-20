@@ -1,7 +1,11 @@
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import {
+  DocumentBuilder,
+  type OpenAPIObject,
+  SwaggerModule,
+} from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import type { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
@@ -43,18 +47,19 @@ export async function createApp(): Promise<INestApplication> {
   app.enableShutdownHooks();
 
   if (nodeEnv !== 'production') {
-    const openApiConfig = new DocumentBuilder()
-      .setTitle('Multi-tenant CRM API')
-      .setDescription('多租户 CRM 平台 REST API')
-      .setVersion('1.0')
-      .build();
-    SwaggerModule.setup(
-      'api/docs',
-      app,
-      SwaggerModule.createDocument(app, openApiConfig),
-    );
+    SwaggerModule.setup('api/docs', app, createOpenApiDocument(app));
   }
 
   await app.init();
   return app;
+}
+
+export function createOpenApiDocument(app: INestApplication): OpenAPIObject {
+  const config = new DocumentBuilder()
+    .setTitle('Multi-tenant CRM API')
+    .setDescription('多租户 CRM 平台 REST API')
+    .setVersion('1.0')
+    .addCookieAuth('crm_session', { type: 'apiKey' }, 'crm_session')
+    .build();
+  return SwaggerModule.createDocument(app, config);
 }

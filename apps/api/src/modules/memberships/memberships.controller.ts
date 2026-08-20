@@ -9,6 +9,13 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import {
+  ApiCookieAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { CurrentSession } from '../../common/auth/current-user.decorator';
@@ -25,8 +32,14 @@ import { SessionAuthGuard } from '../auth/session-auth.guard';
 import type { SessionPrincipal } from '../auth/session.service';
 import {
   ChangeMemberStatusDto,
+  CreatedInvitationResponseDto,
   CreateInvitationDto,
+  InvitationPageResponseDto,
   InvitationPageQueryDto,
+  InvitationResentResponseDto,
+  MembershipActionResponseDto,
+  TenantMemberResponseDto,
+  WorkspaceSummaryResponseDto,
 } from './dto';
 import { MembershipsService } from './memberships.service';
 
@@ -35,29 +48,38 @@ interface RequestWithId extends Request {
 }
 
 @Controller()
+@ApiTags('memberships')
+@ApiCookieAuth('crm_session')
 export class MembershipsController {
   constructor(private readonly memberships: MembershipsService) {}
 
   @Get('me/workspaces')
   @UseGuards(SessionAuthGuard)
+  @ApiOkResponse({ type: WorkspaceSummaryResponseDto, isArray: true })
   workspaces(@CurrentSession() current: SessionPrincipal) {
     return this.memberships.listWorkspaces(current.user.id);
   }
 
   @Get('workspaces/:tenantCode')
   @UseGuards(SessionAuthGuard, WorkspaceGuard)
+  @ApiParam({ name: 'tenantCode' })
+  @ApiOkResponse({ type: WorkspaceSummaryResponseDto })
   workspace(@CurrentWorkspace() workspace: WorkspaceResolution) {
     return workspace;
   }
 
   @Get('workspaces/:tenantCode/members')
   @UseGuards(SessionAuthGuard, WorkspaceGuard)
+  @ApiParam({ name: 'tenantCode' })
+  @ApiOkResponse({ type: TenantMemberResponseDto, isArray: true })
   members(@CurrentTenant() context: TenantContext) {
     return this.memberships.listMembers(context);
   }
 
   @Get('workspaces/:tenantCode/invitations')
   @UseGuards(SessionAuthGuard, WorkspaceGuard)
+  @ApiParam({ name: 'tenantCode' })
+  @ApiOkResponse({ type: InvitationPageResponseDto })
   invitations(
     @CurrentTenant() context: TenantContext,
     @Query() query: InvitationPageQueryDto,
@@ -67,6 +89,8 @@ export class MembershipsController {
 
   @Post('workspaces/:tenantCode/invitations')
   @UseGuards(SessionAuthGuard, WorkspaceGuard)
+  @ApiParam({ name: 'tenantCode' })
+  @ApiCreatedResponse({ type: CreatedInvitationResponseDto })
   invite(
     @CurrentTenant() context: TenantContext,
     @Body() dto: CreateInvitationDto,
@@ -80,6 +104,9 @@ export class MembershipsController {
 
   @Post('workspaces/:tenantCode/invitations/:id/resend')
   @UseGuards(SessionAuthGuard, WorkspaceGuard)
+  @ApiParam({ name: 'tenantCode' })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiCreatedResponse({ type: InvitationResentResponseDto })
   resend(
     @CurrentTenant() context: TenantContext,
     @Param('id') id: string,
@@ -90,6 +117,9 @@ export class MembershipsController {
 
   @Post('workspaces/:tenantCode/invitations/:id/revoke')
   @UseGuards(SessionAuthGuard, WorkspaceGuard)
+  @ApiParam({ name: 'tenantCode' })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiCreatedResponse({ type: MembershipActionResponseDto })
   revoke(
     @CurrentTenant() context: TenantContext,
     @Param('id') id: string,
@@ -100,6 +130,9 @@ export class MembershipsController {
 
   @Patch('workspaces/:tenantCode/members/:memberId')
   @UseGuards(SessionAuthGuard, WorkspaceGuard)
+  @ApiParam({ name: 'tenantCode' })
+  @ApiParam({ name: 'memberId', format: 'uuid' })
+  @ApiOkResponse({ type: TenantMemberResponseDto })
   changeMember(
     @CurrentTenant() context: TenantContext,
     @Param('memberId') memberId: string,

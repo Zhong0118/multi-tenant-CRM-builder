@@ -11,17 +11,28 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiAcceptedResponse,
+  ApiCookieAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 
 import { CurrentSession } from '../../common/auth/current-user.decorator';
 import { AuthService, type AuthenticatedSessionResult } from './auth.service';
 import {
   ChangePasswordDto,
+  AcceptedResponseDto,
+  AuthenticatedResponseDto,
   ForgotPasswordDto,
   LoginDto,
   RegisterDto,
   ResetPasswordDto,
+  SessionResponseDto,
+  UserResponseDto,
   VerificationChallengeDto,
 } from './dto';
 import { SESSION_COOKIE_NAME, SessionAuthGuard } from './session-auth.guard';
@@ -57,6 +68,7 @@ export class AuthController {
 
   @Post('verification-challenges')
   @HttpCode(202)
+  @ApiAcceptedResponse({ type: AcceptedResponseDto })
   requestVerification(
     @Body() dto: VerificationChallengeDto,
     @Req() request: Request,
@@ -68,6 +80,7 @@ export class AuthController {
   }
 
   @Post('register')
+  @ApiCreatedResponse({ type: AuthenticatedResponseDto })
   register(
     @Body() dto: RegisterDto,
     @Req() request: Request,
@@ -80,6 +93,7 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(200)
+  @ApiOkResponse({ type: AuthenticatedResponseDto })
   login(
     @Body() dto: LoginDto,
     @Req() request: Request,
@@ -94,6 +108,7 @@ export class AuthController {
   @UseGuards(SessionAuthGuard)
   @ApiCookieAuth(SESSION_COOKIE_NAME)
   @HttpCode(200)
+  @ApiOkResponse({ type: AcceptedResponseDto })
   async logout(
     @CurrentSession() current: SessionPrincipal,
     @Res({ passthrough: true }) response: Response,
@@ -105,6 +120,7 @@ export class AuthController {
 
   @Post('forgot-password')
   @HttpCode(202)
+  @ApiAcceptedResponse({ type: AcceptedResponseDto })
   forgotPassword(@Body() dto: ForgotPasswordDto, @Req() request: Request) {
     return this.auth.requestVerification({
       ...dto,
@@ -115,6 +131,7 @@ export class AuthController {
 
   @Post('reset-password')
   @HttpCode(200)
+  @ApiOkResponse({ type: AcceptedResponseDto })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.auth.resetPassword(dto);
   }
@@ -128,6 +145,7 @@ export class MeController {
   constructor(private readonly auth: AuthService) {}
 
   @Get()
+  @ApiOkResponse({ type: UserResponseDto })
   async me(@CurrentSession() current: SessionPrincipal) {
     const user = await this.auth.getUser(current.user.id);
     return {
@@ -139,11 +157,14 @@ export class MeController {
   }
 
   @Get('sessions')
+  @ApiOkResponse({ type: SessionResponseDto, isArray: true })
   sessions(@CurrentSession() current: SessionPrincipal) {
     return this.auth.listSessions(current.user.id);
   }
 
   @Delete('sessions/:sessionId')
+  @ApiParam({ name: 'sessionId', format: 'uuid' })
+  @ApiOkResponse({ type: AcceptedResponseDto })
   revokeSession(
     @CurrentSession() current: SessionPrincipal,
     @Param('sessionId') sessionId: string,
@@ -152,6 +173,7 @@ export class MeController {
   }
 
   @Patch('password')
+  @ApiOkResponse({ type: AcceptedResponseDto })
   changePassword(
     @CurrentSession() current: SessionPrincipal,
     @Body() dto: ChangePasswordDto,

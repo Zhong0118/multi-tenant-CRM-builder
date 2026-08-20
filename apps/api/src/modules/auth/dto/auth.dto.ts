@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsIn,
   IsNotEmpty,
@@ -25,32 +25,109 @@ export class VerificationChallengeDto {
 }
 
 export class RegisterDto {
-  @IsString() @IsNotEmpty() phone!: string;
-  @IsString() @Length(6, 6) code!: string;
-  @IsString() @Length(1, 100) displayName!: string;
-  @IsString() @MinLength(8) @MaxLength(200) password!: string;
-  @IsString() @MaxLength(300) deviceSummary!: string;
+  @ApiProperty({ example: '13800138000' })
+  @IsString()
+  @IsNotEmpty()
+  phone!: string;
+  @ApiProperty({ minLength: 6, maxLength: 6, example: '123456' })
+  @IsString()
+  @Length(6, 6)
+  code!: string;
+  @ApiProperty({ minLength: 1, maxLength: 100 })
+  @IsString()
+  @Length(1, 100)
+  displayName!: string;
+  @ApiProperty({ minLength: 8, maxLength: 200, format: 'password' })
+  @IsString()
+  @MinLength(8)
+  @MaxLength(200)
+  password!: string;
+  @ApiProperty({ maxLength: 300 })
+  @IsString()
+  @MaxLength(300)
+  deviceSummary!: string;
 }
 
 export class LoginDto {
-  @IsString() @IsNotEmpty() phone!: string;
-  @IsString() @MaxLength(200) password!: string;
-  @IsString() @Length(8, 200) deviceKey!: string;
-  @IsString() @MaxLength(300) deviceSummary!: string;
+  @ApiProperty({ example: '13800138000' })
+  @IsString()
+  @IsNotEmpty()
+  phone!: string;
+  @ApiProperty({ maxLength: 200, format: 'password' })
+  @IsString()
+  @MaxLength(200)
+  password!: string;
+  @ApiProperty({ minLength: 8, maxLength: 200 })
+  @IsString()
+  @Length(8, 200)
+  deviceKey!: string;
+  @ApiProperty({ maxLength: 300 })
+  @IsString()
+  @MaxLength(300)
+  deviceSummary!: string;
 }
 
 export class ForgotPasswordDto {
-  @IsString() @IsNotEmpty() phone!: string;
-  @IsString() @Length(8, 200) deviceKey!: string;
+  @ApiProperty({ example: '13800138000' })
+  @IsString()
+  @IsNotEmpty()
+  phone!: string;
+  @ApiProperty({ minLength: 8, maxLength: 200 })
+  @IsString()
+  @Length(8, 200)
+  deviceKey!: string;
 }
 
 export class ResetPasswordDto {
-  @IsString() @IsNotEmpty() phone!: string;
-  @IsString() @Length(6, 6) code!: string;
-  @IsString() @MinLength(8) @MaxLength(200) newPassword!: string;
+  @ApiProperty({ example: '13800138000' })
+  @IsString()
+  @IsNotEmpty()
+  phone!: string;
+  @ApiProperty({ minLength: 6, maxLength: 6, example: '123456' })
+  @IsString()
+  @Length(6, 6)
+  code!: string;
+  @ApiProperty({ minLength: 8, maxLength: 200, format: 'password' })
+  @IsString()
+  @MinLength(8)
+  @MaxLength(200)
+  newPassword!: string;
 }
 
 export class ChangePasswordDto {
-  @IsString() @MaxLength(200) currentPassword!: string;
-  @IsString() @MinLength(8) @MaxLength(200) newPassword!: string;
+  @ApiProperty({ maxLength: 200, format: 'password' })
+  @IsString()
+  @MaxLength(200)
+  currentPassword!: string;
+  @ApiProperty({ minLength: 8, maxLength: 200, format: 'password' })
+  @IsString()
+  @MinLength(8)
+  @MaxLength(200)
+  newPassword!: string;
+}
+
+export class AcceptedResponseDto {
+  @ApiProperty({ example: true }) accepted!: true;
+}
+
+export class UserResponseDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiProperty() displayName!: string;
+  @ApiProperty({ example: '+8613800138000' }) phone!: string;
+  @ApiProperty() isPlatformAdmin!: boolean;
+}
+
+export class AuthenticatedResponseDto {
+  @ApiProperty({ example: true }) accepted!: true;
+  @ApiProperty({ type: UserResponseDto }) user!: UserResponseDto;
+}
+
+export class SessionResponseDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiProperty({ type: String, format: 'date-time' }) expiresAt!: Date;
+  @ApiPropertyOptional({ type: String, format: 'date-time' })
+  lastUsedAt?: Date;
+  @ApiPropertyOptional() deviceSummary?: string;
+  @ApiProperty({ type: String, format: 'date-time' }) createdAt!: Date;
+  @ApiPropertyOptional({ type: String, format: 'date-time' }) revokedAt?: Date;
 }

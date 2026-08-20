@@ -1,9 +1,21 @@
 import { Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  ApiCookieAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 
 import { CurrentSession } from '../../common/auth/current-user.decorator';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
 import type { SessionPrincipal } from '../auth/session.service';
+import {
+  InvitationActionResponseDto,
+  InvitationMembershipResponseDto,
+  PersonalInvitationResponseDto,
+} from './dto';
 import { InvitationsService } from './invitations.service';
 
 interface RequestWithId extends Request {
@@ -11,16 +23,21 @@ interface RequestWithId extends Request {
 }
 
 @UseGuards(SessionAuthGuard)
+@ApiTags('invitations')
+@ApiCookieAuth('crm_session')
 @Controller('me/invitations')
 export class InvitationsController {
   constructor(private readonly invitations: InvitationsService) {}
 
   @Get()
+  @ApiOkResponse({ type: PersonalInvitationResponseDto, isArray: true })
   list(@CurrentSession() current: SessionPrincipal) {
     return this.invitations.list(current.user);
   }
 
   @Get(':invitationId')
+  @ApiParam({ name: 'invitationId', format: 'uuid' })
+  @ApiOkResponse({ type: PersonalInvitationResponseDto })
   detail(
     @CurrentSession() current: SessionPrincipal,
     @Param('invitationId') id: string,
@@ -29,6 +46,8 @@ export class InvitationsController {
   }
 
   @Post(':invitationId/accept')
+  @ApiParam({ name: 'invitationId', format: 'uuid' })
+  @ApiCreatedResponse({ type: InvitationMembershipResponseDto })
   accept(
     @CurrentSession() current: SessionPrincipal,
     @Param('invitationId') id: string,
@@ -38,6 +57,8 @@ export class InvitationsController {
   }
 
   @Post(':invitationId/decline')
+  @ApiParam({ name: 'invitationId', format: 'uuid' })
+  @ApiCreatedResponse({ type: InvitationActionResponseDto })
   decline(
     @CurrentSession() current: SessionPrincipal,
     @Param('invitationId') id: string,
