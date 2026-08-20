@@ -1,7 +1,9 @@
 # 多租户 CRM 平台与首家公司模板总设计
 
 日期：2026-08-19
-状态：待审阅
+状态：长期平台设计已确认；首个实施切片由 2026-08-20 规格细化
+
+> 第一个“账号、邀请与工作空间”切片的正式路由、认证方式、API、数据模型和验收标准，以 [`2026-08-20-account-invitation-workspace-design.md`](./2026-08-20-account-invitation-workspace-design.md) 为准。
 
 ## 目标
 
@@ -51,7 +53,7 @@
        飞书 / 电话 Bot / Webhook
 ```
 
-每个请求先建立 `TenantContext`，再进行模块、数据范围和字段权限判断。前端传入的 `tenant_id` 不具备授权效力。
+每个租户业务请求先根据当前 User、URL 中的 `tenantCode` 和活动 TenantMember 建立 `TenantContext`，再进行模块、数据范围和字段权限判断。公共认证请求不建立租户上下文；前端传入的 `tenant_id` 不具备授权效力。
 
 ## 核心模块
 

@@ -98,3 +98,5 @@ docker compose down
 ## 当前边界
 
 本里程碑提供可运行的工程基础、完整页面/模块目录边界、健康接口、核心多租户 schema 和 Worker 运行时。页面目前是架构占位，不伪造业务数据；注册登录、租户权限、动态记录 CRUD、飞书与电话 Bot 将按照设计文档在后续里程碑实现。
+
+下一实施切片是“手机号账号、租户邀请与工作空间”。其正式路由、数据模型、API、安全约束和验收标准见 [`docs/superpowers/specs/2026-08-20-account-invitation-workspace-design.md`](docs/superpowers/specs/2026-08-20-account-invitation-workspace-design.md)。
