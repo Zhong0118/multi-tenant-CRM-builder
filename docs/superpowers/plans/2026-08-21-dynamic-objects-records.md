@@ -686,11 +686,11 @@ git commit -m "feat(web): add member object access controls"
 - Consumes: completed slice and actual verification output.
 - Produces: truthful delivery status, manual acceptance checklist, root verification path.
 
-- [ ] **Step 1: Update documents truthfully**
+- [x] **Step 1: Update documents truthfully**
 
 Mark second-slice models/routes/pages implemented only after their tests pass. Add local migration command, tenant-admin object workflow, supported field types, publication warning, and manual acceptance sequence. Change spec state to `已实现；待项目负责人人工验收` before handoff and to `已实现；人工验收通过` only after the user confirms.
 
-- [ ] **Step 2: Run complete automated verification**
+- [x] **Step 2: Run complete automated verification**
 
 ```bash
 set -a && source .env && set +a
@@ -708,14 +708,14 @@ git diff --check
 
 Expected: every command exits 0. Existing user changes remain unstaged.
 
-- [ ] **Step 3: Commit automated delivery state**
+- [x] **Step 3: Commit automated delivery state**
 
 ```bash
 git add README.md docs package.json
 git commit -m "docs: deliver dynamic objects and records slice"
 ```
 
-- [ ] **Step 4: Hand off manual acceptance**
+- [x] **Step 4: Hand off manual acceptance**
 
 Ask the project owner to run exactly:
 

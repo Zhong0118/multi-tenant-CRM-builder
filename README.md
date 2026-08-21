@@ -2,7 +2,7 @@
 
 面向多家公司的可配置 CRM 平台。当前仓库采用 pnpm monorepo，Web、API、Worker 分进程部署；API 与 Worker 可以访问数据库包，Web 只调用 REST API。
 
-完整产品与架构设计见 [`docs/design/README.md`](docs/design/README.md)。首个“账号、邀请与工作空间”业务切片已经实现，设计事实来源见 [`docs/superpowers/specs/2026-08-20-account-invitation-workspace-design.md`](docs/superpowers/specs/2026-08-20-account-invitation-workspace-design.md)。
+完整产品与架构设计见 [`docs/design/README.md`](docs/design/README.md)。前两个业务切片已经实现，设计事实来源分别是 [`2026-08-20-account-invitation-workspace-design.md`](docs/superpowers/specs/2026-08-20-account-invitation-workspace-design.md)（账号、邀请与工作空间）和 [`2026-08-21-dynamic-objects-records-design.md`](docs/superpowers/specs/2026-08-21-dynamic-objects-records-design.md)（对象、字段、权限与动态记录）。接手开发前请先读 [`HANDOFF.md`](HANDOFF.md)。
 
 ## 工程结构
 
@@ -146,6 +146,19 @@ pnpm --filter @crm/database prisma:validate
 docker compose config
 ```
 
+拉取新代码后先把迁移应用到本地开发库，否则新表和新列缺失会让接口直接 500：
+
+```bash
+set -a && source .env && set +a
+pnpm --filter @crm/database prisma:migrate:deploy
+```
+
+集成测试与 API E2E 使用独立的测试库（`compose.test.yaml`，端口 5433），需要先启动：
+
+```bash
+docker compose -f compose.test.yaml up -d
+```
+
 停止本地基础设施：
 
 ```bash
@@ -154,8 +167,53 @@ docker compose down
 
 只有在明确需要删除本地数据库和 Redis 数据时，才执行 `docker compose down --volumes`。
 
+## 租户管理员配置业务对象
+
+配置保存为草稿，只有**发布**后才影响成员当前使用的表单、权限和导航。
+
+1. 进入 `设置 → 业务对象 → 新建业务对象`，填写名称与小写代码（如 `customers`）。
+2. 在设计器的「字段」页添加字段。对象必须有一个必填标题字段，类型只能是 `TEXT`、`PHONE`、`EMAIL` 或 `SINGLE_SELECT`。
+3. 「列表视图」选择默认列与排序；「员工权限」配置动作、数据范围和每个字段的访问级别。
+4. 点「发布变更」先看影响面板：存在阻断项时无法确认；警告项需要知情后确认。
+5. 发布成功后对象才出现在成员的「业务对象」导航中。
+
+本切片支持的字段类型固定为 12 种：
+
+`TEXT`、`TEXTAREA`、`PHONE`、`EMAIL`、`NUMBER`、`MONEY`、`DATE`、`DATETIME`、`SINGLE_SELECT`、`MULTI_SELECT`、`MEMBER`、`BOOLEAN`。
+
+需要注意的发布约束：
+
+- 字段 `fieldKey` 和已发布字段的**类型不可再改**，只能调整标签、校验、选项和访问级别。
+- 已有历史记录时，新增字段只能先以非必填发布。
+- 选项 key 发布后稳定；已被记录使用的选项只能停用，不能删除或改写含义。
+- 成员访问页的**成员覆盖立即生效**，而对象设计器里的员工默认权限**需要发布后生效**。
+
 ## 当前实现边界
 
-已完成第一个“账号、邀请与工作空间”切片：手机号注册/登录/找回密码、服务端会话、平台管理员授权、租户开通、首位管理员邀请、成员邀请与停用、等待页、工作空间选择、租户隔离、OpenAPI 契约及对应页面。单元、数据库集成和 API E2E 已自动化；完整浏览器流程已由项目负责人在本地人工验收，当前不引入 Playwright。
+已完成第一个“账号、邀请与工作空间”切片：手机号注册/登录/找回密码、服务端会话、平台管理员授权、租户开通、首位管理员邀请、成员邀请与停用、等待页、工作空间选择、租户隔离、OpenAPI 契约及对应页面。
 
-下一实施切片是“对象、字段、权限与动态记录 CRUD”。本切片将把现有 `object_definitions`、`field_definitions`、`records` 数据骨架和 `/workspace/[tenantCode]/objects/[objectCode]` 占位页升级为可配置、可授权、可实际录入和查询记录的平台能力。首家公司线索、跟单、客户和期刊模板仍放在第三个切片，避免把百杰业务规则写死进通用平台核心。
+已完成第二个“对象、字段、权限与动态记录”切片：
+
+- 不可变对象发布快照（`object_publications`）与草稿乐观锁；发布只记录哪一版生效，不消耗草稿版本。
+- 12 种动态字段类型的服务端统一校验、标题派生、`MONEY` 定点字符串规范化。
+- 对象动作权限、`ALL/OWN/NONE` 数据范围、`EDIT/READ_ONLY/HIDDEN` 字段权限；隐藏字段不出现在 schema 与响应中，伪造写入被拒绝。
+- 成员对象覆盖实时生效，不改变发布快照中的字段权限。
+- 事务内行锁分配连续 `recordNo`、记录乐观锁、软删除、审计。
+- 配置账本对象设计器、动态记录列表/表单/详情抽屉、成员访问权限页、发布对象驱动的工作空间导航。
+- PostgreSQL RLS 强制租户隔离；跨租户对象与记录统一返回 not-found，不泄露资源存在性。
+
+自动化验证覆盖：Web 单元/组件测试、API 单元测试、PostgreSQL 集成测试（RLS、发布快照不可变、record counter 并发）、API E2E（配置→发布→运行时链路、记录权限、并发编号、版本冲突）、OpenAPI 契约漂移。当前不引入 Playwright。
+
+尚未实现（留待后续切片）：记录活动与关系、记录转换与状态机、公式/汇总/查找字段、附件与文件存储、导入导出、批量修改、Dashboard 与图表、看板与日历、个人自定义视图、发布版本回滚。首家公司线索、跟单、客户和期刊模板放在第三个切片，避免把百杰业务规则写死进通用平台核心。
+
+## 人工验收清单
+
+自动化测试覆盖不到浏览器交互，请按顺序跑一遍：
+
+```text
+管理员创建对象 → 添加标题/普通/只读/隐藏字段 → 配置员工 OWN 权限
+→ 发布 → 管理员创建并编辑记录 → 员工登录验证导航、OWN、只读、隐藏
+→ 管理员在成员访问页改为 NONE 覆盖并确认立即失效 → 恢复继承
+```
+
+预期结果：员工只看到获准对象；标题显示“我的{对象名}”；隐藏字段在列表、详情和表单中都不存在；只读字段显示正常文本与“仅管理员可编辑”；改为 `NONE` 覆盖后员工下一次请求即失去访问，无需重新发布。
