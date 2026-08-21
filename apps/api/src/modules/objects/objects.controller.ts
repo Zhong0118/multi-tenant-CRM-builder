@@ -35,6 +35,7 @@ import {
 } from './dto';
 import type { JsonValue } from './object-schema';
 import { ObjectsService } from './objects.service';
+import { PublishedObjectService } from './published-object.service';
 
 interface RequestWithId extends Request {
   requestId?: string;
@@ -45,7 +46,30 @@ interface RequestWithId extends Request {
 @ApiCookieAuth('crm_session')
 @UseGuards(SessionAuthGuard, WorkspaceGuard)
 export class ObjectsController {
-  constructor(private readonly objects: ObjectsService) {}
+  constructor(
+    private readonly objects: ObjectsService,
+    private readonly publishedObjects: PublishedObjectService,
+  ) {}
+
+  @Get('objects')
+  @ApiOkResponse({ description: '当前成员可访问的业务对象导航' })
+  runtimeObjects(@CurrentTenant() context: TenantContext) {
+    return this.publishedObjects.listAccessible(context);
+  }
+
+  @Get('objects/:objectCode/schema')
+  @ApiParam({ name: 'objectCode' })
+  @ApiOkResponse({ description: '按有效权限裁剪的运行时对象 Schema' })
+  async runtimeSchema(
+    @CurrentTenant() context: TenantContext,
+    @Param('objectCode') objectCode: string,
+  ) {
+    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+      context,
+      objectCode,
+    );
+    return resolved.visibleSchema;
+  }
 
   @Get('object-definitions')
   @ApiParam({ name: 'tenantCode' })

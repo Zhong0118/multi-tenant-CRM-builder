@@ -12,17 +12,34 @@ import {
   OBJECTS_REPOSITORY,
   ObjectsService,
 } from './objects.service';
+import {
+  PrismaPublishedObjectRepository,
+  type PublishedObjectRepository,
+} from './published-object.repository';
+import {
+  PUBLISHED_OBJECT_REPOSITORY,
+  PublishedObjectService,
+} from './published-object.service';
 
 @Module({
   imports: [AuditModule, AuthModule, MembershipsModule],
   controllers: [ObjectsController],
   providers: [
     ObjectsService,
+    PublishedObjectService,
     PrismaObjectsRepository,
+    PrismaPublishedObjectRepository,
     { provide: OBJECTS_REPOSITORY, useExisting: PrismaObjectsRepository },
     { provide: OBJECTS_CLOCK, useValue: () => new Date() },
     { provide: OBJECTS_ID_GENERATOR, useValue: randomUUID },
+    {
+      provide: PUBLISHED_OBJECT_REPOSITORY,
+      useExisting: PrismaPublishedObjectRepository,
+    } satisfies {
+      provide: symbol;
+      useExisting: new (...args: never[]) => PublishedObjectRepository;
+    },
   ],
-  exports: [ObjectsService],
+  exports: [ObjectsService, PublishedObjectService],
 })
 export class ObjectsModule {}

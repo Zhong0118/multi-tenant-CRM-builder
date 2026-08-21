@@ -320,21 +320,21 @@ git commit -m "feat(objects): add draft and publication endpoints"
 - Consumes: active publication JSON, live `ObjectPermission` member row, Task 3 access resolver.
 - Produces: `listAccessible(context)`, `resolveRuntimeSchema(context, objectCode)`, `ResolvedObjectSchema { schema, access, visibleSchema }`, and runtime `GET /objects`, `GET /objects/:objectCode/schema`.
 
-- [ ] **Step 1: Write failing runtime resolver tests**
+- [x] **Step 1: Write failing runtime resolver tests**
 
 Assert unpublished/archived objects are absent, employee no-read objects are absent, admin sees every active object in `sortOrder`, member override changes access immediately, hidden fields are removed from fields/default-view columns, and a cross-tenant/missing code maps to `OBJECT_NOT_FOUND`.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 pnpm --filter @crm/api test -- published-object.service.spec.ts
 ```
 
-- [ ] **Step 3: Implement repository and service**
+- [x] **Step 3: Implement repository and service**
 
 Parse persisted JSON through a strict runtime validator before treating it as `PublishedObjectSchema`; malformed snapshots raise `INTERNAL_ERROR` and log no field values. Do not return draft versions or member override internals to Web.
 
-- [ ] **Step 4: Add runtime endpoints and verify**
+- [x] **Step 4: Add runtime endpoints and verify**
 
 ```bash
 pnpm --filter @crm/api test -- published-object.service.spec.ts

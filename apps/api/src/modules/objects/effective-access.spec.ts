@@ -149,4 +149,19 @@ describe('effective object access', () => {
       }).fields,
     ).toEqual({ name: 'EDIT', phone: 'READ_ONLY' });
   });
+
+  it('defaults unconfigured ordinary fields to EDIT and system fields to READ_ONLY', () => {
+    const published = schema();
+    published.employeeAccess.fields = { name: 'EDIT' };
+    published.fields[1].isSystem = true;
+
+    expect(
+      resolveEffectiveAccess({ schema: published, role: 'EMPLOYEE' }).fields,
+    ).toEqual({ name: 'EDIT', phone: 'READ_ONLY' });
+
+    published.fields[1].isSystem = false;
+    expect(
+      resolveEffectiveAccess({ schema: published, role: 'EMPLOYEE' }).fields,
+    ).toEqual({ name: 'EDIT', phone: 'EDIT' });
+  });
 });

@@ -63,6 +63,13 @@ export function resolveEffectiveAccess(input: {
     canDelete: false,
     readScope: objectPolicy.readScope,
     updateScope: objectPolicy.updateScope,
-    fields: { ...employeeAccess.fields },
+    fields: Object.fromEntries(
+      input.schema.fields.map((field) => [
+        field.fieldKey,
+        field.isSystem
+          ? 'READ_ONLY'
+          : (employeeAccess.fields[field.fieldKey] ?? 'EDIT'),
+      ]),
+    ),
   };
 }
