@@ -721,12 +721,22 @@ export interface components {
     };
     CreateFieldDefinitionDto: {
       config?: components["schemas"]["FieldConfigDto"];
-      defaultValue?: Record<string, never> | null;
+      defaultValue?:
+        | (
+            | string
+            | number
+            | boolean
+            | unknown[]
+            | {
+                [key: string]: unknown;
+              }
+          )
+        | null;
       expectedVersion: number;
       /** @example customer_name */
       fieldKey: string;
       /** @default false */
-      isSystem: Record<string, never>;
+      isSystem: boolean;
       label: string;
       required: boolean;
       /** @enum {string} */
@@ -754,7 +764,7 @@ export interface components {
     CreateObjectDefinitionDto: {
       /** @example leads */
       code: string;
-      icon?: Record<string, never> | null;
+      icon?: string | null;
       /** @example 销售线索 */
       name: string;
     };
@@ -766,7 +776,7 @@ export interface components {
     };
     CreateRecordDto: {
       /** Format: uuid */
-      ownerMemberId?: Record<string, never> | null;
+      ownerMemberId?: string | null;
       values: {
         [key: string]: unknown;
       };
@@ -911,7 +921,6 @@ export interface components {
       /** @example true */
       accepted: boolean;
     };
-    Object: Record<string, never>;
     ObjectOrderDto: {
       items: components["schemas"]["ObjectOrderItemDto"][];
     };
@@ -970,7 +979,17 @@ export interface components {
       config: {
         [key: string]: unknown;
       };
-      defaultValue: Record<string, never> | null;
+      defaultValue:
+        | (
+            | string
+            | number
+            | boolean
+            | unknown[]
+            | {
+                [key: string]: unknown;
+              }
+          )
+        | null;
       fieldKey: string;
       id: string;
       isSystem: boolean;
@@ -1025,7 +1044,7 @@ export interface components {
       /** Format: uuid */
       id: string;
       /** Format: uuid */
-      ownerMemberId?: Record<string, never> | null;
+      ownerMemberId?: string | null;
       recordNo: string;
       title: string;
       /** Format: date-time */
@@ -1058,7 +1077,7 @@ export interface components {
       canRead: boolean;
       canUpdate: boolean;
       code: string;
-      icon?: Record<string, never> | null;
+      icon?: string | null;
       name: string;
       sortOrder: number;
     };
@@ -1100,7 +1119,7 @@ export interface components {
       /** @example +8613800138000 */
       targetPhone: string;
       /** Format: uuid */
-      targetUserId?: Record<string, never> | null;
+      targetUserId?: string | null;
     };
     TenantMemberPageResponseDto: {
       activeAdminCount: number;
@@ -1126,7 +1145,17 @@ export interface components {
     };
     UpdateFieldDefinitionDto: {
       config?: components["schemas"]["FieldConfigDto"];
-      defaultValue?: Record<string, never> | null;
+      defaultValue?:
+        | (
+            | string
+            | number
+            | boolean
+            | unknown[]
+            | {
+                [key: string]: unknown;
+              }
+          )
+        | null;
       expectedVersion: number;
       fieldKey?: string;
       label?: string;
@@ -1151,15 +1180,15 @@ export interface components {
     };
     UpdateObjectDefinitionDto: {
       code?: string;
-      description?: Record<string, never> | null;
+      description?: string | null;
       expectedVersion: number;
-      icon?: Record<string, never> | null;
+      icon?: string | null;
       name?: string;
       titleFieldKey?: string;
     };
     UpdateRecordDto: {
       /** Format: uuid */
-      ownerMemberId?: Record<string, never> | null;
+      ownerMemberId?: string | null;
       values?: {
         [key: string]: unknown;
       };
@@ -2205,9 +2234,9 @@ export interface operations {
     parameters: {
       query?: {
         direction?: "asc" | "desc";
-        limit?: components["schemas"]["Object"];
+        limit?: number;
         ownerMemberId?: string;
-        page?: components["schemas"]["Object"];
+        page?: number;
         search?: string;
         sort?: "updatedAt" | "createdAt" | "recordNo";
       };

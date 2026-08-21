@@ -13,14 +13,14 @@ import {
 } from 'class-validator';
 
 export class RecordListQueryDto {
-  @ApiPropertyOptional({ minimum: 1, default: 1 })
+  @ApiPropertyOptional({ type: Number, minimum: 1, default: 1 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   page = 1;
 
-  @ApiPropertyOptional({ minimum: 1, maximum: 100, default: 20 })
+  @ApiPropertyOptional({ type: Number, minimum: 1, maximum: 100, default: 20 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -58,7 +58,7 @@ export class CreateRecordDto {
   @IsObject()
   values!: Record<string, unknown>;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   @IsOptional()
   @IsUUID()
   ownerMemberId?: string | null;
@@ -75,7 +75,7 @@ export class UpdateRecordDto {
   @IsObject()
   values?: Record<string, unknown>;
 
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   @IsOptional()
   @IsUUID()
   ownerMemberId?: string | null;
@@ -91,8 +91,8 @@ export class DeleteRecordDto {
 export class RecordResponseDto {
   @ApiProperty({ format: 'uuid' }) id!: string;
   @ApiProperty() recordNo!: string;
-  @ApiPropertyOptional({ format: 'uuid', nullable: true }) ownerMemberId!:
-    string | null;
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
+  ownerMemberId!: string | null;
   @ApiProperty() title!: string;
   @ApiProperty({ type: 'object', additionalProperties: true }) values!: object;
   @ApiProperty() version!: number;

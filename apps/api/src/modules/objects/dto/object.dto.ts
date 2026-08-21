@@ -1,5 +1,9 @@
 import { Type } from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  type ApiPropertyOptions,
+} from '@nestjs/swagger';
 import {
   Allow,
   ArrayUnique,
@@ -45,6 +49,22 @@ export class ExpectedVersionDto {
   expectedVersion!: number;
 }
 
+/**
+ * A published field default is any JSON value, so it cannot be described by a
+ * single scalar type. Declaring the union keeps generated clients usable
+ * instead of collapsing the property to an empty object type.
+ */
+const JSON_VALUE_SCHEMA: ApiPropertyOptions = {
+  oneOf: [
+    { type: 'string' },
+    { type: 'number' },
+    { type: 'boolean' },
+    { type: 'array', items: {} },
+    { type: 'object', additionalProperties: true },
+  ],
+  nullable: true,
+};
+
 export class CreateObjectDefinitionDto {
   @ApiProperty({ example: '销售线索' })
   @IsString()
@@ -58,7 +78,7 @@ export class CreateObjectDefinitionDto {
   @MaxLength(64)
   code!: string;
 
-  @ApiPropertyOptional({ nullable: true, maxLength: 64 })
+  @ApiPropertyOptional({ type: String, nullable: true, maxLength: 64 })
   @IsOptional()
   @IsString()
   @MaxLength(64)
@@ -79,13 +99,13 @@ export class UpdateObjectDefinitionDto extends ExpectedVersionDto {
   @MaxLength(64)
   code?: string;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   @IsOptional()
   @IsString()
   @MaxLength(2000)
   description?: string | null;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   @IsOptional()
   @IsString()
   @MaxLength(64)
@@ -176,7 +196,7 @@ export class CreateFieldDefinitionDto extends ExpectedVersionDto {
   @IsBoolean()
   required!: boolean;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional(JSON_VALUE_SCHEMA)
   @Allow()
   defaultValue: JsonValue = null;
 
@@ -190,7 +210,7 @@ export class CreateFieldDefinitionDto extends ExpectedVersionDto {
   @Type(() => FieldConfigDto)
   config: FieldConfigDto = new FieldConfigDto();
 
-  @ApiPropertyOptional({ default: false })
+  @ApiPropertyOptional({ type: Boolean, default: false })
   @IsBoolean()
   isSystem = false;
 }
@@ -218,7 +238,7 @@ export class UpdateFieldDefinitionDto extends ExpectedVersionDto {
   @IsBoolean()
   required?: boolean;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional(JSON_VALUE_SCHEMA)
   @IsOptional()
   @Allow()
   defaultValue?: JsonValue;
@@ -317,7 +337,7 @@ export class EmployeePermissionsDto extends ExpectedVersionDto {
 export class RuntimeObjectNavigationResponseDto {
   @ApiProperty() code!: string;
   @ApiProperty() name!: string;
-  @ApiPropertyOptional({ nullable: true }) icon!: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) icon!: string | null;
   @ApiProperty() sortOrder!: number;
   @ApiProperty() canCreate!: boolean;
   @ApiProperty() canRead!: boolean;
@@ -330,7 +350,7 @@ export class PublishedFieldResponseDto {
   @ApiProperty() label!: string;
   @ApiProperty({ enum: FIELD_TYPES }) type!: string;
   @ApiProperty() required!: boolean;
-  @ApiProperty({ nullable: true }) defaultValue!: unknown;
+  @ApiProperty(JSON_VALUE_SCHEMA) defaultValue!: unknown;
   @ApiProperty({ type: 'object', additionalProperties: true })
   validation!: object;
   @ApiProperty({ type: 'object', additionalProperties: true }) config!: object;

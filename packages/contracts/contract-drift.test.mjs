@@ -172,3 +172,44 @@ test("declares every templated path parameter exactly once", async () => {
   assert.deepEqual(duplicated, []);
   assert.deepEqual(untyped, []);
 });
+
+test("gives every parameter and property a usable JSON type", async () => {
+  const document = JSON.parse(
+    await readFile(new URL("./openapi.json", import.meta.url), "utf8"),
+  );
+
+  // `{ "type": "object" }` with no properties and no additionalProperties
+  // generates as `Record<string, never>`, which cannot hold the uuid, icon or
+  // default value it is meant to describe. The shared `Object` component is
+  // the same defect surfaced as a $ref.
+  const isOpaque = (schema) => {
+    if (!schema) return false;
+    if (schema.$ref === "#/components/schemas/Object") return true;
+    if (Array.isArray(schema.allOf)) return schema.allOf.some(isOpaque);
+    return (
+      schema.type === "object" &&
+      schema.properties === undefined &&
+      schema.additionalProperties === undefined
+    );
+  };
+
+  const opaque = [];
+  for (const [path, item] of Object.entries(document.paths)) {
+    for (const [method, operation] of Object.entries(item)) {
+      for (const parameter of operation.parameters ?? []) {
+        if (isOpaque(parameter.schema)) {
+          opaque.push(
+            `${method.toUpperCase()} ${path} ${parameter.in}:${parameter.name}`,
+          );
+        }
+      }
+    }
+  }
+  for (const [name, schema] of Object.entries(document.components.schemas)) {
+    for (const [property, value] of Object.entries(schema.properties ?? {})) {
+      if (isOpaque(value)) opaque.push(`${name}.${property}`);
+    }
+  }
+
+  assert.deepEqual(opaque, []);
+});

@@ -153,7 +153,7 @@ export class MemberObjectAccessResponseDto {
 export class TenantInvitationResponseDto {
   @ApiProperty({ format: 'uuid' }) id!: string;
   @ApiProperty({ example: '+8613800138000' }) targetPhone!: string;
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   targetUserId!: string | null;
   @ApiProperty({ enum: ['TENANT_ADMIN', 'EMPLOYEE'] })
   role!: 'TENANT_ADMIN' | 'EMPLOYEE';
