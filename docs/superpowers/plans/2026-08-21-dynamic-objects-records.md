@@ -194,15 +194,15 @@ git commit -m "feat(objects): compile immutable published schemas"
 - Consumes: `PublishedObjectSchema`, `TenantContext`, optional live member override, existing record values.
 - Produces: `EffectiveObjectAccess`, `resolveEffectiveAccess`, `validateRecordMutation`, `projectVisibleValues`.
 
-- [ ] **Step 1: Write failing access matrix tests**
+- [x] **Step 1: Write failing access matrix tests**
 
 Assert tenant admin receives all actions/ALL/every field EDIT. Assert employee uses published role policy. Assert a live member override replaces action/scope values rather than unioning them. Assert missing employee permission resolves to no actions/NONE. Assert member overrides never change field access.
 
-- [ ] **Step 2: Write failing value tests**
+- [x] **Step 2: Write failing value tests**
 
 Table-drive each supported field type with hand-written valid and invalid expected values. Include lowercase email, UTC datetime, fixed-scale money string, deduplicated multi-select, inactive option rejection, MEMBER validator callback, missing required title, unknown field, read-only/hidden forged fields, PATCH missing-versus-null semantics, derived title, and hidden-field response projection.
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 ```bash
 pnpm --filter @crm/api test -- effective-access.spec.ts record-value-engine.spec.ts
@@ -210,7 +210,7 @@ pnpm --filter @crm/api test -- effective-access.spec.ts record-value-engine.spec
 
 Expected: FAIL on missing functions.
 
-- [ ] **Step 4: Implement the two deep modules**
+- [x] **Step 4: Implement the two deep modules**
 
 Use one field-type switch inside `record-value-engine.ts`; services/controllers must not switch on field types. Export:
 
@@ -231,7 +231,7 @@ export async function validateRecordMutation(input: {
 }): Promise<{ values: Record<string, unknown>; title: string }>;
 ```
 
-- [ ] **Step 5: Verify GREEN and commit**
+- [x] **Step 5: Verify GREEN and commit**
 
 ```bash
 pnpm --filter @crm/api test -- effective-access.spec.ts record-value-engine.spec.ts
