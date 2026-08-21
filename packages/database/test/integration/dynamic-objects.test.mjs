@@ -45,9 +45,7 @@ test("published object configuration is tenant isolated and denied without conte
       publicationNo: 1,
     },
   ]);
-  assert.ok(
-    !visible.some(({ tenantId }) => tenantId === fixture.tenantB.id),
-  );
+  assert.ok(!visible.some(({ tenantId }) => tenantId === fixture.tenantB.id));
 });
 
 test("published object configuration is immutable", async () => {
