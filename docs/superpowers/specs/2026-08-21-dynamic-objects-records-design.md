@@ -2,7 +2,7 @@
 
 版本：1.0
 日期：2026-08-21
-状态：待书面确认
+状态：已确认，待实施
 
 ## 1. 目标
 
@@ -121,6 +121,7 @@
 
 - `active_publication_id uuid null`：当前运行时发布版本。
 - `published_at timestamptz null`：最近一次发布时间。
+- `sort_order integer not null default 0`：工作空间业务对象导航顺序。
 
 保留现有 `version` 作为对象草稿乐观锁。`field_definitions` 继续表示草稿字段，补充帮助文案、占位文案和停用时间可放在受控 `config` 中；所有 JSON 配置均由 DTO schema 校验，不能透传任意对象。
 
@@ -153,15 +154,16 @@ interface PublishedObjectSchema {
     id: string;
     code: string;
     name: string;
+    description: string | null;
     titleFieldKey: string;
     icon: string | null;
+    sortOrder: number;
   };
   fields: PublishedField[];
   defaultView: {
     code: "default";
     name: string;
     columnFieldKeys: string[];
-    filterFieldKeys: string[];
     sort: { field: "updatedAt" | "createdAt" | "recordNo"; direction: "asc" | "desc" };
   };
   employeeAccess: {
@@ -234,6 +236,7 @@ Repository 只接收经过 `WorkspaceGuard` 生成的 `TenantContext`，并在 `
 ```text
 GET    /object-definitions
 POST   /object-definitions
+PUT    /object-definitions/order
 GET    /object-definitions/:objectId
 PATCH  /object-definitions/:objectId
 POST   /object-definitions/:objectId/fields
@@ -245,6 +248,7 @@ POST   /object-definitions/:objectId/publication-analysis
 POST   /object-definitions/:objectId/publications
 GET    /object-definitions/:objectId/publications
 POST   /object-definitions/:objectId/archive
+GET    /members/:memberId/object-access
 PUT    /members/:memberId/object-access/:objectId
 ```
 
@@ -266,7 +270,7 @@ DELETE /objects/:objectCode/records/:recordId
 
 创建使用 `{ values, ownerMemberId? }`；更新使用 `{ version, values, ownerMemberId? }`。更新中的字段缺失表示保持原值，显式 `null` 只允许清空非必填字段。记录响应中的 `values` 已按字段权限裁剪。
 
-运行时 schema 已按有效访问权限裁剪，包含对象标题、可执行动作、数据范围、可见字段、可编辑字段、默认视图和当前 publication number。
+运行时 schema 已按有效访问权限裁剪，包含对象标题、可执行动作、数据范围、可见字段、可编辑字段、默认视图和当前 publication number。默认视图只发布列与排序；本切片的标题搜索和负责人筛选属于稳定系统能力，不发布无效的动态字段筛选配置。
 
 ### 7.3 稳定错误码
 
