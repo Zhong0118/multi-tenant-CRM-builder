@@ -46,6 +46,39 @@ export interface TenantMemberPage {
   activeAdminCount: number;
 }
 
+export interface MemberObjectPolicy {
+  canCreate: boolean;
+  canRead: boolean;
+  canUpdate: boolean;
+  canDelete: false;
+  readScope: 'ALL' | 'OWN' | 'NONE';
+  updateScope: 'ALL' | 'OWN' | 'NONE';
+}
+
+export interface MemberObjectAccessSource {
+  objectId: string;
+  objectCode: string;
+  objectName: string;
+  inherited: MemberObjectPolicy;
+  override: MemberObjectPolicy | null;
+}
+
+export interface MemberObjectAccess extends MemberObjectAccessSource {
+  mode: 'INHERIT' | 'OVERRIDE';
+  effective: MemberObjectPolicy;
+}
+
+export type MemberObjectAccessInput =
+  | { mode: 'INHERIT' }
+  | {
+      mode: 'OVERRIDE';
+      canCreate: boolean;
+      canRead: boolean;
+      canUpdate: boolean;
+      readScope: 'ALL' | 'OWN' | 'NONE';
+      updateScope: 'ALL' | 'OWN' | 'NONE';
+    };
+
 export interface InvitationPageQuery {
   cursor?: string;
   limit: number;
@@ -84,6 +117,15 @@ export interface MembershipStore {
     id: string,
     status: 'ACTIVE' | 'DISABLED',
   ): Promise<TenantMemberSummary>;
+  listPublishedObjectAccess(
+    memberId: string,
+  ): Promise<MemberObjectAccessSource[]>;
+  replaceMemberObjectAccess(
+    memberId: string,
+    objectId: string,
+    policy: MemberObjectPolicy,
+  ): Promise<void>;
+  deleteMemberObjectAccess(memberId: string, objectId: string): Promise<void>;
   findInvitation(id: string): Promise<{ id: string; status: string } | null>;
   updateInvitation(id: string, input: Record<string, unknown>): Promise<void>;
   appendAudit(event: AuditEvent): Promise<void>;
@@ -192,6 +234,68 @@ export class MembershipsService {
     });
   }
 
+  async listMemberObjectAccess(
+    context: TenantContext,
+    memberId: string,
+  ): Promise<MemberObjectAccess[]> {
+    this.assertAdmin(context);
+    return this.repository.withTenant(context, async (store) => {
+      await requireActiveEmployee(store, memberId);
+      const objects = await store.listPublishedObjectAccess(memberId);
+      return objects.map(resolveMemberObjectAccess);
+    });
+  }
+
+  async setMemberObjectAccess(
+    context: TenantContext,
+    memberId: string,
+    objectId: string,
+    input: MemberObjectAccessInput,
+    meta: { requestId: string; ip?: string },
+  ): Promise<MemberObjectAccess> {
+    this.assertAdmin(context);
+    return this.repository.withTenant(context, async (store) => {
+      await requireActiveEmployee(store, memberId);
+      const objects = await store.listPublishedObjectAccess(memberId);
+      const object = objects.find(
+        (candidate) => candidate.objectId === objectId,
+      );
+      if (!object) throw new ApiException('OBJECT_NOT_FOUND', 404);
+      const before = resolveMemberObjectAccess(object);
+
+      if (input.mode === 'INHERIT') {
+        await store.deleteMemberObjectAccess(memberId, objectId);
+        object.override = null;
+      } else {
+        const override: MemberObjectPolicy = {
+          canCreate: input.canCreate,
+          canRead: input.canRead,
+          canUpdate: input.canUpdate,
+          canDelete: false,
+          readScope: input.readScope,
+          updateScope: input.updateScope,
+        };
+        await store.replaceMemberObjectAccess(memberId, objectId, override);
+        object.override = override;
+      }
+
+      const after = resolveMemberObjectAccess(object);
+      await store.appendAudit({
+        tenantId: context.tenantId,
+        actorType: 'USER',
+        actorId: context.userId,
+        action: 'membership.object_access_changed',
+        resourceType: 'object_permission',
+        resourceId: objectId,
+        before: accessAuditValue(memberId, before),
+        after: accessAuditValue(memberId, after),
+        requestId: meta.requestId,
+        ip: meta.ip,
+      });
+      return after;
+    });
+  }
+
   async resendInvitation(
     context: TenantContext,
     invitationId: string,
@@ -258,4 +362,36 @@ export class MembershipsService {
       throw new ApiException('WORKSPACE_FORBIDDEN', 403);
     }
   }
+}
+
+async function requireActiveEmployee(
+  store: MembershipStore,
+  memberId: string,
+): Promise<TenantMemberSummary> {
+  const member = await store.findMember(memberId);
+  if (!member || member.status !== 'ACTIVE' || member.role !== 'EMPLOYEE') {
+    throw new ApiException('MEMBERSHIP_INACTIVE', 404);
+  }
+  return member;
+}
+
+function resolveMemberObjectAccess(
+  source: MemberObjectAccessSource,
+): MemberObjectAccess {
+  return {
+    ...source,
+    mode: source.override ? 'OVERRIDE' : 'INHERIT',
+    effective: source.override ?? source.inherited,
+  };
+}
+
+function accessAuditValue(
+  memberId: string,
+  access: MemberObjectAccess,
+): Record<string, unknown> {
+  return {
+    memberId,
+    mode: access.mode,
+    policy: access.override,
+  };
 }

@@ -1,6 +1,8 @@
 import type { TenantContext } from '../../common/tenancy/tenant-context';
+import type { AuditEvent } from '../audit/audit-event';
 import {
   MembershipsService,
+  type MemberObjectAccessSource,
   type MembershipStore,
   type TenantMemberSummary,
 } from './memberships.service';
@@ -26,6 +28,51 @@ class MemoryMembershipStore implements MembershipStore {
     role: 'TENANT_ADMIN',
     status: 'ACTIVE',
   };
+  targetMember: TenantMemberSummary = {
+    id: 'member-employee',
+    userId: 'user-employee',
+    tenantId: admin.tenantId,
+    role: 'EMPLOYEE',
+    status: 'ACTIVE',
+  };
+  objectAccess: MemberObjectAccessSource[] = [
+    {
+      objectId: 'object-leads',
+      objectCode: 'leads',
+      objectName: '销售线索',
+      inherited: {
+        canCreate: true,
+        canRead: true,
+        canUpdate: true,
+        canDelete: false as const,
+        readScope: 'OWN' as const,
+        updateScope: 'OWN' as const,
+      },
+      override: null,
+    },
+    {
+      objectId: 'object-customers',
+      objectCode: 'customers',
+      objectName: '客户',
+      inherited: {
+        canCreate: false,
+        canRead: true,
+        canUpdate: false,
+        canDelete: false as const,
+        readScope: 'ALL' as const,
+        updateScope: 'NONE' as const,
+      },
+      override: {
+        canCreate: true,
+        canRead: true,
+        canUpdate: true,
+        canDelete: false as const,
+        readScope: 'OWN' as const,
+        updateScope: 'OWN' as const,
+      },
+    },
+  ];
+  audits: AuditEvent[] = [];
   listMembers(page: { page: number; limit: number }) {
     this.memberPage = page;
     return Promise.resolve({
@@ -44,8 +91,14 @@ class MemoryMembershipStore implements MembershipStore {
     this.invitationCreated = true;
     return Promise.resolve({ id: 'invite-1', status: 'PENDING' as const });
   }
-  findMember() {
-    return Promise.resolve(this.member);
+  findMember(id: string) {
+    return Promise.resolve(
+      id === this.member.id
+        ? this.member
+        : id === this.targetMember.id
+          ? this.targetMember
+          : null,
+    );
   }
   countActiveAdmins() {
     return Promise.resolve(this.activeAdminCount);
@@ -64,7 +117,25 @@ class MemoryMembershipStore implements MembershipStore {
   updateInvitation() {
     return Promise.resolve();
   }
-  appendAudit() {
+  listPublishedObjectAccess() {
+    return Promise.resolve(structuredClone(this.objectAccess));
+  }
+  replaceMemberObjectAccess(
+    _memberId: string,
+    objectId: string,
+    policy: (typeof this.objectAccess)[number]['inherited'],
+  ) {
+    const object = this.objectAccess.find((item) => item.objectId === objectId);
+    if (object) object.override = structuredClone(policy);
+    return Promise.resolve();
+  }
+  deleteMemberObjectAccess(_memberId: string, objectId: string) {
+    const object = this.objectAccess.find((item) => item.objectId === objectId);
+    if (object) object.override = null;
+    return Promise.resolve();
+  }
+  appendAudit(event: AuditEvent) {
+    this.audits.push(event);
     return Promise.resolve();
   }
 }
@@ -159,5 +230,106 @@ describe('MembershipsService', () => {
     const { service, store } = serviceFor();
     await service.listInvitations(admin, { cursor: 'invite-20', limit: 20 });
     expect(store.invitationPage).toEqual({ cursor: 'invite-20', limit: 20 });
+  });
+
+  it('only lets tenant admins read member object access', async () => {
+    const { service } = serviceFor();
+    await expect(
+      service.listMemberObjectAccess(
+        { ...admin, role: 'EMPLOYEE' },
+        'member-employee',
+      ),
+    ).rejects.toMatchObject({ code: 'WORKSPACE_FORBIDDEN' });
+  });
+
+  it('joins every published object with inherited and override access', async () => {
+    const { service } = serviceFor();
+    const result = await service.listMemberObjectAccess(
+      admin,
+      'member-employee',
+    );
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({
+      objectId: 'object-leads',
+      mode: 'INHERIT',
+      override: null,
+      effective: { readScope: 'OWN' },
+    });
+    expect(result[1]).toMatchObject({
+      objectId: 'object-customers',
+      mode: 'OVERRIDE',
+      effective: { readScope: 'OWN' },
+    });
+  });
+
+  it('requires an active employee target and active published object', async () => {
+    const { service, store } = serviceFor();
+    store.targetMember.status = 'DISABLED';
+    await expect(
+      service.setMemberObjectAccess(
+        admin,
+        'member-employee',
+        'object-leads',
+        { mode: 'INHERIT' },
+        { requestId: 'req-access' },
+      ),
+    ).rejects.toMatchObject({ code: 'MEMBERSHIP_INACTIVE' });
+
+    store.targetMember.status = 'ACTIVE';
+    await expect(
+      service.setMemberObjectAccess(
+        admin,
+        'member-employee',
+        'object-missing',
+        { mode: 'INHERIT' },
+        { requestId: 'req-access' },
+      ),
+    ).rejects.toMatchObject({ code: 'OBJECT_NOT_FOUND' });
+  });
+
+  it('replaces a complete override, restores inheritance, and audits both', async () => {
+    const { service, store } = serviceFor();
+    const overridden = await service.setMemberObjectAccess(
+      admin,
+      'member-employee',
+      'object-leads',
+      {
+        mode: 'OVERRIDE',
+        canCreate: false,
+        canRead: false,
+        canUpdate: false,
+        readScope: 'NONE',
+        updateScope: 'NONE',
+      },
+      { requestId: 'req-override' },
+    );
+    expect(overridden).toMatchObject({
+      mode: 'OVERRIDE',
+      override: { canDelete: false, readScope: 'NONE' },
+      effective: { canDelete: false, readScope: 'NONE' },
+    });
+
+    const inherited = await service.setMemberObjectAccess(
+      admin,
+      'member-employee',
+      'object-leads',
+      { mode: 'INHERIT' },
+      { requestId: 'req-inherit' },
+    );
+    expect(inherited).toMatchObject({
+      mode: 'INHERIT',
+      override: null,
+      effective: { readScope: 'OWN' },
+    });
+    expect(store.audits).toEqual([
+      expect.objectContaining({
+        action: 'membership.object_access_changed',
+        requestId: 'req-override',
+      }),
+      expect.objectContaining({
+        action: 'membership.object_access_changed',
+        requestId: 'req-inherit',
+      }),
+    ]);
   });
 });

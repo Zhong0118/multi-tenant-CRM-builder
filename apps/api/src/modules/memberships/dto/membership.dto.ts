@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsIn,
+  IsBoolean,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -9,6 +10,7 @@ import {
   IsUUID,
   Max,
   Min,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateInvitationDto {
@@ -25,6 +27,37 @@ export class ChangeMemberStatusDto {
   @ApiProperty({ enum: ['ACTIVE', 'DISABLED'] })
   @IsIn(['ACTIVE', 'DISABLED'])
   status!: 'ACTIVE' | 'DISABLED';
+}
+
+export class MemberObjectAccessDto {
+  @ApiProperty({ enum: ['INHERIT', 'OVERRIDE'] })
+  @IsIn(['INHERIT', 'OVERRIDE'])
+  mode!: 'INHERIT' | 'OVERRIDE';
+
+  @ApiPropertyOptional()
+  @ValidateIf((value: MemberObjectAccessDto) => value.mode === 'OVERRIDE')
+  @IsBoolean()
+  canCreate?: boolean;
+
+  @ApiPropertyOptional()
+  @ValidateIf((value: MemberObjectAccessDto) => value.mode === 'OVERRIDE')
+  @IsBoolean()
+  canRead?: boolean;
+
+  @ApiPropertyOptional()
+  @ValidateIf((value: MemberObjectAccessDto) => value.mode === 'OVERRIDE')
+  @IsBoolean()
+  canUpdate?: boolean;
+
+  @ApiPropertyOptional({ enum: ['ALL', 'OWN', 'NONE'] })
+  @ValidateIf((value: MemberObjectAccessDto) => value.mode === 'OVERRIDE')
+  @IsIn(['ALL', 'OWN', 'NONE'])
+  readScope?: 'ALL' | 'OWN' | 'NONE';
+
+  @ApiPropertyOptional({ enum: ['ALL', 'OWN', 'NONE'] })
+  @ValidateIf((value: MemberObjectAccessDto) => value.mode === 'OVERRIDE')
+  @IsIn(['ALL', 'OWN', 'NONE'])
+  updateScope?: 'ALL' | 'OWN' | 'NONE';
 }
 
 export class InvitationPageQueryDto {
@@ -90,6 +123,31 @@ export class TenantMemberPageResponseDto {
   @ApiProperty({ minimum: 1, maximum: 100 }) limit!: number;
   @ApiProperty({ minimum: 0 }) total!: number;
   @ApiProperty({ minimum: 0 }) activeAdminCount!: number;
+}
+
+export class MemberObjectPolicyResponseDto {
+  @ApiProperty() canCreate!: boolean;
+  @ApiProperty() canRead!: boolean;
+  @ApiProperty() canUpdate!: boolean;
+  @ApiProperty({ enum: [false] }) canDelete!: false;
+  @ApiProperty({ enum: ['ALL', 'OWN', 'NONE'] })
+  readScope!: 'ALL' | 'OWN' | 'NONE';
+  @ApiProperty({ enum: ['ALL', 'OWN', 'NONE'] })
+  updateScope!: 'ALL' | 'OWN' | 'NONE';
+}
+
+export class MemberObjectAccessResponseDto {
+  @ApiProperty({ format: 'uuid' }) objectId!: string;
+  @ApiProperty() objectCode!: string;
+  @ApiProperty() objectName!: string;
+  @ApiProperty({ enum: ['INHERIT', 'OVERRIDE'] })
+  mode!: 'INHERIT' | 'OVERRIDE';
+  @ApiProperty({ type: MemberObjectPolicyResponseDto })
+  inherited!: MemberObjectPolicyResponseDto;
+  @ApiProperty({ type: MemberObjectPolicyResponseDto, nullable: true })
+  override!: MemberObjectPolicyResponseDto | null;
+  @ApiProperty({ type: MemberObjectPolicyResponseDto })
+  effective!: MemberObjectPolicyResponseDto;
 }
 
 export class TenantInvitationResponseDto {

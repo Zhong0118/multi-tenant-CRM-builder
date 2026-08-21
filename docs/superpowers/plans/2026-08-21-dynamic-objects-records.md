@@ -413,11 +413,11 @@ git commit -m "feat(records): add published-schema CRUD"
 - Consumes: published objects and `ObjectPermission` MEMBER rows.
 - Produces: `GET /workspaces/:tenantCode/members/:memberId/object-access`, `PUT /workspaces/:tenantCode/members/:memberId/object-access/:objectId`, inherited/override response, immediate resolver behavior.
 
-- [ ] **Step 1: Write failing membership tests**
+- [x] **Step 1: Write failing membership tests**
 
 Assert only tenant admins can read/change access, the GET result joins every active published object with inherited and optional override values, target is an active employee in the same tenant, object is currently published/active, `mode: INHERIT` deletes the MEMBER row, `mode: OVERRIDE` replaces the entire action/scope policy, employee delete remains false, and every change writes audit.
 
-- [ ] **Step 2: Run RED and implement**
+- [x] **Step 2: Run RED and implement**
 
 ```bash
 pnpm --filter @crm/api test -- memberships.service.spec.ts
@@ -438,7 +438,7 @@ type MemberObjectAccessInput =
     };
 ```
 
-- [ ] **Step 3: Extend E2E and commit**
+- [x] **Step 3: Extend E2E and commit**
 
 Change an employee from published OWN access to a NONE override and assert the next schema/record request is rejected without republishing. Restore INHERIT and assert access returns.
 

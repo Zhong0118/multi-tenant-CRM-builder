@@ -30,6 +30,12 @@ interface RecordApiResponse {
   version: number;
 }
 
+interface MemberObjectAccessApiResponse {
+  mode: 'INHERIT' | 'OVERRIDE';
+  override: Record<string, unknown> | null;
+  effective: Record<string, unknown>;
+}
+
 describe('Dynamic records API (e2e)', () => {
   let app: INestApplication<App>;
   let adminDatabase: PrismaClient;
@@ -172,6 +178,59 @@ describe('Dynamic records API (e2e)', () => {
       200, 409,
     ]);
 
+    const accessPath = `/api/v1/workspaces/${tenantCode}/members/${fixture.employeeMemberId}/object-access/${fixture.objectId}`;
+    await request(app.getHttpServer())
+      .put(accessPath)
+      .set('Cookie', fixture.adminCookie)
+      .set('Origin', origin)
+      .send({
+        mode: 'OVERRIDE',
+        canCreate: false,
+        canRead: false,
+        canUpdate: false,
+        readScope: 'NONE',
+        updateScope: 'NONE',
+      })
+      .expect(200)
+      .expect((response) => {
+        const body = parseMemberObjectAccess(response.body as unknown);
+        expect(body).toMatchObject({
+          mode: 'OVERRIDE',
+          effective: { canRead: false, readScope: 'NONE' },
+        });
+      });
+    await request(app.getHttpServer())
+      .get(`/api/v1/workspaces/${tenantCode}/objects/${objectCode}/schema`)
+      .set('Cookie', fixture.employeeCookie)
+      .expect(403);
+    await request(app.getHttpServer())
+      .get(`/api/v1/workspaces/${tenantCode}/objects/${objectCode}/records`)
+      .set('Cookie', fixture.employeeCookie)
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .put(accessPath)
+      .set('Cookie', fixture.adminCookie)
+      .set('Origin', origin)
+      .send({ mode: 'INHERIT' })
+      .expect(200)
+      .expect((response) => {
+        const body = parseMemberObjectAccess(response.body as unknown);
+        expect(body).toMatchObject({
+          mode: 'INHERIT',
+          override: null,
+          effective: { canRead: true, readScope: 'OWN' },
+        });
+      });
+    await request(app.getHttpServer())
+      .get(`/api/v1/workspaces/${tenantCode}/objects/${objectCode}/schema`)
+      .set('Cookie', fixture.employeeCookie)
+      .expect(200);
+    await request(app.getHttpServer())
+      .get(`/api/v1/workspaces/${tenantCode}/objects/${objectCode}/records`)
+      .set('Cookie', fixture.employeeCookie)
+      .expect(200);
+
     const stored = await adminDatabase.record.findUniqueOrThrow({
       where: { id: owned.id },
     });
@@ -244,6 +303,24 @@ function parseRecordResponse(value: unknown): RecordApiResponse {
     ownerMemberId: value.ownerMemberId,
     values: value.values,
     version: value.version,
+  };
+}
+
+function parseMemberObjectAccess(
+  value: unknown,
+): MemberObjectAccessApiResponse {
+  if (
+    !isRecord(value) ||
+    (value.mode !== 'INHERIT' && value.mode !== 'OVERRIDE') ||
+    (value.override !== null && !isRecord(value.override)) ||
+    !isRecord(value.effective)
+  ) {
+    throw new Error('Expected a member object access response');
+  }
+  return {
+    mode: value.mode,
+    override: value.override,
+    effective: value.effective,
   };
 }
 

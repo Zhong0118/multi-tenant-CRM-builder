@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   UseGuards,
@@ -37,13 +38,18 @@ import {
   InvitationPageResponseDto,
   InvitationPageQueryDto,
   InvitationResentResponseDto,
+  MemberObjectAccessDto,
+  MemberObjectAccessResponseDto,
   MembershipActionResponseDto,
   MemberPageQueryDto,
   TenantMemberResponseDto,
   TenantMemberPageResponseDto,
   WorkspaceSummaryResponseDto,
 } from './dto';
-import { MembershipsService } from './memberships.service';
+import {
+  MembershipsService,
+  type MemberObjectAccessInput,
+} from './memberships.service';
 
 interface RequestWithId extends Request {
   requestId?: string;
@@ -151,8 +157,65 @@ export class MembershipsController {
       requestMeta(request),
     );
   }
+
+  @Get('workspaces/:tenantCode/members/:memberId/object-access')
+  @UseGuards(SessionAuthGuard, WorkspaceGuard)
+  @ApiParam({ name: 'tenantCode' })
+  @ApiParam({ name: 'memberId', format: 'uuid' })
+  @ApiOkResponse({ type: MemberObjectAccessResponseDto, isArray: true })
+  memberObjectAccess(
+    @CurrentTenant() context: TenantContext,
+    @Param('memberId') memberId: string,
+  ) {
+    return this.memberships.listMemberObjectAccess(context, memberId);
+  }
+
+  @Put('workspaces/:tenantCode/members/:memberId/object-access/:objectId')
+  @UseGuards(SessionAuthGuard, WorkspaceGuard)
+  @ApiParam({ name: 'tenantCode' })
+  @ApiParam({ name: 'memberId', format: 'uuid' })
+  @ApiParam({ name: 'objectId', format: 'uuid' })
+  @ApiOkResponse({ type: MemberObjectAccessResponseDto })
+  setMemberObjectAccess(
+    @CurrentTenant() context: TenantContext,
+    @Param('memberId') memberId: string,
+    @Param('objectId') objectId: string,
+    @Body() dto: MemberObjectAccessDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.memberships.setMemberObjectAccess(
+      context,
+      memberId,
+      objectId,
+      toMemberObjectAccessInput(dto),
+      requestMeta(request),
+    );
+  }
 }
 
 function requestMeta(request: RequestWithId) {
   return { requestId: request.requestId ?? 'req_unknown', ip: request.ip };
+}
+
+function toMemberObjectAccessInput(
+  dto: MemberObjectAccessDto,
+): MemberObjectAccessInput {
+  if (dto.mode === 'INHERIT') return { mode: 'INHERIT' };
+  if (
+    dto.canCreate === undefined ||
+    dto.canRead === undefined ||
+    dto.canUpdate === undefined ||
+    dto.readScope === undefined ||
+    dto.updateScope === undefined
+  ) {
+    throw new Error('Validated member object access DTO is incomplete');
+  }
+  return {
+    mode: 'OVERRIDE',
+    canCreate: dto.canCreate,
+    canRead: dto.canRead,
+    canUpdate: dto.canUpdate,
+    readScope: dto.readScope,
+    updateScope: dto.updateScope,
+  };
 }

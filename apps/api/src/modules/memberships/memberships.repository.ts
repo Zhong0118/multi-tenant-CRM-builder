@@ -9,12 +9,15 @@ import type {
 import { ApiException } from '../../common/errors/api.exception';
 import { DatabaseService } from '../../infrastructure/database/database.service';
 import { AuditService } from '../audit/audit.service';
+import { parsePublishedObjectSchema } from '../objects/published-object.service';
 import type {
   InvitationPage,
   InvitationPageQuery,
   MemberPageQuery,
   MembershipsRepository,
   MembershipStore,
+  MemberObjectAccessSource,
+  MemberObjectPolicy,
   TenantMemberSummary,
   WorkspaceSummary,
 } from './memberships.service';
@@ -223,6 +226,103 @@ class PrismaMembershipStore implements MembershipStore {
       role: member.role,
       status: member.status,
     };
+  }
+
+  async listPublishedObjectAccess(
+    memberId: string,
+  ): Promise<MemberObjectAccessSource[]> {
+    const objects = await this.transaction.objectDefinition.findMany({
+      where: {
+        tenantId: this.tenantId,
+        status: 'ACTIVE',
+        activePublicationId: { not: null },
+        deletedAt: null,
+      },
+      include: {
+        activePublication: { select: { configuration: true } },
+        permissions: {
+          where: {
+            subjectType: 'MEMBER',
+            subjectMemberId: memberId,
+          },
+          take: 1,
+        },
+      },
+      orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
+    });
+    return objects.map((object) => {
+      const schema = parsePublishedObjectSchema(
+        object.activePublication?.configuration,
+      );
+      const override = object.permissions[0];
+      return {
+        objectId: object.id,
+        objectCode: object.code,
+        objectName: object.name,
+        inherited: {
+          canCreate: schema.employeeAccess.canCreate,
+          canRead: schema.employeeAccess.canRead,
+          canUpdate: schema.employeeAccess.canUpdate,
+          canDelete: false,
+          readScope: schema.employeeAccess.readScope,
+          updateScope: schema.employeeAccess.updateScope,
+        },
+        override: override
+          ? {
+              canCreate: override.canCreate,
+              canRead: override.canRead,
+              canUpdate: override.canUpdate,
+              canDelete: false,
+              readScope: override.readScope,
+              updateScope: override.updateScope,
+            }
+          : null,
+      };
+    });
+  }
+
+  async replaceMemberObjectAccess(
+    memberId: string,
+    objectId: string,
+    policy: MemberObjectPolicy,
+  ): Promise<void> {
+    await this.transaction.objectPermission.deleteMany({
+      where: {
+        tenantId: this.tenantId,
+        objectId,
+        subjectType: 'MEMBER',
+        subjectMemberId: memberId,
+      },
+    });
+    await this.transaction.objectPermission.create({
+      data: {
+        tenantId: this.tenantId,
+        objectId,
+        subjectType: 'MEMBER',
+        subjectRole: null,
+        subjectMemberId: memberId,
+        canCreate: policy.canCreate,
+        canRead: policy.canRead,
+        canUpdate: policy.canUpdate,
+        canDelete: false,
+        readScope: policy.readScope,
+        updateScope: policy.updateScope,
+      },
+    });
+  }
+
+  async deleteMemberObjectAccess(
+    memberId: string,
+    objectId: string,
+  ): Promise<void> {
+    await this.transaction.objectPermission.deleteMany({
+      where: {
+        tenantId: this.tenantId,
+        objectId,
+        subjectType: 'MEMBER',
+        subjectMemberId: memberId,
+      },
+    });
   }
 
   findInvitation(id: string): Promise<{ id: string; status: string } | null> {
