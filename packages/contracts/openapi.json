@@ -659,6 +659,280 @@
         "required": ["accepted"],
         "type": "object"
       },
+      "ObjectDraftDefaultViewResponseDto": {
+        "properties": {
+          "columnFieldKeys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/DefaultViewSortDto"
+          }
+        },
+        "required": ["name", "columnFieldKeys", "sort"],
+        "type": "object"
+      },
+      "ObjectDraftEmployeeAccessResponseDto": {
+        "properties": {
+          "canCreate": {
+            "type": "boolean"
+          },
+          "canDelete": {
+            "enum": [false],
+            "type": "boolean"
+          },
+          "canRead": {
+            "type": "boolean"
+          },
+          "canUpdate": {
+            "type": "boolean"
+          },
+          "readScope": {
+            "enum": ["ALL", "OWN", "NONE"],
+            "type": "string"
+          },
+          "updateScope": {
+            "enum": ["ALL", "OWN", "NONE"],
+            "type": "string"
+          }
+        },
+        "required": [
+          "canCreate",
+          "canRead",
+          "canUpdate",
+          "canDelete",
+          "readScope",
+          "updateScope"
+        ],
+        "type": "object"
+      },
+      "ObjectDraftFieldResponseDto": {
+        "properties": {
+          "config": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "defaultValue": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "employeeAccess": {
+            "enum": ["EDIT", "READ_ONLY", "HIDDEN"],
+            "type": "string"
+          },
+          "fieldKey": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isSystem": {
+            "type": "boolean"
+          },
+          "label": {
+            "type": "string"
+          },
+          "publishedType": {
+            "enum": [
+              "TEXT",
+              "TEXTAREA",
+              "PHONE",
+              "EMAIL",
+              "NUMBER",
+              "MONEY",
+              "DATE",
+              "DATETIME",
+              "SINGLE_SELECT",
+              "MULTI_SELECT",
+              "MEMBER",
+              "BOOLEAN"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "number"
+          },
+          "status": {
+            "enum": ["ACTIVE", "INACTIVE"],
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "TEXT",
+              "TEXTAREA",
+              "PHONE",
+              "EMAIL",
+              "NUMBER",
+              "MONEY",
+              "DATE",
+              "DATETIME",
+              "SINGLE_SELECT",
+              "MULTI_SELECT",
+              "MEMBER",
+              "BOOLEAN"
+            ],
+            "type": "string"
+          },
+          "validation": {
+            "additionalProperties": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "fieldKey",
+          "label",
+          "type",
+          "required",
+          "defaultValue",
+          "validation",
+          "config",
+          "sortOrder",
+          "isSystem",
+          "status",
+          "publishedType",
+          "employeeAccess"
+        ],
+        "type": "object"
+      },
+      "ObjectDraftObjectResponseDto": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "description": {
+            "nullable": true,
+            "type": "string"
+          },
+          "hasUnpublishedChanges": {
+            "type": "boolean"
+          },
+          "icon": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "publicationNumber": {
+            "nullable": true,
+            "type": "number"
+          },
+          "publishedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "number"
+          },
+          "status": {
+            "enum": ["DRAFT", "ACTIVE", "ARCHIVED"],
+            "type": "string"
+          },
+          "titleFieldKey": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "description",
+          "titleFieldKey",
+          "icon",
+          "sortOrder",
+          "version",
+          "status",
+          "publicationNumber",
+          "publishedAt",
+          "hasUnpublishedChanges",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "ObjectDraftResponseDto": {
+        "properties": {
+          "activeRecordCount": {
+            "type": "number"
+          },
+          "defaultView": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ObjectDraftDefaultViewResponseDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "employeeAccess": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ObjectDraftEmployeeAccessResponseDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/ObjectDraftFieldResponseDto"
+            },
+            "type": "array"
+          },
+          "object": {
+            "$ref": "#/components/schemas/ObjectDraftObjectResponseDto"
+          }
+        },
+        "required": [
+          "object",
+          "fields",
+          "defaultView",
+          "employeeAccess",
+          "activeRecordCount"
+        ],
+        "type": "object"
+      },
       "ObjectOrderDto": {
         "properties": {
           "items": {
@@ -683,6 +957,38 @@
           }
         },
         "required": ["expectedVersion", "objectId"],
+        "type": "object"
+      },
+      "ObjectPublicationResponseDto": {
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/PublicationChangeResponseDto"
+            },
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "number": {
+            "type": "number"
+          },
+          "publishedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "sourceDraftVersion": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "sourceDraftVersion",
+          "publishedAt",
+          "changes"
+        ],
         "type": "object"
       },
       "PersonalInvitationResponseDto": {
@@ -804,6 +1110,58 @@
           }
         },
         "required": ["id", "name", "code", "status", "activeAdminCount"],
+        "type": "object"
+      },
+      "PublicationAnalysisResponseDto": {
+        "properties": {
+          "blocking": {
+            "items": {
+              "$ref": "#/components/schemas/PublicationIssueResponseDto"
+            },
+            "type": "array"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/PublicationChangeResponseDto"
+            },
+            "type": "array"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/PublicationIssueResponseDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["blocking", "warnings", "changes"],
+        "type": "object"
+      },
+      "PublicationChangeResponseDto": {
+        "properties": {
+          "fieldKey": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": ["ADDED", "UPDATED", "INACTIVATED"],
+            "type": "string"
+          }
+        },
+        "required": ["kind", "fieldKey"],
+        "type": "object"
+      },
+      "PublicationIssueResponseDto": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "fieldKey": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": ["code", "message"],
         "type": "object"
       },
       "PublishedFieldResponseDto": {
@@ -2518,7 +2876,17 @@
         ],
         "responses": {
           "200": {
-            "description": "对象草稿列表"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ObjectDraftResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
           }
         },
         "security": [
@@ -2552,7 +2920,14 @@
         },
         "responses": {
           "201": {
-            "description": "已创建对象草稿"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectDraftResponseDto"
+                }
+              }
+            },
+            "description": ""
           }
         },
         "security": [
@@ -2588,7 +2963,17 @@
         },
         "responses": {
           "200": {
-            "description": "已更新对象排序"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ObjectDraftResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
           }
         },
         "security": [
@@ -2623,7 +3008,14 @@
         ],
         "responses": {
           "200": {
-            "description": "对象草稿详情"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectDraftResponseDto"
+                }
+              }
+            },
+            "description": ""
           }
         },
         "security": [
@@ -2665,7 +3057,14 @@
         },
         "responses": {
           "200": {
-            "description": "已更新对象草稿"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectDraftResponseDto"
+                }
+              }
+            },
+            "description": ""
           }
         },
         "security": [
@@ -2709,7 +3108,14 @@
         },
         "responses": {
           "200": {
-            "description": "已归档对象"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectDraftResponseDto"
+                }
+              }
+            },
+            "description": ""
           }
         },
         "security": [
@@ -2753,7 +3159,14 @@
         },
         "responses": {
           "200": {
-            "description": "已更新默认视图"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectDraftResponseDto"
+                }
+              }
+            },
+            "description": ""
           }
         },
         "security": [
@@ -2797,7 +3210,14 @@
         },
         "responses": {
           "200": {
-            "description": "已更新字段排序"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectDraftResponseDto"
+                }
+              }
+            },
+            "description": ""
           }
         },
         "security": [
@@ -2841,7 +3261,14 @@
         },
         "responses": {
           "201": {
-            "description": "已创建字段"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectDraftResponseDto"
+                }
+              }
+            },
+            "description": ""
           }
         },
         "security": [
@@ -2893,7 +3320,14 @@
         },
         "responses": {
           "200": {
-            "description": "已更新字段"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectDraftResponseDto"
+                }
+              }
+            },
+            "description": ""
           }
         },
         "security": [
@@ -2937,7 +3371,14 @@
         },
         "responses": {
           "200": {
-            "description": "已更新员工角色权限"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectDraftResponseDto"
+                }
+              }
+            },
+            "description": ""
           }
         },
         "security": [
@@ -2981,7 +3422,14 @@
         },
         "responses": {
           "200": {
-            "description": "发布前分析结果"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationAnalysisResponseDto"
+                }
+              }
+            },
+            "description": ""
           }
         },
         "security": [
@@ -3015,7 +3463,17 @@
         ],
         "responses": {
           "200": {
-            "description": "对象发布历史"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ObjectPublicationResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
           }
         },
         "security": [
@@ -3057,7 +3515,14 @@
         },
         "responses": {
           "201": {
-            "description": "已发布对象配置快照"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectPublicationResponseDto"
+                }
+              }
+            },
+            "description": ""
           }
         },
         "security": [

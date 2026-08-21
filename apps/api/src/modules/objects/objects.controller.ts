@@ -29,12 +29,19 @@ import {
   EmployeePermissionsDto,
   ExpectedVersionDto,
   FieldOrderDto,
+  ObjectDraftResponseDto,
   ObjectOrderDto,
+  ObjectPublicationResponseDto,
+  PublicationAnalysisResponseDto,
   PublishedObjectSchemaResponseDto,
   RuntimeObjectNavigationResponseDto,
   UpdateFieldDefinitionDto,
   UpdateObjectDefinitionDto,
 } from './dto';
+import {
+  toObjectDraftResponse,
+  toObjectPublicationResponse,
+} from './object-draft.presenter';
 import type { JsonValue } from './object-schema';
 import { ObjectsService } from './objects.service';
 import { PublishedObjectService } from './published-object.service';
@@ -75,144 +82,164 @@ export class ObjectsController {
   }
 
   @Get('object-definitions')
-  @ApiOkResponse({ description: '对象草稿列表' })
-  list(@CurrentTenant() context: TenantContext) {
-    return this.objects.list(context);
+  @ApiOkResponse({ type: ObjectDraftResponseDto, isArray: true })
+  async list(@CurrentTenant() context: TenantContext) {
+    const drafts = await this.objects.list(context);
+    return drafts.map(toObjectDraftResponse);
   }
 
   @Post('object-definitions')
-  @ApiCreatedResponse({ description: '已创建对象草稿' })
-  create(
+  @ApiCreatedResponse({ type: ObjectDraftResponseDto })
+  async create(
     @CurrentTenant() context: TenantContext,
     @Body() dto: CreateObjectDefinitionDto,
     @Req() request: RequestWithId,
   ) {
-    return this.objects.create(context, dto, requestMeta(request));
+    return toObjectDraftResponse(
+      await this.objects.create(context, dto, requestMeta(request)),
+    );
   }
 
   @Put('object-definitions/order')
-  @ApiOkResponse({ description: '已更新对象排序' })
-  reorderObjects(
+  @ApiOkResponse({ type: ObjectDraftResponseDto, isArray: true })
+  async reorderObjects(
     @CurrentTenant() context: TenantContext,
     @Body() dto: ObjectOrderDto,
     @Req() request: RequestWithId,
   ) {
-    return this.objects.reorderObjects(context, dto, requestMeta(request));
+    const drafts = await this.objects.reorderObjects(
+      context,
+      dto,
+      requestMeta(request),
+    );
+    return drafts.map(toObjectDraftResponse);
   }
 
   @Get('object-definitions/:objectId')
   @ApiParam({ name: 'objectId', format: 'uuid' })
-  @ApiOkResponse({ description: '对象草稿详情' })
-  detail(
+  @ApiOkResponse({ type: ObjectDraftResponseDto })
+  async detail(
     @CurrentTenant() context: TenantContext,
     @Param('objectId') objectId: string,
   ) {
-    return this.objects.detail(context, objectId);
+    return toObjectDraftResponse(await this.objects.detail(context, objectId));
   }
 
   @Patch('object-definitions/:objectId')
-  @ApiOkResponse({ description: '已更新对象草稿' })
-  update(
+  @ApiOkResponse({ type: ObjectDraftResponseDto })
+  async update(
     @CurrentTenant() context: TenantContext,
     @Param('objectId') objectId: string,
     @Body() dto: UpdateObjectDefinitionDto,
     @Req() request: RequestWithId,
   ) {
-    return this.objects.update(context, objectId, dto, requestMeta(request));
+    return toObjectDraftResponse(
+      await this.objects.update(context, objectId, dto, requestMeta(request)),
+    );
   }
 
   @Post('object-definitions/:objectId/fields')
-  @ApiCreatedResponse({ description: '已创建字段' })
-  createField(
+  @ApiCreatedResponse({ type: ObjectDraftResponseDto })
+  async createField(
     @CurrentTenant() context: TenantContext,
     @Param('objectId') objectId: string,
     @Body() dto: CreateFieldDefinitionDto,
     @Req() request: RequestWithId,
   ) {
-    return this.objects.createField(
-      context,
-      objectId,
-      {
-        ...dto,
-        validation: toJsonRecord(dto.validation),
-        config: toJsonRecord(dto.config),
-      },
-      requestMeta(request),
+    return toObjectDraftResponse(
+      await this.objects.createField(
+        context,
+        objectId,
+        {
+          ...dto,
+          validation: toJsonRecord(dto.validation),
+          config: toJsonRecord(dto.config),
+        },
+        requestMeta(request),
+      ),
     );
   }
 
   @Patch('object-definitions/:objectId/fields/:fieldId')
-  @ApiOkResponse({ description: '已更新字段' })
-  updateField(
+  @ApiOkResponse({ type: ObjectDraftResponseDto })
+  async updateField(
     @CurrentTenant() context: TenantContext,
     @Param('objectId') objectId: string,
     @Param('fieldId') fieldId: string,
     @Body() dto: UpdateFieldDefinitionDto,
     @Req() request: RequestWithId,
   ) {
-    return this.objects.updateField(
-      context,
-      objectId,
-      fieldId,
-      {
-        ...dto,
-        validation: dto.validation ? toJsonRecord(dto.validation) : undefined,
-        config: dto.config ? toJsonRecord(dto.config) : undefined,
-      },
-      requestMeta(request),
+    return toObjectDraftResponse(
+      await this.objects.updateField(
+        context,
+        objectId,
+        fieldId,
+        {
+          ...dto,
+          validation: dto.validation ? toJsonRecord(dto.validation) : undefined,
+          config: dto.config ? toJsonRecord(dto.config) : undefined,
+        },
+        requestMeta(request),
+      ),
     );
   }
 
   @Put('object-definitions/:objectId/field-order')
-  @ApiOkResponse({ description: '已更新字段排序' })
-  reorderFields(
+  @ApiOkResponse({ type: ObjectDraftResponseDto })
+  async reorderFields(
     @CurrentTenant() context: TenantContext,
     @Param('objectId') objectId: string,
     @Body() dto: FieldOrderDto,
     @Req() request: RequestWithId,
   ) {
-    return this.objects.reorderFields(
-      context,
-      objectId,
-      dto,
-      requestMeta(request),
+    return toObjectDraftResponse(
+      await this.objects.reorderFields(
+        context,
+        objectId,
+        dto,
+        requestMeta(request),
+      ),
     );
   }
 
   @Put('object-definitions/:objectId/default-view')
-  @ApiOkResponse({ description: '已更新默认视图' })
-  updateDefaultView(
+  @ApiOkResponse({ type: ObjectDraftResponseDto })
+  async updateDefaultView(
     @CurrentTenant() context: TenantContext,
     @Param('objectId') objectId: string,
     @Body() dto: DefaultViewDto,
     @Req() request: RequestWithId,
   ) {
-    return this.objects.updateDefaultView(
-      context,
-      objectId,
-      dto,
-      requestMeta(request),
+    return toObjectDraftResponse(
+      await this.objects.updateDefaultView(
+        context,
+        objectId,
+        dto,
+        requestMeta(request),
+      ),
     );
   }
 
   @Put('object-definitions/:objectId/permissions')
-  @ApiOkResponse({ description: '已更新员工角色权限' })
-  updatePermissions(
+  @ApiOkResponse({ type: ObjectDraftResponseDto })
+  async updatePermissions(
     @CurrentTenant() context: TenantContext,
     @Param('objectId') objectId: string,
     @Body() dto: EmployeePermissionsDto,
     @Req() request: RequestWithId,
   ) {
-    return this.objects.updatePermissions(
-      context,
-      objectId,
-      dto,
-      requestMeta(request),
+    return toObjectDraftResponse(
+      await this.objects.updatePermissions(
+        context,
+        objectId,
+        dto,
+        requestMeta(request),
+      ),
     );
   }
 
   @Post('object-definitions/:objectId/publication-analysis')
-  @ApiOkResponse({ description: '发布前分析结果' })
+  @ApiOkResponse({ type: PublicationAnalysisResponseDto })
   analyzePublication(
     @CurrentTenant() context: TenantContext,
     @Param('objectId') objectId: string,
@@ -222,34 +249,39 @@ export class ObjectsController {
   }
 
   @Post('object-definitions/:objectId/publications')
-  @ApiCreatedResponse({ description: '已发布对象配置快照' })
-  publish(
+  @ApiCreatedResponse({ type: ObjectPublicationResponseDto })
+  async publish(
     @CurrentTenant() context: TenantContext,
     @Param('objectId') objectId: string,
     @Body() dto: ExpectedVersionDto,
     @Req() request: RequestWithId,
   ) {
-    return this.objects.publish(context, objectId, dto, requestMeta(request));
+    return toObjectPublicationResponse(
+      await this.objects.publish(context, objectId, dto, requestMeta(request)),
+    );
   }
 
   @Get('object-definitions/:objectId/publications')
-  @ApiOkResponse({ description: '对象发布历史' })
-  publications(
+  @ApiOkResponse({ type: ObjectPublicationResponseDto, isArray: true })
+  async publications(
     @CurrentTenant() context: TenantContext,
     @Param('objectId') objectId: string,
   ) {
-    return this.objects.listPublications(context, objectId);
+    const publications = await this.objects.listPublications(context, objectId);
+    return publications.map(toObjectPublicationResponse);
   }
 
   @Post('object-definitions/:objectId/archive')
-  @ApiOkResponse({ description: '已归档对象' })
-  archive(
+  @ApiOkResponse({ type: ObjectDraftResponseDto })
+  async archive(
     @CurrentTenant() context: TenantContext,
     @Param('objectId') objectId: string,
     @Body() dto: ExpectedVersionDto,
     @Req() request: RequestWithId,
   ) {
-    return this.objects.archive(context, objectId, dto, requestMeta(request));
+    return toObjectDraftResponse(
+      await this.objects.archive(context, objectId, dto, requestMeta(request)),
+    );
   }
 }
 

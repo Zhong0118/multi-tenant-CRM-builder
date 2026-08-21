@@ -370,3 +370,114 @@ export class PublishedObjectSchemaResponseDto {
   @ApiProperty({ type: 'object', additionalProperties: true }) actions!: object;
   @ApiProperty({ type: 'object', additionalProperties: true }) scopes!: object;
 }
+
+/**
+ * Object draft responses for the tenant-admin designer. `ATTACHMENT` exists in
+ * the database enum but no route accepts it in this slice, so the response
+ * enum stays the supported field types.
+ */
+export class ObjectDraftObjectResponseDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiProperty() code!: string;
+  @ApiProperty() name!: string;
+  @ApiProperty({ type: String, nullable: true })
+  description!: string | null;
+  @ApiProperty() titleFieldKey!: string;
+  @ApiProperty({ type: String, nullable: true }) icon!: string | null;
+  @ApiProperty() sortOrder!: number;
+  @ApiProperty() version!: number;
+  @ApiProperty({ enum: ['DRAFT', 'ACTIVE', 'ARCHIVED'] })
+  status!: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  @ApiProperty({ type: Number, nullable: true })
+  publicationNumber!: number | null;
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  publishedAt!: string | null;
+  @ApiProperty() hasUnpublishedChanges!: boolean;
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  updatedAt!: string | null;
+}
+
+export class ObjectDraftFieldResponseDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiProperty() fieldKey!: string;
+  @ApiProperty() label!: string;
+  @ApiProperty({ enum: FIELD_TYPES }) type!: string;
+  @ApiProperty() required!: boolean;
+  @ApiProperty(JSON_VALUE_SCHEMA) defaultValue!: unknown;
+  @ApiProperty({ type: 'object', additionalProperties: true })
+  validation!: object;
+  @ApiProperty({ type: 'object', additionalProperties: true }) config!: object;
+  @ApiProperty() sortOrder!: number;
+  @ApiProperty() isSystem!: boolean;
+  @ApiProperty({ enum: ['ACTIVE', 'INACTIVE'] })
+  status!: 'ACTIVE' | 'INACTIVE';
+  @ApiProperty({ type: String, enum: FIELD_TYPES, nullable: true })
+  publishedType!: string | null;
+  @ApiProperty({ enum: ['EDIT', 'READ_ONLY', 'HIDDEN'] })
+  employeeAccess!: 'EDIT' | 'READ_ONLY' | 'HIDDEN';
+}
+
+export class ObjectDraftDefaultViewResponseDto {
+  @ApiProperty() name!: string;
+  @ApiProperty({ type: String, isArray: true }) columnFieldKeys!: string[];
+  @ApiProperty({ type: DefaultViewSortDto }) sort!: DefaultViewSortDto;
+}
+
+export class ObjectDraftEmployeeAccessResponseDto {
+  @ApiProperty() canCreate!: boolean;
+  @ApiProperty() canRead!: boolean;
+  @ApiProperty() canUpdate!: boolean;
+  @ApiProperty({ enum: [false] }) canDelete!: false;
+  @ApiProperty({ enum: ['ALL', 'OWN', 'NONE'] })
+  readScope!: 'ALL' | 'OWN' | 'NONE';
+  @ApiProperty({ enum: ['ALL', 'OWN', 'NONE'] })
+  updateScope!: 'ALL' | 'OWN' | 'NONE';
+}
+
+export class ObjectDraftResponseDto {
+  @ApiProperty({ type: ObjectDraftObjectResponseDto })
+  object!: ObjectDraftObjectResponseDto;
+  @ApiProperty({ type: ObjectDraftFieldResponseDto, isArray: true })
+  fields!: ObjectDraftFieldResponseDto[];
+  @ApiProperty({
+    type: ObjectDraftDefaultViewResponseDto,
+    nullable: true,
+  })
+  defaultView!: ObjectDraftDefaultViewResponseDto | null;
+  @ApiProperty({
+    type: ObjectDraftEmployeeAccessResponseDto,
+    nullable: true,
+  })
+  employeeAccess!: ObjectDraftEmployeeAccessResponseDto | null;
+  @ApiProperty() activeRecordCount!: number;
+}
+
+export class PublicationIssueResponseDto {
+  @ApiProperty() code!: string;
+  @ApiProperty() message!: string;
+  @ApiPropertyOptional({ type: String }) fieldKey?: string;
+}
+
+export class PublicationChangeResponseDto {
+  @ApiProperty({ enum: ['ADDED', 'UPDATED', 'INACTIVATED'] })
+  kind!: 'ADDED' | 'UPDATED' | 'INACTIVATED';
+  @ApiProperty() fieldKey!: string;
+}
+
+export class PublicationAnalysisResponseDto {
+  @ApiProperty({ type: PublicationIssueResponseDto, isArray: true })
+  blocking!: PublicationIssueResponseDto[];
+  @ApiProperty({ type: PublicationIssueResponseDto, isArray: true })
+  warnings!: PublicationIssueResponseDto[];
+  @ApiProperty({ type: PublicationChangeResponseDto, isArray: true })
+  changes!: PublicationChangeResponseDto[];
+}
+
+export class ObjectPublicationResponseDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiProperty() number!: number;
+  @ApiProperty() sourceDraftVersion!: number;
+  @ApiProperty({ format: 'date-time' }) publishedAt!: string;
+  @ApiProperty({ type: PublicationChangeResponseDto, isArray: true })
+  changes!: PublicationChangeResponseDto[];
+}

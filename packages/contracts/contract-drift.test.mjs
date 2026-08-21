@@ -173,6 +173,89 @@ test("declares every templated path parameter exactly once", async () => {
   assert.deepEqual(untyped, []);
 });
 
+test("types every object configuration response the designer consumes", async () => {
+  const document = JSON.parse(
+    await readFile(new URL("./openapi.json", import.meta.url), "utf8"),
+  );
+  const schemas = document.components.schemas;
+
+  assert.deepEqual(schemas.ObjectDraftResponseDto.required.toSorted(), [
+    "activeRecordCount",
+    "defaultView",
+    "employeeAccess",
+    "fields",
+    "object",
+  ]);
+
+  // The designer reads derived facts, never the raw published snapshot, so the
+  // browser cannot end up re-interpreting the published configuration.
+  const draftObject = schemas.ObjectDraftObjectResponseDto.properties;
+  assert.equal(draftObject.hasUnpublishedChanges.type, "boolean");
+  assert.equal(draftObject.publicationNumber.type, "number");
+  assert.deepEqual(draftObject.status.enum, ["DRAFT", "ACTIVE", "ARCHIVED"]);
+  assert.equal(
+    schemas.ObjectDraftResponseDto.properties.activeSchema,
+    undefined,
+  );
+
+  // A published field type is locked, so the designer must be told which type
+  // is already live rather than inferring it.
+  const draftField = schemas.ObjectDraftFieldResponseDto.properties;
+  assert.ok(Array.isArray(draftField.publishedType.enum));
+  assert.deepEqual(draftField.status.enum, ["ACTIVE", "INACTIVE"]);
+  assert.deepEqual(draftField.employeeAccess.enum, [
+    "EDIT",
+    "READ_ONLY",
+    "HIDDEN",
+  ]);
+
+  assert.deepEqual(schemas.PublicationAnalysisResponseDto.required.toSorted(), [
+    "blocking",
+    "changes",
+    "warnings",
+  ]);
+  assert.deepEqual(schemas.PublicationChangeResponseDto.properties.kind.enum, [
+    "ADDED",
+    "UPDATED",
+    "INACTIVATED",
+  ]);
+
+  const base = "/api/v1/workspaces/{tenantCode}/object-definitions";
+  const draftRef = { $ref: "#/components/schemas/ObjectDraftResponseDto" };
+  const responseSchema = (path, method, status) =>
+    document.paths[path][method].responses[status].content["application/json"]
+      .schema;
+
+  assert.deepEqual(responseSchema(base, "get", "200"), {
+    items: draftRef,
+    type: "array",
+  });
+  assert.deepEqual(responseSchema(base, "post", "201"), draftRef);
+  assert.deepEqual(
+    responseSchema(`${base}/{objectId}`, "get", "200"),
+    draftRef,
+  );
+  assert.deepEqual(
+    responseSchema(`${base}/{objectId}`, "patch", "200"),
+    draftRef,
+  );
+  assert.deepEqual(
+    responseSchema(`${base}/{objectId}/publication-analysis`, "post", "200"),
+    { $ref: "#/components/schemas/PublicationAnalysisResponseDto" },
+  );
+  assert.deepEqual(
+    responseSchema(`${base}/{objectId}/publications`, "post", "201"),
+    { $ref: "#/components/schemas/ObjectPublicationResponseDto" },
+  );
+  assert.deepEqual(
+    responseSchema(`${base}/{objectId}/publications`, "get", "200"),
+    {
+      items: { $ref: "#/components/schemas/ObjectPublicationResponseDto" },
+      type: "array",
+    },
+  );
+});
+
 test("gives every parameter and property a usable JSON type", async () => {
   const document = JSON.parse(
     await readFile(new URL("./openapi.json", import.meta.url), "utf8"),

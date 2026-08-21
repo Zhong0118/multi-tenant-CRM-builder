@@ -921,6 +921,109 @@ export interface components {
       /** @example true */
       accepted: boolean;
     };
+    ObjectDraftDefaultViewResponseDto: {
+      columnFieldKeys: string[];
+      name: string;
+      sort: components["schemas"]["DefaultViewSortDto"];
+    };
+    ObjectDraftEmployeeAccessResponseDto: {
+      canCreate: boolean;
+      /** @enum {boolean} */
+      canDelete: false;
+      canRead: boolean;
+      canUpdate: boolean;
+      /** @enum {string} */
+      readScope: "ALL" | "OWN" | "NONE";
+      /** @enum {string} */
+      updateScope: "ALL" | "OWN" | "NONE";
+    };
+    ObjectDraftFieldResponseDto: {
+      config: {
+        [key: string]: unknown;
+      };
+      defaultValue:
+        | (
+            | string
+            | number
+            | boolean
+            | unknown[]
+            | {
+                [key: string]: unknown;
+              }
+          )
+        | null;
+      /** @enum {string} */
+      employeeAccess: "EDIT" | "READ_ONLY" | "HIDDEN";
+      fieldKey: string;
+      /** Format: uuid */
+      id: string;
+      isSystem: boolean;
+      label: string;
+      /** @enum {string|null} */
+      publishedType:
+        | "TEXT"
+        | "TEXTAREA"
+        | "PHONE"
+        | "EMAIL"
+        | "NUMBER"
+        | "MONEY"
+        | "DATE"
+        | "DATETIME"
+        | "SINGLE_SELECT"
+        | "MULTI_SELECT"
+        | "MEMBER"
+        | "BOOLEAN"
+        | null;
+      required: boolean;
+      sortOrder: number;
+      /** @enum {string} */
+      status: "ACTIVE" | "INACTIVE";
+      /** @enum {string} */
+      type:
+        | "TEXT"
+        | "TEXTAREA"
+        | "PHONE"
+        | "EMAIL"
+        | "NUMBER"
+        | "MONEY"
+        | "DATE"
+        | "DATETIME"
+        | "SINGLE_SELECT"
+        | "MULTI_SELECT"
+        | "MEMBER"
+        | "BOOLEAN";
+      validation: {
+        [key: string]: unknown;
+      };
+    };
+    ObjectDraftObjectResponseDto: {
+      code: string;
+      description: string | null;
+      hasUnpublishedChanges: boolean;
+      icon: string | null;
+      /** Format: uuid */
+      id: string;
+      name: string;
+      publicationNumber: number | null;
+      /** Format: date-time */
+      publishedAt: string | null;
+      sortOrder: number;
+      /** @enum {string} */
+      status: "DRAFT" | "ACTIVE" | "ARCHIVED";
+      titleFieldKey: string;
+      /** Format: date-time */
+      updatedAt: string | null;
+      version: number;
+    };
+    ObjectDraftResponseDto: {
+      activeRecordCount: number;
+      defaultView:
+        components["schemas"]["ObjectDraftDefaultViewResponseDto"] | null;
+      employeeAccess:
+        components["schemas"]["ObjectDraftEmployeeAccessResponseDto"] | null;
+      fields: components["schemas"]["ObjectDraftFieldResponseDto"][];
+      object: components["schemas"]["ObjectDraftObjectResponseDto"];
+    };
     ObjectOrderDto: {
       items: components["schemas"]["ObjectOrderItemDto"][];
     };
@@ -928,6 +1031,15 @@ export interface components {
       expectedVersion: number;
       /** Format: uuid */
       objectId: string;
+    };
+    ObjectPublicationResponseDto: {
+      changes: components["schemas"]["PublicationChangeResponseDto"][];
+      /** Format: uuid */
+      id: string;
+      number: number;
+      /** Format: date-time */
+      publishedAt: string;
+      sourceDraftVersion: number;
     };
     PersonalInvitationResponseDto: {
       /** Format: uuid */
@@ -972,6 +1084,21 @@ export interface components {
       timezone?: string;
       /** Format: date-time */
       updatedAt?: string;
+    };
+    PublicationAnalysisResponseDto: {
+      blocking: components["schemas"]["PublicationIssueResponseDto"][];
+      changes: components["schemas"]["PublicationChangeResponseDto"][];
+      warnings: components["schemas"]["PublicationIssueResponseDto"][];
+    };
+    PublicationChangeResponseDto: {
+      fieldKey: string;
+      /** @enum {string} */
+      kind: "ADDED" | "UPDATED" | "INACTIVATED";
+    };
+    PublicationIssueResponseDto: {
+      code: string;
+      fieldKey?: string;
+      message: string;
     };
     PublishedFieldResponseDto: {
       /** @enum {string} */
@@ -1884,12 +2011,13 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description 对象草稿列表 */
       200: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"][];
+        };
       };
     };
   };
@@ -1908,12 +2036,13 @@ export interface operations {
       };
     };
     responses: {
-      /** @description 已创建对象草稿 */
       201: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"];
+        };
       };
     };
   };
@@ -1929,12 +2058,13 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description 对象草稿详情 */
       200: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"];
+        };
       };
     };
   };
@@ -1954,12 +2084,13 @@ export interface operations {
       };
     };
     responses: {
-      /** @description 已更新对象草稿 */
       200: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"];
+        };
       };
     };
   };
@@ -1979,12 +2110,13 @@ export interface operations {
       };
     };
     responses: {
-      /** @description 已归档对象 */
       200: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"];
+        };
       };
     };
   };
@@ -2004,12 +2136,13 @@ export interface operations {
       };
     };
     responses: {
-      /** @description 已更新默认视图 */
       200: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"];
+        };
       };
     };
   };
@@ -2029,12 +2162,13 @@ export interface operations {
       };
     };
     responses: {
-      /** @description 已更新字段排序 */
       200: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"];
+        };
       };
     };
   };
@@ -2054,12 +2188,13 @@ export interface operations {
       };
     };
     responses: {
-      /** @description 已创建字段 */
       201: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"];
+        };
       };
     };
   };
@@ -2080,12 +2215,13 @@ export interface operations {
       };
     };
     responses: {
-      /** @description 已更新字段 */
       200: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"];
+        };
       };
     };
   };
@@ -2105,12 +2241,13 @@ export interface operations {
       };
     };
     responses: {
-      /** @description 已更新员工角色权限 */
       200: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"];
+        };
       };
     };
   };
@@ -2130,12 +2267,13 @@ export interface operations {
       };
     };
     responses: {
-      /** @description 发布前分析结果 */
       200: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["PublicationAnalysisResponseDto"];
+        };
       };
     };
   };
@@ -2151,12 +2289,13 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description 对象发布历史 */
       200: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ObjectPublicationResponseDto"][];
+        };
       };
     };
   };
@@ -2176,12 +2315,13 @@ export interface operations {
       };
     };
     responses: {
-      /** @description 已发布对象配置快照 */
       201: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ObjectPublicationResponseDto"];
+        };
       };
     };
   };
@@ -2200,12 +2340,13 @@ export interface operations {
       };
     };
     responses: {
-      /** @description 已更新对象排序 */
       200: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"][];
+        };
       };
     };
   };
