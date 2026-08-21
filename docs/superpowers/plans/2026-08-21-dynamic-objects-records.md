@@ -653,11 +653,11 @@ git commit -m "feat(web): add dynamic record workspace"
 - Consumes: member list, accessible published objects for admins, member override endpoint.
 - Produces: inherited-versus-override permission matrix and navigation from member management.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Assert employees show an “访问权限” link, admins do not receive editable downgrade controls, each published object shows inherited values, switching to override reveals the complete action/scope form, save replaces the whole policy, switching back to inherit deletes override, and copy says the change is immediate.
 
-- [ ] **Step 2: Run RED, implement, verify, commit**
+- [x] **Step 2: Run RED, implement, verify, commit**
 
 ```bash
 pnpm --filter @crm/web test:unit -- member-object-access.test.tsx member-table.test.tsx

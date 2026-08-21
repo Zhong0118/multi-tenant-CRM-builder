@@ -175,4 +175,26 @@ describe("MemberTable", () => {
       "/workspace/northwind/members?page=2",
     );
   });
+
+  it("offers object access only for employees, who are the ones it can restrict", () => {
+    renderWithQuery(
+      <MemberTable
+        tenantCode="northwind"
+        viewerRole="TENANT_ADMIN"
+        initialMemberPage={initialMemberPage}
+        initialInvitationPage={{ items: invitations }}
+        api={memberApi()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("link", { name: "访问权限 林员工" }),
+    ).toHaveAttribute(
+      "href",
+      "/workspace/northwind/members/member-employee/access",
+    );
+    expect(
+      screen.queryByRole("link", { name: "访问权限 陈管理员" }),
+    ).not.toBeInTheDocument();
+  });
 });

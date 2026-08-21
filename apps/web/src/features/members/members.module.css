@@ -88,3 +88,45 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Member object access: one panel per published object. */
+.accessList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.accessPanel {
+  padding: 16px 20px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--paper);
+}
+.accessPanelHeader {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+.accessCode {
+  margin-left: 8px;
+  color: var(--ink-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.accessInherited {
+  margin: 8px 0 0;
+  color: var(--ink-secondary);
+  font-size: 13px;
+}
+.accessGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0 20px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+.accessGrid :global(.ant-select) {
+  width: 100%;
+}

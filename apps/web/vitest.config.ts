@@ -16,5 +16,10 @@ export default defineConfig({
     environment: "jsdom",
     exclude: ["architecture-contract.test.mjs", "node_modules/**"],
     setupFiles: ["./src/test/setup.ts"],
+    // Ant Design component trees are slow to render under jsdom, and slower
+    // still when the whole suite competes for workers. The default 5s trips on
+    // table rows carrying popconfirms and links even though the assertions
+    // themselves are synchronous.
+    testTimeout: 20000,
   },
 });

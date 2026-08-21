@@ -4,6 +4,7 @@ import type { components } from "@crm/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Popconfirm, Result, Space, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -244,33 +245,47 @@ export function MemberTable({
           member.status === "ACTIVE" &&
           member.role === "TENANT_ADMIN" &&
           activeAdminCount <= 1;
-        return member.status === "ACTIVE" ? (
-          <Popconfirm
-            title={`确认停用 ${member.displayName ?? "该成员"}？`}
-            description="该成员现有会话将在下一次工作空间请求时失效。"
-            disabled={protectsFinalAdmin}
-            onConfirm={() =>
-              memberMutation.mutate({ id: member.id, status: "DISABLED" })
-            }
-          >
-            <Button
-              danger
-              type="link"
-              disabled={protectsFinalAdmin}
-              aria-label={`停用 ${member.displayName ?? "该成员"}`}
-            >
-              停用
-            </Button>
-          </Popconfirm>
-        ) : (
-          <Button
-            type="link"
-            onClick={() =>
-              memberMutation.mutate({ id: member.id, status: "ACTIVE" })
-            }
-          >
-            恢复
-          </Button>
+        return (
+          <Space>
+            {/* Only an employee's access can be restricted: an administrator
+                holds fixed full access on every published object. */}
+            {member.role === "EMPLOYEE" && member.status === "ACTIVE" ? (
+              <Link
+                href={`/workspace/${tenantCode}/members/${member.id}/access`}
+                aria-label={`访问权限 ${member.displayName ?? "该成员"}`}
+              >
+                访问权限
+              </Link>
+            ) : null}
+            {member.status === "ACTIVE" ? (
+              <Popconfirm
+                title={`确认停用 ${member.displayName ?? "该成员"}？`}
+                description="该成员现有会话将在下一次工作空间请求时失效。"
+                disabled={protectsFinalAdmin}
+                onConfirm={() =>
+                  memberMutation.mutate({ id: member.id, status: "DISABLED" })
+                }
+              >
+                <Button
+                  danger
+                  type="link"
+                  disabled={protectsFinalAdmin}
+                  aria-label={`停用 ${member.displayName ?? "该成员"}`}
+                >
+                  停用
+                </Button>
+              </Popconfirm>
+            ) : (
+              <Button
+                type="link"
+                onClick={() =>
+                  memberMutation.mutate({ id: member.id, status: "ACTIVE" })
+                }
+              >
+                恢复
+              </Button>
+            )}
+          </Space>
         );
       },
     },
