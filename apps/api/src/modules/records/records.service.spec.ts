@@ -1,0 +1,458 @@
+import type { TenantContext } from '../../common/tenancy/tenant-context';
+import type { AuditEvent } from '../audit/audit-event';
+import type { PublishedObjectSchema } from '../objects/object-schema';
+import type {
+  PublishedObjectRecord,
+  PublishedObjectRepository,
+} from '../objects/published-object.repository';
+import { PublishedObjectService } from '../objects/published-object.service';
+import type {
+  DynamicRecord,
+  RecordListQuery,
+  RecordsRepository,
+  RecordsStore,
+} from './records.repository';
+import { RecordsService } from './records.service';
+
+const admin: TenantContext = {
+  userId: 'user-admin',
+  tenantId: 'tenant-a',
+  tenantCode: 'baijie',
+  memberId: '018f47a2-4b5c-7d8e-9f01-111111111111',
+  role: 'TENANT_ADMIN',
+};
+
+const employee: TenantContext = {
+  ...admin,
+  userId: 'user-employee',
+  memberId: '018f47a2-4b5c-7d8e-9f01-222222222222',
+  role: 'EMPLOYEE',
+};
+
+const otherMemberId = '018f47a2-4b5c-7d8e-9f01-333333333333';
+const meta = { requestId: 'req-record', ip: '127.0.0.1' };
+
+function publishedSchema(): PublishedObjectSchema {
+  return {
+    publication: {
+      id: 'publication-leads',
+      number: 1,
+      sourceDraftVersion: 4,
+      publishedAt: '2026-08-21T10:00:00.000Z',
+    },
+    object: {
+      id: 'object-leads',
+      code: 'leads',
+      name: '销售线索',
+      description: null,
+      titleFieldKey: 'name',
+      icon: 'contacts',
+      sortOrder: 10,
+    },
+    fields: [
+      {
+        id: 'field-name',
+        fieldKey: 'name',
+        label: '姓名',
+        type: 'TEXT',
+        required: true,
+        defaultValue: null,
+        validation: { maxLength: 100 },
+        config: {},
+        sortOrder: 10,
+        isSystem: false,
+      },
+      {
+        id: 'field-email',
+        fieldKey: 'email',
+        label: '邮箱',
+        type: 'EMAIL',
+        required: false,
+        defaultValue: null,
+        validation: {},
+        config: {},
+        sortOrder: 20,
+        isSystem: false,
+      },
+      {
+        id: 'field-secret',
+        fieldKey: 'secret',
+        label: '内部备注',
+        type: 'TEXTAREA',
+        required: false,
+        defaultValue: null,
+        validation: {},
+        config: {},
+        sortOrder: 30,
+        isSystem: false,
+      },
+    ],
+    defaultView: {
+      code: 'default',
+      name: '全部线索',
+      columnFieldKeys: ['name', 'email'],
+      sort: { field: 'updatedAt', direction: 'desc' },
+    },
+    employeeAccess: {
+      canCreate: true,
+      canRead: true,
+      canUpdate: true,
+      canDelete: false,
+      readScope: 'OWN',
+      updateScope: 'OWN',
+      fields: { name: 'EDIT', email: 'EDIT', secret: 'HIDDEN' },
+    },
+  };
+}
+
+class MemoryPublishedRepository implements PublishedObjectRepository {
+  readonly record: PublishedObjectRecord = {
+    id: 'object-leads',
+    code: 'leads',
+    status: 'ACTIVE',
+    sortOrder: 10,
+    configuration: publishedSchema(),
+  };
+
+  list(): Promise<PublishedObjectRecord[]> {
+    return Promise.resolve([structuredClone(this.record)]);
+  }
+
+  findByCode(_context: TenantContext, code: string) {
+    return Promise.resolve(
+      code === this.record.code ? structuredClone(this.record) : null,
+    );
+  }
+}
+
+class MemoryRecordsStore implements RecordsStore {
+  records: DynamicRecord[] = [];
+  members = new Set([admin.memberId, employee.memberId, otherMemberId]);
+  audits: AuditEvent[] = [];
+  nextRecordNo = 1n;
+
+  memberExists(memberId: string): Promise<boolean> {
+    return Promise.resolve(this.members.has(memberId));
+  }
+
+  allocateRecordNo(): Promise<bigint> {
+    const allocated = this.nextRecordNo;
+    this.nextRecordNo += 1n;
+    return Promise.resolve(allocated);
+  }
+
+  createRecord(record: DynamicRecord): Promise<DynamicRecord> {
+    this.records.push(structuredClone(record));
+    return Promise.resolve(structuredClone(record));
+  }
+
+  listRecords(query: RecordListQuery) {
+    const filtered = this.records
+      .filter(
+        (record) =>
+          record.objectId === query.objectId &&
+          record.deletedAt === null &&
+          (!query.ownerMemberId ||
+            record.ownerMemberId === query.ownerMemberId) &&
+          (!query.search ||
+            record.title.toLowerCase().includes(query.search.toLowerCase())),
+      )
+      .sort((left, right) => compareRecords(left, right, query));
+    return Promise.resolve({
+      items: structuredClone(
+        filtered.slice(
+          (query.page - 1) * query.limit,
+          query.page * query.limit,
+        ),
+      ),
+      total: filtered.length,
+    });
+  }
+
+  findRecord(
+    objectId: string,
+    recordId: string,
+  ): Promise<DynamicRecord | null> {
+    return Promise.resolve(
+      structuredClone(
+        this.records.find(
+          (record) =>
+            record.objectId === objectId &&
+            record.id === recordId &&
+            record.deletedAt === null,
+        ) ?? null,
+      ),
+    );
+  }
+
+  updateRecord(
+    recordId: string,
+    expectedVersion: number,
+    input: {
+      values: Record<string, unknown>;
+      title: string;
+      ownerMemberId: string | null;
+    },
+  ): Promise<DynamicRecord | null> {
+    const record = this.records.find(
+      (candidate) => candidate.id === recordId && candidate.deletedAt === null,
+    );
+    if (!record || record.version !== expectedVersion)
+      return Promise.resolve(null);
+    record.values = structuredClone(input.values);
+    record.title = input.title;
+    record.ownerMemberId = input.ownerMemberId;
+    record.version += 1;
+    record.updatedAt = '2026-08-21T11:00:00.000Z';
+    return Promise.resolve(structuredClone(record));
+  }
+
+  softDeleteRecord(
+    recordId: string,
+    expectedVersion: number,
+    deletedAt: string,
+  ): Promise<boolean> {
+    const record = this.records.find(
+      (candidate) => candidate.id === recordId && candidate.deletedAt === null,
+    );
+    if (!record || record.version !== expectedVersion)
+      return Promise.resolve(false);
+    record.deletedAt = deletedAt;
+    record.version += 1;
+    return Promise.resolve(true);
+  }
+
+  appendAudit(event: AuditEvent): Promise<void> {
+    this.audits.push(structuredClone(event));
+    return Promise.resolve();
+  }
+}
+
+class MemoryRecordsRepository implements RecordsRepository {
+  constructor(readonly store: MemoryRecordsStore) {}
+
+  withTenant<T>(
+    _context: TenantContext,
+    work: (store: RecordsStore) => Promise<T>,
+  ): Promise<T> {
+    return work(this.store);
+  }
+}
+
+function compareRecords(
+  left: DynamicRecord,
+  right: DynamicRecord,
+  query: RecordListQuery,
+): number {
+  const direction = query.direction === 'asc' ? 1 : -1;
+  const leftValue =
+    query.sort === 'recordNo' ? left.recordNo : left[query.sort];
+  const rightValue =
+    query.sort === 'recordNo' ? right.recordNo : right[query.sort];
+  if (leftValue < rightValue) return -1 * direction;
+  if (leftValue > rightValue) return direction;
+  return left.id.localeCompare(right.id) * direction;
+}
+
+function fixture() {
+  const publishedRepository = new MemoryPublishedRepository();
+  const publishedObjects = new PublishedObjectService(publishedRepository);
+  const store = new MemoryRecordsStore();
+  const repository = new MemoryRecordsRepository(store);
+  let id = 0;
+  const service = new RecordsService(
+    repository,
+    publishedObjects,
+    () => new Date('2026-08-21T10:30:00.000Z'),
+    () => `record-${++id}`,
+  );
+  return { service, store, publishedRepository };
+}
+
+async function create(
+  service: RecordsService,
+  context: TenantContext,
+  name: string,
+  ownerMemberId?: string,
+  extraValues: Record<string, unknown> = {},
+) {
+  return service.create(
+    context,
+    'leads',
+    { values: { name, ...extraValues }, ownerMemberId },
+    meta,
+  );
+}
+
+describe('RecordsService', () => {
+  it('enforces CREATE action permission', async () => {
+    const { service, publishedRepository } = fixture();
+    const configuration = publishedRepository.record
+      .configuration as PublishedObjectSchema;
+    configuration.employeeAccess.canCreate = false;
+
+    await expect(create(service, employee, '张三')).rejects.toMatchObject({
+      code: 'OBJECT_ACTION_FORBIDDEN',
+    });
+  });
+
+  it('validates an admin-selected owner and forces employee ownership to self', async () => {
+    const { service } = fixture();
+
+    await expect(
+      create(
+        service,
+        admin,
+        '无效负责人',
+        '018f47a2-4b5c-7d8e-9f01-999999999999',
+      ),
+    ).rejects.toMatchObject({ code: 'OWNER_INVALID' });
+    await expect(
+      create(service, employee, '员工线索', otherMemberId),
+    ).resolves.toMatchObject({ ownerMemberId: employee.memberId });
+  });
+
+  it('enforces OWN scope for list, detail, and update', async () => {
+    const { service } = fixture();
+    const own = await create(
+      service,
+      admin,
+      '员工自己的线索',
+      employee.memberId,
+    );
+    const other = await create(service, admin, '其他人的线索', otherMemberId);
+
+    const page = await service.list(employee, 'leads', {
+      page: 1,
+      limit: 20,
+      sort: 'updatedAt',
+      direction: 'desc',
+    });
+    expect(page.items.map((record) => record.id)).toEqual([own.id]);
+    await expect(
+      service.detail(employee, 'leads', own.id),
+    ).resolves.toMatchObject({
+      id: own.id,
+    });
+    await expect(
+      service.detail(employee, 'leads', other.id),
+    ).rejects.toMatchObject({
+      code: 'RECORD_NOT_FOUND',
+    });
+    await expect(
+      service.update(
+        employee,
+        'leads',
+        other.id,
+        { version: other.version, values: { name: '伪造修改' } },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+  });
+
+  it('uses stable pagination, title search, owner filter, and requested sort', async () => {
+    const { service } = fixture();
+    await create(service, admin, 'Beta', employee.memberId);
+    await create(service, admin, 'Alpha', employee.memberId);
+    await create(service, admin, 'Other', otherMemberId);
+
+    const page = await service.list(admin, 'leads', {
+      page: 1,
+      limit: 1,
+      search: 'a',
+      ownerMemberId: employee.memberId,
+      sort: 'recordNo',
+      direction: 'asc',
+    });
+    expect(page).toMatchObject({ page: 1, limit: 1, total: 2 });
+    expect(page.items.map((record) => record.title)).toEqual(['Beta']);
+  });
+
+  it('normalizes writes, hides response fields, and retains server values in audit', async () => {
+    const { service, store } = fixture();
+    const created = await create(service, admin, '张三', employee.memberId, {
+      email: 'USER@EXAMPLE.COM',
+      secret: '仅管理员可见',
+    });
+    expect(created.values).toEqual({
+      name: '张三',
+      email: 'user@example.com',
+      secret: '仅管理员可见',
+    });
+
+    const visible = await service.detail(employee, 'leads', created.id);
+    expect(visible.values).toEqual({ name: '张三', email: 'user@example.com' });
+    const updated = await service.update(
+      employee,
+      'leads',
+      created.id,
+      { version: created.version, values: { name: '张三（更新）' } },
+      meta,
+    );
+    expect(updated.values).toEqual({
+      name: '张三（更新）',
+      email: 'user@example.com',
+    });
+    const updateAudit = store.audits.find(
+      (event) => event.action === 'record.updated',
+    );
+    expect(updateAudit?.after).toMatchObject({
+      values: {
+        name: '张三（更新）',
+        email: 'user@example.com',
+        secret: '仅管理员可见',
+      },
+    });
+  });
+
+  it('returns RECORD_VERSION_CONFLICT for stale updates', async () => {
+    const { service } = fixture();
+    const record = await create(service, employee, '张三');
+
+    await expect(
+      service.update(
+        employee,
+        'leads',
+        record.id,
+        { version: record.version + 1, values: { name: '过期写入' } },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'RECORD_VERSION_CONFLICT' });
+  });
+
+  it('allows only admins to soft delete and never returns deleted records', async () => {
+    const { service } = fixture();
+    const record = await create(service, admin, '待删除', employee.memberId);
+
+    await expect(
+      service.remove(
+        employee,
+        'leads',
+        record.id,
+        { version: record.version },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
+    await expect(
+      service.remove(
+        admin,
+        'leads',
+        record.id,
+        { version: record.version },
+        meta,
+      ),
+    ).resolves.toEqual({ accepted: true });
+    await expect(
+      service.detail(admin, 'leads', record.id),
+    ).rejects.toMatchObject({
+      code: 'RECORD_NOT_FOUND',
+    });
+  });
+
+  it('uses RECORD_NOT_FOUND without revealing missing record existence', async () => {
+    const { service } = fixture();
+    await expect(
+      service.detail(employee, 'leads', 'record-missing'),
+    ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+  });
+});

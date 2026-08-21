@@ -363,25 +363,25 @@ git commit -m "feat(objects): resolve accessible published schemas"
 - Consumes: `PublishedObjectService`, `RecordValueEngine`, `ContextRunner`, Prisma `Record/RecordCounter`, `AuditService`.
 - Produces: nested record list/create/read/update/delete routes and permission-projected response DTOs.
 
-- [ ] **Step 1: Write failing service behavior tests**
+- [x] **Step 1: Write failing service behavior tests**
 
 Assert CREATE action, admin owner validation, employee owner forced to self, OWN list/read/update, stable page/limit/sort, title search, hidden projection, optimistic update conflict, soft delete admin-only, record-not-found privacy, and audit before/after values excluding hidden data from response but retaining server-side audited normalized values.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 pnpm --filter @crm/api test -- records.service.spec.ts
 ```
 
-- [ ] **Step 3: Implement repository and record numbers**
+- [x] **Step 3: Implement repository and record numbers**
 
 Create record in one tenant transaction. Lock/upsert `record_counters`, allocate the current number, increment, insert record with `statusKey: null`, and append audit. List predicates include tenant/object/deleted, access OWN predicate, title search, optional owner for admins, and an ID tie-breaker after requested sort.
 
-- [ ] **Step 4: Implement DTO/controller**
+- [x] **Step 4: Implement DTO/controller**
 
 Use JSON object validation for `values`, UUID validation for owner, and integer constraints for version/page/limit. PATCH missing values preserve current values; explicit null reaches the value engine. DELETE responds `{ accepted: true }`.
 
-- [ ] **Step 5: Write and run API E2E**
+- [x] **Step 5: Write and run API E2E**
 
 The E2E provisions platform admin, tenant admin, employee, a published object, and records. Prove cross-tenant denial, OWN scope, hidden/read-only handling, concurrent record numbers, and optimistic update conflict through HTTP rather than direct service calls.
 
