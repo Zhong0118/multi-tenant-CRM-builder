@@ -270,29 +270,29 @@ git commit -m "feat(records): validate dynamic values and access"
 - Consumes: Task 1 Prisma models, Task 2 compiler, `TenantContext`, `AuditService`.
 - Produces: every configuration route in spec section 7.1 except live member override; `OBJECTS_REPOSITORY` interface and transactional Prisma adapter.
 
-- [ ] **Step 1: Write failing service tests**
+- [x] **Step 1: Write failing service tests**
 
 Test tenant-admin-only mutation, normalized lowercase object code, duplicate conflict, optimistic draft update, stable key/type after first publication, field inactivation instead of deletion, deterministic field and object reorder, publication analysis, blocked publish, serial publication numbers, active publication pointer update, archive rules, and audit event contents. Use an in-memory repository that implements the exact production repository interface; assert returned behavior, not mock call existence.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 pnpm --filter @crm/api test -- objects.service.spec.ts
 ```
 
-- [ ] **Step 3: Implement DTOs**
+- [x] **Step 3: Implement DTOs**
 
 DTOs expose controlled properties only. Define separate discriminated field config DTOs; reject unknown properties globally. `CreateObjectDefinitionDto` contains `name`, lowercase `code`, optional controlled icon. `PublishObjectDto` and analysis DTO contain only `expectedVersion`.
 
-- [ ] **Step 4: Implement repository transactions**
+- [x] **Step 4: Implement repository transactions**
 
 Every repository entry uses `DatabaseContextRunner.withTenant(context, work)`. `publish` locks the object row, reloads the complete draft, repeats analysis, inserts publication and audit, then updates `activePublicationId/status/publishedAt` atomically. Use a SQL increment/query for publication number under the same object lock.
 
-- [ ] **Step 5: Implement controllers and remove shallow placeholder modules**
+- [x] **Step 5: Implement controllers and remove shallow placeholder modules**
 
 Register configuration routes under `workspaces/:tenantCode/object-definitions`, including `PUT /object-definitions/order`, guarded by `SessionAuthGuard` and `WorkspaceGuard`; service enforces `TENANT_ADMIN`. Remove `FieldsModule`, `ViewsModule`, and `PermissionsModule` imports from `AppModule` and delete their nine empty controller/module/service files listed above because field, view, and permission behavior now lives behind the Objects module interface. Keep each existing `dto/index.ts` as an empty reserved directory marker required by the repository architecture.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 ```bash
 pnpm --filter @crm/api test -- objects.service.spec.ts

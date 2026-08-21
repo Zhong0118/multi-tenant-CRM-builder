@@ -34,6 +34,6 @@ import {
       useValue: () => randomBytes(32).toString('base64url'),
     },
   ],
-  exports: [MembershipsService],
+  exports: [MembershipsService, WorkspaceGuard, WORKSPACE_RESOLVER],
 })
 export class MembershipsModule {}

@@ -12,12 +12,9 @@ import { TenantsService } from './modules/tenants/tenants.service';
 import { InvitationsService } from './modules/invitations/invitations.service';
 import { MembershipsService } from './modules/memberships/memberships.service';
 import { ObjectsService } from './modules/objects/objects.service';
-import { FieldsService } from './modules/fields/fields.service';
-import { ViewsService } from './modules/views/views.service';
 
 process.env.NODE_ENV = 'test';
 process.env.DEV_VERIFICATION_CODE = '123456';
-import { PermissionsService } from './modules/permissions/permissions.service';
 import { RecordsService } from './modules/records/records.service';
 import { DashboardsService } from './modules/dashboards/dashboards.service';
 import { ImportsService } from './modules/imports/imports.service';
@@ -31,9 +28,6 @@ const services = [
   InvitationsService,
   MembershipsService,
   ObjectsService,
-  FieldsService,
-  ViewsService,
-  PermissionsService,
   RecordsService,
   DashboardsService,
   ImportsService,
