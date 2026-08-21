@@ -36,3 +36,165 @@
   font-size: 12px !important;
   white-space: nowrap;
 }
+
+/* Record register. Same ledger discipline as the object designer: dense rows,
+   hairline rules, monospace identifiers, no boxes competing with the data. */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+}
+
+.listHeader {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.listHeader h1 {
+  margin: 0 0 4px;
+  color: var(--ledger-ink);
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 650;
+}
+
+.listHeader p {
+  max-width: 68ch;
+  color: var(--ink-secondary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.listToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.searchInput {
+  width: 260px;
+}
+
+.ownerFilter {
+  width: 200px;
+}
+
+.register {
+  border-top: 2px solid var(--ledger-ink);
+}
+
+.register :global(.ant-table) {
+  background: transparent;
+}
+
+.register :global(.ant-table-thead > tr > th) {
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  border-bottom: 1px solid var(--rule) !important;
+  font-family: var(--font-label);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.register :global(.ant-table-tbody > tr > td) {
+  border-bottom: 1px solid var(--rule) !important;
+}
+
+/* Record numbers are compared down the column, so they stay monospace. */
+.recordNo {
+  color: var(--ink-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.recordTitle {
+  color: var(--working-blue);
+  font-weight: 550;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Four to eight fields per row group, per the interaction baseline. */
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0 24px;
+}
+
+.detailTitle {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.detailFields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px 24px;
+  border-top: 1px solid var(--rule);
+  padding-top: 16px;
+}
+
+.detailField dt {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-bottom: 2px;
+  color: var(--ink-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.detailField dd {
+  color: var(--ledger-ink);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.detailLock {
+  color: var(--review-amber);
+  font-size: 12px;
+}
+
+.detailMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+
+/* Below the tablet breakpoint a 640px drawer would be wider than the screen. */
+@media (max-width: 767px) {
+  .detailDrawer :global(.ant-drawer-content-wrapper) {
+    width: 100vw !important;
+  }
+
+  .list {
+    padding: 16px;
+  }
+
+  .searchInput,
+  .ownerFilter {
+    width: 100%;
+  }
+}
+
+/* Ant Design's number, picker and select roots size to content, which breaks
+   the grid rhythm; every control fills its cell. */
+.formGrid :global(.ant-input-number),
+.formGrid :global(.ant-picker),
+.formGrid :global(.ant-select) {
+  width: 100%;
+}

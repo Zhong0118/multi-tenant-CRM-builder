@@ -1,0 +1,103 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  DEFAULT_RECORD_QUERY,
+  parseRecordQuery,
+  recordQuerySearch,
+} from "./record-query-state";
+
+describe("parseRecordQuery", () => {
+  it("falls back to the stable defaults when nothing is in the URL", () => {
+    expect(parseRecordQuery({})).toEqual(DEFAULT_RECORD_QUERY);
+  });
+
+  it("reads a complete query from the URL", () => {
+    expect(
+      parseRecordQuery({
+        page: "3",
+        limit: "50",
+        search: "百杰",
+        ownerMemberId: "member-lin",
+        sort: "recordNo",
+        direction: "asc",
+      }),
+    ).toEqual({
+      page: 3,
+      limit: 50,
+      search: "百杰",
+      ownerMemberId: "member-lin",
+      sort: "recordNo",
+      direction: "asc",
+    });
+  });
+
+  it("refuses a page or limit the API would reject", () => {
+    expect(parseRecordQuery({ page: "0" }).page).toBe(1);
+    expect(parseRecordQuery({ page: "-2" }).page).toBe(1);
+    expect(parseRecordQuery({ page: "abc" }).page).toBe(1);
+    expect(parseRecordQuery({ limit: "500" }).limit).toBe(100);
+    expect(parseRecordQuery({ limit: "0" }).limit).toBe(
+      DEFAULT_RECORD_QUERY.limit,
+    );
+  });
+
+  it("ignores a sort or direction outside the published options", () => {
+    expect(parseRecordQuery({ sort: "amount" }).sort).toBe(
+      DEFAULT_RECORD_QUERY.sort,
+    );
+    expect(parseRecordQuery({ direction: "sideways" }).direction).toBe(
+      DEFAULT_RECORD_QUERY.direction,
+    );
+  });
+
+  it("drops an empty search rather than filtering on nothing", () => {
+    expect(parseRecordQuery({ search: "   " }).search).toBeUndefined();
+  });
+
+  it("prefers the published default sort when the object supplies one", () => {
+    expect(
+      parseRecordQuery({}, { field: "recordNo", direction: "asc" }),
+    ).toMatchObject({ sort: "recordNo", direction: "asc" });
+  });
+});
+
+describe("recordQuerySearch", () => {
+  it("writes nothing for a query that is entirely default", () => {
+    expect(recordQuerySearch(DEFAULT_RECORD_QUERY)).toBe("");
+  });
+
+  it("writes only what differs from the defaults", () => {
+    expect(
+      recordQuerySearch({ ...DEFAULT_RECORD_QUERY, page: 2, search: "百杰" }),
+    ).toBe("page=2&search=%E7%99%BE%E6%9D%B0");
+  });
+
+  it("round-trips a query through the URL unchanged", () => {
+    const query = {
+      page: 4,
+      limit: 50,
+      search: "上海",
+      ownerMemberId: "member-lin",
+      sort: "createdAt" as const,
+      direction: "asc" as const,
+    };
+    const parsed = parseRecordQuery(
+      Object.fromEntries(new URLSearchParams(recordQuerySearch(query))),
+    );
+
+    expect(parsed).toEqual(query);
+  });
+
+  it("returns to the first page when a filter changes", () => {
+    expect(
+      recordQuerySearch({
+        ...DEFAULT_RECORD_QUERY,
+        page: 5,
+        search: "百杰",
+      }),
+    ).toContain("page=5");
+    expect(recordQuerySearch({ ...DEFAULT_RECORD_QUERY, search: "百杰" })).toBe(
+      "search=%E7%99%BE%E6%9D%B0",
+    );
+  });
+});

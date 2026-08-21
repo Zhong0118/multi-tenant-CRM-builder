@@ -607,25 +607,25 @@ git commit -m "feat(web): add configuration-ledger object designer"
 - Consumes: runtime schema and record API from Task 9.
 - Produces: published-schema-driven list/create/deep-link detail/update/delete UI.
 
-- [ ] **Step 1: Write failing list/query tests**
+- [x] **Step 1: Write failing list/query tests**
 
 Assert server pagination, title search, admin owner filter, OWN page title, URL persistence, default-view visible columns, no create button without access, distinct empty-versus-filter-empty states, and record deep link.
 
-- [ ] **Step 2: Write failing form/detail tests**
+- [x] **Step 2: Write failing form/detail tests**
 
 Assert published field order, values built without hidden fields, read-only normal text, first-error focus, preserved values on API error, owner behavior by role, PATCH version inclusion, conflict reload prompt, desktop 640px drawer, mobile full screen, focus restoration, and admin-only soft-delete confirmation.
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 ```bash
 pnpm --filter @crm/web test:unit -- record-list.test.tsx record-form.test.tsx record-detail-drawer.test.tsx
 ```
 
-- [ ] **Step 4: Implement pages and styling**
+- [x] **Step 4: Implement pages and styling**
 
 Use one primary action per page. Keep table/default columns stable during loading. Use `router.replace` for query state and preserve the list URL when opening/closing detail. Do not show an activity timeline placeholder; show only fields and audit metadata available in this slice.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 ```bash
 pnpm --filter @crm/web test

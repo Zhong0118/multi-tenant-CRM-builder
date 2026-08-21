@@ -83,7 +83,7 @@ function FieldEditor({
   return (
     <Drawer
       open
-      width={480}
+      size={480}
       title={`配置字段 ${field.label}`}
       onClose={onClose}
       destroyOnHidden
@@ -104,141 +104,143 @@ function FieldEditor({
         <Typography.Paragraph type="danger">{error}</Typography.Paragraph>
       ) : null}
 
-      <section className={styles.drawerSection}>
-        <span className={styles.drawerSectionLabel}>显示</span>
-        <Form.Item label="字段名称" htmlFor="field-label">
-          <Input
-            id="field-label"
-            value={values.label}
-            onChange={(event) => patch({ label: event.target.value })}
-          />
-        </Form.Item>
-        <Form.Item
-          label="字段键"
-          htmlFor="field-key"
-          extra="字段键在对象内唯一，发布后不再变更。"
-        >
-          <Input id="field-key" value={field.fieldKey} disabled />
-        </Form.Item>
-        <Form.Item
-          label="辅助说明"
-          htmlFor="field-help"
-          extra="只解释输入规则，不要重复字段名称。"
-        >
-          <Input
-            id="field-help"
-            value={values.help}
-            onChange={(event) => patch({ help: event.target.value })}
-          />
-        </Form.Item>
-      </section>
+      <Form component={false} layout="vertical">
+        <section className={styles.drawerSection}>
+          <span className={styles.drawerSectionLabel}>显示</span>
+          <Form.Item label="字段名称" htmlFor="field-label">
+            <Input
+              id="field-label"
+              value={values.label}
+              onChange={(event) => patch({ label: event.target.value })}
+            />
+          </Form.Item>
+          <Form.Item
+            label="字段键"
+            htmlFor="field-key"
+            extra="字段键在对象内唯一，发布后不再变更。"
+          >
+            <Input id="field-key" value={field.fieldKey} disabled />
+          </Form.Item>
+          <Form.Item
+            label="辅助说明"
+            htmlFor="field-help"
+            extra="只解释输入规则，不要重复字段名称。"
+          >
+            <Input
+              id="field-help"
+              value={values.help}
+              onChange={(event) => patch({ help: event.target.value })}
+            />
+          </Form.Item>
+        </section>
 
-      <section className={styles.drawerSection}>
-        <span className={styles.drawerSectionLabel}>数据类型</span>
-        <Form.Item label="数据类型" htmlFor="field-type">
-          <Select
-            id="field-type"
-            value={values.type}
-            disabled={typeLocked}
-            onChange={(type: PublishedFieldType) => patch({ type })}
-            options={PUBLISHED_FIELD_TYPES.map((type) => ({
-              value: type,
-              label: FIELD_TYPE_LABELS[type],
-            }))}
-          />
-        </Form.Item>
-        {typeLocked ? (
-          <p className={styles.lockNote}>字段发布后不能更改数据类型。</p>
-        ) : null}
-        <Form.Item label="必填" htmlFor="field-required">
-          <Switch
-            id="field-required"
-            aria-label="必填"
-            checked={values.required}
-            onChange={(required) => patch({ required })}
-          />
-        </Form.Item>
-      </section>
+        <section className={styles.drawerSection}>
+          <span className={styles.drawerSectionLabel}>数据类型</span>
+          <Form.Item label="数据类型" htmlFor="field-type">
+            <Select
+              id="field-type"
+              value={values.type}
+              disabled={typeLocked}
+              onChange={(type: PublishedFieldType) => patch({ type })}
+              options={PUBLISHED_FIELD_TYPES.map((type) => ({
+                value: type,
+                label: FIELD_TYPE_LABELS[type],
+              }))}
+            />
+          </Form.Item>
+          {typeLocked ? (
+            <p className={styles.lockNote}>字段发布后不能更改数据类型。</p>
+          ) : null}
+          <Form.Item label="必填" htmlFor="field-required">
+            <Switch
+              id="field-required"
+              aria-label="必填"
+              checked={values.required}
+              onChange={(required) => patch({ required })}
+            />
+          </Form.Item>
+        </section>
 
-      <section className={styles.drawerSection}>
-        <span className={styles.drawerSectionLabel}>
-          {SELECT_TYPES.includes(values.type) ? "选项" : "校验"}
-        </span>
-        {TEXT_TYPES.includes(values.type) ? (
-          <div className={styles.formGrid}>
-            <NumberField
-              id="field-min-length"
-              label="最少字符"
-              value={values.minLength}
-              onChange={(minLength) => patch({ minLength })}
+        <section className={styles.drawerSection}>
+          <span className={styles.drawerSectionLabel}>
+            {SELECT_TYPES.includes(values.type) ? "选项" : "校验"}
+          </span>
+          {TEXT_TYPES.includes(values.type) ? (
+            <div className={styles.formGrid}>
+              <NumberField
+                id="field-min-length"
+                label="最少字符"
+                value={values.minLength}
+                onChange={(minLength) => patch({ minLength })}
+              />
+              <NumberField
+                id="field-max-length"
+                label="最多字符"
+                value={values.maxLength}
+                onChange={(maxLength) => patch({ maxLength })}
+              />
+            </div>
+          ) : null}
+          {NUMERIC_TYPES.includes(values.type) ? (
+            <div className={styles.formGrid}>
+              <NumberField
+                id="field-min"
+                label="最小值"
+                value={values.min}
+                onChange={(min) => patch({ min })}
+              />
+              <NumberField
+                id="field-max"
+                label="最大值"
+                value={values.max}
+                onChange={(max) => patch({ max })}
+              />
+              <NumberField
+                id="field-scale"
+                label="小数位"
+                value={values.scale}
+                onChange={(scale) => patch({ scale })}
+              />
+            </div>
+          ) : null}
+          {SELECT_TYPES.includes(values.type) ? (
+            <OptionEditor
+              options={values.options}
+              onChange={(options) => patch({ options })}
             />
-            <NumberField
-              id="field-max-length"
-              label="最多字符"
-              value={values.maxLength}
-              onChange={(maxLength) => patch({ maxLength })}
-            />
-          </div>
-        ) : null}
-        {NUMERIC_TYPES.includes(values.type) ? (
-          <div className={styles.formGrid}>
-            <NumberField
-              id="field-min"
-              label="最小值"
-              value={values.min}
-              onChange={(min) => patch({ min })}
-            />
-            <NumberField
-              id="field-max"
-              label="最大值"
-              value={values.max}
-              onChange={(max) => patch({ max })}
-            />
-            <NumberField
-              id="field-scale"
-              label="小数位"
-              value={values.scale}
-              onChange={(scale) => patch({ scale })}
-            />
-          </div>
-        ) : null}
-        {SELECT_TYPES.includes(values.type) ? (
-          <OptionEditor
-            options={values.options}
-            onChange={(options) => patch({ options })}
-          />
-        ) : null}
-        {!TEXT_TYPES.includes(values.type) &&
-        !NUMERIC_TYPES.includes(values.type) &&
-        !SELECT_TYPES.includes(values.type) ? (
-          <Typography.Paragraph type="secondary">
-            该类型由服务端按固定规则校验，无需额外配置。
-          </Typography.Paragraph>
-        ) : null}
-      </section>
+          ) : null}
+          {!TEXT_TYPES.includes(values.type) &&
+          !NUMERIC_TYPES.includes(values.type) &&
+          !SELECT_TYPES.includes(values.type) ? (
+            <Typography.Paragraph type="secondary">
+              该类型由服务端按固定规则校验，无需额外配置。
+            </Typography.Paragraph>
+          ) : null}
+        </section>
 
-      <section className={styles.drawerSection}>
-        <span className={styles.drawerSectionLabel}>员工访问</span>
-        <Form.Item
-          label="员工访问级别"
-          htmlFor="field-access"
-          extra="字段权限来自发布版本，成员覆盖不会改变它。"
-        >
-          <Select
-            id="field-access"
-            value={values.employeeAccess}
-            onChange={(employeeAccess: PublishedFieldAccess) =>
-              patch({ employeeAccess })
-            }
-            options={(
-              ["EDIT", "READ_ONLY", "HIDDEN"] as PublishedFieldAccess[]
-            ).map((access) => ({
-              value: access,
-              label: FIELD_ACCESS_LABELS[access],
-            }))}
-          />
-        </Form.Item>
-      </section>
+        <section className={styles.drawerSection}>
+          <span className={styles.drawerSectionLabel}>员工访问</span>
+          <Form.Item
+            label="员工访问级别"
+            htmlFor="field-access"
+            extra="字段权限来自发布版本，成员覆盖不会改变它。"
+          >
+            <Select
+              id="field-access"
+              value={values.employeeAccess}
+              onChange={(employeeAccess: PublishedFieldAccess) =>
+                patch({ employeeAccess })
+              }
+              options={(
+                ["EDIT", "READ_ONLY", "HIDDEN"] as PublishedFieldAccess[]
+              ).map((access) => ({
+                value: access,
+                label: FIELD_ACCESS_LABELS[access],
+              }))}
+            />
+          </Form.Item>
+        </section>
+      </Form>
     </Drawer>
   );
 }

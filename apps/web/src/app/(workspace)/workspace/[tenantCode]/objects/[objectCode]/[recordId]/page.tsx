@@ -1,21 +1,30 @@
 import { RecordWorkspace } from "@/features/records/record-workspace";
 import { parseRecordQuery } from "@/features/records/record-query-state";
 import {
+  loadRecord,
   loadRecordPage,
   loadRuntimeObject,
 } from "@/lib/auth/load-runtime-object";
 import { requireWorkspace } from "@/lib/auth/require-workspace";
 
-export interface ObjectRecordsPageProps {
-  params: Promise<{ tenantCode: string; objectCode: string }>;
+export interface RecordDetailPageProps {
+  params: Promise<{
+    tenantCode: string;
+    objectCode: string;
+    recordId: string;
+  }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function ObjectRecordsPage({
+/**
+ * A record deep link renders the list behind the detail drawer, so closing it
+ * lands back on the same filters and page instead of an empty list.
+ */
+export default async function RecordDetailPage({
   params,
   searchParams,
-}: ObjectRecordsPageProps) {
-  const { tenantCode, objectCode } = await params;
+}: RecordDetailPageProps) {
+  const { tenantCode, objectCode, recordId } = await params;
   const workspace = await requireWorkspace(tenantCode);
   const { schema, members, isAdmin } = await loadRuntimeObject(
     tenantCode,
@@ -23,7 +32,10 @@ export default async function ObjectRecordsPage({
     workspace.role,
   );
   const query = parseRecordQuery(await searchParams, schema.defaultView.sort);
-  const initialPage = await loadRecordPage(tenantCode, objectCode, query);
+  const [initialPage, record] = await Promise.all([
+    loadRecordPage(tenantCode, objectCode, query),
+    loadRecord(tenantCode, objectCode, recordId),
+  ]);
 
   return (
     <RecordWorkspace
@@ -33,6 +45,7 @@ export default async function ObjectRecordsPage({
       initialPage={initialPage}
       members={members}
       isAdmin={isAdmin}
+      openRecord={record}
     />
   );
 }

@@ -401,43 +401,45 @@ function BasicsSection({
       <div className={styles.sectionHeading}>
         <h2>基本设置</h2>
       </div>
-      <Form.Item label="对象名称" htmlFor="object-name">
-        <Input
-          id="object-name"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
-      </Form.Item>
-      <Form.Item
-        label="对象代码"
-        htmlFor="object-code"
-        extra="对象代码在公司内唯一，首次发布后不可修改。"
-      >
-        <Input id="object-code" value={draft.object.code} disabled />
-      </Form.Item>
-      <Form.Item
-        label="标题字段"
-        htmlFor="object-title-field"
-        extra="标题字段必须是必填的文本、电话、邮箱或单选字段。"
-      >
-        <Select
-          id="object-title-field"
-          value={titleFieldKey}
-          onChange={setTitleFieldKey}
-          options={titleCandidates.map((field) => ({
-            value: field.fieldKey,
-            label: `${field.label}（${field.fieldKey}）`,
-          }))}
-        />
-      </Form.Item>
-      <Form.Item label="说明" htmlFor="object-description">
-        <Input.TextArea
-          id="object-description"
-          rows={3}
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-        />
-      </Form.Item>
+      <Form component={false} layout="vertical">
+        <Form.Item label="对象名称" htmlFor="object-name">
+          <Input
+            id="object-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+        </Form.Item>
+        <Form.Item
+          label="对象代码"
+          htmlFor="object-code"
+          extra="对象代码在公司内唯一，首次发布后不可修改。"
+        >
+          <Input id="object-code" value={draft.object.code} disabled />
+        </Form.Item>
+        <Form.Item
+          label="标题字段"
+          htmlFor="object-title-field"
+          extra="标题字段必须是必填的文本、电话、邮箱或单选字段。"
+        >
+          <Select
+            id="object-title-field"
+            value={titleFieldKey}
+            onChange={setTitleFieldKey}
+            options={titleCandidates.map((field) => ({
+              value: field.fieldKey,
+              label: `${field.label}（${field.fieldKey}）`,
+            }))}
+          />
+        </Form.Item>
+        <Form.Item label="说明" htmlFor="object-description">
+          <Input.TextArea
+            id="object-description"
+            rows={3}
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+          />
+        </Form.Item>
+      </Form>
       <Button
         type="primary"
         loading={saving}
@@ -514,46 +516,48 @@ function PermissionsSection({
         </Typography.Text>
       </div>
       <Space orientation="vertical" style={{ width: "100%" }}>
-        <Form.Item label="可以新建记录" htmlFor="employee-can-create">
-          <Switch
-            id="employee-can-create"
-            aria-label="可以新建记录"
-            checked={canCreate}
-            onChange={setCanCreate}
-          />
-        </Form.Item>
-        <Form.Item label="可以查看记录" htmlFor="employee-can-read">
-          <Switch
-            id="employee-can-read"
-            aria-label="可以查看记录"
-            checked={canRead}
-            onChange={setCanRead}
-          />
-        </Form.Item>
-        <Form.Item label="可以修改记录" htmlFor="employee-can-update">
-          <Switch
-            id="employee-can-update"
-            aria-label="可以修改记录"
-            checked={canUpdate}
-            onChange={setCanUpdate}
-          />
-        </Form.Item>
-        <Form.Item label="查看范围" htmlFor="employee-read-scope">
-          <Select
-            id="employee-read-scope"
-            value={readScope}
-            onChange={setReadScope}
-            options={scopeOptions()}
-          />
-        </Form.Item>
-        <Form.Item label="修改范围" htmlFor="employee-update-scope">
-          <Select
-            id="employee-update-scope"
-            value={updateScope}
-            onChange={setUpdateScope}
-            options={scopeOptions()}
-          />
-        </Form.Item>
+        <Form component={false} layout="vertical">
+          <Form.Item label="可以新建记录" htmlFor="employee-can-create">
+            <Switch
+              id="employee-can-create"
+              aria-label="可以新建记录"
+              checked={canCreate}
+              onChange={setCanCreate}
+            />
+          </Form.Item>
+          <Form.Item label="可以查看记录" htmlFor="employee-can-read">
+            <Switch
+              id="employee-can-read"
+              aria-label="可以查看记录"
+              checked={canRead}
+              onChange={setCanRead}
+            />
+          </Form.Item>
+          <Form.Item label="可以修改记录" htmlFor="employee-can-update">
+            <Switch
+              id="employee-can-update"
+              aria-label="可以修改记录"
+              checked={canUpdate}
+              onChange={setCanUpdate}
+            />
+          </Form.Item>
+          <Form.Item label="查看范围" htmlFor="employee-read-scope">
+            <Select
+              id="employee-read-scope"
+              value={readScope}
+              onChange={setReadScope}
+              options={scopeOptions()}
+            />
+          </Form.Item>
+          <Form.Item label="修改范围" htmlFor="employee-update-scope">
+            <Select
+              id="employee-update-scope"
+              value={updateScope}
+              onChange={setUpdateScope}
+              options={scopeOptions()}
+            />
+          </Form.Item>
+        </Form>
         <Typography.Text type="secondary">
           本切片不授予员工删除权限，软删除仅公司管理员可执行。
         </Typography.Text>
