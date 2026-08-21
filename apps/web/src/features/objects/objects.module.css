@@ -1,0 +1,346 @@
+/* Configuration ledger. One signature element only: the FIELD LEDGER rule that
+   merges field order, stable key, type, requirement and access into scannable
+   rows. Everything else stays restrained. */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px;
+}
+
+.pageHeader h1 {
+  margin: 4px 0 8px;
+  color: #172033;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 650;
+}
+
+.pageHeader p {
+  max-width: 68ch;
+  color: #526473;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.eyebrow {
+  color: #167a72;
+  font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+/* Stable identifiers are monospace so a code or field key never reads as prose. */
+.stableKey {
+  font-family: "IBM Plex Mono", "Geist Mono", ui-monospace, monospace;
+  font-size: 12px;
+  color: #526473;
+}
+
+.panel {
+  padding: 20px;
+  border: 1px solid #d7dee8;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.designer {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.designerHeader {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #d7dee8;
+}
+
+.designerIdentity {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.designerIdentity h1 {
+  margin: 0;
+  color: #172033;
+  font-size: 22px;
+  line-height: 30px;
+  font-weight: 650;
+}
+
+.designerMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.designerActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Left rail encodes the real configuration steps, not decorative numbering. */
+.designerNav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 16px;
+  border-right: 1px solid #d7dee8;
+}
+
+.designerNavItem {
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #172033;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.designerNavItem:hover {
+  background: #f5f7fa;
+}
+
+.designerNavItemActive {
+  background: #eef2fb;
+  color: #2457d6;
+  font-weight: 600;
+}
+
+.designerNavVersion {
+  margin-top: 12px;
+  padding: 8px 10px;
+  color: #526473;
+  font-family: "IBM Plex Mono", "Geist Mono", ui-monospace, monospace;
+  font-size: 12px;
+}
+
+.sectionHeading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.sectionHeading h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+}
+
+/* The signature rule: a single structural line down the field ledger. */
+.ledger {
+  border-top: 2px solid #172033;
+}
+
+.ledger :global(.ant-table-thead > tr > th) {
+  background: #ffffff !important;
+  color: #526473 !important;
+  font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.ledgerRowInactive {
+  color: #526473;
+}
+
+.ledgerLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ledgerOrder {
+  display: flex;
+  gap: 2px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0 20px;
+  max-width: 720px;
+}
+
+.drawerSection {
+  padding-top: 16px;
+  margin-top: 8px;
+  border-top: 1px solid #d7dee8;
+}
+
+.drawerSection:first-of-type {
+  padding-top: 0;
+  margin-top: 0;
+  border-top: 0;
+}
+
+.drawerSectionLabel {
+  display: block;
+  margin-bottom: 12px;
+  color: #526473;
+  font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.lockNote {
+  color: #a86405;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+/* Publication review: blockers and warnings never share a container. */
+.issueGroup {
+  margin-bottom: 16px;
+}
+
+.issueGroupLabel {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.issueGroupBlocking .issueGroupLabel {
+  color: #b42318;
+}
+
+.issueGroupWarning .issueGroupLabel {
+  color: #a86405;
+}
+
+.issueList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 12px;
+  border-left: 2px solid #d7dee8;
+  list-style: none;
+}
+
+.issueGroupBlocking .issueList {
+  border-left-color: #b42318;
+}
+
+.issueGroupWarning .issueList {
+  border-left-color: #a86405;
+}
+
+.issue {
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.changeList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+}
+
+.change {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+
+/* A vertical ledger of publications: version, actor, time, summary. No rollback. */
+.publicationList {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid #d7dee8;
+}
+
+.publicationRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: baseline;
+  padding: 12px 0;
+  border-bottom: 1px solid #d7dee8;
+}
+
+.publicationNumber {
+  min-width: 48px;
+  color: #167a72;
+  font-family: "IBM Plex Mono", "Geist Mono", ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.preview {
+  padding: 16px;
+  border: 1px solid #d7dee8;
+  border-radius: 8px;
+  background: #f5f7fa;
+}
+
+.previewHeader {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.previewTitle {
+  color: #172033;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.previewFields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.previewField {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 8px 12px;
+  border: 1px solid #d7dee8;
+  border-radius: 6px;
+  background: #ffffff;
+  font-size: 13px;
+}
+
+/* Object configuration is a desktop task; below the breakpoint we say so
+   instead of shipping controls that cannot be operated. */
+.desktopOnly {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .designer {
+    display: none;
+  }
+
+  .desktopOnly {
+    display: block;
+  }
+}

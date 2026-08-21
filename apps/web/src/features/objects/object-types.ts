@@ -102,6 +102,94 @@ export type RuntimeObjectNavigation =
 export type RecordSummary = Schemas["RecordResponseDto"];
 export type RecordPage = Schemas["RecordPageResponseDto"];
 
+/**
+ * Object configuration types. The API derives every fact the designer needs —
+ * current publication number, whether the draft moved past the live version,
+ * and the published type that locks a field — so these are read directly from
+ * the generated contract without re-interpretation.
+ */
+export type ObjectDraft = Schemas["ObjectDraftResponseDto"];
+export type ObjectDraftField = Schemas["ObjectDraftFieldResponseDto"];
+export type ObjectDraftSummary = Schemas["ObjectDraftObjectResponseDto"];
+export type ObjectPublication = Schemas["ObjectPublicationResponseDto"];
+export type PublicationAnalysis = Schemas["PublicationAnalysisResponseDto"];
+export type PublicationIssue = Schemas["PublicationIssueResponseDto"];
+export type PublicationChange = Schemas["PublicationChangeResponseDto"];
+
+export type CreateObjectInput = Schemas["CreateObjectDefinitionDto"];
+export type UpdateObjectInput = Schemas["UpdateObjectDefinitionDto"];
+export type CreateFieldInput = Schemas["CreateFieldDefinitionDto"];
+export type UpdateFieldInput = Schemas["UpdateFieldDefinitionDto"];
+export type DefaultViewInput = Schemas["DefaultViewDto"];
+export type EmployeePermissionsInput = Schemas["EmployeePermissionsDto"];
+
+/** Object codes and field keys are stable identifiers, not display text. */
+export const OBJECT_CODE_PATTERN = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
+export const FIELD_KEY_PATTERN = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
+
+/** Title fields must render as a single readable line. */
+export const TITLE_FIELD_TYPES = [
+  "TEXT",
+  "PHONE",
+  "EMAIL",
+  "SINGLE_SELECT",
+] as const satisfies readonly PublishedFieldType[];
+
+/**
+ * Business-facing names for field types. Navigation and configuration copy use
+ * these; `PublishedFieldType` stays the stable identifier.
+ */
+export const FIELD_TYPE_LABELS: Record<PublishedFieldType, string> = {
+  TEXT: "文本",
+  TEXTAREA: "长文本",
+  PHONE: "电话",
+  EMAIL: "邮箱",
+  NUMBER: "数字",
+  MONEY: "金额",
+  DATE: "日期",
+  DATETIME: "日期时间",
+  SINGLE_SELECT: "单选",
+  MULTI_SELECT: "多选",
+  MEMBER: "成员",
+  BOOLEAN: "是否",
+};
+
+export const FIELD_ACCESS_LABELS: Record<PublishedFieldAccess, string> = {
+  EDIT: "可编辑",
+  READ_ONLY: "只读",
+  HIDDEN: "隐藏",
+};
+
+export const DATA_SCOPE_LABELS: Record<PublishedDataScope, string> = {
+  ALL: "全部记录",
+  OWN: "仅本人负责",
+  NONE: "无权访问",
+};
+
+export const PUBLICATION_CHANGE_LABELS: Record<
+  PublicationChange["kind"],
+  string
+> = {
+  ADDED: "新增",
+  UPDATED: "修改",
+  INACTIVATED: "停用",
+};
+
+/**
+ * A draft is either untouched since its last publication, carrying pending
+ * edits, never published, or archived. Each state gets its own copy so the
+ * list never implies a draft is live.
+ */
+export function objectStatusLabel(object: ObjectDraftSummary): string {
+  if (object.status === "ARCHIVED") return "已归档";
+  if (object.publicationNumber === null) return "草稿";
+  return object.hasUnpublishedChanges ? "有未发布变更" : "已发布";
+}
+
+export function fieldTypeLabel(type: string): string {
+  return FIELD_TYPE_LABELS[type as PublishedFieldType] ?? type;
+}
+
 export function parseRuntimeObjectSchema(
   response: Schemas["PublishedObjectSchemaResponseDto"],
 ): RuntimeObjectSchema {

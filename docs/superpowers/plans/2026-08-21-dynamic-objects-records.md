@@ -555,25 +555,25 @@ git commit -m "feat(web): add dynamic object clients and navigation"
 - Consumes: Task 9 object API/types and approved visual tokens.
 - Produces: tenant-admin object list/create/designer/preview/publication pages.
 
-- [ ] **Step 1: Write failing behavior tests**
+- [x] **Step 1: Write failing behavior tests**
 
 Assert list empty/action states, lowercase code validation, object status copy, stable field key display, type lock after publication, field access labels, reorder result, admin/employee preview differences, unpublished-change badge, blocking-versus-warning publication content, version-conflict preservation, and no mobile editing controls below the desktop breakpoint.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 pnpm --filter @crm/web test:unit -- object-designer.test.tsx publication-panel.test.tsx
 ```
 
-- [ ] **Step 3: Implement the approved visual system**
+- [x] **Step 3: Implement the approved visual system**
 
 Use CSS variables for Ledger Ink, Working Blue, Canvas, Paper, Rule, Verified Teal, and Review Amber. `FieldLedger` is the single signature element: one structural rule, sortable field rows, monospace stable keys, explicit type/required/access text. Keep page radius 6–8px and avoid gradient/stat-card decoration.
 
-- [ ] **Step 4: Implement interactions**
+- [x] **Step 4: Implement interactions**
 
 Only one primary action (“发布变更”). Field drawer sections are Display, Data Type, Validation/Options, Employee Access. Publication opens analysis first; blocking rows cannot confirm. React Query invalidates only tenant/object keys. 409 leaves draft controls untouched and offers reload.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 ```bash
 pnpm --filter @crm/web test
