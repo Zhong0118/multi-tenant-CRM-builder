@@ -29,6 +29,7 @@
 ### Task 1: Add the Published-Object Database Model and RLS
 
 **Files:**
+
 - Modify: `packages/database/prisma/schema.prisma`
 - Create: `packages/database/prisma/migrations/0003_dynamic_objects_records/migration.sql`
 - Modify: `packages/database/test/integration/helpers.mjs`
@@ -37,6 +38,7 @@
 - Modify: `packages/database/package.json`
 
 **Interfaces:**
+
 - Consumes: existing `Tenant`, `TenantMember`, `ObjectDefinition`, `FieldDefinition`, `Record`, and `createDatabaseClient`.
 - Produces: Prisma models `ObjectPublication`, `ViewDefinition`, `ObjectPermission`, `FieldPermission`, `RecordCounter`; `ObjectDefinition.activePublicationId/publishedAt/sortOrder`; RLS-protected tables and test cleanup.
 
@@ -114,20 +116,22 @@ git commit -m "feat(database): add published object configuration model"
 ### Task 2: Define and Compile Published Object Schemas
 
 **Files:**
+
 - Create: `apps/api/src/modules/objects/object-schema.ts`
 - Create: `apps/api/src/modules/objects/object-publication.policy.ts`
 - Create: `apps/api/src/modules/objects/object-publication.policy.spec.ts`
 - Modify: `apps/api/src/common/errors/api-error-code.ts`
 
 **Interfaces:**
+
 - Consumes: draft object, field, view, role permission, and field permission data.
 - Produces: `PublishedField`, `PublishedObjectSchema`, `PublicationAnalysis`, `analyzePublication(input)`, and `compilePublication(input)`.
 
-- [ ] **Step 1: Write failing publication-policy tests**
+- [x] **Step 1: Write failing publication-policy tests**
 
 Use literal fixtures. Assert the policy blocks: no required title field; unsupported title type; missing default view; default-view column referencing an inactive field; missing explicit employee role policy; duplicate option keys; making a new required field when active records exist. Assert it reports an added optional field as a non-blocking change. Assert the compiled schema exactly matches the stable structure in the spec and excludes draft timestamps/member overrides.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 pnpm --filter @crm/api test -- object-publication.policy.spec.ts
@@ -135,7 +139,7 @@ pnpm --filter @crm/api test -- object-publication.policy.spec.ts
 
 Expected: FAIL because the schema and compiler modules do not exist.
 
-- [ ] **Step 3: Implement immutable schema types and analysis**
+- [x] **Step 3: Implement immutable schema types and analysis**
 
 Define:
 
@@ -143,22 +147,29 @@ Define:
 export interface PublicationAnalysis {
   blocking: Array<{ code: string; message: string; fieldKey?: string }>;
   warnings: Array<{ code: string; message: string; fieldKey?: string }>;
-  changes: Array<{ kind: 'ADDED' | 'UPDATED' | 'INACTIVATED'; fieldKey: string }>;
+  changes: Array<{
+    kind: "ADDED" | "UPDATED" | "INACTIVATED";
+    fieldKey: string;
+  }>;
 }
 
-export function analyzePublication(input: PublicationDraft): PublicationAnalysis;
-export function compilePublication(input: PublicationDraft & {
-  publication: PublishedObjectSchema['publication'];
-}): PublishedObjectSchema;
+export function analyzePublication(
+  input: PublicationDraft,
+): PublicationAnalysis;
+export function compilePublication(
+  input: PublicationDraft & {
+    publication: PublishedObjectSchema["publication"];
+  },
+): PublishedObjectSchema;
 ```
 
 Freeze no runtime objects; immutability is a database and interface invariant. Sort fields by `sortOrder` then `fieldKey` so snapshot output is deterministic.
 
-- [ ] **Step 4: Add stable error codes**
+- [x] **Step 4: Add stable error codes**
 
 Add all spec codes to `API_ERROR_CODES` and Chinese messages. `PUBLICATION_BLOCKED` uses HTTP 422; config and record version conflicts use 409; forbidden fields/actions use 403; not-found codes use 404.
 
-- [ ] **Step 5: Verify GREEN and commit**
+- [x] **Step 5: Verify GREEN and commit**
 
 ```bash
 pnpm --filter @crm/api test -- object-publication.policy.spec.ts api-exception.filter.spec.ts
@@ -172,12 +183,14 @@ git commit -m "feat(objects): compile immutable published schemas"
 ### Task 3: Build the Dynamic Record Value Engine
 
 **Files:**
+
 - Create: `apps/api/src/modules/records/record-value-engine.ts`
 - Create: `apps/api/src/modules/records/record-value-engine.spec.ts`
 - Create: `apps/api/src/modules/objects/effective-access.ts`
 - Create: `apps/api/src/modules/objects/effective-access.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `PublishedObjectSchema`, `TenantContext`, optional live member override, existing record values.
 - Produces: `EffectiveObjectAccess`, `resolveEffectiveAccess`, `validateRecordMutation`, `projectVisibleValues`.
 
@@ -204,12 +217,12 @@ Use one field-type switch inside `record-value-engine.ts`; services/controllers 
 ```ts
 export function resolveEffectiveAccess(input: {
   schema: PublishedObjectSchema;
-  role: 'TENANT_ADMIN' | 'EMPLOYEE';
+  role: "TENANT_ADMIN" | "EMPLOYEE";
   memberOverride?: ObjectAccessPolicy;
 }): EffectiveObjectAccess;
 
 export async function validateRecordMutation(input: {
-  mode: 'CREATE' | 'UPDATE';
+  mode: "CREATE" | "UPDATE";
   schema: PublishedObjectSchema;
   access: EffectiveObjectAccess;
   submitted: Record<string, unknown>;
@@ -233,6 +246,7 @@ git commit -m "feat(records): validate dynamic values and access"
 ### Task 4: Implement Object Draft and Publication Use Cases
 
 **Files:**
+
 - Create: `apps/api/src/modules/objects/dto/object.dto.ts`
 - Modify: `apps/api/src/modules/objects/dto/index.ts`
 - Create: `apps/api/src/modules/objects/objects.repository.ts`
@@ -252,6 +266,7 @@ git commit -m "feat(records): validate dynamic values and access"
 - Delete: `apps/api/src/modules/permissions/permissions.service.ts`
 
 **Interfaces:**
+
 - Consumes: Task 1 Prisma models, Task 2 compiler, `TenantContext`, `AuditService`.
 - Produces: every configuration route in spec section 7.1 except live member override; `OBJECTS_REPOSITORY` interface and transactional Prisma adapter.
 
@@ -293,6 +308,7 @@ git commit -m "feat(objects): add draft and publication endpoints"
 ### Task 5: Resolve Runtime Schemas and Accessible Object Navigation
 
 **Files:**
+
 - Create: `apps/api/src/modules/objects/published-object.repository.ts`
 - Create: `apps/api/src/modules/objects/published-object.service.ts`
 - Create: `apps/api/src/modules/objects/published-object.service.spec.ts`
@@ -300,6 +316,7 @@ git commit -m "feat(objects): add draft and publication endpoints"
 - Modify: `apps/api/src/modules/objects/objects.module.ts`
 
 **Interfaces:**
+
 - Consumes: active publication JSON, live `ObjectPermission` member row, Task 3 access resolver.
 - Produces: `listAccessible(context)`, `resolveRuntimeSchema(context, objectCode)`, `ResolvedObjectSchema { schema, access, visibleSchema }`, and runtime `GET /objects`, `GET /objects/:objectCode/schema`.
 
@@ -331,6 +348,7 @@ git commit -m "feat(objects): resolve accessible published schemas"
 ### Task 6: Implement Tenant-Scoped Dynamic Record CRUD
 
 **Files:**
+
 - Create: `apps/api/src/modules/records/dto/record.dto.ts`
 - Modify: `apps/api/src/modules/records/dto/index.ts`
 - Create: `apps/api/src/modules/records/records.repository.ts`
@@ -341,6 +359,7 @@ git commit -m "feat(objects): resolve accessible published schemas"
 - Create: `apps/api/test/dynamic-records.e2e-spec.ts`
 
 **Interfaces:**
+
 - Consumes: `PublishedObjectService`, `RecordValueEngine`, `ContextRunner`, Prisma `Record/RecordCounter`, `AuditService`.
 - Produces: nested record list/create/read/update/delete routes and permission-projected response DTOs.
 
@@ -381,6 +400,7 @@ git commit -m "feat(records): add published-schema CRUD"
 ### Task 7: Add Live Member Object Overrides
 
 **Files:**
+
 - Modify: `apps/api/src/modules/memberships/dto/membership.dto.ts`
 - Modify: `apps/api/src/modules/memberships/memberships.controller.ts`
 - Modify: `apps/api/src/modules/memberships/memberships.repository.ts`
@@ -389,6 +409,7 @@ git commit -m "feat(records): add published-schema CRUD"
 - Modify: `apps/api/test/dynamic-records.e2e-spec.ts`
 
 **Interfaces:**
+
 - Consumes: published objects and `ObjectPermission` MEMBER rows.
 - Produces: `GET /workspaces/:tenantCode/members/:memberId/object-access`, `PUT /workspaces/:tenantCode/members/:memberId/object-access/:objectId`, inherited/override response, immediate resolver behavior.
 
@@ -406,14 +427,14 @@ Add DTO:
 
 ```ts
 type MemberObjectAccessInput =
-  | { mode: 'INHERIT' }
+  | { mode: "INHERIT" }
   | {
-      mode: 'OVERRIDE';
+      mode: "OVERRIDE";
       canCreate: boolean;
       canRead: boolean;
       canUpdate: boolean;
-      readScope: 'ALL' | 'OWN' | 'NONE';
-      updateScope: 'ALL' | 'OWN' | 'NONE';
+      readScope: "ALL" | "OWN" | "NONE";
+      updateScope: "ALL" | "OWN" | "NONE";
     };
 ```
 
@@ -433,11 +454,13 @@ git commit -m "feat(members): add live object access overrides"
 ### Task 8: Generate and Lock the OpenAPI Contract
 
 **Files:**
+
 - Modify: `packages/contracts/openapi.json`
 - Modify: `packages/contracts/src/generated/openapi.ts`
 - Modify: `packages/contracts/contract-drift.test.mjs`
 
 **Interfaces:**
+
 - Consumes: all Task 4–7 DTO decorators/routes.
 - Produces: generated path/types consumed by Web.
 
@@ -467,6 +490,7 @@ git commit -m "feat(contracts): expose dynamic object APIs"
 ### Task 9: Build Typed Web Object/Record Modules and Dynamic Navigation
 
 **Files:**
+
 - Create: `apps/web/src/features/objects/object-api.ts`
 - Create: `apps/web/src/features/objects/object-types.ts`
 - Create: `apps/web/src/features/records/record-api.ts`
@@ -479,6 +503,7 @@ git commit -m "feat(contracts): expose dynamic object APIs"
 - Create: `apps/web/src/lib/auth/require-runtime-objects.test.ts`
 
 **Interfaces:**
+
 - Consumes: generated OpenAPI paths.
 - Produces: typed browser/server operations, `DynamicField`, server-fetched accessible object navigation.
 
@@ -509,6 +534,7 @@ git commit -m "feat(web): add dynamic object clients and navigation"
 ### Task 10: Build the Configuration-Ledger Object Designer
 
 **Files:**
+
 - Create: `apps/web/src/app/(workspace)/workspace/[tenantCode]/settings/objects/page.tsx`
 - Create: `apps/web/src/app/(workspace)/workspace/[tenantCode]/settings/objects/new/page.tsx`
 - Create: `apps/web/src/app/(workspace)/workspace/[tenantCode]/settings/objects/[objectId]/page.tsx`
@@ -525,6 +551,7 @@ git commit -m "feat(web): add dynamic object clients and navigation"
 - Create: `apps/web/src/features/objects/publication-panel.test.tsx`
 
 **Interfaces:**
+
 - Consumes: Task 9 object API/types and approved visual tokens.
 - Produces: tenant-admin object list/create/designer/preview/publication pages.
 
@@ -562,6 +589,7 @@ git commit -m "feat(web): add configuration-ledger object designer"
 ### Task 11: Build Dynamic Record List, Form, and Detail Pages
 
 **Files:**
+
 - Modify: `apps/web/src/app/(workspace)/workspace/[tenantCode]/objects/[objectCode]/page.tsx`
 - Create: `apps/web/src/app/(workspace)/workspace/[tenantCode]/objects/[objectCode]/new/page.tsx`
 - Create: `apps/web/src/app/(workspace)/workspace/[tenantCode]/objects/[objectCode]/[recordId]/page.tsx`
@@ -575,6 +603,7 @@ git commit -m "feat(web): add configuration-ledger object designer"
 - Create: `apps/web/src/features/records/record-detail-drawer.test.tsx`
 
 **Interfaces:**
+
 - Consumes: runtime schema and record API from Task 9.
 - Produces: published-schema-driven list/create/deep-link detail/update/delete UI.
 
@@ -612,6 +641,7 @@ git commit -m "feat(web): add dynamic record workspace"
 ### Task 12: Build the Member Object Access Page
 
 **Files:**
+
 - Create: `apps/web/src/app/(workspace)/workspace/[tenantCode]/members/[memberId]/access/page.tsx`
 - Create: `apps/web/src/features/members/member-object-access.tsx`
 - Create: `apps/web/src/features/members/member-object-access.test.tsx`
@@ -619,6 +649,7 @@ git commit -m "feat(web): add dynamic record workspace"
 - Modify: `apps/web/src/features/members/members.module.css`
 
 **Interfaces:**
+
 - Consumes: member list, accessible published objects for admins, member override endpoint.
 - Produces: inherited-versus-override permission matrix and navigation from member management.
 
@@ -642,6 +673,7 @@ git commit -m "feat(web): add member object access controls"
 ### Task 13: Update Delivery Documentation and Run the Complete Gate
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `docs/design/02-页面功能列表.md`
 - Modify: `docs/design/03-数据模型定义.md`
@@ -650,6 +682,7 @@ git commit -m "feat(web): add member object access controls"
 - Modify: `package.json` only if a missing existing verification script must be composed; do not add Playwright.
 
 **Interfaces:**
+
 - Consumes: completed slice and actual verification output.
 - Produces: truthful delivery status, manual acceptance checklist, root verification path.
 
