@@ -41,12 +41,12 @@ interface RequestWithId extends Request {
 @Controller('workspaces/:tenantCode/objects/:objectCode/records')
 @ApiTags('records')
 @ApiCookieAuth('crm_session')
+@ApiParam({ name: 'tenantCode', type: String })
 @UseGuards(SessionAuthGuard, WorkspaceGuard)
 export class RecordsController {
   constructor(private readonly records: RecordsService) {}
 
   @Get()
-  @ApiParam({ name: 'tenantCode' })
   @ApiParam({ name: 'objectCode' })
   @ApiOkResponse({ type: RecordPageResponseDto })
   list(

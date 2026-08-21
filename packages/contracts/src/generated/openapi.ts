@@ -1636,7 +1636,7 @@ export interface operations {
       query?: never;
       header?: never;
       path: {
-        tenantCode: unknown;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -1660,7 +1660,7 @@ export interface operations {
       };
       header?: never;
       path: {
-        tenantCode: unknown;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -1681,7 +1681,7 @@ export interface operations {
       query?: never;
       header?: never;
       path: {
-        tenantCode: unknown;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -1707,7 +1707,7 @@ export interface operations {
       header?: never;
       path: {
         id: string;
-        tenantCode: unknown;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -1729,7 +1729,7 @@ export interface operations {
       header?: never;
       path: {
         id: string;
-        tenantCode: unknown;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -1753,7 +1753,7 @@ export interface operations {
       };
       header?: never;
       path: {
-        tenantCode: unknown;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -1775,7 +1775,7 @@ export interface operations {
       header?: never;
       path: {
         memberId: string;
-        tenantCode: unknown;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -1801,7 +1801,7 @@ export interface operations {
       header?: never;
       path: {
         memberId: string;
-        tenantCode: unknown;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -1824,7 +1824,7 @@ export interface operations {
       path: {
         memberId: string;
         objectId: string;
-        tenantCode: unknown;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -1849,7 +1849,7 @@ export interface operations {
       query?: never;
       header?: never;
       path: {
-        tenantCode: unknown;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -1868,7 +1868,9 @@ export interface operations {
     parameters: {
       query?: never;
       header?: never;
-      path?: never;
+      path: {
+        tenantCode: string;
+      };
       cookie?: never;
     };
     requestBody: {
@@ -1892,6 +1894,7 @@ export interface operations {
       header?: never;
       path: {
         objectId: string;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -1912,6 +1915,7 @@ export interface operations {
       header?: never;
       path: {
         objectId: string;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -1936,6 +1940,7 @@ export interface operations {
       header?: never;
       path: {
         objectId: string;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -1960,6 +1965,7 @@ export interface operations {
       header?: never;
       path: {
         objectId: string;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -1984,6 +1990,7 @@ export interface operations {
       header?: never;
       path: {
         objectId: string;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -2008,6 +2015,7 @@ export interface operations {
       header?: never;
       path: {
         objectId: string;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -2033,6 +2041,7 @@ export interface operations {
       path: {
         fieldId: string;
         objectId: string;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -2057,6 +2066,7 @@ export interface operations {
       header?: never;
       path: {
         objectId: string;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -2081,6 +2091,7 @@ export interface operations {
       header?: never;
       path: {
         objectId: string;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -2105,6 +2116,7 @@ export interface operations {
       header?: never;
       path: {
         objectId: string;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -2125,6 +2137,7 @@ export interface operations {
       header?: never;
       path: {
         objectId: string;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -2147,7 +2160,9 @@ export interface operations {
     parameters: {
       query?: never;
       header?: never;
-      path?: never;
+      path: {
+        tenantCode: string;
+      };
       cookie?: never;
     };
     requestBody: {
@@ -2169,7 +2184,9 @@ export interface operations {
     parameters: {
       query?: never;
       header?: never;
-      path?: never;
+      path: {
+        tenantCode: string;
+      };
       cookie?: never;
     };
     requestBody?: never;
@@ -2197,7 +2214,7 @@ export interface operations {
       header?: never;
       path: {
         objectCode: string;
-        tenantCode: unknown;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -2219,6 +2236,7 @@ export interface operations {
       header?: never;
       path: {
         objectCode: string;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -2245,6 +2263,7 @@ export interface operations {
       path: {
         objectCode: string;
         recordId: string;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -2267,6 +2286,7 @@ export interface operations {
       path: {
         objectCode: string;
         recordId: string;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -2293,6 +2313,7 @@ export interface operations {
       path: {
         objectCode: string;
         recordId: string;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -2318,6 +2339,7 @@ export interface operations {
       header?: never;
       path: {
         objectCode: string;
+        tenantCode: string;
       };
       cookie?: never;
     };

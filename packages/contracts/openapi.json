@@ -2038,7 +2038,9 @@
             "in": "path",
             "name": "tenantCode",
             "required": true,
-            "schema": {}
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -2089,7 +2091,9 @@
             "in": "path",
             "name": "tenantCode",
             "required": true,
-            "schema": {}
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -2118,7 +2122,9 @@
             "in": "path",
             "name": "tenantCode",
             "required": true,
-            "schema": {}
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -2168,7 +2174,9 @@
             "in": "path",
             "name": "tenantCode",
             "required": true,
-            "schema": {}
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -2208,7 +2216,9 @@
             "in": "path",
             "name": "tenantCode",
             "required": true,
-            "schema": {}
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -2260,7 +2270,9 @@
             "in": "path",
             "name": "tenantCode",
             "required": true,
-            "schema": {}
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -2300,7 +2312,9 @@
             "in": "path",
             "name": "tenantCode",
             "required": true,
-            "schema": {}
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -2350,7 +2364,9 @@
             "in": "path",
             "name": "tenantCode",
             "required": true,
-            "schema": {}
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -2402,7 +2418,9 @@
             "in": "path",
             "name": "tenantCode",
             "required": true,
-            "schema": {}
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -2443,7 +2461,9 @@
             "in": "path",
             "name": "tenantCode",
             "required": true,
-            "schema": {}
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -2460,7 +2480,16 @@
       },
       "post": {
         "operationId": "ObjectsController_create",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -2487,7 +2516,16 @@
     "/api/v1/workspaces/{tenantCode}/object-definitions/order": {
       "put": {
         "operationId": "ObjectsController_reorderObjects",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -2523,6 +2561,14 @@
               "format": "uuid",
               "type": "string"
             }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -2543,6 +2589,14 @@
           {
             "in": "path",
             "name": "objectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
             "required": true,
             "schema": {
               "type": "string"
@@ -2583,6 +2637,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -2615,6 +2677,14 @@
           {
             "in": "path",
             "name": "objectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
             "required": true,
             "schema": {
               "type": "string"
@@ -2655,6 +2725,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -2687,6 +2765,14 @@
           {
             "in": "path",
             "name": "objectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
             "required": true,
             "schema": {
               "type": "string"
@@ -2735,6 +2821,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -2767,6 +2861,14 @@
           {
             "in": "path",
             "name": "objectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
             "required": true,
             "schema": {
               "type": "string"
@@ -2807,6 +2909,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -2843,6 +2953,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -2863,6 +2981,14 @@
           {
             "in": "path",
             "name": "objectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
             "required": true,
             "schema": {
               "type": "string"
@@ -2895,7 +3021,16 @@
     "/api/v1/workspaces/{tenantCode}/objects": {
       "get": {
         "operationId": "ObjectsController_runtimeObjects",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -3002,7 +3137,9 @@
             "in": "path",
             "name": "tenantCode",
             "required": true,
-            "schema": {}
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -3030,6 +3167,14 @@
           {
             "in": "path",
             "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
             "required": true,
             "schema": {
               "type": "string"
@@ -3085,6 +3230,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -3135,6 +3288,14 @@
               "format": "uuid",
               "type": "string"
             }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -3170,6 +3331,14 @@
           {
             "in": "path",
             "name": "recordId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
             "required": true,
             "schema": {
               "type": "string"
@@ -3213,6 +3382,14 @@
           {
             "in": "path",
             "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
             "required": true,
             "schema": {
               "type": "string"

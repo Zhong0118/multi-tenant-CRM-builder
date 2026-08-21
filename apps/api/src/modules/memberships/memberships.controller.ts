@@ -70,7 +70,7 @@ export class MembershipsController {
 
   @Get('workspaces/:tenantCode')
   @UseGuards(SessionAuthGuard, WorkspaceGuard)
-  @ApiParam({ name: 'tenantCode' })
+  @ApiParam({ name: 'tenantCode', type: String })
   @ApiOkResponse({ type: WorkspaceSummaryResponseDto })
   workspace(@CurrentWorkspace() workspace: WorkspaceResolution) {
     return workspace;
@@ -78,7 +78,7 @@ export class MembershipsController {
 
   @Get('workspaces/:tenantCode/members')
   @UseGuards(SessionAuthGuard, WorkspaceGuard)
-  @ApiParam({ name: 'tenantCode' })
+  @ApiParam({ name: 'tenantCode', type: String })
   @ApiOkResponse({ type: TenantMemberPageResponseDto })
   members(
     @CurrentTenant() context: TenantContext,
@@ -89,7 +89,7 @@ export class MembershipsController {
 
   @Get('workspaces/:tenantCode/invitations')
   @UseGuards(SessionAuthGuard, WorkspaceGuard)
-  @ApiParam({ name: 'tenantCode' })
+  @ApiParam({ name: 'tenantCode', type: String })
   @ApiOkResponse({ type: InvitationPageResponseDto })
   invitations(
     @CurrentTenant() context: TenantContext,
@@ -100,7 +100,7 @@ export class MembershipsController {
 
   @Post('workspaces/:tenantCode/invitations')
   @UseGuards(SessionAuthGuard, WorkspaceGuard)
-  @ApiParam({ name: 'tenantCode' })
+  @ApiParam({ name: 'tenantCode', type: String })
   @ApiCreatedResponse({ type: CreatedInvitationResponseDto })
   invite(
     @CurrentTenant() context: TenantContext,
@@ -115,7 +115,7 @@ export class MembershipsController {
 
   @Post('workspaces/:tenantCode/invitations/:id/resend')
   @UseGuards(SessionAuthGuard, WorkspaceGuard)
-  @ApiParam({ name: 'tenantCode' })
+  @ApiParam({ name: 'tenantCode', type: String })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiCreatedResponse({ type: InvitationResentResponseDto })
   resend(
@@ -128,7 +128,7 @@ export class MembershipsController {
 
   @Post('workspaces/:tenantCode/invitations/:id/revoke')
   @UseGuards(SessionAuthGuard, WorkspaceGuard)
-  @ApiParam({ name: 'tenantCode' })
+  @ApiParam({ name: 'tenantCode', type: String })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiCreatedResponse({ type: MembershipActionResponseDto })
   revoke(
@@ -141,7 +141,7 @@ export class MembershipsController {
 
   @Patch('workspaces/:tenantCode/members/:memberId')
   @UseGuards(SessionAuthGuard, WorkspaceGuard)
-  @ApiParam({ name: 'tenantCode' })
+  @ApiParam({ name: 'tenantCode', type: String })
   @ApiParam({ name: 'memberId', format: 'uuid' })
   @ApiOkResponse({ type: TenantMemberResponseDto })
   changeMember(
@@ -160,7 +160,7 @@ export class MembershipsController {
 
   @Get('workspaces/:tenantCode/members/:memberId/object-access')
   @UseGuards(SessionAuthGuard, WorkspaceGuard)
-  @ApiParam({ name: 'tenantCode' })
+  @ApiParam({ name: 'tenantCode', type: String })
   @ApiParam({ name: 'memberId', format: 'uuid' })
   @ApiOkResponse({ type: MemberObjectAccessResponseDto, isArray: true })
   memberObjectAccess(
@@ -172,7 +172,7 @@ export class MembershipsController {
 
   @Put('workspaces/:tenantCode/members/:memberId/object-access/:objectId')
   @UseGuards(SessionAuthGuard, WorkspaceGuard)
-  @ApiParam({ name: 'tenantCode' })
+  @ApiParam({ name: 'tenantCode', type: String })
   @ApiParam({ name: 'memberId', format: 'uuid' })
   @ApiParam({ name: 'objectId', format: 'uuid' })
   @ApiOkResponse({ type: MemberObjectAccessResponseDto })

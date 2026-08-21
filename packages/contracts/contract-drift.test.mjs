@@ -135,3 +135,40 @@ test("locks the dynamic object and record API surface", async () => {
     { $ref: "#/components/schemas/RecordPageResponseDto" },
   );
 });
+
+test("declares every templated path parameter exactly once", async () => {
+  const document = JSON.parse(
+    await readFile(new URL("./openapi.json", import.meta.url), "utf8"),
+  );
+  const missing = [];
+  const duplicated = [];
+  const untyped = [];
+
+  for (const [path, item] of Object.entries(document.paths)) {
+    const templated = [...path.matchAll(/\{([^{}]+)\}/g)].map(
+      (match) => match[1],
+    );
+    for (const [method, operation] of Object.entries(item)) {
+      const declared = (operation.parameters ?? []).filter(
+        (parameter) => parameter.in === "path",
+      );
+      for (const name of templated) {
+        const matches = declared.filter((parameter) => parameter.name === name);
+        if (matches.length === 0) {
+          missing.push(`${method.toUpperCase()} ${path} ${name}`);
+          continue;
+        }
+        if (matches.length > 1) {
+          duplicated.push(`${method.toUpperCase()} ${path} ${name}`);
+        }
+        if (matches.some((parameter) => parameter.schema?.type !== "string")) {
+          untyped.push(`${method.toUpperCase()} ${path} ${name}`);
+        }
+      }
+    }
+  }
+
+  assert.deepEqual(missing, []);
+  assert.deepEqual(duplicated, []);
+  assert.deepEqual(untyped, []);
+});

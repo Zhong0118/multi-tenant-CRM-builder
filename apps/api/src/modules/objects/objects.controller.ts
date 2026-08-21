@@ -46,6 +46,7 @@ interface RequestWithId extends Request {
 @Controller('workspaces/:tenantCode')
 @ApiTags('object-definitions')
 @ApiCookieAuth('crm_session')
+@ApiParam({ name: 'tenantCode', type: String })
 @UseGuards(SessionAuthGuard, WorkspaceGuard)
 export class ObjectsController {
   constructor(
@@ -74,7 +75,6 @@ export class ObjectsController {
   }
 
   @Get('object-definitions')
-  @ApiParam({ name: 'tenantCode' })
   @ApiOkResponse({ description: '对象草稿列表' })
   list(@CurrentTenant() context: TenantContext) {
     return this.objects.list(context);
