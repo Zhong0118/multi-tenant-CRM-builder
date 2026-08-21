@@ -442,7 +442,9 @@ export class ObjectsService {
       draft.object.activePublicationId = publication.id;
       draft.object.publishedAt = publication.publishedAt;
       draft.object.status = 'ACTIVE';
-      const saved = await store.saveObject(draft, input.expectedVersion);
+      const saved = await store.saveObject(draft, input.expectedVersion, {
+        bumpVersion: false,
+      });
       if (!saved) throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
       await store.appendAudit(
         auditEvent(context, meta, 'object.published', objectId, {

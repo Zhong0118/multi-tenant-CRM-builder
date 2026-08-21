@@ -29,9 +29,16 @@ export interface ObjectsStore {
   listObjects(): Promise<ObjectDraft[]>;
   findObject(objectId: string): Promise<ObjectDraft | null>;
   createObject(draft: ObjectDraft): Promise<ObjectDraft>;
+  /**
+   * `bumpVersion: false` records publication bookkeeping without consuming the
+   * draft's optimistic lock: publishing does not change the configuration, and
+   * bumping the version would make the administrator's open screen stale and
+   * report the freshly published draft as changed.
+   */
   saveObject(
     draft: ObjectDraft,
     expectedVersion: number,
+    options?: { bumpVersion?: boolean },
   ): Promise<ObjectDraft | null>;
   countActiveRecords(objectId: string): Promise<number>;
   nextPublicationNumber(objectId: string): Promise<number>;
@@ -220,6 +227,7 @@ class PrismaObjectsStore implements ObjectsStore {
   async saveObject(
     draft: ObjectDraft,
     expectedVersion: number,
+    options: { bumpVersion?: boolean } = {},
   ): Promise<ObjectDraft | null> {
     const locked = await this.transaction.$queryRaw<Array<{ version: number }>>`
       SELECT version
@@ -245,7 +253,8 @@ class PrismaObjectsStore implements ObjectsStore {
         publishedAt: draft.object.publishedAt
           ? new Date(draft.object.publishedAt)
           : null,
-        version: { increment: 1 },
+        version:
+          options.bumpVersion === false ? expectedVersion : { increment: 1 },
       },
     });
 

@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -239,6 +240,7 @@ export class ObjectsController {
   }
 
   @Post('object-definitions/:objectId/publication-analysis')
+  @HttpCode(200)
   @ApiOkResponse({ type: PublicationAnalysisResponseDto })
   analyzePublication(
     @CurrentTenant() context: TenantContext,

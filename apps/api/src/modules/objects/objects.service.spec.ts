@@ -65,6 +65,7 @@ class MemoryObjectsStore implements ObjectsStore {
   saveObject(
     draft: ObjectDraft,
     expectedVersion: number,
+    options: { bumpVersion?: boolean } = {},
   ): Promise<ObjectDraft | null> {
     const index = this.objects.findIndex(
       (item) => item.object.id === draft.object.id,
@@ -73,7 +74,8 @@ class MemoryObjectsStore implements ObjectsStore {
       return Promise.resolve(null);
     }
     const saved = structuredClone(draft);
-    saved.object.version = expectedVersion + 1;
+    saved.object.version =
+      options.bumpVersion === false ? expectedVersion : expectedVersion + 1;
     this.objects[index] = saved;
     return Promise.resolve(structuredClone(saved));
   }
@@ -413,6 +415,10 @@ describe('ObjectsService', () => {
       object: { status: 'ACTIVE', activePublicationId: first.id },
       activeSchema: { publication: { id: first.id, number: 1 } },
     });
+    // Publishing records bookkeeping, not a configuration change, so the draft
+    // version the administrator holds stays valid and the freshly published
+    // draft does not report itself as changed.
+    expect(draft.object.version).toBe(4);
 
     draft = await service.update(
       admin,
@@ -427,7 +433,7 @@ describe('ObjectsService', () => {
       meta,
     );
 
-    expect(second).toMatchObject({ number: 2, sourceDraftVersion: 6 });
+    expect(second).toMatchObject({ number: 2, sourceDraftVersion: 5 });
     await expect(
       service.listPublications(admin, draft.object.id),
     ).resolves.toEqual([
