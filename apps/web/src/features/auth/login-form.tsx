@@ -17,6 +17,7 @@ import {
   type DeviceIdentity,
 } from "./form-support";
 import { loginSchema, type LoginInput } from "./schemas";
+import { PasswordField } from "./password-field";
 import styles from "./auth.module.css";
 
 export function LoginForm({
@@ -38,6 +39,7 @@ export function LoginForm({
     control,
     handleSubmit,
     getValues,
+    clearErrors,
     setError,
     formState: { errors },
   } = useForm<LoginInput>({
@@ -95,11 +97,14 @@ export function LoginForm({
     setSummary(undefined);
     mutation.mutate(values);
   }
+  function showValidationSummary() {
+    setSummary("请检查手机号和密码，并补全标记为错误的内容。");
+  }
   /* eslint-disable react-hooks/refs -- RHF invokes submitLogin only from the DOM submit event. */
   return (
     <form
       className={styles.authForm}
-      onSubmit={handleSubmit(submitLogin)}
+      onSubmit={handleSubmit(submitLogin, showValidationSummary)}
       noValidate
     >
       {summary && <Alert type="error" showIcon title={summary} />}
@@ -118,6 +123,11 @@ export function LoginForm({
               inputMode="tel"
               autoComplete="tel"
               {...field}
+              onChange={(event) => {
+                field.onChange(event);
+                clearErrors("phone");
+                setSummary(undefined);
+              }}
             />
           )}
         />
@@ -132,10 +142,15 @@ export function LoginForm({
           name="password"
           control={control}
           render={({ field }) => (
-            <Input.Password
+            <PasswordField
               id="login-password"
               autoComplete="current-password"
               {...field}
+              onChange={(event) => {
+                field.onChange(event);
+                clearErrors("password");
+                setSummary(undefined);
+              }}
             />
           )}
         />

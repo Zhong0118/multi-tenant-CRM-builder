@@ -29,6 +29,23 @@ describe("resolvePostLoginRoute", () => {
     ).toBe("/workspaces");
   });
 
+  it("routes a platform administrator to the platform by default", () => {
+    expect(
+      resolvePostLoginRoute({
+        workspaces: [],
+        returnTo: null,
+        isPlatformAdmin: true,
+      }),
+    ).toBe("/platform");
+    expect(
+      resolvePostLoginRoute({
+        workspaces: [activeWorkspace("acme")],
+        returnTo: null,
+        isPlatformAdmin: true,
+      }),
+    ).toBe("/platform");
+  });
+
   it("counts only active tenant and membership combinations for routing", () => {
     const inactiveOnly = [
       {

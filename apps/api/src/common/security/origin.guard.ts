@@ -22,7 +22,7 @@ export class OriginGuard implements CanActivate {
     }
 
     const allowedOrigins = this.config
-      .get<string>('WEB_ORIGIN', 'http://localhost:3000')
+      .get<string>('WEB_ORIGIN', 'http://localhost:3000,http://127.0.0.1:3000')
       .split(',')
       .map((origin) => origin.trim())
       .filter(Boolean);

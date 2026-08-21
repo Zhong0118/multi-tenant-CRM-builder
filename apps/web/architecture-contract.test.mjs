@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
 const root = new URL("./", import.meta.url);
@@ -53,4 +53,9 @@ test("contains the approved Web architecture", async () => {
   for (const path of required) {
     await access(new URL(path, root));
   }
+});
+
+test("allows the loopback hostname used for local development", async () => {
+  const config = await readFile(new URL("next.config.ts", root), "utf8");
+  assert.match(config, /allowedDevOrigins:\s*\["127\.0\.0\.1"\]/);
 });

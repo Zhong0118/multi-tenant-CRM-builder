@@ -7,6 +7,7 @@
     "node": ">=20.9.0"
   },
   "scripts": {
+    "predev": "pnpm --filter @crm/contracts --filter @crm/database build",
     "dev": "pnpm -r --parallel --if-present dev",
     "lint": "pnpm -r --if-present lint",
     "typecheck": "pnpm -r --if-present typecheck",

@@ -22,7 +22,7 @@ export async function createApp(): Promise<INestApplication> {
   const requestId = app.get(RequestIdMiddleware);
   const nodeEnv = config.get<string>('NODE_ENV', 'development');
   const webOrigins = config
-    .get<string>('WEB_ORIGIN', 'http://localhost:3000')
+    .get<string>('WEB_ORIGIN', 'http://localhost:3000,http://127.0.0.1:3000')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);

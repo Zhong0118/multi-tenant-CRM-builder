@@ -46,7 +46,9 @@ function publicAuthResult(
   response: Response,
   result: AuthenticatedSessionResult,
 ) {
-  const localHttp = (process.env.WEB_ORIGIN ?? 'http://localhost:3000')
+  const localHttp = (
+    process.env.WEB_ORIGIN ?? 'http://localhost:3000,http://127.0.0.1:3000'
+  )
     .split(',')
     .every((origin) =>
       /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin),

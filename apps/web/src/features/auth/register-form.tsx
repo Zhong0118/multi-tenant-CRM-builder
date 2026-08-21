@@ -17,6 +17,7 @@ import {
   type DeviceIdentity,
 } from "./form-support";
 import { phoneSchema, registerSchema, type RegisterInput } from "./schemas";
+import { PasswordField } from "./password-field";
 import styles from "./auth.module.css";
 
 export function RegisterForm({
@@ -35,7 +36,10 @@ export function RegisterForm({
     start: startCountdown,
     reset: resetCountdown,
   } = useCountdown();
-  const [summary, setSummary] = useState<string>();
+  const [summary, setSummary] = useState<{
+    type: "error" | "success";
+    text: string;
+  }>();
   const [requestedPhone, setRequestedPhone] = useState<string>();
   const {
     control,
@@ -44,6 +48,7 @@ export function RegisterForm({
     setError,
     setFocus,
     setValue,
+    clearErrors,
     formState: { errors },
   } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
@@ -66,10 +71,17 @@ export function RegisterForm({
       }
       setRequestedPhone(input.phone);
       startCountdown();
+      setSummary({
+        type: "success",
+        text: `验证码已发送至 ${input.phone}，请在有效期内完成注册。`,
+      });
     },
     onError: (error) => {
       const apiError = normalizeFormError(error);
-      setSummary(`${apiError.message}（请求编号：${apiError.requestId}）`);
+      setSummary({
+        type: "error",
+        text: `${apiError.message}（请求编号：${apiError.requestId}）`,
+      });
     },
   });
   const registerMutation = useMutation({
@@ -94,7 +106,10 @@ export function RegisterForm({
     },
     onError: (error) => {
       const apiError = normalizeFormError(error);
-      setSummary(`${apiError.message}（请求编号：${apiError.requestId}）`);
+      setSummary({
+        type: "error",
+        text: `${apiError.message}（请求编号：${apiError.requestId}）`,
+      });
       let shouldFocus = true;
       for (const [field, messages] of Object.entries(apiError.fieldErrors)) {
         if (field in getValues()) {
@@ -115,6 +130,7 @@ export function RegisterForm({
     const parsed = phoneSchema.safeParse(getValues("phone"));
     if (!parsed.success) {
       setError("phone", { message: parsed.error.issues[0]?.message });
+      setSummary({ type: "error", text: "请先填写有效的手机号。" });
       setFocus("phone");
       return;
     }
@@ -130,14 +146,28 @@ export function RegisterForm({
         { message: "请为当前手机号重新获取验证码。" },
         { shouldFocus: true },
       );
+      setSummary({
+        type: "error",
+        text: "请先为当前手机号获取验证码，再创建账号。",
+      });
       return;
     }
-    void handleSubmit((values) => registerMutation.mutate(values))(event);
+    void handleSubmit(
+      (values) => {
+        setSummary(undefined);
+        registerMutation.mutate(values);
+      },
+      () =>
+        setSummary({
+          type: "error",
+          text: "请检查表单，并补全标记为错误的内容。",
+        }),
+    )(event);
   }
 
   return (
     <form className={styles.authForm} onSubmit={submit} noValidate>
-      {summary && <Alert type="error" showIcon title={summary} />}
+      {summary && <Alert type={summary.type} showIcon title={summary.text} />}
       <Form.Item
         label="手机号"
         htmlFor="register-phone"
@@ -155,6 +185,8 @@ export function RegisterForm({
               {...field}
               onChange={(event) => {
                 field.onChange(event);
+                clearErrors("phone");
+                setSummary(undefined);
                 if (requestedPhone && event.target.value !== requestedPhone) {
                   setRequestedPhone(undefined);
                   resetCountdown();
@@ -222,10 +254,14 @@ export function RegisterForm({
           name="password"
           control={control}
           render={({ field }) => (
-            <Input.Password
+            <PasswordField
               id="register-password"
               autoComplete="new-password"
               {...field}
+              onChange={(event) => {
+                field.onChange(event);
+                clearErrors("password");
+              }}
             />
           )}
         />

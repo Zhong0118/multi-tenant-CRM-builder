@@ -20,6 +20,7 @@ import {
   type ResetPasswordInput,
 } from "./schemas";
 import styles from "./auth.module.css";
+import { PasswordField } from "./password-field";
 
 export function PasswordResetForm({
   api = authApi,
@@ -49,6 +50,7 @@ export function PasswordResetForm({
     setError,
     setFocus,
     setValue,
+    clearErrors,
     formState: { errors },
   } = useForm<ResetPasswordInput>({
     resolver: zodResolver(resetPasswordSchema),
@@ -65,6 +67,10 @@ export function PasswordResetForm({
       }
       setRequestedPhone(input.phone);
       startCountdown();
+      setSummary({
+        type: "success",
+        text: `验证码已发送至 ${input.phone}，请在有效期内完成重置。`,
+      });
     },
     onError: (error) => {
       const apiError = normalizeFormError(error);
@@ -103,6 +109,7 @@ export function PasswordResetForm({
     const parsed = phoneSchema.safeParse(getValues("phone"));
     if (!parsed.success) {
       setError("phone", { message: parsed.error.issues[0]?.message });
+      setSummary({ type: "error", text: "请先填写有效的手机号。" });
       setFocus("phone");
       return;
     }
@@ -117,6 +124,10 @@ export function PasswordResetForm({
         { message: "请为当前手机号重新获取验证码。" },
         { shouldFocus: true },
       );
+      setSummary({
+        type: "error",
+        text: "请先为当前手机号获取验证码，再重置密码。",
+      });
       return;
     }
     void handleSubmit((values) => {
@@ -144,6 +155,8 @@ export function PasswordResetForm({
               {...field}
               onChange={(event) => {
                 field.onChange(event);
+                clearErrors("phone");
+                setSummary(undefined);
                 if (requestedPhone && event.target.value !== requestedPhone) {
                   setRequestedPhone(undefined);
                   resetCountdown();
@@ -196,10 +209,14 @@ export function PasswordResetForm({
           name="newPassword"
           control={control}
           render={({ field }) => (
-            <Input.Password
+            <PasswordField
               id="reset-password"
               autoComplete="new-password"
               {...field}
+              onChange={(event) => {
+                field.onChange(event);
+                clearErrors("newPassword");
+              }}
             />
           )}
         />

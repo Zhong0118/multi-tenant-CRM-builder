@@ -37,6 +37,70 @@ function baseApi(): AuthApi {
 }
 
 describe("LoginForm", () => {
+  it("enters the platform after an administrator logs in", async () => {
+    const api = baseApi();
+    vi.mocked(api.login).mockResolvedValue({
+      accepted: true,
+      user: {
+        id: "admin-1",
+        displayName: "平台管理员",
+        phone: "+8615562266465",
+        isPlatformAdmin: true,
+      },
+    });
+    const navigate = vi.fn();
+    renderForm(
+      <LoginForm
+        api={api}
+        navigate={navigate}
+        device={{ key: "device-test", summary: "Vitest browser" }}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("手机号"), {
+      target: { value: "15562266465" },
+    });
+    fireEvent.change(screen.getByLabelText("密码"), {
+      target: { value: "account-password1" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /登\s*录/ }));
+
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/platform"));
+  });
+
+  it("shows a top-level instruction for invalid client input", async () => {
+    const api = baseApi();
+    renderForm(
+      <LoginForm
+        api={api}
+        navigate={vi.fn()}
+        device={{ key: "device-test", summary: "Vitest browser" }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /登\s*录/ }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "请检查手机号和密码",
+    );
+    expect(api.login).not.toHaveBeenCalled();
+  });
+
+  it("offers an explicit password visibility control", () => {
+    const api = baseApi();
+    renderForm(
+      <LoginForm
+        api={api}
+        navigate={vi.fn()}
+        device={{ key: "device-test", summary: "Vitest browser" }}
+      />,
+    );
+
+    const password = screen.getByLabelText("密码");
+    fireEvent.click(screen.getByRole("button", { name: "显示密码" }));
+    expect(password).toHaveAttribute("type", "text");
+  });
+
   it("shows field errors and the request id from a failed API response", async () => {
     const api = baseApi();
     vi.mocked(api.login).mockRejectedValue({

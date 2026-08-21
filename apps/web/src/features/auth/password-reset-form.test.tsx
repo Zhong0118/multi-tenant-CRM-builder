@@ -38,6 +38,9 @@ describe("PasswordResetForm", () => {
         deviceKey: "device-test",
       }),
     );
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "验证码已发送至 13800138000",
+    );
 
     fireEvent.change(screen.getByLabelText("验证码"), {
       target: { value: "123456" },
@@ -56,6 +59,29 @@ describe("PasswordResetForm", () => {
       newPassword: "new-password1",
     });
     expect(navigate).toHaveBeenCalledWith("/login");
+  });
+
+  it("offers an explicit password visibility control", () => {
+    const api: AuthApi = {
+      requestRegisterCode: vi.fn(),
+      register: vi.fn(),
+      login: vi.fn(),
+      requestPasswordResetCode: vi.fn(),
+      resetPassword: vi.fn(),
+      listWorkspaces: vi.fn(),
+    };
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <PasswordResetForm
+          api={api}
+          device={{ key: "device-test", summary: "Vitest browser" }}
+        />
+      </QueryClientProvider>,
+    );
+
+    const password = screen.getByLabelText("设置新密码");
+    fireEvent.click(screen.getByRole("button", { name: "显示密码" }));
+    expect(password).toHaveAttribute("type", "text");
   });
 
   it("invalidates the reset code when the phone number changes", async () => {

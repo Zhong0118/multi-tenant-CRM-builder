@@ -105,7 +105,16 @@
 .authForm :global(.ant-form-item) {
   margin-bottom: 18px;
 }
+.authForm :global(.ant-form-item-row) {
+  display: block;
+}
+.authForm :global(.ant-form-item-label) {
+  display: block;
+  padding: 0 0 7px;
+  text-align: left !important;
+}
 .authForm :global(.ant-form-item-label > label) {
+  justify-content: flex-start !important;
   height: auto;
   font-size: 13px;
   font-weight: 600;
@@ -113,10 +122,34 @@
 .authForm :global(.ant-input),
 .authForm :global(.ant-input-affix-wrapper),
 .authForm :global(.ant-btn) {
-  min-height: 40px;
+  min-height: 44px;
+}
+.authForm :global(.ant-form-item-explain-error) {
+  margin-top: 5px;
+  font-size: 13px;
 }
 .authForm :global(.ant-alert) {
   margin-bottom: 16px;
+}
+.passwordToggle {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  color: #2563eb;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  place-items: center;
+}
+.passwordToggle:hover {
+  background: #eef4ff;
+}
+.passwordToggle:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 .formAside {
   display: flex;

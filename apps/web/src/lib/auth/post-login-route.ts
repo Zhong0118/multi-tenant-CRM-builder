@@ -36,6 +36,8 @@ export function resolvePostLoginRoute({
     return safeReturnTo;
   }
 
+  if (isPlatformAdmin) return "/platform";
+
   if (activeWorkspaces.length === 0) return "/waiting";
   if (activeWorkspaces.length === 1) {
     return `/workspace/${encodeURIComponent(activeWorkspaces[0].tenantCode)}`;

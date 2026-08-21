@@ -68,6 +68,9 @@ describe("RegisterForm", () => {
     expect(
       screen.getByRole("button", { name: /60 秒后重新获取/ }),
     ).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "验证码已发送至 13800138000",
+    );
 
     fireEvent.change(screen.getByLabelText("姓名"), {
       target: { value: "张三" },
@@ -90,6 +93,90 @@ describe("RegisterForm", () => {
       password: "account-password1",
       deviceSummary: "Vitest browser",
     });
+  });
+
+  it("shows the missing-code instruction prominently before registration", async () => {
+    const api: AuthApi = {
+      requestRegisterCode: vi.fn(),
+      register: vi.fn(),
+      login: vi.fn(),
+      requestPasswordResetCode: vi.fn(),
+      resetPassword: vi.fn(),
+      listWorkspaces: vi.fn(),
+    };
+    renderForm(
+      <RegisterForm
+        api={api}
+        device={{ key: "device-test", summary: "Vitest browser" }}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("手机号"), {
+      target: { value: "13800138000" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "创建账号" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "请先为当前手机号获取验证码",
+    );
+    expect(api.register).not.toHaveBeenCalled();
+  });
+
+  it("clears a stale phone validation error when the phone changes", async () => {
+    const api: AuthApi = {
+      requestRegisterCode: vi.fn(),
+      register: vi.fn(),
+      login: vi.fn(),
+      requestPasswordResetCode: vi.fn(),
+      resetPassword: vi.fn(),
+      listWorkspaces: vi.fn(),
+    };
+    renderForm(
+      <RegisterForm
+        api={api}
+        device={{ key: "device-test", summary: "Vitest browser" }}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("手机号"), {
+      target: { value: "12500000000" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "获取验证码" }));
+    expect(
+      await screen.findByText("请输入有效的中国大陆手机号。"),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("手机号"), {
+      target: { value: "13800138000" },
+    });
+    await waitFor(() =>
+      expect(
+        screen.queryByText("请输入有效的中国大陆手机号。"),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it("offers an explicit password visibility control", () => {
+    const api: AuthApi = {
+      requestRegisterCode: vi.fn(),
+      register: vi.fn(),
+      login: vi.fn(),
+      requestPasswordResetCode: vi.fn(),
+      resetPassword: vi.fn(),
+      listWorkspaces: vi.fn(),
+    };
+    renderForm(
+      <RegisterForm
+        api={api}
+        device={{ key: "device-test", summary: "Vitest browser" }}
+      />,
+    );
+
+    const password = screen.getByLabelText("设置密码");
+    expect(password).toHaveAttribute("type", "password");
+    fireEvent.click(screen.getByRole("button", { name: "显示密码" }));
+    expect(password).toHaveAttribute("type", "text");
+    expect(screen.getByRole("button", { name: "隐藏密码" })).toBeVisible();
   });
 
   it("requires a new code after the phone number changes", async () => {

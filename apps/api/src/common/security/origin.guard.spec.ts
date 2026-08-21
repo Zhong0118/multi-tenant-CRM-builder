@@ -14,7 +14,7 @@ function contextFor(method: string, origin?: string): ExecutionContext {
 
 describe('OriginGuard', () => {
   const config = {
-    get: jest.fn(() => 'http://localhost:3000'),
+    get: jest.fn(() => 'http://localhost:3000,http://127.0.0.1:3000'),
   } as unknown as ConfigService;
   const guard = new OriginGuard(config);
 
@@ -24,6 +24,12 @@ describe('OriginGuard', () => {
 
   it('permits an exact configured origin for unsafe methods', () => {
     expect(guard.canActivate(contextFor('POST', 'http://localhost:3000'))).toBe(
+      true,
+    );
+  });
+
+  it('permits the configured loopback origin for local development', () => {
+    expect(guard.canActivate(contextFor('POST', 'http://127.0.0.1:3000'))).toBe(
       true,
     );
   });
