@@ -15,6 +15,11 @@ test("defines the core multi-tenant CRM models", async () => {
     "Session",
     "ObjectDefinition",
     "FieldDefinition",
+    "ObjectPublication",
+    "ViewDefinition",
+    "ObjectPermission",
+    "FieldPermission",
+    "RecordCounter",
     "Record",
   ];
 

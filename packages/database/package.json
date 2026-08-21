@@ -11,7 +11,7 @@
     "build": "prisma generate && tsc -p tsconfig.json",
     "typecheck": "prisma generate && tsc --noEmit",
     "test": "node --test schema-contract.test.mjs",
-    "test:integration": "tsc -p tsconfig.json && node --test test/integration/*.test.mjs",
+    "test:integration": "tsc -p tsconfig.json && node --test --test-concurrency=1 test/integration/*.test.mjs",
     "prisma:format": "prisma format",
     "prisma:validate": "prisma validate",
     "prisma:generate": "prisma generate",

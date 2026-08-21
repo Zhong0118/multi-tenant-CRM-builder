@@ -86,6 +86,32 @@ enum FieldStatus {
   INACTIVE
 }
 
+enum ViewType {
+  TABLE
+}
+
+enum ViewStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum PermissionSubjectType {
+  ROLE
+  MEMBER
+}
+
+enum DataScope {
+  ALL
+  OWN
+  NONE
+}
+
+enum FieldAccess {
+  EDIT
+  READ_ONLY
+  HIDDEN
+}
+
 enum RecordSource {
   MANUAL
   IMPORT
@@ -122,39 +148,46 @@ model User {
 }
 
 model Tenant {
-  id          String             @id @default(uuid(7)) @db.Uuid
-  name        String             @db.VarChar(200)
-  code        String             @unique @db.VarChar(64)
-  status      TenantStatus       @default(DRAFT)
-  timezone    String             @default("Asia/Shanghai") @db.VarChar(64)
-  locale      String             @default("zh-CN") @db.VarChar(16)
-  settings    Json               @default("{}") @db.JsonB
-  activatedAt DateTime?          @map("activated_at") @db.Timestamptz(3)
-  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt   DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
-  members     TenantMember[]
-  invitations TenantInvitation[]
-  objects     ObjectDefinition[]
-  fields      FieldDefinition[]
-  records     Record[]
+  id                 String              @id @default(uuid(7)) @db.Uuid
+  name               String              @db.VarChar(200)
+  code               String              @unique @db.VarChar(64)
+  status             TenantStatus        @default(DRAFT)
+  timezone           String              @default("Asia/Shanghai") @db.VarChar(64)
+  locale             String              @default("zh-CN") @db.VarChar(16)
+  settings           Json                @default("{}") @db.JsonB
+  activatedAt        DateTime?           @map("activated_at") @db.Timestamptz(3)
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+  members            TenantMember[]
+  invitations        TenantInvitation[]
+  objects            ObjectDefinition[]
+  fields             FieldDefinition[]
+  records            Record[]
+  objectPublications ObjectPublication[]
+  views              ViewDefinition[]
+  objectPermissions  ObjectPermission[]
+  fieldPermissions   FieldPermission[]
+  recordCounters     RecordCounter[]
 
   @@map("tenants")
 }
 
 model TenantMember {
-  id             String       @id @default(uuid(7)) @db.Uuid
-  tenantId       String       @map("tenant_id") @db.Uuid
-  userId         String       @map("user_id") @db.Uuid
-  role           MemberRole
-  status         MemberStatus @default(ACTIVE)
-  employeeNo     String?      @map("employee_no") @db.VarChar(64)
-  joinedAt       DateTime?    @map("joined_at") @db.Timestamptz(3)
-  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
-  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  user           User         @relation(fields: [userId], references: [id], onDelete: Restrict)
-  ownedRecords   Record[]     @relation("RecordOwner")
-  createdRecords Record[]     @relation("RecordCreator")
+  id                        String              @id @default(uuid(7)) @db.Uuid
+  tenantId                  String              @map("tenant_id") @db.Uuid
+  userId                    String              @map("user_id") @db.Uuid
+  role                      MemberRole
+  status                    MemberStatus        @default(ACTIVE)
+  employeeNo                String?             @map("employee_no") @db.VarChar(64)
+  joinedAt                  DateTime?           @map("joined_at") @db.Timestamptz(3)
+  createdAt                 DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                 DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant                    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  user                      User                @relation(fields: [userId], references: [id], onDelete: Restrict)
+  ownedRecords              Record[]            @relation("RecordOwner")
+  createdRecords            Record[]            @relation("RecordCreator")
+  publishedObjects          ObjectPublication[] @relation("ObjectPublicationPublisher")
+  objectPermissionOverrides ObjectPermission[]  @relation("ObjectPermissionMember")
 
   @@unique([tenantId, userId])
   @@unique([tenantId, id])
@@ -221,53 +254,158 @@ model Session {
 }
 
 model ObjectDefinition {
-  id                      String            @id @default(uuid(7)) @db.Uuid
-  tenantId                String            @map("tenant_id") @db.Uuid
-  name                    String            @db.VarChar(100)
-  code                    String            @db.VarChar(64)
-  kind                    ObjectKind        @default(GENERIC)
-  titleFieldKey           String            @map("title_field_key") @db.VarChar(64)
-  icon                    String?           @db.VarChar(64)
-  status                  ObjectStatus      @default(DRAFT)
-  settings                Json              @default("{}") @db.JsonB
-  sourceTemplateVersionId String?           @map("source_template_version_id") @db.Uuid
-  version                 Int               @default(1)
-  createdAt               DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt               DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
-  deletedAt               DateTime?         @map("deleted_at") @db.Timestamptz(3)
-  tenant                  Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  id                      String              @id @default(uuid(7)) @db.Uuid
+  tenantId                String              @map("tenant_id") @db.Uuid
+  name                    String              @db.VarChar(100)
+  code                    String              @db.VarChar(64)
+  kind                    ObjectKind          @default(GENERIC)
+  titleFieldKey           String              @map("title_field_key") @db.VarChar(64)
+  icon                    String?             @db.VarChar(64)
+  status                  ObjectStatus        @default(DRAFT)
+  sortOrder               Int                 @default(0) @map("sort_order")
+  settings                Json                @default("{}") @db.JsonB
+  sourceTemplateVersionId String?             @map("source_template_version_id") @db.Uuid
+  activePublicationId     String?             @map("active_publication_id") @db.Uuid
+  publishedAt             DateTime?           @map("published_at") @db.Timestamptz(3)
+  version                 Int                 @default(1)
+  createdAt               DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt               DateTime?           @map("deleted_at") @db.Timestamptz(3)
+  tenant                  Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   fields                  FieldDefinition[]
   records                 Record[]
+  publications            ObjectPublication[] @relation("ObjectPublications")
+  activePublication       ObjectPublication?  @relation("ActiveObjectPublication", fields: [tenantId, activePublicationId], references: [tenantId, id], onDelete: Restrict)
+  views                   ViewDefinition[]
+  permissions             ObjectPermission[]
+  fieldPermissions        FieldPermission[]
+  recordCounter           RecordCounter?
 
   @@unique([tenantId, code])
   @@unique([tenantId, id])
-  @@index([tenantId, status])
+  @@unique([tenantId, activePublicationId])
+  @@index([tenantId, status, sortOrder])
   @@map("object_definitions")
 }
 
 model FieldDefinition {
-  id           String           @id @default(uuid(7)) @db.Uuid
+  id           String            @id @default(uuid(7)) @db.Uuid
+  tenantId     String            @map("tenant_id") @db.Uuid
+  objectId     String            @map("object_id") @db.Uuid
+  fieldKey     String            @map("field_key") @db.VarChar(64)
+  label        String            @db.VarChar(100)
+  type         FieldType
+  required     Boolean           @default(false)
+  isSystem     Boolean           @default(false) @map("is_system")
+  isSensitive  Boolean           @default(false) @map("is_sensitive")
+  defaultValue Json?             @map("default_value") @db.JsonB
+  validation   Json              @default("{}") @db.JsonB
+  config       Json              @default("{}") @db.JsonB
+  sortOrder    Int               @default(0) @map("sort_order")
+  status       FieldStatus       @default(ACTIVE)
+  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  object       ObjectDefinition  @relation(fields: [tenantId, objectId], references: [tenantId, id], onDelete: Restrict)
+  permissions  FieldPermission[]
+
+  @@unique([tenantId, objectId, fieldKey])
+  @@unique([tenantId, objectId, id])
+  @@index([tenantId, objectId, status, sortOrder])
+  @@map("field_definitions")
+}
+
+model ObjectPublication {
+  id                  String            @id @default(uuid(7)) @db.Uuid
+  tenantId            String            @map("tenant_id") @db.Uuid
+  objectId            String            @map("object_id") @db.Uuid
+  publicationNo       Int               @map("publication_no")
+  sourceDraftVersion  Int               @map("source_draft_version")
+  configuration       Json              @db.JsonB
+  changeSummary       Json              @map("change_summary") @db.JsonB
+  publishedByMemberId String            @map("published_by_member_id") @db.Uuid
+  publishedAt         DateTime          @default(now()) @map("published_at") @db.Timestamptz(3)
+  tenant              Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  object              ObjectDefinition  @relation("ObjectPublications", fields: [tenantId, objectId], references: [tenantId, id], onDelete: Restrict)
+  publisher           TenantMember      @relation("ObjectPublicationPublisher", fields: [tenantId, publishedByMemberId], references: [tenantId, id], onDelete: Restrict)
+  activeFor           ObjectDefinition? @relation("ActiveObjectPublication")
+
+  @@unique([tenantId, objectId, publicationNo])
+  @@unique([tenantId, id])
+  @@index([tenantId, objectId, publishedAt(sort: Desc)])
+  @@map("object_publications")
+}
+
+model ViewDefinition {
+  id              String           @id @default(uuid(7)) @db.Uuid
+  tenantId        String           @map("tenant_id") @db.Uuid
+  objectId        String           @map("object_id") @db.Uuid
+  code            String           @db.VarChar(64)
+  name            String           @db.VarChar(100)
+  type            ViewType         @default(TABLE)
+  columnFieldKeys Json             @map("column_field_keys") @db.JsonB
+  sort            Json             @db.JsonB
+  status          ViewStatus       @default(ACTIVE)
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  object          ObjectDefinition @relation(fields: [tenantId, objectId], references: [tenantId, id], onDelete: Restrict)
+
+  @@unique([tenantId, objectId, code])
+  @@index([tenantId, objectId, status])
+  @@map("view_definitions")
+}
+
+model ObjectPermission {
+  id              String                @id @default(uuid(7)) @db.Uuid
+  tenantId        String                @map("tenant_id") @db.Uuid
+  objectId        String                @map("object_id") @db.Uuid
+  subjectType     PermissionSubjectType @map("subject_type")
+  subjectRole     MemberRole?           @map("subject_role")
+  subjectMemberId String?               @map("subject_member_id") @db.Uuid
+  canCreate       Boolean               @default(false) @map("can_create")
+  canRead         Boolean               @default(false) @map("can_read")
+  canUpdate       Boolean               @default(false) @map("can_update")
+  canDelete       Boolean               @default(false) @map("can_delete")
+  readScope       DataScope             @default(NONE) @map("read_scope")
+  updateScope     DataScope             @default(NONE) @map("update_scope")
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant          Tenant                @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  object          ObjectDefinition      @relation(fields: [tenantId, objectId], references: [tenantId, id], onDelete: Restrict)
+  subjectMember   TenantMember?         @relation("ObjectPermissionMember", fields: [tenantId, subjectMemberId], references: [tenantId, id], onDelete: Cascade)
+
+  @@index([tenantId, objectId, subjectType])
+  @@map("object_permissions")
+}
+
+model FieldPermission {
+  id          String           @id @default(uuid(7)) @db.Uuid
+  tenantId    String           @map("tenant_id") @db.Uuid
+  objectId    String           @map("object_id") @db.Uuid
+  fieldId     String           @map("field_id") @db.Uuid
+  subjectRole MemberRole       @map("subject_role")
+  access      FieldAccess
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  object      ObjectDefinition @relation(fields: [tenantId, objectId], references: [tenantId, id], onDelete: Restrict)
+  field       FieldDefinition  @relation(fields: [tenantId, objectId, fieldId], references: [tenantId, objectId, id], onDelete: Restrict)
+
+  @@unique([tenantId, fieldId, subjectRole])
+  @@index([tenantId, objectId, subjectRole])
+  @@map("field_permissions")
+}
+
+model RecordCounter {
   tenantId     String           @map("tenant_id") @db.Uuid
   objectId     String           @map("object_id") @db.Uuid
-  fieldKey     String           @map("field_key") @db.VarChar(64)
-  label        String           @db.VarChar(100)
-  type         FieldType
-  required     Boolean          @default(false)
-  isSystem     Boolean          @default(false) @map("is_system")
-  isSensitive  Boolean          @default(false) @map("is_sensitive")
-  defaultValue Json?            @map("default_value") @db.JsonB
-  validation   Json             @default("{}") @db.JsonB
-  config       Json             @default("{}") @db.JsonB
-  sortOrder    Int              @default(0) @map("sort_order")
-  status       FieldStatus      @default(ACTIVE)
-  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  nextRecordNo BigInt           @default(1) @map("next_record_no")
   tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   object       ObjectDefinition @relation(fields: [tenantId, objectId], references: [tenantId, id], onDelete: Restrict)
 
-  @@unique([tenantId, objectId, fieldKey])
-  @@index([tenantId, objectId, status, sortOrder])
-  @@map("field_definitions")
+  @@id([tenantId, objectId])
+  @@map("record_counters")
 }
 
 model Record {

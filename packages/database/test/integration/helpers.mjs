@@ -33,9 +33,17 @@ export function createTestClients() {
 }
 
 export async function resetTestData(admin) {
+  await admin.objectDefinition.updateMany({
+    data: { activePublicationId: null, publishedAt: null },
+  });
   await admin.$transaction([
     admin.auditLog.deleteMany(),
     admin.record.deleteMany(),
+    admin.recordCounter.deleteMany(),
+    admin.fieldPermission.deleteMany(),
+    admin.objectPermission.deleteMany(),
+    admin.viewDefinition.deleteMany(),
+    admin.objectPublication.deleteMany(),
     admin.fieldDefinition.deleteMany(),
     admin.objectDefinition.deleteMany(),
     admin.tenantInvitation.deleteMany(),

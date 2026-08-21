@@ -34,16 +34,17 @@
 - Modify: `packages/database/test/integration/helpers.mjs`
 - Create: `packages/database/test/integration/dynamic-objects.test.mjs`
 - Modify: `packages/database/schema-contract.test.mjs`
+- Modify: `packages/database/package.json`
 
 **Interfaces:**
 - Consumes: existing `Tenant`, `TenantMember`, `ObjectDefinition`, `FieldDefinition`, `Record`, and `createDatabaseClient`.
 - Produces: Prisma models `ObjectPublication`, `ViewDefinition`, `ObjectPermission`, `FieldPermission`, `RecordCounter`; `ObjectDefinition.activePublicationId/publishedAt/sortOrder`; RLS-protected tables and test cleanup.
 
-- [ ] **Step 1: Write the failing PostgreSQL integration test**
+- [x] **Step 1: Write the failing PostgreSQL integration test**
 
 Create a test that inserts two tenants, object drafts, fields, default views, role policies, and publications under the admin connection, then uses `withSettings(runtime, { tenantId })` to assert tenant A cannot see tenant B configuration. Assert a direct runtime query without `app.tenant_id` returns zero rows. Attempt `UPDATE object_publications` and expect PostgreSQL rejection. Start two transactions that increment one `record_counters` row with `SELECT ... FOR UPDATE` and assert allocated numbers are `1` and `2`.
 
-- [ ] **Step 2: Run the integration test and observe RED**
+- [x] **Step 2: Run the integration test and observe RED**
 
 Run:
 
@@ -55,7 +56,7 @@ node --test packages/database/test/integration/dynamic-objects.test.mjs
 
 Expected: FAIL because the five new tables and `active_publication_id` do not exist.
 
-- [ ] **Step 3: Add exact Prisma enums and relations**
+- [x] **Step 3: Add exact Prisma enums and relations**
 
 Add enums:
 
@@ -69,7 +70,7 @@ enum FieldAccess { EDIT READ_ONLY HIDDEN }
 
 Add the five models with composite tenant foreign keys, uniqueness from the spec, and `Json @db.JsonB` configuration/change summary. Add two named relations from `ObjectDefinition` to publications so the object owns publication history and optionally selects `activePublication`.
 
-- [ ] **Step 4: Write migration SQL and RLS policies**
+- [x] **Step 4: Write migration SQL and RLS policies**
 
 Create tables, FKs, indexes, and policies. Add an immutability trigger:
 
@@ -80,14 +81,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER object_publications_immutable
-BEFORE UPDATE OR DELETE ON object_publications
+CREATE TRIGGER object_publications_immutable_update
+BEFORE UPDATE ON object_publications
 FOR EACH ROW EXECUTE FUNCTION reject_object_publication_mutation();
 ```
 
-Enable and force RLS on every new tenant table. Grant only required table/sequence privileges to `crm_app`; grant no UPDATE/DELETE on `object_publications`.
+Enable and force RLS on every new tenant table. Grant only required table privileges to `crm_app`; grant no UPDATE/DELETE on `object_publications`. The migration administrator retains DELETE solely for controlled test/maintenance cleanup, while UPDATE is rejected by the trigger for every role.
 
-- [ ] **Step 5: Extend cleanup and verify GREEN**
+- [x] **Step 5: Extend cleanup and verify GREEN**
 
 Delete new tables in FK-safe order before objects/tenants. Run:
 
@@ -101,7 +102,7 @@ pnpm --filter @crm/database test:integration
 
 Expected: schema contract and all PostgreSQL integration tests pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/database
