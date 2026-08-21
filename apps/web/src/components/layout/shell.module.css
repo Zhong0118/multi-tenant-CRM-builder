@@ -14,6 +14,34 @@
   margin-top: 24px;
 }
 
+/* Business objects and workspace destinations are separate groups: a member
+   reads "what business data can I open" apart from "where do I administer". */
+.navGroup {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #d8e0e6;
+}
+
+.navGroup + .navGroup,
+.navGroup + nav {
+  margin-top: 20px;
+}
+
+.navGroupLabel {
+  display: block;
+  margin-bottom: 10px;
+  color: #526473 !important;
+  font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.navGroupEmpty {
+  font-size: 13px;
+  line-height: 20px;
+}
+
 .sidebar h4 {
   margin: 7px 0 12px !important;
   color: #162532 !important;

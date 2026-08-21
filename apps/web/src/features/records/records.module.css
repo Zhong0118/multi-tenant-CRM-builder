@@ -1,0 +1,38 @@
+/* Dynamic record surfaces follow the configuration-ledger direction: plain
+   surfaces, one structural rule, no decoration competing with the data. */
+
+.fullWidth {
+  width: 100%;
+}
+
+.fieldHelp {
+  margin-top: 4px;
+  color: #526473;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.fieldError {
+  margin-top: 4px;
+  color: #b42318;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+/* A read-only field stays normal text with a stated reason rather than a
+   low-contrast disabled control the member cannot interpret. */
+.readOnlyValue {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 32px;
+  padding: 4px 0;
+  color: #162532;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.readOnlyReason {
+  font-size: 12px !important;
+  white-space: nowrap;
+}

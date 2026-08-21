@@ -507,11 +507,11 @@ git commit -m "feat(contracts): expose dynamic object APIs"
 - Consumes: generated OpenAPI paths.
 - Produces: typed browser/server operations, `DynamicField`, server-fetched accessible object navigation.
 
-- [ ] **Step 1: Write failing dynamic-field and navigation tests**
+- [x] **Step 1: Write failing dynamic-field and navigation tests**
 
 Render literal published fields and assert correct Ant controls, labels, option state, MEMBER options, read-only text/lock explanation, hidden omission, money/date normalization handoff, keyboard labels, and employee-hidden object navigation omission.
 
-- [ ] **Step 2: Run RED and implement typed modules**
+- [x] **Step 2: Run RED and implement typed modules**
 
 ```bash
 pnpm --filter @crm/web test:unit -- dynamic-field.test.tsx require-runtime-objects.test.ts
@@ -519,7 +519,7 @@ pnpm --filter @crm/web test:unit -- dynamic-field.test.tsx require-runtime-objec
 
 Object and record API modules call generated paths only and translate failures through `toApiError`. `WorkspaceShell` accepts `businessObjects` separately from system navigation and labels the two groups “业务对象” and “工作空间”.
 
-- [ ] **Step 3: Verify and commit**
+- [x] **Step 3: Verify and commit**
 
 ```bash
 pnpm --filter @crm/web test
