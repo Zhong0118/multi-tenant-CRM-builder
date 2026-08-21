@@ -3,6 +3,7 @@ import {
   Catch,
   HttpException,
   Injectable,
+  Logger,
   type ExceptionFilter,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
@@ -25,6 +26,8 @@ interface RequestWithId extends Request {
 @Catch()
 @Injectable()
 export class ApiExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(ApiExceptionFilter.name);
+
   toBody(exception: unknown, requestId: string): ApiErrorBody {
     if (exception instanceof ApiException) {
       return {
@@ -46,6 +49,14 @@ export class ApiExceptionFilter implements ExceptionFilter {
       };
     }
 
+    // An unexpected failure is a defect, not a domain outcome. The client only
+    // ever sees the generic envelope, so the cause has to reach the server log
+    // against its request id or it is unrecoverable in production.
+    this.logger.error(
+      `Unhandled failure for request ${requestId}: ${describe(exception)}`,
+      exception instanceof Error ? exception.stack : undefined,
+    );
+
     return {
       code: 'INTERNAL_ERROR',
       message: API_ERROR_MESSAGES.INTERNAL_ERROR,
@@ -63,4 +74,11 @@ export class ApiExceptionFilter implements ExceptionFilter {
 
     response.status(body.status).json(body);
   }
+}
+
+function describe(exception: unknown): string {
+  if (exception instanceof Error) {
+    return `${exception.name}: ${exception.message}`;
+  }
+  return typeof exception === 'string' ? exception : JSON.stringify(exception);
 }
