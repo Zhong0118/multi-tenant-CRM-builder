@@ -66,20 +66,26 @@ export function ObjectList({
       title: "业务对象",
       key: "object",
       render: (_, row) => (
-        <div className={styles.ledgerLabel}>
-          <Link
-            href={`/workspace/${tenantCode}/settings/objects/${row.object.id}`}
-          >
-            {row.object.name}
-          </Link>
-          <span className={styles.stableKey}>{row.object.code}</span>
-        </div>
+        <Link
+          className={styles.ledgerName}
+          href={`/workspace/${tenantCode}/settings/objects/${row.object.id}`}
+        >
+          {row.object.name}
+        </Link>
+      ),
+    },
+    {
+      title: "对象代码",
+      key: "code",
+      width: 180,
+      render: (_, row) => (
+        <span className={styles.stableKey}>{row.object.code}</span>
       ),
     },
     {
       title: "状态",
       key: "status",
-      width: 140,
+      width: 130,
       render: (_, row) => (
         <Tag color={row.object.hasUnpublishedChanges ? "gold" : undefined}>
           {objectStatusLabel(row.object)}
@@ -89,16 +95,17 @@ export function ObjectList({
     {
       title: "字段",
       key: "fields",
-      width: 80,
+      width: 72,
+      align: "right",
       render: (_, row) => row.fields.length,
     },
     {
       title: "当前版本",
       key: "publication",
-      width: 110,
+      width: 100,
       render: (_, row) =>
         row.object.publicationNumber === null ? (
-          <Typography.Text type="secondary">未发布</Typography.Text>
+          <span className={styles.ledgerMuted}>未发布</span>
         ) : (
           <span className={styles.stableKey}>
             v{row.object.publicationNumber}
@@ -108,13 +115,14 @@ export function ObjectList({
     {
       title: "记录",
       key: "records",
-      width: 90,
+      width: 80,
+      align: "right",
       render: (_, row) => row.activeRecordCount,
     },
     {
       title: "导航顺序",
       key: "order",
-      width: 110,
+      width: 96,
       render: (_, row, index) => (
         <div className={styles.ledgerOrder}>
           <Button
@@ -162,7 +170,7 @@ export function ObjectList({
   }
 
   return (
-    <section className={styles.panel}>
+    <section>
       {error ? <Alert type="error" showIcon title={error} /> : null}
       <div className={styles.sectionHeading}>
         <h2>业务对象 {rows.length}</h2>
@@ -173,6 +181,7 @@ export function ObjectList({
       <Table
         className={styles.ledger}
         rowKey={(row) => row.object.id}
+        size="small"
         columns={columns}
         dataSource={rows}
         pagination={false}

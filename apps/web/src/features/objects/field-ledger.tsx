@@ -21,11 +21,11 @@ export interface FieldLedgerProps {
 }
 
 /**
- * The single signature element of the designer. One structural rule, one row
- * per field, merging display order, stable key, type, requirement and employee
- * access so a tenant administrator can scan the whole configuration at once.
+ * The single signature element of the designer: one continuous register where
+ * each field occupies exactly one line, so display order, stable key, type,
+ * requirement and employee access can be compared straight down the columns.
  *
- * Order is changed with explicit move controls rather than drag only, so the
+ * Order changes through explicit move controls rather than drag alone, so the
  * ledger stays operable by keyboard.
  */
 export function FieldLedger({
@@ -37,9 +37,9 @@ export function FieldLedger({
 }: FieldLedgerProps) {
   const columns: ColumnsType<ObjectDraftField> = [
     {
-      title: "顺序",
+      title: "",
       key: "order",
-      width: 84,
+      width: 64,
       render: (_, fieldRow, index) => (
         <div className={styles.ledgerOrder}>
           <Tooltip title={`上移 ${fieldRow.label}`}>
@@ -69,54 +69,72 @@ export function FieldLedger({
     },
     {
       title: "字段",
-      key: "field",
+      key: "label",
       render: (_, fieldRow) => (
-        <div className={styles.ledgerLabel}>
-          <strong>{fieldRow.label}</strong>
-          <span className={styles.stableKey}>{fieldRow.fieldKey}</span>
-        </div>
+        <span className={styles.ledgerName}>{fieldRow.label}</span>
+      ),
+    },
+    {
+      title: "字段键",
+      key: "fieldKey",
+      width: 180,
+      render: (_, fieldRow) => (
+        <span className={styles.stableKey}>{fieldRow.fieldKey}</span>
       ),
     },
     {
       title: "类型",
       key: "type",
-      width: 110,
+      width: 96,
       render: (_, fieldRow) => fieldTypeLabel(fieldRow.type),
     },
     {
       title: "必填",
       key: "required",
-      width: 84,
-      render: (_, fieldRow) => (fieldRow.required ? "必填" : "可选"),
+      width: 72,
+      render: (_, fieldRow) =>
+        fieldRow.required ? (
+          <span className={styles.ledgerRequired}>必填</span>
+        ) : (
+          <span className={styles.ledgerMuted}>可选</span>
+        ),
     },
     {
       title: "员工访问",
       key: "access",
-      width: 110,
-      render: (_, fieldRow) =>
-        FIELD_ACCESS_LABELS[fieldRow.employeeAccess as PublishedFieldAccess],
+      width: 96,
+      render: (_, fieldRow) => {
+        const access = fieldRow.employeeAccess as PublishedFieldAccess;
+        return (
+          <span className={access === "EDIT" ? undefined : styles.ledgerMuted}>
+            {FIELD_ACCESS_LABELS[access]}
+          </span>
+        );
+      },
     },
     {
       title: "状态",
       key: "status",
-      width: 132,
+      width: 150,
       render: (_, fieldRow) => (
-        <>
-          {fieldRow.fieldKey === titleFieldKey ? <Tag>标题字段</Tag> : null}
+        <span className={styles.ledgerFlags}>
+          {fieldRow.fieldKey === titleFieldKey ? <Tag>标题</Tag> : null}
           {fieldRow.status === "INACTIVE" ? <Tag>已停用</Tag> : null}
           {fieldRow.publishedType === null ? (
             <Tag color="gold">未发布</Tag>
           ) : null}
-        </>
+        </span>
       ),
     },
     {
-      title: "操作",
+      title: "",
       key: "actions",
-      width: 96,
+      width: 72,
+      align: "right",
       render: (_, fieldRow) => (
         <Button
           type="link"
+          size="small"
           aria-label={`配置字段 ${fieldRow.label}`}
           onClick={() => onSelect(fieldRow)}
         >
@@ -130,7 +148,7 @@ export function FieldLedger({
     <Table
       className={styles.ledger}
       rowKey="id"
-      size="middle"
+      size="small"
       pagination={false}
       columns={columns}
       dataSource={fields}

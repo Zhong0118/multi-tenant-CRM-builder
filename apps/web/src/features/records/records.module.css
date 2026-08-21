@@ -7,14 +7,14 @@
 
 .fieldHelp {
   margin-top: 4px;
-  color: #526473;
+  color: var(--ink-secondary);
   font-size: 12px;
   line-height: 18px;
 }
 
 .fieldError {
   margin-top: 4px;
-  color: #b42318;
+  color: var(--stop-red);
   font-size: 12px;
   line-height: 18px;
 }
@@ -27,7 +27,7 @@
   gap: 8px;
   min-height: 32px;
   padding: 4px 0;
-  color: #162532;
+  color: var(--ledger-ink);
   font-size: 14px;
   line-height: 22px;
 }

@@ -304,7 +304,7 @@ export function ObjectDesigner({
           ) : null}
 
           {section === "fields" ? (
-            <section className={styles.panel}>
+            <section>
               <div className={styles.sectionHeading}>
                 <h2>字段 {draft.fields.length}</h2>
                 <Typography.Text type="secondary">

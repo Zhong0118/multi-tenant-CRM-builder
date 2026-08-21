@@ -11,7 +11,7 @@
 
 .pageHeader h1 {
   margin: 4px 0 8px;
-  color: #172033;
+  color: var(--ledger-ink);
   font-size: 24px;
   line-height: 32px;
   font-weight: 650;
@@ -19,14 +19,14 @@
 
 .pageHeader p {
   max-width: 68ch;
-  color: #526473;
+  color: var(--ink-secondary);
   font-size: 14px;
   line-height: 22px;
 }
 
 .eyebrow {
-  color: #167a72;
-  font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif;
+  color: var(--verified-teal);
+  font-family: var(--font-label);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -34,16 +34,16 @@
 
 /* Stable identifiers are monospace so a code or field key never reads as prose. */
 .stableKey {
-  font-family: "IBM Plex Mono", "Geist Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
-  color: #526473;
+  color: var(--ink-secondary);
 }
 
 .panel {
   padding: 20px;
-  border: 1px solid #d7dee8;
+  border: 1px solid var(--rule);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--paper);
 }
 
 .designer {
@@ -60,7 +60,7 @@
   align-items: flex-start;
   justify-content: space-between;
   padding-bottom: 16px;
-  border-bottom: 1px solid #d7dee8;
+  border-bottom: 1px solid var(--rule);
 }
 
 .designerIdentity {
@@ -71,7 +71,7 @@
 
 .designerIdentity h1 {
   margin: 0;
-  color: #172033;
+  color: var(--ledger-ink);
   font-size: 22px;
   line-height: 30px;
   font-weight: 650;
@@ -96,7 +96,7 @@
   flex-direction: column;
   gap: 2px;
   padding-right: 16px;
-  border-right: 1px solid #d7dee8;
+  border-right: 1px solid var(--rule);
 }
 
 .designerNavItem {
@@ -104,7 +104,7 @@
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: #172033;
+  color: var(--ledger-ink);
   font: inherit;
   font-size: 14px;
   text-align: left;
@@ -112,20 +112,20 @@
 }
 
 .designerNavItem:hover {
-  background: #f5f7fa;
+  background: var(--canvas);
 }
 
 .designerNavItemActive {
   background: #eef2fb;
-  color: #2457d6;
+  color: var(--working-blue);
   font-weight: 600;
 }
 
 .designerNavVersion {
   margin-top: 12px;
   padding: 8px 10px;
-  color: #526473;
-  font-family: "IBM Plex Mono", "Geist Mono", ui-monospace, monospace;
+  color: var(--ink-secondary);
+  font-family: var(--font-mono);
   font-size: 12px;
 }
 
@@ -140,39 +140,62 @@
 
 .sectionHeading h2 {
   margin: 0;
-  color: #172033;
+  color: var(--ledger-ink);
   font-size: 18px;
   line-height: 26px;
   font-weight: 600;
 }
 
-/* The signature rule: a single structural line down the field ledger. */
+/* The signature element: one continuous register. A 2px Ledger Ink rule opens
+   it, hairlines separate the lines, and nothing boxes it in — a ledger is read
+   down its columns, not as a stack of cards. */
 .ledger {
-  border-top: 2px solid #172033;
+  border-top: 2px solid var(--ledger-ink);
+}
+
+.ledger :global(.ant-table) {
+  background: transparent;
 }
 
 .ledger :global(.ant-table-thead > tr > th) {
-  background: #ffffff !important;
-  color: #526473 !important;
-  font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  border-bottom: 1px solid var(--rule) !important;
+  font-family: var(--font-label);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.08em;
+  text-transform: none;
 }
 
-.ledgerRowInactive {
-  color: #526473;
+.ledger :global(.ant-table-tbody > tr > td) {
+  border-bottom: 1px solid var(--rule) !important;
 }
 
-.ledgerLabel {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.ledgerName {
+  font-weight: 550;
+}
+
+.ledgerRequired {
+  color: var(--ledger-ink);
+}
+
+.ledgerMuted {
+  color: var(--ink-secondary);
+}
+
+.ledgerFlags {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.ledgerRowInactive :global(.ant-table-cell) {
+  color: var(--ink-secondary);
 }
 
 .ledgerOrder {
   display: flex;
-  gap: 2px;
+  gap: 0;
 }
 
 .formGrid {
@@ -185,7 +208,7 @@
 .drawerSection {
   padding-top: 16px;
   margin-top: 8px;
-  border-top: 1px solid #d7dee8;
+  border-top: 1px solid var(--rule);
 }
 
 .drawerSection:first-of-type {
@@ -197,15 +220,15 @@
 .drawerSectionLabel {
   display: block;
   margin-bottom: 12px;
-  color: #526473;
-  font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif;
+  color: var(--ink-secondary);
+  font-family: var(--font-label);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.08em;
 }
 
 .lockNote {
-  color: #a86405;
+  color: var(--review-amber);
   font-size: 12px;
   line-height: 18px;
 }
@@ -223,11 +246,11 @@
 }
 
 .issueGroupBlocking .issueGroupLabel {
-  color: #b42318;
+  color: var(--stop-red);
 }
 
 .issueGroupWarning .issueGroupLabel {
-  color: #a86405;
+  color: var(--review-amber);
 }
 
 .issueList {
@@ -235,16 +258,16 @@
   flex-direction: column;
   gap: 6px;
   padding-left: 12px;
-  border-left: 2px solid #d7dee8;
+  border-left: 2px solid var(--rule);
   list-style: none;
 }
 
 .issueGroupBlocking .issueList {
-  border-left-color: #b42318;
+  border-left-color: var(--stop-red);
 }
 
 .issueGroupWarning .issueList {
-  border-left-color: #a86405;
+  border-left-color: var(--review-amber);
 }
 
 .issue {
@@ -270,7 +293,7 @@
 .publicationList {
   display: flex;
   flex-direction: column;
-  border-top: 1px solid #d7dee8;
+  border-top: 1px solid var(--rule);
 }
 
 .publicationRow {
@@ -279,54 +302,105 @@
   gap: 12px;
   align-items: baseline;
   padding: 12px 0;
-  border-bottom: 1px solid #d7dee8;
+  border-bottom: 1px solid var(--rule);
 }
 
 .publicationNumber {
   min-width: 48px;
-  color: #167a72;
-  font-family: "IBM Plex Mono", "Geist Mono", ui-monospace, monospace;
+  color: var(--verified-teal);
+  font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 600;
 }
 
+/* The preview answers "what will this role actually see", so it is laid out
+   like the record form itself: label above value, on paper, in field order. */
 .preview {
-  padding: 16px;
-  border: 1px solid #d7dee8;
-  border-radius: 8px;
-  background: #f5f7fa;
+  border-top: 2px solid var(--ledger-ink);
 }
 
 .previewHeader {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule);
 }
 
 .previewTitle {
-  color: #172033;
+  color: var(--ledger-ink);
   font-size: 16px;
   font-weight: 600;
 }
 
-.previewFields {
+.previewScope {
+  color: var(--ink-secondary);
+  font-size: 13px;
+}
+
+.previewToolbar {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+}
+
+.previewFields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px 24px;
+  padding: 4px 0 16px;
 }
 
 .previewField {
   display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.previewFieldLabel {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  color: var(--ink-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.previewFieldRequired {
+  color: var(--stop-red);
+}
+
+/* An editable field shows the control it will be; a read-only one shows plain
+   text with its reason, never a low-contrast disabled box. */
+.previewFieldControl {
+  height: 32px;
+  padding: 5px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.previewFieldReadOnly {
+  display: flex;
   gap: 8px;
   align-items: baseline;
-  padding: 8px 12px;
-  border: 1px solid #d7dee8;
-  border-radius: 6px;
-  background: #ffffff;
+  min-height: 32px;
+  padding: 5px 0;
+  color: var(--ledger-ink);
   font-size: 13px;
+  line-height: 20px;
+}
+
+.previewFieldReason {
+  color: var(--review-amber);
+  font-size: 12px;
 }
 
 /* Object configuration is a desktop task; below the breakpoint we say so
