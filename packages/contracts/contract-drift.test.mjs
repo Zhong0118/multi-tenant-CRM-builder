@@ -99,3 +99,39 @@ test("contains the first account and workspace routes", async () => {
     type: "apiKey",
   });
 });
+
+test("locks the dynamic object and record API surface", async () => {
+  const document = JSON.parse(
+    await readFile(new URL("./openapi.json", import.meta.url), "utf8"),
+  );
+  const paths = [
+    "/api/v1/workspaces/{tenantCode}/object-definitions",
+    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/publications",
+    "/api/v1/workspaces/{tenantCode}/objects",
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/schema",
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records",
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}",
+    "/api/v1/workspaces/{tenantCode}/members/{memberId}/object-access",
+    "/api/v1/workspaces/{tenantCode}/members/{memberId}/object-access/{objectId}",
+  ];
+  for (const path of paths) assert.ok(document.paths[path], path);
+
+  assert.ok(document.components.schemas.ApiErrorResponseDto);
+  assert.deepEqual(
+    document.components.schemas.ApiErrorResponseDto.required.toSorted(),
+    ["code", "fieldErrors", "message", "requestId", "status"],
+  );
+  assert.ok(document.components.schemas.PublishedObjectSchemaResponseDto);
+  assert.deepEqual(
+    document.paths[
+      "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/schema"
+    ].get.responses["200"].content["application/json"].schema,
+    { $ref: "#/components/schemas/PublishedObjectSchemaResponseDto" },
+  );
+  assert.deepEqual(
+    document.paths[
+      "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records"
+    ].get.responses["200"].content["application/json"].schema,
+    { $ref: "#/components/schemas/RecordPageResponseDto" },
+  );
+});

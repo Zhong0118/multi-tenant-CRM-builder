@@ -11,6 +11,33 @@
         "required": ["accepted"],
         "type": "object"
       },
+      "ApiErrorResponseDto": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "fieldErrors": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object"
+          },
+          "message": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "number"
+          }
+        },
+        "required": ["code", "message", "fieldErrors", "requestId", "status"],
+        "type": "object"
+      },
       "AuthenticatedResponseDto": {
         "properties": {
           "accepted": {
@@ -66,6 +93,63 @@
         "required": ["status"],
         "type": "object"
       },
+      "CreateFieldDefinitionDto": {
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/FieldConfigDto"
+          },
+          "defaultValue": {
+            "nullable": true,
+            "type": "object"
+          },
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "fieldKey": {
+            "example": "customer_name",
+            "type": "string"
+          },
+          "isSystem": {
+            "default": false,
+            "type": "object"
+          },
+          "label": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "type": {
+            "enum": [
+              "TEXT",
+              "TEXTAREA",
+              "PHONE",
+              "EMAIL",
+              "NUMBER",
+              "MONEY",
+              "DATE",
+              "DATETIME",
+              "SINGLE_SELECT",
+              "MULTI_SELECT",
+              "MEMBER",
+              "BOOLEAN"
+            ],
+            "type": "string"
+          },
+          "validation": {
+            "$ref": "#/components/schemas/FieldValidationDto"
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "fieldKey",
+          "label",
+          "type",
+          "required"
+        ],
+        "type": "object"
+      },
       "CreateInvitationDto": {
         "properties": {
           "phone": {
@@ -78,6 +162,25 @@
           }
         },
         "required": ["phone", "role"],
+        "type": "object"
+      },
+      "CreateObjectDefinitionDto": {
+        "properties": {
+          "code": {
+            "example": "leads",
+            "type": "string"
+          },
+          "icon": {
+            "maxLength": 64,
+            "nullable": true,
+            "type": "object"
+          },
+          "name": {
+            "example": "销售线索",
+            "type": "string"
+          }
+        },
+        "required": ["name", "code"],
         "type": "object"
       },
       "CreatePlatformTenantDto": {
@@ -99,6 +202,21 @@
         "required": ["name", "code", "firstAdminPhone"],
         "type": "object"
       },
+      "CreateRecordDto": {
+        "properties": {
+          "ownerMemberId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "object"
+          },
+          "values": {
+            "additionalProperties": true,
+            "type": "object"
+          }
+        },
+        "required": ["values"],
+        "type": "object"
+      },
       "CreatedInvitationResponseDto": {
         "properties": {
           "id": {
@@ -111,6 +229,171 @@
           }
         },
         "required": ["id", "status"],
+        "type": "object"
+      },
+      "DefaultViewDto": {
+        "properties": {
+          "columnFieldKeys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/DefaultViewSortDto"
+          }
+        },
+        "required": ["expectedVersion", "name", "columnFieldKeys", "sort"],
+        "type": "object"
+      },
+      "DefaultViewSortDto": {
+        "properties": {
+          "direction": {
+            "enum": ["asc", "desc"],
+            "type": "string"
+          },
+          "field": {
+            "enum": ["updatedAt", "createdAt", "recordNo"],
+            "type": "string"
+          }
+        },
+        "required": ["field", "direction"],
+        "type": "object"
+      },
+      "DeleteRecordDto": {
+        "properties": {
+          "version": {
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": ["version"],
+        "type": "object"
+      },
+      "DeleteRecordResponseDto": {
+        "properties": {
+          "accepted": {
+            "enum": [true],
+            "type": "boolean"
+          }
+        },
+        "required": ["accepted"],
+        "type": "object"
+      },
+      "EmployeePermissionsDto": {
+        "properties": {
+          "canCreate": {
+            "type": "boolean"
+          },
+          "canDelete": {
+            "enum": [false],
+            "type": "boolean"
+          },
+          "canRead": {
+            "type": "boolean"
+          },
+          "canUpdate": {
+            "type": "boolean"
+          },
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "fields": {
+            "additionalProperties": {
+              "enum": ["EDIT", "READ_ONLY", "HIDDEN"]
+            },
+            "type": "object"
+          },
+          "readScope": {
+            "enum": ["ALL", "OWN", "NONE"],
+            "type": "string"
+          },
+          "updateScope": {
+            "enum": ["ALL", "OWN", "NONE"],
+            "type": "string"
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "canCreate",
+          "canRead",
+          "canUpdate",
+          "canDelete",
+          "readScope",
+          "updateScope",
+          "fields"
+        ],
+        "type": "object"
+      },
+      "ExpectedVersionDto": {
+        "properties": {
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": ["expectedVersion"],
+        "type": "object"
+      },
+      "FieldConfigDto": {
+        "properties": {
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/SelectOptionDto"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "FieldOrderDto": {
+        "properties": {
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "fieldIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["expectedVersion", "fieldIds"],
+        "type": "object"
+      },
+      "FieldValidationDto": {
+        "properties": {
+          "max": {
+            "type": "number"
+          },
+          "maxLength": {
+            "maximum": 10000,
+            "minimum": 1,
+            "type": "number"
+          },
+          "min": {
+            "type": "number"
+          },
+          "minLength": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "scale": {
+            "maximum": 12,
+            "minimum": 0,
+            "type": "number"
+          }
+        },
         "type": "object"
       },
       "FirstAdminInvitationResponseDto": {
@@ -244,6 +527,110 @@
         "required": ["phone", "password", "deviceKey", "deviceSummary"],
         "type": "object"
       },
+      "MemberObjectAccessDto": {
+        "properties": {
+          "canCreate": {
+            "type": "boolean"
+          },
+          "canRead": {
+            "type": "boolean"
+          },
+          "canUpdate": {
+            "type": "boolean"
+          },
+          "mode": {
+            "enum": ["INHERIT", "OVERRIDE"],
+            "type": "string"
+          },
+          "readScope": {
+            "enum": ["ALL", "OWN", "NONE"],
+            "type": "string"
+          },
+          "updateScope": {
+            "enum": ["ALL", "OWN", "NONE"],
+            "type": "string"
+          }
+        },
+        "required": ["mode"],
+        "type": "object"
+      },
+      "MemberObjectAccessResponseDto": {
+        "properties": {
+          "effective": {
+            "$ref": "#/components/schemas/MemberObjectPolicyResponseDto"
+          },
+          "inherited": {
+            "$ref": "#/components/schemas/MemberObjectPolicyResponseDto"
+          },
+          "mode": {
+            "enum": ["INHERIT", "OVERRIDE"],
+            "type": "string"
+          },
+          "objectCode": {
+            "type": "string"
+          },
+          "objectId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "objectName": {
+            "type": "string"
+          },
+          "override": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MemberObjectPolicyResponseDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "objectId",
+          "objectCode",
+          "objectName",
+          "mode",
+          "inherited",
+          "override",
+          "effective"
+        ],
+        "type": "object"
+      },
+      "MemberObjectPolicyResponseDto": {
+        "properties": {
+          "canCreate": {
+            "type": "boolean"
+          },
+          "canDelete": {
+            "enum": [false],
+            "type": "boolean"
+          },
+          "canRead": {
+            "type": "boolean"
+          },
+          "canUpdate": {
+            "type": "boolean"
+          },
+          "readScope": {
+            "enum": ["ALL", "OWN", "NONE"],
+            "type": "string"
+          },
+          "updateScope": {
+            "enum": ["ALL", "OWN", "NONE"],
+            "type": "string"
+          }
+        },
+        "required": [
+          "canCreate",
+          "canRead",
+          "canUpdate",
+          "canDelete",
+          "readScope",
+          "updateScope"
+        ],
+        "type": "object"
+      },
       "MembershipActionResponseDto": {
         "properties": {
           "accepted": {
@@ -252,6 +639,36 @@
           }
         },
         "required": ["accepted"],
+        "type": "object"
+      },
+      "Object": {
+        "properties": {},
+        "type": "object"
+      },
+      "ObjectOrderDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ObjectOrderItemDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["items"],
+        "type": "object"
+      },
+      "ObjectOrderItemDto": {
+        "properties": {
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "objectId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["expectedVersion", "objectId"],
         "type": "object"
       },
       "PersonalInvitationResponseDto": {
@@ -375,6 +792,179 @@
         "required": ["id", "name", "code", "status", "activeAdminCount"],
         "type": "object"
       },
+      "PublishedFieldResponseDto": {
+        "properties": {
+          "access": {
+            "enum": ["EDIT", "READ_ONLY"],
+            "type": "string"
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "defaultValue": {
+            "nullable": true,
+            "type": "object"
+          },
+          "fieldKey": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "isSystem": {
+            "type": "boolean"
+          },
+          "label": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "number"
+          },
+          "type": {
+            "enum": [
+              "TEXT",
+              "TEXTAREA",
+              "PHONE",
+              "EMAIL",
+              "NUMBER",
+              "MONEY",
+              "DATE",
+              "DATETIME",
+              "SINGLE_SELECT",
+              "MULTI_SELECT",
+              "MEMBER",
+              "BOOLEAN"
+            ],
+            "type": "string"
+          },
+          "validation": {
+            "additionalProperties": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "fieldKey",
+          "label",
+          "type",
+          "required",
+          "defaultValue",
+          "validation",
+          "config",
+          "sortOrder",
+          "isSystem",
+          "access"
+        ],
+        "type": "object"
+      },
+      "PublishedObjectSchemaResponseDto": {
+        "properties": {
+          "actions": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "defaultView": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/PublishedFieldResponseDto"
+            },
+            "type": "array"
+          },
+          "object": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "publication": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "scopes": {
+            "additionalProperties": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "publication",
+          "object",
+          "fields",
+          "defaultView",
+          "actions",
+          "scopes"
+        ],
+        "type": "object"
+      },
+      "RecordPageResponseDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecordResponseDto"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": ["items", "page", "limit", "total"],
+        "type": "object"
+      },
+      "RecordResponseDto": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "ownerMemberId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "object"
+          },
+          "recordNo": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "values": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "recordNo",
+          "title",
+          "values",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
       "RegisterDto": {
         "properties": {
           "code": {
@@ -434,6 +1024,58 @@
           }
         },
         "required": ["phone", "code", "newPassword"],
+        "type": "object"
+      },
+      "RuntimeObjectNavigationResponseDto": {
+        "properties": {
+          "canCreate": {
+            "type": "boolean"
+          },
+          "canRead": {
+            "type": "boolean"
+          },
+          "canUpdate": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "icon": {
+            "nullable": true,
+            "type": "object"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "sortOrder",
+          "canCreate",
+          "canRead",
+          "canUpdate"
+        ],
+        "type": "object"
+      },
+      "SelectOptionDto": {
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "status": {
+            "default": "ACTIVE",
+            "enum": ["ACTIVE", "INACTIVE"],
+            "type": "string"
+          }
+        },
+        "required": ["key", "label"],
         "type": "object"
       },
       "SessionResponseDto": {
@@ -573,6 +1215,102 @@
           }
         },
         "required": ["id", "userId", "tenantId", "role", "status"],
+        "type": "object"
+      },
+      "UpdateFieldDefinitionDto": {
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/FieldConfigDto"
+          },
+          "defaultValue": {
+            "nullable": true,
+            "type": "object"
+          },
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "fieldKey": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "status": {
+            "enum": ["ACTIVE", "INACTIVE"],
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "TEXT",
+              "TEXTAREA",
+              "PHONE",
+              "EMAIL",
+              "NUMBER",
+              "MONEY",
+              "DATE",
+              "DATETIME",
+              "SINGLE_SELECT",
+              "MULTI_SELECT",
+              "MEMBER",
+              "BOOLEAN"
+            ],
+            "type": "string"
+          },
+          "validation": {
+            "$ref": "#/components/schemas/FieldValidationDto"
+          }
+        },
+        "required": ["expectedVersion"],
+        "type": "object"
+      },
+      "UpdateObjectDefinitionDto": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "description": {
+            "nullable": true,
+            "type": "object"
+          },
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "icon": {
+            "nullable": true,
+            "type": "object"
+          },
+          "name": {
+            "type": "string"
+          },
+          "titleFieldKey": {
+            "type": "string"
+          }
+        },
+        "required": ["expectedVersion"],
+        "type": "object"
+      },
+      "UpdateRecordDto": {
+        "properties": {
+          "ownerMemberId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "object"
+          },
+          "values": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "version": {
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": ["version"],
         "type": "object"
       },
       "UserResponseDto": {
@@ -1593,6 +2331,912 @@
           }
         ],
         "tags": ["memberships"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/members/{memberId}/object-access": {
+      "get": {
+        "operationId": "MembershipsController_memberObjectAccess",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MemberObjectAccessResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["memberships"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/members/{memberId}/object-access/{objectId}": {
+      "put": {
+        "operationId": "MembershipsController_setMemberObjectAccess",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {}
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberObjectAccessDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberObjectAccessResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["memberships"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/object-definitions": {
+      "get": {
+        "operationId": "ObjectsController_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "对象草稿列表"
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      },
+      "post": {
+        "operationId": "ObjectsController_create",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateObjectDefinitionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "已创建对象草稿"
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/order": {
+      "put": {
+        "operationId": "ObjectsController_reorderObjects",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ObjectOrderDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已更新对象排序"
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}": {
+      "get": {
+        "operationId": "ObjectsController_detail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "对象草稿详情"
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      },
+      "patch": {
+        "operationId": "ObjectsController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateObjectDefinitionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已更新对象草稿"
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/archive": {
+      "post": {
+        "operationId": "ObjectsController_archive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpectedVersionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已归档对象"
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/default-view": {
+      "put": {
+        "operationId": "ObjectsController_updateDefaultView",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DefaultViewDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已更新默认视图"
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/field-order": {
+      "put": {
+        "operationId": "ObjectsController_reorderFields",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FieldOrderDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已更新字段排序"
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/fields": {
+      "post": {
+        "operationId": "ObjectsController_createField",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFieldDefinitionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "已创建字段"
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/fields/{fieldId}": {
+      "patch": {
+        "operationId": "ObjectsController_updateField",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "fieldId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFieldDefinitionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已更新字段"
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/permissions": {
+      "put": {
+        "operationId": "ObjectsController_updatePermissions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmployeePermissionsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "已更新员工角色权限"
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/publication-analysis": {
+      "post": {
+        "operationId": "ObjectsController_analyzePublication",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpectedVersionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "发布前分析结果"
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/publications": {
+      "get": {
+        "operationId": "ObjectsController_publications",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "对象发布历史"
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      },
+      "post": {
+        "operationId": "ObjectsController_publish",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpectedVersionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "已发布对象配置快照"
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects": {
+      "get": {
+        "operationId": "ObjectsController_runtimeObjects",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RuntimeObjectNavigationResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records": {
+      "get": {
+        "operationId": "RecordsController_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ],
+              "default": 1,
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ],
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "maxLength": 300,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ownerMemberId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "updatedAt",
+              "enum": ["updatedAt", "createdAt", "recordNo"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "direction",
+            "required": false,
+            "schema": {
+              "default": "desc",
+              "enum": ["asc", "desc"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordPageResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["records"]
+      },
+      "post": {
+        "operationId": "RecordsController_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRecordDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["records"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}": {
+      "delete": {
+        "operationId": "RecordsController_remove",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteRecordDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteRecordResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["records"]
+      },
+      "get": {
+        "operationId": "RecordsController_detail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["records"]
+      },
+      "patch": {
+        "operationId": "RecordsController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRecordDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["records"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/schema": {
+      "get": {
+        "operationId": "ObjectsController_runtimeSchema",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishedObjectSchemaResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
       }
     }
   },

@@ -464,17 +464,17 @@ git commit -m "feat(members): add live object access overrides"
 - Consumes: all Task 4–7 DTO decorators/routes.
 - Produces: generated path/types consumed by Web.
 
-- [ ] **Step 1: Extend the contract test before generation**
+- [x] **Step 1: Extend the contract test before generation**
 
 Assert exact paths for object definitions/publications/runtime schema/records/member access, plus the stable error envelope and `PublishedObjectSchemaResponseDto` component.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 pnpm --filter @crm/contracts test
 ```
 
-- [ ] **Step 3: Generate, inspect, and verify GREEN**
+- [x] **Step 3: Generate, inspect, and verify GREEN**
 
 ```bash
 pnpm contracts:generate

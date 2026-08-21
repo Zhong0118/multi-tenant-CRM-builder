@@ -87,3 +87,27 @@ export class DeleteRecordDto {
   @Min(1)
   version!: number;
 }
+
+export class RecordResponseDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiProperty() recordNo!: string;
+  @ApiPropertyOptional({ format: 'uuid', nullable: true }) ownerMemberId!:
+    string | null;
+  @ApiProperty() title!: string;
+  @ApiProperty({ type: 'object', additionalProperties: true }) values!: object;
+  @ApiProperty() version!: number;
+  @ApiProperty({ format: 'date-time' }) createdAt!: string;
+  @ApiProperty({ format: 'date-time' }) updatedAt!: string;
+}
+
+export class RecordPageResponseDto {
+  @ApiProperty({ type: RecordResponseDto, isArray: true })
+  items!: RecordResponseDto[];
+  @ApiProperty() page!: number;
+  @ApiProperty() limit!: number;
+  @ApiProperty() total!: number;
+}
+
+export class DeleteRecordResponseDto {
+  @ApiProperty({ enum: [true] }) accepted!: true;
+}

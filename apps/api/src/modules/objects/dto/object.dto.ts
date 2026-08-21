@@ -313,3 +313,40 @@ export class EmployeePermissionsDto extends ExpectedVersionDto {
   @IsObject()
   fields!: Record<string, 'EDIT' | 'READ_ONLY' | 'HIDDEN'>;
 }
+
+export class RuntimeObjectNavigationResponseDto {
+  @ApiProperty() code!: string;
+  @ApiProperty() name!: string;
+  @ApiPropertyOptional({ nullable: true }) icon!: string | null;
+  @ApiProperty() sortOrder!: number;
+  @ApiProperty() canCreate!: boolean;
+  @ApiProperty() canRead!: boolean;
+  @ApiProperty() canUpdate!: boolean;
+}
+
+export class PublishedFieldResponseDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() fieldKey!: string;
+  @ApiProperty() label!: string;
+  @ApiProperty({ enum: FIELD_TYPES }) type!: string;
+  @ApiProperty() required!: boolean;
+  @ApiProperty({ nullable: true }) defaultValue!: unknown;
+  @ApiProperty({ type: 'object', additionalProperties: true })
+  validation!: object;
+  @ApiProperty({ type: 'object', additionalProperties: true }) config!: object;
+  @ApiProperty() sortOrder!: number;
+  @ApiProperty() isSystem!: boolean;
+  @ApiProperty({ enum: ['EDIT', 'READ_ONLY'] }) access!: 'EDIT' | 'READ_ONLY';
+}
+
+export class PublishedObjectSchemaResponseDto {
+  @ApiProperty({ type: 'object', additionalProperties: true })
+  publication!: object;
+  @ApiProperty({ type: 'object', additionalProperties: true }) object!: object;
+  @ApiProperty({ type: PublishedFieldResponseDto, isArray: true })
+  fields!: PublishedFieldResponseDto[];
+  @ApiProperty({ type: 'object', additionalProperties: true })
+  defaultView!: object;
+  @ApiProperty({ type: 'object', additionalProperties: true }) actions!: object;
+  @ApiProperty({ type: 'object', additionalProperties: true }) scopes!: object;
+}

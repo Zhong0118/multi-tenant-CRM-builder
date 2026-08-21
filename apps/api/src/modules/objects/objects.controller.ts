@@ -30,6 +30,8 @@ import {
   ExpectedVersionDto,
   FieldOrderDto,
   ObjectOrderDto,
+  PublishedObjectSchemaResponseDto,
+  RuntimeObjectNavigationResponseDto,
   UpdateFieldDefinitionDto,
   UpdateObjectDefinitionDto,
 } from './dto';
@@ -52,14 +54,14 @@ export class ObjectsController {
   ) {}
 
   @Get('objects')
-  @ApiOkResponse({ description: '当前成员可访问的业务对象导航' })
+  @ApiOkResponse({ type: RuntimeObjectNavigationResponseDto, isArray: true })
   runtimeObjects(@CurrentTenant() context: TenantContext) {
     return this.publishedObjects.listAccessible(context);
   }
 
   @Get('objects/:objectCode/schema')
   @ApiParam({ name: 'objectCode' })
-  @ApiOkResponse({ description: '按有效权限裁剪的运行时对象 Schema' })
+  @ApiOkResponse({ type: PublishedObjectSchemaResponseDto })
   async runtimeSchema(
     @CurrentTenant() context: TenantContext,
     @Param('objectCode') objectCode: string,

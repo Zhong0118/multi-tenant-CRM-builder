@@ -25,8 +25,11 @@ import { WorkspaceGuard } from '../../common/tenancy/workspace.guard';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
 import {
   CreateRecordDto,
+  DeleteRecordResponseDto,
   DeleteRecordDto,
+  RecordPageResponseDto,
   RecordListQueryDto,
+  RecordResponseDto,
   UpdateRecordDto,
 } from './dto';
 import { RecordsService } from './records.service';
@@ -45,7 +48,7 @@ export class RecordsController {
   @Get()
   @ApiParam({ name: 'tenantCode' })
   @ApiParam({ name: 'objectCode' })
-  @ApiOkResponse({ description: '动态记录分页列表' })
+  @ApiOkResponse({ type: RecordPageResponseDto })
   list(
     @CurrentTenant() context: TenantContext,
     @Param('objectCode') objectCode: string,
@@ -55,7 +58,7 @@ export class RecordsController {
   }
 
   @Post()
-  @ApiCreatedResponse({ description: '已创建动态记录' })
+  @ApiCreatedResponse({ type: RecordResponseDto })
   create(
     @CurrentTenant() context: TenantContext,
     @Param('objectCode') objectCode: string,
@@ -67,7 +70,7 @@ export class RecordsController {
 
   @Get(':recordId')
   @ApiParam({ name: 'recordId', format: 'uuid' })
-  @ApiOkResponse({ description: '动态记录详情' })
+  @ApiOkResponse({ type: RecordResponseDto })
   detail(
     @CurrentTenant() context: TenantContext,
     @Param('objectCode') objectCode: string,
@@ -77,7 +80,7 @@ export class RecordsController {
   }
 
   @Patch(':recordId')
-  @ApiOkResponse({ description: '已更新动态记录' })
+  @ApiOkResponse({ type: RecordResponseDto })
   update(
     @CurrentTenant() context: TenantContext,
     @Param('objectCode') objectCode: string,
@@ -95,7 +98,7 @@ export class RecordsController {
   }
 
   @Delete(':recordId')
-  @ApiOkResponse({ description: '已软删除动态记录' })
+  @ApiOkResponse({ type: DeleteRecordResponseDto })
   remove(
     @CurrentTenant() context: TenantContext,
     @Param('objectCode') objectCode: string,

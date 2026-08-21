@@ -12,6 +12,7 @@ import helmet from 'helmet';
 
 import { AppModule } from './app.module';
 import { ApiExceptionFilter } from './common/errors/api-exception.filter';
+import { ApiErrorResponseDto } from './common/errors/api-error.dto';
 import { createHttpLogger } from './common/security/http-logger';
 import { OriginGuard } from './common/security/origin.guard';
 import { RequestIdMiddleware } from './common/security/request-id.middleware';
@@ -61,5 +62,7 @@ export function createOpenApiDocument(app: INestApplication): OpenAPIObject {
     .setVersion('1.0')
     .addCookieAuth('crm_session', { type: 'apiKey' }, 'crm_session')
     .build();
-  return SwaggerModule.createDocument(app, config);
+  return SwaggerModule.createDocument(app, config, {
+    extraModels: [ApiErrorResponseDto],
+  });
 }

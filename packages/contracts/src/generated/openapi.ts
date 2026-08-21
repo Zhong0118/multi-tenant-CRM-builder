@@ -404,6 +404,278 @@ export interface paths {
     patch: operations["MembershipsController_changeMember"];
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/members/{memberId}/object-access": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["MembershipsController_memberObjectAccess"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/members/{memberId}/object-access/{objectId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put: operations["MembershipsController_setMemberObjectAccess"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ObjectsController_list"];
+    put?: never;
+    post: operations["ObjectsController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ObjectsController_detail"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["ObjectsController_update"];
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/archive": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ObjectsController_archive"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/default-view": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put: operations["ObjectsController_updateDefaultView"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/field-order": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put: operations["ObjectsController_reorderFields"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/fields": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ObjectsController_createField"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/fields/{fieldId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["ObjectsController_updateField"];
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/permissions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put: operations["ObjectsController_updatePermissions"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/publication-analysis": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ObjectsController_analyzePublication"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/publications": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ObjectsController_publications"];
+    put?: never;
+    post: operations["ObjectsController_publish"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/order": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put: operations["ObjectsController_reorderObjects"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ObjectsController_runtimeObjects"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["RecordsController_list"];
+    put?: never;
+    post: operations["RecordsController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["RecordsController_detail"];
+    put?: never;
+    post?: never;
+    delete: operations["RecordsController_remove"];
+    options?: never;
+    head?: never;
+    patch: operations["RecordsController_update"];
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/schema": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ObjectsController_runtimeSchema"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -411,6 +683,15 @@ export interface components {
     AcceptedResponseDto: {
       /** @example true */
       accepted: boolean;
+    };
+    ApiErrorResponseDto: {
+      code: string;
+      fieldErrors: {
+        [key: string]: string[];
+      };
+      message: string;
+      requestId: string;
+      status: number;
     };
     AuthenticatedResponseDto: {
       /** @example true */
@@ -438,17 +719,108 @@ export interface components {
       /** @enum {string} */
       status: "PENDING";
     };
+    CreateFieldDefinitionDto: {
+      config?: components["schemas"]["FieldConfigDto"];
+      defaultValue?: Record<string, never> | null;
+      expectedVersion: number;
+      /** @example customer_name */
+      fieldKey: string;
+      /** @default false */
+      isSystem: Record<string, never>;
+      label: string;
+      required: boolean;
+      /** @enum {string} */
+      type:
+        | "TEXT"
+        | "TEXTAREA"
+        | "PHONE"
+        | "EMAIL"
+        | "NUMBER"
+        | "MONEY"
+        | "DATE"
+        | "DATETIME"
+        | "SINGLE_SELECT"
+        | "MULTI_SELECT"
+        | "MEMBER"
+        | "BOOLEAN";
+      validation?: components["schemas"]["FieldValidationDto"];
+    };
     CreateInvitationDto: {
       /** @example 13800138000 */
       phone: string;
       /** @enum {string} */
       role: "TENANT_ADMIN" | "EMPLOYEE";
     };
+    CreateObjectDefinitionDto: {
+      /** @example leads */
+      code: string;
+      icon?: Record<string, never> | null;
+      /** @example 销售线索 */
+      name: string;
+    };
     CreatePlatformTenantDto: {
       code: string;
       /** @example 13800138000 */
       firstAdminPhone: string;
       name: string;
+    };
+    CreateRecordDto: {
+      /** Format: uuid */
+      ownerMemberId?: Record<string, never> | null;
+      values: {
+        [key: string]: unknown;
+      };
+    };
+    DefaultViewDto: {
+      columnFieldKeys: string[];
+      expectedVersion: number;
+      name: string;
+      sort: components["schemas"]["DefaultViewSortDto"];
+    };
+    DefaultViewSortDto: {
+      /** @enum {string} */
+      direction: "asc" | "desc";
+      /** @enum {string} */
+      field: "updatedAt" | "createdAt" | "recordNo";
+    };
+    DeleteRecordDto: {
+      version: number;
+    };
+    DeleteRecordResponseDto: {
+      /** @enum {boolean} */
+      accepted: true;
+    };
+    EmployeePermissionsDto: {
+      canCreate: boolean;
+      /** @enum {boolean} */
+      canDelete: false;
+      canRead: boolean;
+      canUpdate: boolean;
+      expectedVersion: number;
+      fields: {
+        [key: string]: "EDIT" | "READ_ONLY" | "HIDDEN";
+      };
+      /** @enum {string} */
+      readScope: "ALL" | "OWN" | "NONE";
+      /** @enum {string} */
+      updateScope: "ALL" | "OWN" | "NONE";
+    };
+    ExpectedVersionDto: {
+      expectedVersion: number;
+    };
+    FieldConfigDto: {
+      options?: components["schemas"]["SelectOptionDto"][];
+    };
+    FieldOrderDto: {
+      expectedVersion: number;
+      fieldIds: string[];
+    };
+    FieldValidationDto: {
+      max?: number;
+      maxLength?: number;
+      min?: number;
+      minLength?: number;
+      scale?: number;
     };
     FirstAdminInvitationResponseDto: {
       /** Format: date-time */
@@ -502,9 +874,51 @@ export interface components {
       /** @example 13800138000 */
       phone: string;
     };
+    MemberObjectAccessDto: {
+      canCreate?: boolean;
+      canRead?: boolean;
+      canUpdate?: boolean;
+      /** @enum {string} */
+      mode: "INHERIT" | "OVERRIDE";
+      /** @enum {string} */
+      readScope?: "ALL" | "OWN" | "NONE";
+      /** @enum {string} */
+      updateScope?: "ALL" | "OWN" | "NONE";
+    };
+    MemberObjectAccessResponseDto: {
+      effective: components["schemas"]["MemberObjectPolicyResponseDto"];
+      inherited: components["schemas"]["MemberObjectPolicyResponseDto"];
+      /** @enum {string} */
+      mode: "INHERIT" | "OVERRIDE";
+      objectCode: string;
+      /** Format: uuid */
+      objectId: string;
+      objectName: string;
+      override: components["schemas"]["MemberObjectPolicyResponseDto"] | null;
+    };
+    MemberObjectPolicyResponseDto: {
+      canCreate: boolean;
+      /** @enum {boolean} */
+      canDelete: false;
+      canRead: boolean;
+      canUpdate: boolean;
+      /** @enum {string} */
+      readScope: "ALL" | "OWN" | "NONE";
+      /** @enum {string} */
+      updateScope: "ALL" | "OWN" | "NONE";
+    };
     MembershipActionResponseDto: {
       /** @example true */
       accepted: boolean;
+    };
+    Object: Record<string, never>;
+    ObjectOrderDto: {
+      items: components["schemas"]["ObjectOrderItemDto"][];
+    };
+    ObjectOrderItemDto: {
+      expectedVersion: number;
+      /** Format: uuid */
+      objectId: string;
     };
     PersonalInvitationResponseDto: {
       /** Format: uuid */
@@ -550,6 +964,77 @@ export interface components {
       /** Format: date-time */
       updatedAt?: string;
     };
+    PublishedFieldResponseDto: {
+      /** @enum {string} */
+      access: "EDIT" | "READ_ONLY";
+      config: {
+        [key: string]: unknown;
+      };
+      defaultValue: Record<string, never> | null;
+      fieldKey: string;
+      id: string;
+      isSystem: boolean;
+      label: string;
+      required: boolean;
+      sortOrder: number;
+      /** @enum {string} */
+      type:
+        | "TEXT"
+        | "TEXTAREA"
+        | "PHONE"
+        | "EMAIL"
+        | "NUMBER"
+        | "MONEY"
+        | "DATE"
+        | "DATETIME"
+        | "SINGLE_SELECT"
+        | "MULTI_SELECT"
+        | "MEMBER"
+        | "BOOLEAN";
+      validation: {
+        [key: string]: unknown;
+      };
+    };
+    PublishedObjectSchemaResponseDto: {
+      actions: {
+        [key: string]: unknown;
+      };
+      defaultView: {
+        [key: string]: unknown;
+      };
+      fields: components["schemas"]["PublishedFieldResponseDto"][];
+      object: {
+        [key: string]: unknown;
+      };
+      publication: {
+        [key: string]: unknown;
+      };
+      scopes: {
+        [key: string]: unknown;
+      };
+    };
+    RecordPageResponseDto: {
+      items: components["schemas"]["RecordResponseDto"][];
+      limit: number;
+      page: number;
+      total: number;
+    };
+    RecordResponseDto: {
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: uuid */
+      id: string;
+      /** Format: uuid */
+      ownerMemberId?: Record<string, never> | null;
+      recordNo: string;
+      title: string;
+      /** Format: date-time */
+      updatedAt: string;
+      values: {
+        [key: string]: unknown;
+      };
+      version: number;
+    };
     RegisterDto: {
       /** @example 123456 */
       code: string;
@@ -567,6 +1052,24 @@ export interface components {
       newPassword: string;
       /** @example 13800138000 */
       phone: string;
+    };
+    RuntimeObjectNavigationResponseDto: {
+      canCreate: boolean;
+      canRead: boolean;
+      canUpdate: boolean;
+      code: string;
+      icon?: Record<string, never> | null;
+      name: string;
+      sortOrder: number;
+    };
+    SelectOptionDto: {
+      key: string;
+      label: string;
+      /**
+       * @default ACTIVE
+       * @enum {string}
+       */
+      status: "ACTIVE" | "INACTIVE";
     };
     SessionResponseDto: {
       /** Format: date-time */
@@ -620,6 +1123,47 @@ export interface components {
       tenantId: string;
       /** Format: uuid */
       userId: string;
+    };
+    UpdateFieldDefinitionDto: {
+      config?: components["schemas"]["FieldConfigDto"];
+      defaultValue?: Record<string, never> | null;
+      expectedVersion: number;
+      fieldKey?: string;
+      label?: string;
+      required?: boolean;
+      /** @enum {string} */
+      status?: "ACTIVE" | "INACTIVE";
+      /** @enum {string} */
+      type?:
+        | "TEXT"
+        | "TEXTAREA"
+        | "PHONE"
+        | "EMAIL"
+        | "NUMBER"
+        | "MONEY"
+        | "DATE"
+        | "DATETIME"
+        | "SINGLE_SELECT"
+        | "MULTI_SELECT"
+        | "MEMBER"
+        | "BOOLEAN";
+      validation?: components["schemas"]["FieldValidationDto"];
+    };
+    UpdateObjectDefinitionDto: {
+      code?: string;
+      description?: Record<string, never> | null;
+      expectedVersion: number;
+      icon?: Record<string, never> | null;
+      name?: string;
+      titleFieldKey?: string;
+    };
+    UpdateRecordDto: {
+      /** Format: uuid */
+      ownerMemberId?: Record<string, never> | null;
+      values?: {
+        [key: string]: unknown;
+      };
+      version: number;
     };
     UserResponseDto: {
       displayName: string;
@@ -1247,6 +1791,544 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["TenantMemberResponseDto"];
+        };
+      };
+    };
+  };
+  MembershipsController_memberObjectAccess: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        memberId: string;
+        tenantCode: unknown;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MemberObjectAccessResponseDto"][];
+        };
+      };
+    };
+  };
+  MembershipsController_setMemberObjectAccess: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        memberId: string;
+        objectId: string;
+        tenantCode: unknown;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MemberObjectAccessDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MemberObjectAccessResponseDto"];
+        };
+      };
+    };
+  };
+  ObjectsController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: unknown;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 对象草稿列表 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ObjectsController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateObjectDefinitionDto"];
+      };
+    };
+    responses: {
+      /** @description 已创建对象草稿 */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ObjectsController_detail: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 对象草稿详情 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ObjectsController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateObjectDefinitionDto"];
+      };
+    };
+    responses: {
+      /** @description 已更新对象草稿 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ObjectsController_archive: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ExpectedVersionDto"];
+      };
+    };
+    responses: {
+      /** @description 已归档对象 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ObjectsController_updateDefaultView: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DefaultViewDto"];
+      };
+    };
+    responses: {
+      /** @description 已更新默认视图 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ObjectsController_reorderFields: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["FieldOrderDto"];
+      };
+    };
+    responses: {
+      /** @description 已更新字段排序 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ObjectsController_createField: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateFieldDefinitionDto"];
+      };
+    };
+    responses: {
+      /** @description 已创建字段 */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ObjectsController_updateField: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        fieldId: string;
+        objectId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateFieldDefinitionDto"];
+      };
+    };
+    responses: {
+      /** @description 已更新字段 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ObjectsController_updatePermissions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["EmployeePermissionsDto"];
+      };
+    };
+    responses: {
+      /** @description 已更新员工角色权限 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ObjectsController_analyzePublication: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ExpectedVersionDto"];
+      };
+    };
+    responses: {
+      /** @description 发布前分析结果 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ObjectsController_publications: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 对象发布历史 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ObjectsController_publish: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ExpectedVersionDto"];
+      };
+    };
+    responses: {
+      /** @description 已发布对象配置快照 */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ObjectsController_reorderObjects: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ObjectOrderDto"];
+      };
+    };
+    responses: {
+      /** @description 已更新对象排序 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ObjectsController_runtimeObjects: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RuntimeObjectNavigationResponseDto"][];
+        };
+      };
+    };
+  };
+  RecordsController_list: {
+    parameters: {
+      query?: {
+        direction?: "asc" | "desc";
+        limit?: components["schemas"]["Object"];
+        ownerMemberId?: string;
+        page?: components["schemas"]["Object"];
+        search?: string;
+        sort?: "updatedAt" | "createdAt" | "recordNo";
+      };
+      header?: never;
+      path: {
+        objectCode: string;
+        tenantCode: unknown;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecordPageResponseDto"];
+        };
+      };
+    };
+  };
+  RecordsController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateRecordDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecordResponseDto"];
+        };
+      };
+    };
+  };
+  RecordsController_detail: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecordResponseDto"];
+        };
+      };
+    };
+  };
+  RecordsController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DeleteRecordDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DeleteRecordResponseDto"];
+        };
+      };
+    };
+  };
+  RecordsController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateRecordDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecordResponseDto"];
+        };
+      };
+    };
+  };
+  ObjectsController_runtimeSchema: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PublishedObjectSchemaResponseDto"];
         };
       };
     };
