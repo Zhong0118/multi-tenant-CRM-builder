@@ -11,16 +11,18 @@ import { QueryProvider } from "@/lib/query/query-provider";
  * Ant Design components and the CSS modules both render the same surfaces, so
  * a second near-identical palette reads as an unresolved interface.
  */
-const TOKENS = {
-  ledgerInk: "#172033",
-  workingBlue: "#2457D6",
-  canvas: "#F5F7FA",
-  paper: "#FFFFFF",
-  rule: "#D7DEE8",
-  verifiedTeal: "#167A72",
-  reviewAmber: "#A86405",
-  stopRed: "#B42318",
-  inkSecondary: "#526473",
+export const TOKENS = {
+  textPrimary: "#0F172A",
+  textSecondary: "#475569",
+  primary: "#2563EB",
+  page: "#F8FAFC",
+  surface: "#FFFFFF",
+  border: "#E2E8F0",
+  hover: "#F1F5F9",
+  selected: "#EFF6FF",
+  success: "#0F766E",
+  warning: "#B45309",
+  danger: "#B42318",
   fontUi:
     '"IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif',
 };
@@ -33,37 +35,32 @@ export function Providers({ children }: { children: ReactNode }) {
         theme={{
           token: {
             borderRadius: 6,
-            colorBgLayout: TOKENS.canvas,
-            colorBorder: TOKENS.rule,
-            colorBorderSecondary: TOKENS.rule,
-            colorError: TOKENS.stopRed,
-            colorPrimary: TOKENS.workingBlue,
-            colorSuccess: TOKENS.verifiedTeal,
-            colorText: TOKENS.ledgerInk,
-            colorTextSecondary: TOKENS.inkSecondary,
-            colorWarning: TOKENS.reviewAmber,
+            colorBgLayout: TOKENS.page,
+            colorBorder: TOKENS.border,
+            colorBorderSecondary: TOKENS.border,
+            colorError: TOKENS.danger,
+            colorPrimary: TOKENS.primary,
+            colorSuccess: TOKENS.success,
+            colorText: TOKENS.textPrimary,
+            colorTextSecondary: TOKENS.textSecondary,
+            colorWarning: TOKENS.warning,
             fontFamily: TOKENS.fontUi,
             fontSize: 14,
+            controlHeight: 36,
           },
           components: {
-            // A configuration ledger is read down its columns, so rows stay
-            // dense and separation comes from hairlines rather than padding.
             Table: {
-              cellPaddingBlock: 10,
+              cellPaddingBlock: 12,
               cellPaddingInline: 12,
-              headerBg: TOKENS.paper,
-              headerColor: TOKENS.inkSecondary,
+              headerBg: TOKENS.surface,
+              headerColor: TOKENS.textSecondary,
               headerSplitColor: "transparent",
-              rowHoverBg: TOKENS.canvas,
+              rowHoverBg: TOKENS.page,
             },
-            Tag: {
-              defaultBg: TOKENS.canvas,
-              defaultColor: TOKENS.inkSecondary,
-            },
-            // Labels sit above their control and never compete with the value.
-            Form: { labelColor: TOKENS.inkSecondary, verticalLabelPadding: 0 },
+            Tag: { defaultBg: TOKENS.page, defaultColor: TOKENS.textSecondary },
+            Form: { labelColor: TOKENS.textSecondary, verticalLabelPadding: 0 },
             Drawer: { paddingLG: 20 },
-            Segmented: { itemSelectedBg: TOKENS.paper },
+            Segmented: { itemSelectedBg: TOKENS.surface },
           },
         }}
       >
