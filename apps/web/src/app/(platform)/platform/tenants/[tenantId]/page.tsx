@@ -1,5 +1,6 @@
-import Link from "next/link";
+import { Tag } from "antd";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { TenantStatusActions } from "@/features/tenants/tenant-status-actions";
 import styles from "@/features/tenants/tenants.module.css";
 import { toApiError } from "@/lib/api/api-error";
@@ -17,6 +18,12 @@ const invitationStatusText = {
   DECLINED: "已拒绝",
   REVOKED: "已撤销",
   EXPIRED: "已过期",
+} as const;
+const tenantStatusTag = {
+  DRAFT: "warning",
+  ACTIVE: "success",
+  SUSPENDED: "warning",
+  CLOSED: "default",
 } as const;
 
 export interface TenantDetailPageProps {
@@ -43,30 +50,53 @@ export default async function TenantDetailPage({
   const activeAdminReady = tenant.activeAdminCount > 0;
 
   return (
-    <main className={styles.page}>
-      <header className={styles.pageHeader}>
-        <div>
-          <span className={styles.eyebrow}>ACTIVATION LEDGER</span>
-          <h1>{tenant.name}</h1>
-          <p className={styles.intro}>工作空间代码：{tenant.code}</p>
-        </div>
-        <Link href="/platform/tenants">返回公司列表</Link>
-      </header>
+    <div className={styles.page}>
+      <PageHeader
+        title={
+          <span className={styles.titleRow}>
+            {tenant.name}
+            <Tag color={tenantStatusTag[tenant.status]}>
+              {tenantStatusText[tenant.status]}
+            </Tag>
+          </span>
+        }
+        description={`工作空间代码：${tenant.code}`}
+      />
       <div className={styles.detailLayout}>
         <section className={styles.detailPanel}>
+          <h2 className={styles.panelTitle}>基本信息</h2>
           <dl className={styles.detailLedger}>
             <div>
-              <dt>公司状态</dt>
+              <dt>名称</dt>
+              <dd>{tenant.name}</dd>
+            </div>
+            <div>
+              <dt>代码</dt>
+              <dd>{tenant.code}</dd>
+            </div>
+            <div>
+              <dt>状态</dt>
               <dd>{tenantStatusText[tenant.status]}</dd>
             </div>
             <div>
-              <dt>首管手机号</dt>
+              <dt>激活时间</dt>
+              <dd>{formatDate(tenant.activatedAt)}</dd>
+            </div>
+            <div>
+              <dt>创建时间</dt>
+              <dd>{formatDate(tenant.createdAt)}</dd>
+            </div>
+          </dl>
+          <h2 className={styles.panelTitle}>首位管理员</h2>
+          <dl className={styles.detailLedger}>
+            <div>
+              <dt>手机号</dt>
               <dd>
                 {tenant.firstAdminInvitation?.targetPhone ?? "未创建邀请"}
               </dd>
             </div>
             <div>
-              <dt>首管邀请</dt>
+              <dt>邀请状态</dt>
               <dd>
                 {tenant.firstAdminInvitation
                   ? invitationStatusText[tenant.firstAdminInvitation.status]
@@ -74,12 +104,8 @@ export default async function TenantDetailPage({
               </dd>
             </div>
             <div>
-              <dt>活跃管理员</dt>
+              <dt>活跃管理员人数</dt>
               <dd>{tenant.activeAdminCount} 位</dd>
-            </div>
-            <div>
-              <dt>激活时间</dt>
-              <dd>{formatDate(tenant.activatedAt)}</dd>
             </div>
           </dl>
           <div className={styles.gate} aria-label="激活门槛">
@@ -100,7 +126,7 @@ export default async function TenantDetailPage({
           <TenantStatusActions tenant={tenant} />
         </aside>
       </div>
-    </main>
+    </div>
   );
 }
 

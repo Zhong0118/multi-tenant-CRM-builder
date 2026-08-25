@@ -5,12 +5,12 @@ import { PagePlaceholder } from "./page-placeholder";
 
 describe("PagePlaceholder", () => {
   it("presents the route purpose without fake business data", () => {
-    render(<PagePlaceholder title="租户" description="管理公司工作空间。" />);
+    render(
+      <PagePlaceholder title="模板" description="管理可复用的业务模板。尚未实现。" />,
+    );
 
-    expect(screen.getByRole("heading", { name: "租户" })).toBeInTheDocument();
-    expect(screen.getByText("管理公司工作空间。")).toBeInTheDocument();
-    expect(
-      screen.getByText("页面骨架已建立，业务功能尚未实现。"),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "模板" })).toBeInTheDocument();
+    expect(screen.getByText("管理可复用的业务模板。尚未实现。")).toBeInTheDocument();
+    expect(screen.getByText("该能力尚未实现。")).toBeInTheDocument();
   });
 });

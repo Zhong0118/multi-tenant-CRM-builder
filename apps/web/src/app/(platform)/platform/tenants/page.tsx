@@ -1,5 +1,7 @@
+import { Button } from "antd";
 import Link from "next/link";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { TenantTable } from "@/features/tenants/tenant-table";
 import styles from "@/features/tenants/tenants.module.css";
 import { toApiError } from "@/lib/api/api-error";
@@ -21,31 +23,30 @@ export default async function TenantsPage({ searchParams }: TenantsPageProps) {
     throw Object.assign(new Error(apiError.message), apiError);
   }
 
+  const extra = (
+    <Link href="/platform/tenants/new">
+      <Button type="primary">+ 新增公司</Button>
+    </Link>
+  );
+
   return (
-    <main className={styles.page}>
-      <header className={styles.pageHeader}>
-        <div>
-          <span className={styles.eyebrow}>COMPANY REGISTRY</span>
-          <h1>公司工作空间</h1>
-          <p className={styles.intro}>
-            集中开通、核验和管理每家公司的运行状态。
-          </p>
-        </div>
-        <Link href="/platform/tenants/new" className={styles.tenantLink}>
-          ＋ 开通公司
-        </Link>
-      </header>
+    <div className={styles.page}>
+      <PageHeader
+        title="公司管理"
+        description="统一管理公司工作空间的开通状态与首位管理员"
+        extra={extra}
+      />
       {data.items.length > 0 ? (
         <TenantTable data={data} />
       ) : (
-        <section className={styles.createPanel}>
+        <section className={styles.emptyState}>
           <h2>尚未开通公司</h2>
           <p className={styles.intro}>
             创建第一家公司草稿，并邀请首位公司管理员。
           </p>
         </section>
       )}
-    </main>
+    </div>
   );
 }
 

@@ -27,6 +27,7 @@ const columns: ColumnsType<PlatformTenant> = [
       <Link
         href={`/platform/tenants/${tenant.id}`}
         className={styles.tenantLink}
+        onClick={(event) => event.stopPropagation()}
       >
         {name}
       </Link>
@@ -68,6 +69,9 @@ export function TenantTable({
         onChange: (page) =>
           (navigate ?? router.push)(`/platform/tenants?page=${page}`),
       }}
+      onRow={(tenant) => ({
+        onClick: () => (navigate ?? router.push)(`/platform/tenants/${tenant.id}`),
+      })}
     />
   );
 }

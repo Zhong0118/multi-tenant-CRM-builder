@@ -1,21 +1,14 @@
-import Link from "next/link";
-
 import { CreateTenantForm } from "@/features/tenants/create-tenant-form";
+import { PageHeader } from "@/components/layout/page-header";
 import styles from "@/features/tenants/tenants.module.css";
 
 export default function NewTenantPage() {
   return (
-    <main className={styles.page}>
-      <header className={styles.pageHeader}>
-        <div>
-          <span className={styles.eyebrow}>PROVISION COMPANY</span>
-          <h1>开通公司</h1>
-          <p className={styles.intro}>
-            先建立隔离的公司空间，再由首位管理员完成身份接入。
-          </p>
-        </div>
-        <Link href="/platform/tenants">返回公司列表</Link>
-      </header>
+    <div className={styles.page}>
+      <PageHeader
+        title="新增公司"
+        description="先建立隔离的公司空间，再邀请首位管理员。"
+      />
       <div className={styles.createLayout}>
         <section className={styles.createPanel}>
           <CreateTenantForm />
@@ -38,6 +31,6 @@ export default function NewTenantPage() {
           </ol>
         </aside>
       </div>
-    </main>
+    </div>
   );
 }

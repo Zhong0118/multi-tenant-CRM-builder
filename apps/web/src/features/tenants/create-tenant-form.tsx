@@ -158,7 +158,7 @@ export function CreateTenantForm({ api = tenantApi }: { api?: TenantApi }) {
         />
       </Form.Item>
       <Button type="primary" htmlType="submit" loading={mutation.isPending}>
-        创建公司
+        {mutation.isPending ? "正在创建…" : "创建公司"}
       </Button>
     </form>
   );

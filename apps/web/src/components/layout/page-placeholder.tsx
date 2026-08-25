@@ -1,7 +1,8 @@
 "use client";
 
-import { Alert, Typography } from "antd";
+import { Alert } from "antd";
 
+import { PageHeader } from "./page-header";
 import styles from "./page-placeholder.module.css";
 
 export interface PagePlaceholderProps {
@@ -11,16 +12,9 @@ export interface PagePlaceholderProps {
 
 export function PagePlaceholder({ description, title }: PagePlaceholderProps) {
   return (
-    <main className={styles.page}>
-      <Typography.Title level={1}>{title}</Typography.Title>
-      <Typography.Paragraph type="secondary">
-        {description}
-      </Typography.Paragraph>
-      <Alert
-        message="页面骨架已建立，业务功能尚未实现。"
-        type="info"
-        showIcon
-      />
-    </main>
+    <div className={styles.page}>
+      <PageHeader title={title} description={description} />
+      <Alert title="该能力尚未实现。" type="info" showIcon />
+    </div>
   );
 }

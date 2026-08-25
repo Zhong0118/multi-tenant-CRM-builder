@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useSyncExternalStore, type ReactNode } from "react";
 
 import { Sidebar } from "./sidebar";
 import { TopHeader } from "./top-header";
@@ -37,6 +37,22 @@ export interface AppShellProps {
 }
 
 const COLLAPSED_KEY = "crm.sidebar.collapsed";
+const collapsedListeners = new Set<() => void>();
+
+function subscribeCollapsed(listener: () => void) {
+  collapsedListeners.add(listener);
+  return () => {
+    collapsedListeners.delete(listener);
+  };
+}
+
+function getCollapsedSnapshot() {
+  return window.localStorage.getItem(COLLAPSED_KEY) === "true";
+}
+
+function getCollapsedServerSnapshot() {
+  return false;
+}
 
 export function AppShell({
   brand,
@@ -49,19 +65,16 @@ export function AppShell({
   children,
 }: AppShellProps) {
   const pathname = usePathname() ?? "";
-  const [collapsed, setCollapsed] = useState(false);
+  const collapsed = useSyncExternalStore(
+    subscribeCollapsed,
+    getCollapsedSnapshot,
+    getCollapsedServerSnapshot,
+  );
 
-  useEffect(() => {
-    setCollapsed(localStorage.getItem(COLLAPSED_KEY) === "true");
-  }, []);
-
-  function toggleCollapsed() {
-    setCollapsed((current) => {
-      const next = !current;
-      localStorage.setItem(COLLAPSED_KEY, String(next));
-      return next;
-    });
-  }
+  const toggleCollapsed = useCallback(() => {
+    window.localStorage.setItem(COLLAPSED_KEY, String(!collapsed));
+    collapsedListeners.forEach((listener) => listener());
+  }, [collapsed]);
 
   return (
     <div className={styles.shell}>

@@ -1,9 +1,4 @@
 .page {
   width: 100%;
   max-width: 960px;
-  padding: 24px;
-}
-
-.page :global(.ant-typography) {
-  max-width: 720px;
 }

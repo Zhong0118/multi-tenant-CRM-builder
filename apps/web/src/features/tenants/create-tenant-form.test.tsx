@@ -151,4 +151,32 @@ describe("TenantTable", () => {
     fireEvent.click(screen.getByRole("button", { name: "right" }));
     expect(navigate).toHaveBeenCalledWith("/platform/tenants?page=2");
   });
+
+  it("links the company name to the tenant detail page", () => {
+    render(
+      <TenantTable
+        data={{
+          items: [
+            {
+              id: "tenant-a",
+              name: "北辰客户服务",
+              code: "northwind",
+              status: "ACTIVE",
+              activeAdminCount: 1,
+              createdAt: "2026-08-21T00:00:00.000Z",
+            },
+          ],
+          page: 1,
+          limit: 20,
+          total: 1,
+        }}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "北辰客户服务" })).toHaveAttribute(
+      "href",
+      "/platform/tenants/tenant-a",
+    );
+    expect(screen.getByText("运行中")).toBeInTheDocument();
+    expect(screen.queryByText("行业")).not.toBeInTheDocument();
+  });
 });
