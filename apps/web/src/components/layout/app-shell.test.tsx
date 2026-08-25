@@ -75,4 +75,34 @@ describe("AppShell", () => {
       "true",
     );
   });
+
+  it("renders emptyLabel without a named navigation group", () => {
+    render(
+      <AppShell
+        brand="百杰"
+        brandHref="/workspace/northwind"
+        navGroups={[
+          {
+            ariaLabel: "业务对象",
+            items: [],
+            emptyLabel: "尚无已授权的业务对象",
+          },
+        ]}
+        headerLeft={<span>百杰</span>}
+        user={{
+          displayName: "张三",
+          phone: "+8613900000001",
+          isPlatformAdmin: false,
+        }}
+        roleLabel="公司管理员"
+      >
+        <p>内容</p>
+      </AppShell>,
+    );
+
+    expect(
+      screen.queryByRole("navigation", { name: "业务对象" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("尚无已授权的业务对象")).toBeInTheDocument();
+  });
 });

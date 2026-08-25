@@ -1,9 +1,26 @@
-import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 import { workspaceNavigation } from "@/components/navigation/workspace-navigation";
 
 import { WorkspaceShell } from "./workspace-shell";
+
+const mocks = vi.hoisted(() => ({
+  pathname: "/workspace/northwind",
+  replace: vi.fn(),
+  refresh: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => mocks.pathname,
+  useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }),
+}));
+
+const shellUser = {
+  displayName: "张三",
+  phone: "+8613900000001",
+  isPlatformAdmin: false,
+};
 
 function businessObject(overrides: Record<string, unknown> = {}) {
   return {
@@ -41,6 +58,7 @@ describe("WorkspaceShell", () => {
         tenantCode="northwind"
         tenantName="百杰"
         role="EMPLOYEE"
+        user={shellUser}
         businessObjects={[
           businessObject(),
           businessObject({ code: "leads", name: "获客", sortOrder: 20 }),
@@ -73,6 +91,7 @@ describe("WorkspaceShell", () => {
         tenantCode="northwind"
         tenantName="百杰"
         role="EMPLOYEE"
+        user={shellUser}
         businessObjects={[
           businessObject({ code: "leads", name: "获客" }),
           businessObject({ code: "customers", name: "客户资料" }),
@@ -95,6 +114,7 @@ describe("WorkspaceShell", () => {
         tenantCode="northwind"
         tenantName="百杰"
         role="EMPLOYEE"
+        user={shellUser}
         businessObjects={[]}
       >
         <p>内容</p>
@@ -113,14 +133,39 @@ describe("WorkspaceShell", () => {
         tenantCode="northwind"
         tenantName="百杰"
         role="TENANT_ADMIN"
+        user={shellUser}
         businessObjects={[]}
       >
         <p>内容</p>
       </WorkspaceShell>,
     );
 
-    expect(screen.getByText("百杰")).toBeInTheDocument();
-    expect(screen.getByText("公司管理员")).toBeInTheDocument();
-    expect(screen.getByText("northwind")).toBeInTheDocument();
+    expect(screen.getAllByText("百杰").length).toBeGreaterThanOrEqual(2);
+    expect(
+      screen.getByRole("button", { name: /公司管理员/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("northwind")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /公司管理员/ }));
+    expect(screen.getByRole("link", { name: "切换工作空间" })).toHaveAttribute(
+      "href",
+      "/workspaces",
+    );
+  });
+
+  it("labels an employee in the user menu", () => {
+    render(
+      <WorkspaceShell
+        tenantCode="northwind"
+        tenantName="百杰"
+        role="EMPLOYEE"
+        user={shellUser}
+        businessObjects={[]}
+      >
+        <p>内容</p>
+      </WorkspaceShell>,
+    );
+
+    expect(screen.getByRole("button", { name: /员工/ })).toBeInTheDocument();
   });
 });

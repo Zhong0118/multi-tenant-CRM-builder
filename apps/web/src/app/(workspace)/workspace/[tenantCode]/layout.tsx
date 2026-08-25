@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { WorkspaceShell } from "@/components/layout/workspace-shell";
 import { requireRuntimeObjects } from "@/lib/auth/require-runtime-objects";
+import { requireUser } from "@/lib/auth/require-user";
 import { requireWorkspace } from "@/lib/auth/require-workspace";
 
 export interface WorkspaceLayoutProps {
@@ -14,7 +15,10 @@ export default async function WorkspaceLayout({
   params,
 }: WorkspaceLayoutProps) {
   const { tenantCode } = await params;
-  const workspace = await requireWorkspace(tenantCode);
+  const [workspace, user] = await Promise.all([
+    requireWorkspace(tenantCode),
+    requireUser(`/workspace/${encodeURIComponent(tenantCode)}`),
+  ]);
   const businessObjects = await requireRuntimeObjects(workspace.tenantCode);
 
   return (
@@ -22,6 +26,11 @@ export default async function WorkspaceLayout({
       tenantCode={workspace.tenantCode}
       tenantName={workspace.tenantName}
       role={workspace.role}
+      user={{
+        displayName: user.displayName,
+        phone: user.phone,
+        isPlatformAdmin: user.isPlatformAdmin,
+      }}
       businessObjects={businessObjects}
     >
       {children}

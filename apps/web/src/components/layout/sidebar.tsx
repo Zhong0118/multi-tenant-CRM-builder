@@ -51,19 +51,21 @@ export function Sidebar({
       <Link href={brandHref} className={styles.brand}>
         {collapsed ? brand.slice(0, 1) : brand}
       </Link>
-      {navGroups.map((group) => (
-        <nav
-          key={group.ariaLabel}
-          aria-label={group.ariaLabel}
-          className={styles.nav}
-          data-collapsed={collapsed ? "true" : undefined}
-        >
-          {group.items.length === 0 ? (
-            group.emptyLabel ? (
-              <p className={styles.emptyLabel}>{group.emptyLabel}</p>
-            ) : null
-          ) : (
-            group.items.map((item) => {
+      {navGroups.map((group) =>
+        group.items.length === 0 ? (
+          group.emptyLabel ? (
+            <p key={group.ariaLabel} className={styles.emptyLabel}>
+              {group.emptyLabel}
+            </p>
+          ) : null
+        ) : (
+          <nav
+            key={group.ariaLabel}
+            aria-label={group.ariaLabel}
+            className={styles.nav}
+            data-collapsed={collapsed ? "true" : undefined}
+          >
+            {group.items.map((item) => {
               const current = isNavItemCurrent(pathname, item.href);
               const icon = item.icon ?? (collapsed ? item.label.slice(0, 1) : null);
               const link = (
@@ -85,10 +87,10 @@ export function Sidebar({
               ) : (
                 <div key={item.href}>{link}</div>
               );
-            })
-          )}
-        </nav>
-      ))}
+            })}
+          </nav>
+        ),
+      )}
       <div className={styles.bottom}>
         {collapsed ? (
           <Tooltip title={toggleLabel} placement="right">
