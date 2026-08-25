@@ -1,0 +1,114 @@
+"use client";
+
+import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
+import { Tooltip } from "antd";
+import Link from "next/link";
+
+import { LogoutButton } from "@/features/auth/logout-button";
+
+import styles from "./app-shell.module.css";
+import type { ShellNavGroup } from "./app-shell";
+
+export function isNavItemCurrent(pathname: string, href: string): boolean {
+  if (pathname === href) return true;
+  if (href === "/platform") return false;
+  const segments = href.split("/").filter(Boolean);
+  return segments.length > 1 && pathname.startsWith(`${href}/`);
+}
+
+export function Sidebar({
+  brand,
+  brandHref,
+  navGroups,
+  pathname,
+  collapsed,
+  onToggle,
+}: {
+  brand: string;
+  brandHref: string;
+  navGroups: ShellNavGroup[];
+  pathname: string;
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
+  const toggleLabel = collapsed ? "展开菜单" : "收起菜单";
+  const toggleButton = (
+    <button
+      type="button"
+      className={styles.toggle}
+      onClick={onToggle}
+      aria-label={toggleLabel}
+    >
+      {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+      {collapsed ? null : "收起菜单"}
+    </button>
+  );
+
+  return (
+    <aside
+      className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ""}`}
+    >
+      <Link href={brandHref} className={styles.brand}>
+        {collapsed ? brand.slice(0, 1) : brand}
+      </Link>
+      {navGroups.map((group) => (
+        <nav
+          key={group.ariaLabel}
+          aria-label={group.ariaLabel}
+          className={styles.nav}
+          data-collapsed={collapsed ? "true" : undefined}
+        >
+          {group.items.length === 0 ? (
+            group.emptyLabel ? (
+              <p className={styles.emptyLabel}>{group.emptyLabel}</p>
+            ) : null
+          ) : (
+            group.items.map((item) => {
+              const current = isNavItemCurrent(pathname, item.href);
+              const icon = item.icon ?? (collapsed ? item.label.slice(0, 1) : null);
+              const link = (
+                <Link
+                  href={item.href}
+                  aria-current={current ? "page" : undefined}
+                  aria-label={collapsed ? item.label : undefined}
+                  className={`${styles.navItem} ${current ? styles.navItemCurrent : ""}`}
+                >
+                  {icon ? <span>{icon}</span> : null}
+                  {collapsed ? null : item.label}
+                </Link>
+              );
+
+              return collapsed ? (
+                <Tooltip key={item.href} title={item.label} placement="right">
+                  {link}
+                </Tooltip>
+              ) : (
+                <div key={item.href}>{link}</div>
+              );
+            })
+          )}
+        </nav>
+      ))}
+      <div className={styles.bottom}>
+        {collapsed ? (
+          <Tooltip title={toggleLabel} placement="right">
+            {toggleButton}
+          </Tooltip>
+        ) : (
+          toggleButton
+        )}
+        <div className={styles.logout}>
+          {collapsed ? (
+            <Tooltip title="退出登录" placement="right">
+              <span>
+                <LogoutButton iconOnly />
+              </span>
+            </Tooltip>
+          ) : (
+            <LogoutButton />
+          )}
+        </div>
+      </div>
+    </aside>
+  );
+}

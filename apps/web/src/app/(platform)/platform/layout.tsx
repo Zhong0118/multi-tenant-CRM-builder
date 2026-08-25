@@ -11,5 +11,15 @@ export default async function PlatformLayout({
 }) {
   const user = await requireUser("/platform");
   if (!user.isPlatformAdmin) redirect("/workspaces");
-  return <PlatformShell>{children}</PlatformShell>;
+  return (
+    <PlatformShell
+      user={{
+        displayName: user.displayName,
+        phone: user.phone,
+        isPlatformAdmin: user.isPlatformAdmin,
+      }}
+    >
+      {children}
+    </PlatformShell>
+  );
 }

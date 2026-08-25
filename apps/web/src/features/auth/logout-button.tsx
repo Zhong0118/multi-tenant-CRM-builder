@@ -7,7 +7,7 @@ import { useState } from "react";
 
 import { browserApiClient } from "@/lib/api/browser-client";
 
-export function LogoutButton() {
+export function useLogout() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -28,13 +28,20 @@ export function LogoutButton() {
     }
   }
 
+  return { logout, loading };
+}
+
+export function LogoutButton({ iconOnly = false }: { iconOnly?: boolean } = {}) {
+  const { logout, loading } = useLogout();
+
   return (
     <Button
       icon={<LogoutOutlined />}
       loading={loading}
       onClick={() => void logout()}
+      aria-label="退出登录"
     >
-      退出登录
+      {iconOnly ? null : "退出登录"}
     </Button>
   );
 }
