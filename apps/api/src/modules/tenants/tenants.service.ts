@@ -43,6 +43,14 @@ export interface PlatformTenantPage {
   total: number;
 }
 
+export interface PlatformTenantSummary {
+  total: number;
+  draft: number;
+  active: number;
+  suspended: number;
+  closed: number;
+}
+
 export interface PlatformTenantStore {
   createTenant(input: { name: string; code: string }): Promise<PlatformTenant>;
   enterTenant(tenantId: string): Promise<void>;
@@ -65,6 +73,7 @@ export interface PlatformTenantStore {
   listTenants(page: TenantPageQuery): Promise<PlatformTenantPage>;
   updateTenantStatus(id: string, status: TenantStatus): Promise<PlatformTenant>;
   appendAudit(event: AuditEvent): Promise<void>;
+  summarizeTenants(): Promise<PlatformTenantSummary>;
 }
 
 export interface PlatformTenantRepository {
@@ -74,6 +83,7 @@ export interface PlatformTenantRepository {
   ): Promise<T>;
   list(actorId: string, page: TenantPageQuery): Promise<PlatformTenantPage>;
   find(actorId: string, tenantId: string): Promise<PlatformTenant | null>;
+  summarize(actorId: string): Promise<PlatformTenantSummary>;
 }
 
 @Injectable()
@@ -137,6 +147,10 @@ export class TenantsService {
     page: TenantPageQuery,
   ): Promise<PlatformTenantPage> {
     return this.repository.list(actor.id, page);
+  }
+
+  summarize(actor: AuthenticatedUser): Promise<PlatformTenantSummary> {
+    return this.repository.summarize(actor.id);
   }
 
   async detail(

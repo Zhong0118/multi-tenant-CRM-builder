@@ -66,6 +66,18 @@ describe('Platform tenant API (e2e)', () => {
     const tenantId: unknown = Reflect.get(created.body as object, 'id');
     if (typeof tenantId !== 'string') throw new Error('Expected tenant id');
 
+    const summary = await platform
+      .get('/api/v1/platform/tenants/summary')
+      .expect(200);
+    expect(summary.body).toMatchObject({
+      total: 1,
+      draft: 1,
+      active: 0,
+      suspended: 0,
+      closed: 0,
+    });
+    await regular.get('/api/v1/platform/tenants/summary').expect(403);
+
     await platform
       .post('/api/v1/platform/tenants')
       .set('Origin', origin)
@@ -122,6 +134,17 @@ describe('Platform tenant API (e2e)', () => {
           activeAdminCount: 1,
         });
       });
+
+    const activeSummary = await platform
+      .get('/api/v1/platform/tenants/summary')
+      .expect(200);
+    expect(activeSummary.body).toMatchObject({
+      total: 1,
+      draft: 0,
+      active: 1,
+      suspended: 0,
+      closed: 0,
+    });
 
     await firstAdmin.get('/api/v1/me').expect(200);
   });

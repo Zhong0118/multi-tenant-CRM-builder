@@ -99,6 +99,18 @@ class MemoryStore implements PlatformTenantStore {
     this.audits.push(input.action);
     return Promise.resolve();
   }
+
+  summarizeTenants() {
+    const counts = { total: 0, draft: 0, active: 0, suspended: 0, closed: 0 };
+    for (const tenant of this.tenants) {
+      counts.total += 1;
+      if (tenant.status === 'DRAFT') counts.draft += 1;
+      if (tenant.status === 'ACTIVE') counts.active += 1;
+      if (tenant.status === 'SUSPENDED') counts.suspended += 1;
+      if (tenant.status === 'CLOSED') counts.closed += 1;
+    }
+    return Promise.resolve(counts);
+  }
 }
 
 function fixture() {
@@ -111,6 +123,7 @@ function fixture() {
     list: (_actorId: string, page: { page: number; limit: number }) =>
       store.listTenants(page),
     find: (_actorId: string, id: string) => store.findTenant(id),
+    summarize: () => store.summarizeTenants(),
   };
   return {
     store,
@@ -220,6 +233,30 @@ describe('TenantsService', () => {
         requestId: 'req-3',
       }),
     ).rejects.toMatchObject({ code: 'TENANT_STATUS_TRANSITION_INVALID' });
+  });
+
+  it('summarizes tenant counts by status without returning rows', async () => {
+    const { service, store } = fixture();
+    store.tenants.push(
+      { id: 'a', name: 'A', code: 'a', status: 'DRAFT', activeAdminCount: 0 },
+      { id: 'b', name: 'B', code: 'b', status: 'ACTIVE', activeAdminCount: 1 },
+      { id: 'c', name: 'C', code: 'c', status: 'ACTIVE', activeAdminCount: 1 },
+      {
+        id: 'd',
+        name: 'D',
+        code: 'd',
+        status: 'SUSPENDED',
+        activeAdminCount: 1,
+      },
+      { id: 'e', name: 'E', code: 'e', status: 'CLOSED', activeAdminCount: 0 },
+    );
+    await expect(service.summarize(platformAdmin)).resolves.toEqual({
+      total: 5,
+      draft: 1,
+      active: 2,
+      suspended: 1,
+      closed: 1,
+    });
   });
 
   it('rejects invalid workspace codes before opening a transaction', async () => {

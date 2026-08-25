@@ -9,6 +9,7 @@ import type {
   PlatformTenant,
   PlatformTenantRepository,
   PlatformTenantStore,
+  PlatformTenantSummary,
   TenantPageQuery,
   TenantStatus,
 } from './tenants.service';
@@ -39,6 +40,10 @@ export class PrismaPlatformTenantRepository implements PlatformTenantRepository 
 
   find(actorId: string, tenantId: string): Promise<PlatformTenant | null> {
     return this.transaction(actorId, (store) => store.findTenant(tenantId));
+  }
+
+  summarize(actorId: string): Promise<PlatformTenantSummary> {
+    return this.transaction(actorId, (store) => store.summarizeTenants());
   }
 }
 
@@ -158,6 +163,23 @@ class PrismaPlatformTenantStore implements PlatformTenantStore {
 
   appendAudit(event: AuditEvent): Promise<void> {
     return this.audit.append(this.transaction, event);
+  }
+
+  async summarizeTenants(): Promise<PlatformTenantSummary> {
+    const rows = await this.transaction.tenant.groupBy({
+      by: ['status'],
+      _count: { _all: true },
+    });
+    const counts = { total: 0, draft: 0, active: 0, suspended: 0, closed: 0 };
+    for (const row of rows) {
+      const n = row._count._all;
+      counts.total += n;
+      if (row.status === 'DRAFT') counts.draft = n;
+      if (row.status === 'ACTIVE') counts.active = n;
+      if (row.status === 'SUSPENDED') counts.suspended = n;
+      if (row.status === 'CLOSED') counts.closed = n;
+    }
+    return counts;
   }
 
   private async enrichTenant(

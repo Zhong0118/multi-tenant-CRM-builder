@@ -28,6 +28,7 @@ import {
   PlatformTenantResponseDto,
   PlatformTenantPageQueryDto,
   PlatformTenantPageResponseDto,
+  PlatformTenantSummaryDto,
 } from './dto';
 import { TenantsService } from './tenants.service';
 
@@ -63,6 +64,12 @@ export class TenantsController {
       requestId: request.requestId ?? 'req_unknown',
       ip: request.ip,
     });
+  }
+
+  @Get('summary')
+  @ApiOkResponse({ type: PlatformTenantSummaryDto })
+  summarize(@CurrentSession() current: SessionPrincipal) {
+    return this.tenants.summarize(current.user);
   }
 
   @Get(':tenantId')

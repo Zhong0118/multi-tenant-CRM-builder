@@ -1112,6 +1112,32 @@
         "required": ["id", "name", "code", "status", "activeAdminCount"],
         "type": "object"
       },
+      "PlatformTenantSummaryDto": {
+        "properties": {
+          "active": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "closed": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "draft": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "suspended": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "total": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": ["total", "draft", "active", "suspended", "closed"],
+        "type": "object"
+      },
       "PublicationAnalysisResponseDto": {
         "properties": {
           "blocking": {
@@ -2346,6 +2372,30 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PlatformTenantResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-tenants"]
+      }
+    },
+    "/api/v1/platform/tenants/summary": {
+      "get": {
+        "operationId": "TenantsController_summarize",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformTenantSummaryDto"
                 }
               }
             },

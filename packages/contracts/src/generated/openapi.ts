@@ -308,6 +308,22 @@ export interface paths {
     patch: operations["TenantsController_changeStatus"];
     trace?: never;
   };
+  "/api/v1/platform/tenants/summary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["TenantsController_summarize"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}": {
     parameters: {
       query?: never;
@@ -1085,6 +1101,13 @@ export interface components {
       /** Format: date-time */
       updatedAt?: string;
     };
+    PlatformTenantSummaryDto: {
+      active: number;
+      closed: number;
+      draft: number;
+      suspended: number;
+      total: number;
+    };
     PublicationAnalysisResponseDto: {
       blocking: components["schemas"]["PublicationIssueResponseDto"][];
       changes: components["schemas"]["PublicationChangeResponseDto"][];
@@ -1783,6 +1806,25 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["PlatformTenantResponseDto"];
+        };
+      };
+    };
+  };
+  TenantsController_summarize: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlatformTenantSummaryDto"];
         };
       };
     };

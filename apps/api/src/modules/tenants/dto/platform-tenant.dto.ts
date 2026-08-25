@@ -94,3 +94,11 @@ export class PlatformTenantPageResponseDto {
   @ApiProperty({ minimum: 1, maximum: 100 }) limit!: number;
   @ApiProperty({ minimum: 0 }) total!: number;
 }
+
+export class PlatformTenantSummaryDto {
+  @ApiProperty({ type: Number, minimum: 0 }) total!: number;
+  @ApiProperty({ type: Number, minimum: 0 }) draft!: number;
+  @ApiProperty({ type: Number, minimum: 0 }) active!: number;
+  @ApiProperty({ type: Number, minimum: 0 }) suspended!: number;
+  @ApiProperty({ type: Number, minimum: 0 }) closed!: number;
+}
