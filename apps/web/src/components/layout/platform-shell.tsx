@@ -44,7 +44,10 @@ export function PlatformBreadcrumb({ pathname }: { pathname: string }) {
     );
   }
 
-  if (pathname.startsWith("/platform/tenants/") && pathname !== "/platform/tenants") {
+  if (
+    pathname.startsWith("/platform/tenants/") &&
+    pathname !== "/platform/tenants"
+  ) {
     return (
       <span>
         <Link href="/platform/tenants">公司管理</Link>
@@ -59,7 +62,10 @@ export function PlatformBreadcrumb({ pathname }: { pathname: string }) {
   }
 
   const parent = [...platformNavigation]
-    .filter((item) => item.href !== "/platform" && pathname.startsWith(`${item.href}/`))
+    .filter(
+      (item) =>
+        item.href !== "/platform" && pathname.startsWith(`${item.href}/`),
+    )
     .sort((a, b) => b.href.length - a.href.length)[0];
 
   if (parent) {

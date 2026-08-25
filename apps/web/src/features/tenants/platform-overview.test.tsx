@@ -26,7 +26,9 @@ describe("PlatformOverview", () => {
         tenants={{ items: [], page: 1, limit: 8, total: 0 }}
       />,
     );
-    expect(screen.getByRole("heading", { name: "平台总览" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "平台总览" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "新增公司" })).toHaveAttribute(
       "href",
       "/platform/tenants/new",

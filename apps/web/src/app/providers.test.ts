@@ -6,7 +6,10 @@ import { TOKENS } from "./providers";
 
 describe("design tokens", () => {
   it("keeps Ant Design tokens identical to globals.css custom properties", () => {
-    const css = readFileSync(resolve(import.meta.dirname, "globals.css"), "utf8");
+    const css = readFileSync(
+      resolve(import.meta.dirname, "globals.css"),
+      "utf8",
+    );
 
     expect(TOKENS.textPrimary).toBe("#0F172A");
     expect(TOKENS.primary).toBe("#2563EB");
@@ -18,7 +21,9 @@ describe("design tokens", () => {
     expect(TOKENS.warning).toBe("#B45309");
     expect(TOKENS.danger).toBe("#B42318");
 
-    expect(css).toContain(`--text-primary: ${TOKENS.textPrimary.toLowerCase()}`);
+    expect(css).toContain(
+      `--text-primary: ${TOKENS.textPrimary.toLowerCase()}`,
+    );
     expect(css).toContain(`--color-primary: ${TOKENS.primary.toLowerCase()}`);
     expect(css).toContain(`--bg-page: ${TOKENS.page.toLowerCase()}`);
     expect(css).toContain(`--border-default: ${TOKENS.border.toLowerCase()}`);

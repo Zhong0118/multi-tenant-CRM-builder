@@ -67,7 +67,8 @@ export function Sidebar({
           >
             {group.items.map((item) => {
               const current = isNavItemCurrent(pathname, item.href);
-              const icon = item.icon ?? (collapsed ? item.label.slice(0, 1) : null);
+              const icon =
+                item.icon ?? (collapsed ? item.label.slice(0, 1) : null);
               const link = (
                 <Link
                   href={item.href}

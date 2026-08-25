@@ -70,7 +70,8 @@ export function TenantTable({
           (navigate ?? router.push)(`/platform/tenants?page=${page}`),
       }}
       onRow={(tenant) => ({
-        onClick: () => (navigate ?? router.push)(`/platform/tenants/${tenant.id}`),
+        onClick: () =>
+          (navigate ?? router.push)(`/platform/tenants/${tenant.id}`),
       })}
     />
   );

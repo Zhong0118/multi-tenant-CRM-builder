@@ -9,8 +9,7 @@ import { PageHeader } from "@/components/layout/page-header";
 
 import styles from "./platform-overview.module.css";
 
-type PlatformTenantSummary =
-  components["schemas"]["PlatformTenantSummaryDto"];
+type PlatformTenantSummary = components["schemas"]["PlatformTenantSummaryDto"];
 type PlatformTenantPage =
   components["schemas"]["PlatformTenantPageResponseDto"];
 

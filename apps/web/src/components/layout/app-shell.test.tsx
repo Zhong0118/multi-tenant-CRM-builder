@@ -49,7 +49,9 @@ describe("AppShell", () => {
       "href",
       "/platform/tenants",
     );
-    expect(screen.queryByRole("link", { name: "租户" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "租户" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole("search")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /平台超级管理员/ }));
     expect(screen.getByText("138****8000")).toBeInTheDocument();
@@ -70,10 +72,9 @@ describe("AppShell", () => {
       "page",
     );
     fireEvent.click(screen.getByRole("button", { name: "收起菜单" }));
-    expect(screen.getByRole("navigation", { name: "平台导航" })).toHaveAttribute(
-      "data-collapsed",
-      "true",
-    );
+    expect(
+      screen.getByRole("navigation", { name: "平台导航" }),
+    ).toHaveAttribute("data-collapsed", "true");
   });
 
   it("renders emptyLabel without a named navigation group", () => {

@@ -31,7 +31,9 @@ export function useLogout() {
   return { logout, loading };
 }
 
-export function LogoutButton({ iconOnly = false }: { iconOnly?: boolean } = {}) {
+export function LogoutButton({
+  iconOnly = false,
+}: { iconOnly?: boolean } = {}) {
   const { logout, loading } = useLogout();
 
   return (
