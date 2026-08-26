@@ -1049,13 +1049,16 @@ export interface components {
       expectedVersion: number;
     };
     FieldConfigDto: {
+      help?: string;
       options?: components["schemas"]["SelectOptionDto"][];
+      placeholder?: string;
     };
     FieldOrderDto: {
       expectedVersion: number;
       fieldIds: string[];
     };
     FieldValidationDto: {
+      country?: string;
       max?: number;
       maxLength?: number;
       min?: number;
@@ -1532,9 +1535,7 @@ export interface components {
       updateScope: "ALL" | "OWN" | "NONE";
     };
     TemplateFieldDraftDto: {
-      config: {
-        [key: string]: unknown;
-      };
+      config: components["schemas"]["FieldConfigDto"];
       defaultValue:
         | (
             | string
@@ -1569,14 +1570,10 @@ export interface components {
         | "MULTI_SELECT"
         | "MEMBER"
         | "BOOLEAN";
-      validation: {
-        [key: string]: unknown;
-      };
+      validation: components["schemas"]["FieldValidationDto"];
     };
     TemplateFieldResponseDto: {
-      config: {
-        [key: string]: unknown;
-      };
+      config: components["schemas"]["FieldConfigDto"];
       defaultValue:
         | (
             | string
@@ -1627,9 +1624,7 @@ export interface components {
         | "MULTI_SELECT"
         | "MEMBER"
         | "BOOLEAN";
-      validation: {
-        [key: string]: unknown;
-      };
+      validation: components["schemas"]["FieldValidationDto"];
     };
     TemplateObjectDraftDto: {
       code: string;

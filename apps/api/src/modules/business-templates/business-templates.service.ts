@@ -175,6 +175,9 @@ export class BusinessTemplatesService {
       const template = await store.findTemplate(templateId);
       if (!template) throw new ApiException('TEMPLATE_NOT_FOUND', 404);
       assertVersion(template.draftVersion, expectedVersion);
+      if (template.activeVersion?.sourceDraftVersion === expectedVersion) {
+        return template.activeVersion;
+      }
       const versions = await store.listVersions(templateId);
       const analysis = analyzeTemplatePublication(
         template.configuration,

@@ -9,6 +9,7 @@ import { toApiError } from "@/lib/api/api-error";
 import { browserTemplateApi, type TemplateApi } from "./template-api";
 import type {
   BusinessTemplate,
+  BusinessTemplatePage,
   BusinessTemplateVersion,
   TemplateApplication,
   TenantBusinessConfigurationSummary,
@@ -48,7 +49,7 @@ export function TenantBusinessConfiguration({
 
   const templates = useQuery({
     queryKey: templateListKey,
-    queryFn: () => api.list({ page: 1, limit: 20, hasActiveVersion: true }),
+    queryFn: () => listApplicableTemplates(api),
     enabled: open,
   });
   const effectiveTemplateId =
@@ -194,6 +195,8 @@ export function TenantBusinessConfiguration({
               <span>选择模板</span>
               <Select
                 value={effectiveTemplateId}
+                showSearch
+                optionFilterProp="label"
                 onChange={(templateId) => {
                   setError(undefined);
                   setSelectedTemplateId(templateId);
@@ -225,6 +228,31 @@ export function TenantBusinessConfiguration({
       </Modal>
     </section>
   );
+}
+
+async function listApplicableTemplates(
+  api: TemplateApi,
+): Promise<BusinessTemplatePage> {
+  const limit = 20;
+  const first = await api.list({ page: 1, limit, hasActiveVersion: true });
+  const items = [...first.items];
+  let page = first.page;
+  let lastPageSize = first.items.length;
+  let total = first.total;
+
+  while (items.length < total && lastPageSize === limit) {
+    page += 1;
+    const next = await api.list({
+      page,
+      limit,
+      hasActiveVersion: true,
+    });
+    items.push(...next.items);
+    lastPageSize = next.items.length;
+    total = next.total;
+  }
+
+  return { ...first, items, total };
 }
 
 function TemplatePreview({ version }: { version: BusinessTemplateVersion }) {

@@ -150,6 +150,79 @@ function applicationResult() {
 }
 
 describe("TenantBusinessConfiguration", () => {
+  it("loads every published template page and can select the twenty-first template", async () => {
+    const available = Array.from({ length: 21 }, (_, index) => {
+      const sequence = String(index + 1).padStart(12, "0");
+      return {
+        ...publishedTemplate,
+        id: `90000000-0000-4000-8000-${sequence}`,
+        name: `模板 ${index + 1}`,
+        code: `template-${index + 1}`,
+        activeVersion: {
+          ...publishedTemplate.activeVersion,
+          id: `91000000-0000-4000-8000-${sequence}`,
+        },
+      };
+    });
+    const api = templateApi({
+      list: vi.fn().mockImplementation(({ page }: { page: number }) =>
+        Promise.resolve({
+          items: page === 1 ? available.slice(0, 20) : available.slice(20),
+          page,
+          limit: 20,
+          total: available.length,
+        }),
+      ),
+      listVersions: vi.fn().mockImplementation((templateId: string) => {
+        const index = available.findIndex(
+          (template) => template.id === templateId,
+        );
+        const template = available[index]!;
+        return Promise.resolve([
+          activeVersionFor(template, `第 ${index + 1} 个对象`),
+        ]);
+      }),
+    });
+    renderWithQuery(
+      <TenantBusinessConfiguration
+        tenant={tenant}
+        initialSummary={{
+          objectCount: 0,
+          canApplyTemplate: true,
+          blockingReason: null,
+          application: null,
+        }}
+        api={api}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "应用业务模板" }));
+    await waitFor(() => expect(api.list).toHaveBeenCalledTimes(2));
+    const templateSelect = screen.getByRole("combobox");
+    fireEvent.mouseDown(templateSelect);
+    fireEvent.change(templateSelect, { target: { value: "模板 21" } });
+    const lastOption = await waitFor(() => {
+      const option = document.querySelector<HTMLElement>(
+        '.ant-select-item-option[title="模板 21 · v1"]',
+      );
+      if (!option) throw new Error("第 21 个模板选项尚未出现");
+      return option;
+    });
+    fireEvent.click(lastOption);
+
+    expect(await screen.findByText("第 21 个对象")).toBeInTheDocument();
+    expect(api.list).toHaveBeenNthCalledWith(1, {
+      page: 1,
+      limit: 20,
+      hasActiveVersion: true,
+    });
+    expect(api.list).toHaveBeenNthCalledWith(2, {
+      page: 2,
+      limit: 20,
+      hasActiveVersion: true,
+    });
+  });
+
   it("previews and applies only active objects from the selected immutable version", async () => {
     const api = templateApi({
       list: vi.fn().mockResolvedValue({

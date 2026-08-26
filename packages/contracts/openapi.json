@@ -707,11 +707,19 @@
       },
       "FieldConfigDto": {
         "properties": {
+          "help": {
+            "maxLength": 1000,
+            "type": "string"
+          },
           "options": {
             "items": {
               "$ref": "#/components/schemas/SelectOptionDto"
             },
             "type": "array"
+          },
+          "placeholder": {
+            "maxLength": 1000,
+            "type": "string"
           }
         },
         "type": "object"
@@ -735,6 +743,10 @@
       },
       "FieldValidationDto": {
         "properties": {
+          "country": {
+            "maxLength": 16,
+            "type": "string"
+          },
           "max": {
             "type": "number"
           },
@@ -2069,8 +2081,7 @@
       "TemplateFieldDraftDto": {
         "properties": {
           "config": {
-            "additionalProperties": true,
-            "type": "object"
+            "$ref": "#/components/schemas/FieldConfigDto"
           },
           "defaultValue": {
             "nullable": true,
@@ -2138,8 +2149,7 @@
             "type": "string"
           },
           "validation": {
-            "additionalProperties": true,
-            "type": "object"
+            "$ref": "#/components/schemas/FieldValidationDto"
           }
         },
         "required": [
@@ -2160,8 +2170,7 @@
       "TemplateFieldResponseDto": {
         "properties": {
           "config": {
-            "additionalProperties": true,
-            "type": "object"
+            "$ref": "#/components/schemas/FieldConfigDto"
           },
           "defaultValue": {
             "nullable": true,
@@ -2251,8 +2260,7 @@
             "type": "string"
           },
           "validation": {
-            "additionalProperties": true,
-            "type": "object"
+            "$ref": "#/components/schemas/FieldValidationDto"
           }
         },
         "required": [

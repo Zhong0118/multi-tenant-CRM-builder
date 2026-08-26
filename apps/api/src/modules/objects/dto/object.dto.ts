@@ -142,6 +142,18 @@ export class FieldConfigDto {
   @ValidateNested({ each: true })
   @Type(() => SelectOptionDto)
   options?: SelectOptionDto[];
+
+  @ApiPropertyOptional({ type: String, maxLength: 1000 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  help?: string;
+
+  @ApiPropertyOptional({ type: String, maxLength: 1000 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  placeholder?: string;
 }
 
 export class FieldValidationDto {
@@ -174,6 +186,13 @@ export class FieldValidationDto {
   @Min(0)
   @Max(12)
   scale?: number;
+
+  @ApiPropertyOptional({ type: String, maxLength: 16 })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(16)
+  country?: string;
 }
 
 export class CreateFieldDefinitionDto extends ExpectedVersionDto {

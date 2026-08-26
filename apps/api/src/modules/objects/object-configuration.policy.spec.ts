@@ -84,6 +84,77 @@ describe('object configuration policy', () => {
     });
   });
 
+  it.each([
+    {
+      name: 'an omitted default value',
+      mutate: (input: ObjectConfigurationDraft) => {
+        input.fields[1].defaultValue = undefined as never;
+      },
+      code: 'FIELD_DEFAULT_VALUE_INVALID',
+    },
+    {
+      name: 'a string maxLength',
+      mutate: (input: ObjectConfigurationDraft) => {
+        input.fields[1].type = 'PHONE';
+        input.fields[1].validation = { maxLength: '100' };
+      },
+      code: 'FIELD_VALIDATION_INVALID',
+    },
+    {
+      name: 'a negative minLength',
+      mutate: (input: ObjectConfigurationDraft) => {
+        input.fields[1].type = 'PHONE';
+        input.fields[1].validation = { minLength: -1 };
+      },
+      code: 'FIELD_VALIDATION_INVALID',
+    },
+    {
+      name: 'an incomplete select option',
+      mutate: (input: ObjectConfigurationDraft) => {
+        input.fields[1].type = 'SINGLE_SELECT';
+        input.fields[1].config = { options: [{ key: 'new' }] };
+      },
+      code: 'FIELD_CONFIG_INVALID',
+    },
+  ])('rejects $name before publication', ({ mutate, code }) => {
+    const input = validObjectConfiguration();
+    mutate(input);
+
+    const blocker = analyzeObjectConfiguration(input).blocking.find(
+      (candidate) => candidate.code === code,
+    );
+    expect(blocker).toMatchObject({ code, fieldKey: 'email' });
+    expect(blocker?.message).toEqual(expect.any(String));
+  });
+
+  it('rejects an object code that starts with a number', () => {
+    const input = validObjectConfiguration();
+    input.object.code = '9sales';
+
+    expect(analyzeObjectConfiguration(input).blocking).toContainEqual({
+      code: 'OBJECT_CODE_INVALID',
+      message:
+        '业务对象代码仅支持小写字母、数字和单个连字符，且必须以字母开头。',
+    });
+  });
+
+  it('accepts supported phone metadata and a JSON default value', () => {
+    const input = validObjectConfiguration();
+    input.fields[1] = {
+      ...input.fields[1],
+      type: 'PHONE',
+      defaultValue: '+8613900000000',
+      validation: { country: 'CN', minLength: 8 },
+      config: { placeholder: '请输入手机号' },
+    };
+
+    expect(
+      analyzeObjectConfiguration(input).blocking.filter(
+        (issue) => issue.fieldKey === 'email',
+      ),
+    ).toEqual([]);
+  });
+
   it('omits inactive field permissions from the compiled snapshot while retaining the draft permission', () => {
     const input = validObjectConfiguration();
     input.fields[1].status = 'INACTIVE';

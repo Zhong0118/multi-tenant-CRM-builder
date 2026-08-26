@@ -115,6 +115,23 @@ test("published template versions and applications reject runtime mutations", as
   });
 
   await assert.rejects(() =>
+    withSettings(runtime, { userId: platform.id }, (tx) =>
+      tx.$executeRawUnsafe(
+        "INSERT INTO business_template_versions (id, template_id, version_no, source_draft_version, schema_version, configuration, configuration_checksum, change_summary, published_by_user_id) VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6::jsonb, $7, $8::jsonb, $9::uuid)",
+        randomUUID(),
+        templateId,
+        2,
+        1,
+        1,
+        JSON.stringify({ schemaVersion: 1, objects: [] }),
+        "0".repeat(64),
+        JSON.stringify({ objects: [] }),
+        platform.id,
+      ),
+    ),
+  );
+
+  await assert.rejects(() =>
     admin.$executeRawUnsafe(
       "UPDATE business_template_versions SET version_no = 2 WHERE id = $1::uuid",
       versionId,

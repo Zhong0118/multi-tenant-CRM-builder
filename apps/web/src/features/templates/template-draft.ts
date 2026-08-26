@@ -17,6 +17,14 @@ import type {
   SaveTemplateDraftInput,
 } from "./template-types";
 
+export const TEMPLATE_OBJECT_CODE_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+export const TEMPLATE_OBJECT_CODE_MESSAGE =
+  "业务对象代码仅支持小写字母、数字和单个连字符，且必须以字母开头。";
+
+export function isTemplateObjectCode(value: string): boolean {
+  return TEMPLATE_OBJECT_CODE_PATTERN.test(value);
+}
+
 export interface TemplateFieldView extends ConfigurableFieldView {
   publishedFieldKey: string | null;
 }

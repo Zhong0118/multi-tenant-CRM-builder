@@ -17,10 +17,12 @@ import {
 import {
   addField,
   buildFieldEditorPatch,
+  isTemplateObjectCode,
   reorderFields,
   setDefaultView,
   setEmployeeAccess,
   setFieldStatus,
+  TEMPLATE_OBJECT_CODE_MESSAGE,
   updateField,
   updateObject,
   type TemplateDraft,
@@ -59,6 +61,7 @@ export function TemplateObjectEditor({
   );
 
   if (!object) return null;
+  const objectCodeInvalid = !isTemplateObjectCode(object.object.code);
 
   function moveField(fieldId: string, direction: -1 | 1) {
     const fieldIds = object!.fields.map((field) => field.id);
@@ -145,10 +148,14 @@ export function TemplateObjectEditor({
             <Form.Item
               label="对象代码"
               htmlFor={`object-code-${objectId}`}
+              validateStatus={objectCodeInvalid ? "error" : undefined}
+              help={
+                objectCodeInvalid ? TEMPLATE_OBJECT_CODE_MESSAGE : undefined
+              }
               extra={
                 object.object.publishedCode
                   ? "该代码已进入发布版本，不能修改。"
-                  : "使用小写字母、数字和单个连字符；首次发布后锁定。"
+                  : "必须以小写字母开头；仅使用小写字母、数字和单个连字符；首次发布后锁定。"
               }
             >
               <Input

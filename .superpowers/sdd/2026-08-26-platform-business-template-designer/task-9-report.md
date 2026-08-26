@@ -108,7 +108,44 @@ This is local slice verification only. Template-version upgrades, existing-objec
 | affected-file Prettier check                                                                       | 0                                                                                                         |
 | first `.../fallback/pnpm --filter @crm/api lint`                                                   | 1; invitation-list body remained `any`                                                                    |
 | final API lint after an `unknown[]` boundary helper                                                | 0                                                                                                         |
-| focused E2E after moving the platform publication denial behind activation                        | first sandboxed invocation exited 1 before the test because `localhost:5433` was inaccessible             |
+| focused E2E after moving the platform publication denial behind activation                         | first sandboxed invocation exited 1 before the test because `localhost:5433` was inaccessible             |
 | escalated `pg_isready` and the same focused E2E                                                    | 0; test database accepted connections, then 1 suite / 1 workflow test passed                              |
 
 No Web tests, complete unit suite, build, browser acceptance, contracts generation/check, deployment, or push was rerun in Fix Round 1, matching its verification-cost boundary. Test counts remain focused E2E 1, database integration 10, and complete API E2E 8.
+
+## Final review fix wave
+
+The six requested Important findings are closed without adding a new business capability:
+
+1. Publishing the same locked draft version is idempotent: a retry returns the already-active version and creates no second version. Migration `0006_unique_business_template_source_draft` adds the database backstop `UNIQUE (template_id, source_draft_version)`, and integration coverage proves a second source-draft row is rejected.
+2. Template-field `defaultValue` is now required by presence while still accepting explicit `null`; both DTO validation and the shared publication policy reject omission/`undefined`.
+3. Template fields reuse `FieldValidationDto` and `FieldConfigDto` with nested validation and generated OpenAPI references instead of free-form JSON. The shared policy independently rejects invalid types, negative ranges, incomplete options, and invalid JSON values, while supported PHONE `country`/`placeholder`/`defaultValue` metadata remains valid.
+4. Template object codes use the tenant object rule `^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$` in DTO, shared policy, and the editor. `9sales` is rejected before save and the visible help/error copy is aligned.
+5. Detail, draft save, publication analysis, publish, and version history all apply Nest `ParseUUIDPipe` to `templateId`, producing the framework's stable HTTP 400 boundary before service/repository work.
+6. The company application modal follows published-template pagination until `total` is exhausted (or a short/empty page ends the sequence), retains `hasActiveVersion: true`, and supports selecting the twenty-first result through the searchable Select.
+
+Strict RED evidence was observed before each implementation: publish retry returned v2 and left two versions; the database accepted duplicate source draft 1; DTO malformed/omitted inputs produced five failures; shared policy malformed inputs produced five failures; `9sales` left Save enabled; five lifecycle parameters lacked `ParseUUIDPipe`; and the application modal fetched only page 1. The corresponding focused GREEN runs passed before the final checks.
+
+### Final fix verification
+
+All package-manager invocations used the bundled pnpm path stated above.
+
+| Command                                                                                   | Exit / evidence                                                                                                                                                                 |
+| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| focused API DTO / shared policy / publication policy / service                            | 0; 5 suites / 47 tests                                                                                                                                                          |
+| focused Web template application + editor                                                 | 0; 2 files / 20 tests (jsdom only reported its known pseudo-element `getComputedStyle` warning)                                                                                 |
+| `set -a && source .env && .../fallback/pnpm --filter @crm/database test:integration`      | 0; migration `0006` applied; 10/10 tests                                                                                                                                        |
+| first `.../fallback/pnpm contracts:check`                                                 | 1; exposed TypeScript JSON-union narrowing errors; minimal `typeof number` guards added                                                                                         |
+| two unstaged contract checks after the type fix                                           | 1 / 1; generated the intended nested DTO contract delta and failed because that delta was not yet in the index                                                                  |
+| stable `.../fallback/pnpm contracts:check` after exact staging of the two generated files | 0                                                                                                                                                                               |
+| API and Web `typecheck`                                                                   | 0 / 0                                                                                                                                                                           |
+| first affected API lint / affected Web lint                                               | 1 for four test-only type-style findings / 0                                                                                                                                    |
+| affected API lint after the minimal test cleanup                                          | 0                                                                                                                                                                               |
+| focused DTO + shared-policy tests after that cleanup                                      | 0; 2 suites / 23 tests                                                                                                                                                          |
+| first affected-file Prettier write                                                        | 2; TypeScript/TSX files were formatted, then Prisma/SQL reported no Prettier parser; Prisma format itself exited 0 and its unrelated alignment-only schema rewrite was reverted |
+| final affected-file Prettier check                                                        | 1 for the last DTO/report/progress edits; exact three-file write and repeat check exited 0                                                                                      |
+| `git diff --check`                                                                        | 0                                                                                                                                                                               |
+
+The final wave intentionally did not rerun the full 399-test suite, complete API E2E, browser acceptance, build, or the earlier full-repository gate. The focused business-template E2E was also not used: UUID coverage was implemented at the focused Controller metadata boundary, while the already-verified real HTTP workflow remains unchanged.
+
+Deferred Minor findings, unchanged by this wave: whitespace-only template names, template-list application-count N+1 queries, and the Ant Design Alert `message` API usage. These remain explicit follow-up work rather than silently expanding this closure.

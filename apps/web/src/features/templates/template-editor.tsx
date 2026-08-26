@@ -10,6 +10,7 @@ import { toApiError } from "@/lib/api/api-error";
 import { browserTemplateApi, type TemplateApi } from "./template-api";
 import {
   addObject,
+  isTemplateObjectCode,
   reorderObjects,
   templateDraftFromDetail,
   toTemplateConfiguration,
@@ -60,6 +61,9 @@ export function TemplateEditor({
     useState(false);
 
   const archived = template.status === "ARCHIVED";
+  const hasInvalidObjectCode = draft.objects.some(
+    (item) => !isTemplateObjectCode(item.object.code),
+  );
 
   function changeDraft(next: TemplateDraft) {
     localRevision.current += 1;
@@ -240,7 +244,7 @@ export function TemplateEditor({
         <div className={styles.editorActions}>
           <Button
             aria-label="保存草稿"
-            disabled={!dirty || archived}
+            disabled={!dirty || archived || hasInvalidObjectCode}
             loading={saving}
             onClick={saveDraft}
           >

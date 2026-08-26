@@ -331,6 +331,7 @@ model BusinessTemplateVersion {
   sourceObjects         ObjectDefinition[]
 
   @@unique([templateId, versionNo])
+  @@unique([templateId, sourceDraftVersion])
   @@map("business_template_versions")
 }
 

@@ -75,6 +75,14 @@ export function analyzeObjectConfiguration(
   );
   const titleField = activeFieldByKey.get(input.object.titleFieldKey);
 
+  if (!/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(input.object.code)) {
+    blocking.push({
+      code: 'OBJECT_CODE_INVALID',
+      message:
+        '业务对象代码仅支持小写字母、数字和单个连字符，且必须以字母开头。',
+    });
+  }
+
   if (!titleField || !titleField.required) {
     blocking.push({
       code: 'TITLE_FIELD_REQUIRED',
@@ -100,18 +108,43 @@ export function analyzeObjectConfiguration(
       });
     }
 
-    if (hasDuplicateOptionKeys(field)) {
+    if (
+      !Object.hasOwn(field, 'defaultValue') ||
+      !isJsonValue(field.defaultValue)
+    ) {
       blocking.push({
-        code: 'FIELD_OPTION_KEY_DUPLICATE',
-        message: '选项键必须在字段内保持唯一。',
+        code: 'FIELD_DEFAULT_VALUE_INVALID',
+        message: '字段默认值必须显式提供有效 JSON 值或 null。',
         fieldKey: field.fieldKey,
       });
     }
 
-    if (hasIncompatibleValidation(field)) {
+    const validationInvalid = hasInvalidValidation(field);
+    if (validationInvalid) {
+      blocking.push({
+        code: 'FIELD_VALIDATION_INVALID',
+        message: '字段校验配置包含无效的值或范围。',
+        fieldKey: field.fieldKey,
+      });
+    } else if (hasIncompatibleValidation(field)) {
       blocking.push({
         code: 'FIELD_VALIDATION_INCOMPATIBLE',
         message: '字段校验配置与字段类型不匹配。',
+        fieldKey: field.fieldKey,
+      });
+    }
+
+    const configInvalid = hasInvalidConfig(field);
+    if (configInvalid) {
+      blocking.push({
+        code: 'FIELD_CONFIG_INVALID',
+        message: '字段显示配置或选项结构不完整。',
+        fieldKey: field.fieldKey,
+      });
+    } else if (hasDuplicateOptionKeys(field)) {
+      blocking.push({
+        code: 'FIELD_OPTION_KEY_DUPLICATE',
+        message: '选项键必须在字段内保持唯一。',
         fieldKey: field.fieldKey,
       });
     }
@@ -244,6 +277,108 @@ function hasDuplicateOptionKeys(field: PublicationDraftField): boolean {
   });
 
   return new Set(keys).size !== keys.length;
+}
+
+function hasInvalidValidation(field: PublicationDraftField): boolean {
+  if (!isPlainRecord(field.validation)) return true;
+  const validation = field.validation;
+  const minLength = validation.minLength;
+  const maxLength = validation.maxLength;
+  const min = validation.min;
+  const max = validation.max;
+  const scale = validation.scale;
+  const country = validation.country;
+
+  if (
+    (minLength !== undefined &&
+      (typeof minLength !== 'number' ||
+        !Number.isInteger(minLength) ||
+        minLength < 0)) ||
+    (maxLength !== undefined &&
+      (typeof maxLength !== 'number' ||
+        !Number.isInteger(maxLength) ||
+        maxLength < 1 ||
+        maxLength > 10_000)) ||
+    (typeof minLength === 'number' &&
+      typeof maxLength === 'number' &&
+      minLength > maxLength) ||
+    (min !== undefined && (typeof min !== 'number' || !Number.isFinite(min))) ||
+    (max !== undefined && (typeof max !== 'number' || !Number.isFinite(max))) ||
+    (typeof min === 'number' && typeof max === 'number' && min > max) ||
+    (scale !== undefined &&
+      (typeof scale !== 'number' ||
+        !Number.isInteger(scale) ||
+        scale < 0 ||
+        scale > 12)) ||
+    (country !== undefined &&
+      (typeof country !== 'string' ||
+        country.length === 0 ||
+        country.length > 16))
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function hasInvalidConfig(field: PublicationDraftField): boolean {
+  if (!isPlainRecord(field.config)) return true;
+  const config = field.config;
+  if (
+    Object.keys(config).some(
+      (key) => !['options', 'help', 'placeholder'].includes(key),
+    ) ||
+    !isOptionalDisplayText(config.help) ||
+    !isOptionalDisplayText(config.placeholder)
+  ) {
+    return true;
+  }
+
+  if (config.options === undefined) return false;
+  if (field.type !== 'SINGLE_SELECT' && field.type !== 'MULTI_SELECT') {
+    return true;
+  }
+  if (!Array.isArray(config.options)) return true;
+  return config.options.some(
+    (option) =>
+      !isPlainRecord(option) ||
+      Object.keys(option).some(
+        (key) => !['key', 'label', 'status'].includes(key),
+      ) ||
+      typeof option.key !== 'string' ||
+      !/^[a-z0-9][a-z0-9_-]*$/.test(option.key) ||
+      option.key.length > 64 ||
+      typeof option.label !== 'string' ||
+      option.label.trim().length === 0 ||
+      option.label.length > 100 ||
+      (option.status !== undefined &&
+        option.status !== 'ACTIVE' &&
+        option.status !== 'INACTIVE'),
+  );
+}
+
+function isOptionalDisplayText(value: unknown): boolean {
+  return (
+    value === undefined || (typeof value === 'string' && value.length <= 1000)
+  );
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isJsonValue(value: unknown): boolean {
+  if (
+    value === null ||
+    typeof value === 'string' ||
+    typeof value === 'boolean'
+  ) {
+    return true;
+  }
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (Array.isArray(value)) return value.every(isJsonValue);
+  if (isPlainRecord(value)) return Object.values(value).every(isJsonValue);
+  return false;
 }
 
 function hasIncompatibleValidation(field: PublicationDraftField): boolean {

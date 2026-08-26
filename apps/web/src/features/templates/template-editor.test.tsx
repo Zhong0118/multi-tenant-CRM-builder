@@ -286,6 +286,23 @@ describe("template draft aggregate", () => {
 });
 
 describe("TemplateEditor save and publication flow", () => {
+  it("rejects an object code that starts with a number before saving", () => {
+    const editable = detail();
+    editable.configuration.objects[0]!.publishedCode = null;
+    renderEditor(editable);
+
+    fireEvent.change(screen.getByLabelText("对象代码"), {
+      target: { value: "9sales" },
+    });
+
+    expect(
+      screen.getByText(
+        "业务对象代码仅支持小写字母、数字和单个连字符，且必须以字母开头。",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "保存草稿" })).toBeDisabled();
+  });
+
   it("marks local edits unsaved and disables publication until the whole draft saves", async () => {
     const api = editorApi();
     renderEditor(detail(), api);

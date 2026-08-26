@@ -1,3 +1,6 @@
+import { ParseUUIDPipe } from '@nestjs/common';
+import { ROUTE_ARGS_METADATA } from '@nestjs/common/constants';
+
 import { ApiException } from '../../common/errors/api.exception';
 import type { AuthenticatedUser } from '../../common/tenancy/tenant-context';
 import type { BusinessTemplateConfiguration } from './business-template.schema';
@@ -11,6 +14,7 @@ import type {
   SaveBusinessTemplateRecord,
   TemplatePageQuery,
 } from './business-templates.repository';
+import { BusinessTemplatesController } from './business-templates.controller';
 import { BusinessTemplatesService } from './business-templates.service';
 
 const platformAdmin: AuthenticatedUser = {
@@ -61,6 +65,18 @@ describe('BusinessTemplatesService', () => {
       activeVersion: { versionNo: 1, sourceDraftVersion: 2 },
       hasUnpublishedChanges: false,
     });
+  });
+
+  it('returns the same version when the published draft is retried', async () => {
+    const { service } = publishedFixture();
+
+    const first = await service.publish(platformAdmin, 'template-1', 2, meta);
+    const retried = await service.publish(platformAdmin, 'template-1', 2, meta);
+
+    expect(retried).toEqual(first);
+    await expect(
+      service.listVersions(platformAdmin, 'template-1'),
+    ).resolves.toEqual([first]);
   });
 
   it('maps duplicate template codes to validation', async () => {
@@ -223,6 +239,16 @@ describe('BusinessTemplatesService', () => {
       service.publish(platformAdmin, 'template-1', 4, meta),
     ).rejects.toMatchObject({ code: 'TEMPLATE_PUBLICATION_BLOCKED' });
   });
+
+  it.each([
+    'detail',
+    'saveDraft',
+    'analyzePublication',
+    'publish',
+    'versions',
+  ] as const)('validates %s template identifiers as UUIDs', (methodName) => {
+    expect(routePipes(methodName)).toEqual([expect.any(ParseUUIDPipe)]);
+  });
 });
 
 async function rejected(promise: Promise<unknown>): Promise<unknown> {
@@ -232,6 +258,20 @@ async function rejected(promise: Promise<unknown>): Promise<unknown> {
     return error;
   }
   throw new Error('Expected promise to reject');
+}
+
+function routePipes(
+  methodName:
+    'detail' | 'saveDraft' | 'analyzePublication' | 'publish' | 'versions',
+): unknown[] {
+  const metadata = Reflect.getMetadata(
+    ROUTE_ARGS_METADATA,
+    BusinessTemplatesController,
+    methodName,
+  ) as Record<string, { pipes?: unknown[] }> | undefined;
+  return Object.values(metadata ?? {}).flatMap((argument) =>
+    argument.pipes ? [...argument.pipes] : [],
+  );
 }
 
 function fixture(seed: BusinessTemplateRecord[] = []) {

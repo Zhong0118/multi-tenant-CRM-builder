@@ -23,6 +23,10 @@ describe('business template DTOs', () => {
       (input: DraftInput) =>
         delete input.configuration.objects[0].employeeAccess,
     ],
+    [
+      'configuration.objects.0.fields.0.defaultValue',
+      (input: DraftInput) => delete draftField(input).defaultValue,
+    ],
   ])('rejects an omitted required nullable field at %s', async (path, omit) => {
     const input = validDraftInput();
     omit(input);
@@ -68,6 +72,66 @@ describe('business template DTOs', () => {
     expect(errorPaths(errors)).toContain(
       'configuration.objects.0.employeeAccess.fields',
     );
+  });
+
+  it.each([
+    {
+      name: 'a string maxLength',
+      mutate: (input: DraftInput) => {
+        draftField(input).validation = { maxLength: '100' };
+      },
+      path: 'configuration.objects.0.fields.0.validation.maxLength',
+    },
+    {
+      name: 'a negative minLength',
+      mutate: (input: DraftInput) => {
+        draftField(input).validation = { minLength: -1 };
+      },
+      path: 'configuration.objects.0.fields.0.validation.minLength',
+    },
+    {
+      name: 'an option without a label',
+      mutate: (input: DraftInput) => {
+        draftField(input).config = { options: [{ key: 'new' }] };
+      },
+      path: 'configuration.objects.0.fields.0.config.options.0.label',
+    },
+  ])(
+    'rejects $name in nested field configuration',
+    async ({ mutate, path }) => {
+      const input = validDraftInput();
+      mutate(input);
+
+      const errors = await validate(
+        plainToInstance(SaveBusinessTemplateDraftDto, input),
+      );
+
+      expect(errorPaths(errors)).toContain(path);
+    },
+  );
+
+  it('rejects a template object code that starts with a number', async () => {
+    const input = validDraftInput();
+    input.configuration.objects[0].code = '9sales';
+
+    const errors = await validate(
+      plainToInstance(SaveBusinessTemplateDraftDto, input),
+    );
+
+    expect(errorPaths(errors)).toContain('configuration.objects.0.code');
+  });
+
+  it('accepts supported phone field metadata and an explicit default value', async () => {
+    const input = validDraftInput();
+    const field = draftField(input);
+    field.type = 'PHONE';
+    field.defaultValue = '+8613900000000';
+    field.validation = { country: 'CN', minLength: 8 };
+    field.config = { placeholder: '请输入手机号' };
+
+    await expect(
+      validate(plainToInstance(SaveBusinessTemplateDraftDto, input)),
+    ).resolves.toEqual([]);
   });
 });
 
@@ -143,6 +207,10 @@ function validDraftInput() {
       ],
     },
   };
+}
+
+function draftField(input: DraftInput): Record<string, unknown> {
+  return input.configuration.objects[0].fields[0];
 }
 
 function errorPaths(errors: ValidationError[], parent = ''): string[] {

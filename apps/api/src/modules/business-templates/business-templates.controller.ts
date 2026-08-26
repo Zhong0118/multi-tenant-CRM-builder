@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   Param,
+  ParseUUIDPipe,
   Post,
   Put,
   Query,
@@ -71,7 +72,7 @@ export class BusinessTemplatesController {
   @ApiOkResponse({ type: BusinessTemplateDetailResponseDto })
   detail(
     @CurrentSession() current: SessionPrincipal,
-    @Param('templateId') templateId: string,
+    @Param('templateId', new ParseUUIDPipe()) templateId: string,
   ) {
     return this.templates.detail(current.user, templateId);
   }
@@ -81,7 +82,7 @@ export class BusinessTemplatesController {
   @ApiOkResponse({ type: BusinessTemplateDetailResponseDto })
   saveDraft(
     @CurrentSession() current: SessionPrincipal,
-    @Param('templateId') templateId: string,
+    @Param('templateId', new ParseUUIDPipe()) templateId: string,
     @Body() dto: SaveBusinessTemplateDraftDto,
     @Req() request: RequestWithId,
   ) {
@@ -102,7 +103,7 @@ export class BusinessTemplatesController {
   @ApiOkResponse({ type: TemplatePublicationAnalysisResponseDto })
   analyzePublication(
     @CurrentSession() current: SessionPrincipal,
-    @Param('templateId') templateId: string,
+    @Param('templateId', new ParseUUIDPipe()) templateId: string,
     @Body() dto: ExpectedTemplateVersionDto,
   ) {
     return this.templates.analyzePublication(
@@ -117,7 +118,7 @@ export class BusinessTemplatesController {
   @ApiCreatedResponse({ type: BusinessTemplateVersionResponseDto })
   publish(
     @CurrentSession() current: SessionPrincipal,
-    @Param('templateId') templateId: string,
+    @Param('templateId', new ParseUUIDPipe()) templateId: string,
     @Body() dto: ExpectedTemplateVersionDto,
     @Req() request: RequestWithId,
   ) {
@@ -134,7 +135,7 @@ export class BusinessTemplatesController {
   @ApiOkResponse({ type: BusinessTemplateVersionResponseDto, isArray: true })
   versions(
     @CurrentSession() current: SessionPrincipal,
-    @Param('templateId') templateId: string,
+    @Param('templateId', new ParseUUIDPipe()) templateId: string,
   ) {
     return this.templates.listVersions(current.user, templateId);
   }

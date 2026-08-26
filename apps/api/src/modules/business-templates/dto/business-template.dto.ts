@@ -28,6 +28,11 @@ import {
   ValidateNested,
 } from 'class-validator';
 
+import {
+  FieldConfigDto,
+  FieldValidationDto,
+} from '../../objects/dto/object.dto';
+
 const FIELD_TYPES = [
   'TEXT',
   'TEXTAREA',
@@ -211,15 +216,20 @@ export class TemplateFieldDraftDto {
   type!: (typeof FIELD_TYPES)[number];
 
   @ApiProperty({ type: Boolean }) @IsBoolean() required!: boolean;
-  @ApiProperty(JSON_VALUE_SCHEMA) @Allow() defaultValue!: unknown;
+  @ApiProperty(JSON_VALUE_SCHEMA)
+  @IsPresent()
+  @Allow()
+  defaultValue!: unknown;
 
-  @ApiProperty({ type: 'object', additionalProperties: true })
-  @IsObject()
-  validation!: Record<string, unknown>;
+  @ApiProperty({ type: FieldValidationDto })
+  @ValidateNested()
+  @Type(() => FieldValidationDto)
+  validation!: FieldValidationDto;
 
-  @ApiProperty({ type: 'object', additionalProperties: true })
-  @IsObject()
-  config!: Record<string, unknown>;
+  @ApiProperty({ type: FieldConfigDto })
+  @ValidateNested()
+  @Type(() => FieldConfigDto)
+  config!: FieldConfigDto;
 
   @ApiProperty({ type: Number }) @IsInt() sortOrder!: number;
   @ApiProperty({ type: Boolean }) @IsBoolean() isSystem!: boolean;
@@ -233,7 +243,9 @@ export class TemplateObjectDraftDto {
   @ApiProperty({ type: String, format: 'uuid' }) @IsUUID() id!: string;
 
   @ApiProperty({ type: String, maxLength: 64 })
-  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  @Matches(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/, {
+    message: '业务对象代码仅支持小写字母、数字和单个连字符，且必须以字母开头。',
+  })
   @MaxLength(64)
   code!: string;
 
