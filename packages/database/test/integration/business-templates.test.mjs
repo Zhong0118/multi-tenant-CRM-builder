@@ -28,6 +28,7 @@ after(async () => {
 test("platform template rows require an active platform administrator", async () => {
   const platform = await createUser("+8613900000201", true);
   const regular = await createUser("+8613900000202", false);
+  const inactivePlatform = await createUser("+8613900000204", true, "DISABLED");
   const templateId = randomUUID();
 
   await assert.rejects(() =>
@@ -36,6 +37,19 @@ test("platform template rows require an active platform administrator", async ()
         "INSERT INTO business_templates (id, code, name, draft_configuration, created_by_user_id, updated_at) VALUES ($1::uuid, $2, $3, $4::jsonb, $5::uuid, now())",
         templateId,
         "sales-access",
+        "销售模板",
+        JSON.stringify({ schemaVersion: 1, objects: [] }),
+        platform.id,
+      ),
+    ),
+  );
+
+  await assert.rejects(() =>
+    withSettings(runtime, { userId: inactivePlatform.id }, (tx) =>
+      tx.$executeRawUnsafe(
+        "INSERT INTO business_templates (id, code, name, draft_configuration, created_by_user_id, updated_at) VALUES ($1::uuid, $2, $3, $4::jsonb, $5::uuid, now())",
+        randomUUID(),
+        "sales-inactive",
         "销售模板",
         JSON.stringify({ schemaVersion: 1, objects: [] }),
         platform.id,
@@ -55,7 +69,7 @@ test("platform template rows require an active platform administrator", async ()
   );
 });
 
-test("published template versions reject updates and deletes", async () => {
+test("published template versions and applications reject runtime mutations", async () => {
   const platform = await createUser("+8613900000203", true);
   const templateId = randomUUID();
   const versionId = randomUUID();
@@ -105,9 +119,30 @@ test("published template versions reject updates and deletes", async () => {
       ),
     ),
   );
+  await assert.rejects(() =>
+    withSettings(runtime, { userId: platform.id }, (tx) =>
+      tx.$executeRawUnsafe(
+        "UPDATE business_template_applications SET object_id_map = '{}'::jsonb WHERE id = $1::uuid",
+        randomUUID(),
+      ),
+    ),
+  );
 });
 
-function createUser(phone, isPlatformAdmin) {
+test("published template tables allow only select and insert RLS policies", async () => {
+  const policies = await admin.$queryRawUnsafe(
+    "SELECT tablename, cmd FROM pg_policies WHERE schemaname = current_schema() AND tablename IN ('business_template_versions', 'business_template_applications') ORDER BY tablename, cmd",
+  );
+
+  assert.deepEqual(policies, [
+    { tablename: "business_template_applications", cmd: "INSERT" },
+    { tablename: "business_template_applications", cmd: "SELECT" },
+    { tablename: "business_template_versions", cmd: "INSERT" },
+    { tablename: "business_template_versions", cmd: "SELECT" },
+  ]);
+});
+
+function createUser(phone, isPlatformAdmin, status = "ACTIVE") {
   return admin.user.create({
     data: {
       displayName: phone,
@@ -115,6 +150,7 @@ function createUser(phone, isPlatformAdmin) {
       phoneVerifiedAt: new Date(),
       passwordHash: "test-password-hash",
       isPlatformAdmin,
+      status,
     },
   });
 }
