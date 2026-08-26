@@ -26,3 +26,8 @@
 - While application is pending, the modal cannot close through its close control, mask, keyboard, or cancel button, and the template selector is disabled. Successful completion alone closes the modal.
 - Modal completion and every user close share one reset path that clears errors, selected template state, and the related query cache before a later reopen.
 - RED: the exact focused Vitest command found the old draft preview, missing failure state, and cancellable pending modal. GREEN: the same command passed 2 files / 13 tests. Web typecheck passed after the completed change.
+
+## Fix Round 2
+
+- Changing the selected template now immediately clears any prior application failure, including its request ID, before loading the newly selected template version.
+- RED: the focused application test retained template A's failed request ID after switching to template B. GREEN: the same focused test file passed 6/6 tests after the selection handler cleared that error.

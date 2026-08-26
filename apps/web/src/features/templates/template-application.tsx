@@ -188,7 +188,10 @@ export function TenantBusinessConfiguration({
               <span>选择模板</span>
               <Select
                 value={selectedTemplateId}
-                onChange={setSelectedTemplateId}
+                onChange={(templateId) => {
+                  setError(undefined);
+                  setSelectedTemplateId(templateId);
+                }}
                 options={templates.data.items.map(templateOption)}
                 disabled={pending}
               />

@@ -61,9 +61,16 @@ function publishedTemplateDetail() {
 }
 
 function activeVersion(): BusinessTemplateVersion {
+  return activeVersionFor(publishedTemplate, "客户");
+}
+
+function activeVersionFor(
+  template: { id: string; activeVersion: { id: string } },
+  activeObjectName: string,
+): BusinessTemplateVersion {
   return {
-    id: publishedTemplate.activeVersion.id,
-    templateId: publishedTemplate.id,
+    id: template.activeVersion.id,
+    templateId: template.id,
     versionNo: 1,
     sourceDraftVersion: 1,
     schemaVersion: 1,
@@ -71,7 +78,12 @@ function activeVersion(): BusinessTemplateVersion {
     configuration: {
       schemaVersion: 1,
       objects: [
-        templateObject("published-object-1", "customers", "客户", "ACTIVE"),
+        templateObject(
+          "published-object-1",
+          "customers",
+          activeObjectName,
+          "ACTIVE",
+        ),
         templateObject(
           "published-object-2",
           "opportunities",
@@ -227,6 +239,68 @@ describe("TenantBusinessConfiguration", () => {
     pending.resolve(applicationResult());
 
     expect(await screen.findByText("已生成 1 个对象草稿")).toBeInTheDocument();
+  });
+
+  it("clears the failed application message when switching to another template", async () => {
+    const renewalTemplate = {
+      ...publishedTemplate,
+      id: "44444444-4444-4444-8444-444444444444",
+      name: "续费 CRM",
+      code: "renewal-crm",
+      activeVersion: {
+        ...publishedTemplate.activeVersion,
+        id: "55555555-5555-4555-8555-555555555555",
+      },
+    };
+    const api = templateApi({
+      list: vi.fn().mockResolvedValue({
+        items: [publishedTemplate, renewalTemplate],
+        page: 1,
+        limit: 20,
+        total: 2,
+      }),
+      listVersions: vi.fn().mockImplementation((templateId: string) =>
+        Promise.resolve([
+          templateId === renewalTemplate.id
+            ? activeVersionFor(renewalTemplate, "续费客户")
+            : activeVersion(),
+        ]),
+      ),
+      apply: vi.fn().mockRejectedValue({
+        code: "TEMPLATE_APPLICATION_NOT_ALLOWED",
+        message: "模板 A 无法应用。",
+        fieldErrors: {},
+        requestId: "req_template_a",
+        status: 409,
+      }),
+    });
+    renderWithQuery(
+      <TenantBusinessConfiguration
+        tenant={tenant}
+        initialSummary={{ objectCount: 0, canApplyTemplate: true, blockingReason: null, application: null }}
+        api={api}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "应用业务模板" }));
+    await screen.findByText("将创建对象草稿，不会直接上线");
+    fireEvent.click(screen.getByRole("button", { name: "确认应用" }));
+    expect(await screen.findByText(/req_template_a/)).toBeInTheDocument();
+
+    fireEvent.mouseDown(screen.getByRole("combobox"));
+    const renewalOption = await waitFor(() => {
+      const option = document.querySelector<HTMLElement>(
+        '.ant-select-item-option[title="续费 CRM · v1"]',
+      );
+      expect(option).not.toBeNull();
+      return option;
+    });
+    fireEvent.click(renewalOption);
+
+    await waitFor(() =>
+      expect(screen.queryByText(/req_template_a/)).not.toBeInTheDocument(),
+    );
+    expect(await screen.findByText("续费客户")).toBeInTheDocument();
   });
 
   it("does not offer template application when the company already has objects", () => {
