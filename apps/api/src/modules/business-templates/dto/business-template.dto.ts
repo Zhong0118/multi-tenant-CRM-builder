@@ -22,6 +22,9 @@ import {
   Max,
   MaxLength,
   Min,
+  registerDecorator,
+  type ValidationOptions,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 
@@ -50,6 +53,38 @@ const JSON_VALUE_SCHEMA: ApiPropertyOptions = {
   ],
   nullable: true,
 };
+
+function IsPresent(validationOptions?: ValidationOptions): PropertyDecorator {
+  return (target, propertyKey) =>
+    registerDecorator({
+      name: 'isPresent',
+      target: target.constructor,
+      propertyName: propertyKey.toString(),
+      options: validationOptions,
+      validator: { validate: (value: unknown) => value !== undefined },
+    });
+}
+
+function IsTemplateFieldAccessRecord(
+  validationOptions?: ValidationOptions,
+): PropertyDecorator {
+  return (target, propertyKey) =>
+    registerDecorator({
+      name: 'isTemplateFieldAccessRecord',
+      target: target.constructor,
+      propertyName: propertyKey.toString(),
+      options: validationOptions,
+      validator: {
+        validate: (value: unknown) =>
+          typeof value === 'object' &&
+          value !== null &&
+          !Array.isArray(value) &&
+          Object.values(value).every((access) =>
+            ['EDIT', 'READ_ONLY', 'HIDDEN'].includes(String(access)),
+          ),
+      },
+    });
+}
 
 export class BusinessTemplatePageQueryDto {
   @ApiPropertyOptional({ type: Number, minimum: 1, default: 1 })
@@ -149,6 +184,7 @@ export class TemplateEmployeeAccessDto {
     additionalProperties: { enum: ['EDIT', 'READ_ONLY', 'HIDDEN'] },
   })
   @IsObject()
+  @IsTemplateFieldAccessRecord()
   fields!: Record<string, 'EDIT' | 'READ_ONLY' | 'HIDDEN'>;
 }
 
@@ -204,13 +240,15 @@ export class TemplateObjectDraftDto {
   name!: string;
 
   @ApiProperty({ type: String, nullable: true, maxLength: 1000 })
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== null)
+  @IsPresent()
   @IsString()
   @MaxLength(1000)
   description!: string | null;
 
   @ApiProperty({ type: String, nullable: true, maxLength: 64 })
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== null)
+  @IsPresent()
   @IsString()
   @MaxLength(64)
   icon!: string | null;
@@ -229,13 +267,15 @@ export class TemplateObjectDraftDto {
   fields!: TemplateFieldDraftDto[];
 
   @ApiProperty({ type: TemplateDefaultViewDto, nullable: true })
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== null)
+  @IsPresent()
   @ValidateNested()
   @Type(() => TemplateDefaultViewDto)
   defaultView!: TemplateDefaultViewDto | null;
 
   @ApiProperty({ type: TemplateEmployeeAccessDto, nullable: true })
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== null)
+  @IsPresent()
   @ValidateNested()
   @Type(() => TemplateEmployeeAccessDto)
   employeeAccess!: TemplateEmployeeAccessDto | null;
@@ -266,7 +306,8 @@ export class SaveBusinessTemplateDraftDto {
   name!: string;
 
   @ApiProperty({ type: String, nullable: true, maxLength: 1000 })
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== null)
+  @IsPresent()
   @IsString()
   @MaxLength(1000)
   description!: string | null;
