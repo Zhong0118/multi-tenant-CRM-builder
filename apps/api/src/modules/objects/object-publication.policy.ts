@@ -1,11 +1,14 @@
 import {
-  isPublishedFieldType,
   type JsonValue,
   type PublishedDataScope,
   type PublishedField,
   type PublishedFieldAccess,
   type PublishedObjectSchema,
 } from './object-schema';
+import {
+  analyzeObjectConfiguration,
+  compileObjectConfiguration,
+} from './object-configuration.policy';
 
 export type DraftFieldType = PublishedField['type'] | 'ATTACHMENT';
 
@@ -77,87 +80,23 @@ export interface PublicationAnalysis {
   }>;
 }
 
-const TITLE_FIELD_TYPES = new Set<DraftFieldType>([
-  'TEXT',
-  'PHONE',
-  'EMAIL',
-  'SINGLE_SELECT',
-]);
-
 export function analyzePublication(
   input: PublicationDraft,
 ): PublicationAnalysis {
-  const blocking: PublicationIssue[] = [];
   const activeFields = input.fields.filter(
     (field) => field.status === 'ACTIVE',
   );
-  const activeFieldByKey = new Map(
-    activeFields.map((field) => [field.fieldKey, field]),
-  );
-  const titleField = activeFieldByKey.get(input.object.titleFieldKey);
-
-  if (!titleField || !titleField.required) {
-    blocking.push({
-      code: 'TITLE_FIELD_REQUIRED',
-      message: '标题字段必须存在、启用且设为必填。',
-      fieldKey: input.object.titleFieldKey,
-    });
-  }
-
-  if (titleField && !TITLE_FIELD_TYPES.has(titleField.type)) {
-    blocking.push({
-      code: 'TITLE_FIELD_TYPE_UNSUPPORTED',
-      message: '标题字段类型不支持作为记录标题。',
-      fieldKey: titleField.fieldKey,
-    });
-  }
-
-  for (const field of activeFields) {
-    if (!isPublishedFieldType(field.type)) {
-      blocking.push({
-        code: 'FIELD_TYPE_UNSUPPORTED',
-        message: '字段类型暂不支持发布。',
-        fieldKey: field.fieldKey,
-      });
-    }
-
-    if (hasDuplicateOptionKeys(field)) {
-      blocking.push({
-        code: 'FIELD_OPTION_KEY_DUPLICATE',
-        message: '选项键必须在字段内保持唯一。',
-        fieldKey: field.fieldKey,
-      });
-    }
-  }
-
-  if (!input.defaultView) {
-    blocking.push({
-      code: 'DEFAULT_VIEW_REQUIRED',
-      message: '发布对象前必须配置默认视图。',
-    });
-  } else {
-    for (const fieldKey of input.defaultView.columnFieldKeys) {
-      if (!activeFieldByKey.has(fieldKey)) {
-        blocking.push({
-          code: 'DEFAULT_VIEW_FIELD_INACTIVE',
-          message: '默认视图只能引用已启用字段。',
-          fieldKey,
-        });
-      }
-    }
-  }
-
-  if (!input.employeeAccess) {
-    blocking.push({
-      code: 'EMPLOYEE_ACCESS_REQUIRED',
-      message: '发布对象前必须显式配置员工角色权限。',
-    });
-  }
-
+  const configuration = analyzeObjectConfiguration({
+    object: input.object,
+    fields: input.fields,
+    defaultView: input.defaultView,
+    employeeAccess: input.employeeAccess,
+    previousFields: input.activeSchema?.fields,
+  });
+  const blocking = [...configuration.blocking];
   const previousFields = new Map(
     (input.activeSchema?.fields ?? []).map((field) => [field.fieldKey, field]),
   );
-  const changes = analyzeFieldChanges(activeFields, previousFields);
 
   for (const field of activeFields) {
     const previous = previousFields.get(field.fieldKey);
@@ -179,7 +118,7 @@ export function analyzePublication(
     }
   }
 
-  return { blocking, warnings: [], changes };
+  return { blocking, warnings: configuration.warnings, changes: configuration.changes };
 }
 
 export function compilePublication(
@@ -191,111 +130,10 @@ export function compilePublication(
     throw new Error('Publication draft is incomplete');
   }
 
-  const fields = input.fields
-    .filter((field) => field.status === 'ACTIVE')
-    .sort(
-      (left, right) =>
-        left.sortOrder - right.sortOrder ||
-        left.fieldKey.localeCompare(right.fieldKey),
-    )
-    .map(toPublishedField);
+  const configuration = compileObjectConfiguration(input);
 
   return {
     publication: { ...input.publication },
-    object: {
-      id: input.object.id,
-      code: input.object.code,
-      name: input.object.name,
-      description: input.object.description,
-      titleFieldKey: input.object.titleFieldKey,
-      icon: input.object.icon,
-      sortOrder: input.object.sortOrder,
-    },
-    fields,
-    defaultView: {
-      code: 'default',
-      name: input.defaultView.name,
-      columnFieldKeys: [...input.defaultView.columnFieldKeys],
-      sort: { ...input.defaultView.sort },
-    },
-    employeeAccess: {
-      canCreate: input.employeeAccess.canCreate,
-      canRead: input.employeeAccess.canRead,
-      canUpdate: input.employeeAccess.canUpdate,
-      canDelete: false,
-      readScope: input.employeeAccess.readScope,
-      updateScope: input.employeeAccess.updateScope,
-      fields: { ...input.employeeAccess.fields },
-    },
+    ...configuration,
   };
-}
-
-function toPublishedField(field: PublicationDraftField): PublishedField {
-  if (!isPublishedFieldType(field.type)) {
-    throw new Error(`Unsupported published field type: ${field.type}`);
-  }
-
-  return {
-    id: field.id,
-    fieldKey: field.fieldKey,
-    label: field.label,
-    type: field.type,
-    required: field.required,
-    defaultValue: field.defaultValue,
-    validation: { ...field.validation },
-    config: { ...field.config },
-    sortOrder: field.sortOrder,
-    isSystem: field.isSystem,
-  };
-}
-
-function hasDuplicateOptionKeys(field: PublicationDraftField): boolean {
-  if (field.type !== 'SINGLE_SELECT' && field.type !== 'MULTI_SELECT') {
-    return false;
-  }
-
-  const options = field.config.options;
-  if (!Array.isArray(options)) return false;
-
-  const keys = options.flatMap((option) => {
-    if (
-      option &&
-      typeof option === 'object' &&
-      !Array.isArray(option) &&
-      typeof option.key === 'string'
-    ) {
-      return [option.key];
-    }
-    return [];
-  });
-
-  return new Set(keys).size !== keys.length;
-}
-
-function analyzeFieldChanges(
-  activeFields: PublicationDraftField[],
-  previousFields: Map<string, PublishedField>,
-): PublicationAnalysis['changes'] {
-  const changes: PublicationAnalysis['changes'] = [];
-  const currentKeys = new Set(activeFields.map((field) => field.fieldKey));
-
-  for (const field of activeFields) {
-    const previous = previousFields.get(field.fieldKey);
-    if (!previous) {
-      changes.push({ kind: 'ADDED', fieldKey: field.fieldKey });
-    } else if (isPublishedFieldType(field.type)) {
-      const current = toPublishedField(field);
-      if (JSON.stringify(current) !== JSON.stringify(previous)) {
-        changes.push({ kind: 'UPDATED', fieldKey: field.fieldKey });
-      }
-    }
-  }
-
-  for (const fieldKey of previousFields.keys()) {
-    if (!currentKeys.has(fieldKey)) {
-      changes.push({ kind: 'INACTIVATED', fieldKey });
-    }
-  }
-
-  return changes;
 }
