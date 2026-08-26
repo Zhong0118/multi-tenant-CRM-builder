@@ -1,4 +1,5 @@
-import { GUARDS_METADATA } from '@nestjs/common/constants';
+import { ParseUUIDPipe } from '@nestjs/common';
+import { GUARDS_METADATA, ROUTE_ARGS_METADATA } from '@nestjs/common/constants';
 
 import { PlatformAdminGuard } from '../../common/auth/platform-admin.guard';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
@@ -112,6 +113,7 @@ describe('TemplateApplicationService', () => {
       'findApplication',
       'lockTemplate',
       'lockTenant',
+      'findApplication',
       'requireApplicableVersion',
       'enterTenant',
       'assertTenantEmpty',
@@ -134,6 +136,68 @@ describe('TemplateApplicationService', () => {
     expect(state.applications).toHaveLength(1);
     expect(state.audits).toHaveLength(1);
     expect(transactionEvents).toEqual(['findApplication']);
+  });
+
+  it('does not return an application when the route template differs', async () => {
+    const { service, state } = applicationFixture();
+    await service.apply(platformAdmin, applicationInput(), meta);
+    if (!state.template?.version) throw new Error('fixture template missing');
+    state.template.id = 'template-2';
+    state.template.code = 'service';
+    state.template.name = '服务模板';
+    state.template.activeVersionId = 'version-2';
+    state.template.version = {
+      ...state.template.version,
+      id: 'version-2',
+      templateId: 'template-2',
+    };
+
+    await expect(
+      service.apply(
+        platformAdmin,
+        { ...applicationInput(), templateId: 'template-2' },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'TEMPLATE_APPLICATION_NOT_ALLOWED' });
+
+    expect(state.applications).toHaveLength(1);
+    expect(state.applications[0].templateId).toBe('template-1');
+  });
+
+  it('returns a concurrent winner found after both row locks', async () => {
+    const winner = existingApplication();
+    const { service, state, transactionEvents } = applicationFixture({
+      applicationAfterLocks: winner,
+    });
+
+    await expect(
+      service.apply(platformAdmin, applicationInput(), meta),
+    ).resolves.toEqual(winner);
+
+    expect(state.applications).toEqual([winner]);
+    expect(state.objects).toEqual([]);
+    expect(state.audits).toEqual([]);
+    expect(transactionEvents).toEqual([
+      'findApplication',
+      'lockTemplate',
+      'lockTenant',
+      'findApplication',
+    ]);
+  });
+
+  it('safely re-reads the exact concurrent winner after a create uniqueness race', async () => {
+    const winner = existingApplication();
+    const { service, state } = applicationFixture({
+      winnerOnCreateConflict: winner,
+    });
+
+    await expect(
+      service.apply(platformAdmin, applicationInput(), meta),
+    ).resolves.toEqual(winner);
+
+    expect(state.applications).toEqual([winner]);
+    expect(state.objects).toEqual([]);
+    expect(state.audits).toEqual([]);
   });
 
   it('rolls back every normalized row and the application when hydration fails', async () => {
@@ -168,6 +232,46 @@ describe('TemplateApplicationService', () => {
       service.apply(platformAdmin, applicationInput(), meta),
     ).rejects.toMatchObject({ code: 'TEMPLATE_APPLICATION_NOT_ALLOWED' });
 
+    expect(state.applications).toEqual([]);
+    expect(state.audits).toEqual([]);
+  });
+
+  it.each([
+    {
+      name: 'duplicate template object ids',
+      configuration: () => {
+        const input = configuration(2);
+        input.objects[1].id = input.objects[0].id;
+        return input;
+      },
+    },
+    {
+      name: 'duplicate field ids',
+      configuration: () => {
+        const input = configuration();
+        input.objects[0].fields[1].id = input.objects[0].fields[0].id;
+        return input;
+      },
+    },
+    {
+      name: 'duplicate field keys',
+      configuration: () => {
+        const input = configuration();
+        input.objects[0].fields[1].fieldKey =
+          input.objects[0].fields[0].fieldKey;
+        return input;
+      },
+    },
+  ])('rejects $name before hydration', async ({ configuration: invalid }) => {
+    const { service, state } = applicationFixture({
+      configuration: invalid(),
+    });
+
+    await expect(
+      service.apply(platformAdmin, applicationInput(), meta),
+    ).rejects.toMatchObject({ code: 'TEMPLATE_APPLICATION_NOT_ALLOWED' });
+
+    expect(state.objects).toEqual([]);
     expect(state.applications).toEqual([]);
     expect(state.audits).toEqual([]);
   });
@@ -219,6 +323,11 @@ describe('TemplateApplicationService', () => {
       Reflect.getMetadata(GUARDS_METADATA, TemplateApplicationController),
     ).toEqual([SessionAuthGuard, PlatformAdminGuard]);
   });
+
+  it('validates both platform route identifiers as UUIDs', () => {
+    expect(routePipes('summarizeTarget')).toEqual([expect.any(ParseUUIDPipe)]);
+    expect(routePipes('apply')).toEqual([expect.any(ParseUUIDPipe)]);
+  });
 });
 
 type MemoryObjectRow = HydratedTenantConfiguration['objects'][number];
@@ -256,6 +365,8 @@ class MemoryApplicationRepository implements TemplateApplicationRepository {
   constructor(
     readonly state: MemoryState,
     private readonly failAfterObject?: number,
+    private readonly applicationAfterLocks?: TemplateApplicationResult,
+    private readonly winnerOnCreateConflict?: TemplateApplicationResult,
   ) {}
 
   async transaction<T>(
@@ -263,16 +374,33 @@ class MemoryApplicationRepository implements TemplateApplicationRepository {
     work: (store: TemplateApplicationStore) => Promise<T>,
   ): Promise<T> {
     const draft = structuredClone(this.state);
-    const result = await work(
-      new MemoryApplicationStore(
-        draft,
-        actorId,
-        this.transactionEvents,
-        this.failAfterObject,
-      ),
-    );
-    Object.assign(this.state, draft);
-    return result;
+    try {
+      const result = await work(
+        new MemoryApplicationStore(
+          draft,
+          actorId,
+          this.transactionEvents,
+          this.failAfterObject,
+          this.applicationAfterLocks,
+          Boolean(this.winnerOnCreateConflict),
+        ),
+      );
+      Object.assign(this.state, draft);
+      return result;
+    } catch (error) {
+      if (
+        hasErrorCode(error, 'P2002') &&
+        this.winnerOnCreateConflict &&
+        !this.state.applications.some(
+          (application) => application.id === this.winnerOnCreateConflict?.id,
+        )
+      ) {
+        this.state.applications.push(
+          structuredClone(this.winnerOnCreateConflict),
+        );
+      }
+      throw error;
+    }
   }
 }
 
@@ -284,15 +412,22 @@ class MemoryApplicationStore implements TemplateApplicationStore {
     private readonly actorId: string,
     private readonly events: string[],
     private readonly failAfterObject?: number,
+    private readonly applicationAfterLocks?: TemplateApplicationResult,
+    private readonly createApplicationConflict = false,
   ) {}
 
-  async findApplication(tenantId: string, templateVersionId: string) {
+  async findApplication(
+    tenantId: string,
+    templateVersionId: string,
+    templateId?: string,
+  ) {
     this.events.push('findApplication');
     return (
       this.state.applications.find(
         (application) =>
           application.tenantId === tenantId &&
-          application.templateVersionId === templateVersionId,
+          application.templateVersionId === templateVersionId &&
+          (templateId === undefined || application.templateId === templateId),
       ) ?? null
     );
   }
@@ -317,6 +452,14 @@ class MemoryApplicationStore implements TemplateApplicationStore {
 
   async lockTenant(_tenantId: string) {
     this.events.push('lockTenant');
+    if (
+      this.applicationAfterLocks &&
+      !this.state.applications.some(
+        (application) => application.id === this.applicationAfterLocks?.id,
+      )
+    ) {
+      this.state.applications.push(structuredClone(this.applicationAfterLocks));
+    }
   }
 
   async requireApplicableVersion(
@@ -408,6 +551,7 @@ class MemoryApplicationStore implements TemplateApplicationStore {
 
   async createApplication(application: CreateTemplateApplication) {
     this.events.push('createApplication');
+    if (this.createApplicationConflict) throw { code: 'P2002' };
     const saved = { ...structuredClone(application), appliedAt };
     this.state.applications.push(saved);
     return saved;
@@ -430,6 +574,8 @@ interface FixtureOptions {
   checksum?: string;
   missingTemplate?: boolean;
   missingTenant?: boolean;
+  applicationAfterLocks?: TemplateApplicationResult;
+  winnerOnCreateConflict?: TemplateApplicationResult;
 }
 
 function applicationFixture(options: FixtureOptions = {}) {
@@ -499,6 +645,8 @@ function applicationFixture(options: FixtureOptions = {}) {
   const repository = new MemoryApplicationRepository(
     state,
     options.failAfterObject,
+    options.applicationAfterLocks,
+    options.winnerOnCreateConflict,
   );
   const service = new TemplateApplicationService(repository, () => {
     const id = ids.shift();
@@ -510,6 +658,51 @@ function applicationFixture(options: FixtureOptions = {}) {
     state,
     transactionEvents: repository.transactionEvents,
   };
+}
+
+function existingApplication(): TemplateApplicationResult {
+  return {
+    id: 'application-concurrent-1',
+    templateId: 'template-1',
+    templateCode: 'sales',
+    templateName: '销售模板',
+    templateVersionId: 'version-1',
+    templateVersionNo: 1,
+    tenantId: 'tenant-1',
+    tenantCode: 'acme',
+    tenantName: 'Acme',
+    appliedByUserId: 'platform-user-1',
+    configurationChecksum: checksumTemplateConfiguration(configuration()),
+    objects: [
+      {
+        templateObjectId: 'template-object-1',
+        objectId: 'tenant-object-concurrent-1',
+        code: 'customers',
+        name: '客户',
+      },
+    ],
+    appliedAt,
+  };
+}
+
+function routePipes(methodName: 'summarizeTarget' | 'apply'): unknown[] {
+  const metadata = Reflect.getMetadata(
+    ROUTE_ARGS_METADATA,
+    TemplateApplicationController,
+    methodName,
+  ) as Record<string, { pipes?: unknown[] }> | undefined;
+  return Object.values(metadata ?? {}).flatMap((argument) =>
+    argument.pipes ? [...argument.pipes] : [],
+  );
+}
+
+function hasErrorCode(error: unknown, code: string): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === code
+  );
 }
 
 function applicationInput(): TemplateApplicationInput {

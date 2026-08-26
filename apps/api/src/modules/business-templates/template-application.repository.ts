@@ -157,6 +157,7 @@ export interface TemplateApplicationStore {
   findApplication(
     tenantId: string,
     templateVersionId: string,
+    templateId: string,
   ): Promise<TemplateApplicationResult | null>;
   findLatestApplication(
     tenantId: string,
@@ -210,11 +211,17 @@ class PrismaTemplateApplicationStore implements TemplateApplicationStore {
     private readonly audit: AuditService,
   ) {}
 
-  async findApplication(tenantId: string, templateVersionId: string) {
+  async findApplication(
+    tenantId: string,
+    templateVersionId: string,
+    templateId: string,
+  ) {
     const application =
-      await this.transaction.businessTemplateApplication.findUnique({
+      await this.transaction.businessTemplateApplication.findFirst({
         where: {
-          tenantId_templateVersionId: { tenantId, templateVersionId },
+          tenantId,
+          templateVersionId,
+          templateVersion: { templateId },
         },
         include: {
           tenant: true,

@@ -3,7 +3,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ApiException } from '../../common/errors/api.exception';
 import type { AuthenticatedUser } from '../../common/tenancy/tenant-context';
 import type { AuditEvent } from '../audit/audit-event';
-import { checksumTemplateConfiguration } from './business-template-publication.policy';
+import {
+  checksumTemplateConfiguration,
+  findTemplateIdentityBlockers,
+} from './business-template-publication.policy';
 import type { BusinessTemplateConfiguration } from './business-template.schema';
 import type {
   HydratedTenantConfiguration,
@@ -67,61 +70,87 @@ export class TemplateApplicationService {
     });
   }
 
-  apply(
+  async apply(
     actor: AuthenticatedUser,
     input: TemplateApplicationInput,
     meta: RequestMeta,
   ): Promise<TemplateApplicationResult> {
-    return this.repository.transaction(actor.id, async (store) => {
-      const repeated = await store.findApplication(
-        input.tenantId,
-        input.templateVersionId,
-      );
-      if (repeated) return repeated;
-
-      await store.lockTemplate(input.templateId);
-      await store.lockTenant(input.tenantId);
-      const eligibility = await store.requireApplicableVersion(input);
-      const { source, target } = requireApplicable(eligibility);
-
-      if (
-        checksumTemplateConfiguration(source.configuration) !==
-        source.configurationChecksum
-      ) {
-        throw applicationNotAllowed('模板发布版本校验失败，不能应用。');
-      }
-
-      await store.enterTenant(input.tenantId);
-      if (!(await store.assertTenantEmpty(input.tenantId))) {
-        throw applicationNotAllowed(
-          '目标公司已经存在业务对象，不能使用初始化模板覆盖。',
+    try {
+      return await this.repository.transaction(actor.id, async (store) => {
+        const repeated = await store.findApplication(
+          input.tenantId,
+          input.templateVersionId,
+          input.templateId,
         );
-      }
+        if (repeated) return repeated;
 
-      const hydrated = hydrateTenantConfiguration(
-        source.configuration,
-        target.id,
-        source.id,
-        this.idGenerator,
-      );
-      await store.insertTenantConfiguration(hydrated);
-      const application = await store.createApplication({
-        id: this.idGenerator(),
-        templateId: source.templateId,
-        templateCode: source.templateCode,
-        templateName: source.templateName,
-        templateVersionId: source.id,
-        templateVersionNo: source.versionNo,
-        tenantId: target.id,
-        tenantCode: target.code,
-        tenantName: target.name,
-        appliedByUserId: actor.id,
-        configurationChecksum: source.configurationChecksum,
-        objects: hydrated.objectsResult,
+        await store.lockTemplate(input.templateId);
+        await store.lockTenant(input.tenantId);
+        const concurrent = await store.findApplication(
+          input.tenantId,
+          input.templateVersionId,
+          input.templateId,
+        );
+        if (concurrent) return concurrent;
+
+        const eligibility = await store.requireApplicableVersion(input);
+        const { source, target } = requireApplicable(eligibility);
+
+        if (
+          checksumTemplateConfiguration(source.configuration) !==
+          source.configurationChecksum
+        ) {
+          throw applicationNotAllowed('模板发布版本校验失败，不能应用。');
+        }
+        if (findTemplateIdentityBlockers(source.configuration).length > 0) {
+          throw applicationNotAllowed(
+            '模板发布版本包含重复的对象或字段身份，不能应用。',
+          );
+        }
+
+        await store.enterTenant(input.tenantId);
+        if (!(await store.assertTenantEmpty(input.tenantId))) {
+          throw applicationNotAllowed(
+            '目标公司已经存在业务对象，不能使用初始化模板覆盖。',
+          );
+        }
+
+        const hydrated = hydrateTenantConfiguration(
+          source.configuration,
+          target.id,
+          source.id,
+          this.idGenerator,
+        );
+        await store.insertTenantConfiguration(hydrated);
+        const application = await store.createApplication({
+          id: this.idGenerator(),
+          templateId: source.templateId,
+          templateCode: source.templateCode,
+          templateName: source.templateName,
+          templateVersionId: source.id,
+          templateVersionNo: source.versionNo,
+          tenantId: target.id,
+          tenantCode: target.code,
+          tenantName: target.name,
+          appliedByUserId: actor.id,
+          configurationChecksum: source.configurationChecksum,
+          objects: hydrated.objectsResult,
+        });
+        await store.appendAudit(applicationAudit(application, actor.id, meta));
+        return application;
       });
-      await store.appendAudit(applicationAudit(application, actor.id, meta));
-      return application;
-    });
+    } catch (error) {
+      if (!hasErrorCode(error, 'P2002')) throw error;
+      return this.repository.transaction(actor.id, async (store) => {
+        const winner = await store.findApplication(
+          input.tenantId,
+          input.templateVersionId,
+          input.templateId,
+        );
+        if (winner) return winner;
+        throw error;
+      });
+    }
   }
 }
 
@@ -252,6 +281,15 @@ function applicationNotAllowed(message: string): ApiException {
     message,
     fieldErrors: { application: [message] },
   });
+}
+
+function hasErrorCode(error: unknown, code: string): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === code
+  );
 }
 
 function applicationAudit(

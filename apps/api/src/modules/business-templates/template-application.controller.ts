@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Post,
   Req,
   UseGuards,
@@ -43,7 +44,7 @@ export class TemplateApplicationController {
   @ApiOkResponse({ type: TenantBusinessConfigurationSummaryResponseDto })
   summarizeTarget(
     @CurrentSession() current: SessionPrincipal,
-    @Param('tenantId') tenantId: string,
+    @Param('tenantId', new ParseUUIDPipe()) tenantId: string,
   ) {
     return this.applications.summarizeTarget(current.user, tenantId);
   }
@@ -53,7 +54,7 @@ export class TemplateApplicationController {
   @ApiCreatedResponse({ type: TemplateApplicationResponseDto })
   apply(
     @CurrentSession() current: SessionPrincipal,
-    @Param('templateId') templateId: string,
+    @Param('templateId', new ParseUUIDPipe()) templateId: string,
     @Body() dto: ApplyBusinessTemplateDto,
     @Req() request: RequestWithId,
   ) {

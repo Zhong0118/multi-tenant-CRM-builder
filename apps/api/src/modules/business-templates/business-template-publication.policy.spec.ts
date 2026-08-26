@@ -137,6 +137,52 @@ describe('business template publication policy', () => {
     });
   });
 
+  it.each([
+    {
+      name: 'template object ids',
+      mutate: (input: BusinessTemplateConfiguration) => {
+        input.objects[1].id = input.objects[0].id;
+      },
+      expected: {
+        code: 'TEMPLATE_OBJECT_ID_DUPLICATE',
+        message: '业务对象 ID 在模板内必须唯一。',
+        objectId: 'template-object-lead',
+      },
+    },
+    {
+      name: 'field ids within an object',
+      mutate: (input: BusinessTemplateConfiguration) => {
+        input.objects[0].fields[1].id = input.objects[0].fields[0].id;
+      },
+      expected: {
+        code: 'TEMPLATE_FIELD_ID_DUPLICATE',
+        message: '字段 ID 在业务对象内必须唯一。',
+        objectId: 'template-object-lead',
+        fieldKey: 'phone',
+      },
+    },
+    {
+      name: 'field keys within an object',
+      mutate: (input: BusinessTemplateConfiguration) => {
+        input.objects[0].fields[1].fieldKey =
+          input.objects[0].fields[0].fieldKey;
+      },
+      expected: {
+        code: 'TEMPLATE_FIELD_KEY_DUPLICATE',
+        message: '字段键在业务对象内必须唯一。',
+        objectId: 'template-object-lead',
+        fieldKey: 'name',
+      },
+    },
+  ])('blocks duplicate $name', ({ mutate, expected }) => {
+    const input = validTemplate();
+    mutate(input);
+
+    expect(analyzeTemplatePublication(input, null).blocking).toContainEqual(
+      expected,
+    );
+  });
+
   it('locks published field keys and types', () => {
     const previous = validTemplate();
     const current = structuredClone(previous);

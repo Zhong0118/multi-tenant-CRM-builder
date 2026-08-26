@@ -70,6 +70,8 @@ export function analyzeTemplatePublication(
   const blocking: TemplatePublicationIssue[] = [];
   const warnings: TemplatePublicationIssue[] = [];
 
+  blocking.push(...findTemplateIdentityBlockers(input));
+
   if (activeObjects.length === 0) {
     blocking.push({
       code: 'TEMPLATE_OBJECT_REQUIRED',
@@ -161,6 +163,47 @@ export function analyzeTemplatePublication(
       0,
     ),
   };
+}
+
+export function findTemplateIdentityBlockers(
+  input: BusinessTemplateConfiguration,
+): TemplatePublicationIssue[] {
+  const blocking: TemplatePublicationIssue[] = [];
+  const objectIds = new Set<string>();
+  for (const object of input.objects) {
+    if (objectIds.has(object.id)) {
+      blocking.push({
+        code: 'TEMPLATE_OBJECT_ID_DUPLICATE',
+        message: '业务对象 ID 在模板内必须唯一。',
+        objectId: object.id,
+      });
+    }
+    objectIds.add(object.id);
+
+    const fieldIds = new Set<string>();
+    const fieldKeys = new Set<string>();
+    for (const field of object.fields) {
+      if (fieldIds.has(field.id)) {
+        blocking.push({
+          code: 'TEMPLATE_FIELD_ID_DUPLICATE',
+          message: '字段 ID 在业务对象内必须唯一。',
+          objectId: object.id,
+          fieldKey: field.fieldKey,
+        });
+      }
+      fieldIds.add(field.id);
+      if (fieldKeys.has(field.fieldKey)) {
+        blocking.push({
+          code: 'TEMPLATE_FIELD_KEY_DUPLICATE',
+          message: '字段键在业务对象内必须唯一。',
+          objectId: object.id,
+          fieldKey: field.fieldKey,
+        });
+      }
+      fieldKeys.add(field.fieldKey);
+    }
+  }
+  return blocking;
 }
 
 export function compileTemplateVersion(
