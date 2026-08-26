@@ -12,6 +12,7 @@ const required = [
   "src/app/(platform)/platform/page.tsx",
   "src/app/(platform)/platform/tenants/page.tsx",
   "src/app/(platform)/platform/templates/page.tsx",
+  "src/app/(platform)/platform/templates/new/page.tsx",
   "src/app/(platform)/platform/jobs/page.tsx",
   "src/app/(platform)/platform/audit/page.tsx",
   "src/app/(platform)/platform/settings/page.tsx",
@@ -33,6 +34,10 @@ const required = [
   "src/features/members/README.md",
   "src/features/objects/README.md",
   "src/features/records/README.md",
+  "src/features/templates/template-api.ts",
+  "src/features/templates/template-types.ts",
+  "src/features/templates/template-list.tsx",
+  "src/features/templates/create-template-form.tsx",
 ];
 const removed = [
   "public/file.svg",
