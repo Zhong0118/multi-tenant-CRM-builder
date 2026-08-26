@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Modal, Select, Spin } from "antd";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { toApiError } from "@/lib/api/api-error";
 
@@ -40,31 +40,32 @@ export function TenantBusinessConfiguration({
   const [summary, setSummary] =
     useState<TenantBusinessConfigurationSummary>(initialSummary);
   const queryClient = useQueryClient();
-  const templateListKey = ["business-templates", "applicable", tenant.id] as const;
+  const templateListKey = [
+    "business-templates",
+    "applicable",
+    tenant.id,
+  ] as const;
 
   const templates = useQuery({
     queryKey: templateListKey,
     queryFn: () => api.list({ page: 1, limit: 20, hasActiveVersion: true }),
     enabled: open,
   });
-  useEffect(() => {
-    if (!selectedTemplateId && templates.data?.items[0]) {
-      setSelectedTemplateId(templates.data.items[0].id);
-    }
-  }, [selectedTemplateId, templates.data]);
+  const effectiveTemplateId =
+    selectedTemplateId ?? templates.data?.items[0]?.id;
 
   const selectedTemplate = templates.data?.items.find(
-    (template) => template.id === selectedTemplateId,
+    (template) => template.id === effectiveTemplateId,
   );
   const versionKey = [
     "business-template",
-    selectedTemplateId,
+    effectiveTemplateId,
     "versions",
   ] as const;
   const versions = useQuery({
     queryKey: versionKey,
-    queryFn: () => api.listVersions(selectedTemplateId!),
-    enabled: open && Boolean(selectedTemplateId),
+    queryFn: () => api.listVersions(effectiveTemplateId!),
+    enabled: open && Boolean(effectiveTemplateId),
   });
   const selectedVersion = versions.data?.find(
     (version) => version.id === selectedTemplate?.activeVersion?.id,
@@ -107,7 +108,7 @@ export function TenantBusinessConfiguration({
 
   function resetModalState() {
     queryClient.removeQueries({ queryKey: templateListKey });
-    if (selectedTemplateId) {
+    if (effectiveTemplateId) {
       queryClient.removeQueries({ queryKey: versionKey });
     }
     setError(undefined);
@@ -160,7 +161,10 @@ export function TenantBusinessConfiguration({
             onClick={() =>
               selectedTemplate &&
               selectedVersion &&
-              application.mutate({ template: selectedTemplate, version: selectedVersion })
+              application.mutate({
+                template: selectedTemplate,
+                version: selectedVersion,
+              })
             }
           >
             确认应用
@@ -181,13 +185,15 @@ export function TenantBusinessConfiguration({
             />
           ) : null}
           {templates.data?.items.length === 0 ? (
-            <p className={styles.applicationBlocked}>没有可应用的已发布模板。</p>
+            <p className={styles.applicationBlocked}>
+              没有可应用的已发布模板。
+            </p>
           ) : null}
           {templates.data?.items.length ? (
             <label className={styles.templateSelectLabel}>
               <span>选择模板</span>
               <Select
-                value={selectedTemplateId}
+                value={effectiveTemplateId}
                 onChange={(templateId) => {
                   setError(undefined);
                   setSelectedTemplateId(templateId);
@@ -212,7 +218,9 @@ export function TenantBusinessConfiguration({
               onRetry={() => void versions.refetch()}
             />
           ) : null}
-          {selectedVersion ? <TemplatePreview version={selectedVersion} /> : null}
+          {selectedVersion ? (
+            <TemplatePreview version={selectedVersion} />
+          ) : null}
         </div>
       </Modal>
     </section>
@@ -285,7 +293,9 @@ function ApplicationResult({ result }: { result: TemplateApplication }) {
   return (
     <div className={styles.applicationResult} role="status">
       <strong>已生成 {result.objects.length} 个对象草稿</strong>
-      <p>来源模板版本：{result.templateName} v{result.templateVersionNo}</p>
+      <p>
+        来源模板版本：{result.templateName} v{result.templateVersionNo}
+      </p>
       <ul className={styles.generatedObjectList}>
         {result.objects.map((object) => (
           <li key={object.objectId}>

@@ -42,7 +42,8 @@ export function TemplateObjectEditor({
   const object = draft.objects.find((item) => item.object.id === objectId);
   const [editingFieldId, setEditingFieldId] = useState<string>();
   const [previewRole, setPreviewRole] = useState<PreviewRole>("TENANT_ADMIN");
-  const editingField = object?.fields.find((field) => field.id === editingFieldId) ?? null;
+  const editingField =
+    object?.fields.find((field) => field.id === editingFieldId) ?? null;
 
   const titleCandidates = useMemo(
     () =>
@@ -103,9 +104,7 @@ export function TemplateObjectEditor({
     updateScope: "OWN" as const,
   };
 
-  const patchPermissions = (
-    patch: Partial<typeof permissions>,
-  ) =>
+  const patchPermissions = (patch: Partial<typeof permissions>) =>
     onChange(
       setEmployeeAccess(draft, objectId, {
         ...permissions,
@@ -116,21 +115,30 @@ export function TemplateObjectEditor({
 
   return (
     <div className={styles.objectEditor}>
-      <section className={styles.editorSection} aria-labelledby="template-object-basics">
+      <section
+        className={styles.editorSection}
+        aria-labelledby="template-object-basics"
+      >
         <div className={styles.sectionHeading}>
           <div>
             <h2 id="template-object-basics">基本设置</h2>
             <p>名称可以调整；发布身份锁定后，对象代码保持不变。</p>
           </div>
         </div>
-        <Form component={false} layout="vertical" className={styles.compactForm}>
+        <Form
+          component={false}
+          layout="vertical"
+          className={styles.compactForm}
+        >
           <div className={styles.formGrid}>
             <Form.Item label="对象名称" htmlFor={`object-name-${objectId}`}>
               <Input
                 id={`object-name-${objectId}`}
                 value={object.object.name}
                 onChange={(event) =>
-                  onChange(updateObject(draft, objectId, { name: event.target.value }))
+                  onChange(
+                    updateObject(draft, objectId, { name: event.target.value }),
+                  )
                 }
               />
             </Form.Item>
@@ -149,12 +157,17 @@ export function TemplateObjectEditor({
                 value={object.object.code}
                 disabled={object.object.publishedCode !== null}
                 onChange={(event) =>
-                  onChange(updateObject(draft, objectId, { code: event.target.value }))
+                  onChange(
+                    updateObject(draft, objectId, { code: event.target.value }),
+                  )
                 }
               />
             </Form.Item>
           </div>
-          <Form.Item label="对象说明" htmlFor={`object-description-${objectId}`}>
+          <Form.Item
+            label="对象说明"
+            htmlFor={`object-description-${objectId}`}
+          >
             <Input.TextArea
               id={`object-description-${objectId}`}
               rows={2}
@@ -204,7 +217,10 @@ export function TemplateObjectEditor({
         </Form>
       </section>
 
-      <section className={styles.editorSection} aria-labelledby="template-object-fields">
+      <section
+        className={styles.editorSection}
+        aria-labelledby="template-object-fields"
+      >
         <div className={styles.sectionHeading}>
           <div>
             <h2 id="template-object-fields">字段</h2>
@@ -240,7 +256,10 @@ export function TemplateObjectEditor({
         )}
       </section>
 
-      <section className={styles.editorSection} aria-labelledby="template-object-view">
+      <section
+        className={styles.editorSection}
+        aria-labelledby="template-object-view"
+      >
         <div className={styles.sectionHeading}>
           <div>
             <h2 id="template-object-view">列表视图</h2>
@@ -253,7 +272,11 @@ export function TemplateObjectEditor({
             <span>先新增字段，才能选择默认展示列。</span>
           </div>
         ) : (
-          <Form component={false} layout="vertical" className={styles.compactForm}>
+          <Form
+            component={false}
+            layout="vertical"
+            className={styles.compactForm}
+          >
             <div className={styles.formGrid}>
               <Form.Item label="视图名称" htmlFor={`view-name-${objectId}`}>
                 <Input
@@ -269,14 +292,20 @@ export function TemplateObjectEditor({
                   }
                 />
               </Form.Item>
-              <Form.Item label="默认展示列" htmlFor={`view-columns-${objectId}`}>
+              <Form.Item
+                label="默认展示列"
+                htmlFor={`view-columns-${objectId}`}
+              >
                 <Select
                   id={`view-columns-${objectId}`}
                   mode="multiple"
                   value={defaultView.columnFieldKeys}
                   options={object.fields
                     .filter((field) => field.status === "ACTIVE")
-                    .map((field) => ({ value: field.fieldKey, label: field.label }))}
+                    .map((field) => ({
+                      value: field.fieldKey,
+                      label: field.label,
+                    }))}
                   onChange={(columnFieldKeys: string[]) =>
                     onChange(
                       setDefaultView(draft, objectId, {
@@ -289,7 +318,10 @@ export function TemplateObjectEditor({
               </Form.Item>
             </div>
             <div className={styles.formGrid}>
-              <Form.Item label="排序字段" htmlFor={`view-sort-field-${objectId}`}>
+              <Form.Item
+                label="排序字段"
+                htmlFor={`view-sort-field-${objectId}`}
+              >
                 <Select
                   id={`view-sort-field-${objectId}`}
                   value={defaultView.sort.field}
@@ -308,7 +340,10 @@ export function TemplateObjectEditor({
                   }
                 />
               </Form.Item>
-              <Form.Item label="排序方向" htmlFor={`view-sort-direction-${objectId}`}>
+              <Form.Item
+                label="排序方向"
+                htmlFor={`view-sort-direction-${objectId}`}
+              >
                 <Select
                   id={`view-sort-direction-${objectId}`}
                   value={defaultView.sort.direction}
@@ -331,7 +366,10 @@ export function TemplateObjectEditor({
         )}
       </section>
 
-      <section className={styles.editorSection} aria-labelledby="template-object-permissions">
+      <section
+        className={styles.editorSection}
+        aria-labelledby="template-object-permissions"
+      >
         <div className={styles.sectionHeading}>
           <div>
             <h2 id="template-object-permissions">员工权限</h2>
@@ -376,7 +414,11 @@ export function TemplateObjectEditor({
             </Form.Item>
           </Form>
         </div>
-        <ObjectPreview draft={object} role={previewRole} onRoleChange={setPreviewRole} />
+        <ObjectPreview
+          draft={object}
+          role={previewRole}
+          onRoleChange={setPreviewRole}
+        />
       </section>
 
       <FieldEditorDrawer

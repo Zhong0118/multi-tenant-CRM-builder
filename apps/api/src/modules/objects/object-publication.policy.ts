@@ -118,7 +118,11 @@ export function analyzePublication(
     }
   }
 
-  return { blocking, warnings: configuration.warnings, changes: configuration.changes };
+  return {
+    blocking,
+    warnings: configuration.warnings,
+    changes: configuration.changes,
+  };
 }
 
 export function compilePublication(

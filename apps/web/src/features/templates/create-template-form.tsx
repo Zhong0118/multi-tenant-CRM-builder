@@ -45,7 +45,8 @@ export function CreateTemplateForm({
   const mutation = useMutation({
     mutationFn: (input: CreateTemplateFormInput) =>
       api.create({ ...input, description: input.description || null }),
-    onSuccess: (template) => (navigate ?? router.push)(`/platform/templates/${template.id}`),
+    onSuccess: (template) =>
+      (navigate ?? router.push)(`/platform/templates/${template.id}`),
   });
   const error = mutation.error ? toApiError(mutation.error) : null;
 

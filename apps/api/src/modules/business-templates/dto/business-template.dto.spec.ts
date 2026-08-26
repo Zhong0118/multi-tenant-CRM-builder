@@ -126,7 +126,7 @@ function validDraftInput() {
             canDelete: false,
             readScope: 'ALL',
             updateScope: 'OWN',
-            fields: { name: 'EDIT' } as Record<string, unknown>,
+            fields: { name: 'EDIT' },
           } as
             | {
                 canCreate: boolean;
@@ -145,10 +145,7 @@ function validDraftInput() {
   };
 }
 
-function errorPaths(
-  errors: ValidationError[],
-  parent = '',
-): string[] {
+function errorPaths(errors: ValidationError[], parent = ''): string[] {
   return errors.flatMap((error) => {
     const path = parent ? `${parent}.${error.property}` : error.property;
     return [

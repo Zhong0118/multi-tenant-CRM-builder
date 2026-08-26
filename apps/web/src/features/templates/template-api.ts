@@ -37,7 +37,10 @@ export interface TemplateApi {
     expectedVersion: number,
   ): Promise<BusinessTemplateVersion>;
   listVersions(templateId: string): Promise<BusinessTemplateVersion[]>;
-  apply(templateId: string, input: ApplyTemplateInput): Promise<TemplateApplication>;
+  apply(
+    templateId: string,
+    input: ApplyTemplateInput,
+  ): Promise<TemplateApplication>;
 }
 
 const TEMPLATES = "/api/v1/platform/business-templates" as const;

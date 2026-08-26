@@ -114,8 +114,8 @@ export class BusinessTemplatePageQueryDto {
 }
 
 export class CreateBusinessTemplateDto {
-  @ApiProperty({ type: String, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' })
-  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  @ApiProperty({ type: String, pattern: '^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$' })
+  @Matches(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/)
   @MaxLength(64)
   code!: string;
 

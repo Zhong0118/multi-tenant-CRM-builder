@@ -42,8 +42,7 @@ export interface ObjectConfigurationDraft {
   previousFields?: PublishedField[];
 }
 
-export interface CompleteObjectConfigurationDraft
-  extends ObjectConfigurationDraft {
+export interface CompleteObjectConfigurationDraft extends ObjectConfigurationDraft {
   defaultView: NonNullable<ObjectConfigurationDraft['defaultView']>;
   employeeAccess: NonNullable<ObjectConfigurationDraft['employeeAccess']>;
 }
@@ -249,7 +248,9 @@ function hasDuplicateOptionKeys(field: PublicationDraftField): boolean {
 
 function hasIncompatibleValidation(field: PublicationDraftField): boolean {
   const allowedKeys = VALIDATION_KEYS_BY_FIELD_TYPE[field.type] ?? [];
-  return Object.keys(field.validation).some((key) => !allowedKeys.includes(key));
+  return Object.keys(field.validation).some(
+    (key) => !allowedKeys.includes(key),
+  );
 }
 
 function analyzeFieldChanges(

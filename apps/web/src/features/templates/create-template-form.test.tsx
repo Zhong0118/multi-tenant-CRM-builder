@@ -37,7 +37,9 @@ function templateDetail() {
 
 describe("CreateTemplateForm", () => {
   it("creates a template and navigates to its editor", async () => {
-    const api = templateApi({ create: vi.fn().mockResolvedValue(templateDetail()) });
+    const api = templateApi({
+      create: vi.fn().mockResolvedValue(templateDetail()),
+    });
     const navigate = vi.fn();
     renderWithQuery(<CreateTemplateForm api={api} navigate={navigate} />);
 
@@ -58,7 +60,9 @@ describe("CreateTemplateForm", () => {
   });
 
   it("rejects a template code longer than 64 characters before calling the API", async () => {
-    const api = templateApi({ create: vi.fn().mockResolvedValue(templateDetail()) });
+    const api = templateApi({
+      create: vi.fn().mockResolvedValue(templateDetail()),
+    });
     renderWithQuery(<CreateTemplateForm api={api} />);
 
     fireEvent.change(screen.getByLabelText("模板名称"), {
@@ -69,8 +73,9 @@ describe("CreateTemplateForm", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "创建模板" }));
 
-    expect(await screen.findByText("模板代码不能超过 64 个字符。"))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByText("模板代码不能超过 64 个字符。"),
+    ).toBeInTheDocument();
     expect(api.create).not.toHaveBeenCalled();
   });
 });

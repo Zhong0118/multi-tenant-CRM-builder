@@ -15,7 +15,9 @@ export default function NewTemplatePage() {
         </section>
         <aside className={styles.createAside}>
           <h2>下一步</h2>
-          <p>创建后可添加业务对象、字段、列表视图和员工权限，再发布为可应用版本。</p>
+          <p>
+            创建后可添加业务对象、字段、列表视图和员工权限，再发布为可应用版本。
+          </p>
         </aside>
       </div>
     </div>

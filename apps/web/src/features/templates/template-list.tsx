@@ -26,7 +26,9 @@ const columns: ColumnsType<BusinessTemplate> = [
   {
     title: "状态",
     dataIndex: "status",
-    render: (status: BusinessTemplate["status"]) => <TemplateStatus status={status} />,
+    render: (status: BusinessTemplate["status"]) => (
+      <TemplateStatus status={status} />
+    ),
   },
   { title: "对象数", dataIndex: "objectCount" },
   {

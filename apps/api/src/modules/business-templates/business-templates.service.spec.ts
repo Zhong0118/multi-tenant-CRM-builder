@@ -51,12 +51,7 @@ describe('BusinessTemplatesService', () => {
   it('publishes without consuming the draft version', async () => {
     const { service } = publishedFixture();
 
-    const version = await service.publish(
-      platformAdmin,
-      'template-1',
-      2,
-      meta,
-    );
+    const version = await service.publish(platformAdmin, 'template-1', 2, meta);
 
     expect(version).toMatchObject({ versionNo: 1, sourceDraftVersion: 2 });
     await expect(
@@ -205,9 +200,7 @@ describe('BusinessTemplatesService', () => {
     const detail = await service.detail(platformAdmin, 'template-1');
     expect(detail.configuration.objects[0]).toMatchObject({
       publishedCode: 'leads',
-      fields: [
-        { publishedFieldKey: 'name', publishedType: 'TEXT' },
-      ],
+      fields: [{ publishedFieldKey: 'name', publishedType: 'TEXT' }],
     });
     await expect(
       service.publish(platformAdmin, 'template-1', 4, meta),
@@ -257,6 +250,7 @@ function publishedFixture(
   ]);
 }
 
+/* eslint-disable @typescript-eslint/require-await -- in-memory test repository mirrors the async production contract */
 class MemoryBusinessTemplateRepository implements BusinessTemplateRepository {
   private sequence = 1;
   private readonly rows = new Map<string, BusinessTemplateRecord>();
@@ -275,7 +269,8 @@ class MemoryBusinessTemplateRepository implements BusinessTemplateRepository {
 
   async listTemplates(query: TemplatePageQuery) {
     const rows = [...this.rows.values()].filter(
-      (row) => query.hasActiveVersion === undefined ||
+      (row) =>
+        query.hasActiveVersion === undefined ||
         Boolean(row.activeVersionId) === query.hasActiveVersion,
     );
     return {
@@ -293,7 +288,9 @@ class MemoryBusinessTemplateRepository implements BusinessTemplateRepository {
 
   async createTemplate(input: CreateBusinessTemplateRecord) {
     if ([...this.rows.values()].some((row) => row.code === input.code)) {
-      throw { code: 'P2002' };
+      throw Object.assign(new Error('duplicate template code'), {
+        code: 'P2002',
+      });
     }
     const now = new Date('2026-08-26T00:00:00.000Z');
     const row: BusinessTemplateRecord = {
@@ -329,7 +326,7 @@ class MemoryBusinessTemplateRepository implements BusinessTemplateRepository {
     return structuredClone(saved);
   }
 
-  async lockTemplate(_templateId: string) {}
+  async lockTemplate() {}
 
   async nextVersionNumber(templateId: string) {
     return (this.versions.get(templateId)?.length ?? 0) + 1;
@@ -366,23 +363,24 @@ class MemoryBusinessTemplateRepository implements BusinessTemplateRepository {
     return structuredClone(this.versions.get(templateId) ?? []);
   }
 }
+/* eslint-enable @typescript-eslint/require-await */
 
 function validTemplateConfiguration(): BusinessTemplateConfiguration {
   return {
     schemaVersion: 1,
     objects: [
       validObject('template-object-lead', 'leads', '销售线索', 10),
-      validObject(
-        'template-object-company',
-        'companies',
-        '客户公司',
-        20,
-      ),
+      validObject('template-object-company', 'companies', '客户公司', 20),
     ],
   };
 }
 
-function validObject(id: string, code: string, name: string, sortOrder: number) {
+function validObject(
+  id: string,
+  code: string,
+  name: string,
+  sortOrder: number,
+) {
   const fieldId = `${id}-name`;
   return {
     id,

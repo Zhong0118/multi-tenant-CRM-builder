@@ -11,7 +11,9 @@ export interface TemplatesPageProps {
   searchParams: Promise<{ page?: string }>;
 }
 
-export default async function TemplatesPage({ searchParams }: TemplatesPageProps) {
+export default async function TemplatesPage({
+  searchParams,
+}: TemplatesPageProps) {
   const page = parsePage((await searchParams).page);
   const client = await createServerApiClient();
   const { data, error, response } = await client.GET(

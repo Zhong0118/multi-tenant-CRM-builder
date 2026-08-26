@@ -404,6 +404,7 @@ class MemoryApplicationRepository implements TemplateApplicationRepository {
   }
 }
 
+/* eslint-disable @typescript-eslint/require-await -- in-memory test store mirrors the async production contract */
 class MemoryApplicationStore implements TemplateApplicationStore {
   private tenantId: string | null = null;
 
@@ -446,11 +447,11 @@ class MemoryApplicationStore implements TemplateApplicationStore {
     return this.state.tenant?.id === tenantId ? this.state.tenant : null;
   }
 
-  async lockTemplate(_templateId: string) {
+  async lockTemplate() {
     this.events.push('lockTemplate');
   }
 
-  async lockTenant(_tenantId: string) {
+  async lockTenant() {
     this.events.push('lockTenant');
     if (
       this.applicationAfterLocks &&
@@ -551,7 +552,11 @@ class MemoryApplicationStore implements TemplateApplicationStore {
 
   async createApplication(application: CreateTemplateApplication) {
     this.events.push('createApplication');
-    if (this.createApplicationConflict) throw { code: 'P2002' };
+    if (this.createApplicationConflict) {
+      throw Object.assign(new Error('duplicate template application'), {
+        code: 'P2002',
+      });
+    }
     const saved = { ...structuredClone(application), appliedAt };
     this.state.applications.push(saved);
     return saved;
@@ -563,6 +568,7 @@ class MemoryApplicationStore implements TemplateApplicationStore {
     this.state.audits.push(structuredClone(event));
   }
 }
+/* eslint-enable @typescript-eslint/require-await */
 
 interface FixtureOptions {
   configuration?: BusinessTemplateConfiguration;

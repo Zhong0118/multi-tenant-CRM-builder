@@ -57,7 +57,10 @@ export class BusinessTemplatesService {
     private readonly repository: BusinessTemplateRepository,
   ) {}
 
-  list(actor: AuthenticatedUser, query: TemplatePageQuery): Promise<TemplatePage> {
+  list(
+    actor: AuthenticatedUser,
+    query: TemplatePageQuery,
+  ): Promise<TemplatePage> {
     return this.repository.withActor(actor.id, async (store) => {
       const page = await store.listTemplates(query);
       return {

@@ -1,6 +1,15 @@
 "use client";
 
-import { Alert, Button, Drawer, Empty, Skeleton, Space, Tag, Typography } from "antd";
+import {
+  Alert,
+  Button,
+  Drawer,
+  Empty,
+  Skeleton,
+  Space,
+  Tag,
+  Typography,
+} from "antd";
 
 import type {
   BusinessTemplateVersion,
@@ -92,7 +101,9 @@ export function TemplatePublicationPanel({
           <section>
             <h3 className={styles.panelHeading}>本次变化</h3>
             {analysis.changes.length === 0 ? (
-              <Typography.Text type="secondary">当前草稿与发布版本一致。</Typography.Text>
+              <Typography.Text type="secondary">
+                当前草稿与发布版本一致。
+              </Typography.Text>
             ) : (
               <ul className={styles.changeList}>
                 {analysis.changes.map((change, index) => {
@@ -103,11 +114,13 @@ export function TemplatePublicationPanel({
                     (item) => item.fieldKey === change.fieldKey,
                   );
                   return (
-                    <li key={`${change.objectId}-${change.fieldKey ?? "object"}-${index}`}>
+                    <li
+                      key={`${change.objectId}-${change.fieldKey ?? "object"}-${index}`}
+                    >
                       <Tag>{CHANGE_LABELS[change.kind]}</Tag>
                       <span>
                         {change.entity === "OBJECT"
-                          ? object?.object.name ?? change.objectId
+                          ? (object?.object.name ?? change.objectId)
                           : `${object?.object.name ?? change.objectId} · ${field?.label ?? change.fieldKey}`}
                       </span>
                     </li>
@@ -127,7 +140,9 @@ export function TemplatePublicationPanel({
               <div className={styles.versionList}>
                 {versions.map((version) => (
                   <div key={version.id} className={styles.versionRow}>
-                    <span className={styles.versionNumber}>v{version.versionNo}</span>
+                    <span className={styles.versionNumber}>
+                      v{version.versionNo}
+                    </span>
                     <span>来自草稿 {version.sourceDraftVersion}</span>
                     <time dateTime={version.publishedAt}>
                       {formatDate(version.publishedAt)}
@@ -162,7 +177,11 @@ function IssueGroups({
             <ul>
               {group.issues.map((issue, index) => (
                 <li key={`${issue.code}-${issue.fieldKey ?? index}`}>
-                  {blocking ? <Tag color="error">阻断</Tag> : <Tag color="warning">提醒</Tag>}
+                  {blocking ? (
+                    <Tag color="error">阻断</Tag>
+                  ) : (
+                    <Tag color="warning">提醒</Tag>
+                  )}
                   <span>{issue.message}</span>
                   {issue.fieldKey ? <code>{issue.fieldKey}</code> : null}
                 </li>
@@ -185,15 +204,18 @@ interface IssueGroup {
 function groupIssues(issues: Issue[], draft: TemplateDraft): IssueGroup[] {
   const grouped = new Map<string, Issue[]>();
   for (const issue of issues) {
-    grouped.set(issue.objectId, [...(grouped.get(issue.objectId) ?? []), issue]);
+    grouped.set(issue.objectId, [
+      ...(grouped.get(issue.objectId) ?? []),
+      issue,
+    ]);
   }
   return [...grouped.entries()].map(([objectId, objectIssues]) => ({
     objectId,
     objectName:
       objectId === ""
         ? "模板"
-        : draft.objects.find((item) => item.object.id === objectId)?.object.name ??
-          "未知业务对象",
+        : (draft.objects.find((item) => item.object.id === objectId)?.object
+            .name ?? "未知业务对象"),
     issues: objectIssues,
   }));
 }

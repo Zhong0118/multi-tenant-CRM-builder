@@ -9,9 +9,14 @@ import type { BusinessTemplateVersion } from "./template-types";
 function renderWithQuery(ui: React.ReactNode) {
   return render(
     <QueryClientProvider
-      client={new QueryClient({
-        defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-      })}
+      client={
+        new QueryClient({
+          defaultOptions: {
+            queries: { retry: false },
+            mutations: { retry: false },
+          },
+        })
+      }
     >
       {ui}
     </QueryClientProvider>,
@@ -134,7 +139,12 @@ function applicationResult() {
     appliedAt: "2026-08-26T08:00:00.000Z",
     configurationChecksum: "checksum",
     objects: [
-      { templateObjectId: "published-object-1", objectId: "tenant-object-1", code: "customers", name: "客户" },
+      {
+        templateObjectId: "published-object-1",
+        objectId: "tenant-object-1",
+        code: "customers",
+        name: "客户",
+      },
     ],
   };
 }
@@ -142,7 +152,12 @@ function applicationResult() {
 describe("TenantBusinessConfiguration", () => {
   it("previews and applies only active objects from the selected immutable version", async () => {
     const api = templateApi({
-      list: vi.fn().mockResolvedValue({ items: [publishedTemplate], page: 1, limit: 20, total: 1 }),
+      list: vi.fn().mockResolvedValue({
+        items: [publishedTemplate],
+        page: 1,
+        limit: 20,
+        total: 1,
+      }),
       detail: vi.fn().mockResolvedValue(publishedTemplateDetail()),
       listVersions: vi.fn().mockResolvedValue([activeVersion()]),
       apply: vi.fn().mockResolvedValue(applicationResult()),
@@ -150,14 +165,21 @@ describe("TenantBusinessConfiguration", () => {
     renderWithQuery(
       <TenantBusinessConfiguration
         tenant={tenant}
-        initialSummary={{ objectCount: 0, canApplyTemplate: true, blockingReason: null, application: null }}
+        initialSummary={{
+          objectCount: 0,
+          canApplyTemplate: true,
+          blockingReason: null,
+          application: null,
+        }}
         api={api}
       />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "应用业务模板" }));
 
-    expect(await screen.findByText("将创建对象草稿，不会直接上线")).toBeInTheDocument();
+    expect(
+      await screen.findByText("将创建对象草稿，不会直接上线"),
+    ).toBeInTheDocument();
     expect(screen.getByText("当前版本：v1")).toBeInTheDocument();
     expect(screen.getByText("包含 1 个业务对象")).toBeInTheDocument();
     expect(screen.getByText("客户")).toBeInTheDocument();
@@ -170,8 +192,9 @@ describe("TenantBusinessConfiguration", () => {
     expect(await screen.findByText("已生成 1 个对象草稿")).toBeInTheDocument();
     expect(screen.getByText("客户（customers）")).toBeInTheDocument();
     expect(screen.getByText("来源模板版本：销售 CRM v1")).toBeInTheDocument();
-    expect(screen.getByText("请由公司管理员审核、调整并发布这些对象草稿。"))
-      .toBeInTheDocument();
+    expect(
+      screen.getByText("请由公司管理员审核、调整并发布这些对象草稿。"),
+    ).toBeInTheDocument();
     expect(api.apply).toHaveBeenCalledWith(publishedTemplate.id, {
       tenantId: tenant.id,
       templateVersionId: publishedTemplate.activeVersion.id,
@@ -180,7 +203,12 @@ describe("TenantBusinessConfiguration", () => {
 
   it("shows a retryable API error when the selected version cannot load", async () => {
     const api = templateApi({
-      list: vi.fn().mockResolvedValue({ items: [publishedTemplate], page: 1, limit: 20, total: 1 }),
+      list: vi.fn().mockResolvedValue({
+        items: [publishedTemplate],
+        page: 1,
+        limit: 20,
+        total: 1,
+      }),
       listVersions: vi
         .fn()
         .mockRejectedValueOnce({
@@ -195,7 +223,12 @@ describe("TenantBusinessConfiguration", () => {
     renderWithQuery(
       <TenantBusinessConfiguration
         tenant={tenant}
-        initialSummary={{ objectCount: 0, canApplyTemplate: true, blockingReason: null, application: null }}
+        initialSummary={{
+          objectCount: 0,
+          canApplyTemplate: true,
+          blockingReason: null,
+          application: null,
+        }}
         api={api}
       />,
     );
@@ -203,8 +236,9 @@ describe("TenantBusinessConfiguration", () => {
     fireEvent.click(screen.getByRole("button", { name: "应用业务模板" }));
 
     expect(await screen.findByText("加载模板版本失败")).toBeInTheDocument();
-    expect(screen.getByText("模板版本暂时不可用。（请求编号：req_version_load）"))
-      .toBeInTheDocument();
+    expect(
+      screen.getByText("模板版本暂时不可用。（请求编号：req_version_load）"),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /重\s*试/ }));
 
     expect(await screen.findByText("客户")).toBeInTheDocument();
@@ -213,14 +247,24 @@ describe("TenantBusinessConfiguration", () => {
   it("keeps the modal open and selection locked while application is pending", async () => {
     const pending = deferred<ReturnType<typeof applicationResult>>();
     const api = templateApi({
-      list: vi.fn().mockResolvedValue({ items: [publishedTemplate], page: 1, limit: 20, total: 1 }),
+      list: vi.fn().mockResolvedValue({
+        items: [publishedTemplate],
+        page: 1,
+        limit: 20,
+        total: 1,
+      }),
       listVersions: vi.fn().mockResolvedValue([activeVersion()]),
       apply: vi.fn(() => pending.promise),
     });
     renderWithQuery(
       <TenantBusinessConfiguration
         tenant={tenant}
-        initialSummary={{ objectCount: 0, canApplyTemplate: true, blockingReason: null, application: null }}
+        initialSummary={{
+          objectCount: 0,
+          canApplyTemplate: true,
+          blockingReason: null,
+          application: null,
+        }}
         api={api}
       />,
     );
@@ -259,13 +303,15 @@ describe("TenantBusinessConfiguration", () => {
         limit: 20,
         total: 2,
       }),
-      listVersions: vi.fn().mockImplementation((templateId: string) =>
-        Promise.resolve([
-          templateId === renewalTemplate.id
-            ? activeVersionFor(renewalTemplate, "续费客户")
-            : activeVersion(),
-        ]),
-      ),
+      listVersions: vi
+        .fn()
+        .mockImplementation((templateId: string) =>
+          Promise.resolve([
+            templateId === renewalTemplate.id
+              ? activeVersionFor(renewalTemplate, "续费客户")
+              : activeVersion(),
+          ]),
+        ),
       apply: vi.fn().mockRejectedValue({
         code: "TEMPLATE_APPLICATION_NOT_ALLOWED",
         message: "模板 A 无法应用。",
@@ -277,7 +323,12 @@ describe("TenantBusinessConfiguration", () => {
     renderWithQuery(
       <TenantBusinessConfiguration
         tenant={tenant}
-        initialSummary={{ objectCount: 0, canApplyTemplate: true, blockingReason: null, application: null }}
+        initialSummary={{
+          objectCount: 0,
+          canApplyTemplate: true,
+          blockingReason: null,
+          application: null,
+        }}
         api={api}
       />,
     );
@@ -292,7 +343,7 @@ describe("TenantBusinessConfiguration", () => {
       const option = document.querySelector<HTMLElement>(
         '.ant-select-item-option[title="续费 CRM · v1"]',
       );
-      expect(option).not.toBeNull();
+      if (!option) throw new Error("续费 CRM 选项尚未出现");
       return option;
     });
     fireEvent.click(renewalOption);
@@ -317,9 +368,12 @@ describe("TenantBusinessConfiguration", () => {
       />,
     );
 
-    expect(screen.queryByRole("button", { name: "应用业务模板" })).not.toBeInTheDocument();
-    expect(screen.getByText("公司已有业务对象，不能使用初始化模板。"))
-      .toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "应用业务模板" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText("公司已有业务对象，不能使用初始化模板。"),
+    ).toBeInTheDocument();
   });
 
   it("explains that a non-draft company cannot apply an initialization template", () => {
@@ -336,8 +390,9 @@ describe("TenantBusinessConfiguration", () => {
       />,
     );
 
-    expect(screen.getByText("只有草稿状态的公司可以使用初始化模板。"))
-      .toBeInTheDocument();
+    expect(
+      screen.getByText("只有草稿状态的公司可以使用初始化模板。"),
+    ).toBeInTheDocument();
   });
 });
 

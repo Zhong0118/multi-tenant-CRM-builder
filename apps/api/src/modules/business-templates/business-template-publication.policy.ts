@@ -7,7 +7,6 @@ import {
 import type { PublicationIssue } from '../objects/object-publication.policy';
 import type {
   BusinessTemplateConfiguration,
-  TemplateEmployeeAccess,
   TemplateFieldConfiguration,
   TemplateObjectConfiguration,
 } from './business-template.schema';

@@ -121,12 +121,53 @@ test("published template versions and applications reject runtime mutations", as
   );
   await assert.rejects(() =>
     withSettings(runtime, { userId: platform.id }, (tx) =>
+      tx.businessTemplateVersion.update({
+        where: { id: versionId },
+        data: { configuration: { schemaVersion: 1, objects: [] } },
+      }),
+    ),
+  );
+  await assert.rejects(() =>
+    withSettings(runtime, { userId: platform.id }, (tx) =>
       tx.$executeRawUnsafe(
         "UPDATE business_template_applications SET object_id_map = '{}'::jsonb WHERE id = $1::uuid",
         randomUUID(),
       ),
     ),
   );
+
+  const tenant = await admin.tenant.create({
+    data: {
+      name: "模板来源测试公司",
+      code: "template-source-company",
+      status: "DRAFT",
+    },
+  });
+  await admin.objectDefinition.createMany({
+    data: [
+      {
+        tenantId: tenant.id,
+        code: "customers",
+        name: "客户",
+        titleFieldKey: "name",
+        sortOrder: 10,
+        sourceTemplateVersionId: versionId,
+      },
+      {
+        tenantId: tenant.id,
+        code: "opportunities",
+        name: "商机",
+        titleFieldKey: "name",
+        sortOrder: 20,
+        sourceTemplateVersionId: versionId,
+      },
+    ],
+  });
+
+  const sourced = await admin.objectDefinition.findMany({
+    where: { sourceTemplateVersionId: versionId },
+  });
+  assert.equal(sourced.length, 2);
 });
 
 test("published template tables allow only select and insert RLS policies", async () => {

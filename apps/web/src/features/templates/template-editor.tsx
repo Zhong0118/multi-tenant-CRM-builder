@@ -226,7 +226,9 @@ export function TemplateEditor({
               {dirty ? "有未保存变更" : "草稿已保存"}
             </Tag>
             <Tag color={template.hasUnpublishedChanges ? "gold" : undefined}>
-              {template.hasUnpublishedChanges ? "有未发布变更" : "草稿与发布版本一致"}
+              {template.hasUnpublishedChanges
+                ? "有未发布变更"
+                : "草稿与发布版本一致"}
             </Tag>
             <span className={styles.publicationIdentity}>
               {template.activeVersion
@@ -314,11 +316,18 @@ export function TemplateEditor({
                     aria-current={active ? "page" : undefined}
                     onClick={() => setActiveObjectId(item.object.id)}
                   >
-                    <span className={styles.manifestOrder}>{String(index + 1).padStart(2, "0")}</span>
-                    <span className={styles.manifestName}>{item.object.name}</span>
-                    <span className={styles.manifestCode}>{item.object.code}</span>
+                    <span className={styles.manifestOrder}>
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span className={styles.manifestName}>
+                      {item.object.name}
+                    </span>
+                    <span className={styles.manifestCode}>
+                      {item.object.code}
+                    </span>
                     <span className={styles.manifestFacts}>
-                      {item.fields.length} 个字段 · {complete ? "配置完整" : "待完善"}
+                      {item.fields.length} 个字段 ·{" "}
+                      {complete ? "配置完整" : "待完善"}
                     </span>
                     {item.object.publishedCode ? (
                       <span className={styles.identityLock}>发布身份已锁</span>
@@ -393,7 +402,9 @@ export function TemplateEditor({
 }
 
 function objectComplete(object: TemplateDraft["objects"][number]): boolean {
-  const activeFields = object.fields.filter((field) => field.status === "ACTIVE");
+  const activeFields = object.fields.filter(
+    (field) => field.status === "ACTIVE",
+  );
   return (
     object.object.name.trim().length > 0 &&
     object.object.code.trim().length > 0 &&

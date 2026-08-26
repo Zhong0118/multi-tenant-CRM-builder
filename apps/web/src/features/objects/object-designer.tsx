@@ -70,9 +70,8 @@ export function ObjectDesigner({
   const [draft, setDraft] = useState(initialDraft);
   const [section, setSection] = useState<Section>("fields");
   const [previewRole, setPreviewRole] = useState<PreviewRole>("TENANT_ADMIN");
-  const [editingField, setEditingField] = useState<ConfigurableFieldView | null>(
-    null,
-  );
+  const [editingField, setEditingField] =
+    useState<ConfigurableFieldView | null>(null);
   const [analysis, setAnalysis] = useState<PublicationAnalysis>();
   const [panelOpen, setPanelOpen] = useState(false);
   const [error, setError] = useState<string>();

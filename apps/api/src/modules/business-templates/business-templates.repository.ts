@@ -102,9 +102,7 @@ export interface BusinessTemplateRepository {
 }
 
 @Injectable()
-export class PrismaBusinessTemplateRepository
-  implements BusinessTemplateRepository
-{
+export class PrismaBusinessTemplateRepository implements BusinessTemplateRepository {
   constructor(private readonly database: DatabaseService) {}
 
   withActor<T>(
@@ -217,10 +215,7 @@ class PrismaBusinessTemplateStore implements BusinessTemplateStore {
     );
   }
 
-  async activateVersion(
-    templateId: string,
-    version: BusinessTemplateVersion,
-  ) {
+  async activateVersion(templateId: string, version: BusinessTemplateVersion) {
     await this.transaction.businessTemplate.update({
       where: { id: templateId },
       data: {
@@ -240,16 +235,18 @@ class PrismaBusinessTemplateStore implements BusinessTemplateStore {
   }
 
   private async mapTemplate(row: TemplateDatabaseRow) {
-    const applicationCount = await this.transaction.businessTemplateApplication.count(
-      { where: { templateVersion: { templateId: row.id } } },
-    );
+    const applicationCount =
+      await this.transaction.businessTemplateApplication.count({
+        where: { templateVersion: { templateId: row.id } },
+      });
     return {
       id: row.id,
       code: row.code,
       name: row.name,
       description: row.description,
       draftVersion: row.draftVersion,
-      configuration: row.draftConfiguration as unknown as BusinessTemplateConfiguration,
+      configuration:
+        row.draftConfiguration as unknown as BusinessTemplateConfiguration,
       activeVersionId: row.activeVersionId,
       publishedAt: row.publishedAt,
       archivedAt: row.archivedAt,
@@ -275,7 +272,8 @@ function mapVersion(
     versionNo: row.versionNo,
     sourceDraftVersion: row.sourceDraftVersion,
     schemaVersion: row.schemaVersion,
-    configuration: row.configuration as unknown as BusinessTemplateConfiguration,
+    configuration:
+      row.configuration as unknown as BusinessTemplateConfiguration,
     configurationChecksum: row.configurationChecksum,
     changeSummary: row.changeSummary as unknown as TemplatePublicationChange[],
     publishedByUserId: row.publishedByUserId,

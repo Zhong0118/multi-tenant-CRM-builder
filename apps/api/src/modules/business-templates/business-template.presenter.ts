@@ -82,7 +82,8 @@ export function toTemplateSummary(
     objectCount: activeObjects.length,
     fieldCount: activeObjects.reduce(
       (count, object) =>
-        count + object.fields.filter((field) => field.status === 'ACTIVE').length,
+        count +
+        object.fields.filter((field) => field.status === 'ACTIVE').length,
       0,
     ),
     applicationCount: template.applicationCount,

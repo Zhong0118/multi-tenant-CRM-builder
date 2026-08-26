@@ -2,7 +2,7 @@
 
 本文件供接手本仓库的人或 AI 使用。目标：让你在**不重新设计、不重新初始化**的前提下继续开发。
 
-版本：1.0 ｜ 对应提交：第二切片（对象、字段、权限与动态记录）完成
+版本：1.1 ｜ 对应提交：平台业务模板设计器切片完成（仅本地）
 
 ---
 
@@ -19,7 +19,8 @@
 **双层产品**：
 
 - **通用多租户 CRM 平台** —— 租户管理员配置业务对象（字段、视图、权限），发布后成员按权限录入和查询记录。
-- **首家公司「百杰」的业务模板** —— 线索、跟单、客户、期刊。**尚未开发**，属于第三切片。
+- **平台业务模板能力** —— 平台管理员维护多对象模板草稿、发布不可变版本，并把当前版本应用为空白草稿公司的对象草稿。
+- **首家公司「百杰」的具体业务模板** —— 线索、跟单、客户、期刊。**尚未配置**，真实 Excel 表头仍需确认。
 
 **关键架构约束**：百杰专属的阶段、转换规则、期刊、电话 Bot、飞书自动化**绝对不能写死进通用平台核心**（对象、记录、导航、权限模块）。首期用百杰验证闭环，但底层必须保留接入其他公司的能力。
 
@@ -42,6 +43,21 @@ field_permissions
 - 租户隔离三层：`TenantContext`（应用）+ 事务内 `app.tenant_id`（会话）+ PostgreSQL RLS（数据库，`FORCE`，运行时角色 `NOBYPASSRLS`）。
 - 跨租户或不存在的资源统一返回 `OBJECT_NOT_FOUND` / `RECORD_NOT_FOUND`，**不泄露资源是否存在**。
 
+平台模板与租户对象是两段独立生命周期：
+
+```text
+模板草稿（平台可编辑） → 模板发布版本（不可变） → 应用到空白草稿公司
+                                                ↓
+                                  租户对象草稿（公司管理员可编辑）
+                                                ↓
+                                  对象发布版本（员工运行时使用）
+```
+
+- 模板只可应用当前发布版本，目标必须是 `DRAFT` 且从未存在任何对象行的公司。
+- 应用事务生成新的对象、字段、默认视图与员工权限 ID，记录 `source_template_version_id`，但不创建 `object_publications`。
+- 相同公司与相同模板版本的重试返回同一应用记录，不重复生成对象。
+- 平台管理员身份不等于公司成员身份，不能绕过正常工作空间授权。
+
 ---
 
 ## 4. 按顺序读这些文件
@@ -53,11 +69,13 @@ field_permissions
 | 1 | `CONTEXT.md` | 统一领域语言。命名必须一致 |
 | 2 | `docs/superpowers/specs/2026-08-21-dynamic-objects-records-design.md` | **第二切片的事实来源**，含发布规则、字段类型表、权限矩阵、错误码、视觉规范 |
 | 3 | `docs/superpowers/plans/2026-08-21-dynamic-objects-records.md` | Task 1–13 实施计划，全部已完成并勾选 |
-| 4 | `docs/design/README.md` | 切片路线图，回答「一共几个阶段」 |
-| 5 | `docs/design/04-交互与样式约束.md` | 全局交互与视觉基线 |
-| 6 | `docs/design/07-首家公司业务模板.md` | 第三切片要做什么 |
+| 4 | `docs/superpowers/specs/2026-08-26-platform-business-template-designer-design.md` | 平台模板聚合、发布、应用和安全边界 |
+| 5 | `docs/superpowers/plans/2026-08-26-platform-business-template-designer.md` | 平台模板 Task 1–9 实施计划 |
+| 6 | `docs/design/README.md` | 切片路线图，回答「一共几个阶段」 |
+| 7 | `docs/design/04-交互与样式约束.md` | 全局交互与视觉基线 |
+| 8 | `docs/design/07-首家公司业务模板.md` | 百杰具体模板下一步要做什么 |
 
-### 4.2 服务端深模块（复杂度集中在这四个文件）
+### 4.2 服务端深模块
 
 | 文件 | 职责 |
 |---|---|
@@ -65,6 +83,11 @@ field_permissions
 | `apps/api/src/modules/objects/object-publication.policy.ts` | 发布校验（阻断/警告/变更分析）与快照编译 |
 | `apps/api/src/modules/objects/effective-access.ts` | 有效权限求值：管理员固定全权 / 员工角色策略 / 成员覆盖整条替换 / 默认拒绝 |
 | `apps/api/src/modules/records/record-value-engine.ts` | 12 种字段类型的**唯一** switch、标题派生、隐藏与只读拒绝、PATCH missing vs null |
+| `apps/api/src/modules/objects/object-configuration.policy.ts` | 模板发布与租户对象发布共享的纯配置校验和编译规则 |
+| `apps/api/src/modules/business-templates/business-template-publication.policy.ts` | 模板聚合分析、发布编译、身份锁与稳定 checksum |
+| `apps/api/src/modules/business-templates/business-templates.service.ts` | 模板草稿、乐观锁、发布分析与版本生命周期 |
+| `apps/api/src/modules/business-templates/template-application.service.ts` | 应用前置条件、幂等、checksum 与新 ID 水合 |
+| `apps/api/src/modules/business-templates/template-application.repository.ts` | 单事务锁、租户 RLS 上下文、规范化行与审计写入 |
 
 **规则**：Controller、Service 和页面**不得**再对字段类型做 switch，也不得重复解释配置。新增字段类型只改 `record-value-engine.ts`。
 
@@ -76,6 +99,22 @@ field_permissions
 - `apps/api/src/modules/records/records.service.ts` —— 记录 CRUD、OWN 谓词、record counter
 - `apps/api/src/common/errors/api-error-code.ts` —— 稳定错误码
 
+平台模板 HTTP 路由：
+
+```text
+GET    /api/v1/platform/business-templates
+POST   /api/v1/platform/business-templates
+GET    /api/v1/platform/business-templates/:templateId
+PUT    /api/v1/platform/business-templates/:templateId/draft
+POST   /api/v1/platform/business-templates/:templateId/publication-analysis
+POST   /api/v1/platform/business-templates/:templateId/versions
+GET    /api/v1/platform/business-templates/:templateId/versions
+POST   /api/v1/platform/business-templates/:templateId/applications
+GET    /api/v1/platform/tenants/:tenantId/business-configuration
+```
+
+数据库事实由 `0004_business_templates` 建立模板、版本、应用、来源外键、RLS 与不可变触发器；`0005_restrict_business_template_rls_policies` 把发布版本和应用收紧为平台管理员仅可 `SELECT` / `INSERT`。
+
 ### 4.3 Web 侧
 
 | 文件 | 职责 |
@@ -86,6 +125,9 @@ field_permissions
 | `apps/web/src/features/records/dynamic-field.tsx` | 12 种字段类型的动态控件；HIDDEN 渲染 `null` |
 | `apps/web/src/features/records/record-form.tsx` | 只提交 EDIT 字段；未触碰的可选字段省略而非发 null |
 | `apps/web/src/features/objects/field-ledger.tsx` | 签名元素 FIELD LEDGER |
+| `apps/web/src/features/templates/template-types.ts` | 基于生成契约收窄模板页面视图 |
+| `apps/web/src/features/templates/template-editor.tsx` | 多对象本地草稿、dirty/save、发布交互 |
+| `apps/web/src/features/templates/template-application.tsx` | 公司业务配置摘要、模板预览、确认与结果 |
 | `apps/web/src/app/providers.tsx` + `apps/web/src/app/globals.css` | **设计令牌唯一来源**，两处数值必须一致 |
 
 ---
@@ -99,8 +141,11 @@ field_permissions
 | 记录 CRUD、OWN 范围、隐藏/只读拒绝、并发 recordNo、版本冲突 | `apps/api/test/dynamic-records.e2e-spec.ts` |
 | 租户隔离与 RLS | `packages/database/test/integration/` |
 | 浏览器闭环：管理员建记录、员工只看「我的」、隐藏字段消失 | 手工实测（截图确认） |
+| 平台模板：列表/新建/双对象编辑/保存/分析/发布/v1 历史/身份锁 | `apps/api/test/business-templates.e2e-spec.ts` + 本地浏览器实测 |
+| 模板应用：空白草稿公司生成完整对象草稿、精确重试幂等、无对象发布 | 同一 E2E 的真实 PostgreSQL 断言 + DB 集成来源关系断言 |
+| 模板权限：普通用户 403；平台管理员不能越权进入工作区 | E2E + 本地浏览器实测 |
 
-测试规模：Web 28 套件 153 测试 ｜ API 29 套件 151 测试 ｜ E2E 6 套件 7 测试 ｜ DB 集成 7 测试 ｜ Contracts 7 测试。
+Task 9 focused 实证：模板 HTTP E2E 1 套件 / 1 测试；数据库集成 10 测试。完整仓库门禁的最新套件和测试总数记录在 `.superpowers/sdd/2026-08-26-platform-business-template-designer/task-9-report.md`。
 
 ---
 
@@ -145,11 +190,11 @@ git diff --check
 
 ## 8. 下一步该做什么
 
-### 第三切片：首家公司百杰模板
+### 下一切片：首家公司百杰具体模板
 
 **前置条件（阻塞）**：百杰真实 Excel 表头需要先确认并冻结。见 `docs/design/README.md` 的「当前交付阶段」。
 
-事实来源：`docs/design/07-首家公司业务模板.md`。要做的是**用现有平台能力配置出**获客、跟单、客户、期刊，以及受控的状态机和转换 —— 而不是往通用模块里加百杰逻辑。
+事实来源：`docs/design/07-首家公司业务模板.md`。要做的是基于已完成的平台模板能力配置获客、跟单、客户、期刊。状态机、转换、关系等能力仍需独立设计与实现，不能假设本切片已经具备，更不能往通用对象、记录、导航或权限模块里写死百杰逻辑。
 
 ### 平台 MVP 还缺的（各自独立切片）
 
@@ -160,7 +205,9 @@ git diff --check
 - 记录列表没有列设置、批量操作、导出。
 - 动态字段的高级筛选未实现（只有标题搜索 + 负责人筛选）。
 - 对象配置页在 `<1024px` 直接隐藏并提示用桌面端（符合规格，但意味着手机上无法配置对象）。
-- 平台端 `/platform/config/objects` 模板设计器仍是占位。
+- 模板应用只支持当前发布版本初始化空白草稿公司；不支持模板升级同步、已有对象合并或覆盖。
+- 对象关系、状态机、转换动作和记录活动仍未实现。
+- 本切片只完成本地实现与验收，没有生产部署或远端推送。
 
 ---
 

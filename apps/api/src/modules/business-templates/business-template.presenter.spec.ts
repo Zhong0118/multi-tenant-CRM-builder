@@ -8,7 +8,11 @@ import type {
 describe('business template presenter', () => {
   it('derives restored identity locks from the earliest published version', () => {
     const published = configuration('customers', 'name', 'TEXT');
-    const restored = configuration('renamed-customers', 'renamed-name', 'PHONE');
+    const restored = configuration(
+      'renamed-customers',
+      'renamed-name',
+      'PHONE',
+    );
     const record: BusinessTemplateRecord = {
       id: 'template-1',
       code: 'sales',
@@ -33,9 +37,7 @@ describe('business template presenter', () => {
 
     expect(detail.configuration.objects[0]).toMatchObject({
       publishedCode: 'customers',
-      fields: [
-        { publishedFieldKey: 'name', publishedType: 'TEXT' },
-      ],
+      fields: [{ publishedFieldKey: 'name', publishedType: 'TEXT' }],
     });
   });
 });

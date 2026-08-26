@@ -2,10 +2,7 @@
 
 import { Button, Segmented, Typography } from "antd";
 
-import {
-  DATA_SCOPE_LABELS,
-  fieldTypeLabel,
-} from "./object-types";
+import { DATA_SCOPE_LABELS, fieldTypeLabel } from "./object-types";
 import type { ConfigurableObjectView } from "./configuration-view";
 
 import styles from "./objects.module.css";

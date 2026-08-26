@@ -51,12 +51,7 @@ export interface NewTemplateField {
 export type EditableTemplateObjectPatch = Partial<
   Pick<
     TemplateObjectView["object"],
-    | "code"
-    | "name"
-    | "description"
-    | "icon"
-    | "titleFieldKey"
-    | "status"
+    "code" | "name" | "description" | "icon" | "titleFieldKey" | "status"
   >
 >;
 
@@ -121,8 +116,7 @@ export function templateDraftFromDetail(
         status: field.status,
         publishedFieldKey: field.publishedFieldKey,
         publishedType: field.publishedType,
-        employeeAccess:
-          object.employeeAccess?.fields[field.fieldKey] ?? "EDIT",
+        employeeAccess: object.employeeAccess?.fields[field.fieldKey] ?? "EDIT",
       })),
       defaultView: object.defaultView
         ? {
@@ -294,7 +288,8 @@ export function setFieldStatus(
       object: {
         ...object.object,
         titleFieldKey:
-          status === "INACTIVE" && object.object.titleFieldKey === field.fieldKey
+          status === "INACTIVE" &&
+          object.object.titleFieldKey === field.fieldKey
             ? ""
             : object.object.titleFieldKey,
       },
@@ -354,7 +349,11 @@ export function reorderObjects(
   draft: TemplateDraft,
   objectIds: string[],
 ): TemplateDraft {
-  const ordered = orderByIds(draft.objects, objectIds, (item) => item.object.id);
+  const ordered = orderByIds(
+    draft.objects,
+    objectIds,
+    (item) => item.object.id,
+  );
   return {
     ...draft,
     objects: ordered.map((object, index) => ({

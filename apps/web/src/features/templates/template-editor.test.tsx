@@ -1,5 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { templateApi, type TemplateApi } from "./template-api";
@@ -135,12 +141,15 @@ function editorApi(overrides: Partial<TemplateApi> = {}): TemplateApi {
     list: vi.fn(),
     create: vi.fn(),
     detail: vi.fn().mockResolvedValue(detail()),
-    saveDraft: vi.fn().mockImplementation(async (_id: string, input: SaveTemplateDraftInput) =>
-      detail({
-        draftVersion: input.expectedVersion + 1,
-        configuration: input.configuration as BusinessTemplateDetail["configuration"],
-      }),
-    ),
+    saveDraft: vi
+      .fn()
+      .mockImplementation(async (_id: string, input: SaveTemplateDraftInput) =>
+        detail({
+          draftVersion: input.expectedVersion + 1,
+          configuration:
+            input.configuration as BusinessTemplateDetail["configuration"],
+        }),
+      ),
     analyzePublication: vi.fn().mockResolvedValue(analysis()),
     publish: vi.fn().mockResolvedValue(version(2)),
     listVersions: vi.fn().mockResolvedValue([version(2), version(1)]),
@@ -186,9 +195,9 @@ describe("template draft aggregate", () => {
       employeeAccess: { fields: { name: "EDIT" } },
       fields: [{ id: "field-1", fieldKey: "name", type: "TEXT" }],
     });
-    expect(toTemplateConfiguration(next).objects[0]?.fields[0]).not.toHaveProperty(
-      "employeeAccess",
-    );
+    expect(
+      toTemplateConfiguration(next).objects[0]?.fields[0],
+    ).not.toHaveProperty("employeeAccess");
   });
 
   it("creates globally valid hyphenated object codes", () => {
@@ -245,7 +254,10 @@ describe("template draft aggregate", () => {
       validation: { country: "CN", minLength: 8 },
       config: { placeholder: "请输入手机号", help: "旧说明" },
     };
-    const preserved = buildFieldEditorPatch(phone, editorValues({ type: "PHONE" }));
+    const preserved = buildFieldEditorPatch(
+      phone,
+      editorValues({ type: "PHONE" }),
+    );
     const cleaned = buildFieldEditorPatch(
       {
         ...phone,
@@ -319,11 +331,13 @@ describe("TemplateEditor save and publication flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "新建业务对象" }));
     fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
 
-    expect(await screen.findByText(/req_template_conflict/)).toBeInTheDocument();
     expect(
-      within(screen.getByRole("complementary", { name: "模板对象清单" })).getByText(
-        "新业务对象",
-      ),
+      await screen.findByText(/req_template_conflict/),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("complementary", { name: "模板对象清单" }),
+      ).getByText("新业务对象"),
     ).toBeInTheDocument();
     expect(screen.getByText("有未保存变更")).toBeInTheDocument();
   });
@@ -342,14 +356,14 @@ describe("TemplateEditor save and publication flow", () => {
         draftVersion: 4,
         configuration: {
           ...detail().configuration,
-          objects: [
-            { ...detail().configuration.objects[0]!, name: "客户 A" },
-          ],
+          objects: [{ ...detail().configuration.objects[0]!, name: "客户 A" }],
         },
       }),
     );
 
-    await waitFor(() => expect(screen.getByLabelText("对象名称")).toHaveValue("客户 B"));
+    await waitFor(() =>
+      expect(screen.getByLabelText("对象名称")).toHaveValue("客户 B"),
+    );
     expect(screen.getByText("有未保存变更")).toBeInTheDocument();
 
     const saveButton = screen.getByRole("button", { name: "保存草稿" });
@@ -387,12 +401,16 @@ describe("TemplateEditor save and publication flow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "发布模板" }));
     const panel = await screen.findByRole("dialog", { name: "发布模板" });
-    fireEvent.click(await within(panel).findByRole("button", { name: "确认发布" }));
+    fireEvent.click(
+      await within(panel).findByRole("button", { name: "确认发布" }),
+    );
 
     expect(
       await screen.findByText("模板已发布，但页面刷新失败"),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("dialog", { name: "发布模板" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("dialog", { name: "发布模板" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "发布模板" })).toBeDisabled();
     expect(api.publish).toHaveBeenCalledTimes(1);
 
@@ -429,7 +447,9 @@ describe("TemplateEditor save and publication flow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "发布模板" }));
     const panel = await screen.findByRole("dialog", { name: "发布模板" });
-    fireEvent.click(await within(panel).findByRole("button", { name: "确认发布" }));
+    fireEvent.click(
+      await within(panel).findByRole("button", { name: "确认发布" }),
+    );
     expect(
       await screen.findByText("模板已发布，但页面刷新失败"),
     ).toBeInTheDocument();
@@ -450,8 +470,12 @@ describe("TemplateEditor save and publication flow", () => {
     renderEditor();
 
     fireEvent.click(screen.getByRole("button", { name: "停用字段 客户名称" }));
-    expect(screen.getByRole("button", { name: "恢复字段 客户名称" })).toBeInTheDocument();
-    expect(screen.getByRole("table", { name: "字段账本" })).toHaveTextContent("已停用");
+    expect(
+      screen.getByRole("button", { name: "恢复字段 客户名称" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "字段账本" })).toHaveTextContent(
+      "已停用",
+    );
   });
 
   it("allows an empty template to receive a template-level publication blocker", async () => {
@@ -518,9 +542,15 @@ describe("TemplateEditor save and publication flow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "发布模板" }));
     const panel = await screen.findByRole("dialog", { name: "发布模板" });
-    expect((await within(panel).findAllByText("客户")).length).toBeGreaterThan(0);
-    expect(within(panel).getByText("标题字段必须启用并设为必填。")).toBeInTheDocument();
-    expect(within(panel).getByRole("button", { name: "确认发布" })).toBeDisabled();
+    expect((await within(panel).findAllByText("客户")).length).toBeGreaterThan(
+      0,
+    );
+    expect(
+      within(panel).getByText("标题字段必须启用并设为必填。"),
+    ).toBeInTheDocument();
+    expect(
+      within(panel).getByRole("button", { name: "确认发布" }),
+    ).toBeDisabled();
 
     api.analyzePublication = vi.fn().mockResolvedValue(analysis());
     fireEvent.click(within(panel).getByRole("button", { name: "关闭" }));
@@ -531,11 +561,17 @@ describe("TemplateEditor save and publication flow", () => {
         within(readyPanel).getByRole("button", { name: "确认发布" }),
       ).toBeEnabled(),
     );
-    fireEvent.click(within(readyPanel).getByRole("button", { name: "确认发布" }));
+    fireEvent.click(
+      within(readyPanel).getByRole("button", { name: "确认发布" }),
+    );
 
-    await waitFor(() => expect(api.publish).toHaveBeenCalledWith(detail().id, 3));
+    await waitFor(() =>
+      expect(api.publish).toHaveBeenCalledWith(detail().id, 3),
+    );
     await waitFor(() => expect(api.detail).toHaveBeenCalledWith(detail().id));
-    await waitFor(() => expect(api.listVersions).toHaveBeenCalledWith(detail().id));
+    await waitFor(() =>
+      expect(api.listVersions).toHaveBeenCalledWith(detail().id),
+    );
     expect(await screen.findByText("v2 当前发布身份")).toBeInTheDocument();
   });
 });
