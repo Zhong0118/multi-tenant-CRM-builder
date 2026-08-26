@@ -20,6 +20,10 @@ import {
   FieldEditorDrawer,
   type FieldDraftValues,
 } from "./field-editor-drawer";
+import type {
+  ConfigurableFieldView,
+  ConfigurableObjectView,
+} from "./configuration-view";
 import { FieldLedger } from "./field-ledger";
 import { objectApi as defaultObjectApi, type ObjectApi } from "./object-api";
 import { ObjectPreview, type PreviewRole } from "./object-preview";
@@ -28,7 +32,6 @@ import {
   TITLE_FIELD_TYPES,
   objectStatusLabel,
   type ObjectDraft,
-  type ObjectDraftField,
   type PublicationAnalysis,
   type PublishedDataScope,
 } from "./object-types";
@@ -67,7 +70,7 @@ export function ObjectDesigner({
   const [draft, setDraft] = useState(initialDraft);
   const [section, setSection] = useState<Section>("fields");
   const [previewRole, setPreviewRole] = useState<PreviewRole>("TENANT_ADMIN");
-  const [editingField, setEditingField] = useState<ObjectDraftField | null>(
+  const [editingField, setEditingField] = useState<ConfigurableFieldView | null>(
     null,
   );
   const [analysis, setAnalysis] = useState<PublicationAnalysis>();
@@ -77,6 +80,7 @@ export function ObjectDesigner({
 
   const objectId = draft.object.id;
   const archived = draft.object.status === "ARCHIVED";
+  const configurableDraft = draft as unknown as ConfigurableObjectView;
 
   function accept(next: ObjectDraft) {
     setDraft(next);
@@ -111,7 +115,7 @@ export function ObjectDesigner({
       field,
       values,
     }: {
-      field: ObjectDraftField;
+      field: ConfigurableFieldView;
       values: FieldDraftValues;
     }) =>
       api.updateField(tenantCode, objectId, field.id, {
@@ -312,7 +316,7 @@ export function ObjectDesigner({
                 </Typography.Text>
               </div>
               <FieldLedger
-                fields={draft.fields}
+                fields={configurableDraft.fields}
                 titleFieldKey={draft.object.titleFieldKey}
                 reordering={reorder.isPending}
                 onSelect={setEditingField}
@@ -337,7 +341,7 @@ export function ObjectDesigner({
 
           <div style={{ marginTop: 24 }}>
             <ObjectPreview
-              draft={draft}
+              draft={configurableDraft}
               role={previewRole}
               onRoleChange={setPreviewRole}
             />

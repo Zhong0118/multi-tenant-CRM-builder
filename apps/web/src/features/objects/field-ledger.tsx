@@ -6,16 +6,16 @@ import type { ColumnsType } from "antd/es/table";
 import {
   FIELD_ACCESS_LABELS,
   fieldTypeLabel,
-  type ObjectDraftField,
   type PublishedFieldAccess,
 } from "./object-types";
+import type { ConfigurableFieldView } from "./configuration-view";
 
 import styles from "./objects.module.css";
 
 export interface FieldLedgerProps {
-  fields: ObjectDraftField[];
+  fields: ConfigurableFieldView[];
   titleFieldKey: string;
-  onSelect: (field: ObjectDraftField) => void;
+  onSelect: (field: ConfigurableFieldView) => void;
   onMove: (fieldId: string, direction: -1 | 1) => void;
   reordering?: boolean;
 }
@@ -35,7 +35,7 @@ export function FieldLedger({
   onMove,
   reordering = false,
 }: FieldLedgerProps) {
-  const columns: ColumnsType<ObjectDraftField> = [
+  const columns: ColumnsType<ConfigurableFieldView> = [
     {
       title: "",
       key: "order",

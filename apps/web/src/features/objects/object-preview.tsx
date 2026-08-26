@@ -5,15 +5,15 @@ import { Button, Segmented, Typography } from "antd";
 import {
   DATA_SCOPE_LABELS,
   fieldTypeLabel,
-  type ObjectDraft,
 } from "./object-types";
+import type { ConfigurableObjectView } from "./configuration-view";
 
 import styles from "./objects.module.css";
 
 export type PreviewRole = "TENANT_ADMIN" | "EMPLOYEE";
 
 export interface ObjectPreviewProps {
-  draft: ObjectDraft;
+  draft: ConfigurableObjectView;
   role: PreviewRole;
   onRoleChange: (role: PreviewRole) => void;
 }

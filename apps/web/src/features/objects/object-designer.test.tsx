@@ -165,9 +165,10 @@ describe("ObjectDesigner configuration ledger", () => {
     expect(rows[1]).toHaveTextContent("只读");
   });
 
-  it("locks the data type of a published field and explains why", () => {
+  it("keeps the shared field ledger visible and locks a published field type", () => {
     renderDesigner(draft(), objectApi());
 
+    expect(screen.getByRole("table", { name: "字段账本" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "配置字段 客户名称" }));
 
     expect(screen.getByLabelText("数据类型")).toBeDisabled();

@@ -17,15 +17,16 @@ import {
   FIELD_TYPE_LABELS,
   PUBLISHED_FIELD_TYPES,
   selectOptions,
-  type ObjectDraftField,
   type PublishedFieldAccess,
   type PublishedFieldType,
   type SelectOptionView,
 } from "./object-types";
+import type { ConfigurableFieldView } from "./configuration-view";
 
 import styles from "./objects.module.css";
 
 export interface FieldDraftValues {
+  fieldKey: string;
   label: string;
   type: PublishedFieldType;
   required: boolean;
@@ -40,7 +41,7 @@ export interface FieldDraftValues {
 }
 
 export interface FieldEditorDrawerProps {
-  field: ObjectDraftField | null;
+  field: ConfigurableFieldView | null;
   saving?: boolean;
   error?: string;
   onSubmit: (values: FieldDraftValues) => void;
@@ -71,11 +72,13 @@ function FieldEditor({
   error,
   onSubmit,
   onClose,
-}: FieldEditorDrawerProps & { field: ObjectDraftField }) {
+}: FieldEditorDrawerProps & { field: ConfigurableFieldView }) {
   const [values, setValues] = useState<FieldDraftValues>(() =>
     initialValues(field),
   );
 
+  const fieldKeyLocked =
+    field.publishedFieldKey === undefined || field.publishedFieldKey !== null;
   const typeLocked = field.publishedType !== null;
   const patch = (next: Partial<FieldDraftValues>) =>
     setValues({ ...values, ...next });
@@ -119,7 +122,12 @@ function FieldEditor({
             htmlFor="field-key"
             extra="字段键在对象内唯一，发布后不再变更。"
           >
-            <Input id="field-key" value={field.fieldKey} disabled />
+            <Input
+              id="field-key"
+              value={values.fieldKey}
+              disabled={fieldKeyLocked}
+              onChange={(event) => patch({ fieldKey: event.target.value })}
+            />
           </Form.Item>
           <Form.Item
             label="辅助说明"
@@ -332,9 +340,10 @@ function OptionEditor({
   );
 }
 
-function initialValues(field: ObjectDraftField): FieldDraftValues {
+function initialValues(field: ConfigurableFieldView): FieldDraftValues {
   const validation = field.validation as Record<string, unknown>;
   return {
+    fieldKey: field.fieldKey,
     label: field.label,
     type: field.type as PublishedFieldType,
     required: field.required,

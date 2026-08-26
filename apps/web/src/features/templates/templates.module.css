@@ -76,3 +76,406 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Template editor: the 240px manifest rail is the sole signature element.
+   It makes aggregate order and publication identity continuously visible;
+   the object workspace remains quiet and dense. */
+.editorPage {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  padding: 24px;
+}
+
+.editorHeader {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.editorIdentity {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.backLink {
+  width: fit-content;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.backLink:focus-visible,
+.manifestSelect:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.identityLine,
+.editorMeta,
+.editorActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.identityLine h1 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 650;
+}
+
+.publicationIdentity {
+  padding-left: 10px;
+  border-left: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.templateDesigner {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.manifestRail {
+  position: sticky;
+  top: 20px;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border-strong);
+  border-top: 3px solid var(--text-primary);
+  border-radius: 8px;
+  background: var(--bg-surface);
+}
+
+.manifestHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.manifestHeader > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.manifestHeader span {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.manifestHeader strong {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.manifestList {
+  display: flex;
+  max-height: calc(100vh - 280px);
+  flex-direction: column;
+  gap: 5px;
+  overflow-y: auto;
+}
+
+.manifestItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+.manifestItem:hover {
+  border-color: var(--border-default);
+}
+
+.manifestItemActive {
+  border-color: #b8c7eb;
+  background: #eef2fb;
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+.manifestSelect {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 2px 6px;
+  padding: 10px 4px 10px 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.manifestOrder {
+  grid-row: 1 / 4;
+  color: var(--text-tertiary, var(--text-secondary));
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.manifestName {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.manifestCode,
+.manifestFacts,
+.identityLock {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.manifestCode,
+.identityLock {
+  font-family: var(--font-mono);
+}
+
+.identityLock {
+  width: fit-content;
+  margin-top: 3px;
+  padding: 1px 5px;
+  border: 1px solid #c9d5ef;
+  border-radius: 999px;
+  color: var(--color-primary);
+}
+
+.manifestMove {
+  display: flex;
+  align-self: center;
+}
+
+.editorWorkspace {
+  min-width: 0;
+}
+
+.objectEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.editorSection,
+.workspaceEmpty,
+.inlineEmpty {
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-surface);
+}
+
+.editorSection {
+  padding: 18px 20px;
+}
+
+.sectionHeading {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.sectionHeading h2,
+.workspaceEmpty h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 600;
+}
+
+.sectionHeading p,
+.workspaceEmpty p {
+  margin: 3px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.compactForm :global(.ant-form-item) {
+  margin-bottom: 14px;
+}
+
+.compactForm :global(.ant-form-item:last-child) {
+  margin-bottom: 0;
+}
+
+.formGrid,
+.permissionGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 20px;
+}
+
+.permissionGrid {
+  margin-bottom: 18px;
+  gap: 24px;
+}
+
+.inlineEmpty,
+.workspaceEmpty {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  align-items: flex-start;
+  padding: 22px;
+  border-style: dashed;
+  color: var(--text-secondary);
+}
+
+.inlineEmpty strong {
+  color: var(--text-primary);
+}
+
+.analysisSummary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 2px solid var(--text-primary);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.analysisSummary span {
+  padding: 10px 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-align: center;
+}
+
+.analysisSummary span + span {
+  border-left: 1px solid var(--border-default);
+}
+
+.panelHeading {
+  margin: 0 0 10px;
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 600;
+}
+
+.issueGroups,
+.issueGroup,
+.changeList,
+.versionList {
+  display: flex;
+  flex-direction: column;
+}
+
+.issueGroups {
+  gap: 12px;
+}
+
+.issueGroup {
+  gap: 7px;
+  padding: 11px 12px;
+  border-left: 3px solid var(--color-error, #c53b34);
+  background: var(--bg-subtle, #f7f8fa);
+}
+
+.issueGroup ul,
+.changeList {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.issueGroup li,
+.changeList li {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.issueGroup code {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.versionList {
+  border-top: 1px solid var(--border-default);
+}
+
+.versionRow {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.versionNumber {
+  color: var(--color-primary);
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.drawerFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.desktopOnly {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .editorHeader,
+  .templateDesigner {
+    display: none;
+  }
+
+  .desktopOnly {
+    display: block;
+    margin: 0;
+    padding: 16px;
+    border: 1px solid var(--border-default);
+    border-left: 3px solid var(--color-primary);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manifestRail,
+  .manifestItem {
+    scroll-behavior: auto;
+    transition: none;
+  }
+}
