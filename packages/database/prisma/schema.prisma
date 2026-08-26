@@ -143,6 +143,9 @@ model User {
   targetInvitations   TenantInvitation[] @relation("InvitationTargetUser")
   createdInvitations  TenantInvitation[] @relation("InvitationCreatedBy")
   acceptedInvitations TenantInvitation[] @relation("InvitationAcceptedBy")
+  createdTemplates    BusinessTemplate[] @relation("BusinessTemplateCreator")
+  publishedTemplates  BusinessTemplateVersion[] @relation("BusinessTemplateVersionPublisher")
+  appliedTemplates    BusinessTemplateApplication[] @relation("BusinessTemplateApplicationApplier")
 
   @@map("users")
 }
@@ -168,6 +171,7 @@ model Tenant {
   objectPermissions  ObjectPermission[]
   fieldPermissions   FieldPermission[]
   recordCounters     RecordCounter[]
+  templateApplications BusinessTemplateApplication[]
 
   @@map("tenants")
 }
@@ -272,6 +276,7 @@ model ObjectDefinition {
   updatedAt               DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
   deletedAt               DateTime?           @map("deleted_at") @db.Timestamptz(3)
   tenant                  Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  sourceTemplateVersion   BusinessTemplateVersion? @relation(fields: [sourceTemplateVersionId], references: [id], onDelete: Restrict)
   fields                  FieldDefinition[]
   records                 Record[]
   publications            ObjectPublication[] @relation("ObjectPublications")
@@ -286,6 +291,63 @@ model ObjectDefinition {
   @@unique([tenantId, activePublicationId])
   @@index([tenantId, status, sortOrder])
   @@map("object_definitions")
+}
+
+model BusinessTemplate {
+  id                 String                    @id @default(uuid(7)) @db.Uuid
+  code               String                    @unique @db.VarChar(64)
+  name               String                    @db.VarChar(100)
+  description        String?                   @db.VarChar(1000)
+  draftVersion       Int                       @default(1) @map("draft_version")
+  draftConfiguration Json                      @map("draft_configuration") @db.JsonB
+  activeVersionId    String?                   @unique @map("active_version_id") @db.Uuid
+  publishedAt        DateTime?                 @map("published_at") @db.Timestamptz(3)
+  createdByUserId    String                    @map("created_by_user_id") @db.Uuid
+  archivedAt         DateTime?                 @map("archived_at") @db.Timestamptz(3)
+  createdAt          DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  versions           BusinessTemplateVersion[] @relation("BusinessTemplateVersions")
+  activeVersion      BusinessTemplateVersion?  @relation("ActiveBusinessTemplateVersion", fields: [activeVersionId], references: [id], onDelete: Restrict)
+  creator            User                      @relation("BusinessTemplateCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@map("business_templates")
+}
+
+model BusinessTemplateVersion {
+  id                    String                        @id @default(uuid(7)) @db.Uuid
+  templateId            String                        @map("template_id") @db.Uuid
+  versionNo             Int                           @map("version_no")
+  sourceDraftVersion    Int                           @map("source_draft_version")
+  schemaVersion         Int                           @map("schema_version")
+  configuration         Json                          @db.JsonB
+  configurationChecksum String                        @map("configuration_checksum") @db.Char(64)
+  changeSummary         Json                          @map("change_summary") @db.JsonB
+  publishedByUserId     String                        @map("published_by_user_id") @db.Uuid
+  publishedAt           DateTime                      @default(now()) @map("published_at") @db.Timestamptz(3)
+  template              BusinessTemplate              @relation("BusinessTemplateVersions", fields: [templateId], references: [id], onDelete: Restrict)
+  activeForTemplate     BusinessTemplate?             @relation("ActiveBusinessTemplateVersion")
+  publisher             User                          @relation("BusinessTemplateVersionPublisher", fields: [publishedByUserId], references: [id], onDelete: Restrict)
+  applications          BusinessTemplateApplication[]
+  sourceObjects         ObjectDefinition[]
+
+  @@unique([templateId, versionNo])
+  @@map("business_template_versions")
+}
+
+model BusinessTemplateApplication {
+  id                    String                  @id @default(uuid(7)) @db.Uuid
+  templateVersionId     String                  @map("template_version_id") @db.Uuid
+  tenantId              String                  @map("tenant_id") @db.Uuid
+  appliedByUserId       String                  @map("applied_by_user_id") @db.Uuid
+  configurationChecksum String                  @map("configuration_checksum") @db.Char(64)
+  objectIdMap           Json                    @map("object_id_map") @db.JsonB
+  appliedAt             DateTime                @default(now()) @map("applied_at") @db.Timestamptz(3)
+  templateVersion       BusinessTemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Restrict)
+  tenant                Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  appliedBy             User                    @relation("BusinessTemplateApplicationApplier", fields: [appliedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, templateVersionId])
+  @@map("business_template_applications")
 }
 
 model FieldDefinition {

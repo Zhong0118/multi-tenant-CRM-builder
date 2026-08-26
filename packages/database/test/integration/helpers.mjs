@@ -46,6 +46,9 @@ export async function resetTestData(admin) {
     admin.objectPublication.deleteMany(),
     admin.fieldDefinition.deleteMany(),
     admin.objectDefinition.deleteMany(),
+  ]);
+  await resetBusinessTemplates(admin);
+  await admin.$transaction([
     admin.tenantInvitation.deleteMany(),
     admin.tenantMember.deleteMany(),
     admin.session.deleteMany(),
@@ -53,6 +56,23 @@ export async function resetTestData(admin) {
     admin.tenant.deleteMany(),
     admin.user.deleteMany(),
   ]);
+}
+
+async function resetBusinessTemplates(admin) {
+  const rows = await admin.$queryRawUnsafe(
+    "SELECT to_regclass('business_template_applications') IS NOT NULL AS exists",
+  );
+
+  if (!rows[0].exists) {
+    return;
+  }
+
+  await admin.$executeRawUnsafe("DELETE FROM business_template_applications");
+  await admin.$executeRawUnsafe(
+    "UPDATE business_templates SET active_version_id = NULL",
+  );
+  await admin.$executeRawUnsafe("DELETE FROM business_template_versions");
+  await admin.$executeRawUnsafe("DELETE FROM business_templates");
 }
 
 export function withSettings(client, { userId, tenantId }, work) {
