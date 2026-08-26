@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
-import { after, before, beforeEach, test } from "node:test";
+import { after, afterEach, before, beforeEach, test } from "node:test";
 
 import {
+  cleanupTestFixtures,
   createTestClients,
   migrateTestDatabase,
-  resetTestData,
   withSettings,
 } from "./helpers.mjs";
+
+const fixturePhones = ["+8613800000001", "+8613800000002"];
+const fixtureTenantCodes = ["tenant-a", "tenant-b"];
 
 let admin;
 let runtime;
@@ -17,7 +20,11 @@ before(() => {
 });
 
 beforeEach(async () => {
-  await resetTestData(admin);
+  await cleanupFixtures();
+});
+
+afterEach(async () => {
+  await cleanupFixtures();
 });
 
 after(async () => {
@@ -188,3 +195,10 @@ test("allows only one concurrent pending invitation per tenant and phone", async
     data: { ...invitation("accepted-invite"), status: "ACCEPTED" },
   });
 });
+
+function cleanupFixtures() {
+  return cleanupTestFixtures(admin, {
+    phones: fixturePhones,
+    tenantCodes: fixtureTenantCodes,
+  });
+}

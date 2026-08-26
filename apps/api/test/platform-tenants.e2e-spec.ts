@@ -43,9 +43,6 @@ describe('Platform tenant API (e2e)', () => {
 
     await regular.get('/api/v1/platform/tenants').expect(403);
     await platform.get('/api/v1/platform/tenants').expect(200);
-    const baselineSummary = await platform
-      .get('/api/v1/platform/tenants/summary')
-      .expect(200);
 
     const created = await platform
       .post('/api/v1/platform/tenants')
@@ -73,11 +70,11 @@ describe('Platform tenant API (e2e)', () => {
       .get('/api/v1/platform/tenants/summary')
       .expect(200);
     expect(summary.body).toMatchObject({
-      total: baselineSummary.body.total + 1,
-      draft: baselineSummary.body.draft + 1,
-      active: baselineSummary.body.active,
-      suspended: baselineSummary.body.suspended,
-      closed: baselineSummary.body.closed,
+      total: 1,
+      draft: 1,
+      active: 0,
+      suspended: 0,
+      closed: 0,
     });
     await regular.get('/api/v1/platform/tenants/summary').expect(403);
 
@@ -142,11 +139,11 @@ describe('Platform tenant API (e2e)', () => {
       .get('/api/v1/platform/tenants/summary')
       .expect(200);
     expect(activeSummary.body).toMatchObject({
-      total: baselineSummary.body.total + 1,
-      draft: baselineSummary.body.draft,
-      active: baselineSummary.body.active + 1,
-      suspended: baselineSummary.body.suspended,
-      closed: baselineSummary.body.closed,
+      total: 1,
+      draft: 0,
+      active: 1,
+      suspended: 0,
+      closed: 0,
     });
 
     await firstAdmin.get('/api/v1/me').expect(200);

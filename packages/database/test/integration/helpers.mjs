@@ -58,6 +58,93 @@ export async function resetTestData(admin) {
   ]);
 }
 
+export async function cleanupTestFixtures(
+  admin,
+  { tenantCodes = [], phones = [], templateCodes = [] },
+) {
+  const tenants = await admin.tenant.findMany({
+    where: { code: { in: tenantCodes } },
+    select: { id: true },
+  });
+  const tenantIds = tenants.map(({ id }) => id);
+  const templates = await admin.businessTemplate.findMany({
+    where: { code: { in: templateCodes } },
+    select: { id: true },
+  });
+  const templateIds = templates.map(({ id }) => id);
+
+  if (tenantIds.length > 0) {
+    await admin.auditLog.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await admin.record.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await admin.recordCounter.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await admin.businessTemplateApplication.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await admin.objectDefinition.updateMany({
+      where: { tenantId: { in: tenantIds } },
+      data: { activePublicationId: null },
+    });
+    await admin.fieldPermission.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await admin.objectPermission.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await admin.viewDefinition.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await admin.objectPublication.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await admin.fieldDefinition.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await admin.objectDefinition.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await admin.tenantInvitation.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await admin.tenantMember.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await admin.tenant.deleteMany({ where: { id: { in: tenantIds } } });
+  }
+
+  if (templateIds.length > 0) {
+    await admin.businessTemplateApplication.deleteMany({
+      where: { templateVersion: { templateId: { in: templateIds } } },
+    });
+    await admin.businessTemplate.updateMany({
+      where: { id: { in: templateIds } },
+      data: { activeVersionId: null },
+    });
+    await admin.businessTemplateVersion.deleteMany({
+      where: { templateId: { in: templateIds } },
+    });
+    await admin.businessTemplate.deleteMany({
+      where: { id: { in: templateIds } },
+    });
+  }
+
+  const users = await admin.user.findMany({
+    where: { phone: { in: phones } },
+    select: { id: true },
+  });
+  const userIds = users.map(({ id }) => id);
+  await admin.session.deleteMany({ where: { userId: { in: userIds } } });
+  await admin.verificationChallenge.deleteMany({
+    where: { phone: { in: phones } },
+  });
+  await admin.user.deleteMany({ where: { id: { in: userIds } } });
+}
+
 async function resetBusinessTemplates(admin) {
   const rows = await admin.$queryRawUnsafe(
     "SELECT to_regclass('business_template_applications') IS NOT NULL AS exists",

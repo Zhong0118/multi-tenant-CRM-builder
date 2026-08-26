@@ -1,13 +1,26 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { after, before, beforeEach, test } from "node:test";
+import { after, afterEach, before, beforeEach, test } from "node:test";
 
 import {
+  cleanupTestFixtures,
   createTestClients,
   migrateTestDatabase,
-  resetTestData,
   withSettings,
 } from "./helpers.mjs";
+
+const fixturePhones = [
+  "+8613900000201",
+  "+8613900000202",
+  "+8613900000203",
+  "+8613900000204",
+];
+const fixtureTemplateCodes = [
+  "sales-access",
+  "sales-inactive",
+  "sales-immutable",
+];
+const fixtureTenantCode = "template-source-company";
 
 let admin;
 let runtime;
@@ -18,7 +31,11 @@ before(() => {
 });
 
 beforeEach(async () => {
-  await resetTestData(admin);
+  await cleanupFixtures();
+});
+
+afterEach(async () => {
+  await cleanupFixtures();
 });
 
 after(async () => {
@@ -139,7 +156,7 @@ test("published template versions and applications reject runtime mutations", as
   const tenant = await admin.tenant.create({
     data: {
       name: "模板来源测试公司",
-      code: "template-source-company",
+      code: fixtureTenantCode,
       status: "DRAFT",
     },
   });
@@ -193,5 +210,13 @@ function createUser(phone, isPlatformAdmin, status = "ACTIVE") {
       isPlatformAdmin,
       status,
     },
+  });
+}
+
+async function cleanupFixtures() {
+  await cleanupTestFixtures(admin, {
+    phones: fixturePhones,
+    tenantCodes: [fixtureTenantCode],
+    templateCodes: fixtureTemplateCodes,
   });
 }

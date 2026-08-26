@@ -142,7 +142,8 @@ GET    /api/v1/platform/tenants/:tenantId/business-configuration
 | 租户隔离与 RLS | `packages/database/test/integration/` |
 | 浏览器闭环：管理员建记录、员工只看「我的」、隐藏字段消失 | 手工实测（截图确认） |
 | 平台模板：列表/新建/双对象编辑/保存/分析/发布/v1 历史/身份锁 | `apps/api/test/business-templates.e2e-spec.ts` + 本地浏览器实测 |
-| 模板应用：空白草稿公司生成完整对象草稿、精确重试幂等、无对象发布 | 同一 E2E 的真实 PostgreSQL 断言 + DB 集成来源关系断言 |
+| 模板应用：空白草稿公司生成完整对象草稿、精确重试幂等、初始无对象发布 | 同一 E2E 的真实 PostgreSQL 断言 + DB 集成来源关系断言 |
+| 模板运行时交接：正常邀请/激活后由公司管理员发布，员工按发布快照和字段权限使用记录 | 同一 E2E 的真实 HTTP + PostgreSQL 断言 |
 | 模板权限：普通用户 403；平台管理员不能越权进入工作区 | E2E + 本地浏览器实测 |
 
 Task 9 focused 实证：模板 HTTP E2E 1 套件 / 1 测试；数据库集成 10 测试。完整仓库门禁的最新套件和测试总数记录在 `.superpowers/sdd/2026-08-26-platform-business-template-designer/task-9-report.md`。

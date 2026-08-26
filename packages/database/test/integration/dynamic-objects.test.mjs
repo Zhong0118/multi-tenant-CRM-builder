@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
-import { after, before, beforeEach, test } from "node:test";
+import { after, afterEach, before, beforeEach, test } from "node:test";
 
 import {
+  cleanupTestFixtures,
   createTestClients,
   migrateTestDatabase,
-  resetTestData,
   withSettings,
 } from "./helpers.mjs";
+
+const fixturePhones = ["+8613900000101", "+8613900000102"];
+const fixtureTenantCodes = ["config-a", "config-b"];
 
 let admin;
 let runtime;
@@ -17,7 +20,11 @@ before(() => {
 });
 
 beforeEach(async () => {
-  await resetTestData(admin);
+  await cleanupFixtures();
+});
+
+afterEach(async () => {
+  await cleanupFixtures();
 });
 
 after(async () => {
@@ -268,5 +275,12 @@ function createPublication(tenantId, objectId, memberId, field) {
       changeSummary: { changes: [{ kind: "ADDED", fieldKey: "name" }] },
       publishedByMemberId: memberId,
     },
+  });
+}
+
+function cleanupFixtures() {
+  return cleanupTestFixtures(admin, {
+    phones: fixturePhones,
+    tenantCodes: fixtureTenantCodes,
   });
 }

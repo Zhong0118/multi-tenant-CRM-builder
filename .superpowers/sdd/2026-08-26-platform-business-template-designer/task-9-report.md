@@ -6,7 +6,7 @@
 - The E2E verifies ordinary-user denial, template-code validation, a two-object/four-field aggregate, immutable version publication, DRAFT-only application, fresh tenant object IDs, complete field/view/permission hydration, source-version provenance, absence of object publications, and exact retry idempotency.
 - Extended `packages/database/test/integration/business-templates.test.mjs` with direct runtime-role rejection of published-version configuration updates and a queryable `sourceTemplateVersionId` relationship for two generated tenant objects.
 - The precise E2E RED exposed one product integration seam: API creation accepted a numeric-leading template code although the Web and design contract required a leading letter. `CreateBusinessTemplateDto` and the generated OpenAPI pattern now agree on `^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`.
-- The single full-repository gate exposed only closure defects in prior slice files: stale Prettier output, synchronous state derivation through a React effect, test-double lint errors, one nullable DOM test value, and an E2E that assumed the whole shared test database was empty. These received minimal non-feature fixes; the tenant summary test now asserts its own before/after delta so it composes with the preceding database integration gate.
+- The single full-repository gate exposed closure defects in prior slice files: stale Prettier output, synchronous state derivation through a React effect, test-double lint errors, one nullable DOM test value, and leaked database-integration fixtures. Fix Round 1 replaces the temporary summary-delta workaround with exact fixture cleanup, serial API E2E execution, and the original absolute tenant-summary assertions.
 - Updated `HANDOFF.md` and `docs/design/README.md` from observed local behavior. They do not claim template upgrades, relationship support, existing-object merging, production deployment, or a remote push.
 
 ## Focused TDD evidence
@@ -61,7 +61,7 @@ The gate ran once in the required order. Failed commands were repaired and rerun
 | final `.../fallback/pnpm typecheck`                                                                 | 0                                                                                                       |
 | `.../fallback/pnpm test`                                                                            | 0; 399 tests total: API 196, Web 188, Worker 2, contracts 7, database schema 4, tenant-templates 2      |
 | `set -a && source .env && set +a && .../fallback/pnpm --filter @crm/database test:integration`      | 0; 10 tests                                                                                             |
-| first `set -a && source .env && set +a && .../fallback/pnpm --filter @crm/api test:e2e`             | 1; 1/8 failed because prior DB integration left its two intentional DRAFT fixtures                      |
+| first `set -a && source .env && set +a && .../fallback/pnpm --filter @crm/api test:e2e`             | 1; 1/8 failed because prior DB integration leaked fixed `tenant-a` / `tenant-b` DRAFT fixtures          |
 | diagnostic invocation with an extra `--`                                                            | 1; Jest treated flags as a filename pattern and found no tests                                          |
 | corrected serial/filtered diagnostics                                                               | test process exit 1, localized the old absolute-total assertion; the filtering pipeline itself exited 0 |
 | final `set -a && source .env && set +a && .../fallback/pnpm --filter @crm/api test:e2e`             | 0; 7 suites / 8 tests                                                                                   |
@@ -83,3 +83,32 @@ The focused DB test and the DB gate refer to the same 10-test integration comman
 ## Scope boundary
 
 This is local slice verification only. Template-version upgrades, existing-object merge/overwrite, object relationships, state machines, conversion actions, and production deployment remain outside the delivered scope.
+
+## Fix Round 1 — Review closure
+
+- Service, DTO, and Web now use the same leading-letter template-code rule and Chinese error copy. Strict Service TDD proved the missing defense below the HTTP DTO boundary: the new `9sales` test first resolved successfully, then rejected with `VALIDATION_FAILED` after the minimal Service change.
+- The existing single business-template E2E now matches fields by object code and field key and asserts `type`, `required`, `validation`, `config`, and `sortOrder`. Field permissions are joined through their real `fieldId` before exact access comparison. Every generated object, field, view, object-permission, and field-permission ID is unique and differs from all template-local IDs.
+- Runtime handoff is now covered beyond draft hydration. Immediately after application the tenant has zero object publications. The platform administrator cannot publish through a workspace. The invited tenant administrator accepts normally, the platform activates the company, the administrator invites an employee and publishes `customers`, and the employee reads the published runtime schema, is denied writing the READ_ONLY phone field, and creates a valid record. Platform-admin status still grants no workspace membership.
+- The same workflow creates a second company, accepts its administrator invitation, activates it, and verifies application to that non-DRAFT target returns stable HTTP 409 / `TEMPLATE_APPLICATION_NOT_ALLOWED` with `目标公司必须处于草稿状态。`.
+- Database integration suites now clean only their own fixed phone/code fixtures before and after each test through the shared test helper. A post-suite read-only SQL check returned `tenants=0`, `templates=0`, `users=0`, and `objects=0` for every fixed integration fixture. API E2E is explicitly configured with one worker, and the platform tenant summary again requires exact totals instead of tolerating leaked rows.
+
+### Fix Round 1 verification
+
+| Command                                                                                            | Exit / evidence                                                                                           |
+| -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `.../fallback/pnpm --filter @crm/api test -- business-templates.service.spec.ts --runInBand` (RED) | 1; `9sales` resolved instead of rejecting; 1 failed / 7 passed                                            |
+| same focused Service command after the minimal rule fix                                            | 0; 8/8 tests                                                                                              |
+| first enhanced focused business-template E2E                                                       | 1; rejected an unsupported assumption that global DTO validation exposes constraint text in `fieldErrors` |
+| focused business-template E2E after retaining the stable HTTP 400 boundary                         | 0; 1 suite / 1 workflow test                                                                              |
+| `.../fallback/pnpm --filter @crm/database test:integration` after business-template cleanup        | 0; 10/10 tests                                                                                            |
+| same DB integration command after all three suites adopted exact cleanup                           | 0; 10/10 tests                                                                                            |
+| read-only SQL residue check for fixed integration codes/phones                                     | 0; tenants/templates/users/objects all 0                                                                  |
+| `.../fallback/pnpm --filter @crm/api test:e2e`                                                     | 0; 7 suites / 8 tests; configured `maxWorkers: 1`                                                         |
+| `.../fallback/pnpm --filter @crm/api typecheck`                                                    | 0                                                                                                         |
+| affected-file Prettier check                                                                       | 0                                                                                                         |
+| first `.../fallback/pnpm --filter @crm/api lint`                                                   | 1; invitation-list body remained `any`                                                                    |
+| final API lint after an `unknown[]` boundary helper                                                | 0                                                                                                         |
+| focused E2E after moving the platform publication denial behind activation                        | first sandboxed invocation exited 1 before the test because `localhost:5433` was inaccessible             |
+| escalated `pg_isready` and the same focused E2E                                                    | 0; test database accepted connections, then 1 suite / 1 workflow test passed                              |
+
+No Web tests, complete unit suite, build, browser acceptance, contracts generation/check, deployment, or push was rerun in Fix Round 1, matching its verification-cost boundary. Test counts remain focused E2E 1, database integration 10, and complete API E2E 8.

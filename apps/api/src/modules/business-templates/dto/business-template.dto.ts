@@ -115,7 +115,9 @@ export class BusinessTemplatePageQueryDto {
 
 export class CreateBusinessTemplateDto {
   @ApiProperty({ type: String, pattern: '^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$' })
-  @Matches(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/)
+  @Matches(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/, {
+    message: '仅支持小写字母、数字和单个连字符，且必须以字母开头。',
+  })
   @MaxLength(64)
   code!: string;
 

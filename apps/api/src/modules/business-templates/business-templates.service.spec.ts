@@ -83,6 +83,23 @@ describe('BusinessTemplatesService', () => {
     });
   });
 
+  it('rejects a template code that starts with a number', async () => {
+    const { service } = fixture();
+
+    await expect(
+      service.create(
+        platformAdmin,
+        { code: '9sales', name: '销售模板', description: null },
+        meta,
+      ),
+    ).rejects.toMatchObject({
+      code: 'VALIDATION_FAILED',
+      fieldErrors: {
+        code: ['仅支持小写字母、数字和单个连字符，且必须以字母开头。'],
+      },
+    });
+  });
+
   it('returns TEMPLATE_VERSION_CONFLICT for a stale draft save', async () => {
     const { service } = fixture();
     const created = await service.create(

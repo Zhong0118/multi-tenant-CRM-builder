@@ -79,8 +79,11 @@ export class BusinessTemplatesService {
   ): Promise<TemplateDetail> {
     void meta;
     const code = input.code.trim();
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(code)) {
-      throw validationError('code', '仅支持小写字母、数字和单个连字符。');
+    if (!/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(code)) {
+      throw validationError(
+        'code',
+        '仅支持小写字母、数字和单个连字符，且必须以字母开头。',
+      );
     }
     return this.repository.withActor(actor.id, async (store) => {
       try {

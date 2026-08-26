@@ -10,7 +10,9 @@ const verificationCode = '123456';
 const platformPhone = '13977771001';
 const regularPhone = '13977771002';
 const tenantAdminPhone = '13977771003';
+const employeePhone = '13977771004';
 const tenantCode = 'e2e-template-company';
+const activeTenantCode = 'e2e-template-active-company';
 const templateCode = 'test-crm-e2e';
 const invalidTemplateCode = '9test-crm-e2e';
 
@@ -102,7 +104,8 @@ describe('Business template HTTP workflow (e2e)', () => {
   it('guards template routes and applies the current immutable version as complete tenant drafts', async () => {
     const platform = await register(platformPhone, '平台管理员');
     const regular = await register(regularPhone, '普通用户');
-    await register(tenantAdminPhone, '公司管理员');
+    const tenantAdmin = await register(tenantAdminPhone, '公司管理员');
+    const employee = await register(employeePhone, '公司员工');
     await adminDatabase.user.update({
       where: { phone: normalized(platformPhone) },
       data: { isPlatformAdmin: true },
@@ -204,6 +207,51 @@ describe('Business template HTTP workflow (e2e)', () => {
       'name',
       'amount',
     ]);
+    expect(
+      Object.fromEntries(
+        objects.flatMap((object) =>
+          object.fields.map((field) => [
+            `${object.code}.${field.fieldKey}`,
+            {
+              type: field.type,
+              required: field.required,
+              validation: field.validation,
+              config: field.config,
+              sortOrder: field.sortOrder,
+            },
+          ]),
+        ),
+      ),
+    ).toEqual({
+      'customers.name': {
+        type: 'TEXT',
+        required: true,
+        validation: { maxLength: 100 },
+        config: {},
+        sortOrder: 10,
+      },
+      'customers.phone': {
+        type: 'PHONE',
+        required: false,
+        validation: {},
+        config: {},
+        sortOrder: 20,
+      },
+      'opportunities.name': {
+        type: 'TEXT',
+        required: true,
+        validation: { maxLength: 100 },
+        config: {},
+        sortOrder: 10,
+      },
+      'opportunities.amount': {
+        type: 'MONEY',
+        required: false,
+        validation: { scale: 2 },
+        config: {},
+        sortOrder: 20,
+      },
+    });
     expect(objects.map((object) => object.views[0])).toEqual([
       expect.objectContaining({
         code: 'default',
@@ -241,20 +289,57 @@ describe('Business template HTTP workflow (e2e)', () => {
       }),
     ]);
     expect(
-      objects.map((object) =>
-        object.fieldPermissions.map(({ access }) => access).sort(),
+      Object.fromEntries(
+        objects.flatMap((object) => {
+          const fieldKeyById = new Map(
+            object.fields.map((field) => [field.id, field.fieldKey]),
+          );
+          return object.fieldPermissions.map((permission) => {
+            const fieldKey = fieldKeyById.get(permission.fieldId);
+            if (!fieldKey) {
+              throw new Error('Field permission references an unknown field');
+            }
+            return [`${object.code}.${fieldKey}`, permission.access];
+          });
+        }),
       ),
-    ).toEqual([
-      ['EDIT', 'READ_ONLY'],
-      ['EDIT', 'EDIT'],
+    ).toEqual({
+      'customers.name': 'EDIT',
+      'customers.phone': 'READ_ONLY',
+      'opportunities.name': 'EDIT',
+      'opportunities.amount': 'EDIT',
+    });
+    const generatedIds = objects.flatMap((object) => [
+      object.id,
+      ...object.fields.map(({ id }) => id),
+      ...object.views.map(({ id }) => id),
+      ...object.permissions.map(({ id }) => id),
+      ...object.fieldPermissions.map(({ id }) => id),
     ]);
-    expect(
-      objects.some((object) =>
-        twoObjectTemplateFixture.objects.some(
-          (templateObject) => templateObject.id === object.id,
-        ),
-      ),
-    ).toBe(false);
+    const templateLocalIds = new Set([
+      '00000000-0000-4000-8000-000000000101',
+      '00000000-0000-4000-8000-000000000111',
+      '00000000-0000-4000-8000-000000000112',
+      '00000000-0000-4000-8000-000000000201',
+      '00000000-0000-4000-8000-000000000211',
+      '00000000-0000-4000-8000-000000000212',
+    ]);
+    expect(new Set(generatedIds).size).toBe(generatedIds.length);
+    expect(generatedIds.every((id) => !templateLocalIds.has(id))).toBe(true);
+    expect(firstApplication.body).toMatchObject({
+      objects: [
+        {
+          templateObjectId: '00000000-0000-4000-8000-000000000101',
+          objectId: objects[0]?.id,
+          code: 'customers',
+        },
+        {
+          templateObjectId: '00000000-0000-4000-8000-000000000201',
+          objectId: objects[1]?.id,
+          code: 'opportunities',
+        },
+      ],
+    });
     await expect(
       adminDatabase.objectPublication.count({ where: { tenantId } }),
     ).resolves.toBe(0);
@@ -269,6 +354,121 @@ describe('Business template HTTP workflow (e2e)', () => {
     await expect(
       adminDatabase.objectDefinition.count({ where: { tenantId } }),
     ).resolves.toBe(2);
+
+    const customerObject = objects[0];
+    if (!customerObject) throw new Error('Expected generated customers object');
+    await acceptInvitation(tenantAdmin, tenantId);
+    await platform
+      .patch(`/api/v1/platform/tenants/${tenantId}/status`)
+      .set('Origin', origin)
+      .send({ status: 'ACTIVE' })
+      .expect(200);
+    await platform.get(`/api/v1/workspaces/${tenantCode}`).expect(403);
+    await platform
+      .post(
+        `/api/v1/workspaces/${tenantCode}/object-definitions/${customerObject.id}/publications`,
+      )
+      .set('Origin', origin)
+      .send({ expectedVersion: customerObject.version })
+      .expect(403);
+
+    await tenantAdmin
+      .post(`/api/v1/workspaces/${tenantCode}/invitations`)
+      .set('Origin', origin)
+      .send({ phone: employeePhone, role: 'EMPLOYEE' })
+      .expect(201);
+    await acceptInvitation(employee, tenantId);
+
+    await tenantAdmin
+      .post(
+        `/api/v1/workspaces/${tenantCode}/object-definitions/${customerObject.id}/publications`,
+      )
+      .set('Origin', origin)
+      .send({ expectedVersion: customerObject.version })
+      .expect(201)
+      .expect((response) => {
+        expect(response.body).toMatchObject({
+          number: 1,
+          sourceDraftVersion: customerObject.version,
+        });
+      });
+
+    const navigation = await employee
+      .get(`/api/v1/workspaces/${tenantCode}/objects`)
+      .expect(200);
+    expect(navigation.body).toEqual([
+      expect.objectContaining({
+        code: 'customers',
+        canCreate: true,
+        canRead: true,
+      }),
+    ]);
+    const runtimeSchema = await employee
+      .get(`/api/v1/workspaces/${tenantCode}/objects/customers/schema`)
+      .expect(200);
+    expect(runtimeSchema.body).toMatchObject({
+      publication: { number: 1 },
+      scopes: { read: 'ALL', update: 'OWN' },
+      fields: [
+        { fieldKey: 'name', type: 'TEXT', required: true, access: 'EDIT' },
+        {
+          fieldKey: 'phone',
+          type: 'PHONE',
+          required: false,
+          access: 'READ_ONLY',
+        },
+      ],
+    });
+    await employee
+      .post(`/api/v1/workspaces/${tenantCode}/objects/customers/records`)
+      .set('Origin', origin)
+      .send({ values: { name: '模板运行时客户', phone: '13900000000' } })
+      .expect(403);
+    await employee
+      .post(`/api/v1/workspaces/${tenantCode}/objects/customers/records`)
+      .set('Origin', origin)
+      .send({ values: { name: '模板运行时客户' } })
+      .expect(201)
+      .expect((response) => {
+        expect(response.body).toMatchObject({
+          title: '模板运行时客户',
+          values: { name: '模板运行时客户' },
+        });
+      });
+    await expect(
+      adminDatabase.objectPublication.count({ where: { tenantId } }),
+    ).resolves.toBe(1);
+
+    const activeTenant = await platform
+      .post('/api/v1/platform/tenants')
+      .set('Origin', origin)
+      .send({
+        name: '非草稿模板公司',
+        code: activeTenantCode,
+        firstAdminPhone: tenantAdminPhone,
+      })
+      .expect(201);
+    const activeTenantId = stringProperty(activeTenant.body, 'id');
+    await acceptInvitation(tenantAdmin, activeTenantId);
+    await platform
+      .patch(`/api/v1/platform/tenants/${activeTenantId}/status`)
+      .set('Origin', origin)
+      .send({ status: 'ACTIVE' })
+      .expect(200);
+    await platform
+      .post(`/api/v1/platform/business-templates/${templateId}/applications`)
+      .set('Origin', origin)
+      .send({ tenantId: activeTenantId, templateVersionId })
+      .expect(409)
+      .expect((response) => {
+        expect(response.body).toMatchObject({
+          code: 'TEMPLATE_APPLICATION_NOT_ALLOWED',
+          message: '目标公司必须处于草稿状态。',
+          fieldErrors: {
+            application: ['目标公司必须处于草稿状态。'],
+          },
+        });
+      });
   });
 
   async function register(phone: string, displayName: string): Promise<Agent> {
@@ -290,6 +490,26 @@ describe('Business template HTTP workflow (e2e)', () => {
       })
       .expect(201);
     return agent;
+  }
+
+  async function acceptInvitation(agent: Agent, tenantId: string) {
+    const response = await agent.get('/api/v1/me/invitations').expect(200);
+    const body: unknown = response.body;
+    if (!isUnknownArray(body)) {
+      throw new Error('Expected invitation list');
+    }
+    const invitation = body.find(
+      (candidate: unknown) =>
+        typeof candidate === 'object' &&
+        candidate !== null &&
+        Reflect.get(candidate, 'tenantId') === tenantId &&
+        Reflect.get(candidate, 'status') === 'PENDING',
+    );
+    const invitationId = stringProperty(invitation, 'id');
+    await agent
+      .post(`/api/v1/me/invitations/${invitationId}/accept`)
+      .set('Origin', origin)
+      .expect(201);
   }
 });
 
@@ -354,10 +574,11 @@ function templateField(
 }
 
 async function cleanup(database: PrismaClient): Promise<void> {
-  const tenant = await database.tenant.findUnique({
-    where: { code: tenantCode },
+  const tenants = await database.tenant.findMany({
+    where: { code: { in: [tenantCode, activeTenantCode] } },
     select: { id: true },
   });
+  const tenantIds = tenants.map(({ id }) => id);
   const templates = await database.businessTemplate.findMany({
     where: { code: { in: [templateCode, invalidTemplateCode] } },
     select: { id: true },
@@ -365,41 +586,57 @@ async function cleanup(database: PrismaClient): Promise<void> {
   const users = await database.user.findMany({
     where: {
       phone: {
-        in: [platformPhone, regularPhone, tenantAdminPhone].map(normalized),
+        in: [platformPhone, regularPhone, tenantAdminPhone, employeePhone].map(
+          normalized,
+        ),
       },
     },
     select: { id: true },
   });
   const userIds = users.map(({ id }) => id);
 
-  if (tenant) {
-    await database.auditLog.deleteMany({ where: { tenantId: tenant.id } });
-    await database.fieldPermission.deleteMany({
-      where: { tenantId: tenant.id },
+  if (tenantIds.length > 0) {
+    await database.auditLog.deleteMany({
+      where: { tenantId: { in: tenantIds } },
     });
-    await database.objectPermission.deleteMany({
-      where: { tenantId: tenant.id },
+    await database.record.deleteMany({
+      where: { tenantId: { in: tenantIds } },
     });
-    await database.viewDefinition.deleteMany({
-      where: { tenantId: tenant.id },
-    });
-    await database.objectPublication.deleteMany({
-      where: { tenantId: tenant.id },
-    });
-    await database.fieldDefinition.deleteMany({
-      where: { tenantId: tenant.id },
-    });
-    await database.objectDefinition.deleteMany({
-      where: { tenantId: tenant.id },
+    await database.recordCounter.deleteMany({
+      where: { tenantId: { in: tenantIds } },
     });
     await database.businessTemplateApplication.deleteMany({
-      where: { tenantId: tenant.id },
+      where: { tenantId: { in: tenantIds } },
+    });
+    await database.objectDefinition.updateMany({
+      where: { tenantId: { in: tenantIds } },
+      data: { activePublicationId: null },
+    });
+    await database.fieldPermission.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await database.objectPermission.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await database.viewDefinition.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await database.objectPublication.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await database.fieldDefinition.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await database.objectDefinition.deleteMany({
+      where: { tenantId: { in: tenantIds } },
     });
     await database.tenantInvitation.deleteMany({
-      where: { tenantId: tenant.id },
+      where: { tenantId: { in: tenantIds } },
     });
-    await database.tenantMember.deleteMany({ where: { tenantId: tenant.id } });
-    await database.tenant.delete({ where: { id: tenant.id } });
+    await database.tenantMember.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await database.tenant.deleteMany({ where: { id: { in: tenantIds } } });
   }
   for (const template of templates) {
     await database.businessTemplate.update({
@@ -415,7 +652,9 @@ async function cleanup(database: PrismaClient): Promise<void> {
   await database.verificationChallenge.deleteMany({
     where: {
       phone: {
-        in: [platformPhone, regularPhone, tenantAdminPhone].map(normalized),
+        in: [platformPhone, regularPhone, tenantAdminPhone, employeePhone].map(
+          normalized,
+        ),
       },
     },
   });
@@ -442,6 +681,10 @@ function numberProperty(value: unknown, key: string): number {
 
 function normalized(phone: string): string {
   return `+86${phone}`;
+}
+
+function isUnknownArray(value: unknown): value is unknown[] {
+  return Array.isArray(value);
 }
 
 function requiredEnvironment(name: string): string {
