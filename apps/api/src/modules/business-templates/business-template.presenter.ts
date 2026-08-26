@@ -94,27 +94,25 @@ export function toTemplateSummary(
 
 export function toTemplateDetail(
   template: BusinessTemplateRecord,
+  versions: BusinessTemplateVersion[] = template.activeVersion
+    ? [template.activeVersion]
+    : [],
 ): TemplateDetail {
-  const publishedObjectById = new Map(
-    (template.activeVersion?.configuration.objects ?? []).map((object) => [
-      object.id,
-      object,
-    ]),
-  );
+  const { publishedObjectById, publishedFieldById } =
+    collectPublishedIdentities(versions);
   return {
     ...toTemplateSummary(template),
     configuration: {
       schemaVersion: 1,
       objects: template.configuration.objects.map((object) => {
         const publishedObject = publishedObjectById.get(object.id);
-        const publishedFieldById = new Map(
-          (publishedObject?.fields ?? []).map((field) => [field.id, field]),
-        );
         return {
           ...structuredClone(object),
           publishedCode: publishedObject?.code ?? null,
           fields: object.fields.map((field) => {
-            const publishedField = publishedFieldById.get(field.id);
+            const publishedField = publishedFieldById.get(
+              identityKey(object.id, field.id),
+            );
             return {
               ...structuredClone(field),
               publishedFieldKey: publishedField?.fieldKey ?? null,
@@ -125,4 +123,37 @@ export function toTemplateDetail(
       }),
     },
   };
+}
+
+function collectPublishedIdentities(versions: BusinessTemplateVersion[]) {
+  const publishedObjectById = new Map<
+    string,
+    BusinessTemplateConfiguration['objects'][number]
+  >();
+  const publishedFieldById = new Map<
+    string,
+    BusinessTemplateConfiguration['objects'][number]['fields'][number]
+  >();
+
+  for (const version of [...versions].sort(
+    (left, right) => left.versionNo - right.versionNo,
+  )) {
+    for (const object of version.configuration.objects) {
+      if (!publishedObjectById.has(object.id)) {
+        publishedObjectById.set(object.id, object);
+      }
+      for (const field of object.fields) {
+        const fieldIdentityKey = identityKey(object.id, field.id);
+        if (!publishedFieldById.has(fieldIdentityKey)) {
+          publishedFieldById.set(fieldIdentityKey, field);
+        }
+      }
+    }
+  }
+
+  return { publishedObjectById, publishedFieldById };
+}
+
+function identityKey(objectId: string, fieldId: string): string {
+  return `${objectId}:${fieldId}`;
 }

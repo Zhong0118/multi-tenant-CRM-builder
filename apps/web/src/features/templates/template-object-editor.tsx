@@ -16,9 +16,11 @@ import {
 } from "../objects/object-types";
 import {
   addField,
+  buildFieldEditorPatch,
   reorderFields,
   setDefaultView,
   setEmployeeAccess,
+  setFieldStatus,
   updateField,
   updateObject,
   type TemplateDraft,
@@ -77,24 +79,12 @@ export function TemplateObjectEditor({
   function saveField(values: FieldDraftValues) {
     if (!editingField) return;
     onChange(
-      updateField(draft, objectId, editingField.id, {
-        fieldKey: values.fieldKey.trim(),
-        label: values.label.trim(),
-        type: values.type,
-        required: values.required,
-        employeeAccess: values.employeeAccess,
-        validation: withoutUndefined({
-          minLength: values.minLength,
-          maxLength: values.maxLength,
-          min: values.min,
-          max: values.max,
-          scale: values.scale,
-        }),
-        config: withoutUndefined({
-          options: values.options.length > 0 ? values.options : undefined,
-          help: values.help.trim() || undefined,
-        }),
-      }),
+      updateField(
+        draft,
+        objectId,
+        editingField.id,
+        buildFieldEditorPatch(editingField, values),
+      ),
     );
     setEditingFieldId(undefined);
   }
@@ -150,7 +140,7 @@ export function TemplateObjectEditor({
               extra={
                 object.object.publishedCode
                   ? "该代码已进入发布版本，不能修改。"
-                  : "使用小写字母、数字和下划线；首次发布后锁定。"
+                  : "使用小写字母、数字和单个连字符；首次发布后锁定。"
               }
             >
               <Input
@@ -236,6 +226,16 @@ export function TemplateObjectEditor({
             titleFieldKey={object.object.titleFieldKey}
             onMove={moveField}
             onSelect={(field) => setEditingFieldId(field.id)}
+            onToggleStatus={(field) =>
+              onChange(
+                setFieldStatus(
+                  draft,
+                  objectId,
+                  field.id,
+                  field.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
+                ),
+              )
+            }
           />
         )}
       </section>
@@ -424,10 +424,4 @@ function ScopeSelect({
       )}
     />
   );
-}
-
-function withoutUndefined<T extends Record<string, unknown>>(input: T): T {
-  return Object.fromEntries(
-    Object.entries(input).filter(([, value]) => value !== undefined),
-  ) as T;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Table, Tag, Tooltip } from "antd";
+import { Button, Space, Table, Tag, Tooltip } from "antd";
 import type { ColumnsType } from "antd/es/table";
 
 import {
@@ -17,6 +17,7 @@ export interface FieldLedgerProps {
   titleFieldKey: string;
   onSelect: (field: ConfigurableFieldView) => void;
   onMove: (fieldId: string, direction: -1 | 1) => void;
+  onToggleStatus?: (field: ConfigurableFieldView) => void;
   reordering?: boolean;
 }
 
@@ -33,6 +34,7 @@ export function FieldLedger({
   titleFieldKey,
   onSelect,
   onMove,
+  onToggleStatus,
   reordering = false,
 }: FieldLedgerProps) {
   const columns: ColumnsType<ConfigurableFieldView> = [
@@ -129,17 +131,29 @@ export function FieldLedger({
     {
       title: "",
       key: "actions",
-      width: 72,
+      width: onToggleStatus ? 132 : 72,
       align: "right",
       render: (_, fieldRow) => (
-        <Button
-          type="link"
-          size="small"
-          aria-label={`配置字段 ${fieldRow.label}`}
-          onClick={() => onSelect(fieldRow)}
-        >
-          配置
-        </Button>
+        <Space size={2}>
+          {onToggleStatus ? (
+            <Button
+              type="link"
+              size="small"
+              aria-label={`${fieldRow.status === "ACTIVE" ? "停用" : "恢复"}字段 ${fieldRow.label}`}
+              onClick={() => onToggleStatus(fieldRow)}
+            >
+              {fieldRow.status === "ACTIVE" ? "停用" : "恢复"}
+            </Button>
+          ) : null}
+          <Button
+            type="link"
+            size="small"
+            aria-label={`配置字段 ${fieldRow.label}`}
+            onClick={() => onSelect(fieldRow)}
+          >
+            配置
+          </Button>
+        </Space>
       ),
     },
   ];

@@ -41,6 +41,9 @@ export interface TemplatePublicationAnalysis {
 export function analyzeTemplatePublication(
   input: BusinessTemplateConfiguration,
   previous: BusinessTemplateConfiguration | null,
+  publishedHistory: BusinessTemplateConfiguration[] = previous
+    ? [previous]
+    : [],
 ): TemplatePublicationAnalysis {
   const activeObjects = input.objects.filter(
     (object) => object.status === 'ACTIVE',
@@ -49,6 +52,21 @@ export function analyzeTemplatePublication(
   const previousObjectById = new Map(
     previousObjects.map((object) => [object.id, object]),
   );
+  const historicalObjectById = new Map<string, TemplateObjectConfiguration>();
+  const historicalFieldById = new Map<string, TemplateFieldConfiguration>();
+  for (const version of publishedHistory) {
+    for (const object of version.objects) {
+      if (!historicalObjectById.has(object.id)) {
+        historicalObjectById.set(object.id, object);
+      }
+      for (const field of object.fields) {
+        const fieldIdentityKey = identityKey(object.id, field.id);
+        if (!historicalFieldById.has(fieldIdentityKey)) {
+          historicalFieldById.set(fieldIdentityKey, field);
+        }
+      }
+    }
+  }
   const blocking: TemplatePublicationIssue[] = [];
   const warnings: TemplatePublicationIssue[] = [];
 
@@ -101,9 +119,9 @@ export function analyzeTemplatePublication(
       })),
     );
 
-    const previousObject = previousObjectById.get(object.id);
-    if (previousObject) {
-      if (object.code !== previousObject.code) {
+    const historicalObject = historicalObjectById.get(object.id);
+    if (historicalObject) {
+      if (object.code !== historicalObject.code) {
         blocking.push({
           code: 'TEMPLATE_OBJECT_IDENTITY_LOCKED',
           message: '已发布对象的业务对象代码不能修改。',
@@ -111,15 +129,14 @@ export function analyzeTemplatePublication(
         });
       }
 
-      const previousFieldById = new Map(
-        previousObject.fields.map((field) => [field.id, field]),
-      );
       for (const field of object.fields) {
-        const previousField = previousFieldById.get(field.id);
+        const historicalField = historicalFieldById.get(
+          identityKey(object.id, field.id),
+        );
         if (
-          previousField &&
-          (field.fieldKey !== previousField.fieldKey ||
-            field.type !== previousField.type)
+          historicalField &&
+          (field.fieldKey !== historicalField.fieldKey ||
+            field.type !== historicalField.type)
         ) {
           blocking.push({
             code: 'TEMPLATE_FIELD_IDENTITY_LOCKED',
@@ -311,4 +328,8 @@ function stableJson(value: unknown): string {
       .join(',')}}`;
   }
   return JSON.stringify(value);
+}
+
+function identityKey(objectId: string, fieldId: string): string {
+  return `${objectId}:${fieldId}`;
 }

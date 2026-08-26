@@ -106,7 +106,7 @@ export class BusinessTemplatesService {
     return this.repository.withActor(actor.id, async (store) => {
       const template = await store.findTemplate(templateId);
       if (!template) throw new ApiException('TEMPLATE_NOT_FOUND', 404);
-      return toTemplateDetail(template);
+      return toTemplateDetail(template, await store.listVersions(templateId));
     });
   }
 
@@ -133,7 +133,7 @@ export class BusinessTemplatesService {
         input.expectedVersion,
       );
       if (!saved) throw new ApiException('TEMPLATE_VERSION_CONFLICT', 409);
-      return toTemplateDetail(saved);
+      return toTemplateDetail(saved, await store.listVersions(templateId));
     });
   }
 
@@ -146,9 +146,13 @@ export class BusinessTemplatesService {
       const template = await store.findTemplate(templateId);
       if (!template) throw new ApiException('TEMPLATE_NOT_FOUND', 404);
       assertVersion(template.draftVersion, expectedVersion);
+      const versions = await store.listVersions(templateId);
       return analyzeTemplatePublication(
         template.configuration,
         template.activeVersion?.configuration ?? null,
+        versions
+          .sort((left, right) => left.versionNo - right.versionNo)
+          .map((version) => version.configuration),
       );
     });
   }
@@ -165,9 +169,13 @@ export class BusinessTemplatesService {
       const template = await store.findTemplate(templateId);
       if (!template) throw new ApiException('TEMPLATE_NOT_FOUND', 404);
       assertVersion(template.draftVersion, expectedVersion);
+      const versions = await store.listVersions(templateId);
       const analysis = analyzeTemplatePublication(
         template.configuration,
         template.activeVersion?.configuration ?? null,
+        versions
+          .sort((left, right) => left.versionNo - right.versionNo)
+          .map((version) => version.configuration),
       );
       if (analysis.blocking.length > 0) {
         throw new ApiException('TEMPLATE_PUBLICATION_BLOCKED', 409, {

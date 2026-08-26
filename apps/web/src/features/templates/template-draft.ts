@@ -10,6 +10,7 @@ import type {
   PublishedFieldType,
   RecordSortDirection,
   RecordSortField,
+  SelectOptionView,
 } from "../objects/object-types";
 import type {
   BusinessTemplateDetail,
@@ -45,6 +46,48 @@ export interface NewTemplateField {
   label?: string;
   type?: PublishedFieldType;
   required?: boolean;
+}
+
+export type EditableTemplateObjectPatch = Partial<
+  Pick<
+    TemplateObjectView["object"],
+    | "code"
+    | "name"
+    | "description"
+    | "icon"
+    | "titleFieldKey"
+    | "status"
+  >
+>;
+
+export type EditableTemplateFieldPatch = Partial<
+  Pick<
+    TemplateFieldView,
+    | "fieldKey"
+    | "label"
+    | "type"
+    | "required"
+    | "defaultValue"
+    | "validation"
+    | "config"
+    | "status"
+    | "employeeAccess"
+  >
+>;
+
+export interface TemplateFieldEditorValues {
+  fieldKey: string;
+  label: string;
+  type: PublishedFieldType;
+  required: boolean;
+  employeeAccess: PublishedFieldAccess;
+  options: SelectOptionView[];
+  help: string;
+  minLength?: number;
+  maxLength?: number;
+  min?: number;
+  max?: number;
+  scale?: number;
 }
 
 export function templateDraftFromDetail(
@@ -106,7 +149,7 @@ export function templateDraftFromDetail(
 export function emptyTemplateDraft(): TemplateDraft {
   return {
     schemaVersion: 1,
-    objects: [newObject({ id: "object-1", code: "object_1" }, 1)],
+    objects: [newObject({ id: "object-1", code: "object-1" }, 1)],
   };
 }
 
@@ -124,11 +167,22 @@ export function addObject(
 export function updateObject(
   draft: TemplateDraft,
   objectId: string,
-  patch: Partial<TemplateObjectView["object"]>,
+  patch: EditableTemplateObjectPatch,
 ): TemplateDraft {
   return mapObject(draft, objectId, (object) => ({
     ...object,
-    object: { ...object.object, ...patch },
+    object: {
+      ...object.object,
+      code: patch.code ?? object.object.code,
+      name: patch.name ?? object.object.name,
+      description:
+        patch.description !== undefined
+          ? patch.description
+          : object.object.description,
+      icon: patch.icon !== undefined ? patch.icon : object.object.icon,
+      titleFieldKey: patch.titleFieldKey ?? object.object.titleFieldKey,
+      status: patch.status ?? object.object.status,
+    },
   }));
 }
 
@@ -180,12 +234,26 @@ export function updateField(
   draft: TemplateDraft,
   objectId: string,
   fieldId: string,
-  patch: Partial<TemplateFieldView>,
+  patch: EditableTemplateFieldPatch,
 ): TemplateDraft {
   return mapObject(draft, objectId, (object) => {
     const current = object.fields.find((field) => field.id === fieldId);
     if (!current) return object;
-    const nextField = { ...current, ...patch };
+    const nextField: TemplateFieldView = {
+      ...current,
+      fieldKey: patch.fieldKey ?? current.fieldKey,
+      label: patch.label ?? current.label,
+      type: patch.type ?? current.type,
+      required: patch.required ?? current.required,
+      defaultValue:
+        patch.defaultValue !== undefined
+          ? patch.defaultValue
+          : current.defaultValue,
+      validation: patch.validation ?? current.validation,
+      config: patch.config ?? current.config,
+      status: patch.status ?? current.status,
+      employeeAccess: patch.employeeAccess ?? current.employeeAccess,
+    };
     const oldKey = current.fieldKey;
     const newKey = nextField.fieldKey;
     return {
@@ -210,6 +278,76 @@ export function updateField(
         : null,
     };
   });
+}
+
+export function setFieldStatus(
+  draft: TemplateDraft,
+  objectId: string,
+  fieldId: string,
+  status: "ACTIVE" | "INACTIVE",
+): TemplateDraft {
+  return mapObject(draft, objectId, (object) => {
+    const field = object.fields.find((item) => item.id === fieldId);
+    if (!field) return object;
+    return {
+      ...object,
+      object: {
+        ...object.object,
+        titleFieldKey:
+          status === "INACTIVE" && object.object.titleFieldKey === field.fieldKey
+            ? ""
+            : object.object.titleFieldKey,
+      },
+      fields: object.fields.map((item) =>
+        item.id === fieldId ? { ...item, status } : item,
+      ),
+      defaultView:
+        status === "INACTIVE" && object.defaultView
+          ? {
+              ...object.defaultView,
+              columnFieldKeys: object.defaultView.columnFieldKeys.filter(
+                (fieldKey) => fieldKey !== field.fieldKey,
+              ),
+            }
+          : object.defaultView,
+    };
+  });
+}
+
+export function buildFieldEditorPatch(
+  field: TemplateFieldView,
+  values: TemplateFieldEditorValues,
+): EditableTemplateFieldPatch {
+  const allowedValidationKeys = VALIDATION_KEYS_BY_TYPE[values.type] ?? [];
+  const currentValidation = field.validation as Record<string, unknown>;
+  const validation: Record<string, unknown> = {};
+  for (const key of allowedValidationKeys) {
+    const managedValue = managedValidationValue(values, key);
+    if (managedValue !== undefined) {
+      validation[key] = managedValue;
+    } else if (key === "country" && currentValidation[key] !== undefined) {
+      validation[key] = currentValidation[key];
+    }
+  }
+
+  const config = { ...(field.config as Record<string, unknown>) };
+  if (values.type === "SINGLE_SELECT" || values.type === "MULTI_SELECT") {
+    config.options = values.options;
+  } else {
+    delete config.options;
+  }
+  if (values.help.trim()) config.help = values.help.trim();
+  else delete config.help;
+
+  return {
+    fieldKey: values.fieldKey.trim(),
+    label: values.label.trim(),
+    type: values.type,
+    required: values.required,
+    employeeAccess: values.employeeAccess,
+    validation: validation as FieldValidationView,
+    config: config as FieldConfigView,
+  };
 }
 
 export function reorderObjects(
@@ -350,7 +488,7 @@ function newObject(
   return {
     object: {
       id: input.id ?? newStableId(),
-      code: input.code ?? `object_${sortOrder}`,
+      code: input.code ?? `object-${sortOrder}`,
       name: input.name ?? "新业务对象",
       description: null,
       icon: null,
@@ -407,4 +545,26 @@ function orderByIds<T>(
 
 function newStableId(): string {
   return globalThis.crypto.randomUUID();
+}
+
+const VALIDATION_KEYS_BY_TYPE: Partial<
+  Record<PublishedFieldType, readonly string[]>
+> = {
+  TEXT: ["minLength", "maxLength"],
+  TEXTAREA: ["minLength", "maxLength"],
+  PHONE: ["minLength", "maxLength", "country"],
+  NUMBER: ["min", "max", "scale"],
+  MONEY: ["min", "max", "scale"],
+};
+
+function managedValidationValue(
+  values: TemplateFieldEditorValues,
+  key: string,
+): number | undefined {
+  if (key === "minLength") return values.minLength;
+  if (key === "maxLength") return values.maxLength;
+  if (key === "min") return values.min;
+  if (key === "max") return values.max;
+  if (key === "scale") return values.scale;
+  return undefined;
 }

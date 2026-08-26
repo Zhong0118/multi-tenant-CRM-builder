@@ -151,4 +151,34 @@ describe('business template publication policy', () => {
       fieldKey: 'name',
     });
   });
+
+  it('locks identities from an older version after the active version inactivated them', () => {
+    const firstVersion = validTemplate();
+    const activeVersion = structuredClone(firstVersion);
+    activeVersion.objects = activeVersion.objects.slice(1);
+    const restored = structuredClone(firstVersion);
+    restored.objects[0].code = 'renamed-leads';
+    restored.objects[0].fields[0].fieldKey = 'renamed-name';
+
+    expect(
+      analyzeTemplatePublication(restored, activeVersion, [
+        firstVersion,
+        activeVersion,
+      ]).blocking,
+    ).toEqual(
+      expect.arrayContaining([
+        {
+          code: 'TEMPLATE_OBJECT_IDENTITY_LOCKED',
+          message: '已发布对象的业务对象代码不能修改。',
+          objectId: restored.objects[0].id,
+        },
+        {
+          code: 'TEMPLATE_FIELD_IDENTITY_LOCKED',
+          message: '已发布字段的字段键和类型不能修改。',
+          objectId: restored.objects[0].id,
+          fieldKey: 'renamed-name',
+        },
+      ]),
+    );
+  });
 });

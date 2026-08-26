@@ -190,8 +190,10 @@ function groupIssues(issues: Issue[], draft: TemplateDraft): IssueGroup[] {
   return [...grouped.entries()].map(([objectId, objectIssues]) => ({
     objectId,
     objectName:
-      draft.objects.find((item) => item.object.id === objectId)?.object.name ??
-      "未知业务对象",
+      objectId === ""
+        ? "模板"
+        : draft.objects.find((item) => item.object.id === objectId)?.object.name ??
+          "未知业务对象",
     issues: objectIssues,
   }));
 }

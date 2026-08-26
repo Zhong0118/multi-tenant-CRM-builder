@@ -3,7 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Tag, Typography } from "antd";
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { toApiError } from "@/lib/api/api-error";
 
@@ -38,7 +38,10 @@ export function TemplateEditor({
 }: TemplateEditorProps) {
   const queryClient = useQueryClient();
   const [template, setTemplate] = useState(initialTemplate);
-  const [draft, setDraft] = useState(() => templateDraftFromDetail(initialTemplate));
+  const initialDraft = templateDraftFromDetail(initialTemplate);
+  const [draft, setDraft] = useState(initialDraft);
+  const draftRef = useRef(initialDraft);
+  const localRevision = useRef(0);
   const [versions, setVersions] = useState(initialVersions);
   const [activeObjectId, setActiveObjectId] = useState<string | undefined>(
     initialTemplate.configuration.objects[0]?.id,
@@ -51,10 +54,16 @@ export function TemplateEditor({
   const [analysis, setAnalysis] = useState<TemplatePublicationAnalysis>();
   const [error, setError] = useState<string>();
   const [panelError, setPanelError] = useState<string>();
+  const [refreshError, setRefreshError] = useState<string>();
+  const [refreshing, setRefreshing] = useState(false);
+  const [publicationRefreshRequired, setPublicationRefreshRequired] =
+    useState(false);
 
   const archived = template.status === "ARCHIVED";
 
   function changeDraft(next: TemplateDraft) {
+    localRevision.current += 1;
+    draftRef.current = next;
     setDraft(next);
     setDirty(true);
     setError(undefined);
@@ -78,6 +87,8 @@ export function TemplateEditor({
   }
 
   async function saveDraft() {
+    const savingRevision = localRevision.current;
+    const savingDraft = draftRef.current;
     setSaving(true);
     setError(undefined);
     try {
@@ -85,17 +96,29 @@ export function TemplateEditor({
         expectedVersion: template.draftVersion,
         name: template.name,
         description: template.description,
-        configuration: toTemplateConfiguration(draft),
+        configuration: toTemplateConfiguration(savingDraft),
       });
-      const nextDraft = templateDraftFromDetail(saved);
-      setTemplate(saved);
-      setDraft(nextDraft);
-      setDirty(false);
-      setActiveObjectId((current) =>
-        nextDraft.objects.some((item) => item.object.id === current)
-          ? current
-          : nextDraft.objects[0]?.object.id,
-      );
+      if (localRevision.current === savingRevision) {
+        const nextDraft = templateDraftFromDetail(saved);
+        draftRef.current = nextDraft;
+        setTemplate(saved);
+        setDraft(nextDraft);
+        setDirty(false);
+        setActiveObjectId((current) =>
+          nextDraft.objects.some((item) => item.object.id === current)
+            ? current
+            : nextDraft.objects[0]?.object.id,
+        );
+      } else {
+        setTemplate((current) => ({
+          ...current,
+          draftVersion: saved.draftVersion,
+          updatedAt: saved.updatedAt,
+          hasUnpublishedChanges: saved.hasUnpublishedChanges,
+          status: saved.status,
+        }));
+        setDirty(true);
+      }
       void queryClient.invalidateQueries({
         queryKey: ["platform", "business-templates"],
         exact: false,
@@ -130,31 +153,52 @@ export function TemplateEditor({
     setPanelError(undefined);
     try {
       await api.publish(template.id, template.draftVersion);
+      setPanelOpen(false);
+      setAnalysis(undefined);
+      setPublicationRefreshRequired(true);
+    } catch (caught) {
+      const apiError = toApiError(caught);
+      setPanelError(`${apiError.message}（请求编号：${apiError.requestId}）`);
+      return;
+    } finally {
+      setPublishing(false);
+    }
+    await refreshPublishedTemplate();
+  }
+
+  async function refreshPublishedTemplate() {
+    const refreshRevision = localRevision.current;
+    setRefreshing(true);
+    setRefreshError(undefined);
+    try {
       const [refreshedTemplate, refreshedVersions] = await Promise.all([
         api.detail(template.id),
         api.listVersions(template.id),
       ]);
-      const refreshedDraft = templateDraftFromDetail(refreshedTemplate);
       setTemplate(refreshedTemplate);
       setVersions(refreshedVersions);
-      setDraft(refreshedDraft);
-      setDirty(false);
-      setActiveObjectId((current) =>
-        refreshedDraft.objects.some((item) => item.object.id === current)
-          ? current
-          : refreshedDraft.objects[0]?.object.id,
-      );
-      setPanelOpen(false);
-      setAnalysis(undefined);
+      if (localRevision.current === refreshRevision) {
+        const refreshedDraft = templateDraftFromDetail(refreshedTemplate);
+        draftRef.current = refreshedDraft;
+        setDraft(refreshedDraft);
+        setDirty(false);
+        setActiveObjectId((current) =>
+          refreshedDraft.objects.some((item) => item.object.id === current)
+            ? current
+            : refreshedDraft.objects[0]?.object.id,
+        );
+      }
+      setPublicationRefreshRequired(false);
       void queryClient.invalidateQueries({
         queryKey: ["platform", "business-templates"],
         exact: false,
       });
     } catch (caught) {
       const apiError = toApiError(caught);
-      setPanelError(`${apiError.message}（请求编号：${apiError.requestId}）`);
+      setRefreshError(`${apiError.message}（请求编号：${apiError.requestId}）`);
+      setPublicationRefreshRequired(true);
     } finally {
-      setPublishing(false);
+      setRefreshing(false);
     }
   }
 
@@ -188,12 +232,23 @@ export function TemplateEditor({
           </div>
         </div>
         <div className={styles.editorActions}>
-          <Button disabled={!dirty || archived} loading={saving} onClick={saveDraft}>
+          <Button
+            aria-label="保存草稿"
+            disabled={!dirty || archived}
+            loading={saving}
+            onClick={saveDraft}
+          >
             保存草稿
           </Button>
           <Button
             type="primary"
-            disabled={dirty || archived || draft.objects.length === 0}
+            aria-label="发布模板"
+            disabled={
+              dirty ||
+              archived ||
+              publicationRefreshRequired ||
+              !template.hasUnpublishedChanges
+            }
             loading={analyzing}
             onClick={openPublicationPanel}
           >
@@ -208,6 +263,22 @@ export function TemplateEditor({
           showIcon
           title="草稿未保存，本地编辑仍然保留"
           description={error}
+        />
+      ) : null}
+
+      {refreshError ? (
+        <Alert
+          type="warning"
+          showIcon
+          title="模板已发布，但页面刷新失败"
+          description={
+            <div>
+              <p>{refreshError}</p>
+              <Button loading={refreshing} onClick={refreshPublishedTemplate}>
+                重试刷新
+              </Button>
+            </div>
+          }
         />
       ) : null}
 

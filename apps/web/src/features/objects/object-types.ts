@@ -46,6 +46,7 @@ export interface PublishedFieldView {
 export interface FieldValidationView {
   minLength?: number;
   maxLength?: number;
+  country?: string;
   min?: number;
   max?: number;
   scale?: number;

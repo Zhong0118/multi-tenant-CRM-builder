@@ -167,6 +167,52 @@ describe('BusinessTemplatesService', () => {
       ],
     });
   });
+
+  it('keeps historical identities locked after inactivation and restoration', async () => {
+    const { service } = publishedFixture();
+    await service.publish(platformAdmin, 'template-1', 2, meta);
+
+    const inactivated = validTemplateConfiguration();
+    inactivated.objects[0].status = 'INACTIVE';
+    await service.saveDraft(
+      platformAdmin,
+      'template-1',
+      {
+        expectedVersion: 2,
+        name: '销售模板',
+        description: null,
+        configuration: inactivated,
+      },
+      meta,
+    );
+    await service.publish(platformAdmin, 'template-1', 3, meta);
+
+    const restored = validTemplateConfiguration();
+    restored.objects[0].code = 'renamed-leads';
+    restored.objects[0].fields[0].fieldKey = 'renamed-name';
+    await service.saveDraft(
+      platformAdmin,
+      'template-1',
+      {
+        expectedVersion: 3,
+        name: '销售模板',
+        description: null,
+        configuration: restored,
+      },
+      meta,
+    );
+
+    const detail = await service.detail(platformAdmin, 'template-1');
+    expect(detail.configuration.objects[0]).toMatchObject({
+      publishedCode: 'leads',
+      fields: [
+        { publishedFieldKey: 'name', publishedType: 'TEXT' },
+      ],
+    });
+    await expect(
+      service.publish(platformAdmin, 'template-1', 4, meta),
+    ).rejects.toMatchObject({ code: 'TEMPLATE_PUBLICATION_BLOCKED' });
+  });
 });
 
 async function rejected(promise: Promise<unknown>): Promise<unknown> {

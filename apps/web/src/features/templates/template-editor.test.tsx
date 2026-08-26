@@ -4,8 +4,13 @@ import { describe, expect, it, vi } from "vitest";
 
 import { templateApi, type TemplateApi } from "./template-api";
 import {
+  addObject,
   addField,
+  buildFieldEditorPatch,
   emptyTemplateDraft,
+  templateDraftFromDetail,
+  updateField,
+  updateObject,
   toTemplateConfiguration,
 } from "./template-draft";
 import { TemplateEditor } from "./template-editor";
@@ -185,6 +190,87 @@ describe("template draft aggregate", () => {
       "employeeAccess",
     );
   });
+
+  it("creates globally valid hyphenated object codes", () => {
+    const next = addObject(emptyTemplateDraft());
+
+    expect(next.objects.map((object) => object.object.code)).toEqual([
+      "object-1",
+      "object-2",
+    ]);
+  });
+
+  it("ignores protected identity and ordering keys in editable patches", () => {
+    const draft = templateDraftFromFixture();
+    const object = draft.objects[0]!;
+    const field = object.fields[0]!;
+    const changedObject = updateObject(draft, object.object.id, {
+      name: "更名客户",
+      id: "replaced-object",
+      sortOrder: 99,
+      publishedCode: null,
+    } as never);
+    const changedField = updateField(
+      changedObject,
+      object.object.id,
+      field.id,
+      {
+        label: "更名字段",
+        id: "replaced-field",
+        sortOrder: 99,
+        publishedFieldKey: null,
+        publishedType: null,
+      } as never,
+    );
+
+    expect(changedField.objects[0]?.object).toMatchObject({
+      id: object.object.id,
+      name: "更名客户",
+      sortOrder: 1,
+      publishedCode: "customers",
+    });
+    expect(changedField.objects[0]?.fields[0]).toMatchObject({
+      id: field.id,
+      label: "更名字段",
+      sortOrder: 1,
+      publishedFieldKey: "name",
+      publishedType: "TEXT",
+    });
+  });
+
+  it("preserves legal unmanaged field settings and removes type-incompatible settings", () => {
+    const phone = {
+      ...templateDraftFromFixture().objects[0]!.fields[0]!,
+      type: "PHONE" as const,
+      validation: { country: "CN", minLength: 8 },
+      config: { placeholder: "请输入手机号", help: "旧说明" },
+    };
+    const preserved = buildFieldEditorPatch(phone, editorValues({ type: "PHONE" }));
+    const cleaned = buildFieldEditorPatch(
+      {
+        ...phone,
+        type: "NUMBER",
+        validation: { min: 1, max: 99, scale: 2 },
+        config: {
+          placeholder: "请输入数字",
+          options: [{ key: "legacy", label: "遗留", status: "ACTIVE" }],
+        },
+      },
+      editorValues({ type: "TEXT", minLength: 2 }),
+    );
+
+    expect(preserved).toMatchObject({
+      validation: { country: "CN" },
+      config: { placeholder: "请输入手机号" },
+    });
+    expect(cleaned).toMatchObject({
+      type: "TEXT",
+      validation: { minLength: 2 },
+      config: { placeholder: "请输入数字" },
+    });
+    expect(cleaned.validation).not.toHaveProperty("min");
+    expect(cleaned.config).not.toHaveProperty("options");
+  });
 });
 
 describe("TemplateEditor save and publication flow", () => {
@@ -242,6 +328,119 @@ describe("TemplateEditor save and publication flow", () => {
     expect(screen.getByText("有未保存变更")).toBeInTheDocument();
   });
 
+  it("does not let an older save response overwrite edits made while saving", async () => {
+    const pendingSave = deferred<BusinessTemplateDetail>();
+    const api = editorApi({ saveDraft: vi.fn(() => pendingSave.promise) });
+    renderEditor(detail(), api);
+    const name = screen.getByLabelText("对象名称");
+
+    fireEvent.change(name, { target: { value: "客户 A" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
+    fireEvent.change(name, { target: { value: "客户 B" } });
+    pendingSave.resolve(
+      detail({
+        draftVersion: 4,
+        configuration: {
+          ...detail().configuration,
+          objects: [
+            { ...detail().configuration.objects[0]!, name: "客户 A" },
+          ],
+        },
+      }),
+    );
+
+    await waitFor(() => expect(screen.getByLabelText("对象名称")).toHaveValue("客户 B"));
+    expect(screen.getByText("有未保存变更")).toBeInTheDocument();
+
+    const saveButton = screen.getByRole("button", { name: "保存草稿" });
+    await waitFor(() => expect(saveButton).not.toHaveClass("ant-btn-loading"));
+    fireEvent.click(saveButton);
+    await waitFor(() =>
+      expect(api.saveDraft).toHaveBeenLastCalledWith(
+        detail().id,
+        expect.objectContaining({
+          expectedVersion: 4,
+          configuration: expect.objectContaining({
+            objects: [expect.objectContaining({ name: "客户 B" })],
+          }),
+        }),
+      ),
+    );
+  });
+
+  it("closes a committed publication and retries only the failed refresh", async () => {
+    const api = editorApi({
+      detail: vi
+        .fn()
+        .mockRejectedValueOnce({
+          code: "INTERNAL_ERROR",
+          message: "详情刷新失败。",
+          fieldErrors: {},
+          requestId: "req_refresh_failed",
+          status: 500,
+        })
+        .mockResolvedValueOnce(
+          detail({ hasUnpublishedChanges: false, status: "PUBLISHED" }),
+        ),
+    });
+    renderEditor(detail(), api);
+
+    fireEvent.click(screen.getByRole("button", { name: "发布模板" }));
+    const panel = await screen.findByRole("dialog", { name: "发布模板" });
+    fireEvent.click(await within(panel).findByRole("button", { name: "确认发布" }));
+
+    expect(
+      await screen.findByText("模板已发布，但页面刷新失败"),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "发布模板" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "发布模板" })).toBeDisabled();
+    expect(api.publish).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "重试刷新" }));
+    await waitFor(() => expect(api.detail).toHaveBeenCalledTimes(2));
+    expect(api.publish).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets the template wrapper inactivate and restore a field", () => {
+    renderEditor();
+
+    fireEvent.click(screen.getByRole("button", { name: "停用字段 客户名称" }));
+    expect(screen.getByRole("button", { name: "恢复字段 客户名称" })).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "字段账本" })).toHaveTextContent("已停用");
+  });
+
+  it("allows an empty template to receive a template-level publication blocker", async () => {
+    const empty = detail({
+      activeVersion: null,
+      status: "DRAFT",
+      configuration: { schemaVersion: 1, objects: [] },
+      objectCount: 0,
+      fieldCount: 0,
+    });
+    const api = editorApi({
+      analyzePublication: vi.fn().mockResolvedValue(
+        analysis({
+          blocking: [
+            {
+              code: "TEMPLATE_OBJECT_REQUIRED",
+              message: "模板至少需要一个启用的业务对象。",
+              objectId: "",
+            },
+          ],
+          changes: [],
+          objectCount: 0,
+          fieldCount: 0,
+        }),
+      ),
+    });
+    renderEditor(empty, api, []);
+
+    fireEvent.click(screen.getByRole("button", { name: "发布模板" }));
+    const panel = await screen.findByRole("dialog", { name: "发布模板" });
+    expect(await within(panel).findByText("模板")).toBeInTheDocument();
+    expect(within(panel).queryByText("未知业务对象")).not.toBeInTheDocument();
+  });
+
   it("groups blockers by object before publishing and refreshes detail and history", async () => {
     const api = editorApi({
       analyzePublication: vi.fn().mockResolvedValue(
@@ -295,3 +494,30 @@ describe("TemplateEditor save and publication flow", () => {
     expect(await screen.findByText("v2 当前发布身份")).toBeInTheDocument();
   });
 });
+
+function templateDraftFromFixture() {
+  return templateDraftFromDetail(detail());
+}
+
+function editorValues(overrides: Record<string, unknown> = {}) {
+  return {
+    fieldKey: "name",
+    label: "名称",
+    type: "PHONE" as const,
+    required: false,
+    employeeAccess: "EDIT" as const,
+    options: [],
+    help: "",
+    ...overrides,
+  } as never;
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
