@@ -401,6 +401,51 @@ describe("TemplateEditor save and publication flow", () => {
     expect(api.publish).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps edits made before a publication refresh retry", async () => {
+    const api = editorApi({
+      detail: vi
+        .fn()
+        .mockRejectedValueOnce({
+          code: "INTERNAL_ERROR",
+          message: "详情刷新失败。",
+          fieldErrors: {},
+          requestId: "req_refresh_failed_after_publish",
+          status: 500,
+        })
+        .mockResolvedValueOnce(
+          detail({
+            hasUnpublishedChanges: false,
+            status: "PUBLISHED",
+            activeVersion: {
+              id: version(2).id,
+              versionNo: 2,
+              sourceDraftVersion: 3,
+              publishedAt: version(2).publishedAt,
+            },
+          }),
+        ),
+    });
+    renderEditor(detail(), api);
+
+    fireEvent.click(screen.getByRole("button", { name: "发布模板" }));
+    const panel = await screen.findByRole("dialog", { name: "发布模板" });
+    fireEvent.click(await within(panel).findByRole("button", { name: "确认发布" }));
+    expect(
+      await screen.findByText("模板已发布，但页面刷新失败"),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("对象名称"), {
+      target: { value: "刷新失败后的本地客户" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "重试刷新" }));
+
+    expect(await screen.findByText("v2 当前发布身份")).toBeInTheDocument();
+    expect(screen.getByLabelText("对象名称")).toHaveValue(
+      "刷新失败后的本地客户",
+    );
+    expect(screen.getByText("有未保存变更")).toBeInTheDocument();
+  });
+
   it("lets the template wrapper inactivate and restore a field", () => {
     renderEditor();
 

@@ -137,3 +137,31 @@ was run. API DTO/OpenAPI shapes did not change.
   detail and draft-save responses; pagination/caching may be warranted only if
   templates accumulate unusually large version histories.
 - Live browser acceptance remains part of Task 9.
+
+## Fix Round 2 — Remaining Important findings
+
+### Delivered
+
+1. Publication refresh now captures both the local revision and whether the
+   aggregate was already dirty when refresh began. Server detail replaces the
+   draft only when refresh started clean and the revision stays unchanged. A
+   retry after local editing still refreshes template/version facts while
+   preserving the local aggregate and unsaved state.
+2. Shared object compilation now projects `employeeAccess.fields` from active
+   fields only. The draft permission map remains unchanged so an inactive field
+   can recover its prior permission when restored, while published template and
+   tenant snapshots cannot retain permissions for absent fields.
+
+### Focused verification
+
+```text
+Web template-editor Vitest:                  1 file passed, 12 tests passed
+API object configuration/publication Jest:  2 suites passed, 12 tests passed
+Web typecheck:                               tsc --noEmit, exit 0
+API typecheck:                               tsc --noEmit, exit 0
+```
+
+Both regressions were observed RED before implementation: refresh retry
+replaced the local object name with the server value, and the compiled snapshot
+still contained the inactive `email` permission. No full suite, smoke, lint,
+contracts, or deferred Minor work was run.

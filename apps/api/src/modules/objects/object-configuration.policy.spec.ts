@@ -1,5 +1,6 @@
 import {
   analyzeObjectConfiguration,
+  compileObjectConfiguration,
   type ObjectConfigurationDraft,
 } from './object-configuration.policy';
 
@@ -80,6 +81,27 @@ describe('object configuration policy', () => {
       code: 'FIELD_VALIDATION_INCOMPATIBLE',
       message: '字段校验配置与字段类型不匹配。',
       fieldKey: 'name',
+    });
+  });
+
+  it('omits inactive field permissions from the compiled snapshot while retaining the draft permission', () => {
+    const input = validObjectConfiguration();
+    input.fields[1].status = 'INACTIVE';
+    input.defaultView!.columnFieldKeys = ['name'];
+    if (!input.defaultView || !input.employeeAccess) {
+      throw new Error('Expected a complete object configuration fixture');
+    }
+
+    const snapshot = compileObjectConfiguration({
+      ...input,
+      defaultView: input.defaultView,
+      employeeAccess: input.employeeAccess,
+    });
+
+    expect(snapshot.employeeAccess.fields).toEqual({ name: 'EDIT' });
+    expect(input.employeeAccess.fields).toEqual({
+      name: 'EDIT',
+      email: 'READ_ONLY',
     });
   });
 });

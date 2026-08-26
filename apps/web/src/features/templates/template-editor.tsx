@@ -168,6 +168,7 @@ export function TemplateEditor({
 
   async function refreshPublishedTemplate() {
     const refreshRevision = localRevision.current;
+    const wasDirtyAtRefreshStart = dirty;
     setRefreshing(true);
     setRefreshError(undefined);
     try {
@@ -177,7 +178,10 @@ export function TemplateEditor({
       ]);
       setTemplate(refreshedTemplate);
       setVersions(refreshedVersions);
-      if (localRevision.current === refreshRevision) {
+      if (
+        !wasDirtyAtRefreshStart &&
+        localRevision.current === refreshRevision
+      ) {
         const refreshedDraft = templateDraftFromDetail(refreshedTemplate);
         draftRef.current = refreshedDraft;
         setDraft(refreshedDraft);

@@ -162,6 +162,9 @@ export function analyzeObjectConfiguration(
 export function compileObjectConfiguration(
   input: CompleteObjectConfigurationDraft,
 ): ObjectConfigurationSnapshot {
+  const activeFields = input.fields.filter(
+    (field) => field.status === 'ACTIVE',
+  );
   return {
     object: {
       id: input.object.id,
@@ -172,8 +175,7 @@ export function compileObjectConfiguration(
       icon: input.object.icon,
       sortOrder: input.object.sortOrder,
     },
-    fields: input.fields
-      .filter((field) => field.status === 'ACTIVE')
+    fields: activeFields
       .sort(
         (left, right) =>
           left.sortOrder - right.sortOrder ||
@@ -193,7 +195,12 @@ export function compileObjectConfiguration(
       canDelete: false,
       readScope: input.employeeAccess.readScope,
       updateScope: input.employeeAccess.updateScope,
-      fields: { ...input.employeeAccess.fields },
+      fields: Object.fromEntries(
+        activeFields.map((field) => [
+          field.fieldKey,
+          input.employeeAccess.fields[field.fieldKey],
+        ]),
+      ),
     },
   };
 }
