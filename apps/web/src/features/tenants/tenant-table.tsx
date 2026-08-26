@@ -7,17 +7,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import styles from "./tenants.module.css";
+import { TenantStatusTag } from "./tenant-status";
 
 type PlatformTenant = components["schemas"]["PlatformTenantResponseDto"];
 export type PlatformTenantPage =
   components["schemas"]["PlatformTenantPageResponseDto"];
-
-const statusText = {
-  DRAFT: "草稿",
-  ACTIVE: "运行中",
-  SUSPENDED: "已暂停",
-  CLOSED: "已关闭",
-} as const;
 
 const columns: ColumnsType<PlatformTenant> = [
   {
@@ -37,7 +31,9 @@ const columns: ColumnsType<PlatformTenant> = [
   {
     title: "状态",
     dataIndex: "status",
-    render: (status: PlatformTenant["status"]) => statusText[status],
+    render: (status: PlatformTenant["status"]) => (
+      <TenantStatusTag status={status} />
+    ),
   },
   { title: "活跃管理员", dataIndex: "activeAdminCount" },
   {

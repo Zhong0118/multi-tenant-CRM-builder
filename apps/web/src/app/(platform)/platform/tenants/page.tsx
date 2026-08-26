@@ -44,6 +44,7 @@ export default async function TenantsPage({ searchParams }: TenantsPageProps) {
           <p className={styles.intro}>
             创建第一家公司草稿，并邀请首位公司管理员。
           </p>
+          {extra}
         </section>
       )}
     </div>

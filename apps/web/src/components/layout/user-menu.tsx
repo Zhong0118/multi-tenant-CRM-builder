@@ -28,9 +28,9 @@ export function UserMenu({
       disabled: true,
       label: (
         <div className={styles.userMeta}>
-          <div>{user.displayName}</div>
-          <div>{maskPhone(user.phone)}</div>
-          <div>{roleLabel}</div>
+          <div className={styles.userName}>{user.displayName}</div>
+          <div className={styles.userPhone}>{maskPhone(user.phone)}</div>
+          <div className={styles.userRole}>{roleLabel}</div>
         </div>
       ),
     },
@@ -63,7 +63,10 @@ export function UserMenu({
         <span className={styles.avatar} aria-hidden>
           {avatar}
         </span>
-        {roleLabel}
+        <span className={styles.userTrigger}>
+          <span className={styles.userName}>{user.displayName}</span>
+          <span className={styles.userRole}>{roleLabel}</span>
+        </span>
       </button>
     </Dropdown>
   );

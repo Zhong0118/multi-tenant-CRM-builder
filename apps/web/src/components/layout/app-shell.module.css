@@ -17,13 +17,40 @@
   flex-basis: 64px;
 }
 
+.sidebarCollapsed .brand {
+  justify-content: center;
+  padding: 0;
+}
+
 .brand {
   height: 64px;
   display: flex;
   align-items: center;
+  gap: 10px;
   padding: 0 16px;
-  font-weight: 600;
   color: var(--text-primary);
+}
+
+.brandMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border-radius: 6px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.brandName {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .nav {
@@ -40,6 +67,20 @@
   margin-bottom: 4px;
   border-radius: 6px;
   color: #334155;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+
+.navIcon {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-size: 16px;
 }
 
 .navItem:hover {
@@ -47,9 +88,42 @@
   color: var(--text-primary);
 }
 
+.navItem:hover .navIcon {
+  color: var(--text-primary);
+}
+
 .navItemCurrent {
   background: var(--bg-selected);
   color: #1d4ed8;
+  font-weight: 500;
+}
+
+.navItemCurrent .navIcon {
+  color: var(--color-primary);
+}
+
+.breadcrumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.breadcrumb a {
+  color: var(--text-secondary);
+}
+
+.breadcrumb a:hover {
+  color: var(--text-primary);
+}
+
+.breadcrumbSep {
+  color: var(--text-disabled);
+}
+
+.breadcrumbCurrent {
+  color: var(--text-primary);
   font-weight: 500;
 }
 
@@ -154,12 +228,20 @@
   background: var(--bg-hover);
 }
 
+.userTrigger {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.25;
+  text-align: left;
+}
+
 .avatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--color-primary-soft);
   color: var(--color-primary);
@@ -168,6 +250,17 @@
 
 .userMeta {
   line-height: 1.5;
+}
+
+.userName {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.userPhone,
+.userRole {
+  color: var(--text-secondary);
+  font-size: 12px;
 }
 
 .emptyLabel {

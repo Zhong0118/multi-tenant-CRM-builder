@@ -1,29 +1,19 @@
-import { Tag } from "antd";
-
 import { PageHeader } from "@/components/layout/page-header";
 import { TenantStatusActions } from "@/features/tenants/tenant-status-actions";
+import {
+  TenantStatusTag,
+  tenantStatusText,
+} from "@/features/tenants/tenant-status";
 import styles from "@/features/tenants/tenants.module.css";
 import { toApiError } from "@/lib/api/api-error";
 import { createServerApiClient } from "@/lib/api/server-client";
 
-const tenantStatusText = {
-  DRAFT: "草稿",
-  ACTIVE: "运行中",
-  SUSPENDED: "已暂停",
-  CLOSED: "已关闭",
-} as const;
 const invitationStatusText = {
   PENDING: "等待接受",
   ACCEPTED: "已接受",
   DECLINED: "已拒绝",
   REVOKED: "已撤销",
   EXPIRED: "已过期",
-} as const;
-const tenantStatusTag = {
-  DRAFT: "warning",
-  ACTIVE: "success",
-  SUSPENDED: "warning",
-  CLOSED: "default",
 } as const;
 
 export interface TenantDetailPageProps {
@@ -55,9 +45,7 @@ export default async function TenantDetailPage({
         title={
           <span className={styles.titleRow}>
             {tenant.name}
-            <Tag color={tenantStatusTag[tenant.status]}>
-              {tenantStatusText[tenant.status]}
-            </Tag>
+            <TenantStatusTag status={tenant.status} />
           </span>
         }
         description={`工作空间代码：${tenant.code}`}
@@ -76,7 +64,7 @@ export default async function TenantDetailPage({
             </div>
             <div>
               <dt>状态</dt>
-              <dd>{tenantStatusText[tenant.status]}</dd>
+              <dd>{tenantStatusText(tenant.status)}</dd>
             </div>
             <div>
               <dt>激活时间</dt>

@@ -4,9 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { NavIcon } from "@/components/navigation/nav-icon";
 import { platformNavigation } from "@/components/navigation/platform-navigation";
 
 import { AppShell, type ShellUser } from "./app-shell";
+import styles from "./app-shell.module.css";
 
 export function PlatformShell({
   children,
@@ -20,7 +22,16 @@ export function PlatformShell({
     <AppShell
       brand="平台后台"
       brandHref="/platform"
-      navGroups={[{ ariaLabel: "平台导航", items: [...platformNavigation] }]}
+      navGroups={[
+        {
+          ariaLabel: "平台导航",
+          items: platformNavigation.map((item) => ({
+            href: item.href,
+            label: item.label,
+            icon: <NavIcon name={item.icon} />,
+          })),
+        },
+      ]}
       headerLeft={<PlatformBreadcrumb pathname={pathname} />}
       user={user}
       roleLabel="平台超级管理员"
@@ -37,9 +48,10 @@ const SECTION_LABELS: Record<string, string> = Object.fromEntries(
 export function PlatformBreadcrumb({ pathname }: { pathname: string }) {
   if (pathname === "/platform/tenants/new") {
     return (
-      <span>
+      <span className={styles.breadcrumb}>
         <Link href="/platform/tenants">公司管理</Link>
-        {" / 新增公司"}
+        <span className={styles.breadcrumbSep}>/</span>
+        <span className={styles.breadcrumbCurrent}>新增公司</span>
       </span>
     );
   }
@@ -49,16 +61,17 @@ export function PlatformBreadcrumb({ pathname }: { pathname: string }) {
     pathname !== "/platform/tenants"
   ) {
     return (
-      <span>
+      <span className={styles.breadcrumb}>
         <Link href="/platform/tenants">公司管理</Link>
-        {" / 详情"}
+        <span className={styles.breadcrumbSep}>/</span>
+        <span className={styles.breadcrumbCurrent}>详情</span>
       </span>
     );
   }
 
   const exact = SECTION_LABELS[pathname];
   if (exact) {
-    return <span>{exact}</span>;
+    return <span className={styles.breadcrumbCurrent}>{exact}</span>;
   }
 
   const parent = [...platformNavigation]
@@ -70,12 +83,13 @@ export function PlatformBreadcrumb({ pathname }: { pathname: string }) {
 
   if (parent) {
     return (
-      <span>
+      <span className={styles.breadcrumb}>
         <Link href={parent.href}>{parent.label}</Link>
-        {" / 详情"}
+        <span className={styles.breadcrumbSep}>/</span>
+        <span className={styles.breadcrumbCurrent}>详情</span>
       </span>
     );
   }
 
-  return <span>总览</span>;
+  return <span className={styles.breadcrumbCurrent}>总览</span>;
 }

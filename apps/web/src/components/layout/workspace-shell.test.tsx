@@ -105,7 +105,10 @@ describe("WorkspaceShell", () => {
       screen.getByRole("navigation", { name: "业务对象" }),
     ).getAllByRole("link");
 
-    expect(links.map((link) => link.textContent)).toEqual(["获客", "客户资料"]);
+    expect(links.map((link) => link.textContent?.replace(/\s+/g, ""))).toEqual([
+      "获客",
+      "客户资料",
+    ]);
   });
 
   it("explains an empty business navigation instead of rendering a bare group", () => {
@@ -141,12 +144,10 @@ describe("WorkspaceShell", () => {
     );
 
     expect(screen.getAllByText("百杰").length).toBeGreaterThanOrEqual(2);
-    expect(
-      screen.getByRole("button", { name: /公司管理员/ }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /张三/ })).toBeInTheDocument();
     expect(screen.queryByText("northwind")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /公司管理员/ }));
+    fireEvent.click(screen.getByRole("button", { name: /张三/ }));
     expect(screen.getByRole("link", { name: "切换工作空间" })).toHaveAttribute(
       "href",
       "/workspaces",
@@ -166,6 +167,7 @@ describe("WorkspaceShell", () => {
       </WorkspaceShell>,
     );
 
-    expect(screen.getByRole("button", { name: /员工/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /张三/ })).toBeInTheDocument();
+    expect(screen.getByText("员工")).toBeInTheDocument();
   });
 });

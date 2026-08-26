@@ -8,17 +8,11 @@ import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 
 import styles from "./platform-overview.module.css";
+import { TenantStatusTag } from "./tenant-status";
 
 type PlatformTenantSummary = components["schemas"]["PlatformTenantSummaryDto"];
 type PlatformTenantPage =
   components["schemas"]["PlatformTenantPageResponseDto"];
-
-const statusText = {
-  DRAFT: "草稿",
-  ACTIVE: "运行中",
-  SUSPENDED: "已暂停",
-  CLOSED: "已关闭",
-} as const;
 
 export function PlatformOverview({
   summary,
@@ -39,18 +33,38 @@ export function PlatformOverview({
         }
       />
       {summary.total === 0 ? (
-        <p className={styles.empty}>
-          创建第一家公司草稿，并邀请首位公司管理员。
-        </p>
+        <section className={styles.empty}>
+          <h2>还没有公司</h2>
+          <p>创建第一家公司草稿，并邀请首位公司管理员。</p>
+          <Link href="/platform/tenants/new">
+            <Button type="primary">新增公司</Button>
+          </Link>
+        </section>
       ) : (
         <>
           <div className={styles.kpis}>
-            <Kpi label="公司总数" value={summary.total} />
-            <Kpi label="运行中" value={summary.active} />
-            <Kpi label="草稿" value={summary.draft} />
+            <Kpi
+              label="公司总数"
+              value={summary.total}
+              hint="平台内全部工作空间"
+            />
+            <Kpi
+              label="运行中"
+              value={summary.active}
+              hint="已激活，成员可进入"
+              tone="success"
+            />
+            <Kpi
+              label="草稿"
+              value={summary.draft}
+              hint="尚未激活"
+              tone="warning"
+            />
             <Kpi
               label="已暂停/已关闭"
               value={summary.suspended + summary.closed}
+              hint={`${summary.suspended} 暂停 · ${summary.closed} 关闭`}
+              tone="danger"
             />
           </div>
           <RecentTenants tenants={tenants} />
@@ -60,15 +74,32 @@ export function PlatformOverview({
   );
 }
 
-function Kpi({ label, value }: { label: string; value: number }) {
+function Kpi({
+  label,
+  value,
+  hint,
+  tone,
+}: {
+  label: string;
+  value: number;
+  hint: string;
+  tone?: "success" | "warning" | "danger";
+}) {
   return (
-    <article className={styles.kpi}>
+    <article
+      className={`${styles.kpi} ${tone ? styles[`kpi${capitalize(tone)}`] : ""}`}
+    >
       <div className={styles.kpiLabel}>{label}</div>
       <div className={styles.kpiValue} data-numeric>
         {value}
       </div>
+      <div className={styles.kpiHint}>{hint}</div>
     </article>
   );
+}
+
+function capitalize(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function RecentTenants({ tenants }: { tenants: PlatformTenantPage }) {
@@ -78,7 +109,10 @@ function RecentTenants({ tenants }: { tenants: PlatformTenantPage }) {
   return (
     <section className={styles.section}>
       <div className={styles.sectionHeading}>
-        <h2>公司</h2>
+        <div>
+          <h2>最近开通的公司</h2>
+          <p>按创建时间排列，最多显示 8 家</p>
+        </div>
         <Link href="/platform/tenants">查看全部</Link>
       </div>
       <table className={styles.table}>
@@ -107,7 +141,9 @@ function RecentTenants({ tenants }: { tenants: PlatformTenantPage }) {
                 </Link>
               </td>
               <td className={styles.code}>{tenant.code}</td>
-              <td>{statusText[tenant.status]}</td>
+              <td>
+                <TenantStatusTag status={tenant.status} />
+              </td>
               <td data-numeric>{tenant.activeAdminCount}</td>
               <td>{formatDate(tenant.createdAt)}</td>
             </tr>

@@ -29,10 +29,9 @@ describe("PlatformOverview", () => {
     expect(
       screen.getByRole("heading", { name: "平台总览" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "新增公司" })).toHaveAttribute(
-      "href",
-      "/platform/tenants/new",
-    );
+    expect(
+      screen.getAllByRole("link", { name: "新增公司" })[0],
+    ).toHaveAttribute("href", "/platform/tenants/new");
     expect(screen.queryByText("公司总数")).not.toBeInTheDocument();
   });
 

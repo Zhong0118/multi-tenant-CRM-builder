@@ -24,7 +24,10 @@ function renderShell() {
       navGroups={[
         {
           ariaLabel: "平台导航",
-          items: [...platformNavigation],
+          items: platformNavigation.map((item) => ({
+            href: item.href,
+            label: item.label,
+          })),
         },
       ]}
       headerLeft={<span>公司管理</span>}
@@ -53,7 +56,7 @@ describe("AppShell", () => {
       screen.queryByRole("link", { name: "租户" }),
     ).not.toBeInTheDocument();
     expect(screen.queryByRole("search")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /平台超级管理员/ }));
+    fireEvent.click(screen.getByRole("button", { name: /王明/ }));
     expect(screen.getByText("138****8000")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "账号与安全" })).toHaveAttribute(
       "href",

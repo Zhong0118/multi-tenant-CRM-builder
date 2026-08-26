@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 
+import { NavIcon } from "@/components/navigation/nav-icon";
 import { workspaceNavigation } from "@/components/navigation/workspace-navigation";
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
@@ -27,6 +28,7 @@ export function WorkspaceShell({
   const objectItems = businessObjects.map((object) => ({
     href: `/workspace/${tenantCode}/objects/${object.code}`,
     label: object.name,
+    icon: <NavIcon name="object" />,
   }));
 
   return (
@@ -41,7 +43,11 @@ export function WorkspaceShell({
         },
         {
           ariaLabel: "工作空间",
-          items: workspaceNavigation(tenantCode),
+          items: workspaceNavigation(tenantCode).map((item) => ({
+            href: item.href,
+            label: item.label,
+            icon: <NavIcon name={item.icon} />,
+          })),
         },
       ]}
       headerLeft={<span>{tenantName}</span>}

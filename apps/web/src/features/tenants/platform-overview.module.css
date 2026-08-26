@@ -6,10 +6,23 @@
 }
 
 .kpi {
-  padding: 16px 20px;
+  padding: 16px 20px 18px;
   border: 1px solid var(--border-default);
   border-radius: 8px;
   background: var(--bg-surface);
+  border-top: 3px solid var(--color-primary);
+}
+
+.kpiSuccess {
+  border-top-color: var(--color-success);
+}
+
+.kpiWarning {
+  border-top-color: var(--color-warning);
+}
+
+.kpiDanger {
+  border-top-color: var(--color-danger);
 }
 
 .kpiLabel {
@@ -27,7 +40,32 @@
   font-variant-numeric: tabular-nums;
 }
 
+.kpiHint {
+  margin-top: 6px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
 .empty {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  max-width: 480px;
+  padding: 28px 24px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  background: var(--bg-surface);
+}
+
+.empty h2 {
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.empty p {
+  margin-bottom: 8px;
   color: var(--text-secondary);
   line-height: 1.7;
 }
@@ -41,10 +79,11 @@
 
 .sectionHeading {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px 16px 0;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border-default);
 }
 
 .sectionHeading h2 {
@@ -52,6 +91,12 @@
   font-weight: 600;
   line-height: 24px;
   color: var(--text-primary);
+}
+
+.sectionHeading p {
+  margin-top: 2px;
+  color: var(--text-tertiary);
+  font-size: 12px;
 }
 
 .sectionHeading a {

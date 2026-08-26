@@ -1,6 +1,7 @@
 export interface WorkspaceNavigationItem {
   href: string;
   label: string;
+  icon: string;
 }
 
 /**
@@ -14,11 +15,11 @@ export function workspaceNavigation(
   const root = `/workspace/${tenantCode}`;
 
   return [
-    { href: root, label: "工作台" },
-    { href: `${root}/statistics`, label: "统计" },
-    { href: `${root}/members`, label: "成员管理" },
-    { href: `${root}/import-export`, label: "导入导出" },
-    { href: `${root}/audit`, label: "审计" },
-    { href: `${root}/settings`, label: "设置" },
+    { href: root, label: "工作台", icon: "home" },
+    { href: `${root}/statistics`, label: "统计", icon: "stats" },
+    { href: `${root}/members`, label: "成员管理", icon: "members" },
+    { href: `${root}/import-export`, label: "导入导出", icon: "import" },
+    { href: `${root}/audit`, label: "审计", icon: "audit" },
+    { href: `${root}/settings`, label: "设置", icon: "settings" },
   ];
 }

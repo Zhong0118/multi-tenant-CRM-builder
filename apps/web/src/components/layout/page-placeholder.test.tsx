@@ -17,5 +17,9 @@ describe("PagePlaceholder", () => {
       screen.getByText("管理可复用的业务模板。尚未实现。"),
     ).toBeInTheDocument();
     expect(screen.getByText("该能力尚未实现。")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "返回总览" })).toHaveAttribute(
+      "href",
+      "/platform",
+    );
   });
 });

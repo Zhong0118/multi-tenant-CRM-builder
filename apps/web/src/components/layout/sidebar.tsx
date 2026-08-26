@@ -49,7 +49,10 @@ export function Sidebar({
       className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ""}`}
     >
       <Link href={brandHref} className={styles.brand}>
-        {collapsed ? brand.slice(0, 1) : brand}
+        <span className={styles.brandMark} aria-hidden>
+          {brand.slice(0, 1)}
+        </span>
+        {collapsed ? null : <span className={styles.brandName}>{brand}</span>}
       </Link>
       {navGroups.map((group) =>
         group.items.length === 0 ? (
@@ -67,8 +70,7 @@ export function Sidebar({
           >
             {group.items.map((item) => {
               const current = isNavItemCurrent(pathname, item.href);
-              const icon =
-                item.icon ?? (collapsed ? item.label.slice(0, 1) : null);
+              const icon = item.icon;
               const link = (
                 <Link
                   href={item.href}
@@ -76,7 +78,11 @@ export function Sidebar({
                   aria-label={collapsed ? item.label : undefined}
                   className={`${styles.navItem} ${current ? styles.navItemCurrent : ""}`}
                 >
-                  {icon ? <span>{icon}</span> : null}
+                  {icon ? (
+                    <span className={styles.navIcon} aria-hidden>
+                      {icon}
+                    </span>
+                  ) : null}
                   {collapsed ? null : item.label}
                 </Link>
               );
