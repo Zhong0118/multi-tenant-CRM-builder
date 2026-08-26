@@ -56,4 +56,21 @@ describe("CreateTemplateForm", () => {
       expect(navigate).toHaveBeenCalledWith("/platform/templates/template-1"),
     );
   });
+
+  it("rejects a template code longer than 64 characters before calling the API", async () => {
+    const api = templateApi({ create: vi.fn().mockResolvedValue(templateDetail()) });
+    renderWithQuery(<CreateTemplateForm api={api} />);
+
+    fireEvent.change(screen.getByLabelText("模板名称"), {
+      target: { value: "销售模板" },
+    });
+    fireEvent.change(screen.getByLabelText("模板代码"), {
+      target: { value: `a${"b".repeat(64)}` },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "创建模板" }));
+
+    expect(await screen.findByText("模板代码不能超过 64 个字符。"))
+      .toBeInTheDocument();
+    expect(api.create).not.toHaveBeenCalled();
+  });
 });

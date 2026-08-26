@@ -69,6 +69,16 @@ export function PlatformBreadcrumb({ pathname }: { pathname: string }) {
     );
   }
 
+  if (pathname === "/platform/templates/new") {
+    return (
+      <span className={styles.breadcrumb}>
+        <Link href="/platform/templates">模板</Link>
+        <span className={styles.breadcrumbSep}>/</span>
+        <span className={styles.breadcrumbCurrent}>新建模板</span>
+      </span>
+    );
+  }
+
   const exact = SECTION_LABELS[pathname];
   if (exact) {
     return <span className={styles.breadcrumbCurrent}>{exact}</span>;

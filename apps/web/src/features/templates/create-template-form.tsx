@@ -16,6 +16,7 @@ const schema = z.object({
   name: z.string().trim().min(1, "请输入模板名称。").max(100),
   code: z
     .string()
+    .max(64, "模板代码不能超过 64 个字符。")
     .regex(
       /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/,
       "仅支持小写字母、数字和单个连字符，且必须以字母开头。",
@@ -84,7 +85,12 @@ export function CreateTemplateForm({
           name="code"
           control={control}
           render={({ field }) => (
-            <Input id="template-code" autoCapitalize="none" {...field} />
+            <Input
+              id="template-code"
+              autoCapitalize="none"
+              maxLength={64}
+              {...field}
+            />
           )}
         />
       </Form.Item>
