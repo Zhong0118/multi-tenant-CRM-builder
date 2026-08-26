@@ -56,6 +56,19 @@ describe('business template DTOs', () => {
       'configuration.objects.0.employeeAccess.fields',
     );
   });
+
+  it('rejects non-string employee field access values', async () => {
+    const input = validDraftInput();
+    input.configuration.objects[0].employeeAccess!.fields.name = ['EDIT'];
+
+    const errors = await validate(
+      plainToInstance(SaveBusinessTemplateDraftDto, input),
+    );
+
+    expect(errorPaths(errors)).toContain(
+      'configuration.objects.0.employeeAccess.fields',
+    );
+  });
 });
 
 type DraftInput = ReturnType<typeof validDraftInput>;
@@ -113,7 +126,7 @@ function validDraftInput() {
             canDelete: false,
             readScope: 'ALL',
             updateScope: 'OWN',
-            fields: { name: 'EDIT' } as Record<string, string>,
+            fields: { name: 'EDIT' } as Record<string, unknown>,
           } as
             | {
                 canCreate: boolean;
@@ -122,7 +135,7 @@ function validDraftInput() {
                 canDelete: boolean;
                 readScope: string;
                 updateScope: string;
-                fields: Record<string, string>;
+                fields: Record<string, unknown>;
               }
             | null
             | undefined,

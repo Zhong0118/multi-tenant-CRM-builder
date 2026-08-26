@@ -80,7 +80,8 @@ function IsTemplateFieldAccessRecord(
           value !== null &&
           !Array.isArray(value) &&
           Object.values(value).every((access) =>
-            ['EDIT', 'READ_ONLY', 'HIDDEN'].includes(String(access)),
+            typeof access === 'string' &&
+            ['EDIT', 'READ_ONLY', 'HIDDEN'].includes(access),
           ),
       },
     });
