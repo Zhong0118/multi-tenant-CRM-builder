@@ -4,11 +4,13 @@ import { toApiError } from "@/lib/api/api-error";
 import { browserApiClient } from "@/lib/api/browser-client";
 
 import type {
+  ApplyTemplateInput,
   BusinessTemplateDetail,
   BusinessTemplatePage,
   BusinessTemplateVersion,
   CreateTemplateInput,
   SaveTemplateDraftInput,
+  TemplateApplication,
   TemplatePublicationAnalysis,
 } from "./template-types";
 
@@ -35,6 +37,7 @@ export interface TemplateApi {
     expectedVersion: number,
   ): Promise<BusinessTemplateVersion>;
   listVersions(templateId: string): Promise<BusinessTemplateVersion[]>;
+  apply(templateId: string, input: ApplyTemplateInput): Promise<TemplateApplication>;
 }
 
 const TEMPLATES = "/api/v1/platform/business-templates" as const;
@@ -86,6 +89,14 @@ export const browserTemplateApi: TemplateApi = {
     return dataOrThrow(
       await browserApiClient.GET(`${TEMPLATE}/versions`, {
         params: { path: { templateId } },
+      }),
+    );
+  },
+  async apply(templateId, input) {
+    return dataOrThrow(
+      await browserApiClient.POST(`${TEMPLATE}/applications`, {
+        params: { path: { templateId } },
+        body: input,
       }),
     );
   },

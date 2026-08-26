@@ -85,6 +85,12 @@ export function CreateTenantForm({ api = tenantApi }: { api?: TenantApi }) {
           <Link key="detail" href={`/platform/tenants/${created.id}`}>
             查看开通详情
           </Link>,
+          <Link
+            key="business-configuration"
+            href={`/platform/tenants/${created.id}#business-configuration`}
+          >
+            前往业务配置
+          </Link>,
         ]}
       >
         <dl className={styles.resultLedger}>

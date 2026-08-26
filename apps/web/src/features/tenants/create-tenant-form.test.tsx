@@ -61,6 +61,10 @@ describe("CreateTenantForm", () => {
     );
     expect(await screen.findByText("公司草稿已创建")).toBeInTheDocument();
     expect(screen.getByText("等待管理员接受邀请")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "前往业务配置" })).toHaveAttribute(
+      "href",
+      "/platform/tenants/tenant-a#business-configuration",
+    );
     expect(screen.queryByLabelText(/密码/)).not.toBeInTheDocument();
   });
 

@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/layout/page-header";
+import { TenantBusinessConfiguration } from "@/features/templates/template-application";
 import { TenantStatusActions } from "@/features/tenants/tenant-status-actions";
 import {
   TenantStatusTag,
@@ -25,15 +26,24 @@ export default async function TenantDetailPage({
 }: TenantDetailPageProps) {
   const { tenantId } = await params;
   const client = await createServerApiClient();
-  const {
-    data: tenant,
-    error,
-    response,
-  } = await client.GET("/api/v1/platform/tenants/{tenantId}", {
-    params: { path: { tenantId } },
-  });
+  const [tenantResult, configurationResult] = await Promise.all([
+    client.GET("/api/v1/platform/tenants/{tenantId}", {
+      params: { path: { tenantId } },
+    }),
+    client.GET("/api/v1/platform/tenants/{tenantId}/business-configuration", {
+      params: { path: { tenantId } },
+    }),
+  ]);
+  const { data: tenant, error, response } = tenantResult;
   if (!tenant) {
     const apiError = toApiError(error, response.status);
+    throw Object.assign(new Error(apiError.message), apiError);
+  }
+  if (!configurationResult.data) {
+    const apiError = toApiError(
+      configurationResult.error,
+      configurationResult.response.status,
+    );
     throw Object.assign(new Error(apiError.message), apiError);
   }
   const invitationAccepted = tenant.firstAdminInvitation?.status === "ACCEPTED";
@@ -101,6 +111,10 @@ export default async function TenantDetailPage({
             <Gate ready={invitationAccepted} title="首位管理员已接受邀请" />
             <Gate ready={activeAdminReady} title="至少一位管理员处于活跃状态" />
           </div>
+          <TenantBusinessConfiguration
+            tenant={tenant}
+            initialSummary={configurationResult.data}
+          />
         </section>
         <aside>
           <section className={styles.checkpoints}>
