@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { templateApi } from "./template-api";
 import { TenantBusinessConfiguration } from "./template-application";
+import type { BusinessTemplateVersion } from "./template-types";
 
 function renderWithQuery(ui: React.ReactNode) {
   return render(
@@ -52,10 +53,57 @@ function publishedTemplateDetail() {
     configuration: {
       schemaVersion: 1,
       objects: [
-        { id: "object-1", code: "customers", name: "客户" },
-        { id: "object-2", code: "opportunities", name: "跟单" },
+        { id: "object-1", code: "customers", name: "草稿客户" },
+        { id: "object-2", code: "quotes", name: "草稿报价" },
       ],
     },
+  };
+}
+
+function activeVersion(): BusinessTemplateVersion {
+  return {
+    id: publishedTemplate.activeVersion.id,
+    templateId: publishedTemplate.id,
+    versionNo: 1,
+    sourceDraftVersion: 1,
+    schemaVersion: 1,
+    configurationChecksum: "published-checksum",
+    configuration: {
+      schemaVersion: 1,
+      objects: [
+        templateObject("published-object-1", "customers", "客户", "ACTIVE"),
+        templateObject(
+          "published-object-2",
+          "opportunities",
+          "停用跟单",
+          "INACTIVE",
+        ),
+      ],
+    },
+    changeSummary: [],
+    publishedByUserId: "user-1",
+    publishedAt: "2026-08-26T08:00:00.000Z",
+  } as BusinessTemplateVersion;
+}
+
+function templateObject(
+  id: string,
+  code: string,
+  name: string,
+  status: "ACTIVE" | "INACTIVE",
+) {
+  return {
+    id,
+    code,
+    name,
+    description: null,
+    icon: null,
+    titleFieldKey: "name",
+    sortOrder: 1,
+    status,
+    fields: [],
+    defaultView: null,
+    employeeAccess: null,
   };
 }
 
@@ -74,17 +122,17 @@ function applicationResult() {
     appliedAt: "2026-08-26T08:00:00.000Z",
     configurationChecksum: "checksum",
     objects: [
-      { templateObjectId: "object-1", objectId: "tenant-object-1", code: "customers", name: "客户" },
-      { templateObjectId: "object-2", objectId: "tenant-object-2", code: "opportunities", name: "跟单" },
+      { templateObjectId: "published-object-1", objectId: "tenant-object-1", code: "customers", name: "客户" },
     ],
   };
 }
 
 describe("TenantBusinessConfiguration", () => {
-  it("shows the selected current version and resulting drafts after application", async () => {
+  it("previews and applies only active objects from the selected immutable version", async () => {
     const api = templateApi({
       list: vi.fn().mockResolvedValue({ items: [publishedTemplate], page: 1, limit: 20, total: 1 }),
       detail: vi.fn().mockResolvedValue(publishedTemplateDetail()),
+      listVersions: vi.fn().mockResolvedValue([activeVersion()]),
       apply: vi.fn().mockResolvedValue(applicationResult()),
     });
     renderWithQuery(
@@ -99,17 +147,86 @@ describe("TenantBusinessConfiguration", () => {
 
     expect(await screen.findByText("将创建对象草稿，不会直接上线")).toBeInTheDocument();
     expect(screen.getByText("当前版本：v1")).toBeInTheDocument();
-    expect(screen.getByText("包含 2 个业务对象")).toBeInTheDocument();
-    expect(screen.getByText("客户、跟单")).toBeInTheDocument();
+    expect(screen.getByText("包含 1 个业务对象")).toBeInTheDocument();
+    expect(screen.getByText("客户")).toBeInTheDocument();
+    expect(screen.queryByText("草稿客户")).not.toBeInTheDocument();
+    expect(screen.queryByText("草稿报价")).not.toBeInTheDocument();
+    expect(screen.queryByText("停用跟单")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "确认应用" }));
 
-    expect(await screen.findByText("已生成 2 个对象草稿")).toBeInTheDocument();
+    expect(await screen.findByText("已生成 1 个对象草稿")).toBeInTheDocument();
     expect(screen.getByText("客户（customers）")).toBeInTheDocument();
-    expect(screen.getByText("跟单（opportunities）")).toBeInTheDocument();
     expect(screen.getByText("来源模板版本：销售 CRM v1")).toBeInTheDocument();
     expect(screen.getByText("请由公司管理员审核、调整并发布这些对象草稿。"))
       .toBeInTheDocument();
+    expect(api.apply).toHaveBeenCalledWith(publishedTemplate.id, {
+      tenantId: tenant.id,
+      templateVersionId: publishedTemplate.activeVersion.id,
+    });
+  });
+
+  it("shows a retryable API error when the selected version cannot load", async () => {
+    const api = templateApi({
+      list: vi.fn().mockResolvedValue({ items: [publishedTemplate], page: 1, limit: 20, total: 1 }),
+      listVersions: vi
+        .fn()
+        .mockRejectedValueOnce({
+          code: "INTERNAL_ERROR",
+          message: "模板版本暂时不可用。",
+          fieldErrors: {},
+          requestId: "req_version_load",
+          status: 503,
+        })
+        .mockResolvedValueOnce([activeVersion()]),
+    });
+    renderWithQuery(
+      <TenantBusinessConfiguration
+        tenant={tenant}
+        initialSummary={{ objectCount: 0, canApplyTemplate: true, blockingReason: null, application: null }}
+        api={api}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "应用业务模板" }));
+
+    expect(await screen.findByText("加载模板版本失败")).toBeInTheDocument();
+    expect(screen.getByText("模板版本暂时不可用。（请求编号：req_version_load）"))
+      .toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /重\s*试/ }));
+
+    expect(await screen.findByText("客户")).toBeInTheDocument();
+  });
+
+  it("keeps the modal open and selection locked while application is pending", async () => {
+    const pending = deferred<ReturnType<typeof applicationResult>>();
+    const api = templateApi({
+      list: vi.fn().mockResolvedValue({ items: [publishedTemplate], page: 1, limit: 20, total: 1 }),
+      listVersions: vi.fn().mockResolvedValue([activeVersion()]),
+      apply: vi.fn(() => pending.promise),
+    });
+    renderWithQuery(
+      <TenantBusinessConfiguration
+        tenant={tenant}
+        initialSummary={{ objectCount: 0, canApplyTemplate: true, blockingReason: null, application: null }}
+        api={api}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "应用业务模板" }));
+    await screen.findByText("将创建对象草稿，不会直接上线");
+    fireEvent.click(screen.getByRole("button", { name: "确认应用" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "确认应用" })).toBeDisabled(),
+    );
+    expect(screen.getByRole("button", { name: /取\s*消/ })).toBeDisabled();
+    expect(screen.getByRole("combobox")).toBeDisabled();
+    expect(screen.queryByLabelText("Close")).not.toBeInTheDocument();
+
+    pending.resolve(applicationResult());
+
+    expect(await screen.findByText("已生成 1 个对象草稿")).toBeInTheDocument();
   });
 
   it("does not offer template application when the company already has objects", () => {
@@ -149,3 +266,11 @@ describe("TenantBusinessConfiguration", () => {
       .toBeInTheDocument();
   });
 });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((next) => {
+    resolve = next;
+  });
+  return { promise, resolve };
+}

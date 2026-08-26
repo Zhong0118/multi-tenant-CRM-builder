@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Modal, Select, Spin } from "antd";
 import { useEffect, useState } from "react";
 
@@ -9,7 +9,7 @@ import { toApiError } from "@/lib/api/api-error";
 import { browserTemplateApi, type TemplateApi } from "./template-api";
 import type {
   BusinessTemplate,
-  BusinessTemplateDetail,
+  BusinessTemplateVersion,
   TemplateApplication,
   TenantBusinessConfigurationSummary,
 } from "./template-types";
@@ -39,9 +39,11 @@ export function TenantBusinessConfiguration({
   const [error, setError] = useState<string>();
   const [summary, setSummary] =
     useState<TenantBusinessConfigurationSummary>(initialSummary);
+  const queryClient = useQueryClient();
+  const templateListKey = ["business-templates", "applicable", tenant.id] as const;
 
   const templates = useQuery({
-    queryKey: ["business-templates", "applicable"],
+    queryKey: templateListKey,
     queryFn: () => api.list({ page: 1, limit: 20, hasActiveVersion: true }),
     enabled: open,
   });
@@ -51,17 +53,34 @@ export function TenantBusinessConfiguration({
     }
   }, [selectedTemplateId, templates.data]);
 
-  const detail = useQuery({
-    queryKey: ["business-template", selectedTemplateId],
-    queryFn: () => api.detail(selectedTemplateId!),
+  const selectedTemplate = templates.data?.items.find(
+    (template) => template.id === selectedTemplateId,
+  );
+  const versionKey = [
+    "business-template",
+    selectedTemplateId,
+    "versions",
+  ] as const;
+  const versions = useQuery({
+    queryKey: versionKey,
+    queryFn: () => api.listVersions(selectedTemplateId!),
     enabled: open && Boolean(selectedTemplateId),
   });
+  const selectedVersion = versions.data?.find(
+    (version) => version.id === selectedTemplate?.activeVersion?.id,
+  );
+
   const application = useMutation({
-    mutationFn: async (source: BusinessTemplateDetail) => {
-      if (!source.activeVersion) throw new Error("所选模板没有当前发布版本。");
-      return api.apply(source.id, {
+    mutationFn: async ({
+      template,
+      version,
+    }: {
+      template: BusinessTemplate;
+      version: BusinessTemplateVersion;
+    }) => {
+      return api.apply(template.id, {
         tenantId: tenant.id,
-        templateVersionId: source.activeVersion.id,
+        templateVersionId: version.id,
       });
     },
     onSuccess: (next) => {
@@ -73,7 +92,7 @@ export function TenantBusinessConfiguration({
         application: next,
       });
       setOpen(false);
-      setError(undefined);
+      resetModalState();
     },
     onError: (cause) => {
       const apiError = toApiError(cause);
@@ -82,8 +101,24 @@ export function TenantBusinessConfiguration({
   });
 
   const displayedResult = result ?? summary.application;
-  const source = detail.data;
-  const previewReady = Boolean(source?.activeVersion);
+  const previewReady = Boolean(selectedTemplate && selectedVersion);
+  const versionUnavailable = versions.isSuccess && !selectedVersion;
+  const pending = application.isPending;
+
+  function resetModalState() {
+    queryClient.removeQueries({ queryKey: templateListKey });
+    if (selectedTemplateId) {
+      queryClient.removeQueries({ queryKey: versionKey });
+    }
+    setError(undefined);
+    setSelectedTemplateId(undefined);
+  }
+
+  function closeModal() {
+    if (pending) return;
+    resetModalState();
+    setOpen(false);
+  }
 
   return (
     <section id="business-configuration" className={styles.applicationPanel}>
@@ -109,20 +144,24 @@ export function TenantBusinessConfiguration({
       <Modal
         title="应用业务模板"
         open={open}
-        onCancel={() => {
-          setOpen(false);
-          setError(undefined);
-        }}
+        onCancel={closeModal}
+        closable={!pending}
+        mask={{ closable: !pending }}
+        keyboard={!pending}
         footer={[
-          <Button key="cancel" onClick={() => setOpen(false)}>
+          <Button key="cancel" disabled={pending} onClick={closeModal}>
             取消
           </Button>,
           <Button
             key="confirm"
             type="primary"
-            loading={application.isPending}
-            disabled={!previewReady}
-            onClick={() => source && application.mutate(source)}
+            loading={pending}
+            disabled={!previewReady || pending}
+            onClick={() =>
+              selectedTemplate &&
+              selectedVersion &&
+              application.mutate({ template: selectedTemplate, version: selectedVersion })
+            }
           >
             确认应用
           </Button>,
@@ -134,6 +173,13 @@ export function TenantBusinessConfiguration({
           </p>
           {error ? <Alert type="error" showIcon title={error} /> : null}
           {templates.isLoading ? <Spin /> : null}
+          {templates.isError ? (
+            <QueryFailure
+              title="加载可应用模板失败"
+              error={templates.error}
+              onRetry={() => void templates.refetch()}
+            />
+          ) : null}
           {templates.data?.items.length === 0 ? (
             <p className={styles.applicationBlocked}>没有可应用的已发布模板。</p>
           ) : null}
@@ -144,36 +190,54 @@ export function TenantBusinessConfiguration({
                 value={selectedTemplateId}
                 onChange={setSelectedTemplateId}
                 options={templates.data.items.map(templateOption)}
+                disabled={pending}
               />
             </label>
           ) : null}
-          {detail.isLoading ? <Spin /> : null}
-          {source?.activeVersion ? <TemplatePreview template={source} /> : null}
+          {versions.isLoading ? <Spin /> : null}
+          {versions.isError ? (
+            <QueryFailure
+              title="加载模板版本失败"
+              error={versions.error}
+              onRetry={() => void versions.refetch()}
+            />
+          ) : null}
+          {versionUnavailable ? (
+            <QueryFailure
+              title="当前发布版本不可用"
+              error={new Error("未找到与所选模板当前版本一致的发布版本。")}
+              onRetry={() => void versions.refetch()}
+            />
+          ) : null}
+          {selectedVersion ? <TemplatePreview version={selectedVersion} /> : null}
         </div>
       </Modal>
     </section>
   );
 }
 
-function TemplatePreview({ template }: { template: BusinessTemplateDetail }) {
-  const names = template.configuration.objects.map((object) => object.name);
+function TemplatePreview({ version }: { version: BusinessTemplateVersion }) {
+  const objects = version.configuration.objects.filter(
+    (object) => object.status === "ACTIVE",
+  );
+  const names = objects.map((object) => object.name);
 
   return (
     <div className={styles.templatePreview}>
       <Alert
         type="info"
         showIcon
-        message="将创建对象草稿，不会直接上线"
+        title="将创建对象草稿，不会直接上线"
         description="公司管理员需要审核、调整并发布这些对象草稿后，员工才能使用。"
       />
       <dl className={styles.applicationLedger}>
         <div>
           <dt>当前版本</dt>
-          <dd>当前版本：v{template.activeVersion!.versionNo}</dd>
+          <dd>当前版本：v{version.versionNo}</dd>
         </div>
         <div>
           <dt>业务对象</dt>
-          <dd>包含 {template.configuration.objects.length} 个业务对象</dd>
+          <dd>包含 {objects.length} 个业务对象</dd>
         </div>
         <div>
           <dt>对象名称</dt>
@@ -181,6 +245,36 @@ function TemplatePreview({ template }: { template: BusinessTemplateDetail }) {
         </div>
       </dl>
     </div>
+  );
+}
+
+function QueryFailure({
+  title,
+  error,
+  onRetry,
+}: {
+  title: string;
+  error: unknown;
+  onRetry: () => void;
+}) {
+  const apiError = toApiError(error);
+
+  return (
+    <Alert
+      type="error"
+      showIcon
+      title={title}
+      description={
+        <>
+          <p>
+            {apiError.message}（请求编号：{apiError.requestId}）
+          </p>
+          <Button size="small" onClick={onRetry}>
+            重试
+          </Button>
+        </>
+      }
+    />
   );
 }
 
