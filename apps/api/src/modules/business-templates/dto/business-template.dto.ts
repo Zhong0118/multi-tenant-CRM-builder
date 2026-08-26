@@ -79,9 +79,10 @@ function IsTemplateFieldAccessRecord(
           typeof value === 'object' &&
           value !== null &&
           !Array.isArray(value) &&
-          Object.values(value).every((access) =>
-            typeof access === 'string' &&
-            ['EDIT', 'READ_ONLY', 'HIDDEN'].includes(access),
+          Object.values(value).every(
+            (access) =>
+              typeof access === 'string' &&
+              ['EDIT', 'READ_ONLY', 'HIDDEN'].includes(access),
           ),
       },
     });
@@ -434,4 +435,52 @@ export class TemplatePublicationAnalysisResponseDto {
   changes!: TemplatePublicationChangeResponseDto[];
   @ApiProperty({ type: Number, minimum: 0 }) objectCount!: number;
   @ApiProperty({ type: Number, minimum: 0 }) fieldCount!: number;
+}
+
+export class ApplyBusinessTemplateDto {
+  @ApiProperty({ type: String, format: 'uuid' })
+  @IsUUID()
+  tenantId!: string;
+
+  @ApiProperty({ type: String, format: 'uuid' })
+  @IsUUID()
+  templateVersionId!: string;
+}
+
+export class TemplateApplicationObjectResponseDto {
+  @ApiProperty({ type: String, format: 'uuid' }) templateObjectId!: string;
+  @ApiProperty({ type: String, format: 'uuid' }) objectId!: string;
+  @ApiProperty({ type: String }) code!: string;
+  @ApiProperty({ type: String }) name!: string;
+}
+
+export class TemplateApplicationResponseDto {
+  @ApiProperty({ type: String, format: 'uuid' }) id!: string;
+  @ApiProperty({ type: String, format: 'uuid' }) templateId!: string;
+  @ApiProperty({ type: String }) templateCode!: string;
+  @ApiProperty({ type: String }) templateName!: string;
+  @ApiProperty({ type: String, format: 'uuid' }) templateVersionId!: string;
+  @ApiProperty({ type: Number, minimum: 1 }) templateVersionNo!: number;
+  @ApiProperty({ type: String, format: 'uuid' }) tenantId!: string;
+  @ApiProperty({ type: String }) tenantCode!: string;
+  @ApiProperty({ type: String }) tenantName!: string;
+  @ApiProperty({ type: String, format: 'uuid' }) appliedByUserId!: string;
+  @ApiProperty({ type: String, minLength: 64, maxLength: 64 })
+  configurationChecksum!: string;
+  @ApiProperty({ type: TemplateApplicationObjectResponseDto, isArray: true })
+  objects!: TemplateApplicationObjectResponseDto[];
+  @ApiProperty({ type: String, format: 'date-time' }) appliedAt!: Date;
+}
+
+export class TenantBusinessConfigurationSummaryResponseDto {
+  @ApiProperty({ type: Number, minimum: 0 }) objectCount!: number;
+  @ApiProperty({ type: Boolean }) canApplyTemplate!: boolean;
+  @ApiProperty({
+    type: String,
+    enum: ['TENANT_NOT_DRAFT', 'TARGET_NOT_EMPTY'],
+    nullable: true,
+  })
+  blockingReason!: 'TENANT_NOT_DRAFT' | 'TARGET_NOT_EMPTY' | null;
+  @ApiProperty({ type: TemplateApplicationResponseDto, nullable: true })
+  application!: TemplateApplicationResponseDto | null;
 }

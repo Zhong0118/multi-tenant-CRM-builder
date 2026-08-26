@@ -38,6 +38,20 @@
         "required": ["code", "message", "fieldErrors", "requestId", "status"],
         "type": "object"
       },
+      "ApplyBusinessTemplateDto": {
+        "properties": {
+          "templateVersionId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "tenantId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["tenantId", "templateVersionId"],
+        "type": "object"
+      },
       "AuthenticatedResponseDto": {
         "properties": {
           "accepted": {
@@ -1882,6 +1896,97 @@
         "required": ["id", "expiresAt", "isCurrent", "createdAt"],
         "type": "object"
       },
+      "TemplateApplicationObjectResponseDto": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "objectId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "templateObjectId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["templateObjectId", "objectId", "code", "name"],
+        "type": "object"
+      },
+      "TemplateApplicationResponseDto": {
+        "properties": {
+          "appliedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "appliedByUserId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "configurationChecksum": {
+            "maxLength": 64,
+            "minLength": 64,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "objects": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateApplicationObjectResponseDto"
+            },
+            "type": "array"
+          },
+          "templateCode": {
+            "type": "string"
+          },
+          "templateId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "templateName": {
+            "type": "string"
+          },
+          "templateVersionId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "templateVersionNo": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "tenantCode": {
+            "type": "string"
+          },
+          "tenantId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "tenantName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "templateId",
+          "templateCode",
+          "templateName",
+          "templateVersionId",
+          "templateVersionNo",
+          "tenantId",
+          "tenantCode",
+          "tenantName",
+          "appliedByUserId",
+          "configurationChecksum",
+          "objects",
+          "appliedAt"
+        ],
+        "type": "object"
+      },
       "TemplateDefaultViewDto": {
         "properties": {
           "code": {
@@ -2397,6 +2502,38 @@
           }
         },
         "required": ["code", "message", "objectId"],
+        "type": "object"
+      },
+      "TenantBusinessConfigurationSummaryResponseDto": {
+        "properties": {
+          "application": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TemplateApplicationResponseDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "blockingReason": {
+            "enum": ["TENANT_NOT_DRAFT", "TARGET_NOT_EMPTY"],
+            "nullable": true,
+            "type": "string"
+          },
+          "canApplyTemplate": {
+            "type": "boolean"
+          },
+          "objectCount": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "objectCount",
+          "canApplyTemplate",
+          "blockingReason",
+          "application"
+        ],
         "type": "object"
       },
       "TenantInvitationResponseDto": {
@@ -3298,6 +3435,50 @@
         "tags": ["platform-business-templates"]
       }
     },
+    "/api/v1/platform/business-templates/{templateId}/applications": {
+      "post": {
+        "operationId": "TemplateApplicationController_apply",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "templateId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyBusinessTemplateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateApplicationResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-business-template-applications"]
+      }
+    },
     "/api/v1/platform/business-templates/{templateId}/draft": {
       "put": {
         "operationId": "BusinessTemplatesController_saveDraft",
@@ -3599,6 +3780,40 @@
           }
         ],
         "tags": ["platform-tenants"]
+      }
+    },
+    "/api/v1/platform/tenants/{tenantId}/business-configuration": {
+      "get": {
+        "operationId": "TemplateApplicationController_summarizeTarget",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantBusinessConfigurationSummaryResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-business-template-applications"]
       }
     },
     "/api/v1/platform/tenants/{tenantId}/status": {

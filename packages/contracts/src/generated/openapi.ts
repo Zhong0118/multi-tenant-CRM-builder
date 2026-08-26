@@ -292,6 +292,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/platform/business-templates/{templateId}/applications": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["TemplateApplicationController_apply"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/platform/business-templates/{templateId}/draft": {
     parameters: {
       query?: never;
@@ -364,6 +380,22 @@ export interface paths {
       cookie?: never;
     };
     get: operations["TenantsController_detail"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/tenants/{tenantId}/business-configuration": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["TemplateApplicationController_summarizeTarget"];
     put?: never;
     post?: never;
     delete?: never;
@@ -788,6 +820,12 @@ export interface components {
       message: string;
       requestId: string;
       status: number;
+    };
+    ApplyBusinessTemplateDto: {
+      /** Format: uuid */
+      templateVersionId: string;
+      /** Format: uuid */
+      tenantId: string;
     };
     AuthenticatedResponseDto: {
       /** @example true */
@@ -1437,6 +1475,35 @@ export interface components {
       /** Format: date-time */
       revokedAt?: string;
     };
+    TemplateApplicationObjectResponseDto: {
+      code: string;
+      name: string;
+      /** Format: uuid */
+      objectId: string;
+      /** Format: uuid */
+      templateObjectId: string;
+    };
+    TemplateApplicationResponseDto: {
+      /** Format: date-time */
+      appliedAt: string;
+      /** Format: uuid */
+      appliedByUserId: string;
+      configurationChecksum: string;
+      /** Format: uuid */
+      id: string;
+      objects: components["schemas"]["TemplateApplicationObjectResponseDto"][];
+      templateCode: string;
+      /** Format: uuid */
+      templateId: string;
+      templateName: string;
+      /** Format: uuid */
+      templateVersionId: string;
+      templateVersionNo: number;
+      tenantCode: string;
+      /** Format: uuid */
+      tenantId: string;
+      tenantName: string;
+    };
     TemplateDefaultViewDto: {
       /** @enum {string} */
       code: "default";
@@ -1616,6 +1683,14 @@ export interface components {
       fieldKey?: string;
       message: string;
       objectId: string;
+    };
+    TenantBusinessConfigurationSummaryResponseDto: {
+      application:
+        components["schemas"]["TemplateApplicationResponseDto"] | null;
+      /** @enum {string|null} */
+      blockingReason: "TENANT_NOT_DRAFT" | "TARGET_NOT_EMPTY" | null;
+      canApplyTemplate: boolean;
+      objectCount: number;
     };
     TenantInvitationResponseDto: {
       /** Format: date-time */
@@ -2148,6 +2223,31 @@ export interface operations {
       };
     };
   };
+  TemplateApplicationController_apply: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        templateId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ApplyBusinessTemplateDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TemplateApplicationResponseDto"];
+        };
+      };
+    };
+  };
   BusinessTemplatesController_saveDraft: {
     parameters: {
       query?: never;
@@ -2306,6 +2406,27 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["PlatformTenantResponseDto"];
+        };
+      };
+    };
+  };
+  TemplateApplicationController_summarizeTarget: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TenantBusinessConfigurationSummaryResponseDto"];
         };
       };
     };
