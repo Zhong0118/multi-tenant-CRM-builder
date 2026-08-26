@@ -185,7 +185,7 @@ interface TemplateObjectConfiguration {
 
 模板对象和字段的 `id` 是模板内部稳定 UUID，只用于草稿、版本比较和应用结果映射。应用时必须为租户对象、字段和权限重新生成 UUID，不能复用模板内部 ID。
 
-字段包含现有对象草稿所需的 `fieldKey`、`label`、`type`、`required`、`defaultValue`、`validation`、`config`、`sortOrder`、`isSystem`、`status` 和员工字段权限。
+字段包含现有对象草稿所需的 `fieldKey`、`label`、`type`、`required`、`defaultValue`、`validation`、`config`、`sortOrder`、`isSystem` 和 `status`。员工字段权限只在对象的 `employeeAccess.fields` 映射中保存一次；模板详情 Presenter 可以为编辑器把对应权限派生到字段视图，但不能在持久化配置中保留两个事实来源。
 
 默认视图包含名称、列字段键和 `updatedAt | createdAt | recordNo` 排序。员工权限包含创建、读取、更新动作，`ALL | OWN | NONE` 数据范围，以及每个有效字段的 `EDIT | READ_ONLY | HIDDEN` 权限。删除动作首期固定为 `false`。
 
@@ -301,7 +301,7 @@ GET    /api/v1/platform/tenants/:tenantId/business-configuration
 
 模板列表支持常规分页和 `hasActiveVersion=true` 服务端查询。界面首期不展示搜索或筛选控件；公司应用弹窗使用该查询只加载存在当前发布版本的模板。
 
-模板详情由服务器派生当前版本号、是否有未发布变更、对象数、字段数和应用公司数。浏览器不 diff 发布 JSON。
+模板详情由服务器派生当前版本号、是否有未发布变更、对象数、字段数、应用公司数，以及每个对象代码和字段键/类型是否已被发布版本锁定。浏览器不 diff 发布 JSON。
 
 `GET /platform/tenants/:tenantId/business-configuration` 返回对象总数、最近模板应用摘要、是否允许应用和阻断原因，使公司详情在展示按钮前得到服务器事实。
 
