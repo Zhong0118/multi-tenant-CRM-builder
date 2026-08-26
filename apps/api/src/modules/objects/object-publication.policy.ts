@@ -130,7 +130,11 @@ export function compilePublication(
     throw new Error('Publication draft is incomplete');
   }
 
-  const configuration = compileObjectConfiguration(input);
+  const configuration = compileObjectConfiguration({
+    ...input,
+    defaultView: input.defaultView,
+    employeeAccess: input.employeeAccess,
+  });
 
   return {
     publication: { ...input.publication },

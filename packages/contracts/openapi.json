@@ -51,6 +51,306 @@
         "required": ["accepted", "user"],
         "type": "object"
       },
+      "BusinessTemplateActiveVersionResponseDto": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "publishedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "sourceDraftVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "versionNo": {
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": ["id", "versionNo", "sourceDraftVersion", "publishedAt"],
+        "type": "object"
+      },
+      "BusinessTemplateConfigurationDto": {
+        "properties": {
+          "objects": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateObjectDraftDto"
+            },
+            "type": "array"
+          },
+          "schemaVersion": {
+            "enum": [1],
+            "type": "number"
+          }
+        },
+        "required": ["schemaVersion", "objects"],
+        "type": "object"
+      },
+      "BusinessTemplateConfigurationResponseDto": {
+        "properties": {
+          "objects": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateObjectResponseDto"
+            },
+            "type": "array"
+          },
+          "schemaVersion": {
+            "enum": [1],
+            "type": "number"
+          }
+        },
+        "required": ["schemaVersion", "objects"],
+        "type": "object"
+      },
+      "BusinessTemplateDetailResponseDto": {
+        "properties": {
+          "activeVersion": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BusinessTemplateActiveVersionResponseDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "applicationCount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "code": {
+            "type": "string"
+          },
+          "configuration": {
+            "$ref": "#/components/schemas/BusinessTemplateConfigurationResponseDto"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "description": {
+            "nullable": true,
+            "type": "string"
+          },
+          "draftVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "fieldCount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "hasUnpublishedChanges": {
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "objectCount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "publishedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "enum": ["DRAFT", "PUBLISHED", "CHANGED", "ARCHIVED"],
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "description",
+          "draftVersion",
+          "activeVersion",
+          "hasUnpublishedChanges",
+          "status",
+          "objectCount",
+          "fieldCount",
+          "applicationCount",
+          "publishedAt",
+          "createdAt",
+          "updatedAt",
+          "configuration"
+        ],
+        "type": "object"
+      },
+      "BusinessTemplatePageResponseDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BusinessTemplateSummaryResponseDto"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "number"
+          },
+          "page": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "total": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": ["items", "page", "limit", "total"],
+        "type": "object"
+      },
+      "BusinessTemplateSummaryResponseDto": {
+        "properties": {
+          "activeVersion": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BusinessTemplateActiveVersionResponseDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "applicationCount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "code": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "description": {
+            "nullable": true,
+            "type": "string"
+          },
+          "draftVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "fieldCount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "hasUnpublishedChanges": {
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "objectCount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "publishedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "enum": ["DRAFT", "PUBLISHED", "CHANGED", "ARCHIVED"],
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "description",
+          "draftVersion",
+          "activeVersion",
+          "hasUnpublishedChanges",
+          "status",
+          "objectCount",
+          "fieldCount",
+          "applicationCount",
+          "publishedAt",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "BusinessTemplateVersionResponseDto": {
+        "properties": {
+          "changeSummary": {
+            "items": {
+              "$ref": "#/components/schemas/TemplatePublicationChangeResponseDto"
+            },
+            "type": "array"
+          },
+          "configuration": {
+            "$ref": "#/components/schemas/BusinessTemplateConfigurationDto"
+          },
+          "configurationChecksum": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "publishedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "publishedByUserId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "schemaVersion": {
+            "enum": [1],
+            "type": "number"
+          },
+          "sourceDraftVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "templateId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "versionNo": {
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "templateId",
+          "versionNo",
+          "sourceDraftVersion",
+          "schemaVersion",
+          "configuration",
+          "configurationChecksum",
+          "changeSummary",
+          "publishedByUserId",
+          "publishedAt"
+        ],
+        "type": "object"
+      },
       "ChangeMemberStatusDto": {
         "properties": {
           "status": {
@@ -91,6 +391,26 @@
           }
         },
         "required": ["status"],
+        "type": "object"
+      },
+      "CreateBusinessTemplateDto": {
+        "properties": {
+          "code": {
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 1000,
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["code", "name"],
         "type": "object"
       },
       "CreateFieldDefinitionDto": {
@@ -349,6 +669,16 @@
           "updateScope",
           "fields"
         ],
+        "type": "object"
+      },
+      "ExpectedTemplateVersionDto": {
+        "properties": {
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": ["expectedVersion"],
         "type": "object"
       },
       "ExpectedVersionDto": {
@@ -1477,6 +1807,29 @@
         ],
         "type": "object"
       },
+      "SaveBusinessTemplateDraftDto": {
+        "properties": {
+          "configuration": {
+            "$ref": "#/components/schemas/BusinessTemplateConfigurationDto"
+          },
+          "description": {
+            "maxLength": 1000,
+            "nullable": true,
+            "type": "string"
+          },
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["expectedVersion", "name", "description", "configuration"],
+        "type": "object"
+      },
       "SelectOptionDto": {
         "properties": {
           "key": {
@@ -1527,6 +1880,523 @@
           }
         },
         "required": ["id", "expiresAt", "isCurrent", "createdAt"],
+        "type": "object"
+      },
+      "TemplateDefaultViewDto": {
+        "properties": {
+          "code": {
+            "enum": ["default"],
+            "type": "string"
+          },
+          "columnFieldKeys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/TemplateDefaultViewSortDto"
+          }
+        },
+        "required": ["code", "name", "columnFieldKeys", "sort"],
+        "type": "object"
+      },
+      "TemplateDefaultViewSortDto": {
+        "properties": {
+          "direction": {
+            "enum": ["asc", "desc"],
+            "type": "string"
+          },
+          "field": {
+            "enum": ["updatedAt", "createdAt", "recordNo"],
+            "type": "string"
+          }
+        },
+        "required": ["field", "direction"],
+        "type": "object"
+      },
+      "TemplateEmployeeAccessDto": {
+        "properties": {
+          "canCreate": {
+            "type": "boolean"
+          },
+          "canDelete": {
+            "enum": [false],
+            "type": "boolean"
+          },
+          "canRead": {
+            "type": "boolean"
+          },
+          "canUpdate": {
+            "type": "boolean"
+          },
+          "fields": {
+            "additionalProperties": {
+              "enum": ["EDIT", "READ_ONLY", "HIDDEN"]
+            },
+            "type": "object"
+          },
+          "readScope": {
+            "enum": ["ALL", "OWN", "NONE"],
+            "type": "string"
+          },
+          "updateScope": {
+            "enum": ["ALL", "OWN", "NONE"],
+            "type": "string"
+          }
+        },
+        "required": [
+          "canCreate",
+          "canRead",
+          "canUpdate",
+          "canDelete",
+          "readScope",
+          "updateScope",
+          "fields"
+        ],
+        "type": "object"
+      },
+      "TemplateFieldDraftDto": {
+        "properties": {
+          "config": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "defaultValue": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "fieldKey": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isSystem": {
+            "type": "boolean"
+          },
+          "label": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "number"
+          },
+          "status": {
+            "enum": ["ACTIVE", "INACTIVE"],
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "TEXT",
+              "TEXTAREA",
+              "PHONE",
+              "EMAIL",
+              "NUMBER",
+              "MONEY",
+              "DATE",
+              "DATETIME",
+              "SINGLE_SELECT",
+              "MULTI_SELECT",
+              "MEMBER",
+              "BOOLEAN"
+            ],
+            "type": "string"
+          },
+          "validation": {
+            "additionalProperties": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "fieldKey",
+          "label",
+          "type",
+          "required",
+          "defaultValue",
+          "validation",
+          "config",
+          "sortOrder",
+          "isSystem",
+          "status"
+        ],
+        "type": "object"
+      },
+      "TemplateFieldResponseDto": {
+        "properties": {
+          "config": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "defaultValue": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "fieldKey": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isSystem": {
+            "type": "boolean"
+          },
+          "label": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "publishedFieldKey": {
+            "nullable": true,
+            "type": "string"
+          },
+          "publishedType": {
+            "enum": [
+              "TEXT",
+              "TEXTAREA",
+              "PHONE",
+              "EMAIL",
+              "NUMBER",
+              "MONEY",
+              "DATE",
+              "DATETIME",
+              "SINGLE_SELECT",
+              "MULTI_SELECT",
+              "MEMBER",
+              "BOOLEAN"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "number"
+          },
+          "status": {
+            "enum": ["ACTIVE", "INACTIVE"],
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "TEXT",
+              "TEXTAREA",
+              "PHONE",
+              "EMAIL",
+              "NUMBER",
+              "MONEY",
+              "DATE",
+              "DATETIME",
+              "SINGLE_SELECT",
+              "MULTI_SELECT",
+              "MEMBER",
+              "BOOLEAN"
+            ],
+            "type": "string"
+          },
+          "validation": {
+            "additionalProperties": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "fieldKey",
+          "label",
+          "type",
+          "required",
+          "defaultValue",
+          "validation",
+          "config",
+          "sortOrder",
+          "isSystem",
+          "status",
+          "publishedFieldKey",
+          "publishedType"
+        ],
+        "type": "object"
+      },
+      "TemplateObjectDraftDto": {
+        "properties": {
+          "code": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "defaultView": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TemplateDefaultViewDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "description": {
+            "maxLength": 1000,
+            "nullable": true,
+            "type": "string"
+          },
+          "employeeAccess": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TemplateEmployeeAccessDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateFieldDraftDto"
+            },
+            "type": "array"
+          },
+          "icon": {
+            "maxLength": 64,
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "number"
+          },
+          "status": {
+            "enum": ["ACTIVE", "INACTIVE"],
+            "type": "string"
+          },
+          "titleFieldKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "description",
+          "icon",
+          "titleFieldKey",
+          "sortOrder",
+          "status",
+          "fields",
+          "defaultView",
+          "employeeAccess"
+        ],
+        "type": "object"
+      },
+      "TemplateObjectResponseDto": {
+        "properties": {
+          "code": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "defaultView": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TemplateDefaultViewDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "description": {
+            "maxLength": 1000,
+            "nullable": true,
+            "type": "string"
+          },
+          "employeeAccess": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TemplateEmployeeAccessDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateFieldResponseDto"
+            },
+            "type": "array"
+          },
+          "icon": {
+            "maxLength": 64,
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "publishedCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "number"
+          },
+          "status": {
+            "enum": ["ACTIVE", "INACTIVE"],
+            "type": "string"
+          },
+          "titleFieldKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "description",
+          "icon",
+          "titleFieldKey",
+          "sortOrder",
+          "status",
+          "fields",
+          "defaultView",
+          "employeeAccess",
+          "publishedCode"
+        ],
+        "type": "object"
+      },
+      "TemplatePublicationAnalysisResponseDto": {
+        "properties": {
+          "blocking": {
+            "items": {
+              "$ref": "#/components/schemas/TemplatePublicationIssueResponseDto"
+            },
+            "type": "array"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/TemplatePublicationChangeResponseDto"
+            },
+            "type": "array"
+          },
+          "fieldCount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "objectCount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/TemplatePublicationIssueResponseDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "blocking",
+          "warnings",
+          "changes",
+          "objectCount",
+          "fieldCount"
+        ],
+        "type": "object"
+      },
+      "TemplatePublicationChangeResponseDto": {
+        "properties": {
+          "entity": {
+            "enum": ["OBJECT", "FIELD"],
+            "type": "string"
+          },
+          "fieldKey": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": ["ADDED", "UPDATED", "INACTIVATED"],
+            "type": "string"
+          },
+          "objectId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["kind", "entity", "objectId"],
+        "type": "object"
+      },
+      "TemplatePublicationIssueResponseDto": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "fieldKey": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "objectId": {
+            "type": "string"
+          }
+        },
+        "required": ["code", "message", "objectId"],
         "type": "object"
       },
       "TenantInvitationResponseDto": {
@@ -2306,6 +3176,293 @@
           }
         ],
         "tags": ["memberships"]
+      }
+    },
+    "/api/v1/platform/business-templates": {
+      "get": {
+        "operationId": "BusinessTemplatesController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "hasActiveVersion",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessTemplatePageResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-business-templates"]
+      },
+      "post": {
+        "operationId": "BusinessTemplatesController_create",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBusinessTemplateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessTemplateDetailResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-business-templates"]
+      }
+    },
+    "/api/v1/platform/business-templates/{templateId}": {
+      "get": {
+        "operationId": "BusinessTemplatesController_detail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "templateId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessTemplateDetailResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-business-templates"]
+      }
+    },
+    "/api/v1/platform/business-templates/{templateId}/draft": {
+      "put": {
+        "operationId": "BusinessTemplatesController_saveDraft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "templateId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveBusinessTemplateDraftDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessTemplateDetailResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-business-templates"]
+      }
+    },
+    "/api/v1/platform/business-templates/{templateId}/publication-analysis": {
+      "post": {
+        "operationId": "BusinessTemplatesController_analyzePublication",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "templateId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpectedTemplateVersionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplatePublicationAnalysisResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-business-templates"]
+      }
+    },
+    "/api/v1/platform/business-templates/{templateId}/versions": {
+      "get": {
+        "operationId": "BusinessTemplatesController_versions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "templateId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BusinessTemplateVersionResponseDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-business-templates"]
+      },
+      "post": {
+        "operationId": "BusinessTemplatesController_publish",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "templateId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpectedTemplateVersionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessTemplateVersionResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-business-templates"]
       }
     },
     "/api/v1/platform/tenants": {

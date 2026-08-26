@@ -260,6 +260,86 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/platform/business-templates": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["BusinessTemplatesController_list"];
+    put?: never;
+    post: operations["BusinessTemplatesController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/business-templates/{templateId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["BusinessTemplatesController_detail"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/business-templates/{templateId}/draft": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put: operations["BusinessTemplatesController_saveDraft"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/business-templates/{templateId}/publication-analysis": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BusinessTemplatesController_analyzePublication"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/business-templates/{templateId}/versions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["BusinessTemplatesController_versions"];
+    put?: never;
+    post: operations["BusinessTemplatesController_publish"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/platform/tenants": {
     parameters: {
       query?: never;
@@ -714,6 +794,94 @@ export interface components {
       accepted: boolean;
       user: components["schemas"]["UserResponseDto"];
     };
+    BusinessTemplateActiveVersionResponseDto: {
+      /** Format: uuid */
+      id: string;
+      /** Format: date-time */
+      publishedAt: string;
+      sourceDraftVersion: number;
+      versionNo: number;
+    };
+    BusinessTemplateConfigurationDto: {
+      objects: components["schemas"]["TemplateObjectDraftDto"][];
+      /** @enum {number} */
+      schemaVersion: 1;
+    };
+    BusinessTemplateConfigurationResponseDto: {
+      objects: components["schemas"]["TemplateObjectResponseDto"][];
+      /** @enum {number} */
+      schemaVersion: 1;
+    };
+    BusinessTemplateDetailResponseDto: {
+      activeVersion:
+        | components["schemas"]["BusinessTemplateActiveVersionResponseDto"]
+        | null;
+      applicationCount: number;
+      code: string;
+      configuration: components["schemas"]["BusinessTemplateConfigurationResponseDto"];
+      /** Format: date-time */
+      createdAt: string;
+      description: string | null;
+      draftVersion: number;
+      fieldCount: number;
+      hasUnpublishedChanges: boolean;
+      /** Format: uuid */
+      id: string;
+      name: string;
+      objectCount: number;
+      /** Format: date-time */
+      publishedAt: string | null;
+      /** @enum {string} */
+      status: "DRAFT" | "PUBLISHED" | "CHANGED" | "ARCHIVED";
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    BusinessTemplatePageResponseDto: {
+      items: components["schemas"]["BusinessTemplateSummaryResponseDto"][];
+      limit: number;
+      page: number;
+      total: number;
+    };
+    BusinessTemplateSummaryResponseDto: {
+      activeVersion:
+        | components["schemas"]["BusinessTemplateActiveVersionResponseDto"]
+        | null;
+      applicationCount: number;
+      code: string;
+      /** Format: date-time */
+      createdAt: string;
+      description: string | null;
+      draftVersion: number;
+      fieldCount: number;
+      hasUnpublishedChanges: boolean;
+      /** Format: uuid */
+      id: string;
+      name: string;
+      objectCount: number;
+      /** Format: date-time */
+      publishedAt: string | null;
+      /** @enum {string} */
+      status: "DRAFT" | "PUBLISHED" | "CHANGED" | "ARCHIVED";
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    BusinessTemplateVersionResponseDto: {
+      changeSummary: components["schemas"]["TemplatePublicationChangeResponseDto"][];
+      configuration: components["schemas"]["BusinessTemplateConfigurationDto"];
+      configurationChecksum: string;
+      /** Format: uuid */
+      id: string;
+      /** Format: date-time */
+      publishedAt: string;
+      /** Format: uuid */
+      publishedByUserId: string;
+      /** @enum {number} */
+      schemaVersion: 1;
+      sourceDraftVersion: number;
+      /** Format: uuid */
+      templateId: string;
+      versionNo: number;
+    };
     ChangeMemberStatusDto: {
       /** @enum {string} */
       status: "ACTIVE" | "DISABLED";
@@ -728,6 +896,11 @@ export interface components {
       reason?: string;
       /** @enum {string} */
       status: "DRAFT" | "ACTIVE" | "SUSPENDED" | "CLOSED";
+    };
+    CreateBusinessTemplateDto: {
+      code: string;
+      description?: string | null;
+      name: string;
     };
     CreatedInvitationResponseDto: {
       /** Format: uuid */
@@ -830,6 +1003,9 @@ export interface components {
       readScope: "ALL" | "OWN" | "NONE";
       /** @enum {string} */
       updateScope: "ALL" | "OWN" | "NONE";
+    };
+    ExpectedTemplateVersionDto: {
+      expectedVersion: number;
     };
     ExpectedVersionDto: {
       expectedVersion: number;
@@ -1231,6 +1407,12 @@ export interface components {
       name: string;
       sortOrder: number;
     };
+    SaveBusinessTemplateDraftDto: {
+      configuration: components["schemas"]["BusinessTemplateConfigurationDto"];
+      description: string | null;
+      expectedVersion: number;
+      name: string;
+    };
     SelectOptionDto: {
       key: string;
       label: string;
@@ -1254,6 +1436,186 @@ export interface components {
       lastUsedAt?: string;
       /** Format: date-time */
       revokedAt?: string;
+    };
+    TemplateDefaultViewDto: {
+      /** @enum {string} */
+      code: "default";
+      columnFieldKeys: string[];
+      name: string;
+      sort: components["schemas"]["TemplateDefaultViewSortDto"];
+    };
+    TemplateDefaultViewSortDto: {
+      /** @enum {string} */
+      direction: "asc" | "desc";
+      /** @enum {string} */
+      field: "updatedAt" | "createdAt" | "recordNo";
+    };
+    TemplateEmployeeAccessDto: {
+      canCreate: boolean;
+      /** @enum {boolean} */
+      canDelete: false;
+      canRead: boolean;
+      canUpdate: boolean;
+      fields: {
+        [key: string]: "EDIT" | "READ_ONLY" | "HIDDEN";
+      };
+      /** @enum {string} */
+      readScope: "ALL" | "OWN" | "NONE";
+      /** @enum {string} */
+      updateScope: "ALL" | "OWN" | "NONE";
+    };
+    TemplateFieldDraftDto: {
+      config: {
+        [key: string]: unknown;
+      };
+      defaultValue:
+        | (
+            | string
+            | number
+            | boolean
+            | unknown[]
+            | {
+                [key: string]: unknown;
+              }
+          )
+        | null;
+      fieldKey: string;
+      /** Format: uuid */
+      id: string;
+      isSystem: boolean;
+      label: string;
+      required: boolean;
+      sortOrder: number;
+      /** @enum {string} */
+      status: "ACTIVE" | "INACTIVE";
+      /** @enum {string} */
+      type:
+        | "TEXT"
+        | "TEXTAREA"
+        | "PHONE"
+        | "EMAIL"
+        | "NUMBER"
+        | "MONEY"
+        | "DATE"
+        | "DATETIME"
+        | "SINGLE_SELECT"
+        | "MULTI_SELECT"
+        | "MEMBER"
+        | "BOOLEAN";
+      validation: {
+        [key: string]: unknown;
+      };
+    };
+    TemplateFieldResponseDto: {
+      config: {
+        [key: string]: unknown;
+      };
+      defaultValue:
+        | (
+            | string
+            | number
+            | boolean
+            | unknown[]
+            | {
+                [key: string]: unknown;
+              }
+          )
+        | null;
+      fieldKey: string;
+      /** Format: uuid */
+      id: string;
+      isSystem: boolean;
+      label: string;
+      publishedFieldKey: string | null;
+      /** @enum {string|null} */
+      publishedType:
+        | "TEXT"
+        | "TEXTAREA"
+        | "PHONE"
+        | "EMAIL"
+        | "NUMBER"
+        | "MONEY"
+        | "DATE"
+        | "DATETIME"
+        | "SINGLE_SELECT"
+        | "MULTI_SELECT"
+        | "MEMBER"
+        | "BOOLEAN"
+        | null;
+      required: boolean;
+      sortOrder: number;
+      /** @enum {string} */
+      status: "ACTIVE" | "INACTIVE";
+      /** @enum {string} */
+      type:
+        | "TEXT"
+        | "TEXTAREA"
+        | "PHONE"
+        | "EMAIL"
+        | "NUMBER"
+        | "MONEY"
+        | "DATE"
+        | "DATETIME"
+        | "SINGLE_SELECT"
+        | "MULTI_SELECT"
+        | "MEMBER"
+        | "BOOLEAN";
+      validation: {
+        [key: string]: unknown;
+      };
+    };
+    TemplateObjectDraftDto: {
+      code: string;
+      defaultView: components["schemas"]["TemplateDefaultViewDto"] | null;
+      description: string | null;
+      employeeAccess: components["schemas"]["TemplateEmployeeAccessDto"] | null;
+      fields: components["schemas"]["TemplateFieldDraftDto"][];
+      icon: string | null;
+      /** Format: uuid */
+      id: string;
+      name: string;
+      sortOrder: number;
+      /** @enum {string} */
+      status: "ACTIVE" | "INACTIVE";
+      titleFieldKey: string;
+    };
+    TemplateObjectResponseDto: {
+      code: string;
+      defaultView: components["schemas"]["TemplateDefaultViewDto"] | null;
+      description: string | null;
+      employeeAccess: components["schemas"]["TemplateEmployeeAccessDto"] | null;
+      fields: components["schemas"]["TemplateFieldResponseDto"][];
+      icon: string | null;
+      /** Format: uuid */
+      id: string;
+      name: string;
+      publishedCode: string | null;
+      sortOrder: number;
+      /** @enum {string} */
+      status: "ACTIVE" | "INACTIVE";
+      titleFieldKey: string;
+    };
+    TemplatePublicationAnalysisResponseDto: {
+      blocking: components["schemas"]["TemplatePublicationIssueResponseDto"][];
+      changes: components["schemas"]["TemplatePublicationChangeResponseDto"][];
+      fieldCount: number;
+      objectCount: number;
+      warnings: components["schemas"]["TemplatePublicationIssueResponseDto"][];
+    };
+    TemplatePublicationChangeResponseDto: {
+      /** @enum {string} */
+      entity: "OBJECT" | "FIELD";
+      fieldKey?: string;
+      /** @enum {string} */
+      kind: "ADDED" | "UPDATED" | "INACTIVATED";
+      /** Format: uuid */
+      objectId: string;
+    };
+    TemplatePublicationIssueResponseDto: {
+      code: string;
+      fieldKey?: string;
+      message: string;
+      objectId: string;
     };
     TenantInvitationResponseDto: {
       /** Format: date-time */
@@ -1715,6 +2077,169 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["WorkspaceSummaryResponseDto"][];
+        };
+      };
+    };
+  };
+  BusinessTemplatesController_list: {
+    parameters: {
+      query?: {
+        hasActiveVersion?: boolean;
+        limit?: number;
+        page?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BusinessTemplatePageResponseDto"];
+        };
+      };
+    };
+  };
+  BusinessTemplatesController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateBusinessTemplateDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BusinessTemplateDetailResponseDto"];
+        };
+      };
+    };
+  };
+  BusinessTemplatesController_detail: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        templateId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BusinessTemplateDetailResponseDto"];
+        };
+      };
+    };
+  };
+  BusinessTemplatesController_saveDraft: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        templateId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SaveBusinessTemplateDraftDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BusinessTemplateDetailResponseDto"];
+        };
+      };
+    };
+  };
+  BusinessTemplatesController_analyzePublication: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        templateId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ExpectedTemplateVersionDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TemplatePublicationAnalysisResponseDto"];
+        };
+      };
+    };
+  };
+  BusinessTemplatesController_versions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        templateId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BusinessTemplateVersionResponseDto"][];
+        };
+      };
+    };
+  };
+  BusinessTemplatesController_publish: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        templateId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ExpectedTemplateVersionDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BusinessTemplateVersionResponseDto"];
         };
       };
     };

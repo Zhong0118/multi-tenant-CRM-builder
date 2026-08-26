@@ -8,6 +8,7 @@ import { RequestIdMiddleware } from './common/security/request-id.middleware';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { BusinessTemplatesModule } from './modules/business-templates/business-templates.module';
 import { DashboardsModule } from './modules/dashboards/dashboards.module';
 import { ImportsModule } from './modules/imports/imports.module';
 import { IntegrationsModule } from './modules/integrations/integrations.module';
@@ -28,6 +29,7 @@ import { HealthModule } from './modules/health/health.module';
     DatabaseModule,
     AuditModule,
     AuthModule,
+    BusinessTemplatesModule,
     DashboardsModule,
     ImportsModule,
     IntegrationsModule,
