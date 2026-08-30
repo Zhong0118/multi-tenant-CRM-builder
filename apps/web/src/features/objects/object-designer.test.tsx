@@ -260,6 +260,16 @@ describe("ObjectDesigner publication flow", () => {
 });
 
 describe("ObjectDesigner employee preview", () => {
+  it("opens an explicit preview drawer for the narrow workbench", async () => {
+    renderDesigner(draft(), objectApi());
+
+    fireEvent.click(screen.getByRole("button", { name: "打开员工端预览" }));
+
+    expect(
+      await screen.findByRole("dialog", { name: "员工端预览" }),
+    ).toBeInTheDocument();
+  });
+
   it("hides a hidden field and drops the create action from the employee view", () => {
     renderDesigner(
       draft({

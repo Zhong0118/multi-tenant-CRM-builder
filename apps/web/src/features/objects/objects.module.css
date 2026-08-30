@@ -6,7 +6,6 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
-  padding: 24px;
 }
 
 .pageHeader h1 {
@@ -42,14 +41,14 @@
 .panel {
   padding: 20px;
   border: 1px solid var(--rule);
-  border-radius: 8px;
+  border-radius: var(--radius-reading);
   background: var(--paper);
 }
 
 .designer {
   display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: 168px minmax(0, 1fr) minmax(280px, 340px);
+  gap: 16px;
   align-items: start;
 }
 
@@ -92,6 +91,8 @@
 
 /* Left rail encodes the real configuration steps, not decorative numbering. */
 .designerNav {
+  position: sticky;
+  top: 16px;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -116,7 +117,7 @@
 }
 
 .designerNavItemActive {
-  background: #eef2fb;
+  background: var(--color-primary-soft);
   color: var(--working-blue);
   font-weight: 600;
 }
@@ -127,6 +128,24 @@
   color: var(--ink-secondary);
   font-family: var(--font-mono);
   font-size: 12px;
+}
+
+.designerWorkspace {
+  min-width: 0;
+}
+
+.designerPreview {
+  position: sticky;
+  top: 16px;
+  min-width: 0;
+  padding: 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-reading);
+}
+
+.compactPreviewButton {
+  display: none;
 }
 
 .sectionHeading {
@@ -409,7 +428,21 @@
   display: none;
 }
 
-@media (max-width: 1023px) {
+@media (min-width: 768px) and (max-width: 1199px) {
+  .designer {
+    grid-template-columns: 160px minmax(0, 1fr);
+  }
+
+  .designerPreview {
+    display: none;
+  }
+
+  .compactPreviewButton {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 767px) {
   .designer {
     display: none;
   }

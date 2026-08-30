@@ -4,16 +4,17 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   Button,
+  Drawer,
   Form,
   Input,
   Select,
   Space,
   Switch,
-  Tag,
   Typography,
 } from "antd";
 import { useState } from "react";
 
+import { StatusTag } from "@/components/workbench/status-tag";
 import { toApiError } from "@/lib/api/api-error";
 
 import {
@@ -70,6 +71,7 @@ export function ObjectDesigner({
   const [draft, setDraft] = useState(initialDraft);
   const [section, setSection] = useState<Section>("fields");
   const [previewRole, setPreviewRole] = useState<PreviewRole>("TENANT_ADMIN");
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [editingField, setEditingField] =
     useState<ConfigurableFieldView | null>(null);
   const [analysis, setAnalysis] = useState<PublicationAnalysis>();
@@ -232,19 +234,26 @@ export function ObjectDesigner({
               <h1>{draft.object.name}</h1>
               <div className={styles.designerMeta}>
                 <span className={styles.stableKey}>{draft.object.code}</span>
-                <Tag
-                  color={
-                    draft.object.hasUnpublishedChanges ? "gold" : undefined
+                <StatusTag
+                  tone={
+                    draft.object.hasUnpublishedChanges ? "warning" : "success"
                   }
                 >
                   {objectStatusLabel(draft.object)}
-                </Tag>
+                </StatusTag>
                 <Typography.Text type="secondary">
                   {draft.activeRecordCount} 条业务记录
                 </Typography.Text>
               </div>
             </div>
             <div className={styles.designerActions}>
+              <Button
+                className={styles.compactPreviewButton}
+                aria-label="打开员工端预览"
+                onClick={() => setPreviewOpen(true)}
+              >
+                员工端预览
+              </Button>
               <Button
                 type="primary"
                 disabled={archived}
@@ -297,7 +306,7 @@ export function ObjectDesigner({
           </span>
         </nav>
 
-        <div>
+        <div className={styles.designerWorkspace}>
           {section === "basics" ? (
             <BasicsSection
               draft={draft}
@@ -338,15 +347,30 @@ export function ObjectDesigner({
             <PublicationHistorySection draft={draft} />
           ) : null}
 
-          <div style={{ marginTop: 24 }}>
-            <ObjectPreview
-              draft={configurableDraft}
-              role={previewRole}
-              onRoleChange={setPreviewRole}
-            />
-          </div>
         </div>
+
+        <aside className={styles.designerPreview} aria-label="员工端实时预览">
+          <ObjectPreview
+            draft={configurableDraft}
+            role={previewRole}
+            onRoleChange={setPreviewRole}
+          />
+        </aside>
       </div>
+
+      <Drawer
+        title="员工端预览"
+        open={previewOpen}
+        size={480}
+        destroyOnHidden
+        onClose={() => setPreviewOpen(false)}
+      >
+        <ObjectPreview
+          draft={configurableDraft}
+          role={previewRole}
+          onRoleChange={setPreviewRole}
+        />
+      </Drawer>
 
       <FieldEditorDrawer
         field={editingField}
