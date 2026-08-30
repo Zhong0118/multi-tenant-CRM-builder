@@ -21,5 +21,6 @@ describe("PagePlaceholder", () => {
       "href",
       "/platform",
     );
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 });

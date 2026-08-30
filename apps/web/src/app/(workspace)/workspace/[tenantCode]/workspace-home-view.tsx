@@ -1,5 +1,8 @@
 import Link from "next/link";
 
+import { StatePanel } from "@/components/workbench/state-panel";
+import { StatusTag } from "@/components/workbench/status-tag";
+import { DataPanel, ReadingPanel } from "@/components/workbench/surface";
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
 import styles from "./workspace-home.module.css";
@@ -24,23 +27,25 @@ export function WorkspaceHomeView({
 
   return (
     <div className={styles.home}>
-      <header className={styles.hero}>
-        <span className={styles.context}>{tenantName}</span>
-        <h1>{isAdmin ? "管理工作台" : "我的工作台"}</h1>
-        <p>
-          {isAdmin
-            ? `${userName}，在这里配置公司的业务表、成员和发布状态。`
-            : `${userName}，选择一个业务表开始处理你的工作。`}
-        </p>
-      </header>
+      <ReadingPanel
+        ariaLabel={isAdmin ? "管理工作台概览" : "我的工作台概览"}
+        className={styles.hero}
+      >
+        <header>
+          <span className={styles.context}>{tenantName}</span>
+          <h1>{isAdmin ? "管理工作台" : "我的工作台"}</h1>
+          <p>
+            {isAdmin
+              ? `${userName}，在这里配置公司的业务表、成员和发布状态。`
+              : `${userName}，选择一个业务表开始处理你的工作。`}
+          </p>
+        </header>
+      </ReadingPanel>
 
       {isAdmin ? (
-        <section
-          aria-labelledby="management-actions"
-          className={styles.section}
-        >
+        <ReadingPanel ariaLabel="常用管理" className={styles.section}>
           <div className={styles.sectionHeading}>
-            <h2 id="management-actions">常用管理</h2>
+            <h2>常用管理</h2>
             <p>表结构和员工权限在发布后生效。</p>
           </div>
           <div className={styles.actionGrid}>
@@ -56,14 +61,15 @@ export function WorkspaceHomeView({
               <span>邀请员工并设置成员访问范围</span>
             </Link>
           </div>
-        </section>
+        </ReadingPanel>
       ) : null}
 
-      <section aria-labelledby="available-objects" className={styles.section}>
+      <DataPanel
+        ariaLabel={isAdmin ? "已上线业务表" : "我可以使用的业务表"}
+        className={styles.section}
+      >
         <div className={styles.sectionHeading}>
-          <h2 id="available-objects">
-            {isAdmin ? "已上线业务表" : "我可以使用的业务表"}
-          </h2>
+          <h2>{isAdmin ? "已上线业务表" : "我可以使用的业务表"}</h2>
           <p>{businessObjects.length} 个已发布并授权的业务表</p>
         </div>
         {businessObjects.length ? (
@@ -79,30 +85,32 @@ export function WorkspaceHomeView({
                 </span>
                 <span>
                   <strong>{object.name}</strong>
-                  <small>
+                  <StatusTag tone={object.canCreate ? "success" : "neutral"}>
                     {object.canCreate ? "可查看、可新建" : "可查看"}
-                  </small>
+                  </StatusTag>
                 </span>
                 <span className={styles.openLabel}>打开</span>
               </Link>
             ))}
           </div>
         ) : (
-          <div className={styles.emptyState}>
-            <strong>
-              {isAdmin ? "还没有已发布的业务表" : "暂时没有可用业务表"}
-            </strong>
-            <p>
-              {isAdmin
+          <StatePanel
+            title={isAdmin ? "还没有已发布的业务表" : "暂时没有可用业务表"}
+            description={
+              isAdmin
                 ? "先创建业务对象并发布，员工才能开始使用。"
-                : "公司管理员发布并授权后，业务表会出现在这里。"}
-            </p>
-            {isAdmin ? (
-              <Link href={`${root}/settings/objects`}>创建第一个业务对象</Link>
-            ) : null}
-          </div>
+                : "公司管理员发布并授权后，业务表会出现在这里。"
+            }
+            action={
+              isAdmin ? (
+                <Link href={`${root}/settings/objects`}>
+                  创建第一个业务对象
+                </Link>
+              ) : undefined
+            }
+          />
         )}
-      </section>
+      </DataPanel>
     </div>
   );
 }

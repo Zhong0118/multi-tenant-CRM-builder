@@ -61,5 +61,28 @@ describe("WorkspaceHomeView", () => {
       "href",
       "/workspace/northwind/members",
     );
+    expect(screen.getByRole("region", { name: "常用管理" })).toHaveAttribute(
+      "data-surface",
+      "reading",
+    );
+    expect(
+      screen.getByRole("region", { name: "已上线业务表" }),
+    ).toHaveAttribute("data-surface", "data");
+  });
+
+  it("uses a data surface for an employee's authorized tables", () => {
+    render(
+      <WorkspaceHomeView
+        tenantCode="northwind"
+        tenantName="百杰"
+        userName="李明"
+        role="EMPLOYEE"
+        businessObjects={objects}
+      />,
+    );
+
+    expect(
+      screen.getByRole("region", { name: "我可以使用的业务表" }),
+    ).toHaveAttribute("data-surface", "data");
   });
 });

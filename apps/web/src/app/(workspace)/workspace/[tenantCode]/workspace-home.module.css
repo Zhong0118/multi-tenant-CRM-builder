@@ -8,10 +8,7 @@
 
 .hero {
   padding: 28px 30px;
-  border: 1px solid var(--border-default);
   border-left: 4px solid var(--color-primary);
-  border-radius: 8px;
-  background: var(--bg-surface);
 }
 
 .context {
@@ -29,8 +26,7 @@
 }
 
 .hero p,
-.sectionHeading p,
-.emptyState p {
+.sectionHeading p {
   margin: 0;
   color: var(--text-secondary);
   line-height: 1.7;
@@ -38,9 +34,6 @@
 
 .section {
   padding: 22px;
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  background: var(--bg-surface);
 }
 
 .sectionHeading {
@@ -78,14 +71,14 @@
   justify-content: center;
   padding: 16px 18px;
   border: 1px solid var(--border-default);
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   color: var(--text-primary);
   background: var(--bg-page);
 }
 
 .actionCard:hover,
 .objectCard:hover {
-  border-color: #b8c7eb;
+  border-color: var(--color-primary);
   background: var(--bg-selected);
 }
 
@@ -102,7 +95,7 @@
   min-height: 72px;
   padding: 12px 14px;
   border: 1px solid var(--border-default);
-  border-radius: 7px;
+  border-radius: var(--radius-data);
   color: var(--text-primary);
 }
 
@@ -124,28 +117,9 @@
   gap: 3px;
 }
 
-.objectCard small,
 .openLabel {
   color: var(--text-secondary);
   font-size: 12px;
-}
-
-.emptyState {
-  padding: 22px;
-  border: 1px dashed var(--border-strong);
-  border-radius: 7px;
-  background: var(--bg-page);
-}
-
-.emptyState strong {
-  color: var(--text-primary);
-}
-
-.emptyState a {
-  display: inline-block;
-  margin-top: 10px;
-  color: var(--color-primary);
-  font-weight: 500;
 }
 
 @media (max-width: 760px) {
