@@ -64,6 +64,19 @@ export default async function WorkspaceSettingsPage({
             进入成员管理 <span aria-hidden>→</span>
           </Link>
         </DataPanel>
+
+        <DataPanel className={styles.secondarySetting} ariaLabel="工作台与指标">
+          <div className={styles.settingIndex}>03</div>
+          <div>
+            <h2>工作台与指标</h2>
+            <p>
+              指定阶段、金额和成交日期字段，让管理员和员工看到使用真实记录计算的经营工作台。
+            </p>
+          </div>
+          <Link href={`/workspace/${tenantCode}/settings/dashboard`}>
+            配置工作台 <span aria-hidden>→</span>
+          </Link>
+        </DataPanel>
       </div>
 
       <ReadingPanel className={styles.lifecyclePanel} ariaLabel="配置生效规则">
