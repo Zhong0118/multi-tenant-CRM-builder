@@ -47,8 +47,57 @@
   font-weight: 600;
 }
 
+.eyebrow {
+  color: var(--color-primary);
+  font-family: var(--font-label);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.objectCreator {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(210px, 0.7fr);
+  gap: 24px;
+  padding-top: 8px;
+}
+
+.creatorGuide {
+  padding: 18px;
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius-reading);
+  background: var(--bg-page);
+}
+
+.creatorGuide h3 {
+  margin: 6px 0 14px;
+  color: var(--text-primary);
+  font-size: 16px;
+}
+
+.creatorGuide ol {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text-primary);
+}
+
+.creatorGuide p {
+  margin: 16px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 19px;
+}
+
 @media (max-width: 760px) {
   .createLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .objectCreator {
     grid-template-columns: 1fr;
   }
 }
@@ -252,10 +301,159 @@
   min-width: 0;
 }
 
+.objectWorkbench {
+  display: grid;
+  grid-template-columns: 138px minmax(0, 1fr) minmax(280px, 320px);
+  gap: 14px;
+  align-items: start;
+}
+
+.objectSteps {
+  position: sticky;
+  top: 20px;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-data);
+  background: var(--bg-surface);
+}
+
+.objectStepsHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.objectStepsHeader span {
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.objectStepsHeader strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.objectPreviewButton {
+  display: none;
+  margin-top: 7px;
+}
+
+.objectStep {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 7px;
+  gap: 6px;
+  align-items: start;
+  padding: 11px 9px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--border-default);
+  text-align: left;
+  cursor: pointer;
+}
+
+.objectStep:last-child {
+  border-bottom: 0;
+}
+
+.objectStep:hover {
+  background: var(--bg-hover);
+}
+
+.objectStepActive {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+.objectStepNumber {
+  padding-top: 1px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.objectStep > span:nth-child(2) {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.objectStep strong {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.objectStep small {
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.objectStep i {
+  width: 6px;
+  height: 6px;
+  margin-top: 5px;
+  background: var(--border-strong);
+  border-radius: 50%;
+}
+
+.objectStep i[data-complete="true"] {
+  background: var(--color-primary);
+}
+
+.templateObjectPreview {
+  position: sticky;
+  top: 20px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-reading);
+  background: var(--bg-surface);
+}
+
+.previewHeading {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 12px;
+}
+
+.previewHeading strong {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
 .objectEditor {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+@media (max-width: 1599px) {
+  .objectWorkbench {
+    grid-template-columns: 132px minmax(0, 1fr);
+  }
+
+  .templateObjectPreview {
+    display: none;
+  }
+
+  .objectPreviewButton {
+    display: inline-flex;
+  }
 }
 
 .editorSection,

@@ -16,6 +16,16 @@ export function isNavItemCurrent(pathname: string, href: string): boolean {
   return segments.length > 1 && pathname.startsWith(`${href}/`);
 }
 
+export function currentNavHref(
+  pathname: string,
+  groups: ShellNavGroup[],
+): string | undefined {
+  return groups
+    .flatMap((group) => group.items)
+    .filter((item) => isNavItemCurrent(pathname, item.href))
+    .sort((left, right) => right.href.length - left.href.length)[0]?.href;
+}
+
 export function Sidebar({
   brand,
   brandHref,
@@ -36,6 +46,7 @@ export function Sidebar({
   onMobileClose: () => void;
 }) {
   const toggleLabel = collapsed ? "展开菜单" : "收起菜单";
+  const activeHref = currentNavHref(pathname, navGroups);
   const toggleButton = (
     <button
       type="button"
@@ -79,7 +90,7 @@ export function Sidebar({
               data-collapsed={collapsed ? "true" : undefined}
             >
               {group.items.map((item) => {
-                const current = isNavItemCurrent(pathname, item.href);
+                const current = item.href === activeHref;
                 const icon = item.icon;
                 const link = (
                   <Link

@@ -1,18 +1,19 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Typography } from "antd";
+import { Alert, Button, Form, Input, Modal, Typography } from "antd";
 import Link from "next/link";
 import { useRef, useState } from "react";
 
-import { toApiError } from "@/lib/api/api-error";
 import { StatusTag } from "@/components/workbench/status-tag";
+import { toApiError } from "@/lib/api/api-error";
 
 import { browserTemplateApi, type TemplateApi } from "./template-api";
 import {
   addObject,
   isTemplateObjectCode,
   reorderObjects,
+  TEMPLATE_OBJECT_CODE_MESSAGE,
   templateDraftFromDetail,
   toTemplateConfiguration,
   type TemplateDraft,
@@ -53,6 +54,10 @@ export function TemplateEditor({
   const [analyzing, setAnalyzing] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [creatorOpen, setCreatorOpen] = useState(false);
+  const [newObjectName, setNewObjectName] = useState("");
+  const [newObjectCode, setNewObjectCode] = useState("");
+  const [newObjectDescription, setNewObjectDescription] = useState("");
   const [analysis, setAnalysis] = useState<TemplatePublicationAnalysis>();
   const [error, setError] = useState<string>();
   const [panelError, setPanelError] = useState<string>();
@@ -75,11 +80,36 @@ export function TemplateEditor({
     setAnalysis(undefined);
   }
 
+  const duplicateObjectCode = draft.objects.some(
+    (item) => item.object.code === newObjectCode.trim(),
+  );
+  const newObjectCodeInvalid =
+    newObjectCode.trim().length > 0 &&
+    !isTemplateObjectCode(newObjectCode.trim());
+  const canCreateObject =
+    newObjectName.trim().length > 0 &&
+    newObjectCode.trim().length > 0 &&
+    !newObjectCodeInvalid &&
+    !duplicateObjectCode;
+
+  function openObjectCreator() {
+    setNewObjectName("");
+    setNewObjectCode(nextObjectCode(draft));
+    setNewObjectDescription("");
+    setCreatorOpen(true);
+  }
+
   function createObject() {
-    const next = addObject(draft);
+    if (!canCreateObject) return;
+    const next = addObject(draft, {
+      name: newObjectName.trim(),
+      code: newObjectCode.trim(),
+      description: newObjectDescription.trim() || null,
+    });
     const created = next.objects.at(-1);
     changeDraft(next);
     setActiveObjectId(created?.object.id);
+    setCreatorOpen(false);
   }
 
   function moveObject(objectId: string, direction: -1 | 1) {
@@ -214,7 +244,7 @@ export function TemplateEditor({
   return (
     <main className={styles.editorPage}>
       <p className={styles.desktopOnly}>
-        模板包含多个对象和字段，请在宽度至少 1024px 的桌面端完成编辑。
+        模板包含多张业务表和字段，请在宽度至少 1024px 的桌面端完成编辑。
       </p>
 
       <header className={styles.editorHeader}>
@@ -296,11 +326,11 @@ export function TemplateEditor({
       ) : null}
 
       <div className={styles.templateDesigner}>
-        <aside className={styles.manifestRail} aria-label="模板对象清单">
+        <aside className={styles.manifestRail} aria-label="模板业务表清单">
           <div className={styles.manifestHeader}>
             <div>
-              <span>模板清单</span>
-              <strong>{draft.objects.length} 个对象</strong>
+              <span>业务表清单</span>
+              <strong>{draft.objects.length} 张表</strong>
             </div>
             <Typography.Text type="secondary">
               顺序会随完整聚合一起保存
@@ -364,8 +394,8 @@ export function TemplateEditor({
               );
             })}
           </div>
-          <Button block onClick={createObject}>
-            新建业务对象
+          <Button type="primary" block onClick={openObjectCreator}>
+            新增业务表
           </Button>
         </aside>
 
@@ -379,15 +409,98 @@ export function TemplateEditor({
             />
           ) : (
             <section className={styles.workspaceEmpty}>
-              <h2>模板还没有业务对象</h2>
-              <p>新建第一个业务对象，然后依次配置字段、列表视图和员工权限。</p>
-              <Button type="primary" onClick={createObject}>
-                新建第一个业务对象
+              <h2>模板还没有业务表</h2>
+              <p>先确定这张表记录什么，再配置字段、列表视图和员工权限。</p>
+              <Button type="primary" onClick={openObjectCreator}>
+                新增第一张业务表
               </Button>
             </section>
           )}
         </div>
       </div>
+
+      <Modal
+        open={creatorOpen}
+        centered
+        width={680}
+        title="新增业务表"
+        okText="创建并配置"
+        cancelText="取消"
+        okButtonProps={{ disabled: !canCreateObject }}
+        onOk={createObject}
+        onCancel={() => setCreatorOpen(false)}
+        destroyOnHidden
+      >
+        <div className={styles.objectCreator}>
+          <Form component={false} layout="vertical">
+            <Form.Item
+              label="业务表名称"
+              htmlFor="new-template-object-name"
+              extra="使用公司管理员和员工都能理解的业务名称，例如客户、跟单或回访记录。"
+            >
+              <Input
+                id="new-template-object-name"
+                autoFocus
+                placeholder="例如：回访记录"
+                value={newObjectName}
+                onChange={(event) => setNewObjectName(event.target.value)}
+              />
+            </Form.Item>
+            <Form.Item
+              label="业务表代码"
+              htmlFor="new-template-object-code"
+              validateStatus={
+                newObjectCodeInvalid || duplicateObjectCode
+                  ? "error"
+                  : undefined
+              }
+              help={
+                duplicateObjectCode
+                  ? "该代码已在模板中使用。"
+                  : newObjectCodeInvalid
+                    ? TEMPLATE_OBJECT_CODE_MESSAGE
+                    : undefined
+              }
+              extra="代码用于稳定标识这张表，发布后不能修改。"
+            >
+              <Input
+                id="new-template-object-code"
+                className={styles.code}
+                value={newObjectCode}
+                onChange={(event) => setNewObjectCode(event.target.value)}
+              />
+            </Form.Item>
+            <Form.Item
+              label="用途说明"
+              htmlFor="new-template-object-description"
+              extra="说明这张表由谁维护、记录什么内容。后续仍可调整。"
+            >
+              <Input.TextArea
+                id="new-template-object-description"
+                rows={3}
+                placeholder="例如：销售人员登记每次客户回访及下一步安排。"
+                value={newObjectDescription}
+                onChange={(event) =>
+                  setNewObjectDescription(event.target.value)
+                }
+              />
+            </Form.Item>
+          </Form>
+          <aside className={styles.creatorGuide} aria-label="创建后配置步骤">
+            <span className={styles.eyebrow}>CREATION FLOW</span>
+            <h3>创建后还需要完成</h3>
+            <ol>
+              <li>添加并设置字段</li>
+              <li>确定默认列表视图</li>
+              <li>设置员工动作与数据范围</li>
+              <li>保存草稿并发布模板</li>
+            </ol>
+            <p>
+              创建业务表不会立即影响任何公司，只有发布模板并应用后才会生成公司草稿。
+            </p>
+          </aside>
+        </div>
+      </Modal>
 
       <TemplatePublicationPanel
         open={panelOpen}
@@ -406,6 +519,14 @@ export function TemplateEditor({
       />
     </main>
   );
+}
+
+function nextObjectCode(draft: TemplateDraft): string {
+  let index = draft.objects.length + 1;
+  while (draft.objects.some((item) => item.object.code === `object-${index}`)) {
+    index += 1;
+  }
+  return `object-${index}`;
 }
 
 function objectComplete(object: TemplateDraft["objects"][number]): boolean {

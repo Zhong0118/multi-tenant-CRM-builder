@@ -224,32 +224,164 @@
   max-width: 720px;
 }
 
-.drawerSection {
-  padding-top: 16px;
-  margin-top: 8px;
-  border-top: 1px solid var(--rule);
+.fieldDrawer :global(.ant-drawer-header) {
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border-default);
 }
 
-.drawerSection:first-of-type {
-  padding-top: 0;
-  margin-top: 0;
-  border-top: 0;
+.fieldDrawer :global(.ant-drawer-body) {
+  padding: 18px;
+  background: var(--bg-page);
 }
 
-.drawerSectionLabel {
-  display: block;
-  margin-bottom: 12px;
-  color: var(--ink-secondary);
+.fieldDrawer :global(.ant-drawer-footer) {
+  padding: 12px 18px;
+  border-top: 1px solid var(--border-default);
+}
+
+.drawerTitle {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.drawerTitle > span {
+  color: var(--color-primary);
   font-family: var(--font-label);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.drawerTitle > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  align-items: center;
+}
+
+.drawerTitle strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drawerTitle small {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.fieldDrawerFooter {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fieldDrawerFooter > span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.drawerSection {
+  padding: 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-reading);
+  background: var(--bg-surface);
+}
+
+.drawerSection + .drawerSection {
+  margin-top: 12px;
+}
+
+.drawerSectionHeading {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.drawerSectionHeading > span {
+  color: var(--color-primary);
+  font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+}
+
+.drawerSectionHeading strong {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.drawerSectionHeading p {
+  margin: 2px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.drawerFormGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 14px;
+}
+
+.requiredControl {
+  display: flex;
+  min-height: 34px;
+  gap: 9px;
+  align-items: center;
+  color: var(--text-primary);
+}
+
+.fieldTypeDescription {
+  margin: -2px 0 0;
+  padding: 9px 10px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  background: var(--bg-page);
+  border-radius: var(--radius-control);
+}
+
+.accessChoices {
+  display: flex;
+  width: 100%;
+}
+
+.accessChoices :global(.ant-radio-button-wrapper) {
+  flex: 1;
+  text-align: center;
 }
 
 .lockNote {
   color: var(--review-amber);
   font-size: 12px;
   line-height: 18px;
+}
+
+@media (max-width: 640px) {
+  .fieldDrawer :global(.ant-drawer-content-wrapper) {
+    width: 100vw !important;
+  }
+
+  .drawerFormGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .fieldDrawerFooter {
+    align-items: flex-end;
+  }
+
+  .fieldDrawerFooter > span {
+    display: none;
+  }
 }
 
 /* Publication review: blockers and warnings never share a container. */

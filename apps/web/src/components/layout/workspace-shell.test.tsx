@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { workspaceNavigation } from "@/components/navigation/workspace-navigation";
 
@@ -21,6 +21,10 @@ const shellUser = {
   phone: "+8613900000001",
   isPlatformAdmin: false,
 };
+
+beforeEach(() => {
+  mocks.pathname = "/workspace/northwind";
+});
 
 function businessObject(overrides: Record<string, unknown> = {}) {
   return {
@@ -119,6 +123,30 @@ describe("WorkspaceShell", () => {
       "href",
       "/workspace/northwind/settings",
     );
+  });
+
+  it("highlights only the most specific workspace destination", () => {
+    mocks.pathname = "/workspace/northwind/settings/objects";
+    render(
+      <WorkspaceShell
+        tenantCode="northwind"
+        tenantName="百杰"
+        role="TENANT_ADMIN"
+        user={shellUser}
+        businessObjects={[]}
+      >
+        <p>设置内容</p>
+      </WorkspaceShell>,
+    );
+
+    const system = screen.getByRole("navigation", { name: "工作空间" });
+    expect(within(system).getByRole("link", { name: "设置" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(
+      within(system).getByRole("link", { name: "管理工作台" }),
+    ).not.toHaveAttribute("aria-current");
   });
 
   it("renders business object links in the order supplied by the server", () => {

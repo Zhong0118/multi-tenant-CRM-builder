@@ -1,6 +1,15 @@
 "use client";
 
-import { Button, Form, Input, Select, Space, Switch, Typography } from "antd";
+import {
+  Button,
+  Drawer,
+  Form,
+  Input,
+  Select,
+  Space,
+  Switch,
+  Typography,
+} from "antd";
 import { useMemo, useState } from "react";
 
 import {
@@ -36,12 +45,16 @@ export interface TemplateObjectEditorProps {
   onChange: (draft: TemplateDraft) => void;
 }
 
+type ObjectSection = "basics" | "fields" | "view" | "permissions";
+
 export function TemplateObjectEditor({
   draft,
   objectId,
   onChange,
 }: TemplateObjectEditorProps) {
   const object = draft.objects.find((item) => item.object.id === objectId);
+  const [section, setSection] = useState<ObjectSection>("basics");
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [editingFieldId, setEditingFieldId] = useState<string>();
   const [previewRole, setPreviewRole] = useState<PreviewRole>("TENANT_ADMIN");
   const editingField =
@@ -116,323 +129,444 @@ export function TemplateObjectEditor({
       }),
     );
 
-  return (
-    <div className={styles.objectEditor}>
-      <section
-        className={styles.editorSection}
-        aria-labelledby="template-object-basics"
-      >
-        <div className={styles.sectionHeading}>
-          <div>
-            <h2 id="template-object-basics">基本设置</h2>
-            <p>名称可以调整；发布身份锁定后，对象代码保持不变。</p>
-          </div>
-        </div>
-        <Form
-          component={false}
-          layout="vertical"
-          className={styles.compactForm}
-        >
-          <div className={styles.formGrid}>
-            <Form.Item label="对象名称" htmlFor={`object-name-${objectId}`}>
-              <Input
-                id={`object-name-${objectId}`}
-                value={object.object.name}
-                onChange={(event) =>
-                  onChange(
-                    updateObject(draft, objectId, { name: event.target.value }),
-                  )
-                }
-              />
-            </Form.Item>
-            <Form.Item
-              label="对象代码"
-              htmlFor={`object-code-${objectId}`}
-              validateStatus={objectCodeInvalid ? "error" : undefined}
-              help={
-                objectCodeInvalid ? TEMPLATE_OBJECT_CODE_MESSAGE : undefined
-              }
-              extra={
-                object.object.publishedCode
-                  ? "该代码已进入发布版本，不能修改。"
-                  : "必须以小写字母开头；仅使用小写字母、数字和单个连字符；首次发布后锁定。"
-              }
-            >
-              <Input
-                id={`object-code-${objectId}`}
-                className={styles.code}
-                value={object.object.code}
-                disabled={object.object.publishedCode !== null}
-                onChange={(event) =>
-                  onChange(
-                    updateObject(draft, objectId, { code: event.target.value }),
-                  )
-                }
-              />
-            </Form.Item>
-          </div>
-          <Form.Item
-            label="对象说明"
-            htmlFor={`object-description-${objectId}`}
-          >
-            <Input.TextArea
-              id={`object-description-${objectId}`}
-              rows={2}
-              value={object.object.description ?? ""}
-              onChange={(event) =>
-                onChange(
-                  updateObject(draft, objectId, {
-                    description: event.target.value || null,
-                  }),
-                )
-              }
-            />
-          </Form.Item>
-          <div className={styles.formGrid}>
-            <Form.Item
-              label="标题字段"
-              htmlFor={`object-title-field-${objectId}`}
-              extra="标题字段用于记录列表和引用位置，必须启用且必填。"
-            >
-              <Select
-                id={`object-title-field-${objectId}`}
-                value={object.object.titleFieldKey || undefined}
-                placeholder="先新增一个可作为标题的必填字段"
-                options={titleCandidates.map((field) => ({
-                  value: field.fieldKey,
-                  label: `${field.label}（${field.fieldKey}）`,
-                }))}
-                onChange={(titleFieldKey) =>
-                  onChange(updateObject(draft, objectId, { titleFieldKey }))
-                }
-              />
-            </Form.Item>
-            <Form.Item label="对象状态" htmlFor={`object-status-${objectId}`}>
-              <Select
-                id={`object-status-${objectId}`}
-                value={object.object.status}
-                options={[
-                  { value: "ACTIVE", label: "启用" },
-                  { value: "INACTIVE", label: "停用" },
-                ]}
-                onChange={(status: "ACTIVE" | "INACTIVE") =>
-                  onChange(updateObject(draft, objectId, { status }))
-                }
-              />
-            </Form.Item>
-          </div>
-        </Form>
-      </section>
+  const steps: Array<{
+    key: ObjectSection;
+    label: string;
+    summary: string;
+    complete: boolean;
+  }> = [
+    {
+      key: "basics",
+      label: "基本信息",
+      summary: "名称、代码与标题",
+      complete:
+        object.object.name.trim().length > 0 &&
+        !objectCodeInvalid &&
+        object.object.titleFieldKey.length > 0,
+    },
+    {
+      key: "fields",
+      label: "字段",
+      summary: `${object.fields.length} 个字段`,
+      complete: object.fields.some((field) => field.status === "ACTIVE"),
+    },
+    {
+      key: "view",
+      label: "列表视图",
+      summary: "默认列与排序",
+      complete: Boolean(
+        object.defaultView && object.defaultView.columnFieldKeys.length > 0,
+      ),
+    },
+    {
+      key: "permissions",
+      label: "员工权限",
+      summary: "动作与数据范围",
+      complete: object.employeeAccess !== null,
+    },
+  ];
 
-      <section
-        className={styles.editorSection}
-        aria-labelledby="template-object-fields"
-      >
-        <div className={styles.sectionHeading}>
-          <div>
-            <h2 id="template-object-fields">字段</h2>
-            <p>字段顺序会进入模板版本；已发布字段的字段键和类型会锁定。</p>
-          </div>
-          <Button type="primary" ghost onClick={createField}>
-            新增字段
+  return (
+    <div className={styles.objectWorkbench}>
+      <nav className={styles.objectSteps} aria-label="业务表配置步骤">
+        <div className={styles.objectStepsHeader}>
+          <span>配置业务表</span>
+          <strong>{object.object.name}</strong>
+          <Button
+            className={styles.objectPreviewButton}
+            size="small"
+            onClick={() => setPreviewOpen(true)}
+          >
+            打开成员预览
           </Button>
         </div>
-        {object.fields.length === 0 ? (
-          <div className={styles.inlineEmpty}>
-            <strong>还没有字段</strong>
-            <span>新增第一个必填标题字段，再配置列表视图和员工权限。</span>
-            <Button onClick={createField}>新增第一个字段</Button>
-          </div>
-        ) : (
-          <FieldLedger
-            fields={object.fields}
-            titleFieldKey={object.object.titleFieldKey}
-            onMove={moveField}
-            onSelect={(field) => setEditingFieldId(field.id)}
-            onToggleStatus={(field) =>
-              onChange(
-                setFieldStatus(
-                  draft,
-                  objectId,
-                  field.id,
-                  field.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
-                ),
-              )
-            }
-          />
-        )}
-      </section>
-
-      <section
-        className={styles.editorSection}
-        aria-labelledby="template-object-view"
-      >
-        <div className={styles.sectionHeading}>
-          <div>
-            <h2 id="template-object-view">列表视图</h2>
-            <p>确定公司管理员拿到草稿时的默认列与排序。</p>
-          </div>
-        </div>
-        {object.fields.length === 0 ? (
-          <div className={styles.inlineEmpty}>
-            <strong>列表视图等待字段</strong>
-            <span>先新增字段，才能选择默认展示列。</span>
-          </div>
-        ) : (
-          <Form
-            component={false}
-            layout="vertical"
-            className={styles.compactForm}
+        {steps.map((step, index) => (
+          <button
+            key={step.key}
+            type="button"
+            className={`${styles.objectStep} ${
+              section === step.key ? styles.objectStepActive : ""
+            }`}
+            aria-current={section === step.key ? "step" : undefined}
+            onClick={() => setSection(step.key)}
           >
-            <div className={styles.formGrid}>
-              <Form.Item label="视图名称" htmlFor={`view-name-${objectId}`}>
-                <Input
-                  id={`view-name-${objectId}`}
-                  value={defaultView.name}
+            <span className={styles.objectStepNumber}>
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <span>
+              <strong>{step.label}</strong>
+              <small>{step.summary}</small>
+            </span>
+            <i data-complete={step.complete ? "true" : undefined} />
+          </button>
+        ))}
+      </nav>
+
+      <div className={styles.objectEditor}>
+        {section === "basics" ? (
+          <section
+            className={styles.editorSection}
+            aria-labelledby="template-object-basics"
+          >
+            <div className={styles.sectionHeading}>
+              <div>
+                <h2 id="template-object-basics">基本信息</h2>
+                <p>
+                  先说清楚这张表记录什么，以及列表中用哪个字段代表一条记录。
+                </p>
+              </div>
+            </div>
+            <Form
+              component={false}
+              layout="vertical"
+              className={styles.compactForm}
+            >
+              <div className={styles.formGrid}>
+                <Form.Item
+                  label="业务表名称"
+                  htmlFor={`object-name-${objectId}`}
+                >
+                  <Input
+                    id={`object-name-${objectId}`}
+                    value={object.object.name}
+                    onChange={(event) =>
+                      onChange(
+                        updateObject(draft, objectId, {
+                          name: event.target.value,
+                        }),
+                      )
+                    }
+                  />
+                </Form.Item>
+                <Form.Item
+                  label="业务表代码"
+                  htmlFor={`object-code-${objectId}`}
+                  validateStatus={objectCodeInvalid ? "error" : undefined}
+                  help={
+                    objectCodeInvalid ? TEMPLATE_OBJECT_CODE_MESSAGE : undefined
+                  }
+                  extra={
+                    object.object.publishedCode
+                      ? "该代码已进入发布版本，不能修改。"
+                      : "必须以小写字母开头；仅使用小写字母、数字和单个连字符；首次发布后锁定。"
+                  }
+                >
+                  <Input
+                    id={`object-code-${objectId}`}
+                    className={styles.code}
+                    value={object.object.code}
+                    disabled={object.object.publishedCode !== null}
+                    onChange={(event) =>
+                      onChange(
+                        updateObject(draft, objectId, {
+                          code: event.target.value,
+                        }),
+                      )
+                    }
+                  />
+                </Form.Item>
+              </div>
+              <Form.Item
+                label="业务表说明"
+                htmlFor={`object-description-${objectId}`}
+              >
+                <Input.TextArea
+                  id={`object-description-${objectId}`}
+                  rows={2}
+                  value={object.object.description ?? ""}
                   onChange={(event) =>
                     onChange(
-                      setDefaultView(draft, objectId, {
-                        ...defaultView,
-                        name: event.target.value,
+                      updateObject(draft, objectId, {
+                        description: event.target.value || null,
                       }),
                     )
                   }
                 />
               </Form.Item>
-              <Form.Item
-                label="默认展示列"
-                htmlFor={`view-columns-${objectId}`}
-              >
-                <Select
-                  id={`view-columns-${objectId}`}
-                  mode="multiple"
-                  value={defaultView.columnFieldKeys}
-                  options={object.fields
-                    .filter((field) => field.status === "ACTIVE")
-                    .map((field) => ({
+              <div className={styles.formGrid}>
+                <Form.Item
+                  label="标题字段"
+                  htmlFor={`object-title-field-${objectId}`}
+                  extra="标题字段用于记录列表和引用位置，必须启用且必填。"
+                >
+                  <Select
+                    id={`object-title-field-${objectId}`}
+                    value={object.object.titleFieldKey || undefined}
+                    placeholder="先新增一个可作为标题的必填字段"
+                    options={titleCandidates.map((field) => ({
                       value: field.fieldKey,
-                      label: field.label,
+                      label: `${field.label}（${field.fieldKey}）`,
                     }))}
-                  onChange={(columnFieldKeys: string[]) =>
-                    onChange(
-                      setDefaultView(draft, objectId, {
-                        ...defaultView,
-                        columnFieldKeys,
-                      }),
-                    )
-                  }
-                />
-              </Form.Item>
-            </div>
-            <div className={styles.formGrid}>
-              <Form.Item
-                label="排序字段"
-                htmlFor={`view-sort-field-${objectId}`}
-              >
-                <Select
-                  id={`view-sort-field-${objectId}`}
-                  value={defaultView.sort.field}
-                  options={[
-                    { value: "updatedAt", label: "更新时间" },
-                    { value: "createdAt", label: "创建时间" },
-                    { value: "recordNo", label: "记录编号" },
-                  ]}
-                  onChange={(field) =>
-                    onChange(
-                      setDefaultView(draft, objectId, {
-                        ...defaultView,
-                        sort: { ...defaultView.sort, field },
-                      }),
-                    )
-                  }
-                />
-              </Form.Item>
-              <Form.Item
-                label="排序方向"
-                htmlFor={`view-sort-direction-${objectId}`}
-              >
-                <Select
-                  id={`view-sort-direction-${objectId}`}
-                  value={defaultView.sort.direction}
-                  options={[
-                    { value: "desc", label: "从新到旧" },
-                    { value: "asc", label: "从旧到新" },
-                  ]}
-                  onChange={(direction) =>
-                    onChange(
-                      setDefaultView(draft, objectId, {
-                        ...defaultView,
-                        sort: { ...defaultView.sort, direction },
-                      }),
-                    )
-                  }
-                />
-              </Form.Item>
-            </div>
-          </Form>
-        )}
-      </section>
+                    onChange={(titleFieldKey) =>
+                      onChange(updateObject(draft, objectId, { titleFieldKey }))
+                    }
+                  />
+                </Form.Item>
+                <Form.Item
+                  label="业务表状态"
+                  htmlFor={`object-status-${objectId}`}
+                >
+                  <Select
+                    id={`object-status-${objectId}`}
+                    value={object.object.status}
+                    options={[
+                      { value: "ACTIVE", label: "启用" },
+                      { value: "INACTIVE", label: "停用" },
+                    ]}
+                    onChange={(status: "ACTIVE" | "INACTIVE") =>
+                      onChange(updateObject(draft, objectId, { status }))
+                    }
+                  />
+                </Form.Item>
+              </div>
+            </Form>
+          </section>
+        ) : null}
 
-      <section
-        className={styles.editorSection}
-        aria-labelledby="template-object-permissions"
+        {section === "fields" ? (
+          <section
+            className={styles.editorSection}
+            aria-labelledby="template-object-fields"
+          >
+            <div className={styles.sectionHeading}>
+              <div>
+                <h2 id="template-object-fields">字段</h2>
+                <p>字段顺序会进入模板版本；已发布字段的字段键和类型会锁定。</p>
+              </div>
+              <Button type="primary" ghost onClick={createField}>
+                新增字段
+              </Button>
+            </div>
+            {object.fields.length === 0 ? (
+              <div className={styles.inlineEmpty}>
+                <strong>还没有字段</strong>
+                <span>新增第一个必填标题字段，再配置列表视图和员工权限。</span>
+                <Button onClick={createField}>新增第一个字段</Button>
+              </div>
+            ) : (
+              <FieldLedger
+                fields={object.fields}
+                titleFieldKey={object.object.titleFieldKey}
+                onMove={moveField}
+                onSelect={(field) => setEditingFieldId(field.id)}
+                onToggleStatus={(field) =>
+                  onChange(
+                    setFieldStatus(
+                      draft,
+                      objectId,
+                      field.id,
+                      field.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
+                    ),
+                  )
+                }
+              />
+            )}
+          </section>
+        ) : null}
+
+        {section === "view" ? (
+          <section
+            className={styles.editorSection}
+            aria-labelledby="template-object-view"
+          >
+            <div className={styles.sectionHeading}>
+              <div>
+                <h2 id="template-object-view">列表视图</h2>
+                <p>确定公司管理员拿到草稿时的默认列与排序。</p>
+              </div>
+            </div>
+            {object.fields.length === 0 ? (
+              <div className={styles.inlineEmpty}>
+                <strong>列表视图等待字段</strong>
+                <span>先新增字段，才能选择默认展示列。</span>
+              </div>
+            ) : (
+              <Form
+                component={false}
+                layout="vertical"
+                className={styles.compactForm}
+              >
+                <div className={styles.formGrid}>
+                  <Form.Item label="视图名称" htmlFor={`view-name-${objectId}`}>
+                    <Input
+                      id={`view-name-${objectId}`}
+                      value={defaultView.name}
+                      onChange={(event) =>
+                        onChange(
+                          setDefaultView(draft, objectId, {
+                            ...defaultView,
+                            name: event.target.value,
+                          }),
+                        )
+                      }
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    label="默认展示列"
+                    htmlFor={`view-columns-${objectId}`}
+                  >
+                    <Select
+                      id={`view-columns-${objectId}`}
+                      mode="multiple"
+                      value={defaultView.columnFieldKeys}
+                      options={object.fields
+                        .filter((field) => field.status === "ACTIVE")
+                        .map((field) => ({
+                          value: field.fieldKey,
+                          label: field.label,
+                        }))}
+                      onChange={(columnFieldKeys: string[]) =>
+                        onChange(
+                          setDefaultView(draft, objectId, {
+                            ...defaultView,
+                            columnFieldKeys,
+                          }),
+                        )
+                      }
+                    />
+                  </Form.Item>
+                </div>
+                <div className={styles.formGrid}>
+                  <Form.Item
+                    label="排序字段"
+                    htmlFor={`view-sort-field-${objectId}`}
+                  >
+                    <Select
+                      id={`view-sort-field-${objectId}`}
+                      value={defaultView.sort.field}
+                      options={[
+                        { value: "updatedAt", label: "更新时间" },
+                        { value: "createdAt", label: "创建时间" },
+                        { value: "recordNo", label: "记录编号" },
+                      ]}
+                      onChange={(field) =>
+                        onChange(
+                          setDefaultView(draft, objectId, {
+                            ...defaultView,
+                            sort: { ...defaultView.sort, field },
+                          }),
+                        )
+                      }
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    label="排序方向"
+                    htmlFor={`view-sort-direction-${objectId}`}
+                  >
+                    <Select
+                      id={`view-sort-direction-${objectId}`}
+                      value={defaultView.sort.direction}
+                      options={[
+                        { value: "desc", label: "从新到旧" },
+                        { value: "asc", label: "从旧到新" },
+                      ]}
+                      onChange={(direction) =>
+                        onChange(
+                          setDefaultView(draft, objectId, {
+                            ...defaultView,
+                            sort: { ...defaultView.sort, direction },
+                          }),
+                        )
+                      }
+                    />
+                  </Form.Item>
+                </div>
+              </Form>
+            )}
+          </section>
+        ) : null}
+
+        {section === "permissions" ? (
+          <section
+            className={styles.editorSection}
+            aria-labelledby="template-object-permissions"
+          >
+            <div className={styles.sectionHeading}>
+              <div>
+                <h2 id="template-object-permissions">员工权限</h2>
+                <p>设置模板落地后的初始动作、数据范围和逐字段访问级别。</p>
+              </div>
+            </div>
+            <div className={styles.permissionGrid}>
+              <Space orientation="vertical" size={14}>
+                <SwitchRow
+                  label="允许新建记录"
+                  checked={permissions.canCreate}
+                  onChange={(canCreate) => patchPermissions({ canCreate })}
+                />
+                <SwitchRow
+                  label="允许读取记录"
+                  checked={permissions.canRead}
+                  onChange={(canRead) => patchPermissions({ canRead })}
+                />
+                <SwitchRow
+                  label="允许更新记录"
+                  checked={permissions.canUpdate}
+                  onChange={(canUpdate) => patchPermissions({ canUpdate })}
+                />
+                <Typography.Text type="secondary">
+                  删除权限固定关闭；公司管理员可在对象草稿中继续调整。
+                </Typography.Text>
+              </Space>
+              <Form component={false} layout="vertical">
+                <Form.Item label="读取范围" htmlFor={`read-scope-${objectId}`}>
+                  <ScopeSelect
+                    id={`read-scope-${objectId}`}
+                    value={permissions.readScope}
+                    onChange={(readScope) => patchPermissions({ readScope })}
+                  />
+                </Form.Item>
+                <Form.Item
+                  label="更新范围"
+                  htmlFor={`update-scope-${objectId}`}
+                >
+                  <ScopeSelect
+                    id={`update-scope-${objectId}`}
+                    value={permissions.updateScope}
+                    onChange={(updateScope) =>
+                      patchPermissions({ updateScope })
+                    }
+                  />
+                </Form.Item>
+              </Form>
+            </div>
+          </section>
+        ) : null}
+      </div>
+
+      <aside
+        className={styles.templateObjectPreview}
+        aria-label="业务表实时预览"
       >
-        <div className={styles.sectionHeading}>
-          <div>
-            <h2 id="template-object-permissions">员工权限</h2>
-            <p>设置模板落地后的初始动作、数据范围和逐字段访问级别。</p>
-          </div>
-        </div>
-        <div className={styles.permissionGrid}>
-          <Space orientation="vertical" size={14}>
-            <SwitchRow
-              label="允许新建记录"
-              checked={permissions.canCreate}
-              onChange={(canCreate) => patchPermissions({ canCreate })}
-            />
-            <SwitchRow
-              label="允许读取记录"
-              checked={permissions.canRead}
-              onChange={(canRead) => patchPermissions({ canRead })}
-            />
-            <SwitchRow
-              label="允许更新记录"
-              checked={permissions.canUpdate}
-              onChange={(canUpdate) => patchPermissions({ canUpdate })}
-            />
-            <Typography.Text type="secondary">
-              删除权限固定关闭；公司管理员可在对象草稿中继续调整。
-            </Typography.Text>
-          </Space>
-          <Form component={false} layout="vertical">
-            <Form.Item label="读取范围" htmlFor={`read-scope-${objectId}`}>
-              <ScopeSelect
-                id={`read-scope-${objectId}`}
-                value={permissions.readScope}
-                onChange={(readScope) => patchPermissions({ readScope })}
-              />
-            </Form.Item>
-            <Form.Item label="更新范围" htmlFor={`update-scope-${objectId}`}>
-              <ScopeSelect
-                id={`update-scope-${objectId}`}
-                value={permissions.updateScope}
-                onChange={(updateScope) => patchPermissions({ updateScope })}
-              />
-            </Form.Item>
-          </Form>
+        <div className={styles.previewHeading}>
+          <span className={styles.eyebrow}>LIVE PREVIEW</span>
+          <strong>成员看到的页面</strong>
         </div>
         <ObjectPreview
           draft={object}
           role={previewRole}
           onRoleChange={setPreviewRole}
         />
-      </section>
+      </aside>
 
       <FieldEditorDrawer
         field={editingField}
         onClose={() => setEditingFieldId(undefined)}
         onSubmit={saveField}
       />
+      <Drawer
+        open={previewOpen}
+        size={520}
+        title={`${object.object.name} · 成员预览`}
+        onClose={() => setPreviewOpen(false)}
+        destroyOnHidden
+      >
+        <ObjectPreview
+          draft={object}
+          role={previewRole}
+          onRoleChange={setPreviewRole}
+        />
+      </Drawer>
     </div>
   );
 }

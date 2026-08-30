@@ -46,6 +46,7 @@ export interface NewTemplateObject {
   id?: string;
   code?: string;
   name?: string;
+  description?: string | null;
 }
 
 export interface NewTemplateField {
@@ -497,7 +498,7 @@ function newObject(
       id: input.id ?? newStableId(),
       code: input.code ?? `object-${sortOrder}`,
       name: input.name ?? "新业务对象",
-      description: null,
+      description: input.description ?? null,
       icon: null,
       titleFieldKey: "",
       sortOrder,

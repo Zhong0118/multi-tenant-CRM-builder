@@ -5,12 +5,15 @@ import {
   Drawer,
   Form,
   Input,
+  Radio,
   Select,
   Space,
   Switch,
   Typography,
 } from "antd";
 import { useState } from "react";
+
+import { StatusTag } from "@/components/workbench/status-tag";
 
 import {
   FIELD_ACCESS_LABELS,
@@ -86,21 +89,36 @@ function FieldEditor({
   return (
     <Drawer
       open
-      size={480}
-      title={`配置字段 ${field.label}`}
+      size={600}
+      className={styles.fieldDrawer}
+      title={
+        <div className={styles.drawerTitle}>
+          <span>FIELD CONFIGURATION</span>
+          <div>
+            <strong>{field.label}</strong>
+            <StatusTag tone={field.status === "ACTIVE" ? "success" : "neutral"}>
+              {field.status === "ACTIVE" ? "启用中" : "已停用"}
+            </StatusTag>
+          </div>
+          <small>决定字段如何录入、校验，以及员工是否能看到或修改。</small>
+        </div>
+      }
       onClose={onClose}
       destroyOnHidden
       footer={
-        <Space>
-          <Button onClick={onClose}>取消</Button>
-          <Button
-            type="primary"
-            loading={saving}
-            onClick={() => onSubmit(values)}
-          >
-            保存字段
-          </Button>
-        </Space>
+        <div className={styles.fieldDrawerFooter}>
+          <span>保存后仍需保存对象或模板草稿。</span>
+          <Space>
+            <Button onClick={onClose}>取消</Button>
+            <Button
+              type="primary"
+              loading={saving}
+              onClick={() => onSubmit(values)}
+            >
+              保存字段
+            </Button>
+          </Space>
+        </div>
       }
     >
       {error ? (
@@ -109,26 +127,32 @@ function FieldEditor({
 
       <Form component={false} layout="vertical">
         <section className={styles.drawerSection}>
-          <span className={styles.drawerSectionLabel}>显示</span>
-          <Form.Item label="字段名称" htmlFor="field-label">
-            <Input
-              id="field-label"
-              value={values.label}
-              onChange={(event) => patch({ label: event.target.value })}
-            />
-          </Form.Item>
-          <Form.Item
-            label="字段键"
-            htmlFor="field-key"
-            extra="字段键在对象内唯一，发布后不再变更。"
-          >
-            <Input
-              id="field-key"
-              value={values.fieldKey}
-              disabled={fieldKeyLocked}
-              onChange={(event) => patch({ fieldKey: event.target.value })}
-            />
-          </Form.Item>
+          <DrawerSectionHeading
+            number="01"
+            title="显示与标识"
+            description="名称给人看，字段键供系统稳定识别。"
+          />
+          <div className={styles.drawerFormGrid}>
+            <Form.Item label="字段名称" htmlFor="field-label">
+              <Input
+                id="field-label"
+                value={values.label}
+                onChange={(event) => patch({ label: event.target.value })}
+              />
+            </Form.Item>
+            <Form.Item
+              label="字段键"
+              htmlFor="field-key"
+              extra="在对象内唯一，发布后不再变更。"
+            >
+              <Input
+                id="field-key"
+                value={values.fieldKey}
+                disabled={fieldKeyLocked}
+                onChange={(event) => patch({ fieldKey: event.target.value })}
+              />
+            </Form.Item>
+          </div>
           <Form.Item
             label="辅助说明"
             htmlFor="field-help"
@@ -143,36 +167,50 @@ function FieldEditor({
         </section>
 
         <section className={styles.drawerSection}>
-          <span className={styles.drawerSectionLabel}>数据类型</span>
-          <Form.Item label="数据类型" htmlFor="field-type">
-            <Select
-              id="field-type"
-              value={values.type}
-              disabled={typeLocked}
-              onChange={(type: PublishedFieldType) => patch({ type })}
-              options={PUBLISHED_FIELD_TYPES.map((type) => ({
-                value: type,
-                label: FIELD_TYPE_LABELS[type],
-              }))}
-            />
-          </Form.Item>
+          <DrawerSectionHeading
+            number="02"
+            title="数据类型"
+            description="类型决定输入控件和服务端校验方式，发布后会锁定。"
+          />
+          <div className={styles.drawerFormGrid}>
+            <Form.Item label="数据类型" htmlFor="field-type">
+              <Select
+                id="field-type"
+                value={values.type}
+                disabled={typeLocked}
+                onChange={(type: PublishedFieldType) => patch({ type })}
+                options={PUBLISHED_FIELD_TYPES.map((type) => ({
+                  value: type,
+                  label: FIELD_TYPE_LABELS[type],
+                }))}
+              />
+            </Form.Item>
+            <Form.Item label="录入要求" htmlFor="field-required">
+              <div className={styles.requiredControl}>
+                <Switch
+                  id="field-required"
+                  aria-label="必填"
+                  checked={values.required}
+                  onChange={(required) => patch({ required })}
+                />
+                <span>{values.required ? "必须填写" : "可以留空"}</span>
+              </div>
+            </Form.Item>
+          </div>
+          <p className={styles.fieldTypeDescription}>
+            {fieldTypeDescription(values.type)}
+          </p>
           {typeLocked ? (
             <p className={styles.lockNote}>字段发布后不能更改数据类型。</p>
           ) : null}
-          <Form.Item label="必填" htmlFor="field-required">
-            <Switch
-              id="field-required"
-              aria-label="必填"
-              checked={values.required}
-              onChange={(required) => patch({ required })}
-            />
-          </Form.Item>
         </section>
 
         <section className={styles.drawerSection}>
-          <span className={styles.drawerSectionLabel}>
-            {SELECT_TYPES.includes(values.type) ? "选项" : "校验"}
-          </span>
+          <DrawerSectionHeading
+            number="03"
+            title={SELECT_TYPES.includes(values.type) ? "选项设置" : "校验规则"}
+            description="只配置这类数据真正需要的限制。"
+          />
           {TEXT_TYPES.includes(values.type) ? (
             <div className={styles.formGrid}>
               <NumberField
@@ -227,17 +265,26 @@ function FieldEditor({
         </section>
 
         <section className={styles.drawerSection}>
-          <span className={styles.drawerSectionLabel}>员工访问</span>
+          <DrawerSectionHeading
+            number="04"
+            title="员工访问"
+            description="平台管理员和公司管理员始终可见；这里控制普通员工。"
+          />
           <Form.Item
             label="员工访问级别"
             htmlFor="field-access"
             extra="字段权限来自发布版本，成员覆盖不会改变它。"
           >
-            <Select
+            <Radio.Group
               id="field-access"
+              className={styles.accessChoices}
               value={values.employeeAccess}
-              onChange={(employeeAccess: PublishedFieldAccess) =>
-                patch({ employeeAccess })
+              optionType="button"
+              buttonStyle="solid"
+              onChange={(event) =>
+                patch({
+                  employeeAccess: event.target.value as PublishedFieldAccess,
+                })
               }
               options={(
                 ["EDIT", "READ_ONLY", "HIDDEN"] as PublishedFieldAccess[]
@@ -251,6 +298,44 @@ function FieldEditor({
       </Form>
     </Drawer>
   );
+}
+
+function DrawerSectionHeading({
+  number,
+  title,
+  description,
+}: {
+  number: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className={styles.drawerSectionHeading}>
+      <span>{number}</span>
+      <div>
+        <strong>{title}</strong>
+        <p>{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function fieldTypeDescription(type: PublishedFieldType): string {
+  const descriptions: Record<PublishedFieldType, string> = {
+    TEXT: "适合名称、编号等单行文字。",
+    TEXTAREA: "适合备注、需求说明等多行内容。",
+    NUMBER: "只接受数字，可进一步限制范围和小数位。",
+    MONEY: "用于金额，列表和详情会按金额语义展示。",
+    DATE: "只记录日期，不包含具体时间。",
+    DATETIME: "记录精确日期和时间。",
+    BOOLEAN: "用于是/否、完成/未完成等二选一状态。",
+    SINGLE_SELECT: "从预设选项中选择一个值。",
+    MULTI_SELECT: "可以同时选择多个预设值。",
+    PHONE: "用于电话号码并按电话号码规则校验。",
+    EMAIL: "用于电子邮箱并检查基本格式。",
+    MEMBER: "从当前公司的有效成员中选择一人。",
+  };
+  return descriptions[type];
 }
 
 function NumberField({

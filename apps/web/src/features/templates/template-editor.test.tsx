@@ -176,6 +176,15 @@ function renderEditor(
   );
 }
 
+function createBusinessTable(name = "新业务对象") {
+  fireEvent.click(screen.getByRole("button", { name: "新增业务表" }));
+  const dialog = screen.getByRole("dialog", { name: "新增业务表" });
+  fireEvent.change(within(dialog).getByLabelText("业务表名称"), {
+    target: { value: name },
+  });
+  fireEvent.click(within(dialog).getByRole("button", { name: "创建并配置" }));
+}
+
 describe("template draft aggregate", () => {
   it("adds a field with a stable template-local id and one canonical permission source", () => {
     const next = addField(emptyTemplateDraft(), "object-1", {
@@ -286,12 +295,66 @@ describe("template draft aggregate", () => {
 });
 
 describe("TemplateEditor save and publication flow", () => {
+  it("collects a business table identity before adding it to the template", async () => {
+    renderEditor();
+
+    fireEvent.click(screen.getByRole("button", { name: "新增业务表" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "新增业务表" });
+    expect(
+      within(dialog).getByRole("button", { name: "创建并配置" }),
+    ).toBeDisabled();
+
+    fireEvent.change(within(dialog).getByLabelText("业务表名称"), {
+      target: { value: "回访记录" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("业务表代码"), {
+      target: { value: "follow-ups" },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "创建并配置" }));
+
+    expect(
+      within(
+        screen.getByRole("complementary", { name: "模板业务表清单" }),
+      ).getByText("回访记录"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("region", { name: "基本信息" })).getByLabelText(
+        "业务表名称",
+      ),
+    ).toHaveValue("回访记录");
+    expect(screen.getByText("有未保存变更")).toBeInTheDocument();
+  });
+
+  it("shows one clear business table configuration step at a time", () => {
+    renderEditor();
+
+    const steps = screen.getByRole("navigation", {
+      name: "业务表配置步骤",
+    });
+    expect(
+      within(steps).getByRole("button", { name: /基本信息/ }),
+    ).toHaveAttribute("aria-current", "step");
+    expect(
+      screen.queryByRole("heading", { name: "字段", level: 2 }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(within(steps).getByRole("button", { name: /字段/ }));
+
+    expect(
+      screen.getByRole("heading", { name: "字段", level: 2 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "基本信息", level: 2 }),
+    ).not.toBeInTheDocument();
+  });
+
   it("rejects an object code that starts with a number before saving", () => {
     const editable = detail();
     editable.configuration.objects[0]!.publishedCode = null;
     renderEditor(editable);
 
-    fireEvent.change(screen.getByLabelText("对象代码"), {
+    fireEvent.change(screen.getByLabelText("业务表代码"), {
       target: { value: "9sales" },
     });
 
@@ -307,7 +370,7 @@ describe("TemplateEditor save and publication flow", () => {
     const api = editorApi();
     renderEditor(detail(), api);
 
-    fireEvent.click(screen.getByRole("button", { name: "新建业务对象" }));
+    createBusinessTable();
 
     expect(screen.getByText("有未保存变更")).toBeInTheDocument();
     expect(screen.getByText("有未保存变更")).toHaveAttribute(
@@ -349,7 +412,7 @@ describe("TemplateEditor save and publication flow", () => {
     });
     renderEditor(detail(), api);
 
-    fireEvent.click(screen.getByRole("button", { name: "新建业务对象" }));
+    createBusinessTable();
     fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
 
     expect(
@@ -357,7 +420,7 @@ describe("TemplateEditor save and publication flow", () => {
     ).toBeInTheDocument();
     expect(
       within(
-        screen.getByRole("complementary", { name: "模板对象清单" }),
+        screen.getByRole("complementary", { name: "模板业务表清单" }),
       ).getByText("新业务对象"),
     ).toBeInTheDocument();
     expect(screen.getByText("有未保存变更")).toBeInTheDocument();
@@ -367,7 +430,7 @@ describe("TemplateEditor save and publication flow", () => {
     const pendingSave = deferred<BusinessTemplateDetail>();
     const api = editorApi({ saveDraft: vi.fn(() => pendingSave.promise) });
     renderEditor(detail(), api);
-    const name = screen.getByLabelText("对象名称");
+    const name = screen.getByLabelText("业务表名称");
 
     fireEvent.change(name, { target: { value: "客户 A" } });
     fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
@@ -383,7 +446,7 @@ describe("TemplateEditor save and publication flow", () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByLabelText("对象名称")).toHaveValue("客户 B"),
+      expect(screen.getByLabelText("业务表名称")).toHaveValue("客户 B"),
     );
     expect(screen.getByText("有未保存变更")).toBeInTheDocument();
 
@@ -475,13 +538,13 @@ describe("TemplateEditor save and publication flow", () => {
       await screen.findByText("模板已发布，但页面刷新失败"),
     ).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("对象名称"), {
+    fireEvent.change(screen.getByLabelText("业务表名称"), {
       target: { value: "刷新失败后的本地客户" },
     });
     fireEvent.click(screen.getByRole("button", { name: "重试刷新" }));
 
     expect(await screen.findByText("v2 当前发布身份")).toBeInTheDocument();
-    expect(screen.getByLabelText("对象名称")).toHaveValue(
+    expect(screen.getByLabelText("业务表名称")).toHaveValue(
       "刷新失败后的本地客户",
     );
     expect(screen.getByText("有未保存变更")).toBeInTheDocument();
@@ -490,6 +553,11 @@ describe("TemplateEditor save and publication flow", () => {
   it("lets the template wrapper inactivate and restore a field", () => {
     renderEditor();
 
+    fireEvent.click(
+      within(
+        screen.getByRole("navigation", { name: "业务表配置步骤" }),
+      ).getByRole("button", { name: /字段/ }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "停用字段 客户名称" }));
     expect(
       screen.getByRole("button", { name: "恢复字段 客户名称" }),
