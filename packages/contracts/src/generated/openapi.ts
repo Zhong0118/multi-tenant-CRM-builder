@@ -452,6 +452,38 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/dashboard/configuration": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["DashboardsController_configuration"];
+    put: operations["DashboardsController_saveConfiguration"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/dashboard/overview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["DashboardsController_overview"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/invitations": {
     parameters: {
       query?: never;
@@ -1008,6 +1040,94 @@ export interface components {
         [key: string]: unknown;
       };
     };
+    DashboardAttentionItemDto: {
+      count: number;
+      href: string;
+      key: string;
+      label: string;
+    };
+    DashboardConfigurationEnvelopeDto: {
+      candidates: Record<string, never>[];
+      issues: components["schemas"]["DashboardConfigurationIssueDto"][];
+      record?: components["schemas"]["DashboardConfigurationRecordDto"] | null;
+    };
+    DashboardConfigurationIssueDto: {
+      code: string;
+      message: string;
+      path: string;
+    };
+    DashboardConfigurationRecordDto: {
+      configuration: {
+        [key: string]: unknown;
+      };
+      /** Format: date-time */
+      updatedAt: string;
+      version: number;
+    };
+    DashboardLeaderboardItemDto: {
+      activeAmount: number;
+      displayName: string;
+      /** Format: uuid */
+      memberId: string;
+      wonAmount: number;
+      wonCount: number;
+    };
+    DashboardMetricDto: {
+      /** @enum {string} */
+      format: "COUNT" | "MONEY" | "PERCENT";
+      key: string;
+      label: string;
+      value?: number | null;
+    };
+    DashboardOverviewDto: {
+      attention: components["schemas"]["DashboardAttentionItemDto"][];
+      configuration?: {
+        [key: string]: unknown;
+      };
+      issues: components["schemas"]["DashboardConfigurationIssueDto"][];
+      leaderboard: components["schemas"]["DashboardLeaderboardItemDto"][];
+      metrics: components["schemas"]["DashboardMetricDto"][];
+      period: components["schemas"]["DashboardPeriodDto"];
+      pipeline: components["schemas"]["DashboardPipelineItemDto"][];
+      records: components["schemas"]["DashboardRecordItemDto"][];
+      /** @enum {string} */
+      role: "TENANT_ADMIN" | "EMPLOYEE";
+      /** @enum {string} */
+      state: "READY" | "UNCONFIGURED" | "NEEDS_REPAIR" | "UNAVAILABLE";
+      trend: components["schemas"]["DashboardTrendItemDto"][];
+    };
+    DashboardPeriodDto: {
+      /** Format: date-time */
+      from: string;
+      timezone: string;
+      /** Format: date-time */
+      to: string;
+    };
+    DashboardPipelineItemDto: {
+      amount: number;
+      color: string;
+      count: number;
+      label: string;
+      optionKey: string;
+    };
+    DashboardRecordItemDto: {
+      amount?: number | null;
+      dueAt?: string | null;
+      /** Format: uuid */
+      id: string;
+      /** Format: uuid */
+      ownerMemberId?: string | null;
+      ownerName?: string | null;
+      stageKey?: string | null;
+      title: string;
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    DashboardTrendItemDto: {
+      date: string;
+      wonAmount: number;
+      wonCount: number;
+    };
     DefaultViewDto: {
       columnFieldKeys: string[];
       expectedVersion: number;
@@ -1453,6 +1573,12 @@ export interface components {
       description: string | null;
       expectedVersion: number;
       name: string;
+    };
+    SaveDashboardConfigurationDto: {
+      configuration: {
+        [key: string]: unknown;
+      };
+      expectedVersion: number;
     };
     SelectOptionDto: {
       /**
@@ -2500,6 +2626,78 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["WorkspaceSummaryResponseDto"];
+        };
+      };
+    };
+  };
+  DashboardsController_configuration: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DashboardConfigurationEnvelopeDto"];
+        };
+      };
+    };
+  };
+  DashboardsController_saveConfiguration: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SaveDashboardConfigurationDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DashboardConfigurationRecordDto"];
+        };
+      };
+    };
+  };
+  DashboardsController_overview: {
+    parameters: {
+      query?: {
+        days?: number;
+        from?: string;
+        ownerMemberId?: string;
+        to?: string;
+      };
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DashboardOverviewDto"];
         };
       };
     };

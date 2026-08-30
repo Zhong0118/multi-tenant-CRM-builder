@@ -583,6 +583,297 @@
         "required": ["id", "status"],
         "type": "object"
       },
+      "DashboardAttentionItemDto": {
+        "properties": {
+          "count": {
+            "type": "number"
+          },
+          "href": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": ["key", "label", "count", "href"],
+        "type": "object"
+      },
+      "DashboardConfigurationEnvelopeDto": {
+        "properties": {
+          "candidates": {
+            "additionalProperties": true,
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardConfigurationIssueDto"
+            },
+            "type": "array"
+          },
+          "record": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DashboardConfigurationRecordDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          }
+        },
+        "required": ["candidates", "issues"],
+        "type": "object"
+      },
+      "DashboardConfigurationIssueDto": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": ["code", "path", "message"],
+        "type": "object"
+      },
+      "DashboardConfigurationRecordDto": {
+        "properties": {
+          "configuration": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": ["version", "configuration", "updatedAt"],
+        "type": "object"
+      },
+      "DashboardLeaderboardItemDto": {
+        "properties": {
+          "activeAmount": {
+            "type": "number"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "memberId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "wonAmount": {
+            "type": "number"
+          },
+          "wonCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "memberId",
+          "displayName",
+          "wonCount",
+          "wonAmount",
+          "activeAmount"
+        ],
+        "type": "object"
+      },
+      "DashboardMetricDto": {
+        "properties": {
+          "format": {
+            "enum": ["COUNT", "MONEY", "PERCENT"],
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "required": ["key", "label", "format"],
+        "type": "object"
+      },
+      "DashboardOverviewDto": {
+        "properties": {
+          "attention": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardAttentionItemDto"
+            },
+            "type": "array"
+          },
+          "configuration": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardConfigurationIssueDto"
+            },
+            "type": "array"
+          },
+          "leaderboard": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardLeaderboardItemDto"
+            },
+            "type": "array"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardMetricDto"
+            },
+            "type": "array"
+          },
+          "period": {
+            "$ref": "#/components/schemas/DashboardPeriodDto"
+          },
+          "pipeline": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardPipelineItemDto"
+            },
+            "type": "array"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardRecordItemDto"
+            },
+            "type": "array"
+          },
+          "role": {
+            "enum": ["TENANT_ADMIN", "EMPLOYEE"],
+            "type": "string"
+          },
+          "state": {
+            "enum": ["READY", "UNCONFIGURED", "NEEDS_REPAIR", "UNAVAILABLE"],
+            "type": "string"
+          },
+          "trend": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardTrendItemDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "state",
+          "role",
+          "period",
+          "issues",
+          "metrics",
+          "pipeline",
+          "trend",
+          "attention",
+          "leaderboard",
+          "records"
+        ],
+        "type": "object"
+      },
+      "DashboardPeriodDto": {
+        "properties": {
+          "from": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "to": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": ["from", "to", "timezone"],
+        "type": "object"
+      },
+      "DashboardPipelineItemDto": {
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "color": {
+            "type": "string"
+          },
+          "count": {
+            "type": "number"
+          },
+          "label": {
+            "type": "string"
+          },
+          "optionKey": {
+            "type": "string"
+          }
+        },
+        "required": ["optionKey", "label", "color", "count", "amount"],
+        "type": "object"
+      },
+      "DashboardRecordItemDto": {
+        "properties": {
+          "amount": {
+            "nullable": true,
+            "type": "number"
+          },
+          "dueAt": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "ownerMemberId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "ownerName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "stageKey": {
+            "nullable": true,
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": ["id", "title", "updatedAt"],
+        "type": "object"
+      },
+      "DashboardTrendItemDto": {
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "wonAmount": {
+            "type": "number"
+          },
+          "wonCount": {
+            "type": "number"
+          }
+        },
+        "required": ["date", "wonCount", "wonAmount"],
+        "type": "object"
+      },
       "DefaultViewDto": {
         "properties": {
           "columnFieldKeys": {
@@ -1854,6 +2145,20 @@
           }
         },
         "required": ["expectedVersion", "name", "description", "configuration"],
+        "type": "object"
+      },
+      "SaveDashboardConfigurationDto": {
+        "properties": {
+          "configuration": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "expectedVersion": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": ["expectedVersion", "configuration"],
         "type": "object"
       },
       "SelectOptionDto": {
@@ -3913,6 +4218,151 @@
           }
         ],
         "tags": ["memberships"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/dashboard/configuration": {
+      "get": {
+        "operationId": "DashboardsController_configuration",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardConfigurationEnvelopeDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["dashboards"]
+      },
+      "put": {
+        "operationId": "DashboardsController_saveConfiguration",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveDashboardConfigurationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardConfigurationRecordDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["dashboards"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/dashboard/overview": {
+      "get": {
+        "operationId": "DashboardsController_overview",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ownerMemberId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 31,
+              "maximum": 366,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardOverviewDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["dashboards"]
       }
     },
     "/api/v1/workspaces/{tenantCode}/invitations": {
