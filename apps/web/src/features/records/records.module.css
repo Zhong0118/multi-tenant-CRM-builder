@@ -84,8 +84,20 @@
 }
 
 .optionFilter {
-  min-width: 190px;
-  max-width: 280px;
+  min-width: 240px;
+  max-width: 360px;
+}
+
+.optionFilter :global(.ant-select-content) {
+  min-height: 32px;
+  height: auto;
+  flex-wrap: wrap;
+  align-content: center;
+  gap: 2px;
+}
+
+.optionFilter :global(.ant-select-selection-item) {
+  font-size: 12px;
 }
 
 .registerPanel {

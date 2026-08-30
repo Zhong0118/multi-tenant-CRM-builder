@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type {
@@ -146,5 +146,21 @@ describe("RecordList table sorting", () => {
         "/workspace/northwind/objects/customers?filters=%7B%22lead_status%22%3A%5B%22following%22%5D%7D",
       ),
     );
+  });
+
+  it("keeps every selected status visible instead of collapsing selections", () => {
+    renderList(vi.fn(), {
+      ...DEFAULT_RECORD_QUERY,
+      filters: { lead_status: ["new", "following"] },
+    });
+
+    const select = screen
+      .getByRole("combobox", { name: "按线索状态筛选" })
+      .closest(".ant-select");
+    expect(select).not.toBeNull();
+    const selected = within(select as HTMLElement);
+    expect(selected.getAllByText("待联系").length).toBeGreaterThan(0);
+    expect(selected.getAllByText("跟进中").length).toBeGreaterThan(0);
+    expect(selected.queryByText(/^\+\s*1/)).not.toBeInTheDocument();
   });
 });

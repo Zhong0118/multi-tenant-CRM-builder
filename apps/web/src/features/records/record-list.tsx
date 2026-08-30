@@ -240,7 +240,6 @@ export function RecordList({
               aria-label={`按${field.label}筛选`}
               placeholder={`全部${field.label}`}
               allowClear
-              maxTagCount="responsive"
               className={styles.optionFilter}
               value={query.filters[field.fieldKey] ?? []}
               onChange={(values: string[]) => {
