@@ -2,34 +2,10 @@
   width: 100%;
 }
 
-.templateTable,
-.createPanel,
-.emptyState {
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  background: var(--bg-surface);
-}
-
 .templateTable {
   overflow: hidden;
 }
 
-.emptyState {
-  display: grid;
-  gap: 8px;
-  justify-items: start;
-  padding: 28px 24px;
-  border-style: dashed;
-  border-color: var(--border-strong);
-}
-
-.emptyState h2 {
-  color: var(--text-primary);
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.emptyState p,
 .createAside p {
   color: var(--text-secondary);
   line-height: 1.7;
@@ -61,7 +37,7 @@
 
 .createAside {
   border-left: 3px solid var(--color-primary);
-  padding: 6px 0 6px 24px;
+  padding: 20px;
 }
 
 .createAside h2 {
@@ -85,7 +61,6 @@
   flex-direction: column;
   gap: 20px;
   width: 100%;
-  padding: 24px;
 }
 
 .editorHeader {
@@ -158,7 +133,7 @@
   padding: 14px;
   border: 1px solid var(--border-strong);
   border-top: 3px solid var(--text-primary);
-  border-radius: 8px;
+  border-radius: var(--radius-data);
   background: var(--bg-surface);
 }
 
@@ -209,8 +184,8 @@
 }
 
 .manifestItemActive {
-  border-color: #b8c7eb;
-  background: #eef2fb;
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
   box-shadow: inset 3px 0 0 var(--color-primary);
 }
 
@@ -263,8 +238,8 @@
   width: fit-content;
   margin-top: 3px;
   padding: 1px 5px;
-  border: 1px solid #c9d5ef;
-  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-status);
   color: var(--color-primary);
 }
 
@@ -287,12 +262,17 @@
 .workspaceEmpty,
 .inlineEmpty {
   border: 1px solid var(--border-default);
-  border-radius: 8px;
   background: var(--bg-surface);
 }
 
 .editorSection {
   padding: 18px 20px;
+  border-radius: var(--radius-data);
+}
+
+.workspaceEmpty,
+.inlineEmpty {
+  border-radius: var(--radius-reading);
 }
 
 .sectionHeading {
@@ -396,8 +376,8 @@
 .issueGroup {
   gap: 7px;
   padding: 11px 12px;
-  border-left: 3px solid var(--color-error, #c53b34);
-  background: var(--bg-subtle, #f7f8fa);
+  border-left: 3px solid var(--color-danger);
+  background: var(--bg-page);
 }
 
 .issueGroup ul,
@@ -517,7 +497,7 @@
   overflow: hidden;
   margin: 0;
   border: 1px solid var(--border-default);
-  border-radius: 8px;
+  border-radius: var(--radius-data);
 }
 
 .applicationLedger div {
@@ -543,10 +523,10 @@
 
 .applicationResult {
   padding: 14px;
-  border: 1px solid #b8c7eb;
+  border: 1px solid var(--border-default);
   border-left: 3px solid var(--color-primary);
-  border-radius: 8px;
-  background: #f6f8fd;
+  border-radius: var(--radius-reading);
+  background: var(--color-primary-soft);
 }
 
 .applicationResult strong {
@@ -580,7 +560,7 @@
     padding: 16px;
     border: 1px solid var(--border-default);
     border-left: 3px solid var(--color-primary);
-    border-radius: 8px;
+    border-radius: var(--radius-reading);
     background: var(--bg-surface);
     color: var(--text-secondary);
     line-height: 1.7;

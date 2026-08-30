@@ -1,11 +1,12 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Tag, Typography } from "antd";
+import { Alert, Button, Typography } from "antd";
 import Link from "next/link";
 import { useRef, useState } from "react";
 
 import { toApiError } from "@/lib/api/api-error";
+import { StatusTag } from "@/components/workbench/status-tag";
 
 import { browserTemplateApi, type TemplateApi } from "./template-api";
 import {
@@ -226,14 +227,16 @@ export function TemplateEditor({
             <span className={styles.code}>{template.code}</span>
           </div>
           <div className={styles.editorMeta}>
-            <Tag color={dirty ? "warning" : "success"}>
+            <StatusTag tone={dirty ? "warning" : "success"}>
               {dirty ? "有未保存变更" : "草稿已保存"}
-            </Tag>
-            <Tag color={template.hasUnpublishedChanges ? "gold" : undefined}>
+            </StatusTag>
+            <StatusTag
+              tone={template.hasUnpublishedChanges ? "warning" : "neutral"}
+            >
               {template.hasUnpublishedChanges
                 ? "有未发布变更"
                 : "草稿与发布版本一致"}
-            </Tag>
+            </StatusTag>
             <span className={styles.publicationIdentity}>
               {template.activeVersion
                 ? `v${template.activeVersion.versionNo} 当前发布身份`

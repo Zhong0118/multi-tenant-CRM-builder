@@ -17,5 +17,47 @@ describe("TemplateList", () => {
       "/platform/templates/new",
     );
     expect(screen.queryByText(/行业/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "还没有业务模板" }),
+    ).toHaveAttribute("data-surface", "reading");
+  });
+
+  it("renders existing templates in a dense data surface", () => {
+    render(
+      <TemplateList
+        data={{
+          items: [
+            {
+              id: "template-1",
+              name: "销售 CRM",
+              code: "sales-crm",
+              description: null,
+              status: "CHANGED",
+              draftVersion: 2,
+              hasUnpublishedChanges: true,
+              activeVersion: null,
+              publishedAt: null,
+              objectCount: 3,
+              fieldCount: 12,
+              applicationCount: 0,
+              createdAt: "2026-08-30T00:00:00.000Z",
+              updatedAt: "2026-08-30T00:00:00.000Z",
+            },
+          ],
+          page: 1,
+          limit: 20,
+          total: 1,
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("region", { name: "业务模板列表" })).toHaveAttribute(
+      "data-surface",
+      "data",
+    );
+    expect(screen.getByText("有未发布变更")).toHaveAttribute(
+      "data-tone",
+      "warning",
+    );
   });
 });

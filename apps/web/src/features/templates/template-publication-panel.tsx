@@ -7,7 +7,6 @@ import {
   Empty,
   Skeleton,
   Space,
-  Tag,
   Typography,
 } from "antd";
 
@@ -15,6 +14,7 @@ import type {
   BusinessTemplateVersion,
   TemplatePublicationAnalysis,
 } from "./template-types";
+import { StatusTag } from "@/components/workbench/status-tag";
 import type { TemplateDraft } from "./template-draft";
 
 import styles from "./templates.module.css";
@@ -117,7 +117,7 @@ export function TemplatePublicationPanel({
                     <li
                       key={`${change.objectId}-${change.fieldKey ?? "object"}-${index}`}
                     >
-                      <Tag>{CHANGE_LABELS[change.kind]}</Tag>
+                      <StatusTag>{CHANGE_LABELS[change.kind]}</StatusTag>
                       <span>
                         {change.entity === "OBJECT"
                           ? (object?.object.name ?? change.objectId)
@@ -178,9 +178,9 @@ function IssueGroups({
               {group.issues.map((issue, index) => (
                 <li key={`${issue.code}-${issue.fieldKey ?? index}`}>
                   {blocking ? (
-                    <Tag color="error">阻断</Tag>
+                    <StatusTag tone="danger">阻断</StatusTag>
                   ) : (
-                    <Tag color="warning">提醒</Tag>
+                    <StatusTag tone="warning">提醒</StatusTag>
                   )}
                   <span>{issue.message}</span>
                   {issue.fieldKey ? <code>{issue.fieldKey}</code> : null}

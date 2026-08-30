@@ -310,6 +310,10 @@ describe("TemplateEditor save and publication flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "新建业务对象" }));
 
     expect(screen.getByText("有未保存变更")).toBeInTheDocument();
+    expect(screen.getByText("有未保存变更")).toHaveAttribute(
+      "data-tone",
+      "warning",
+    );
     expect(screen.getByRole("button", { name: "发布模板" })).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));

@@ -1,9 +1,13 @@
 "use client";
 
-import { Button, Table, Tag } from "antd";
+import { Button, Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+
+import { StatePanel } from "@/components/workbench/state-panel";
+import { StatusTag } from "@/components/workbench/status-tag";
+import { DataPanel } from "@/components/workbench/surface";
 
 import type { BusinessTemplate, BusinessTemplatePage } from "./template-types";
 import styles from "./templates.module.css";
@@ -61,32 +65,33 @@ export function TemplateList({
 
   if (data.items.length === 0) {
     return (
-      <section className={styles.emptyState}>
-        <h2>还没有业务模板</h2>
-        <p>创建第一个模板，集中配置可复用的业务对象。</p>
-        {createLink}
-      </section>
+      <StatePanel
+        title="还没有业务模板"
+        description="创建第一个模板，集中配置可复用的业务对象。"
+        action={createLink}
+      />
     );
   }
 
   return (
-    <Table
-      bordered
-      className={styles.templateTable}
-      columns={columns}
-      dataSource={data.items}
-      rowKey="id"
-      pagination={{
-        current: data.page,
-        pageSize: data.limit,
-        total: data.total,
-        showSizeChanger: false,
-        onChange: (page) => go(`/platform/templates?page=${page}`),
-      }}
-      onRow={(template) => ({
-        onClick: () => go(`/platform/templates/${template.id}`),
-      })}
-    />
+    <DataPanel ariaLabel="业务模板列表" className={styles.templateTable}>
+      <Table
+        columns={columns}
+        dataSource={data.items}
+        rowKey="id"
+        scroll={{ x: 860 }}
+        pagination={{
+          current: data.page,
+          pageSize: data.limit,
+          total: data.total,
+          showSizeChanger: false,
+          onChange: (page) => go(`/platform/templates?page=${page}`),
+        }}
+        onRow={(template) => ({
+          onClick: () => go(`/platform/templates/${template.id}`),
+        })}
+      />
+    </DataPanel>
   );
 }
 
@@ -97,11 +102,13 @@ function TemplateStatus({ status }: { status: BusinessTemplate["status"] }) {
     CHANGED: "有未发布变更",
     ARCHIVED: "已归档",
   };
-  const colors: Partial<Record<BusinessTemplate["status"], string>> = {
+  const tones = {
+    DRAFT: "neutral",
     PUBLISHED: "success",
     CHANGED: "warning",
-  };
-  return <Tag color={colors[status]}>{labels[status]}</Tag>;
+    ARCHIVED: "neutral",
+  } as const;
+  return <StatusTag tone={tones[status]}>{labels[status]}</StatusTag>;
 }
 
 function formatDate(value?: string): string {
