@@ -343,7 +343,7 @@ function hasInvalidConfig(field: PublicationDraftField): boolean {
     (option) =>
       !isPlainRecord(option) ||
       Object.keys(option).some(
-        (key) => !['key', 'label', 'status'].includes(key),
+        (key) => !['key', 'label', 'status', 'color'].includes(key),
       ) ||
       typeof option.key !== 'string' ||
       !/^[a-z0-9][a-z0-9_-]*$/.test(option.key) ||
@@ -353,7 +353,18 @@ function hasInvalidConfig(field: PublicationDraftField): boolean {
       option.label.length > 100 ||
       (option.status !== undefined &&
         option.status !== 'ACTIVE' &&
-        option.status !== 'INACTIVE'),
+        option.status !== 'INACTIVE') ||
+      (option.color !== undefined &&
+        ![
+          'GRAY',
+          'BLUE',
+          'CYAN',
+          'GREEN',
+          'YELLOW',
+          'ORANGE',
+          'RED',
+          'PURPLE',
+        ].includes(option.color as string)),
   );
 }
 

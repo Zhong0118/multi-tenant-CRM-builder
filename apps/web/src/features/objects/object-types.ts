@@ -63,6 +63,7 @@ export interface SelectOptionConfig {
   key: string;
   label: string;
   status?: "ACTIVE" | "INACTIVE";
+  color?: SelectOptionColor;
 }
 
 /** After normalization, every option states its status explicitly. */
@@ -70,7 +71,32 @@ export interface SelectOptionView {
   key: string;
   label: string;
   status: "ACTIVE" | "INACTIVE";
+  color: SelectOptionColor;
 }
+
+export const SELECT_OPTION_COLORS = [
+  "GRAY",
+  "BLUE",
+  "CYAN",
+  "GREEN",
+  "YELLOW",
+  "ORANGE",
+  "RED",
+  "PURPLE",
+] as const;
+
+export type SelectOptionColor = (typeof SELECT_OPTION_COLORS)[number];
+
+export const SELECT_OPTION_COLOR_LABELS: Record<SelectOptionColor, string> = {
+  GRAY: "灰色",
+  BLUE: "蓝色",
+  CYAN: "青色",
+  GREEN: "绿色",
+  YELLOW: "黄色",
+  ORANGE: "橙色",
+  RED: "红色",
+  PURPLE: "紫色",
+};
 
 export interface RuntimeObjectSchema {
   publication: { number: number; publishedAt: string };
@@ -271,10 +297,17 @@ export function selectOptions(
 
   return options.flatMap((option) => {
     if (!isRecord(option)) return [];
-    const { key, label, status } = option as Record<string, unknown>;
+    const { key, label, status, color } = option as Record<string, unknown>;
     if (typeof key !== "string" || typeof label !== "string") return [];
     return [
-      { key, label, status: status === "INACTIVE" ? "INACTIVE" : "ACTIVE" },
+      {
+        key,
+        label,
+        status: status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
+        color: SELECT_OPTION_COLORS.includes(color as SelectOptionColor)
+          ? (color as SelectOptionColor)
+          : "GRAY",
+      },
     ];
   });
 }

@@ -19,16 +19,16 @@ const createObjectSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(1, "请填写对象名称。")
-    .max(100, "对象名称最多 100 个字符。"),
+    .min(1, "请填写业务表名称。")
+    .max(100, "业务表名称最多 100 个字符。"),
   code: z
     .string()
     .trim()
-    .min(1, "请填写对象代码。")
-    .max(64, "对象代码最多 64 个字符。")
+    .min(1, "请填写业务表代码。")
+    .max(64, "业务表代码最多 64 个字符。")
     .regex(
       OBJECT_CODE_PATTERN,
-      "对象代码只能使用小写字母、数字和下划线，且以字母开头。",
+      "业务表代码只能使用小写字母、数字和下划线，且以字母开头。",
     ),
 });
 
@@ -83,7 +83,7 @@ export function CreateObjectForm({
     <form className={styles.panel} onSubmit={submit} noValidate>
       {summary ? <Alert type="error" showIcon title={summary} /> : null}
       <Form.Item
-        label="对象名称"
+        label="业务表名称"
         htmlFor="new-object-name"
         validateStatus={errors.name ? "error" : undefined}
         help={errors.name?.message}
@@ -96,7 +96,7 @@ export function CreateObjectForm({
         />
       </Form.Item>
       <Form.Item
-        label="对象代码"
+        label="业务表代码"
         htmlFor="new-object-code"
         validateStatus={errors.code ? "error" : undefined}
         help={errors.code?.message}
@@ -117,7 +117,7 @@ export function CreateObjectForm({
         />
       </Form.Item>
       <Button type="primary" htmlType="submit" loading={mutation.isPending}>
-        创建对象草稿
+        创建业务表草稿
       </Button>
     </form>
   );

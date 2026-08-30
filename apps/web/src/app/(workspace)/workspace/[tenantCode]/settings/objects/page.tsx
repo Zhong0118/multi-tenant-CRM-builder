@@ -37,10 +37,10 @@ export default async function ObjectSettingsPage({
   return (
     <main className={styles.page}>
       <header className={styles.pageHeader}>
-        <span className={styles.eyebrow}>OBJECT CONFIGURATION</span>
-        <h1>业务对象</h1>
+        <span className={styles.eyebrow}>BUSINESS TABLES</span>
+        <h1>业务表</h1>
         <p>
-          业务对象决定员工能录入和查询哪些数据。配置保存为草稿，只有发布后才会影响成员当前使用的表单和权限。
+          在这里创建公司自己的业务表、添加字段、设置默认列表和员工权限。所有修改先保存为草稿，发布后才影响员工正在使用的页面。
         </p>
       </header>
       <ObjectList

@@ -126,6 +126,78 @@ function renderDesigner(initialDraft: ObjectDraft, api: ObjectApi) {
 }
 
 describe("ObjectDesigner configuration ledger", () => {
+  it("creates a field from the prominent field action", async () => {
+    const nextDraft = draft({
+      object: { ...draft().object, version: 5 },
+      fields: [
+        ...draft().fields,
+        field({
+          id: "field-phone",
+          fieldKey: "contact_phone",
+          label: "联系电话",
+          type: "PHONE",
+          required: false,
+          sortOrder: 3,
+          publishedType: null,
+        }),
+      ],
+    });
+    const api = objectApi({
+      createField: vi.fn().mockResolvedValue(nextDraft),
+    });
+    renderDesigner(draft(), api);
+
+    fireEvent.click(screen.getByRole("button", { name: "新增字段" }));
+    fireEvent.change(screen.getByLabelText("字段名称"), {
+      target: { value: "联系电话" },
+    });
+    fireEvent.change(screen.getByLabelText("字段键"), {
+      target: { value: "contact_phone" },
+    });
+    fireEvent.mouseDown(screen.getByLabelText("字段类型"));
+    fireEvent.click(screen.getByTitle("电话"));
+    fireEvent.click(screen.getByRole("button", { name: "创建并继续配置" }));
+
+    await waitFor(() =>
+      expect(api.createField).toHaveBeenCalledWith("northwind", "object-1", {
+        expectedVersion: 4,
+        fieldKey: "contact_phone",
+        label: "联系电话",
+        type: "PHONE",
+        required: false,
+        defaultValue: null,
+        validation: {},
+        config: {},
+        isSystem: false,
+      }),
+    );
+    expect((await screen.findAllByText("联系电话")).length).toBeGreaterThan(0);
+  });
+
+  it("edits and saves the default list view", async () => {
+    const api = objectApi();
+    renderDesigner(draft(), api);
+
+    fireEvent.click(screen.getByRole("button", { name: "列表视图" }));
+    fireEvent.change(screen.getByLabelText("视图名称"), {
+      target: { value: "客户总览" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存列表视图" }));
+
+    await waitFor(() =>
+      expect(api.updateDefaultView).toHaveBeenCalledWith(
+        "northwind",
+        "object-1",
+        {
+          expectedVersion: 4,
+          name: "客户总览",
+          columnFieldKeys: ["customer_name"],
+          sort: { field: "updatedAt", direction: "desc" },
+        },
+      ),
+    );
+  });
+
   it("shows the object identity, live version and no pending change", () => {
     renderDesigner(draft(), objectApi());
 
@@ -186,6 +258,15 @@ describe("ObjectDesigner configuration ledger", () => {
     expect(
       screen.queryByText("字段发布后不能更改数据类型。"),
     ).not.toBeInTheDocument();
+  });
+
+  it("lets an administrator replace generated option keys and choose colors", () => {
+    renderDesigner(draft(), objectApi());
+
+    fireEvent.click(screen.getByRole("button", { name: "配置字段 最终评级" }));
+
+    expect(screen.getByLabelText("选项键 gold")).toHaveValue("gold");
+    expect(screen.getByLabelText("选项颜色 gold")).toBeInTheDocument();
   });
 
   it("reorders fields by keyboard and sends the resulting order with the draft version", async () => {

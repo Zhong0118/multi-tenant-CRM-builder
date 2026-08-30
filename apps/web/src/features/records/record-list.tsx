@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button, Empty, Input, Select, Table, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 import { useRef, useState } from "react";
 
 import { FilterBar } from "@/components/workbench/filter-bar";
@@ -15,6 +16,7 @@ import {
   type RecordSummary,
   type RuntimeObjectSchema,
 } from "@/features/objects/object-types";
+import { OptionBadge } from "@/features/objects/option-badge";
 
 import type { DynamicFieldMember } from "./dynamic-field";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
@@ -210,7 +212,10 @@ export function RecordList({
         />
       </FilterBar>
 
-      <DataPanel className={styles.registerPanel} ariaLabel={`${schema.object.name}记录表`}>
+      <DataPanel
+        className={styles.registerPanel}
+        ariaLabel={`${schema.object.name}记录表`}
+      >
         <Table
           className={styles.register}
           rowKey="id"
@@ -249,17 +254,21 @@ export function displayValue(
   field: PublishedFieldView,
   value: unknown,
   members: DynamicFieldMember[],
-): string {
+): ReactNode {
   if (value === null || value === undefined || value === "") return "—";
   switch (field.type) {
     case "BOOLEAN":
       return value === true ? "是" : "否";
     case "SINGLE_SELECT":
-      return optionLabel(field, String(value));
+      return optionValue(field, String(value));
     case "MULTI_SELECT":
-      return (Array.isArray(value) ? value : [])
-        .map((key) => optionLabel(field, String(key)))
-        .join("、");
+      return (
+        <span className={styles.optionValues}>
+          {(Array.isArray(value) ? value : []).map((key) =>
+            optionValue(field, String(key)),
+          )}
+        </span>
+      );
     case "MEMBER":
       return (
         members.find((member) => member.id === value)?.displayName ??
@@ -272,14 +281,12 @@ export function displayValue(
   }
 }
 
-function optionLabel(field: PublishedFieldView, key: string): string {
+function optionValue(field: PublishedFieldView, key: string): ReactNode {
   const option = selectOptions(field).find(
     (candidate) => candidate.key === key,
   );
   if (!option) return key;
-  return option.status === "INACTIVE"
-    ? `${option.label}（已停用）`
-    : option.label;
+  return <OptionBadge key={key} option={option} />;
 }
 
 function formatDateTime(value: string): string {

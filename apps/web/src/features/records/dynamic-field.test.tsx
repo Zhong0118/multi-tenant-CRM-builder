@@ -229,6 +229,27 @@ describe("DynamicField select types", () => {
     expect(optionLabels()).toEqual(["金牌", "银牌", "旧分级（已停用）"]);
   });
 
+  it("renders a configured color on a read-only select value", () => {
+    render(
+      <DynamicField
+        field={field({
+          ...rating,
+          access: "READ_ONLY",
+          config: {
+            options: [{ key: "gold", label: "金牌", color: "ORANGE" }],
+          },
+        })}
+        value="gold"
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("金牌")).toHaveAttribute(
+      "data-option-color",
+      "ORANGE",
+    );
+  });
+
   it("emits an option key array for MULTI_SELECT", () => {
     const onChange = vi.fn();
     render(

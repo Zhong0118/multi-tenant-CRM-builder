@@ -149,6 +149,29 @@ describe("WorkspaceShell", () => {
     ).not.toHaveAttribute("aria-current");
   });
 
+  it("never treats the workspace root as active on a business table route", () => {
+    mocks.pathname = "/workspace/northwind/objects/customers";
+    render(
+      <WorkspaceShell
+        tenantCode="northwind"
+        tenantName="百杰"
+        role="TENANT_ADMIN"
+        user={shellUser}
+        businessObjects={[businessObject()]}
+      >
+        <p>客户资料</p>
+      </WorkspaceShell>,
+    );
+
+    expect(
+      screen.getByRole("link", { name: "管理工作台" }),
+    ).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("link", { name: "客户资料" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
   it("renders business object links in the order supplied by the server", () => {
     render(
       <WorkspaceShell

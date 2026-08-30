@@ -53,7 +53,7 @@ export function WorkspaceHomeView({
               href={`${root}/settings/objects`}
               className={styles.actionCard}
             >
-              <strong>配置业务对象</strong>
+              <strong>配置业务表</strong>
               <span>创建表、字段、列表视图和员工权限</span>
             </Link>
             <Link href={`${root}/members`} className={styles.actionCard}>
@@ -98,14 +98,12 @@ export function WorkspaceHomeView({
             title={isAdmin ? "还没有已发布的业务表" : "暂时没有可用业务表"}
             description={
               isAdmin
-                ? "先创建业务对象并发布，员工才能开始使用。"
+                ? "先创建业务表并发布，员工才能开始使用。"
                 : "公司管理员发布并授权后，业务表会出现在这里。"
             }
             action={
               isAdmin ? (
-                <Link href={`${root}/settings/objects`}>
-                  创建第一个业务对象
-                </Link>
+                <Link href={`${root}/settings/objects`}>创建第一张业务表</Link>
               ) : undefined
             }
           />

@@ -15,10 +15,13 @@ import { useState } from "react";
 
 import { StatusTag } from "@/components/workbench/status-tag";
 
+import { OptionBadge } from "./option-badge";
 import {
   FIELD_ACCESS_LABELS,
   FIELD_TYPE_LABELS,
   PUBLISHED_FIELD_TYPES,
+  SELECT_OPTION_COLORS,
+  SELECT_OPTION_COLOR_LABELS,
   selectOptions,
   type PublishedFieldAccess,
   type PublishedFieldType,
@@ -378,10 +381,15 @@ function OptionEditor({
   onChange: (options: SelectOptionView[]) => void;
 }) {
   return (
-    <Space orientation="vertical" style={{ width: "100%" }}>
+    <div className={styles.optionEditor}>
+      <div className={styles.optionEditorHeader} aria-hidden>
+        <span>选项名称</span>
+        <span>选项键</span>
+        <span>颜色</span>
+        <span>状态</span>
+      </div>
       {options.map((option, index) => (
-        <Space key={option.key} align="baseline">
-          <span className={styles.stableKey}>{option.key}</span>
+        <div key={index} className={styles.optionEditorRow}>
           <Input
             aria-label={`选项名称 ${option.key}`}
             value={option.label}
@@ -390,6 +398,42 @@ function OptionEditor({
               next[index] = { ...option, label: event.target.value };
               onChange(next);
             }}
+          />
+          <Input
+            aria-label={`选项键 ${option.key}`}
+            className={styles.optionKeyInput}
+            value={option.key}
+            onChange={(event) => {
+              const next = [...options];
+              next[index] = {
+                ...option,
+                key: event.target.value
+                  .toLowerCase()
+                  .replace(/[^a-z0-9_-]/g, ""),
+              };
+              onChange(next);
+            }}
+          />
+          <Select
+            aria-label={`选项颜色 ${option.key}`}
+            value={option.color}
+            onChange={(color) => {
+              const next = [...options];
+              next[index] = { ...option, color };
+              onChange(next);
+            }}
+            options={SELECT_OPTION_COLORS.map((color) => ({
+              value: color,
+              label: (
+                <OptionBadge
+                  option={{
+                    label: SELECT_OPTION_COLOR_LABELS[color],
+                    color,
+                    status: "ACTIVE",
+                  }}
+                />
+              ),
+            }))}
           />
           <Button
             type="link"
@@ -405,9 +449,10 @@ function OptionEditor({
           >
             {option.status === "ACTIVE" ? "停用" : "恢复"}
           </Button>
-        </Space>
+        </div>
       ))}
       <Button
+        className={styles.addOptionButton}
         onClick={() =>
           onChange([
             ...options,
@@ -415,13 +460,17 @@ function OptionEditor({
               key: `option_${options.length + 1}`,
               label: `选项 ${options.length + 1}`,
               status: "ACTIVE",
+              color:
+                SELECT_OPTION_COLORS[
+                  (options.length + 1) % SELECT_OPTION_COLORS.length
+                ],
             },
           ])
         }
       >
         添加选项
       </Button>
-    </Space>
+    </div>
   );
 }
 

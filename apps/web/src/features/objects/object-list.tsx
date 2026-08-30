@@ -63,7 +63,7 @@ export function ObjectList({
 
   const columns: ColumnsType<ObjectDraft> = [
     {
-      title: "业务对象",
+      title: "业务表",
       key: "object",
       render: (_, row) => (
         <Link
@@ -75,7 +75,7 @@ export function ObjectList({
       ),
     },
     {
-      title: "对象代码",
+      title: "业务表代码",
       key: "code",
       width: 180,
       render: (_, row) => (
@@ -87,7 +87,7 @@ export function ObjectList({
       key: "status",
       width: 130,
       render: (_, row) => (
-        <Tag color={row.object.hasUnpublishedChanges ? "gold" : undefined}>
+        <Tag color={objectStatusColor(row)}>
           {objectStatusLabel(row.object)}
         </Tag>
       ),
@@ -122,7 +122,7 @@ export function ObjectList({
     {
       title: "导航顺序",
       key: "order",
-      width: 96,
+      width: 132,
       render: (_, row, index) => (
         <div className={styles.ledgerOrder}>
           <Button
@@ -132,7 +132,7 @@ export function ObjectList({
             disabled={index === 0 || reorder.isPending}
             onClick={() => move(row.object.id, -1)}
           >
-            ↑
+            上移
           </Button>
           <Button
             size="small"
@@ -141,7 +141,7 @@ export function ObjectList({
             disabled={index === rows.length - 1 || reorder.isPending}
             onClick={() => move(row.object.id, 1)}
           >
-            ↓
+            下移
           </Button>
         </div>
       ),
@@ -154,15 +154,15 @@ export function ObjectList({
         <Empty
           description={
             <Space orientation="vertical">
-              <span>还没有业务对象。</span>
+              <span>还没有业务表。</span>
               <Typography.Text type="secondary">
-                业务对象决定员工能录入和查询哪些数据，例如获客、跟单或客户。
+                一张业务表对应一类业务数据，例如获客、跟单或客户；创建后可以继续添加字段、配置列表和员工权限。
               </Typography.Text>
             </Space>
           }
         >
           <Link href={`/workspace/${tenantCode}/settings/objects/new`}>
-            <Button type="primary">创建第一个业务对象</Button>
+            <Button type="primary">创建第一张业务表</Button>
           </Link>
         </Empty>
       </section>
@@ -173,9 +173,9 @@ export function ObjectList({
     <section>
       {error ? <Alert type="error" showIcon title={error} /> : null}
       <div className={styles.sectionHeading}>
-        <h2>业务对象 {rows.length}</h2>
+        <h2>业务表 {rows.length}</h2>
         <Link href={`/workspace/${tenantCode}/settings/objects/new`}>
-          <Button type="primary">新建业务对象</Button>
+          <Button type="primary">新建业务表</Button>
         </Link>
       </div>
       <Table
@@ -186,8 +186,16 @@ export function ObjectList({
         dataSource={rows}
         pagination={false}
         loading={drafts.isFetching}
-        aria-label="业务对象列表"
+        aria-label="业务表列表"
       />
     </section>
   );
+}
+
+function objectStatusColor(
+  draft: ObjectDraft,
+): "blue" | "gold" | "green" | undefined {
+  if (draft.object.status === "ARCHIVED") return undefined;
+  if (draft.object.publicationNumber === null) return "blue";
+  return draft.object.hasUnpublishedChanges ? "gold" : "green";
 }

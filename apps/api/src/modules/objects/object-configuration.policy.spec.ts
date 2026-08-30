@@ -155,6 +155,32 @@ describe('object configuration policy', () => {
     ).toEqual([]);
   });
 
+  it('accepts supported select-option colors and rejects unknown colors', () => {
+    const input = validObjectConfiguration();
+    input.fields[1] = {
+      ...input.fields[1],
+      type: 'SINGLE_SELECT',
+      config: {
+        options: [{ key: 'vip', label: '重点客户', color: 'ORANGE' }],
+      },
+    };
+
+    expect(
+      analyzeObjectConfiguration(input).blocking.filter(
+        (issue) => issue.fieldKey === 'email',
+      ),
+    ).toEqual([]);
+
+    input.fields[1].config = {
+      options: [{ key: 'vip', label: '重点客户', color: 'MAGENTA' }],
+    };
+    expect(analyzeObjectConfiguration(input).blocking).toContainEqual({
+      code: 'FIELD_CONFIG_INVALID',
+      message: '字段显示配置或选项结构不完整。',
+      fieldKey: 'email',
+    });
+  });
+
   it('omits inactive field permissions from the compiled snapshot while retaining the draft permission', () => {
     const input = validObjectConfiguration();
     input.fields[1].status = 'INACTIVE';

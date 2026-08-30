@@ -105,8 +105,13 @@ describe("selectOptions", () => {
     } as unknown as PublishedFieldView;
 
     expect(selectOptions(field)).toEqual([
-      { key: "gold", label: "金牌", status: "ACTIVE" },
-      { key: "legacy", label: "旧分级", status: "INACTIVE" },
+      { key: "gold", label: "金牌", status: "ACTIVE", color: "GRAY" },
+      {
+        key: "legacy",
+        label: "旧分级",
+        status: "INACTIVE",
+        color: "GRAY",
+      },
     ]);
   });
 

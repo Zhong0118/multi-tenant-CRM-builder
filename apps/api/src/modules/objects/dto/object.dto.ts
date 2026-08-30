@@ -133,6 +133,24 @@ export class SelectOptionDto {
   @IsOptional()
   @IsIn(['ACTIVE', 'INACTIVE'])
   status?: 'ACTIVE' | 'INACTIVE';
+
+  @ApiPropertyOptional({
+    enum: [
+      'GRAY',
+      'BLUE',
+      'CYAN',
+      'GREEN',
+      'YELLOW',
+      'ORANGE',
+      'RED',
+      'PURPLE',
+    ],
+    default: 'GRAY',
+  })
+  @IsOptional()
+  @IsIn(['GRAY', 'BLUE', 'CYAN', 'GREEN', 'YELLOW', 'ORANGE', 'RED', 'PURPLE'])
+  color?:
+    'GRAY' | 'BLUE' | 'CYAN' | 'GREEN' | 'YELLOW' | 'ORANGE' | 'RED' | 'PURPLE';
 }
 
 export class FieldConfigDto {

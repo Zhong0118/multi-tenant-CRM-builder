@@ -37,13 +37,20 @@
   white-space: nowrap;
 }
 
+.optionValues {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
 /* Record register. Same ledger discipline as the object designer: dense rows,
    hairline rules, monospace identifiers, no boxes competing with the data. */
 .list {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  width: min(100%, 1440px);
+  width: 100%;
 }
 
 .listHeader {

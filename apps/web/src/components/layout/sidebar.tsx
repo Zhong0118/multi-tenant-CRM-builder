@@ -13,6 +13,7 @@ export function isNavItemCurrent(pathname: string, href: string): boolean {
   if (pathname === href) return true;
   if (href === "/platform") return false;
   const segments = href.split("/").filter(Boolean);
+  if (segments.length === 2 && segments[0] === "workspace") return false;
   return segments.length > 1 && pathname.startsWith(`${href}/`);
 }
 

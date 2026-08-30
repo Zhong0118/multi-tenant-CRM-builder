@@ -7,6 +7,7 @@ import {
   Drawer,
   Form,
   Input,
+  Modal,
   Select,
   Space,
   Switch,
@@ -30,11 +31,17 @@ import { objectApi as defaultObjectApi, type ObjectApi } from "./object-api";
 import { ObjectPreview, type PreviewRole } from "./object-preview";
 import {
   DATA_SCOPE_LABELS,
+  FIELD_KEY_PATTERN,
+  FIELD_TYPE_LABELS,
+  PUBLISHED_FIELD_TYPES,
   TITLE_FIELD_TYPES,
   objectStatusLabel,
   type ObjectDraft,
   type PublicationAnalysis,
   type PublishedDataScope,
+  type PublishedFieldType,
+  type RecordSortDirection,
+  type RecordSortField,
 } from "./object-types";
 import { PublicationPanel } from "./publication-panel";
 
@@ -74,6 +81,7 @@ export function ObjectDesigner({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [editingField, setEditingField] =
     useState<ConfigurableFieldView | null>(null);
+  const [fieldCreatorOpen, setFieldCreatorOpen] = useState(false);
   const [analysis, setAnalysis] = useState<PublicationAnalysis>();
   const [panelOpen, setPanelOpen] = useState(false);
   const [error, setError] = useState<string>();
@@ -111,6 +119,35 @@ export function ObjectDesigner({
     onError: reject,
   });
 
+  const createField = useMutation({
+    mutationFn: (input: {
+      fieldKey: string;
+      label: string;
+      type: PublishedFieldType;
+      required: boolean;
+    }) =>
+      api.createField(tenantCode, objectId, {
+        expectedVersion: draft.object.version,
+        fieldKey: input.fieldKey,
+        label: input.label,
+        type: input.type,
+        required: input.required,
+        defaultValue: null,
+        validation: {},
+        config: {},
+        isSystem: false,
+      }),
+    onSuccess: (next, input) => {
+      accept(next);
+      setFieldCreatorOpen(false);
+      const created = next.fields.find(
+        (field) => field.fieldKey === input.fieldKey,
+      );
+      if (created) setEditingField(created as ConfigurableFieldView);
+    },
+    onError: reject,
+  });
+
   const saveField = useMutation({
     mutationFn: ({
       field,
@@ -118,24 +155,60 @@ export function ObjectDesigner({
     }: {
       field: ConfigurableFieldView;
       values: FieldDraftValues;
-    }) =>
-      api.updateField(tenantCode, objectId, field.id, {
-        expectedVersion: draft.object.version,
-        label: values.label,
-        type: values.type,
-        required: values.required,
-        validation: pruneUndefined({
-          minLength: values.minLength,
-          maxLength: values.maxLength,
-          min: values.min,
-          max: values.max,
-          scale: values.scale,
-        }),
-        config: pruneUndefined({
-          options: values.options.length > 0 ? values.options : undefined,
-          help: values.help === "" ? undefined : values.help,
-        }),
-      }),
+    }) => {
+      const updateField = async () => {
+        const next = await api.updateField(tenantCode, objectId, field.id, {
+          expectedVersion: draft.object.version,
+          fieldKey: values.fieldKey,
+          label: values.label,
+          type: values.type,
+          required: values.required,
+          validation: pruneUndefined({
+            minLength: values.minLength,
+            maxLength: values.maxLength,
+            min: values.min,
+            max: values.max,
+            scale: values.scale,
+          }),
+          config: pruneUndefined({
+            options: values.options.length > 0 ? values.options : undefined,
+            help: values.help === "" ? undefined : values.help,
+          }),
+        });
+
+        if (
+          values.employeeAccess === field.employeeAccess &&
+          values.fieldKey === field.fieldKey
+        ) {
+          return next;
+        }
+        const employeeAccess = next.employeeAccess ?? {
+          canCreate: false,
+          canRead: false,
+          canUpdate: false,
+          readScope: "NONE" as const,
+          updateScope: "NONE" as const,
+        };
+        return api.updatePermissions(tenantCode, objectId, {
+          expectedVersion: next.object.version,
+          canCreate: employeeAccess.canCreate,
+          canRead: employeeAccess.canRead,
+          canUpdate: employeeAccess.canUpdate,
+          canDelete: false,
+          readScope: employeeAccess.readScope,
+          updateScope: employeeAccess.updateScope,
+          fields: Object.fromEntries(
+            next.fields.map((nextField) => [
+              nextField.fieldKey,
+              nextField.id === field.id
+                ? values.employeeAccess
+                : nextField.employeeAccess,
+            ]),
+          ),
+        });
+      };
+      return updateField();
+    },
     onSuccess: (next) => {
       accept(next);
       setEditingField(null);
@@ -154,6 +227,20 @@ export function ObjectDesigner({
         name: input.name,
         titleFieldKey: input.titleFieldKey,
         description: input.description === "" ? null : input.description,
+      }),
+    onSuccess: accept,
+    onError: reject,
+  });
+
+  const saveView = useMutation({
+    mutationFn: (input: {
+      name: string;
+      columnFieldKeys: string[];
+      sort: { field: RecordSortField; direction: RecordSortDirection };
+    }) =>
+      api.updateDefaultView(tenantCode, objectId, {
+        expectedVersion: draft.object.version,
+        ...input,
       }),
     onSuccess: accept,
     onError: reject,
@@ -223,14 +310,16 @@ export function ObjectDesigner({
   return (
     <>
       <p className={styles.desktopOnly}>
-        对象配置需要较宽的编辑区域，请在桌面端完成。
+        业务表配置需要较宽的编辑区域，请在桌面端完成。
       </p>
 
       <div className={styles.designer}>
         <div style={{ gridColumn: "1 / -1" }}>
           <header className={styles.designerHeader}>
             <div className={styles.designerIdentity}>
-              <span className={styles.eyebrow}>OBJECT CONFIGURATION</span>
+              <span className={styles.eyebrow}>
+                BUSINESS TABLE CONFIGURATION
+              </span>
               <h1>{draft.object.name}</h1>
               <div className={styles.designerMeta}>
                 <span className={styles.stableKey}>{draft.object.code}</span>
@@ -285,7 +374,7 @@ export function ObjectDesigner({
           ) : null}
         </div>
 
-        <nav className={styles.designerNav} aria-label="对象配置步骤">
+        <nav className={styles.designerNav} aria-label="业务表配置步骤">
           {SECTIONS.map((item) => (
             <button
               key={item.key}
@@ -318,10 +407,19 @@ export function ObjectDesigner({
           {section === "fields" ? (
             <section>
               <div className={styles.sectionHeading}>
-                <h2>字段 {draft.fields.length}</h2>
-                <Typography.Text type="secondary">
-                  选择字段后从右侧抽屉配置
-                </Typography.Text>
+                <div>
+                  <h2>字段 {draft.fields.length}</h2>
+                  <Typography.Text type="secondary">
+                    字段决定这张业务表收集哪些信息；点击配置可继续设置校验、选项和员工权限。
+                  </Typography.Text>
+                </div>
+                <Button
+                  type="primary"
+                  disabled={archived}
+                  onClick={() => setFieldCreatorOpen(true)}
+                >
+                  新增字段
+                </Button>
               </div>
               <FieldLedger
                 fields={configurableDraft.fields}
@@ -333,7 +431,13 @@ export function ObjectDesigner({
             </section>
           ) : null}
 
-          {section === "view" ? <DefaultViewSection draft={draft} /> : null}
+          {section === "view" ? (
+            <DefaultViewSection
+              draft={draft}
+              saving={saveView.isPending}
+              onSave={(input) => saveView.mutate(input)}
+            />
+          ) : null}
 
           {section === "permissions" ? (
             <PermissionsSection
@@ -346,7 +450,6 @@ export function ObjectDesigner({
           {section === "publications" ? (
             <PublicationHistorySection draft={draft} />
           ) : null}
-
         </div>
 
         <aside className={styles.designerPreview} aria-label="员工端实时预览">
@@ -380,6 +483,15 @@ export function ObjectDesigner({
           if (editingField) saveField.mutate({ field: editingField, values });
         }}
       />
+
+      {fieldCreatorOpen ? (
+        <FieldCreatorModal
+          firstField={draft.fields.length === 0}
+          saving={createField.isPending}
+          onCancel={() => setFieldCreatorOpen(false)}
+          onCreate={(input) => createField.mutate(input)}
+        />
+      ) : null}
 
       <PublicationPanel
         open={panelOpen}
@@ -428,8 +540,23 @@ function BasicsSection({
       <div className={styles.sectionHeading}>
         <h2>基本设置</h2>
       </div>
+      <div className={styles.statusExplanation}>
+        <StatusTag
+          tone={
+            draft.object.status === "ARCHIVED" ||
+            draft.object.publicationNumber === null
+              ? "neutral"
+              : draft.object.hasUnpublishedChanges
+                ? "warning"
+                : "success"
+          }
+        >
+          {objectStatusLabel(draft.object)}
+        </StatusTag>
+        <span>{objectStatusDescription(draft)}</span>
+      </div>
       <Form component={false} layout="vertical">
-        <Form.Item label="对象名称" htmlFor="object-name">
+        <Form.Item label="业务表名称" htmlFor="object-name">
           <Input
             id="object-name"
             value={name}
@@ -437,16 +564,16 @@ function BasicsSection({
           />
         </Form.Item>
         <Form.Item
-          label="对象代码"
+          label="业务表代码"
           htmlFor="object-code"
-          extra="对象代码在公司内唯一，首次发布后不可修改。"
+          extra="业务表代码在公司内唯一，供接口和系统稳定识别，首次发布后不可修改。"
         >
           <Input id="object-code" value={draft.object.code} disabled />
         </Form.Item>
         <Form.Item
-          label="标题字段"
+          label="记录名称字段"
           htmlFor="object-title-field"
-          extra="标题字段必须是必填的文本、电话、邮箱或单选字段。"
+          extra="它代表每条记录最容易识别的名称，会显示在列表链接、搜索结果和引用位置；必须是必填的文本、电话、邮箱或单选字段。"
         >
           <Select
             id="object-title-field"
@@ -478,32 +605,275 @@ function BasicsSection({
   );
 }
 
-function DefaultViewSection({ draft }: { draft: ObjectDraft }) {
+function objectStatusDescription(draft: ObjectDraft): string {
+  if (draft.object.status === "ARCHIVED") {
+    return "已归档：停止继续配置，历史记录仍然保留。";
+  }
+  if (draft.object.publicationNumber === null) {
+    return "草稿：只有公司管理员能看到，员工端尚未出现这张业务表。";
+  }
+  if (draft.object.hasUnpublishedChanges) {
+    return "有未发布变更：员工仍在使用上一个已发布版本，本次修改尚未生效。";
+  }
+  return "已发布：员工正在使用当前版本。";
+}
+
+function FieldCreatorModal({
+  firstField,
+  saving,
+  onCancel,
+  onCreate,
+}: {
+  firstField: boolean;
+  saving: boolean;
+  onCancel: () => void;
+  onCreate: (input: {
+    fieldKey: string;
+    label: string;
+    type: PublishedFieldType;
+    required: boolean;
+  }) => void;
+}) {
+  const [label, setLabel] = useState("");
+  const [fieldKey, setFieldKey] = useState(firstField ? "name" : "");
+  const [type, setType] = useState<PublishedFieldType>("TEXT");
+  const [required, setRequired] = useState(firstField);
+  const valid =
+    label.trim().length > 0 && FIELD_KEY_PATTERN.test(fieldKey.trim());
+
+  return (
+    <Modal
+      open
+      title="新增字段"
+      width={560}
+      okText="创建并继续配置"
+      cancelText="取消"
+      confirmLoading={saving}
+      okButtonProps={{ disabled: !valid }}
+      onCancel={onCancel}
+      onOk={() =>
+        onCreate({
+          label: label.trim(),
+          fieldKey: fieldKey.trim(),
+          type,
+          required,
+        })
+      }
+    >
+      <Typography.Paragraph type="secondary">
+        先确定字段的名称、键和类型；创建后会自动打开完整配置，可继续设置选项、校验和员工访问权限。
+      </Typography.Paragraph>
+      {firstField ? (
+        <Alert
+          className={styles.fieldCreatorAlert}
+          type="info"
+          showIcon
+          title="首个字段将作为记录名称字段，建议保留 name 并设为必填文本。"
+        />
+      ) : null}
+      <Form component={false} layout="vertical">
+        <Form.Item label="字段名称" htmlFor="create-field-label" required>
+          <Input
+            id="create-field-label"
+            autoFocus
+            placeholder="例如：客户名称"
+            value={label}
+            onChange={(event) => setLabel(event.target.value)}
+          />
+        </Form.Item>
+        <Form.Item
+          label="字段键"
+          htmlFor="create-field-key"
+          required
+          extra="使用小写字母、数字和下划线，例如 customer_name。"
+          validateStatus={
+            fieldKey !== "" && !FIELD_KEY_PATTERN.test(fieldKey)
+              ? "error"
+              : undefined
+          }
+        >
+          <Input
+            id="create-field-key"
+            value={fieldKey}
+            onChange={(event) =>
+              setFieldKey(
+                event.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""),
+              )
+            }
+          />
+        </Form.Item>
+        <Form.Item label="字段类型" htmlFor="create-field-type">
+          <Select
+            id="create-field-type"
+            value={type}
+            onChange={setType}
+            options={PUBLISHED_FIELD_TYPES.map((fieldType) => ({
+              value: fieldType,
+              label: FIELD_TYPE_LABELS[fieldType],
+            }))}
+          />
+        </Form.Item>
+        <Form.Item label="是否必填" htmlFor="create-field-required">
+          <div className={styles.requiredControl}>
+            <Switch
+              id="create-field-required"
+              checked={required}
+              onChange={setRequired}
+            />
+            <span>{required ? "必须填写" : "可以留空"}</span>
+          </div>
+        </Form.Item>
+      </Form>
+    </Modal>
+  );
+}
+
+function DefaultViewSection({
+  draft,
+  saving,
+  onSave,
+}: {
+  draft: ObjectDraft;
+  saving: boolean;
+  onSave: (input: {
+    name: string;
+    columnFieldKeys: string[];
+    sort: { field: RecordSortField; direction: RecordSortDirection };
+  }) => void;
+}) {
+  const activeFields = draft.fields.filter(
+    (field) => field.status === "ACTIVE",
+  );
+  const [name, setName] = useState(draft.defaultView?.name ?? "默认列表");
+  const [columnFieldKeys, setColumnFieldKeys] = useState<string[]>(
+    draft.defaultView?.columnFieldKeys ??
+      activeFields.map((field) => field.fieldKey),
+  );
+  const [sortField, setSortField] = useState<RecordSortField>(
+    draft.defaultView?.sort.field ?? "updatedAt",
+  );
+  const [sortDirection, setSortDirection] = useState<RecordSortDirection>(
+    draft.defaultView?.sort.direction ?? "desc",
+  );
+
+  function toggleColumn(fieldKey: string, checked: boolean) {
+    setColumnFieldKeys((current) =>
+      checked
+        ? [...current, fieldKey]
+        : current.filter((candidate) => candidate !== fieldKey),
+    );
+  }
+
+  function moveColumn(fieldKey: string, direction: -1 | 1) {
+    setColumnFieldKeys((current) => {
+      const next = [...current];
+      const from = next.indexOf(fieldKey);
+      const to = from + direction;
+      if (from < 0 || to < 0 || to >= next.length) return current;
+      [next[from], next[to]] = [next[to], next[from]];
+      return next;
+    });
+  }
+
   return (
     <section className={styles.panel}>
       <div className={styles.sectionHeading}>
-        <h2>列表视图</h2>
+        <div>
+          <h2>默认列表视图</h2>
+          <Typography.Text type="secondary">
+            决定员工打开这张业务表时先看到哪些列，以及记录的默认顺序。
+          </Typography.Text>
+        </div>
       </div>
-      {draft.defaultView ? (
-        <>
-          <Typography.Paragraph>
-            默认列：
-            {draft.defaultView.columnFieldKeys.length === 0
-              ? "尚未选择"
-              : draft.defaultView.columnFieldKeys.join("、")}
-          </Typography.Paragraph>
-          <Typography.Paragraph type="secondary">
-            默认排序：{draft.defaultView.sort.field}{" "}
-            {draft.defaultView.sort.direction === "desc" ? "降序" : "升序"}
-          </Typography.Paragraph>
-        </>
-      ) : (
-        <Alert
-          type="warning"
-          showIcon
-          title="尚未配置默认列表视图，发布会被阻断。"
-        />
-      )}
+      <Form component={false} layout="vertical">
+        <Form.Item label="视图名称" htmlFor="default-view-name">
+          <Input
+            id="default-view-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+        </Form.Item>
+        <Form.Item label="显示列及顺序">
+          <div className={styles.columnChooser}>
+            {activeFields.map((field) => {
+              const selectedIndex = columnFieldKeys.indexOf(field.fieldKey);
+              const selected = selectedIndex >= 0;
+              return (
+                <div key={field.id} className={styles.columnChooserRow}>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={(event) =>
+                        toggleColumn(field.fieldKey, event.target.checked)
+                      }
+                    />
+                    <span>{field.label}</span>
+                    <code>{field.fieldKey}</code>
+                  </label>
+                  {selected ? (
+                    <Space size={4}>
+                      <Button
+                        size="small"
+                        disabled={selectedIndex === 0}
+                        onClick={() => moveColumn(field.fieldKey, -1)}
+                      >
+                        上移
+                      </Button>
+                      <Button
+                        size="small"
+                        disabled={selectedIndex === columnFieldKeys.length - 1}
+                        onClick={() => moveColumn(field.fieldKey, 1)}
+                      >
+                        下移
+                      </Button>
+                    </Space>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </Form.Item>
+        <div className={styles.formGrid}>
+          <Form.Item label="默认排序字段" htmlFor="default-sort-field">
+            <Select
+              id="default-sort-field"
+              value={sortField}
+              onChange={setSortField}
+              options={[
+                { value: "updatedAt", label: "最近更新时间" },
+                { value: "createdAt", label: "创建时间" },
+                { value: "recordNo", label: "记录编号" },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item label="排序方向" htmlFor="default-sort-direction">
+            <Select
+              id="default-sort-direction"
+              value={sortDirection}
+              onChange={setSortDirection}
+              options={[
+                { value: "desc", label: "降序（新的在前）" },
+                { value: "asc", label: "升序（旧的在前）" },
+              ]}
+            />
+          </Form.Item>
+        </div>
+      </Form>
+      <Button
+        type="primary"
+        loading={saving}
+        disabled={name.trim() === "" || columnFieldKeys.length === 0}
+        onClick={() =>
+          onSave({
+            name: name.trim(),
+            columnFieldKeys,
+            sort: { field: sortField, direction: sortDirection },
+          })
+        }
+      >
+        保存列表视图
+      </Button>
     </section>
   );
 }

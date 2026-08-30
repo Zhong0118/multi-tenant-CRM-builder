@@ -35,7 +35,7 @@ export default async function ObjectDesignerPage({
   return (
     <main className={styles.page}>
       <Link href={`/workspace/${tenantCode}/settings/objects`}>
-        返回业务对象列表
+        返回业务表列表
       </Link>
       <ObjectDesigner
         tenantCode={tenantCode}

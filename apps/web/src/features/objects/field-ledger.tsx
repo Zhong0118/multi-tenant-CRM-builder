@@ -41,7 +41,7 @@ export function FieldLedger({
     {
       title: "",
       key: "order",
-      width: 64,
+      width: 112,
       render: (_, fieldRow, index) => (
         <div className={styles.ledgerOrder}>
           <Tooltip title={`上移 ${fieldRow.label}`}>
@@ -52,7 +52,7 @@ export function FieldLedger({
               disabled={index === 0 || reordering}
               onClick={() => onMove(fieldRow.id, -1)}
             >
-              ↑
+              上移
             </Button>
           </Tooltip>
           <Tooltip title={`下移 ${fieldRow.label}`}>
@@ -63,7 +63,7 @@ export function FieldLedger({
               disabled={index === fields.length - 1 || reordering}
               onClick={() => onMove(fieldRow.id, 1)}
             >
-              ↓
+              下移
             </Button>
           </Tooltip>
         </div>
@@ -120,7 +120,7 @@ export function FieldLedger({
       width: 150,
       render: (_, fieldRow) => (
         <span className={styles.ledgerFlags}>
-          {fieldRow.fieldKey === titleFieldKey ? <Tag>标题</Tag> : null}
+          {fieldRow.fieldKey === titleFieldKey ? <Tag>记录名称</Tag> : null}
           {fieldRow.status === "INACTIVE" ? <Tag>已停用</Tag> : null}
           {fieldRow.publishedType === null ? (
             <Tag color="gold">未发布</Tag>

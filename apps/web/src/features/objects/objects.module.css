@@ -224,6 +224,19 @@
   max-width: 720px;
 }
 
+.statusExplanation {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--verified-teal);
+  background: var(--bg-page);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
 .fieldDrawer :global(.ant-drawer-header) {
   padding: 18px 22px;
   border-bottom: 1px solid var(--border-default);
@@ -340,6 +353,74 @@
   color: var(--text-primary);
 }
 
+.fieldCreatorAlert {
+  margin-bottom: 16px;
+}
+
+.optionEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.optionEditorHeader,
+.optionEditorRow {
+  display: grid;
+  grid-template-columns: minmax(120px, 1.15fr) minmax(100px, 0.9fr) 100px 52px;
+  gap: 8px;
+  align-items: center;
+}
+
+.optionEditorHeader {
+  padding: 0 1px;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.optionKeyInput {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.addOptionButton {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.columnChooser {
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+}
+
+.columnChooserRow {
+  display: flex;
+  min-height: 46px;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  background: var(--bg-surface);
+}
+
+.columnChooserRow + .columnChooserRow {
+  border-top: 1px solid var(--border-default);
+}
+
+.columnChooserRow > label {
+  display: flex;
+  min-width: 0;
+  gap: 9px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.columnChooserRow code {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
 .fieldTypeDescription {
   margin: -2px 0 0;
   padding: 9px 10px;
@@ -373,6 +454,14 @@
 
   .drawerFormGrid {
     grid-template-columns: 1fr;
+  }
+
+  .optionEditorHeader {
+    display: none;
+  }
+
+  .optionEditorRow {
+    grid-template-columns: 1fr 1fr;
   }
 
   .fieldDrawerFooter {

@@ -10,8 +10,10 @@ import {
   Typography,
 } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
+import type { ReactNode } from "react";
 import { useState } from "react";
 
+import { OptionBadge } from "@/features/objects/option-badge";
 import {
   selectOptions,
   type PublishedFieldView,
@@ -298,7 +300,9 @@ function ReadOnlyValue({
 }) {
   return (
     <div className={styles.readOnlyValue}>
-      <span>{displayValue(field, value, members)}</span>
+      <div className={styles.optionValues}>
+        {displayValue(field, value, members)}
+      </div>
       <Typography.Text type="secondary" className={styles.readOnlyReason}>
         仅管理员可编辑
       </Typography.Text>
@@ -323,7 +327,8 @@ function offeredOptions(options: SelectOptionView[], selected: string[]) {
     )
     .map((option) => ({
       value: option.key,
-      label:
+      label: <OptionBadge option={option} />,
+      title:
         option.status === "INACTIVE"
           ? `${option.label}（已停用）`
           : option.label,
@@ -342,17 +347,15 @@ function displayValue(
   field: PublishedFieldView,
   value: unknown,
   members: DynamicFieldMember[],
-): string {
+): ReactNode {
   if (value === null || value === undefined || value === "") return "—";
   switch (field.type) {
     case "BOOLEAN":
       return value === true ? "是" : "否";
     case "SINGLE_SELECT":
-      return optionLabel(field, String(value));
+      return optionValue(field, String(value));
     case "MULTI_SELECT":
-      return toKeys(value)
-        .map((key) => optionLabel(field, key))
-        .join("、");
+      return toKeys(value).map((key) => optionValue(field, key));
     case "MEMBER":
       return (
         members.find((member) => member.id === value)?.displayName ??
@@ -365,14 +368,12 @@ function displayValue(
   }
 }
 
-function optionLabel(field: PublishedFieldView, key: string): string {
+function optionValue(field: PublishedFieldView, key: string): ReactNode {
   const option = selectOptions(field).find(
     (candidate) => candidate.key === key,
   );
   if (!option) return key;
-  return option.status === "INACTIVE"
-    ? `${option.label}（已停用）`
-    : option.label;
+  return <OptionBadge key={key} option={option} />;
 }
 
 function normalizeMoney(text: string, scale: number): string | null {

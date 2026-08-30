@@ -1455,6 +1455,19 @@ export interface components {
       name: string;
     };
     SelectOptionDto: {
+      /**
+       * @default GRAY
+       * @enum {string}
+       */
+      color:
+        | "GRAY"
+        | "BLUE"
+        | "CYAN"
+        | "GREEN"
+        | "YELLOW"
+        | "ORANGE"
+        | "RED"
+        | "PURPLE";
       key: string;
       label: string;
       /**

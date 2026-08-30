@@ -54,9 +54,10 @@ describe("WorkspaceHomeView", () => {
     expect(
       screen.getByRole("heading", { name: "管理工作台" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /配置业务对象/ }),
-    ).toHaveAttribute("href", "/workspace/northwind/settings/objects");
+    expect(screen.getByRole("link", { name: /配置业务表/ })).toHaveAttribute(
+      "href",
+      "/workspace/northwind/settings/objects",
+    );
     expect(screen.getByRole("link", { name: /管理成员/ })).toHaveAttribute(
       "href",
       "/workspace/northwind/members",

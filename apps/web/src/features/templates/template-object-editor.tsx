@@ -285,14 +285,14 @@ export function TemplateObjectEditor({
               </Form.Item>
               <div className={styles.formGrid}>
                 <Form.Item
-                  label="标题字段"
+                  label="记录名称字段"
                   htmlFor={`object-title-field-${objectId}`}
-                  extra="标题字段用于记录列表和引用位置，必须启用且必填。"
+                  extra="每条记录最容易识别的名称，用于列表链接、搜索和引用；必须纳入模板且设为必填。"
                 >
                   <Select
                     id={`object-title-field-${objectId}`}
                     value={object.object.titleFieldKey || undefined}
-                    placeholder="先新增一个可作为标题的必填字段"
+                    placeholder="先新增一个可作为记录名称的必填字段"
                     options={titleCandidates.map((field) => ({
                       value: field.fieldKey,
                       label: `${field.label}（${field.fieldKey}）`,
@@ -310,8 +310,8 @@ export function TemplateObjectEditor({
                     id={`object-status-${objectId}`}
                     value={object.object.status}
                     options={[
-                      { value: "ACTIVE", label: "启用" },
-                      { value: "INACTIVE", label: "停用" },
+                      { value: "ACTIVE", label: "纳入模板" },
+                      { value: "INACTIVE", label: "暂不应用" },
                     ]}
                     onChange={(status: "ACTIVE" | "INACTIVE") =>
                       onChange(updateObject(draft, objectId, { status }))
