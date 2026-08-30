@@ -45,6 +45,17 @@ export interface DashboardConfigurationView {
 
 export type DashboardOverview = components["schemas"]["DashboardOverviewDto"];
 
+export function overviewOpportunity(
+  overview: DashboardOverview,
+): DashboardOpportunityConfiguration | undefined {
+  if (!overview.configuration) return undefined;
+  try {
+    return parseConfiguration(overview.configuration).opportunity;
+  } catch {
+    return undefined;
+  }
+}
+
 export function parseDashboardConfigurationView(
   value: components["schemas"]["DashboardConfigurationEnvelopeDto"],
 ): DashboardConfigurationView {
