@@ -1,0 +1,15 @@
+.dataPanel,
+.readingPanel {
+  color: var(--text-primary);
+  background: var(--bg-surface);
+}
+
+.dataPanel {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-data);
+}
+
+.readingPanel {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-reading);
+}

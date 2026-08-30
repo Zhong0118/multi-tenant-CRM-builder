@@ -1,0 +1,36 @@
+.tag {
+  display: inline-flex;
+  min-height: 22px;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-status);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tag[data-tone="neutral"] {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.tag[data-tone="info"] {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.tag[data-tone="success"] {
+  color: var(--color-success);
+  background: var(--color-primary-soft);
+}
+
+.tag[data-tone="warning"] {
+  color: #8a4b0e;
+  background: var(--color-warning-soft);
+}
+
+.tag[data-tone="danger"] {
+  color: var(--color-danger);
+  background: #fef0ef;
+}
