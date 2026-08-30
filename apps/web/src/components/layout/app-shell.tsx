@@ -1,7 +1,12 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useCallback, useSyncExternalStore, type ReactNode } from "react";
+import {
+  useCallback,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 
 import { Sidebar } from "./sidebar";
 import { TopHeader } from "./top-header";
@@ -65,6 +70,7 @@ export function AppShell({
   children,
 }: AppShellProps) {
   const pathname = usePathname() ?? "";
+  const [mobileOpen, setMobileOpen] = useState(false);
   const collapsed = useSyncExternalStore(
     subscribeCollapsed,
     getCollapsedSnapshot,
@@ -78,13 +84,23 @@ export function AppShell({
 
   return (
     <div className={styles.shell}>
+      {mobileOpen ? (
+        <button
+          type="button"
+          className={styles.backdrop}
+          aria-label="关闭导航"
+          onClick={() => setMobileOpen(false)}
+        />
+      ) : null}
       <Sidebar
         brand={brand}
         brandHref={brandHref}
         navGroups={navGroups}
         pathname={pathname}
-        collapsed={collapsed}
+        collapsed={mobileOpen ? false : collapsed}
         onToggle={toggleCollapsed}
+        mobileOpen={mobileOpen}
+        onMobileClose={() => setMobileOpen(false)}
       />
       <div className={styles.column}>
         <TopHeader
@@ -92,8 +108,11 @@ export function AppShell({
           user={user}
           roleLabel={roleLabel}
           showWorkspaceSwitch={showWorkspaceSwitch}
+          onOpenNavigation={() => setMobileOpen(true)}
         />
-        <main className={styles.main}>{children}</main>
+        <main className={styles.main} data-scroll-region="main">
+          {children}
+        </main>
       </div>
     </div>
   );

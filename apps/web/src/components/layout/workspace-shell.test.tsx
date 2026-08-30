@@ -206,4 +206,27 @@ describe("WorkspaceShell", () => {
     expect(screen.getByRole("button", { name: /张三/ })).toBeInTheDocument();
     expect(screen.getByText("员工")).toBeInTheDocument();
   });
+
+  it("uses the same independent navigation and content scroll contract", () => {
+    render(
+      <WorkspaceShell
+        tenantCode="northwind"
+        tenantName="百杰"
+        role="EMPLOYEE"
+        user={shellUser}
+        businessObjects={[]}
+      >
+        <p>内容</p>
+      </WorkspaceShell>,
+    );
+
+    expect(screen.getByTestId("sidebar-navigation-scroll")).toHaveAttribute(
+      "data-scroll-region",
+      "navigation",
+    );
+    expect(screen.getByRole("main")).toHaveAttribute(
+      "data-scroll-region",
+      "main",
+    );
+  });
 });

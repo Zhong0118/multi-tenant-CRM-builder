@@ -109,4 +109,33 @@ describe("AppShell", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText("尚无已授权的业务对象")).toBeInTheDocument();
   });
+
+  it("opens and closes the temporary navigation on compact screens", () => {
+    renderShell();
+
+    fireEvent.click(screen.getByRole("button", { name: "打开导航" }));
+    expect(screen.getByRole("complementary")).toHaveAttribute(
+      "data-mobile-open",
+      "true",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "关闭导航" }));
+    expect(screen.getByRole("complementary")).not.toHaveAttribute(
+      "data-mobile-open",
+      "true",
+    );
+  });
+
+  it("keeps navigation and work content in separate scroll regions", () => {
+    renderShell();
+
+    expect(screen.getByTestId("sidebar-navigation-scroll")).toHaveAttribute(
+      "data-scroll-region",
+      "navigation",
+    );
+    expect(screen.getByRole("main")).toHaveAttribute(
+      "data-scroll-region",
+      "main",
+    );
+  });
 });

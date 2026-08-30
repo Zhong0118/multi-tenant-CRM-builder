@@ -23,6 +23,8 @@ export function Sidebar({
   pathname,
   collapsed,
   onToggle,
+  mobileOpen,
+  onMobileClose,
 }: {
   brand: string;
   brandHref: string;
@@ -30,6 +32,8 @@ export function Sidebar({
   pathname: string;
   collapsed: boolean;
   onToggle: () => void;
+  mobileOpen: boolean;
+  onMobileClose: () => void;
 }) {
   const toggleLabel = collapsed ? "展开菜单" : "收起菜单";
   const toggleButton = (
@@ -40,21 +44,26 @@ export function Sidebar({
       aria-label={toggleLabel}
     >
       {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-      {collapsed ? null : "收起菜单"}
+      {collapsed ? null : <span className={styles.navLabel}>收起菜单</span>}
     </button>
   );
 
   return (
     <aside
       className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ""}`}
+      data-mobile-open={mobileOpen ? "true" : undefined}
     >
-      <Link href={brandHref} className={styles.brand}>
+      <Link href={brandHref} className={styles.brand} onClick={onMobileClose}>
         <span className={styles.brandMark} aria-hidden>
           {brand.slice(0, 1)}
         </span>
         {collapsed ? null : <span className={styles.brandName}>{brand}</span>}
       </Link>
-      <div className={styles.navScroll}>
+      <div
+        className={styles.navScroll}
+        data-testid="sidebar-navigation-scroll"
+        data-scroll-region="navigation"
+      >
         {navGroups.map((group) =>
           group.items.length === 0 ? (
             group.emptyLabel ? (
@@ -75,6 +84,7 @@ export function Sidebar({
                 const link = (
                   <Link
                     href={item.href}
+                    onClick={onMobileClose}
                     aria-current={current ? "page" : undefined}
                     aria-label={collapsed ? item.label : undefined}
                     className={`${styles.navItem} ${current ? styles.navItemCurrent : ""}`}
@@ -84,7 +94,9 @@ export function Sidebar({
                         {icon}
                       </span>
                     ) : null}
-                    {collapsed ? null : item.label}
+                    {collapsed ? null : (
+                      <span className={styles.navLabel}>{item.label}</span>
+                    )}
                   </Link>
                 );
 
