@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { toApiError } from "@/lib/api/api-error";
+import { ReadingPanel } from "@/components/workbench/surface";
 
 import {
   tenantApi,
@@ -42,8 +43,8 @@ export function TenantStatusActions({
     tenant.status === "DRAFT" || tenant.status === "SUSPENDED";
 
   return (
-    <section className={styles.statusActions} aria-labelledby="status-actions">
-      <h2 id="status-actions">状态操作</h2>
+    <ReadingPanel ariaLabel="状态操作" className={styles.statusActions}>
+      <h2>状态操作</h2>
       <p>每次变更都会记录操作者、原因和请求编号。</p>
       {!canActivate && tenant.status === "DRAFT" ? (
         <Alert type="warning" showIcon title="至少需要 1 位活跃公司管理员" />
@@ -90,6 +91,6 @@ export function TenantStatusActions({
           </Popconfirm>
         ) : null}
       </Space>
-    </section>
+    </ReadingPanel>
   );
 }

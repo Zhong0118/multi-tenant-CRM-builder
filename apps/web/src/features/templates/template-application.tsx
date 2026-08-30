@@ -5,6 +5,7 @@ import { Alert, Button, Modal, Select, Spin } from "antd";
 import { useState } from "react";
 
 import { toApiError } from "@/lib/api/api-error";
+import { ReadingPanel } from "@/components/workbench/surface";
 
 import { browserTemplateApi, type TemplateApi } from "./template-api";
 import type {
@@ -123,7 +124,10 @@ export function TenantBusinessConfiguration({
   }
 
   return (
-    <section id="business-configuration" className={styles.applicationPanel}>
+    <ReadingPanel
+      ariaLabel="初始化业务表"
+      className={styles.applicationPanel}
+    >
       <div className={styles.applicationHeading}>
         <div>
           <h2>初始化业务表</h2>
@@ -231,7 +235,7 @@ export function TenantBusinessConfiguration({
           ) : null}
         </div>
       </Modal>
-    </section>
+    </ReadingPanel>
   );
 }
 

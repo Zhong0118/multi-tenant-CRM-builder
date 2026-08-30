@@ -10,8 +10,6 @@
 
 .tenantTable,
 .createPanel,
-.detailPanel,
-.statusActions,
 .emptyState {
   border: 1px solid var(--border-default);
   border-radius: 8px;
@@ -53,6 +51,11 @@
   padding: 20px;
 }
 
+.detailAside {
+  display: grid;
+  gap: 16px;
+}
+
 .createForm :global(.ant-alert),
 .statusActions :global(.ant-alert),
 .statusActions :global(.ant-input) {
@@ -60,8 +63,8 @@
 }
 
 .checkpoints {
+  padding: 20px;
   border-left: 3px solid var(--color-success);
-  padding: 6px 0 6px 24px;
 }
 
 .checkpoints h2,
@@ -95,7 +98,7 @@
 .detailLedger {
   overflow: hidden;
   border: 1px solid var(--border-default);
-  border-radius: 8px;
+  border-radius: var(--radius-data);
   text-align: left;
 }
 
@@ -130,44 +133,8 @@
   font-weight: 600;
 }
 
-.titleRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.gate {
-  display: grid;
-  gap: 14px;
-  margin-top: 24px;
-}
-
-.gateItem {
-  display: grid;
-  grid-template-columns: 24px 1fr;
-  gap: 10px;
-  align-items: start;
-}
-
-.gateMark {
-  display: grid;
-  width: 22px;
-  height: 22px;
-  place-items: center;
-  border: 1px solid var(--border-default);
-  border-radius: 50%;
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-
-.gateReady .gateMark {
-  border-color: var(--color-success);
-  color: #fff;
-  background: var(--color-success);
-}
-
 .statusActions {
-  margin-top: 22px;
+  margin-top: 0;
 }
 
 @media (max-width: 760px) {

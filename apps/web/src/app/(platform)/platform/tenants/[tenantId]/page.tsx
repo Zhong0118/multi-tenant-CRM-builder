@@ -1,5 +1,7 @@
 import { PageHeader } from "@/components/layout/page-header";
+import { ReadingPanel } from "@/components/workbench/surface";
 import { TenantBusinessConfiguration } from "@/features/templates/template-application";
+import { TenantSetupProgress } from "@/features/tenants/tenant-setup-progress";
 import { TenantStatusActions } from "@/features/tenants/tenant-status-actions";
 import {
   TenantStatusTag,
@@ -52,20 +54,22 @@ export default async function TenantDetailPage({
   return (
     <div className={styles.page}>
       <PageHeader
-        title={
-          <span className={styles.titleRow}>
-            {tenant.name}
-            <TenantStatusTag status={tenant.status} />
-          </span>
-        }
+        title={tenant.name}
+        status={<TenantStatusTag status={tenant.status} />}
         description={`工作空间代码：${tenant.code}`}
+      />
+      <TenantSetupProgress
+        invitationAccepted={invitationAccepted}
+        activeAdminCount={tenant.activeAdminCount}
+        objectCount={configurationResult.data.objectCount}
+        canApplyTemplate={configurationResult.data.canApplyTemplate}
       />
       <TenantBusinessConfiguration
         tenant={tenant}
         initialSummary={configurationResult.data}
       />
       <div className={styles.detailLayout}>
-        <section className={styles.detailPanel}>
+        <ReadingPanel ariaLabel="公司与管理员信息" className={styles.detailPanel}>
           <h2 className={styles.panelTitle}>基本信息</h2>
           <dl className={styles.detailLedger}>
             <div>
@@ -110,35 +114,18 @@ export default async function TenantDetailPage({
               <dd>{tenant.activeAdminCount} 位</dd>
             </div>
           </dl>
-          <div className={styles.gate} aria-label="激活门槛">
-            <Gate ready title="公司草稿已建立" />
-            <Gate ready={invitationAccepted} title="首位管理员已接受邀请" />
-            <Gate ready={activeAdminReady} title="至少一位管理员处于活跃状态" />
-          </div>
-        </section>
-        <aside>
-          <section className={styles.checkpoints}>
+        </ReadingPanel>
+        <aside className={styles.detailAside}>
+          <ReadingPanel ariaLabel="激活判定" className={styles.checkpoints}>
             <h2>激活判定</h2>
             <p className={styles.intro}>
               {activeAdminReady
                 ? "管理员门槛已满足，可以执行激活。"
                 : "等待首位管理员接受邀请后，平台管理员方可激活。"}
             </p>
-          </section>
+          </ReadingPanel>
           <TenantStatusActions tenant={tenant} />
         </aside>
-      </div>
-    </div>
-  );
-}
-
-function Gate({ ready, title }: { ready: boolean; title: string }) {
-  return (
-    <div className={`${styles.gateItem} ${ready ? styles.gateReady : ""}`}>
-      <span className={styles.gateMark}>{ready ? "✓" : "·"}</span>
-      <div>
-        <strong>{title}</strong>
-        <p className={styles.intro}>{ready ? "已满足" : "待完成"}</p>
       </div>
     </div>
   );
