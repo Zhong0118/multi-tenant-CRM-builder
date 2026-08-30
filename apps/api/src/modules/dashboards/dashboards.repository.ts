@@ -172,7 +172,7 @@ export class PrismaDashboardRepository implements DashboardRepository {
               AND r.data ->> ${opportunity.stageFieldKey}
                 IN (${Prisma.join([...active, ...won, ...lost])})
               ${ownerClause}
-            GROUP BY r.data ->> ${opportunity.stageFieldKey}
+            GROUP BY 1
           `),
           transaction.$queryRaw<TrendRow[]>(Prisma.sql`
             SELECT
@@ -191,9 +191,7 @@ export class PrismaDashboardRepository implements DashboardRepository {
               AND ${businessDate} >= ${input.period.from}::timestamptz
               AND ${businessDate} < ${input.period.to}::timestamptz
               ${ownerClause}
-            GROUP BY date_trunc(
-              'day', ${businessDate} AT TIME ZONE ${input.period.timezone}
-            )
+            GROUP BY 1
             ORDER BY date ASC
           `),
           transaction.$queryRaw<AttentionRow[]>(Prisma.sql`
@@ -284,6 +282,7 @@ export class PrismaDashboardRepository implements DashboardRepository {
               AND r.deleted_at IS NULL
             WHERE tm.tenant_id = ${context.tenantId}::uuid
               AND tm.status = 'ACTIVE'
+              AND tm.role = 'EMPLOYEE'
             GROUP BY tm.id, u.display_name
             ORDER BY "wonAmount" DESC, "wonCount" DESC, u.display_name ASC
           `)
@@ -407,7 +406,12 @@ function projectAggregate(
   );
   return {
     metrics: [
-      { key: 'new', label: '本期新增', value: resolved.newCount, format: 'COUNT' },
+      {
+        key: 'new',
+        label: '本期新增',
+        value: resolved.newCount,
+        format: 'COUNT',
+      },
       {
         key: 'active',
         label: '进行中商机',
@@ -420,7 +424,12 @@ function projectAggregate(
         value: resolved.activeAmount,
         format: 'MONEY',
       },
-      { key: 'won', label: '成交单数', value: resolved.wonCount, format: 'COUNT' },
+      {
+        key: 'won',
+        label: '成交单数',
+        value: resolved.wonCount,
+        format: 'COUNT',
+      },
       {
         key: 'wonAmount',
         label: '成交金额',
@@ -489,7 +498,8 @@ function optionPresentation(
     (field) => field.fieldKey === stageFieldKey,
   );
   const options = stageField?.config.options;
-  if (!Array.isArray(options)) return new Map<string, { label: string; color: string }>();
+  if (!Array.isArray(options))
+    return new Map<string, { label: string; color: string }>();
   return new Map(
     options.flatMap((value) => {
       if (value === null || typeof value !== 'object' || Array.isArray(value)) {

@@ -5,10 +5,23 @@ import type {
   TemplateFieldConfiguration,
   TemplateObjectConfiguration,
 } from '../modules/business-templates/business-template.schema';
+import type { DashboardConfiguration } from '../modules/dashboards/dashboard.types';
 
 export const DEMO_COMPANY_CODE = 'nebula-demo';
 export const DEMO_TEMPLATE_CODE = 'standard-sales-demo';
 export const DEMO_PASSWORD = 'Demo@123456';
+export const DEMO_DASHBOARD_CONFIGURATION = {
+  opportunity: {
+    objectCode: 'opportunities',
+    stageFieldKey: 'stage',
+    amountFieldKey: 'amount',
+    dateFieldKey: 'closeDate',
+    activeOptionKeys: ['discovery', 'proposal', 'negotiation'],
+    wonOptionKeys: ['won'],
+    lostOptionKeys: ['lost'],
+  },
+  lead: { objectCode: 'leads' },
+} satisfies DashboardConfiguration;
 
 export interface DemoUser {
   displayName: string;
@@ -19,7 +32,7 @@ export interface DemoUser {
 
 export interface DemoRecord {
   objectCode: string;
-  ownerEmployeeNo: string;
+  ownerEmployeeNo: string | null;
   title: string;
   statusKey: string | null;
   values: Record<string, string | number | boolean | null>;
@@ -146,9 +159,11 @@ export function buildDemoCompanyFixture(): DemoCompanyFixture {
             {},
             {
               options: selectOptions([
-                ['discovery', '需求确认'],
-                ['proposal', '方案报价'],
-                ['negotiation', '商务谈判'],
+                ['discovery', '需求确认', 'BLUE'],
+                ['proposal', '方案报价', 'CYAN'],
+                ['negotiation', '商务谈判', 'ORANGE'],
+                ['won', '已成交', 'GREEN'],
+                ['lost', '已流失', 'RED'],
               ]),
             },
           ),
@@ -336,8 +351,30 @@ function templateObject(
   };
 }
 
-function selectOptions(entries: Array<[string, string]>) {
-  return entries.map(([key, label]) => ({ key, label, status: 'ACTIVE' }));
+function selectOptions(
+  entries: Array<
+    [
+      key: string,
+      label: string,
+      color?:
+        | 'GRAY'
+        | 'BLUE'
+        | 'CYAN'
+        | 'GREEN'
+        | 'YELLOW'
+        | 'ORANGE'
+        | 'RED'
+        | 'PURPLE',
+    ]
+  >,
+) {
+  const palette = ['BLUE', 'CYAN', 'GREEN', 'ORANGE', 'PURPLE'] as const;
+  return entries.map(([key, label, color], index) => ({
+    key,
+    label,
+    color: color ?? palette[index % palette.length],
+    status: 'ACTIVE',
+  }));
 }
 
 function buildRecords(employees: DemoUser[]): DemoRecord[] {
@@ -346,6 +383,16 @@ function buildRecords(employees: DemoUser[]): DemoRecord[] {
       const serial = employeeIndex * 2 + sequence;
       const day = String(10 + ((serial - 1) % 18)).padStart(2, '0');
       const suffix = `${employee.displayName}-${sequence}`;
+      const stage = ['discovery', 'proposal', 'negotiation', 'won', 'lost'][
+        (serial - 1) % 5
+      ];
+      const closeDate = relativeDate(
+        stage === 'won' || stage === 'lost'
+          ? -(2 + (serial % 18))
+          : serial % 3 === 0
+            ? -(2 + (serial % 6))
+            : 2 + (serial % 9),
+      );
       return [
         demoRecord('leads', employee, `新线索 ${suffix}`, 'new', {
           name: `新线索 ${suffix}`,
@@ -363,15 +410,20 @@ function buildRecords(employees: DemoUser[]): DemoRecord[] {
         }),
         demoRecord(
           'opportunities',
-          employee,
+          serial === 1 ? null : employee,
           `数字化项目 ${suffix}`,
-          'proposal',
+          stage,
           {
             name: `数字化项目 ${suffix}`,
             amount: 50000 + serial * 3500,
-            stage: 'proposal',
-            closeDate: `2026-09-${day}`,
-            note: '已完成初步需求确认，等待方案反馈。',
+            stage,
+            closeDate,
+            note:
+              stage === 'won'
+                ? '客户已确认成交，合同与回款由后续业务表继续承接。'
+                : stage === 'lost'
+                  ? '本轮暂未成交，已记录流失结果。'
+                  : '正在推进下一步，需要按预计成交日持续跟进。',
           },
         ),
         demoRecord('activities', employee, `客户沟通 ${suffix}`, null, {
@@ -402,16 +454,23 @@ function buildRecords(employees: DemoUser[]): DemoRecord[] {
 
 function demoRecord(
   objectCode: string,
-  owner: DemoUser,
+  owner: DemoUser | null,
   title: string,
   statusKey: string | null,
   values: DemoRecord['values'],
 ): DemoRecord {
   return {
     objectCode,
-    ownerEmployeeNo: owner.employeeNo,
+    ownerEmployeeNo: owner?.employeeNo ?? null,
     title,
     statusKey,
     values,
   };
+}
+
+function relativeDate(offsetDays: number): string {
+  const date = new Date();
+  date.setUTCHours(12, 0, 0, 0);
+  date.setUTCDate(date.getUTCDate() + offsetDays);
+  return date.toISOString().slice(0, 10);
 }

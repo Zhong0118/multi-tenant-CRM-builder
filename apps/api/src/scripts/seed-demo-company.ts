@@ -13,7 +13,9 @@ import { normalizeChineseMobile } from '../modules/auth/phone-number';
 import {
   buildDemoCompanyFixture,
   DEMO_COMPANY_CODE,
+  DEMO_DASHBOARD_CONFIGURATION,
   DEMO_TEMPLATE_CODE,
+  type DemoCompanyFixture,
 } from './demo-company-fixture';
 
 async function main(): Promise<void> {
@@ -55,8 +57,14 @@ async function main(): Promise<void> {
           },
         });
         if (existingTenant) {
+          await reconcileExistingDemoTenant(
+            transaction,
+            existingTenant,
+            fixture,
+          );
           return {
             created: false,
+            reconciled: true,
             tenantId: existingTenant.id,
             memberCount: existingTenant.members.length,
             objectCount: existingTenant.objects.length,
@@ -357,11 +365,11 @@ async function main(): Promise<void> {
           const objectId = objectIdByCode.get(objectCode);
           if (!objectId) throw new Error(`Unknown demo object ${objectCode}`);
           let recordNo = 1n;
-          for (const record of records) {
-            const ownerMemberId = memberIdByEmployeeNo.get(
-              record.ownerEmployeeNo,
-            );
-            if (!ownerMemberId) {
+          for (const [recordIndex, record] of records.entries()) {
+            const ownerMemberId = record.ownerEmployeeNo
+              ? memberIdByEmployeeNo.get(record.ownerEmployeeNo)
+              : null;
+            if (record.ownerEmployeeNo && !ownerMemberId) {
               throw new Error(
                 `Unknown demo record owner ${record.ownerEmployeeNo}`,
               );
@@ -377,10 +385,13 @@ async function main(): Promise<void> {
                 title: record.title,
                 data: jsonInput(record.values),
                 source: 'MANUAL',
-                createdByMemberId: ownerMemberId,
+                createdByMemberId: ownerMemberId ?? publishingMemberId,
                 version: 1,
                 createdAt: now,
-                updatedAt: now,
+                updatedAt:
+                  objectCode === 'opportunities' && recordIndex % 4 === 0
+                    ? daysBefore(now, 10)
+                    : now,
               },
             });
             recordNo += 1n;
@@ -393,6 +404,14 @@ async function main(): Promise<void> {
             },
           });
         }
+
+        await transaction.tenantDashboardConfiguration.create({
+          data: {
+            tenantId,
+            version: 1,
+            configuration: jsonInput(DEMO_DASHBOARD_CONFIGURATION),
+          },
+        });
 
         await transaction.tenant.update({
           where: { id: tenantId },
@@ -454,6 +473,191 @@ async function main(): Promise<void> {
   } finally {
     await database.$disconnect();
   }
+}
+
+type ExistingDemoTenant = Prisma.TenantGetPayload<{
+  include: { members: true; objects: true; records: true };
+}>;
+
+async function reconcileExistingDemoTenant(
+  transaction: Prisma.TransactionClient,
+  tenant: ExistingDemoTenant,
+  fixture: DemoCompanyFixture,
+): Promise<void> {
+  const opportunityObject = tenant.objects.find(
+    ({ code }) => code === DEMO_DASHBOARD_CONFIGURATION.opportunity.objectCode,
+  );
+  if (!opportunityObject?.activePublicationId) {
+    throw new Error('The existing demo opportunity table is not published');
+  }
+
+  const sourceOpportunity = fixture.template.configuration.objects.find(
+    ({ code }) => code === opportunityObject.code,
+  );
+  const sourceStage = sourceOpportunity?.fields.find(
+    ({ fieldKey }) =>
+      fieldKey === DEMO_DASHBOARD_CONFIGURATION.opportunity.stageFieldKey,
+  );
+  if (!sourceStage) throw new Error('Demo opportunity stage field is missing');
+
+  const activePublication = await transaction.objectPublication.findUnique({
+    where: { id: opportunityObject.activePublicationId },
+  });
+  if (!activePublication) {
+    throw new Error('The active demo opportunity publication is missing');
+  }
+
+  const publishingMember = tenant.members.find(
+    ({ role, status }) => role === 'TENANT_ADMIN' && status === 'ACTIVE',
+  );
+  if (!publishingMember) throw new Error('A demo company admin is required');
+
+  const nextPublication = await transaction.objectPublication.aggregate({
+    where: { tenantId: tenant.id, objectId: opportunityObject.id },
+    _max: { publicationNo: true },
+  });
+  const publicationId = randomUUID();
+  const now = new Date();
+  const publicationNumber = (nextPublication._max.publicationNo ?? 0) + 1;
+  if (
+    !stageConfigurationMatches(
+      activePublication.configuration,
+      sourceStage.config,
+    )
+  ) {
+    const updatedConfiguration = replaceStageConfiguration(
+      activePublication.configuration,
+      sourceStage.config,
+      {
+        id: publicationId,
+        number: publicationNumber,
+        sourceDraftVersion: opportunityObject.version,
+        publishedAt: now.toISOString(),
+      },
+    );
+
+    await transaction.fieldDefinition.updateMany({
+      where: {
+        tenantId: tenant.id,
+        objectId: opportunityObject.id,
+        fieldKey: DEMO_DASHBOARD_CONFIGURATION.opportunity.stageFieldKey,
+      },
+      data: { config: jsonInput(sourceStage.config) },
+    });
+    await transaction.objectPublication.create({
+      data: {
+        id: publicationId,
+        tenantId: tenant.id,
+        objectId: opportunityObject.id,
+        publicationNo: publicationNumber,
+        sourceDraftVersion: opportunityObject.version,
+        configuration: updatedConfiguration,
+        changeSummary: jsonInput([
+          {
+            kind: 'UPDATED',
+            fieldKey: DEMO_DASHBOARD_CONFIGURATION.opportunity.stageFieldKey,
+          },
+        ]),
+        publishedByMemberId: publishingMember.id,
+        publishedAt: now,
+      },
+    });
+    await transaction.objectDefinition.update({
+      where: { id: opportunityObject.id },
+      data: { activePublicationId: publicationId, publishedAt: now },
+    });
+  }
+
+  const memberIdByEmployeeNo = new Map(
+    tenant.members.flatMap((member) =>
+      member.employeeNo ? [[member.employeeNo, member.id] as const] : [],
+    ),
+  );
+  const sourceByTitle = new Map(
+    fixture.records
+      .filter(({ objectCode }) => objectCode === opportunityObject.code)
+      .map((record) => [record.title, record]),
+  );
+  const existingOpportunities = tenant.records.filter(
+    ({ objectId }) => objectId === opportunityObject.id,
+  );
+  for (const [recordIndex, record] of existingOpportunities.entries()) {
+    const source = sourceByTitle.get(record.title);
+    if (!source) continue;
+    const ownerMemberId = source.ownerEmployeeNo
+      ? memberIdByEmployeeNo.get(source.ownerEmployeeNo)
+      : null;
+    if (source.ownerEmployeeNo && !ownerMemberId) {
+      throw new Error(`Unknown demo record owner ${source.ownerEmployeeNo}`);
+    }
+    await transaction.record.update({
+      where: { id: record.id },
+      data: {
+        ownerMemberId,
+        statusKey: source.statusKey,
+        data: jsonInput(source.values),
+        updatedAt: recordIndex % 4 === 0 ? daysBefore(now, 10) : now,
+      },
+    });
+  }
+
+  await transaction.tenantDashboardConfiguration.upsert({
+    where: { tenantId: tenant.id },
+    create: {
+      tenantId: tenant.id,
+      version: 1,
+      configuration: jsonInput(DEMO_DASHBOARD_CONFIGURATION),
+    },
+    update: {
+      configuration: jsonInput(DEMO_DASHBOARD_CONFIGURATION),
+    },
+  });
+}
+
+function stageConfigurationMatches(
+  rawConfiguration: Prisma.JsonValue,
+  stageConfig: Record<string, unknown>,
+): boolean {
+  const configuration = rawConfiguration as unknown as Record<string, unknown>;
+  const fields = Array.isArray(configuration.fields)
+    ? (configuration.fields as Array<Record<string, unknown>>)
+    : [];
+  const stage = fields.find(
+    (field) =>
+      field.fieldKey === DEMO_DASHBOARD_CONFIGURATION.opportunity.stageFieldKey,
+  );
+  return JSON.stringify(stage?.config) === JSON.stringify(stageConfig);
+}
+
+function replaceStageConfiguration(
+  rawConfiguration: Prisma.JsonValue,
+  stageConfig: Record<string, unknown>,
+  publication: {
+    id: string;
+    number: number;
+    sourceDraftVersion: number;
+    publishedAt: string;
+  },
+): Prisma.InputJsonValue {
+  const configuration = structuredClone(rawConfiguration) as unknown as Record<
+    string,
+    unknown
+  >;
+  const fields = Array.isArray(configuration.fields)
+    ? (configuration.fields as Array<Record<string, unknown>>)
+    : [];
+  const stage = fields.find(
+    (field) =>
+      field.fieldKey === DEMO_DASHBOARD_CONFIGURATION.opportunity.stageFieldKey,
+  );
+  if (!stage) throw new Error('Published demo opportunity stage is missing');
+  stage.config = stageConfig;
+  configuration.publication = publication;
+  return jsonInput(configuration);
+}
+
+function daysBefore(date: Date, days: number): Date {
+  return new Date(date.getTime() - days * 24 * 60 * 60 * 1000);
 }
 
 function jsonInput(value: unknown): Prisma.InputJsonValue {

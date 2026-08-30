@@ -1,4 +1,7 @@
-import { buildDemoCompanyFixture } from './demo-company-fixture';
+import {
+  buildDemoCompanyFixture,
+  DEMO_DASHBOARD_CONFIGURATION,
+} from './demo-company-fixture';
 
 describe('demo company fixture', () => {
   it('builds ten company members and gives every employee data in all six tables', () => {
@@ -27,8 +30,21 @@ describe('demo company fixture', () => {
       const owned = fixture.records.filter(
         ({ ownerEmployeeNo }) => ownerEmployeeNo === employee.employeeNo,
       );
-      expect(owned).toHaveLength(12);
+      expect(owned.length).toBeGreaterThanOrEqual(11);
       expect(new Set(owned.map(({ objectCode }) => objectCode)).size).toBe(6);
     }
+
+    const opportunities = fixture.records.filter(
+      ({ objectCode }) => objectCode === 'opportunities',
+    );
+    expect(new Set(opportunities.map(({ statusKey }) => statusKey))).toEqual(
+      new Set(['discovery', 'proposal', 'negotiation', 'won', 'lost']),
+    );
+    expect(opportunities.some(({ ownerEmployeeNo }) => !ownerEmployeeNo)).toBe(
+      true,
+    );
+    expect(DEMO_DASHBOARD_CONFIGURATION.opportunity.wonOptionKeys).toEqual([
+      'won',
+    ]);
   });
 });
