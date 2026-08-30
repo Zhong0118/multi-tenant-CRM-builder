@@ -2,23 +2,34 @@
    ConfigProvider in providers.tsx — two near-identical palettes fighting each
    other is what makes an interface look unresolved. */
 :root {
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
-  --color-primary-active: #1e40af;
-  --color-primary-soft: #eff6ff;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-tertiary: #64748b;
-  --text-disabled: #94a3b8;
-  --border-default: #e2e8f0;
-  --border-strong: #cbd5e1;
-  --bg-page: #f8fafc;
+  --shell-ink: #17232d;
+  --shell-ink-hover: #22313d;
+  --color-primary: #167568;
+  --color-primary-hover: #115f55;
+  --color-primary-active: #0d5149;
+  --color-primary-soft: #e7f3f0;
+  --text-primary: #17232d;
+  --text-secondary: #687681;
+  --text-tertiary: #7c8992;
+  --text-disabled: #9ba6ad;
+  --border-default: #d8e0e5;
+  --border-strong: #c8d2d9;
+  --bg-page: #f3f6f8;
   --bg-surface: #ffffff;
-  --bg-hover: #f1f5f9;
-  --bg-selected: #eff6ff;
-  --color-success: #0f766e;
-  --color-warning: #b45309;
+  --bg-hover: #eef2f4;
+  --bg-selected: #e7f3f0;
+  --color-success: #167568;
+  --color-warning: #c66c18;
+  --color-warning-soft: #fff3e5;
   --color-danger: #b42318;
+
+  --radius-reading: 10px;
+  --radius-control: 6px;
+  --radius-status: 4px;
+  --radius-data: 2px;
+  --sidebar-width: 224px;
+  --sidebar-collapsed-width: 64px;
+  --header-height: 56px;
 
   --font-ui:
     "IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei",
@@ -29,7 +40,7 @@
   --background: var(--bg-page);
   --foreground: var(--text-primary);
 
-  --ledger-ink: var(--text-primary);
+  --ledger-ink: var(--shell-ink);
   --working-blue: var(--color-primary);
   --canvas: var(--bg-page);
   --paper: var(--bg-surface);

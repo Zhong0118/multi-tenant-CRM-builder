@@ -11,14 +11,19 @@ describe("design tokens", () => {
       "utf8",
     );
 
-    expect(TOKENS.textPrimary).toBe("#0F172A");
-    expect(TOKENS.primary).toBe("#2563EB");
-    expect(TOKENS.page).toBe("#F8FAFC");
+    expect(TOKENS.ink).toBe("#17232D");
+    expect(TOKENS.inkHover).toBe("#22313D");
+    expect(TOKENS.textPrimary).toBe("#17232D");
+    expect(TOKENS.primary).toBe("#167568");
+    expect(TOKENS.primarySoft).toBe("#E7F3F0");
+    expect(TOKENS.page).toBe("#F3F6F8");
     expect(TOKENS.surface).toBe("#FFFFFF");
-    expect(TOKENS.border).toBe("#E2E8F0");
-    expect(TOKENS.textSecondary).toBe("#475569");
-    expect(TOKENS.success).toBe("#0F766E");
-    expect(TOKENS.warning).toBe("#B45309");
+    expect(TOKENS.border).toBe("#D8E0E5");
+    expect(TOKENS.borderStrong).toBe("#C8D2D9");
+    expect(TOKENS.textSecondary).toBe("#687681");
+    expect(TOKENS.success).toBe("#167568");
+    expect(TOKENS.warning).toBe("#C66C18");
+    expect(TOKENS.warningSoft).toBe("#FFF3E5");
     expect(TOKENS.danger).toBe("#B42318");
 
     expect(css).toContain(
@@ -28,8 +33,15 @@ describe("design tokens", () => {
     expect(css).toContain(`--bg-page: ${TOKENS.page.toLowerCase()}`);
     expect(css).toContain(`--border-default: ${TOKENS.border.toLowerCase()}`);
     expect(css).toContain(`--color-success: ${TOKENS.success.toLowerCase()}`);
-    expect(css).not.toContain("#172033");
-    expect(css).not.toContain("#2457d6");
-    expect(css).not.toContain("#f5f7fa");
+    expect(css).toContain(`--shell-ink: ${TOKENS.ink.toLowerCase()}`);
+    expect(css).toContain(
+      `--border-strong: ${TOKENS.borderStrong.toLowerCase()}`,
+    );
+    expect(css).toContain("--radius-reading: 10px");
+    expect(css).toContain("--radius-control: 6px");
+    expect(css).toContain("--radius-status: 4px");
+    expect(css).toContain("--radius-data: 2px");
+    expect(css).toContain("--sidebar-width: 224px");
+    expect(css).toContain("--header-height: 56px");
   });
 });
