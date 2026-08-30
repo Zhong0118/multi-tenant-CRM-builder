@@ -1,5 +1,6 @@
 import { CreateTenantForm } from "@/features/tenants/create-tenant-form";
 import { PageHeader } from "@/components/layout/page-header";
+import { ReadingPanel } from "@/components/workbench/surface";
 import styles from "@/features/tenants/tenants.module.css";
 
 export default function NewTenantPage() {
@@ -10,10 +11,10 @@ export default function NewTenantPage() {
         description="先建立隔离的公司空间，再邀请首位管理员。"
       />
       <div className={styles.createLayout}>
-        <section className={styles.createPanel}>
+        <ReadingPanel ariaLabel="公司信息" className={styles.createPanel}>
           <CreateTenantForm />
-        </section>
-        <aside className={styles.checkpoints} aria-label="开通检查点">
+        </ReadingPanel>
+        <ReadingPanel ariaLabel="开通检查点" className={styles.checkpoints}>
           <h2>开通检查点</h2>
           <ol>
             <li>
@@ -29,7 +30,7 @@ export default function NewTenantPage() {
               确认至少一位活跃管理员后开放公司工作空间。
             </li>
           </ol>
-        </aside>
+        </ReadingPanel>
       </div>
     </div>
   );

@@ -8,28 +8,8 @@
   line-height: 1.7;
 }
 
-.tenantTable,
-.createPanel,
-.emptyState {
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  background: var(--bg-surface);
-}
-
-.emptyState {
-  display: grid;
-  gap: 8px;
-  justify-items: start;
-  padding: 28px 24px;
-  border: 1px dashed var(--border-strong);
-  border-radius: 8px;
-  background: var(--bg-surface);
-}
-
-.emptyState h2 {
-  color: var(--text-primary);
-  font-size: 16px;
-  font-weight: 600;
+.tenantTable {
+  overflow: hidden;
 }
 
 .tenantLink {

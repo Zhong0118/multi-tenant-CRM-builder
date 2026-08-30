@@ -182,5 +182,9 @@ describe("TenantTable", () => {
     );
     expect(screen.getByText("运行中")).toBeInTheDocument();
     expect(screen.queryByText("行业")).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "公司列表" })).toHaveAttribute(
+      "data-surface",
+      "data",
+    );
   });
 });

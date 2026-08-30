@@ -2,6 +2,7 @@ import { Button } from "antd";
 import Link from "next/link";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { StatePanel } from "@/components/workbench/state-panel";
 import { TenantTable } from "@/features/tenants/tenant-table";
 import styles from "@/features/tenants/tenants.module.css";
 import { toApiError } from "@/lib/api/api-error";
@@ -39,13 +40,11 @@ export default async function TenantsPage({ searchParams }: TenantsPageProps) {
       {data.items.length > 0 ? (
         <TenantTable data={data} />
       ) : (
-        <section className={styles.emptyState}>
-          <h2>尚未开通公司</h2>
-          <p className={styles.intro}>
-            创建第一家公司草稿，并邀请首位公司管理员。
-          </p>
-          {extra}
-        </section>
+        <StatePanel
+          title="尚未开通公司"
+          description="创建第一家公司草稿，并邀请首位公司管理员。"
+          action={extra}
+        />
       )}
     </div>
   );

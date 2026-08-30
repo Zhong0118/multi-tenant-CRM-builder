@@ -6,6 +6,8 @@ import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { DataPanel } from "@/components/workbench/surface";
+
 import styles from "./tenants.module.css";
 import { TenantStatusTag } from "./tenant-status";
 
@@ -52,24 +54,26 @@ export function TenantTable({
 }) {
   const router = useRouter();
   return (
-    <Table
-      className={styles.tenantTable}
-      rowKey="id"
-      columns={columns}
-      dataSource={data.items}
-      pagination={{
-        current: data.page,
-        pageSize: data.limit,
-        total: data.total,
-        showSizeChanger: false,
-        onChange: (page) =>
-          (navigate ?? router.push)(`/platform/tenants?page=${page}`),
-      }}
-      onRow={(tenant) => ({
-        onClick: () =>
-          (navigate ?? router.push)(`/platform/tenants/${tenant.id}`),
-      })}
-    />
+    <DataPanel ariaLabel="公司列表" className={styles.tenantTable}>
+      <Table
+        rowKey="id"
+        columns={columns}
+        dataSource={data.items}
+        scroll={{ x: 760 }}
+        pagination={{
+          current: data.page,
+          pageSize: data.limit,
+          total: data.total,
+          showSizeChanger: false,
+          onChange: (page) =>
+            (navigate ?? router.push)(`/platform/tenants?page=${page}`),
+        }}
+        onRow={(tenant) => ({
+          onClick: () =>
+            (navigate ?? router.push)(`/platform/tenants/${tenant.id}`),
+        })}
+      />
+    </DataPanel>
   );
 }
 

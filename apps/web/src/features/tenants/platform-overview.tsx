@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { StatePanel } from "@/components/workbench/state-panel";
+import { DataPanel } from "@/components/workbench/surface";
 
 import styles from "./platform-overview.module.css";
 import { TenantStatusTag } from "./tenant-status";
@@ -33,13 +35,15 @@ export function PlatformOverview({
         }
       />
       {summary.total === 0 ? (
-        <section className={styles.empty}>
-          <h2>还没有公司</h2>
-          <p>创建第一家公司草稿，并邀请首位公司管理员。</p>
-          <Link href="/platform/tenants/new">
-            <Button type="primary">新增公司</Button>
-          </Link>
-        </section>
+        <StatePanel
+          title="还没有公司"
+          description="创建第一家公司草稿，并邀请首位公司管理员。"
+          action={
+            <Link href="/platform/tenants/new">
+              <Button type="primary">新增公司</Button>
+            </Link>
+          }
+        />
       ) : (
         <>
           <div className={styles.kpis}>
@@ -107,7 +111,7 @@ function RecentTenants({ tenants }: { tenants: PlatformTenantPage }) {
   const rows = tenants.items.slice(0, 8);
 
   return (
-    <section className={styles.section}>
+    <DataPanel ariaLabel="最近开通的公司" className={styles.section}>
       <div className={styles.sectionHeading}>
         <div>
           <h2>最近开通的公司</h2>
@@ -150,7 +154,7 @@ function RecentTenants({ tenants }: { tenants: PlatformTenantPage }) {
           ))}
         </tbody>
       </table>
-    </section>
+    </DataPanel>
   );
 }
 

@@ -33,6 +33,10 @@ describe("PlatformOverview", () => {
       screen.getAllByRole("link", { name: "新增公司" })[0],
     ).toHaveAttribute("href", "/platform/tenants/new");
     expect(screen.queryByText("公司总数")).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "还没有公司" })).toHaveAttribute(
+      "data-surface",
+      "reading",
+    );
   });
 
   it("renders four status counts and at most eight companies", () => {
@@ -51,5 +55,8 @@ describe("PlatformOverview", () => {
     );
     expect(screen.getAllByRole("row")).toHaveLength(9); // header + 8
     expect(screen.queryByText("今日新增记录")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "最近开通的公司" }),
+    ).toHaveAttribute("data-surface", "data");
   });
 });
