@@ -1,12 +1,12 @@
 .rail {
   display: grid;
-  grid-template-columns: repeat(var(--process-step-count, 3), minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   margin: 0;
   padding: 0;
   overflow: hidden;
   list-style: none;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-reading);
 }
 
@@ -21,7 +21,7 @@
 }
 
 .step + .step {
-  border-left: 1px solid var(--border);
+  border-left: 1px solid var(--border-default);
 }
 
 .indicator {
@@ -62,13 +62,13 @@
 }
 
 .step[data-state="complete"] .indicator {
-  border-color: var(--primary);
+  border-color: var(--color-primary);
   color: white;
-  background: var(--primary);
+  background: var(--color-primary);
 }
 
 .step[data-state="current"] {
-  background: var(--primary-soft);
+  background: var(--color-primary-soft);
 }
 
 .step[data-state="current"]::after {
@@ -77,14 +77,14 @@
   bottom: 0;
   left: 0;
   height: 3px;
-  background: var(--primary);
+  background: var(--color-primary);
   content: "";
 }
 
 .step[data-state="current"] .indicator {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: var(--surface);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--bg-surface);
 }
 
 @media (max-width: 767px) {
@@ -93,7 +93,7 @@
   }
 
   .step + .step {
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--border-default);
     border-left: 0;
   }
 
