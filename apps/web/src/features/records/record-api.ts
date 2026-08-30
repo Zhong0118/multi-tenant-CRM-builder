@@ -9,11 +9,17 @@ import type {
 } from "@/features/objects/object-types";
 import { browserApiClient } from "@/lib/api/browser-client";
 
+import {
+  recordFilterParameter,
+  type RecordOptionFilters,
+} from "./record-query-state";
+
 export interface RecordListQuery {
   page: number;
   limit: number;
   search?: string;
   ownerMemberId?: string;
+  filters?: RecordOptionFilters;
   sort?: RecordSortField;
   direction?: RecordSortDirection;
 }
@@ -65,11 +71,15 @@ const RECORD_PATH = `${RECORDS_PATH}/{recordId}` as const;
 
 export const recordApi: RecordApi = {
   async list(tenantCode, objectCode, query) {
+    const { filters, ...rest } = query;
     return dataOrThrow(
       await browserApiClient.GET(RECORDS_PATH, {
         params: {
           path: { tenantCode, objectCode },
-          query: definedEntries(query),
+          query: definedEntries({
+            ...rest,
+            filters: filters ? recordFilterParameter(filters) : undefined,
+          }),
         },
       }),
     );

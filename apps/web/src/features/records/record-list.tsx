@@ -90,6 +90,10 @@ export function RecordList({
   const visibleColumns = schema.defaultView.columnFieldKeys
     .map((fieldKey) => schema.fields.find((f) => f.fieldKey === fieldKey))
     .filter((field): field is PublishedFieldView => field !== undefined);
+  const optionFilterFields = schema.fields.filter(
+    (field) =>
+      field.type === "SINGLE_SELECT" && selectOptions(field).length > 0,
+  );
 
   const columns: ColumnsType<RecordSummary> = [
     {
@@ -164,7 +168,11 @@ export function RecordList({
     });
   };
 
-  const filtered = Boolean(query.search || query.ownerMemberId);
+  const filtered = Boolean(
+    query.search ||
+    query.ownerMemberId ||
+    Object.keys(query.filters).length > 0,
+  );
 
   return (
     <div className={styles.list}>
@@ -222,6 +230,39 @@ export function RecordList({
               label: member.displayName ?? "未设置姓名",
             }))}
           />
+        ) : null}
+        {optionFilterFields.map((field) => {
+          const options = selectOptions(field);
+          return (
+            <Select
+              key={field.fieldKey}
+              mode="multiple"
+              aria-label={`按${field.label}筛选`}
+              placeholder={`全部${field.label}`}
+              allowClear
+              maxTagCount="responsive"
+              className={styles.optionFilter}
+              value={query.filters[field.fieldKey] ?? []}
+              onChange={(values: string[]) => {
+                const filters = { ...query.filters };
+                if (values.length === 0) delete filters[field.fieldKey];
+                else filters[field.fieldKey] = values;
+                apply(withFilter(query, { filters }));
+              }}
+              options={options.map((option) => ({
+                value: option.key,
+                label: <OptionBadge option={option} />,
+              }))}
+            />
+          );
+        })}
+        {Object.keys(query.filters).length > 0 ? (
+          <Button
+            type="text"
+            onClick={() => apply(withFilter(query, { filters: {} }))}
+          >
+            清除筛选
+          </Button>
         ) : null}
       </FilterBar>
 

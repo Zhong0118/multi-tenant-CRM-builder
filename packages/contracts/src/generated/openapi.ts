@@ -3071,6 +3071,8 @@ export interface operations {
     parameters: {
       query?: {
         direction?: "asc" | "desc";
+        /** @description 按已发布单选字段筛选的 JSON 对象。 */
+        filters?: string;
         limit?: number;
         ownerMemberId?: string;
         page?: number;

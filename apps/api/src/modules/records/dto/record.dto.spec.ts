@@ -41,4 +41,12 @@ describe('record DTOs', () => {
     const errors = await validate(dto);
     expect(errors.map((error) => error.property)).toContain('limit');
   });
+
+  it('caps serialized dynamic filters before parsing them', async () => {
+    const dto = Object.assign(new RecordListQueryDto(), {
+      filters: 'x'.repeat(4001),
+    });
+    const errors = await validate(dto);
+    expect(errors.map((error) => error.property)).toContain('filters');
+  });
 });

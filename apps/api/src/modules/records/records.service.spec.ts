@@ -75,6 +75,23 @@ function publishedSchema(): PublishedObjectSchema {
         isSystem: false,
       },
       {
+        id: 'field-status',
+        fieldKey: 'lead_status',
+        label: '线索状态',
+        type: 'SINGLE_SELECT',
+        required: false,
+        defaultValue: null,
+        validation: {},
+        config: {
+          options: [
+            { key: 'new', label: '待联系', status: 'ACTIVE' },
+            { key: 'following', label: '跟进中', status: 'ACTIVE' },
+          ],
+        },
+        sortOrder: 25,
+        isSystem: false,
+      },
+      {
         id: 'field-secret',
         fieldKey: 'secret',
         label: '内部备注',
@@ -100,7 +117,12 @@ function publishedSchema(): PublishedObjectSchema {
       canDelete: false,
       readScope: 'OWN',
       updateScope: 'OWN',
-      fields: { name: 'EDIT', email: 'EDIT', secret: 'HIDDEN' },
+      fields: {
+        name: 'EDIT',
+        email: 'EDIT',
+        lead_status: 'EDIT',
+        secret: 'HIDDEN',
+      },
     },
   };
 }
@@ -147,6 +169,11 @@ class MemoryRecordsStore implements RecordsStore {
   }
 
   listRecords(query: RecordListQuery) {
+    const filters = (
+      query as RecordListQuery & {
+        filters?: Record<string, string[]>;
+      }
+    ).filters;
     const filtered = this.records
       .filter(
         (record) =>
@@ -155,7 +182,11 @@ class MemoryRecordsStore implements RecordsStore {
           (!query.ownerMemberId ||
             record.ownerMemberId === query.ownerMemberId) &&
           (!query.search ||
-            record.title.toLowerCase().includes(query.search.toLowerCase())),
+            record.title.toLowerCase().includes(query.search.toLowerCase())) &&
+          (!filters ||
+            Object.entries(filters).every(([fieldKey, values]) =>
+              values.includes(String(record.values[fieldKey])),
+            )),
       )
       .sort((left, right) => compareRecords(left, right, query));
     return Promise.resolve({
@@ -366,6 +397,50 @@ describe('RecordsService', () => {
     });
     expect(page).toMatchObject({ page: 1, limit: 1, total: 2 });
     expect(page.items.map((record) => record.title)).toEqual(['Beta']);
+  });
+
+  it('filters real records by a visible published single-select field', async () => {
+    const { service } = fixture();
+    await create(service, admin, '甲线索', employee.memberId, {
+      lead_status: 'new',
+    });
+    await create(service, admin, '乙线索', employee.memberId, {
+      lead_status: 'following',
+    });
+
+    const page = await service.list(admin, 'leads', {
+      page: 1,
+      limit: 20,
+      filters: '{"lead_status":["following"]}',
+      sort: 'updatedAt',
+      direction: 'desc',
+    });
+
+    expect(page.total).toBe(1);
+    expect(page.items.map((record) => record.title)).toEqual(['乙线索']);
+  });
+
+  it('rejects filters on hidden or non-select fields', async () => {
+    const { service } = fixture();
+
+    await expect(
+      service.list(employee, 'leads', {
+        page: 1,
+        limit: 20,
+        filters: '{"secret":["anything"]}',
+        sort: 'updatedAt',
+        direction: 'desc',
+      }),
+    ).rejects.toMatchObject({ code: 'RECORD_FILTER_INVALID' });
+    await expect(
+      service.list(employee, 'leads', {
+        page: 1,
+        limit: 20,
+        filters: '{"name":["甲线索"]}',
+        sort: 'updatedAt',
+        direction: 'desc',
+      }),
+    ).rejects.toMatchObject({ code: 'RECORD_FILTER_INVALID' });
   });
 
   it('normalizes writes, hides response fields, and retains server values in audit', async () => {

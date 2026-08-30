@@ -83,6 +83,11 @@
   width: 200px;
 }
 
+.optionFilter {
+  min-width: 190px;
+  max-width: 280px;
+}
+
 .registerPanel {
   overflow: hidden;
 }
@@ -184,8 +189,10 @@
   }
 
   .searchInput,
-  .ownerFilter {
+  .ownerFilter,
+  .optionFilter {
     width: 100%;
+    max-width: none;
   }
 
   .formPanel {

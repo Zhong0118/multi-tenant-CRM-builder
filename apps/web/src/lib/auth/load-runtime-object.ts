@@ -10,6 +10,7 @@ import {
 } from "@/features/objects/object-types";
 import type { DynamicFieldMember } from "@/features/records/dynamic-field";
 import type { RecordQuery } from "@/features/records/record-query-state";
+import { recordFilterParameter } from "@/features/records/record-query-state";
 import { toApiError } from "@/lib/api/api-error";
 import { createServerApiClient } from "@/lib/api/server-client";
 
@@ -82,6 +83,9 @@ export async function loadRecordPage(
           ...(query.search ? { search: query.search } : {}),
           ...(query.ownerMemberId
             ? { ownerMemberId: query.ownerMemberId }
+            : {}),
+          ...(recordFilterParameter(query.filters)
+            ? { filters: recordFilterParameter(query.filters) }
             : {}),
         },
       },

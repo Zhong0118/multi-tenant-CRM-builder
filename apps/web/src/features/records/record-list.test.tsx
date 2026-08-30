@@ -9,7 +9,7 @@ import type {
 
 import type { RecordApi } from "./record-api";
 import { RecordList } from "./record-list";
-import { DEFAULT_RECORD_QUERY } from "./record-query-state";
+import { DEFAULT_RECORD_QUERY, type RecordQuery } from "./record-query-state";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn() }),
@@ -39,11 +39,29 @@ const schema = {
       isSystem: false,
       access: "EDIT",
     },
+    {
+      id: "field-status",
+      fieldKey: "lead_status",
+      label: "线索状态",
+      type: "SINGLE_SELECT",
+      required: false,
+      defaultValue: null,
+      validation: {},
+      config: {
+        options: [
+          { key: "new", label: "待联系", color: "BLUE" },
+          { key: "following", label: "跟进中", color: "GREEN" },
+        ],
+      },
+      sortOrder: 2,
+      isSystem: false,
+      access: "EDIT",
+    },
   ],
   defaultView: {
     code: "default",
     name: "默认列表",
-    columnFieldKeys: ["name"],
+    columnFieldKeys: ["name", "lead_status"],
     sort: { field: "updatedAt", direction: "desc" },
   },
   actions: {
@@ -61,7 +79,7 @@ const page = {
       id: "record-1",
       recordNo: "8",
       title: "天际科技",
-      values: { name: "天际科技" },
+      values: { name: "天际科技", lead_status: "new" },
       ownerMemberId: null,
       version: 1,
       createdAt: "2026-08-29T00:00:00.000Z",
@@ -73,7 +91,10 @@ const page = {
   total: 1,
 } as RecordPage;
 
-function renderList(navigate: (path: string) => void) {
+function renderList(
+  navigate: (path: string) => void,
+  query: RecordQuery = DEFAULT_RECORD_QUERY,
+) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -86,7 +107,7 @@ function renderList(navigate: (path: string) => void) {
       <RecordList
         tenantCode="northwind"
         schema={schema}
-        query={DEFAULT_RECORD_QUERY}
+        query={query}
         initialPage={page}
         api={api}
         navigate={navigate}
@@ -109,5 +130,21 @@ describe("RecordList table sorting", () => {
     );
     expect(screen.queryByLabelText("排序字段")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("排序方向")).not.toBeInTheDocument();
+  });
+
+  it("builds a colored multi-value filter from the published status field", async () => {
+    const navigate = vi.fn();
+    renderList(navigate);
+
+    fireEvent.mouseDown(
+      screen.getByRole("combobox", { name: "按线索状态筛选" }),
+    );
+    fireEvent.click(await screen.findByText("跟进中"));
+
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith(
+        "/workspace/northwind/objects/customers?filters=%7B%22lead_status%22%3A%5B%22following%22%5D%7D",
+      ),
+    );
   });
 });

@@ -9,14 +9,18 @@ export interface RecordQuery {
   limit: number;
   search?: string;
   ownerMemberId?: string;
+  filters: RecordOptionFilters;
   sort: RecordSortField;
   direction: RecordSortDirection;
 }
+
+export type RecordOptionFilters = Record<string, string[]>;
 
 /** Mirrors the API's own defaults so an untouched list needs no query string. */
 export const DEFAULT_RECORD_QUERY: RecordQuery = {
   page: 1,
   limit: 20,
+  filters: {},
   sort: "updatedAt",
   direction: "desc",
 };
@@ -46,6 +50,7 @@ export function parseRecordQuery(
 
   const search = single(params.search)?.trim();
   const ownerMemberId = single(params.ownerMemberId)?.trim();
+  const filters = parseOptionFilters(single(params.filters));
 
   return {
     page: positiveInteger(single(params.page)) ?? defaults.page,
@@ -55,6 +60,7 @@ export function parseRecordQuery(
     ),
     search: search === "" ? undefined : search,
     ownerMemberId: ownerMemberId === "" ? undefined : ownerMemberId,
+    filters,
     sort: member(single(params.sort), SORT_FIELDS) ?? defaults.sort,
     direction:
       member(single(params.direction), DIRECTIONS) ?? defaults.direction,
@@ -74,6 +80,8 @@ export function recordQuerySearch(
   if (query.limit !== defaults.limit) params.set("limit", String(query.limit));
   if (query.search) params.set("search", query.search);
   if (query.ownerMemberId) params.set("ownerMemberId", query.ownerMemberId);
+  const filters = recordFilterParameter(query.filters);
+  if (filters) params.set("filters", filters);
   if (query.sort !== defaults.sort) params.set("sort", query.sort);
   if (query.direction !== defaults.direction) {
     params.set("direction", query.direction);
@@ -84,9 +92,52 @@ export function recordQuerySearch(
 /** Changing a filter restarts paging; keeping the old page would show nothing. */
 export function withFilter(
   query: RecordQuery,
-  change: Partial<Pick<RecordQuery, "search" | "ownerMemberId">>,
+  change: Partial<Pick<RecordQuery, "search" | "ownerMemberId" | "filters">>,
 ): RecordQuery {
   return { ...query, ...change, page: 1 };
+}
+
+export function recordFilterParameter(filters: RecordOptionFilters): string {
+  const normalized = Object.fromEntries(
+    Object.entries(filters)
+      .filter(([, values]) => values.length > 0)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([fieldKey, values]) => [fieldKey, [...new Set(values)]]),
+  );
+  return Object.keys(normalized).length > 0 ? JSON.stringify(normalized) : "";
+}
+
+function parseOptionFilters(value: string | undefined): RecordOptionFilters {
+  if (!value || value.length > 4000) return {};
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!isPlainObject(parsed)) return {};
+    const entries = Object.entries(parsed);
+    if (entries.length > 8) return {};
+    const filters: RecordOptionFilters = {};
+    for (const [fieldKey, rawValues] of entries) {
+      if (
+        !/^[a-z][a-z0-9_]*$/.test(fieldKey) ||
+        !Array.isArray(rawValues) ||
+        rawValues.length === 0 ||
+        rawValues.length > 20 ||
+        rawValues.some(
+          (item) =>
+            typeof item !== "string" || item.length === 0 || item.length > 100,
+        )
+      ) {
+        return {};
+      }
+      filters[fieldKey] = [...new Set(rawValues as string[])];
+    }
+    return filters;
+  } catch {
+    return {};
+  }
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function single(value: string | string[] | undefined): string | undefined {

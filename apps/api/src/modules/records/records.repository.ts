@@ -26,6 +26,7 @@ export interface RecordListQuery {
   limit: number;
   search?: string;
   ownerMemberId?: string;
+  filters: Record<string, string[]>;
   sort: 'updatedAt' | 'createdAt' | 'recordNo';
   direction: 'asc' | 'desc';
 }
@@ -146,6 +147,11 @@ class PrismaRecordsStore implements RecordsStore {
       title: query.search
         ? { contains: query.search, mode: 'insensitive' }
         : undefined,
+      AND: Object.entries(query.filters).map(([fieldKey, values]) => ({
+        OR: values.map((value) => ({
+          data: { path: [fieldKey], equals: value },
+        })),
+      })),
     };
     const orderBy: Prisma.RecordOrderByWithRelationInput[] = [
       { [query.sort]: query.direction },

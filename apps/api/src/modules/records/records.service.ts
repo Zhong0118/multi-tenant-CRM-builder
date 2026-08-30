@@ -62,6 +62,7 @@ export class RecordsService {
       limit: number;
       search?: string;
       ownerMemberId?: string;
+      filters?: string;
       sort: 'updatedAt' | 'createdAt' | 'recordNo';
       direction: 'asc' | 'desc';
     },
@@ -85,6 +86,7 @@ export class RecordsService {
         limit,
         search: input.search?.trim() || undefined,
         ownerMemberId,
+        filters: parseListFilters(input.filters, resolved),
         sort: input.sort,
         direction: input.direction,
       };
@@ -290,6 +292,69 @@ async function resolveUpdateOwner(
     throw new ApiException('OWNER_INVALID', 400);
   }
   return requested;
+}
+
+function parseListFilters(
+  serialized: string | undefined,
+  resolved: ResolvedObjectSchema,
+): Record<string, string[]> {
+  if (!serialized) return {};
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(serialized);
+  } catch {
+    throw invalidRecordFilter();
+  }
+  if (!isPlainObject(parsed)) throw invalidRecordFilter();
+  const entries = Object.entries(parsed);
+  if (entries.length > 8) throw invalidRecordFilter();
+
+  const visibleFields = new Map(
+    resolved.visibleSchema.fields.map((field) => [field.fieldKey, field]),
+  );
+  const filters: Record<string, string[]> = {};
+  for (const [fieldKey, rawValues] of entries) {
+    const field = visibleFields.get(fieldKey);
+    if (
+      !field ||
+      field.type !== 'SINGLE_SELECT' ||
+      !Array.isArray(rawValues) ||
+      rawValues.length === 0 ||
+      rawValues.length > 20 ||
+      rawValues.some(
+        (value) =>
+          typeof value !== 'string' || value.length === 0 || value.length > 100,
+      )
+    ) {
+      throw invalidRecordFilter();
+    }
+    const optionKeys = new Set(
+      Array.isArray(field.config.options)
+        ? field.config.options.flatMap((option) => {
+            if (!isPlainObject(option) || typeof option.key !== 'string') {
+              return [];
+            }
+            return [option.key];
+          })
+        : [],
+    );
+    const values = [...new Set(rawValues as string[])];
+    if (values.some((value) => !optionKeys.has(value))) {
+      throw invalidRecordFilter();
+    }
+    filters[fieldKey] = values;
+  }
+  return filters;
+}
+
+function invalidRecordFilter(): ApiException {
+  return new ApiException('RECORD_FILTER_INVALID', 400, {
+    fieldErrors: { filters: ['请选择当前业务表中可见的状态选项。'] },
+  });
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 async function resolveListOwner(

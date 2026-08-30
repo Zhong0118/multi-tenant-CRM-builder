@@ -40,6 +40,16 @@ export class RecordListQueryDto {
   ownerMemberId?: string;
 
   @ApiPropertyOptional({
+    maxLength: 4000,
+    description: '按已发布单选字段筛选的 JSON 对象。',
+    example: '{"lead_status":["new","following"]}',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  filters?: string;
+
+  @ApiPropertyOptional({
     enum: ['updatedAt', 'createdAt', 'recordNo'],
     default: 'updatedAt',
   })

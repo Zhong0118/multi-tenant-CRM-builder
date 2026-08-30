@@ -5065,6 +5065,17 @@
             }
           },
           {
+            "description": "按已发布单选字段筛选的 JSON 对象。",
+            "in": "query",
+            "name": "filters",
+            "required": false,
+            "schema": {
+              "example": "{\"lead_status\":[\"new\",\"following\"]}",
+              "maxLength": 4000,
+              "type": "string"
+            }
+          },
+          {
             "in": "query",
             "name": "sort",
             "required": false,

@@ -26,6 +26,7 @@ describe("parseRecordQuery", () => {
       limit: 50,
       search: "百杰",
       ownerMemberId: "member-lin",
+      filters: {},
       sort: "recordNo",
       direction: "asc",
     });
@@ -54,6 +55,32 @@ describe("parseRecordQuery", () => {
     expect(parseRecordQuery({ search: "   " }).search).toBeUndefined();
   });
 
+  it("round-trips dynamic option filters through one stable URL parameter", () => {
+    const query = {
+      ...DEFAULT_RECORD_QUERY,
+      filters: {
+        lead_status: ["new", "following"],
+        priority: ["high"],
+      },
+    };
+
+    expect(recordQuerySearch(query)).toBe(
+      "filters=%7B%22lead_status%22%3A%5B%22new%22%2C%22following%22%5D%2C%22priority%22%3A%5B%22high%22%5D%7D",
+    );
+    expect(
+      parseRecordQuery(
+        Object.fromEntries(new URLSearchParams(recordQuerySearch(query))),
+      ),
+    ).toEqual(query);
+  });
+
+  it("ignores malformed dynamic filters instead of forwarding them", () => {
+    expect(parseRecordQuery({ filters: "not-json" }).filters).toEqual({});
+    expect(
+      parseRecordQuery({ filters: '{"lead_status":"new"}' }).filters,
+    ).toEqual({});
+  });
+
   it("prefers the published default sort when the object supplies one", () => {
     expect(
       parseRecordQuery({}, { field: "recordNo", direction: "asc" }),
@@ -78,6 +105,7 @@ describe("recordQuerySearch", () => {
       limit: 50,
       search: "上海",
       ownerMemberId: "member-lin",
+      filters: { lead_status: ["new"] },
       sort: "createdAt" as const,
       direction: "asc" as const,
     };
