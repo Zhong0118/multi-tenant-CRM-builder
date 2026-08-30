@@ -14,6 +14,7 @@ import {
 } from "antd";
 import { useState } from "react";
 
+import { StatusTag } from "@/components/workbench/status-tag";
 import { DATA_SCOPE_LABELS } from "@/features/objects/object-types";
 import { toApiError } from "@/lib/api/api-error";
 import { browserApiClient } from "@/lib/api/browser-client";
@@ -191,18 +192,23 @@ function ObjectAccessPanel({
           <strong>{row.objectName}</strong>
           <span className={styles.accessCode}>{row.objectCode}</span>
         </div>
-        <Radio.Group
-          value={expanded ? "OVERRIDE" : "INHERIT"}
-          onChange={(event) => {
-            const mode = event.target.value as "INHERIT" | "OVERRIDE";
-            setExpanded(mode === "OVERRIDE");
-            chooseMode(mode);
-          }}
-          options={[
-            { label: "使用员工默认", value: "INHERIT" },
-            { label: "成员覆盖", value: "OVERRIDE" },
-          ]}
-        />
+        <div className={styles.accessModeControl}>
+          <StatusTag tone={expanded ? "warning" : "info"}>
+            {expanded ? "单独配置" : "跟随默认"}
+          </StatusTag>
+          <Radio.Group
+            value={expanded ? "OVERRIDE" : "INHERIT"}
+            onChange={(event) => {
+              const mode = event.target.value as "INHERIT" | "OVERRIDE";
+              setExpanded(mode === "OVERRIDE");
+              chooseMode(mode);
+            }}
+            options={[
+              { label: "使用员工默认", value: "INHERIT" },
+              { label: "成员覆盖", value: "OVERRIDE" },
+            ]}
+          />
+        </div>
       </header>
 
       <p className={styles.accessInherited}>

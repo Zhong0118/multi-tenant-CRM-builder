@@ -2,12 +2,14 @@
 
 import type { components } from "@crm/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Popconfirm, Result, Space, Table, Tag } from "antd";
+import { Alert, Button, Popconfirm, Result, Space, Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { StatusTag } from "@/components/workbench/status-tag";
+import { DataPanel } from "@/components/workbench/surface";
 import { toApiError } from "@/lib/api/api-error";
 import { browserApiClient } from "@/lib/api/browser-client";
 
@@ -232,9 +234,9 @@ export function MemberTable({
       title: "状态",
       dataIndex: "status",
       render: (status: TenantMember["status"]) => (
-        <Tag color={status === "ACTIVE" ? "green" : "default"}>
+        <StatusTag tone={status === "ACTIVE" ? "success" : "neutral"}>
           {status === "ACTIVE" ? "在职" : "已停用"}
-        </Tag>
+        </StatusTag>
       ),
     },
     {
@@ -302,9 +304,9 @@ export function MemberTable({
       title: "状态",
       dataIndex: "status",
       render: (status: TenantInvitation["status"]) => (
-        <Tag color={status === "PENDING" ? "gold" : "default"}>
-          {status === "PENDING" ? "等待接受" : status}
-        </Tag>
+        <StatusTag tone={invitationTone(status)}>
+          {invitationStatusText[status]}
+        </StatusTag>
       ),
     },
     {
@@ -346,7 +348,7 @@ export function MemberTable({
   return (
     <div className={styles.tables}>
       {error ? <Alert type="error" showIcon title={error} /> : null}
-      <section className={styles.tablePanel} aria-labelledby="pending-heading">
+      <DataPanel className={styles.tablePanel} ariaLabel="待处理邀请">
         <div className={styles.tableHeading}>
           <div>
             <span className={styles.eyebrow}>INVITATION QUEUE</span>
@@ -376,8 +378,8 @@ export function MemberTable({
             },
           }}
         />
-      </section>
-      <section className={styles.tablePanel} aria-labelledby="members-heading">
+      </DataPanel>
+      <DataPanel className={styles.tablePanel} ariaLabel="成员名册">
         <div className={styles.tableHeading}>
           <div>
             <span className={styles.eyebrow}>ACCESS ROSTER</span>
@@ -403,7 +405,21 @@ export function MemberTable({
             },
           }}
         />
-      </section>
+      </DataPanel>
     </div>
   );
+}
+
+const invitationStatusText: Record<TenantInvitation["status"], string> = {
+  PENDING: "等待接受",
+  ACCEPTED: "已接受",
+  DECLINED: "已拒绝",
+  REVOKED: "已撤销",
+  EXPIRED: "已过期",
+};
+
+function invitationTone(status: TenantInvitation["status"]) {
+  if (status === "PENDING") return "warning" as const;
+  if (status === "ACCEPTED") return "success" as const;
+  return "neutral" as const;
 }

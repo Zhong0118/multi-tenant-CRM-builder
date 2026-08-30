@@ -1,49 +1,50 @@
 .page {
-  max-width: 1180px;
-  padding: 48px clamp(22px, 5vw, 64px) 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: min(100%, 1280px);
 }
 .pageHeader {
-  margin-bottom: 26px;
+  margin-bottom: 0;
 }
 .pageHeader h1 {
-  margin: 6px 0 8px;
-  color: #162532;
-  font-size: clamp(30px, 4vw, 42px);
-  letter-spacing: -0.03em;
+  margin: 4px 0 8px;
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 650;
+  line-height: 32px;
 }
 .pageHeader p,
 .invitePanel p,
 .tableHeading > span,
 .secondary {
-  color: #526473;
+  color: var(--text-secondary);
+  line-height: 22px;
 }
 .eyebrow {
-  color: #0f766e;
-  font-size: 11px;
+  color: var(--verified-teal);
+  font-family: var(--font-label);
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.13em;
-}
-.invitePanel,
-.tablePanel {
-  border: 1px solid #d8e0e6;
-  border-radius: 6px;
-  background: #fff;
-  box-shadow: 0 12px 32px rgba(22, 37, 50, 0.05);
+  letter-spacing: 0.12em;
 }
 .invitePanel {
   display: grid;
   grid-template-columns: minmax(220px, 0.75fr) minmax(420px, 1.25fr);
-  gap: 28px;
-  align-items: end;
-  margin-bottom: 22px;
+  gap: 24px;
+  align-items: center;
   padding: 24px 28px;
-  border-left: 4px solid #0f766e;
+  border-left: 3px solid var(--verified-teal);
+}
+.inviteCopy {
+  min-width: 0;
 }
 .invitePanel h2,
 .tableHeading h2 {
   margin: 4px 0 6px;
-  color: #162532;
+  color: var(--text-primary);
   font-size: 20px;
+  line-height: 28px;
 }
 .inviteFields {
   display: grid;
@@ -59,9 +60,10 @@
 }
 .tables {
   display: grid;
-  gap: 22px;
+  gap: 16px;
 }
 .tablePanel {
+  padding: 0;
   overflow: hidden;
 }
 .tableHeading {
@@ -69,11 +71,18 @@
   gap: 20px;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 22px 16px;
-  border-bottom: 1px solid #e7ecef;
+  min-height: 68px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--rule);
 }
 .tablePanel :global(.ant-table-wrapper) {
   overflow-x: auto;
+}
+.tablePanel :global(.ant-table-cell) {
+  white-space: nowrap;
+}
+.tablePanel :global(.ant-table-thead > tr > th) {
+  background: var(--bg-hover);
 }
 .secondary {
   display: block;
@@ -87,6 +96,9 @@
   .inviteFields {
     grid-template-columns: 1fr;
   }
+  .invitePanel {
+    padding: 20px;
+  }
 }
 
 /* Member object access: one panel per published object. */
@@ -96,9 +108,9 @@
   gap: 16px;
 }
 .accessPanel {
-  padding: 16px 20px;
+  padding: 20px;
   border: 1px solid var(--rule);
-  border-radius: 8px;
+  border-radius: var(--radius-reading);
   background: var(--paper);
 }
 .accessPanelHeader {
@@ -107,6 +119,16 @@
   gap: 12px;
   align-items: center;
   justify-content: space-between;
+}
+.accessPanelHeader strong {
+  color: var(--text-primary);
+  font-size: 16px;
+}
+.accessModeControl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
 }
 .accessCode {
   margin-left: 8px;
@@ -129,4 +151,13 @@
 }
 .accessGrid :global(.ant-select) {
   width: 100%;
+}
+@media (max-width: 640px) {
+  .accessModeControl,
+  .accessModeControl :global(.ant-radio-group) {
+    width: 100%;
+  }
+  .accessModeControl :global(.ant-radio-button-wrapper) {
+    text-align: center;
+  }
 }
