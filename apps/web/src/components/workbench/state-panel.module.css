@@ -1,0 +1,40 @@
+.panel {
+  overflow: hidden;
+}
+
+.content {
+  max-width: 680px;
+  padding: 30px 32px;
+  border-left: 3px solid var(--border-strong);
+}
+
+.content[data-tone="error"] {
+  border-left-color: var(--color-danger);
+}
+
+.content[data-tone="blocked"] {
+  border-left-color: var(--color-warning);
+}
+
+.content h2 {
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 26px;
+}
+
+.content p {
+  margin-top: 6px;
+  color: var(--text-secondary);
+  line-height: 22px;
+}
+
+.action {
+  margin-top: 18px;
+}
+
+@media (max-width: 767px) {
+  .content {
+    padding: 24px 20px;
+  }
+}

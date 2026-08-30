@@ -1,0 +1,55 @@
+.bar {
+  display: flex;
+  min-height: 52px;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-data);
+}
+
+.search,
+.filters,
+.batchActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.search {
+  min-width: min(280px, 100%);
+}
+
+.filters {
+  flex: 1;
+}
+
+.batchActions {
+  padding-left: 8px;
+  margin-left: auto;
+  border-left: 1px solid var(--border-default);
+}
+
+@media (max-width: 767px) {
+  .search,
+  .filters,
+  .batchActions {
+    width: 100%;
+  }
+
+  .search > *,
+  .search :global(.ant-input-affix-wrapper) {
+    width: 100%;
+  }
+
+  .batchActions {
+    padding-top: 8px;
+    padding-left: 0;
+    margin-left: 0;
+    border-top: 1px solid var(--border-default);
+    border-left: 0;
+  }
+}

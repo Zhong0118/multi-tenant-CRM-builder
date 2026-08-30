@@ -5,19 +5,26 @@ import styles from "./app-shell.module.css";
 export function PageHeader({
   title,
   description,
+  status,
   extra,
-}: {
-  title: ReactNode;
-  description?: string;
-  extra?: ReactNode;
-}) {
+}: PageHeaderProps) {
   return (
     <header className={styles.pageHeader}>
-      <div>
-        <h1>{title}</h1>
+      <div className={styles.pageHeaderCopy}>
+        <div className={styles.pageTitleRow}>
+          <h1>{title}</h1>
+          {status}
+        </div>
         {description ? <p>{description}</p> : null}
       </div>
-      {extra}
+      {extra ? <div className={styles.pageHeaderActions}>{extra}</div> : null}
     </header>
   );
+}
+
+export interface PageHeaderProps {
+  title: ReactNode;
+  description?: ReactNode;
+  status?: ReactNode;
+  extra?: ReactNode;
 }
