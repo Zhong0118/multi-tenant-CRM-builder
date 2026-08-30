@@ -36,23 +36,30 @@ function businessObject(overrides: Record<string, unknown> = {}) {
 }
 
 describe("workspaceNavigation", () => {
-  it("keeps only system destinations and excludes business object routes", () => {
-    const items = workspaceNavigation("northwind");
+  it("keeps management destinations for company administrators", () => {
+    const items = workspaceNavigation("northwind", "TENANT_ADMIN");
 
     expect(items.map((item) => item.href)).toEqual([
       "/workspace/northwind",
-      "/workspace/northwind/statistics",
       "/workspace/northwind/members",
-      "/workspace/northwind/import-export",
-      "/workspace/northwind/audit",
       "/workspace/northwind/settings",
     ]);
     expect(items.some((item) => item.href.includes("/objects/"))).toBe(false);
   });
+
+  it("keeps employees on their home and authorized business objects", () => {
+    expect(workspaceNavigation("northwind", "EMPLOYEE")).toEqual([
+      {
+        href: "/workspace/northwind",
+        label: "我的工作台",
+        icon: "home",
+      },
+    ]);
+  });
 });
 
 describe("WorkspaceShell", () => {
-  it("groups business objects apart from workspace destinations", () => {
+  it("keeps employee navigation free of administrator destinations", () => {
     render(
       <WorkspaceShell
         tenantCode="northwind"
@@ -78,11 +85,40 @@ describe("WorkspaceShell", () => {
       within(business).getByRole("link", { name: "获客" }),
     ).toHaveAttribute("href", "/workspace/northwind/objects/leads");
     expect(
-      within(system).getByRole("link", { name: "成员管理" }),
-    ).toHaveAttribute("href", "/workspace/northwind/members");
+      within(system).getByRole("link", { name: "我的工作台" }),
+    ).toHaveAttribute("href", "/workspace/northwind");
+    expect(
+      within(system).queryByRole("link", { name: "成员管理" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(system).queryByRole("link", { name: "设置" }),
+    ).not.toBeInTheDocument();
     expect(
       within(business).queryByRole("link", { name: "成员管理" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows management destinations to company administrators", () => {
+    render(
+      <WorkspaceShell
+        tenantCode="northwind"
+        tenantName="百杰"
+        role="TENANT_ADMIN"
+        user={shellUser}
+        businessObjects={[]}
+      >
+        <p>内容</p>
+      </WorkspaceShell>,
+    );
+
+    const system = screen.getByRole("navigation", { name: "工作空间" });
+    expect(
+      within(system).getByRole("link", { name: "成员管理" }),
+    ).toHaveAttribute("href", "/workspace/northwind/members");
+    expect(within(system).getByRole("link", { name: "设置" })).toHaveAttribute(
+      "href",
+      "/workspace/northwind/settings",
+    );
   });
 
   it("renders business object links in the order supplied by the server", () => {

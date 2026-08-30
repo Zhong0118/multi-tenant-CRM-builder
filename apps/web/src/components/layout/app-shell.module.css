@@ -1,6 +1,8 @@
 .shell {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
+  overflow: hidden;
 }
 
 .sidebar {
@@ -8,6 +10,9 @@
   flex-direction: column;
   width: 240px;
   flex: 0 0 240px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
   background: var(--bg-surface);
   border-right: 1px solid var(--border-default);
 }
@@ -24,6 +29,7 @@
 
 .brand {
   height: 64px;
+  flex: 0 0 64px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -54,8 +60,19 @@
 }
 
 .nav {
-  flex: 1;
   padding: 8px;
+}
+
+.nav + .nav {
+  padding-top: 0;
+}
+
+.navScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .navItem {
@@ -128,12 +145,14 @@
 }
 
 .bottom {
+  flex: 0 0 auto;
   padding: 8px;
   border-top: 1px solid var(--border-default);
 }
 
 .header {
   height: 64px;
+  flex: 0 0 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -143,7 +162,11 @@
 }
 
 .main {
+  flex: 1;
+  min-height: 0;
   padding: 24px;
+  overflow: auto;
+  overscroll-behavior: contain;
   background: var(--bg-page);
   min-width: 0;
 }
@@ -165,6 +188,9 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .logout:hover {

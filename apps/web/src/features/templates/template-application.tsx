@@ -126,12 +126,16 @@ export function TenantBusinessConfiguration({
     <section id="business-configuration" className={styles.applicationPanel}>
       <div className={styles.applicationHeading}>
         <div>
-          <h2>业务配置</h2>
-          <p>当前公司已有 {summary.objectCount} 个业务对象。</p>
+          <h2>初始化业务表</h2>
+          <p>
+            {summary.objectCount === 0
+              ? "选择一套业务模板，一次创建其中全部启用的业务表草稿。"
+              : `当前公司已有 ${summary.objectCount} 个业务对象。`}
+          </p>
         </div>
         {summary.canApplyTemplate ? (
           <Button type="primary" onClick={() => setOpen(true)}>
-            应用业务模板
+            选择表方案
           </Button>
         ) : null}
       </div>
@@ -144,7 +148,7 @@ export function TenantBusinessConfiguration({
       ) : null}
 
       <Modal
-        title="应用业务模板"
+        title="为公司创建业务表"
         open={open}
         onCancel={closeModal}
         closable={!pending}
@@ -174,7 +178,8 @@ export function TenantBusinessConfiguration({
       >
         <div className={styles.applicationModalContent}>
           <p className={styles.applicationIntro}>
-            为 {tenant.name} 选择一个已发布模板作为初始业务配置。
+            为 {tenant.name}{" "}
+            选择一套已发布的表方案。确认后会一次创建方案中的全部启用业务表，权限和发布由公司管理员继续完成。
           </p>
           {error ? <Alert type="error" showIcon title={error} /> : null}
           {templates.isLoading ? <Spin /> : null}

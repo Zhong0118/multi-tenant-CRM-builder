@@ -196,7 +196,7 @@ describe("TenantBusinessConfiguration", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "应用业务模板" }));
+    fireEvent.click(screen.getByRole("button", { name: "选择表方案" }));
     await waitFor(() => expect(api.list).toHaveBeenCalledTimes(2));
     const templateSelect = screen.getByRole("combobox");
     fireEvent.mouseDown(templateSelect);
@@ -248,7 +248,14 @@ describe("TenantBusinessConfiguration", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "应用业务模板" }));
+    expect(
+      screen.getByRole("heading", { name: "初始化业务表" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("选择一套业务模板，一次创建其中全部启用的业务表草稿。"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "选择表方案" }));
 
     expect(
       await screen.findByText("将创建对象草稿，不会直接上线"),
@@ -306,7 +313,7 @@ describe("TenantBusinessConfiguration", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "应用业务模板" }));
+    fireEvent.click(screen.getByRole("button", { name: "选择表方案" }));
 
     expect(await screen.findByText("加载模板版本失败")).toBeInTheDocument();
     expect(
@@ -342,7 +349,7 @@ describe("TenantBusinessConfiguration", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "应用业务模板" }));
+    fireEvent.click(screen.getByRole("button", { name: "选择表方案" }));
     await screen.findByText("将创建对象草稿，不会直接上线");
     fireEvent.click(screen.getByRole("button", { name: "确认应用" }));
 
@@ -406,7 +413,7 @@ describe("TenantBusinessConfiguration", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "应用业务模板" }));
+    fireEvent.click(screen.getByRole("button", { name: "选择表方案" }));
     await screen.findByText("将创建对象草稿，不会直接上线");
     fireEvent.click(screen.getByRole("button", { name: "确认应用" }));
     expect(await screen.findByText(/req_template_a/)).toBeInTheDocument();
@@ -442,7 +449,7 @@ describe("TenantBusinessConfiguration", () => {
     );
 
     expect(
-      screen.queryByRole("button", { name: "应用业务模板" }),
+      screen.queryByRole("button", { name: "选择表方案" }),
     ).not.toBeInTheDocument();
     expect(
       screen.getByText("公司已有业务对象，不能使用初始化模板。"),

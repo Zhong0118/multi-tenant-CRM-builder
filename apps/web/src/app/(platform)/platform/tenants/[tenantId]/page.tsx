@@ -60,6 +60,10 @@ export default async function TenantDetailPage({
         }
         description={`工作空间代码：${tenant.code}`}
       />
+      <TenantBusinessConfiguration
+        tenant={tenant}
+        initialSummary={configurationResult.data}
+      />
       <div className={styles.detailLayout}>
         <section className={styles.detailPanel}>
           <h2 className={styles.panelTitle}>基本信息</h2>
@@ -111,10 +115,6 @@ export default async function TenantDetailPage({
             <Gate ready={invitationAccepted} title="首位管理员已接受邀请" />
             <Gate ready={activeAdminReady} title="至少一位管理员处于活跃状态" />
           </div>
-          <TenantBusinessConfiguration
-            tenant={tenant}
-            initialSummary={configurationResult.data}
-          />
         </section>
         <aside>
           <section className={styles.checkpoints}>

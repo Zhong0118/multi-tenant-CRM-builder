@@ -43,7 +43,7 @@ export function WorkspaceShell({
         },
         {
           ariaLabel: "工作空间",
-          items: workspaceNavigation(tenantCode).map((item) => ({
+          items: workspaceNavigation(tenantCode, role).map((item) => ({
             href: item.href,
             label: item.label,
             icon: <NavIcon name={item.icon} />,

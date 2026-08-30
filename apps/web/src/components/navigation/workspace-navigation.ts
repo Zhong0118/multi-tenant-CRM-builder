@@ -11,15 +11,17 @@ export interface WorkspaceNavigationItem {
  */
 export function workspaceNavigation(
   tenantCode: string,
+  role: "TENANT_ADMIN" | "EMPLOYEE",
 ): WorkspaceNavigationItem[] {
   const root = `/workspace/${tenantCode}`;
 
+  if (role === "EMPLOYEE") {
+    return [{ href: root, label: "我的工作台", icon: "home" }];
+  }
+
   return [
-    { href: root, label: "工作台", icon: "home" },
-    { href: `${root}/statistics`, label: "统计", icon: "stats" },
+    { href: root, label: "管理工作台", icon: "home" },
     { href: `${root}/members`, label: "成员管理", icon: "members" },
-    { href: `${root}/import-export`, label: "导入导出", icon: "import" },
-    { href: `${root}/audit`, label: "审计", icon: "audit" },
     { href: `${root}/settings`, label: "设置", icon: "settings" },
   ];
 }

@@ -54,50 +54,52 @@ export function Sidebar({
         </span>
         {collapsed ? null : <span className={styles.brandName}>{brand}</span>}
       </Link>
-      {navGroups.map((group) =>
-        group.items.length === 0 ? (
-          group.emptyLabel ? (
-            <p key={group.ariaLabel} className={styles.emptyLabel}>
-              {group.emptyLabel}
-            </p>
-          ) : null
-        ) : (
-          <nav
-            key={group.ariaLabel}
-            aria-label={group.ariaLabel}
-            className={styles.nav}
-            data-collapsed={collapsed ? "true" : undefined}
-          >
-            {group.items.map((item) => {
-              const current = isNavItemCurrent(pathname, item.href);
-              const icon = item.icon;
-              const link = (
-                <Link
-                  href={item.href}
-                  aria-current={current ? "page" : undefined}
-                  aria-label={collapsed ? item.label : undefined}
-                  className={`${styles.navItem} ${current ? styles.navItemCurrent : ""}`}
-                >
-                  {icon ? (
-                    <span className={styles.navIcon} aria-hidden>
-                      {icon}
-                    </span>
-                  ) : null}
-                  {collapsed ? null : item.label}
-                </Link>
-              );
+      <div className={styles.navScroll}>
+        {navGroups.map((group) =>
+          group.items.length === 0 ? (
+            group.emptyLabel ? (
+              <p key={group.ariaLabel} className={styles.emptyLabel}>
+                {group.emptyLabel}
+              </p>
+            ) : null
+          ) : (
+            <nav
+              key={group.ariaLabel}
+              aria-label={group.ariaLabel}
+              className={styles.nav}
+              data-collapsed={collapsed ? "true" : undefined}
+            >
+              {group.items.map((item) => {
+                const current = isNavItemCurrent(pathname, item.href);
+                const icon = item.icon;
+                const link = (
+                  <Link
+                    href={item.href}
+                    aria-current={current ? "page" : undefined}
+                    aria-label={collapsed ? item.label : undefined}
+                    className={`${styles.navItem} ${current ? styles.navItemCurrent : ""}`}
+                  >
+                    {icon ? (
+                      <span className={styles.navIcon} aria-hidden>
+                        {icon}
+                      </span>
+                    ) : null}
+                    {collapsed ? null : item.label}
+                  </Link>
+                );
 
-              return collapsed ? (
-                <Tooltip key={item.href} title={item.label} placement="right">
-                  {link}
-                </Tooltip>
-              ) : (
-                <div key={item.href}>{link}</div>
-              );
-            })}
-          </nav>
-        ),
-      )}
+                return collapsed ? (
+                  <Tooltip key={item.href} title={item.label} placement="right">
+                    {link}
+                  </Tooltip>
+                ) : (
+                  <div key={item.href}>{link}</div>
+                );
+              })}
+            </nav>
+          ),
+        )}
+      </div>
       <div className={styles.bottom}>
         {collapsed ? (
           <Tooltip title={toggleLabel} placement="right">
