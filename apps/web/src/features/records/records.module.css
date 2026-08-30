@@ -42,8 +42,8 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 24px;
+  gap: 24px;
+  width: min(100%, 1440px);
 }
 
 .listHeader {
@@ -69,23 +69,28 @@
   line-height: 22px;
 }
 
-.listToolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-}
-
 .searchInput {
-  width: 260px;
+  width: min(320px, 100%);
 }
 
 .ownerFilter {
   width: 200px;
 }
 
+.sortFilter {
+  width: 148px;
+}
+
+.directionFilter {
+  width: 92px;
+}
+
+.registerPanel {
+  overflow: hidden;
+}
+
 .register {
-  border-top: 2px solid var(--ledger-ink);
+  overflow-x: auto;
 }
 
 .register :global(.ant-table) {
@@ -100,6 +105,7 @@
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.08em;
+  background: var(--bg-hover);
 }
 
 .register :global(.ant-table-tbody > tr > td) {
@@ -122,6 +128,11 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.formPanel {
+  max-width: 1120px;
+  padding: 24px;
 }
 
 /* Four to eight fields per row group, per the interaction baseline. */
@@ -181,13 +192,15 @@
     width: 100vw !important;
   }
 
-  .list {
-    padding: 16px;
+  .searchInput,
+  .ownerFilter,
+  .sortFilter,
+  .directionFilter {
+    width: 100%;
   }
 
-  .searchInput,
-  .ownerFilter {
-    width: 100%;
+  .formPanel {
+    padding: 18px;
   }
 }
 

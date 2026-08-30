@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { ReadingPanel } from "@/components/workbench/surface";
 import type { RuntimeObjectSchema } from "@/features/objects/object-types";
 
 import type { DynamicFieldMember } from "./dynamic-field";
@@ -39,14 +40,16 @@ export function NewRecordPanel({
           <Link href={listPath}>返回{schema.object.name}列表</Link>
         </div>
       </header>
-      <RecordForm
-        tenantCode={tenantCode}
-        schema={schema}
-        members={members}
-        canChooseOwner={canChooseOwner}
-        onSaved={(record) => router.replace(`${listPath}/${record.id}`)}
-        onCancel={() => router.push(listPath)}
-      />
+      <ReadingPanel className={styles.formPanel} ariaLabel={`新建${schema.object.name}表单`}>
+        <RecordForm
+          tenantCode={tenantCode}
+          schema={schema}
+          members={members}
+          canChooseOwner={canChooseOwner}
+          onSaved={(record) => router.replace(`${listPath}/${record.id}`)}
+          onCancel={() => router.push(listPath)}
+        />
+      </ReadingPanel>
     </main>
   );
 }

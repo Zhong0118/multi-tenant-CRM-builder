@@ -6,6 +6,8 @@ import type { ColumnsType } from "antd/es/table";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
+import { FilterBar } from "@/components/workbench/filter-bar";
+import { DataPanel } from "@/components/workbench/surface";
 import {
   selectOptions,
   type PublishedFieldView,
@@ -140,20 +142,29 @@ export function RecordList({
         ) : null}
       </header>
 
-      <div className={styles.listToolbar}>
-        <Input
-          aria-label="搜索标题"
-          placeholder={`搜索${schema.object.name}标题`}
-          allowClear
-          value={searchInput}
-          className={styles.searchInput}
-          onChange={(event) => onSearchChange(event.target.value)}
-          onPressEnter={() =>
-            apply(
-              withFilter(query, { search: searchInput.trim() || undefined }),
-            )
-          }
-        />
+      <FilterBar
+        ariaLabel={`${schema.object.name}筛选与排序`}
+        search={
+          <Input
+            aria-label="搜索标题"
+            placeholder={`搜索${schema.object.name}标题`}
+            allowClear
+            value={searchInput}
+            className={styles.searchInput}
+            onChange={(event) => onSearchChange(event.target.value)}
+            onPressEnter={() =>
+              apply(
+                withFilter(query, { search: searchInput.trim() || undefined }),
+              )
+            }
+          />
+        }
+        batchActions={
+          <Typography.Text type="secondary">
+            共 {page.total} 条 · 第 {page.page} 页
+          </Typography.Text>
+        }
+      >
         {canFilterByOwner ? (
           <Select
             aria-label="按负责人筛选"
@@ -172,40 +183,64 @@ export function RecordList({
             }))}
           />
         ) : null}
-        <Typography.Text type="secondary">
-          共 {page.total} 条 · 第 {page.page} 页
-        </Typography.Text>
-      </div>
+        <Select
+          aria-label="排序字段"
+          className={styles.sortFilter}
+          value={query.sort}
+          onChange={(sort: RecordQuery["sort"]) =>
+            apply({ ...query, sort, page: 1 })
+          }
+          options={[
+            { value: "updatedAt", label: "按最近更新" },
+            { value: "createdAt", label: "按创建时间" },
+            { value: "recordNo", label: "按记录编号" },
+          ]}
+        />
+        <Select
+          aria-label="排序方向"
+          className={styles.directionFilter}
+          value={query.direction}
+          onChange={(direction: RecordQuery["direction"]) =>
+            apply({ ...query, direction, page: 1 })
+          }
+          options={[
+            { value: "desc", label: "降序" },
+            { value: "asc", label: "升序" },
+          ]}
+        />
+      </FilterBar>
 
-      <Table
-        className={styles.register}
-        rowKey="id"
-        size="small"
-        columns={columns}
-        dataSource={page.items}
-        loading={records.isFetching}
-        aria-label={`${schema.object.name}记录`}
-        locale={{
-          emptyText: (
-            <Empty
-              description={
-                filtered
-                  ? "当前筛选条件没有匹配的记录。"
-                  : schema.actions.canCreate
-                    ? "还没有记录，新建第一条。"
-                    : "还没有记录。"
-              }
-            />
-          ),
-        }}
-        pagination={{
-          current: page.page,
-          pageSize: page.limit,
-          total: page.total,
-          showSizeChanger: false,
-          onChange: (nextPage) => apply({ ...query, page: nextPage }),
-        }}
-      />
+      <DataPanel className={styles.registerPanel} ariaLabel={`${schema.object.name}记录表`}>
+        <Table
+          className={styles.register}
+          rowKey="id"
+          size="small"
+          columns={columns}
+          dataSource={page.items}
+          loading={records.isFetching}
+          aria-label={`${schema.object.name}记录`}
+          locale={{
+            emptyText: (
+              <Empty
+                description={
+                  filtered
+                    ? "当前筛选条件没有匹配的记录。"
+                    : schema.actions.canCreate
+                      ? "还没有记录，新建第一条。"
+                      : "还没有记录。"
+                }
+              />
+            ),
+          }}
+          pagination={{
+            current: page.page,
+            pageSize: page.limit,
+            total: page.total,
+            showSizeChanger: false,
+            onChange: (nextPage) => apply({ ...query, page: nextPage }),
+          }}
+        />
+      </DataPanel>
     </div>
   );
 }
