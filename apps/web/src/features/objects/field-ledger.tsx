@@ -1,7 +1,30 @@
 "use client";
 
+import { HolderOutlined } from "@ant-design/icons";
+import {
+  closestCenter,
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button, Space, Table, Tag, Tooltip } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import {
+  createContext,
+  useContext,
+  type CSSProperties,
+  type HTMLAttributes,
+  type KeyboardEvent,
+} from "react";
 
 import {
   FIELD_ACCESS_LABELS,
@@ -16,57 +39,142 @@ export interface FieldLedgerProps {
   fields: ConfigurableFieldView[];
   titleFieldKey: string;
   onSelect: (field: ConfigurableFieldView) => void;
-  onMove: (fieldId: string, direction: -1 | 1) => void;
+  onReorder: (fieldIds: string[]) => void;
   onToggleStatus?: (field: ConfigurableFieldView) => void;
   reordering?: boolean;
 }
 
-/**
- * The single signature element of the designer: one continuous register where
- * each field occupies exactly one line, so display order, stable key, type,
- * requirement and employee access can be compared straight down the columns.
- *
- * Order changes through explicit move controls rather than drag alone, so the
- * ledger stays operable by keyboard.
- */
+interface SortableRowProps extends HTMLAttributes<HTMLTableRowElement> {
+  "data-row-key": string;
+}
+
+interface SortableRowContextValue {
+  setActivatorNodeRef: (element: HTMLElement | null) => void;
+  attributes: ReturnType<typeof useSortable>["attributes"];
+  listeners: ReturnType<typeof useSortable>["listeners"];
+}
+
+const SortableRowContext = createContext<SortableRowContextValue | null>(null);
+
+function SortableRow(props: SortableRowProps) {
+  const id = props["data-row-key"];
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+  const style: CSSProperties = {
+    ...props.style,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    position: "relative",
+    zIndex: isDragging ? 1 : undefined,
+  };
+
+  return (
+    <SortableRowContext.Provider
+      value={{ attributes, listeners, setActivatorNodeRef }}
+    >
+      <tr
+        {...props}
+        ref={setNodeRef}
+        style={style}
+        className={`${props.className ?? ""} ${isDragging ? styles.ledgerRowDragging : ""}`}
+      />
+    </SortableRowContext.Provider>
+  );
+}
+
+interface DragHandleProps {
+  label: string;
+  disabled: boolean;
+  index: number;
+  onKeyboardMove: (from: number, direction: -1 | 1) => void;
+}
+
+function DragHandle({
+  label,
+  disabled,
+  index,
+  onKeyboardMove,
+}: DragHandleProps) {
+  const sortable = useContext(SortableRowContext);
+
+  function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+    event.preventDefault();
+    onKeyboardMove(index, event.key === "ArrowUp" ? -1 : 1);
+  }
+
+  return (
+    <Tooltip title="拖动调整顺序；键盘可使用上下方向键">
+      <button
+        ref={sortable?.setActivatorNodeRef}
+        type="button"
+        className={styles.dragHandle}
+        aria-label={`拖动调整 ${label}`}
+        disabled={disabled}
+        onKeyDown={handleKeyDown}
+        {...sortable?.attributes}
+        {...sortable?.listeners}
+      >
+        <HolderOutlined aria-hidden />
+      </button>
+    </Tooltip>
+  );
+}
+
+const ACCESS_COLORS: Record<PublishedFieldAccess, string> = {
+  EDIT: "green",
+  READ_ONLY: "blue",
+  HIDDEN: "red",
+};
+
+/** A compact configuration table whose row order is itself part of the schema. */
 export function FieldLedger({
   fields,
   titleFieldKey,
   onSelect,
-  onMove,
+  onReorder,
   onToggleStatus,
   reordering = false,
 }: FieldLedgerProps) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+  );
+  const fieldIds = fields.map((field) => field.id);
+
+  function moveFromKeyboard(from: number, direction: -1 | 1) {
+    const to = from + direction;
+    if (reordering || to < 0 || to >= fields.length) return;
+    onReorder(arrayMove(fieldIds, from, to));
+  }
+
+  function handleDragEnd({ active, over }: DragEndEvent) {
+    if (reordering || !over || active.id === over.id) return;
+    const from = fieldIds.indexOf(String(active.id));
+    const to = fieldIds.indexOf(String(over.id));
+    if (from < 0 || to < 0) return;
+    onReorder(arrayMove(fieldIds, from, to));
+  }
+
   const columns: ColumnsType<ConfigurableFieldView> = [
     {
-      title: "",
+      title: "顺序",
       key: "order",
-      width: 112,
+      width: 60,
+      align: "center",
       render: (_, fieldRow, index) => (
-        <div className={styles.ledgerOrder}>
-          <Tooltip title={`上移 ${fieldRow.label}`}>
-            <Button
-              size="small"
-              type="text"
-              aria-label={`上移 ${fieldRow.label}`}
-              disabled={index === 0 || reordering}
-              onClick={() => onMove(fieldRow.id, -1)}
-            >
-              上移
-            </Button>
-          </Tooltip>
-          <Tooltip title={`下移 ${fieldRow.label}`}>
-            <Button
-              size="small"
-              type="text"
-              aria-label={`下移 ${fieldRow.label}`}
-              disabled={index === fields.length - 1 || reordering}
-              onClick={() => onMove(fieldRow.id, 1)}
-            >
-              下移
-            </Button>
-          </Tooltip>
-        </div>
+        <DragHandle
+          label={fieldRow.label}
+          disabled={reordering}
+          index={index}
+          onKeyboardMove={moveFromKeyboard}
+        />
       ),
     },
     {
@@ -108,20 +216,22 @@ export function FieldLedger({
       render: (_, fieldRow) => {
         const access = fieldRow.employeeAccess as PublishedFieldAccess;
         return (
-          <span className={access === "EDIT" ? undefined : styles.ledgerMuted}>
-            {FIELD_ACCESS_LABELS[access]}
-          </span>
+          <Tag color={ACCESS_COLORS[access]}>{FIELD_ACCESS_LABELS[access]}</Tag>
         );
       },
     },
     {
       title: "状态",
       key: "status",
-      width: 150,
+      width: 180,
       render: (_, fieldRow) => (
         <span className={styles.ledgerFlags}>
-          {fieldRow.fieldKey === titleFieldKey ? <Tag>记录名称</Tag> : null}
-          {fieldRow.status === "INACTIVE" ? <Tag>已停用</Tag> : null}
+          {fieldRow.fieldKey === titleFieldKey ? (
+            <Tag color="blue">记录名称</Tag>
+          ) : null}
+          {fieldRow.status === "INACTIVE" ? (
+            <Tag color="red">已停用</Tag>
+          ) : null}
           {fieldRow.publishedType === null ? (
             <Tag color="gold">未发布</Tag>
           ) : null}
@@ -129,7 +239,7 @@ export function FieldLedger({
       ),
     },
     {
-      title: "",
+      title: "操作",
       key: "actions",
       width: onToggleStatus ? 132 : 72,
       align: "right",
@@ -159,17 +269,26 @@ export function FieldLedger({
   ];
 
   return (
-    <Table
-      className={styles.ledger}
-      rowKey="id"
-      size="small"
-      pagination={false}
-      columns={columns}
-      dataSource={fields}
-      rowClassName={(fieldRow) =>
-        fieldRow.status === "INACTIVE" ? styles.ledgerRowInactive : ""
-      }
-      aria-label="字段账本"
-    />
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext items={fieldIds} strategy={verticalListSortingStrategy}>
+        <Table
+          className={styles.ledger}
+          rowKey="id"
+          size="small"
+          pagination={false}
+          columns={columns}
+          dataSource={fields}
+          components={{ body: { row: SortableRow } }}
+          rowClassName={(fieldRow) =>
+            fieldRow.status === "INACTIVE" ? styles.ledgerRowInactive : ""
+          }
+          aria-label="字段账本"
+        />
+      </SortableContext>
+    </DndContext>
   );
 }

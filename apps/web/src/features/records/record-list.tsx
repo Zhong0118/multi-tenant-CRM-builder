@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Button, Empty, Input, Select, Table, Typography } from "antd";
+import type { TableProps } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
@@ -94,9 +95,18 @@ export function RecordList({
     {
       title: "编号",
       key: "recordNo",
+      dataIndex: "recordNo",
       width: 88,
-      render: (_, row) => (
-        <span className={styles.recordNo}>{row.recordNo}</span>
+      sorter: true,
+      sortOrder:
+        query.sort === "recordNo"
+          ? query.direction === "asc"
+            ? "ascend"
+            : "descend"
+          : null,
+      sortDirections: ["ascend", "descend"],
+      render: (recordNo: string) => (
+        <span className={styles.recordNo}>{recordNo}</span>
       ),
     },
     ...visibleColumns.map((field) => ({
@@ -121,10 +131,38 @@ export function RecordList({
     {
       title: "最近更新",
       key: "updatedAt",
+      dataIndex: "updatedAt",
       width: 168,
-      render: (_, row) => formatDateTime(row.updatedAt),
+      sorter: true,
+      sortOrder:
+        query.sort === "updatedAt"
+          ? query.direction === "asc"
+            ? "ascend"
+            : "descend"
+          : null,
+      sortDirections: ["ascend", "descend"],
+      render: (updatedAt: string) => formatDateTime(updatedAt),
     },
   ];
+
+  const handleTableChange: TableProps<RecordSummary>["onChange"] = (
+    _pagination,
+    _filters,
+    sorter,
+    extra,
+  ) => {
+    if (extra.action !== "sort" || Array.isArray(sorter) || !sorter.order) {
+      return;
+    }
+    const sort = sorter.columnKey;
+    if (sort !== "recordNo" && sort !== "updatedAt") return;
+    apply({
+      ...query,
+      page: 1,
+      sort,
+      direction: sorter.order === "ascend" ? "asc" : "desc",
+    });
+  };
 
   const filtered = Boolean(query.search || query.ownerMemberId);
 
@@ -185,31 +223,6 @@ export function RecordList({
             }))}
           />
         ) : null}
-        <Select
-          aria-label="排序字段"
-          className={styles.sortFilter}
-          value={query.sort}
-          onChange={(sort: RecordQuery["sort"]) =>
-            apply({ ...query, sort, page: 1 })
-          }
-          options={[
-            { value: "updatedAt", label: "按最近更新" },
-            { value: "createdAt", label: "按创建时间" },
-            { value: "recordNo", label: "按记录编号" },
-          ]}
-        />
-        <Select
-          aria-label="排序方向"
-          className={styles.directionFilter}
-          value={query.direction}
-          onChange={(direction: RecordQuery["direction"]) =>
-            apply({ ...query, direction, page: 1 })
-          }
-          options={[
-            { value: "desc", label: "降序" },
-            { value: "asc", label: "升序" },
-          ]}
-        />
       </FilterBar>
 
       <DataPanel
@@ -223,6 +236,7 @@ export function RecordList({
           columns={columns}
           dataSource={page.items}
           loading={records.isFetching}
+          onChange={handleTableChange}
           aria-label={`${schema.object.name}记录`}
           locale={{
             emptyText: (

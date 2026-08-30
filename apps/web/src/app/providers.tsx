@@ -58,10 +58,10 @@ export function Providers({ children }: { children: ReactNode }) {
             Table: {
               cellPaddingBlock: 11,
               cellPaddingInline: 13,
-              headerBg: "#F7F9FA",
-              headerColor: TOKENS.textSecondary,
+              headerBg: "#F2F5F7",
+              headerColor: "#44515C",
               headerSplitColor: "transparent",
-              rowHoverBg: TOKENS.hover,
+              rowHoverBg: "#F3F8F7",
             },
             Tag: { defaultBg: TOKENS.page, defaultColor: TOKENS.textSecondary },
             Form: { labelColor: TOKENS.textSecondary, verticalLabelPadding: 0 },

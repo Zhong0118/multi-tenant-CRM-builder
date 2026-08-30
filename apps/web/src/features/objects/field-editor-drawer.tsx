@@ -22,6 +22,7 @@ import {
   PUBLISHED_FIELD_TYPES,
   SELECT_OPTION_COLORS,
   SELECT_OPTION_COLOR_LABELS,
+  defaultSelectOptionColor,
   selectOptions,
   type PublishedFieldAccess,
   type PublishedFieldType,
@@ -460,10 +461,7 @@ function OptionEditor({
               key: `option_${options.length + 1}`,
               label: `选项 ${options.length + 1}`,
               status: "ACTIVE",
-              color:
-                SELECT_OPTION_COLORS[
-                  (options.length + 1) % SELECT_OPTION_COLORS.length
-                ],
+              color: defaultSelectOptionColor(options.length),
             },
           ])
         }

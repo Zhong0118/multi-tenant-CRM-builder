@@ -87,6 +87,22 @@ export const SELECT_OPTION_COLORS = [
 
 export type SelectOptionColor = (typeof SELECT_OPTION_COLORS)[number];
 
+const DEFAULT_SELECT_OPTION_COLORS: readonly SelectOptionColor[] = [
+  "BLUE",
+  "GREEN",
+  "ORANGE",
+  "PURPLE",
+  "CYAN",
+  "YELLOW",
+  "RED",
+];
+
+export function defaultSelectOptionColor(index: number): SelectOptionColor {
+  return DEFAULT_SELECT_OPTION_COLORS[
+    Math.abs(index) % DEFAULT_SELECT_OPTION_COLORS.length
+  ]!;
+}
+
 export const SELECT_OPTION_COLOR_LABELS: Record<SelectOptionColor, string> = {
   GRAY: "灰色",
   BLUE: "蓝色",
@@ -295,7 +311,7 @@ export function selectOptions(
   const options = field.config.options;
   if (!Array.isArray(options)) return [];
 
-  return options.flatMap((option) => {
+  return options.flatMap((option, index) => {
     if (!isRecord(option)) return [];
     const { key, label, status, color } = option as Record<string, unknown>;
     if (typeof key !== "string" || typeof label !== "string") return [];
@@ -306,7 +322,7 @@ export function selectOptions(
         status: status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
         color: SELECT_OPTION_COLORS.includes(color as SelectOptionColor)
           ? (color as SelectOptionColor)
-          : "GRAY",
+          : defaultSelectOptionColor(index),
       },
     ];
   });

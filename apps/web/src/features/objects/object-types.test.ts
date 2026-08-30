@@ -94,7 +94,7 @@ describe("parseRuntimeObjectSchema", () => {
 });
 
 describe("selectOptions", () => {
-  it("reads configured options and defaults a missing status to active", () => {
+  it("gives legacy options distinct visible colors when none were saved", () => {
     const field = {
       config: {
         options: [
@@ -105,12 +105,12 @@ describe("selectOptions", () => {
     } as unknown as PublishedFieldView;
 
     expect(selectOptions(field)).toEqual([
-      { key: "gold", label: "金牌", status: "ACTIVE", color: "GRAY" },
+      { key: "gold", label: "金牌", status: "ACTIVE", color: "BLUE" },
       {
         key: "legacy",
         label: "旧分级",
         status: "INACTIVE",
-        color: "GRAY",
+        color: "GREEN",
       },
     ]);
   });

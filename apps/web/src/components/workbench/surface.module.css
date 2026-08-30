@@ -5,8 +5,34 @@
 }
 
 .dataPanel {
+  overflow: hidden;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-data);
+}
+
+.dataPanel :global(.ant-table-thead > tr > th) {
+  color: #44515c;
+  font-family: var(--font-label);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.dataPanel :global(.ant-table-tbody > tr > td) {
+  transition: background-color 140ms ease;
+}
+
+.dataPanel :global(.ant-table-column-sorter) {
+  color: var(--text-tertiary);
+}
+
+.dataPanel :global(.ant-table-column-sorter-up.active),
+.dataPanel :global(.ant-table-column-sorter-down.active) {
+  color: var(--color-primary);
+}
+
+.dataPanel :global(.ant-pagination) {
+  margin: 14px 16px !important;
 }
 
 .readingPanel {

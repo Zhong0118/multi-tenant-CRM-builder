@@ -76,12 +76,7 @@ export function TemplateObjectEditor({
   if (!object) return null;
   const objectCodeInvalid = !isTemplateObjectCode(object.object.code);
 
-  function moveField(fieldId: string, direction: -1 | 1) {
-    const fieldIds = object!.fields.map((field) => field.id);
-    const from = fieldIds.indexOf(fieldId);
-    const to = from + direction;
-    if (from < 0 || to < 0 || to >= fieldIds.length) return;
-    [fieldIds[from], fieldIds[to]] = [fieldIds[to]!, fieldIds[from]!];
+  function reorderFieldIds(fieldIds: string[]) {
     onChange(reorderFields(draft, objectId, fieldIds));
   }
 
@@ -347,7 +342,7 @@ export function TemplateObjectEditor({
               <FieldLedger
                 fields={object.fields}
                 titleFieldKey={object.object.titleFieldKey}
-                onMove={moveField}
+                onReorder={reorderFieldIds}
                 onSelect={(field) => setEditingFieldId(field.id)}
                 onToggleStatus={(field) =>
                   onChange(

@@ -298,15 +298,6 @@ export function ObjectDesigner({
     onError: reject,
   });
 
-  function moveField(fieldId: string, direction: -1 | 1) {
-    const fieldIds = draft.fields.map((field) => field.id);
-    const from = fieldIds.indexOf(fieldId);
-    const to = from + direction;
-    if (from < 0 || to < 0 || to >= fieldIds.length) return;
-    [fieldIds[from], fieldIds[to]] = [fieldIds[to], fieldIds[from]];
-    reorder.mutate(fieldIds);
-  }
-
   return (
     <>
       <p className={styles.desktopOnly}>
@@ -426,7 +417,7 @@ export function ObjectDesigner({
                 titleFieldKey={draft.object.titleFieldKey}
                 reordering={reorder.isPending}
                 onSelect={setEditingField}
-                onMove={moveField}
+                onReorder={(fieldIds) => reorder.mutate(fieldIds)}
               />
             </section>
           ) : null}

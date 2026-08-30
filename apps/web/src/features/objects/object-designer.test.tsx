@@ -269,11 +269,14 @@ describe("ObjectDesigner configuration ledger", () => {
     expect(screen.getByLabelText("选项颜色 gold")).toBeInTheDocument();
   });
 
-  it("reorders fields by keyboard and sends the resulting order with the draft version", async () => {
+  it("reorders fields from the drag handle keyboard control and saves the resulting order", async () => {
     const api = objectApi();
     renderDesigner(draft(), api);
 
-    fireEvent.click(screen.getByRole("button", { name: "上移 最终评级" }));
+    fireEvent.keyDown(
+      screen.getByRole("button", { name: "拖动调整 最终评级" }),
+      { key: "ArrowUp" },
+    );
 
     await waitFor(() =>
       expect(api.reorderFields).toHaveBeenCalledWith("northwind", "object-1", {
@@ -281,6 +284,9 @@ describe("ObjectDesigner configuration ledger", () => {
         fieldIds: ["field-rating", "field-name"],
       }),
     );
+    expect(
+      screen.queryByRole("button", { name: "上移 最终评级" }),
+    ).not.toBeInTheDocument();
   });
 });
 

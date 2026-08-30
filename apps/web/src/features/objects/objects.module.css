@@ -165,30 +165,41 @@
   font-weight: 600;
 }
 
-/* The signature element: one continuous register. A 2px Ledger Ink rule opens
-   it, hairlines separate the lines, and nothing boxes it in — a ledger is read
-   down its columns, not as a stack of cards. */
 .ledger {
-  border-top: 2px solid var(--ledger-ink);
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-data);
+  background: var(--bg-surface);
 }
 
 .ledger :global(.ant-table) {
-  background: transparent;
+  background: var(--bg-surface);
 }
 
 .ledger :global(.ant-table-thead > tr > th) {
-  padding-top: 8px !important;
-  padding-bottom: 8px !important;
-  border-bottom: 1px solid var(--rule) !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+  border-bottom: 1px solid var(--border-strong) !important;
+  color: #44515c;
   font-family: var(--font-label);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: none;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  background: #f2f5f7 !important;
 }
 
 .ledger :global(.ant-table-tbody > tr > td) {
-  border-bottom: 1px solid var(--rule) !important;
+  border-bottom: 1px solid var(--border-default) !important;
+  background: var(--bg-surface);
+  transition: background-color 140ms ease;
+}
+
+.ledger :global(.ant-table-tbody > tr:hover > td) {
+  background: #f3f8f7 !important;
+}
+
+.ledger :global(.ant-table-tbody > tr:last-child > td) {
+  border-bottom: 0 !important;
 }
 
 .ledgerName {
@@ -205,6 +216,7 @@
 
 .ledgerFlags {
   display: inline-flex;
+  flex-wrap: wrap;
   gap: 4px;
 }
 
@@ -212,9 +224,44 @@
   color: var(--ink-secondary);
 }
 
-.ledgerOrder {
-  display: flex;
-  gap: 0;
+.ledgerRowDragging :global(.ant-table-cell) {
+  background: var(--color-primary-soft) !important;
+  box-shadow: 0 8px 22px rgb(23 35 45 / 12%);
+}
+
+.dragHandle {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  place-items: center;
+  color: var(--text-tertiary);
+  background: transparent;
+  cursor: grab;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease;
+  touch-action: none;
+}
+
+.dragHandle:hover,
+.dragHandle:focus-visible {
+  border-color: var(--border-strong);
+  color: var(--color-primary);
+  background: var(--bg-hover);
+  outline: none;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.dragHandle:disabled {
+  color: var(--text-disabled);
+  cursor: wait;
 }
 
 .formGrid {

@@ -44,8 +44,7 @@
   align-items: center;
 }
 
-/* Record register. Same ledger discipline as the object designer: dense rows,
-   hairline rules, monospace identifiers, no boxes competing with the data. */
+/* Record register: compact tool table with sorting in the column headers. */
 .list {
   display: flex;
   flex-direction: column;
@@ -84,14 +83,6 @@
   width: 200px;
 }
 
-.sortFilter {
-  width: 148px;
-}
-
-.directionFilter {
-  width: 92px;
-}
-
 .registerPanel {
   overflow: hidden;
 }
@@ -105,14 +96,7 @@
 }
 
 .register :global(.ant-table-thead > tr > th) {
-  padding-top: 8px !important;
-  padding-bottom: 8px !important;
-  border-bottom: 1px solid var(--rule) !important;
-  font-family: var(--font-label);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  background: var(--bg-hover);
+  border-bottom: 1px solid var(--border-strong) !important;
 }
 
 .register :global(.ant-table-tbody > tr > td) {
@@ -200,9 +184,7 @@
   }
 
   .searchInput,
-  .ownerFilter,
-  .sortFilter,
-  .directionFilter {
+  .ownerFilter {
     width: 100%;
   }
 
