@@ -118,6 +118,88 @@ export class DashboardOverviewQueryDto {
   days?: number;
 }
 
+export class DashboardMetricDataDto {
+  @ApiProperty({ type: Number, nullable: true }) value!: number | null;
+  @ApiPropertyOptional({ enum: ['NUMBER', 'MONEY', 'PERCENT'] })
+  format?: 'NUMBER' | 'MONEY' | 'PERCENT';
+}
+
+export class DashboardDistributionPointDto {
+  @ApiProperty() optionKey!: string;
+  @ApiProperty() label!: string;
+  @ApiProperty() color!: string;
+  @ApiProperty() value!: number;
+}
+
+export class DashboardDistributionDataDto {
+  @ApiProperty({ enum: ['FUNNEL', 'BAR', 'DONUT'] })
+  display!: 'FUNNEL' | 'BAR' | 'DONUT';
+  @ApiProperty({ type: DashboardDistributionPointDto, isArray: true })
+  items!: DashboardDistributionPointDto[];
+}
+
+export class DashboardTrendPointDto {
+  @ApiProperty() date!: string;
+  @ApiProperty() value!: number;
+}
+
+export class DashboardTrendDataDto {
+  @ApiProperty({ type: DashboardTrendPointDto, isArray: true })
+  items!: DashboardTrendPointDto[];
+}
+
+export class DashboardLeaderboardRowDto {
+  @ApiProperty({ format: 'uuid' }) memberId!: string;
+  @ApiProperty() displayName!: string;
+  @ApiProperty() value!: number;
+}
+
+export class DashboardLeaderboardDataDto {
+  @ApiProperty({ type: DashboardLeaderboardRowDto, isArray: true })
+  items!: DashboardLeaderboardRowDto[];
+}
+
+export class DashboardPublishedFieldDto {
+  @ApiProperty() fieldKey!: string;
+  @ApiProperty() label!: string;
+  @ApiProperty({
+    enum: [
+      'TEXT',
+      'TEXTAREA',
+      'PHONE',
+      'EMAIL',
+      'NUMBER',
+      'MONEY',
+      'DATE',
+      'DATETIME',
+      'SINGLE_SELECT',
+      'MULTI_SELECT',
+      'MEMBER',
+      'BOOLEAN',
+    ],
+  })
+  type!: string;
+}
+
+export class DashboardRecordListRowDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiProperty() recordNo!: string;
+  @ApiProperty() title!: string;
+  @ApiProperty({ format: 'uuid', nullable: true }) ownerMemberId!:
+    string | null;
+  @ApiProperty({ nullable: true }) ownerName!: string | null;
+  @ApiProperty({ format: 'date-time' }) updatedAt!: string;
+  @ApiProperty({ type: 'object', additionalProperties: true })
+  values!: Record<string, unknown>;
+}
+
+export class DashboardRecordListDataDto {
+  @ApiProperty({ type: DashboardPublishedFieldDto, isArray: true })
+  fields!: DashboardPublishedFieldDto[];
+  @ApiProperty({ type: DashboardRecordListRowDto, isArray: true })
+  items!: DashboardRecordListRowDto[];
+}
+
 export class DashboardMetricWidgetDto {
   @ApiProperty() id!: string;
   @ApiProperty({ enum: ['METRIC'] }) type!: 'METRIC';
@@ -126,7 +208,7 @@ export class DashboardMetricWidgetDto {
   @ApiProperty({ enum: ['QUARTER', 'HALF', 'FULL'] }) width!: string;
   @ApiProperty() sortOrder!: number;
   @ApiProperty({ enum: ['READY'] }) state!: 'READY';
-  @ApiProperty({ type: 'object', additionalProperties: true }) data!: object;
+  @ApiProperty({ type: DashboardMetricDataDto }) data!: DashboardMetricDataDto;
 }
 
 export class DashboardDistributionWidgetDto {
@@ -138,7 +220,8 @@ export class DashboardDistributionWidgetDto {
   @ApiProperty({ enum: ['QUARTER', 'HALF', 'FULL'] }) width!: string;
   @ApiProperty() sortOrder!: number;
   @ApiProperty({ enum: ['READY'] }) state!: 'READY';
-  @ApiProperty({ type: 'object', additionalProperties: true }) data!: object;
+  @ApiProperty({ type: DashboardDistributionDataDto })
+  data!: DashboardDistributionDataDto;
 }
 
 export class DashboardTrendWidgetDto {
@@ -149,7 +232,7 @@ export class DashboardTrendWidgetDto {
   @ApiProperty({ enum: ['QUARTER', 'HALF', 'FULL'] }) width!: string;
   @ApiProperty() sortOrder!: number;
   @ApiProperty({ enum: ['READY'] }) state!: 'READY';
-  @ApiProperty({ type: 'object', additionalProperties: true }) data!: object;
+  @ApiProperty({ type: DashboardTrendDataDto }) data!: DashboardTrendDataDto;
 }
 
 export class DashboardLeaderboardWidgetDto {
@@ -160,7 +243,8 @@ export class DashboardLeaderboardWidgetDto {
   @ApiProperty({ enum: ['QUARTER', 'HALF', 'FULL'] }) width!: string;
   @ApiProperty() sortOrder!: number;
   @ApiProperty({ enum: ['READY'] }) state!: 'READY';
-  @ApiProperty({ type: 'object', additionalProperties: true }) data!: object;
+  @ApiProperty({ type: DashboardLeaderboardDataDto })
+  data!: DashboardLeaderboardDataDto;
 }
 
 export class DashboardRecordListWidgetDto {
@@ -171,7 +255,8 @@ export class DashboardRecordListWidgetDto {
   @ApiProperty({ enum: ['QUARTER', 'HALF', 'FULL'] }) width!: string;
   @ApiProperty() sortOrder!: number;
   @ApiProperty({ enum: ['READY'] }) state!: 'READY';
-  @ApiProperty({ type: 'object', additionalProperties: true }) data!: object;
+  @ApiProperty({ type: DashboardRecordListDataDto })
+  data!: DashboardRecordListDataDto;
 }
 
 export class DashboardUnavailableWidgetDto {
@@ -212,7 +297,20 @@ const dashboardWidgetSchemas = [
   DashboardUnavailableWidgetDto,
 ];
 
-@ApiExtraModels(...dashboardWidgetSchemas)
+const dashboardWidgetDataSchemas = [
+  DashboardMetricDataDto,
+  DashboardDistributionPointDto,
+  DashboardDistributionDataDto,
+  DashboardTrendPointDto,
+  DashboardTrendDataDto,
+  DashboardLeaderboardRowDto,
+  DashboardLeaderboardDataDto,
+  DashboardPublishedFieldDto,
+  DashboardRecordListRowDto,
+  DashboardRecordListDataDto,
+];
+
+@ApiExtraModels(...dashboardWidgetSchemas, ...dashboardWidgetDataSchemas)
 export class DashboardRuntimeDto {
   @ApiProperty() title!: string;
   @ApiProperty({ type: DashboardPeriodDto }) period!: DashboardPeriodDto;

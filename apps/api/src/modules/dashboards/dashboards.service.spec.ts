@@ -1,6 +1,9 @@
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { PublishedObjectSchema } from '../objects/object-schema';
-import type { DashboardEngine } from './dashboard-engine';
+import type {
+  DashboardEngine,
+  DashboardEvaluationInput,
+} from './dashboard-engine';
 import type {
   DashboardDefinitionV2,
   DashboardRuntimeResult,
@@ -19,7 +22,7 @@ describe('DashboardsService', () => {
     const { service, repository } = setup();
 
     await expect(
-      serviceAsV2(service).saveDraft(adminContext(), {
+      service.saveDraft(adminContext(), {
         expectedVersion: 1,
         configuration: incompleteDraft(),
       }),
@@ -39,7 +42,7 @@ describe('DashboardsService', () => {
     const { service } = setup();
 
     await expect(
-      serviceAsV2(service).saveDraft(employeeContext(), {
+      service.saveDraft(employeeContext(), {
         expectedVersion: 1,
         configuration: completeDraft(),
       }),
@@ -51,7 +54,7 @@ describe('DashboardsService', () => {
     repository.saveDraft.mockResolvedValue(null);
 
     await expect(
-      serviceAsV2(service).saveDraft(adminContext(), {
+      service.saveDraft(adminContext(), {
         expectedVersion: 4,
         configuration: completeDraft(),
       }),
@@ -65,7 +68,7 @@ describe('DashboardsService', () => {
     const { service, repository } = setup();
 
     await expect(
-      serviceAsV2(service).publish(adminContext(), { expectedVersion: 1 }),
+      service.publish(adminContext(), { expectedVersion: 1 }),
     ).resolves.toMatchObject({ number: 3, sourceDraftVersion: 1 });
 
     expect(repository.publishDraft).toHaveBeenCalledWith(
@@ -84,7 +87,7 @@ describe('DashboardsService', () => {
     const { service, repository } = setup({ draft: incompleteDraft() });
 
     await expect(
-      serviceAsV2(service).publish(adminContext(), { expectedVersion: 1 }),
+      service.publish(adminContext(), { expectedVersion: 1 }),
     ).rejects.toMatchObject({ status: 400 });
 
     expect(repository.publishDraft).not.toHaveBeenCalled();
@@ -97,31 +100,32 @@ describe('DashboardsService', () => {
     engine.evaluate.mockResolvedValue(preview);
 
     await expect(
-      serviceAsV2(service).preview(adminContext(), {
+      service.preview(adminContext(), {
         expectedVersion: 1,
         period,
       }),
     ).resolves.toEqual(preview);
 
-    expect(engine.evaluate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        context: adminContext(),
-        preview: true,
-        publication: expect.objectContaining({ schemaVersion: 2 }),
-      }),
-    );
+    const [evaluation] = engine.evaluate.mock.calls[0] ?? [];
+    expect(evaluation).toMatchObject({
+      context: adminContext(),
+      preview: true,
+    });
+    expect(evaluation?.publication).toMatchObject({ schemaVersion: 2 });
   });
 
   it('returns an unconfigured overview when no active publication exists', async () => {
     const { service, repository, engine } = setup();
     repository.getActivePublication.mockResolvedValue(null);
 
-    await expect(
-      serviceAsV2(service).getOverview(adminContext(), period),
-    ).resolves.toEqual(
-      expect.objectContaining({ state: 'UNCONFIGURED', widgets: [] }),
+    await expect(service.getOverview(adminContext(), period)).resolves.toEqual(
+      expect.objectContaining({
+        state: 'UNCONFIGURED',
+        title: '工作台',
+        widgets: [],
+      }),
     );
-    expect(engine.evaluate).not.toHaveBeenCalled();
+    expect(engine.evaluate.mock.calls).toHaveLength(0);
   });
 
   it('evaluates the active publication rather than the current draft', async () => {
@@ -130,48 +134,28 @@ describe('DashboardsService', () => {
     repository.getActivePublication.mockResolvedValue(active);
     engine.evaluate.mockResolvedValue(runtimeResult('READY'));
 
-    await serviceAsV2(service).getOverview(adminContext(), period);
+    await service.getOverview(adminContext(), period);
 
-    expect(engine.evaluate).toHaveBeenCalledWith(
+    expect(engine.evaluate.mock.calls).toContainEqual([
       expect.objectContaining({
         publication: active.configuration,
         context: adminContext(),
         preview: false,
       }),
-    );
+    ]);
   });
 
   it('delegates employee scope enforcement to the engine', async () => {
     const { service, engine } = setup();
     engine.evaluate.mockResolvedValue(runtimeResult('READY'));
 
-    await serviceAsV2(service).getOverview(employeeContext(), period);
+    await service.getOverview(employeeContext(), period);
 
-    expect(engine.evaluate).toHaveBeenCalledWith(
+    expect(engine.evaluate.mock.calls).toContainEqual([
       expect.objectContaining({ context: employeeContext(), preview: false }),
-    );
+    ]);
   });
 });
-
-interface DashboardV2Service {
-  getOverview(context: TenantContext, query: typeof period): Promise<unknown>;
-  saveDraft(
-    context: TenantContext,
-    input: { expectedVersion: number; configuration: DashboardDefinitionV2 },
-  ): Promise<unknown>;
-  preview(
-    context: TenantContext,
-    input: { expectedVersion: number; period: typeof period },
-  ): Promise<DashboardRuntimeResult>;
-  publish(
-    context: TenantContext,
-    input: { expectedVersion: number },
-  ): Promise<unknown>;
-}
-
-function serviceAsV2(service: DashboardsService): DashboardV2Service {
-  return service as unknown as DashboardV2Service;
-}
 
 function setup(input: { draft?: DashboardDefinitionV2 } = {}) {
   const draft = input.draft ?? completeDraft();
@@ -197,12 +181,18 @@ function setup(input: { draft?: DashboardDefinitionV2 } = {}) {
     listPublishedObjects: jest.fn().mockResolvedValue([publishedOpportunity()]),
   };
   const engine = {
-    evaluate: jest.fn(),
-  } as unknown as jest.Mocked<DashboardEngine>;
+    evaluate: jest.fn<
+      Promise<DashboardRuntimeResult>,
+      [DashboardEvaluationInput]
+    >(),
+  };
   return {
     repository,
     engine,
-    service: new DashboardsService(repository as never, engine),
+    service: new DashboardsService(
+      repository,
+      engine as unknown as DashboardEngine,
+    ),
   };
 }
 

@@ -53,7 +53,7 @@ export class DashboardsController {
 
   @Put('configuration')
   @ApiOkResponse({ type: DashboardDraftDto })
-  saveConfiguration(
+  saveDraft(
     @CurrentTenant() context: TenantContext,
     @Body() dto: SaveDashboardConfigurationDto,
     @Req() request: RequestWithId,

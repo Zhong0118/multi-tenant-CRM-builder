@@ -5,7 +5,6 @@ import type {
   TemplateFieldConfiguration,
   TemplateObjectConfiguration,
 } from '../modules/business-templates/business-template.schema';
-import type { DashboardConfiguration } from '../modules/dashboards/dashboard.types';
 
 export const DEMO_COMPANY_CODE = 'nebula-demo';
 export const DEMO_TEMPLATE_CODE = 'standard-sales-demo';
@@ -21,7 +20,7 @@ export const DEMO_DASHBOARD_CONFIGURATION = {
     lostOptionKeys: ['lost'],
   },
   lead: { objectCode: 'leads' },
-} satisfies DashboardConfiguration;
+};
 
 export interface DemoUser {
   displayName: string;

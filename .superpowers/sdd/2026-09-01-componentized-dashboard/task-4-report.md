@@ -23,3 +23,12 @@
 
 - Reviewed authorization (configuration/save/preview/publish are administrator-only), version conflicts (`DASHBOARD_DRAFT_VERSION_CONFLICT`), legacy/compiled active-publication flow through `DashboardEngine`, preview diagnostics, and employee scope delegation to the engine.
 - No generated OpenAPI contracts or Web files were touched; downstream Task 5 can regenerate and consume this backend surface.
+
+## Review round 1
+
+- RED: `apps/api/node_modules/.bin/jest dashboards.service.spec.ts dashboards.repository.spec.ts --runInBand` failed because the unconfigured overview omitted `title`, and because a repository created without `AuditService` still completed `saveDraft`.
+- GREEN: `apps/api/node_modules/.bin/jest dashboards.service.spec.ts dashboards.repository.spec.ts dashboard-definition.spec.ts dashboard-engine.spec.ts --runInBand` passed: 4 suites, 40 tests. `apps/api/node_modules/.bin/tsc --noEmit` and focused ESLint over the changed dashboard/service/repository/DTO/script files also passed.
+- Unconfigured overviews now always return `title: '工作台'`; `DashboardOverviewDto` inherits the required runtime title field.
+- Each READY widget DTO now exposes concrete metric, distribution, trend, leaderboard, and record-list data/point/row/column schemas. There was no existing DTO metadata test harness, so API typecheck is the local verification; generated OpenAPI contracts remain deliberately out of scope.
+- `AuditService` is required by `PrismaDashboardRepository`. Repository tests inject a fake and verify save/publish audit metadata and audit-rejection propagation inside the tenant transaction.
+- CodeGraph confirmed the old repository configuration/save/aggregate methods and `dashboard-configuration` parser had no active callers outside their own obsolete tests. They and their old configuration/overview types were removed. Legacy JSON support remains via `migrateLegacyDashboard` and `DashboardEngine`.

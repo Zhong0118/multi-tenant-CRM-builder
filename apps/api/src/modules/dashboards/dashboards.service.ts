@@ -70,6 +70,7 @@ export type DashboardOverview =
   | ({
       state: 'UNCONFIGURED';
       role: TenantContext['role'];
+      title: '工作台';
       widgets: [];
     } & Pick<DashboardRuntimeResult, 'period'>)
   | ({
@@ -175,7 +176,13 @@ export class DashboardsService {
     const period = dashboardPeriod(input);
     const publication = await this.repository.getActivePublication(context);
     if (!publication) {
-      return { state: 'UNCONFIGURED', role: context.role, period, widgets: [] };
+      return {
+        state: 'UNCONFIGURED',
+        role: context.role,
+        title: '工作台',
+        period,
+        widgets: [],
+      };
     }
     const catalog = await this.repository.listPublishedObjects(context);
     const result = await this.engine.evaluate({

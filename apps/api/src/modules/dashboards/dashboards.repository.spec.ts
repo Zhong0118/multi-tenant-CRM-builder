@@ -1,6 +1,7 @@
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
 import type { DashboardQueryPlan } from './dashboard-engine';
+import type { PublishedDashboardDefinitionV2 } from './dashboard.types';
 import {
   PrismaDashboardQueryExecutor,
   PrismaDashboardRepository,
@@ -53,31 +54,27 @@ const context: TenantContext = {
 };
 
 describe('PrismaDashboardRepository persistence boundaries', () => {
+  it('does not silently save when its required audit dependency is absent', async () => {
+    const transaction = draftTransaction();
+    const repository = new PrismaDashboardRepository(
+      runner(transaction),
+      undefined as never,
+    );
+
+    await expect(
+      repository.saveDraft(context, 0, {
+        schemaVersion: 2,
+        title: '工作台',
+        widgets: [],
+      }),
+    ).rejects.toThrow();
+  });
+
   it('takes a tenant-scoped advisory lock before checking an optional definition', async () => {
     const queries: string[] = [];
-    const transaction = {
-      $queryRaw: jest.fn((strings: TemplateStringsArray) => {
-        const query = strings.join('?');
-        queries.push(query);
-        return Promise.resolve([]);
-      }),
-      tenantDashboardConfiguration: {
-        create: jest.fn().mockResolvedValue({
-          tenantId: 'tenant-1',
-          draftVersion: 1,
-          draftConfiguration: {
-            schemaVersion: 2,
-            title: '工作台',
-            widgets: [],
-          },
-          activePublicationId: null,
-          sourceTemplateVersionId: null,
-          createdAt: new Date('2026-09-01T00:00:00.000Z'),
-          updatedAt: new Date('2026-09-01T00:00:00.000Z'),
-        }),
-      },
-    };
-    const repository = fixture(transaction);
+    const transaction = draftTransaction(queries);
+    const audit = auditFake();
+    const repository = fixture(transaction, audit);
 
     await expect(
       repository.saveDraft(context, 0, {
@@ -94,6 +91,56 @@ describe('PrismaDashboardRepository persistence boundaries', () => {
     expect(queries[1]).toMatch(
       /FROM tenant_dashboard_configurations[\s\S]*FOR UPDATE/,
     );
+    expect(audit.append.mock.calls).toContainEqual([
+      transaction,
+      expect.objectContaining({
+        tenantId: 'tenant-1',
+        actorId: 'user-1',
+        action: 'dashboard.draft_saved',
+        after: { draftVersion: 1, widgetCount: 0 },
+        requestId: 'req_unknown',
+      }),
+    ]);
+  });
+
+  it('records publication audit metadata in the publication transaction', async () => {
+    const transaction = publicationTransaction();
+    const audit = auditFake();
+    const repository = fixture(transaction, audit);
+
+    await expect(
+      repository.publishDraft(context, 1, compiledPublication(), 'member-1', {
+        requestId: 'req-dashboard',
+        ip: '127.0.0.1',
+      }),
+    ).resolves.toMatchObject({ number: 2, sourceDraftVersion: 1 });
+
+    expect(audit.append.mock.calls).toContainEqual([
+      transaction,
+      expect.objectContaining({
+        tenantId: 'tenant-1',
+        actorId: 'user-1',
+        action: 'dashboard.published',
+        after: { draftVersion: 1, publicationNumber: 2, widgetCount: 1 },
+        requestId: 'req-dashboard',
+        ip: '127.0.0.1',
+      }),
+    ]);
+  });
+
+  it('propagates audit rejection instead of reporting a saved draft', async () => {
+    const audit = {
+      append: jest.fn().mockRejectedValue(new Error('audit unavailable')),
+    };
+    const repository = fixture(draftTransaction(), audit);
+
+    await expect(
+      repository.saveDraft(context, 0, {
+        schemaVersion: 2,
+        title: '工作台',
+        widgets: [],
+      }),
+    ).rejects.toThrow('audit unavailable');
   });
 
   it('returns legacy publication JSON behind a truthful discriminator', async () => {
@@ -386,8 +433,72 @@ describe('PrismaDashboardQueryExecutor', () => {
   });
 });
 
-function fixture(transaction: object) {
-  return new PrismaDashboardRepository(runner(transaction));
+function fixture(
+  transaction: object,
+  audit: { append: jest.Mock } = auditFake(),
+) {
+  return new PrismaDashboardRepository(runner(transaction), audit as never);
+}
+
+function auditFake(): { append: jest.Mock } {
+  return { append: jest.fn().mockResolvedValue(undefined) };
+}
+
+function draftTransaction(queries: string[] = []) {
+  return {
+    $queryRaw: jest.fn((strings: TemplateStringsArray) => {
+      const query = strings.join('?');
+      queries.push(query);
+      return Promise.resolve([]);
+    }),
+    tenantDashboardConfiguration: {
+      create: jest.fn().mockResolvedValue({
+        tenantId: 'tenant-1',
+        draftVersion: 1,
+        draftConfiguration: { schemaVersion: 2, title: '工作台', widgets: [] },
+        activePublicationId: null,
+        sourceTemplateVersionId: null,
+        createdAt: new Date('2026-09-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-09-01T00:00:00.000Z'),
+      }),
+    },
+  };
+}
+
+function publicationTransaction() {
+  let queryCount = 0;
+  return {
+    $queryRaw: jest.fn(() => {
+      queryCount += 1;
+      if (queryCount === 1) return Promise.resolve([]);
+      if (queryCount === 2) return Promise.resolve([{ draftVersion: 1 }]);
+      return Promise.resolve([{ number: 2 }]);
+    }),
+    tenantDashboardPublication: {
+      create: jest.fn().mockResolvedValue({
+        id: 'publication-2',
+        publicationNo: 2,
+        sourceDraftVersion: 1,
+        configuration: {
+          kind: 'COMPILED_V2',
+          raw: { schemaVersion: 2, title: '工作台', widgets: [] },
+        },
+        publishedByMemberId: 'member-1',
+        publishedAt: new Date('2026-09-01T00:00:00.000Z'),
+      }),
+    },
+    tenantDashboardConfiguration: { update: jest.fn().mockResolvedValue({}) },
+  };
+}
+
+function compiledPublication(): PublishedDashboardDefinitionV2 {
+  return {
+    schemaVersion: 2,
+    title: '工作台',
+    widgets: [
+      { id: 'metric' },
+    ] as unknown as PublishedDashboardDefinitionV2['widgets'],
+  };
 }
 
 function runner(transaction: object) {
