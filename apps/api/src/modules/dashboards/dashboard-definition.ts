@@ -306,7 +306,7 @@ function parseMetric(value: unknown): DashboardMetricWidgetDraft {
             'NUMBER',
             'MONEY',
             'PERCENT',
-          ]),
+          ] as const),
         }),
   };
 }
@@ -419,10 +419,10 @@ const baseKeys = [
   'filters',
 ];
 
-function parseBase(
+function parseBase<T extends DashboardWidgetBase['type']>(
   root: Record<string, unknown>,
-  type: DashboardWidgetBase['type'],
-): DashboardWidgetBase {
+  type: T,
+): Omit<DashboardWidgetBase, 'type'> & { type: T } {
   return {
     id: text(root.id),
     type,
@@ -478,7 +478,8 @@ function validateFilters(
     }
     if (
       (field.type === 'SINGLE_SELECT' || field.type === 'MULTI_SELECT') &&
-      Array.isArray(filter.value)
+      (filter.operator === 'IN' || filter.operator === 'NOT_IN') &&
+      isStringArray(filter.value)
     ) {
       validateOptionKeys(filter.value, field, `${filterPath}.value`, issues);
     }
@@ -659,7 +660,11 @@ function compileWidget(
   }
   if (widget.type === 'TREND')
     result.dateField = publishedField(findField(object, widget.dateFieldKey)!);
-  if (widget.type === 'LEADERBOARD' && widget.memberSource === 'FIELD')
+  if (
+    widget.type === 'LEADERBOARD' &&
+    widget.memberSource === 'FIELD' &&
+    widget.memberFieldKey
+  )
     result.memberField = publishedField(
       findField(object, widget.memberFieldKey)!,
     );
@@ -858,6 +863,11 @@ function textArray(value: unknown): string[] {
   const values = array(value);
   if (values.some((entry) => typeof entry !== 'string')) invalid();
   return values as string[];
+}
+function isStringArray(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) && value.every((entry) => typeof entry === 'string')
+  );
 }
 function integer(value: unknown): number {
   if (!Number.isInteger(value)) invalid();
