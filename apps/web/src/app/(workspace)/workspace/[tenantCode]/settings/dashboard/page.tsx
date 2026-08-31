@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 
-import { DashboardConfigurationForm } from "@/features/dashboard/dashboard-configuration-form";
+import { DashboardBuilder } from "@/features/dashboard/dashboard-builder";
 import { loadDashboardConfiguration } from "@/features/dashboard/dashboard-server";
 import { requireWorkspace } from "@/lib/auth/require-workspace";
 
@@ -17,7 +17,7 @@ export default async function WorkspaceDashboardSettingsPage({
 
   const configuration = await loadDashboardConfiguration(tenantCode);
   return (
-    <DashboardConfigurationForm
+    <DashboardBuilder
       tenantCode={tenantCode}
       initial={configuration}
     />

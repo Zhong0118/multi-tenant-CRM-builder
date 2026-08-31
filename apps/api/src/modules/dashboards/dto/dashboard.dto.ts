@@ -26,9 +26,9 @@ export class DashboardDraftDto {
   @ApiProperty({ minimum: 1 }) draftVersion!: number;
   @ApiProperty({ type: 'object', additionalProperties: true })
   draftConfiguration!: object;
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   activePublicationId!: string | null;
-  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   sourceTemplateVersionId!: string | null;
   @ApiProperty({ format: 'date-time' }) updatedAt!: string;
 }
@@ -185,9 +185,9 @@ export class DashboardRecordListRowDto {
   @ApiProperty({ format: 'uuid' }) id!: string;
   @ApiProperty() recordNo!: string;
   @ApiProperty() title!: string;
-  @ApiProperty({ format: 'uuid', nullable: true }) ownerMemberId!:
+  @ApiProperty({ type: String, format: 'uuid', nullable: true }) ownerMemberId!:
     string | null;
-  @ApiProperty({ nullable: true }) ownerName!: string | null;
+  @ApiProperty({ type: String, nullable: true }) ownerName!: string | null;
   @ApiProperty({ format: 'date-time' }) updatedAt!: string;
   @ApiProperty({ type: 'object', additionalProperties: true })
   values!: Record<string, unknown>;

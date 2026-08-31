@@ -8,7 +8,9 @@
             "type": "boolean"
           }
         },
-        "required": ["accepted"],
+        "required": [
+          "accepted"
+        ],
         "type": "object"
       },
       "ApiErrorResponseDto": {
@@ -35,7 +37,13 @@
             "type": "number"
           }
         },
-        "required": ["code", "message", "fieldErrors", "requestId", "status"],
+        "required": [
+          "code",
+          "message",
+          "fieldErrors",
+          "requestId",
+          "status"
+        ],
         "type": "object"
       },
       "ApplyBusinessTemplateDto": {
@@ -49,7 +57,10 @@
             "type": "string"
           }
         },
-        "required": ["tenantId", "templateVersionId"],
+        "required": [
+          "tenantId",
+          "templateVersionId"
+        ],
         "type": "object"
       },
       "AuthenticatedResponseDto": {
@@ -62,7 +73,10 @@
             "$ref": "#/components/schemas/UserResponseDto"
           }
         },
-        "required": ["accepted", "user"],
+        "required": [
+          "accepted",
+          "user"
+        ],
         "type": "object"
       },
       "BusinessTemplateActiveVersionResponseDto": {
@@ -84,11 +98,20 @@
             "type": "number"
           }
         },
-        "required": ["id", "versionNo", "sourceDraftVersion", "publishedAt"],
+        "required": [
+          "id",
+          "versionNo",
+          "sourceDraftVersion",
+          "publishedAt"
+        ],
         "type": "object"
       },
       "BusinessTemplateConfigurationDto": {
         "properties": {
+          "dashboard": {
+            "additionalProperties": true,
+            "type": "object"
+          },
           "objects": {
             "items": {
               "$ref": "#/components/schemas/TemplateObjectDraftDto"
@@ -96,15 +119,24 @@
             "type": "array"
           },
           "schemaVersion": {
-            "enum": [1],
+            "enum": [
+              1
+            ],
             "type": "number"
           }
         },
-        "required": ["schemaVersion", "objects"],
+        "required": [
+          "schemaVersion",
+          "objects"
+        ],
         "type": "object"
       },
       "BusinessTemplateConfigurationResponseDto": {
         "properties": {
+          "dashboard": {
+            "additionalProperties": true,
+            "type": "object"
+          },
           "objects": {
             "items": {
               "$ref": "#/components/schemas/TemplateObjectResponseDto"
@@ -112,11 +144,16 @@
             "type": "array"
           },
           "schemaVersion": {
-            "enum": [1],
+            "enum": [
+              1
+            ],
             "type": "number"
           }
         },
-        "required": ["schemaVersion", "objects"],
+        "required": [
+          "schemaVersion",
+          "objects"
+        ],
         "type": "object"
       },
       "BusinessTemplateDetailResponseDto": {
@@ -176,7 +213,12 @@
             "type": "string"
           },
           "status": {
-            "enum": ["DRAFT", "PUBLISHED", "CHANGED", "ARCHIVED"],
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "CHANGED",
+              "ARCHIVED"
+            ],
             "type": "string"
           },
           "updatedAt": {
@@ -225,7 +267,12 @@
             "type": "number"
           }
         },
-        "required": ["items", "page", "limit", "total"],
+        "required": [
+          "items",
+          "page",
+          "limit",
+          "total"
+        ],
         "type": "object"
       },
       "BusinessTemplateSummaryResponseDto": {
@@ -282,7 +329,12 @@
             "type": "string"
           },
           "status": {
-            "enum": ["DRAFT", "PUBLISHED", "CHANGED", "ARCHIVED"],
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "CHANGED",
+              "ARCHIVED"
+            ],
             "type": "string"
           },
           "updatedAt": {
@@ -335,7 +387,9 @@
             "type": "string"
           },
           "schemaVersion": {
-            "enum": [1],
+            "enum": [
+              1
+            ],
             "type": "number"
           },
           "sourceDraftVersion": {
@@ -368,11 +422,16 @@
       "ChangeMemberStatusDto": {
         "properties": {
           "status": {
-            "enum": ["ACTIVE", "DISABLED"],
+            "enum": [
+              "ACTIVE",
+              "DISABLED"
+            ],
             "type": "string"
           }
         },
-        "required": ["status"],
+        "required": [
+          "status"
+        ],
         "type": "object"
       },
       "ChangePasswordDto": {
@@ -390,7 +449,10 @@
             "type": "string"
           }
         },
-        "required": ["currentPassword", "newPassword"],
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
         "type": "object"
       },
       "ChangeTenantStatusDto": {
@@ -400,11 +462,18 @@
             "type": "string"
           },
           "status": {
-            "enum": ["DRAFT", "ACTIVE", "SUSPENDED", "CLOSED"],
+            "enum": [
+              "DRAFT",
+              "ACTIVE",
+              "SUSPENDED",
+              "CLOSED"
+            ],
             "type": "string"
           }
         },
-        "required": ["status"],
+        "required": [
+          "status"
+        ],
         "type": "object"
       },
       "CreateBusinessTemplateDto": {
@@ -424,7 +493,10 @@
             "type": "string"
           }
         },
-        "required": ["code", "name"],
+        "required": [
+          "code",
+          "name"
+        ],
         "type": "object"
       },
       "CreateFieldDefinitionDto": {
@@ -509,11 +581,17 @@
             "type": "string"
           },
           "role": {
-            "enum": ["TENANT_ADMIN", "EMPLOYEE"],
+            "enum": [
+              "TENANT_ADMIN",
+              "EMPLOYEE"
+            ],
             "type": "string"
           }
         },
-        "required": ["phone", "role"],
+        "required": [
+          "phone",
+          "role"
+        ],
         "type": "object"
       },
       "CreateObjectDefinitionDto": {
@@ -532,7 +610,10 @@
             "type": "string"
           }
         },
-        "required": ["name", "code"],
+        "required": [
+          "name",
+          "code"
+        ],
         "type": "object"
       },
       "CreatePlatformTenantDto": {
@@ -551,7 +632,11 @@
             "type": "string"
           }
         },
-        "required": ["name", "code", "firstAdminPhone"],
+        "required": [
+          "name",
+          "code",
+          "firstAdminPhone"
+        ],
         "type": "object"
       },
       "CreateRecordDto": {
@@ -566,7 +651,9 @@
             "type": "object"
           }
         },
-        "required": ["values"],
+        "required": [
+          "values"
+        ],
         "type": "object"
       },
       "CreatedInvitationResponseDto": {
@@ -576,33 +663,29 @@
             "type": "string"
           },
           "status": {
-            "enum": ["PENDING"],
+            "enum": [
+              "PENDING"
+            ],
             "type": "string"
           }
         },
-        "required": ["id", "status"],
-        "type": "object"
-      },
-      "DashboardAttentionItemDto": {
-        "properties": {
-          "count": {
-            "type": "number"
-          },
-          "href": {
-            "type": "string"
-          },
-          "key": {
-            "type": "string"
-          },
-          "label": {
-            "type": "string"
-          }
-        },
-        "required": ["key", "label", "count", "href"],
+        "required": [
+          "id",
+          "status"
+        ],
         "type": "object"
       },
       "DashboardConfigurationEnvelopeDto": {
         "properties": {
+          "activePublication": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DashboardPublicationSummaryDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
           "candidates": {
             "additionalProperties": true,
             "items": {
@@ -610,23 +693,26 @@
             },
             "type": "array"
           },
+          "draft": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DashboardDraftDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
           "issues": {
             "items": {
               "$ref": "#/components/schemas/DashboardConfigurationIssueDto"
             },
             "type": "array"
-          },
-          "record": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/DashboardConfigurationRecordDto"
-              }
-            ],
-            "nullable": true,
-            "type": "object"
           }
         },
-        "required": ["candidates", "issues"],
+        "required": [
+          "candidates",
+          "issues"
+        ],
         "type": "object"
       },
       "DashboardConfigurationIssueDto": {
@@ -641,31 +727,156 @@
             "type": "string"
           }
         },
-        "required": ["code", "path", "message"],
+        "required": [
+          "code",
+          "path",
+          "message"
+        ],
         "type": "object"
       },
-      "DashboardConfigurationRecordDto": {
+      "DashboardDistributionDataDto": {
         "properties": {
-          "configuration": {
+          "display": {
+            "enum": [
+              "FUNNEL",
+              "BAR",
+              "DONUT"
+            ],
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardDistributionPointDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "display",
+          "items"
+        ],
+        "type": "object"
+      },
+      "DashboardDistributionPointDto": {
+        "properties": {
+          "color": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "optionKey": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "optionKey",
+          "label",
+          "color",
+          "value"
+        ],
+        "type": "object"
+      },
+      "DashboardDistributionWidgetDto": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DashboardDistributionDataDto"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "number"
+          },
+          "state": {
+            "enum": [
+              "READY"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "STATUS_DISTRIBUTION"
+            ],
+            "type": "string"
+          },
+          "width": {
+            "enum": [
+              "QUARTER",
+              "HALF",
+              "FULL"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title",
+          "width",
+          "sortOrder",
+          "state",
+          "data"
+        ],
+        "type": "object"
+      },
+      "DashboardDraftDto": {
+        "properties": {
+          "activePublicationId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "draftConfiguration": {
             "additionalProperties": true,
             "type": "object"
+          },
+          "draftVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "sourceTemplateVersionId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
           },
           "updatedAt": {
             "format": "date-time",
             "type": "string"
-          },
-          "version": {
-            "type": "number"
           }
         },
-        "required": ["version", "configuration", "updatedAt"],
+        "required": [
+          "draftVersion",
+          "draftConfiguration",
+          "updatedAt"
+        ],
         "type": "object"
       },
-      "DashboardLeaderboardItemDto": {
+      "DashboardLeaderboardDataDto": {
         "properties": {
-          "activeAmount": {
-            "type": "number"
-          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardLeaderboardRowDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "DashboardLeaderboardRowDto": {
+        "properties": {
           "displayName": {
             "type": "string"
           },
@@ -673,32 +884,74 @@
             "format": "uuid",
             "type": "string"
           },
-          "wonAmount": {
-            "type": "number"
-          },
-          "wonCount": {
+          "value": {
             "type": "number"
           }
         },
         "required": [
           "memberId",
           "displayName",
-          "wonCount",
-          "wonAmount",
-          "activeAmount"
+          "value"
         ],
         "type": "object"
       },
-      "DashboardMetricDto": {
+      "DashboardLeaderboardWidgetDto": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DashboardLeaderboardDataDto"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "number"
+          },
+          "state": {
+            "enum": [
+              "READY"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "LEADERBOARD"
+            ],
+            "type": "string"
+          },
+          "width": {
+            "enum": [
+              "QUARTER",
+              "HALF",
+              "FULL"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title",
+          "width",
+          "sortOrder",
+          "state",
+          "data"
+        ],
+        "type": "object"
+      },
+      "DashboardMetricDataDto": {
         "properties": {
           "format": {
-            "enum": ["COUNT", "MONEY", "PERCENT"],
-            "type": "string"
-          },
-          "key": {
-            "type": "string"
-          },
-          "label": {
+            "enum": [
+              "NUMBER",
+              "MONEY",
+              "PERCENT"
+            ],
             "type": "string"
           },
           "value": {
@@ -706,80 +959,117 @@
             "type": "number"
           }
         },
-        "required": ["key", "label", "format"],
+        "required": [
+          "value"
+        ],
+        "type": "object"
+      },
+      "DashboardMetricWidgetDto": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DashboardMetricDataDto"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "number"
+          },
+          "state": {
+            "enum": [
+              "READY"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "METRIC"
+            ],
+            "type": "string"
+          },
+          "width": {
+            "enum": [
+              "QUARTER",
+              "HALF",
+              "FULL"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title",
+          "width",
+          "sortOrder",
+          "state",
+          "data"
+        ],
         "type": "object"
       },
       "DashboardOverviewDto": {
         "properties": {
-          "attention": {
-            "items": {
-              "$ref": "#/components/schemas/DashboardAttentionItemDto"
-            },
-            "type": "array"
-          },
-          "configuration": {
-            "additionalProperties": true,
-            "type": "object"
-          },
-          "issues": {
-            "items": {
-              "$ref": "#/components/schemas/DashboardConfigurationIssueDto"
-            },
-            "type": "array"
-          },
-          "leaderboard": {
-            "items": {
-              "$ref": "#/components/schemas/DashboardLeaderboardItemDto"
-            },
-            "type": "array"
-          },
-          "metrics": {
-            "items": {
-              "$ref": "#/components/schemas/DashboardMetricDto"
-            },
-            "type": "array"
-          },
           "period": {
             "$ref": "#/components/schemas/DashboardPeriodDto"
           },
-          "pipeline": {
-            "items": {
-              "$ref": "#/components/schemas/DashboardPipelineItemDto"
-            },
-            "type": "array"
-          },
-          "records": {
-            "items": {
-              "$ref": "#/components/schemas/DashboardRecordItemDto"
-            },
-            "type": "array"
+          "publication": {
+            "$ref": "#/components/schemas/DashboardPublicationSummaryDto"
           },
           "role": {
-            "enum": ["TENANT_ADMIN", "EMPLOYEE"],
+            "enum": [
+              "TENANT_ADMIN",
+              "EMPLOYEE"
+            ],
             "type": "string"
           },
           "state": {
-            "enum": ["READY", "UNCONFIGURED", "NEEDS_REPAIR", "UNAVAILABLE"],
+            "enum": [
+              "READY",
+              "UNCONFIGURED"
+            ],
             "type": "string"
           },
-          "trend": {
+          "title": {
+            "type": "string"
+          },
+          "widgets": {
             "items": {
-              "$ref": "#/components/schemas/DashboardTrendItemDto"
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/DashboardMetricWidgetDto"
+                },
+                {
+                  "$ref": "#/components/schemas/DashboardDistributionWidgetDto"
+                },
+                {
+                  "$ref": "#/components/schemas/DashboardTrendWidgetDto"
+                },
+                {
+                  "$ref": "#/components/schemas/DashboardLeaderboardWidgetDto"
+                },
+                {
+                  "$ref": "#/components/schemas/DashboardRecordListWidgetDto"
+                },
+                {
+                  "$ref": "#/components/schemas/DashboardUnavailableWidgetDto"
+                }
+              ]
             },
             "type": "array"
           }
         },
         "required": [
-          "state",
-          "role",
+          "title",
           "period",
-          "issues",
-          "metrics",
-          "pipeline",
-          "trend",
-          "attention",
-          "leaderboard",
-          "records"
+          "widgets",
+          "state",
+          "role"
         ],
         "type": "object"
       },
@@ -797,40 +1087,96 @@
             "type": "string"
           }
         },
-        "required": ["from", "to", "timezone"],
+        "required": [
+          "from",
+          "to",
+          "timezone"
+        ],
         "type": "object"
       },
-      "DashboardPipelineItemDto": {
+      "DashboardPublicationSummaryDto": {
         "properties": {
-          "amount": {
-            "type": "number"
-          },
-          "color": {
+          "id": {
+            "format": "uuid",
             "type": "string"
           },
-          "count": {
+          "number": {
+            "minimum": 1,
             "type": "number"
+          },
+          "publishedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "sourceDraftVersion": {
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "sourceDraftVersion",
+          "publishedAt"
+        ],
+        "type": "object"
+      },
+      "DashboardPublishedFieldDto": {
+        "properties": {
+          "fieldKey": {
+            "type": "string"
           },
           "label": {
             "type": "string"
           },
-          "optionKey": {
+          "type": {
+            "enum": [
+              "TEXT",
+              "TEXTAREA",
+              "PHONE",
+              "EMAIL",
+              "NUMBER",
+              "MONEY",
+              "DATE",
+              "DATETIME",
+              "SINGLE_SELECT",
+              "MULTI_SELECT",
+              "MEMBER",
+              "BOOLEAN"
+            ],
             "type": "string"
           }
         },
-        "required": ["optionKey", "label", "color", "count", "amount"],
+        "required": [
+          "fieldKey",
+          "label",
+          "type"
+        ],
         "type": "object"
       },
-      "DashboardRecordItemDto": {
+      "DashboardRecordListDataDto": {
         "properties": {
-          "amount": {
-            "nullable": true,
-            "type": "number"
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardPublishedFieldDto"
+            },
+            "type": "array"
           },
-          "dueAt": {
-            "nullable": true,
-            "type": "string"
-          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardRecordListRowDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "fields",
+          "items"
+        ],
+        "type": "object"
+      },
+      "DashboardRecordListRowDto": {
+        "properties": {
           "id": {
             "format": "uuid",
             "type": "string"
@@ -844,8 +1190,7 @@
             "nullable": true,
             "type": "string"
           },
-          "stageKey": {
-            "nullable": true,
+          "recordNo": {
             "type": "string"
           },
           "title": {
@@ -854,24 +1199,248 @@
           "updatedAt": {
             "format": "date-time",
             "type": "string"
+          },
+          "values": {
+            "additionalProperties": true,
+            "type": "object"
           }
         },
-        "required": ["id", "title", "updatedAt"],
+        "required": [
+          "id",
+          "recordNo",
+          "title",
+          "ownerMemberId",
+          "ownerName",
+          "updatedAt",
+          "values"
+        ],
         "type": "object"
       },
-      "DashboardTrendItemDto": {
+      "DashboardRecordListWidgetDto": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DashboardRecordListDataDto"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "number"
+          },
+          "state": {
+            "enum": [
+              "READY"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "RECORD_LIST"
+            ],
+            "type": "string"
+          },
+          "width": {
+            "enum": [
+              "QUARTER",
+              "HALF",
+              "FULL"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title",
+          "width",
+          "sortOrder",
+          "state",
+          "data"
+        ],
+        "type": "object"
+      },
+      "DashboardRuntimeDto": {
+        "properties": {
+          "period": {
+            "$ref": "#/components/schemas/DashboardPeriodDto"
+          },
+          "title": {
+            "type": "string"
+          },
+          "widgets": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/DashboardMetricWidgetDto"
+                },
+                {
+                  "$ref": "#/components/schemas/DashboardDistributionWidgetDto"
+                },
+                {
+                  "$ref": "#/components/schemas/DashboardTrendWidgetDto"
+                },
+                {
+                  "$ref": "#/components/schemas/DashboardLeaderboardWidgetDto"
+                },
+                {
+                  "$ref": "#/components/schemas/DashboardRecordListWidgetDto"
+                },
+                {
+                  "$ref": "#/components/schemas/DashboardUnavailableWidgetDto"
+                }
+              ]
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "title",
+          "period",
+          "widgets"
+        ],
+        "type": "object"
+      },
+      "DashboardTrendDataDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardTrendPointDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "DashboardTrendPointDto": {
         "properties": {
           "date": {
             "type": "string"
           },
-          "wonAmount": {
-            "type": "number"
-          },
-          "wonCount": {
+          "value": {
             "type": "number"
           }
         },
-        "required": ["date", "wonCount", "wonAmount"],
+        "required": [
+          "date",
+          "value"
+        ],
+        "type": "object"
+      },
+      "DashboardTrendWidgetDto": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DashboardTrendDataDto"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "number"
+          },
+          "state": {
+            "enum": [
+              "READY"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "TREND"
+            ],
+            "type": "string"
+          },
+          "width": {
+            "enum": [
+              "QUARTER",
+              "HALF",
+              "FULL"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title",
+          "width",
+          "sortOrder",
+          "state",
+          "data"
+        ],
+        "type": "object"
+      },
+      "DashboardUnavailableWidgetDto": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "AUDIENCE_EXCLUDED",
+              "OBJECT_UNAVAILABLE",
+              "OBJECT_ACCESS_DENIED",
+              "FIELD_HIDDEN",
+              "QUERY_FAILED"
+            ],
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "number"
+          },
+          "state": {
+            "enum": [
+              "UNAVAILABLE"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "METRIC",
+              "STATUS_DISTRIBUTION",
+              "TREND",
+              "LEADERBOARD",
+              "RECORD_LIST"
+            ],
+            "type": "string"
+          },
+          "width": {
+            "enum": [
+              "QUARTER",
+              "HALF",
+              "FULL"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title",
+          "width",
+          "sortOrder",
+          "state"
+        ],
         "type": "object"
       },
       "DefaultViewDto": {
@@ -893,21 +1462,36 @@
             "$ref": "#/components/schemas/DefaultViewSortDto"
           }
         },
-        "required": ["expectedVersion", "name", "columnFieldKeys", "sort"],
+        "required": [
+          "expectedVersion",
+          "name",
+          "columnFieldKeys",
+          "sort"
+        ],
         "type": "object"
       },
       "DefaultViewSortDto": {
         "properties": {
           "direction": {
-            "enum": ["asc", "desc"],
+            "enum": [
+              "asc",
+              "desc"
+            ],
             "type": "string"
           },
           "field": {
-            "enum": ["updatedAt", "createdAt", "recordNo"],
+            "enum": [
+              "updatedAt",
+              "createdAt",
+              "recordNo"
+            ],
             "type": "string"
           }
         },
-        "required": ["field", "direction"],
+        "required": [
+          "field",
+          "direction"
+        ],
         "type": "object"
       },
       "DeleteRecordDto": {
@@ -917,17 +1501,23 @@
             "type": "number"
           }
         },
-        "required": ["version"],
+        "required": [
+          "version"
+        ],
         "type": "object"
       },
       "DeleteRecordResponseDto": {
         "properties": {
           "accepted": {
-            "enum": [true],
+            "enum": [
+              true
+            ],
             "type": "boolean"
           }
         },
-        "required": ["accepted"],
+        "required": [
+          "accepted"
+        ],
         "type": "object"
       },
       "EmployeePermissionsDto": {
@@ -936,7 +1526,9 @@
             "type": "boolean"
           },
           "canDelete": {
-            "enum": [false],
+            "enum": [
+              false
+            ],
             "type": "boolean"
           },
           "canRead": {
@@ -951,16 +1543,28 @@
           },
           "fields": {
             "additionalProperties": {
-              "enum": ["EDIT", "READ_ONLY", "HIDDEN"]
+              "enum": [
+                "EDIT",
+                "READ_ONLY",
+                "HIDDEN"
+              ]
             },
             "type": "object"
           },
           "readScope": {
-            "enum": ["ALL", "OWN", "NONE"],
+            "enum": [
+              "ALL",
+              "OWN",
+              "NONE"
+            ],
             "type": "string"
           },
           "updateScope": {
-            "enum": ["ALL", "OWN", "NONE"],
+            "enum": [
+              "ALL",
+              "OWN",
+              "NONE"
+            ],
             "type": "string"
           }
         },
@@ -983,7 +1587,9 @@
             "type": "number"
           }
         },
-        "required": ["expectedVersion"],
+        "required": [
+          "expectedVersion"
+        ],
         "type": "object"
       },
       "ExpectedVersionDto": {
@@ -993,7 +1599,9 @@
             "type": "number"
           }
         },
-        "required": ["expectedVersion"],
+        "required": [
+          "expectedVersion"
+        ],
         "type": "object"
       },
       "FieldConfigDto": {
@@ -1029,7 +1637,10 @@
             "type": "array"
           }
         },
-        "required": ["expectedVersion", "fieldIds"],
+        "required": [
+          "expectedVersion",
+          "fieldIds"
+        ],
         "type": "object"
       },
       "FieldValidationDto": {
@@ -1072,11 +1683,19 @@
             "type": "string"
           },
           "role": {
-            "enum": ["TENANT_ADMIN"],
+            "enum": [
+              "TENANT_ADMIN"
+            ],
             "type": "string"
           },
           "status": {
-            "enum": ["PENDING", "ACCEPTED", "DECLINED", "REVOKED", "EXPIRED"],
+            "enum": [
+              "PENDING",
+              "ACCEPTED",
+              "DECLINED",
+              "REVOKED",
+              "EXPIRED"
+            ],
             "type": "string"
           },
           "targetPhone": {
@@ -1084,7 +1703,13 @@
             "type": "string"
           }
         },
-        "required": ["id", "targetPhone", "role", "status", "expiresAt"],
+        "required": [
+          "id",
+          "targetPhone",
+          "role",
+          "status",
+          "expiresAt"
+        ],
         "type": "object"
       },
       "ForgotPasswordDto": {
@@ -1099,7 +1724,10 @@
             "type": "string"
           }
         },
-        "required": ["phone", "deviceKey"],
+        "required": [
+          "phone",
+          "deviceKey"
+        ],
         "type": "object"
       },
       "InvitationActionResponseDto": {
@@ -1109,7 +1737,9 @@
             "type": "boolean"
           }
         },
-        "required": ["accepted"],
+        "required": [
+          "accepted"
+        ],
         "type": "object"
       },
       "InvitationMembershipResponseDto": {
@@ -1119,11 +1749,17 @@
             "type": "string"
           },
           "role": {
-            "enum": ["TENANT_ADMIN", "EMPLOYEE"],
+            "enum": [
+              "TENANT_ADMIN",
+              "EMPLOYEE"
+            ],
             "type": "string"
           },
           "status": {
-            "enum": ["ACTIVE", "DISABLED"],
+            "enum": [
+              "ACTIVE",
+              "DISABLED"
+            ],
             "type": "string"
           },
           "tenantId": {
@@ -1135,7 +1771,13 @@
             "type": "string"
           }
         },
-        "required": ["id", "tenantId", "userId", "role", "status"],
+        "required": [
+          "id",
+          "tenantId",
+          "userId",
+          "role",
+          "status"
+        ],
         "type": "object"
       },
       "InvitationPageResponseDto": {
@@ -1151,7 +1793,9 @@
             "type": "string"
           }
         },
-        "required": ["items"],
+        "required": [
+          "items"
+        ],
         "type": "object"
       },
       "InvitationResentResponseDto": {
@@ -1165,7 +1809,10 @@
             "type": "string"
           }
         },
-        "required": ["accepted", "expiresAt"],
+        "required": [
+          "accepted",
+          "expiresAt"
+        ],
         "type": "object"
       },
       "LoginDto": {
@@ -1189,7 +1836,12 @@
             "type": "string"
           }
         },
-        "required": ["phone", "password", "deviceKey", "deviceSummary"],
+        "required": [
+          "phone",
+          "password",
+          "deviceKey",
+          "deviceSummary"
+        ],
         "type": "object"
       },
       "MemberObjectAccessDto": {
@@ -1204,19 +1856,32 @@
             "type": "boolean"
           },
           "mode": {
-            "enum": ["INHERIT", "OVERRIDE"],
+            "enum": [
+              "INHERIT",
+              "OVERRIDE"
+            ],
             "type": "string"
           },
           "readScope": {
-            "enum": ["ALL", "OWN", "NONE"],
+            "enum": [
+              "ALL",
+              "OWN",
+              "NONE"
+            ],
             "type": "string"
           },
           "updateScope": {
-            "enum": ["ALL", "OWN", "NONE"],
+            "enum": [
+              "ALL",
+              "OWN",
+              "NONE"
+            ],
             "type": "string"
           }
         },
-        "required": ["mode"],
+        "required": [
+          "mode"
+        ],
         "type": "object"
       },
       "MemberObjectAccessResponseDto": {
@@ -1228,7 +1893,10 @@
             "$ref": "#/components/schemas/MemberObjectPolicyResponseDto"
           },
           "mode": {
-            "enum": ["INHERIT", "OVERRIDE"],
+            "enum": [
+              "INHERIT",
+              "OVERRIDE"
+            ],
             "type": "string"
           },
           "objectCode": {
@@ -1268,7 +1936,9 @@
             "type": "boolean"
           },
           "canDelete": {
-            "enum": [false],
+            "enum": [
+              false
+            ],
             "type": "boolean"
           },
           "canRead": {
@@ -1278,11 +1948,19 @@
             "type": "boolean"
           },
           "readScope": {
-            "enum": ["ALL", "OWN", "NONE"],
+            "enum": [
+              "ALL",
+              "OWN",
+              "NONE"
+            ],
             "type": "string"
           },
           "updateScope": {
-            "enum": ["ALL", "OWN", "NONE"],
+            "enum": [
+              "ALL",
+              "OWN",
+              "NONE"
+            ],
             "type": "string"
           }
         },
@@ -1303,7 +1981,9 @@
             "type": "boolean"
           }
         },
-        "required": ["accepted"],
+        "required": [
+          "accepted"
+        ],
         "type": "object"
       },
       "ObjectDraftDefaultViewResponseDto": {
@@ -1321,7 +2001,11 @@
             "$ref": "#/components/schemas/DefaultViewSortDto"
           }
         },
-        "required": ["name", "columnFieldKeys", "sort"],
+        "required": [
+          "name",
+          "columnFieldKeys",
+          "sort"
+        ],
         "type": "object"
       },
       "ObjectDraftEmployeeAccessResponseDto": {
@@ -1330,7 +2014,9 @@
             "type": "boolean"
           },
           "canDelete": {
-            "enum": [false],
+            "enum": [
+              false
+            ],
             "type": "boolean"
           },
           "canRead": {
@@ -1340,11 +2026,19 @@
             "type": "boolean"
           },
           "readScope": {
-            "enum": ["ALL", "OWN", "NONE"],
+            "enum": [
+              "ALL",
+              "OWN",
+              "NONE"
+            ],
             "type": "string"
           },
           "updateScope": {
-            "enum": ["ALL", "OWN", "NONE"],
+            "enum": [
+              "ALL",
+              "OWN",
+              "NONE"
+            ],
             "type": "string"
           }
         },
@@ -1387,7 +2081,11 @@
             ]
           },
           "employeeAccess": {
-            "enum": ["EDIT", "READ_ONLY", "HIDDEN"],
+            "enum": [
+              "EDIT",
+              "READ_ONLY",
+              "HIDDEN"
+            ],
             "type": "string"
           },
           "fieldKey": {
@@ -1428,7 +2126,10 @@
             "type": "number"
           },
           "status": {
-            "enum": ["ACTIVE", "INACTIVE"],
+            "enum": [
+              "ACTIVE",
+              "INACTIVE"
+            ],
             "type": "string"
           },
           "type": {
@@ -1506,7 +2207,11 @@
             "type": "number"
           },
           "status": {
-            "enum": ["DRAFT", "ACTIVE", "ARCHIVED"],
+            "enum": [
+              "DRAFT",
+              "ACTIVE",
+              "ARCHIVED"
+            ],
             "type": "string"
           },
           "titleFieldKey": {
@@ -1589,7 +2294,9 @@
             "type": "array"
           }
         },
-        "required": ["items"],
+        "required": [
+          "items"
+        ],
         "type": "object"
       },
       "ObjectOrderItemDto": {
@@ -1603,7 +2310,10 @@
             "type": "string"
           }
         },
-        "required": ["expectedVersion", "objectId"],
+        "required": [
+          "expectedVersion",
+          "objectId"
+        ],
         "type": "object"
       },
       "ObjectPublicationResponseDto": {
@@ -1653,11 +2363,20 @@
             "type": "string"
           },
           "role": {
-            "enum": ["TENANT_ADMIN", "EMPLOYEE"],
+            "enum": [
+              "TENANT_ADMIN",
+              "EMPLOYEE"
+            ],
             "type": "string"
           },
           "status": {
-            "enum": ["PENDING", "ACCEPTED", "DECLINED", "REVOKED", "EXPIRED"],
+            "enum": [
+              "PENDING",
+              "ACCEPTED",
+              "DECLINED",
+              "REVOKED",
+              "EXPIRED"
+            ],
             "type": "string"
           },
           "targetPhone": {
@@ -1704,7 +2423,11 @@
             "type": "string"
           },
           "actorType": {
-            "enum": ["USER", "SYSTEM", "INTEGRATION"],
+            "enum": [
+              "USER",
+              "SYSTEM",
+              "INTEGRATION"
+            ],
             "type": "string"
           },
           "after": {
@@ -1786,7 +2509,12 @@
             "type": "number"
           }
         },
-        "required": ["items", "page", "limit", "total"],
+        "required": [
+          "items",
+          "page",
+          "limit",
+          "total"
+        ],
         "type": "object"
       },
       "PlatformOperationItemDto": {
@@ -1807,7 +2535,9 @@
             "type": "string"
           },
           "kind": {
-            "enum": ["TEMPLATE_APPLICATION"],
+            "enum": [
+              "TEMPLATE_APPLICATION"
+            ],
             "type": "string"
           },
           "objectCount": {
@@ -1815,7 +2545,9 @@
             "type": "number"
           },
           "status": {
-            "enum": ["SUCCEEDED"],
+            "enum": [
+              "SUCCEEDED"
+            ],
             "type": "string"
           },
           "templateId": {
@@ -1879,7 +2611,12 @@
             "type": "number"
           }
         },
-        "required": ["items", "page", "limit", "total"],
+        "required": [
+          "items",
+          "page",
+          "limit",
+          "total"
+        ],
         "type": "object"
       },
       "PlatformTenantPageResponseDto": {
@@ -1904,7 +2641,12 @@
             "type": "number"
           }
         },
-        "required": ["items", "page", "limit", "total"],
+        "required": [
+          "items",
+          "page",
+          "limit",
+          "total"
+        ],
         "type": "object"
       },
       "PlatformTenantResponseDto": {
@@ -1938,7 +2680,12 @@
             "type": "string"
           },
           "status": {
-            "enum": ["DRAFT", "ACTIVE", "SUSPENDED", "CLOSED"],
+            "enum": [
+              "DRAFT",
+              "ACTIVE",
+              "SUSPENDED",
+              "CLOSED"
+            ],
             "type": "string"
           },
           "timezone": {
@@ -1949,7 +2696,13 @@
             "type": "string"
           }
         },
-        "required": ["id", "name", "code", "status", "activeAdminCount"],
+        "required": [
+          "id",
+          "name",
+          "code",
+          "status",
+          "activeAdminCount"
+        ],
         "type": "object"
       },
       "PlatformTenantSummaryDto": {
@@ -1975,7 +2728,29 @@
             "type": "number"
           }
         },
-        "required": ["total", "draft", "active", "suspended", "closed"],
+        "required": [
+          "total",
+          "draft",
+          "active",
+          "suspended",
+          "closed"
+        ],
+        "type": "object"
+      },
+      "PreviewDashboardDto": {
+        "properties": {
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "period": {
+            "$ref": "#/components/schemas/DashboardPeriodDto"
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "period"
+        ],
         "type": "object"
       },
       "PublicationAnalysisResponseDto": {
@@ -1999,7 +2774,11 @@
             "type": "array"
           }
         },
-        "required": ["blocking", "warnings", "changes"],
+        "required": [
+          "blocking",
+          "warnings",
+          "changes"
+        ],
         "type": "object"
       },
       "PublicationChangeResponseDto": {
@@ -2008,11 +2787,18 @@
             "type": "string"
           },
           "kind": {
-            "enum": ["ADDED", "UPDATED", "INACTIVATED"],
+            "enum": [
+              "ADDED",
+              "UPDATED",
+              "INACTIVATED"
+            ],
             "type": "string"
           }
         },
-        "required": ["kind", "fieldKey"],
+        "required": [
+          "kind",
+          "fieldKey"
+        ],
         "type": "object"
       },
       "PublicationIssueResponseDto": {
@@ -2027,13 +2813,31 @@
             "type": "string"
           }
         },
-        "required": ["code", "message"],
+        "required": [
+          "code",
+          "message"
+        ],
+        "type": "object"
+      },
+      "PublishDashboardDto": {
+        "properties": {
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": [
+          "expectedVersion"
+        ],
         "type": "object"
       },
       "PublishedFieldResponseDto": {
         "properties": {
           "access": {
-            "enum": ["EDIT", "READ_ONLY"],
+            "enum": [
+              "EDIT",
+              "READ_ONLY"
+            ],
             "type": "string"
           },
           "config": {
@@ -2174,7 +2978,12 @@
             "type": "number"
           }
         },
-        "required": ["items", "page", "limit", "total"],
+        "required": [
+          "items",
+          "page",
+          "limit",
+          "total"
+        ],
         "type": "object"
       },
       "RecordResponseDto": {
@@ -2279,7 +3088,11 @@
             "type": "string"
           }
         },
-        "required": ["phone", "code", "newPassword"],
+        "required": [
+          "phone",
+          "code",
+          "newPassword"
+        ],
         "type": "object"
       },
       "RuntimeObjectNavigationResponseDto": {
@@ -2346,18 +3159,32 @@
             "type": "string"
           },
           "key": {
-            "enum": ["database", "redis", "sms", "webOrigin"],
+            "enum": [
+              "database",
+              "redis",
+              "sms",
+              "webOrigin"
+            ],
             "type": "string"
           },
           "label": {
             "type": "string"
           },
           "status": {
-            "enum": ["READY", "DEVELOPMENT", "ACTION_REQUIRED"],
+            "enum": [
+              "READY",
+              "DEVELOPMENT",
+              "ACTION_REQUIRED"
+            ],
             "type": "string"
           }
         },
-        "required": ["key", "label", "status", "detail"],
+        "required": [
+          "key",
+          "label",
+          "status",
+          "detail"
+        ],
         "type": "object"
       },
       "RuntimeStatusDto": {
@@ -2375,7 +3202,11 @@
             "type": "array"
           }
         },
-        "required": ["environment", "services", "policies"],
+        "required": [
+          "environment",
+          "services",
+          "policies"
+        ],
         "type": "object"
       },
       "SaveBusinessTemplateDraftDto": {
@@ -2398,7 +3229,12 @@
             "type": "string"
           }
         },
-        "required": ["expectedVersion", "name", "description", "configuration"],
+        "required": [
+          "expectedVersion",
+          "name",
+          "description",
+          "configuration"
+        ],
         "type": "object"
       },
       "SaveDashboardConfigurationDto": {
@@ -2412,7 +3248,10 @@
             "type": "number"
           }
         },
-        "required": ["expectedVersion", "configuration"],
+        "required": [
+          "expectedVersion",
+          "configuration"
+        ],
         "type": "object"
       },
       "SelectOptionDto": {
@@ -2439,11 +3278,17 @@
           },
           "status": {
             "default": "ACTIVE",
-            "enum": ["ACTIVE", "INACTIVE"],
+            "enum": [
+              "ACTIVE",
+              "INACTIVE"
+            ],
             "type": "string"
           }
         },
-        "required": ["key", "label"],
+        "required": [
+          "key",
+          "label"
+        ],
         "type": "object"
       },
       "SessionPageResponseDto": {
@@ -2468,7 +3313,12 @@
             "type": "number"
           }
         },
-        "required": ["items", "page", "limit", "total"],
+        "required": [
+          "items",
+          "page",
+          "limit",
+          "total"
+        ],
         "type": "object"
       },
       "SessionResponseDto": {
@@ -2503,7 +3353,12 @@
             "type": "string"
           }
         },
-        "required": ["id", "expiresAt", "isCurrent", "createdAt"],
+        "required": [
+          "id",
+          "expiresAt",
+          "isCurrent",
+          "createdAt"
+        ],
         "type": "object"
       },
       "TemplateApplicationObjectResponseDto": {
@@ -2523,7 +3378,12 @@
             "type": "string"
           }
         },
-        "required": ["templateObjectId", "objectId", "code", "name"],
+        "required": [
+          "templateObjectId",
+          "objectId",
+          "code",
+          "name"
+        ],
         "type": "object"
       },
       "TemplateApplicationResponseDto": {
@@ -2600,7 +3460,9 @@
       "TemplateDefaultViewDto": {
         "properties": {
           "code": {
-            "enum": ["default"],
+            "enum": [
+              "default"
+            ],
             "type": "string"
           },
           "columnFieldKeys": {
@@ -2618,21 +3480,36 @@
             "$ref": "#/components/schemas/TemplateDefaultViewSortDto"
           }
         },
-        "required": ["code", "name", "columnFieldKeys", "sort"],
+        "required": [
+          "code",
+          "name",
+          "columnFieldKeys",
+          "sort"
+        ],
         "type": "object"
       },
       "TemplateDefaultViewSortDto": {
         "properties": {
           "direction": {
-            "enum": ["asc", "desc"],
+            "enum": [
+              "asc",
+              "desc"
+            ],
             "type": "string"
           },
           "field": {
-            "enum": ["updatedAt", "createdAt", "recordNo"],
+            "enum": [
+              "updatedAt",
+              "createdAt",
+              "recordNo"
+            ],
             "type": "string"
           }
         },
-        "required": ["field", "direction"],
+        "required": [
+          "field",
+          "direction"
+        ],
         "type": "object"
       },
       "TemplateEmployeeAccessDto": {
@@ -2641,7 +3518,9 @@
             "type": "boolean"
           },
           "canDelete": {
-            "enum": [false],
+            "enum": [
+              false
+            ],
             "type": "boolean"
           },
           "canRead": {
@@ -2652,16 +3531,28 @@
           },
           "fields": {
             "additionalProperties": {
-              "enum": ["EDIT", "READ_ONLY", "HIDDEN"]
+              "enum": [
+                "EDIT",
+                "READ_ONLY",
+                "HIDDEN"
+              ]
             },
             "type": "object"
           },
           "readScope": {
-            "enum": ["ALL", "OWN", "NONE"],
+            "enum": [
+              "ALL",
+              "OWN",
+              "NONE"
+            ],
             "type": "string"
           },
           "updateScope": {
-            "enum": ["ALL", "OWN", "NONE"],
+            "enum": [
+              "ALL",
+              "OWN",
+              "NONE"
+            ],
             "type": "string"
           }
         },
@@ -2726,7 +3617,10 @@
             "type": "number"
           },
           "status": {
-            "enum": ["ACTIVE", "INACTIVE"],
+            "enum": [
+              "ACTIVE",
+              "INACTIVE"
+            ],
             "type": "string"
           },
           "type": {
@@ -2837,7 +3731,10 @@
             "type": "number"
           },
           "status": {
-            "enum": ["ACTIVE", "INACTIVE"],
+            "enum": [
+              "ACTIVE",
+              "INACTIVE"
+            ],
             "type": "string"
           },
           "type": {
@@ -2931,7 +3828,10 @@
             "type": "number"
           },
           "status": {
-            "enum": ["ACTIVE", "INACTIVE"],
+            "enum": [
+              "ACTIVE",
+              "INACTIVE"
+            ],
             "type": "string"
           },
           "titleFieldKey": {
@@ -3010,7 +3910,10 @@
             "type": "number"
           },
           "status": {
-            "enum": ["ACTIVE", "INACTIVE"],
+            "enum": [
+              "ACTIVE",
+              "INACTIVE"
+            ],
             "type": "string"
           },
           "titleFieldKey": {
@@ -3074,14 +3977,21 @@
       "TemplatePublicationChangeResponseDto": {
         "properties": {
           "entity": {
-            "enum": ["OBJECT", "FIELD"],
+            "enum": [
+              "OBJECT",
+              "FIELD"
+            ],
             "type": "string"
           },
           "fieldKey": {
             "type": "string"
           },
           "kind": {
-            "enum": ["ADDED", "UPDATED", "INACTIVATED"],
+            "enum": [
+              "ADDED",
+              "UPDATED",
+              "INACTIVATED"
+            ],
             "type": "string"
           },
           "objectId": {
@@ -3089,7 +3999,11 @@
             "type": "string"
           }
         },
-        "required": ["kind", "entity", "objectId"],
+        "required": [
+          "kind",
+          "entity",
+          "objectId"
+        ],
         "type": "object"
       },
       "TemplatePublicationIssueResponseDto": {
@@ -3105,9 +4019,16 @@
           },
           "objectId": {
             "type": "string"
+          },
+          "path": {
+            "type": "string"
           }
         },
-        "required": ["code", "message", "objectId"],
+        "required": [
+          "code",
+          "message",
+          "objectId"
+        ],
         "type": "object"
       },
       "TenantBusinessConfigurationSummaryResponseDto": {
@@ -3122,7 +4043,10 @@
             "type": "object"
           },
           "blockingReason": {
-            "enum": ["TENANT_NOT_DRAFT", "TARGET_NOT_EMPTY"],
+            "enum": [
+              "TENANT_NOT_DRAFT",
+              "TARGET_NOT_EMPTY"
+            ],
             "nullable": true,
             "type": "string"
           },
@@ -3157,11 +4081,20 @@
             "type": "string"
           },
           "role": {
-            "enum": ["TENANT_ADMIN", "EMPLOYEE"],
+            "enum": [
+              "TENANT_ADMIN",
+              "EMPLOYEE"
+            ],
             "type": "string"
           },
           "status": {
-            "enum": ["PENDING", "ACCEPTED", "DECLINED", "REVOKED", "EXPIRED"],
+            "enum": [
+              "PENDING",
+              "ACCEPTED",
+              "DECLINED",
+              "REVOKED",
+              "EXPIRED"
+            ],
             "type": "string"
           },
           "targetPhone": {
@@ -3210,7 +4143,13 @@
             "type": "number"
           }
         },
-        "required": ["items", "page", "limit", "total", "activeAdminCount"],
+        "required": [
+          "items",
+          "page",
+          "limit",
+          "total",
+          "activeAdminCount"
+        ],
         "type": "object"
       },
       "TenantMemberResponseDto": {
@@ -3227,11 +4166,17 @@
             "type": "string"
           },
           "role": {
-            "enum": ["TENANT_ADMIN", "EMPLOYEE"],
+            "enum": [
+              "TENANT_ADMIN",
+              "EMPLOYEE"
+            ],
             "type": "string"
           },
           "status": {
-            "enum": ["ACTIVE", "DISABLED"],
+            "enum": [
+              "ACTIVE",
+              "DISABLED"
+            ],
             "type": "string"
           },
           "tenantId": {
@@ -3243,7 +4188,13 @@
             "type": "string"
           }
         },
-        "required": ["id", "userId", "tenantId", "role", "status"],
+        "required": [
+          "id",
+          "userId",
+          "tenantId",
+          "role",
+          "status"
+        ],
         "type": "object"
       },
       "UpdateFieldDefinitionDto": {
@@ -3287,7 +4238,10 @@
             "type": "boolean"
           },
           "status": {
-            "enum": ["ACTIVE", "INACTIVE"],
+            "enum": [
+              "ACTIVE",
+              "INACTIVE"
+            ],
             "type": "string"
           },
           "type": {
@@ -3311,7 +4265,9 @@
             "$ref": "#/components/schemas/FieldValidationDto"
           }
         },
-        "required": ["expectedVersion"],
+        "required": [
+          "expectedVersion"
+        ],
         "type": "object"
       },
       "UpdateObjectDefinitionDto": {
@@ -3338,7 +4294,9 @@
             "type": "string"
           }
         },
-        "required": ["expectedVersion"],
+        "required": [
+          "expectedVersion"
+        ],
         "type": "object"
       },
       "UpdateRecordDto": {
@@ -3357,7 +4315,9 @@
             "type": "number"
           }
         },
-        "required": ["version"],
+        "required": [
+          "version"
+        ],
         "type": "object"
       },
       "UserResponseDto": {
@@ -3377,7 +4337,12 @@
             "type": "string"
           }
         },
-        "required": ["id", "displayName", "phone", "isPlatformAdmin"],
+        "required": [
+          "id",
+          "displayName",
+          "phone",
+          "isPlatformAdmin"
+        ],
         "type": "object"
       },
       "VerificationChallengeDto": {
@@ -3391,11 +4356,18 @@
             "type": "string"
           },
           "purpose": {
-            "enum": ["REGISTER", "RESET_PASSWORD"],
+            "enum": [
+              "REGISTER",
+              "RESET_PASSWORD"
+            ],
             "type": "string"
           }
         },
-        "required": ["phone", "purpose", "deviceKey"],
+        "required": [
+          "phone",
+          "purpose",
+          "deviceKey"
+        ],
         "type": "object"
       },
       "WorkspaceSummaryResponseDto": {
@@ -3405,11 +4377,17 @@
             "type": "string"
           },
           "memberStatus": {
-            "enum": ["ACTIVE", "DISABLED"],
+            "enum": [
+              "ACTIVE",
+              "DISABLED"
+            ],
             "type": "string"
           },
           "role": {
-            "enum": ["TENANT_ADMIN", "EMPLOYEE"],
+            "enum": [
+              "TENANT_ADMIN",
+              "EMPLOYEE"
+            ],
             "type": "string"
           },
           "tenantCode": {
@@ -3423,7 +4401,12 @@
             "type": "string"
           },
           "tenantStatus": {
-            "enum": ["DRAFT", "ACTIVE", "SUSPENDED", "CLOSED"],
+            "enum": [
+              "DRAFT",
+              "ACTIVE",
+              "SUSPENDED",
+              "CLOSED"
+            ],
             "type": "string"
           }
         },
@@ -3481,7 +4464,9 @@
             "description": ""
           }
         },
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/api/v1/auth/login": {
@@ -3510,7 +4495,9 @@
             "description": ""
           }
         },
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/api/v1/auth/logout": {
@@ -3534,7 +4521,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/api/v1/auth/register": {
@@ -3563,7 +4552,9 @@
             "description": ""
           }
         },
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/api/v1/auth/reset-password": {
@@ -3592,7 +4583,9 @@
             "description": ""
           }
         },
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/api/v1/auth/verification-challenges": {
@@ -3621,7 +4614,9 @@
             "description": ""
           }
         },
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/api/v1/health": {
@@ -3643,7 +4638,9 @@
             "description": ""
           }
         },
-        "tags": ["health"]
+        "tags": [
+          "health"
+        ]
       }
     },
     "/api/v1/me": {
@@ -3667,7 +4664,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["me"]
+        "tags": [
+          "me"
+        ]
       }
     },
     "/api/v1/me/invitations": {
@@ -3694,7 +4693,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["invitations"]
+        "tags": [
+          "invitations"
+        ]
       }
     },
     "/api/v1/me/invitations/{invitationId}": {
@@ -3728,7 +4729,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["invitations"]
+        "tags": [
+          "invitations"
+        ]
       }
     },
     "/api/v1/me/invitations/{invitationId}/accept": {
@@ -3762,7 +4765,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["invitations"]
+        "tags": [
+          "invitations"
+        ]
       }
     },
     "/api/v1/me/invitations/{invitationId}/decline": {
@@ -3796,7 +4801,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["invitations"]
+        "tags": [
+          "invitations"
+        ]
       }
     },
     "/api/v1/me/password": {
@@ -3830,7 +4837,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["me"]
+        "tags": [
+          "me"
+        ]
       }
     },
     "/api/v1/me/sessions": {
@@ -3843,7 +4852,10 @@
             "required": false,
             "schema": {
               "default": "ACTIVE",
-              "enum": ["ACTIVE", "HISTORY"],
+              "enum": [
+                "ACTIVE",
+                "HISTORY"
+              ],
               "type": "string"
             }
           },
@@ -3886,7 +4898,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["me"]
+        "tags": [
+          "me"
+        ]
       }
     },
     "/api/v1/me/sessions/{sessionId}": {
@@ -3920,7 +4934,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["me"]
+        "tags": [
+          "me"
+        ]
       }
     },
     "/api/v1/me/workspaces": {
@@ -3947,7 +4963,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["memberships"]
+        "tags": [
+          "memberships"
+        ]
       }
     },
     "/api/v1/platform/audit": {
@@ -4020,7 +5038,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["platform-operations"]
+        "tags": [
+          "platform-operations"
+        ]
       }
     },
     "/api/v1/platform/business-templates": {
@@ -4074,7 +5094,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["platform-business-templates"]
+        "tags": [
+          "platform-business-templates"
+        ]
       },
       "post": {
         "operationId": "BusinessTemplatesController_create",
@@ -4106,7 +5128,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["platform-business-templates"]
+        "tags": [
+          "platform-business-templates"
+        ]
       }
     },
     "/api/v1/platform/business-templates/{templateId}": {
@@ -4140,7 +5164,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["platform-business-templates"]
+        "tags": [
+          "platform-business-templates"
+        ]
       }
     },
     "/api/v1/platform/business-templates/{templateId}/applications": {
@@ -4184,7 +5210,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["platform-business-template-applications"]
+        "tags": [
+          "platform-business-template-applications"
+        ]
       }
     },
     "/api/v1/platform/business-templates/{templateId}/draft": {
@@ -4228,7 +5256,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["platform-business-templates"]
+        "tags": [
+          "platform-business-templates"
+        ]
       }
     },
     "/api/v1/platform/business-templates/{templateId}/publication-analysis": {
@@ -4272,7 +5302,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["platform-business-templates"]
+        "tags": [
+          "platform-business-templates"
+        ]
       }
     },
     "/api/v1/platform/business-templates/{templateId}/versions": {
@@ -4309,7 +5341,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["platform-business-templates"]
+        "tags": [
+          "platform-business-templates"
+        ]
       },
       "post": {
         "operationId": "BusinessTemplatesController_publish",
@@ -4351,7 +5385,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["platform-business-templates"]
+        "tags": [
+          "platform-business-templates"
+        ]
       }
     },
     "/api/v1/platform/operations": {
@@ -4397,7 +5433,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["platform-operations"]
+        "tags": [
+          "platform-operations"
+        ]
       }
     },
     "/api/v1/platform/runtime-status": {
@@ -4421,7 +5459,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["platform-operations"]
+        "tags": [
+          "platform-operations"
+        ]
       }
     },
     "/api/v1/platform/tenants": {
@@ -4467,7 +5507,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["platform-tenants"]
+        "tags": [
+          "platform-tenants"
+        ]
       },
       "post": {
         "operationId": "TenantsController_create",
@@ -4499,7 +5541,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["platform-tenants"]
+        "tags": [
+          "platform-tenants"
+        ]
       }
     },
     "/api/v1/platform/tenants/summary": {
@@ -4523,7 +5567,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["platform-tenants"]
+        "tags": [
+          "platform-tenants"
+        ]
       }
     },
     "/api/v1/platform/tenants/{tenantId}": {
@@ -4557,7 +5603,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["platform-tenants"]
+        "tags": [
+          "platform-tenants"
+        ]
       }
     },
     "/api/v1/platform/tenants/{tenantId}/business-configuration": {
@@ -4591,7 +5639,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["platform-business-template-applications"]
+        "tags": [
+          "platform-business-template-applications"
+        ]
       }
     },
     "/api/v1/platform/tenants/{tenantId}/status": {
@@ -4635,7 +5685,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["platform-tenants"]
+        "tags": [
+          "platform-tenants"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}": {
@@ -4668,7 +5720,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["memberships"]
+        "tags": [
+          "memberships"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/dashboard/configuration": {
@@ -4701,10 +5755,12 @@
             "crm_session": []
           }
         ],
-        "tags": ["dashboards"]
+        "tags": [
+          "dashboards"
+        ]
       },
       "put": {
-        "operationId": "DashboardsController_saveConfiguration",
+        "operationId": "DashboardsController_saveDraft",
         "parameters": [
           {
             "in": "path",
@@ -4730,7 +5786,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DashboardConfigurationRecordDto"
+                  "$ref": "#/components/schemas/DashboardDraftDto"
                 }
               }
             },
@@ -4742,7 +5798,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["dashboards"]
+        "tags": [
+          "dashboards"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/dashboard/overview": {
@@ -4764,15 +5822,6 @@
             "required": false,
             "schema": {
               "format": "date-time",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "ownerMemberId",
-            "required": false,
-            "schema": {
-              "format": "uuid",
               "type": "string"
             }
           },
@@ -4813,7 +5862,99 @@
             "crm_session": []
           }
         ],
-        "tags": ["dashboards"]
+        "tags": [
+          "dashboards"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/dashboard/preview": {
+      "post": {
+        "operationId": "DashboardsController_preview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewDashboardDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardRuntimeDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": [
+          "dashboards"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/dashboard/publications": {
+      "post": {
+        "operationId": "DashboardsController_publish",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishDashboardDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardPublicationSummaryDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": [
+          "dashboards"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/invitations": {
@@ -4866,7 +6007,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["memberships"]
+        "tags": [
+          "memberships"
+        ]
       },
       "post": {
         "operationId": "MembershipsController_invite",
@@ -4907,7 +6050,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["memberships"]
+        "tags": [
+          "memberships"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/invitations/{id}/resend": {
@@ -4949,7 +6094,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["memberships"]
+        "tags": [
+          "memberships"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/invitations/{id}/revoke": {
@@ -4991,7 +6138,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["memberships"]
+        "tags": [
+          "memberships"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/members": {
@@ -5045,7 +6194,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["memberships"]
+        "tags": [
+          "memberships"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/members/{memberId}": {
@@ -5097,7 +6248,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["memberships"]
+        "tags": [
+          "memberships"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/members/{memberId}/object-access": {
@@ -5142,7 +6295,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["memberships"]
+        "tags": [
+          "memberships"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/members/{memberId}/object-access/{objectId}": {
@@ -5203,7 +6358,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["memberships"]
+        "tags": [
+          "memberships"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/object-definitions": {
@@ -5239,7 +6396,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["object-definitions"]
+        "tags": [
+          "object-definitions"
+        ]
       },
       "post": {
         "operationId": "ObjectsController_create",
@@ -5280,7 +6439,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["object-definitions"]
+        "tags": [
+          "object-definitions"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/object-definitions/order": {
@@ -5326,7 +6487,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["object-definitions"]
+        "tags": [
+          "object-definitions"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}": {
@@ -5368,7 +6531,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["object-definitions"]
+        "tags": [
+          "object-definitions"
+        ]
       },
       "patch": {
         "operationId": "ObjectsController_update",
@@ -5417,7 +6582,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["object-definitions"]
+        "tags": [
+          "object-definitions"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/archive": {
@@ -5468,7 +6635,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["object-definitions"]
+        "tags": [
+          "object-definitions"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/default-view": {
@@ -5519,7 +6688,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["object-definitions"]
+        "tags": [
+          "object-definitions"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/field-order": {
@@ -5570,7 +6741,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["object-definitions"]
+        "tags": [
+          "object-definitions"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/fields": {
@@ -5621,7 +6794,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["object-definitions"]
+        "tags": [
+          "object-definitions"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/fields/{fieldId}": {
@@ -5680,7 +6855,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["object-definitions"]
+        "tags": [
+          "object-definitions"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/permissions": {
@@ -5731,7 +6908,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["object-definitions"]
+        "tags": [
+          "object-definitions"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/publication-analysis": {
@@ -5782,7 +6961,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["object-definitions"]
+        "tags": [
+          "object-definitions"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/publications": {
@@ -5826,7 +7007,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["object-definitions"]
+        "tags": [
+          "object-definitions"
+        ]
       },
       "post": {
         "operationId": "ObjectsController_publish",
@@ -5875,7 +7058,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["object-definitions"]
+        "tags": [
+          "object-definitions"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/objects": {
@@ -5911,7 +7096,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["object-definitions"]
+        "tags": [
+          "object-definitions"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records": {
@@ -5982,7 +7169,11 @@
             "required": false,
             "schema": {
               "default": "updatedAt",
-              "enum": ["updatedAt", "createdAt", "recordNo"],
+              "enum": [
+                "updatedAt",
+                "createdAt",
+                "recordNo"
+              ],
               "type": "string"
             }
           },
@@ -5992,7 +7183,10 @@
             "required": false,
             "schema": {
               "default": "desc",
-              "enum": ["asc", "desc"],
+              "enum": [
+                "asc",
+                "desc"
+              ],
               "type": "string"
             }
           },
@@ -6022,7 +7216,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["records"]
+        "tags": [
+          "records"
+        ]
       },
       "post": {
         "operationId": "RecordsController_create",
@@ -6071,7 +7267,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["records"]
+        "tags": [
+          "records"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}": {
@@ -6130,7 +7328,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["records"]
+        "tags": [
+          "records"
+        ]
       },
       "get": {
         "operationId": "RecordsController_detail",
@@ -6178,7 +7378,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["records"]
+        "tags": [
+          "records"
+        ]
       },
       "patch": {
         "operationId": "RecordsController_update",
@@ -6235,7 +7437,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["records"]
+        "tags": [
+          "records"
+        ]
       }
     },
     "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/schema": {
@@ -6276,7 +7480,9 @@
             "crm_session": []
           }
         ],
-        "tags": ["object-definitions"]
+        "tags": [
+          "object-definitions"
+        ]
       }
     }
   },
