@@ -13,14 +13,14 @@ const context: TenantContext = {
 };
 
 describe('PrismaDashboardRepository persistence boundaries', () => {
-  it('locks the tenant before checking a definition that may not exist', async () => {
+  it('takes a tenant-scoped advisory lock before checking an optional definition', async () => {
     const queries: string[] = [];
     const transaction = {
       $queryRaw: jest.fn(
         async (strings: TemplateStringsArray, ..._values: unknown[]) => {
           const query = strings.join('?');
           queries.push(query);
-          return query.includes('FROM tenants') ? [{ id: 'tenant-1' }] : [];
+          return [];
         },
       ),
       tenantDashboardConfiguration: {
@@ -50,7 +50,9 @@ describe('PrismaDashboardRepository persistence boundaries', () => {
     ).resolves.toEqual(expect.objectContaining({ draftVersion: 1 }));
 
     expect(queries).toHaveLength(2);
-    expect(queries[0]).toMatch(/FROM tenants[\s\S]*FOR UPDATE/);
+    expect(queries[0]).toMatch(
+      /pg_advisory_xact_lock\([\s\S]*hashtext\('tenant_dashboard_configurations'\)[\s\S]*hashtext\(\?::text\)[\s\S]*\)/,
+    );
     expect(queries[1]).toMatch(
       /FROM tenant_dashboard_configurations[\s\S]*FOR UPDATE/,
     );

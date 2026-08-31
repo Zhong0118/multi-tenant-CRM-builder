@@ -429,10 +429,10 @@ async function lockDashboardDefinition(
   tenantId: string,
 ): Promise<number | undefined> {
   await transaction.$queryRaw`
-    SELECT id
-    FROM tenants
-    WHERE id = ${tenantId}::uuid
-    FOR UPDATE
+    SELECT pg_advisory_xact_lock(
+      hashtext('tenant_dashboard_configurations'),
+      hashtext(${tenantId}::text)
+    )
   `;
   const locked = await transaction.$queryRaw<Array<{ draftVersion: number }>>`
     SELECT version AS "draftVersion"
