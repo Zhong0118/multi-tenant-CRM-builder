@@ -1,0 +1,267 @@
+import type { PublishedObjectSchema } from '../objects/object-schema';
+import {
+  compileDashboardPublication,
+  migrateLegacyDashboard,
+  normalizeDashboardDraft,
+  parseDashboardDraft,
+  validateDashboardDraft,
+} from './dashboard-definition';
+
+const opportunity = {
+  publication: {
+    id: 'publication-opportunity-v7',
+    number: 7,
+    sourceDraftVersion: 4,
+    publishedAt: '2026-09-01T00:00:00.000Z',
+  },
+  object: {
+    id: 'object-opportunity',
+    code: 'opportunity',
+    name: '商机',
+    description: null,
+    titleFieldKey: 'name',
+    icon: null,
+    sortOrder: 1,
+  },
+  fields: [
+    field('name', '商机名称', 'TEXT'),
+    field('stage', '阶段', 'SINGLE_SELECT', {
+      options: [
+        { key: 'new', label: '新商机', color: 'BLUE', status: 'ACTIVE' },
+        { key: 'won', label: '已成交', color: 'GREEN', status: 'ACTIVE' },
+        { key: 'lost', label: '已失败', color: 'RED', status: 'ACTIVE' },
+      ],
+    }),
+    field('amount', '预计金额', 'MONEY'),
+    field('close_at', '成交日期', 'DATE'),
+    field('owner', '负责人', 'MEMBER'),
+  ],
+  defaultView: {
+    code: 'default',
+    name: '默认列表',
+    columnFieldKeys: ['name', 'stage', 'amount'],
+    sort: { field: 'updatedAt', direction: 'desc' },
+  },
+  employeeAccess: {
+    canCreate: true,
+    canRead: true,
+    canUpdate: true,
+    canDelete: false,
+    readScope: 'OWN',
+    updateScope: 'OWN',
+    fields: {
+      name: 'EDIT',
+      stage: 'EDIT',
+      amount: 'EDIT',
+      close_at: 'EDIT',
+      owner: 'EDIT',
+    },
+  },
+} satisfies PublishedObjectSchema;
+
+const completeDraft = {
+  schemaVersion: 2,
+  title: '销售工作台',
+  widgets: [
+    {
+      id: 'metric-total',
+      type: 'METRIC',
+      title: '商机总数',
+      audience: 'ALL',
+      objectCode: 'opportunity',
+      width: 'QUARTER',
+      sortOrder: 20,
+      filters: [],
+      aggregation: 'COUNT',
+      displayFormat: 'NUMBER',
+    },
+    {
+      id: 'pipeline',
+      type: 'STATUS_DISTRIBUTION',
+      title: '商机漏斗',
+      audience: 'ALL',
+      objectCode: 'opportunity',
+      width: 'HALF',
+      sortOrder: 10,
+      filters: [],
+      groupByFieldKey: 'stage',
+      optionKeys: ['new', 'won', 'lost'],
+      display: 'FUNNEL',
+      aggregation: 'SUM',
+      valueFieldKey: 'amount',
+    },
+    {
+      id: 'trend',
+      type: 'TREND',
+      title: '成交趋势',
+      audience: 'TENANT_ADMIN',
+      objectCode: 'opportunity',
+      width: 'HALF',
+      sortOrder: 30,
+      filters: [],
+      dateFieldKey: 'close_at',
+      granularity: 'MONTH',
+      aggregation: 'COUNT',
+    },
+    {
+      id: 'leaderboard',
+      type: 'LEADERBOARD',
+      title: '负责人排行',
+      audience: 'TENANT_ADMIN',
+      objectCode: 'opportunity',
+      width: 'HALF',
+      sortOrder: 40,
+      filters: [],
+      memberSource: 'FIELD',
+      memberFieldKey: 'owner',
+      aggregation: 'COUNT',
+      limit: 10,
+    },
+    {
+      id: 'records',
+      type: 'RECORD_LIST',
+      title: '最近更新',
+      audience: 'ALL',
+      objectCode: 'opportunity',
+      width: 'FULL',
+      sortOrder: 50,
+      filters: [],
+      fieldKeys: ['name', 'stage', 'amount'],
+      sort: { field: 'updatedAt', direction: 'DESC' },
+      limit: 8,
+    },
+  ],
+} as const;
+
+describe('dashboard definition v2', () => {
+  it('parses one structurally valid widget of every supported type', () => {
+    const parsed = parseDashboardDraft(completeDraft);
+
+    expect(parsed.widgets.map((widget) => widget.type)).toEqual([
+      'METRIC',
+      'STATUS_DISTRIBUTION',
+      'TREND',
+      'LEADERBOARD',
+      'RECORD_LIST',
+    ]);
+  });
+
+  it('rejects duplicate widget IDs', () => {
+    expect(() =>
+      parseDashboardDraft({
+        ...completeDraft,
+        widgets: [
+          completeDraft.widgets[0],
+          { ...completeDraft.widgets[1], id: 'metric-total' },
+        ],
+      }),
+    ).toThrow('Invalid dashboard definition');
+  });
+
+  it('rejects a definition containing more than 24 widgets', () => {
+    expect(() =>
+      parseDashboardDraft({
+        ...completeDraft,
+        widgets: Array.from({ length: 25 }, (_, index) => ({
+          ...completeDraft.widgets[0],
+          id: `metric-${index}`,
+        })),
+      }),
+    ).toThrow('Invalid dashboard definition');
+  });
+
+  it('reports filters whose operator is incompatible with the referenced field', () => {
+    const draft = parseDashboardDraft({
+      ...completeDraft,
+      widgets: [
+        {
+          ...completeDraft.widgets[0],
+          filters: [{ fieldKey: 'stage', operator: 'GT', value: 'won' }],
+        },
+      ],
+    });
+
+    expect(validateDashboardDraft(draft, [opportunity])).toContainEqual(
+      expect.objectContaining({
+        code: 'FILTER_OPERATOR_INVALID',
+        path: 'widgets[0].filters[0].operator',
+      }),
+    );
+  });
+
+  it('normalizes widget ordering and compiles object, field, and option display metadata', () => {
+    const normalized = normalizeDashboardDraft(
+      parseDashboardDraft(completeDraft),
+    );
+    const publication = compileDashboardPublication(normalized, [opportunity]);
+
+    expect(publication.widgets.map((widget) => widget.id)).toEqual([
+      'pipeline',
+      'metric-total',
+      'trend',
+      'leaderboard',
+      'records',
+    ]);
+    expect(publication.widgets[0]).toEqual(
+      expect.objectContaining({
+        objectPublicationId: 'publication-opportunity-v7',
+        groupByField: expect.objectContaining({
+          fieldKey: 'stage',
+          label: '阶段',
+        }),
+        options: expect.arrayContaining([
+          expect.objectContaining({
+            key: 'won',
+            label: '已成交',
+            color: 'GREEN',
+          }),
+        ]),
+      }),
+    );
+  });
+
+  it('migrates a legacy opportunity configuration with stable IDs and is idempotent', () => {
+    const legacy = {
+      opportunity: {
+        objectCode: 'opportunity',
+        stageFieldKey: 'stage',
+        amountFieldKey: 'amount',
+        dateFieldKey: 'close_at',
+        activeOptionKeys: ['new'],
+        wonOptionKeys: ['won'],
+        lostOptionKeys: ['lost'],
+      },
+    };
+
+    const migrated = migrateLegacyDashboard(legacy);
+
+    expect(migrated.widgets.map((widget) => widget.id)).toEqual([
+      'legacy-opportunity-total',
+      'legacy-opportunity-pipeline',
+      'legacy-opportunity-trend',
+      'legacy-opportunity-leaderboard',
+      'legacy-opportunity-records',
+    ]);
+    expect(migrateLegacyDashboard(migrated)).toEqual(migrated);
+  });
+});
+
+function field(
+  fieldKey: string,
+  label: string,
+  type: PublishedObjectSchema['fields'][number]['type'],
+  config: PublishedObjectSchema['fields'][number]['config'] = {},
+): PublishedObjectSchema['fields'][number] {
+  return {
+    id: `field-${fieldKey}`,
+    fieldKey,
+    label,
+    type,
+    required: false,
+    defaultValue: null,
+    validation: {},
+    config,
+    sortOrder: 1,
+    isSystem: false,
+  };
+}

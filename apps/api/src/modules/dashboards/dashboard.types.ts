@@ -36,6 +36,141 @@ export interface DashboardConfigurationIssue {
 
 export type DashboardPublishedObject = PublishedObjectSchema;
 
+export type DashboardWidgetType =
+  'METRIC' | 'STATUS_DISTRIBUTION' | 'TREND' | 'LEADERBOARD' | 'RECORD_LIST';
+
+export type DashboardAudience = 'ALL' | 'TENANT_ADMIN' | 'EMPLOYEE';
+export type DashboardWidgetWidth = 'QUARTER' | 'HALF' | 'FULL';
+export type DashboardAggregation = 'COUNT' | 'SUM' | 'AVG';
+export type DashboardDisplayFormat = 'NUMBER' | 'MONEY' | 'PERCENT';
+export type DashboardFilterOperator =
+  | 'IN'
+  | 'NOT_IN'
+  | 'EQ'
+  | 'GT'
+  | 'GTE'
+  | 'LT'
+  | 'LTE'
+  | 'BETWEEN'
+  | 'TODAY'
+  | 'THIS_WEEK'
+  | 'THIS_MONTH'
+  | 'PAST_N_DAYS'
+  | 'NEXT_N_DAYS'
+  | 'CURRENT_USER'
+  | 'RECORD_OWNER'
+  | 'CONTAINS'
+  | 'NOT_EMPTY';
+
+export interface DashboardFilter {
+  fieldKey: string;
+  operator: DashboardFilterOperator;
+  value?:
+    string | number | boolean | string[] | [string | number, string | number];
+}
+
+export interface DashboardWidgetBase {
+  id: string;
+  type: DashboardWidgetType;
+  title: string;
+  description?: string;
+  audience: DashboardAudience;
+  objectCode: string;
+  width: DashboardWidgetWidth;
+  sortOrder: number;
+  filters: DashboardFilter[];
+}
+
+export interface DashboardMetricWidgetDraft extends DashboardWidgetBase {
+  type: 'METRIC';
+  aggregation: DashboardAggregation;
+  valueFieldKey?: string;
+  displayFormat?: DashboardDisplayFormat;
+}
+
+export interface DashboardStatusDistributionWidgetDraft extends DashboardWidgetBase {
+  type: 'STATUS_DISTRIBUTION';
+  groupByFieldKey: string;
+  optionKeys: string[];
+  display: 'FUNNEL' | 'BAR' | 'DONUT';
+  aggregation: 'COUNT' | 'SUM';
+  valueFieldKey?: string;
+}
+
+export interface DashboardTrendWidgetDraft extends DashboardWidgetBase {
+  type: 'TREND';
+  dateFieldKey: string;
+  granularity: 'DAY' | 'WEEK' | 'MONTH' | 'AUTO';
+  aggregation: 'COUNT' | 'SUM';
+  valueFieldKey?: string;
+}
+
+export interface DashboardLeaderboardWidgetDraft extends DashboardWidgetBase {
+  type: 'LEADERBOARD';
+  memberSource: 'RECORD_OWNER' | 'FIELD';
+  memberFieldKey?: string;
+  aggregation: 'COUNT' | 'SUM';
+  valueFieldKey?: string;
+  limit: number;
+}
+
+export interface DashboardRecordListWidgetDraft extends DashboardWidgetBase {
+  type: 'RECORD_LIST';
+  fieldKeys: string[];
+  sort: {
+    field: string;
+    direction: 'ASC' | 'DESC';
+  };
+  limit: number;
+}
+
+export type DashboardWidgetDraft =
+  | DashboardMetricWidgetDraft
+  | DashboardStatusDistributionWidgetDraft
+  | DashboardTrendWidgetDraft
+  | DashboardLeaderboardWidgetDraft
+  | DashboardRecordListWidgetDraft;
+
+export interface DashboardDefinitionV2 {
+  schemaVersion: 2;
+  title: string;
+  widgets: DashboardWidgetDraft[];
+}
+
+export type DashboardCatalog = readonly PublishedObjectSchema[];
+
+export interface DashboardPublishedField {
+  fieldKey: string;
+  label: string;
+  type: PublishedObjectSchema['fields'][number]['type'];
+}
+
+export interface DashboardPublishedOption {
+  key: string;
+  label: string;
+  color: string;
+}
+
+export type PublishedDashboardWidgetV2 = DashboardWidgetDraft & {
+  objectPublicationId: string;
+  objectPublicationNumber: number;
+  objectName: string;
+  filterFields: DashboardPublishedField[];
+  valueField?: DashboardPublishedField;
+  groupByField?: DashboardPublishedField;
+  dateField?: DashboardPublishedField;
+  memberField?: DashboardPublishedField;
+  displayFields?: DashboardPublishedField[];
+  sortField?: DashboardPublishedField;
+  options?: DashboardPublishedOption[];
+};
+
+export interface PublishedDashboardDefinitionV2 {
+  schemaVersion: 2;
+  title: string;
+  widgets: PublishedDashboardWidgetV2[];
+}
+
 export interface DashboardConfigurationRecord {
   version: number;
   configuration: DashboardConfiguration;
