@@ -34,6 +34,20 @@ test("defines the core multi-tenant CRM models", async () => {
   assert.match(schema, /data\s+Json\s+@default\("\{\}"\)\s+@db\.JsonB/);
 });
 
+test("defines tenant dashboard drafts and immutable publications", async () => {
+  const schema = await readFile(schemaUrl, "utf8");
+
+  assert.match(
+    schema,
+    /model\s+TenantDashboardConfiguration\s+\{[\s\S]*?draftVersion\s+Int\s+@default\(1\)\s+@map\("version"\)[\s\S]*?draftConfiguration\s+Json\s+@map\("configuration"\)\s+@db\.JsonB[\s\S]*?activePublicationId\s+String\?\s+@map\("active_publication_id"\)\s+@db\.Uuid[\s\S]*?sourceTemplateVersionId\s+String\?\s+@map\("source_template_version_id"\)\s+@db\.Uuid[\s\S]*?publications\s+TenantDashboardPublication\[\]/,
+  );
+  assert.match(schema, /model\s+TenantDashboardPublication\s+\{/);
+  assert.match(
+    schema,
+    /model\s+TenantDashboardPublication\s+\{[\s\S]*?publicationNo\s+Int\s+@map\("publication_no"\)[\s\S]*?sourceDraftVersion\s+Int\s+@map\("source_draft_version"\)[\s\S]*?configuration\s+Json\s+@db\.JsonB[\s\S]*?publishedByMemberId\s+String\?\s+@map\("published_by_member_id"\)\s+@db\.Uuid[\s\S]*?publisher\s+TenantMember\?\s+@relation\("TenantDashboardPublicationPublisher",\s*fields:\s*\[tenantId,\s*publishedByMemberId\],\s*references:\s*\[tenantId,\s*id\],\s*onDelete:\s*Restrict\)[\s\S]*?@@unique\(\[tenantId,\s*publicationNo\]\)/,
+  );
+});
+
 test("separates migration and runtime database credentials", async () => {
   const env = await readFile(
     new URL("../../.env.example", import.meta.url),

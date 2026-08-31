@@ -4,18 +4,146 @@ import { Prisma } from '@crm/database';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
 import { parsePublishedObjectSchema } from '../objects/published-object.service';
+import { migrateLegacyDashboard } from './dashboard-definition';
 import type {
   DashboardAggregateInput,
   DashboardAggregateResult,
   DashboardConfiguration,
   DashboardConfigurationRecord,
+  DashboardDefinitionV2,
   DashboardPublishedObject,
+  PublishedDashboardDefinitionV2,
 } from './dashboard.types';
 import type { DashboardRepository } from './dashboards.service';
+
+export interface DashboardDefinitionRecord {
+  draftVersion: number;
+  draftConfiguration: DashboardDefinitionV2;
+  activePublicationId: string | null;
+  sourceTemplateVersionId: string | null;
+  updatedAt: string;
+}
+
+export interface DashboardPublicationRecord {
+  id: string;
+  number: number;
+  sourceDraftVersion: number;
+  configuration: PublishedDashboardDefinitionV2;
+  publishedByMemberId: string | null;
+  publishedAt: string;
+}
 
 @Injectable()
 export class PrismaDashboardRepository implements DashboardRepository {
   constructor(private readonly runner: DatabaseContextRunner) {}
+
+  getDefinition(
+    context: TenantContext,
+  ): Promise<DashboardDefinitionRecord | null> {
+    return this.runner.withTenant(context, async (transaction) => {
+      const record = await transaction.tenantDashboardConfiguration.findUnique({
+        where: { tenantId: context.tenantId },
+      });
+      return record ? definitionRecord(record) : null;
+    });
+  }
+
+  saveDraft(
+    context: TenantContext,
+    expectedVersion: number,
+    draft: DashboardDefinitionV2,
+  ): Promise<DashboardDefinitionRecord | null> {
+    return this.runner.withTenant(context, async (transaction) => {
+      const locked = await transaction.$queryRaw<
+        Array<{ draftVersion: number }>
+      >`
+        SELECT version AS "draftVersion"
+        FROM tenant_dashboard_configurations
+        WHERE tenant_id = ${context.tenantId}::uuid
+        FOR UPDATE
+      `;
+      const currentVersion = locked[0]?.draftVersion;
+      if (
+        (currentVersion === undefined && expectedVersion !== 0) ||
+        (currentVersion !== undefined && currentVersion !== expectedVersion)
+      ) {
+        return null;
+      }
+
+      const draftConfiguration = draft as unknown as Prisma.InputJsonValue;
+      const record =
+        currentVersion === undefined
+          ? await transaction.tenantDashboardConfiguration.create({
+              data: {
+                tenantId: context.tenantId,
+                draftVersion: 1,
+                draftConfiguration,
+              },
+            })
+          : await transaction.tenantDashboardConfiguration.update({
+              where: { tenantId: context.tenantId },
+              data: {
+                draftVersion: { increment: 1 },
+                draftConfiguration,
+              },
+            });
+      return definitionRecord(record);
+    });
+  }
+
+  publishDraft(
+    context: TenantContext,
+    expectedVersion: number,
+    compiled: PublishedDashboardDefinitionV2,
+    actorMemberId: string,
+  ): Promise<DashboardPublicationRecord | null> {
+    return this.runner.withTenant(context, async (transaction) => {
+      const locked = await transaction.$queryRaw<
+        Array<{ draftVersion: number }>
+      >`
+        SELECT version AS "draftVersion"
+        FROM tenant_dashboard_configurations
+        WHERE tenant_id = ${context.tenantId}::uuid
+        FOR UPDATE
+      `;
+      if (locked[0]?.draftVersion !== expectedVersion) return null;
+
+      const numbers = await transaction.$queryRaw<Array<{ number: number }>>`
+        SELECT COALESCE(MAX(publication_no), 0)::int + 1 AS number
+        FROM tenant_dashboard_publications
+        WHERE tenant_id = ${context.tenantId}::uuid
+      `;
+      const publication = await transaction.tenantDashboardPublication.create({
+        data: {
+          tenantId: context.tenantId,
+          publicationNo: numbers[0]?.number ?? 1,
+          sourceDraftVersion: expectedVersion,
+          configuration: compiled as unknown as Prisma.InputJsonValue,
+          publishedByMemberId: actorMemberId,
+        },
+      });
+      await transaction.tenantDashboardConfiguration.update({
+        where: { tenantId: context.tenantId },
+        data: { activePublicationId: publication.id },
+      });
+      return publicationRecord(publication);
+    });
+  }
+
+  getActivePublication(
+    context: TenantContext,
+  ): Promise<DashboardPublicationRecord | null> {
+    return this.runner.withTenant(context, async (transaction) => {
+      const definition =
+        await transaction.tenantDashboardConfiguration.findUnique({
+          where: { tenantId: context.tenantId },
+          select: { activePublication: true },
+        });
+      return definition?.activePublication
+        ? publicationRecord(definition.activePublication)
+        : null;
+    });
+  }
 
   getConfiguration(
     context: TenantContext,
@@ -26,9 +154,9 @@ export class PrismaDashboardRepository implements DashboardRepository {
       });
       return record
         ? {
-            version: record.version,
+            version: record.draftVersion,
             configuration: structuredClone(
-              record.configuration,
+              record.draftConfiguration,
             ) as unknown as DashboardConfiguration,
             updatedAt: record.updatedAt.toISOString(),
           }
@@ -62,18 +190,21 @@ export class PrismaDashboardRepository implements DashboardRepository {
           ? await transaction.tenantDashboardConfiguration.create({
               data: {
                 tenantId: context.tenantId,
-                version: 1,
-                configuration: json,
+                draftVersion: 1,
+                draftConfiguration: json,
               },
             })
           : await transaction.tenantDashboardConfiguration.update({
               where: { tenantId: context.tenantId },
-              data: { version: { increment: 1 }, configuration: json },
+              data: {
+                draftVersion: { increment: 1 },
+                draftConfiguration: json,
+              },
             });
       return {
-        version: record.version,
+        version: record.draftVersion,
         configuration: structuredClone(
-          record.configuration,
+          record.draftConfiguration,
         ) as unknown as DashboardConfiguration,
         updatedAt: record.updatedAt.toISOString(),
       };
@@ -300,6 +431,54 @@ export class PrismaDashboardRepository implements DashboardRepository {
       );
     });
   }
+}
+
+function definitionRecord(record: {
+  draftVersion: number;
+  draftConfiguration: Prisma.JsonValue;
+  activePublicationId: string | null;
+  sourceTemplateVersionId: string | null;
+  updatedAt: Date;
+}): DashboardDefinitionRecord {
+  return {
+    draftVersion: record.draftVersion,
+    draftConfiguration: migrateLegacyDashboard(record.draftConfiguration),
+    activePublicationId: record.activePublicationId,
+    sourceTemplateVersionId: record.sourceTemplateVersionId,
+    updatedAt: record.updatedAt.toISOString(),
+  };
+}
+
+function publicationRecord(record: {
+  id: string;
+  publicationNo: number;
+  sourceDraftVersion: number;
+  configuration: Prisma.JsonValue;
+  publishedByMemberId: string | null;
+  publishedAt: Date;
+}): DashboardPublicationRecord {
+  return {
+    id: record.id,
+    number: record.publicationNo,
+    sourceDraftVersion: record.sourceDraftVersion,
+    configuration: publishedConfiguration(record.configuration),
+    publishedByMemberId: record.publishedByMemberId,
+    publishedAt: record.publishedAt.toISOString(),
+  };
+}
+
+function publishedConfiguration(
+  value: Prisma.JsonValue,
+): PublishedDashboardDefinitionV2 {
+  if (
+    value !== null &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    value.schemaVersion === 2
+  ) {
+    return structuredClone(value) as unknown as PublishedDashboardDefinitionV2;
+  }
+  return migrateLegacyDashboard(value) as PublishedDashboardDefinitionV2;
 }
 
 interface SummaryRow {

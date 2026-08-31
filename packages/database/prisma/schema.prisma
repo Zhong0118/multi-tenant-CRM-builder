@@ -173,19 +173,45 @@ model Tenant {
   recordCounters     RecordCounter[]
   templateApplications BusinessTemplateApplication[]
   dashboardConfiguration TenantDashboardConfiguration?
+  dashboardPublications TenantDashboardPublication[]
 
   @@map("tenants")
 }
 
 model TenantDashboardConfiguration {
-  tenantId      String   @id @map("tenant_id") @db.Uuid
-  version       Int      @default(1)
-  configuration Json     @db.JsonB
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  tenantId                String                       @id @map("tenant_id") @db.Uuid
+  draftVersion            Int                          @default(1) @map("version")
+  draftConfiguration      Json                         @map("configuration") @db.JsonB
+  activePublicationId     String?                      @map("active_publication_id") @db.Uuid
+  sourceTemplateVersionId String?                      @map("source_template_version_id") @db.Uuid
+  createdAt               DateTime                     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime                     @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant                  Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  sourceTemplateVersion   BusinessTemplateVersion?     @relation(fields: [sourceTemplateVersionId], references: [id], onDelete: Restrict)
+  publications            TenantDashboardPublication[] @relation("TenantDashboardPublications")
+  activePublication       TenantDashboardPublication?  @relation("ActiveTenantDashboardPublication", fields: [tenantId, activePublicationId], references: [tenantId, id], onDelete: Restrict)
 
+  @@unique([tenantId, activePublicationId])
   @@map("tenant_dashboard_configurations")
+}
+
+model TenantDashboardPublication {
+  id                  String                        @id @default(uuid(7)) @db.Uuid
+  tenantId            String                        @map("tenant_id") @db.Uuid
+  publicationNo       Int                           @map("publication_no")
+  sourceDraftVersion  Int                           @map("source_draft_version")
+  configuration       Json                          @db.JsonB
+  publishedByMemberId String?                       @map("published_by_member_id") @db.Uuid
+  publishedAt         DateTime                      @default(now()) @map("published_at") @db.Timestamptz(3)
+  tenant              Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  definition          TenantDashboardConfiguration  @relation("TenantDashboardPublications", fields: [tenantId], references: [tenantId], onDelete: Restrict, map: "tenant_dashboard_publications_tenant_id_definition_fkey")
+  publisher           TenantMember?                 @relation("TenantDashboardPublicationPublisher", fields: [tenantId, publishedByMemberId], references: [tenantId, id], onDelete: Restrict)
+  activeFor           TenantDashboardConfiguration? @relation("ActiveTenantDashboardPublication")
+
+  @@unique([tenantId, publicationNo])
+  @@unique([tenantId, id])
+  @@index([tenantId, publishedAt(sort: Desc)])
+  @@map("tenant_dashboard_publications")
 }
 
 model TenantMember {
@@ -203,6 +229,7 @@ model TenantMember {
   ownedRecords              Record[]            @relation("RecordOwner")
   createdRecords            Record[]            @relation("RecordCreator")
   publishedObjects          ObjectPublication[] @relation("ObjectPublicationPublisher")
+  publishedDashboards       TenantDashboardPublication[] @relation("TenantDashboardPublicationPublisher")
   objectPermissionOverrides ObjectPermission[]  @relation("ObjectPermissionMember")
 
   @@unique([tenantId, userId])
@@ -341,6 +368,7 @@ model BusinessTemplateVersion {
   publisher             User                          @relation("BusinessTemplateVersionPublisher", fields: [publishedByUserId], references: [id], onDelete: Restrict)
   applications          BusinessTemplateApplication[]
   sourceObjects         ObjectDefinition[]
+  sourceDashboards      TenantDashboardConfiguration[]
 
   @@unique([templateId, versionNo])
   @@unique([templateId, sourceDraftVersion])
