@@ -171,6 +171,102 @@ export interface PublishedDashboardDefinitionV2 {
   widgets: PublishedDashboardWidgetV2[];
 }
 
+export type StoredDashboardPublicationConfiguration =
+  { kind: 'LEGACY'; raw: unknown } | { kind: 'COMPILED_V2'; raw: unknown };
+
+export type DashboardWidgetUnavailableReason =
+  | 'AUDIENCE_EXCLUDED'
+  | 'OBJECT_UNAVAILABLE'
+  | 'OBJECT_ACCESS_DENIED'
+  | 'FIELD_HIDDEN'
+  | 'QUERY_FAILED';
+
+interface DashboardWidgetResultBase {
+  id: string;
+  type: DashboardWidgetType;
+  title: string;
+  description?: string;
+  width: DashboardWidgetWidth;
+  sortOrder: number;
+}
+
+export interface DashboardMetricWidgetResult extends DashboardWidgetResultBase {
+  type: 'METRIC';
+  state: 'READY';
+  data: {
+    value: number | null;
+    format?: DashboardDisplayFormat;
+  };
+}
+
+export interface DashboardDistributionWidgetResult extends DashboardWidgetResultBase {
+  type: 'STATUS_DISTRIBUTION';
+  state: 'READY';
+  data: {
+    display: 'FUNNEL' | 'BAR' | 'DONUT';
+    items: Array<{
+      optionKey: string;
+      label: string;
+      color: string;
+      value: number;
+    }>;
+  };
+}
+
+export interface DashboardTrendWidgetResult extends DashboardWidgetResultBase {
+  type: 'TREND';
+  state: 'READY';
+  data: { items: Array<{ date: string; value: number }> };
+}
+
+export interface DashboardLeaderboardWidgetResult extends DashboardWidgetResultBase {
+  type: 'LEADERBOARD';
+  state: 'READY';
+  data: {
+    items: Array<{
+      memberId: string;
+      displayName: string;
+      value: number;
+    }>;
+  };
+}
+
+export interface DashboardRecordListWidgetResult extends DashboardWidgetResultBase {
+  type: 'RECORD_LIST';
+  state: 'READY';
+  data: {
+    fields: DashboardPublishedField[];
+    items: Array<{
+      id: string;
+      recordNo: string;
+      title: string;
+      ownerMemberId: string | null;
+      ownerName: string | null;
+      updatedAt: string;
+      values: Record<string, unknown>;
+    }>;
+  };
+}
+
+export interface DashboardUnavailableWidgetResult extends DashboardWidgetResultBase {
+  state: 'UNAVAILABLE';
+  reason?: DashboardWidgetUnavailableReason;
+}
+
+export type DashboardWidgetResult =
+  | DashboardMetricWidgetResult
+  | DashboardDistributionWidgetResult
+  | DashboardTrendWidgetResult
+  | DashboardLeaderboardWidgetResult
+  | DashboardRecordListWidgetResult
+  | DashboardUnavailableWidgetResult;
+
+export interface DashboardRuntimeResult {
+  title: string;
+  period: DashboardPeriod;
+  widgets: DashboardWidgetResult[];
+}
+
 export interface DashboardConfigurationRecord {
   version: number;
   configuration: DashboardConfiguration;

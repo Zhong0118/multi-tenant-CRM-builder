@@ -6,15 +6,28 @@ import { DatabaseContextRunner } from '../../infrastructure/database/context-run
 import { parsePublishedObjectSchema } from '../objects/published-object.service';
 import { migrateLegacyDashboard } from './dashboard-definition';
 import type {
+  DashboardQueryExecutor,
+  DashboardQueryPlan,
+} from './dashboard-engine';
+import type {
   DashboardAggregateInput,
   DashboardAggregateResult,
   DashboardConfiguration,
   DashboardConfigurationRecord,
   DashboardDefinitionV2,
+  DashboardDistributionWidgetResult,
+  DashboardLeaderboardWidgetResult,
+  DashboardMetricWidgetResult,
   DashboardPublishedObject,
+  DashboardRecordListWidgetResult,
+  DashboardTrendWidgetResult,
+  DashboardWidgetResult,
   PublishedDashboardDefinitionV2,
+  StoredDashboardPublicationConfiguration,
 } from './dashboard.types';
 import type { DashboardRepository } from './dashboards.service';
+
+export type { StoredDashboardPublicationConfiguration } from './dashboard.types';
 
 export interface DashboardDefinitionRecord {
   draftVersion: number;
@@ -33,8 +46,32 @@ export interface DashboardPublicationRecord {
   publishedAt: string;
 }
 
-export type StoredDashboardPublicationConfiguration =
-  { kind: 'LEGACY'; raw: unknown } | { kind: 'COMPILED_V2'; raw: unknown };
+@Injectable()
+export class PrismaDashboardQueryExecutor implements DashboardQueryExecutor {
+  constructor(private readonly runner: DatabaseContextRunner) {}
+
+  execute(
+    context: TenantContext,
+    plans: DashboardQueryPlan[],
+  ): Promise<Map<string, DashboardWidgetResult>> {
+    return this.runner.withTenant(context, async (transaction) => {
+      const settled = await Promise.allSettled(
+        plans.map((plan) => executePlan(transaction, context, plan)),
+      );
+      return new Map(
+        plans.map((plan, index) => {
+          const result = settled[index];
+          return [
+            plan.widget.id,
+            result?.status === 'fulfilled'
+              ? result.value
+              : unavailableResult(plan),
+          ];
+        }),
+      );
+    });
+  }
+}
 
 @Injectable()
 export class PrismaDashboardRepository implements DashboardRepository {
@@ -422,6 +459,497 @@ export class PrismaDashboardRepository implements DashboardRepository {
       );
     });
   }
+}
+
+async function executePlan(
+  transaction: Prisma.TransactionClient,
+  context: TenantContext,
+  plan: DashboardQueryPlan,
+): Promise<DashboardWidgetResult> {
+  switch (plan.widget.type) {
+    case 'METRIC':
+      return executeMetric(transaction, context, {
+        ...plan,
+        widget: plan.widget,
+      });
+    case 'STATUS_DISTRIBUTION':
+      return executeDistribution(transaction, context, {
+        ...plan,
+        widget: plan.widget,
+      });
+    case 'TREND':
+      return executeTrend(transaction, context, {
+        ...plan,
+        widget: plan.widget,
+      });
+    case 'LEADERBOARD':
+      return executeLeaderboard(transaction, context, {
+        ...plan,
+        widget: plan.widget,
+      });
+    case 'RECORD_LIST':
+      return executeRecordList(transaction, context, {
+        ...plan,
+        widget: plan.widget,
+      });
+  }
+}
+
+async function executeMetric(
+  transaction: Prisma.TransactionClient,
+  context: TenantContext,
+  plan: DashboardQueryPlan & {
+    widget: Extract<DashboardQueryPlan['widget'], { type: 'METRIC' }>;
+  },
+): Promise<DashboardMetricWidgetResult> {
+  const rows = await transaction.$queryRaw<Array<{ value: number | null }>>(
+    Prisma.sql`
+      SELECT ${aggregateExpression(
+        plan.widget.aggregation,
+        plan.widget.valueFieldKey,
+      )} AS value
+      FROM records r
+      WHERE ${commonPredicates(context, plan)}
+    `,
+  );
+  return {
+    ...resultPresentation(plan),
+    type: 'METRIC',
+    state: 'READY',
+    data: {
+      value: rows[0]?.value ?? null,
+      ...(plan.widget.displayFormat
+        ? { format: plan.widget.displayFormat }
+        : {}),
+    },
+  };
+}
+
+async function executeDistribution(
+  transaction: Prisma.TransactionClient,
+  context: TenantContext,
+  plan: DashboardQueryPlan & {
+    widget: Extract<
+      DashboardQueryPlan['widget'],
+      { type: 'STATUS_DISTRIBUTION' }
+    >;
+  },
+): Promise<DashboardDistributionWidgetResult> {
+  const optionClause = plan.widget.optionKeys.length
+    ? Prisma.sql`AND r.data ->> ${plan.widget.groupByFieldKey} IN (${Prisma.join(
+        plan.widget.optionKeys,
+      )})`
+    : Prisma.sql`AND FALSE`;
+  const rows = await transaction.$queryRaw<
+    Array<{ optionKey: string; value: number }>
+  >(Prisma.sql`
+    SELECT
+      r.data ->> ${plan.widget.groupByFieldKey} AS "optionKey",
+      ${aggregateExpression(
+        plan.widget.aggregation,
+        plan.widget.valueFieldKey,
+      )} AS value
+    FROM records r
+    WHERE ${commonPredicates(context, plan)}
+      ${optionClause}
+    GROUP BY 1
+  `);
+  const values = new Map(rows.map((row) => [row.optionKey, row.value]));
+  const options = new Map(
+    (plan.widget.options ?? []).map((option) => [option.key, option]),
+  );
+  return {
+    ...resultPresentation(plan),
+    type: 'STATUS_DISTRIBUTION',
+    state: 'READY',
+    data: {
+      display: plan.widget.display,
+      items: plan.widget.optionKeys.map((optionKey) => ({
+        optionKey,
+        label: options.get(optionKey)?.label ?? optionKey,
+        color: options.get(optionKey)?.color ?? 'GRAY',
+        value: values.get(optionKey) ?? 0,
+      })),
+    },
+  };
+}
+
+async function executeTrend(
+  transaction: Prisma.TransactionClient,
+  context: TenantContext,
+  plan: DashboardQueryPlan & {
+    widget: Extract<DashboardQueryPlan['widget'], { type: 'TREND' }>;
+  },
+): Promise<DashboardTrendWidgetResult> {
+  const date = dashboardDateExpression(plan.widget.dateFieldKey);
+  const granularity = trendGranularity(plan);
+  const rows = await transaction.$queryRaw<
+    Array<{ date: string; value: number }>
+  >(Prisma.sql`
+    SELECT
+      to_char(
+        date_trunc(${granularity}, ${date} AT TIME ZONE ${plan.period.timezone}),
+        'YYYY-MM-DD'
+      ) AS date,
+      ${aggregateExpression(
+        plan.widget.aggregation,
+        plan.widget.valueFieldKey,
+      )} AS value
+    FROM records r
+    WHERE ${commonPredicates(context, plan)}
+      AND ${date} >= ${plan.period.from}::timestamptz
+      AND ${date} < ${plan.period.to}::timestamptz
+    GROUP BY 1
+    ORDER BY 1 ASC
+  `);
+  return {
+    ...resultPresentation(plan),
+    type: 'TREND',
+    state: 'READY',
+    data: { items: rows },
+  };
+}
+
+async function executeLeaderboard(
+  transaction: Prisma.TransactionClient,
+  context: TenantContext,
+  plan: DashboardQueryPlan & {
+    widget: Extract<DashboardQueryPlan['widget'], { type: 'LEADERBOARD' }>;
+  },
+): Promise<DashboardLeaderboardWidgetResult> {
+  const member =
+    plan.widget.memberSource === 'RECORD_OWNER'
+      ? Prisma.sql`r.owner_member_id::text`
+      : Prisma.sql`r.data ->> ${plan.widget.memberFieldKey!}`;
+  const rows = await transaction.$queryRaw<
+    Array<{ memberId: string; displayName: string; value: number }>
+  >(Prisma.sql`
+    SELECT
+      ${member} AS "memberId",
+      COALESCE(u.display_name, ${member}) AS "displayName",
+      ${aggregateExpression(
+        plan.widget.aggregation,
+        plan.widget.valueFieldKey,
+      )} AS value
+    FROM records r
+    LEFT JOIN tenant_members tm
+      ON tm.tenant_id = r.tenant_id
+      AND tm.id::text = ${member}
+      AND tm.status = 'ACTIVE'
+    LEFT JOIN users u ON u.id = tm.user_id
+    WHERE ${commonPredicates(context, plan)}
+      AND ${member} IS NOT NULL
+    GROUP BY ${member}, u.display_name
+    ORDER BY value DESC, "displayName" ASC, "memberId" ASC
+    LIMIT ${plan.widget.limit}
+  `);
+  return {
+    ...resultPresentation(plan),
+    type: 'LEADERBOARD',
+    state: 'READY',
+    data: { items: rows },
+  };
+}
+
+async function executeRecordList(
+  transaction: Prisma.TransactionClient,
+  context: TenantContext,
+  plan: DashboardQueryPlan & {
+    widget: Extract<DashboardQueryPlan['widget'], { type: 'RECORD_LIST' }>;
+  },
+): Promise<DashboardRecordListWidgetResult> {
+  const direction =
+    plan.widget.sort.direction === 'ASC' ? Prisma.sql`ASC` : Prisma.sql`DESC`;
+  const rows = await transaction.$queryRaw<
+    Array<{
+      id: string;
+      recordNo: string;
+      title: string;
+      ownerMemberId: string | null;
+      ownerName: string | null;
+      updatedAt: string;
+      values: Record<string, unknown>;
+    }>
+  >(Prisma.sql`
+    SELECT
+      r.id::text AS id,
+      r.record_no::text AS "recordNo",
+      r.title,
+      r.owner_member_id::text AS "ownerMemberId",
+      u.display_name AS "ownerName",
+      r.updated_at::text AS "updatedAt",
+      COALESCE((
+        SELECT jsonb_object_agg(entry.key, entry.value)
+        FROM jsonb_each(r.data) entry
+        WHERE entry.key IN (${Prisma.join(plan.visibleFieldKeys)})
+      ), '{}'::jsonb) AS values
+    FROM records r
+    LEFT JOIN tenant_members tm
+      ON tm.tenant_id = r.tenant_id AND tm.id = r.owner_member_id
+    LEFT JOIN users u ON u.id = tm.user_id
+    WHERE ${commonPredicates(context, plan)}
+    ORDER BY ${recordSortExpression(plan)} ${direction}, r.id ${direction}
+    LIMIT ${plan.widget.limit}
+  `);
+  const visible = new Set(plan.visibleFieldKeys);
+  return {
+    ...resultPresentation(plan),
+    type: 'RECORD_LIST',
+    state: 'READY',
+    data: {
+      fields: (plan.widget.displayFields ?? []).filter((field) =>
+        visible.has(field.fieldKey),
+      ),
+      items: rows,
+    },
+  };
+}
+
+function commonPredicates(
+  context: TenantContext,
+  plan: DashboardQueryPlan,
+): Prisma.Sql {
+  const owner = plan.ownerMemberId
+    ? Prisma.sql`AND r.owner_member_id = ${plan.ownerMemberId}::uuid`
+    : Prisma.empty;
+  const filters = plan.widget.filters.map((filter) =>
+    filterPredicate(plan, context, filter),
+  );
+  const filterClause = filters.length
+    ? Prisma.join(
+        filters.map((filter) => Prisma.sql`AND ${filter}`),
+        ' ',
+      )
+    : Prisma.empty;
+  return Prisma.sql`
+    r.tenant_id = ${context.tenantId}::uuid
+    AND r.object_id = ${plan.object.object.id}::uuid
+    AND r.deleted_at IS NULL
+    ${owner}
+    ${filterClause}
+  `;
+}
+
+function filterPredicate(
+  plan: DashboardQueryPlan,
+  context: TenantContext,
+  filter: DashboardQueryPlan['widget']['filters'][number],
+): Prisma.Sql {
+  const field = plan.widget.filterFields.find(
+    (candidate) => candidate.fieldKey === filter.fieldKey,
+  );
+  if (!field) throw new Error('Compiled dashboard filter metadata missing');
+  const text = Prisma.sql`r.data ->> ${filter.fieldKey}`;
+  const values = Array.isArray(filter.value) ? filter.value : [];
+
+  if (field.type === 'SINGLE_SELECT') {
+    return membershipPredicate(text, filter.operator, values.map(String));
+  }
+  if (field.type === 'MULTI_SELECT') {
+    const members = values.map(String);
+    if (members.length === 0) {
+      return filter.operator === 'NOT_IN'
+        ? Prisma.sql`TRUE`
+        : Prisma.sql`FALSE`;
+    }
+    const exists = Prisma.sql`
+      EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements_text(
+          CASE WHEN jsonb_typeof(r.data -> ${filter.fieldKey}) = 'array'
+            THEN r.data -> ${filter.fieldKey}
+            ELSE '[]'::jsonb
+          END
+        ) item(value)
+        WHERE item.value IN (${Prisma.join(members)})
+      )
+    `;
+    return filter.operator === 'NOT_IN' ? Prisma.sql`NOT (${exists})` : exists;
+  }
+  if (field.type === 'NUMBER' || field.type === 'MONEY') {
+    const number = dashboardNumericExpression(filter.fieldKey);
+    if (filter.operator === 'BETWEEN') {
+      return Prisma.sql`${number} BETWEEN ${values[0]}::numeric AND ${values[1]}::numeric`;
+    }
+    return comparisonPredicate(number, filter.operator, filter.value);
+  }
+  if (field.type === 'DATE' || field.type === 'DATETIME') {
+    return dateFilterPredicate(
+      dashboardDateExpression(filter.fieldKey),
+      filter.operator,
+      filter.value,
+      plan.period.timezone,
+    );
+  }
+  if (field.type === 'BOOLEAN') {
+    return Prisma.sql`${text} = ${String(filter.value)}`;
+  }
+  if (field.type === 'MEMBER') {
+    if (filter.operator === 'CURRENT_USER') {
+      return Prisma.sql`${text} = ${context.memberId}`;
+    }
+    if (filter.operator === 'RECORD_OWNER') {
+      return Prisma.sql`${text} = r.owner_member_id::text`;
+    }
+    return membershipPredicate(text, filter.operator, values.map(String));
+  }
+  if (filter.operator === 'CONTAINS') {
+    return Prisma.sql`${text} ILIKE ${`%${String(filter.value)}%`}`;
+  }
+  if (filter.operator === 'NOT_EMPTY') {
+    return Prisma.sql`NULLIF(BTRIM(${text}), '') IS NOT NULL`;
+  }
+  return Prisma.sql`${text} = ${String(filter.value)}`;
+}
+
+function membershipPredicate(
+  expression: Prisma.Sql,
+  operator: string,
+  values: string[],
+): Prisma.Sql {
+  if (values.length === 0) {
+    return operator === 'NOT_IN' ? Prisma.sql`TRUE` : Prisma.sql`FALSE`;
+  }
+  return operator === 'NOT_IN'
+    ? Prisma.sql`${expression} NOT IN (${Prisma.join(values)})`
+    : Prisma.sql`${expression} IN (${Prisma.join(values)})`;
+}
+
+function comparisonPredicate(
+  expression: Prisma.Sql,
+  operator: string,
+  value: unknown,
+): Prisma.Sql {
+  switch (operator) {
+    case 'GT':
+      return Prisma.sql`${expression} > ${value}::numeric`;
+    case 'GTE':
+      return Prisma.sql`${expression} >= ${value}::numeric`;
+    case 'LT':
+      return Prisma.sql`${expression} < ${value}::numeric`;
+    case 'LTE':
+      return Prisma.sql`${expression} <= ${value}::numeric`;
+    default:
+      return Prisma.sql`${expression} = ${value}::numeric`;
+  }
+}
+
+function dateFilterPredicate(
+  expression: Prisma.Sql,
+  operator: string,
+  value: unknown,
+  timezone: string,
+): Prisma.Sql {
+  const today = Prisma.sql`date_trunc('day', NOW() AT TIME ZONE ${timezone}) AT TIME ZONE ${timezone}`;
+  const values = Array.isArray(value) ? value : [];
+  switch (operator) {
+    case 'TODAY':
+      return Prisma.sql`${expression} >= ${today} AND ${expression} < ${today} + INTERVAL '1 day'`;
+    case 'THIS_WEEK': {
+      const start = Prisma.sql`date_trunc('week', NOW() AT TIME ZONE ${timezone}) AT TIME ZONE ${timezone}`;
+      return Prisma.sql`${expression} >= ${start} AND ${expression} < ${start} + INTERVAL '1 week'`;
+    }
+    case 'THIS_MONTH': {
+      const start = Prisma.sql`date_trunc('month', NOW() AT TIME ZONE ${timezone}) AT TIME ZONE ${timezone}`;
+      return Prisma.sql`${expression} >= ${start} AND ${expression} < ${start} + INTERVAL '1 month'`;
+    }
+    case 'PAST_N_DAYS':
+      return Prisma.sql`${expression} >= ${today} - ${Number(value)} * INTERVAL '1 day' AND ${expression} < ${today} + INTERVAL '1 day'`;
+    case 'NEXT_N_DAYS':
+      return Prisma.sql`${expression} >= ${today} AND ${expression} < ${today} + (${Number(value)} + 1) * INTERVAL '1 day'`;
+    default:
+      return Prisma.sql`${expression} BETWEEN ${values[0]}::timestamptz AND ${values[1]}::timestamptz`;
+  }
+}
+
+function aggregateExpression(
+  aggregation: 'COUNT' | 'SUM' | 'AVG',
+  fieldKey?: string,
+): Prisma.Sql {
+  if (aggregation === 'COUNT') return Prisma.sql`COUNT(*)::double precision`;
+  const value = dashboardNumericExpression(fieldKey!);
+  return aggregation === 'AVG'
+    ? Prisma.sql`AVG(${value})::double precision`
+    : Prisma.sql`COALESCE(SUM(${value}), 0)::double precision`;
+}
+
+function dashboardNumericExpression(fieldKey: string): Prisma.Sql {
+  return Prisma.sql`
+    CASE
+      WHEN (r.data ->> ${fieldKey}) ~ '^-?[0-9]+([.][0-9]+)?$'
+        THEN (r.data ->> ${fieldKey})::numeric
+      ELSE NULL
+    END
+  `;
+}
+
+function dashboardDateExpression(fieldKey: string): Prisma.Sql {
+  return Prisma.sql`
+    CASE
+      WHEN (r.data ->> ${fieldKey}) ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+        THEN (r.data ->> ${fieldKey})::timestamptz
+      ELSE NULL
+    END
+  `;
+}
+
+function trendGranularity(
+  plan: DashboardQueryPlan & {
+    widget: Extract<DashboardQueryPlan['widget'], { type: 'TREND' }>;
+  },
+) {
+  if (plan.widget.granularity !== 'AUTO') {
+    return plan.widget.granularity.toLowerCase();
+  }
+  const days =
+    (new Date(plan.period.to).getTime() -
+      new Date(plan.period.from).getTime()) /
+    86_400_000;
+  return days <= 45 ? 'day' : days <= 180 ? 'week' : 'month';
+}
+
+function recordSortExpression(
+  plan: DashboardQueryPlan & {
+    widget: Extract<DashboardQueryPlan['widget'], { type: 'RECORD_LIST' }>;
+  },
+): Prisma.Sql {
+  switch (plan.widget.sort.field) {
+    case 'createdAt':
+      return Prisma.sql`r.created_at`;
+    case 'updatedAt':
+      return Prisma.sql`r.updated_at`;
+    case 'recordNo':
+      return Prisma.sql`r.record_no`;
+    default: {
+      const field = plan.widget.sortField;
+      return field?.type === 'NUMBER' || field?.type === 'MONEY'
+        ? dashboardNumericExpression(plan.widget.sort.field)
+        : field?.type === 'DATE' || field?.type === 'DATETIME'
+          ? dashboardDateExpression(plan.widget.sort.field)
+          : Prisma.sql`r.data ->> ${plan.widget.sort.field}`;
+    }
+  }
+}
+
+function resultPresentation(plan: DashboardQueryPlan) {
+  return {
+    id: plan.widget.id,
+    title: plan.widget.title,
+    ...(plan.widget.description === undefined
+      ? {}
+      : { description: plan.widget.description }),
+    width: plan.widget.width,
+    sortOrder: plan.widget.sortOrder,
+  };
+}
+
+function unavailableResult(plan: DashboardQueryPlan): DashboardWidgetResult {
+  return {
+    ...resultPresentation(plan),
+    type: plan.widget.type,
+    state: 'UNAVAILABLE',
+    reason: 'QUERY_FAILED',
+  };
 }
 
 async function lockDashboardDefinition(
