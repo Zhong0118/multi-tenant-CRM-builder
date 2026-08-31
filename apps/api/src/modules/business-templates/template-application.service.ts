@@ -162,6 +162,17 @@ export function hydrateTenantConfiguration(
 ): HydratedTenantConfiguration {
   const hydrated: HydratedTenantConfiguration = {
     tenantId,
+    ...(configuration.dashboard
+      ? {
+          dashboard: {
+            tenantId,
+            draftVersion: 1,
+            draftConfiguration: structuredClone(configuration.dashboard),
+            activePublicationId: null,
+            sourceTemplateVersionId,
+          },
+        }
+      : {}),
     objects: [],
     fields: [],
     views: [],

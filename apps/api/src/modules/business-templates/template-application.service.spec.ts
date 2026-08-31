@@ -6,6 +6,7 @@ import { SessionAuthGuard } from '../auth/session-auth.guard';
 import type { AuditEvent } from '../audit/audit-event';
 import { checksumTemplateConfiguration } from './business-template-publication.policy';
 import type { BusinessTemplateConfiguration } from './business-template.schema';
+import type { DashboardDefinitionV2 } from '../dashboards/dashboard.types';
 import { TemplateApplicationController } from './template-application.controller';
 import type {
   CreateTemplateApplication,
@@ -121,6 +122,22 @@ describe('TemplateApplicationService', () => {
       'createApplication',
       'appendAudit',
     ]);
+  });
+
+  it('copies a dashboard preset into an unpublished tenant draft', async () => {
+    const { service, state } = applicationFixture({
+      configuration: configurationWithDashboard(),
+    });
+
+    await service.apply(platformAdmin, applicationInput(), meta);
+
+    expect(state.dashboard).toEqual({
+      tenantId: 'tenant-1',
+      draftVersion: 1,
+      draftConfiguration: dashboardPreset(),
+      sourceTemplateVersionId: 'version-1',
+      activePublicationId: null,
+    });
   });
 
   it('returns the first application before acquiring locks on an exact retry', async () => {
@@ -355,6 +372,13 @@ interface MemoryState {
   fieldPermissions: HydratedTenantConfiguration['fieldPermissions'];
   publications: object[];
   recordCounters: object[];
+  dashboard: {
+    tenantId: string;
+    draftVersion: 1;
+    draftConfiguration: DashboardDefinitionV2;
+    sourceTemplateVersionId: string;
+    activePublicationId: null;
+  } | null;
   applications: TemplateApplicationResult[];
   audits: AuditEvent[];
 }
@@ -548,6 +572,9 @@ class MemoryApplicationStore implements TemplateApplicationStore {
         throw new Error('hydration failed');
       }
     }
+    if (hydrated.dashboard) {
+      this.state.dashboard = structuredClone(hydrated.dashboard);
+    }
   }
 
   async createApplication(application: CreateTemplateApplication) {
@@ -641,6 +668,7 @@ function applicationFixture(options: FixtureOptions = {}) {
     fieldPermissions: [],
     publications: [],
     recordCounters: [],
+    dashboard: null,
     applications: [],
     audits: [],
   };
@@ -778,5 +806,34 @@ function configuration(objectCount = 1): BusinessTemplateConfiguration {
         },
       }),
     ),
+  };
+}
+
+function configurationWithDashboard(): BusinessTemplateConfiguration {
+  return {
+    ...configuration(),
+    dashboard: dashboardPreset(),
+  } as BusinessTemplateConfiguration;
+}
+
+function dashboardPreset(): DashboardDefinitionV2 {
+  return {
+    schemaVersion: 2,
+    title: '客户总览',
+    widgets: [
+      {
+        id: 'customer-list',
+        type: 'RECORD_LIST',
+        title: '最新客户',
+        audience: 'ALL',
+        objectCode: 'customers',
+        width: 'FULL',
+        sortOrder: 0,
+        filters: [],
+        fieldKeys: ['name', 'phone'],
+        sort: { field: 'updatedAt', direction: 'DESC' },
+        limit: 8,
+      },
+    ],
   };
 }

@@ -1,7 +1,10 @@
 import {
   analyzeTemplatePublication,
+  checksumTemplateConfiguration,
+  compileTemplateVersion,
   type BusinessTemplateConfiguration,
 } from './business-template-publication.policy';
+import type { DashboardDefinitionV2 } from '../dashboards/dashboard.types';
 
 function validTemplate(): BusinessTemplateConfiguration {
   return {
@@ -118,6 +121,51 @@ function validTemplate(): BusinessTemplateConfiguration {
 }
 
 describe('business template publication policy', () => {
+  it('keeps templates without a dashboard compatible when compiling', () => {
+    const compiled = compileTemplateVersion(validTemplate());
+
+    expect((compiled as DashboardTemplateConfiguration).dashboard).toBeUndefined();
+    expect(compiled.schemaVersion).toBe(1);
+  });
+
+  it('includes a normalized valid dashboard preset in the compiled checksum', () => {
+    const input = withDashboard(validTemplate(), dashboardPreset(10));
+    const compiled = compileTemplateVersion(input);
+
+    expect((compiled as DashboardTemplateConfiguration).dashboard).toEqual(
+      dashboardPreset(0),
+    );
+    expect(checksumTemplateConfiguration(compiled)).not.toBe(
+      checksumTemplateConfiguration(validTemplate()),
+    );
+  });
+
+  it('blocks dashboard field references with the dashboard widget path', () => {
+    const dashboard = dashboardPreset(0);
+    const widget = dashboard.widgets[0];
+    if (!widget || widget.type !== 'RECORD_LIST') {
+      throw new Error('dashboard fixture must contain a record list');
+    }
+    const input = withDashboard(validTemplate(), {
+      ...dashboard,
+      widgets: [
+        {
+          ...widget,
+          fieldKeys: ['missing'],
+        },
+      ],
+    });
+
+    expect(analyzeTemplatePublication(input, null).blocking).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'FIELD_NOT_FOUND',
+          path: 'dashboard.widgets[0].fieldKeys[0]',
+        }),
+      ]),
+    );
+  });
+
   it('publishes a complete two-object template as a stable aggregate', () => {
     const analysis = analyzeTemplatePublication(validTemplate(), null);
 
@@ -228,3 +276,36 @@ describe('business template publication policy', () => {
     );
   });
 });
+
+type DashboardTemplateConfiguration = BusinessTemplateConfiguration & {
+  dashboard?: DashboardDefinitionV2;
+};
+
+function withDashboard(
+  configuration: BusinessTemplateConfiguration,
+  dashboard: DashboardDefinitionV2,
+): DashboardTemplateConfiguration {
+  return { ...configuration, dashboard };
+}
+
+function dashboardPreset(sortOrder: number): DashboardDefinitionV2 {
+  return {
+    schemaVersion: 2,
+    title: '销售总览',
+    widgets: [
+      {
+        id: 'lead-list',
+        type: 'RECORD_LIST',
+        title: '最新线索',
+        audience: 'ALL',
+        objectCode: 'leads',
+        width: 'FULL',
+        sortOrder,
+        filters: [],
+        fieldKeys: ['name', 'phone'],
+        sort: { field: 'updatedAt', direction: 'DESC' },
+        limit: 8,
+      },
+    ],
+  };
+}

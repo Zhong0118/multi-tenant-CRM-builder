@@ -10,6 +10,15 @@ import type {
   TemplateFieldConfiguration,
   TemplateObjectConfiguration,
 } from './business-template.schema';
+import {
+  normalizeDashboardDraft,
+  parseDashboardDraft,
+  validateDashboardDraft,
+} from '../dashboards/dashboard-definition';
+import type {
+  DashboardCatalog,
+  DashboardDefinitionV2,
+} from '../dashboards/dashboard.types';
 
 export type {
   BusinessTemplateConfiguration,
@@ -20,6 +29,7 @@ export type {
 
 export interface TemplatePublicationIssue extends PublicationIssue {
   objectId: string;
+  path?: string;
 }
 
 export interface TemplatePublicationChange {
@@ -70,6 +80,7 @@ export function analyzeTemplatePublication(
   const warnings: TemplatePublicationIssue[] = [];
 
   blocking.push(...findTemplateIdentityBlockers(input));
+  blocking.push(...analyzeTemplateDashboard(input.dashboard, activeObjects));
 
   if (activeObjects.length === 0) {
     blocking.push({
@@ -208,6 +219,9 @@ export function findTemplateIdentityBlockers(
 export function compileTemplateVersion(
   input: BusinessTemplateConfiguration,
 ): BusinessTemplateConfiguration {
+  const dashboard = input.dashboard
+    ? normalizeDashboardDraft(parseDashboardDraft(input.dashboard))
+    : undefined;
   return {
     schemaVersion: 1,
     objects: input.objects
@@ -236,6 +250,7 @@ export function compileTemplateVersion(
           employeeAccess: configuration.employeeAccess,
         };
       }),
+    ...(dashboard ? { dashboard } : {}),
   };
 }
 
@@ -336,7 +351,77 @@ function normalizeTemplateConfiguration(
       ...object,
       fields: [...object.fields].sort(compareFields),
     })),
+    ...(configuration.dashboard
+      ? { dashboard: normalizeDashboardDraft(configuration.dashboard) }
+      : {}),
   };
+}
+
+function analyzeTemplateDashboard(
+  dashboard: DashboardDefinitionV2 | undefined,
+  activeObjects: TemplateObjectConfiguration[],
+): TemplatePublicationIssue[] {
+  if (!dashboard) return [];
+  try {
+    const parsed = parseDashboardDraft(dashboard);
+    return validateDashboardDraft(parsed, templateDashboardCatalog(activeObjects)).map(
+      (issue) => ({
+        code: issue.code,
+        message: issue.message,
+        objectId: '',
+        path: `dashboard.${issue.path}`,
+      }),
+    );
+  } catch {
+    return [
+      {
+        code: 'DASHBOARD_INVALID',
+        message: '模板工作台配置格式无效。',
+        objectId: '',
+        path: 'dashboard',
+      },
+    ];
+  }
+}
+
+function templateDashboardCatalog(
+  objects: TemplateObjectConfiguration[],
+): DashboardCatalog {
+  return objects.map((source) => ({
+    publication: {
+      id: source.id,
+      number: 1,
+      sourceDraftVersion: 1,
+      publishedAt: '',
+    },
+    object: {
+      id: source.id,
+      code: source.code,
+      name: source.name,
+      description: source.description,
+      titleFieldKey: source.titleFieldKey,
+      icon: source.icon,
+      sortOrder: source.sortOrder,
+    },
+    fields: source.fields
+      .filter((field) => field.status === 'ACTIVE')
+      .map(({ status: _status, ...field }) => field),
+    defaultView: source.defaultView ?? {
+      code: 'default',
+      name: '',
+      columnFieldKeys: [],
+      sort: { field: 'updatedAt', direction: 'desc' },
+    },
+    employeeAccess: source.employeeAccess ?? {
+      canCreate: false,
+      canRead: false,
+      canUpdate: false,
+      canDelete: false,
+      readScope: 'NONE',
+      updateScope: 'NONE',
+      fields: {},
+    },
+  }));
 }
 
 function compareObjects(

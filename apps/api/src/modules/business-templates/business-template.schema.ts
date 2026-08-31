@@ -4,6 +4,7 @@ import type {
   PublishedFieldAccess,
   PublishedFieldType,
 } from '../objects/object-schema';
+import type { DashboardDefinitionV2 } from '../dashboards/dashboard.types';
 
 export interface TemplateFieldConfiguration {
   id: string;
@@ -56,4 +57,5 @@ export interface TemplateObjectConfiguration {
 export interface BusinessTemplateConfiguration {
   schemaVersion: 1;
   objects: TemplateObjectConfiguration[];
+  dashboard?: DashboardDefinitionV2;
 }

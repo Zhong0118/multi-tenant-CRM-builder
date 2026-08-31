@@ -8,6 +8,7 @@ import type {
   BusinessTemplateConfiguration,
   TemplateFieldConfiguration,
 } from './business-template.schema';
+import type { DashboardDefinitionV2 } from '../dashboards/dashboard.types';
 
 const SET_USER = "SELECT set_config('app.user_id', $1, true)";
 const SET_TENANT = "SELECT set_config('app.tenant_id', $1, true)";
@@ -78,6 +79,13 @@ export type CreateTemplateApplication = Omit<
 
 export interface HydratedTenantConfiguration {
   tenantId: string;
+  dashboard?: {
+    tenantId: string;
+    draftVersion: 1;
+    draftConfiguration: DashboardDefinitionV2;
+    activePublicationId: null;
+    sourceTemplateVersionId: string;
+  };
   objects: Array<{
     id: string;
     tenantId: string;
@@ -394,6 +402,17 @@ class PrismaTemplateApplicationStore implements TemplateApplicationStore {
       )) {
         await this.transaction.fieldPermission.create({ data: permission });
       }
+    }
+    if (hydrated.dashboard) {
+      await this.transaction.tenantDashboardConfiguration.create({
+        data: {
+          tenantId: hydrated.dashboard.tenantId,
+          draftVersion: hydrated.dashboard.draftVersion,
+          draftConfiguration: jsonInput(hydrated.dashboard.draftConfiguration),
+          activePublicationId: hydrated.dashboard.activePublicationId,
+          sourceTemplateVersionId: hydrated.dashboard.sourceTemplateVersionId,
+        },
+      });
     }
   }
 
