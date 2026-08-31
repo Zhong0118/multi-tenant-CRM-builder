@@ -71,7 +71,10 @@ export function normalizeDashboardDraft(
           ? left.index - right.index
           : left.widget.sortOrder - right.widget.sortOrder,
       )
-      .map(({ widget }, index) => ({ ...widget, sortOrder: index })),
+      .map(({ widget }, index) => ({
+        ...normalizeWidget(widget),
+        sortOrder: index,
+      })),
   } as DashboardDefinitionV2;
 }
 
@@ -101,6 +104,15 @@ export function migrateLegacyDashboard(value: unknown): DashboardDefinitionV2 {
           fieldKey: stageFieldKey,
           operator: 'IN' as const,
           value: wonOptionKeys,
+        },
+      ]
+    : [];
+  const activeFilter = activeOptionKeys.length
+    ? [
+        {
+          fieldKey: stageFieldKey,
+          operator: 'IN' as const,
+          value: activeOptionKeys,
         },
       ]
     : [];
@@ -155,8 +167,11 @@ export function migrateLegacyDashboard(value: unknown): DashboardDefinitionV2 {
         ...legacyBase('legacy-opportunity-records', '优先记录', objectCode, 4),
         type: 'RECORD_LIST',
         fieldKeys: unique([stageFieldKey, amountFieldKey].filter(isString)),
-        sort: { field: 'updatedAt', direction: 'DESC' },
-        limit: 8,
+        filters: activeFilter,
+        sort: dateFieldKey
+          ? { field: dateFieldKey, direction: 'ASC' }
+          : { field: 'updatedAt', direction: 'DESC' },
+        limit: 10,
       },
     ],
   });
@@ -626,7 +641,11 @@ function compileWidget(
       publishedField(findField(object, filter.fieldKey)!),
     ),
   };
-  if ('valueFieldKey' in widget && widget.valueFieldKey)
+  if (
+    'valueFieldKey' in widget &&
+    widget.aggregation !== 'COUNT' &&
+    widget.valueFieldKey
+  )
     result.valueField = publishedField(
       findField(object, widget.valueFieldKey)!,
     );
@@ -802,6 +821,14 @@ function legacyBase(
     sortOrder,
     filters: [],
   };
+}
+
+function normalizeWidget(widget: DashboardWidgetDraft): DashboardWidgetDraft {
+  if (!('aggregation' in widget) || widget.aggregation !== 'COUNT') {
+    return widget;
+  }
+  const { valueFieldKey: _unusedValueFieldKey, ...normalized } = widget;
+  return normalized as DashboardWidgetDraft;
 }
 
 function exactObject(

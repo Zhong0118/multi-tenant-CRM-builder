@@ -220,6 +220,25 @@ describe('dashboard definition v2', () => {
     );
   });
 
+  it('normalizes away an unused COUNT value field before compilation', () => {
+    const draft = parseDashboardDraft({
+      ...completeDraft,
+      widgets: [
+        {
+          ...completeDraft.widgets[0],
+          valueFieldKey: 'field-that-does-not-exist',
+        },
+      ],
+    });
+
+    const normalized = normalizeDashboardDraft(draft);
+    const publication = compileDashboardPublication(normalized, [opportunity]);
+
+    expect(normalized.widgets[0]).not.toHaveProperty('valueFieldKey');
+    expect(publication.widgets[0]).not.toHaveProperty('valueFieldKey');
+    expect(publication.widgets[0]).not.toHaveProperty('valueField');
+  });
+
   it('migrates a legacy opportunity configuration with stable IDs and is idempotent', () => {
     const legacy = {
       opportunity: {
@@ -242,7 +261,41 @@ describe('dashboard definition v2', () => {
       'legacy-opportunity-leaderboard',
       'legacy-opportunity-records',
     ]);
+    expect(migrated.widgets).toContainEqual(
+      expect.objectContaining({
+        id: 'legacy-opportunity-records',
+        filters: [
+          {
+            fieldKey: 'stage',
+            operator: 'IN',
+            value: ['new'],
+          },
+        ],
+        fieldKeys: ['stage', 'amount'],
+        sort: { field: 'close_at', direction: 'ASC' },
+        limit: 10,
+      }),
+    );
     expect(migrateLegacyDashboard(migrated)).toEqual(migrated);
+  });
+
+  it('keeps the updated-at descending legacy record fallback when no date field exists', () => {
+    const migrated = migrateLegacyDashboard({
+      opportunity: {
+        objectCode: 'opportunity',
+        stageFieldKey: 'stage',
+        activeOptionKeys: ['new'],
+        wonOptionKeys: ['won'],
+        lostOptionKeys: ['lost'],
+      },
+    });
+
+    expect(migrated.widgets).toContainEqual(
+      expect.objectContaining({
+        id: 'legacy-opportunity-records',
+        sort: { field: 'updatedAt', direction: 'DESC' },
+      }),
+    );
   });
 });
 
