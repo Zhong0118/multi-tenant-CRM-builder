@@ -1,25 +1,13 @@
 import type { TenantContext } from '../../common/tenancy/tenant-context';
-import type { PublishedObjectService } from '../objects/published-object.service';
 import type { PublishedObjectSchema } from '../objects/object-schema';
-import type { DashboardConfiguration } from './dashboard.types';
-import {
-  type DashboardRepository,
-  DashboardsService,
-} from './dashboards.service';
+import type { DashboardEngine } from './dashboard-engine';
+import type {
+  DashboardDefinitionV2,
+  DashboardRuntimeResult,
+  StoredDashboardPublicationConfiguration,
+} from './dashboard.types';
+import { DashboardsService } from './dashboards.service';
 
-const configuration = {
-  opportunity: {
-    objectCode: 'opportunities',
-    stageFieldKey: 'stage',
-    amountFieldKey: 'amount',
-    dateFieldKey: 'close_at',
-    activeOptionKeys: ['new'],
-    wonOptionKeys: ['won'],
-    lostOptionKeys: ['lost'],
-  },
-} satisfies DashboardConfiguration;
-
-const opportunity = publishedOpportunity();
 const period = {
   from: new Date('2026-08-01T00:00:00.000Z'),
   to: new Date('2026-09-01T00:00:00.000Z'),
@@ -27,115 +15,260 @@ const period = {
 };
 
 describe('DashboardsService', () => {
-  it('returns an honest unconfigured state', async () => {
+  it('lets an administrator save a structurally valid incomplete draft', async () => {
     const { service, repository } = setup();
-    repository.getConfiguration.mockResolvedValue(null);
 
-    await expect(service.getOverview(adminContext(), period)).resolves.toEqual(
-      expect.objectContaining({
-        state: 'UNCONFIGURED',
-        role: 'TENANT_ADMIN',
-        metrics: [],
+    await expect(
+      serviceAsV2(service).saveDraft(adminContext(), {
+        expectedVersion: 1,
+        configuration: incompleteDraft(),
       }),
+    ).resolves.toMatchObject({ draftVersion: 2 });
+
+    expect(repository.saveDraft).toHaveBeenCalledWith(
+      adminContext(),
+      1,
+      expect.objectContaining({
+        widgets: [expect.objectContaining({ sortOrder: 0, objectCode: '' })],
+      }),
+      { requestId: 'req_unknown' },
     );
-    expect(repository.aggregateOverview).not.toHaveBeenCalled();
   });
 
-  it('does not let an employee save company metric mappings', async () => {
+  it('rejects an employee attempting to save a draft', async () => {
     const { service } = setup();
 
     await expect(
-      service.saveConfiguration(employeeContext(), {
-        expectedVersion: 0,
-        configuration,
+      serviceAsV2(service).saveDraft(employeeContext(), {
+        expectedVersion: 1,
+        configuration: completeDraft(),
       }),
     ).rejects.toMatchObject({ status: 403 });
   });
 
-  it('forces OWN aggregation to the current employee member', async () => {
-    const { service, repository, publishedObjects } = setup();
-    publishedObjects.resolveRuntimeSchema.mockResolvedValue({
-      schema: opportunity,
-      access: {
-        canCreate: true,
-        canRead: true,
-        canUpdate: true,
-        canDelete: false,
-        readScope: 'OWN',
-        updateScope: 'OWN',
-        fields: Object.fromEntries(
-          opportunity.fields.map((field) => [field.fieldKey, 'EDIT']),
-        ),
-      },
-      visibleSchema: {} as never,
+  it('reports the dashboard draft conflict without overwriting it', async () => {
+    const { service, repository } = setup();
+    repository.saveDraft.mockResolvedValue(null);
+
+    await expect(
+      serviceAsV2(service).saveDraft(adminContext(), {
+        expectedVersion: 4,
+        configuration: completeDraft(),
+      }),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: 'DASHBOARD_DRAFT_VERSION_CONFLICT',
     });
-
-    await service.getOverview(employeeContext(), period);
-
-    expect(repository.aggregateOverview).toHaveBeenCalledWith(
-      employeeContext(),
-      expect.objectContaining({
-        ownerMemberId: 'member-employee',
-        includeLeaderboard: false,
-      }),
-    );
   });
 
-  it('keeps admin aggregation tenant-wide unless an owner is requested', async () => {
+  it('publishes only the matching saved draft after compiling current candidates', async () => {
     const { service, repository } = setup();
 
-    await service.getOverview(adminContext(), period);
+    await expect(
+      serviceAsV2(service).publish(adminContext(), { expectedVersion: 1 }),
+    ).resolves.toMatchObject({ number: 3, sourceDraftVersion: 1 });
 
-    expect(repository.aggregateOverview).toHaveBeenCalledWith(
+    expect(repository.publishDraft).toHaveBeenCalledWith(
       adminContext(),
+      1,
       expect.objectContaining({
-        ownerMemberId: undefined,
-        includeLeaderboard: true,
+        schemaVersion: 2,
+        widgets: [expect.anything()],
+      }),
+      'member-admin',
+      { requestId: 'req_unknown' },
+    );
+  });
+
+  it('rejects semantic publication errors without replacing the active publication', async () => {
+    const { service, repository } = setup({ draft: incompleteDraft() });
+
+    await expect(
+      serviceAsV2(service).publish(adminContext(), { expectedVersion: 1 }),
+    ).rejects.toMatchObject({ status: 400 });
+
+    expect(repository.publishDraft).not.toHaveBeenCalled();
+    expect(repository.getActivePublication).not.toHaveBeenCalled();
+  });
+
+  it('evaluates the saved draft in administrator preview mode with diagnostics', async () => {
+    const { service, engine } = setup();
+    const preview = runtimeResult('UNAVAILABLE');
+    engine.evaluate.mockResolvedValue(preview);
+
+    await expect(
+      serviceAsV2(service).preview(adminContext(), {
+        expectedVersion: 1,
+        period,
+      }),
+    ).resolves.toEqual(preview);
+
+    expect(engine.evaluate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        context: adminContext(),
+        preview: true,
+        publication: expect.objectContaining({ schemaVersion: 2 }),
       }),
     );
   });
 
-  it('returns repair issues without running misleading aggregates', async () => {
-    const { service, repository } = setup();
-    repository.listPublishedObjects.mockResolvedValue([]);
+  it('returns an unconfigured overview when no active publication exists', async () => {
+    const { service, repository, engine } = setup();
+    repository.getActivePublication.mockResolvedValue(null);
 
-    await expect(service.getOverview(adminContext(), period)).resolves.toEqual(
+    await expect(
+      serviceAsV2(service).getOverview(adminContext(), period),
+    ).resolves.toEqual(
+      expect.objectContaining({ state: 'UNCONFIGURED', widgets: [] }),
+    );
+    expect(engine.evaluate).not.toHaveBeenCalled();
+  });
+
+  it('evaluates the active publication rather than the current draft', async () => {
+    const { service, repository, engine } = setup();
+    const active = publication('published-3');
+    repository.getActivePublication.mockResolvedValue(active);
+    engine.evaluate.mockResolvedValue(runtimeResult('READY'));
+
+    await serviceAsV2(service).getOverview(adminContext(), period);
+
+    expect(engine.evaluate).toHaveBeenCalledWith(
       expect.objectContaining({
-        state: 'NEEDS_REPAIR',
-        issues: [
-          expect.objectContaining({ code: 'OPPORTUNITY_OBJECT_NOT_FOUND' }),
-        ],
+        publication: active.configuration,
+        context: adminContext(),
+        preview: false,
       }),
     );
-    expect(repository.aggregateOverview).not.toHaveBeenCalled();
+  });
+
+  it('delegates employee scope enforcement to the engine', async () => {
+    const { service, engine } = setup();
+    engine.evaluate.mockResolvedValue(runtimeResult('READY'));
+
+    await serviceAsV2(service).getOverview(employeeContext(), period);
+
+    expect(engine.evaluate).toHaveBeenCalledWith(
+      expect.objectContaining({ context: employeeContext(), preview: false }),
+    );
   });
 });
 
-function setup() {
+interface DashboardV2Service {
+  getOverview(context: TenantContext, query: typeof period): Promise<unknown>;
+  saveDraft(
+    context: TenantContext,
+    input: { expectedVersion: number; configuration: DashboardDefinitionV2 },
+  ): Promise<unknown>;
+  preview(
+    context: TenantContext,
+    input: { expectedVersion: number; period: typeof period },
+  ): Promise<DashboardRuntimeResult>;
+  publish(
+    context: TenantContext,
+    input: { expectedVersion: number },
+  ): Promise<unknown>;
+}
+
+function serviceAsV2(service: DashboardsService): DashboardV2Service {
+  return service as unknown as DashboardV2Service;
+}
+
+function setup(input: { draft?: DashboardDefinitionV2 } = {}) {
+  const draft = input.draft ?? completeDraft();
   const repository = {
-    getConfiguration: jest.fn().mockResolvedValue({
-      version: 1,
-      configuration,
+    getDefinition: jest.fn().mockResolvedValue({
+      draftVersion: 1,
+      draftConfiguration: draft,
+      activePublicationId: 'published-2',
+      sourceTemplateVersionId: null,
       updatedAt: '2026-08-31T00:00:00.000Z',
     }),
-    saveConfiguration: jest.fn(),
-    listPublishedObjects: jest.fn().mockResolvedValue([opportunity]),
-    aggregateOverview: jest.fn().mockResolvedValue({
-      metrics: [],
-      pipeline: [],
-      trend: [],
-      attention: [],
-      leaderboard: [],
-      records: [],
+    saveDraft: jest.fn().mockResolvedValue({
+      draftVersion: 2,
+      draftConfiguration: draft,
+      activePublicationId: 'published-2',
+      sourceTemplateVersionId: null,
+      updatedAt: '2026-09-01T00:00:00.000Z',
     }),
-  } satisfies jest.Mocked<DashboardRepository>;
-  const publishedObjects = {
-    resolveRuntimeSchema: jest.fn(),
-  } as unknown as jest.Mocked<PublishedObjectService>;
+    publishDraft: jest.fn().mockResolvedValue(publication('published-3')),
+    getActivePublication: jest
+      .fn()
+      .mockResolvedValue(publication('published-2')),
+    listPublishedObjects: jest.fn().mockResolvedValue([publishedOpportunity()]),
+  };
+  const engine = {
+    evaluate: jest.fn(),
+  } as unknown as jest.Mocked<DashboardEngine>;
   return {
     repository,
-    publishedObjects,
-    service: new DashboardsService(repository, publishedObjects),
+    engine,
+    service: new DashboardsService(repository as never, engine),
+  };
+}
+
+function completeDraft(): DashboardDefinitionV2 {
+  return {
+    schemaVersion: 2,
+    title: '销售工作台',
+    widgets: [
+      {
+        id: 'total',
+        type: 'METRIC',
+        title: '商机总数',
+        audience: 'ALL',
+        objectCode: 'opportunities',
+        width: 'QUARTER',
+        sortOrder: 4,
+        filters: [],
+        aggregation: 'COUNT',
+      },
+    ],
+  };
+}
+
+function incompleteDraft(): DashboardDefinitionV2 {
+  return {
+    ...completeDraft(),
+    widgets: [{ ...completeDraft().widgets[0], objectCode: '' }],
+  };
+}
+
+function publication(id: string) {
+  return {
+    id,
+    number: Number(id.at(-1)),
+    sourceDraftVersion: 1,
+    configuration: {
+      kind: 'COMPILED_V2',
+      raw: { schemaVersion: 2, title: '销售工作台', widgets: [] },
+    } satisfies StoredDashboardPublicationConfiguration,
+    publishedByMemberId: 'member-admin',
+    publishedAt: '2026-09-01T00:00:00.000Z',
+  };
+}
+
+function runtimeResult(state: 'READY' | 'UNAVAILABLE'): DashboardRuntimeResult {
+  return {
+    title: '销售工作台',
+    period: {
+      from: period.from.toISOString(),
+      to: period.to.toISOString(),
+      timezone: period.timezone,
+    },
+    widgets:
+      state === 'READY'
+        ? []
+        : [
+            {
+              id: 'total',
+              type: 'METRIC',
+              title: '商机总数',
+              width: 'QUARTER',
+              sortOrder: 0,
+              state: 'UNAVAILABLE',
+              reason: 'FIELD_HIDDEN',
+            },
+          ],
   };
 }
 
@@ -162,7 +295,7 @@ function employeeContext(): TenantContext {
 function publishedOpportunity(): PublishedObjectSchema {
   return {
     publication: {
-      id: 'publication-1',
+      id: 'object-publication-1',
       number: 1,
       sourceDraftVersion: 1,
       publishedAt: '2026-08-31T00:00:00.000Z',
@@ -177,21 +310,23 @@ function publishedOpportunity(): PublishedObjectSchema {
       sortOrder: 1,
     },
     fields: [
-      field('name', 'TEXT'),
-      field('stage', 'SINGLE_SELECT', {
-        options: [
-          { key: 'new', label: '新商机', color: 'BLUE', status: 'ACTIVE' },
-          { key: 'won', label: '已成交', color: 'GREEN', status: 'ACTIVE' },
-          { key: 'lost', label: '已失败', color: 'RED', status: 'ACTIVE' },
-        ],
-      }),
-      field('amount', 'MONEY'),
-      field('close_at', 'DATE'),
+      {
+        id: 'field-name',
+        fieldKey: 'name',
+        label: '名称',
+        type: 'TEXT',
+        required: false,
+        defaultValue: null,
+        validation: {},
+        config: {},
+        sortOrder: 1,
+        isSystem: false,
+      },
     ],
     defaultView: {
       code: 'default',
       name: '默认列表',
-      columnFieldKeys: ['name', 'stage', 'amount'],
+      columnFieldKeys: ['name'],
       sort: { field: 'updatedAt', direction: 'desc' },
     },
     employeeAccess: {
@@ -201,31 +336,7 @@ function publishedOpportunity(): PublishedObjectSchema {
       canDelete: false,
       readScope: 'OWN',
       updateScope: 'OWN',
-      fields: {
-        name: 'EDIT',
-        stage: 'EDIT',
-        amount: 'EDIT',
-        close_at: 'EDIT',
-      },
+      fields: { name: 'EDIT' },
     },
-  };
-}
-
-function field(
-  fieldKey: string,
-  type: PublishedObjectSchema['fields'][number]['type'],
-  config: PublishedObjectSchema['fields'][number]['config'] = {},
-): PublishedObjectSchema['fields'][number] {
-  return {
-    id: `field-${fieldKey}`,
-    fieldKey,
-    label: fieldKey,
-    type,
-    required: false,
-    defaultValue: null,
-    validation: {},
-    config,
-    sortOrder: 1,
-    isSystem: false,
   };
 }

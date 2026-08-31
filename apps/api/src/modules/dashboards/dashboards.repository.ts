@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { Prisma } from '@crm/database';
 
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
+import { AuditService } from '../audit/audit.service';
 import { parsePublishedObjectSchema } from '../objects/published-object.service';
 import { migrateLegacyDashboard } from './dashboard-definition';
 import type {
@@ -26,6 +27,7 @@ import type {
   StoredDashboardPublicationConfiguration,
 } from './dashboard.types';
 import type { DashboardRepository } from './dashboards.service';
+import type { DashboardRequestMeta } from './dashboards.service';
 
 export type { StoredDashboardPublicationConfiguration } from './dashboard.types';
 
@@ -77,7 +79,10 @@ export class PrismaDashboardQueryExecutor implements DashboardQueryExecutor {
 
 @Injectable()
 export class PrismaDashboardRepository implements DashboardRepository {
-  constructor(private readonly runner: DatabaseContextRunner) {}
+  constructor(
+    private readonly runner: DatabaseContextRunner,
+    @Optional() private readonly audit?: AuditService,
+  ) {}
 
   getDefinition(
     context: TenantContext,
@@ -94,6 +99,7 @@ export class PrismaDashboardRepository implements DashboardRepository {
     context: TenantContext,
     expectedVersion: number,
     draft: DashboardDefinitionV2,
+    audit: DashboardRequestMeta = { requestId: 'req_unknown' },
   ): Promise<DashboardDefinitionRecord | null> {
     return this.runner.withTenant(context, async (transaction) => {
       const currentVersion = await lockDashboardDefinition(
@@ -124,6 +130,20 @@ export class PrismaDashboardRepository implements DashboardRepository {
                 draftConfiguration,
               },
             });
+      await this.appendAudit(transaction, {
+        tenantId: context.tenantId,
+        actorType: 'USER',
+        actorId: context.userId,
+        action: 'dashboard.draft_saved',
+        resourceType: 'dashboard_definition',
+        resourceId: context.tenantId,
+        after: {
+          draftVersion: record.draftVersion,
+          widgetCount: draft.widgets.length,
+        },
+        requestId: audit.requestId,
+        ip: audit.ip,
+      });
       return definitionRecord(record);
     });
   }
@@ -133,6 +153,7 @@ export class PrismaDashboardRepository implements DashboardRepository {
     expectedVersion: number,
     compiled: PublishedDashboardDefinitionV2,
     actorMemberId: string,
+    audit: DashboardRequestMeta = { requestId: 'req_unknown' },
   ): Promise<DashboardPublicationRecord | null> {
     return this.runner.withTenant(context, async (transaction) => {
       const currentVersion = await lockDashboardDefinition(
@@ -159,8 +180,30 @@ export class PrismaDashboardRepository implements DashboardRepository {
         where: { tenantId: context.tenantId },
         data: { activePublicationId: publication.id },
       });
+      await this.appendAudit(transaction, {
+        tenantId: context.tenantId,
+        actorType: 'USER',
+        actorId: context.userId,
+        action: 'dashboard.published',
+        resourceType: 'dashboard_publication',
+        resourceId: publication.id,
+        after: {
+          draftVersion: expectedVersion,
+          publicationNumber: publication.publicationNo,
+          widgetCount: compiled.widgets.length,
+        },
+        requestId: audit.requestId,
+        ip: audit.ip,
+      });
       return publicationRecord(publication);
     });
+  }
+
+  private appendAudit(
+    transaction: Prisma.TransactionClient,
+    event: Parameters<AuditService['append']>[1],
+  ): Promise<void> {
+    return this.audit?.append(transaction, event) ?? Promise.resolve();
   }
 
   getActivePublication(

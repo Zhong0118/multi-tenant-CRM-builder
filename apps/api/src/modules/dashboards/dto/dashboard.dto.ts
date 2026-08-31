@@ -4,18 +4,17 @@ import {
   IsInt,
   IsObject,
   IsOptional,
-  IsUUID,
+  IsString,
   Max,
   Min,
+  ValidateNested,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-
-export class DashboardConfigurationRecordDto {
-  @ApiProperty() version!: number;
-  @ApiProperty({ type: 'object', additionalProperties: true })
-  configuration!: object;
-  @ApiProperty({ format: 'date-time' }) updatedAt!: string;
-}
+import {
+  ApiExtraModels,
+  ApiProperty,
+  ApiPropertyOptional,
+  getSchemaPath,
+} from '@nestjs/swagger';
 
 export class DashboardConfigurationIssueDto {
   @ApiProperty() code!: string;
@@ -23,12 +22,30 @@ export class DashboardConfigurationIssueDto {
   @ApiProperty() message!: string;
 }
 
+export class DashboardDraftDto {
+  @ApiProperty({ minimum: 1 }) draftVersion!: number;
+  @ApiProperty({ type: 'object', additionalProperties: true })
+  draftConfiguration!: object;
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  activePublicationId!: string | null;
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  sourceTemplateVersionId!: string | null;
+  @ApiProperty({ format: 'date-time' }) updatedAt!: string;
+}
+
+export class DashboardPublicationSummaryDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiProperty({ minimum: 1 }) number!: number;
+  @ApiProperty({ minimum: 1 }) sourceDraftVersion!: number;
+  @ApiProperty({ format: 'date-time' }) publishedAt!: string;
+}
+
 export class DashboardConfigurationEnvelopeDto {
-  @ApiPropertyOptional({
-    type: DashboardConfigurationRecordDto,
-    nullable: true,
-  })
-  record!: DashboardConfigurationRecordDto | null;
+  @ApiPropertyOptional({ type: DashboardDraftDto, nullable: true })
+  draft!: DashboardDraftDto | null;
+
+  @ApiPropertyOptional({ type: DashboardPublicationSummaryDto, nullable: true })
+  activePublication!: DashboardPublicationSummaryDto | null;
 
   @ApiProperty({ type: 'object', additionalProperties: true, isArray: true })
   candidates!: object[];
@@ -48,6 +65,39 @@ export class SaveDashboardConfigurationDto {
   configuration!: object;
 }
 
+export class PublishDashboardDto {
+  @ApiProperty({ minimum: 1 })
+  @IsInt()
+  @Min(1)
+  expectedVersion!: number;
+}
+
+export class DashboardPeriodDto {
+  @ApiProperty({ format: 'date-time' })
+  @IsDateString({ strict: true })
+  from!: string;
+
+  @ApiProperty({ format: 'date-time' })
+  @IsDateString({ strict: true })
+  to!: string;
+
+  @ApiProperty()
+  @IsString()
+  timezone!: string;
+}
+
+export class PreviewDashboardDto {
+  @ApiProperty({ minimum: 1 })
+  @IsInt()
+  @Min(1)
+  expectedVersion!: number;
+
+  @ApiProperty({ type: DashboardPeriodDto })
+  @ValidateNested()
+  @Type(() => DashboardPeriodDto)
+  period!: DashboardPeriodDto;
+}
+
 export class DashboardOverviewQueryDto {
   @ApiPropertyOptional({ format: 'date-time' })
   @IsOptional()
@@ -59,11 +109,6 @@ export class DashboardOverviewQueryDto {
   @IsDateString({ strict: true })
   to?: string;
 
-  @ApiPropertyOptional({ format: 'uuid' })
-  @IsOptional()
-  @IsUUID()
-  ownerMemberId?: string;
-
   @ApiPropertyOptional({ minimum: 1, maximum: 366, default: 31 })
   @IsOptional()
   @Type(() => Number)
@@ -73,83 +118,120 @@ export class DashboardOverviewQueryDto {
   days?: number;
 }
 
-export class DashboardPeriodDto {
-  @ApiProperty({ format: 'date-time' }) from!: string;
-  @ApiProperty({ format: 'date-time' }) to!: string;
-  @ApiProperty() timezone!: string;
-}
-
-export class DashboardMetricDto {
-  @ApiProperty() key!: string;
-  @ApiProperty() label!: string;
-  @ApiPropertyOptional({ type: Number, nullable: true }) value!: number | null;
-  @ApiProperty({ enum: ['COUNT', 'MONEY', 'PERCENT'] })
-  format!: 'COUNT' | 'MONEY' | 'PERCENT';
-}
-
-export class DashboardPipelineItemDto {
-  @ApiProperty() optionKey!: string;
-  @ApiProperty() label!: string;
-  @ApiProperty() color!: string;
-  @ApiProperty() count!: number;
-  @ApiProperty() amount!: number;
-}
-
-export class DashboardTrendItemDto {
-  @ApiProperty() date!: string;
-  @ApiProperty() wonCount!: number;
-  @ApiProperty() wonAmount!: number;
-}
-
-export class DashboardAttentionItemDto {
-  @ApiProperty() key!: string;
-  @ApiProperty() label!: string;
-  @ApiProperty() count!: number;
-  @ApiProperty() href!: string;
-}
-
-export class DashboardLeaderboardItemDto {
-  @ApiProperty({ format: 'uuid' }) memberId!: string;
-  @ApiProperty() displayName!: string;
-  @ApiProperty() wonCount!: number;
-  @ApiProperty() wonAmount!: number;
-  @ApiProperty() activeAmount!: number;
-}
-
-export class DashboardRecordItemDto {
-  @ApiProperty({ format: 'uuid' }) id!: string;
+export class DashboardMetricWidgetDto {
+  @ApiProperty() id!: string;
+  @ApiProperty({ enum: ['METRIC'] }) type!: 'METRIC';
   @ApiProperty() title!: string;
-  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
-  ownerMemberId!: string | null;
-  @ApiPropertyOptional({ type: String, nullable: true }) ownerName!: string | null;
-  @ApiPropertyOptional({ type: String, nullable: true }) stageKey!: string | null;
-  @ApiPropertyOptional({ type: Number, nullable: true }) amount!: number | null;
-  @ApiPropertyOptional({ type: String, nullable: true }) dueAt!: string | null;
-  @ApiProperty({ format: 'date-time' }) updatedAt!: string;
+  @ApiPropertyOptional() description?: string;
+  @ApiProperty({ enum: ['QUARTER', 'HALF', 'FULL'] }) width!: string;
+  @ApiProperty() sortOrder!: number;
+  @ApiProperty({ enum: ['READY'] }) state!: 'READY';
+  @ApiProperty({ type: 'object', additionalProperties: true }) data!: object;
 }
 
-export class DashboardOverviewDto {
+export class DashboardDistributionWidgetDto {
+  @ApiProperty() id!: string;
+  @ApiProperty({ enum: ['STATUS_DISTRIBUTION'] })
+  type!: 'STATUS_DISTRIBUTION';
+  @ApiProperty() title!: string;
+  @ApiPropertyOptional() description?: string;
+  @ApiProperty({ enum: ['QUARTER', 'HALF', 'FULL'] }) width!: string;
+  @ApiProperty() sortOrder!: number;
+  @ApiProperty({ enum: ['READY'] }) state!: 'READY';
+  @ApiProperty({ type: 'object', additionalProperties: true }) data!: object;
+}
+
+export class DashboardTrendWidgetDto {
+  @ApiProperty() id!: string;
+  @ApiProperty({ enum: ['TREND'] }) type!: 'TREND';
+  @ApiProperty() title!: string;
+  @ApiPropertyOptional() description?: string;
+  @ApiProperty({ enum: ['QUARTER', 'HALF', 'FULL'] }) width!: string;
+  @ApiProperty() sortOrder!: number;
+  @ApiProperty({ enum: ['READY'] }) state!: 'READY';
+  @ApiProperty({ type: 'object', additionalProperties: true }) data!: object;
+}
+
+export class DashboardLeaderboardWidgetDto {
+  @ApiProperty() id!: string;
+  @ApiProperty({ enum: ['LEADERBOARD'] }) type!: 'LEADERBOARD';
+  @ApiProperty() title!: string;
+  @ApiPropertyOptional() description?: string;
+  @ApiProperty({ enum: ['QUARTER', 'HALF', 'FULL'] }) width!: string;
+  @ApiProperty() sortOrder!: number;
+  @ApiProperty({ enum: ['READY'] }) state!: 'READY';
+  @ApiProperty({ type: 'object', additionalProperties: true }) data!: object;
+}
+
+export class DashboardRecordListWidgetDto {
+  @ApiProperty() id!: string;
+  @ApiProperty({ enum: ['RECORD_LIST'] }) type!: 'RECORD_LIST';
+  @ApiProperty() title!: string;
+  @ApiPropertyOptional() description?: string;
+  @ApiProperty({ enum: ['QUARTER', 'HALF', 'FULL'] }) width!: string;
+  @ApiProperty() sortOrder!: number;
+  @ApiProperty({ enum: ['READY'] }) state!: 'READY';
+  @ApiProperty({ type: 'object', additionalProperties: true }) data!: object;
+}
+
+export class DashboardUnavailableWidgetDto {
+  @ApiProperty() id!: string;
   @ApiProperty({
-    enum: ['READY', 'UNCONFIGURED', 'NEEDS_REPAIR', 'UNAVAILABLE'],
+    enum: [
+      'METRIC',
+      'STATUS_DISTRIBUTION',
+      'TREND',
+      'LEADERBOARD',
+      'RECORD_LIST',
+    ],
   })
-  state!: 'READY' | 'UNCONFIGURED' | 'NEEDS_REPAIR' | 'UNAVAILABLE';
+  type!: string;
+  @ApiProperty() title!: string;
+  @ApiPropertyOptional() description?: string;
+  @ApiProperty({ enum: ['QUARTER', 'HALF', 'FULL'] }) width!: string;
+  @ApiProperty() sortOrder!: number;
+  @ApiProperty({ enum: ['UNAVAILABLE'] }) state!: 'UNAVAILABLE';
+  @ApiPropertyOptional({
+    enum: [
+      'AUDIENCE_EXCLUDED',
+      'OBJECT_UNAVAILABLE',
+      'OBJECT_ACCESS_DENIED',
+      'FIELD_HIDDEN',
+      'QUERY_FAILED',
+    ],
+  })
+  reason?: string;
+}
+
+const dashboardWidgetSchemas = [
+  DashboardMetricWidgetDto,
+  DashboardDistributionWidgetDto,
+  DashboardTrendWidgetDto,
+  DashboardLeaderboardWidgetDto,
+  DashboardRecordListWidgetDto,
+  DashboardUnavailableWidgetDto,
+];
+
+@ApiExtraModels(...dashboardWidgetSchemas)
+export class DashboardRuntimeDto {
+  @ApiProperty() title!: string;
+  @ApiProperty({ type: DashboardPeriodDto }) period!: DashboardPeriodDto;
+  @ApiProperty({
+    isArray: true,
+    oneOf: dashboardWidgetSchemas.map((schema) => ({
+      $ref: getSchemaPath(schema),
+    })),
+  })
+  widgets!: object[];
+}
+
+export class DashboardOverviewDto extends DashboardRuntimeDto {
+  @ApiProperty({ enum: ['READY', 'UNCONFIGURED'] })
+  state!: 'READY' | 'UNCONFIGURED';
+
   @ApiProperty({ enum: ['TENANT_ADMIN', 'EMPLOYEE'] })
   role!: 'TENANT_ADMIN' | 'EMPLOYEE';
-  @ApiProperty({ type: DashboardPeriodDto }) period!: DashboardPeriodDto;
-  @ApiPropertyOptional({ type: 'object', additionalProperties: true })
-  configuration?: object;
-  @ApiProperty({ type: DashboardConfigurationIssueDto, isArray: true })
-  issues!: DashboardConfigurationIssueDto[];
-  @ApiProperty({ type: DashboardMetricDto, isArray: true })
-  metrics!: DashboardMetricDto[];
-  @ApiProperty({ type: DashboardPipelineItemDto, isArray: true })
-  pipeline!: DashboardPipelineItemDto[];
-  @ApiProperty({ type: DashboardTrendItemDto, isArray: true })
-  trend!: DashboardTrendItemDto[];
-  @ApiProperty({ type: DashboardAttentionItemDto, isArray: true })
-  attention!: DashboardAttentionItemDto[];
-  @ApiProperty({ type: DashboardLeaderboardItemDto, isArray: true })
-  leaderboard!: DashboardLeaderboardItemDto[];
-  @ApiProperty({ type: DashboardRecordItemDto, isArray: true })
-  records!: DashboardRecordItemDto[];
+
+  @ApiPropertyOptional({ type: DashboardPublicationSummaryDto })
+  publication?: DashboardPublicationSummaryDto;
 }
