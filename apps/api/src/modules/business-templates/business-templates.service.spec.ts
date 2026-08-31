@@ -170,6 +170,43 @@ describe('BusinessTemplatesService', () => {
     );
   });
 
+  it('propagates dashboard component paths when publication is blocked', async () => {
+    const { service } = publishedFixture((configuration) => {
+      configuration.dashboard = {
+        schemaVersion: 2,
+        title: '销售总览',
+        widgets: [
+          {
+            id: 'lead-list',
+            type: 'RECORD_LIST',
+            title: '最新线索',
+            audience: 'ALL',
+            objectCode: 'leads',
+            width: 'FULL',
+            sortOrder: 0,
+            filters: [],
+            fieldKeys: ['missing'],
+            sort: { field: 'updatedAt', direction: 'DESC' },
+            limit: 8,
+          },
+        ],
+      };
+    });
+
+    const error = await rejected(
+      service.publish(platformAdmin, 'template-1', 2, meta),
+    );
+
+    expect(error).toMatchObject({
+      code: 'TEMPLATE_PUBLICATION_BLOCKED',
+      fieldErrors: {
+        'configuration.dashboard.widgets[0].fieldKeys[0]': [
+          'Referenced field does not exist.',
+        ],
+      },
+    });
+  });
+
   it('derives published object and field identities in detail', async () => {
     const { service } = publishedFixture();
     await service.publish(platformAdmin, 'template-1', 2, meta);

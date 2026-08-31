@@ -48,6 +48,23 @@ describe('business template DTOs', () => {
     ).resolves.toEqual([]);
   });
 
+  it('accepts an optional dashboard object with global whitelist validation', async () => {
+    const input = validDraftInput();
+    (input.configuration as Record<string, unknown>).dashboard = {
+      schemaVersion: 2,
+      title: '销售总览',
+      widgets: [],
+    };
+    const dto = plainToInstance(SaveBusinessTemplateDraftDto, input);
+
+    await expect(
+      validate(dto, { whitelist: true, forbidNonWhitelisted: true }),
+    ).resolves.toEqual([]);
+    expect(
+      (dto.configuration as unknown as Record<string, unknown>).dashboard,
+    ).toEqual({ schemaVersion: 2, title: '销售总览', widgets: [] });
+  });
+
   it('rejects employee field access outside the supported values', async () => {
     const input = validDraftInput();
     input.configuration.objects[0].employeeAccess!.fields.name = 'ADMIN';

@@ -231,9 +231,12 @@ function groupPublicationIssues(
 ): Record<string, string[]> {
   const grouped: Record<string, string[]> = {};
   for (const issue of issues) {
-    const key = issue.objectId
-      ? `configuration.objects.${issue.objectId}`
-      : 'configuration.objects';
+    const key =
+      issue.path !== undefined
+        ? `configuration.${issue.path}`
+        : issue.objectId
+          ? `configuration.objects.${issue.objectId}`
+          : 'configuration.objects';
     (grouped[key] ??= []).push(issue.message);
   }
   return grouped;

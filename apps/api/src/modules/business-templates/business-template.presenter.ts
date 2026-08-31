@@ -1,4 +1,5 @@
 import type { PublishedFieldType } from '../objects/object-schema';
+import type { DashboardDefinitionV2 } from '../dashboards/dashboard.types';
 import type { BusinessTemplateConfiguration } from './business-template.schema';
 import type {
   BusinessTemplateRecord,
@@ -22,6 +23,7 @@ export type PresentedTemplateObject = Omit<
 export interface PresentedTemplateConfiguration {
   schemaVersion: 1;
   objects: PresentedTemplateObject[];
+  dashboard?: DashboardDefinitionV2;
 }
 
 export interface TemplateSummary {
@@ -122,6 +124,9 @@ export function toTemplateDetail(
           }),
         };
       }),
+      ...(template.configuration.dashboard
+        ? { dashboard: structuredClone(template.configuration.dashboard) }
+        : {}),
     },
   };
 }

@@ -307,6 +307,11 @@ export class BusinessTemplateConfigurationDto {
   @ValidateNested({ each: true })
   @Type(() => TemplateObjectDraftDto)
   objects!: TemplateObjectDraftDto[];
+
+  @ApiPropertyOptional({ type: 'object', additionalProperties: true })
+  @IsOptional()
+  @IsObject()
+  dashboard?: object;
 }
 
 export class SaveBusinessTemplateDraftDto {
@@ -438,6 +443,7 @@ export class TemplatePublicationIssueResponseDto {
   @ApiProperty({ type: String }) message!: string;
   @ApiProperty({ type: String }) objectId!: string;
   @ApiPropertyOptional({ type: String }) fieldKey?: string;
+  @ApiPropertyOptional({ type: String }) path?: string;
 }
 
 export class TemplatePublicationAnalysisResponseDto {

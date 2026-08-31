@@ -6,6 +6,37 @@ import type {
 } from './business-templates.repository';
 
 describe('business template presenter', () => {
+  it('preserves an optional dashboard preset in template detail', () => {
+    const template = configuration('customers', 'name', 'TEXT');
+    template.dashboard = {
+      schemaVersion: 2,
+      title: '客户总览',
+      widgets: [],
+    };
+    const record: BusinessTemplateRecord = {
+      id: 'template-1',
+      code: 'sales',
+      name: '销售模板',
+      description: null,
+      draftVersion: 1,
+      configuration: template,
+      activeVersionId: null,
+      publishedAt: null,
+      archivedAt: null,
+      createdByUserId: 'user-1',
+      createdAt: new Date('2026-08-26T00:00:00.000Z'),
+      updatedAt: new Date('2026-08-26T00:00:00.000Z'),
+      activeVersion: null,
+      applicationCount: 0,
+    };
+
+    expect(toTemplateDetail(record).configuration.dashboard).toEqual({
+      schemaVersion: 2,
+      title: '客户总览',
+      widgets: [],
+    });
+  });
+
   it('derives restored identity locks from the earliest published version', () => {
     const published = configuration('customers', 'name', 'TEXT');
     const restored = configuration(

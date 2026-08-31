@@ -34,4 +34,30 @@
 ## Concerns
 
 - No migration is needed: the dashboard tables and fields were introduced by the earlier dashboard tasks, and the template field is optional.
-- The template publication API currently groups errors by object IDs; dashboard-specific paths are available in the analysis result, but rendering them as a separately keyed UI field is outside Task 5's requested files/scope.
+
+## Fix round 1 — HTTP DTO and publication-path review
+
+### RED / GREEN
+
+- RED command: `pnpm --filter @crm/api test -- business-template.dto.spec.ts business-templates.service.spec.ts business-template.presenter.spec.ts business-template-publication.policy.spec.ts template-application.service.spec.ts --runInBand`.
+- RED result: 3 expected failures — global whitelist rejected `configuration.dashboard`, detail responses omitted the dashboard preset, and blocked dashboard publication used `configuration.objects` instead of `configuration.dashboard.widgets[0].fieldKeys[0]`.
+- GREEN: the template configuration DTO now permits an optional object-valued dashboard, inherited response/version DTOs expose it in OpenAPI, the detail presenter retains it, and issue paths are preferred when producing blocked-publication field errors.
+
+### Added focused coverage
+
+- Dashboard JSON survives class-transformer/class-validator with `whitelist` and `forbidNonWhitelisted` enabled; strict V2 validation remains in the domain parser.
+- Template detail preserves the optional dashboard response configuration; published version configuration already uses the same DTO surface.
+- Dashboard widget paths propagate into `TEMPLATE_PUBLICATION_BLOCKED` field errors, while issues with no path retain the object-key fallback.
+- Semantically identical dashboard widget arrays with different wire order have matching checksums.
+- Applying a template without a dashboard preset leaves the tenant dashboard row absent.
+
+### Exact checks
+
+- `pnpm --filter @crm/api test -- business-template.dto.spec.ts business-templates.service.spec.ts business-template.presenter.spec.ts business-template-publication.policy.spec.ts template-application.service.spec.ts --runInBand` — PASS (63 tests).
+- `pnpm --filter @crm/api typecheck` — PASS.
+- `pnpm --filter @crm/api exec eslint src/modules/business-templates/business-template.presenter.ts src/modules/business-templates/business-template.presenter.spec.ts src/modules/business-templates/business-templates.service.ts src/modules/business-templates/business-templates.service.spec.ts src/modules/business-templates/business-template-publication.policy.spec.ts src/modules/business-templates/template-application.service.spec.ts src/modules/business-templates/dto/business-template.dto.ts src/modules/business-templates/dto/business-template.dto.spec.ts` — PASS.
+- `git diff --check` — PASS.
+
+### Concerns
+
+- The dashboard DTO stays deliberately object-shaped until the platform template editor adopts the full discriminated V2 builder language, as required by R11.

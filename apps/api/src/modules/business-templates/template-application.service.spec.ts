@@ -140,6 +140,14 @@ describe('TemplateApplicationService', () => {
     });
   });
 
+  it('does not create a dashboard draft when the applied template has no preset', async () => {
+    const { service, state } = applicationFixture();
+
+    await service.apply(platformAdmin, applicationInput(), meta);
+
+    expect(state.dashboard).toBeNull();
+  });
+
   it('returns the first application before acquiring locks on an exact retry', async () => {
     const { service, state, transactionEvents } = applicationFixture();
     const input = applicationInput();
@@ -813,7 +821,7 @@ function configurationWithDashboard(): BusinessTemplateConfiguration {
   return {
     ...configuration(),
     dashboard: dashboardPreset(),
-  } as BusinessTemplateConfiguration;
+  };
 }
 
 function dashboardPreset(): DashboardDefinitionV2 {

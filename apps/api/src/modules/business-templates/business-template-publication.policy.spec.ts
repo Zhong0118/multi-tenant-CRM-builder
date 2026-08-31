@@ -124,7 +124,9 @@ describe('business template publication policy', () => {
   it('keeps templates without a dashboard compatible when compiling', () => {
     const compiled = compileTemplateVersion(validTemplate());
 
-    expect((compiled as DashboardTemplateConfiguration).dashboard).toBeUndefined();
+    expect(
+      (compiled as DashboardTemplateConfiguration).dashboard,
+    ).toBeUndefined();
     expect(compiled.schemaVersion).toBe(1);
   });
 
@@ -137,6 +139,32 @@ describe('business template publication policy', () => {
     );
     expect(checksumTemplateConfiguration(compiled)).not.toBe(
       checksumTemplateConfiguration(validTemplate()),
+    );
+  });
+
+  it('keeps the checksum stable when dashboard widgets arrive in a different order', () => {
+    const metric = {
+      id: 'lead-count',
+      type: 'METRIC' as const,
+      title: '线索总数',
+      audience: 'ALL' as const,
+      objectCode: 'leads',
+      width: 'QUARTER' as const,
+      sortOrder: 0,
+      filters: [],
+      aggregation: 'COUNT' as const,
+    };
+    const list = dashboardPreset(1).widgets[0];
+    const first = withDashboard(validTemplate(), {
+      schemaVersion: 2,
+      title: '销售总览',
+      widgets: [metric, list],
+    });
+    const reordered = structuredClone(first);
+    reordered.dashboard!.widgets.reverse();
+
+    expect(checksumTemplateConfiguration(first)).toBe(
+      checksumTemplateConfiguration(reordered),
     );
   });
 
