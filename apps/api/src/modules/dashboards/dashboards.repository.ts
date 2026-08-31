@@ -50,26 +50,28 @@ export interface DashboardPublicationRecord {
 export class PrismaDashboardQueryExecutor implements DashboardQueryExecutor {
   constructor(private readonly runner: DatabaseContextRunner) {}
 
-  execute(
+  async execute(
     context: TenantContext,
     plans: DashboardQueryPlan[],
   ): Promise<Map<string, DashboardWidgetResult>> {
-    return this.runner.withTenant(context, async (transaction) => {
-      const settled = await Promise.allSettled(
-        plans.map((plan) => executePlan(transaction, context, plan)),
-      );
-      return new Map(
-        plans.map((plan, index) => {
-          const result = settled[index];
-          return [
-            plan.widget.id,
-            result?.status === 'fulfilled'
-              ? result.value
-              : unavailableResult(plan),
-          ];
-        }),
-      );
-    });
+    const settled = await Promise.allSettled(
+      plans.map((plan) =>
+        this.runner.withTenant(context, (transaction) =>
+          executePlan(transaction, context, plan),
+        ),
+      ),
+    );
+    return new Map(
+      plans.map((plan, index) => {
+        const result = settled[index];
+        return [
+          plan.widget.id,
+          result?.status === 'fulfilled'
+            ? result.value
+            : unavailableResult(plan),
+        ];
+      }),
+    );
   }
 }
 
@@ -581,14 +583,22 @@ async function executeTrend(
     widget: Extract<DashboardQueryPlan['widget'], { type: 'TREND' }>;
   },
 ): Promise<DashboardTrendWidgetResult> {
-  const date = dashboardDateExpression(plan.widget.dateFieldKey);
+  const dateType = plan.widget.dateField?.type;
+  if (dateType !== 'DATE' && dateType !== 'DATETIME') {
+    throw new Error('Compiled dashboard date metadata missing');
+  }
+  const date = dashboardDateExpression(plan.widget.dateFieldKey, dateType);
   const granularity = trendGranularity(plan);
+  const bucket =
+    dateType === 'DATE'
+      ? Prisma.sql`${date}::timestamp`
+      : Prisma.sql`${date} AT TIME ZONE ${plan.period.timezone}`;
   const rows = await transaction.$queryRaw<
     Array<{ date: string; value: number }>
   >(Prisma.sql`
     SELECT
       to_char(
-        date_trunc(${granularity}, ${date} AT TIME ZONE ${plan.period.timezone}),
+        date_trunc(${granularity}, ${bucket}),
         'YYYY-MM-DD'
       ) AS date,
       ${aggregateExpression(
@@ -597,8 +607,7 @@ async function executeTrend(
       )} AS value
     FROM records r
     WHERE ${commonPredicates(context, plan)}
-      AND ${date} >= ${plan.period.from}::timestamptz
-      AND ${date} < ${plan.period.to}::timestamptz
+      AND ${trendPeriodPredicate(date, dateType, plan)}
     GROUP BY 1
     ORDER BY 1 ASC
   `);
@@ -624,22 +633,26 @@ async function executeLeaderboard(
   const rows = await transaction.$queryRaw<
     Array<{ memberId: string; displayName: string; value: number }>
   >(Prisma.sql`
+    WITH dashboard_records AS (
+      SELECT r.*, ${member} AS dashboard_member_id
+      FROM records r
+      WHERE ${commonPredicates(context, plan)}
+    )
     SELECT
-      ${member} AS "memberId",
-      COALESCE(u.display_name, ${member}) AS "displayName",
+      r.dashboard_member_id AS "memberId",
+      COALESCE(u.display_name, r.dashboard_member_id) AS "displayName",
       ${aggregateExpression(
         plan.widget.aggregation,
         plan.widget.valueFieldKey,
       )} AS value
-    FROM records r
+    FROM dashboard_records r
     LEFT JOIN tenant_members tm
       ON tm.tenant_id = r.tenant_id
-      AND tm.id::text = ${member}
+      AND tm.id::text = r.dashboard_member_id
       AND tm.status = 'ACTIVE'
     LEFT JOIN users u ON u.id = tm.user_id
-    WHERE ${commonPredicates(context, plan)}
-      AND ${member} IS NOT NULL
-    GROUP BY ${member}, u.display_name
+    WHERE r.dashboard_member_id IS NOT NULL
+    GROUP BY 1, 2
     ORDER BY value DESC, "displayName" ASC, "memberId" ASC
     LIMIT ${plan.widget.limit}
   `);
@@ -677,7 +690,10 @@ async function executeRecordList(
       r.title,
       r.owner_member_id::text AS "ownerMemberId",
       u.display_name AS "ownerName",
-      r.updated_at::text AS "updatedAt",
+      to_char(
+        r.updated_at AT TIME ZONE 'UTC',
+        'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+      ) AS "updatedAt",
       COALESCE((
         SELECT jsonb_object_agg(entry.key, entry.value)
         FROM jsonb_each(r.data) entry
@@ -775,7 +791,8 @@ function filterPredicate(
   }
   if (field.type === 'DATE' || field.type === 'DATETIME') {
     return dateFilterPredicate(
-      dashboardDateExpression(filter.fieldKey),
+      dashboardDateExpression(filter.fieldKey, field.type),
+      field.type,
       filter.operator,
       filter.value,
       plan.period.timezone,
@@ -836,10 +853,14 @@ function comparisonPredicate(
 
 function dateFilterPredicate(
   expression: Prisma.Sql,
+  type: 'DATE' | 'DATETIME',
   operator: string,
   value: unknown,
   timezone: string,
 ): Prisma.Sql {
+  if (type === 'DATE') {
+    return calendarDateFilterPredicate(expression, operator, value, timezone);
+  }
   const today = Prisma.sql`date_trunc('day', NOW() AT TIME ZONE ${timezone}) AT TIME ZONE ${timezone}`;
   const values = Array.isArray(value) ? value : [];
   switch (operator) {
@@ -859,6 +880,34 @@ function dateFilterPredicate(
       return Prisma.sql`${expression} >= ${today} AND ${expression} < ${today} + (${Number(value)} + 1) * INTERVAL '1 day'`;
     default:
       return Prisma.sql`${expression} BETWEEN ${values[0]}::timestamptz AND ${values[1]}::timestamptz`;
+  }
+}
+
+function calendarDateFilterPredicate(
+  expression: Prisma.Sql,
+  operator: string,
+  value: unknown,
+  timezone: string,
+): Prisma.Sql {
+  const today = Prisma.sql`(NOW() AT TIME ZONE ${timezone})::date`;
+  const values = Array.isArray(value) ? value : [];
+  switch (operator) {
+    case 'TODAY':
+      return Prisma.sql`${expression} = ${today}`;
+    case 'THIS_WEEK': {
+      const start = Prisma.sql`date_trunc('week', NOW() AT TIME ZONE ${timezone})::date`;
+      return Prisma.sql`${expression} >= ${start} AND ${expression} < ${start} + 7`;
+    }
+    case 'THIS_MONTH': {
+      const start = Prisma.sql`date_trunc('month', NOW() AT TIME ZONE ${timezone})::date`;
+      return Prisma.sql`${expression} >= ${start} AND ${expression} < (${start} + INTERVAL '1 month')::date`;
+    }
+    case 'PAST_N_DAYS':
+      return Prisma.sql`${expression} >= ${today} - ${Number(value)} AND ${expression} <= ${today}`;
+    case 'NEXT_N_DAYS':
+      return Prisma.sql`${expression} >= ${today} AND ${expression} <= ${today} + ${Number(value)}`;
+    default:
+      return Prisma.sql`${expression} BETWEEN ${values[0]}::date AND ${values[1]}::date`;
   }
 }
 
@@ -883,14 +932,41 @@ function dashboardNumericExpression(fieldKey: string): Prisma.Sql {
   `;
 }
 
-function dashboardDateExpression(fieldKey: string): Prisma.Sql {
-  return Prisma.sql`
-    CASE
-      WHEN (r.data ->> ${fieldKey}) ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
-        THEN (r.data ->> ${fieldKey})::timestamptz
-      ELSE NULL
-    END
-  `;
+function dashboardDateExpression(
+  fieldKey: string,
+  type: 'DATE' | 'DATETIME',
+): Prisma.Sql {
+  return type === 'DATE'
+    ? Prisma.sql`
+        CASE
+          WHEN pg_input_is_valid(r.data ->> ${fieldKey}, 'date')
+            THEN (r.data ->> ${fieldKey})::date
+          ELSE NULL
+        END
+      `
+    : Prisma.sql`
+        CASE
+          WHEN pg_input_is_valid(r.data ->> ${fieldKey}, 'timestamptz')
+            THEN (r.data ->> ${fieldKey})::timestamptz
+          ELSE NULL
+        END
+      `;
+}
+
+function trendPeriodPredicate(
+  expression: Prisma.Sql,
+  type: 'DATE' | 'DATETIME',
+  plan: DashboardQueryPlan,
+): Prisma.Sql {
+  return type === 'DATE'
+    ? Prisma.sql`
+        ${expression} >= (${plan.period.from}::timestamptz AT TIME ZONE ${plan.period.timezone})::date
+        AND ${expression} < (${plan.period.to}::timestamptz AT TIME ZONE ${plan.period.timezone})::date
+      `
+    : Prisma.sql`
+        ${expression} >= ${plan.period.from}::timestamptz
+        AND ${expression} < ${plan.period.to}::timestamptz
+      `;
 }
 
 function trendGranularity(
@@ -925,7 +1001,7 @@ function recordSortExpression(
       return field?.type === 'NUMBER' || field?.type === 'MONEY'
         ? dashboardNumericExpression(plan.widget.sort.field)
         : field?.type === 'DATE' || field?.type === 'DATETIME'
-          ? dashboardDateExpression(plan.widget.sort.field)
+          ? dashboardDateExpression(plan.widget.sort.field, field.type)
           : Prisma.sql`r.data ->> ${plan.widget.sort.field}`;
     }
   }

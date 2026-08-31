@@ -73,6 +73,34 @@ describe('DashboardEngine', () => {
     ]);
   });
 
+  it('collapses an OWN FIELD leaderboard to the current record owner', async () => {
+    const fixture = setup([
+      {
+        ...widgetBase('credited-leaderboard', 'ALL'),
+        type: 'LEADERBOARD',
+        memberSource: 'FIELD',
+        memberFieldKey: 'owner',
+        aggregation: 'COUNT',
+        limit: 10,
+      },
+    ]);
+
+    await fixture.engine.evaluate({
+      publication: fixture.publication,
+      catalog: fixture.catalog,
+      context: employeeContext(),
+      period,
+    });
+
+    const plan = fixture.executor.plans[0];
+    expect(plan?.ownerMemberId).toBe('member-employee');
+    expect(plan?.widget.type).toBe('LEADERBOARD');
+    if (plan?.widget.type !== 'LEADERBOARD') {
+      throw new Error('Expected leaderboard plan');
+    }
+    expect(plan.widget.memberSource).toBe('RECORD_OWNER');
+  });
+
   it('omits widgets when current object access is NONE', async () => {
     const fixture = setup([metric('forbidden', 'ALL')], {
       canRead: false,

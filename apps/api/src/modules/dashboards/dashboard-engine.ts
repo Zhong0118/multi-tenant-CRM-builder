@@ -95,20 +95,23 @@ export class DashboardEngine {
         omissions.set(widget.id, 'OBJECT_ACCESS_DENIED');
         continue;
       }
-      const projection = projectFields(widget, resolved.access);
+      const ownerMemberId =
+        input.context.role === 'EMPLOYEE' && resolved.access.readScope === 'OWN'
+          ? input.context.memberId
+          : undefined;
+      const plannedWidget = ownerMemberId
+        ? collapseOwnLeaderboard(widget)
+        : widget;
+      const projection = projectFields(plannedWidget, resolved.access);
       if (!projection) {
         omissions.set(widget.id, 'FIELD_HIDDEN');
         continue;
       }
       plans.push({
-        widget,
+        widget: plannedWidget,
         object: resolved.schema,
         period: input.period,
-        ownerMemberId:
-          input.context.role === 'EMPLOYEE' &&
-          resolved.access.readScope === 'OWN'
-            ? input.context.memberId
-            : undefined,
+        ownerMemberId,
         visibleFieldKeys: projection,
       });
     }
@@ -143,6 +146,18 @@ export class DashboardEngine {
 
     return { title: publication.title, period: input.period, widgets };
   }
+}
+
+function collapseOwnLeaderboard(
+  widget: PublishedDashboardWidgetV2,
+): PublishedDashboardWidgetV2 {
+  if (widget.type !== 'LEADERBOARD' || widget.memberSource !== 'FIELD') {
+    return widget;
+  }
+  const ownerLeaderboard = { ...widget, memberSource: 'RECORD_OWNER' as const };
+  delete ownerLeaderboard.memberFieldKey;
+  delete ownerLeaderboard.memberField;
+  return ownerLeaderboard;
 }
 
 function normalizePublication(

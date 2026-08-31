@@ -136,6 +136,44 @@ describe('PrismaDashboardRepository persistence boundaries', () => {
 });
 
 describe('PrismaDashboardQueryExecutor', () => {
+  it('runs every widget in its own tenant transaction before isolating failures', async () => {
+    let transactionNumber = 0;
+    const withTenant = jest.fn(
+      <T>(
+        _context: TenantContext,
+        work: (transaction: never) => Promise<T>,
+      ) => {
+        const current = transactionNumber++;
+        const transaction = {
+          $queryRaw: jest.fn(() =>
+            current === 0
+              ? Promise.resolve([{ value: 7 }])
+              : Promise.reject(new Error('statement aborted transaction')),
+          ),
+        };
+        return work(transaction as never);
+      },
+    );
+    const executor = new PrismaDashboardQueryExecutor({
+      withTenant,
+    } as unknown as DatabaseContextRunner);
+
+    const results = await executor.execute(context, [
+      metricPlan('ready'),
+      metricPlan('broken'),
+    ]);
+
+    expect(withTenant).toHaveBeenCalledTimes(2);
+    expect([...results.values()]).toEqual([
+      expect.objectContaining({ id: 'ready', state: 'READY' }),
+      expect.objectContaining({
+        id: 'broken',
+        state: 'UNAVAILABLE',
+        reason: 'QUERY_FAILED',
+      }),
+    ]);
+  });
+
   it('binds JSON keys and hostile filter values while enforcing every scope predicate', async () => {
     const queries: Array<{ sql: string; values: unknown[] }> = [];
     const transaction = {
@@ -181,6 +219,125 @@ describe('PrismaDashboardQueryExecutor', () => {
         'name',
         "%x%' OR TRUE --%",
       ]),
+    );
+  });
+
+  it('binds a FIELD leaderboard member key once and groups by selected columns', async () => {
+    const queries: Array<{ sql: string; values: unknown[] }> = [];
+    const transaction = {
+      $queryRaw: jest.fn((query: { sql: string; values: unknown[] }) => {
+        queries.push(query);
+        return Promise.resolve([]);
+      }),
+    };
+    const executor = new PrismaDashboardQueryExecutor(runner(transaction));
+    const base = metricPlan('field-leaderboard');
+    const plan: DashboardQueryPlan = {
+      ...base,
+      widget: {
+        id: 'field-leaderboard',
+        type: 'LEADERBOARD',
+        title: 'field-leaderboard',
+        audience: 'ALL',
+        objectCode: 'opportunities',
+        width: 'HALF',
+        sortOrder: 0,
+        filters: [],
+        memberSource: 'FIELD',
+        memberFieldKey: 'credited_member',
+        memberField: {
+          fieldKey: 'credited_member',
+          label: '归属成员',
+          type: 'MEMBER',
+        },
+        aggregation: 'COUNT',
+        limit: 10,
+        objectPublicationId: base.object.publication.id,
+        objectPublicationNumber: base.object.publication.number,
+        objectName: base.object.object.name,
+        filterFields: [],
+      },
+    };
+
+    await executor.execute(context, [plan]);
+
+    expect(
+      queries[0]?.values.filter((value) => value === 'credited_member'),
+    ).toHaveLength(1);
+    expect(queries[0]?.sql).toMatch(/GROUP BY 1, 2/);
+  });
+
+  it('guards and buckets DATE as a tenant-local calendar value and DATETIME as an instant', async () => {
+    const queries: Array<{ sql: string; values: unknown[] }> = [];
+    const transaction = {
+      $queryRaw: jest.fn((query: { sql: string; values: unknown[] }) => {
+        queries.push(query);
+        return Promise.resolve([]);
+      }),
+    };
+    const executor = new PrismaDashboardQueryExecutor(runner(transaction));
+
+    await executor.execute(context, [
+      trendPlan('calendar-trend', 'close_date', 'DATE'),
+      trendPlan('instant-trend', 'closed_at', 'DATETIME'),
+    ]);
+
+    expect(queries[0]?.sql).toMatch(
+      /pg_input_is_valid\(r\.data ->> \?, 'date'\)/,
+    );
+    expect(queries[0]?.sql).toMatch(/THEN \(r\.data ->> \?\)::date/);
+    expect(queries[0]?.sql).toMatch(
+      />= \(\?::timestamptz AT TIME ZONE \?\)::date/,
+    );
+    expect(queries[0]?.sql).toMatch(/END\s*::timestamp/);
+    expect(queries[1]?.sql).toMatch(
+      /pg_input_is_valid\(r\.data ->> \?, 'timestamptz'\)/,
+    );
+    expect(queries[1]?.sql).toMatch(/THEN \(r\.data ->> \?\)::timestamptz/);
+    expect(queries[1]?.sql).toMatch(/>= \?::timestamptz/);
+    expect(queries[1]?.sql).toMatch(/END\s*AT TIME ZONE \?/);
+  });
+
+  it('uses local calendar bounds for DATE filters and instant bounds for DATETIME filters', async () => {
+    const queries: Array<{ sql: string; values: unknown[] }> = [];
+    const transaction = {
+      $queryRaw: jest.fn((query: { sql: string; values: unknown[] }) => {
+        queries.push(query);
+        return Promise.resolve([{ value: 0 }]);
+      }),
+    };
+    const executor = new PrismaDashboardQueryExecutor(runner(transaction));
+
+    await executor.execute(context, [
+      dateFilterPlan('calendar-filter', 'close_date', 'DATE'),
+      dateFilterPlan('instant-filter', 'closed_at', 'DATETIME'),
+    ]);
+
+    expect(queries[0]?.sql).toMatch(/= \(NOW\(\) AT TIME ZONE \?\)::date/);
+    expect(queries[1]?.sql).toMatch(
+      />= date_trunc\('day', NOW\(\) AT TIME ZONE \?\) AT TIME ZONE \?/,
+    );
+    expect(queries[1]?.sql).toMatch(/< [\s\S]*INTERVAL '1 day'/);
+  });
+
+  it('formats record-list updatedAt as an explicit UTC ISO timestamp', async () => {
+    const queries: Array<{ sql: string; values: unknown[] }> = [];
+    const transaction = {
+      $queryRaw: jest.fn((query: { sql: string; values: unknown[] }) => {
+        queries.push(query);
+        return Promise.resolve([]);
+      }),
+    };
+    const executor = new PrismaDashboardQueryExecutor(runner(transaction));
+    const recordPlan = fiveWidgetPlans().find(
+      (plan) => plan.widget.type === 'RECORD_LIST',
+    );
+    if (!recordPlan) throw new Error('Record plan missing');
+
+    await executor.execute(context, [recordPlan]);
+
+    expect(queries[0]?.sql).toMatch(
+      /to_char\(\s*r\.updated_at AT TIME ZONE 'UTC',\s*'YYYY-MM-DD"T"HH24:MI:SS\.MS"Z"'\s*\) AS "updatedAt"/,
     );
   });
 
@@ -272,6 +429,51 @@ function metricPlan(
     },
     visibleFieldKeys: [],
     ...overrides,
+  };
+}
+
+function trendPlan(
+  id: string,
+  fieldKey: string,
+  type: 'DATE' | 'DATETIME',
+): DashboardQueryPlan {
+  const base = metricPlan(id);
+  return {
+    ...base,
+    widget: {
+      id,
+      type: 'TREND',
+      title: id,
+      audience: 'ALL',
+      objectCode: 'opportunities',
+      width: 'HALF',
+      sortOrder: 0,
+      filters: [],
+      dateFieldKey: fieldKey,
+      dateField: { fieldKey, label: fieldKey, type },
+      granularity: 'DAY',
+      aggregation: 'COUNT',
+      objectPublicationId: base.object.publication.id,
+      objectPublicationNumber: base.object.publication.number,
+      objectName: base.object.object.name,
+      filterFields: [],
+    },
+  };
+}
+
+function dateFilterPlan(
+  id: string,
+  fieldKey: string,
+  type: 'DATE' | 'DATETIME',
+): DashboardQueryPlan {
+  const base = metricPlan(id);
+  return {
+    ...base,
+    widget: {
+      ...base.widget,
+      filters: [{ fieldKey, operator: 'TODAY' }],
+      filterFields: [{ fieldKey, label: fieldKey, type }],
+    },
   };
 }
 
