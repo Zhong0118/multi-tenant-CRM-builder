@@ -408,8 +408,8 @@ async function main(): Promise<void> {
         await transaction.tenantDashboardConfiguration.create({
           data: {
             tenantId,
-            version: 1,
-            configuration: jsonInput(DEMO_DASHBOARD_CONFIGURATION),
+            draftVersion: 1,
+            draftConfiguration: jsonInput(DEMO_DASHBOARD_CONFIGURATION),
           },
         });
 
@@ -605,11 +605,11 @@ async function reconcileExistingDemoTenant(
     where: { tenantId: tenant.id },
     create: {
       tenantId: tenant.id,
-      version: 1,
-      configuration: jsonInput(DEMO_DASHBOARD_CONFIGURATION),
+      draftVersion: 1,
+      draftConfiguration: jsonInput(DEMO_DASHBOARD_CONFIGURATION),
     },
     update: {
-      configuration: jsonInput(DEMO_DASHBOARD_CONFIGURATION),
+      draftConfiguration: jsonInput(DEMO_DASHBOARD_CONFIGURATION),
     },
   });
 }

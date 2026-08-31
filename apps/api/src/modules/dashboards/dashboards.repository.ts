@@ -28,10 +28,13 @@ export interface DashboardPublicationRecord {
   id: string;
   number: number;
   sourceDraftVersion: number;
-  configuration: PublishedDashboardDefinitionV2;
+  configuration: StoredDashboardPublicationConfiguration;
   publishedByMemberId: string | null;
   publishedAt: string;
 }
+
+export type StoredDashboardPublicationConfiguration =
+  { kind: 'LEGACY'; raw: unknown } | { kind: 'COMPILED_V2'; raw: unknown };
 
 @Injectable()
 export class PrismaDashboardRepository implements DashboardRepository {
@@ -54,15 +57,10 @@ export class PrismaDashboardRepository implements DashboardRepository {
     draft: DashboardDefinitionV2,
   ): Promise<DashboardDefinitionRecord | null> {
     return this.runner.withTenant(context, async (transaction) => {
-      const locked = await transaction.$queryRaw<
-        Array<{ draftVersion: number }>
-      >`
-        SELECT version AS "draftVersion"
-        FROM tenant_dashboard_configurations
-        WHERE tenant_id = ${context.tenantId}::uuid
-        FOR UPDATE
-      `;
-      const currentVersion = locked[0]?.draftVersion;
+      const currentVersion = await lockDashboardDefinition(
+        transaction,
+        context.tenantId,
+      );
       if (
         (currentVersion === undefined && expectedVersion !== 0) ||
         (currentVersion !== undefined && currentVersion !== expectedVersion)
@@ -98,15 +96,11 @@ export class PrismaDashboardRepository implements DashboardRepository {
     actorMemberId: string,
   ): Promise<DashboardPublicationRecord | null> {
     return this.runner.withTenant(context, async (transaction) => {
-      const locked = await transaction.$queryRaw<
-        Array<{ draftVersion: number }>
-      >`
-        SELECT version AS "draftVersion"
-        FROM tenant_dashboard_configurations
-        WHERE tenant_id = ${context.tenantId}::uuid
-        FOR UPDATE
-      `;
-      if (locked[0]?.draftVersion !== expectedVersion) return null;
+      const currentVersion = await lockDashboardDefinition(
+        transaction,
+        context.tenantId,
+      );
+      if (currentVersion !== expectedVersion) return null;
 
       const numbers = await transaction.$queryRaw<Array<{ number: number }>>`
         SELECT COALESCE(MAX(publication_no), 0)::int + 1 AS number
@@ -170,13 +164,10 @@ export class PrismaDashboardRepository implements DashboardRepository {
     configuration: DashboardConfiguration,
   ): Promise<DashboardConfigurationRecord | null> {
     return this.runner.withTenant(context, async (transaction) => {
-      const locked = await transaction.$queryRaw<Array<{ version: number }>>`
-        SELECT version
-        FROM tenant_dashboard_configurations
-        WHERE tenant_id = ${context.tenantId}::uuid
-        FOR UPDATE
-      `;
-      const currentVersion = locked[0]?.version;
+      const currentVersion = await lockDashboardDefinition(
+        transaction,
+        context.tenantId,
+      );
       if (
         (currentVersion === undefined && expectedVersion !== 0) ||
         (currentVersion !== undefined && currentVersion !== expectedVersion)
@@ -433,6 +424,25 @@ export class PrismaDashboardRepository implements DashboardRepository {
   }
 }
 
+async function lockDashboardDefinition(
+  transaction: Prisma.TransactionClient,
+  tenantId: string,
+): Promise<number | undefined> {
+  await transaction.$queryRaw`
+    SELECT id
+    FROM tenants
+    WHERE id = ${tenantId}::uuid
+    FOR UPDATE
+  `;
+  const locked = await transaction.$queryRaw<Array<{ draftVersion: number }>>`
+    SELECT version AS "draftVersion"
+    FROM tenant_dashboard_configurations
+    WHERE tenant_id = ${tenantId}::uuid
+    FOR UPDATE
+  `;
+  return locked[0]?.draftVersion;
+}
+
 function definitionRecord(record: {
   draftVersion: number;
   draftConfiguration: Prisma.JsonValue;
@@ -461,24 +471,23 @@ function publicationRecord(record: {
     id: record.id,
     number: record.publicationNo,
     sourceDraftVersion: record.sourceDraftVersion,
-    configuration: publishedConfiguration(record.configuration),
+    configuration: storedPublicationConfiguration(record.configuration),
     publishedByMemberId: record.publishedByMemberId,
     publishedAt: record.publishedAt.toISOString(),
   };
 }
 
-function publishedConfiguration(
+function storedPublicationConfiguration(
   value: Prisma.JsonValue,
-): PublishedDashboardDefinitionV2 {
-  if (
+): StoredDashboardPublicationConfiguration {
+  const kind =
     value !== null &&
     typeof value === 'object' &&
     !Array.isArray(value) &&
     value.schemaVersion === 2
-  ) {
-    return structuredClone(value) as unknown as PublishedDashboardDefinitionV2;
-  }
-  return migrateLegacyDashboard(value) as PublishedDashboardDefinitionV2;
+      ? 'COMPILED_V2'
+      : 'LEGACY';
+  return { kind, raw: structuredClone(value) };
 }
 
 interface SummaryRow {
