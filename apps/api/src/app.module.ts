@@ -19,6 +19,7 @@ import { RecordsModule } from './modules/records/records.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { UsersModule } from './modules/users/users.module';
 import { HealthModule } from './modules/health/health.module';
+import { PlatformOperationsModule } from './modules/platform-operations/platform-operations.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { HealthModule } from './modules/health/health.module';
     TenantsModule,
     UsersModule,
     HealthModule,
+    PlatformOperationsModule,
   ],
   providers: [ApiExceptionFilter, OriginGuard, RequestIdMiddleware],
 })

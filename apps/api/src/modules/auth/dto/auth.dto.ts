@@ -1,12 +1,17 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsInt,
   IsIn,
   IsNotEmpty,
   IsString,
   Length,
   Matches,
   MaxLength,
+  Max,
+  Min,
+  IsOptional,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export const STRONG_PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d)[\s\S]*$/;
 export const PASSWORD_LENGTH_PATTERN = /^[\s\S]{10,72}$/u;
@@ -150,4 +155,39 @@ export class SessionResponseDto {
   @ApiProperty() isCurrent!: boolean;
   @ApiProperty({ type: String, format: 'date-time' }) createdAt!: Date;
   @ApiPropertyOptional({ type: String, format: 'date-time' }) revokedAt?: Date;
+}
+
+export class SessionPageQueryDto {
+  @ApiPropertyOptional({ enum: ['ACTIVE', 'HISTORY'], default: 'ACTIVE' })
+  @IsOptional()
+  @IsIn(['ACTIVE', 'HISTORY'])
+  kind: 'ACTIVE' | 'HISTORY' = 'ACTIVE';
+
+  @ApiPropertyOptional({ type: Number, minimum: 1, default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page = 1;
+
+  @ApiPropertyOptional({
+    type: Number,
+    minimum: 1,
+    maximum: 100,
+    default: 20,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit = 20;
+}
+
+export class SessionPageResponseDto {
+  @ApiProperty({ type: SessionResponseDto, isArray: true })
+  items!: SessionResponseDto[];
+  @ApiProperty({ minimum: 1 }) page!: number;
+  @ApiProperty({ minimum: 1, maximum: 100 }) limit!: number;
+  @ApiProperty({ minimum: 0 }) total!: number;
 }

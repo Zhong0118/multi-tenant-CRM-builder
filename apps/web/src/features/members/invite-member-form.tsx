@@ -51,41 +51,45 @@ export function InviteMemberForm({
       </div>
       {error ? <Alert type="error" showIcon title={error} /> : null}
       {sent ? <Alert type="success" showIcon title="邀请已发送" /> : null}
-      <div className={styles.inviteFields}>
-        <Form.Item label="成员手机号" htmlFor="member-phone">
-          <Input
-            id="member-phone"
-            value={phone}
-            inputMode="tel"
-            onChange={(event) => {
-              setPhone(event.target.value);
-              setSent(false);
+      <Form layout="vertical" component={false}>
+        <div className={styles.inviteFields}>
+          <Form.Item label="成员手机号" htmlFor="member-phone">
+            <Input
+              id="member-phone"
+              value={phone}
+              inputMode="tel"
+              placeholder="输入 11 位手机号"
+              onChange={(event) => {
+                setPhone(event.target.value);
+                setSent(false);
+              }}
+            />
+          </Form.Item>
+          <Form.Item label="职责" htmlFor="member-role">
+            <Select
+              id="member-role"
+              aria-label="职责"
+              value={role}
+              onChange={setRole}
+              options={[
+                { label: "普通员工", value: "EMPLOYEE" },
+                { label: "公司管理员", value: "TENANT_ADMIN" },
+              ]}
+            />
+          </Form.Item>
+          <Button
+            type="primary"
+            disabled={!validPhone}
+            loading={mutation.isPending}
+            onClick={() => {
+              setError(undefined);
+              mutation.mutate();
             }}
-          />
-        </Form.Item>
-        <Form.Item label="成员角色" htmlFor="member-role">
-          <Select
-            id="member-role"
-            value={role}
-            onChange={setRole}
-            options={[
-              { label: "员工", value: "EMPLOYEE" },
-              { label: "公司管理员", value: "TENANT_ADMIN" },
-            ]}
-          />
-        </Form.Item>
-        <Button
-          type="primary"
-          disabled={!validPhone}
-          loading={mutation.isPending}
-          onClick={() => {
-            setError(undefined);
-            mutation.mutate();
-          }}
-        >
-          发送邀请
-        </Button>
-      </div>
+          >
+            发送邀请
+          </Button>
+        </div>
+      </Form>
     </ReadingPanel>
   );
 }

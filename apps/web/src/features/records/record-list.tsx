@@ -1,7 +1,19 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { Button, Empty, Input, Select, Table, Typography } from "antd";
+import { DeleteOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import {
+  Alert,
+  Button,
+  Empty,
+  Input,
+  Popconfirm,
+  Select,
+  Space,
+  Table,
+  Tooltip,
+  Typography,
+} from "antd";
 import type { TableProps } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useRouter } from "next/navigation";
@@ -21,6 +33,7 @@ import { OptionBadge } from "@/features/objects/option-badge";
 
 import type { DynamicFieldMember } from "./dynamic-field";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
+import { toApiError } from "@/lib/api/api-error";
 import {
   recordQuerySearch,
   withFilter,
@@ -62,6 +75,7 @@ export function RecordList({
   const listPath = `/workspace/${tenantCode}/objects/${objectCode}`;
   const go = navigate ?? ((path: string) => router.replace(path));
   const [searchInput, setSearchInput] = useState(query.search ?? "");
+  const [error, setError] = useState<string>();
   const debounce = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const records = useQuery({
@@ -69,6 +83,19 @@ export function RecordList({
     queryFn: () => api.list(tenantCode, objectCode, query),
     initialData: initialPage,
     staleTime: 0,
+  });
+  const remove = useMutation({
+    mutationFn: (record: RecordSummary) =>
+      api.remove(tenantCode, objectCode, record.id, record.version),
+    onMutate: () => setError(undefined),
+    onSuccess: async () => {
+      await records.refetch();
+      router.refresh();
+    },
+    onError: (caught) => {
+      const apiError = toApiError(caught);
+      setError(`${apiError.message}（请求编号：${apiError.requestId}）`);
+    },
   });
 
   function apply(next: RecordQuery) {
@@ -85,6 +112,13 @@ export function RecordList({
     );
   }
 
+  function recordPath(recordId: string, mode?: "edit") {
+    const params = new URLSearchParams(recordQuerySearch(query));
+    if (mode) params.set("mode", mode);
+    const search = params.toString();
+    return `${listPath}/${recordId}${search ? `?${search}` : ""}`;
+  }
+
   const page = records.data ?? initialPage;
   const owned = schema.scopes.read === "OWN";
   const visibleColumns = schema.defaultView.columnFieldKeys
@@ -97,10 +131,21 @@ export function RecordList({
 
   const columns: ColumnsType<RecordSummary> = [
     {
-      title: "编号",
+      title: "序号",
+      key: "rowIndex",
+      width: 64,
+      align: "center",
+      render: (_value, _row, index) => (
+        <span className={styles.rowIndex}>
+          {(page.page - 1) * page.limit + index + 1}
+        </span>
+      ),
+    },
+    {
+      title: "业务编号",
       key: "recordNo",
       dataIndex: "recordNo",
-      width: 88,
+      width: 104,
       sorter: true,
       sortOrder:
         query.sort === "recordNo"
@@ -120,10 +165,10 @@ export function RecordList({
         field.fieldKey === schema.object.titleFieldKey ? (
           <a
             className={styles.recordTitle}
-            href={`${listPath}/${row.id}`}
+            href={recordPath(row.id)}
             onClick={(event) => {
               event.preventDefault();
-              go(`${listPath}/${row.id}`);
+              go(recordPath(row.id));
             }}
           >
             {row.title}
@@ -146,6 +191,74 @@ export function RecordList({
           : null,
       sortDirections: ["ascend", "descend"],
       render: (updatedAt: string) => formatDateTime(updatedAt),
+    },
+    {
+      title: "操作",
+      key: "actions",
+      width: 124,
+      fixed: "right",
+      render: (_, row) => (
+        <Space size={2} className={styles.rowActions}>
+          <Tooltip title="查看">
+            <Button
+              type="text"
+              size="small"
+              className={styles.rowActionButton}
+              aria-label={`查看 ${row.title}`}
+              icon={<EyeOutlined />}
+              onClick={() => go(recordPath(row.id))}
+            />
+          </Tooltip>
+          <Tooltip title={schema.actions.canUpdate ? "编辑" : "无编辑权限"}>
+            <span className={styles.actionSlot}>
+              <Button
+                type="text"
+                size="small"
+                className={styles.rowActionButton}
+                aria-label={`编辑 ${row.title}`}
+                icon={<EditOutlined />}
+                disabled={!schema.actions.canUpdate}
+                onClick={() => go(recordPath(row.id, "edit"))}
+              />
+            </span>
+          </Tooltip>
+          {schema.actions.canDelete ? (
+            <Popconfirm
+              title={`确认删除 ${row.title}？`}
+              description="删除后业务列表不再显示，审计历史仍会保留。"
+              okText="确认删除"
+              cancelText="取消"
+              onConfirm={() => remove.mutate(row)}
+            >
+              <Tooltip title="删除">
+                <Button
+                  danger
+                  type="text"
+                  size="small"
+                  className={styles.rowActionButton}
+                  aria-label={`删除 ${row.title}`}
+                  icon={<DeleteOutlined />}
+                  loading={remove.isPending && remove.variables?.id === row.id}
+                />
+              </Tooltip>
+            </Popconfirm>
+          ) : (
+            <Tooltip title="无删除权限">
+              <span className={styles.actionSlot}>
+                <Button
+                  danger
+                  disabled
+                  type="text"
+                  size="small"
+                  className={styles.rowActionButton}
+                  aria-label={`删除 ${row.title}`}
+                  icon={<DeleteOutlined />}
+                />
+              </span>
+            </Tooltip>
+          )}
+        </Space>
+      ),
     },
   ];
 
@@ -176,6 +289,7 @@ export function RecordList({
 
   return (
     <div className={styles.list}>
+      {error ? <Alert type="error" showIcon title={error} /> : null}
       <header className={styles.listHeader}>
         <div>
           <h1>{owned ? `我的${schema.object.name}` : schema.object.name}</h1>
@@ -277,6 +391,7 @@ export function RecordList({
           dataSource={page.items}
           loading={records.isFetching}
           onChange={handleTableChange}
+          scroll={{ x: "max-content" }}
           aria-label={`${schema.object.name}记录`}
           locale={{
             emptyText: (

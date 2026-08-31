@@ -60,10 +60,11 @@ describe("WorkspaceHomeView", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "管理工作台" }),
+      screen.getByRole("heading", { name: "运营驾驶舱" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("销售管道")).toBeInTheDocument();
-    expect(screen.getByText("需要处理")).toBeInTheDocument();
+    expect(screen.getByText("销售与回款趋势")).toBeInTheDocument();
+    expect(screen.getByText("销售漏斗")).toBeInTheDocument();
+    expect(screen.getByText("异常与待办")).toBeInTheDocument();
     expect(screen.getByText("员工业绩排行")).toBeInTheDocument();
     expect(screen.getAllByText("王芳").length).toBeGreaterThan(0);
   });

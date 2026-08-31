@@ -27,6 +27,15 @@ const sessions: SecuritySession[] = [
     lastUsedAt: "2026-08-19T10:00:00.000Z",
     expiresAt: "2026-09-19T08:00:00.000Z",
   },
+  {
+    id: "revoked-session",
+    deviceSummary: "Edge · Windows",
+    ipSummary: "203.0.113.12",
+    isCurrent: false,
+    createdAt: "2026-08-10T08:00:00.000Z",
+    expiresAt: "2026-09-10T08:00:00.000Z",
+    revokedAt: "2026-08-18T08:00:00.000Z",
+  },
 ];
 
 function renderSecurity(api: SecurityApi) {
@@ -44,6 +53,22 @@ function renderSecurity(api: SecurityApi) {
 }
 
 describe("SessionList", () => {
+  it("keeps revoked and expired sessions in a separate login history view", () => {
+    const api: SecurityApi = {
+      revokeSession: vi.fn(),
+      changePassword: vi.fn(),
+    };
+    renderSecurity(api);
+
+    expect(screen.getByRole("tab", { name: /活跃设备/ })).toBeInTheDocument();
+    expect(screen.queryByText("Edge · Windows")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: /登录历史/ }));
+
+    expect(screen.getByText("Edge · Windows")).toBeInTheDocument();
+    expect(screen.getByText("已撤销")).toBeInTheDocument();
+  });
+
   it("marks the current session and revokes only another session after confirmation", async () => {
     const api: SecurityApi = {
       revokeSession: vi.fn().mockResolvedValue({ accepted: true }),

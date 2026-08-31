@@ -1,6 +1,6 @@
 "use client";
 
-import { Bar, DualAxes } from "@ant-design/charts";
+import { Bar, DualAxes, Line } from "@ant-design/charts";
 
 import type { DashboardOverview } from "./dashboard-types";
 
@@ -46,32 +46,52 @@ export function PipelineChart({
   );
 }
 
-export function TrendChart({ data }: { data: DashboardOverview["trend"] }) {
+export function TrendChart({
+  data,
+  showAmount = true,
+}: {
+  data: DashboardOverview["trend"];
+  showAmount?: boolean;
+}) {
+  if (!showAmount) {
+    return (
+      <Line
+        height={280}
+        autoFit
+        data={data}
+        xField="date"
+        yField="wonCount"
+        axis={{ x: { title: false }, y: { title: false } }}
+        color="#16855b"
+        style={{ lineWidth: 2 }}
+      />
+    );
+  }
   return (
     <DualAxes
-      height={260}
+      height={280}
       autoFit
-      data={[data, data]}
       xField="date"
-      yField={["wonAmount", "wonCount"]}
-      geometryOptions={[
+      children={[
         {
-          geometry: "column",
-          color: "#167568",
-          columnWidthRatio: 0.45,
+          type: "interval",
+          data,
+          yField: "wonAmount",
+          colorField: () => "成交金额",
+          style: { maxWidth: 24 },
         },
         {
-          geometry: "line",
-          color: "#c66c18",
-          lineStyle: { lineWidth: 2 },
+          type: "line",
+          data,
+          yField: "wonCount",
+          colorField: () => "成交单数",
+          style: { lineWidth: 2 },
+          axis: { y: { position: "right" } },
         },
       ]}
-      axis={{
-        x: { title: false },
-        y: { title: false },
+      scale={{
+        color: { range: ["#3478f6", "#16855b"] },
       }}
-      legend={{ position: "top-right" }}
-      tooltip={{ shared: true }}
     />
   );
 }

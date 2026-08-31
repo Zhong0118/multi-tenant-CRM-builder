@@ -17,6 +17,7 @@ import {
   type AuthStore,
   type AuthUser,
   type ChallengePurpose,
+  type SessionKind,
 } from './auth.repository';
 import { normalizeChineseMobile } from './phone-number';
 import { PASSWORD_HASHER, type PasswordHasher } from './password-hasher';
@@ -78,6 +79,16 @@ export interface PublicSession {
   revokedAt?: Date;
 }
 
+export interface PublicSessionPage {
+  items: PublicSession[];
+  page: number;
+  limit: number;
+  total: number;
+}
+
+const SESSION_HISTORY_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
+const VERIFICATION_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
 export interface AuthenticatedSessionResult {
   accepted: true;
   sessionId: string;
@@ -124,6 +135,7 @@ export class AuthService {
     input: VerificationInput,
   ): Promise<{ accepted: true }> {
     const phone = normalizeChineseMobile(input.phone);
+    await this.pruneAuthArtifacts();
     const phoneKey = sha256(phone);
     await Promise.all([
       this.rateLimiter.consume({
@@ -210,9 +222,10 @@ export class AuthService {
       throw new ApiException('INVALID_CREDENTIALS', 401);
     }
 
-    return this.repository.transaction((store) =>
-      this.issueSession(store, user, input),
-    );
+    return this.repository.transaction(async (store) => {
+      await store.updateLastLoginAt(user.id, this.clock());
+      return this.issueSession(store, user, input);
+    });
   }
 
   resetPassword(input: ResetPasswordInput): Promise<{ accepted: true }> {
@@ -267,18 +280,32 @@ export class AuthService {
   async listSessions(
     userId: string,
     currentSessionId: string,
-  ): Promise<PublicSession[]> {
-    const sessions = await this.repository.listSessionsByUser(userId);
-    return sessions.map((session) => ({
-      id: session.id,
-      expiresAt: session.expiresAt,
-      lastUsedAt: session.lastUsedAt,
-      deviceSummary: session.deviceSummary,
-      ipSummary: session.ip,
-      isCurrent: session.id === currentSessionId,
-      createdAt: session.createdAt,
-      revokedAt: session.revokedAt,
-    }));
+    query: { kind: SessionKind; page: number; limit: number } = {
+      kind: 'ACTIVE',
+      page: 1,
+      limit: 20,
+    },
+  ): Promise<PublicSessionPage> {
+    await this.pruneAuthArtifacts();
+    const result = await this.repository.listSessionPage(userId, {
+      ...query,
+      now: this.clock(),
+    });
+    return {
+      items: result.items.map((session) => ({
+        id: session.id,
+        expiresAt: session.expiresAt,
+        lastUsedAt: session.lastUsedAt,
+        deviceSummary: session.deviceSummary,
+        ipSummary: session.ip,
+        isCurrent: session.id === currentSessionId,
+        createdAt: session.createdAt,
+        revokedAt: session.revokedAt,
+      })),
+      page: query.page,
+      limit: query.limit,
+      total: result.total,
+    };
   }
 
   async revokeSession(
@@ -299,6 +326,14 @@ export class AuthService {
       throw new ApiException('AUTH_REQUIRED', 401);
     }
     return user;
+  }
+
+  private pruneAuthArtifacts(): Promise<void> {
+    const now = this.clock();
+    return this.repository.pruneAuthArtifacts({
+      sessionCutoff: new Date(now.getTime() - SESSION_HISTORY_RETENTION_MS),
+      challengeCutoff: new Date(now.getTime() - VERIFICATION_RETENTION_MS),
+    });
   }
 
   private async consumeValidChallenge(

@@ -22,6 +22,7 @@ export interface RecordWorkspaceProps {
   members: DynamicFieldMember[];
   isAdmin: boolean;
   openRecord?: RecordSummary;
+  initialEditing?: boolean;
 }
 
 /**
@@ -37,6 +38,7 @@ export function RecordWorkspace({
   members,
   isAdmin,
   openRecord,
+  initialEditing = false,
 }: RecordWorkspaceProps) {
   const router = useRouter();
   const [record, setRecord] = useState(openRecord);
@@ -60,6 +62,7 @@ export function RecordWorkspace({
           members={members}
           canChooseOwner={isAdmin}
           canDelete={isAdmin && schema.actions.canDelete}
+          initialEditing={initialEditing}
           onClose={() => {
             setRecord(undefined);
             router.back();

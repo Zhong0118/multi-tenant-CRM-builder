@@ -215,6 +215,7 @@ export function MemberTable({
     {
       title: "成员",
       key: "member",
+      width: 240,
       render: (_, member) => (
         <div>
           <strong>{member.displayName ?? "未设置姓名"}</strong>
@@ -227,12 +228,14 @@ export function MemberTable({
     {
       title: "角色",
       dataIndex: "role",
+      width: 140,
       render: (role: TenantMember["role"]) =>
         role === "TENANT_ADMIN" ? "公司管理员" : "员工",
     },
     {
       title: "状态",
       dataIndex: "status",
+      width: 110,
       render: (status: TenantMember["status"]) => (
         <StatusTag tone={status === "ACTIVE" ? "success" : "neutral"}>
           {status === "ACTIVE" ? "在职" : "已停用"}
@@ -242,13 +245,14 @@ export function MemberTable({
     {
       title: "操作",
       key: "actions",
+      width: 220,
       render: (_, member) => {
         const protectsFinalAdmin =
           member.status === "ACTIVE" &&
           member.role === "TENANT_ADMIN" &&
           activeAdminCount <= 1;
         return (
-          <Space>
+          <Space size={4} wrap className={styles.tableActions}>
             {/* Only an employee's access can be restricted: an administrator
                 holds fixed full access on every published object. */}
             {member.role === "EMPLOYEE" && member.status === "ACTIVE" ? (
@@ -293,16 +297,18 @@ export function MemberTable({
     },
   ];
   const invitationColumns: ColumnsType<TenantInvitation> = [
-    { title: "手机号", dataIndex: "targetPhone" },
+    { title: "手机号", dataIndex: "targetPhone", width: 180, ellipsis: true },
     {
       title: "角色",
       dataIndex: "role",
+      width: 140,
       render: (role: TenantInvitation["role"]) =>
         role === "TENANT_ADMIN" ? "公司管理员" : "员工",
     },
     {
       title: "状态",
       dataIndex: "status",
+      width: 120,
       render: (status: TenantInvitation["status"]) => (
         <StatusTag tone={invitationTone(status)}>
           {invitationStatusText[status]}
@@ -312,9 +318,10 @@ export function MemberTable({
     {
       title: "操作",
       key: "actions",
+      width: 210,
       render: (_, invitation) =>
         invitation.status === "PENDING" ? (
-          <Space>
+          <Space size={4} wrap className={styles.tableActions}>
             <Button
               type="link"
               onClick={() =>
@@ -361,6 +368,7 @@ export function MemberTable({
           columns={invitationColumns}
           dataSource={invitationPage?.items ?? []}
           loading={invitationsQuery.isFetching}
+          scroll={{ x: 650 }}
           pagination={{
             current: page,
             pageSize: 20,
@@ -392,6 +400,7 @@ export function MemberTable({
           columns={memberColumns}
           dataSource={membersQuery.data?.items ?? []}
           loading={membersQuery.isFetching}
+          scroll={{ x: 710 }}
           pagination={{
             current: memberPageNumber,
             pageSize: 20,

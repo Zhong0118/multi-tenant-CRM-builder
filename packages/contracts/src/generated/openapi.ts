@@ -260,6 +260,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/platform/audit": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["PlatformOperationsController_audit"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/platform/business-templates": {
     parameters: {
       query?: never;
@@ -350,6 +366,38 @@ export interface paths {
     get: operations["BusinessTemplatesController_versions"];
     put?: never;
     post: operations["BusinessTemplatesController_publish"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/operations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["PlatformOperationsController_operationHistory"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/runtime-status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["PlatformOperationsController_runtimeStatus"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -1414,6 +1462,67 @@ export interface components {
       tenantId: string;
       tenantName?: string;
     };
+    PlatformAuditItemDto: {
+      action: string;
+      /** Format: uuid */
+      actorId?: string | null;
+      actorName?: string | null;
+      /** @enum {string} */
+      actorType: "USER" | "SYSTEM" | "INTEGRATION";
+      after?: {
+        [key: string]: unknown;
+      } | null;
+      before?: {
+        [key: string]: unknown;
+      } | null;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: uuid */
+      id: string;
+      ip?: string | null;
+      reason?: string | null;
+      requestId: string;
+      /** Format: uuid */
+      resourceId?: string | null;
+      resourceType: string;
+      /** Format: uuid */
+      tenantId?: string | null;
+      tenantName?: string | null;
+    };
+    PlatformAuditPageDto: {
+      items: components["schemas"]["PlatformAuditItemDto"][];
+      limit: number;
+      page: number;
+      total: number;
+    };
+    PlatformOperationItemDto: {
+      /** Format: date-time */
+      appliedAt: string;
+      appliedByName: string;
+      /** Format: uuid */
+      appliedByUserId: string;
+      /** Format: uuid */
+      id: string;
+      /** @enum {string} */
+      kind: "TEMPLATE_APPLICATION";
+      objectCount: number;
+      /** @enum {string} */
+      status: "SUCCEEDED";
+      /** Format: uuid */
+      templateId: string;
+      templateName: string;
+      templateVersionNo: number;
+      tenantCode: string;
+      /** Format: uuid */
+      tenantId: string;
+      tenantName: string;
+    };
+    PlatformOperationPageDto: {
+      items: components["schemas"]["PlatformOperationItemDto"][];
+      limit: number;
+      page: number;
+      total: number;
+    };
     PlatformTenantPageResponseDto: {
       items: components["schemas"]["PlatformTenantResponseDto"][];
       limit: number;
@@ -1568,6 +1677,25 @@ export interface components {
       name: string;
       sortOrder: number;
     };
+    RuntimePoliciesDto: {
+      sessionHistoryRetentionDays: number;
+      sessionTtlDays: number;
+      verificationRetentionDays: number;
+      verificationTtlMinutes: number;
+    };
+    RuntimeServiceStatusDto: {
+      detail: string;
+      /** @enum {string} */
+      key: "database" | "redis" | "sms" | "webOrigin";
+      label: string;
+      /** @enum {string} */
+      status: "READY" | "DEVELOPMENT" | "ACTION_REQUIRED";
+    };
+    RuntimeStatusDto: {
+      environment: string;
+      policies: components["schemas"]["RuntimePoliciesDto"];
+      services: components["schemas"]["RuntimeServiceStatusDto"][];
+    };
     SaveBusinessTemplateDraftDto: {
       configuration: components["schemas"]["BusinessTemplateConfigurationDto"];
       description: string | null;
@@ -1601,6 +1729,12 @@ export interface components {
        * @enum {string}
        */
       status: "ACTIVE" | "INACTIVE";
+    };
+    SessionPageResponseDto: {
+      items: components["schemas"]["SessionResponseDto"][];
+      limit: number;
+      page: number;
+      total: number;
     };
     SessionResponseDto: {
       /** Format: date-time */
@@ -2233,7 +2367,11 @@ export interface operations {
   };
   MeController_sessions: {
     parameters: {
-      query?: never;
+      query?: {
+        kind?: "ACTIVE" | "HISTORY";
+        limit?: number;
+        page?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -2245,7 +2383,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["SessionResponseDto"][];
+          "application/json": components["schemas"]["SessionPageResponseDto"];
         };
       };
     };
@@ -2286,6 +2424,31 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["WorkspaceSummaryResponseDto"][];
+        };
+      };
+    };
+  };
+  PlatformOperationsController_audit: {
+    parameters: {
+      query?: {
+        action?: string;
+        limit?: number;
+        page?: number;
+        resourceType?: string;
+        tenantId?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlatformAuditPageDto"];
         };
       };
     };
@@ -2474,6 +2637,47 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["BusinessTemplateVersionResponseDto"];
+        };
+      };
+    };
+  };
+  PlatformOperationsController_operationHistory: {
+    parameters: {
+      query?: {
+        limit?: number;
+        page?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlatformOperationPageDto"];
+        };
+      };
+    };
+  };
+  PlatformOperationsController_runtimeStatus: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RuntimeStatusDto"];
         };
       };
     };

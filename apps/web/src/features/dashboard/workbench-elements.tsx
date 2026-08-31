@@ -54,31 +54,43 @@ export function PipelineLedger({
   objectCode,
   stageFieldKey,
   data,
+  showAmount = true,
 }: {
   tenantCode: string;
   objectCode: string;
   stageFieldKey: string;
   data: DashboardOverview["pipeline"];
+  showAmount?: boolean;
 }) {
   return (
-    <div className={styles.pipelineLedger}>
-      {data.map((item) => (
-        <Link
-          key={item.optionKey}
-          href={recordFilterHref(
-            tenantCode,
-            objectCode,
-            stageFieldKey,
-            item.optionKey,
-          )}
-          data-option-color={item.color}
-        >
-          <i aria-hidden />
-          <span>{item.label}</span>
-          <strong data-numeric>{item.count}</strong>
-          <small data-numeric>{formatMoney(item.amount)}</small>
-        </Link>
-      ))}
+    <div className={styles.pipelineLedger} data-show-amount={showAmount}>
+      {data.map((item, index) => {
+        const previousCount = index === 0 ? null : data[index - 1]?.count;
+        const conversion =
+          previousCount && previousCount > 0
+            ? `${((item.count / previousCount) * 100).toFixed(1)}%`
+            : "—";
+        return (
+          <Link
+            key={item.optionKey}
+            href={recordFilterHref(
+              tenantCode,
+              objectCode,
+              stageFieldKey,
+              item.optionKey,
+            )}
+            data-option-color={item.color}
+          >
+            <i aria-hidden />
+            <span>{item.label}</span>
+            <strong data-numeric>{item.count}</strong>
+            {showAmount ? (
+              <small data-numeric>{formatMoney(item.amount)}</small>
+            ) : null}
+            <em data-numeric>{conversion}</em>
+          </Link>
+        );
+      })}
     </div>
   );
 }
@@ -117,11 +129,15 @@ export function PriorityRecordTable({
   objectCode,
   rows,
   compact = false,
+  showAmount = true,
+  showDueAt = true,
 }: {
   tenantCode: string;
   objectCode: string;
   rows: DashboardOverview["records"];
   compact?: boolean;
+  showAmount?: boolean;
+  showDueAt?: boolean;
 }) {
   const columns: ColumnsType<DashboardOverview["records"][number]> = [
     {
@@ -146,22 +162,37 @@ export function PriorityRecordTable({
           },
         ]
       : []),
-    {
-      title: "金额",
-      key: "amount",
-      dataIndex: "amount",
-      align: "right",
-      sorter: (left, right) => (left.amount ?? 0) - (right.amount ?? 0),
-      render: (value: number | null | undefined) => formatMoney(value ?? 0),
-    },
-    {
-      title: "预计日期",
-      key: "dueAt",
-      dataIndex: "dueAt",
-      sorter: (left, right) => timestamp(left.dueAt) - timestamp(right.dueAt),
-      render: (value: string | null | undefined) =>
-        value ? formatDate(value) : "—",
-    },
+    ...(showAmount
+      ? [
+          {
+            title: "金额",
+            key: "amount",
+            dataIndex: "amount" as const,
+            align: "right" as const,
+            sorter: (
+              left: DashboardOverview["records"][number],
+              right: DashboardOverview["records"][number],
+            ) => (left.amount ?? 0) - (right.amount ?? 0),
+            render: (value: number | null | undefined) =>
+              formatMoney(value ?? 0),
+          },
+        ]
+      : []),
+    ...(showDueAt
+      ? [
+          {
+            title: "预计日期",
+            key: "dueAt",
+            dataIndex: "dueAt" as const,
+            sorter: (
+              left: DashboardOverview["records"][number],
+              right: DashboardOverview["records"][number],
+            ) => timestamp(left.dueAt) - timestamp(right.dueAt),
+            render: (value: string | null | undefined) =>
+              value ? formatDate(value) : "—",
+          },
+        ]
+      : []),
     {
       title: "最近更新",
       key: "updatedAt",

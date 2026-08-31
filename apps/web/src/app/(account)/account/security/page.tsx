@@ -9,14 +9,18 @@ import { requireUser } from "@/lib/auth/require-user";
 export default async function AccountSecurityPage() {
   const user = await requireUser("/account/security");
   const client = await createServerApiClient();
-  const {
-    data: sessions,
-    error,
-    response,
-  } = await client.GET("/api/v1/me/sessions");
+  const [activeResult, historyResult] = await Promise.all([
+    client.GET("/api/v1/me/sessions", {
+      params: { query: { kind: "ACTIVE", page: 1, limit: 100 } },
+    }),
+    client.GET("/api/v1/me/sessions", {
+      params: { query: { kind: "HISTORY", page: 1, limit: 10 } },
+    }),
+  ]);
 
-  if (!sessions) {
-    const apiError = toApiError(error, response.status);
+  if (!activeResult.data || !historyResult.data) {
+    const failed = activeResult.data ? historyResult : activeResult;
+    const apiError = toApiError(failed.error, failed.response.status);
     throw Object.assign(new Error(apiError.message), apiError);
   }
 
@@ -30,7 +34,10 @@ export default async function AccountSecurityPage() {
           <Link href="/workspaces">返回工作区</Link>
         </p>
       </header>
-      <SessionList initialSessions={sessions} />
+      <SessionList
+        initialActive={activeResult.data}
+        initialHistory={historyResult.data}
+      />
     </main>
   );
 }

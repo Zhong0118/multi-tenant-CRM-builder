@@ -1,10 +1,13 @@
-import { PagePlaceholder } from "@/components/layout/page-placeholder";
+import { PlatformSettingsView } from "@/features/platform/platform-operations";
+import { toApiError } from "@/lib/api/api-error";
+import { createServerApiClient } from "@/lib/api/server-client";
 
-export default function PlatformSettingsPage() {
-  return (
-    <PagePlaceholder
-      title="系统设置"
-      description="管理平台级设置。尚未实现。"
-    />
-  );
+export default async function PlatformSettingsPage() {
+  const client = await createServerApiClient();
+  const result = await client.GET("/api/v1/platform/runtime-status");
+  if (!result.data) {
+    const apiError = toApiError(result.error, result.response.status);
+    throw Object.assign(new Error(apiError.message), apiError);
+  }
+  return <PlatformSettingsView status={result.data} />;
 }

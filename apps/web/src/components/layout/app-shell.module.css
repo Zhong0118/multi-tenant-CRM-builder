@@ -19,8 +19,11 @@
   min-height: 0;
   overflow: hidden;
   color: #dce4e8;
-  background: var(--shell-ink);
-  transition: width 160ms ease, flex-basis 160ms ease, transform 180ms ease;
+  background: #10283a;
+  transition:
+    width 160ms ease,
+    flex-basis 160ms ease,
+    transform 180ms ease;
 }
 
 .sidebarCollapsed {
@@ -102,7 +105,9 @@
   border: 0;
   border-radius: var(--radius-control);
   cursor: pointer;
-  transition: color 120ms ease, background 120ms ease;
+  transition:
+    color 120ms ease,
+    background 120ms ease;
 }
 
 .navIcon {
@@ -129,7 +134,7 @@
 .navItemCurrent {
   color: #fff;
   font-weight: 600;
-  background: rgb(22 117 104 / 26%);
+  background: rgb(22 117 104 / 34%);
 }
 
 .navItemCurrent::before {
@@ -226,9 +231,10 @@
 
 .main {
   flex: 1;
+  width: 100%;
   min-width: 0;
   min-height: 0;
-  padding: 24px;
+  padding: 20px;
   overflow: auto;
   background: var(--bg-page);
   overscroll-behavior: contain;

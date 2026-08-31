@@ -143,6 +143,56 @@ class MemoryAuthRepository implements AuthRepository {
     );
   }
 
+  listSessionPage(
+    userId: string,
+    input: {
+      kind: 'ACTIVE' | 'HISTORY';
+      page: number;
+      limit: number;
+      now: Date;
+    },
+  ): Promise<{ items: AuthSession[]; total: number }> {
+    const matching = this.sessions
+      .filter((session) => session.userId === userId)
+      .filter((session) => {
+        const active =
+          !session.revokedAt &&
+          session.expiresAt.getTime() > input.now.getTime();
+        return input.kind === 'ACTIVE' ? active : !active;
+      })
+      .sort(
+        (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
+      );
+    const offset = (input.page - 1) * input.limit;
+    return Promise.resolve({
+      items: matching.slice(offset, offset + input.limit),
+      total: matching.length,
+    });
+  }
+
+  pruneAuthArtifacts(input: {
+    sessionCutoff: Date;
+    challengeCutoff: Date;
+  }): Promise<void> {
+    this.sessions = this.sessions.filter(
+      (session) =>
+        !(
+          session.expiresAt < input.sessionCutoff ||
+          (session.revokedAt && session.revokedAt < input.sessionCutoff)
+        ),
+    );
+    this.challenges = this.challenges.filter(
+      (challenge) => challenge.createdAt >= input.challengeCutoff,
+    );
+    return Promise.resolve();
+  }
+
+  updateLastLoginAt(userId: string, at: Date): Promise<void> {
+    const user = this.users.find((item) => item.id === userId);
+    if (user) (user as AuthUser & { lastLoginAt?: Date }).lastLoginAt = at;
+    return Promise.resolve();
+  }
+
   revokeSession(
     userId: string,
     sessionId: string,
@@ -343,6 +393,31 @@ describe('AuthService verification policy', () => {
 });
 
 describe('AuthService credentials and reset', () => {
+  it('records the time of a successful password login', async () => {
+    const fixture = createFixture();
+    fixture.repository.users.push({
+      id: 'user-1',
+      displayName: '测试用户',
+      phone: '+8613800138000',
+      phoneVerifiedAt: new Date(),
+      passwordHash: 'encoded:correct-password',
+      isPlatformAdmin: false,
+      status: 'ACTIVE',
+    });
+
+    await fixture.service.login({
+      phone: '13800138000',
+      password: 'correct-password',
+      ip: '127.0.0.1',
+      deviceSummary: 'Jest',
+      deviceKey: 'test-device',
+    });
+
+    expect(fixture.repository.users[0].lastLoginAt).toEqual(
+      new Date('2026-08-20T00:00:00.000Z'),
+    );
+  });
+
   it('uses the same public error for a missing user and a bad password', async () => {
     const missing = createFixture();
     const badPassword = createFixture();
@@ -481,18 +556,78 @@ describe('AuthService credentials and reset', () => {
 
     const sessions = await fixture.service.listSessions('user-1', 'session-1');
 
-    expect(sessions).toEqual([
+    expect(sessions).toEqual({
+      page: 1,
+      limit: 20,
+      total: 1,
+      items: [
+        {
+          id: 'session-1',
+          expiresAt: new Date('2026-09-20T00:00:00.000Z'),
+          lastUsedAt: undefined,
+          deviceSummary: 'Safari on macOS',
+          ipSummary: '203.0.113.42',
+          isCurrent: true,
+          createdAt: new Date('2026-08-20T00:00:00.000Z'),
+          revokedAt: undefined,
+        },
+      ],
+    });
+    expect(sessions.items[0]).not.toHaveProperty('tokenHash');
+  });
+
+  it('separates active sessions from paged history and prunes old auth artifacts', async () => {
+    const fixture = createFixture();
+    fixture.repository.sessions.push(
       {
-        id: 'session-1',
+        id: 'current-session',
+        userId: 'user-1',
+        tokenHash: 'active-token',
         expiresAt: new Date('2026-09-20T00:00:00.000Z'),
-        lastUsedAt: undefined,
-        deviceSummary: 'Safari on macOS',
-        ipSummary: '203.0.113.42',
-        isCurrent: true,
-        createdAt: new Date('2026-08-20T00:00:00.000Z'),
-        revokedAt: undefined,
+        createdAt: new Date('2026-08-19T00:00:00.000Z'),
       },
+      {
+        id: 'recent-revoked',
+        userId: 'user-1',
+        tokenHash: 'history-token',
+        expiresAt: new Date('2026-09-20T00:00:00.000Z'),
+        revokedAt: new Date('2026-08-18T00:00:00.000Z'),
+        createdAt: new Date('2026-08-18T00:00:00.000Z'),
+      },
+      {
+        id: 'old-expired',
+        userId: 'user-1',
+        tokenHash: 'old-token',
+        expiresAt: new Date('2026-05-01T00:00:00.000Z'),
+        createdAt: new Date('2026-04-01T00:00:00.000Z'),
+      },
+    );
+    fixture.repository.challenges.push({
+      id: 'old-challenge',
+      phone: '+8613800138000',
+      purpose: 'REGISTER',
+      codeHash: 'hash',
+      status: 'CONSUMED',
+      attemptCount: 0,
+      expiresAt: new Date('2026-07-01T00:10:00.000Z'),
+      consumedAt: new Date('2026-07-01T00:01:00.000Z'),
+      requestIp: '127.0.0.1',
+      createdAt: new Date('2026-07-01T00:00:00.000Z'),
+    });
+
+    const result = await (fixture.service.listSessions as Function)(
+      'user-1',
+      'current-session',
+      { kind: 'HISTORY', page: 1, limit: 10 },
+    );
+
+    expect(result).toMatchObject({ page: 1, limit: 10, total: 1 });
+    expect(result.items).toEqual([
+      expect.objectContaining({ id: 'recent-revoked', isCurrent: false }),
     ]);
-    expect(sessions[0]).not.toHaveProperty('tokenHash');
+    expect(fixture.repository.sessions.map((item) => item.id)).not.toContain(
+      'old-expired',
+    );
+    expect(fixture.repository.challenges).toHaveLength(0);
   });
 });

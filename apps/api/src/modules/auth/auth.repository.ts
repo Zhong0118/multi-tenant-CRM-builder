@@ -8,6 +8,7 @@ export const AUTH_REPOSITORY = Symbol('AUTH_REPOSITORY');
 export type ChallengePurpose = 'REGISTER' | 'RESET_PASSWORD';
 export type ChallengeStatus = 'PENDING' | 'CONSUMED' | 'EXPIRED' | 'LOCKED';
 export type AccountStatus = 'ACTIVE' | 'DISABLED' | 'LOCKED';
+export type SessionKind = 'ACTIVE' | 'HISTORY';
 
 export interface AuthChallenge {
   id: string;
@@ -30,6 +31,7 @@ export interface AuthUser {
   passwordHash: string;
   isPlatformAdmin: boolean;
   status: AccountStatus;
+  lastLoginAt?: Date;
 }
 
 export interface AuthSession {
@@ -68,7 +70,15 @@ export interface AuthStore {
   createSession(input: Omit<AuthSession, 'id'>): Promise<AuthSession>;
   findSessionByTokenHash(tokenHash: string): Promise<SessionWithUser | null>;
   touchSession(sessionId: string, usedAt: Date): Promise<void>;
-  listSessionsByUser(userId: string): Promise<AuthSession[]>;
+  listSessionPage(
+    userId: string,
+    input: { kind: SessionKind; page: number; limit: number; now: Date },
+  ): Promise<{ items: AuthSession[]; total: number }>;
+  pruneAuthArtifacts(input: {
+    sessionCutoff: Date;
+    challengeCutoff: Date;
+  }): Promise<void>;
+  updateLastLoginAt(userId: string, at: Date): Promise<void>;
   revokeSession(
     userId: string,
     sessionId: string,
@@ -147,8 +157,22 @@ export class PrismaAuthRepository implements AuthRepository {
     return this.store.touchSession(sessionId, usedAt);
   }
 
-  listSessionsByUser(userId: string): Promise<AuthSession[]> {
-    return this.store.listSessionsByUser(userId);
+  listSessionPage(
+    userId: string,
+    input: { kind: SessionKind; page: number; limit: number; now: Date },
+  ): Promise<{ items: AuthSession[]; total: number }> {
+    return this.store.listSessionPage(userId, input);
+  }
+
+  pruneAuthArtifacts(input: {
+    sessionCutoff: Date;
+    challengeCutoff: Date;
+  }): Promise<void> {
+    return this.store.pruneAuthArtifacts(input);
+  }
+
+  updateLastLoginAt(userId: string, at: Date): Promise<void> {
+    return this.store.updateLastLoginAt(userId, at);
   }
 
   revokeSession(
@@ -264,12 +288,58 @@ class PrismaAuthStore implements AuthStore {
     });
   }
 
-  async listSessionsByUser(userId: string): Promise<AuthSession[]> {
-    const sessions = await this.client.session.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
+  async listSessionPage(
+    userId: string,
+    input: { kind: SessionKind; page: number; limit: number; now: Date },
+  ): Promise<{ items: AuthSession[]; total: number }> {
+    const active = { revokedAt: null, expiresAt: { gt: input.now } } as const;
+    const where: Prisma.SessionWhereInput = {
+      userId,
+      ...(input.kind === 'ACTIVE'
+        ? active
+        : {
+            OR: [
+              { revokedAt: { not: null } },
+              { expiresAt: { lte: input.now } },
+            ],
+          }),
+    };
+    const [sessions, total] = await Promise.all([
+      this.client.session.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (input.page - 1) * input.limit,
+        take: input.limit,
+      }),
+      this.client.session.count({ where }),
+    ]);
+    return { items: sessions.map(mapSession), total };
+  }
+
+  async pruneAuthArtifacts(input: {
+    sessionCutoff: Date;
+    challengeCutoff: Date;
+  }): Promise<void> {
+    await Promise.all([
+      this.client.session.deleteMany({
+        where: {
+          OR: [
+            { expiresAt: { lt: input.sessionCutoff } },
+            { revokedAt: { lt: input.sessionCutoff } },
+          ],
+        },
+      }),
+      this.client.verificationChallenge.deleteMany({
+        where: { createdAt: { lt: input.challengeCutoff } },
+      }),
+    ]);
+  }
+
+  async updateLastLoginAt(userId: string, at: Date): Promise<void> {
+    await this.client.user.update({
+      where: { id: userId },
+      data: { lastLoginAt: at },
     });
-    return sessions.map(mapSession);
   }
 
   async revokeSession(
@@ -325,7 +395,9 @@ function mapChallenge(input: {
   };
 }
 
-function mapUser(input: AuthUser): AuthUser {
+function mapUser(
+  input: Omit<AuthUser, 'lastLoginAt'> & { lastLoginAt: Date | null },
+): AuthUser {
   return {
     id: input.id,
     displayName: input.displayName,
@@ -334,6 +406,7 @@ function mapUser(input: AuthUser): AuthUser {
     passwordHash: input.passwordHash,
     isPlatformAdmin: input.isPlatformAdmin,
     status: input.status,
+    lastLoginAt: input.lastLoginAt ?? undefined,
   };
 }
 

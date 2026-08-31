@@ -17,7 +17,7 @@ import {
   PipelineLedger,
   PriorityRecordTable,
 } from "./workbench-elements";
-import { PipelineChart, TrendChart } from "./workbench-charts";
+import { TrendChart } from "./workbench-charts";
 import styles from "./workbench.module.css";
 
 export function EmployeeWorkbench({
@@ -34,9 +34,18 @@ export function EmployeeWorkbench({
   businessObjects: RuntimeObjectNavigation[];
 }) {
   const opportunity = overviewOpportunity(overview)!;
-  const canCreate = businessObjects.find(
+  const opportunityObject = businessObjects.find(
     (item) => item.code === opportunity.objectCode,
-  )?.canCreate;
+  );
+  const canCreate = opportunityObject?.canCreate;
+  const objectName = opportunityObject?.name ?? "核心业务";
+  const hasAmount = Boolean(opportunity.amountFieldKey);
+  const hasDate = Boolean(opportunity.dateFieldKey);
+  const visibleMetrics = overview.metrics.filter(
+    (metric) =>
+      hasAmount ||
+      (metric.key !== "activeAmount" && metric.key !== "wonAmount"),
+  );
   return (
     <div className={styles.workbench}>
       <PageHeader
@@ -48,77 +57,96 @@ export function EmployeeWorkbench({
             <Link
               href={`/workspace/${tenantCode}/objects/${opportunity.objectCode}/new`}
             >
-              <Button type="primary">新建业务</Button>
+              <Button type="primary">新建业务记录</Button>
             </Link>
           ) : undefined
         }
       />
 
-      <KpiBand metrics={overview.metrics} />
+      <KpiBand metrics={visibleMetrics} />
 
-      <div className={styles.analysisGrid}>
-        <DataPanel className={styles.chartPanel} ariaLabel="我的销售管道">
-          <PanelHeading
-            title="我的销售管道"
-            description="只统计你当前有权查看的数据。"
-          />
-          <PipelineChart data={overview.pipeline} />
-          <PipelineLedger
-            tenantCode={tenantCode}
-            objectCode={opportunity.objectCode}
-            stageFieldKey={opportunity.stageFieldKey}
-            data={overview.pipeline}
-          />
-        </DataPanel>
+      <div
+        className={`${styles.analysisCanvas} ${
+          hasDate ? "" : styles.analysisCanvasCompact
+        }`}
+      >
+        {hasDate ? (
+          <DataPanel
+            className={styles.trendPanel}
+            ariaLabel={`我的${objectName}趋势`}
+          >
+            <PanelHeading
+              title={`我的${objectName}趋势`}
+              description="成交结果只统计你当前有权查看的数据。"
+            />
+            {overview.trend.length ? (
+              <TrendChart data={overview.trend} showAmount={hasAmount} />
+            ) : (
+              <Empty description="当前周期还没有个人成交趋势" />
+            )}
+          </DataPanel>
+        ) : null}
 
-        <ReadingPanel
-          className={styles.attentionPanel}
-          ariaLabel="今日与近期任务"
-        >
-          <PanelHeading
-            title="今天先做什么"
-            description="逾期、临期和长时间未更新的业务排在前面。"
-          />
-          <div className={styles.attentionList}>
-            {overview.attention
-              .filter((item) => item.key !== "unassigned")
-              .map((item) => (
-                <Link key={item.key} href={item.href}>
-                  <span>{item.label}</span>
-                  <strong data-numeric>{item.count}</strong>
-                  <i aria-hidden>→</i>
-                </Link>
-              ))}
-          </div>
-        </ReadingPanel>
+        <div className={styles.analysisRail}>
+          <DataPanel
+            className={styles.pipelinePanel}
+            ariaLabel={`我的${objectName}管道`}
+          >
+            <PanelHeading
+              title={`我的${objectName}管道`}
+              description="点击阶段查看对应业务。"
+            />
+            <PipelineLedger
+              tenantCode={tenantCode}
+              objectCode={opportunity.objectCode}
+              stageFieldKey={opportunity.stageFieldKey}
+              data={overview.pipeline}
+              showAmount={hasAmount}
+            />
+          </DataPanel>
+
+          <ReadingPanel
+            className={styles.attentionPanel}
+            ariaLabel="今日与近期任务"
+          >
+            <PanelHeading
+              title="今天先做什么"
+              description="逾期、临期和久未更新的业务优先。"
+            />
+            <div className={styles.attentionList}>
+              {overview.attention
+                .filter(
+                  (item) =>
+                    item.key !== "unassigned" &&
+                    (hasDate ||
+                      (item.key !== "overdue" && item.key !== "dueSoon")),
+                )
+                .map((item) => (
+                  <Link key={item.key} href={item.href}>
+                    <span>{item.label}</span>
+                    <strong data-numeric>{item.count}</strong>
+                    <i aria-hidden>→</i>
+                  </Link>
+                ))}
+            </div>
+          </ReadingPanel>
+        </div>
       </div>
 
-      <div className={styles.lowerGrid}>
-        <DataPanel className={styles.chartPanel} ariaLabel="我的业绩趋势">
-          <PanelHeading
-            title="我的业绩趋势"
-            description="查看个人成交结果随时间的变化。"
-          />
-          {overview.trend.length ? (
-            <TrendChart data={overview.trend} />
-          ) : (
-            <Empty description="当前周期还没有个人成交趋势" />
-          )}
-        </DataPanel>
-
-        <DataPanel className={styles.tablePanel} ariaLabel="优先跟进">
-          <PanelHeading
-            title="优先跟进"
-            description="从这里直接打开记录并继续处理。"
-          />
-          <PriorityRecordTable
-            compact
-            tenantCode={tenantCode}
-            objectCode={opportunity.objectCode}
-            rows={overview.records.slice(0, 6)}
-          />
-        </DataPanel>
-      </div>
+      <DataPanel className={styles.tablePanel} ariaLabel="优先跟进">
+        <PanelHeading
+          title={`${objectName}优先跟进`}
+          description="从这里直接打开记录并继续处理。"
+        />
+        <PriorityRecordTable
+          compact
+          tenantCode={tenantCode}
+          objectCode={opportunity.objectCode}
+          rows={overview.records.slice(0, 8)}
+          showAmount={hasAmount}
+          showDueAt={hasDate}
+        />
+      </DataPanel>
 
       <BusinessObjectBar tenantCode={tenantCode} objects={businessObjects} />
     </div>

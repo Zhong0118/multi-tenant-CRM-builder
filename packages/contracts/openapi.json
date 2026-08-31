@@ -1689,6 +1689,199 @@
         ],
         "type": "object"
       },
+      "PlatformAuditItemDto": {
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "actorId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "actorName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "actorType": {
+            "enum": ["USER", "SYSTEM", "INTEGRATION"],
+            "type": "string"
+          },
+          "after": {
+            "additionalProperties": true,
+            "nullable": true,
+            "type": "object"
+          },
+          "before": {
+            "additionalProperties": true,
+            "nullable": true,
+            "type": "object"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "ip": {
+            "nullable": true,
+            "type": "string"
+          },
+          "reason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "resourceId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "resourceType": {
+            "type": "string"
+          },
+          "tenantId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "tenantName": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "actorType",
+          "action",
+          "resourceType",
+          "requestId",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "PlatformAuditPageDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformAuditItemDto"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "number"
+          },
+          "page": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "total": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": ["items", "page", "limit", "total"],
+        "type": "object"
+      },
+      "PlatformOperationItemDto": {
+        "properties": {
+          "appliedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "appliedByName": {
+            "type": "string"
+          },
+          "appliedByUserId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "enum": ["TEMPLATE_APPLICATION"],
+            "type": "string"
+          },
+          "objectCount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "status": {
+            "enum": ["SUCCEEDED"],
+            "type": "string"
+          },
+          "templateId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "templateName": {
+            "type": "string"
+          },
+          "templateVersionNo": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "tenantCode": {
+            "type": "string"
+          },
+          "tenantId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "tenantName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "templateId",
+          "templateName",
+          "templateVersionNo",
+          "tenantId",
+          "tenantName",
+          "tenantCode",
+          "appliedByUserId",
+          "appliedByName",
+          "objectCount",
+          "appliedAt"
+        ],
+        "type": "object"
+      },
+      "PlatformOperationPageDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformOperationItemDto"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "number"
+          },
+          "page": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "total": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": ["items", "page", "limit", "total"],
+        "type": "object"
+      },
       "PlatformTenantPageResponseDto": {
         "properties": {
           "items": {
@@ -2124,6 +2317,67 @@
         ],
         "type": "object"
       },
+      "RuntimePoliciesDto": {
+        "properties": {
+          "sessionHistoryRetentionDays": {
+            "type": "number"
+          },
+          "sessionTtlDays": {
+            "type": "number"
+          },
+          "verificationRetentionDays": {
+            "type": "number"
+          },
+          "verificationTtlMinutes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "sessionTtlDays",
+          "sessionHistoryRetentionDays",
+          "verificationTtlMinutes",
+          "verificationRetentionDays"
+        ],
+        "type": "object"
+      },
+      "RuntimeServiceStatusDto": {
+        "properties": {
+          "detail": {
+            "type": "string"
+          },
+          "key": {
+            "enum": ["database", "redis", "sms", "webOrigin"],
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "status": {
+            "enum": ["READY", "DEVELOPMENT", "ACTION_REQUIRED"],
+            "type": "string"
+          }
+        },
+        "required": ["key", "label", "status", "detail"],
+        "type": "object"
+      },
+      "RuntimeStatusDto": {
+        "properties": {
+          "environment": {
+            "type": "string"
+          },
+          "policies": {
+            "$ref": "#/components/schemas/RuntimePoliciesDto"
+          },
+          "services": {
+            "items": {
+              "$ref": "#/components/schemas/RuntimeServiceStatusDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["environment", "services", "policies"],
+        "type": "object"
+      },
       "SaveBusinessTemplateDraftDto": {
         "properties": {
           "configuration": {
@@ -2190,6 +2444,31 @@
           }
         },
         "required": ["key", "label"],
+        "type": "object"
+      },
+      "SessionPageResponseDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SessionResponseDto"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "number"
+          },
+          "page": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "total": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": ["items", "page", "limit", "total"],
         "type": "object"
       },
       "SessionResponseDto": {
@@ -3557,16 +3836,45 @@
     "/api/v1/me/sessions": {
       "get": {
         "operationId": "MeController_sessions",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "default": "ACTIVE",
+              "enum": ["ACTIVE", "HISTORY"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/SessionResponseDto"
-                  },
-                  "type": "array"
+                  "$ref": "#/components/schemas/SessionPageResponseDto"
                 }
               }
             },
@@ -3640,6 +3948,79 @@
           }
         ],
         "tags": ["memberships"]
+      }
+    },
+    "/api/v1/platform/audit": {
+      "get": {
+        "operationId": "PlatformOperationsController_audit",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tenantId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "resourceType",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformAuditPageDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-operations"]
       }
     },
     "/api/v1/platform/business-templates": {
@@ -3971,6 +4352,76 @@
           }
         ],
         "tags": ["platform-business-templates"]
+      }
+    },
+    "/api/v1/platform/operations": {
+      "get": {
+        "operationId": "PlatformOperationsController_operationHistory",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformOperationPageDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-operations"]
+      }
+    },
+    "/api/v1/platform/runtime-status": {
+      "get": {
+        "operationId": "PlatformOperationsController_runtimeStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeStatusDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-operations"]
       }
     },
     "/api/v1/platform/tenants": {

@@ -31,7 +31,9 @@ export default async function RecordDetailPage({
     objectCode,
     workspace.role,
   );
-  const query = parseRecordQuery(await searchParams, schema.defaultView.sort);
+  const rawSearchParams = await searchParams;
+  const query = parseRecordQuery(rawSearchParams, schema.defaultView.sort);
+  const initialEditing = rawSearchParams.mode === "edit";
   const [initialPage, record] = await Promise.all([
     loadRecordPage(tenantCode, objectCode, query),
     loadRecord(tenantCode, objectCode, recordId),
@@ -46,6 +48,7 @@ export default async function RecordDetailPage({
       members={members}
       isAdmin={isAdmin}
       openRecord={record}
+      initialEditing={initialEditing}
     />
   );
 }

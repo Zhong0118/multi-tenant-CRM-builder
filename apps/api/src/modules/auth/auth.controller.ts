@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -31,7 +32,8 @@ import {
   LoginDto,
   RegisterDto,
   ResetPasswordDto,
-  SessionResponseDto,
+  SessionPageQueryDto,
+  SessionPageResponseDto,
   UserResponseDto,
   VerificationChallengeDto,
 } from './dto';
@@ -159,9 +161,12 @@ export class MeController {
   }
 
   @Get('sessions')
-  @ApiOkResponse({ type: SessionResponseDto, isArray: true })
-  sessions(@CurrentSession() current: SessionPrincipal) {
-    return this.auth.listSessions(current.user.id, current.sessionId);
+  @ApiOkResponse({ type: SessionPageResponseDto })
+  sessions(
+    @CurrentSession() current: SessionPrincipal,
+    @Query() query: SessionPageQueryDto,
+  ) {
+    return this.auth.listSessions(current.user.id, current.sessionId, query);
   }
 
   @Delete('sessions/:sessionId')

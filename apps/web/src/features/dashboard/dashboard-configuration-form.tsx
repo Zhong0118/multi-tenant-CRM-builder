@@ -2,11 +2,13 @@
 
 import { Alert, Button, Radio, Select, Spin } from "antd";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusTag } from "@/components/workbench/status-tag";
 import { DataPanel, ReadingPanel } from "@/components/workbench/surface";
+import { toApiError } from "@/lib/api/api-error";
 
 import { saveDashboardConfiguration } from "./dashboard-api";
 import type {
@@ -25,6 +27,7 @@ export function DashboardConfigurationForm({
   tenantCode: string;
   initial: DashboardConfigurationView;
 }) {
+  const router = useRouter();
   const saved = initial.record?.configuration.opportunity;
   const [version, setVersion] = useState(initial.record?.version ?? 0);
   const [objectCode, setObjectCode] = useState(saved?.objectCode ?? "");
@@ -39,8 +42,11 @@ export function DashboardConfigurationForm({
     () => initialStageGroups(saved),
   );
   const [saving, setSaving] = useState(false);
+  const [savedSignature, setSavedSignature] = useState(() =>
+    configurationSignature(saved),
+  );
   const [feedback, setFeedback] = useState<
-    { type: "success" | "error"; message: string } | undefined
+    { type: "success" | "error"; message: string; reload?: boolean } | undefined
   >();
 
   const candidate = initial.candidates.find(
@@ -64,13 +70,23 @@ export function DashboardConfigurationForm({
     [stageFieldKey, stageFields],
   );
   const grouped = Object.values(stageGroups);
-  const canSave = Boolean(
-    objectCode &&
-    stageFieldKey &&
-    grouped.includes("ACTIVE") &&
-    grouped.includes("WON") &&
-    grouped.includes("LOST"),
+  const missingStageGroups = stageGroupRequirements.filter(
+    (requirement) => !grouped.includes(requirement.value),
   );
+  const canSave = Boolean(
+    objectCode && stageFieldKey && missingStageGroups.length === 0,
+  );
+  const currentConfiguration = buildConfiguration({
+    objectCode,
+    stageFieldKey,
+    amountFieldKey,
+    dateFieldKey,
+    stageGroups,
+  });
+  const dirty =
+    Boolean(objectCode || stageFieldKey) &&
+    configurationSignature(currentConfiguration?.opportunity) !==
+      savedSignature;
 
   function chooseObject(next: string) {
     setObjectCode(next);
@@ -97,35 +113,37 @@ export function DashboardConfigurationForm({
   }
 
   async function save() {
-    if (!canSave) return;
+    if (!objectCode || !stageFieldKey) return;
+    if (!canSave) {
+      setFeedback({
+        type: "error",
+        message: `还需指定：${missingStageGroups
+          .map((item) => item.label)
+          .join("、")}。`,
+      });
+      return;
+    }
     setSaving(true);
     setFeedback(undefined);
-    const configuration: { opportunity: DashboardOpportunityConfiguration } = {
-      opportunity: {
-        objectCode,
-        stageFieldKey,
-        ...(amountFieldKey ? { amountFieldKey } : {}),
-        ...(dateFieldKey ? { dateFieldKey } : {}),
-        activeOptionKeys: optionKeys(stageGroups, "ACTIVE"),
-        wonOptionKeys: optionKeys(stageGroups, "WON"),
-        lostOptionKeys: optionKeys(stageGroups, "LOST"),
-      },
-    };
+    const configuration = currentConfiguration!;
     try {
       const result = await saveDashboardConfiguration(tenantCode, {
         expectedVersion: version,
         configuration,
       });
       setVersion(result.version);
+      setSavedSignature(configurationSignature(configuration.opportunity));
       setFeedback({
         type: "success",
         message: "工作台指标已经保存并立即生效。",
       });
+      router.refresh();
     } catch (error) {
+      const apiError = toApiError(error);
       setFeedback({
         type: "error",
-        message:
-          error instanceof Error ? error.message : "保存失败，请稍后重试。",
+        message: apiError.message,
+        reload: apiError.code === "CONFIG_VERSION_CONFLICT",
       });
     } finally {
       setSaving(false);
@@ -160,8 +178,12 @@ export function DashboardConfigurationForm({
         title="工作台与指标"
         description="告诉系统哪些已发布字段代表阶段、金额和成交日期；管理员与员工将共享口径，但数据范围不同。"
         status={
-          <StatusTag tone={version ? "success" : "warning"}>
-            {version ? `配置版本 ${version}` : "尚未启用"}
+          <StatusTag tone={dirty ? "warning" : version ? "success" : "warning"}>
+            {dirty
+              ? "有未保存修改"
+              : version
+                ? `配置版本 ${version}`
+                : "尚未启用"}
           </StatusTag>
         }
         extra={
@@ -177,6 +199,15 @@ export function DashboardConfigurationForm({
           showIcon
           type={feedback.type}
           title={feedback.message}
+          action={
+            feedback.type === "success" ? (
+              <Link href={`/workspace/${tenantCode}`}>查看生效结果</Link>
+            ) : feedback.reload ? (
+              <Button size="small" onClick={() => router.refresh()}>
+                载入最新配置
+              </Button>
+            ) : undefined
+          }
         />
       ) : null}
       {initial.issues.length ? (
@@ -216,7 +247,9 @@ export function DashboardConfigurationForm({
             <div className={styles.sectionNumber}>02</div>
             <div className={styles.sectionBody}>
               <h2>映射统计字段</h2>
-              <p>下拉框只显示类型兼容的已发布字段，不会靠名称猜测。</p>
+              <p>
+                阶段字段要表示业务从推进到成交或失败的生命周期；不要选择“来源”“类型”或“等级”字段。
+              </p>
               <div className={styles.fieldGrid}>
                 <label className={styles.fieldLabel}>
                   阶段字段 <strong>必选</strong>
@@ -298,8 +331,20 @@ export function DashboardConfigurationForm({
           </section>
 
           <div className={styles.actions}>
-            <span>保存后，工作台将用真实记录重新计算。</span>
-            <Button type="primary" disabled={!canSave} onClick={save}>
+            <span>
+              {objectCode && stageFieldKey && missingStageGroups.length
+                ? `还需指定：${missingStageGroups
+                    .map((item) => item.label)
+                    .join("、")}`
+                : dirty
+                  ? "当前修改尚未保存。"
+                  : "保存后，工作台将用真实记录重新计算。"}
+            </span>
+            <Button
+              type="primary"
+              disabled={!canSave || saving}
+              onClick={() => void save()}
+            >
               {saving ? <Spin size="small" /> : null}
               保存并启用工作台
             </Button>
@@ -315,7 +360,7 @@ export function DashboardConfigurationForm({
           <ul className={styles.readiness}>
             <ReadinessItem ready={Boolean(objectCode)} label="核心业务表" />
             <ReadinessItem
-              ready={Boolean(stageFieldKey)}
+              ready={Boolean(stageFieldKey) && missingStageGroups.length === 0}
               label="阶段分布与销售管道"
             />
             <ReadinessItem
@@ -406,4 +451,40 @@ function optionKeys(groups: Record<string, StageGroup>, target: StageGroup) {
   return Object.entries(groups)
     .filter(([, value]) => value === target)
     .map(([key]) => key);
+}
+
+const stageGroupRequirements: Array<{
+  value: Exclude<StageGroup, "IGNORE">;
+  label: string;
+}> = [
+  { value: "ACTIVE", label: "进行中" },
+  { value: "WON", label: "成交" },
+  { value: "LOST", label: "失败" },
+];
+
+function buildConfiguration(input: {
+  objectCode: string;
+  stageFieldKey: string;
+  amountFieldKey: string;
+  dateFieldKey: string;
+  stageGroups: Record<string, StageGroup>;
+}): { opportunity: DashboardOpportunityConfiguration } | undefined {
+  if (!input.objectCode || !input.stageFieldKey) return undefined;
+  return {
+    opportunity: {
+      objectCode: input.objectCode,
+      stageFieldKey: input.stageFieldKey,
+      ...(input.amountFieldKey ? { amountFieldKey: input.amountFieldKey } : {}),
+      ...(input.dateFieldKey ? { dateFieldKey: input.dateFieldKey } : {}),
+      activeOptionKeys: optionKeys(input.stageGroups, "ACTIVE"),
+      wonOptionKeys: optionKeys(input.stageGroups, "WON"),
+      lostOptionKeys: optionKeys(input.stageGroups, "LOST"),
+    },
+  };
+}
+
+function configurationSignature(
+  configuration: DashboardOpportunityConfiguration | undefined,
+) {
+  return configuration ? JSON.stringify(configuration) : "";
 }

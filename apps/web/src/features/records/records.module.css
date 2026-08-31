@@ -108,6 +108,44 @@
   overflow-x: auto;
 }
 
+.rowActions {
+  align-items: center;
+  display: inline-flex;
+  white-space: nowrap;
+}
+
+.actionSlot {
+  display: inline-flex;
+}
+
+.rowActionButton:global(.ant-btn) {
+  align-items: center;
+  border-radius: 6px;
+  color: var(--ink-secondary);
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+  min-width: 28px;
+  padding: 0;
+  width: 28px;
+}
+
+.rowActionButton:global(.ant-btn):hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--working-blue);
+}
+
+.rowActionButton:global(.ant-btn-dangerous):hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-danger) 9%, transparent);
+  color: var(--color-danger);
+}
+
+.rowIndex {
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
 .register :global(.ant-table) {
   background: transparent;
 }

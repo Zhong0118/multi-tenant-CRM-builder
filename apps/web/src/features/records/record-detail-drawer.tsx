@@ -24,6 +24,7 @@ export interface RecordDetailDrawerProps {
   members?: DynamicFieldMember[];
   canChooseOwner?: boolean;
   canDelete?: boolean;
+  initialEditing?: boolean;
   api?: RecordApi;
   onClose: () => void;
   onChanged: (record: RecordSummary | null) => void;
@@ -42,11 +43,12 @@ export function RecordDetailDrawer({
   members = [],
   canChooseOwner = false,
   canDelete = false,
+  initialEditing = false,
   api = defaultRecordApi,
   onClose,
   onChanged,
 }: RecordDetailDrawerProps) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(initialEditing);
   const [error, setError] = useState<string>();
 
   const remove = useMutation({

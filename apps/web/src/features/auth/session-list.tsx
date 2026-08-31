@@ -3,7 +3,18 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import type { components } from "@crm/contracts";
-import { Alert, Button, Card, Form, Input, Popconfirm, Tag } from "antd";
+import {
+  Alert,
+  Button,
+  Card,
+  Empty,
+  Form,
+  Input,
+  Pagination,
+  Popconfirm,
+  Tabs,
+  Tag,
+} from "antd";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -18,8 +29,14 @@ import { passwordSchema } from "./schemas";
 type Schemas = components["schemas"];
 
 export type SecuritySession = Schemas["SessionResponseDto"];
+export type SecuritySessionPage = Schemas["SessionPageResponseDto"];
 
 export interface SecurityApi {
+  listSessions?(
+    kind: "ACTIVE" | "HISTORY",
+    page: number,
+    limit: number,
+  ): Promise<SecuritySessionPage>;
   revokeSession(sessionId: string): Promise<Schemas["AcceptedResponseDto"]>;
   changePassword(
     input: Schemas["ChangePasswordDto"],
@@ -27,6 +44,13 @@ export interface SecurityApi {
 }
 
 const securityApi: SecurityApi = {
+  async listSessions(kind, page, limit) {
+    const result = await browserApiClient.GET("/api/v1/me/sessions", {
+      params: { query: { kind, page, limit } },
+    });
+    if (result.data) return result.data;
+    throw toApiError(result.error, result.response.status);
+  },
   async revokeSession(sessionId) {
     const result = await browserApiClient.DELETE(
       "/api/v1/me/sessions/{sessionId}",
@@ -61,12 +85,30 @@ function formatDate(value?: string) {
 
 export function SessionList({
   initialSessions,
+  initialActive,
+  initialHistory,
   api = securityApi,
 }: {
-  initialSessions: SecuritySession[];
+  initialSessions?: SecuritySession[];
+  initialActive?: SecuritySessionPage;
+  initialHistory?: SecuritySessionPage;
   api?: SecurityApi;
 }) {
-  const [sessions, setSessions] = useState(initialSessions);
+  const legacySessions = initialSessions ?? [];
+  const [sessions, setSessions] = useState(
+    initialActive?.items ??
+      legacySessions.filter((session) => !session.revokedAt),
+  );
+  const [history, setHistory] = useState<SecuritySessionPage>(
+    initialHistory ?? {
+      items: legacySessions.filter((session) => Boolean(session.revokedAt)),
+      page: 1,
+      limit: 10,
+      total: legacySessions.filter((session) => Boolean(session.revokedAt))
+        .length,
+    },
+  );
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [summary, setSummary] = useState<{
     type: "error" | "success";
     text: string;
@@ -84,9 +126,23 @@ export function SessionList({
   const revokeMutation = useMutation({
     mutationFn: (sessionId: string) => api.revokeSession(sessionId),
     onSuccess: (_result, sessionId) => {
-      setSessions((current) =>
-        current.filter((session) => session.id !== sessionId),
-      );
+      setSessions((current) => {
+        const revoked = current.find((session) => session.id === sessionId);
+        if (revoked) {
+          setHistory((page) => ({
+            ...page,
+            total: page.total + 1,
+            items:
+              page.page === 1
+                ? [
+                    { ...revoked, revokedAt: new Date().toISOString() },
+                    ...page.items,
+                  ].slice(0, page.limit)
+                : page.items,
+          }));
+        }
+        return current.filter((session) => session.id !== sessionId);
+      });
       setSummary({ type: "success", text: "会话已撤销。" });
     },
     onError: (error) => {
@@ -97,6 +153,22 @@ export function SessionList({
       });
     },
   });
+
+  async function loadHistory(page: number) {
+    if (!api.listSessions) return;
+    setHistoryLoading(true);
+    try {
+      setHistory(await api.listSessions("HISTORY", page, history.limit));
+    } catch (error) {
+      const apiError = normalizeFormError(error);
+      setSummary({
+        type: "error",
+        text: `${apiError.message}（请求编号：${apiError.requestId}）`,
+      });
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
 
   const passwordMutation = useMutation({
     mutationFn: (input: ChangePasswordInput) => api.changePassword(input),
@@ -128,55 +200,45 @@ export function SessionList({
         />
       )}
 
-      <Card className={styles.securityCard} title="登录设备与会话">
-        <div className={styles.sessionList}>
-          {sessions.map((session) => (
-            <article className={styles.sessionRow} key={session.id}>
-              <div>
-                <div className={styles.sessionTitle}>
-                  <strong>{session.deviceSummary || "未知设备"}</strong>
-                  {session.isCurrent && <Tag color="cyan">当前会话</Tag>}
-                  {session.revokedAt && <Tag>已撤销</Tag>}
-                </div>
-                <dl className={styles.sessionMeta}>
-                  <div>
-                    <dt>IP</dt>
-                    <dd>{session.ipSummary || "未记录"}</dd>
-                  </div>
-                  <div>
-                    <dt>最近使用</dt>
-                    <dd>
-                      {formatDate(session.lastUsedAt ?? session.createdAt)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>到期时间</dt>
-                    <dd>{formatDate(session.expiresAt)}</dd>
-                  </div>
-                </dl>
-              </div>
-              {!session.isCurrent && !session.revokedAt && (
-                <Popconfirm
-                  title="撤销这个会话？"
-                  description="该设备需要重新登录。"
-                  okText="确认撤销"
-                  cancelText="取消"
-                  onConfirm={() => revokeMutation.mutate(session.id)}
-                >
-                  <Button
-                    danger
-                    loading={
-                      revokeMutation.isPending &&
-                      revokeMutation.variables === session.id
-                    }
-                  >
-                    撤销
-                  </Button>
-                </Popconfirm>
-              )}
-            </article>
-          ))}
-        </div>
+      <Card className={styles.securityCard} title="登录设备与记录">
+        <Tabs
+          items={[
+            {
+              key: "active",
+              label: `活跃设备 ${sessions.length}`,
+              children: (
+                <SessionRows
+                  sessions={sessions}
+                  empty="当前没有活跃设备"
+                  revokeMutation={revokeMutation}
+                />
+              ),
+            },
+            {
+              key: "history",
+              label: `登录历史 ${history.total}`,
+              children: (
+                <>
+                  <SessionRows
+                    sessions={history.items}
+                    empty="近 90 天没有历史记录"
+                  />
+                  {history.total > history.limit ? (
+                    <Pagination
+                      className={styles.sessionPagination}
+                      current={history.page}
+                      pageSize={history.limit}
+                      total={history.total}
+                      showSizeChanger={false}
+                      disabled={historyLoading}
+                      onChange={(page) => void loadHistory(page)}
+                    />
+                  ) : null}
+                </>
+              ),
+            },
+          ]}
+        />
       </Card>
 
       <Card className={styles.securityCard} title="修改密码">
@@ -237,6 +299,75 @@ export function SessionList({
           </Button>
         </form>
       </Card>
+    </div>
+  );
+}
+
+function SessionRows({
+  sessions,
+  empty,
+  revokeMutation,
+}: {
+  sessions: SecuritySession[];
+  empty: string;
+  revokeMutation?: {
+    mutate(sessionId: string): void;
+    isPending: boolean;
+    variables?: string;
+  };
+}) {
+  if (!sessions.length)
+    return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={empty} />;
+  return (
+    <div className={styles.sessionList}>
+      {sessions.map((session) => (
+        <article className={styles.sessionRow} key={session.id}>
+          <div>
+            <div className={styles.sessionTitle}>
+              <strong>{session.deviceSummary || "未知设备"}</strong>
+              {session.isCurrent && <Tag color="cyan">当前会话</Tag>}
+              {session.revokedAt && <Tag>已撤销</Tag>}
+              {!session.revokedAt &&
+              new Date(session.expiresAt) <= new Date() ? (
+                <Tag>已过期</Tag>
+              ) : null}
+            </div>
+            <dl className={styles.sessionMeta}>
+              <div>
+                <dt>IP</dt>
+                <dd>{session.ipSummary || "未记录"}</dd>
+              </div>
+              <div>
+                <dt>最近使用</dt>
+                <dd>{formatDate(session.lastUsedAt ?? session.createdAt)}</dd>
+              </div>
+              <div>
+                <dt>{session.revokedAt ? "撤销时间" : "到期时间"}</dt>
+                <dd>{formatDate(session.revokedAt ?? session.expiresAt)}</dd>
+              </div>
+            </dl>
+          </div>
+          {revokeMutation && !session.isCurrent && !session.revokedAt ? (
+            <Popconfirm
+              title="撤销这个会话？"
+              description="该设备需要重新登录。"
+              okText="确认撤销"
+              cancelText="取消"
+              onConfirm={() => revokeMutation.mutate(session.id)}
+            >
+              <Button
+                danger
+                loading={
+                  revokeMutation.isPending &&
+                  revokeMutation.variables === session.id
+                }
+              >
+                撤销
+              </Button>
+            </Popconfirm>
+          ) : null}
+        </article>
+      ))}
     </div>
   );
 }
