@@ -1,7 +1,7 @@
 "use client";
 
 import { Alert, Button } from "antd";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { toApiError, type ApiError } from "@/lib/api/api-error";
 
@@ -13,6 +13,7 @@ import {
 import { DashboardCanvas } from "./dashboard-canvas";
 import { DashboardWidgetInspector } from "./dashboard-widget-inspector";
 import { DashboardWidgetLibrary } from "./dashboard-widget-library";
+import { parseDraft } from "./dashboard-types";
 import type {
   DashboardConfigurationView,
   DashboardConfigurationIssue,
@@ -35,8 +36,10 @@ export function DashboardBuilder({
   tenantCode: string;
   initial: DashboardConfigurationView;
 }) {
-  const initialDefinition =
-    initial.draft?.draftConfiguration ?? emptyDefinition();
+  const initialDefinition = useMemo(
+    () => initial.draft?.draftConfiguration ?? emptyDefinition(),
+    [initial.draft?.draftConfiguration],
+  );
   const [version, setVersion] = useState(initial.draft?.draftVersion ?? 0);
   const [activePublication, setActivePublication] = useState(
     initial.activePublication,
@@ -62,6 +65,27 @@ export function DashboardBuilder({
     (widget) => widget.id === selectedId,
   );
   const visibleIssues = materializeIssues(issues, definition.widgets);
+
+  useEffect(() => {
+    const recovered = loadRecovery(tenantCode);
+    if (!recovered) return;
+    if (signature(recovered) === signature(initialDefinition)) {
+      clearRecovery(tenantCode);
+      return;
+    }
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      setDefinition(recovered);
+      setSelectedId(recovered.widgets[0]?.id);
+      setIssues([]);
+      setFocusPath(undefined);
+      setFeedback("已从本标签页恢复未解决冲突的草稿。");
+    });
+    return () => {
+      active = false;
+    };
+  }, [initialDefinition, tenantCode]);
 
   useEffect(() => {
     const beforeUnload = (event: BeforeUnloadEvent) => {
@@ -143,6 +167,7 @@ export function DashboardBuilder({
       });
       setVersion(saved.draftVersion);
       setSavedSignature(signature(definition));
+      clearRecovery(tenantCode);
       setFeedback("草稿已保存，尚未发布。");
     } catch (error) {
       handleOperationError("save", toApiError(error));
@@ -195,7 +220,9 @@ export function DashboardBuilder({
     if (error.code === "DASHBOARD_DRAFT_VERSION_CONFLICT") {
       setServerVersion(currentVersion(error.fieldErrors.currentVersion));
       setFeedback(
-        "草稿版本已变化；本地内容已保留，请重新载入页面后合并并重新预览。",
+        saveRecovery(tenantCode, definition)
+          ? "草稿版本已变化；本地内容已保存为本标签页的恢复草稿，请重新载入页面后继续处理。"
+          : "草稿版本已变化；本地内容仅保留在当前页面，请勿重新载入。",
       );
       return;
     }
@@ -456,6 +483,48 @@ function operationLabel(operation: "save" | "preview" | "publish") {
   return { save: "保存草稿", preview: "预览草稿", publish: "发布工作台" }[
     operation
   ];
+}
+function recoveryKey(tenantCode: string) {
+  return `dashboard-builder-recovery:${tenantCode}`;
+}
+function saveRecovery(
+  tenantCode: string,
+  definition: DashboardDefinitionV2,
+): boolean {
+  try {
+    sessionStorage.setItem(
+      recoveryKey(tenantCode),
+      JSON.stringify({ definition: normalized(definition) }),
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+function loadRecovery(tenantCode: string): DashboardDefinitionV2 | undefined {
+  try {
+    const stored = JSON.parse(
+      sessionStorage.getItem(recoveryKey(tenantCode)) ?? "null",
+    ) as { definition?: unknown } | null;
+    if (!stored?.definition) return undefined;
+    return parseDraft({
+      draftVersion: 0,
+      draftConfiguration: stored.definition,
+      activePublicationId: null,
+      sourceTemplateVersionId: null,
+      updatedAt: "recovery",
+    }).draftConfiguration;
+  } catch {
+    clearRecovery(tenantCode);
+    return undefined;
+  }
+}
+function clearRecovery(tenantCode: string) {
+  try {
+    sessionStorage.removeItem(recoveryKey(tenantCode));
+  } catch {
+    // Storage may be unavailable; the current in-memory draft remains usable.
+  }
 }
 function kind(type: DashboardWidgetType) {
   return {

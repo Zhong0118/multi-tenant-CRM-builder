@@ -11,29 +11,52 @@ interface WallClock {
 export function utcIsoToDatetimeLocal(value: string, timeZone: string): string {
   const instant = new Date(value);
   if (!Number.isFinite(instant.getTime())) throw new Error("Invalid datetime");
-  return wallClockText(wallClockAt(instant, timeZone));
+  return wallClockText(wallClockAt(instant, wallClockFormatter(timeZone)));
 }
 
-export function datetimeLocalToUtcIso(value: string, timeZone: string): string {
+export function datetimeLocalToUtcIso(
+  value: string,
+  timeZone: string,
+  preferredInstant?: string,
+): string | undefined {
+  const candidates = datetimeLocalUtcCandidates(value, timeZone);
+  const preferred = canonicalInstant(preferredInstant);
+  return preferred && candidates.includes(preferred)
+    ? preferred
+    : candidates[0];
+}
+
+export function datetimeLocalUtcCandidates(
+  value: string,
+  timeZone: string,
+): string[] {
   const target = parseWallClock(value);
   const targetEpoch = wallClockEpoch(target);
-  let candidateEpoch = targetEpoch;
+  const targetText = wallClockText(target);
+  const formatter = wallClockFormatter(timeZone);
+  const offsets = new Set<number>();
+  const hour = 60 * 60 * 1000;
 
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    const candidate = new Date(candidateEpoch);
-    const observed = wallClockAt(candidate, timeZone);
-    const delta = targetEpoch - wallClockEpoch(observed);
-    if (delta === 0 && wallClockText(observed) === wallClockText(target)) {
-      return candidate.toISOString();
-    }
-    candidateEpoch += delta;
+  for (let distance = -48; distance <= 48; distance += 1) {
+    const probe = new Date(targetEpoch + distance * hour);
+    offsets.add(
+      wallClockEpoch(wallClockAt(probe, formatter)) - probe.getTime(),
+    );
   }
 
-  throw new Error("The wall-clock time does not exist in the tenant timezone");
+  return Array.from(offsets)
+    .map((offset) => new Date(targetEpoch - offset))
+    .filter(
+      (candidate) =>
+        wallClockText(wallClockAt(candidate, formatter)) === targetText,
+    )
+    .map((candidate) => candidate.toISOString())
+    .filter((candidate, index, values) => values.indexOf(candidate) === index)
+    .sort();
 }
 
-function wallClockAt(instant: Date, timeZone: string): WallClock {
-  const parts = new Intl.DateTimeFormat("en-US", {
+function wallClockFormatter(timeZone: string): Intl.DateTimeFormat {
+  return new Intl.DateTimeFormat("en-US", {
     timeZone,
     calendar: "iso8601",
     numberingSystem: "latn",
@@ -44,7 +67,11 @@ function wallClockAt(instant: Date, timeZone: string): WallClock {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
-  }).formatToParts(instant);
+  });
+}
+
+function wallClockAt(instant: Date, formatter: Intl.DateTimeFormat): WallClock {
+  const parts = formatter.formatToParts(instant);
   const part = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((entry) => entry.type === type)?.value;
   const year = part("year");
@@ -97,4 +124,10 @@ function wallClockEpoch(value: WallClock): number {
 
 function wallClockText(value: WallClock): string {
   return `${value.year}-${value.month}-${value.day}T${value.hour}:${value.minute}:${value.second}.${value.millisecond}`;
+}
+
+function canonicalInstant(value?: string): string | undefined {
+  if (!value) return undefined;
+  const instant = new Date(value);
+  return Number.isFinite(instant.getTime()) ? instant.toISOString() : undefined;
 }

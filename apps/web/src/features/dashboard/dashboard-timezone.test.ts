@@ -13,7 +13,7 @@ describe("dashboard tenant timezone conversion", () => {
     );
 
     expect(iso).toBe("2026-09-01T00:30:15.250Z");
-    expect(utcIsoToDatetimeLocal(iso, "Asia/Shanghai")).toBe(
+    expect(utcIsoToDatetimeLocal(iso ?? "", "Asia/Shanghai")).toBe(
       "2026-09-01T08:30:15.250",
     );
   });
@@ -25,5 +25,14 @@ describe("dashboard tenant timezone conversion", () => {
     expect(
       utcIsoToDatetimeLocal("2026-12-04T14:15:00.000Z", "America/New_York"),
     ).toBe("2026-12-04T09:15:00.000");
+  });
+
+  it("preserves the existing instant during a New York DST overlap", () => {
+    const original = "2026-11-01T06:30:00.000Z";
+    const wallClock = utcIsoToDatetimeLocal(original, "America/New_York");
+
+    expect(datetimeLocalToUtcIso(wallClock, "America/New_York", original)).toBe(
+      original,
+    );
   });
 });

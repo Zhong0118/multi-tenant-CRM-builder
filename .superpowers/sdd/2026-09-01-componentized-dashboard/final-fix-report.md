@@ -105,3 +105,9 @@ Base: `8e51ab4`
 - `git diff --check` passed.
 
 Residual concerns: no broad monorepo, browser, push, or deployment run, per calibration.
+
+## Important review follow-up
+
+- DATETIME local-to-UTC conversion now enumerates the tenant zone's valid candidate instants. DST overlaps preserve an existing endpoint when it is one of the candidates; otherwise selection is deterministic. DST gaps return no candidate and render an inline inspector error without mutating the stored endpoint or throwing from the event handler.
+- Dashboard draft version conflicts now persist the current definition in a tenant-scoped `sessionStorage` recovery snapshot before recommending reload. The builder restores a divergent snapshot after reload with explicit feedback and removes it after a successful save; if storage is unavailable, the message tells the administrator not to reload.
+- RED evidence: the two-file Web run failed for overlap instant drift, an unhandled gap exception, and missing conflict recovery. The same focused run passes after the fixes.

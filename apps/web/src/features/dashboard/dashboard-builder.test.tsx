@@ -90,6 +90,7 @@ const initial = {
 } satisfies DashboardConfigurationView;
 
 beforeEach(() => {
+  sessionStorage.clear();
   vi.mocked(saveDashboardDraft).mockReset();
   vi.mocked(previewDashboardDraft).mockReset();
   vi.mocked(publishDashboardDraft).mockReset();
@@ -672,6 +673,40 @@ describe("DashboardBuilder", () => {
     );
   });
 
+  it("shows an inline error for a DATETIME inside a tenant DST gap", () => {
+    const widget = {
+      ...metricWidget("metric-gap", "夏令时指标", 1),
+      filters: [
+        {
+          fieldKey: "signedAt",
+          operator: "BETWEEN" as const,
+          value: ["2026-03-08T06:30:00.000Z", "2026-03-08T08:30:00.000Z"] as [
+            string,
+            string,
+          ],
+        },
+      ],
+    };
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        initial={{
+          ...withWidgets([widget], []),
+          timezone: "America/New_York",
+        }}
+      />,
+    );
+
+    expect(() =>
+      fireEvent.change(screen.getByLabelText("筛选值 1 起"), {
+        target: { value: "2026-03-08T02:30:00.000" },
+      }),
+    ).not.toThrow();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "该本地时间在租户时区中不存在",
+    );
+  });
+
   it("reports catalog drift without blaming the canvas", async () => {
     vi.mocked(publishDashboardDraft).mockRejectedValue({
       code: "DASHBOARD_CATALOG_CHANGED",
@@ -692,7 +727,7 @@ describe("DashboardBuilder", () => {
     expect(screen.queryByText(/修复画布/)).not.toBeInTheDocument();
   });
 
-  it("preserves local content and reports the server version on publish conflict", async () => {
+  it("recovers local content after reloading from a publish conflict", async () => {
     vi.mocked(publishDashboardDraft).mockRejectedValue({
       code: "DASHBOARD_DRAFT_VERSION_CONFLICT",
       message: "草稿版本冲突",
@@ -701,7 +736,7 @@ describe("DashboardBuilder", () => {
       fieldErrors: { currentVersion: ["7"] },
     });
     const widget = metricWidget("metric-local", "本地保留的指标", 1);
-    render(
+    const view = render(
       <DashboardBuilder
         tenantCode="northwind"
         initial={withWidgets([widget], [])}
@@ -712,11 +747,19 @@ describe("DashboardBuilder", () => {
 
     expect(
       await screen.findByText(
-        "草稿版本已变化；本地内容已保留，请重新载入页面后合并并重新预览。",
+        "草稿版本已变化；本地内容已保存为本标签页的恢复草稿，请重新载入页面后继续处理。",
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("服务器草稿版本为 7")).toBeInTheDocument();
+    view.unmount();
+
+    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+
+    expect(
+      await screen.findByText("已从本标签页恢复未解决冲突的草稿。"),
+    ).toBeInTheDocument();
     expect(screen.getAllByText("本地保留的指标")).not.toHaveLength(0);
+    expect(screen.getByText("有未保存修改")).toBeInTheDocument();
   });
 
   it("rejects malformed filter values at the browser boundary", () => {

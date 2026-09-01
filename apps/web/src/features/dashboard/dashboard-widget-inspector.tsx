@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type {
   DashboardCandidate,
@@ -568,6 +568,7 @@ function FilterValueControl({
   onChange: (filter: DashboardFilter) => void;
 }) {
   const label = `筛选值 ${index + 1}`;
+  const [datetimeError, setDatetimeError] = useState<string>();
   if (!needsValue(filter.operator)) return null;
   if (filter.operator === "IN" || filter.operator === "NOT_IN") {
     const options =
@@ -629,35 +630,56 @@ function FilterValueControl({
         {field?.type === "DATETIME" ? (
           <span>租户时区：{tenantTimezone}</span>
         ) : null}
+        {datetimeError ? <span role="alert">{datetimeError}</span> : null}
         <input
           aria-label={`${label} 起`}
           type={type}
           step={field?.type === "DATETIME" ? "0.001" : undefined}
           value={inputValues[0]}
-          onChange={(event) =>
+          onChange={(event) => {
+            const value = coerceValue(
+              event.target.value,
+              field?.type,
+              tenantTimezone,
+              values[0],
+            );
+            if (value === undefined) {
+              setDatetimeError(
+                "该本地时间在租户时区中不存在，请选择其他时间。",
+              );
+              return;
+            }
+            setDatetimeError(undefined);
             onChange({
               ...filter,
-              value: [
-                coerceValue(event.target.value, field?.type, tenantTimezone),
-                values[1],
-              ],
-            })
-          }
+              value: [value, values[1]],
+            });
+          }}
         />
         <input
           aria-label={`${label} 止`}
           type={type}
           step={field?.type === "DATETIME" ? "0.001" : undefined}
           value={inputValues[1]}
-          onChange={(event) =>
+          onChange={(event) => {
+            const value = coerceValue(
+              event.target.value,
+              field?.type,
+              tenantTimezone,
+              values[1],
+            );
+            if (value === undefined) {
+              setDatetimeError(
+                "该本地时间在租户时区中不存在，请选择其他时间。",
+              );
+              return;
+            }
+            setDatetimeError(undefined);
             onChange({
               ...filter,
-              value: [
-                values[0],
-                coerceValue(event.target.value, field?.type, tenantTimezone),
-              ],
-            })
-          }
+              value: [values[0], value],
+            });
+          }}
         />
       </>
     );
@@ -770,10 +792,17 @@ function coerceValue(
   value: string,
   type: string | undefined,
   tenantTimezone: string,
-): string | number {
+  preferredInstant?: string | number,
+): string | number | undefined {
   if (type === "NUMBER" || type === "MONEY") return Number(value) || 0;
   if (type === "DATETIME")
-    return value ? datetimeLocalToUtcIso(value, tenantTimezone) : "";
+    return value
+      ? datetimeLocalToUtcIso(
+          value,
+          tenantTimezone,
+          typeof preferredInstant === "string" ? preferredInstant : undefined,
+        )
+      : "";
   return value;
 }
 function datetimeInputValue(
