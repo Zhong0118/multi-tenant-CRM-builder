@@ -273,7 +273,7 @@ function widget(value: unknown): DashboardWidgetDraft {
     objectCode: text(root.objectCode),
     width: one(root.width, ["QUARTER", "HALF", "FULL"] as const),
     sortOrder: num(root.sortOrder),
-    filters: array(root.filters).map(parseFilter),
+    filters: array(root.filters).map(parseDashboardFilter),
     ...(typeof root.description === "string"
       ? { description: root.description }
       : {}),
@@ -359,7 +359,7 @@ function widget(value: unknown): DashboardWidgetDraft {
       return invalid();
   }
 }
-function parseFilter(value: unknown): DashboardFilter {
+export function parseDashboardFilter(value: unknown): DashboardFilter {
   const root = object(value);
   const operator = one(root.operator, [
     "IN",
@@ -382,6 +382,7 @@ function parseFilter(value: unknown): DashboardFilter {
   ] as const);
   const filter: DashboardFilter = { fieldKey: text(root.fieldKey), operator };
   if (root.value !== undefined) filter.value = filterValue(root.value);
+  validateFilterValueShape(filter);
   return filter;
 }
 function filterValue(value: unknown): DashboardFilter["value"] {
@@ -400,6 +401,52 @@ function filterValue(value: unknown): DashboardFilter["value"] {
   )
     return value as [string | number, string | number];
   return invalid();
+}
+function validateFilterValueShape(filter: DashboardFilter) {
+  const hasValue = filter.value !== undefined;
+  if (
+    [
+      "TODAY",
+      "THIS_WEEK",
+      "THIS_MONTH",
+      "CURRENT_USER",
+      "RECORD_OWNER",
+      "NOT_EMPTY",
+    ].includes(filter.operator)
+  ) {
+    if (hasValue) invalid();
+    return;
+  }
+  if (filter.operator === "IN" || filter.operator === "NOT_IN") {
+    if (
+      !Array.isArray(filter.value) ||
+      filter.value.some((value) => typeof value !== "string")
+    )
+      invalid();
+    return;
+  }
+  if (filter.operator === "PAST_N_DAYS" || filter.operator === "NEXT_N_DAYS") {
+    if (!Number.isInteger(filter.value) || Number(filter.value) <= 0) invalid();
+    return;
+  }
+  if (filter.operator === "BETWEEN") {
+    if (
+      !Array.isArray(filter.value) ||
+      filter.value.length !== 2 ||
+      filter.value.some(
+        (value) => typeof value !== "string" && typeof value !== "number",
+      )
+    )
+      invalid();
+    return;
+  }
+  if (
+    !hasValue ||
+    (typeof filter.value !== "string" &&
+      typeof filter.value !== "number" &&
+      typeof filter.value !== "boolean")
+  )
+    invalid();
 }
 function parseRuntimeWidget(value: unknown) {
   const root = object(value);

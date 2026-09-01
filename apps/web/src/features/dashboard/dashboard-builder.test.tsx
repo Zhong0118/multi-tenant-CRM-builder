@@ -7,6 +7,10 @@ import {
   saveDashboardDraft,
 } from "./dashboard-api";
 import { DashboardBuilder } from "./dashboard-builder";
+import {
+  parseDashboardFilter,
+  type DashboardConfigurationView,
+} from "./dashboard-types";
 
 vi.mock("./dashboard-api", () => ({
   saveDashboardDraft: vi.fn(),
@@ -37,16 +41,39 @@ const initial = {
       object: { code: "deals", name: "商机" },
       fields: [
         {
+          fieldKey: "stage",
+          label: "阶段",
+          type: "SINGLE_SELECT",
+          config: {
+            options: [
+              { key: "open", label: "跟进中", color: "BLUE", status: "ACTIVE" },
+              { key: "won", label: "已赢单", color: "GREEN", status: "ACTIVE" },
+            ],
+          },
+        },
+        {
           fieldKey: "amount",
           label: "金额",
           type: "MONEY",
+          config: {},
+        },
+        {
+          fieldKey: "closedAt",
+          label: "预计成交日",
+          type: "DATE",
+          config: {},
+        },
+        {
+          fieldKey: "title",
+          label: "标题",
+          type: "TEXT",
           config: {},
         },
       ],
     },
   ],
   issues: [],
-};
+} satisfies DashboardConfigurationView;
 
 beforeEach(() => {
   vi.mocked(saveDashboardDraft).mockReset();
@@ -189,6 +216,144 @@ describe("DashboardBuilder", () => {
     expect(
       screen.getByRole("button", { name: "下移组件 记录列表 1" }),
     ).toBeDisabled();
+  });
+
+  it("serializes each operator-specific filter value shape", async () => {
+    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+    fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
+    fireEvent.change(screen.getByLabelText("业务表"), {
+      target: { value: "deals" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "添加筛选条件" }));
+    fireEvent.change(screen.getByLabelText("筛选字段 1"), {
+      target: { value: "stage" },
+    });
+    const stageOptions = screen.getByLabelText("筛选值 1") as HTMLSelectElement;
+    stageOptions.options[0].selected = true;
+    stageOptions.options[1].selected = true;
+    fireEvent.change(stageOptions);
+
+    fireEvent.click(screen.getByRole("button", { name: "添加筛选条件" }));
+    fireEvent.change(screen.getByLabelText("筛选字段 2"), {
+      target: { value: "amount" },
+    });
+    fireEvent.change(screen.getByLabelText("筛选操作符 2"), {
+      target: { value: "BETWEEN" },
+    });
+    fireEvent.change(screen.getByLabelText("筛选值 2 起"), {
+      target: { value: "10" },
+    });
+    fireEvent.change(screen.getByLabelText("筛选值 2 止"), {
+      target: { value: "20" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "添加筛选条件" }));
+    fireEvent.change(screen.getByLabelText("筛选字段 3"), {
+      target: { value: "closedAt" },
+    });
+    fireEvent.change(screen.getByLabelText("筛选操作符 3"), {
+      target: { value: "PAST_N_DAYS" },
+    });
+    fireEvent.change(screen.getByLabelText("筛选值 3"), {
+      target: { value: "14" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "添加筛选条件" }));
+    fireEvent.change(screen.getByLabelText("筛选字段 4"), {
+      target: { value: "title" },
+    });
+    fireEvent.change(screen.getByLabelText("筛选操作符 4"), {
+      target: { value: "NOT_EMPTY" },
+    });
+    expect(screen.queryByLabelText("筛选值 4")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
+    await waitFor(() =>
+      expect(saveDashboardDraft).toHaveBeenCalledWith(
+        "northwind",
+        expect.objectContaining({
+          configuration: expect.objectContaining({
+            widgets: [
+              expect.objectContaining({
+                filters: [
+                  { fieldKey: "stage", operator: "IN", value: ["open", "won"] },
+                  { fieldKey: "amount", operator: "BETWEEN", value: [10, 20] },
+                  { fieldKey: "closedAt", operator: "PAST_N_DAYS", value: 14 },
+                  { fieldKey: "title", operator: "NOT_EMPTY" },
+                ],
+              }),
+            ],
+          }),
+        }),
+      ),
+    );
+  });
+
+  it("rejects malformed filter values at the browser boundary", () => {
+    expect(() =>
+      parseDashboardFilter({
+        fieldKey: "stage",
+        operator: "IN",
+        value: "open",
+      }),
+    ).toThrow("Invalid dashboard response");
+    expect(() =>
+      parseDashboardFilter({
+        fieldKey: "closedAt",
+        operator: "TODAY",
+        value: 1,
+      }),
+    ).toThrow("Invalid dashboard response");
+  });
+
+  it("reports a non-conflict save failure without inventing a server version", async () => {
+    vi.mocked(saveDashboardDraft).mockRejectedValue({
+      code: "DASHBOARD_CONFIGURATION_INVALID",
+      message: "请修复配置",
+      requestId: "request-2",
+      status: 422,
+      fieldErrors: {},
+    });
+    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+    fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
+
+    expect(
+      await screen.findByText("保存草稿失败；请修复配置后重试。"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/服务器草稿版本/)).not.toBeInTheDocument();
+  });
+
+  it("clears a metric value field when its object changes", async () => {
+    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+    fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
+    fireEvent.change(screen.getByLabelText("业务表"), {
+      target: { value: "deals" },
+    });
+    fireEvent.change(screen.getByLabelText("聚合方式"), {
+      target: { value: "SUM" },
+    });
+    fireEvent.change(screen.getByLabelText("数值字段"), {
+      target: { value: "amount" },
+    });
+    fireEvent.change(screen.getByLabelText("业务表"), {
+      target: { value: "" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
+
+    await waitFor(() =>
+      expect(saveDashboardDraft).toHaveBeenCalledWith(
+        "northwind",
+        expect.objectContaining({
+          configuration: expect.objectContaining({
+            widgets: [
+              expect.not.objectContaining({ valueFieldKey: expect.anything() }),
+            ],
+          }),
+        }),
+      ),
+    );
   });
 
   it("keeps a dirty editor on the page when a same-origin link is cancelled", () => {

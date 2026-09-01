@@ -124,6 +124,7 @@ export function DashboardBuilder({
   async function save() {
     setBusy("save");
     setFeedback(undefined);
+    setServerVersion(undefined);
     try {
       const saved = await saveDashboardDraft(tenantCode, {
         expectedVersion: version,
@@ -135,8 +136,12 @@ export function DashboardBuilder({
       setFeedback("草稿已保存，尚未发布。");
     } catch (error) {
       const apiError = toApiError(error);
-      setServerVersion(currentVersion(apiError.fieldErrors.currentVersion));
-      setFeedback("草稿版本已变化；本地修改已保留，请重新载入后合并。");
+      if (apiError.code === "DASHBOARD_DRAFT_VERSION_CONFLICT") {
+        setServerVersion(currentVersion(apiError.fieldErrors.currentVersion));
+        setFeedback("草稿版本已变化；本地修改已保留，请重新载入后合并。");
+      } else {
+        setFeedback("保存草稿失败；请修复配置后重试。");
+      }
     } finally {
       setBusy(undefined);
     }

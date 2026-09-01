@@ -30,11 +30,11 @@ export function DashboardWidgetInspector({
       objectRef.current?.focus();
       return;
     }
-    const label = focusLabel(focusPath);
+    const label = focusLabel(focusPath, widget?.type);
     inspectorRef.current
       ?.querySelector<HTMLElement>(`[aria-label="${label}"]`)
       ?.focus();
-  }, [focusPath, widget?.id]);
+  }, [focusPath, widget?.id, widget?.type]);
 
   if (!widget) {
     return (
@@ -466,9 +466,7 @@ function FilterControls({
         <strong>筛选条件</strong>
         <button
           type="button"
-          onClick={() =>
-            change([...filters, { fieldKey: "", operator: "EQ", value: "" }])
-          }
+          onClick={() => change([...filters, defaultFilter()])}
         >
           添加筛选条件
         </button>
@@ -482,15 +480,10 @@ function FilterControls({
               replaceFilter(
                 filters,
                 index,
-                {
-                  fieldKey: event.target.value,
-                  operator: defaultOperator(
-                    fields.find(
-                      (field) => field.fieldKey === event.target.value,
-                    )?.type,
-                  ),
-                  value: "",
-                },
+                defaultFilter(
+                  event.target.value,
+                  fields.find((field) => field.fieldKey === event.target.value),
+                ),
                 change,
               )
             }
@@ -510,9 +503,11 @@ function FilterControls({
                 filters,
                 index,
                 {
-                  ...filter,
-                  operator: event.target.value as DashboardFilter["operator"],
-                  value: "",
+                  ...defaultFilter(
+                    filter.fieldKey,
+                    fields.find((field) => field.fieldKey === filter.fieldKey),
+                    event.target.value as DashboardFilter["operator"],
+                  ),
                 },
                 change,
               )
@@ -526,24 +521,12 @@ function FilterControls({
               </option>
             ))}
           </select>
-          {needsValue(filter.operator) ? (
-            <input
-              aria-label={`筛选值 ${index + 1}`}
-              value={
-                Array.isArray(filter.value)
-                  ? filter.value.join(",")
-                  : String(filter.value ?? "")
-              }
-              onChange={(event) =>
-                replaceFilter(
-                  filters,
-                  index,
-                  { ...filter, value: event.target.value },
-                  change,
-                )
-              }
-            />
-          ) : null}
+          <FilterValueControl
+            filter={filter}
+            field={fields.find((field) => field.fieldKey === filter.fieldKey)}
+            index={index}
+            onChange={(next) => replaceFilter(filters, index, next, change)}
+          />
           <button
             type="button"
             aria-label={`删除筛选条件 ${index + 1}`}
@@ -554,6 +537,140 @@ function FilterControls({
         </div>
       ))}
     </section>
+  );
+}
+
+function FilterValueControl({
+  filter,
+  field,
+  index,
+  onChange,
+}: {
+  filter: DashboardFilter;
+  field?: DashboardCandidateField;
+  index: number;
+  onChange: (filter: DashboardFilter) => void;
+}) {
+  const label = `筛选值 ${index + 1}`;
+  if (!needsValue(filter.operator)) return null;
+  if (filter.operator === "IN" || filter.operator === "NOT_IN") {
+    const options =
+      field?.config.options?.filter((option) => option.status === "ACTIVE") ??
+      [];
+    if (options.length) {
+      return (
+        <select
+          multiple
+          aria-label={label}
+          value={Array.isArray(filter.value) ? filter.value.map(String) : []}
+          onChange={(event) =>
+            onChange({
+              ...filter,
+              value: Array.from(
+                event.target.selectedOptions,
+                (option) => option.value,
+              ),
+            })
+          }
+        >
+          {options.map((option) => (
+            <option key={option.key} value={option.key}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      );
+    }
+    return (
+      <input
+        aria-label={label}
+        value={Array.isArray(filter.value) ? filter.value.join(",") : ""}
+        onChange={(event) =>
+          onChange({
+            ...filter,
+            value: event.target.value
+              ? event.target.value
+                  .split(",")
+                  .map((value) => value.trim())
+                  .filter(Boolean)
+              : [],
+          })
+        }
+      />
+    );
+  }
+  if (filter.operator === "BETWEEN") {
+    const values = Array.isArray(filter.value)
+      ? filter.value
+      : defaultBetween(field?.type);
+    const type = inputType(field?.type);
+    return (
+      <>
+        <input
+          aria-label={`${label} 起`}
+          type={type}
+          value={String(values[0])}
+          onChange={(event) =>
+            onChange({
+              ...filter,
+              value: [coerceValue(event.target.value, field?.type), values[1]],
+            })
+          }
+        />
+        <input
+          aria-label={`${label} 止`}
+          type={type}
+          value={String(values[1])}
+          onChange={(event) =>
+            onChange({
+              ...filter,
+              value: [values[0], coerceValue(event.target.value, field?.type)],
+            })
+          }
+        />
+      </>
+    );
+  }
+  if (filter.operator === "PAST_N_DAYS" || filter.operator === "NEXT_N_DAYS")
+    return (
+      <input
+        aria-label={label}
+        type="number"
+        min="1"
+        value={String(filter.value ?? 1)}
+        onChange={(event) =>
+          onChange({
+            ...filter,
+            value: Math.max(1, Number(event.target.value) || 1),
+          })
+        }
+      />
+    );
+  if (field?.type === "BOOLEAN")
+    return (
+      <select
+        aria-label={label}
+        value={String(filter.value)}
+        onChange={(event) =>
+          onChange({ ...filter, value: event.target.value === "true" })
+        }
+      >
+        <option value="true">是</option>
+        <option value="false">否</option>
+      </select>
+    );
+  return (
+    <input
+      aria-label={label}
+      type={inputType(field?.type)}
+      value={String(filter.value ?? "")}
+      onChange={(event) =>
+        onChange({
+          ...filter,
+          value: coerceValue(event.target.value, field?.type),
+        })
+      }
+    />
   );
 }
 function replaceFilter(
@@ -587,6 +704,41 @@ function operators(type?: string): DashboardFilter["operator"][] {
 function defaultOperator(type?: string) {
   return operators(type)[0];
 }
+function defaultFilter(
+  fieldKey = "",
+  field?: DashboardCandidateField,
+  operator = defaultOperator(field?.type),
+): DashboardFilter {
+  const filter: DashboardFilter = { fieldKey, operator };
+  const value = defaultFilterValue(operator, field?.type);
+  if (value !== undefined) filter.value = value;
+  return filter;
+}
+function defaultFilterValue(
+  operator: DashboardFilter["operator"],
+  type?: string,
+): DashboardFilter["value"] {
+  if (!needsValue(operator)) return undefined;
+  if (operator === "IN" || operator === "NOT_IN") return [];
+  if (operator === "PAST_N_DAYS" || operator === "NEXT_N_DAYS") return 1;
+  if (operator === "BETWEEN") return defaultBetween(type);
+  if (type === "NUMBER" || type === "MONEY") return 0;
+  if (type === "BOOLEAN") return false;
+  return "";
+}
+function defaultBetween(type?: string): [string | number, string | number] {
+  return type === "NUMBER" || type === "MONEY" ? [0, 0] : ["", ""];
+}
+function inputType(type?: string) {
+  if (type === "NUMBER" || type === "MONEY") return "number";
+  if (type === "DATE") return "date";
+  if (type === "DATETIME") return "datetime-local";
+  return "text";
+}
+function coerceValue(value: string, type?: string): string | number {
+  if (type === "NUMBER" || type === "MONEY") return Number(value) || 0;
+  return value;
+}
 function needsValue(operator: DashboardFilter["operator"]) {
   return ![
     "TODAY",
@@ -604,6 +756,7 @@ function resetForObject(
   return {
     objectCode,
     filters: [],
+    ...(widget.type === "METRIC" ? { valueFieldKey: undefined } : {}),
     ...(widget.type === "STATUS_DISTRIBUTION"
       ? { groupByFieldKey: "", optionKeys: [], valueFieldKey: undefined }
       : {}),
@@ -618,11 +771,12 @@ function resetForObject(
       : {}),
   } as Partial<DashboardWidgetDraft>;
 }
-function focusLabel(path: string) {
+function focusLabel(path: string, type?: DashboardWidgetDraft["type"]) {
   if (path.includes(".filters[")) {
-    if (path.endsWith(".operator")) return "筛选操作符 1";
-    if (path.endsWith(".value")) return "筛选值 1";
-    return "筛选字段 1";
+    const index = Number(path.match(/\.filters\[(\d+)\]/)?.[1] ?? 0) + 1;
+    if (path.endsWith(".operator")) return `筛选操作符 ${index}`;
+    if (path.endsWith(".value")) return `筛选值 ${index}`;
+    return `筛选字段 ${index}`;
   }
   const key = path.split(".").at(-1);
   return (
@@ -638,7 +792,7 @@ function focusLabel(path: string) {
       memberSource: "成员来源",
       memberFieldKey: "成员字段",
       fieldKeys: "显示字段",
-      limit: "显示记录数",
+      limit: type === "LEADERBOARD" ? "显示人数" : "显示记录数",
       sort: "排序字段",
     }[key ?? ""] ?? "组件标题"
   );
