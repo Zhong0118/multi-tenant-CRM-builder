@@ -1,55 +1,567 @@
 import type { components } from "@crm/contracts";
 
-export type DashboardWidgetType = "METRIC" | "STATUS_DISTRIBUTION" | "TREND" | "LEADERBOARD" | "RECORD_LIST";
+export type DashboardWidgetType =
+  "METRIC" | "STATUS_DISTRIBUTION" | "TREND" | "LEADERBOARD" | "RECORD_LIST";
 export type DashboardAudience = "ALL" | "TENANT_ADMIN" | "EMPLOYEE";
 export type DashboardWidgetWidth = "QUARTER" | "HALF" | "FULL";
-export type DashboardFieldType = "TEXT" | "TEXTAREA" | "PHONE" | "EMAIL" | "NUMBER" | "MONEY" | "DATE" | "DATETIME" | "SINGLE_SELECT" | "MULTI_SELECT" | "MEMBER" | "BOOLEAN";
-export interface DashboardFilter { fieldKey: string; operator: "IN" | "NOT_IN" | "EQ" | "GT" | "GTE" | "LT" | "LTE" | "BETWEEN" | "TODAY" | "THIS_WEEK" | "THIS_MONTH" | "PAST_N_DAYS" | "NEXT_N_DAYS" | "CURRENT_USER" | "RECORD_OWNER" | "CONTAINS" | "NOT_EMPTY"; value?: string | number | boolean | string[] | [string | number, string | number]; }
-interface Base { id: string; type: DashboardWidgetType; title: string; description?: string; audience: DashboardAudience; objectCode: string; width: DashboardWidgetWidth; sortOrder: number; filters: DashboardFilter[]; }
+export type DashboardFieldType =
+  | "TEXT"
+  | "TEXTAREA"
+  | "PHONE"
+  | "EMAIL"
+  | "NUMBER"
+  | "MONEY"
+  | "DATE"
+  | "DATETIME"
+  | "SINGLE_SELECT"
+  | "MULTI_SELECT"
+  | "MEMBER"
+  | "BOOLEAN";
+export interface DashboardFilter {
+  fieldKey: string;
+  operator:
+    | "IN"
+    | "NOT_IN"
+    | "EQ"
+    | "GT"
+    | "GTE"
+    | "LT"
+    | "LTE"
+    | "BETWEEN"
+    | "TODAY"
+    | "THIS_WEEK"
+    | "THIS_MONTH"
+    | "PAST_N_DAYS"
+    | "NEXT_N_DAYS"
+    | "CURRENT_USER"
+    | "RECORD_OWNER"
+    | "CONTAINS"
+    | "NOT_EMPTY";
+  value?:
+    string | number | boolean | string[] | [string | number, string | number];
+}
+interface Base {
+  id: string;
+  type: DashboardWidgetType;
+  title: string;
+  description?: string;
+  audience: DashboardAudience;
+  objectCode: string;
+  width: DashboardWidgetWidth;
+  sortOrder: number;
+  filters: DashboardFilter[];
+}
 export type DashboardWidgetDraft =
-  | (Base & { type: "METRIC"; aggregation: "COUNT" | "SUM" | "AVG"; valueFieldKey?: string; displayFormat?: "NUMBER" | "MONEY" | "PERCENT" })
-  | (Base & { type: "STATUS_DISTRIBUTION"; groupByFieldKey: string; optionKeys: string[]; display: "FUNNEL" | "BAR" | "DONUT"; aggregation: "COUNT" | "SUM"; valueFieldKey?: string })
-  | (Base & { type: "TREND"; dateFieldKey: string; granularity: "DAY" | "WEEK" | "MONTH" | "AUTO"; aggregation: "COUNT" | "SUM"; valueFieldKey?: string })
-  | (Base & { type: "LEADERBOARD"; memberSource: "RECORD_OWNER" | "FIELD"; memberFieldKey?: string; aggregation: "COUNT" | "SUM"; valueFieldKey?: string; limit: number })
-  | (Base & { type: "RECORD_LIST"; fieldKeys: string[]; sort: { field: string; direction: "ASC" | "DESC" }; limit: number });
-export interface DashboardDefinitionV2 { schemaVersion: 2; title: string; widgets: DashboardWidgetDraft[]; }
-export interface DashboardCandidateOption { key: string; label: string; color: string; status: "ACTIVE" | "INACTIVE"; }
-export interface DashboardCandidateField { fieldKey: string; label: string; type: DashboardFieldType | string; config: { options?: DashboardCandidateOption[] }; }
-export interface DashboardCandidate { object: { code: string; name: string }; fields: DashboardCandidateField[]; }
-export interface DashboardDraft { draftVersion: number; draftConfiguration: DashboardDefinitionV2; activePublicationId: string | null; sourceTemplateVersionId: string | null; updatedAt: string; }
-export interface DashboardPublicationSummary { id: string; number: number; sourceDraftVersion: number; publishedAt: string; }
-export interface DashboardConfigurationIssue { code: string; path: string; message: string; }
-export interface DashboardConfigurationView { draft: DashboardDraft | null; activePublication: DashboardPublicationSummary | null; candidates: DashboardCandidate[]; issues: DashboardConfigurationIssue[]; }
+  | (Base & {
+      type: "METRIC";
+      aggregation: "COUNT" | "SUM" | "AVG";
+      valueFieldKey?: string;
+      displayFormat?: "NUMBER" | "MONEY" | "PERCENT";
+    })
+  | (Base & {
+      type: "STATUS_DISTRIBUTION";
+      groupByFieldKey: string;
+      optionKeys: string[];
+      display: "FUNNEL" | "BAR" | "DONUT";
+      aggregation: "COUNT" | "SUM";
+      valueFieldKey?: string;
+    })
+  | (Base & {
+      type: "TREND";
+      dateFieldKey: string;
+      granularity: "DAY" | "WEEK" | "MONTH" | "AUTO";
+      aggregation: "COUNT" | "SUM";
+      valueFieldKey?: string;
+    })
+  | (Base & {
+      type: "LEADERBOARD";
+      memberSource: "RECORD_OWNER" | "FIELD";
+      memberFieldKey?: string;
+      aggregation: "COUNT" | "SUM";
+      valueFieldKey?: string;
+      limit: number;
+    })
+  | (Base & {
+      type: "RECORD_LIST";
+      fieldKeys: string[];
+      sort: { field: string; direction: "ASC" | "DESC" };
+      limit: number;
+    });
+export interface DashboardDefinitionV2 {
+  schemaVersion: 2;
+  title: string;
+  widgets: DashboardWidgetDraft[];
+}
+export interface DashboardCandidateOption {
+  key: string;
+  label: string;
+  color: string;
+  status: "ACTIVE" | "INACTIVE";
+}
+export interface DashboardCandidateField {
+  fieldKey: string;
+  label: string;
+  type: DashboardFieldType | string;
+  config: { options?: DashboardCandidateOption[] };
+}
+export interface DashboardCandidate {
+  object: { code: string; name: string };
+  fields: DashboardCandidateField[];
+}
+export interface DashboardDraft {
+  draftVersion: number;
+  draftConfiguration: DashboardDefinitionV2;
+  activePublicationId: string | null;
+  sourceTemplateVersionId: string | null;
+  updatedAt: string;
+}
+export interface DashboardPublicationSummary {
+  id: string;
+  number: number;
+  sourceDraftVersion: number;
+  publishedAt: string;
+}
+export interface DashboardConfigurationIssue {
+  code: string;
+  path: string;
+  message: string;
+}
+export interface DashboardConfigurationView {
+  draft: DashboardDraft | null;
+  activePublication: DashboardPublicationSummary | null;
+  candidates: DashboardCandidate[];
+  issues: DashboardConfigurationIssue[];
+}
 export type DashboardRuntime = components["schemas"]["DashboardRuntimeDto"];
 /** Legacy runtime surface remains until the runtime dashboard renderer is migrated. */
-export interface DashboardOverview { state: "READY" | "UNCONFIGURED" | "NEEDS_REPAIR" | "UNAVAILABLE"; role: "TENANT_ADMIN" | "EMPLOYEE"; period: { from: string; to: string; timezone: string }; configuration?: unknown; metrics: Array<{ key: string; label: string; value?: number | null; format: "COUNT" | "MONEY" | "PERCENT" }>; pipeline: Array<{ optionKey: string; label: string; color: string; count: number; amount: number }>; trend: Array<{ date: string; wonCount: number; wonAmount: number }>; leaderboard: Array<{ memberId: string; displayName: string; wonCount: number; wonAmount: number; activeAmount: number }>; records: Array<{ id: string; recordNo?: string; title: string; amount?: number | null; dueAt?: string | null; stageLabel?: string | null; stageKey?: string; updatedAt: string; ownerMemberId?: string | null; ownerName?: string }>; attention: Array<{ key: string; label: string; count: number; href: string }>; issues: DashboardConfigurationIssue[]; }
-export interface DashboardOpportunityConfiguration { objectCode: string; stageFieldKey: string; amountFieldKey?: string; dateFieldKey?: string; activeOptionKeys: string[]; wonOptionKeys: string[]; lostOptionKeys: string[]; }
-export function overviewOpportunity(overview: DashboardOverview): DashboardOpportunityConfiguration | undefined { const configuration = overview.configuration; if (!configuration || typeof configuration !== "object") return undefined; const opportunity = (configuration as { opportunity?: unknown }).opportunity; if (!opportunity || typeof opportunity !== "object") return undefined; const value = opportunity as Record<string, unknown>; try { return { objectCode: text(value.objectCode), stageFieldKey: text(value.stageFieldKey), activeOptionKeys: strings(value.activeOptionKeys), wonOptionKeys: strings(value.wonOptionKeys), lostOptionKeys: strings(value.lostOptionKeys), ...(typeof value.amountFieldKey === "string" ? { amountFieldKey: value.amountFieldKey } : {}), ...(typeof value.dateFieldKey === "string" ? { dateFieldKey: value.dateFieldKey } : {}) }; } catch { return undefined; } }
-
-export function parseDashboardConfigurationView(value: components["schemas"]["DashboardConfigurationEnvelopeDto"]): DashboardConfigurationView {
-  const root = object(value); return { draft: root.draft == null ? null : parseDraft(root.draft), activePublication: root.activePublication == null ? null : parsePublication(root.activePublication), candidates: array(root.candidates).map(parseCandidate), issues: array(root.issues).map(parseIssue) };
+export interface DashboardOverview {
+  state: "READY" | "UNCONFIGURED" | "NEEDS_REPAIR" | "UNAVAILABLE";
+  role: "TENANT_ADMIN" | "EMPLOYEE";
+  period: { from: string; to: string; timezone: string };
+  configuration?: unknown;
+  metrics: Array<{
+    key: string;
+    label: string;
+    value?: number | null;
+    format: "COUNT" | "MONEY" | "PERCENT";
+  }>;
+  pipeline: Array<{
+    optionKey: string;
+    label: string;
+    color: string;
+    count: number;
+    amount: number;
+  }>;
+  trend: Array<{ date: string; wonCount: number; wonAmount: number }>;
+  leaderboard: Array<{
+    memberId: string;
+    displayName: string;
+    wonCount: number;
+    wonAmount: number;
+    activeAmount: number;
+  }>;
+  records: Array<{
+    id: string;
+    recordNo?: string;
+    title: string;
+    amount?: number | null;
+    dueAt?: string | null;
+    stageLabel?: string | null;
+    stageKey?: string;
+    updatedAt: string;
+    ownerMemberId?: string | null;
+    ownerName?: string;
+  }>;
+  attention: Array<{ key: string; label: string; count: number; href: string }>;
+  issues: DashboardConfigurationIssue[];
 }
-export function parseDraft(value: unknown): DashboardDraft { const root = object(value); return { draftVersion: num(root.draftVersion), draftConfiguration: definition(root.draftConfiguration), activePublicationId: nullableText(root.activePublicationId), sourceTemplateVersionId: nullableText(root.sourceTemplateVersionId), updatedAt: text(root.updatedAt) }; }
-export function parsePublication(value: unknown): DashboardPublicationSummary { const root = object(value); return { id: text(root.id), number: num(root.number), sourceDraftVersion: num(root.sourceDraftVersion), publishedAt: text(root.publishedAt) }; }
-function definition(value: unknown): DashboardDefinitionV2 { const root = object(value); if (root.schemaVersion !== 2) invalid(); return { schemaVersion: 2, title: text(root.title), widgets: array(root.widgets).map(widget) }; }
-function widget(value: unknown): DashboardWidgetDraft { const root = object(value); const base = { id: text(root.id), title: text(root.title), audience: one(root.audience, ["ALL", "TENANT_ADMIN", "EMPLOYEE"] as const), objectCode: text(root.objectCode), width: one(root.width, ["QUARTER", "HALF", "FULL"] as const), sortOrder: num(root.sortOrder), filters: array(root.filters) as DashboardFilter[], ...(typeof root.description === "string" ? { description: root.description } : {}) };
-  switch (root.type) {
-    case "METRIC": return { ...base, type: "METRIC", aggregation: one(root.aggregation, ["COUNT", "SUM", "AVG"] as const), ...(typeof root.valueFieldKey === "string" ? { valueFieldKey: root.valueFieldKey } : {}), ...(root.displayFormat ? { displayFormat: one(root.displayFormat, ["NUMBER", "MONEY", "PERCENT"] as const) } : {}) };
-    case "STATUS_DISTRIBUTION": return { ...base, type: "STATUS_DISTRIBUTION", groupByFieldKey: text(root.groupByFieldKey), optionKeys: strings(root.optionKeys), display: one(root.display, ["FUNNEL", "BAR", "DONUT"] as const), aggregation: one(root.aggregation, ["COUNT", "SUM"] as const), ...(typeof root.valueFieldKey === "string" ? { valueFieldKey: root.valueFieldKey } : {}) };
-    case "TREND": return { ...base, type: "TREND", dateFieldKey: text(root.dateFieldKey), granularity: one(root.granularity, ["DAY", "WEEK", "MONTH", "AUTO"] as const), aggregation: one(root.aggregation, ["COUNT", "SUM"] as const), ...(typeof root.valueFieldKey === "string" ? { valueFieldKey: root.valueFieldKey } : {}) };
-    case "LEADERBOARD": return { ...base, type: "LEADERBOARD", memberSource: one(root.memberSource, ["RECORD_OWNER", "FIELD"] as const), aggregation: one(root.aggregation, ["COUNT", "SUM"] as const), limit: num(root.limit), ...(typeof root.memberFieldKey === "string" ? { memberFieldKey: root.memberFieldKey } : {}), ...(typeof root.valueFieldKey === "string" ? { valueFieldKey: root.valueFieldKey } : {}) };
-    case "RECORD_LIST": { const sort = object(root.sort); return { ...base, type: "RECORD_LIST", fieldKeys: strings(root.fieldKeys), sort: { field: text(sort.field), direction: one(sort.direction, ["ASC", "DESC"] as const) }, limit: num(root.limit) }; }
-    default: return invalid();
+export interface DashboardOpportunityConfiguration {
+  objectCode: string;
+  stageFieldKey: string;
+  amountFieldKey?: string;
+  dateFieldKey?: string;
+  activeOptionKeys: string[];
+  wonOptionKeys: string[];
+  lostOptionKeys: string[];
+}
+export function overviewOpportunity(
+  overview: DashboardOverview,
+): DashboardOpportunityConfiguration | undefined {
+  const configuration = overview.configuration;
+  if (!configuration || typeof configuration !== "object") return undefined;
+  const opportunity = (configuration as { opportunity?: unknown }).opportunity;
+  if (!opportunity || typeof opportunity !== "object") return undefined;
+  const value = opportunity as Record<string, unknown>;
+  try {
+    return {
+      objectCode: text(value.objectCode),
+      stageFieldKey: text(value.stageFieldKey),
+      activeOptionKeys: strings(value.activeOptionKeys),
+      wonOptionKeys: strings(value.wonOptionKeys),
+      lostOptionKeys: strings(value.lostOptionKeys),
+      ...(typeof value.amountFieldKey === "string"
+        ? { amountFieldKey: value.amountFieldKey }
+        : {}),
+      ...(typeof value.dateFieldKey === "string"
+        ? { dateFieldKey: value.dateFieldKey }
+        : {}),
+    };
+  } catch {
+    return undefined;
   }
 }
-function parseCandidate(value: unknown): DashboardCandidate { const root = object(value); const candidateObject = object(root.object); return { object: { code: text(candidateObject.code), name: text(candidateObject.name) }, fields: array(root.fields).map((item) => { const field = object(item); const config = object(field.config); return { fieldKey: text(field.fieldKey), label: text(field.label), type: one(field.type, ["TEXT", "TEXTAREA", "PHONE", "EMAIL", "NUMBER", "MONEY", "DATE", "DATETIME", "SINGLE_SELECT", "MULTI_SELECT", "MEMBER", "BOOLEAN"] as const), config: { ...(Array.isArray(config.options) ? { options: config.options.map(option) } : {}) } }; }) }; }
-function option(value: unknown): DashboardCandidateOption { const root = object(value); return { key: text(root.key), label: text(root.label), color: typeof root.color === "string" ? root.color : "GRAY", status: root.status === "INACTIVE" ? "INACTIVE" : "ACTIVE" }; }
-function parseIssue(value: unknown): DashboardConfigurationIssue { const root = object(value); return { code: text(root.code), path: text(root.path), message: text(root.message) }; }
-function object(value: unknown): Record<string, unknown> { if (!value || typeof value !== "object" || Array.isArray(value)) invalid(); return value as Record<string, unknown>; }
-function array(value: unknown): unknown[] { if (!Array.isArray(value)) invalid(); return value; }
-function text(value: unknown): string { if (typeof value !== "string" || !value) invalid(); return value; }
-function nullableText(value: unknown): string | null { return value == null ? null : text(value); }
-function num(value: unknown): number { if (typeof value !== "number" || !Number.isFinite(value)) invalid(); return value; }
-function strings(value: unknown): string[] { const values = array(value); if (values.some((item) => typeof item !== "string")) invalid(); return values as string[]; }
-function one<T extends string>(value: unknown, values: readonly T[]): T { if (typeof value !== "string" || !values.includes(value as T)) invalid(); return value as T; }
-function invalid(): never { throw new Error("Invalid dashboard response"); }
+
+export function parseDashboardConfigurationView(
+  value: components["schemas"]["DashboardConfigurationEnvelopeDto"],
+): DashboardConfigurationView {
+  const root = object(value);
+  return {
+    draft: root.draft == null ? null : parseDraft(root.draft),
+    activePublication:
+      root.activePublication == null
+        ? null
+        : parsePublication(root.activePublication),
+    candidates: array(root.candidates).map(parseCandidate),
+    issues: array(root.issues).map(parseIssue),
+  };
+}
+export function parseDraft(value: unknown): DashboardDraft {
+  const root = object(value);
+  return {
+    draftVersion: num(root.draftVersion),
+    draftConfiguration: definition(root.draftConfiguration),
+    activePublicationId: nullableText(root.activePublicationId),
+    sourceTemplateVersionId: nullableText(root.sourceTemplateVersionId),
+    updatedAt: text(root.updatedAt),
+  };
+}
+export function parsePublication(value: unknown): DashboardPublicationSummary {
+  const root = object(value);
+  return {
+    id: text(root.id),
+    number: num(root.number),
+    sourceDraftVersion: num(root.sourceDraftVersion),
+    publishedAt: text(root.publishedAt),
+  };
+}
+function definition(value: unknown): DashboardDefinitionV2 {
+  const root = object(value);
+  if (root.schemaVersion !== 2) invalid();
+  return {
+    schemaVersion: 2,
+    title: text(root.title),
+    widgets: array(root.widgets).map(widget),
+  };
+}
+export function parseDashboardRuntime(value: unknown): DashboardRuntime {
+  const root = object(value);
+  const period = object(root.period);
+  text(root.title);
+  text(period.from);
+  text(period.to);
+  text(period.timezone);
+  array(root.widgets).forEach(parseRuntimeWidget);
+  return root as DashboardRuntime;
+}
+
+function widget(value: unknown): DashboardWidgetDraft {
+  const root = object(value);
+  const base = {
+    id: text(root.id),
+    title: text(root.title),
+    audience: one(root.audience, ["ALL", "TENANT_ADMIN", "EMPLOYEE"] as const),
+    objectCode: text(root.objectCode),
+    width: one(root.width, ["QUARTER", "HALF", "FULL"] as const),
+    sortOrder: num(root.sortOrder),
+    filters: array(root.filters).map(parseFilter),
+    ...(typeof root.description === "string"
+      ? { description: root.description }
+      : {}),
+  };
+  switch (root.type) {
+    case "METRIC":
+      return {
+        ...base,
+        type: "METRIC",
+        aggregation: one(root.aggregation, ["COUNT", "SUM", "AVG"] as const),
+        ...(typeof root.valueFieldKey === "string"
+          ? { valueFieldKey: root.valueFieldKey }
+          : {}),
+        ...(root.displayFormat
+          ? {
+              displayFormat: one(root.displayFormat, [
+                "NUMBER",
+                "MONEY",
+                "PERCENT",
+              ] as const),
+            }
+          : {}),
+      };
+    case "STATUS_DISTRIBUTION":
+      return {
+        ...base,
+        type: "STATUS_DISTRIBUTION",
+        groupByFieldKey: text(root.groupByFieldKey),
+        optionKeys: strings(root.optionKeys),
+        display: one(root.display, ["FUNNEL", "BAR", "DONUT"] as const),
+        aggregation: one(root.aggregation, ["COUNT", "SUM"] as const),
+        ...(typeof root.valueFieldKey === "string"
+          ? { valueFieldKey: root.valueFieldKey }
+          : {}),
+      };
+    case "TREND":
+      return {
+        ...base,
+        type: "TREND",
+        dateFieldKey: text(root.dateFieldKey),
+        granularity: one(root.granularity, [
+          "DAY",
+          "WEEK",
+          "MONTH",
+          "AUTO",
+        ] as const),
+        aggregation: one(root.aggregation, ["COUNT", "SUM"] as const),
+        ...(typeof root.valueFieldKey === "string"
+          ? { valueFieldKey: root.valueFieldKey }
+          : {}),
+      };
+    case "LEADERBOARD":
+      return {
+        ...base,
+        type: "LEADERBOARD",
+        memberSource: one(root.memberSource, [
+          "RECORD_OWNER",
+          "FIELD",
+        ] as const),
+        aggregation: one(root.aggregation, ["COUNT", "SUM"] as const),
+        limit: num(root.limit),
+        ...(typeof root.memberFieldKey === "string"
+          ? { memberFieldKey: root.memberFieldKey }
+          : {}),
+        ...(typeof root.valueFieldKey === "string"
+          ? { valueFieldKey: root.valueFieldKey }
+          : {}),
+      };
+    case "RECORD_LIST": {
+      const sort = object(root.sort);
+      return {
+        ...base,
+        type: "RECORD_LIST",
+        fieldKeys: strings(root.fieldKeys),
+        sort: {
+          field: text(sort.field),
+          direction: one(sort.direction, ["ASC", "DESC"] as const),
+        },
+        limit: num(root.limit),
+      };
+    }
+    default:
+      return invalid();
+  }
+}
+function parseFilter(value: unknown): DashboardFilter {
+  const root = object(value);
+  const operator = one(root.operator, [
+    "IN",
+    "NOT_IN",
+    "EQ",
+    "GT",
+    "GTE",
+    "LT",
+    "LTE",
+    "BETWEEN",
+    "TODAY",
+    "THIS_WEEK",
+    "THIS_MONTH",
+    "PAST_N_DAYS",
+    "NEXT_N_DAYS",
+    "CURRENT_USER",
+    "RECORD_OWNER",
+    "CONTAINS",
+    "NOT_EMPTY",
+  ] as const);
+  const filter: DashboardFilter = { fieldKey: text(root.fieldKey), operator };
+  if (root.value !== undefined) filter.value = filterValue(root.value);
+  return filter;
+}
+function filterValue(value: unknown): DashboardFilter["value"] {
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  )
+    return value;
+  if (Array.isArray(value) && value.every((item) => typeof item === "string"))
+    return value;
+  if (
+    Array.isArray(value) &&
+    value.length === 2 &&
+    value.every((item) => typeof item === "string" || typeof item === "number")
+  )
+    return value as [string | number, string | number];
+  return invalid();
+}
+function parseRuntimeWidget(value: unknown) {
+  const root = object(value);
+  text(root.id);
+  const type = one(root.type, [
+    "METRIC",
+    "STATUS_DISTRIBUTION",
+    "TREND",
+    "LEADERBOARD",
+    "RECORD_LIST",
+  ] as const);
+  text(root.title);
+  one(root.width, ["QUARTER", "HALF", "FULL"] as const);
+  num(root.sortOrder);
+  const state = one(root.state, ["READY", "UNAVAILABLE"] as const);
+  if (state === "UNAVAILABLE") {
+    if (root.reason !== undefined) {
+      one(root.reason, [
+        "AUDIENCE_EXCLUDED",
+        "OBJECT_UNAVAILABLE",
+        "OBJECT_ACCESS_DENIED",
+        "FIELD_HIDDEN",
+        "QUERY_FAILED",
+      ] as const);
+    }
+    return;
+  }
+  const data = object(root.data);
+  if (type === "METRIC") {
+    if (data.value !== null) num(data.value);
+    if (data.format !== undefined) {
+      one(data.format, ["NUMBER", "MONEY", "PERCENT"] as const);
+    }
+    return;
+  }
+  if (type === "STATUS_DISTRIBUTION") {
+    one(data.display, ["FUNNEL", "BAR", "DONUT"] as const);
+    array(data.items).forEach((item) => {
+      const point = object(item);
+      text(point.optionKey);
+      text(point.label);
+      text(point.color);
+      num(point.value);
+    });
+    return;
+  }
+  if (type === "TREND") {
+    array(data.items).forEach((item) => {
+      const point = object(item);
+      text(point.date);
+      num(point.value);
+    });
+    return;
+  }
+  if (type === "LEADERBOARD") {
+    array(data.items).forEach((item) => {
+      const row = object(item);
+      text(row.memberId);
+      text(row.displayName);
+      num(row.value);
+    });
+    return;
+  }
+  array(data.fields).forEach((item) => {
+    const field = object(item);
+    text(field.fieldKey);
+    text(field.label);
+    text(field.type);
+  });
+  array(data.items).forEach((item) => {
+    const row = object(item);
+    text(row.id);
+    text(row.recordNo);
+    text(row.title);
+    if (row.ownerMemberId !== null) text(row.ownerMemberId);
+    if (row.ownerName !== null) text(row.ownerName);
+    text(row.updatedAt);
+    object(row.values);
+  });
+}
+function parseCandidate(value: unknown): DashboardCandidate {
+  const root = object(value);
+  const candidateObject = object(root.object);
+  return {
+    object: {
+      code: text(candidateObject.code),
+      name: text(candidateObject.name),
+    },
+    fields: array(root.fields).map((item) => {
+      const field = object(item);
+      const config = object(field.config);
+      return {
+        fieldKey: text(field.fieldKey),
+        label: text(field.label),
+        type: one(field.type, [
+          "TEXT",
+          "TEXTAREA",
+          "PHONE",
+          "EMAIL",
+          "NUMBER",
+          "MONEY",
+          "DATE",
+          "DATETIME",
+          "SINGLE_SELECT",
+          "MULTI_SELECT",
+          "MEMBER",
+          "BOOLEAN",
+        ] as const),
+        config: {
+          ...(Array.isArray(config.options)
+            ? { options: config.options.map(option) }
+            : {}),
+        },
+      };
+    }),
+  };
+}
+function option(value: unknown): DashboardCandidateOption {
+  const root = object(value);
+  return {
+    key: text(root.key),
+    label: text(root.label),
+    color: typeof root.color === "string" ? root.color : "GRAY",
+    status: root.status === "INACTIVE" ? "INACTIVE" : "ACTIVE",
+  };
+}
+function parseIssue(value: unknown): DashboardConfigurationIssue {
+  const root = object(value);
+  return {
+    code: text(root.code),
+    path: text(root.path),
+    message: text(root.message),
+  };
+}
+function object(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) invalid();
+  return value as Record<string, unknown>;
+}
+function array(value: unknown): unknown[] {
+  if (!Array.isArray(value)) invalid();
+  return value;
+}
+function text(value: unknown): string {
+  if (typeof value !== "string" || !value) invalid();
+  return value;
+}
+function nullableText(value: unknown): string | null {
+  return value == null ? null : text(value);
+}
+function num(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) invalid();
+  return value;
+}
+function strings(value: unknown): string[] {
+  const values = array(value);
+  if (values.some((item) => typeof item !== "string")) invalid();
+  return values as string[];
+}
+function one<T extends string>(value: unknown, values: readonly T[]): T {
+  if (typeof value !== "string" || !values.includes(value as T)) invalid();
+  return value as T;
+}
+function invalid(): never {
+  throw new Error("Invalid dashboard response");
+}

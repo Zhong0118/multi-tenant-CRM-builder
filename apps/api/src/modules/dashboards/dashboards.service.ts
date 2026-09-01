@@ -121,7 +121,10 @@ export class DashboardsService {
       draft,
       audit,
     );
-    if (!saved) throw versionConflict();
+    if (!saved) {
+      const current = await this.repository.getDefinition(context);
+      throw versionConflict(current?.draftVersion);
+    }
     return saved;
   }
 
@@ -209,7 +212,7 @@ export class DashboardsService {
       this.repository.listPublishedObjects(context),
     ]);
     if (!definition || definition.draftVersion !== expectedVersion) {
-      throw versionConflict();
+      throw versionConflict(definition?.draftVersion);
     }
     return { draft: definition.draftConfiguration, catalog };
   }
@@ -252,8 +255,13 @@ function issuesToFieldErrors(
   );
 }
 
-function versionConflict(): ApiException {
-  return new ApiException('DASHBOARD_DRAFT_VERSION_CONFLICT', 409);
+function versionConflict(currentVersion?: number): ApiException {
+  return new ApiException('DASHBOARD_DRAFT_VERSION_CONFLICT', 409, {
+    fieldErrors:
+      currentVersion === undefined
+        ? {}
+        : { currentVersion: [String(currentVersion)] },
+  });
 }
 
 function dashboardPeriod(input: {

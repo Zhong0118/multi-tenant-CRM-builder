@@ -159,9 +159,92 @@ describe("DashboardBuilder", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "查看问题 请选择业务表。" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "查看问题 请选择业务表。" }),
+    );
 
     expect(screen.getByLabelText("当前组件")).toHaveValue("本月商机");
     expect(screen.getByLabelText("业务表")).toHaveFocus();
+  });
+
+  it("edits the representative V2 controls, filters, width and keyboard reorder", () => {
+    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
+    expect(screen.getByLabelText("显示格式")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "添加状态分布" }));
+    fireEvent.change(screen.getByLabelText("业务表"), {
+      target: { value: "deals" },
+    });
+    expect(screen.getByLabelText("分组选项")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "添加筛选条件" }));
+    expect(screen.getByLabelText("筛选字段 1")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "添加趋势图" }));
+    expect(screen.getByLabelText("时间粒度")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "添加员工业绩排行" }));
+    expect(screen.getByLabelText("成员来源")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "添加记录列表" }));
+    expect(screen.getByLabelText("排序字段")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "下移组件 记录列表 1" }),
+    ).toBeDisabled();
+  });
+
+  it("keeps a dirty editor on the page when a same-origin link is cancelled", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const link = document.createElement("a");
+    link.href = "/workspace/northwind";
+    document.body.append(link);
+    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
+    fireEvent.change(screen.getByLabelText("组件标题"), {
+      target: { value: "修改后的标题" },
+    });
+    expect(
+      link.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      ),
+    ).toBe(false);
+    expect(confirm).toHaveBeenCalledOnce();
+
+    link.remove();
+    confirm.mockRestore();
+  });
+
+  it("renders server preview output and keeps a conflict draft with its current version", async () => {
+    vi.mocked(previewDashboardDraft).mockResolvedValue({
+      title: "销售工作台",
+      period: {
+        from: "2026-08-01T00:00:00.000Z",
+        to: "2026-09-01T00:00:00.000Z",
+        timezone: "Asia/Shanghai",
+      },
+      widgets: [
+        {
+          id: "metric-1",
+          type: "METRIC",
+          title: "真实总数",
+          width: "QUARTER",
+          sortOrder: 1,
+          state: "READY",
+          data: { value: 12, format: "NUMBER" },
+        },
+      ],
+    } as never);
+    vi.mocked(saveDashboardDraft).mockRejectedValue({
+      code: "DASHBOARD_DRAFT_VERSION_CONFLICT",
+      message: "Draft version conflict",
+      requestId: "request-1",
+      status: 409,
+      fieldErrors: { currentVersion: ["7"] },
+    });
+    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+    fireEvent.click(screen.getByRole("button", { name: "预览草稿" }));
+    expect(await screen.findByText("真实总数")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
+    expect(await screen.findByText("服务器草稿版本为 7")).toBeInTheDocument();
   });
 });

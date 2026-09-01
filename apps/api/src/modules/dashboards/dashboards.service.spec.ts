@@ -52,6 +52,10 @@ describe('DashboardsService', () => {
   it('reports the dashboard draft conflict without overwriting it', async () => {
     const { service, repository } = setup();
     repository.saveDraft.mockResolvedValue(null);
+    repository.getDefinition.mockResolvedValue({
+      ...(await repository.getDefinition()),
+      draftVersion: 5,
+    });
 
     await expect(
       service.saveDraft(adminContext(), {
@@ -61,6 +65,7 @@ describe('DashboardsService', () => {
     ).rejects.toMatchObject({
       status: 409,
       code: 'DASHBOARD_DRAFT_VERSION_CONFLICT',
+      fieldErrors: { currentVersion: ['5'] },
     });
   });
 
