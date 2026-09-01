@@ -32,13 +32,24 @@ export function InvitationActions({
     setError(null);
     try {
       await api.accept(invitation.id);
-      const workspaces = (await api.listWorkspaces()).filter(
+      const workspaces = await api.listWorkspaces();
+      const matching = workspaces.find(
+        (workspace) => workspace.tenantId === invitation.tenantId,
+      );
+      const activeWorkspaces = workspaces.filter(
         (workspace) =>
           workspace.tenantStatus === "ACTIVE" &&
           workspace.memberStatus === "ACTIVE",
       );
-      setResult("邀请已接受，正在进入你的工作空间。 ");
-      onNavigate(resolvePostLoginRoute({ workspaces, returnTo: null }));
+      if (matching && matching.tenantStatus !== "ACTIVE") {
+        setResult(
+          "邀请已接受。公司仍在等待平台启用，这不是权限错误。启用后即可进入工作空间。",
+        );
+        onNavigate("/workspaces");
+        return;
+      }
+      setResult("邀请已接受，正在进入你的工作空间。");
+      onNavigate(resolvePostLoginRoute({ workspaces: activeWorkspaces, returnTo: null }));
     } catch (reason) {
       setError(errorMessage(reason));
       setPendingAction(null);

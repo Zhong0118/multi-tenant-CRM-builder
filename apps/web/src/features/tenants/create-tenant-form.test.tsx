@@ -61,9 +61,9 @@ describe("CreateTenantForm", () => {
     );
     expect(await screen.findByText("公司草稿已创建")).toBeInTheDocument();
     expect(screen.getByText("等待管理员接受邀请")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "前往业务配置" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "查看开通详情" })).toHaveAttribute(
       "href",
-      "/platform/tenants/tenant-a#business-configuration",
+      "/platform/tenants/tenant-a",
     );
     expect(screen.queryByLabelText(/密码/)).not.toBeInTheDocument();
   });
@@ -105,8 +105,10 @@ describe("TenantStatusActions", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "激活公司" })).toBeDisabled();
-    expect(screen.getByText("至少需要 1 位活跃公司管理员")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "启用公司" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("当前不能启用公司")).toBeInTheDocument();
   });
 
   it("does not offer reactivation for a closed company", () => {
@@ -124,7 +126,7 @@ describe("TenantStatusActions", () => {
     );
 
     expect(
-      screen.queryByRole("button", { name: "激活公司" }),
+      screen.queryByRole("button", { name: "启用公司" }),
     ).not.toBeInTheDocument();
   });
 });

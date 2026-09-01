@@ -158,11 +158,28 @@
   white-space: nowrap;
 }
 
+.emptyNav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+}
+
 .emptyLabel {
-  padding: 10px 12px;
+  margin: 0;
   color: #87969f;
   font-size: 12px;
   line-height: 18px;
+}
+
+.emptyAction {
+  color: #79c8bc;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.emptyAction:hover {
+  color: #fff;
 }
 
 .bottom {

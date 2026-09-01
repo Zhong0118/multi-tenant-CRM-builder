@@ -190,6 +190,27 @@ describe("WorkspaceHomeView", () => {
     expect(screen.getByText("工作台尚未启用")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "配置工作台" })).not.toBeInTheDocument();
   });
+
+  it("sends an administrator without published tables to create the first business table", () => {
+    render(
+      <WorkspaceHomeView
+        tenantCode="northwind"
+        tenantName="百杰"
+        userName="张三"
+        role="TENANT_ADMIN"
+        businessObjects={[]}
+        overview={emptyOverview("TENANT_ADMIN")}
+      />,
+    );
+
+    expect(screen.getByText("还没有业务表")).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("link", { name: "创建第一张业务表" })[0],
+    ).toHaveAttribute("href", "/workspace/northwind/settings/objects/new");
+    expect(
+      screen.queryByRole("link", { name: "配置工作台" }),
+    ).not.toBeInTheDocument();
+  });
 });
 
 const runtime = {

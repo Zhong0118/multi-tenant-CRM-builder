@@ -28,6 +28,8 @@ export interface ShellNavGroup {
   ariaLabel: string;
   items: ShellNavItem[];
   emptyLabel?: string;
+  emptyHref?: string;
+  emptyActionLabel?: string;
 }
 
 export interface AppShellProps {

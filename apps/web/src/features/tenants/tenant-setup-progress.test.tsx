@@ -4,13 +4,13 @@ import { describe, expect, it } from "vitest";
 import { TenantSetupProgress } from "./tenant-setup-progress";
 
 describe("TenantSetupProgress", () => {
-  it("keeps business-table initialization current for an empty draft company", () => {
+  it("keeps invitation as the current step for a new draft company", () => {
     render(
       <TenantSetupProgress
-        invitationAccepted={false}
+        tenantStatus="DRAFT"
+        invitationStatus="PENDING"
         activeAdminCount={0}
         objectCount={0}
-        canApplyTemplate
       />,
     );
 
@@ -18,33 +18,58 @@ describe("TenantSetupProgress", () => {
       "data-state",
       "complete",
     );
-    expect(screen.getByText("初始化业务表").closest("li")).toHaveAttribute(
+    expect(screen.getByText("管理员已接受").closest("li")).toHaveAttribute(
       "aria-current",
       "step",
     );
-    expect(screen.getByText("公司管理员配置并发布").closest("li")).toHaveAttribute(
+    expect(screen.getByText("公司已启用").closest("li")).toHaveAttribute(
       "data-state",
       "upcoming",
     );
+    expect(screen.getByText("首位管理员接受后才会出现启用动作")).toBeInTheDocument();
   });
 
-  it("moves the current step to administrator review after objects exist", () => {
+  it("makes enable current after the first admin accepts", () => {
     render(
       <TenantSetupProgress
-        invitationAccepted
+        tenantStatus="DRAFT"
+        invitationStatus="ACCEPTED"
         activeAdminCount={1}
-        objectCount={4}
-        canApplyTemplate={false}
+        objectCount={0}
       />,
     );
 
-    expect(screen.getByText("初始化业务表").closest("li")).toHaveAttribute(
+    expect(screen.getByText("管理员已接受").closest("li")).toHaveAttribute(
       "data-state",
       "complete",
     );
+    expect(screen.getByText("公司已启用").closest("li")).toHaveAttribute(
+      "aria-current",
+      "step",
+    );
+    expect(screen.getByText("管理员门槛已满足，可以启用公司")).toBeInTheDocument();
+  });
+
+  it("points an enabled empty company at handmade tables instead of a required template", () => {
+    render(
+      <TenantSetupProgress
+        tenantStatus="ACTIVE"
+        invitationStatus="ACCEPTED"
+        activeAdminCount={1}
+        objectCount={0}
+      />,
+    );
+
+    expect(screen.getByText("公司已启用").closest("li")).toHaveAttribute(
+      "data-state",
+      "complete",
+    );
+    expect(screen.getByText("创建并发布业务表").closest("li")).toHaveAttribute(
+      "aria-current",
+      "step",
+    );
     expect(
-      screen.getByText("公司管理员配置并发布").closest("li"),
-    ).toHaveAttribute("aria-current", "step");
-    expect(screen.getByText("已生成 4 个业务表草稿")).toBeInTheDocument();
+      screen.getByText("可由公司管理员手工创建，模板不是必选项"),
+    ).toBeInTheDocument();
   });
 });

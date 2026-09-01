@@ -35,17 +35,15 @@ export function WorkspaceHomeView({
           description={`${userName}，这里会使用 ${tenantName} 的真实业务记录生成工作摘要。`}
         />
         <StatePanel
-          title={stateTitle(role)}
-          description={stateDescription(role)}
-          action={
-            role === "TENANT_ADMIN" ? (
-              <Link href={`/workspace/${tenantCode}/settings/dashboard`}>
-                配置工作台
-              </Link>
-            ) : undefined
-          }
+          title={emptyHomeTitle(role, businessObjects.length)}
+          description={emptyHomeDescription(role, businessObjects.length)}
+          action={emptyHomeAction(tenantCode, role, businessObjects.length)}
         />
-        <BusinessObjectBar tenantCode={tenantCode} objects={businessObjects} />
+        <BusinessObjectBar
+          tenantCode={tenantCode}
+          objects={businessObjects}
+          role={role}
+        />
       </div>
     );
   }
@@ -69,12 +67,42 @@ export function WorkspaceHomeView({
   );
 }
 
-function stateTitle(role: WorkspaceHomeViewProps["role"]) {
+function emptyHomeTitle(
+  role: WorkspaceHomeViewProps["role"],
+  objectCount: number,
+) {
+  if (role === "TENANT_ADMIN" && objectCount === 0) return "还没有业务表";
   return role === "TENANT_ADMIN" ? "工作台尚未配置" : "工作台尚未启用";
 }
 
-function stateDescription(role: WorkspaceHomeViewProps["role"]) {
+function emptyHomeDescription(
+  role: WorkspaceHomeViewProps["role"],
+  objectCount: number,
+) {
+  if (role === "TENANT_ADMIN" && objectCount === 0) {
+    return "先创建并发布第一张业务表。模板不是必选项。发布后员工才能在侧栏看到它。";
+  }
   return role === "TENANT_ADMIN"
     ? "添加组件并发布工作台后，这里会显示已发布的结果。"
     : "公司管理员发布工作台后，这里会显示你有权限查看的结果。";
+}
+
+function emptyHomeAction(
+  tenantCode: string,
+  role: WorkspaceHomeViewProps["role"],
+  objectCount: number,
+) {
+  if (role !== "TENANT_ADMIN") return undefined;
+  if (objectCount === 0) {
+    return (
+      <Link href={`/workspace/${tenantCode}/settings/objects/new`}>
+        创建第一张业务表
+      </Link>
+    );
+  }
+  return (
+    <Link href={`/workspace/${tenantCode}/settings/dashboard`}>
+      配置工作台
+    </Link>
+  );
 }

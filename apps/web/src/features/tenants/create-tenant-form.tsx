@@ -80,16 +80,10 @@ export function CreateTenantForm({ api = tenantApi }: { api?: TenantApi }) {
         className={styles.creationResult}
         status="success"
         title="公司草稿已创建"
-        subTitle={`${created.name} 仍处于草稿状态，首位管理员接受邀请后才可激活。`}
+        subTitle={`${created.name} 仍处于草稿状态。下一步：等待首位管理员接受邀请，然后由平台启用公司。模板不是必选项。`}
         extra={[
           <Link key="detail" href={`/platform/tenants/${created.id}`}>
             查看开通详情
-          </Link>,
-          <Link
-            key="business-configuration"
-            href={`/platform/tenants/${created.id}#business-configuration`}
-          >
-            前往业务配置
           </Link>,
         ]}
       >

@@ -23,7 +23,7 @@ export default async function WaitingPage() {
           <span className={styles.eyebrow}>ACCOUNT READY</span>
           <h1>你好，{user.displayName}</h1>
           <p>
-            个人账号已经准备好。接受公司管理员发出的邀请后，即可进入对应工作空间。
+            个人账号已经准备好。接受邀请后，若公司仍是草稿，需要等待平台启用，才能进入工作空间。这不是权限错误。
           </p>
         </div>
         <div className={styles.accountActions}>

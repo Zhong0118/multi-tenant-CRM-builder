@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Modal, Select, Spin } from "antd";
+import Link from "next/link";
 import { useState } from "react";
 
 import { toApiError } from "@/lib/api/api-error";
@@ -133,21 +134,45 @@ export function TenantBusinessConfiguration({
           <h2>初始化业务表</h2>
           <p>
             {summary.objectCount === 0
-              ? "选择一套业务模板，一次创建其中全部启用的业务表草稿。"
-              : `当前公司已有 ${summary.objectCount} 个业务对象。`}
+              ? "模板只是加速器。可以现在应用一套已发布模板，也可以暂不使用，等公司启用后由管理员手工创建。"
+              : `当前公司已有 ${summary.objectCount} 张业务表。`}
           </p>
         </div>
-        {summary.canApplyTemplate ? (
-          <Button type="primary" onClick={() => setOpen(true)}>
-            选择表方案
-          </Button>
-        ) : null}
       </div>
+
+      {summary.canApplyTemplate ? (
+        <div className={styles.applicationChoices}>
+          <button
+            type="button"
+            className={styles.applicationChoice}
+            onClick={() => setOpen(true)}
+          >
+            <strong>应用业务模板</strong>
+            <span>一次生成模板中的全部业务表草稿。公司管理员仍需审核并发布。</span>
+          </button>
+          <div className={styles.applicationChoice}>
+            <strong>暂不使用模板</strong>
+            <span>
+              启用公司后，由公司管理员在设置中创建第一张业务表。这不是权限错误。
+            </span>
+          </div>
+        </div>
+      ) : null}
 
       {displayedResult ? <ApplicationResult result={displayedResult} /> : null}
       {!displayedResult && !summary.canApplyTemplate ? (
         <p className={styles.applicationBlocked}>
-          {blockingReasonText(summary.blockingReason)}
+          {blockingReasonText(summary.blockingReason, tenant.status)}
+          {tenant.status === "ACTIVE" && summary.objectCount === 0 ? (
+            <>
+              {" "}
+              公司管理员可在工作空间设置中
+              <Link href={`/workspace/${tenant.code}/settings/objects/new`}>
+                创建第一张业务表
+              </Link>
+              。
+            </>
+          ) : null}
         </p>
       ) : null}
 
@@ -354,12 +379,15 @@ function templateOption(template: BusinessTemplate) {
 
 function blockingReasonText(
   reason: TenantBusinessConfigurationSummary["blockingReason"],
+  tenantStatus: TenantBusinessConfigurationTarget["status"],
 ) {
   switch (reason) {
     case "TARGET_NOT_EMPTY":
-      return "公司已有业务对象，不能使用初始化模板。";
+      return "公司已有业务表，不能再用模板覆盖初始化。";
     case "TENANT_NOT_DRAFT":
-      return "只有草稿状态的公司可以使用初始化模板。";
+      return tenantStatus === "ACTIVE"
+        ? "公司已启用。模板只能用于尚未初始化的草稿公司；现在应由公司管理员手工创建业务表。"
+        : "只有草稿状态的公司可以使用初始化模板。";
     default:
       return "当前公司暂时不能使用初始化模板。";
   }

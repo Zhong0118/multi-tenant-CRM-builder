@@ -23,7 +23,7 @@ export default async function WorkspaceSettingsPage({
       <PageHeader
         title="工作空间设置"
         status={<StatusTag tone="info">管理员专属</StatusTag>}
-        description="把平台模板落地后的公司配置调整成真正可供员工使用的业务工作区。"
+        description="在这里创建业务表、配置工作台和成员。模板不是使用业务表的前置条件。"
       />
 
       <div className={styles.settingsGrid}>
@@ -31,7 +31,7 @@ export default async function WorkspaceSettingsPage({
           <span className={styles.eyebrow}>BUSINESS TABLES</span>
           <h2>业务表与字段</h2>
           <p>
-            新建或调整公司自己的业务表，配置字段、默认列表和员工初始权限。所有修改先保存为草稿，发布后才影响员工页面。
+            新建或调整公司自己的业务表，配置字段、默认列表和员工默认权限。没有平台模板时，也可以从这里创建第一张业务表。所有修改先保存为草稿，发布后才影响员工页面。
           </p>
           <ol className={styles.settingFlow}>
             <li>
@@ -48,7 +48,7 @@ export default async function WorkspaceSettingsPage({
             className={styles.primaryAction}
             href={`/workspace/${tenantCode}/settings/objects`}
           >
-            管理业务表 <span aria-hidden>→</span>
+            管理业务表，或创建第一张 <span aria-hidden>→</span>
           </Link>
         </ReadingPanel>
 
@@ -70,7 +70,7 @@ export default async function WorkspaceSettingsPage({
           <div>
             <h2>工作台与指标</h2>
             <p>
-              指定阶段、金额和成交日期字段，让管理员和员工看到使用真实记录计算的经营工作台。
+              绑定已发布业务表的指标、分布和列表。先发布业务表，再配置管理工作台。
             </p>
           </div>
           <Link href={`/workspace/${tenantCode}/settings/dashboard`}>

@@ -217,6 +217,28 @@ describe("WorkspaceShell", () => {
     expect(screen.getByText("尚无已授权的业务对象")).toBeInTheDocument();
   });
 
+  it("offers company administrators a first-table entry when navigation is empty", () => {
+    render(
+      <WorkspaceShell
+        tenantCode="northwind"
+        tenantName="百杰"
+        role="TENANT_ADMIN"
+        user={shellUser}
+        businessObjects={[]}
+      >
+        <p>内容</p>
+      </WorkspaceShell>,
+    );
+
+    expect(screen.getByText("还没有已发布的业务表")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "创建第一张业务表" }),
+    ).toHaveAttribute(
+      "href",
+      "/workspace/northwind/settings/objects/new",
+    );
+  });
+
   it("keeps the workspace identity and role visible", () => {
     render(
       <WorkspaceShell

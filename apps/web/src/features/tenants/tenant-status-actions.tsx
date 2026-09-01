@@ -47,7 +47,12 @@ export function TenantStatusActions({
       <h2>状态操作</h2>
       <p>每次变更都会记录操作者、原因和请求编号。</p>
       {!canActivate && tenant.status === "DRAFT" ? (
-        <Alert type="warning" showIcon title="至少需要 1 位活跃公司管理员" />
+        <Alert
+          type="warning"
+          showIcon
+          title="当前不能启用公司"
+          description="需要至少 1 位有效公司管理员。请等待首位管理员接受邀请。"
+        />
       ) : null}
       {error ? <Alert type="error" showIcon title={error} /> : null}
       <Input.TextArea
@@ -58,14 +63,13 @@ export function TenantStatusActions({
         rows={3}
       />
       <Space wrap>
-        {canRenderActivate ? (
+        {canRenderActivate && canActivate ? (
           <Button
             type="primary"
-            disabled={!canActivate}
             loading={mutation.isPending}
             onClick={() => mutation.mutate("ACTIVE")}
           >
-            激活公司
+            启用公司
           </Button>
         ) : null}
         {tenant.status === "ACTIVE" ? (

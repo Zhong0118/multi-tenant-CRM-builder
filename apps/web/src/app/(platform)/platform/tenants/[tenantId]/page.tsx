@@ -48,7 +48,6 @@ export default async function TenantDetailPage({
     );
     throw Object.assign(new Error(apiError.message), apiError);
   }
-  const invitationAccepted = tenant.firstAdminInvitation?.status === "ACCEPTED";
   const activeAdminReady = tenant.activeAdminCount > 0;
 
   return (
@@ -59,10 +58,10 @@ export default async function TenantDetailPage({
         description={`工作空间代码：${tenant.code}`}
       />
       <TenantSetupProgress
-        invitationAccepted={invitationAccepted}
+        tenantStatus={tenant.status}
+        invitationStatus={tenant.firstAdminInvitation?.status}
         activeAdminCount={tenant.activeAdminCount}
         objectCount={configurationResult.data.objectCount}
-        canApplyTemplate={configurationResult.data.canApplyTemplate}
       />
       <TenantBusinessConfiguration
         tenant={tenant}
@@ -119,9 +118,11 @@ export default async function TenantDetailPage({
           <ReadingPanel ariaLabel="激活判定" className={styles.checkpoints}>
             <h2>激活判定</h2>
             <p className={styles.intro}>
-              {activeAdminReady
-                ? "管理员门槛已满足，可以执行激活。"
-                : "等待首位管理员接受邀请后，平台管理员方可激活。"}
+              {tenant.status === "ACTIVE"
+                ? "公司已启用，公司管理员可以进入工作空间。"
+                : activeAdminReady
+                  ? "管理员门槛已满足。启用后，公司管理员才能进入工作空间。"
+                  : "首位管理员尚未接受邀请。当前不能启用公司。"}
             </p>
           </ReadingPanel>
           <TenantStatusActions tenant={tenant} />

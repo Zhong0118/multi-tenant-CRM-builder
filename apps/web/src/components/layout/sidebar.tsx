@@ -79,9 +79,18 @@ export function Sidebar({
         {navGroups.map((group) =>
           group.items.length === 0 ? (
             group.emptyLabel ? (
-              <p key={group.ariaLabel} className={styles.emptyLabel}>
-                {group.emptyLabel}
-              </p>
+              <div key={group.ariaLabel} className={styles.emptyNav}>
+                <p className={styles.emptyLabel}>{group.emptyLabel}</p>
+                {group.emptyHref && group.emptyActionLabel && !collapsed ? (
+                  <Link
+                    href={group.emptyHref}
+                    className={styles.emptyAction}
+                    onClick={onMobileClose}
+                  >
+                    {group.emptyActionLabel}
+                  </Link>
+                ) : null}
+              </div>
             ) : null
           ) : (
             <nav

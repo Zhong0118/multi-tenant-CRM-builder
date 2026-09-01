@@ -39,7 +39,7 @@ export default async function WorkspacesPage({
           <h1>选择工作空间</h1>
           <p>
             {user.displayName}
-            ，请选择你已获授权的公司。不可用的成员关系仍会保留显示，但不能进入。
+            ，请选择你已获授权的公司。草稿公司会显示为等待平台启用，这不是权限错误。
           </p>
         </div>
         <div className={styles.accountActions}>
@@ -56,7 +56,7 @@ export default async function WorkspacesPage({
             type="warning"
             showIcon
             title="无法进入该工作空间"
-            description="请从下方选择当前账号可用的工作空间。"
+            description="若公司仍是草稿，请等待平台启用。其他不可用的成员关系会保留显示，但不能进入。"
           />
         ) : null}
         {active.length === 0 && (workspaces ?? []).length === 0 ? (

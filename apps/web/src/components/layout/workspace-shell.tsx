@@ -39,7 +39,16 @@ export function WorkspaceShell({
         {
           ariaLabel: "业务对象",
           items: objectItems,
-          emptyLabel: "尚无已授权的业务对象",
+          emptyLabel:
+            role === "TENANT_ADMIN"
+              ? "还没有已发布的业务表"
+              : "尚无已授权的业务对象",
+          emptyHref:
+            role === "TENANT_ADMIN"
+              ? `/workspace/${tenantCode}/settings/objects/new`
+              : undefined,
+          emptyActionLabel:
+            role === "TENANT_ADMIN" ? "创建第一张业务表" : undefined,
         },
         {
           ariaLabel: "工作空间",

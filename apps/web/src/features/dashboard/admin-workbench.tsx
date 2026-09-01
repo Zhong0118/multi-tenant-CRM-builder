@@ -36,7 +36,11 @@ export function AdminWorkbench({
         }
       />
       <DashboardRenderer tenantCode={tenantCode} runtime={overview} />
-      <BusinessObjectBar tenantCode={tenantCode} objects={businessObjects} />
+      <BusinessObjectBar
+        tenantCode={tenantCode}
+        objects={businessObjects}
+        role="TENANT_ADMIN"
+      />
     </div>
   );
 }

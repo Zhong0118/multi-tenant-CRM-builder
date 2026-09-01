@@ -34,7 +34,7 @@ const roleText: Record<PersonalInvitation["role"], string> = {
 };
 
 const resultText: Partial<Record<PersonalInvitation["status"], string>> = {
-  ACCEPTED: "该邀请已接受，你可以从工作空间列表进入公司。",
+  ACCEPTED: "该邀请已接受。若公司尚未启用，请到工作空间列表查看状态，并等待平台启用。",
   DECLINED: "你已拒绝该邀请。如需加入，请联系公司管理员重新邀请。",
   REVOKED: "该邀请已由公司管理员撤销，无法继续处理。",
   EXPIRED: "该邀请已过期，请联系公司管理员重新邀请。",
@@ -85,6 +85,19 @@ export function InvitationDetail({
           {formatDate(invitation.expiresAt)}
         </Descriptions.Item>
       </Descriptions>
+      {invitation.status === "PENDING" ? (
+        <Alert
+          className={styles.stateResult}
+          type="info"
+          showIcon
+          title="接受后的下一步"
+          description={
+            invitation.role === "TENANT_ADMIN"
+              ? "接受后会成为该公司管理员。若公司仍是草稿，需要等待平台启用，才能进入工作空间。"
+              : "接受后即可在公司启用时进入工作空间。若公司尚未启用，请等待平台处理。"
+          }
+        />
+      ) : null}
       {resultText[invitation.status] ? (
         <Alert
           className={styles.stateResult}

@@ -28,7 +28,11 @@ export function EmployeeWorkbench({
         status={<PeriodLabel period={overview.period} publication={overview.publication} />}
       />
       <DashboardRenderer tenantCode={tenantCode} runtime={overview} />
-      <BusinessObjectBar tenantCode={tenantCode} objects={businessObjects} />
+      <BusinessObjectBar
+        tenantCode={tenantCode}
+        objects={businessObjects}
+        role="EMPLOYEE"
+      />
     </div>
   );
 }

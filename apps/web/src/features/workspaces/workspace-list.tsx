@@ -85,7 +85,7 @@ export function WorkspaceList({ workspaces, onNavigate }: WorkspaceListProps) {
 function inactiveReason(workspace: WorkspaceView): string | null {
   if (workspace.memberStatus === "DISABLED") return "你的成员资格已停用";
   if (workspace.tenantStatus === "SUSPENDED") return "公司工作区已暂停";
-  if (workspace.tenantStatus === "DRAFT") return "公司工作区尚未启用";
+  if (workspace.tenantStatus === "DRAFT") return "等待平台启用公司";
   if (workspace.tenantStatus === "CLOSED") return "公司工作区已关闭";
   return null;
 }

@@ -141,8 +141,38 @@ describe("InvitationDetail", () => {
       status: "ACTIVE",
     });
 
-    await waitFor(() =>
-      expect(onNavigate).toHaveBeenCalledWith("/workspace/northwind"),
+    await waitFor(() => {
+      expect(onNavigate).toHaveBeenCalledWith("/workspace/northwind");
+    });
+  });
+
+  it("tells the invitee to wait for platform enablement when the company is still a draft", async () => {
+    const api = createApi();
+    vi.mocked(api.listWorkspaces).mockResolvedValue([
+      {
+        tenantId: "tenant-a",
+        tenantCode: "northwind",
+        tenantName: "北辰客户服务",
+        tenantStatus: "DRAFT",
+        memberId: "member-a",
+        memberStatus: "ACTIVE",
+        role: "TENANT_ADMIN",
+      },
+    ]);
+    const onNavigate = vi.fn();
+    render(
+      <InvitationDetail
+        invitation={{ ...pendingInvitation, role: "TENANT_ADMIN" }}
+        api={api}
+        onNavigate={onNavigate}
+      />,
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "接受邀请" }));
+
+    expect(
+      await screen.findByText(/公司仍在等待平台启用/),
+    ).toBeInTheDocument();
+    expect(onNavigate).toHaveBeenCalledWith("/workspaces");
   });
 });

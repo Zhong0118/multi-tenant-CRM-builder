@@ -9,11 +9,29 @@ import styles from "./workbench.module.css";
 export function BusinessObjectBar({
   tenantCode,
   objects,
+  role,
 }: {
   tenantCode: string;
   objects: RuntimeObjectNavigation[];
+  role?: "TENANT_ADMIN" | "EMPLOYEE";
 }) {
-  if (!objects.length) return null;
+  if (!objects.length) {
+    if (role !== "TENANT_ADMIN") return null;
+    return (
+      <section className={styles.objectBar} aria-label="可用业务表">
+        <div>
+          <strong>业务表</strong>
+          <span>还没有已发布的业务表</span>
+        </div>
+        <nav>
+          <Link href={`/workspace/${tenantCode}/settings/objects/new`}>
+            创建第一张业务表
+            <span aria-hidden>→</span>
+          </Link>
+        </nav>
+      </section>
+    );
+  }
   return (
     <section className={styles.objectBar} aria-label="可用业务表">
       <div>
