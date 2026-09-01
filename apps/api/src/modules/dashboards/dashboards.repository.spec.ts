@@ -70,7 +70,7 @@ describe('PrismaDashboardRepository persistence boundaries', () => {
     ).rejects.toThrow();
   });
 
-  it('takes a tenant-scoped advisory lock before checking an optional definition', async () => {
+  it('takes a tenant-scoped advisory lock with a Prisma-supported scalar before checking an optional definition', async () => {
     const queries: string[] = [];
     const transaction = draftTransaction(queries);
     const audit = auditFake();
@@ -88,6 +88,7 @@ describe('PrismaDashboardRepository persistence boundaries', () => {
     expect(queries[0]).toMatch(
       /pg_advisory_xact_lock\([\s\S]*hashtext\('tenant_dashboard_configurations'\)[\s\S]*hashtext\(\?::text\)[\s\S]*\)/,
     );
+    expect(queries[0]).toMatch(/IS NULL\s*\) AS "acquired"/);
     expect(queries[1]).toMatch(
       /FROM tenant_dashboard_configurations[\s\S]*FOR UPDATE/,
     );
@@ -314,7 +315,7 @@ describe('PrismaDashboardQueryExecutor', () => {
     expect(queries[0]?.sql).toMatch(/GROUP BY 1, 2/);
   });
 
-  it('guards and buckets DATE as a tenant-local calendar value and DATETIME as an instant', async () => {
+  it('guards standard ISO DATE and DATETIME values without PostgreSQL 16-only functions', async () => {
     const queries: Array<{ sql: string; values: unknown[] }> = [];
     const transaction = {
       $queryRaw: jest.fn((query: { sql: string; values: unknown[] }) => {
@@ -329,16 +330,29 @@ describe('PrismaDashboardQueryExecutor', () => {
       trendPlan('instant-trend', 'closed_at', 'DATETIME'),
     ]);
 
+    expect(queries[0]?.sql).not.toContain('pg_input_is_valid');
+    expect(queries[0]?.sql).toContain("~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'");
+    expect(queries[0]?.sql).toMatch(/BETWEEN 1 AND 9999/);
+    expect(queries[0]?.sql).toMatch(/BETWEEN 1 AND 12/);
+    expect(queries[0]?.sql).toMatch(/BETWEEN 1 AND 31/);
+    expect(queries[0]?.sql).not.toContain('to_date(');
     expect(queries[0]?.sql).toMatch(
-      /pg_input_is_valid\(r\.data ->> \?, 'date'\)/,
+      /to_char\([\s\S]*make_date\([\s\S]*,[\s\S]*,[\s\S]*1\)[\s\S]*\+ \([\s\S]*- 1\)[\s\S]*'YYYY-MM-DD'\s*\)[\s\S]*=/,
     );
     expect(queries[0]?.sql).toMatch(/THEN \(r\.data ->> \?\)::date/);
     expect(queries[0]?.sql).toMatch(
       />= \(\?::timestamptz AT TIME ZONE \?\)::date/,
     );
     expect(queries[0]?.sql).toMatch(/END\s*::timestamp/);
+    expect(queries[1]?.sql).not.toContain('pg_input_is_valid');
+    expect(queries[1]?.sql).toContain(
+      "~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]{1,6})?Z$'",
+    );
+    expect(queries[1]?.sql).toMatch(/BETWEEN 0 AND 23/);
+    expect(queries[1]?.sql).toMatch(/BETWEEN 0 AND 59/);
+    expect(queries[1]?.sql).not.toContain('to_date(');
     expect(queries[1]?.sql).toMatch(
-      /pg_input_is_valid\(r\.data ->> \?, 'timestamptz'\)/,
+      /to_char\([\s\S]*make_date\([\s\S]*,[\s\S]*,[\s\S]*1\)[\s\S]*\+ \([\s\S]*- 1\)[\s\S]*'YYYY-MM-DD'\s*\)[\s\S]*=/,
     );
     expect(queries[1]?.sql).toMatch(/THEN \(r\.data ->> \?\)::timestamptz/);
     expect(queries[1]?.sql).toMatch(/>= \?::timestamptz/);

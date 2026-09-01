@@ -716,21 +716,47 @@ function dashboardDateExpression(
   fieldKey: string,
   type: 'DATE' | 'DATETIME',
 ): Prisma.Sql {
-  return type === 'DATE'
-    ? Prisma.sql`
-        CASE
-          WHEN pg_input_is_valid(r.data ->> ${fieldKey}, 'date')
-            THEN (r.data ->> ${fieldKey})::date
+  const value = Prisma.sql`r.data ->> ${fieldKey}`;
+  const date = type === 'DATE' ? value : Prisma.sql`left(${value}, 10)`;
+  const calendarDate = Prisma.sql`
+    CASE
+      WHEN ${date} ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+        THEN CASE
+          WHEN substring(${date} FROM 1 FOR 4)::integer BETWEEN 1 AND 9999
+            AND substring(${date} FROM 6 FOR 2)::integer BETWEEN 1 AND 12
+            AND substring(${date} FROM 9 FOR 2)::integer BETWEEN 1 AND 31
+            THEN CASE
+              WHEN to_char(
+                make_date(
+                  substring(${date} FROM 1 FOR 4)::integer,
+                  substring(${date} FROM 6 FOR 2)::integer,
+                  1
+                ) + (substring(${date} FROM 9 FOR 2)::integer - 1),
+                'YYYY-MM-DD'
+              ) = ${date}
+                THEN (${date})::date
+              ELSE NULL
+            END
           ELSE NULL
         END
-      `
-    : Prisma.sql`
-        CASE
-          WHEN pg_input_is_valid(r.data ->> ${fieldKey}, 'timestamptz')
-            THEN (r.data ->> ${fieldKey})::timestamptz
+      ELSE NULL
+    END
+  `;
+  if (type === 'DATE') return calendarDate;
+  return Prisma.sql`
+    CASE
+      WHEN ${value} ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]{1,6})?Z$'
+        THEN CASE
+          WHEN ${calendarDate} IS NOT NULL
+            AND substring(${value} FROM 12 FOR 2)::integer BETWEEN 0 AND 23
+            AND substring(${value} FROM 15 FOR 2)::integer BETWEEN 0 AND 59
+            AND substring(${value} FROM 18 FOR 2)::integer BETWEEN 0 AND 59
+            THEN (${value})::timestamptz
           ELSE NULL
         END
-      `;
+      ELSE NULL
+    END
+  `;
 }
 
 function trendPeriodPredicate(
@@ -814,10 +840,12 @@ async function lockDashboardDefinition(
   tenantId: string,
 ): Promise<number | undefined> {
   await transaction.$queryRaw`
-    SELECT pg_advisory_xact_lock(
-      hashtext('tenant_dashboard_configurations'),
-      hashtext(${tenantId}::text)
-    )
+    SELECT (
+      pg_advisory_xact_lock(
+        hashtext('tenant_dashboard_configurations'),
+        hashtext(${tenantId}::text)
+      ) IS NULL
+    ) AS "acquired"
   `;
   const locked = await transaction.$queryRaw<Array<{ draftVersion: number }>>`
     SELECT version AS "draftVersion"
