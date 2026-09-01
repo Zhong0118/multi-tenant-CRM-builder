@@ -149,6 +149,21 @@ describe("DashboardBuilder", () => {
     expect(screen.getByRole("button", { name: "发布工作台" })).toBeEnabled();
   });
 
+  it("updates the active publication indicator immediately after publishing", async () => {
+    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+
+    expect(screen.getByText("线上第 3 版")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "发布工作台" })).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "发布工作台" }));
+
+    expect(await screen.findByText("线上第 4 版")).toBeInTheDocument();
+    expect(screen.queryByText("线上第 3 版")).not.toBeInTheDocument();
+  });
+
   it("focuses the affected component when an inline validation issue is opened", () => {
     render(
       <DashboardBuilder

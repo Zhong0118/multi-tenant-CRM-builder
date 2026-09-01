@@ -32,6 +32,9 @@ export function DashboardBuilder({
   const initialDefinition =
     initial.draft?.draftConfiguration ?? emptyDefinition();
   const [version, setVersion] = useState(initial.draft?.draftVersion ?? 0);
+  const [activePublication, setActivePublication] = useState(
+    initial.activePublication,
+  );
   const [definition, setDefinition] =
     useState<DashboardDefinitionV2>(initialDefinition);
   const [selectedId, setSelectedId] = useState<string | undefined>(
@@ -165,6 +168,7 @@ export function DashboardBuilder({
       const publication = await publishDashboardDraft(tenantCode, {
         expectedVersion: version,
       });
+      setActivePublication(publication);
       setSavedThisSession(true);
       setFeedback(`工作台已发布为第 ${publication.number} 版。`);
     } catch {
@@ -186,8 +190,8 @@ export function DashboardBuilder({
             {dirty ? "有未保存修改" : `草稿版本 ${version || "未保存"}`}
           </span>
           <span>
-            {initial.activePublication
-              ? `线上第 ${initial.activePublication.number} 版`
+            {activePublication
+              ? `线上第 ${activePublication.number} 版`
               : "尚未发布"}
           </span>
           <Button onClick={() => void save()} loading={busy === "save"}>
