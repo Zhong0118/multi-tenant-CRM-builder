@@ -132,83 +132,98 @@ export interface DashboardConfigurationView {
   candidates: DashboardCandidate[];
   issues: DashboardConfigurationIssue[];
 }
-export type DashboardRuntime = components["schemas"]["DashboardRuntimeDto"];
-/** Legacy runtime surface remains until the runtime dashboard renderer is migrated. */
-export interface DashboardOverview {
-  state: "READY" | "UNCONFIGURED" | "NEEDS_REPAIR" | "UNAVAILABLE";
-  role: "TENANT_ADMIN" | "EMPLOYEE";
-  period: { from: string; to: string; timezone: string };
-  configuration?: unknown;
-  metrics: Array<{
-    key: string;
-    label: string;
-    value?: number | null;
-    format: "COUNT" | "MONEY" | "PERCENT";
-  }>;
-  pipeline: Array<{
-    optionKey: string;
-    label: string;
-    color: string;
-    count: number;
-    amount: number;
-  }>;
-  trend: Array<{ date: string; wonCount: number; wonAmount: number }>;
-  leaderboard: Array<{
-    memberId: string;
-    displayName: string;
-    wonCount: number;
-    wonAmount: number;
-    activeAmount: number;
-  }>;
-  records: Array<{
-    id: string;
-    recordNo?: string;
-    title: string;
-    amount?: number | null;
-    dueAt?: string | null;
-    stageLabel?: string | null;
-    stageKey?: string;
-    updatedAt: string;
-    ownerMemberId?: string | null;
-    ownerName?: string;
-  }>;
-  attention: Array<{ key: string; label: string; count: number; href: string }>;
-  issues: DashboardConfigurationIssue[];
-}
-export interface DashboardOpportunityConfiguration {
-  objectCode: string;
-  stageFieldKey: string;
-  amountFieldKey?: string;
-  dateFieldKey?: string;
-  activeOptionKeys: string[];
-  wonOptionKeys: string[];
-  lostOptionKeys: string[];
-}
-export function overviewOpportunity(
-  overview: DashboardOverview,
-): DashboardOpportunityConfiguration | undefined {
-  const configuration = overview.configuration;
-  if (!configuration || typeof configuration !== "object") return undefined;
-  const opportunity = (configuration as { opportunity?: unknown }).opportunity;
-  if (!opportunity || typeof opportunity !== "object") return undefined;
-  const value = opportunity as Record<string, unknown>;
-  try {
-    return {
-      objectCode: text(value.objectCode),
-      stageFieldKey: text(value.stageFieldKey),
-      activeOptionKeys: strings(value.activeOptionKeys),
-      wonOptionKeys: strings(value.wonOptionKeys),
-      lostOptionKeys: strings(value.lostOptionKeys),
-      ...(typeof value.amountFieldKey === "string"
-        ? { amountFieldKey: value.amountFieldKey }
-        : {}),
-      ...(typeof value.dateFieldKey === "string"
-        ? { dateFieldKey: value.dateFieldKey }
-        : {}),
+export type DashboardRuntimeWidget =
+  | {
+      id: string;
+      type: "METRIC";
+      title: string;
+      description?: string;
+      objectCode?: string;
+      width: DashboardWidgetWidth;
+      sortOrder: number;
+      state: "READY";
+      data: { value: number | null; format?: "NUMBER" | "MONEY" | "PERCENT" };
+    }
+  | {
+      id: string;
+      type: "STATUS_DISTRIBUTION";
+      title: string;
+      description?: string;
+      objectCode?: string;
+      width: DashboardWidgetWidth;
+      sortOrder: number;
+      state: "READY";
+      data: {
+        display: "FUNNEL" | "BAR" | "DONUT";
+        items: Array<{ optionKey: string; label: string; color: string; value: number }>;
+      };
+    }
+  | {
+      id: string;
+      type: "TREND";
+      title: string;
+      description?: string;
+      objectCode?: string;
+      width: DashboardWidgetWidth;
+      sortOrder: number;
+      state: "READY";
+      data: { items: Array<{ date: string; value: number }> };
+    }
+  | {
+      id: string;
+      type: "LEADERBOARD";
+      title: string;
+      description?: string;
+      objectCode?: string;
+      width: DashboardWidgetWidth;
+      sortOrder: number;
+      state: "READY";
+      data: { items: Array<{ memberId: string; displayName: string; value: number }> };
+    }
+  | {
+      id: string;
+      type: "RECORD_LIST";
+      title: string;
+      description?: string;
+      objectCode?: string;
+      width: DashboardWidgetWidth;
+      sortOrder: number;
+      state: "READY";
+      data: {
+        fields: Array<{ fieldKey: string; label: string; type: string }>;
+        items: Array<{
+          id: string;
+          recordNo: string;
+          title: string;
+          ownerMemberId: string | null;
+          ownerName: string | null;
+          updatedAt: string;
+          values: Record<string, unknown>;
+        }>;
+      };
+    }
+  | {
+      id: string;
+      type: DashboardWidgetType;
+      title: string;
+      description?: string;
+      objectCode?: string;
+      width: DashboardWidgetWidth;
+      sortOrder: number;
+      state: "UNAVAILABLE";
+      reason?: "AUDIENCE_EXCLUDED" | "OBJECT_UNAVAILABLE" | "OBJECT_ACCESS_DENIED" | "FIELD_HIDDEN" | "QUERY_FAILED";
     };
-  } catch {
-    return undefined;
-  }
+
+export interface DashboardRuntime {
+  title: string;
+  period: { from: string; to: string; timezone: string };
+  widgets: DashboardRuntimeWidget[];
+}
+
+export interface DashboardRuntimeResult extends DashboardRuntime {
+  state: "READY" | "UNCONFIGURED";
+  role: "TENANT_ADMIN" | "EMPLOYEE";
+  publication?: DashboardPublicationSummary;
 }
 
 export function parseDashboardConfigurationView(
@@ -256,12 +271,28 @@ function definition(value: unknown): DashboardDefinitionV2 {
 export function parseDashboardRuntime(value: unknown): DashboardRuntime {
   const root = object(value);
   const period = object(root.period);
-  text(root.title);
-  text(period.from);
-  text(period.to);
-  text(period.timezone);
-  array(root.widgets).forEach(parseRuntimeWidget);
-  return root as DashboardRuntime;
+  return {
+    title: text(root.title),
+    period: {
+      from: text(period.from),
+      to: text(period.to),
+      timezone: text(period.timezone),
+    },
+    widgets: array(root.widgets).map(parseRuntimeWidget),
+  };
+}
+
+export function parseDashboardOverview(value: unknown): DashboardRuntimeResult {
+  const root = object(value);
+  const runtime = parseDashboardRuntime(value);
+  return {
+    ...runtime,
+    state: one(root.state, ["READY", "UNCONFIGURED"] as const),
+    role: one(root.role, ["TENANT_ADMIN", "EMPLOYEE"] as const),
+    ...(root.publication === undefined
+      ? {}
+      : { publication: parsePublication(root.publication) }),
+  };
 }
 
 function widget(value: unknown): DashboardWidgetDraft {
@@ -448,9 +479,18 @@ function validateFilterValueShape(filter: DashboardFilter) {
   )
     invalid();
 }
-function parseRuntimeWidget(value: unknown) {
+function parseRuntimeWidget(value: unknown): DashboardRuntimeWidget {
   const root = object(value);
-  text(root.id);
+  const base = {
+    id: text(root.id),
+    title: text(root.title),
+    objectCode: text(root.objectCode),
+    width: one(root.width, ["QUARTER", "HALF", "FULL"] as const),
+    sortOrder: num(root.sortOrder),
+    ...(typeof root.description === "string"
+      ? { description: root.description }
+      : {}),
+  };
   const type = one(root.type, [
     "METRIC",
     "STATUS_DISTRIBUTION",
@@ -458,13 +498,15 @@ function parseRuntimeWidget(value: unknown) {
     "LEADERBOARD",
     "RECORD_LIST",
   ] as const);
-  text(root.title);
-  one(root.width, ["QUARTER", "HALF", "FULL"] as const);
-  num(root.sortOrder);
   const state = one(root.state, ["READY", "UNAVAILABLE"] as const);
   if (state === "UNAVAILABLE") {
+    const unavailable: Extract<DashboardRuntimeWidget, { state: "UNAVAILABLE" }> = {
+      ...base,
+      type,
+      state,
+    };
     if (root.reason !== undefined) {
-      one(root.reason, [
+      unavailable.reason = one(root.reason, [
         "AUDIENCE_EXCLUDED",
         "OBJECT_UNAVAILABLE",
         "OBJECT_ACCESS_DENIED",
@@ -472,60 +514,95 @@ function parseRuntimeWidget(value: unknown) {
         "QUERY_FAILED",
       ] as const);
     }
-    return;
+    return unavailable;
   }
   const data = object(root.data);
   if (type === "METRIC") {
-    if (data.value !== null) num(data.value);
-    if (data.format !== undefined) {
-      one(data.format, ["NUMBER", "MONEY", "PERCENT"] as const);
-    }
-    return;
+    return {
+      ...base,
+      type,
+      state,
+      data: {
+        value: data.value === null ? null : num(data.value),
+        ...(data.format === undefined
+          ? {}
+          : { format: one(data.format, ["NUMBER", "MONEY", "PERCENT"] as const) }),
+      },
+    };
   }
   if (type === "STATUS_DISTRIBUTION") {
-    one(data.display, ["FUNNEL", "BAR", "DONUT"] as const);
-    array(data.items).forEach((item) => {
+    return {
+      ...base,
+      type,
+      state,
+      data: {
+        display: one(data.display, ["FUNNEL", "BAR", "DONUT"] as const),
+        items: array(data.items).map((item) => {
       const point = object(item);
-      text(point.optionKey);
-      text(point.label);
-      text(point.color);
-      num(point.value);
-    });
-    return;
+          return {
+            optionKey: text(point.optionKey),
+            label: text(point.label),
+            color: text(point.color),
+            value: num(point.value),
+          };
+        }),
+      },
+    };
   }
   if (type === "TREND") {
-    array(data.items).forEach((item) => {
+    return {
+      ...base,
+      type,
+      state,
+      data: { items: array(data.items).map((item) => {
       const point = object(item);
-      text(point.date);
-      num(point.value);
-    });
-    return;
+        return { date: text(point.date), value: num(point.value) };
+      }) },
+    };
   }
   if (type === "LEADERBOARD") {
-    array(data.items).forEach((item) => {
+    return {
+      ...base,
+      type,
+      state,
+      data: { items: array(data.items).map((item) => {
       const row = object(item);
-      text(row.memberId);
-      text(row.displayName);
-      num(row.value);
-    });
-    return;
+        return {
+          memberId: text(row.memberId),
+          displayName: text(row.displayName),
+          value: num(row.value),
+        };
+      }) },
+    };
   }
-  array(data.fields).forEach((item) => {
-    const field = object(item);
-    text(field.fieldKey);
-    text(field.label);
-    text(field.type);
-  });
-  array(data.items).forEach((item) => {
-    const row = object(item);
-    text(row.id);
-    text(row.recordNo);
-    text(row.title);
-    if (row.ownerMemberId !== null) text(row.ownerMemberId);
-    if (row.ownerName !== null) text(row.ownerName);
-    text(row.updatedAt);
-    object(row.values);
-  });
+  return {
+    ...base,
+    type,
+    state,
+    data: {
+      fields: array(data.fields).map((item) => {
+        const field = object(item);
+        return {
+          fieldKey: text(field.fieldKey),
+          label: text(field.label),
+          type: text(field.type),
+        };
+      }),
+      items: array(data.items).map((item) => {
+        const row = object(item);
+        return {
+          id: text(row.id),
+          recordNo: text(row.recordNo),
+          title: text(row.title),
+          ownerMemberId:
+            row.ownerMemberId === null ? null : text(row.ownerMemberId),
+          ownerName: row.ownerName === null ? null : text(row.ownerName),
+          updatedAt: text(row.updatedAt),
+          values: object(row.values),
+        };
+      }),
+    },
+  };
 }
 function parseCandidate(value: unknown): DashboardCandidate {
   const root = object(value);

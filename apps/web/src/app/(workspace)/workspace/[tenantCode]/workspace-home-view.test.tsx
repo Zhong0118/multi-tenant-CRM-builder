@@ -1,19 +1,19 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { DashboardOverview } from "@/features/dashboard/dashboard-types";
+import type { DashboardRuntime, DashboardRuntimeResult } from "@/features/dashboard/dashboard-types";
 
 import { WorkspaceHomeView } from "./workspace-home-view";
 
 vi.mock("@ant-design/charts", () => ({
-  Bar: () => <div data-testid="pipeline-chart" />,
-  DualAxes: () => <div data-testid="trend-chart" />,
+  Bar: () => <div data-testid="distribution-chart" />,
+  Line: () => <div data-testid="trend-chart" />,
 }));
 
 const objects = [
   {
-    code: "customers",
-    name: "客户",
+    code: "orders",
+    name: "订单",
     icon: null,
     sortOrder: 10,
     canCreate: true,
@@ -23,32 +23,8 @@ const objects = [
 ];
 
 describe("WorkspaceHomeView", () => {
-  it("gives employees a personal execution workbench without team ranking", () => {
-    render(
-      <WorkspaceHomeView
-        tenantCode="northwind"
-        tenantName="百杰"
-        userName="李明"
-        role="EMPLOYEE"
-        businessObjects={objects}
-        overview={{ ...readyOverview, role: "EMPLOYEE", leaderboard: [] }}
-      />,
-    );
-
-    expect(
-      screen.getByRole("heading", { name: "我的工作台" }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("我的销售管道")).toBeInTheDocument();
-    expect(screen.getByText("优先跟进")).toBeInTheDocument();
-    expect(screen.queryByText("员工业绩排行")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /客户/ })).toHaveAttribute(
-      "href",
-      "/workspace/northwind/objects/customers",
-    );
-  });
-
-  it("gives company administrators team results and attention modules", () => {
-    render(
+  it("renders published widgets in configured order and widths", () => {
+    const { container } = render(
       <WorkspaceHomeView
         tenantCode="northwind"
         tenantName="百杰"
@@ -60,16 +36,49 @@ describe("WorkspaceHomeView", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "运营驾驶舱" }),
+      screen.getByRole("heading", { name: "八月运营概览" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("销售与回款趋势")).toBeInTheDocument();
-    expect(screen.getByText("销售漏斗")).toBeInTheDocument();
-    expect(screen.getByText("异常与待办")).toBeInTheDocument();
-    expect(screen.getByText("员工业绩排行")).toBeInTheDocument();
-    expect(screen.getAllByText("王芳").length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "订单总数" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "处理状态" })).toBeInTheDocument();
+    expect(screen.getByTestId("trend-chart")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "负责人排行" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "北区订单" })).toHaveAttribute(
+      "href",
+      "/workspace/northwind/objects/orders/record-1",
+    );
+
+    const widgets = container.querySelectorAll("[data-dashboard-widget]");
+    expect([...widgets].map((widget) => widget.getAttribute("data-widget-id"))).toEqual([
+      "total",
+      "status",
+      "trend",
+      "leaderboard",
+      "records",
+      "unavailable",
+    ]);
+    expect([...widgets[0].classList].some((name) => name.includes("widgetQuarter"))).toBe(true);
+    expect([...widgets[1].classList].some((name) => name.includes("widgetHalf"))).toBe(true);
+    expect([...widgets[4].classList].some((name) => name.includes("widgetFull"))).toBe(true);
   });
 
-  it("guides only administrators to configure an unconfigured dashboard", () => {
+  it("keeps ready siblings visible when one published widget is unavailable", () => {
+    render(
+      <WorkspaceHomeView
+        tenantCode="northwind"
+        tenantName="百杰"
+        userName="张三"
+        role="TENANT_ADMIN"
+        businessObjects={objects}
+        overview={readyOverview}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "负责人排行" })).toBeInTheDocument();
+    expect(screen.getByText("此组件暂时无法显示")).toBeInTheDocument();
+    expect(screen.getByText("查询暂时不可用，请稍后重试。")).toBeInTheDocument();
+  });
+
+  it("offers administrators configuration while employees see not-enabled guidance", () => {
     const { rerender } = render(
       <WorkspaceHomeView
         tenantCode="northwind"
@@ -81,7 +90,7 @@ describe("WorkspaceHomeView", () => {
       />,
     );
 
-    expect(screen.getByRole("link", { name: /配置工作台/ })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "配置工作台" })).toHaveAttribute(
       "href",
       "/workspace/northwind/settings/dashboard",
     );
@@ -96,103 +105,114 @@ describe("WorkspaceHomeView", () => {
         overview={emptyOverview("EMPLOYEE")}
       />,
     );
-    expect(screen.getByText("公司尚未启用工作台")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: /配置工作台/ }),
-    ).not.toBeInTheDocument();
+
+    expect(screen.getByText("工作台尚未启用")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "配置工作台" })).not.toBeInTheDocument();
   });
 });
 
-const readyOverview = {
-  state: "READY",
-  role: "TENANT_ADMIN",
+const runtime = {
+  title: "八月运营概览",
   period: {
     from: "2026-08-01T00:00:00.000Z",
     to: "2026-08-31T00:00:00.000Z",
     timezone: "Asia/Shanghai",
   },
-  configuration: {
-    opportunity: {
-      objectCode: "opportunities",
-      stageFieldKey: "stage",
-      activeOptionKeys: ["new"],
-      wonOptionKeys: ["won"],
-      lostOptionKeys: ["lost"],
-    },
-  },
-  issues: [],
-  metrics: [
-    { key: "active", label: "进行中商机", value: 12, format: "COUNT" },
+  widgets: [
     {
-      key: "wonAmount",
-      label: "成交金额",
-      value: 168000,
-      format: "MONEY",
+      id: "total",
+      type: "METRIC",
+      title: "订单总数",
+      objectCode: "orders",
+      width: "QUARTER",
+      sortOrder: 1,
+      state: "READY",
+      data: { value: 12, format: "NUMBER" },
+    },
+    {
+      id: "status",
+      type: "STATUS_DISTRIBUTION",
+      title: "处理状态",
+      objectCode: "orders",
+      width: "HALF",
+      sortOrder: 2,
+      state: "READY",
+      data: {
+        display: "BAR",
+        items: [
+          { optionKey: "open", label: "待处理", color: "BLUE", value: 8 },
+          { optionKey: "done", label: "已完成", color: "GREEN", value: 4 },
+        ],
+      },
+    },
+    {
+      id: "trend",
+      type: "TREND",
+      title: "每日订单",
+      objectCode: "orders",
+      width: "HALF",
+      sortOrder: 3,
+      state: "READY",
+      data: { items: [{ date: "2026-08-20", value: 2 }] },
+    },
+    {
+      id: "leaderboard",
+      type: "LEADERBOARD",
+      title: "负责人排行",
+      objectCode: "orders",
+      width: "HALF",
+      sortOrder: 4,
+      state: "READY",
+      data: { items: [{ memberId: "member-1", displayName: "王芳", value: 3 }] },
+    },
+    {
+      id: "records",
+      type: "RECORD_LIST",
+      title: "近期订单",
+      objectCode: "orders",
+      width: "FULL",
+      sortOrder: 5,
+      state: "READY",
+      data: {
+        fields: [{ fieldKey: "status", label: "处理状态", type: "SINGLE_SELECT" }],
+        items: [
+          {
+            id: "record-1",
+            recordNo: "ORD-001",
+            title: "北区订单",
+            ownerMemberId: "member-1",
+            ownerName: "王芳",
+            updatedAt: "2026-08-30T00:00:00.000Z",
+            values: { status: "待处理" },
+          },
+        ],
+      },
+    },
+    {
+      id: "unavailable",
+      type: "METRIC",
+      title: "无法读取的指标",
+      objectCode: "orders",
+      width: "QUARTER",
+      sortOrder: 6,
+      state: "UNAVAILABLE",
+      reason: "QUERY_FAILED",
     },
   ],
-  pipeline: [
-    {
-      optionKey: "new",
-      label: "新商机",
-      color: "BLUE",
-      count: 8,
-      amount: 86000,
-    },
-    {
-      optionKey: "won",
-      label: "已成交",
-      color: "GREEN",
-      count: 4,
-      amount: 168000,
-    },
-  ],
-  trend: [{ date: "2026-08-20", wonCount: 2, wonAmount: 68000 }],
-  attention: [
-    {
-      key: "stale",
-      label: "超过 7 天未更新",
-      count: 3,
-      href: "/workspace/northwind/objects/opportunities",
-    },
-  ],
-  leaderboard: [
-    {
-      memberId: "member-1",
-      displayName: "王芳",
-      wonCount: 3,
-      wonAmount: 98000,
-      activeAmount: 46000,
-    },
-  ],
-  records: [
-    {
-      id: "record-1",
-      title: "东海集团年度合作",
-      ownerMemberId: "member-1",
-      ownerName: "王芳",
-      stageKey: "new",
-      amount: 42000,
-      dueAt: "2026-09-02T00:00:00.000Z",
-      updatedAt: "2026-08-30T00:00:00.000Z",
-    },
-  ],
-} satisfies DashboardOverview;
+} satisfies DashboardRuntime;
 
-function emptyOverview(role: DashboardOverview["role"]): DashboardOverview {
+const readyOverview = {
+  ...runtime,
+  state: "READY",
+  role: "TENANT_ADMIN",
+} satisfies DashboardRuntimeResult;
+
+function emptyOverview(role: DashboardRuntimeResult["role"]): DashboardRuntimeResult {
   return {
+    title: "工作台",
+    period: runtime.period,
+    widgets: [],
     state: "UNCONFIGURED",
     role,
-    period: {
-      from: "2026-08-01T00:00:00.000Z",
-      to: "2026-08-31T00:00:00.000Z",
-      timezone: "Asia/Shanghai",
-    },
-    issues: [],
-    metrics: [],
-    pipeline: [],
-    trend: [],
-    attention: [],
-    leaderboard: [],
-    records: [],
   };
 }

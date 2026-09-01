@@ -791,6 +791,7 @@ function resultPresentation(plan: DashboardQueryPlan) {
   return {
     id: plan.widget.id,
     title: plan.widget.title,
+    objectCode: plan.widget.objectCode,
     ...(plan.widget.description === undefined
       ? {}
       : { description: plan.widget.description }),

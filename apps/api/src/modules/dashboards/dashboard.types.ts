@@ -158,6 +158,7 @@ interface DashboardWidgetResultBase {
   type: DashboardWidgetType;
   title: string;
   description?: string;
+  objectCode?: string;
   width: DashboardWidgetWidth;
   sortOrder: number;
 }

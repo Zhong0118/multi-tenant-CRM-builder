@@ -10,6 +10,10 @@ import {
 } from '../modules/business-templates/business-template-publication.policy';
 import { hydrateTenantConfiguration } from '../modules/business-templates/template-application.service';
 import { normalizeChineseMobile } from '../modules/auth/phone-number';
+import type {
+  DashboardDefinitionV2,
+  PublishedDashboardDefinitionV2,
+} from '../modules/dashboards/dashboard.types';
 import {
   buildDemoCompanyFixture,
   DEMO_COMPANY_CODE,
@@ -405,13 +409,19 @@ async function main(): Promise<void> {
           });
         }
 
-        await transaction.tenantDashboardConfiguration.create({
-          data: {
-            tenantId,
-            draftVersion: 1,
-            draftConfiguration: jsonInput(DEMO_DASHBOARD_CONFIGURATION),
-          },
+        const dashboardObject = await transaction.objectDefinition.findFirst({
+          where: { tenantId, code: 'opportunities' },
+          include: { activePublication: true },
         });
+        if (!dashboardObject?.activePublication) {
+          throw new Error('The demo dashboard object is not published');
+        }
+        await ensureDemoDashboardPublication(
+          transaction,
+          tenantId,
+          publishingMemberId,
+          dashboardObject.activePublication.configuration,
+        );
 
         await transaction.tenant.update({
           where: { id: tenantId },
@@ -601,17 +611,261 @@ async function reconcileExistingDemoTenant(
     });
   }
 
-  await transaction.tenantDashboardConfiguration.upsert({
-    where: { tenantId: tenant.id },
-    create: {
-      tenantId: tenant.id,
-      draftVersion: 1,
-      draftConfiguration: jsonInput(DEMO_DASHBOARD_CONFIGURATION),
-    },
-    update: {
-      draftConfiguration: jsonInput(DEMO_DASHBOARD_CONFIGURATION),
+  const dashboardObject = await transaction.objectDefinition.findFirst({
+    where: { tenantId: tenant.id, code: 'opportunities' },
+    include: { activePublication: true },
+  });
+  if (!dashboardObject?.activePublication) {
+    throw new Error('The existing demo dashboard object is not published');
+  }
+  await ensureDemoDashboardPublication(
+    transaction,
+    tenant.id,
+    publishingMember.id,
+    dashboardObject.activePublication.configuration,
+  );
+}
+
+async function ensureDemoDashboardPublication(
+  transaction: Prisma.TransactionClient,
+  tenantId: string,
+  publishingMemberId: string,
+  objectConfiguration: Prisma.JsonValue,
+): Promise<void> {
+  const draft = demoDashboardDraft();
+  const definition = await transaction.tenantDashboardConfiguration.findUnique({
+    where: { tenantId },
+    include: { activePublication: true },
+  });
+  const saved = !definition
+    ? await transaction.tenantDashboardConfiguration.create({
+        data: {
+          tenantId,
+          draftVersion: 1,
+          draftConfiguration: jsonInput(draft),
+        },
+      })
+    : JSON.stringify(definition.draftConfiguration) === JSON.stringify(draft)
+      ? definition
+      : await transaction.tenantDashboardConfiguration.update({
+          where: { tenantId },
+          data: {
+            draftVersion: { increment: 1 },
+            draftConfiguration: jsonInput(draft),
+          },
+        });
+  const published = demoPublishedDashboard(objectConfiguration);
+  if (
+    definition?.activePublication &&
+    JSON.stringify(definition.activePublication.configuration) ===
+      JSON.stringify(published)
+  ) {
+    return;
+  }
+  const last = await transaction.tenantDashboardPublication.aggregate({
+    where: { tenantId },
+    _max: { publicationNo: true },
+  });
+  const publication = await transaction.tenantDashboardPublication.create({
+    data: {
+      tenantId,
+      publicationNo: (last._max.publicationNo ?? 0) + 1,
+      sourceDraftVersion: saved.draftVersion,
+      configuration: jsonInput(published),
+      publishedByMemberId: publishingMemberId,
     },
   });
+  await transaction.tenantDashboardConfiguration.update({
+    where: { tenantId },
+    data: { activePublicationId: publication.id },
+  });
+}
+
+function demoDashboardDraft(): DashboardDefinitionV2 {
+  const base = {
+    audience: 'ALL' as const,
+    objectCode: 'opportunities',
+    filters: [],
+  };
+  return {
+    schemaVersion: 2,
+    title: '销售运营工作台',
+    widgets: [
+      {
+        ...base,
+        id: 'opportunity-total',
+        type: 'METRIC',
+        title: '商机总数',
+        width: 'QUARTER',
+        sortOrder: 0,
+        aggregation: 'COUNT',
+        displayFormat: 'NUMBER',
+      },
+      {
+        ...base,
+        id: 'opportunity-pipeline',
+        type: 'STATUS_DISTRIBUTION',
+        title: '商机阶段',
+        width: 'HALF',
+        sortOrder: 1,
+        groupByFieldKey: 'stage',
+        optionKeys: ['discovery', 'proposal', 'negotiation', 'won', 'lost'],
+        display: 'BAR',
+        aggregation: 'SUM',
+        valueFieldKey: 'amount',
+      },
+      {
+        ...base,
+        id: 'opportunity-trend',
+        type: 'TREND',
+        title: '预计成交趋势',
+        width: 'HALF',
+        sortOrder: 2,
+        dateFieldKey: 'closeDate',
+        granularity: 'MONTH',
+        aggregation: 'SUM',
+        valueFieldKey: 'amount',
+      },
+      {
+        ...base,
+        id: 'opportunity-leaderboard',
+        type: 'LEADERBOARD',
+        title: '负责人排行',
+        width: 'HALF',
+        sortOrder: 3,
+        memberSource: 'RECORD_OWNER',
+        aggregation: 'SUM',
+        valueFieldKey: 'amount',
+        limit: 10,
+      },
+      {
+        ...base,
+        id: 'opportunity-records',
+        type: 'RECORD_LIST',
+        title: '近期商机',
+        width: 'FULL',
+        sortOrder: 4,
+        fieldKeys: ['stage', 'amount', 'closeDate'],
+        sort: { field: 'updatedAt', direction: 'DESC' },
+        limit: 10,
+      },
+    ],
+  };
+}
+
+function demoPublishedDashboard(
+  rawObjectConfiguration: Prisma.JsonValue,
+): PublishedDashboardDefinitionV2 {
+  const raw = rawObjectConfiguration as unknown as Record<string, unknown>;
+  const publication = raw.publication as Record<string, unknown>;
+  const object = raw.object as Record<string, unknown>;
+  const fields = raw.fields as Array<Record<string, unknown>>;
+  const field = (fieldKey: string) => {
+    const value = fields.find((item) => item.fieldKey === fieldKey);
+    if (!value) throw new Error(`Demo dashboard field ${fieldKey} is missing`);
+    return {
+      fieldKey,
+      label: value.label,
+      type: value.type,
+    };
+  };
+  const stage = field('stage');
+  const amount = field('amount');
+  const closeDate = field('closeDate');
+  const stageConfig = fields.find((item) => item.fieldKey === 'stage')
+    ?.config as { options?: unknown[] } | undefined;
+  const options = (stageConfig?.options ?? []).map((option) => {
+    const value = option as Record<string, unknown>;
+    return { key: value.key, label: value.label, color: value.color };
+  });
+  const base = {
+    objectCode: object.code,
+    objectName: object.name,
+    objectPublicationId: publication.id,
+    objectPublicationNumber: publication.number,
+    filterFields: [],
+  };
+  return {
+    schemaVersion: 2,
+    title: '销售运营工作台',
+    widgets: [
+      {
+        ...base,
+        id: 'opportunity-total',
+        type: 'METRIC',
+        title: '商机总数',
+        audience: 'ALL',
+        width: 'QUARTER',
+        sortOrder: 0,
+        filters: [],
+        aggregation: 'COUNT',
+        displayFormat: 'NUMBER',
+      },
+      {
+        ...base,
+        id: 'opportunity-pipeline',
+        type: 'STATUS_DISTRIBUTION',
+        title: '商机阶段',
+        audience: 'ALL',
+        width: 'HALF',
+        sortOrder: 1,
+        filters: [],
+        groupByFieldKey: 'stage',
+        groupByField: stage,
+        optionKeys: ['discovery', 'proposal', 'negotiation', 'won', 'lost'],
+        options,
+        display: 'BAR',
+        aggregation: 'SUM',
+        valueFieldKey: 'amount',
+        valueField: amount,
+      },
+      {
+        ...base,
+        id: 'opportunity-trend',
+        type: 'TREND',
+        title: '预计成交趋势',
+        audience: 'ALL',
+        width: 'HALF',
+        sortOrder: 2,
+        filters: [],
+        dateFieldKey: 'closeDate',
+        dateField: closeDate,
+        granularity: 'MONTH',
+        aggregation: 'SUM',
+        valueFieldKey: 'amount',
+        valueField: amount,
+      },
+      {
+        ...base,
+        id: 'opportunity-leaderboard',
+        type: 'LEADERBOARD',
+        title: '负责人排行',
+        audience: 'ALL',
+        width: 'HALF',
+        sortOrder: 3,
+        filters: [],
+        memberSource: 'RECORD_OWNER',
+        aggregation: 'SUM',
+        valueFieldKey: 'amount',
+        valueField: amount,
+        limit: 10,
+      },
+      {
+        ...base,
+        id: 'opportunity-records',
+        type: 'RECORD_LIST',
+        title: '近期商机',
+        audience: 'ALL',
+        width: 'FULL',
+        sortOrder: 4,
+        filters: [],
+        fieldKeys: ['stage', 'amount', 'closeDate'],
+        displayFields: [stage, amount, closeDate],
+        sort: { field: 'updatedAt', direction: 'DESC' },
+        limit: 10,
+      },
+    ],
+  } as unknown as PublishedDashboardDefinitionV2;
 }
 
 function stageConfigurationMatches(

@@ -185,8 +185,8 @@ export class DashboardRecordListRowDto {
   @ApiProperty({ format: 'uuid' }) id!: string;
   @ApiProperty() recordNo!: string;
   @ApiProperty() title!: string;
-  @ApiProperty({ type: String, format: 'uuid', nullable: true }) ownerMemberId!:
-    string | null;
+  @ApiProperty({ type: String, format: 'uuid', nullable: true })
+  ownerMemberId!: string | null;
   @ApiProperty({ type: String, nullable: true }) ownerName!: string | null;
   @ApiProperty({ format: 'date-time' }) updatedAt!: string;
   @ApiProperty({ type: 'object', additionalProperties: true })
@@ -205,6 +205,7 @@ export class DashboardMetricWidgetDto {
   @ApiProperty({ enum: ['METRIC'] }) type!: 'METRIC';
   @ApiProperty() title!: string;
   @ApiPropertyOptional() description?: string;
+  @ApiProperty() objectCode!: string;
   @ApiProperty({ enum: ['QUARTER', 'HALF', 'FULL'] }) width!: string;
   @ApiProperty() sortOrder!: number;
   @ApiProperty({ enum: ['READY'] }) state!: 'READY';
@@ -217,6 +218,7 @@ export class DashboardDistributionWidgetDto {
   type!: 'STATUS_DISTRIBUTION';
   @ApiProperty() title!: string;
   @ApiPropertyOptional() description?: string;
+  @ApiProperty() objectCode!: string;
   @ApiProperty({ enum: ['QUARTER', 'HALF', 'FULL'] }) width!: string;
   @ApiProperty() sortOrder!: number;
   @ApiProperty({ enum: ['READY'] }) state!: 'READY';
@@ -229,6 +231,7 @@ export class DashboardTrendWidgetDto {
   @ApiProperty({ enum: ['TREND'] }) type!: 'TREND';
   @ApiProperty() title!: string;
   @ApiPropertyOptional() description?: string;
+  @ApiProperty() objectCode!: string;
   @ApiProperty({ enum: ['QUARTER', 'HALF', 'FULL'] }) width!: string;
   @ApiProperty() sortOrder!: number;
   @ApiProperty({ enum: ['READY'] }) state!: 'READY';
@@ -240,6 +243,7 @@ export class DashboardLeaderboardWidgetDto {
   @ApiProperty({ enum: ['LEADERBOARD'] }) type!: 'LEADERBOARD';
   @ApiProperty() title!: string;
   @ApiPropertyOptional() description?: string;
+  @ApiProperty() objectCode!: string;
   @ApiProperty({ enum: ['QUARTER', 'HALF', 'FULL'] }) width!: string;
   @ApiProperty() sortOrder!: number;
   @ApiProperty({ enum: ['READY'] }) state!: 'READY';
@@ -252,6 +256,7 @@ export class DashboardRecordListWidgetDto {
   @ApiProperty({ enum: ['RECORD_LIST'] }) type!: 'RECORD_LIST';
   @ApiProperty() title!: string;
   @ApiPropertyOptional() description?: string;
+  @ApiProperty() objectCode!: string;
   @ApiProperty({ enum: ['QUARTER', 'HALF', 'FULL'] }) width!: string;
   @ApiProperty() sortOrder!: number;
   @ApiProperty({ enum: ['READY'] }) state!: 'READY';
@@ -273,6 +278,7 @@ export class DashboardUnavailableWidgetDto {
   type!: string;
   @ApiProperty() title!: string;
   @ApiPropertyOptional() description?: string;
+  @ApiProperty() objectCode!: string;
   @ApiProperty({ enum: ['QUARTER', 'HALF', 'FULL'] }) width!: string;
   @ApiProperty() sortOrder!: number;
   @ApiProperty({ enum: ['UNAVAILABLE'] }) state!: 'UNAVAILABLE';

@@ -316,6 +316,7 @@ function presentation(widget: PublishedDashboardWidgetV2) {
     id: widget.id,
     type: widget.type,
     title: widget.title,
+    objectCode: widget.objectCode,
     ...(widget.description === undefined
       ? {}
       : { description: widget.description }),

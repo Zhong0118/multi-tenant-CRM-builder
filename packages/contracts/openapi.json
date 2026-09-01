@@ -791,6 +791,9 @@
           "id": {
             "type": "string"
           },
+          "objectCode": {
+            "type": "string"
+          },
           "sortOrder": {
             "type": "number"
           },
@@ -822,6 +825,7 @@
           "id",
           "type",
           "title",
+          "objectCode",
           "width",
           "sortOrder",
           "state",
@@ -906,6 +910,9 @@
           "id": {
             "type": "string"
           },
+          "objectCode": {
+            "type": "string"
+          },
           "sortOrder": {
             "type": "number"
           },
@@ -937,6 +944,7 @@
           "id",
           "type",
           "title",
+          "objectCode",
           "width",
           "sortOrder",
           "state",
@@ -975,6 +983,9 @@
           "id": {
             "type": "string"
           },
+          "objectCode": {
+            "type": "string"
+          },
           "sortOrder": {
             "type": "number"
           },
@@ -1006,6 +1017,7 @@
           "id",
           "type",
           "title",
+          "objectCode",
           "width",
           "sortOrder",
           "state",
@@ -1227,6 +1239,9 @@
           "id": {
             "type": "string"
           },
+          "objectCode": {
+            "type": "string"
+          },
           "sortOrder": {
             "type": "number"
           },
@@ -1258,6 +1273,7 @@
           "id",
           "type",
           "title",
+          "objectCode",
           "width",
           "sortOrder",
           "state",
@@ -1346,6 +1362,9 @@
           "id": {
             "type": "string"
           },
+          "objectCode": {
+            "type": "string"
+          },
           "sortOrder": {
             "type": "number"
           },
@@ -1377,6 +1396,7 @@
           "id",
           "type",
           "title",
+          "objectCode",
           "width",
           "sortOrder",
           "state",
@@ -1390,6 +1410,9 @@
             "type": "string"
           },
           "id": {
+            "type": "string"
+          },
+          "objectCode": {
             "type": "string"
           },
           "reason": {
@@ -1437,6 +1460,7 @@
           "id",
           "type",
           "title",
+          "objectCode",
           "width",
           "sortOrder",
           "state"

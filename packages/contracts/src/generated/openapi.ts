@@ -1128,6 +1128,7 @@ export interface components {
             data: components["schemas"]["DashboardDistributionDataDto"];
             description?: string;
             id: string;
+            objectCode: string;
             sortOrder: number;
             /** @enum {string} */
             state: "READY";
@@ -1162,6 +1163,7 @@ export interface components {
             data: components["schemas"]["DashboardLeaderboardDataDto"];
             description?: string;
             id: string;
+            objectCode: string;
             sortOrder: number;
             /** @enum {string} */
             state: "READY";
@@ -1180,6 +1182,7 @@ export interface components {
             data: components["schemas"]["DashboardMetricDataDto"];
             description?: string;
             id: string;
+            objectCode: string;
             sortOrder: number;
             /** @enum {string} */
             state: "READY";
@@ -1242,6 +1245,7 @@ export interface components {
             data: components["schemas"]["DashboardRecordListDataDto"];
             description?: string;
             id: string;
+            objectCode: string;
             sortOrder: number;
             /** @enum {string} */
             state: "READY";
@@ -1267,6 +1271,7 @@ export interface components {
             data: components["schemas"]["DashboardTrendDataDto"];
             description?: string;
             id: string;
+            objectCode: string;
             sortOrder: number;
             /** @enum {string} */
             state: "READY";
@@ -1279,6 +1284,7 @@ export interface components {
         DashboardUnavailableWidgetDto: {
             description?: string;
             id: string;
+            objectCode: string;
             /** @enum {string} */
             reason?: "AUDIENCE_EXCLUDED" | "OBJECT_UNAVAILABLE" | "OBJECT_ACCESS_DENIED" | "FIELD_HIDDEN" | "QUERY_FAILED";
             sortOrder: number;
