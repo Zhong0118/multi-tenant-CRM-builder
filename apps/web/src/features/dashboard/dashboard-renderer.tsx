@@ -104,10 +104,10 @@ function ReadyWidget({
     case "METRIC":
       return <MetricWidget value={widget.data.value} format={widget.data.format} />;
     case "STATUS_DISTRIBUTION":
-      return <DistributionWidget data={widget.data} />;
+      return <DistributionWidget id={widget.id} title={widget.title} data={widget.data} />;
     case "TREND":
       return widget.data.items.length ? (
-        <TrendChart data={widget.data.items} />
+        <TrendChart title={widget.title} data={widget.data.items} />
       ) : (
         <Empty description="当前范围没有数据" />
       );
@@ -135,11 +135,19 @@ function MetricWidget({
 }
 
 function DistributionWidget({
+  id,
+  title,
   data,
 }: {
+  id: string;
+  title: string;
   data: Extract<DashboardRuntimeWidget, { type: "STATUS_DISTRIBUTION"; state: "READY" }>["data"];
 }) {
   if (!data.items.length) return <Empty description="当前范围没有数据" />;
+
+  if (data.display === "FUNNEL") return <FunnelDistribution title={title} data={data} />;
+  if (data.display === "DONUT") return <DonutDistribution id={id} title={title} data={data} />;
+
   const largest = Math.max(1, ...data.items.map((item) => Math.abs(item.value)));
   return (
     <div className={styles.distributionList} data-display={data.display}>
@@ -160,6 +168,99 @@ function DistributionWidget({
           <strong data-numeric>{formatValue(item.value)}</strong>
         </div>
       ))}
+    </div>
+  );
+}
+
+function FunnelDistribution({
+  title,
+  data,
+}: {
+  title: string;
+  data: Extract<DashboardRuntimeWidget, { type: "STATUS_DISTRIBUTION"; state: "READY" }>["data"];
+}) {
+  const largest = Math.max(1, ...data.items.map((item) => Math.abs(item.value)));
+  return (
+    <ol className={styles.funnelList} aria-label={title}>
+      {data.items.map((item) => (
+        <li
+          key={item.optionKey}
+          className={styles.funnelItem}
+          style={{
+            width: `${Math.max(18, (Math.abs(item.value) / largest) * 100)}%`,
+            backgroundColor: optionColor(item.color),
+          }}
+        >
+          <span>{item.label}</span>
+          <strong data-numeric>{formatValue(item.value)}</strong>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function DonutDistribution({
+  id,
+  title,
+  data,
+}: {
+  id: string;
+  title: string;
+  data: Extract<DashboardRuntimeWidget, { type: "STATUS_DISTRIBUTION"; state: "READY" }>["data"];
+}) {
+  const items = data.items.map((item) => ({ ...item, magnitude: Math.max(0, item.value) }));
+  const total = items.reduce((sum, item) => sum + item.magnitude, 0);
+  if (!total) return <Empty description="当前范围没有数据" />;
+
+  const radius = 42;
+  const circumference = 2 * Math.PI * radius;
+  const titleId = `${id}-donut-title`;
+  const descriptionId = `${id}-donut-description`;
+
+  return (
+    <div className={styles.donutLayout}>
+      <svg
+        className={styles.donutChart}
+        viewBox="0 0 100 100"
+        role="img"
+        aria-label={title}
+        aria-describedby={descriptionId}
+      >
+        <title id={titleId}>{title}</title>
+        <desc id={descriptionId}>
+          {items.map((item) => `${item.label} ${formatValue(item.value)}`).join("，")}
+        </desc>
+        {items.map((item, index) => {
+          const length = (item.magnitude / total) * circumference;
+          const segmentOffset = items.slice(0, index).reduce(
+            (sum, priorItem) => sum + (priorItem.magnitude / total) * circumference,
+            0,
+          );
+          return (
+            <circle
+              key={item.optionKey}
+              cx="50"
+              cy="50"
+              r={radius}
+              fill="none"
+              stroke={optionColor(item.color)}
+              strokeWidth="14"
+              strokeDasharray={`${length} ${circumference - length}`}
+              strokeDashoffset={-segmentOffset}
+              transform="rotate(-90 50 50)"
+            />
+          );
+        })}
+      </svg>
+      <ul className={styles.donutLegend} aria-label={`${title}图例`}>
+        {items.map((item) => (
+          <li key={item.optionKey}>
+            <i style={{ backgroundColor: optionColor(item.color) }} aria-hidden />
+            <span>{item.label}</span>
+            <strong data-numeric>{formatValue(item.value)}</strong>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -199,24 +300,21 @@ function RecordListWidget({
   data,
 }: {
   tenantCode: string;
-  objectCode?: string;
+  objectCode: string;
   data: Extract<DashboardRuntimeWidget, { type: "RECORD_LIST"; state: "READY" }>["data"];
 }) {
   const columns: ColumnsType<(typeof data.items)[number]> = [
     {
       title: "记录",
       key: "title",
-      render: (_, row) =>
-        objectCode ? (
-          <Link
-            className={styles.recordLink}
-            href={`/workspace/${tenantCode}/objects/${objectCode}/${row.id}`}
-          >
-            {row.title}
-          </Link>
-        ) : (
-          row.title
-        ),
+      render: (_, row) => (
+        <Link
+          className={styles.recordLink}
+          href={`/workspace/${tenantCode}/objects/${objectCode}/${row.id}`}
+        >
+          {row.title}
+        </Link>
+      ),
     },
     ...data.fields.map((field) => ({
       title: field.label,
@@ -290,7 +388,7 @@ function optionColor(color: string) {
     ORANGE: "#C66C18",
     RED: "#B42318",
     PURPLE: "#7C3AED",
-  }[color] ?? color;
+  }[color] ?? "#7C8992";
 }
 
 function unavailableReason(

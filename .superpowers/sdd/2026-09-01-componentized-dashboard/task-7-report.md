@@ -35,4 +35,18 @@ GREEN: the same focused test passes after introducing the shared renderer and re
 ## Concerns
 
 - The browser test environment logs JSDOM's existing pseudo-element `getComputedStyle` notice while Ant Table mounts; the focused tests still pass.
-- Runtime result types retain optional `objectCode` for legacy executor/test compatibility, while all current V2 engine/DTO output now provides it. The record-list adapter intentionally renders plain text rather than guessing a route if an old response lacks that metadata.
+- Superseded by the review fix below: Web runtime widgets now require the V2 object binding and never guess a record route.
+
+## Review fix round 1
+
+The runtime renderer now treats every configured status display as a distinct presentation of the same API result: `BAR` remains the compact horizontal list, `FUNNEL` is an ordered trapezoid stage layout sized from each returned value, and `DONUT` is an SVG ring with per-option API colors and a visible legend. Unknown option colors fall back to neutral gray rather than being injected into CSS.
+
+The donut SVG exposes a title, description, accessible name, and its visible legend. Trend charts now have an explicit chart label plus a visually hidden data table containing the configured series title, every returned date, and its value. This preserves the concise visual while giving assistive technology the full result.
+
+Web runtime widget types now require `objectCode` in every ready and unavailable variant, matching the existing V2 parser/DTO boundary. Record links therefore always use the configured object binding; the obsolete plain-text fallback is removed. No API engine, DTO, or generated-contract update was needed in this correction because current V2 runtime parsing already rejected a missing binding.
+
+### Review-fix RED/GREEN and checks
+
+- RED: the new focused UI assertions failed because `FUNNEL`/`DONUT` both rendered the generic bar list and `TREND` had no accessible data table. Parser rejection assertions were already green because the V2 parser was strict.
+- GREEN: focused `workspace-home-view`, `dashboard-builder`, and `dashboard-types` tests pass (19 tests).
+- Web TypeScript check, scoped ESLint, and `git diff --check` pass before the final commit.

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { DashboardRuntime, DashboardRuntimeResult } from "@/features/dashboard/dashboard-types";
@@ -76,6 +76,60 @@ describe("WorkspaceHomeView", () => {
     expect(screen.getByRole("heading", { name: "负责人排行" })).toBeInTheDocument();
     expect(screen.getByText("此组件暂时无法显示")).toBeInTheDocument();
     expect(screen.getByText("查询暂时不可用，请稍后重试。")).toBeInTheDocument();
+  });
+
+  it("renders each ready widget's empty result without inventing values", () => {
+    render(
+      <WorkspaceHomeView
+        tenantCode="northwind"
+        tenantName="百杰"
+        userName="张三"
+        role="TENANT_ADMIN"
+        businessObjects={objects}
+        overview={emptyWidgetOverview}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "空指标" })).toBeInTheDocument();
+    expect(screen.getByText("—")).toBeInTheDocument();
+    expect(screen.getAllByText("当前范围没有数据")).toHaveLength(4);
+  });
+
+  it("renders funnel and donut distributions as distinct accessible displays", () => {
+    render(
+      <WorkspaceHomeView
+        tenantCode="northwind"
+        tenantName="百杰"
+        userName="张三"
+        role="TENANT_ADMIN"
+        businessObjects={objects}
+        overview={distributionOverview}
+      />,
+    );
+
+    expect(screen.getByRole("list", { name: "阶段漏斗" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "阶段环图" })).toBeInTheDocument();
+    expect(screen.getByText("未知颜色").previousElementSibling).toHaveStyle({
+      backgroundColor: "rgb(124, 137, 146)",
+    });
+  });
+
+  it("provides a textual trend-data equivalent alongside the concise chart", () => {
+    render(
+      <WorkspaceHomeView
+        tenantCode="northwind"
+        tenantName="百杰"
+        userName="张三"
+        role="TENANT_ADMIN"
+        businessObjects={objects}
+        overview={readyOverview}
+      />,
+    );
+
+    expect(screen.getByTestId("trend-chart")).toBeInTheDocument();
+    const dataTable = screen.getByRole("table", { name: "每日订单数据" });
+    expect(within(dataTable).getByRole("cell", { name: "2026-08-20" })).toBeInTheDocument();
+    expect(within(dataTable).getByRole("cell", { name: "2" })).toBeInTheDocument();
   });
 
   it("offers administrators configuration while employees see not-enabled guidance", () => {
@@ -205,6 +259,100 @@ const readyOverview = {
   ...runtime,
   state: "READY",
   role: "TENANT_ADMIN",
+} satisfies DashboardRuntimeResult;
+
+const emptyWidgetOverview = {
+  ...readyOverview,
+  widgets: [
+    {
+      id: "empty-metric",
+      type: "METRIC",
+      title: "空指标",
+      objectCode: "orders",
+      width: "QUARTER",
+      sortOrder: 0,
+      state: "READY",
+      data: { value: null },
+    },
+    {
+      id: "empty-distribution",
+      type: "STATUS_DISTRIBUTION",
+      title: "空分布",
+      objectCode: "orders",
+      width: "HALF",
+      sortOrder: 1,
+      state: "READY",
+      data: { display: "BAR", items: [] },
+    },
+    {
+      id: "empty-trend",
+      type: "TREND",
+      title: "空趋势",
+      objectCode: "orders",
+      width: "HALF",
+      sortOrder: 2,
+      state: "READY",
+      data: { items: [] },
+    },
+    {
+      id: "empty-leaderboard",
+      type: "LEADERBOARD",
+      title: "空排行",
+      objectCode: "orders",
+      width: "HALF",
+      sortOrder: 3,
+      state: "READY",
+      data: { items: [] },
+    },
+    {
+      id: "empty-record-list",
+      type: "RECORD_LIST",
+      title: "空记录",
+      objectCode: "orders",
+      width: "FULL",
+      sortOrder: 4,
+      state: "READY",
+      data: { fields: [], items: [] },
+    },
+  ],
+} satisfies DashboardRuntimeResult;
+
+const distributionOverview = {
+  ...readyOverview,
+  widgets: [
+    {
+      id: "funnel",
+      type: "STATUS_DISTRIBUTION",
+      title: "阶段漏斗",
+      objectCode: "orders",
+      width: "HALF",
+      sortOrder: 0,
+      state: "READY",
+      data: {
+        display: "FUNNEL",
+        items: [
+          { optionKey: "open", label: "待处理", color: "BLUE", value: 8 },
+          { optionKey: "done", label: "已完成", color: "GREEN", value: 4 },
+        ],
+      },
+    },
+    {
+      id: "donut",
+      type: "STATUS_DISTRIBUTION",
+      title: "阶段环图",
+      objectCode: "orders",
+      width: "HALF",
+      sortOrder: 1,
+      state: "READY",
+      data: {
+        display: "DONUT",
+        items: [
+          { optionKey: "unknown", label: "未知颜色", color: "BRAND_BLUE", value: 3 },
+          { optionKey: "done", label: "已完成", color: "GREEN", value: 1 },
+        ],
+      },
+    },
+  ],
 } satisfies DashboardRuntimeResult;
 
 function emptyOverview(role: DashboardRuntimeResult["role"]): DashboardRuntimeResult {

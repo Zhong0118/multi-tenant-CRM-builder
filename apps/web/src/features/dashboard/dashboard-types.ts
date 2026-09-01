@@ -138,7 +138,7 @@ export type DashboardRuntimeWidget =
       type: "METRIC";
       title: string;
       description?: string;
-      objectCode?: string;
+      objectCode: string;
       width: DashboardWidgetWidth;
       sortOrder: number;
       state: "READY";
@@ -149,7 +149,7 @@ export type DashboardRuntimeWidget =
       type: "STATUS_DISTRIBUTION";
       title: string;
       description?: string;
-      objectCode?: string;
+      objectCode: string;
       width: DashboardWidgetWidth;
       sortOrder: number;
       state: "READY";
@@ -163,7 +163,7 @@ export type DashboardRuntimeWidget =
       type: "TREND";
       title: string;
       description?: string;
-      objectCode?: string;
+      objectCode: string;
       width: DashboardWidgetWidth;
       sortOrder: number;
       state: "READY";
@@ -174,7 +174,7 @@ export type DashboardRuntimeWidget =
       type: "LEADERBOARD";
       title: string;
       description?: string;
-      objectCode?: string;
+      objectCode: string;
       width: DashboardWidgetWidth;
       sortOrder: number;
       state: "READY";
@@ -185,7 +185,7 @@ export type DashboardRuntimeWidget =
       type: "RECORD_LIST";
       title: string;
       description?: string;
-      objectCode?: string;
+      objectCode: string;
       width: DashboardWidgetWidth;
       sortOrder: number;
       state: "READY";
@@ -207,7 +207,7 @@ export type DashboardRuntimeWidget =
       type: DashboardWidgetType;
       title: string;
       description?: string;
-      objectCode?: string;
+      objectCode: string;
       width: DashboardWidgetWidth;
       sortOrder: number;
       state: "UNAVAILABLE";
