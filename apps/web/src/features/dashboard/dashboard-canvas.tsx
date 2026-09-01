@@ -215,7 +215,7 @@ function WidgetCard({
             onIssue(widget.id, issue.path);
           }}
         >
-          {issue.message}
+          上次校验：{issue.message}
         </button>
       ))}
     </article>

@@ -2,11 +2,30 @@ import { describe, expect, it } from "vitest";
 
 import {
   parseDashboardFilter,
+  parseDashboardConfigurationView,
   parseDashboardOverview,
   parseDashboardRuntime,
 } from "./dashboard-types";
 
 describe("dashboard runtime parsing", () => {
+  it("requires the authoritative tenant timezone in the configuration envelope", () => {
+    expect(
+      parseDashboardConfigurationView({
+        timezone: "Asia/Shanghai",
+        draft: null,
+        activePublication: null,
+        candidates: [],
+        issues: [],
+      } as never),
+    ).toEqual({
+      timezone: "Asia/Shanghai",
+      draft: null,
+      activePublication: null,
+      candidates: [],
+      issues: [],
+    });
+  });
+
   it("keeps field-aware filter mistakes structurally parseable for server issues", () => {
     expect(
       parseDashboardFilter({

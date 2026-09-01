@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -10,6 +16,7 @@ import { DashboardBuilder } from "./dashboard-builder";
 import {
   parseDashboardFilter,
   type DashboardConfigurationView,
+  type DashboardWidgetDraft,
 } from "./dashboard-types";
 
 vi.mock("./dashboard-api", () => ({
@@ -19,6 +26,7 @@ vi.mock("./dashboard-api", () => ({
 }));
 
 const initial = {
+  timezone: "Asia/Shanghai",
   draft: {
     draftVersion: 4,
     draftConfiguration: {
@@ -61,6 +69,12 @@ const initial = {
           fieldKey: "closedAt",
           label: "预计成交日",
           type: "DATE",
+          config: {},
+        },
+        {
+          fieldKey: "signedAt",
+          label: "签约时间",
+          type: "DATETIME",
           config: {},
         },
         {
@@ -284,7 +298,145 @@ describe("DashboardBuilder", () => {
       target: { value: "deals" },
     });
     expect(
-      screen.queryByRole("button", { name: "查看问题 请选择业务表。" }),
+      screen.getByRole("button", { name: "查看问题 请选择业务表。" }),
+    ).toHaveTextContent("上次校验");
+  });
+
+  it("retains another component's last-validation issue across width and title edits", () => {
+    const first = metricWidget("metric-first", "第一个指标", 1);
+    const second = metricWidget("metric-second", "第二个指标", 2);
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        initial={withWidgets(
+          [first, second],
+          [
+            {
+              code: "DASHBOARD_OBJECT_REQUIRED",
+              path: "widgets[1].objectCode",
+              message: "第二个组件仍需选择业务表。",
+            },
+          ],
+        )}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("article", { name: "第一个指标 组件" }));
+    fireEvent.change(screen.getByLabelText("组件标题"), {
+      target: { value: "修改后的第一个指标" },
+    });
+    fireEvent.change(screen.getByLabelText("组件宽度 修改后的第一个指标"), {
+      target: { value: "FULL" },
+    });
+
+    expect(
+      screen.getByRole("button", {
+        name: "查看问题 第二个组件仍需选择业务表。",
+      }),
+    ).toHaveTextContent("上次校验");
+  });
+
+  it("keeps an issue attached to the same component after reorder", () => {
+    const first = metricWidget("metric-first", "第一个指标", 1);
+    const second = metricWidget("metric-second", "第二个指标", 2);
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        initial={withWidgets(
+          [first, second],
+          [
+            {
+              code: "DASHBOARD_OBJECT_REQUIRED",
+              path: "widgets[0].objectCode",
+              message: "第一个组件需重新选择业务表。",
+            },
+          ],
+        )}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "下移组件 第一个指标" }),
+    );
+
+    const firstCard = screen.getByRole("article", { name: "第一个指标 组件" });
+    expect(
+      within(firstCard).getByRole("button", {
+        name: "查看问题 第一个组件需重新选择业务表。",
+      }),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      within(firstCard).getByRole("button", {
+        name: "查看问题 第一个组件需重新选择业务表。",
+      }),
+    );
+    expect(screen.getByLabelText("当前组件")).toHaveValue("第一个指标");
+    expect(screen.getByLabelText("业务表")).toHaveFocus();
+  });
+
+  it("deletes only the removed component's issues", () => {
+    const first = metricWidget("metric-first", "第一个指标", 1);
+    const second = metricWidget("metric-second", "第二个指标", 2);
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        initial={withWidgets(
+          [first, second],
+          [
+            {
+              code: "FIRST_ISSUE",
+              path: "widgets[0].objectCode",
+              message: "删除时一起移除的问题。",
+            },
+            {
+              code: "SECOND_ISSUE",
+              path: "widgets[1].objectCode",
+              message: "另一个组件的问题必须保留。",
+            },
+          ],
+        )}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "删除组件 第一个指标" }),
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "查看问题 删除时一起移除的问题。" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "查看问题 另一个组件的问题必须保留。",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("clears last-validation issues only after a successful preview", async () => {
+    const widget = metricWidget("metric-first", "第一个指标", 1);
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        initial={withWidgets(
+          [widget],
+          [
+            {
+              code: "OLD_ISSUE",
+              path: "widgets[0].objectCode",
+              message: "上次校验的问题。",
+            },
+          ],
+        )}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "预览草稿" }));
+
+    expect(
+      await screen.findByText("已按保存的草稿生成预览。"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "查看问题 上次校验的问题。" }),
     ).not.toBeInTheDocument();
   });
 
@@ -467,6 +619,106 @@ describe("DashboardBuilder", () => {
     );
   });
 
+  it("round-trips DATETIME filters through the persisted tenant timezone", async () => {
+    const widget = {
+      ...metricWidget("metric-datetime", "签约指标", 1),
+      filters: [
+        {
+          fieldKey: "signedAt",
+          operator: "BETWEEN" as const,
+          value: ["2026-09-01T00:30:15.250Z", "2026-09-01T01:30:15.250Z"] as [
+            string,
+            string,
+          ],
+        },
+      ],
+    };
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        initial={withWidgets([widget], [])}
+      />,
+    );
+
+    expect(screen.getByText("租户时区：Asia/Shanghai")).toBeInTheDocument();
+    expect(screen.getByLabelText("筛选值 1 起")).toHaveValue(
+      "2026-09-01T08:30:15.250",
+    );
+    fireEvent.change(screen.getByLabelText("筛选值 1 起"), {
+      target: { value: "2026-09-01T09:15:00.000" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
+
+    await waitFor(() =>
+      expect(saveDashboardDraft).toHaveBeenCalledWith(
+        "northwind",
+        expect.objectContaining({
+          configuration: expect.objectContaining({
+            widgets: [
+              expect.objectContaining({
+                filters: [
+                  expect.objectContaining({
+                    value: [
+                      "2026-09-01T01:15:00.000Z",
+                      "2026-09-01T01:30:15.250Z",
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        }),
+      ),
+    );
+  });
+
+  it("reports catalog drift without blaming the canvas", async () => {
+    vi.mocked(publishDashboardDraft).mockRejectedValue({
+      code: "DASHBOARD_CATALOG_CHANGED",
+      message: "业务表配置已更新",
+      requestId: "request-catalog",
+      status: 409,
+      fieldErrors: {},
+    });
+    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "发布工作台" }));
+
+    expect(
+      await screen.findByText(
+        "业务表配置已更新；请重新载入页面、预览草稿后再发布。",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/修复画布/)).not.toBeInTheDocument();
+  });
+
+  it("preserves local content and reports the server version on publish conflict", async () => {
+    vi.mocked(publishDashboardDraft).mockRejectedValue({
+      code: "DASHBOARD_DRAFT_VERSION_CONFLICT",
+      message: "草稿版本冲突",
+      requestId: "request-conflict",
+      status: 409,
+      fieldErrors: { currentVersion: ["7"] },
+    });
+    const widget = metricWidget("metric-local", "本地保留的指标", 1);
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        initial={withWidgets([widget], [])}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "发布工作台" }));
+
+    expect(
+      await screen.findByText(
+        "草稿版本已变化；本地内容已保留，请重新载入页面后合并并重新预览。",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("服务器草稿版本为 7")).toBeInTheDocument();
+    expect(screen.getAllByText("本地保留的指标")).not.toHaveLength(0);
+  });
+
   it("rejects malformed filter values at the browser boundary", () => {
     expect(() =>
       parseDashboardFilter({
@@ -497,7 +749,7 @@ describe("DashboardBuilder", () => {
     fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
 
     expect(
-      await screen.findByText("保存草稿失败；请修复配置后重试。"),
+      await screen.findByText("保存草稿失败：请修复配置"),
     ).toBeInTheDocument();
     expect(screen.queryByText(/服务器草稿版本/)).not.toBeInTheDocument();
   });
@@ -590,3 +842,35 @@ describe("DashboardBuilder", () => {
     expect(await screen.findByText("服务器草稿版本为 7")).toBeInTheDocument();
   });
 });
+
+function metricWidget(id: string, title: string, sortOrder: number) {
+  return {
+    id,
+    type: "METRIC" as const,
+    title,
+    audience: "ALL" as const,
+    objectCode: "deals",
+    width: "QUARTER" as const,
+    sortOrder,
+    filters: [],
+    aggregation: "COUNT" as const,
+    displayFormat: "NUMBER" as const,
+  };
+}
+
+function withWidgets(
+  widgets: DashboardWidgetDraft[],
+  issues: DashboardConfigurationView["issues"],
+): DashboardConfigurationView {
+  return {
+    ...initial,
+    draft: {
+      ...initial.draft,
+      draftConfiguration: {
+        ...initial.draft.draftConfiguration,
+        widgets,
+      },
+    },
+    issues,
+  };
+}

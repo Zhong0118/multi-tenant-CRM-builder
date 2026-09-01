@@ -1107,6 +1107,7 @@ export interface components {
             candidates: Record<string, never>[];
             draft?: components["schemas"]["DashboardDraftDto"] | null;
             issues: components["schemas"]["DashboardConfigurationIssueDto"][];
+            timezone: string;
         };
         DashboardConfigurationIssueDto: {
             code: string;

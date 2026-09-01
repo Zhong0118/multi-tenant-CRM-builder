@@ -707,9 +707,13 @@
               "$ref": "#/components/schemas/DashboardConfigurationIssueDto"
             },
             "type": "array"
+          },
+          "timezone": {
+            "type": "string"
           }
         },
         "required": [
+          "timezone",
           "candidates",
           "issues"
         ],

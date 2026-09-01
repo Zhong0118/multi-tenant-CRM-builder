@@ -66,6 +66,7 @@ export interface DashboardPublicationSummary {
 }
 
 export interface DashboardConfigurationEnvelope {
+  timezone: string;
   draft: DashboardDefinitionRecord | null;
   activePublication: DashboardPublicationSummary | null;
   candidates: DashboardCatalog;
@@ -97,12 +98,14 @@ export class DashboardsService {
     context: TenantContext,
   ): Promise<DashboardConfigurationEnvelope> {
     assertAdministrator(context);
-    const [draft, activePublication, candidates] = await Promise.all([
+    const [timezone, draft, activePublication, candidates] = await Promise.all([
+      this.loadTenantTimezone(context),
       this.repository.getDefinition(context),
       this.repository.getActivePublication(context),
       this.repository.listPublishedObjects(context),
     ]);
     return {
+      timezone,
       draft,
       activePublication: activePublication
         ? publicationSummary(activePublication)

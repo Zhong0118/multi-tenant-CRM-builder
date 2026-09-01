@@ -18,6 +18,15 @@ const period = {
 };
 
 describe('DashboardsService', () => {
+  it('includes the persisted tenant timezone in the configuration envelope', async () => {
+    const { service, repository } = setup();
+    repository.getTenantTimezone.mockResolvedValue('America/New_York');
+
+    await expect(service.getConfiguration(adminContext())).resolves.toEqual(
+      expect.objectContaining({ timezone: 'America/New_York' }),
+    );
+  });
+
   it('lets an administrator save a structurally valid incomplete draft', async () => {
     const { service, repository } = setup();
 

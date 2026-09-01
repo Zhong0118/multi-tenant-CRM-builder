@@ -211,12 +211,19 @@ describe('dashboard definition v2', () => {
   it.each([
     ['amount', 'EQ', 'ten'],
     ['amount', 'BETWEEN', [1, Number.POSITIVE_INFINITY]],
+    ['amount', 'BETWEEN', [20, 10]],
     ['approved', 'EQ', 'true'],
     ['close_at', 'BETWEEN', ['2026-02-30', '2026-03-01']],
+    ['close_at', 'BETWEEN', ['2026-03-02', '2026-03-01']],
     [
       'closed_at',
       'BETWEEN',
       ['2026-09-01T00:00:00', '2026-09-02T00:00:00.000Z'],
+    ],
+    [
+      'closed_at',
+      'BETWEEN',
+      ['2026-09-02T00:00:00.000Z', '2026-09-01T00:00:00.000Z'],
     ],
     ['close_at', 'PAST_N_DAYS', 0],
     ['close_at', 'NEXT_N_DAYS', 3661],

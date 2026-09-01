@@ -801,7 +801,11 @@ function isValidFilterValue(
         fieldType === 'DATE'
           ? isStandardDate(value)
           : isStandardDateTime(value),
-      )
+      ) &&
+      (fieldType === 'DATE'
+        ? String(filter.value[0]) <= String(filter.value[1])
+        : Date.parse(String(filter.value[0])) <=
+          Date.parse(String(filter.value[1])))
     );
   }
   if (fieldType === 'BOOLEAN') return typeof filter.value === 'boolean';
@@ -817,7 +821,10 @@ function isFiniteNumber(value: unknown): value is number {
 
 function isFiniteNumberRange(value: unknown): boolean {
   return (
-    Array.isArray(value) && value.length === 2 && value.every(isFiniteNumber)
+    Array.isArray(value) &&
+    value.length === 2 &&
+    value.every(isFiniteNumber) &&
+    value[0] <= value[1]
   );
 }
 

@@ -67,3 +67,41 @@ Base reviewed: `bae5a6f`
 - The configured test database endpoint was unavailable/authentication-mismatched for the optional lock probe; the rollback-only probe succeeded against the configured local development database instead.
 - Generated contracts retain their existing generator-native formatting to keep the DTO change reviewable; regeneration is byte-stable.
 - No push or deployment was performed.
+
+## Residual re-review fix round
+
+Base: `8e51ab4`
+
+### Tenant-aware DATETIME ranges and ordering
+
+- The configuration envelope now carries the same validated, persisted tenant IANA timezone used by preview and runtime; OpenAPI and the generated client contract include it.
+- The builder displays `datetime-local` values as tenant wall-clock time and serializes edits back to canonical UTC ISO with milliseconds. The converter uses `Intl.DateTimeFormat` with the explicit tenant zone, validates the wall-clock round trip, and never consults the browser timezone.
+- Focused converter examples cover fixed-offset Shanghai behavior and seasonal New York DST behavior. The inspector labels DATETIME controls with the tenant timezone.
+- Semantic validation now rejects reversed NUMBER/MONEY, DATE, and DATETIME `BETWEEN` ranges at the existing filter value path.
+- RED evidence: the API focused run reported four failures (the missing envelope timezone plus all three reversed ranges); the parser omitted the timezone; and the converter module/builder round-trip expectations failed before implementation.
+
+### Truthful non-field outcomes
+
+- Save, preview, and publish now share code-aware error handling. Catalog drift instructs the administrator to reload and re-preview; draft conflicts preserve local state, surface the server version when present, and give merge/re-preview guidance.
+- Semantic `fieldErrors` still become inline issues. Errors without field paths report the operation and server message instead of claiming the canvas is invalid.
+- RED evidence: focused publish mocks showed the generic canvas message for catalog drift and version conflict before the code-aware branches.
+
+### Stable live issues (R18)
+
+- Initial/server widget issue paths are bound to stable widget IDs and a widget-relative suffix. Rendered paths are materialized against current order, so canvas placement and inspector focus remain correct after reorder.
+- Edits, add, copy, and width changes retain last-validation issues. Deleting a widget removes only its bound issues. Successful preview or publish is the only broad clearing boundary.
+- Inline issues are visibly labelled `上次校验` to make their retained validation provenance explicit.
+- This supersedes the earlier report statement that relevant edits clear stale issues.
+- RED evidence: the focused builder run reported seven failures across retained issues, reorder/delete association, DATETIME round-trip, and truthful catalog/conflict outcomes; all focused builder expectations pass after the stable-ID model and error branches.
+
+### Residual verification
+
+- API dashboard definition/service/DTO: 3 suites, 47 tests passed.
+- Web dashboard builder/API/parser/timezone: 4 files, 30 tests passed.
+- Contracts: 7 tests passed.
+- API, Web, and contracts typechecks passed; contracts declarations rebuilt successfully.
+- Scoped API/Web ESLint and Prettier checks passed.
+- OpenAPI/client generation was repeated and both generated hashes remained unchanged.
+- `git diff --check` passed.
+
+Residual concerns: no broad monorepo, browser, push, or deployment run, per calibration.

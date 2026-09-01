@@ -127,6 +127,7 @@ export interface DashboardConfigurationIssue {
   message: string;
 }
 export interface DashboardConfigurationView {
+  timezone: string;
   draft: DashboardDraft | null;
   activePublication: DashboardPublicationSummary | null;
   candidates: DashboardCandidate[];
@@ -243,6 +244,7 @@ export function parseDashboardConfigurationView(
 ): DashboardConfigurationView {
   const root = object(value);
   return {
+    timezone: text(root.timezone),
     draft: root.draft == null ? null : parseDraft(root.draft),
     activePublication:
       root.activePublication == null

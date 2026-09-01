@@ -23,6 +23,11 @@ import type {
 } from "./dashboard-types";
 import styles from "./dashboard-configuration.module.css";
 
+type TrackedIssue = DashboardConfigurationIssue & {
+  widgetId?: string;
+  widgetPath?: string;
+};
+
 export function DashboardBuilder({
   tenantCode,
   initial,
@@ -49,11 +54,14 @@ export function DashboardBuilder({
   const [preview, setPreview] = useState<DashboardRuntime>();
   const [busy, setBusy] = useState<"save" | "preview" | "publish">();
   const [focusPath, setFocusPath] = useState<string>();
-  const [issues, setIssues] = useState(initial.issues);
+  const [issues, setIssues] = useState<TrackedIssue[]>(() =>
+    bindIssues(initial.issues, initialDefinition.widgets),
+  );
   const dirty = signature(definition) !== savedSignature;
   const selected = definition.widgets.find(
     (widget) => widget.id === selectedId,
   );
+  const visibleIssues = materializeIssues(issues, definition.widgets);
 
   useEffect(() => {
     const beforeUnload = (event: BeforeUnloadEvent) => {
@@ -93,22 +101,11 @@ export function DashboardBuilder({
     };
   }, [dirty]);
 
-  function updateWidgets(next: DashboardWidgetDraft[], editedId?: string) {
+  function updateWidgets(next: DashboardWidgetDraft[]) {
     setDefinition((current) => ({
       ...current,
       widgets: normalizeWidgets(next),
     }));
-    setIssues((current) => {
-      if (!editedId) return [];
-      const index = definition.widgets.findIndex(
-        (widget) => widget.id === editedId,
-      );
-      return index < 0
-        ? current
-        : current.filter(
-            (issue) => !issue.path.startsWith(`widgets[${index}]`),
-          );
-    });
   }
   function select(id: string, path?: string) {
     setSelectedId(id);
@@ -148,19 +145,14 @@ export function DashboardBuilder({
       setSavedSignature(signature(definition));
       setFeedback("草稿已保存，尚未发布。");
     } catch (error) {
-      const apiError = toApiError(error);
-      if (apiError.code === "DASHBOARD_DRAFT_VERSION_CONFLICT") {
-        setServerVersion(currentVersion(apiError.fieldErrors.currentVersion));
-        setFeedback("草稿版本已变化；本地修改已保留，请重新载入后合并。");
-      } else {
-        setFeedback("保存草稿失败；请修复配置后重试。");
-      }
+      handleOperationError("save", toApiError(error));
     } finally {
       setBusy(undefined);
     }
   }
   async function showPreview() {
     setBusy("preview");
+    setServerVersion(undefined);
     try {
       setPreview(
         await previewDashboardDraft(tenantCode, { expectedVersion: version }),
@@ -169,14 +161,14 @@ export function DashboardBuilder({
       setFocusPath(undefined);
       setFeedback("已按保存的草稿生成预览。");
     } catch (error) {
-      showFieldIssues(toApiError(error));
-      setFeedback("无法预览保存的草稿，请检查组件问题。");
+      handleOperationError("preview", toApiError(error));
     } finally {
       setBusy(undefined);
     }
   }
   async function publish() {
     setBusy("publish");
+    setServerVersion(undefined);
     try {
       const publication = await publishDashboardDraft(tenantCode, {
         expectedVersion: version,
@@ -186,25 +178,43 @@ export function DashboardBuilder({
       setFocusPath(undefined);
       setFeedback(`工作台已发布为第 ${publication.number} 版。`);
     } catch (error) {
-      showFieldIssues(toApiError(error));
-      setFeedback("发布被阻止；请修复画布中的问题后重试。");
+      handleOperationError("publish", toApiError(error));
     } finally {
       setBusy(undefined);
     }
   }
 
-  function showFieldIssues(error: ApiError) {
-    const next = issuesFrom(error);
-    if (next.length === 0) return;
+  function handleOperationError(
+    operation: "save" | "preview" | "publish",
+    error: ApiError,
+  ) {
+    if (error.code === "DASHBOARD_CATALOG_CHANGED") {
+      setFeedback("业务表配置已更新；请重新载入页面、预览草稿后再发布。");
+      return;
+    }
+    if (error.code === "DASHBOARD_DRAFT_VERSION_CONFLICT") {
+      setServerVersion(currentVersion(error.fieldErrors.currentVersion));
+      setFeedback(
+        "草稿版本已变化；本地内容已保留，请重新载入页面后合并并重新预览。",
+      );
+      return;
+    }
+    if (showFieldIssues(error)) {
+      setFeedback(`${operationLabel(operation)}失败；请处理标记的配置问题。`);
+      return;
+    }
+    setFeedback(`${operationLabel(operation)}失败：${error.message}`);
+  }
+
+  function showFieldIssues(error: ApiError): boolean {
+    const next = bindIssues(issuesFrom(error), definition.widgets);
+    if (next.length === 0) return false;
     setIssues(next);
-    const first = next.find((issue) => /^widgets\[[0-9]+\]/.test(issue.path));
-    const index = first
-      ? Number(first.path.match(/^widgets\[([0-9]+)\]/)?.[1])
-      : Number.NaN;
-    const widget = Number.isInteger(index)
-      ? definition.widgets[index]
-      : undefined;
-    if (first && widget) select(widget.id, first.path);
+    const first = materializeIssues(next, definition.widgets).find(
+      (issue) => issue.widgetId,
+    );
+    if (first?.widgetId) select(first.widgetId, first.path);
+    return true;
   }
 
   return (
@@ -266,13 +276,16 @@ export function DashboardBuilder({
         <DashboardCanvas
           widgets={definition.widgets}
           selectedId={selectedId}
-          issues={issues}
+          issues={visibleIssues}
           onSelect={(id) => select(id)}
           onIssue={(id, path) => select(id, path)}
           onCopy={copy}
           onDelete={(id) => {
             const next = definition.widgets.filter(
               (widget) => widget.id !== id,
+            );
+            setIssues((current) =>
+              current.filter((issue) => issue.widgetId !== id),
             );
             updateWidgets(next);
             select(next[0]?.id ?? "");
@@ -294,13 +307,13 @@ export function DashboardBuilder({
         <DashboardWidgetInspector
           widget={selected}
           candidates={initial.candidates}
+          tenantTimezone={initial.timezone}
           focusPath={focusPath}
           onChange={(next) =>
             updateWidgets(
               definition.widgets.map((widget) =>
                 widget.id === next.id ? next : widget,
               ),
-              next.id,
             )
           }
         />
@@ -414,6 +427,35 @@ function issuesFrom(error: ApiError): DashboardConfigurationIssue[] {
   return Object.entries(error.fieldErrors).flatMap(([path, messages]) =>
     messages.map((message) => ({ code: error.code, path, message })),
   );
+}
+function bindIssues(
+  issues: DashboardConfigurationIssue[],
+  widgets: DashboardWidgetDraft[],
+): TrackedIssue[] {
+  return issues.map((issue) => {
+    const match = issue.path.match(/^widgets\[([0-9]+)\](.*)$/);
+    const widget = match ? widgets[Number(match[1])] : undefined;
+    return widget && match
+      ? { ...issue, widgetId: widget.id, widgetPath: match[2] }
+      : issue;
+  });
+}
+function materializeIssues(
+  issues: TrackedIssue[],
+  widgets: DashboardWidgetDraft[],
+): TrackedIssue[] {
+  return issues.flatMap((issue) => {
+    if (!issue.widgetId) return [issue];
+    const index = widgets.findIndex((widget) => widget.id === issue.widgetId);
+    return index < 0
+      ? []
+      : [{ ...issue, path: `widgets[${index}]${issue.widgetPath ?? ""}` }];
+  });
+}
+function operationLabel(operation: "save" | "preview" | "publish") {
+  return { save: "保存草稿", preview: "预览草稿", publish: "发布工作台" }[
+    operation
+  ];
 }
 function kind(type: DashboardWidgetType) {
   return {

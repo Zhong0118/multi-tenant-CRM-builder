@@ -8,16 +8,22 @@ import type {
   DashboardFilter,
   DashboardWidgetDraft,
 } from "./dashboard-types";
+import {
+  datetimeLocalToUtcIso,
+  utcIsoToDatetimeLocal,
+} from "./dashboard-timezone";
 import styles from "./dashboard-configuration.module.css";
 
 export function DashboardWidgetInspector({
   widget,
   candidates,
+  tenantTimezone,
   focusPath,
   onChange,
 }: {
   widget?: DashboardWidgetDraft;
   candidates: DashboardCandidate[];
+  tenantTimezone: string;
   focusPath?: string;
   onChange: (widget: DashboardWidgetDraft) => void;
 }) {
@@ -118,7 +124,12 @@ export function DashboardWidgetInspector({
         />
       </label>
       <WidgetControls widget={widget} fields={fields} onChange={onChange} />
-      <FilterControls widget={widget} fields={fields} onChange={onChange} />
+      <FilterControls
+        widget={widget}
+        fields={fields}
+        tenantTimezone={tenantTimezone}
+        onChange={onChange}
+      />
     </aside>
   );
 }
@@ -451,10 +462,12 @@ function BoundedInput({
 function FilterControls({
   widget,
   fields,
+  tenantTimezone,
   onChange,
 }: {
   widget: DashboardWidgetDraft;
   fields: DashboardCandidateField[];
+  tenantTimezone: string;
   onChange: (widget: DashboardWidgetDraft) => void;
 }) {
   const filters = widget.filters;
@@ -525,6 +538,7 @@ function FilterControls({
             filter={filter}
             field={fields.find((field) => field.fieldKey === filter.fieldKey)}
             index={index}
+            tenantTimezone={tenantTimezone}
             onChange={(next) => replaceFilter(filters, index, next, change)}
           />
           <button
@@ -544,11 +558,13 @@ function FilterValueControl({
   filter,
   field,
   index,
+  tenantTimezone,
   onChange,
 }: {
   filter: DashboardFilter;
   field?: DashboardCandidateField;
   index: number;
+  tenantTimezone: string;
   onChange: (filter: DashboardFilter) => void;
 }) {
   const label = `筛选值 ${index + 1}`;
@@ -604,27 +620,42 @@ function FilterValueControl({
       ? filter.value
       : defaultBetween(field?.type);
     const type = inputType(field?.type);
+    const inputValues =
+      field?.type === "DATETIME"
+        ? values.map((value) => datetimeInputValue(value, tenantTimezone))
+        : values.map(String);
     return (
       <>
+        {field?.type === "DATETIME" ? (
+          <span>租户时区：{tenantTimezone}</span>
+        ) : null}
         <input
           aria-label={`${label} 起`}
           type={type}
-          value={String(values[0])}
+          step={field?.type === "DATETIME" ? "0.001" : undefined}
+          value={inputValues[0]}
           onChange={(event) =>
             onChange({
               ...filter,
-              value: [coerceValue(event.target.value, field?.type), values[1]],
+              value: [
+                coerceValue(event.target.value, field?.type, tenantTimezone),
+                values[1],
+              ],
             })
           }
         />
         <input
           aria-label={`${label} 止`}
           type={type}
-          value={String(values[1])}
+          step={field?.type === "DATETIME" ? "0.001" : undefined}
+          value={inputValues[1]}
           onChange={(event) =>
             onChange({
               ...filter,
-              value: [values[0], coerceValue(event.target.value, field?.type)],
+              value: [
+                values[0],
+                coerceValue(event.target.value, field?.type, tenantTimezone),
+              ],
             })
           }
         />
@@ -667,7 +698,7 @@ function FilterValueControl({
       onChange={(event) =>
         onChange({
           ...filter,
-          value: coerceValue(event.target.value, field?.type),
+          value: coerceValue(event.target.value, field?.type, tenantTimezone),
         })
       }
     />
@@ -735,9 +766,26 @@ function inputType(type?: string) {
   if (type === "DATETIME") return "datetime-local";
   return "text";
 }
-function coerceValue(value: string, type?: string): string | number {
+function coerceValue(
+  value: string,
+  type: string | undefined,
+  tenantTimezone: string,
+): string | number {
   if (type === "NUMBER" || type === "MONEY") return Number(value) || 0;
+  if (type === "DATETIME")
+    return value ? datetimeLocalToUtcIso(value, tenantTimezone) : "";
   return value;
+}
+function datetimeInputValue(
+  value: string | number,
+  tenantTimezone: string,
+): string {
+  if (typeof value !== "string" || !value) return "";
+  try {
+    return utcIsoToDatetimeLocal(value, tenantTimezone);
+  } catch {
+    return "";
+  }
 }
 function needsValue(operator: DashboardFilter["operator"]) {
   return ![

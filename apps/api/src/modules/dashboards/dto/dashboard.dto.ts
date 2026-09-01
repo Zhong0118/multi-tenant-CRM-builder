@@ -40,6 +40,8 @@ export class DashboardPublicationSummaryDto {
 }
 
 export class DashboardConfigurationEnvelopeDto {
+  @ApiProperty() timezone!: string;
+
   @ApiPropertyOptional({ type: DashboardDraftDto, nullable: true })
   draft!: DashboardDraftDto | null;
 
