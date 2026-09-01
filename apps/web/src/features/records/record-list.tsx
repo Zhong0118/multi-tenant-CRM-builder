@@ -35,6 +35,7 @@ import type { DynamicFieldMember } from "./dynamic-field";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
 import { toApiError } from "@/lib/api/api-error";
 import {
+  DEFAULT_RECORD_QUERY,
   recordQuerySearch,
   withFilter,
   type RecordQuery,
@@ -73,6 +74,11 @@ export function RecordList({
   const router = useRouter();
   const objectCode = schema.object.code;
   const listPath = `/workspace/${tenantCode}/objects/${objectCode}`;
+  const queryDefaults: RecordQuery = {
+    ...DEFAULT_RECORD_QUERY,
+    sort: schema.defaultView.sort.field,
+    direction: schema.defaultView.sort.direction,
+  };
   const go = navigate ?? ((path: string) => router.replace(path));
   const [searchInput, setSearchInput] = useState(query.search ?? "");
   const [error, setError] = useState<string>();
@@ -99,7 +105,7 @@ export function RecordList({
   });
 
   function apply(next: RecordQuery) {
-    const search = recordQuerySearch(next);
+    const search = recordQuerySearch(next, queryDefaults);
     go(search === "" ? listPath : `${listPath}?${search}`);
   }
 
@@ -113,7 +119,7 @@ export function RecordList({
   }
 
   function recordPath(recordId: string, mode?: "edit") {
-    const params = new URLSearchParams(recordQuerySearch(query));
+    const params = new URLSearchParams(recordQuerySearch(query, queryDefaults));
     if (mode) params.set("mode", mode);
     const search = params.toString();
     return `${listPath}/${recordId}${search ? `?${search}` : ""}`;
@@ -268,7 +274,16 @@ export function RecordList({
     sorter,
     extra,
   ) => {
-    if (extra.action !== "sort" || Array.isArray(sorter) || !sorter.order) {
+    if (extra.action !== "sort" || Array.isArray(sorter)) {
+      return;
+    }
+    if (!sorter.order) {
+      apply({
+        ...query,
+        page: 1,
+        sort: schema.defaultView.sort.field,
+        direction: schema.defaultView.sort.direction,
+      });
       return;
     }
     const sort = sorter.columnKey;

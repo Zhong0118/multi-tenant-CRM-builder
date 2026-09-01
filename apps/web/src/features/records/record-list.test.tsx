@@ -165,6 +165,23 @@ describe("RecordList table sorting", () => {
     expect(screen.queryByLabelText("排序方向")).not.toBeInTheDocument();
   });
 
+  it("restores the published default after clearing a descending column sort", async () => {
+    const navigate = vi.fn();
+    renderList(navigate, {
+      ...DEFAULT_RECORD_QUERY,
+      sort: "recordNo",
+      direction: "desc",
+    });
+
+    fireEvent.click(screen.getByRole("columnheader", { name: /业务编号/ }));
+
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith(
+        "/workspace/northwind/objects/customers",
+      ),
+    );
+  });
+
   it("keeps all three compact actions discoverable when delete is not permitted", () => {
     renderList(vi.fn());
 
