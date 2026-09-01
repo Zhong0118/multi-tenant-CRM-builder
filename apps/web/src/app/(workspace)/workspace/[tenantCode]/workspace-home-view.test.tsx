@@ -114,6 +114,33 @@ describe("WorkspaceHomeView", () => {
     });
   });
 
+  it("renders zero and negative distribution values without presenting them as positive shares", () => {
+    const { container } = render(
+      <WorkspaceHomeView
+        tenantCode="northwind"
+        tenantName="百杰"
+        userName="张三"
+        role="TENANT_ADMIN"
+        businessObjects={objects}
+        overview={signedDistributionOverview}
+      />,
+    );
+
+    expect(screen.getAllByText("零值")).toHaveLength(2);
+    expect(screen.getAllByText("-4")).toHaveLength(3);
+    expect(
+      container.querySelector('[data-distribution-mark][data-direction="zero"]'),
+    ).toHaveStyle({ width: "0%" });
+    expect(
+      container.querySelector('[data-funnel-stage][data-direction="zero"]'),
+    ).toHaveStyle({ width: "0%" });
+    expect(screen.getByLabelText("负向阶段：-4，负值")).toBeInTheDocument();
+    expect(screen.getByText("存在负值，无法按整体比例展示。")).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "含负值环图" })).not.toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "全零环图" })).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "全零环图数值" })).toHaveTextContent("零值0");
+  });
+
   it("provides a textual trend-data equivalent alongside the concise chart", () => {
     render(
       <WorkspaceHomeView
@@ -350,6 +377,75 @@ const distributionOverview = {
           { optionKey: "unknown", label: "未知颜色", color: "BRAND_BLUE", value: 3 },
           { optionKey: "done", label: "已完成", color: "GREEN", value: 1 },
         ],
+      },
+    },
+  ],
+} satisfies DashboardRuntimeResult;
+
+const signedDistributionOverview = {
+  ...readyOverview,
+  widgets: [
+    {
+      id: "signed-bar",
+      type: "STATUS_DISTRIBUTION",
+      title: "带符号条形",
+      objectCode: "orders",
+      width: "HALF",
+      sortOrder: 0,
+      state: "READY",
+      data: {
+        display: "BAR",
+        items: [
+          { optionKey: "positive", label: "正值", color: "GREEN", value: 8 },
+          { optionKey: "zero", label: "零值", color: "GRAY", value: 0 },
+          { optionKey: "negative", label: "负值", color: "RED", value: -4 },
+        ],
+      },
+    },
+    {
+      id: "signed-funnel",
+      type: "STATUS_DISTRIBUTION",
+      title: "带符号漏斗",
+      objectCode: "orders",
+      width: "HALF",
+      sortOrder: 1,
+      state: "READY",
+      data: {
+        display: "FUNNEL",
+        items: [
+          { optionKey: "positive", label: "正向阶段", color: "GREEN", value: 8 },
+          { optionKey: "zero", label: "零值阶段", color: "GRAY", value: 0 },
+          { optionKey: "negative", label: "负向阶段", color: "RED", value: -4 },
+        ],
+      },
+    },
+    {
+      id: "negative-donut",
+      type: "STATUS_DISTRIBUTION",
+      title: "含负值环图",
+      objectCode: "orders",
+      width: "HALF",
+      sortOrder: 2,
+      state: "READY",
+      data: {
+        display: "DONUT",
+        items: [
+          { optionKey: "positive", label: "正值", color: "GREEN", value: 8 },
+          { optionKey: "negative", label: "负值", color: "RED", value: -4 },
+        ],
+      },
+    },
+    {
+      id: "zero-donut",
+      type: "STATUS_DISTRIBUTION",
+      title: "全零环图",
+      objectCode: "orders",
+      width: "HALF",
+      sortOrder: 3,
+      state: "READY",
+      data: {
+        display: "DONUT",
+        items: [{ optionKey: "zero", label: "零值", color: "GRAY", value: 0 }],
       },
     },
   ],

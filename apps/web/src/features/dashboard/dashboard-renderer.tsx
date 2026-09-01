@@ -151,23 +151,40 @@ function DistributionWidget({
   const largest = Math.max(1, ...data.items.map((item) => Math.abs(item.value)));
   return (
     <div className={styles.distributionList} data-display={data.display}>
-      {data.items.map((item) => (
-        <div key={item.optionKey} className={styles.distributionItem}>
-          <span className={styles.distributionLabel}>
-            <i style={{ backgroundColor: optionColor(item.color) }} aria-hidden />
-            {item.label}
-          </span>
-          <span className={styles.distributionBar} aria-hidden>
-            <span
-              style={{
-                width: `${Math.max(3, (Math.abs(item.value) / largest) * 100)}%`,
-                backgroundColor: optionColor(item.color),
-              }}
-            />
-          </span>
-          <strong data-numeric>{formatValue(item.value)}</strong>
-        </div>
-      ))}
+      {data.items.map((item) => {
+        const direction = valueDirection(item.value);
+        const width = `${(Math.abs(item.value) / largest) * 100}%`;
+        return (
+          <div key={item.optionKey} className={styles.distributionItem} data-direction={direction}>
+            <span className={styles.distributionLabel}>
+              <i style={{ backgroundColor: optionColor(item.color) }} aria-hidden />
+              {item.label}
+            </span>
+            <span className={styles.distributionBar} aria-hidden>
+              <span className={styles.distributionNegative}>
+                {direction === "negative" ? (
+                  <span
+                    data-distribution-mark
+                    data-direction={direction}
+                    style={{ width, backgroundColor: optionColor(item.color) }}
+                  />
+                ) : null}
+              </span>
+              <i className={styles.distributionBaseline} />
+              <span className={styles.distributionPositive}>
+                {direction !== "negative" ? (
+                  <span
+                    data-distribution-mark
+                    data-direction={direction}
+                    style={{ width, backgroundColor: optionColor(item.color) }}
+                  />
+                ) : null}
+              </span>
+            </span>
+            <strong data-numeric>{formatValue(item.value)}</strong>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -182,19 +199,28 @@ function FunnelDistribution({
   const largest = Math.max(1, ...data.items.map((item) => Math.abs(item.value)));
   return (
     <ol className={styles.funnelList} aria-label={title}>
-      {data.items.map((item) => (
-        <li
-          key={item.optionKey}
-          className={styles.funnelItem}
-          style={{
-            width: `${Math.max(18, (Math.abs(item.value) / largest) * 100)}%`,
-            backgroundColor: optionColor(item.color),
-          }}
-        >
-          <span>{item.label}</span>
-          <strong data-numeric>{formatValue(item.value)}</strong>
-        </li>
-      ))}
+      {data.items.map((item) => {
+        const direction = valueDirection(item.value);
+        return (
+          <li
+            key={item.optionKey}
+            className={styles.funnelItem}
+            data-funnel-stage
+            data-direction={direction}
+            aria-label={
+              direction === "negative" ? `${item.label}：${formatValue(item.value)}，负值` : undefined
+            }
+            style={{
+              width: `${(Math.abs(item.value) / largest) * 100}%`,
+              backgroundColor: optionColor(item.color),
+            }}
+          >
+            {direction === "negative" ? <span className={styles.negativeMark} aria-hidden>−</span> : null}
+            <span>{item.label}</span>
+            <strong data-numeric>{formatValue(item.value)}</strong>
+          </li>
+        );
+      })}
     </ol>
   );
 }
@@ -208,9 +234,8 @@ function DonutDistribution({
   title: string;
   data: Extract<DashboardRuntimeWidget, { type: "STATUS_DISTRIBUTION"; state: "READY" }>["data"];
 }) {
-  const items = data.items.map((item) => ({ ...item, magnitude: Math.max(0, item.value) }));
-  const total = items.reduce((sum, item) => sum + item.magnitude, 0);
-  if (!total) return <Empty description="当前范围没有数据" />;
+  const hasNegative = data.items.some((item) => item.value < 0);
+  const total = data.items.reduce((sum, item) => sum + item.value, 0);
 
   const radius = 42;
   const circumference = 2 * Math.PI * radius;
@@ -219,49 +244,78 @@ function DonutDistribution({
 
   return (
     <div className={styles.donutLayout}>
-      <svg
-        className={styles.donutChart}
-        viewBox="0 0 100 100"
-        role="img"
-        aria-label={title}
-        aria-describedby={descriptionId}
-      >
-        <title id={titleId}>{title}</title>
-        <desc id={descriptionId}>
-          {items.map((item) => `${item.label} ${formatValue(item.value)}`).join("，")}
-        </desc>
-        {items.map((item, index) => {
-          const length = (item.magnitude / total) * circumference;
-          const segmentOffset = items.slice(0, index).reduce(
-            (sum, priorItem) => sum + (priorItem.magnitude / total) * circumference,
-            0,
-          );
-          return (
-            <circle
-              key={item.optionKey}
-              cx="50"
-              cy="50"
-              r={radius}
-              fill="none"
-              stroke={optionColor(item.color)}
-              strokeWidth="14"
-              strokeDasharray={`${length} ${circumference - length}`}
-              strokeDashoffset={-segmentOffset}
-              transform="rotate(-90 50 50)"
-            />
-          );
-        })}
-      </svg>
-      <ul className={styles.donutLegend} aria-label={`${title}图例`}>
-        {items.map((item) => (
-          <li key={item.optionKey}>
-            <i style={{ backgroundColor: optionColor(item.color) }} aria-hidden />
-            <span>{item.label}</span>
-            <strong data-numeric>{formatValue(item.value)}</strong>
-          </li>
-        ))}
-      </ul>
+      <div className={styles.donutVisual}>
+        {hasNegative ? (
+          <p className={styles.donutWarning} role="note">存在负值，无法按整体比例展示。</p>
+        ) : (
+          <svg
+            className={styles.donutChart}
+            viewBox="0 0 100 100"
+            role="img"
+            aria-label={title}
+            aria-describedby={descriptionId}
+          >
+            <title id={titleId}>{title}</title>
+            <desc id={descriptionId}>
+              {total === 0 ? "所有配置项的数值均为零。" : "按各项占总数比例显示。"}
+            </desc>
+            {total === 0 ? (
+              <circle
+                cx="50"
+                cy="50"
+                r={radius}
+                fill="none"
+                stroke="#D8E0E5"
+                strokeWidth="14"
+              />
+            ) : (
+              data.items.map((item, index) => {
+                const length = (item.value / total) * circumference;
+                const segmentOffset = data.items.slice(0, index).reduce(
+                  (sum, priorItem) => sum + (priorItem.value / total) * circumference,
+                  0,
+                );
+                return (
+                  <circle
+                    key={item.optionKey}
+                    cx="50"
+                    cy="50"
+                    r={radius}
+                    fill="none"
+                    stroke={optionColor(item.color)}
+                    strokeWidth="14"
+                    strokeDasharray={`${length} ${circumference - length}`}
+                    strokeDashoffset={-segmentOffset}
+                    transform="rotate(-90 50 50)"
+                  />
+                );
+              })
+            )}
+          </svg>
+        )}
+      </div>
+      <DonutLegend title={title} items={data.items} />
     </div>
+  );
+}
+
+function DonutLegend({
+  title,
+  items,
+}: {
+  title: string;
+  items: Extract<DashboardRuntimeWidget, { type: "STATUS_DISTRIBUTION"; state: "READY" }>["data"]["items"];
+}) {
+  return (
+    <ul className={styles.donutLegend} aria-label={`${title}数值`}>
+      {items.map((item) => (
+        <li key={item.optionKey}>
+          <i style={{ backgroundColor: optionColor(item.color) }} aria-hidden />
+          <span>{item.label}</span>
+          <strong data-numeric>{formatValue(item.value)}</strong>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -389,6 +443,12 @@ function optionColor(color: string) {
     RED: "#B42318",
     PURPLE: "#7C3AED",
   }[color] ?? "#7C8992";
+}
+
+function valueDirection(value: number) {
+  if (value < 0) return "negative";
+  if (value > 0) return "positive";
+  return "zero";
 }
 
 function unavailableReason(

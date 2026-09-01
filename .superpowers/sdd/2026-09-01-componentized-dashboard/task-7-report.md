@@ -50,3 +50,11 @@ Web runtime widget types now require `objectCode` in every ready and unavailable
 - RED: the new focused UI assertions failed because `FUNNEL`/`DONUT` both rendered the generic bar list and `TREND` had no accessible data table. Parser rejection assertions were already green because the V2 parser was strict.
 - GREEN: focused `workspace-home-view`, `dashboard-builder`, and `dashboard-types` tests pass (19 tests).
 - Web TypeScript check, scoped ESLint, and `git diff --check` pass before the final commit.
+
+## Review fix round 2 — signed distribution values
+
+The renderer now preserves the engine result when a distribution is zero or negative. `BAR` has a real center baseline: positive magnitude extends right, negative magnitude extends left with a dashed treatment, and a zero mark has exactly zero width. `FUNNEL` uses magnitude for its stage width without a minimum floor; negative stages retain their signed numeric value and an explicit visible/accessibility negative marker, while zero stages have no colored width.
+
+Donut is now limited to valid nonnegative part-to-whole data. Any negative input replaces the ring with `存在负值，无法按整体比例展示。` and the signed numeric option ledger. All-zero data keeps an empty neutral ring plus its zero-valued ledger. The ledger is the sole accessible representation of option values; the SVG describes only the visual state, so values are not announced twice.
+
+RED: the focused workspace rendering test could not find a zero-width distribution mark in the old output. GREEN: the same runtime test passes with normal engine-shaped configured-option fixtures covering positive, zero, and negative BAR/FUNNEL values plus negative and all-zero DONUT cases. Web TypeScript, scoped ESLint, and diff hygiene pass before commit.

@@ -437,16 +437,53 @@
 }
 
 .distributionBar {
-  height: 8px;
-  overflow: hidden;
-  background: #f3f6f8;
-  border-radius: 999px;
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  height: 12px;
+  align-items: center;
 }
 
-.distributionBar span {
+.distributionNegative,
+.distributionPositive {
+  display: flex;
+  height: 8px;
+  background: #f3f6f8;
+}
+
+.distributionNegative {
+  justify-content: flex-end;
+  border-radius: 999px 0 0 999px;
+}
+
+.distributionPositive {
+  justify-content: flex-start;
+  border-radius: 0 999px 999px 0;
+}
+
+.distributionNegative span,
+.distributionPositive span {
   display: block;
   height: 100%;
-  border-radius: inherit;
+}
+
+.distributionNegative span {
+  border-radius: 999px 0 0 999px;
+}
+
+.distributionPositive span {
+  border-radius: 0 999px 999px 0;
+}
+
+.distributionBaseline {
+  width: 1px;
+  height: 12px;
+  background: #7c8992;
+}
+
+.distributionItem[data-direction="negative"] .distributionNegative span {
+  box-sizing: border-box;
+  border: 1px dashed #17232d;
+  opacity: 0.72;
 }
 
 .distributionItem strong {
@@ -466,6 +503,7 @@
 
 .funnelItem {
   display: flex;
+  box-sizing: border-box;
   min-width: 0;
   min-height: 34px;
   gap: 12px;
@@ -482,6 +520,23 @@
   color: inherit;
 }
 
+.funnelItem[data-direction="negative"] {
+  border: 1px dashed #17232d;
+  opacity: 0.82;
+}
+
+.funnelItem[data-direction="zero"] {
+  min-height: 0;
+  padding: 0;
+  color: #17232d;
+  background: transparent !important;
+  clip-path: none;
+}
+
+.negativeMark {
+  font-weight: 700;
+}
+
 .donutLayout {
   display: grid;
   grid-template-columns: minmax(132px, 0.8fr) minmax(0, 1fr);
@@ -492,6 +547,20 @@
 .donutChart {
   width: min(100%, 180px);
   justify-self: center;
+}
+
+.donutVisual {
+  display: grid;
+  min-height: 132px;
+  place-items: center;
+}
+
+.donutWarning {
+  max-width: 180px;
+  margin: 0;
+  color: #8b3024;
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .donutLegend {
