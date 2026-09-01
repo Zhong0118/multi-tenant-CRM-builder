@@ -206,7 +206,7 @@ function WidgetCard({
       </p>
       {issues.map((issue) => (
         <button
-          key={issue.path}
+          key={`${issue.path}:${issue.message}`}
           type="button"
           className={styles.inlineIssue}
           aria-label={`查看问题 ${issue.message}`}

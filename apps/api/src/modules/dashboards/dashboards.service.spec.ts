@@ -38,6 +38,45 @@ describe('DashboardsService', () => {
     );
   });
 
+  it('saves a record-list draft before display fields are selected', async () => {
+    const draft: DashboardDefinitionV2 = {
+      schemaVersion: 2,
+      title: '销售工作台',
+      widgets: [
+        {
+          id: 'records',
+          type: 'RECORD_LIST',
+          title: '最近更新',
+          audience: 'ALL',
+          objectCode: 'opportunities',
+          width: 'FULL',
+          sortOrder: 0,
+          filters: [],
+          fieldKeys: [],
+          sort: { field: 'updatedAt', direction: 'DESC' },
+          limit: 8,
+        },
+      ],
+    };
+    const { service, repository } = setup({ draft });
+
+    await expect(
+      service.saveDraft(adminContext(), {
+        expectedVersion: 1,
+        configuration: draft,
+      }),
+    ).resolves.toMatchObject({ draftVersion: 2 });
+
+    expect(repository.saveDraft).toHaveBeenCalledWith(
+      adminContext(),
+      1,
+      expect.objectContaining({
+        widgets: [expect.objectContaining({ fieldKeys: [] })],
+      }),
+      { requestId: 'req_unknown' },
+    );
+  });
+
   it('rejects an employee attempting to save a draft', async () => {
     const { service } = setup();
 
@@ -99,6 +138,18 @@ describe('DashboardsService', () => {
     expect(repository.getActivePublication).not.toHaveBeenCalled();
   });
 
+  it('reports a catalog change separately from a dashboard draft conflict', async () => {
+    const { service, repository } = setup();
+    repository.publishDraft.mockResolvedValue({ kind: 'CATALOG_CHANGED' });
+
+    await expect(
+      service.publish(adminContext(), { expectedVersion: 1 }),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: 'DASHBOARD_CATALOG_CHANGED',
+    });
+  });
+
   it('evaluates the saved draft in administrator preview mode with diagnostics', async () => {
     const { service, engine } = setup();
     const preview = runtimeResult('UNAVAILABLE');
@@ -119,6 +170,43 @@ describe('DashboardsService', () => {
     expect(evaluation?.publication).toMatchObject({ schemaVersion: 2 });
   });
 
+  it('uses the persisted tenant timezone for preview instead of a browser-supplied zone', async () => {
+    const { service, repository, engine } = setup();
+    repository.getTenantTimezone.mockResolvedValue('America/New_York');
+    engine.evaluate.mockResolvedValue(runtimeResult('READY'));
+    const browserPeriod = { ...period, timezone: 'Europe/London' };
+
+    await service.preview(adminContext(), {
+      expectedVersion: 1,
+      period: browserPeriod,
+    });
+
+    const evaluation = engine.evaluate.mock.calls[0]?.[0];
+    expect(evaluation?.period.timezone).toBe('America/New_York');
+  });
+
+  it('rejects an invalid field-aware filter value with its configuration path before query execution', async () => {
+    const draft = completeDraft();
+    draft.widgets[0] = {
+      ...draft.widgets[0],
+      filters: [{ fieldKey: 'name', operator: 'CONTAINS', value: '   ' }],
+    };
+    const { service, engine } = setup({ draft });
+
+    await expect(
+      service.preview(adminContext(), {
+        expectedVersion: 1,
+        period,
+      }),
+    ).rejects.toMatchObject({
+      code: 'VALIDATION_FAILED',
+      fieldErrors: {
+        'widgets[0].filters[0].value': [expect.any(String)],
+      },
+    });
+    expect(engine.evaluate).not.toHaveBeenCalled();
+  });
+
   it('returns an unconfigured overview when no active publication exists', async () => {
     const { service, repository, engine } = setup();
     repository.getActivePublication.mockResolvedValue(null);
@@ -131,6 +219,33 @@ describe('DashboardsService', () => {
       }),
     );
     expect(engine.evaluate.mock.calls).toHaveLength(0);
+  });
+
+  it('reports the persisted tenant timezone in an unconfigured overview', async () => {
+    const { service, repository } = setup();
+    repository.getActivePublication.mockResolvedValue(null);
+    repository.getTenantTimezone.mockResolvedValue('America/New_York');
+    const browserPeriod = { ...period, timezone: 'Europe/London' };
+
+    await expect(
+      service.getOverview(adminContext(), browserPeriod),
+    ).resolves.toMatchObject({
+      period: { timezone: 'America/New_York' },
+    });
+  });
+
+  it('fails visibly when the persisted tenant timezone is invalid', async () => {
+    const { service, repository, engine } = setup();
+    repository.getTenantTimezone.mockResolvedValue('Mars/Olympus');
+
+    await expect(
+      service.getOverview(adminContext(), period),
+    ).rejects.toMatchObject({
+      code: 'INTERNAL_ERROR',
+      status: 500,
+      message: '租户时区配置无效，请联系平台管理员。',
+    });
+    expect(engine.evaluate).not.toHaveBeenCalled();
   });
 
   it('evaluates the active publication rather than the current draft', async () => {
@@ -179,11 +294,15 @@ function setup(input: { draft?: DashboardDefinitionV2 } = {}) {
       sourceTemplateVersionId: null,
       updatedAt: '2026-09-01T00:00:00.000Z',
     }),
-    publishDraft: jest.fn().mockResolvedValue(publication('published-3')),
+    publishDraft: jest.fn().mockResolvedValue({
+      kind: 'PUBLISHED',
+      publication: publication('published-3'),
+    }),
     getActivePublication: jest
       .fn()
       .mockResolvedValue(publication('published-2')),
     listPublishedObjects: jest.fn().mockResolvedValue([publishedOpportunity()]),
+    getTenantTimezone: jest.fn().mockResolvedValue('Asia/Shanghai'),
   };
   const engine = {
     evaluate: jest.fn<

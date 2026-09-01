@@ -39,6 +39,7 @@ export interface DashboardQueryPlan {
   period: DashboardPeriod;
   ownerMemberId?: string;
   visibleFieldKeys: string[];
+  canReadTitle: boolean;
 }
 
 export interface DashboardQueryExecutor {
@@ -113,6 +114,10 @@ export class DashboardEngine {
         period: input.period,
         ownerMemberId,
         visibleFieldKeys: projection,
+        canReadTitle: isFieldVisible(
+          resolved.access,
+          resolved.schema.object.titleFieldKey,
+        ),
       });
     }
 

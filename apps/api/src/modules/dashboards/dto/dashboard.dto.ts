@@ -4,7 +4,6 @@ import {
   IsInt,
   IsObject,
   IsOptional,
-  IsString,
   Max,
   Min,
   ValidateNested,
@@ -72,7 +71,7 @@ export class PublishDashboardDto {
   expectedVersion!: number;
 }
 
-export class DashboardPeriodDto {
+export class DashboardPeriodInputDto {
   @ApiProperty({ format: 'date-time' })
   @IsDateString({ strict: true })
   from!: string;
@@ -80,9 +79,16 @@ export class DashboardPeriodDto {
   @ApiProperty({ format: 'date-time' })
   @IsDateString({ strict: true })
   to!: string;
+}
+
+export class DashboardPeriodDto {
+  @ApiProperty({ format: 'date-time' })
+  from!: string;
+
+  @ApiProperty({ format: 'date-time' })
+  to!: string;
 
   @ApiProperty()
-  @IsString()
   timezone!: string;
 }
 
@@ -92,10 +98,10 @@ export class PreviewDashboardDto {
   @Min(1)
   expectedVersion!: number;
 
-  @ApiProperty({ type: DashboardPeriodDto })
+  @ApiProperty({ type: DashboardPeriodInputDto })
   @ValidateNested()
-  @Type(() => DashboardPeriodDto)
-  period!: DashboardPeriodDto;
+  @Type(() => DashboardPeriodInputDto)
+  period!: DashboardPeriodInputDto;
 }
 
 export class DashboardOverviewQueryDto {

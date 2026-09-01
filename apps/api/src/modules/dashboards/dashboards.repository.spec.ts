@@ -114,7 +114,10 @@ describe('PrismaDashboardRepository persistence boundaries', () => {
         requestId: 'req-dashboard',
         ip: '127.0.0.1',
       }),
-    ).resolves.toMatchObject({ number: 2, sourceDraftVersion: 1 });
+    ).resolves.toMatchObject({
+      kind: 'PUBLISHED',
+      publication: { number: 2, sourceDraftVersion: 1 },
+    });
 
     expect(audit.append.mock.calls).toContainEqual([
       transaction,
@@ -127,6 +130,62 @@ describe('PrismaDashboardRepository persistence boundaries', () => {
         ip: '127.0.0.1',
       }),
     ]);
+  });
+
+  it('returns catalog changed without creating, switching, or auditing when an object binding moved', async () => {
+    const transaction = publicationTransaction();
+    transaction.$queryRaw
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ draftVersion: 1 }])
+      .mockResolvedValueOnce([
+        {
+          code: 'opportunities',
+          status: 'ACTIVE',
+          activePublicationId: 'publication-opportunities-v2',
+        },
+      ]);
+    const audit = auditFake();
+    const repository = fixture(transaction, audit);
+
+    await expect(
+      repository.publishDraft(context, 1, compiledPublication(), 'member-1'),
+    ).resolves.toEqual({ kind: 'CATALOG_CHANGED' });
+
+    expect(
+      transaction.tenantDashboardPublication.create,
+    ).not.toHaveBeenCalled();
+    expect(
+      transaction.tenantDashboardConfiguration.update,
+    ).not.toHaveBeenCalled();
+    expect(audit.append).not.toHaveBeenCalled();
+  });
+
+  it('locks current tenant object bindings for share before inserting a publication', async () => {
+    const transaction = publicationTransaction();
+    const repository = fixture(transaction);
+
+    await repository.publishDraft(
+      context,
+      1,
+      compiledPublication(),
+      'member-1',
+    );
+
+    const queryCalls = transaction.$queryRaw.mock.calls as unknown as Array<
+      unknown[]
+    >;
+    const bindingQuery = queryCalls[2]?.[0] as
+      { sql: string; values: unknown[] } | undefined;
+    expect(bindingQuery?.sql).toMatch(
+      /FROM object_definitions[\s\S]*tenant_id = .*::uuid[\s\S]*code IN \([\s\S]*FOR SHARE/,
+    );
+    expect(bindingQuery?.values).toEqual(
+      expect.arrayContaining(['tenant-1', 'opportunities']),
+    );
+    expect(transaction.$queryRaw.mock.invocationCallOrder[2]).toBeLessThan(
+      transaction.tenantDashboardPublication.create.mock
+        .invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
+    );
   });
 
   it('propagates audit rejection instead of reporting a saved draft', async () => {
@@ -180,6 +239,25 @@ describe('PrismaDashboardRepository persistence boundaries', () => {
         configuration: { kind: 'LEGACY', raw: legacy },
       }),
     );
+  });
+
+  it('loads the persisted tenant timezone inside tenant context', async () => {
+    const transaction = {
+      tenant: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ timezone: 'America/New_York' }),
+      },
+    };
+    const repository = fixture(transaction);
+
+    await expect(repository.getTenantTimezone(context)).resolves.toBe(
+      'America/New_York',
+    );
+    expect(transaction.tenant.findUnique).toHaveBeenCalledWith({
+      where: { id: 'tenant-1' },
+      select: { timezone: true },
+    });
   });
 });
 
@@ -402,6 +480,26 @@ describe('PrismaDashboardQueryExecutor', () => {
     );
   });
 
+  it('substitutes recordNo without selecting the hidden bound title', async () => {
+    const queries: Array<{ sql: string; values: unknown[] }> = [];
+    const transaction = {
+      $queryRaw: jest.fn((query: { sql: string; values: unknown[] }) => {
+        queries.push(query);
+        return Promise.resolve([]);
+      }),
+    };
+    const executor = new PrismaDashboardQueryExecutor(runner(transaction));
+    const recordPlan = fiveWidgetPlans().find(
+      (plan) => plan.widget.type === 'RECORD_LIST',
+    );
+    if (!recordPlan) throw new Error('Record plan missing');
+
+    await executor.execute(context, [{ ...recordPlan, canReadTitle: false }]);
+
+    expect(queries[0]?.sql).toMatch(/r\.record_no::text AS title/);
+    expect(queries[0]?.sql).not.toMatch(/\br\.title\b/);
+  });
+
   it('normalizes all five widget results and isolates one rejected query', async () => {
     const transaction = {
       $queryRaw: jest
@@ -486,6 +584,14 @@ function publicationTransaction() {
       queryCount += 1;
       if (queryCount === 1) return Promise.resolve([]);
       if (queryCount === 2) return Promise.resolve([{ draftVersion: 1 }]);
+      if (queryCount === 3)
+        return Promise.resolve([
+          {
+            code: 'opportunities',
+            status: 'ACTIVE',
+            activePublicationId: 'publication-opportunities-v1',
+          },
+        ]);
       return Promise.resolve([{ number: 2 }]);
     }),
     tenantDashboardPublication: {
@@ -510,7 +616,11 @@ function compiledPublication(): PublishedDashboardDefinitionV2 {
     schemaVersion: 2,
     title: '工作台',
     widgets: [
-      { id: 'metric' },
+      {
+        id: 'metric',
+        objectCode: 'opportunities',
+        objectPublicationId: 'publication-opportunities-v1',
+      },
     ] as unknown as PublishedDashboardDefinitionV2['widgets'],
   };
 }
@@ -553,6 +663,7 @@ function metricPlan(
       timezone: 'Asia/Shanghai',
     },
     visibleFieldKeys: [],
+    canReadTitle: true,
     ...overrides,
   };
 }

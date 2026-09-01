@@ -1209,6 +1209,12 @@ export interface components {
             /** Format: date-time */
             to: string;
         };
+        DashboardPeriodInputDto: {
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+        };
         DashboardPublicationSummaryDto: {
             /** Format: uuid */
             id: string;
@@ -1641,7 +1647,7 @@ export interface components {
         };
         PreviewDashboardDto: {
             expectedVersion: number;
-            period: components["schemas"]["DashboardPeriodDto"];
+            period: components["schemas"]["DashboardPeriodInputDto"];
         };
         PublicationAnalysisResponseDto: {
             blocking: components["schemas"]["PublicationIssueResponseDto"][];

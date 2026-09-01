@@ -40,12 +40,18 @@ export interface DashboardRepository {
     compiled: PublishedDashboardDefinitionV2,
     actorMemberId: string,
     audit: DashboardRequestMeta,
-  ): Promise<DashboardPublicationRecord | null>;
+  ): Promise<DashboardPublishOutcome>;
   getActivePublication(
     context: TenantContext,
   ): Promise<DashboardPublicationRecord | null>;
   listPublishedObjects(context: TenantContext): Promise<DashboardCatalog>;
+  getTenantTimezone(context: TenantContext): Promise<string | null>;
 }
+
+export type DashboardPublishOutcome =
+  | { kind: 'PUBLISHED'; publication: DashboardPublicationRecord }
+  | { kind: 'VERSION_CONFLICT' }
+  | { kind: 'CATALOG_CHANGED' };
 
 export interface DashboardRequestMeta {
   requestId: string;
@@ -132,20 +138,20 @@ export class DashboardsService {
     context: TenantContext,
     input: {
       expectedVersion: number;
-      period: { from: Date; to: Date; timezone: string };
+      period: { from: Date; to: Date };
     },
   ): Promise<DashboardRuntimeResult> {
     assertAdministrator(context);
-    const { draft, catalog } = await this.loadSavedDraft(
-      context,
-      input.expectedVersion,
-    );
+    const [{ draft, catalog }, timezone] = await Promise.all([
+      this.loadSavedDraft(context, input.expectedVersion),
+      this.loadTenantTimezone(context),
+    ]);
     const publication = compileOrReject(draft, catalog);
     return this.engine.evaluate({
       publication,
       catalog,
       context,
-      period: dashboardPeriod(input.period),
+      period: dashboardPeriod({ ...input.period, timezone }),
       preview: true,
     });
   }
@@ -161,23 +167,29 @@ export class DashboardsService {
       input.expectedVersion,
     );
     const compiled = compileOrReject(draft, catalog);
-    const publication = await this.repository.publishDraft(
+    const outcome = await this.repository.publishDraft(
       context,
       input.expectedVersion,
       compiled,
       context.memberId,
       audit,
     );
-    if (!publication) throw versionConflict();
-    return publicationSummary(publication);
+    if (outcome.kind === 'VERSION_CONFLICT') throw versionConflict();
+    if (outcome.kind === 'CATALOG_CHANGED') {
+      throw new ApiException('DASHBOARD_CATALOG_CHANGED', 409);
+    }
+    return publicationSummary(outcome.publication);
   }
 
   async getOverview(
     context: TenantContext,
-    input: { from: Date; to: Date; timezone: string },
+    input: { from: Date; to: Date },
   ): Promise<DashboardOverview> {
-    const period = dashboardPeriod(input);
-    const publication = await this.repository.getActivePublication(context);
+    const [timezone, publication] = await Promise.all([
+      this.loadTenantTimezone(context),
+      this.repository.getActivePublication(context),
+    ]);
+    const period = dashboardPeriod({ ...input, timezone });
     if (!publication) {
       return {
         state: 'UNCONFIGURED',
@@ -215,6 +227,16 @@ export class DashboardsService {
       throw versionConflict(definition?.draftVersion);
     }
     return { draft: definition.draftConfiguration, catalog };
+  }
+
+  private async loadTenantTimezone(context: TenantContext): Promise<string> {
+    const timezone = await this.repository.getTenantTimezone(context);
+    if (!isValidTimeZone(timezone)) {
+      throw new ApiException('INTERNAL_ERROR', 500, {
+        message: '租户时区配置无效，请联系平台管理员。',
+      });
+    }
+    return timezone;
   }
 }
 
@@ -274,6 +296,16 @@ function dashboardPeriod(input: {
     to: input.to.toISOString(),
     timezone: input.timezone,
   };
+}
+
+function isValidTimeZone(value: string | null): value is string {
+  if (!value) return false;
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value }).format(0);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function publicationSummary(

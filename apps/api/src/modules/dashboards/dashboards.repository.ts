@@ -23,6 +23,7 @@ import type {
   StoredDashboardPublicationConfiguration,
 } from './dashboard.types';
 import type {
+  DashboardPublishOutcome,
   DashboardRepository,
   DashboardRequestMeta,
 } from './dashboards.service';
@@ -152,13 +153,18 @@ export class PrismaDashboardRepository implements DashboardRepository {
     compiled: PublishedDashboardDefinitionV2,
     actorMemberId: string,
     audit: DashboardRequestMeta = { requestId: 'req_unknown' },
-  ): Promise<DashboardPublicationRecord | null> {
+  ): Promise<DashboardPublishOutcome> {
     return this.runner.withTenant(context, async (transaction) => {
       const currentVersion = await lockDashboardDefinition(
         transaction,
         context.tenantId,
       );
-      if (currentVersion !== expectedVersion) return null;
+      if (currentVersion !== expectedVersion) {
+        return { kind: 'VERSION_CONFLICT' };
+      }
+      if (!(await lockCurrentObjectBindings(transaction, context, compiled))) {
+        return { kind: 'CATALOG_CHANGED' };
+      }
 
       const numbers = await transaction.$queryRaw<Array<{ number: number }>>`
         SELECT COALESCE(MAX(publication_no), 0)::int + 1 AS number
@@ -193,7 +199,10 @@ export class PrismaDashboardRepository implements DashboardRepository {
         requestId: audit.requestId,
         ip: audit.ip,
       });
-      return publicationRecord(publication);
+      return {
+        kind: 'PUBLISHED',
+        publication: publicationRecord(publication),
+      };
     });
   }
 
@@ -241,6 +250,53 @@ export class PrismaDashboardRepository implements DashboardRepository {
       );
     });
   }
+
+  getTenantTimezone(context: TenantContext): Promise<string | null> {
+    return this.runner.withTenant(context, async (transaction) => {
+      const tenant = await transaction.tenant.findUnique({
+        where: { id: context.tenantId },
+        select: { timezone: true },
+      });
+      return tenant?.timezone ?? null;
+    });
+  }
+}
+
+async function lockCurrentObjectBindings(
+  transaction: Prisma.TransactionClient,
+  context: TenantContext,
+  compiled: PublishedDashboardDefinitionV2,
+): Promise<boolean> {
+  const bindings = new Map<string, string>();
+  for (const widget of compiled.widgets) {
+    const current = bindings.get(widget.objectCode);
+    if (current && current !== widget.objectPublicationId) return false;
+    bindings.set(widget.objectCode, widget.objectPublicationId);
+  }
+  if (bindings.size === 0) return true;
+
+  const locked = await transaction.$queryRaw<
+    Array<{
+      code: string;
+      status: string;
+      activePublicationId: string | null;
+    }>
+  >(Prisma.sql`
+    SELECT
+      code,
+      status::text AS status,
+      active_publication_id::text AS "activePublicationId"
+    FROM object_definitions
+    WHERE tenant_id = ${context.tenantId}::uuid
+      AND code IN (${Prisma.join([...bindings.keys()])})
+    FOR SHARE
+  `);
+  if (locked.length !== bindings.size) return false;
+  return locked.every(
+    (object) =>
+      object.status === 'ACTIVE' &&
+      object.activePublicationId === bindings.get(object.code),
+  );
 }
 
 async function executePlan(
@@ -453,6 +509,9 @@ async function executeRecordList(
 ): Promise<DashboardRecordListWidgetResult> {
   const direction =
     plan.widget.sort.direction === 'ASC' ? Prisma.sql`ASC` : Prisma.sql`DESC`;
+  const title = plan.canReadTitle
+    ? Prisma.sql`r.title`
+    : Prisma.sql`r.record_no::text`;
   const rows = await transaction.$queryRaw<
     Array<{
       id: string;
@@ -467,7 +526,7 @@ async function executeRecordList(
     SELECT
       r.id::text AS id,
       r.record_no::text AS "recordNo",
-      r.title,
+      ${title} AS title,
       r.owner_member_id::text AS "ownerMemberId",
       u.display_name AS "ownerName",
       to_char(

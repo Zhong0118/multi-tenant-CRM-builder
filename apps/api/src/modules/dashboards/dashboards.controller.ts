@@ -27,7 +27,7 @@ import {
   DashboardDraftDto,
   DashboardOverviewDto,
   DashboardOverviewQueryDto,
-  DashboardPeriodDto,
+  DashboardPeriodInputDto,
   DashboardPublicationSummaryDto,
   DashboardRuntimeDto,
   PreviewDashboardDto,
@@ -117,18 +117,17 @@ function overviewPeriod(query: DashboardOverviewQueryDto) {
   const from = query.from
     ? new Date(query.from)
     : new Date(to.getTime() - (query.days ?? 31) * 24 * 60 * 60 * 1000);
-  return checkedPeriod({ from, to, timezone: 'Asia/Shanghai' });
+  return checkedPeriod({ from, to });
 }
 
-function periodFrom(period: DashboardPeriodDto) {
+function periodFrom(period: DashboardPeriodInputDto) {
   return checkedPeriod({
     from: new Date(period.from),
     to: new Date(period.to),
-    timezone: period.timezone,
   });
 }
 
-function checkedPeriod(input: { from: Date; to: Date; timezone: string }) {
+function checkedPeriod(input: { from: Date; to: Date }) {
   if (
     input.from >= input.to ||
     input.to.getTime() - input.from.getTime() > 366 * 24 * 60 * 60 * 1000

@@ -194,6 +194,32 @@ describe('DashboardEngine', () => {
     );
   });
 
+  it('marks a record-list title as unreadable when the bound title field is hidden', async () => {
+    const fixture = setup(
+      [
+        {
+          ...widgetBase('records', 'ALL'),
+          type: 'RECORD_LIST',
+          fieldKeys: ['stage'],
+          sort: { field: 'updatedAt', direction: 'DESC' },
+          limit: 8,
+        },
+      ],
+      { fields: { name: 'HIDDEN' } },
+    );
+
+    await fixture.engine.evaluate({
+      publication: fixture.publication,
+      catalog: fixture.catalog,
+      context: employeeContext(),
+      period,
+    });
+
+    expect(fixture.executor.plans[0]).toEqual(
+      expect.objectContaining({ canReadTitle: false }),
+    );
+  });
+
   it('keeps administrator plans tenant-wide and resolves an object only once', async () => {
     const fixture = setup([metric('first', 'ALL'), metric('second', 'ALL')], {
       readScope: 'OWN',

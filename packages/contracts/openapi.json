@@ -1106,6 +1106,23 @@
         ],
         "type": "object"
       },
+      "DashboardPeriodInputDto": {
+        "properties": {
+          "from": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "to": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ],
+        "type": "object"
+      },
       "DashboardPublicationSummaryDto": {
         "properties": {
           "id": {
@@ -2768,7 +2785,7 @@
             "type": "number"
           },
           "period": {
-            "$ref": "#/components/schemas/DashboardPeriodDto"
+            "$ref": "#/components/schemas/DashboardPeriodInputDto"
           }
         },
         "required": [

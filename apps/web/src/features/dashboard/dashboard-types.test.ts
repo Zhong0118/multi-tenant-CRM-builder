@@ -1,13 +1,35 @@
 import { describe, expect, it } from "vitest";
 
-import { parseDashboardOverview, parseDashboardRuntime } from "./dashboard-types";
+import {
+  parseDashboardFilter,
+  parseDashboardOverview,
+  parseDashboardRuntime,
+} from "./dashboard-types";
 
 describe("dashboard runtime parsing", () => {
+  it("keeps field-aware filter mistakes structurally parseable for server issues", () => {
+    expect(
+      parseDashboardFilter({
+        fieldKey: "closedAt",
+        operator: "PAST_N_DAYS",
+        value: 0,
+      }),
+    ).toEqual({
+      fieldKey: "closedAt",
+      operator: "PAST_N_DAYS",
+      value: 0,
+    });
+  });
+
   it("rejects runtime widgets without required V2 object bindings", () => {
     expect(() =>
       parseDashboardRuntime({
         title: "工作台",
-        period: { from: "2026-08-01T00:00:00.000Z", to: "2026-08-31T00:00:00.000Z", timezone: "Asia/Shanghai" },
+        period: {
+          from: "2026-08-01T00:00:00.000Z",
+          to: "2026-08-31T00:00:00.000Z",
+          timezone: "Asia/Shanghai",
+        },
         widgets: [
           {
             id: "metric",
@@ -27,7 +49,11 @@ describe("dashboard runtime parsing", () => {
     expect(() =>
       parseDashboardOverview({
         title: "工作台",
-        period: { from: "2026-08-01T00:00:00.000Z", to: "2026-08-31T00:00:00.000Z", timezone: "Asia/Shanghai" },
+        period: {
+          from: "2026-08-01T00:00:00.000Z",
+          to: "2026-08-31T00:00:00.000Z",
+          timezone: "Asia/Shanghai",
+        },
         widgets: [],
         state: "NEEDS_REPAIR",
         role: "TENANT_ADMIN",

@@ -130,11 +130,12 @@ describe("DashboardBuilder", () => {
     expect(screen.getByLabelText("当前组件")).toHaveValue("指标卡 1");
   });
 
-  it("saves the local V2 draft with its server version and only then enables publishing", async () => {
+  it("publishes an existing saved draft after reload and disables publishing only while dirty", async () => {
     render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
 
-    expect(screen.getByRole("button", { name: "发布工作台" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "发布工作台" })).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
+    expect(screen.getByRole("button", { name: "发布工作台" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
 
     await waitFor(() =>
@@ -147,6 +148,77 @@ describe("DashboardBuilder", () => {
       }),
     );
     expect(screen.getByRole("button", { name: "发布工作台" })).toBeEnabled();
+  });
+
+  it("never duplicates component IDs after delete-then-add", async () => {
+    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
+    fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
+    fireEvent.click(screen.getByRole("button", { name: "删除组件 指标卡 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
+
+    await waitFor(() => expect(saveDashboardDraft).toHaveBeenCalled());
+    const saved = vi
+      .mocked(saveDashboardDraft)
+      .mock.calls.at(-1)?.[1].configuration;
+    const ids = saved?.widgets.map((widget) => widget.id) ?? [];
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("never duplicates a copied component ID when count-based IDs already have gaps", async () => {
+    const widgets = [
+      {
+        id: "metric-1",
+        type: "METRIC" as const,
+        title: "指标卡 1",
+        audience: "ALL" as const,
+        objectCode: "deals",
+        width: "QUARTER" as const,
+        sortOrder: 1,
+        filters: [],
+        aggregation: "COUNT" as const,
+        displayFormat: "NUMBER" as const,
+      },
+      {
+        id: "metric-3",
+        type: "METRIC" as const,
+        title: "指标卡 3",
+        audience: "ALL" as const,
+        objectCode: "deals",
+        width: "QUARTER" as const,
+        sortOrder: 2,
+        filters: [],
+        aggregation: "COUNT" as const,
+        displayFormat: "NUMBER" as const,
+      },
+    ];
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        initial={{
+          ...initial,
+          draft: {
+            ...initial.draft,
+            draftConfiguration: {
+              ...initial.draft.draftConfiguration,
+              widgets,
+            },
+          },
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "复制组件 指标卡 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
+
+    await waitFor(() => expect(saveDashboardDraft).toHaveBeenCalled());
+    const saved = vi
+      .mocked(saveDashboardDraft)
+      .mock.calls.at(-1)?.[1].configuration;
+    const ids = saved?.widgets.map((widget) => widget.id) ?? [];
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   it("updates the active publication indicator immediately after publishing", async () => {
@@ -207,6 +279,96 @@ describe("DashboardBuilder", () => {
 
     expect(screen.getByLabelText("当前组件")).toHaveValue("本月商机");
     expect(screen.getByLabelText("业务表")).toHaveFocus();
+
+    fireEvent.change(screen.getByLabelText("业务表"), {
+      target: { value: "deals" },
+    });
+    expect(
+      screen.queryByRole("button", { name: "查看问题 请选择业务表。" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows publish field errors inline, focuses the first blocking control, and clears them on success", async () => {
+    const widget = {
+      id: "metric-existing",
+      type: "METRIC" as const,
+      title: "本月商机",
+      audience: "ALL" as const,
+      objectCode: "deals",
+      width: "QUARTER" as const,
+      sortOrder: 1,
+      filters: [],
+      aggregation: "COUNT" as const,
+      displayFormat: "NUMBER" as const,
+    };
+    vi.mocked(publishDashboardDraft)
+      .mockRejectedValueOnce({
+        code: "VALIDATION_FAILED",
+        message: "请修复配置",
+        requestId: "request-publish",
+        status: 400,
+        fieldErrors: { "widgets[0].objectCode": ["请选择可用的业务表。"] },
+      })
+      .mockResolvedValueOnce({
+        id: "publication-4",
+        number: 4,
+        sourceDraftVersion: 4,
+        publishedAt: "2026-09-01T02:00:00.000Z",
+      });
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        initial={{
+          ...initial,
+          draft: {
+            ...initial.draft,
+            draftConfiguration: {
+              ...initial.draft.draftConfiguration,
+              widgets: [widget],
+            },
+          },
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "发布工作台" }));
+    expect(
+      await screen.findByRole("button", {
+        name: "查看问题 请选择可用的业务表。",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("当前组件")).toHaveValue("本月商机");
+    expect(screen.getByLabelText("业务表")).toHaveFocus();
+
+    const publishButton = screen.getByText("发布工作台").closest("button");
+    await waitFor(() => expect(publishButton).toBeEnabled());
+    fireEvent.click(publishButton!);
+    expect(
+      await screen.findByText("工作台已发布为第 4 版。"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "查看问题 请选择可用的业务表。",
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("saves a newly added record list before display fields are selected", async () => {
+    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "添加记录列表" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
+
+    await waitFor(() =>
+      expect(saveDashboardDraft).toHaveBeenCalledWith(
+        "northwind",
+        expect.objectContaining({
+          configuration: expect.objectContaining({
+            widgets: [expect.objectContaining({ fieldKeys: [] })],
+          }),
+        }),
+      ),
+    );
   });
 
   it("edits the representative V2 controls, filters, width and keyboard reorder", () => {

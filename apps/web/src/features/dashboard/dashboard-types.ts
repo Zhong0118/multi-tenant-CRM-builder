@@ -155,7 +155,12 @@ export type DashboardRuntimeWidget =
       state: "READY";
       data: {
         display: "FUNNEL" | "BAR" | "DONUT";
-        items: Array<{ optionKey: string; label: string; color: string; value: number }>;
+        items: Array<{
+          optionKey: string;
+          label: string;
+          color: string;
+          value: number;
+        }>;
       };
     }
   | {
@@ -178,7 +183,9 @@ export type DashboardRuntimeWidget =
       width: DashboardWidgetWidth;
       sortOrder: number;
       state: "READY";
-      data: { items: Array<{ memberId: string; displayName: string; value: number }> };
+      data: {
+        items: Array<{ memberId: string; displayName: string; value: number }>;
+      };
     }
   | {
       id: string;
@@ -211,7 +218,12 @@ export type DashboardRuntimeWidget =
       width: DashboardWidgetWidth;
       sortOrder: number;
       state: "UNAVAILABLE";
-      reason?: "AUDIENCE_EXCLUDED" | "OBJECT_UNAVAILABLE" | "OBJECT_ACCESS_DENIED" | "FIELD_HIDDEN" | "QUERY_FAILED";
+      reason?:
+        | "AUDIENCE_EXCLUDED"
+        | "OBJECT_UNAVAILABLE"
+        | "OBJECT_ACCESS_DENIED"
+        | "FIELD_HIDDEN"
+        | "QUERY_FAILED";
     };
 
 export interface DashboardRuntime {
@@ -457,7 +469,7 @@ function validateFilterValueShape(filter: DashboardFilter) {
     return;
   }
   if (filter.operator === "PAST_N_DAYS" || filter.operator === "NEXT_N_DAYS") {
-    if (!Number.isInteger(filter.value) || Number(filter.value) <= 0) invalid();
+    if (typeof filter.value !== "number") invalid();
     return;
   }
   if (filter.operator === "BETWEEN") {
@@ -500,7 +512,10 @@ function parseRuntimeWidget(value: unknown): DashboardRuntimeWidget {
   ] as const);
   const state = one(root.state, ["READY", "UNAVAILABLE"] as const);
   if (state === "UNAVAILABLE") {
-    const unavailable: Extract<DashboardRuntimeWidget, { state: "UNAVAILABLE" }> = {
+    const unavailable: Extract<
+      DashboardRuntimeWidget,
+      { state: "UNAVAILABLE" }
+    > = {
       ...base,
       type,
       state,
@@ -526,7 +541,9 @@ function parseRuntimeWidget(value: unknown): DashboardRuntimeWidget {
         value: data.value === null ? null : num(data.value),
         ...(data.format === undefined
           ? {}
-          : { format: one(data.format, ["NUMBER", "MONEY", "PERCENT"] as const) }),
+          : {
+              format: one(data.format, ["NUMBER", "MONEY", "PERCENT"] as const),
+            }),
       },
     };
   }
@@ -538,7 +555,7 @@ function parseRuntimeWidget(value: unknown): DashboardRuntimeWidget {
       data: {
         display: one(data.display, ["FUNNEL", "BAR", "DONUT"] as const),
         items: array(data.items).map((item) => {
-      const point = object(item);
+          const point = object(item);
           return {
             optionKey: text(point.optionKey),
             label: text(point.label),
@@ -554,10 +571,12 @@ function parseRuntimeWidget(value: unknown): DashboardRuntimeWidget {
       ...base,
       type,
       state,
-      data: { items: array(data.items).map((item) => {
-      const point = object(item);
-        return { date: text(point.date), value: num(point.value) };
-      }) },
+      data: {
+        items: array(data.items).map((item) => {
+          const point = object(item);
+          return { date: text(point.date), value: num(point.value) };
+        }),
+      },
     };
   }
   if (type === "LEADERBOARD") {
@@ -565,14 +584,16 @@ function parseRuntimeWidget(value: unknown): DashboardRuntimeWidget {
       ...base,
       type,
       state,
-      data: { items: array(data.items).map((item) => {
-      const row = object(item);
-        return {
-          memberId: text(row.memberId),
-          displayName: text(row.displayName),
-          value: num(row.value),
-        };
-      }) },
+      data: {
+        items: array(data.items).map((item) => {
+          const row = object(item);
+          return {
+            memberId: text(row.memberId),
+            displayName: text(row.displayName),
+            value: num(row.value),
+          };
+        }),
+      },
     };
   }
   return {

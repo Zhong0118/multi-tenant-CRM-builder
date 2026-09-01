@@ -43,8 +43,6 @@ export async function previewDashboardDraft(
       period: {
         from: from.toISOString(),
         to: to.toISOString(),
-        timezone:
-          Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Shanghai",
       },
     },
   });

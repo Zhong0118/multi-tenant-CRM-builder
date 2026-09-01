@@ -1,9 +1,9 @@
 "use client";
 
 import { Alert, Button } from "antd";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { toApiError } from "@/lib/api/api-error";
+import { toApiError, type ApiError } from "@/lib/api/api-error";
 
 import {
   previewDashboardDraft,
@@ -15,6 +15,7 @@ import { DashboardWidgetInspector } from "./dashboard-widget-inspector";
 import { DashboardWidgetLibrary } from "./dashboard-widget-library";
 import type {
   DashboardConfigurationView,
+  DashboardConfigurationIssue,
   DashboardDefinitionV2,
   DashboardRuntime,
   DashboardWidgetDraft,
@@ -43,17 +44,16 @@ export function DashboardBuilder({
   const [savedSignature, setSavedSignature] = useState(
     signature(initialDefinition),
   );
-  const [savedThisSession, setSavedThisSession] = useState(false);
   const [feedback, setFeedback] = useState<string>();
   const [serverVersion, setServerVersion] = useState<number>();
   const [preview, setPreview] = useState<DashboardRuntime>();
   const [busy, setBusy] = useState<"save" | "preview" | "publish">();
   const [focusPath, setFocusPath] = useState<string>();
+  const [issues, setIssues] = useState(initial.issues);
   const dirty = signature(definition) !== savedSignature;
   const selected = definition.widgets.find(
     (widget) => widget.id === selectedId,
   );
-  const issues = useMemo(() => initial.issues, [initial.issues]);
 
   useEffect(() => {
     const beforeUnload = (event: BeforeUnloadEvent) => {
@@ -93,11 +93,22 @@ export function DashboardBuilder({
     };
   }, [dirty]);
 
-  function updateWidgets(next: DashboardWidgetDraft[]) {
+  function updateWidgets(next: DashboardWidgetDraft[], editedId?: string) {
     setDefinition((current) => ({
       ...current,
       widgets: normalizeWidgets(next),
     }));
+    setIssues((current) => {
+      if (!editedId) return [];
+      const index = definition.widgets.findIndex(
+        (widget) => widget.id === editedId,
+      );
+      return index < 0
+        ? current
+        : current.filter(
+            (issue) => !issue.path.startsWith(`widgets[${index}]`),
+          );
+    });
   }
   function select(id: string, path?: string) {
     setSelectedId(id);
@@ -118,7 +129,7 @@ export function DashboardBuilder({
         .length + 1;
     const clone = {
       ...source,
-      id: `${kind(source.type)}-${ordinal}`,
+      id: widgetId(source.type),
       title: `${label(source.type)} ${ordinal}`,
     };
     updateWidgets([...definition.widgets, clone]);
@@ -135,7 +146,6 @@ export function DashboardBuilder({
       });
       setVersion(saved.draftVersion);
       setSavedSignature(signature(definition));
-      setSavedThisSession(true);
       setFeedback("草稿已保存，尚未发布。");
     } catch (error) {
       const apiError = toApiError(error);
@@ -155,8 +165,11 @@ export function DashboardBuilder({
       setPreview(
         await previewDashboardDraft(tenantCode, { expectedVersion: version }),
       );
+      setIssues([]);
+      setFocusPath(undefined);
       setFeedback("已按保存的草稿生成预览。");
-    } catch {
+    } catch (error) {
+      showFieldIssues(toApiError(error));
       setFeedback("无法预览保存的草稿，请检查组件问题。");
     } finally {
       setBusy(undefined);
@@ -169,13 +182,29 @@ export function DashboardBuilder({
         expectedVersion: version,
       });
       setActivePublication(publication);
-      setSavedThisSession(true);
+      setIssues([]);
+      setFocusPath(undefined);
       setFeedback(`工作台已发布为第 ${publication.number} 版。`);
-    } catch {
+    } catch (error) {
+      showFieldIssues(toApiError(error));
       setFeedback("发布被阻止；请修复画布中的问题后重试。");
     } finally {
       setBusy(undefined);
     }
+  }
+
+  function showFieldIssues(error: ApiError) {
+    const next = issuesFrom(error);
+    if (next.length === 0) return;
+    setIssues(next);
+    const first = next.find((issue) => /^widgets\[[0-9]+\]/.test(issue.path));
+    const index = first
+      ? Number(first.path.match(/^widgets\[([0-9]+)\]/)?.[1])
+      : Number.NaN;
+    const widget = Number.isInteger(index)
+      ? definition.widgets[index]
+      : undefined;
+    if (first && widget) select(widget.id, first.path);
   }
 
   return (
@@ -207,7 +236,7 @@ export function DashboardBuilder({
           <Button
             type="primary"
             onClick={() => void publish()}
-            disabled={dirty || !savedThisSession || !version}
+            disabled={dirty || !version}
             loading={busy === "publish"}
           >
             发布工作台
@@ -271,6 +300,7 @@ export function DashboardBuilder({
               definition.widgets.map((widget) =>
                 widget.id === next.id ? next : widget,
               ),
+              next.id,
             )
           }
         />
@@ -331,7 +361,7 @@ function createWidget(
   sortOrder: number,
 ): DashboardWidgetDraft {
   const base = {
-    id: `${kind(type)}-${ordinal}`,
+    id: widgetId(type),
     title: `${label(type)} ${ordinal}`,
     audience: "ALL" as const,
     objectCode: "",
@@ -376,6 +406,14 @@ function createWidget(
         limit: 8,
       };
   }
+}
+function widgetId(type: DashboardWidgetType) {
+  return `${kind(type)}-${crypto.randomUUID()}`;
+}
+function issuesFrom(error: ApiError): DashboardConfigurationIssue[] {
+  return Object.entries(error.fieldErrors).flatMap(([path, messages]) =>
+    messages.map((message) => ({ code: error.code, path, message })),
+  );
 }
 function kind(type: DashboardWidgetType) {
   return {

@@ -34,6 +34,8 @@ const opportunity = {
     }),
     field('amount', '预计金额', 'MONEY'),
     field('close_at', '成交日期', 'DATE'),
+    field('closed_at', '成交时间', 'DATETIME'),
+    field('approved', '已审核', 'BOOLEAN'),
     field('owner', '负责人', 'MEMBER'),
   ],
   defaultView: {
@@ -170,6 +172,23 @@ describe('dashboard definition v2', () => {
     ).toThrow('Invalid dashboard definition');
   });
 
+  it('parses an incomplete record-list draft and reports its empty field selection semantically', () => {
+    const draft = parseDashboardDraft({
+      ...completeDraft,
+      widgets: [{ ...completeDraft.widgets[4], fieldKeys: [] }],
+    });
+
+    expect(draft.widgets[0]).toEqual(
+      expect.objectContaining({ type: 'RECORD_LIST', fieldKeys: [] }),
+    );
+    expect(validateDashboardDraft(draft, [opportunity])).toContainEqual(
+      expect.objectContaining({
+        code: 'RECORD_LIST_FIELDS_REQUIRED',
+        path: 'widgets[0].fieldKeys',
+      }),
+    );
+  });
+
   it('reports filters whose operator is incompatible with the referenced field', () => {
     const draft = parseDashboardDraft({
       ...completeDraft,
@@ -189,6 +208,73 @@ describe('dashboard definition v2', () => {
     );
   });
 
+  it.each([
+    ['amount', 'EQ', 'ten'],
+    ['amount', 'BETWEEN', [1, Number.POSITIVE_INFINITY]],
+    ['approved', 'EQ', 'true'],
+    ['close_at', 'BETWEEN', ['2026-02-30', '2026-03-01']],
+    [
+      'closed_at',
+      'BETWEEN',
+      ['2026-09-01T00:00:00', '2026-09-02T00:00:00.000Z'],
+    ],
+    ['close_at', 'PAST_N_DAYS', 0],
+    ['close_at', 'NEXT_N_DAYS', 3661],
+    ['stage', 'IN', []],
+    ['stage', 'IN', ['']],
+    ['name', 'CONTAINS', '   '],
+  ] as const)(
+    'reports a path-specific issue for invalid %s %s filter values',
+    (fieldKey, operator, value) => {
+      const draft = parseDashboardDraft({
+        ...completeDraft,
+        widgets: [
+          {
+            ...completeDraft.widgets[0],
+            filters: [{ fieldKey, operator, value }],
+          },
+        ],
+      });
+
+      expect(validateDashboardDraft(draft, [opportunity])).toContainEqual(
+        expect.objectContaining({
+          code: 'FILTER_VALUE_INVALID',
+          path: 'widgets[0].filters[0].value',
+        }),
+      );
+    },
+  );
+
+  it.each([
+    ['amount', 'EQ', 12.5],
+    ['amount', 'BETWEEN', [1, 20]],
+    ['approved', 'EQ', false],
+    ['close_at', 'BETWEEN', ['2026-02-28', '2026-03-01']],
+    [
+      'closed_at',
+      'BETWEEN',
+      ['2026-09-01T00:00:00Z', '2026-09-02T00:00:00.123Z'],
+    ],
+    ['close_at', 'PAST_N_DAYS', 14],
+    ['stage', 'IN', ['new']],
+    ['name', 'EQ', 'Acme'],
+  ] as const)(
+    'accepts a valid %s %s filter value',
+    (fieldKey, operator, value) => {
+      const draft = parseDashboardDraft({
+        ...completeDraft,
+        widgets: [
+          {
+            ...completeDraft.widgets[0],
+            filters: [{ fieldKey, operator, value }],
+          },
+        ],
+      });
+
+      expect(validateDashboardDraft(draft, [opportunity])).toEqual([]);
+    },
+  );
+
   it('normalizes widget ordering and compiles object, field, and option display metadata', () => {
     const normalized = normalizeDashboardDraft(
       parseDashboardDraft(completeDraft),
@@ -202,22 +288,20 @@ describe('dashboard definition v2', () => {
       'leaderboard',
       'records',
     ]);
-    expect(publication.widgets[0]).toEqual(
-      expect.objectContaining({
-        objectPublicationId: 'publication-opportunity-v7',
-        groupByField: expect.objectContaining({
-          fieldKey: 'stage',
-          label: '阶段',
-        }),
-        options: expect.arrayContaining([
-          expect.objectContaining({
-            key: 'won',
-            label: '已成交',
-            color: 'GREEN',
-          }),
-        ]),
-      }),
-    );
+    const pipeline = publication.widgets[0];
+    expect(pipeline?.objectPublicationId).toBe('publication-opportunity-v7');
+    if (pipeline?.type !== 'STATUS_DISTRIBUTION') {
+      throw new Error('Status distribution missing');
+    }
+    expect(pipeline.groupByField).toMatchObject({
+      fieldKey: 'stage',
+      label: '阶段',
+    });
+    expect(pipeline.options).toContainEqual({
+      key: 'won',
+      label: '已成交',
+      color: 'GREEN',
+    });
   });
 
   it('normalizes away an unused COUNT value field before compilation', () => {

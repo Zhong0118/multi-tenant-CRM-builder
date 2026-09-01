@@ -42,6 +42,7 @@ const FILTER_OPERATORS = new Set<DashboardFilterOperator>([
 const NUMERIC_FIELD_TYPES = new Set(['NUMBER', 'MONEY']);
 const DATE_FIELD_TYPES = new Set(['DATE', 'DATETIME']);
 const TEXT_FIELD_TYPES = new Set(['TEXT', 'TEXTAREA', 'PHONE', 'EMAIL']);
+const MAX_RELATIVE_DAYS = 3660;
 
 export function parseDashboardDraft(value: unknown): DashboardDefinitionV2 {
   try {
@@ -75,7 +76,7 @@ export function normalizeDashboardDraft(
         ...normalizeWidget(widget),
         sortOrder: index,
       })),
-  } as DashboardDefinitionV2;
+  };
 }
 
 export function migrateLegacyDashboard(value: unknown): DashboardDefinitionV2 {
@@ -390,11 +391,7 @@ function parseRecordList(value: unknown): DashboardRecordListWidgetDraft {
   );
   const sort = exactObject(root.sort, ['field', 'direction']);
   const fieldKeys = textArray(root.fieldKeys);
-  if (
-    fieldKeys.length < 1 ||
-    fieldKeys.length > 8 ||
-    new Set(fieldKeys).size !== fieldKeys.length
-  )
+  if (fieldKeys.length > 8 || new Set(fieldKeys).size !== fieldKeys.length)
     invalid();
   return {
     ...parseBase(root, 'RECORD_LIST'),
@@ -472,6 +469,16 @@ function validateFilters(
           'FILTER_OPERATOR_INVALID',
           `${filterPath}.operator`,
           'Filter operator is not compatible with the field type.',
+        ),
+      );
+      continue;
+    }
+    if (!isValidFilterValue(filter, field.type)) {
+      issues.push(
+        issue(
+          'FILTER_VALUE_INVALID',
+          `${filterPath}.value`,
+          'Filter value is not valid for the referenced field type.',
         ),
       );
       continue;
@@ -583,6 +590,14 @@ function validateWidget(
       );
       break;
     case 'RECORD_LIST':
+      if (widget.fieldKeys.length === 0)
+        issues.push(
+          issue(
+            'RECORD_LIST_FIELDS_REQUIRED',
+            `${path}.fieldKeys`,
+            'Record list requires at least one display field.',
+          ),
+        );
       for (const [index, fieldKey] of widget.fieldKeys.entries())
         validateField(fieldKey, object, `${path}.fieldKeys[${index}]`, issues);
       if (!['createdAt', 'updatedAt', 'recordNo'].includes(widget.sort.field))
@@ -723,7 +738,7 @@ function validateFilterValueShape(filter: DashboardFilter) {
     return;
   }
   if (filter.operator === 'PAST_N_DAYS' || filter.operator === 'NEXT_N_DAYS') {
-    if (!Number.isInteger(filter.value) || Number(filter.value) <= 0) invalid();
+    if (typeof filter.value !== 'number') invalid();
     return;
   }
   if (filter.operator === 'BETWEEN') {
@@ -738,6 +753,107 @@ function validateFilterValueShape(filter: DashboardFilter) {
     return;
   }
   if (!hasValue) invalid();
+}
+
+function isValidFilterValue(
+  filter: DashboardFilter,
+  fieldType: string,
+): boolean {
+  if (
+    [
+      'TODAY',
+      'THIS_WEEK',
+      'THIS_MONTH',
+      'CURRENT_USER',
+      'RECORD_OWNER',
+      'NOT_EMPTY',
+    ].includes(filter.operator)
+  ) {
+    return filter.value === undefined;
+  }
+  if (fieldType === 'SINGLE_SELECT' || fieldType === 'MULTI_SELECT') {
+    return isNonEmptyStringArray(filter.value);
+  }
+  if (fieldType === 'MEMBER') {
+    return filter.operator !== 'IN' || isNonEmptyStringArray(filter.value);
+  }
+  if (NUMERIC_FIELD_TYPES.has(fieldType)) {
+    return filter.operator === 'BETWEEN'
+      ? isFiniteNumberRange(filter.value)
+      : isFiniteNumber(filter.value);
+  }
+  if (DATE_FIELD_TYPES.has(fieldType)) {
+    if (
+      filter.operator === 'PAST_N_DAYS' ||
+      filter.operator === 'NEXT_N_DAYS'
+    ) {
+      return (
+        Number.isInteger(filter.value) &&
+        Number(filter.value) > 0 &&
+        Number(filter.value) <= MAX_RELATIVE_DAYS
+      );
+    }
+    if (filter.operator !== 'BETWEEN') return true;
+    return (
+      Array.isArray(filter.value) &&
+      filter.value.length === 2 &&
+      filter.value.every((value) =>
+        fieldType === 'DATE'
+          ? isStandardDate(value)
+          : isStandardDateTime(value),
+      )
+    );
+  }
+  if (fieldType === 'BOOLEAN') return typeof filter.value === 'boolean';
+  if (TEXT_FIELD_TYPES.has(fieldType)) {
+    return typeof filter.value === 'string' && filter.value.trim().length > 0;
+  }
+  return false;
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isFiniteNumberRange(value: unknown): boolean {
+  return (
+    Array.isArray(value) && value.length === 2 && value.every(isFiniteNumber)
+  );
+}
+
+function isNonEmptyStringArray(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((entry) => typeof entry === 'string' && entry.trim().length > 0)
+  );
+}
+
+function isStandardDate(value: unknown): value is string {
+  if (
+    typeof value !== 'string' ||
+    !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value)
+  ) {
+    return false;
+  }
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return (
+    !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
+  );
+}
+
+function isStandardDateTime(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  const match = value.match(
+    /^([0-9]{4}-[0-9]{2}-[0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.[0-9]{1,6})?Z$/,
+  );
+  if (!match || !isStandardDate(match[1])) return false;
+  return (
+    Number(match[2]) <= 23 &&
+    Number(match[3]) <= 59 &&
+    Number(match[4]) <= 59 &&
+    Number.isFinite(Date.parse(value))
+  );
 }
 
 function findField(object: DashboardPublishedObject, fieldKey: string) {
@@ -832,8 +948,9 @@ function normalizeWidget(widget: DashboardWidgetDraft): DashboardWidgetDraft {
   if (!('aggregation' in widget) || widget.aggregation !== 'COUNT') {
     return widget;
   }
-  const { valueFieldKey: _unusedValueFieldKey, ...normalized } = widget;
-  return normalized as DashboardWidgetDraft;
+  const normalized = { ...widget };
+  delete normalized.valueFieldKey;
+  return normalized;
 }
 
 function exactObject(
