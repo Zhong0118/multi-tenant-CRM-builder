@@ -6,7 +6,25 @@ export type PublishedFieldType = Schemas["PublishedFieldResponseDto"]["type"];
 export type PublishedFieldAccess = "EDIT" | "READ_ONLY" | "HIDDEN";
 export type PublishedDataScope = "ALL" | "OWN" | "NONE";
 export type RecordSortField = "updatedAt" | "createdAt" | "recordNo";
+export type RecordListSortField = RecordSortField | string;
 export type RecordSortDirection = "asc" | "desc";
+
+export const SYSTEM_RECORD_SORT_FIELDS = [
+  "updatedAt",
+  "createdAt",
+  "recordNo",
+] as const;
+
+export const SORTABLE_FIELD_TYPES = [
+  "TEXT",
+  "PHONE",
+  "EMAIL",
+  "NUMBER",
+  "MONEY",
+  "DATE",
+  "DATETIME",
+  "SINGLE_SELECT",
+] as const;
 
 export const PUBLISHED_FIELD_TYPES = [
   "TEXT",

@@ -12,8 +12,10 @@ import {
 } from './record-value-engine';
 import type {
   DynamicRecord,
+  RecordListFieldSort,
   RecordListFilter,
   RecordListQuery,
+  RecordListSystemSort,
   RecordsRepository,
   RecordsStore,
 } from './records.repository';
@@ -64,7 +66,7 @@ export class RecordsService {
       search?: string;
       ownerMemberId?: string;
       filters?: string;
-      sort: 'updatedAt' | 'createdAt' | 'recordNo';
+      sort: string;
       direction: 'asc' | 'desc';
     },
   ): Promise<RecordPageResponse> {
@@ -89,7 +91,7 @@ export class RecordsService {
         searchFieldKeys: searchableFieldKeys(resolved),
         ownerMemberId,
         filters: parseListFilters(input.filters, resolved),
-        sort: input.sort,
+        sort: parseListSort(input.sort, resolved),
         direction: input.direction,
       };
       const result = await store.listRecords(query);
@@ -487,6 +489,51 @@ function parseTextContainsFilter(
     throw invalidRecordFilter();
   }
   return { fieldKey, mode: 'TEXT_CONTAINS', contains };
+}
+
+const SYSTEM_SORTS = new Set<RecordListSystemSort>([
+  'updatedAt',
+  'createdAt',
+  'recordNo',
+]);
+const SORTABLE_FIELD_KINDS: Record<
+  string,
+  RecordListFieldSort['kind']
+> = {
+  TEXT: 'TEXT',
+  PHONE: 'TEXT',
+  EMAIL: 'TEXT',
+  NUMBER: 'NUMBER',
+  MONEY: 'NUMBER',
+  DATE: 'DATE',
+  DATETIME: 'DATE',
+  SINGLE_SELECT: 'OPTION',
+};
+
+function parseListSort(
+  sort: string,
+  resolved: ResolvedObjectSchema,
+): RecordListQuery['sort'] {
+  if (SYSTEM_SORTS.has(sort as RecordListSystemSort)) {
+    return sort as RecordListSystemSort;
+  }
+  const field = resolved.visibleSchema.fields.find(
+    (candidate) => candidate.fieldKey === sort,
+  );
+  const kind = field ? SORTABLE_FIELD_KINDS[field.type] : undefined;
+  if (!field || !kind) {
+    throw new ApiException('RECORD_SORT_INVALID', 400, {
+      fieldErrors: { sort: ['请选择当前业务表中可排序的字段。'] },
+    });
+  }
+  if (kind !== 'OPTION') return { fieldKey: field.fieldKey, kind };
+  const optionKeys = Array.isArray(field.config.options)
+    ? field.config.options.flatMap((option) => {
+        if (!isPlainObject(option) || typeof option.key !== 'string') return [];
+        return [option.key];
+      })
+    : [];
+  return { fieldKey: field.fieldKey, kind, optionKeys };
 }
 
 function optionalDateBound(value: unknown): string | undefined {

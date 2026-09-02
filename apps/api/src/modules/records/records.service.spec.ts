@@ -404,13 +404,56 @@ function compareRecords(
   query: RecordListQuery,
 ): number {
   const direction = query.direction === 'asc' ? 1 : -1;
-  const leftValue =
-    query.sort === 'recordNo' ? left.recordNo : left[query.sort];
-  const rightValue =
-    query.sort === 'recordNo' ? right.recordNo : right[query.sort];
-  if (leftValue < rightValue) return -1 * direction;
-  if (leftValue > rightValue) return direction;
+  const compared =
+    typeof query.sort === 'string'
+      ? compareSystemSort(left, right, query.sort)
+      : compareFieldSort(left, right, query.sort);
+  if (compared !== 0) return compared * direction;
   return left.id.localeCompare(right.id) * direction;
+}
+
+function compareSystemSort(
+  left: DynamicRecord,
+  right: DynamicRecord,
+  sort: 'updatedAt' | 'createdAt' | 'recordNo',
+): number {
+  const leftValue = sort === 'recordNo' ? left.recordNo : left[sort];
+  const rightValue = sort === 'recordNo' ? right.recordNo : right[sort];
+  if (leftValue < rightValue) return -1;
+  if (leftValue > rightValue) return 1;
+  return 0;
+}
+
+function compareFieldSort(
+  left: DynamicRecord,
+  right: DynamicRecord,
+  sort: Extract<RecordListQuery['sort'], { fieldKey: string }>,
+): number {
+  const leftValue = left.values[sort.fieldKey];
+  const rightValue = right.values[sort.fieldKey];
+  if (sort.kind === 'NUMBER') {
+    return numericSortValue(leftValue) - numericSortValue(rightValue);
+  }
+  if (sort.kind === 'OPTION') {
+    const keys = sort.optionKeys ?? [];
+    return optionSortIndex(leftValue, keys) - optionSortIndex(rightValue, keys);
+  }
+  return String(leftValue ?? '').localeCompare(String(rightValue ?? ''));
+}
+
+function numericSortValue(value: unknown): number {
+  const numeric =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number(value)
+        : Number.NaN;
+  return Number.isFinite(numeric) ? numeric : Number.NEGATIVE_INFINITY;
+}
+
+function optionSortIndex(value: unknown, keys: string[]): number {
+  const index = keys.indexOf(String(value));
+  return index === -1 ? keys.length : index;
 }
 
 function fixture() {
@@ -704,6 +747,42 @@ describe('RecordsService', () => {
     });
 
     expect(page.items.map((record) => record.title)).toEqual(['甲线索']);
+  });
+
+  it('sorts records by a visible published number field', async () => {
+    const { service } = fixture();
+    await create(service, admin, '低分', employee.memberId, { score: 12 });
+    await create(service, admin, '高分', employee.memberId, { score: 88 });
+
+    const page = await service.list(admin, 'leads', {
+      page: 1,
+      limit: 20,
+      sort: 'score',
+      direction: 'desc',
+    });
+
+    expect(page.items.map((record) => record.title)).toEqual(['高分', '低分']);
+  });
+
+  it('rejects sorting on a hidden or unsortable field', async () => {
+    const { service } = fixture();
+
+    await expect(
+      service.list(employee, 'leads', {
+        page: 1,
+        limit: 20,
+        sort: 'secret',
+        direction: 'asc',
+      }),
+    ).rejects.toMatchObject({ code: 'RECORD_SORT_INVALID' });
+    await expect(
+      service.list(employee, 'leads', {
+        page: 1,
+        limit: 20,
+        sort: 'tags',
+        direction: 'asc',
+      }),
+    ).rejects.toMatchObject({ code: 'RECORD_SORT_INVALID' });
   });
 
   it('rejects filters on hidden or non-select fields', async () => {

@@ -1,3 +1,4 @@
+import { SORTABLE_FIELD_TYPES } from "@/features/objects/object-types";
 import { RecordWorkspace } from "@/features/records/record-workspace";
 import { parseRecordQuery } from "@/features/records/record-query-state";
 import {
@@ -32,7 +33,15 @@ export default async function RecordDetailPage({
     workspace.role,
   );
   const rawSearchParams = await searchParams;
-  const query = parseRecordQuery(rawSearchParams, schema.defaultView.sort);
+  const query = parseRecordQuery(
+    rawSearchParams,
+    schema.defaultView.sort,
+    schema.fields
+      .filter((field) =>
+        (SORTABLE_FIELD_TYPES as readonly string[]).includes(field.type),
+      )
+      .map((field) => field.fieldKey),
+  );
   const initialEditing = rawSearchParams.mode === "edit";
   const [initialPage, record] = await Promise.all([
     loadRecordPage(tenantCode, objectCode, query),

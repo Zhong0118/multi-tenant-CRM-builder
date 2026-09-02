@@ -51,6 +51,16 @@ describe("parseRecordQuery", () => {
     );
   });
 
+  it("keeps a published sortable field key from the URL", () => {
+    expect(
+      parseRecordQuery(
+        { sort: "score", direction: "asc" },
+        undefined,
+        ["score"],
+      ),
+    ).toMatchObject({ sort: "score", direction: "asc" });
+  });
+
   it("drops an empty search rather than filtering on nothing", () => {
     expect(parseRecordQuery({ search: "   " }).search).toBeUndefined();
   });

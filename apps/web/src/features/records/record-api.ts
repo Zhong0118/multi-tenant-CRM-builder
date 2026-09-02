@@ -4,7 +4,7 @@ import { dataOrThrow } from "@/features/objects/object-api";
 import type {
   RecordPage,
   RecordSortDirection,
-  RecordSortField,
+  RecordListSortField,
   RecordSummary,
 } from "@/features/objects/object-types";
 import { browserApiClient } from "@/lib/api/browser-client";
@@ -20,7 +20,7 @@ export interface RecordListQuery {
   search?: string;
   ownerMemberId?: string;
   filters?: RecordFilters;
-  sort?: RecordSortField;
+  sort?: RecordListSortField;
   direction?: RecordSortDirection;
 }
 

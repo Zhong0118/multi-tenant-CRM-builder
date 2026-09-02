@@ -66,6 +66,15 @@ export type RecordListFilter =
   | RecordListMemberFilter
   | RecordListTextFilter;
 
+export type RecordListSystemSort = 'updatedAt' | 'createdAt' | 'recordNo';
+export type RecordListFieldSortKind = 'TEXT' | 'NUMBER' | 'DATE' | 'OPTION';
+
+export type RecordListFieldSort = {
+  fieldKey: string;
+  kind: RecordListFieldSortKind;
+  optionKeys?: string[];
+};
+
 export interface RecordListQuery {
   objectId: string;
   page: number;
@@ -74,7 +83,7 @@ export interface RecordListQuery {
   searchFieldKeys: string[];
   ownerMemberId?: string;
   filters: RecordListFilter[];
-  sort: 'updatedAt' | 'createdAt' | 'recordNo';
+  sort: RecordListSystemSort | RecordListFieldSort;
   direction: 'asc' | 'desc';
 }
 
@@ -196,20 +205,50 @@ class PrismaRecordsStore implements RecordsStore {
         ...query.filters.map(listFilterCondition),
       ],
     };
-    const orderBy: Prisma.RecordOrderByWithRelationInput[] = [
-      { [query.sort]: query.direction },
-      { id: query.direction },
-    ];
-    const [items, total] = await Promise.all([
-      this.transaction.record.findMany({
-        where,
-        orderBy,
-        skip: (query.page - 1) * query.limit,
-        take: query.limit,
-      }),
+    if (typeof query.sort === 'string') {
+      const [items, total] = await Promise.all([
+        this.transaction.record.findMany({
+          where,
+          orderBy: [
+            { [query.sort]: query.direction },
+            { id: query.direction },
+          ],
+          skip: (query.page - 1) * query.limit,
+          take: query.limit,
+        }),
+        this.transaction.record.count({ where }),
+      ]);
+      return { items: items.map(fromPrismaRecord), total };
+    }
+
+    const direction = query.direction === 'asc' ? Prisma.sql`ASC` : Prisma.sql`DESC`;
+    const offset = (query.page - 1) * query.limit;
+    const [rows, counted] = await Promise.all([
+      this.transaction.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+        SELECT r.id
+        FROM records r
+        WHERE r.tenant_id = ${this.context.tenantId}::uuid
+          AND r.object_id = ${query.objectId}::uuid
+          AND r.deleted_at IS NULL
+          ${query.ownerMemberId ? Prisma.sql`AND r.owner_member_id = ${query.ownerMemberId}::uuid` : Prisma.empty}
+        ORDER BY ${fieldSortExpression(query.sort)} ${direction} NULLS LAST, r.id ${direction}
+        OFFSET ${offset}
+        LIMIT ${query.limit}
+      `),
       this.transaction.record.count({ where }),
     ]);
-    return { items: items.map(fromPrismaRecord), total };
+    if (rows.length === 0) return { items: [], total: counted };
+    const records = await this.transaction.record.findMany({
+      where: { id: { in: rows.map((row) => row.id) } },
+    });
+    const byId = new Map(records.map((record) => [record.id, record]));
+    return {
+      items: rows.flatMap((row) => {
+        const record = byId.get(row.id);
+        return record ? [fromPrismaRecord(record)] : [];
+      }),
+      total: counted,
+    };
   }
 
   async findRecord(
@@ -398,6 +437,40 @@ function numericRangeCondition(
   return {
     AND: Prisma.join(bounds, ' AND '),
   } as Prisma.RecordWhereInput;
+}
+
+function fieldSortExpression(sort: RecordListFieldSort): Prisma.Sql {
+  const value = Prisma.sql`r.data ->> ${sort.fieldKey}`;
+  if (sort.kind === 'NUMBER') {
+    return Prisma.sql`
+      CASE
+        WHEN ${value} ~ '^-?[0-9]+([.][0-9]+)?$' THEN ${value}::numeric
+        ELSE NULL
+      END
+    `;
+  }
+  if (sort.kind === 'DATE') {
+    return Prisma.sql`
+      CASE
+        WHEN ${value} ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}' THEN ${value}
+        ELSE NULL
+      END
+    `;
+  }
+  if (sort.kind === 'OPTION' && sort.optionKeys && sort.optionKeys.length > 0) {
+    return Prisma.sql`
+      CASE ${value}
+        ${Prisma.join(
+          sort.optionKeys.map(
+            (key, index) => Prisma.sql`WHEN ${key} THEN ${index}`,
+          ),
+          ' ',
+        )}
+        ELSE ${sort.optionKeys.length}
+      END
+    `;
+  }
+  return value;
 }
 
 function toPrismaJson(value: unknown): Prisma.InputJsonValue {

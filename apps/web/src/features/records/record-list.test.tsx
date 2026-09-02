@@ -163,7 +163,7 @@ const schema = {
   defaultView: {
     code: "default",
     name: "默认列表",
-    columnFieldKeys: ["name", "lead_status", "phone"],
+    columnFieldKeys: ["name", "lead_status", "phone", "score"],
     sort: { field: "updatedAt", direction: "desc" },
   },
   actions: {
@@ -261,6 +261,19 @@ describe("RecordList table sorting", () => {
     );
     expect(screen.queryByLabelText("排序字段")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("排序方向")).not.toBeInTheDocument();
+  });
+
+  it("sorts a published numeric column through the header and keeps the field key in the URL", async () => {
+    const navigate = vi.fn();
+    renderList(navigate);
+
+    fireEvent.click(screen.getByRole("columnheader", { name: /评分/ }));
+
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith(
+        "/workspace/northwind/objects/customers?sort=score&direction=asc",
+      ),
+    );
   });
 
   it("restores the published default after clearing a descending column sort", async () => {

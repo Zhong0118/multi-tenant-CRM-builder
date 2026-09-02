@@ -1,8 +1,9 @@
 import type {
+  RecordListSortField,
   RecordSortDirection,
-  RecordSortField,
   RuntimeObjectSchema,
 } from "@/features/objects/object-types";
+import { SYSTEM_RECORD_SORT_FIELDS } from "@/features/objects/object-types";
 
 export interface RecordQuery {
   page: number;
@@ -10,7 +11,7 @@ export interface RecordQuery {
   search?: string;
   ownerMemberId?: string;
   filters: RecordFilters;
-  sort: RecordSortField;
+  sort: RecordListSortField;
   direction: RecordSortDirection;
 }
 
@@ -34,7 +35,6 @@ export const DEFAULT_RECORD_QUERY: RecordQuery = {
   direction: "desc",
 };
 
-const SORT_FIELDS: RecordSortField[] = ["updatedAt", "createdAt", "recordNo"];
 const DIRECTIONS: RecordSortDirection[] = ["asc", "desc"];
 const MAX_LIMIT = 100;
 
@@ -48,6 +48,7 @@ type RawParams = Record<string, string | string[] | undefined>;
 export function parseRecordQuery(
   params: RawParams,
   publishedSort?: RuntimeObjectSchema["defaultView"]["sort"],
+  sortableFieldKeys: string[] = [],
 ): RecordQuery {
   const defaults: RecordQuery = publishedSort
     ? {
@@ -60,6 +61,12 @@ export function parseRecordQuery(
   const search = single(params.search)?.trim();
   const ownerMemberId = single(params.ownerMemberId)?.trim();
   const filters = parseOptionFilters(single(params.filters));
+  const allowedSorts = [
+    ...SYSTEM_RECORD_SORT_FIELDS,
+    ...sortableFieldKeys.filter((fieldKey) =>
+      /^[a-z][a-zA-Z0-9_]*$/.test(fieldKey),
+    ),
+  ];
 
   return {
     page: positiveInteger(single(params.page)) ?? defaults.page,
@@ -70,7 +77,7 @@ export function parseRecordQuery(
     search: search === "" ? undefined : search,
     ownerMemberId: ownerMemberId === "" ? undefined : ownerMemberId,
     filters,
-    sort: member(single(params.sort), SORT_FIELDS) ?? defaults.sort,
+    sort: member(single(params.sort), allowedSorts) ?? defaults.sort,
     direction:
       member(single(params.direction), DIRECTIONS) ?? defaults.direction,
   };

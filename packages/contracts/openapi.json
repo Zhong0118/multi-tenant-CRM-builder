@@ -7214,11 +7214,6 @@
             "required": false,
             "schema": {
               "default": "updatedAt",
-              "enum": [
-                "updatedAt",
-                "createdAt",
-                "recordNo"
-              ],
               "type": "string"
             }
           },

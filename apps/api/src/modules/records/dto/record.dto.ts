@@ -51,12 +51,15 @@ export class RecordListQueryDto {
   filters?: string;
 
   @ApiPropertyOptional({
-    enum: ['updatedAt', 'createdAt', 'recordNo'],
+    type: String,
     default: 'updatedAt',
+    description:
+      'updatedAt、createdAt、recordNo，或当前业务表中可排序的已发布字段键。',
   })
   @IsOptional()
-  @IsIn(['updatedAt', 'createdAt', 'recordNo'])
-  sort: 'updatedAt' | 'createdAt' | 'recordNo' = 'updatedAt';
+  @IsString()
+  @MaxLength(64)
+  sort = 'updatedAt';
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
   @IsOptional()

@@ -26,6 +26,7 @@ import { useRef, useState } from "react";
 import { FilterBar } from "@/components/workbench/filter-bar";
 import { DataPanel } from "@/components/workbench/surface";
 import {
+  SORTABLE_FIELD_TYPES,
   selectOptions,
   type PublishedFieldView,
   type RecordPage,
@@ -209,25 +210,41 @@ export function RecordList({
         <span className={styles.recordNo}>{recordNo}</span>
       ),
     },
-    ...visibleColumns.map((field) => ({
-      title: field.label,
-      key: field.fieldKey,
-      render: (_: unknown, row: RecordSummary) =>
-        field.fieldKey === schema.object.titleFieldKey ? (
-          <a
-            className={styles.recordTitle}
-            href={recordPath(row.id)}
-            onClick={(event) => {
-              event.preventDefault();
-              go(recordPath(row.id));
-            }}
-          >
-            {row.title}
-          </a>
-        ) : (
-          displayValue(field, row.values[field.fieldKey], members)
-        ),
-    })),
+    ...visibleColumns.map((field) => {
+      const sortable = (SORTABLE_FIELD_TYPES as readonly string[]).includes(
+        field.type,
+      );
+      const sortOrder:
+        | "ascend"
+        | "descend"
+        | null = sortable && query.sort === field.fieldKey
+        ? query.direction === "asc"
+          ? "ascend"
+          : "descend"
+        : null;
+      return {
+        title: field.label,
+        key: field.fieldKey,
+        sorter: sortable || undefined,
+        sortOrder,
+        sortDirections: sortable ? (["ascend", "descend"] as ("ascend" | "descend")[]) : undefined,
+        render: (_: unknown, row: RecordSummary) =>
+          field.fieldKey === schema.object.titleFieldKey ? (
+            <a
+              className={styles.recordTitle}
+              href={recordPath(row.id)}
+              onClick={(event) => {
+                event.preventDefault();
+                go(recordPath(row.id));
+              }}
+            >
+              {row.title}
+            </a>
+          ) : (
+            displayValue(field, row.values[field.fieldKey], members)
+          ),
+      };
+    }),
     {
       title: "最近更新",
       key: "updatedAt",
@@ -270,8 +287,17 @@ export function RecordList({
       });
       return;
     }
-    const sort = sorter.columnKey;
-    if (sort !== "recordNo" && sort !== "updatedAt") return;
+    const sort = String(sorter.columnKey ?? "");
+    const sortableColumns = new Set([
+      "recordNo",
+      "updatedAt",
+      ...visibleColumns
+        .filter((field) =>
+          (SORTABLE_FIELD_TYPES as readonly string[]).includes(field.type),
+        )
+        .map((field) => field.fieldKey),
+    ]);
+    if (!sortableColumns.has(sort)) return;
     apply({
       ...query,
       page: 1,

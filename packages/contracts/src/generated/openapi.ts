@@ -3526,7 +3526,7 @@ export interface operations {
                 ownerMemberId?: string;
                 page?: number;
                 search?: string;
-                sort?: "updatedAt" | "createdAt" | "recordNo";
+                sort?: string;
             };
             header?: never;
             path: {

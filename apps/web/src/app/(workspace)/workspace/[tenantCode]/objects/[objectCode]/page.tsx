@@ -1,3 +1,4 @@
+import { SORTABLE_FIELD_TYPES } from "@/features/objects/object-types";
 import { RecordWorkspace } from "@/features/records/record-workspace";
 import { parseRecordQuery } from "@/features/records/record-query-state";
 import {
@@ -22,7 +23,15 @@ export default async function ObjectRecordsPage({
     objectCode,
     workspace.role,
   );
-  const query = parseRecordQuery(await searchParams, schema.defaultView.sort);
+  const query = parseRecordQuery(
+    await searchParams,
+    schema.defaultView.sort,
+    schema.fields
+      .filter((field) =>
+        (SORTABLE_FIELD_TYPES as readonly string[]).includes(field.type),
+      )
+      .map((field) => field.fieldKey),
+  );
   const initialPage = await loadRecordPage(tenantCode, objectCode, query);
 
   return (
