@@ -52,12 +52,19 @@ export type RecordListMemberFilter = {
   values: string[];
 };
 
+export type RecordListTextFilter = {
+  fieldKey: string;
+  mode: 'TEXT_CONTAINS';
+  contains: string;
+};
+
 export type RecordListFilter =
   | RecordListOptionFilter
   | RecordListDateFilter
   | RecordListNumericFilter
   | RecordListBooleanFilter
-  | RecordListMemberFilter;
+  | RecordListMemberFilter
+  | RecordListTextFilter;
 
 export interface RecordListQuery {
   objectId: string;
@@ -348,6 +355,15 @@ function listFilterCondition(filter: RecordListFilter): Prisma.RecordWhereInput 
       OR: filter.values.map((value) => ({
         data: { path: [filter.fieldKey], equals: value },
       })),
+    };
+  }
+  if (filter.mode === 'TEXT_CONTAINS') {
+    return {
+      data: {
+        path: [filter.fieldKey],
+        string_contains: filter.contains,
+        mode: 'insensitive',
+      },
     };
   }
   return {

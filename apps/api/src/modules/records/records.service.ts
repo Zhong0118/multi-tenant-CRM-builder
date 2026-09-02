@@ -363,6 +363,10 @@ function parseListFilters(
       filters.push(parseMemberFilter(field.fieldKey, rawValue));
       continue;
     }
+    if (SEARCHABLE_FIELD_TYPES.has(field.type)) {
+      filters.push(parseTextContainsFilter(field.fieldKey, rawValue));
+      continue;
+    }
     throw invalidRecordFilter();
   }
   return filters;
@@ -469,6 +473,20 @@ function parseMemberFilter(
     mode: 'MEMBER_EQUALS',
     values: [...new Set(rawValues as string[])],
   };
+}
+
+function parseTextContainsFilter(
+  fieldKey: string,
+  rawValue: unknown,
+): RecordListFilter {
+  if (!isPlainObject(rawValue) || typeof rawValue.contains !== 'string') {
+    throw invalidRecordFilter();
+  }
+  const contains = rawValue.contains.trim();
+  if (contains.length === 0 || contains.length > 100) {
+    throw invalidRecordFilter();
+  }
+  return { fieldKey, mode: 'TEXT_CONTAINS', contains };
 }
 
 function optionalDateBound(value: unknown): string | undefined {

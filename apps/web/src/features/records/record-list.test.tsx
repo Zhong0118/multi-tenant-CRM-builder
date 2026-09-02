@@ -146,6 +146,19 @@ const schema = {
       isSystem: false,
       access: "EDIT",
     },
+    {
+      id: "field-notes",
+      fieldKey: "notes",
+      label: "备注",
+      type: "TEXTAREA",
+      required: false,
+      defaultValue: null,
+      validation: {},
+      config: {},
+      sortOrder: 9,
+      isSystem: false,
+      access: "EDIT",
+    },
   ],
   defaultView: {
     code: "default",
@@ -356,6 +369,7 @@ describe("RecordList table sorting", () => {
     expect(
       screen.getByRole("combobox", { name: "按跟进人筛选" }),
     ).toBeInTheDocument();
+    expect(screen.getByLabelText("按备注筛选")).toBeInTheDocument();
     fireEvent.mouseDown(
       screen.getByRole("combobox", { name: "按客户标签筛选" }),
     );

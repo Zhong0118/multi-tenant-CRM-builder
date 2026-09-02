@@ -384,6 +384,11 @@ function matchesListFilter(
   if (filter.mode === 'MEMBER_EQUALS') {
     return filter.values.includes(String(value));
   }
+  if (filter.mode === 'TEXT_CONTAINS') {
+    return String(value ?? '')
+      .toLowerCase()
+      .includes(filter.contains.toLowerCase());
+  }
   if (filter.mode === 'CONTAINS') {
     return (
       Array.isArray(value) &&
@@ -679,6 +684,26 @@ describe('RecordsService', () => {
     });
 
     expect(page.items.map((record) => record.title)).toEqual(['员工跟进']);
+  });
+
+  it('filters records by a visible published text contains value', async () => {
+    const { service } = fixture();
+    await create(service, admin, '甲线索', employee.memberId, {
+      email: 'alpha@corp.com',
+    });
+    await create(service, admin, '乙线索', employee.memberId, {
+      email: 'beta@other.com',
+    });
+
+    const page = await service.list(admin, 'leads', {
+      page: 1,
+      limit: 20,
+      filters: '{"email":{"contains":"corp.com"}}',
+      sort: 'updatedAt',
+      direction: 'desc',
+    });
+
+    expect(page.items.map((record) => record.title)).toEqual(['甲线索']);
   });
 
   it('rejects filters on hidden or non-select fields', async () => {

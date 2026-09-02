@@ -45,6 +45,7 @@ import {
   numericRangeFilterValue,
   optionFilterValues,
   recordQuerySearch,
+  textContainsFilterValue,
   withFilter,
   type RecordQuery,
 } from "./record-query-state";
@@ -154,6 +155,14 @@ export function RecordList({
   );
   const memberFilterFields = schema.fields.filter(
     (field) => field.type === "MEMBER",
+  );
+  const textFilterFields = schema.fields.filter(
+    (field) =>
+      (field.type === "TEXT" ||
+        field.type === "TEXTAREA" ||
+        field.type === "PHONE" ||
+        field.type === "EMAIL") &&
+      field.fieldKey !== schema.object.titleFieldKey,
   );
   const searchFieldLabels = schema.fields
     .filter(
@@ -552,6 +561,23 @@ export function RecordList({
               value: member.id,
               label: member.displayName ?? "未设置姓名",
             }))}
+          />
+        ))}
+        {textFilterFields.map((field) => (
+          <Input
+            key={field.fieldKey}
+            allowClear
+            aria-label={`按${field.label}筛选`}
+            placeholder={`${field.label}包含`}
+            className={styles.searchInput}
+            value={textContainsFilterValue(query.filters, field.fieldKey) ?? ""}
+            onChange={(event) => {
+              const filters = { ...query.filters };
+              const next = event.target.value.trim();
+              if (next === "") delete filters[field.fieldKey];
+              else filters[field.fieldKey] = { contains: next };
+              apply(withFilter(query, { filters }));
+            }}
           />
         ))}
         {Object.keys(query.filters).length > 0 ? (

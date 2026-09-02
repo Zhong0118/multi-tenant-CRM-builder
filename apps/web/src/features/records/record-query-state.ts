@@ -16,11 +16,13 @@ export interface RecordQuery {
 
 export type RecordDateRangeFilter = { from?: string; to?: string };
 export type RecordNumericRangeFilter = { min?: number; max?: number };
+export type RecordTextContainsFilter = { contains: string };
 export type RecordFilterValue =
   | string[]
   | boolean
   | RecordDateRangeFilter
-  | RecordNumericRangeFilter;
+  | RecordNumericRangeFilter
+  | RecordTextContainsFilter;
 export type RecordFilters = Record<string, RecordFilterValue>;
 
 /** Mirrors the API's own defaults so an untouched list needs no query string. */
@@ -174,6 +176,16 @@ function normalizeFilterValue(value: unknown): RecordFilterValue | undefined {
       ...(max !== undefined ? { max } : {}),
     };
   }
+  if ("contains" in value) {
+    if (
+      typeof value.contains !== "string" ||
+      value.contains.length === 0 ||
+      value.contains.length > 100
+    ) {
+      return undefined;
+    }
+    return { contains: value.contains };
+  }
   return undefined;
 }
 
@@ -211,6 +223,17 @@ export function isNumericRangeFilter(
   );
 }
 
+export function isTextContainsFilter(
+  value: RecordFilterValue | undefined,
+): value is RecordTextContainsFilter {
+  return (
+    value !== undefined &&
+    typeof value !== "boolean" &&
+    !Array.isArray(value) &&
+    "contains" in value
+  );
+}
+
 export function optionFilterValues(
   filters: RecordFilters,
   fieldKey: string,
@@ -241,6 +264,14 @@ export function booleanFilterValue(
 ): boolean | undefined {
   const value = filters[fieldKey];
   return typeof value === "boolean" ? value : undefined;
+}
+
+export function textContainsFilterValue(
+  filters: RecordFilters,
+  fieldKey: string,
+): string | undefined {
+  const value = filters[fieldKey];
+  return isTextContainsFilter(value) ? value.contains : undefined;
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
