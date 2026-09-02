@@ -20,13 +20,20 @@ export interface DynamicRecord {
   deletedAt: string | null;
 }
 
+export type RecordListOptionFilter = {
+  fieldKey: string;
+  mode: 'EQUALS' | 'CONTAINS';
+  values: string[];
+};
+
 export interface RecordListQuery {
   objectId: string;
   page: number;
   limit: number;
   search?: string;
+  searchFieldKeys: string[];
   ownerMemberId?: string;
-  filters: Record<string, string[]>;
+  filters: RecordListOptionFilter[];
   sort: 'updatedAt' | 'createdAt' | 'recordNo';
   direction: 'asc' | 'desc';
 }
@@ -144,14 +151,10 @@ class PrismaRecordsStore implements RecordsStore {
       objectId: query.objectId,
       deletedAt: null,
       ownerMemberId: query.ownerMemberId,
-      title: query.search
-        ? { contains: query.search, mode: 'insensitive' }
-        : undefined,
-      AND: Object.entries(query.filters).map(([fieldKey, values]) => ({
-        OR: values.map((value) => ({
-          data: { path: [fieldKey], equals: value },
-        })),
-      })),
+      AND: [
+        ...searchConditions(query.search, query.searchFieldKeys),
+        ...query.filters.map(optionFilterCondition),
+      ],
     };
     const orderBy: Prisma.RecordOrderByWithRelationInput[] = [
       { [query.sort]: query.direction },
@@ -264,6 +267,40 @@ function fromPrismaRecord(record: {
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
     deletedAt: record.deletedAt?.toISOString() ?? null,
+  };
+}
+
+function searchConditions(
+  search: string | undefined,
+  searchFieldKeys: string[],
+): Prisma.RecordWhereInput[] {
+  if (!search) return [];
+  return [
+    {
+      OR: [
+        { title: { contains: search, mode: 'insensitive' } },
+        ...searchFieldKeys.map((fieldKey) => ({
+          data: {
+            path: [fieldKey],
+            string_contains: search,
+            mode: 'insensitive' as const,
+          },
+        })),
+      ],
+    },
+  ];
+}
+
+function optionFilterCondition(
+  filter: RecordListOptionFilter,
+): Prisma.RecordWhereInput {
+  return {
+    OR: filter.values.map((value) => ({
+      data:
+        filter.mode === 'CONTAINS'
+          ? { path: [filter.fieldKey], array_contains: value }
+          : { path: [filter.fieldKey], equals: value },
+    })),
   };
 }
 

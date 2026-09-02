@@ -133,8 +133,24 @@ export function RecordList({
     .filter((field): field is PublishedFieldView => field !== undefined);
   const optionFilterFields = schema.fields.filter(
     (field) =>
-      field.type === "SINGLE_SELECT" && selectOptions(field).length > 0,
+      (field.type === "SINGLE_SELECT" || field.type === "MULTI_SELECT") &&
+      selectOptions(field).length > 0,
   );
+  const searchFieldLabels = schema.fields
+    .filter(
+      (field) =>
+        field.fieldKey === schema.object.titleFieldKey ||
+        (schema.defaultView.columnFieldKeys.includes(field.fieldKey) &&
+          (field.type === "TEXT" ||
+            field.type === "TEXTAREA" ||
+            field.type === "PHONE" ||
+            field.type === "EMAIL")),
+    )
+    .map((field) => field.label);
+  const searchLabel =
+    searchFieldLabels.length > 0
+      ? `搜索${searchFieldLabels.join("、")}`
+      : `搜索${schema.object.name}标题`;
 
   const columns: ColumnsType<RecordSummary> = [
     {
@@ -329,8 +345,8 @@ export function RecordList({
         ariaLabel={`${schema.object.name}筛选与排序`}
         search={
           <Input
-            aria-label="搜索标题"
-            placeholder={`搜索${schema.object.name}标题`}
+            aria-label={searchLabel}
+            placeholder={searchLabel}
             allowClear
             value={searchInput}
             className={styles.searchInput}

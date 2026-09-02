@@ -63,11 +63,42 @@ const schema = {
       isSystem: false,
       access: "EDIT",
     },
+    {
+      id: "field-phone",
+      fieldKey: "phone",
+      label: "手机号",
+      type: "PHONE",
+      required: false,
+      defaultValue: null,
+      validation: {},
+      config: {},
+      sortOrder: 3,
+      isSystem: false,
+      access: "EDIT",
+    },
+    {
+      id: "field-tags",
+      fieldKey: "tags",
+      label: "客户标签",
+      type: "MULTI_SELECT",
+      required: false,
+      defaultValue: null,
+      validation: {},
+      config: {
+        options: [
+          { key: "vip", label: "重点", color: "ORANGE" },
+          { key: "nurture", label: "培育", color: "CYAN" },
+        ],
+      },
+      sortOrder: 4,
+      isSystem: false,
+      access: "EDIT",
+    },
   ],
   defaultView: {
     code: "default",
     name: "默认列表",
-    columnFieldKeys: ["name", "lead_status"],
+    columnFieldKeys: ["name", "lead_status", "phone"],
     sort: { field: "updatedAt", direction: "desc" },
   },
   actions: {
@@ -252,6 +283,23 @@ describe("RecordList table sorting", () => {
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith(
         "/workspace/northwind/objects/customers?filters=%7B%22lead_status%22%3A%5B%22following%22%5D%7D",
+      ),
+    );
+  });
+
+  it("exposes search and option filters from the published schema", async () => {
+    const navigate = vi.fn();
+    renderList(navigate);
+
+    expect(screen.getByLabelText("搜索客户名称、手机号")).toBeInTheDocument();
+    fireEvent.mouseDown(
+      screen.getByRole("combobox", { name: "按客户标签筛选" }),
+    );
+    fireEvent.click(await screen.findByText("重点"));
+
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith(
+        "/workspace/northwind/objects/customers?filters=%7B%22tags%22%3A%5B%22vip%22%5D%7D",
       ),
     );
   });

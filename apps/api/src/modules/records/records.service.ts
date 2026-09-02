@@ -12,6 +12,7 @@ import {
 } from './record-value-engine';
 import type {
   DynamicRecord,
+  RecordListOptionFilter,
   RecordListQuery,
   RecordsRepository,
   RecordsStore,
@@ -85,6 +86,7 @@ export class RecordsService {
         page,
         limit,
         search: input.search?.trim() || undefined,
+        searchFieldKeys: searchableFieldKeys(resolved),
         ownerMemberId,
         filters: parseListFilters(input.filters, resolved),
         sort: input.sort,
@@ -294,11 +296,36 @@ async function resolveUpdateOwner(
   return requested;
 }
 
+function searchableFieldKeys(resolved: ResolvedObjectSchema): string[] {
+  const titleFieldKey = resolved.schema.object.titleFieldKey;
+  const searchable = new Set(
+    resolved.visibleSchema.fields
+      .filter(
+        (field) =>
+          SEARCHABLE_FIELD_TYPES.has(field.type) &&
+          (field.fieldKey === titleFieldKey ||
+            resolved.visibleSchema.defaultView.columnFieldKeys.includes(
+              field.fieldKey,
+            )),
+      )
+      .map((field) => field.fieldKey)
+      .filter((fieldKey) => fieldKey !== titleFieldKey),
+  );
+  return [...searchable];
+}
+
+const SEARCHABLE_FIELD_TYPES = new Set([
+  'TEXT',
+  'TEXTAREA',
+  'PHONE',
+  'EMAIL',
+]);
+
 function parseListFilters(
   serialized: string | undefined,
   resolved: ResolvedObjectSchema,
-): Record<string, string[]> {
-  if (!serialized) return {};
+): RecordListOptionFilter[] {
+  if (!serialized) return [];
   let parsed: unknown;
   try {
     parsed = JSON.parse(serialized);
@@ -312,12 +339,12 @@ function parseListFilters(
   const visibleFields = new Map(
     resolved.visibleSchema.fields.map((field) => [field.fieldKey, field]),
   );
-  const filters: Record<string, string[]> = {};
+  const filters: RecordListOptionFilter[] = [];
   for (const [fieldKey, rawValues] of entries) {
     const field = visibleFields.get(fieldKey);
     if (
       !field ||
-      field.type !== 'SINGLE_SELECT' ||
+      (field.type !== 'SINGLE_SELECT' && field.type !== 'MULTI_SELECT') ||
       !Array.isArray(rawValues) ||
       rawValues.length === 0 ||
       rawValues.length > 20 ||
@@ -342,14 +369,18 @@ function parseListFilters(
     if (values.some((value) => !optionKeys.has(value))) {
       throw invalidRecordFilter();
     }
-    filters[fieldKey] = values;
+    filters.push({
+      fieldKey,
+      mode: field.type === 'MULTI_SELECT' ? 'CONTAINS' : 'EQUALS',
+      values,
+    });
   }
   return filters;
 }
 
 function invalidRecordFilter(): ApiException {
   return new ApiException('RECORD_FILTER_INVALID', 400, {
-    fieldErrors: { filters: ['请选择当前业务表中可见的状态选项。'] },
+    fieldErrors: { filters: ['请选择当前业务表中可见的选项。'] },
   });
 }
 

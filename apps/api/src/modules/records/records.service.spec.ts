@@ -103,6 +103,23 @@ function publishedSchema(): PublishedObjectSchema {
         sortOrder: 30,
         isSystem: false,
       },
+      {
+        id: 'field-tags',
+        fieldKey: 'tags',
+        label: '标签',
+        type: 'MULTI_SELECT',
+        required: false,
+        defaultValue: null,
+        validation: {},
+        config: {
+          options: [
+            { key: 'hot', label: '重点', status: 'ACTIVE' },
+            { key: 'nurture', label: '培育', status: 'ACTIVE' },
+          ],
+        },
+        sortOrder: 40,
+        isSystem: false,
+      },
     ],
     defaultView: {
       code: 'default',
@@ -122,6 +139,7 @@ function publishedSchema(): PublishedObjectSchema {
         email: 'EDIT',
         lead_status: 'EDIT',
         secret: 'HIDDEN',
+        tags: 'EDIT',
       },
     },
   };
@@ -169,11 +187,6 @@ class MemoryRecordsStore implements RecordsStore {
   }
 
   listRecords(query: RecordListQuery) {
-    const filters = (
-      query as RecordListQuery & {
-        filters?: Record<string, string[]>;
-      }
-    ).filters;
     const filtered = this.records
       .filter(
         (record) =>
@@ -181,12 +194,8 @@ class MemoryRecordsStore implements RecordsStore {
           record.deletedAt === null &&
           (!query.ownerMemberId ||
             record.ownerMemberId === query.ownerMemberId) &&
-          (!query.search ||
-            record.title.toLowerCase().includes(query.search.toLowerCase())) &&
-          (!filters ||
-            Object.entries(filters).every(([fieldKey, values]) =>
-              values.includes(String(record.values[fieldKey])),
-            )),
+          matchesSearch(record, query) &&
+          query.filters.every((filter) => matchesOptionFilter(record, filter)),
       )
       .sort((left, right) => compareRecords(left, right, query));
     return Promise.resolve({
@@ -268,6 +277,31 @@ class MemoryRecordsRepository implements RecordsRepository {
   ): Promise<T> {
     return work(this.store);
   }
+}
+
+function matchesSearch(record: DynamicRecord, query: RecordListQuery): boolean {
+  if (!query.search) return true;
+  const needle = query.search.toLowerCase();
+  if (record.title.toLowerCase().includes(needle)) return true;
+  return query.searchFieldKeys.some((fieldKey) =>
+    String(record.values[fieldKey] ?? '')
+      .toLowerCase()
+      .includes(needle),
+  );
+}
+
+function matchesOptionFilter(
+  record: DynamicRecord,
+  filter: RecordListQuery['filters'][number],
+): boolean {
+  const value = record.values[filter.fieldKey];
+  if (filter.mode === 'CONTAINS') {
+    return (
+      Array.isArray(value) &&
+      filter.values.some((candidate) => value.includes(candidate))
+    );
+  }
+  return filter.values.includes(String(value));
 }
 
 function compareRecords(
@@ -418,6 +452,56 @@ describe('RecordsService', () => {
 
     expect(page.total).toBe(1);
     expect(page.items.map((record) => record.title)).toEqual(['乙线索']);
+  });
+
+  it('searches visible default-view text fields without scanning hidden values', async () => {
+    const { service } = fixture();
+    await create(service, admin, '公开标题', employee.memberId, {
+      email: 'alpha@example.com',
+      secret: '机密标记',
+    });
+    await create(service, admin, '另一条', employee.memberId, {
+      email: 'beta@example.com',
+      secret: '无关',
+    });
+
+    const byEmail = await service.list(admin, 'leads', {
+      page: 1,
+      limit: 20,
+      search: 'alpha@',
+      sort: 'updatedAt',
+      direction: 'desc',
+    });
+    expect(byEmail.items.map((record) => record.title)).toEqual(['公开标题']);
+
+    const hidden = await service.list(employee, 'leads', {
+      page: 1,
+      limit: 20,
+      search: '机密标记',
+      sort: 'updatedAt',
+      direction: 'desc',
+    });
+    expect(hidden.total).toBe(0);
+  });
+
+  it('filters records by a visible published multi-select field', async () => {
+    const { service } = fixture();
+    await create(service, admin, '重点线索', employee.memberId, {
+      tags: ['hot'],
+    });
+    await create(service, admin, '培育线索', employee.memberId, {
+      tags: ['nurture'],
+    });
+
+    const page = await service.list(admin, 'leads', {
+      page: 1,
+      limit: 20,
+      filters: '{"tags":["hot"]}',
+      sort: 'updatedAt',
+      direction: 'desc',
+    });
+
+    expect(page.items.map((record) => record.title)).toEqual(['重点线索']);
   });
 
   it('rejects filters on hidden or non-select fields', async () => {
