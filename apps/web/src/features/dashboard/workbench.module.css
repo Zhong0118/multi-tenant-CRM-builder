@@ -81,7 +81,6 @@
   display: grid;
   min-width: 0;
   gap: 14px;
-  grid-template-rows: minmax(0, 1.25fr) minmax(0, 0.75fr);
 }
 
 .trendPanel,
@@ -332,6 +331,66 @@
   color: var(--color-primary);
 }
 
+.dashboard {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.metricBand {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  overflow: hidden;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-reading);
+}
+
+.analysisBand {
+  display: grid;
+  grid-template-columns: minmax(0, 2.15fr) minmax(280px, 0.95fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.analysisBandSolo {
+  grid-template-columns: 1fr;
+}
+
+.analysisBandSolo .analysisRail {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.analysisRail {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+}
+
+.tablesBand {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.4fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.tablesBandSolo {
+  grid-template-columns: 1fr;
+}
+
+.tableStack {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+}
+
+.extraTrendBand {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
 .widgetGrid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -369,6 +428,60 @@
 
 .widgetFull {
   grid-column: 1 / -1;
+}
+
+.metricWidget {
+  min-height: 108px;
+  padding: 16px 18px;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--border-default);
+  border-radius: 0;
+}
+
+.metricWidget:last-child {
+  border-right: 0;
+}
+
+.metricWidget::before {
+  display: none;
+}
+
+.metricWidget .widgetHeading {
+  margin-bottom: 10px;
+}
+
+.metricWidget .widgetHeading h2 {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.metricWidget .widgetHeading p {
+  display: none;
+}
+
+.metricWidget .metricValue {
+  padding: 0;
+  font-size: clamp(22px, 2vw, 32px);
+}
+
+.metricWidget .unavailable {
+  min-height: 0;
+  padding: 0;
+}
+
+.trendWidget {
+  min-height: 420px;
+}
+
+.analysisRail .widget {
+  height: 100%;
+}
+
+.tableWidget {
+  min-height: 0;
 }
 
 .widgetHeading {
@@ -684,6 +797,23 @@
     grid-column: span 6;
   }
 
+  .analysisBand,
+  .tablesBand {
+    grid-template-columns: 1fr;
+  }
+
+  .metricBand {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metricWidget:nth-child(even) {
+    border-right: 0;
+  }
+
+  .metricWidget:nth-child(n + 3) {
+    border-top: 1px solid var(--border-default);
+  }
+
   .kpiBand {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -700,7 +830,7 @@
     grid-template-columns: 1fr;
   }
 
-  .analysisRail {
+  .analysisCanvas .analysisRail {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-rows: auto;
   }
@@ -715,6 +845,24 @@
   .widgetHalf,
   .widgetFull {
     grid-column: 1;
+  }
+
+  .metricBand {
+    grid-template-columns: 1fr;
+  }
+
+  .metricWidget,
+  .metricWidget:nth-child(even) {
+    border-right: 0;
+    border-top: 1px solid var(--border-default);
+  }
+
+  .metricWidget:first-child {
+    border-top: 0;
+  }
+
+  .trendWidget {
+    min-height: 320px;
   }
 
   .widget {

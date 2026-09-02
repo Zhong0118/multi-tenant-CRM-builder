@@ -23,7 +23,7 @@ const objects = [
 ];
 
 describe("WorkspaceHomeView", () => {
-  it("renders published widgets in configured order and widths", () => {
+  it("renders published widgets in type bands, ignoring configured widths", () => {
     const { container } = render(
       <WorkspaceHomeView
         tenantCode="northwind"
@@ -50,15 +50,28 @@ describe("WorkspaceHomeView", () => {
     const widgets = container.querySelectorAll("[data-dashboard-widget]");
     expect([...widgets].map((widget) => widget.getAttribute("data-widget-id"))).toEqual([
       "total",
-      "status",
+      "unavailable",
       "trend",
+      "status",
       "leaderboard",
       "records",
-      "unavailable",
     ]);
-    expect([...widgets[0].classList].some((name) => name.includes("widgetQuarter"))).toBe(true);
-    expect([...widgets[1].classList].some((name) => name.includes("widgetHalf"))).toBe(true);
-    expect([...widgets[4].classList].some((name) => name.includes("widgetFull"))).toBe(true);
+    expect(container.querySelector('[data-dashboard-band="metrics"]')).toContainElement(
+      widgets[0] as HTMLElement,
+    );
+    expect(container.querySelector('[data-dashboard-band="analysis"]')).toContainElement(
+      screen.getByRole("heading", { name: "每日订单" }),
+    );
+    expect(container.querySelector('[data-dashboard-band="tables"]')).toContainElement(
+      screen.getByRole("heading", { name: "近期订单" }),
+    );
+    expect([...widgets].some((widget) =>
+      [...widget.classList].some((name) =>
+        name.includes("widgetQuarter") ||
+        name.includes("widgetHalf") ||
+        name.includes("widgetFull"),
+      ),
+    )).toBe(false);
   });
 
   it("keeps ready siblings visible when one published widget is unavailable", () => {

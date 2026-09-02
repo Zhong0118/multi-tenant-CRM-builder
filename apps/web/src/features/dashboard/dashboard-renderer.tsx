@@ -10,6 +10,7 @@ import type {
   DashboardRuntime,
   DashboardRuntimeWidget,
 } from "./dashboard-types";
+import { layoutDashboardWidgets } from "./layout-dashboard-widgets";
 import { TrendChart } from "./workbench-charts";
 import styles from "./workbench.module.css";
 
@@ -24,24 +25,84 @@ export function DashboardRenderer({
     return <Empty description="当前发布的工作台没有可显示的组件" />;
   }
 
+  const layout = layoutDashboardWidgets(runtime.widgets);
+  const hasAnalysis = Boolean(layout.primaryTrend) || layout.distributions.length > 0;
+  const analysisSolo = !layout.primaryTrend || layout.distributions.length === 0;
+  const hasTables = layout.leaderboards.length > 0 || layout.recordLists.length > 0;
+  const tablesSolo = layout.leaderboards.length === 0 || layout.recordLists.length === 0;
+
+  function renderWidget(widget: DashboardRuntimeWidget, className?: string) {
+    return (
+      <WidgetSurface key={widget.id} widget={widget} className={className}>
+        {widget.state === "UNAVAILABLE" ? (
+          <UnavailableWidget widget={widget} />
+        ) : (
+          <ReadyWidget tenantCode={tenantCode} widget={widget} />
+        )}
+      </WidgetSurface>
+    );
+  }
+
   return (
-    <section className={styles.widgetGrid} aria-label={runtime.title}>
-      {runtime.widgets
-        .map((widget, index) => ({ widget, index }))
-        .sort(
-          (left, right) =>
-            left.widget.sortOrder - right.widget.sortOrder || left.index - right.index,
-        )
-        .map(({ widget }) => (
-          <WidgetSurface key={widget.id} widget={widget}>
-            {widget.state === "UNAVAILABLE" ? (
-              <UnavailableWidget widget={widget} />
-            ) : (
-              <ReadyWidget tenantCode={tenantCode} widget={widget} />
-            )}
-          </WidgetSurface>
-        ))}
-    </section>
+    <div className={styles.dashboard} aria-label={runtime.title}>
+      {layout.metrics.length ? (
+        <section
+          className={styles.metricBand}
+          data-dashboard-band="metrics"
+          aria-label="指标"
+        >
+          {layout.metrics.map((widget) => renderWidget(widget, styles.metricWidget))}
+        </section>
+      ) : null}
+
+      {hasAnalysis ? (
+        <section
+          className={`${styles.analysisBand} ${analysisSolo ? styles.analysisBandSolo : ""}`}
+          data-dashboard-band="analysis"
+          aria-label="分析"
+        >
+          {layout.primaryTrend
+            ? renderWidget(layout.primaryTrend, styles.trendWidget)
+            : null}
+          {layout.distributions.length ? (
+            <div className={styles.analysisRail}>
+              {layout.distributions.map((widget) => renderWidget(widget))}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {layout.extraTrends.length ? (
+        <section className={styles.extraTrendBand} aria-label="其他趋势">
+          {layout.extraTrends.map((widget) =>
+            renderWidget(widget, styles.trendWidget),
+          )}
+        </section>
+      ) : null}
+
+      {hasTables ? (
+        <section
+          className={`${styles.tablesBand} ${tablesSolo ? styles.tablesBandSolo : ""}`}
+          data-dashboard-band="tables"
+          aria-label="列表"
+        >
+          {layout.leaderboards.length ? (
+            <div className={styles.tableStack}>
+              {layout.leaderboards.map((widget) =>
+                renderWidget(widget, styles.tableWidget),
+              )}
+            </div>
+          ) : null}
+          {layout.recordLists.length ? (
+            <div className={styles.tableStack}>
+              {layout.recordLists.map((widget) =>
+                renderWidget(widget, styles.tableWidget),
+              )}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+    </div>
   );
 }
 
@@ -65,19 +126,15 @@ export function PeriodLabel({
 function WidgetSurface({
   widget,
   children,
+  className,
 }: {
   widget: DashboardRuntimeWidget;
   children: React.ReactNode;
+  className?: string;
 }) {
-  const width = {
-    QUARTER: styles.widgetQuarter,
-    HALF: styles.widgetHalf,
-    FULL: styles.widgetFull,
-  }[widget.width];
-
   return (
     <section
-      className={`${styles.widget} ${width}`}
+      className={`${styles.widget} ${className ?? ""}`.trim()}
       data-dashboard-widget
       data-widget-id={widget.id}
       aria-label={widget.title}
