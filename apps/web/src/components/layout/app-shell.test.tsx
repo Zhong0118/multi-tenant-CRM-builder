@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { platformNavigation } from "@/components/navigation/platform-navigation";
 
@@ -44,6 +44,10 @@ function renderShell() {
 }
 
 describe("AppShell", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
   it("renders company-management navigation and the platform user menu", () => {
     mocks.pathname = "/platform/tenants";
     renderShell();
@@ -136,6 +140,55 @@ describe("AppShell", () => {
     expect(screen.getByRole("main")).toHaveAttribute(
       "data-scroll-region",
       "main",
+    );
+  });
+
+  it("lets a desktop user drag the sidebar and remembers the expanded width", () => {
+    renderShell();
+    const handle = screen.getByRole("separator", { name: "调整侧栏宽度" });
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientX: 224 });
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 280 });
+    fireEvent.pointerUp(handle, { pointerId: 1, clientX: 280 });
+
+    expect(screen.getByRole("complementary")).toHaveStyle({
+      "--sidebar-width": "280px",
+    });
+    expect(window.localStorage.getItem("crm.sidebar.width")).toBe("280");
+    expect(window.localStorage.getItem("crm.sidebar.collapsed")).not.toBe(
+      "true",
+    );
+  });
+
+  it("collapses when dragged past the icon-rail threshold and keeps the previous width", () => {
+    window.localStorage.setItem("crm.sidebar.width", "280");
+    renderShell();
+    const handle = screen.getByRole("separator", { name: "调整侧栏宽度" });
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientX: 280 });
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 150 });
+    fireEvent.pointerUp(handle, { pointerId: 1, clientX: 150 });
+
+    expect(
+      screen.getByRole("navigation", { name: "平台导航" }),
+    ).toHaveAttribute("data-collapsed", "true");
+    expect(window.localStorage.getItem("crm.sidebar.collapsed")).toBe("true");
+    expect(window.localStorage.getItem("crm.sidebar.width")).toBe("280");
+  });
+
+  it("restores the default expanded width on double-click", () => {
+    window.localStorage.setItem("crm.sidebar.width", "300");
+    renderShell();
+    const handle = screen.getByRole("separator", { name: "调整侧栏宽度" });
+
+    fireEvent.doubleClick(handle);
+
+    expect(screen.getByRole("complementary")).toHaveStyle({
+      "--sidebar-width": "224px",
+    });
+    expect(window.localStorage.getItem("crm.sidebar.width")).toBe("224");
+    expect(window.localStorage.getItem("crm.sidebar.collapsed")).not.toBe(
+      "true",
     );
   });
 });
