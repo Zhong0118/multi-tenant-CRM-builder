@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -23,8 +25,11 @@ import { CurrentTenant } from '../../common/tenancy/tenant-context.decorator';
 import { WorkspaceGuard } from '../../common/tenancy/workspace.guard';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
 import {
+  CreateDashboardDto,
   DashboardConfigurationEnvelopeDto,
+  DashboardDefaultsDto,
   DashboardDraftDto,
+  DashboardListItemDto,
   DashboardOverviewDto,
   DashboardOverviewQueryDto,
   DashboardPeriodInputDto,
@@ -33,10 +38,11 @@ import {
   PreviewDashboardDto,
   PublishDashboardDto,
   SaveDashboardConfigurationDto,
+  UpdateDashboardDto,
 } from './dto';
 import { DashboardsService } from './dashboards.service';
 
-@Controller('workspaces/:tenantCode/dashboard')
+@Controller('workspaces/:tenantCode/dashboards')
 @ApiTags('dashboards')
 @ApiCookieAuth('crm_session')
 @ApiParam({ name: 'tenantCode', type: String })
@@ -45,21 +51,76 @@ import { DashboardsService } from './dashboards.service';
 export class DashboardsController {
   constructor(private readonly dashboards: DashboardsService) {}
 
-  @Get('configuration')
-  @ApiOkResponse({ type: DashboardConfigurationEnvelopeDto })
-  configuration(@CurrentTenant() context: TenantContext) {
-    return this.dashboards.getConfiguration(context);
+  @Get()
+  @ApiOkResponse({ type: DashboardListItemDto, isArray: true })
+  list(@CurrentTenant() context: TenantContext) {
+    return this.dashboards.list(context);
   }
 
-  @Put('configuration')
+  @Post()
+  @ApiOkResponse({ type: DashboardDraftDto })
+  create(
+    @CurrentTenant() context: TenantContext,
+    @Body() dto: CreateDashboardDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.dashboards.create(
+      context,
+      {
+        name: dto.name,
+        audience: dto.audience,
+        copyFrom: dto.copyFrom,
+      },
+      requestMeta(request),
+    );
+  }
+
+  @Patch('defaults')
+  @ApiOkResponse({ type: DashboardDefaultsDto })
+  setDefaults(
+    @CurrentTenant() context: TenantContext,
+    @Body() dto: DashboardDefaultsDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.dashboards.setDefaults(
+      context,
+      {
+        adminDashboardCode: dto.adminDashboardCode,
+        employeeDashboardCode: dto.employeeDashboardCode,
+      },
+      requestMeta(request),
+    );
+  }
+
+  @Get('overview')
+  @ApiOkResponse({ type: DashboardOverviewDto })
+  defaultOverview(
+    @CurrentTenant() context: TenantContext,
+    @Query() query: DashboardOverviewQueryDto,
+  ) {
+    return this.dashboards.getOverview(context, overviewPeriod(query));
+  }
+
+  @Get(':dashboardCode/configuration')
+  @ApiOkResponse({ type: DashboardConfigurationEnvelopeDto })
+  configuration(
+    @CurrentTenant() context: TenantContext,
+    @Param('dashboardCode') dashboardCode: string,
+  ) {
+    return this.dashboards.getConfiguration(context, dashboardCode);
+  }
+
+  @Put(':dashboardCode/configuration')
   @ApiOkResponse({ type: DashboardDraftDto })
   saveDraft(
     @CurrentTenant() context: TenantContext,
+    @Param('dashboardCode') dashboardCode: string,
     @Body() dto: SaveDashboardConfigurationDto,
     @Req() request: RequestWithId,
   ) {
     return this.dashboards.saveDraft(
       context,
+      dashboardCode,
       {
         expectedVersion: dto.expectedVersion,
         configuration: dto.configuration,
@@ -68,39 +129,66 @@ export class DashboardsController {
     );
   }
 
-  @Post('preview')
+  @Patch(':dashboardCode')
+  @ApiOkResponse({ type: DashboardDraftDto })
+  update(
+    @CurrentTenant() context: TenantContext,
+    @Param('dashboardCode') dashboardCode: string,
+    @Body() dto: UpdateDashboardDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.dashboards.update(
+      context,
+      dashboardCode,
+      {
+        name: dto.name,
+        audience: dto.audience,
+        status: dto.status,
+      },
+      requestMeta(request),
+    );
+  }
+
+  @Post(':dashboardCode/preview')
   @ApiOkResponse({ type: DashboardRuntimeDto })
   preview(
     @CurrentTenant() context: TenantContext,
+    @Param('dashboardCode') dashboardCode: string,
     @Body() dto: PreviewDashboardDto,
   ) {
-    return this.dashboards.preview(context, {
+    return this.dashboards.preview(context, dashboardCode, {
       expectedVersion: dto.expectedVersion,
       period: periodFrom(dto.period),
     });
   }
 
-  @Post('publications')
+  @Post(':dashboardCode/publications')
   @ApiOkResponse({ type: DashboardPublicationSummaryDto })
   publish(
     @CurrentTenant() context: TenantContext,
+    @Param('dashboardCode') dashboardCode: string,
     @Body() dto: PublishDashboardDto,
     @Req() request: RequestWithId,
   ) {
     return this.dashboards.publish(
       context,
+      dashboardCode,
       { expectedVersion: dto.expectedVersion },
       requestMeta(request),
     );
   }
 
-  @Get('overview')
+  @Get(':dashboardCode/overview')
   @ApiOkResponse({ type: DashboardOverviewDto })
   overview(
     @CurrentTenant() context: TenantContext,
+    @Param('dashboardCode') dashboardCode: string,
     @Query() query: DashboardOverviewQueryDto,
   ) {
-    return this.dashboards.getOverview(context, overviewPeriod(query));
+    return this.dashboards.getOverview(context, {
+      ...overviewPeriod(query),
+      dashboardCode,
+    });
   }
 }
 

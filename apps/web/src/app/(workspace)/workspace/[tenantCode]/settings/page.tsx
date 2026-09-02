@@ -73,7 +73,7 @@ export default async function WorkspaceSettingsPage({
               绑定已发布业务表的指标、分布和列表。先发布业务表，再配置管理工作台。
             </p>
           </div>
-          <Link href={`/workspace/${tenantCode}/settings/dashboard`}>
+          <Link href={`/workspace/${tenantCode}/settings/dashboards/home`}>
             配置工作台 <span aria-hidden>→</span>
           </Link>
         </DataPanel>

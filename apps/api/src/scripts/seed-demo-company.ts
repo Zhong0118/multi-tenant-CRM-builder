@@ -633,14 +633,16 @@ async function ensureDemoDashboardPublication(
   objectConfiguration: Prisma.JsonValue,
 ): Promise<void> {
   const draft = demoDashboardDraft();
-  const definition = await transaction.tenantDashboardConfiguration.findUnique({
-    where: { tenantId },
+  const definition = await transaction.tenantDashboardConfiguration.findFirst({
+    where: { tenantId, code: 'home' },
     include: { activePublication: true },
   });
   const saved = !definition
     ? await transaction.tenantDashboardConfiguration.create({
         data: {
           tenantId,
+          code: 'home',
+          name: draft.title,
           draftVersion: 1,
           draftConfiguration: jsonInput(draft),
         },
@@ -648,7 +650,7 @@ async function ensureDemoDashboardPublication(
     : JSON.stringify(definition.draftConfiguration) === JSON.stringify(draft)
       ? definition
       : await transaction.tenantDashboardConfiguration.update({
-          where: { tenantId },
+          where: { id: definition.id },
           data: {
             draftVersion: { increment: 1 },
             draftConfiguration: jsonInput(draft),
@@ -663,12 +665,13 @@ async function ensureDemoDashboardPublication(
     return;
   }
   const last = await transaction.tenantDashboardPublication.aggregate({
-    where: { tenantId },
+    where: { dashboardId: saved.id },
     _max: { publicationNo: true },
   });
   const publication = await transaction.tenantDashboardPublication.create({
     data: {
       tenantId,
+      dashboardId: saved.id,
       publicationNo: (last._max.publicationNo ?? 0) + 1,
       sourceDraftVersion: saved.draftVersion,
       configuration: jsonInput(published),
@@ -676,8 +679,15 @@ async function ensureDemoDashboardPublication(
     },
   });
   await transaction.tenantDashboardConfiguration.update({
-    where: { tenantId },
+    where: { id: saved.id },
     data: { activePublicationId: publication.id },
+  });
+  await transaction.tenant.update({
+    where: { id: tenantId },
+    data: {
+      defaultAdminDashboardId: saved.id,
+      defaultEmployeeDashboardId: saved.id,
+    },
   });
 }
 

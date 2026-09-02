@@ -31,7 +31,7 @@ describe('DashboardsService', () => {
     const { service, repository } = setup();
 
     await expect(
-      service.saveDraft(adminContext(), {
+      service.saveDraft(adminContext(), 'home', {
         expectedVersion: 1,
         configuration: incompleteDraft(),
       }),
@@ -39,6 +39,7 @@ describe('DashboardsService', () => {
 
     expect(repository.saveDraft).toHaveBeenCalledWith(
       adminContext(),
+      'home',
       1,
       expect.objectContaining({
         widgets: [expect.objectContaining({ sortOrder: 0, objectCode: '' })],
@@ -70,7 +71,7 @@ describe('DashboardsService', () => {
     const { service, repository } = setup({ draft });
 
     await expect(
-      service.saveDraft(adminContext(), {
+      service.saveDraft(adminContext(), 'home', {
         expectedVersion: 1,
         configuration: draft,
       }),
@@ -78,6 +79,7 @@ describe('DashboardsService', () => {
 
     expect(repository.saveDraft).toHaveBeenCalledWith(
       adminContext(),
+      'home',
       1,
       expect.objectContaining({
         widgets: [expect.objectContaining({ fieldKeys: [] })],
@@ -90,7 +92,7 @@ describe('DashboardsService', () => {
     const { service } = setup();
 
     await expect(
-      service.saveDraft(employeeContext(), {
+      service.saveDraft(employeeContext(), 'home', {
         expectedVersion: 1,
         configuration: completeDraft(),
       }),
@@ -106,7 +108,7 @@ describe('DashboardsService', () => {
     });
 
     await expect(
-      service.saveDraft(adminContext(), {
+      service.saveDraft(adminContext(), 'home', {
         expectedVersion: 4,
         configuration: completeDraft(),
       }),
@@ -121,11 +123,12 @@ describe('DashboardsService', () => {
     const { service, repository } = setup();
 
     await expect(
-      service.publish(adminContext(), { expectedVersion: 1 }),
+      service.publish(adminContext(), 'home', { expectedVersion: 1 }),
     ).resolves.toMatchObject({ number: 3, sourceDraftVersion: 1 });
 
     expect(repository.publishDraft).toHaveBeenCalledWith(
       adminContext(),
+      'home',
       1,
       expect.objectContaining({
         schemaVersion: 2,
@@ -140,7 +143,7 @@ describe('DashboardsService', () => {
     const { service, repository } = setup({ draft: incompleteDraft() });
 
     await expect(
-      service.publish(adminContext(), { expectedVersion: 1 }),
+      service.publish(adminContext(), 'home', { expectedVersion: 1 }),
     ).rejects.toMatchObject({ status: 400 });
 
     expect(repository.publishDraft).not.toHaveBeenCalled();
@@ -152,7 +155,7 @@ describe('DashboardsService', () => {
     repository.publishDraft.mockResolvedValue({ kind: 'CATALOG_CHANGED' });
 
     await expect(
-      service.publish(adminContext(), { expectedVersion: 1 }),
+      service.publish(adminContext(), 'home', { expectedVersion: 1 }),
     ).rejects.toMatchObject({
       status: 409,
       code: 'DASHBOARD_CATALOG_CHANGED',
@@ -165,7 +168,7 @@ describe('DashboardsService', () => {
     engine.evaluate.mockResolvedValue(preview);
 
     await expect(
-      service.preview(adminContext(), {
+      service.preview(adminContext(), 'home', {
         expectedVersion: 1,
         period,
       }),
@@ -185,7 +188,7 @@ describe('DashboardsService', () => {
     engine.evaluate.mockResolvedValue(runtimeResult('READY'));
     const browserPeriod = { ...period, timezone: 'Europe/London' };
 
-    await service.preview(adminContext(), {
+    await service.preview(adminContext(), 'home', {
       expectedVersion: 1,
       period: browserPeriod,
     });
@@ -203,7 +206,7 @@ describe('DashboardsService', () => {
     const { service, engine } = setup({ draft });
 
     await expect(
-      service.preview(adminContext(), {
+      service.preview(adminContext(), 'home', {
         expectedVersion: 1,
         period,
       }),
@@ -290,6 +293,12 @@ function setup(input: { draft?: DashboardDefinitionV2 } = {}) {
   const draft = input.draft ?? completeDraft();
   const repository = {
     getDefinition: jest.fn().mockResolvedValue({
+      id: 'dashboard-home',
+      code: 'home',
+      name: '工作台',
+      status: 'ACTIVE',
+      audience: 'ALL',
+      sortOrder: 0,
       draftVersion: 1,
       draftConfiguration: draft,
       activePublicationId: 'published-2',
@@ -297,6 +306,12 @@ function setup(input: { draft?: DashboardDefinitionV2 } = {}) {
       updatedAt: '2026-08-31T00:00:00.000Z',
     }),
     saveDraft: jest.fn().mockResolvedValue({
+      id: 'dashboard-home',
+      code: 'home',
+      name: '工作台',
+      status: 'ACTIVE',
+      audience: 'ALL',
+      sortOrder: 0,
       draftVersion: 2,
       draftConfiguration: draft,
       activePublicationId: 'published-2',
@@ -310,6 +325,26 @@ function setup(input: { draft?: DashboardDefinitionV2 } = {}) {
     getActivePublication: jest
       .fn()
       .mockResolvedValue(publication('published-2')),
+    listDashboards: jest.fn().mockResolvedValue([
+      {
+        id: 'dashboard-home',
+        code: 'home',
+        name: '工作台',
+        status: 'ACTIVE',
+        audience: 'ALL',
+        sortOrder: 0,
+        hasPublishedVersion: true,
+        isDefaultAdmin: true,
+        isDefaultEmployee: true,
+      },
+    ]),
+    createDashboard: jest.fn(),
+    updateDashboard: jest.fn(),
+    setDefaults: jest.fn(),
+    getDefaults: jest.fn().mockResolvedValue({
+      adminDashboardCode: 'home',
+      employeeDashboardCode: 'home',
+    }),
     listPublishedObjects: jest.fn().mockResolvedValue([publishedOpportunity()]),
     getTenantTimezone: jest.fn().mockResolvedValue('Asia/Shanghai'),
   };

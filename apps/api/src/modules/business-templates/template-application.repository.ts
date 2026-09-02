@@ -81,6 +81,8 @@ export interface HydratedTenantConfiguration {
   tenantId: string;
   dashboard?: {
     tenantId: string;
+    code: string;
+    name: string;
     draftVersion: 1;
     draftConfiguration: DashboardDefinitionV2;
     activePublicationId: null;
@@ -404,13 +406,22 @@ class PrismaTemplateApplicationStore implements TemplateApplicationStore {
       }
     }
     if (hydrated.dashboard) {
-      await this.transaction.tenantDashboardConfiguration.create({
+      const created = await this.transaction.tenantDashboardConfiguration.create({
         data: {
           tenantId: hydrated.dashboard.tenantId,
+          code: hydrated.dashboard.code,
+          name: hydrated.dashboard.name,
           draftVersion: hydrated.dashboard.draftVersion,
           draftConfiguration: jsonInput(hydrated.dashboard.draftConfiguration),
           activePublicationId: hydrated.dashboard.activePublicationId,
           sourceTemplateVersionId: hydrated.dashboard.sourceTemplateVersionId,
+        },
+      });
+      await this.transaction.tenant.update({
+        where: { id: hydrated.dashboard.tenantId },
+        data: {
+          defaultAdminDashboardId: created.id,
+          defaultEmployeeDashboardId: created.id,
         },
       });
     }

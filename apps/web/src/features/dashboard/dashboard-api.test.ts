@@ -23,7 +23,7 @@ describe("previewDashboardDraft", () => {
       response: new Response(null, { status: 200 }),
     });
 
-    await previewDashboardDraft("northwind", { expectedVersion: 4 });
+    await previewDashboardDraft("northwind", "home", { expectedVersion: 4 });
 
     expect(mocks.POST.mock.calls[0]?.[1].body.period).toEqual({
       from: expect.any(String),

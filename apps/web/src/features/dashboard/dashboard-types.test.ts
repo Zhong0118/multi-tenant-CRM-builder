@@ -12,6 +12,8 @@ describe("dashboard runtime parsing", () => {
     expect(
       parseDashboardConfigurationView({
         timezone: "Asia/Shanghai",
+        dashboards: [],
+        dashboard: null,
         draft: null,
         activePublication: null,
         candidates: [],
@@ -19,6 +21,8 @@ describe("dashboard runtime parsing", () => {
       } as never),
     ).toEqual({
       timezone: "Asia/Shanghai",
+      dashboards: [],
+      dashboard: null,
       draft: null,
       activePublication: null,
       candidates: [],

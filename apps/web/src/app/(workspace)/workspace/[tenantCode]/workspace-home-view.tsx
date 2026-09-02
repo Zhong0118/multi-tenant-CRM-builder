@@ -101,7 +101,7 @@ function emptyHomeAction(
     );
   }
   return (
-    <Link href={`/workspace/${tenantCode}/settings/dashboard`}>
+    <Link href={`/workspace/${tenantCode}/settings/dashboards/home`}>
       配置工作台
     </Link>
   );

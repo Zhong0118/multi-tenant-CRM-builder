@@ -126,6 +126,17 @@ enum AuditActorType {
   SYSTEM
 }
 
+enum DashboardStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum DashboardAudience {
+  ALL
+  TENANT_ADMIN
+  EMPLOYEE
+}
+
 model User {
   id                  String             @id @default(uuid(7)) @db.Uuid
   displayName         String             @map("display_name") @db.VarChar(100)
@@ -172,14 +183,24 @@ model Tenant {
   fieldPermissions   FieldPermission[]
   recordCounters     RecordCounter[]
   templateApplications BusinessTemplateApplication[]
-  dashboardConfiguration TenantDashboardConfiguration?
+  dashboardConfigurations TenantDashboardConfiguration[]
   dashboardPublications TenantDashboardPublication[]
+  defaultAdminDashboardId String? @map("default_admin_dashboard_id") @db.Uuid
+  defaultEmployeeDashboardId String? @map("default_employee_dashboard_id") @db.Uuid
+  defaultAdminDashboard TenantDashboardConfiguration? @relation("DefaultAdminDashboard", fields: [id, defaultAdminDashboardId], references: [tenantId, id], onDelete: Restrict)
+  defaultEmployeeDashboard TenantDashboardConfiguration? @relation("DefaultEmployeeDashboard", fields: [id, defaultEmployeeDashboardId], references: [tenantId, id], onDelete: Restrict)
 
   @@map("tenants")
 }
 
 model TenantDashboardConfiguration {
-  tenantId                String                       @id @map("tenant_id") @db.Uuid
+  id                      String                       @id @default(uuid(7)) @db.Uuid
+  tenantId                String                       @map("tenant_id") @db.Uuid
+  code                    String                       @db.VarChar(64)
+  name                    String                       @db.VarChar(100)
+  status                  DashboardStatus              @default(ACTIVE)
+  audience                DashboardAudience            @default(ALL)
+  sortOrder               Int                          @default(0) @map("sort_order")
   draftVersion            Int                          @default(1) @map("version")
   draftConfiguration      Json                         @map("configuration") @db.JsonB
   activePublicationId     String?                      @map("active_publication_id") @db.Uuid
@@ -190,27 +211,33 @@ model TenantDashboardConfiguration {
   sourceTemplateVersion   BusinessTemplateVersion?     @relation(fields: [sourceTemplateVersionId], references: [id], onDelete: Restrict)
   publications            TenantDashboardPublication[] @relation("TenantDashboardPublications")
   activePublication       TenantDashboardPublication?  @relation("ActiveTenantDashboardPublication", fields: [tenantId, activePublicationId], references: [tenantId, id], onDelete: Restrict)
+  defaultAdminFor         Tenant[]                     @relation("DefaultAdminDashboard")
+  defaultEmployeeFor      Tenant[]                     @relation("DefaultEmployeeDashboard")
 
+  @@unique([tenantId, code])
+  @@unique([tenantId, id])
   @@unique([tenantId, activePublicationId])
+  @@index([tenantId, status, sortOrder])
   @@map("tenant_dashboard_configurations")
 }
 
 model TenantDashboardPublication {
   id                  String                        @id @default(uuid(7)) @db.Uuid
   tenantId            String                        @map("tenant_id") @db.Uuid
+  dashboardId         String                        @map("dashboard_id") @db.Uuid
   publicationNo       Int                           @map("publication_no")
   sourceDraftVersion  Int                           @map("source_draft_version")
   configuration       Json                          @db.JsonB
   publishedByMemberId String?                       @map("published_by_member_id") @db.Uuid
   publishedAt         DateTime                      @default(now()) @map("published_at") @db.Timestamptz(3)
   tenant              Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  definition          TenantDashboardConfiguration  @relation("TenantDashboardPublications", fields: [tenantId], references: [tenantId], onDelete: Restrict, map: "tenant_dashboard_publications_tenant_id_definition_fkey")
+  definition          TenantDashboardConfiguration  @relation("TenantDashboardPublications", fields: [tenantId, dashboardId], references: [tenantId, id], onDelete: Restrict, map: "tenant_dashboard_publications_tenant_id_definition_fkey")
   publisher           TenantMember?                 @relation("TenantDashboardPublicationPublisher", fields: [tenantId, publishedByMemberId], references: [tenantId, id], onDelete: Restrict)
   activeFor           TenantDashboardConfiguration? @relation("ActiveTenantDashboardPublication")
 
-  @@unique([tenantId, publicationNo])
+  @@unique([dashboardId, publicationNo])
   @@unique([tenantId, id])
-  @@index([tenantId, publishedAt(sort: Desc)])
+  @@index([tenantId, dashboardId, publishedAt(sort: Desc)])
   @@map("tenant_dashboard_publications")
 }
 

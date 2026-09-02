@@ -133,6 +133,8 @@ describe('TemplateApplicationService', () => {
 
     expect(state.dashboard).toEqual({
       tenantId: 'tenant-1',
+      code: 'home',
+      name: '客户总览',
       draftVersion: 1,
       draftConfiguration: dashboardPreset(),
       sourceTemplateVersionId: 'version-1',

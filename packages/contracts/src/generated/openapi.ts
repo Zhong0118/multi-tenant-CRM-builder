@@ -500,7 +500,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/dashboard/configuration": {
+    "/api/v1/workspaces/{tenantCode}/dashboards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DashboardsController_list"];
+        put?: never;
+        post: operations["DashboardsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{tenantCode}/dashboards/{dashboardCode}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["DashboardsController_update"];
+        trace?: never;
+    };
+    "/api/v1/workspaces/{tenantCode}/dashboards/{dashboardCode}/configuration": {
         parameters: {
             query?: never;
             header?: never;
@@ -516,7 +548,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/dashboard/overview": {
+    "/api/v1/workspaces/{tenantCode}/dashboards/{dashboardCode}/overview": {
         parameters: {
             query?: never;
             header?: never;
@@ -532,7 +564,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/dashboard/preview": {
+    "/api/v1/workspaces/{tenantCode}/dashboards/{dashboardCode}/preview": {
         parameters: {
             query?: never;
             header?: never;
@@ -548,7 +580,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/dashboard/publications": {
+    "/api/v1/workspaces/{tenantCode}/dashboards/{dashboardCode}/publications": {
         parameters: {
             query?: never;
             header?: never;
@@ -558,6 +590,38 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["DashboardsController_publish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{tenantCode}/dashboards/defaults": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["DashboardsController_setDefaults"];
+        trace?: never;
+    };
+    "/api/v1/workspaces/{tenantCode}/dashboards/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DashboardsController_defaultOverview"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1054,6 +1118,12 @@ export interface components {
             description?: string | null;
             name: string;
         };
+        CreateDashboardDto: {
+            /** @enum {string} */
+            audience?: "ALL" | "TENANT_ADMIN" | "EMPLOYEE";
+            copyFrom?: string;
+            name: string;
+        };
         CreatedInvitationResponseDto: {
             /** Format: uuid */
             id: string;
@@ -1105,6 +1175,8 @@ export interface components {
         DashboardConfigurationEnvelopeDto: {
             activePublication?: components["schemas"]["DashboardPublicationSummaryDto"] | null;
             candidates: Record<string, never>[];
+            dashboard?: components["schemas"]["DashboardListItemDto"] | null;
+            dashboards: components["schemas"]["DashboardListItemDto"][];
             draft?: components["schemas"]["DashboardDraftDto"] | null;
             issues: components["schemas"]["DashboardConfigurationIssueDto"][];
             timezone: string;
@@ -1113,6 +1185,10 @@ export interface components {
             code: string;
             message: string;
             path: string;
+        };
+        DashboardDefaultsDto: {
+            adminDashboardCode?: string;
+            employeeDashboardCode?: string;
         };
         DashboardDistributionDataDto: {
             /** @enum {string} */
@@ -1142,12 +1218,21 @@ export interface components {
         DashboardDraftDto: {
             /** Format: uuid */
             activePublicationId?: string | null;
+            /** @enum {string} */
+            audience: "ALL" | "TENANT_ADMIN" | "EMPLOYEE";
+            code: string;
             draftConfiguration: {
                 [key: string]: unknown;
             };
             draftVersion: number;
             /** Format: uuid */
+            id: string;
+            name: string;
+            sortOrder: number;
+            /** Format: uuid */
             sourceTemplateVersionId?: string | null;
+            /** @enum {string} */
+            status: "ACTIVE" | "ARCHIVED";
             /** Format: date-time */
             updatedAt: string;
         };
@@ -1173,6 +1258,20 @@ export interface components {
             type: "LEADERBOARD";
             /** @enum {string} */
             width: "QUARTER" | "HALF" | "FULL";
+        };
+        DashboardListItemDto: {
+            /** @enum {string} */
+            audience: "ALL" | "TENANT_ADMIN" | "EMPLOYEE";
+            code: string;
+            hasPublishedVersion: boolean;
+            /** Format: uuid */
+            id: string;
+            isDefaultAdmin: boolean;
+            isDefaultEmployee: boolean;
+            name: string;
+            sortOrder: number;
+            /** @enum {string} */
+            status: "ACTIVE" | "ARCHIVED";
         };
         DashboardMetricDataDto: {
             /** @enum {string} */
@@ -2016,6 +2115,13 @@ export interface components {
             /** Format: uuid */
             userId: string;
         };
+        UpdateDashboardDto: {
+            /** @enum {string} */
+            audience?: "ALL" | "TENANT_ADMIN" | "EMPLOYEE";
+            name?: string;
+            /** @enum {string} */
+            status?: "ACTIVE" | "ARCHIVED";
+        };
         UpdateFieldDefinitionDto: {
             config?: components["schemas"]["FieldConfigDto"];
             defaultValue?: (string | number | boolean | unknown[] | {
@@ -2832,11 +2938,84 @@ export interface operations {
             };
         };
     };
+    DashboardsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantCode: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardListItemDto"][];
+                };
+            };
+        };
+    };
+    DashboardsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantCode: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDashboardDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardDraftDto"];
+                };
+            };
+        };
+    };
+    DashboardsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                dashboardCode: string;
+                tenantCode: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDashboardDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardDraftDto"];
+                };
+            };
+        };
+    };
     DashboardsController_configuration: {
         parameters: {
             query?: never;
             header?: never;
             path: {
+                dashboardCode: string;
                 tenantCode: string;
             };
             cookie?: never;
@@ -2858,6 +3037,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                dashboardCode: string;
                 tenantCode: string;
             };
             cookie?: never;
@@ -2881,12 +3061,14 @@ export interface operations {
     DashboardsController_overview: {
         parameters: {
             query?: {
+                dashboardCode?: string;
                 days?: number;
                 from?: string;
                 to?: string;
             };
             header?: never;
             path: {
+                dashboardCode: string;
                 tenantCode: string;
             };
             cookie?: never;
@@ -2908,6 +3090,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                dashboardCode: string;
                 tenantCode: string;
             };
             cookie?: never;
@@ -2933,6 +3116,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                dashboardCode: string;
                 tenantCode: string;
             };
             cookie?: never;
@@ -2949,6 +3133,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardPublicationSummaryDto"];
+                };
+            };
+        };
+    };
+    DashboardsController_setDefaults: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantCode: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DashboardDefaultsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardDefaultsDto"];
+                };
+            };
+        };
+    };
+    DashboardsController_defaultOverview: {
+        parameters: {
+            query?: {
+                dashboardCode?: string;
+                days?: number;
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path: {
+                tenantCode: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardOverviewDto"];
                 };
             };
         };
@@ -3526,6 +3761,7 @@ export interface operations {
                 ownerMemberId?: string;
                 page?: number;
                 search?: string;
+                /** @description updatedAt、createdAt、recordNo，或当前业务表中可排序的已发布字段键。 */
                 sort?: string;
             };
             header?: never;

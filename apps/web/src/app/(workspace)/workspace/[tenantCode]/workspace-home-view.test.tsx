@@ -186,7 +186,7 @@ describe("WorkspaceHomeView", () => {
 
     expect(screen.getByRole("link", { name: "配置工作台" })).toHaveAttribute(
       "href",
-      "/workspace/northwind/settings/dashboard",
+      "/workspace/northwind/settings/dashboards/home",
     );
 
     rerender(

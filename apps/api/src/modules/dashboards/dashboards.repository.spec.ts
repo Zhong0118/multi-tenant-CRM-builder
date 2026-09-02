@@ -62,7 +62,7 @@ describe('PrismaDashboardRepository persistence boundaries', () => {
     );
 
     await expect(
-      repository.saveDraft(context, 0, {
+      repository.saveDraft(context, 'home', 0, {
         schemaVersion: 2,
         title: '工作台',
         widgets: [],
@@ -77,7 +77,7 @@ describe('PrismaDashboardRepository persistence boundaries', () => {
     const repository = fixture(transaction, audit);
 
     await expect(
-      repository.saveDraft(context, 0, {
+      repository.saveDraft(context, 'home', 0, {
         schemaVersion: 2,
         title: '工作台',
         widgets: [],
@@ -98,7 +98,7 @@ describe('PrismaDashboardRepository persistence boundaries', () => {
         tenantId: 'tenant-1',
         actorId: 'user-1',
         action: 'dashboard.draft_saved',
-        after: { draftVersion: 1, widgetCount: 0 },
+        after: { dashboardCode: 'home', draftVersion: 1, widgetCount: 0 },
         requestId: 'req_unknown',
       }),
     ]);
@@ -110,7 +110,7 @@ describe('PrismaDashboardRepository persistence boundaries', () => {
     const repository = fixture(transaction, audit);
 
     await expect(
-      repository.publishDraft(context, 1, compiledPublication(), 'member-1', {
+      repository.publishDraft(context, 'home', 1, compiledPublication(), 'member-1', {
         requestId: 'req-dashboard',
         ip: '127.0.0.1',
       }),
@@ -125,7 +125,12 @@ describe('PrismaDashboardRepository persistence boundaries', () => {
         tenantId: 'tenant-1',
         actorId: 'user-1',
         action: 'dashboard.published',
-        after: { draftVersion: 1, publicationNumber: 2, widgetCount: 1 },
+        after: {
+          dashboardCode: 'home',
+          draftVersion: 1,
+          publicationNumber: 2,
+          widgetCount: 1,
+        },
         requestId: 'req-dashboard',
         ip: '127.0.0.1',
       }),
@@ -136,7 +141,7 @@ describe('PrismaDashboardRepository persistence boundaries', () => {
     const transaction = publicationTransaction();
     transaction.$queryRaw
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ draftVersion: 1 }])
+      .mockResolvedValueOnce([{ id: 'dashboard-home', draftVersion: 1 }])
       .mockResolvedValueOnce([
         {
           code: 'opportunities',
@@ -148,7 +153,7 @@ describe('PrismaDashboardRepository persistence boundaries', () => {
     const repository = fixture(transaction, audit);
 
     await expect(
-      repository.publishDraft(context, 1, compiledPublication(), 'member-1'),
+      repository.publishDraft(context, 'home', 1, compiledPublication(), 'member-1'),
     ).resolves.toEqual({ kind: 'CATALOG_CHANGED' });
 
     expect(
@@ -166,6 +171,7 @@ describe('PrismaDashboardRepository persistence boundaries', () => {
 
     await repository.publishDraft(
       context,
+      'home',
       1,
       compiledPublication(),
       'member-1',
@@ -195,7 +201,7 @@ describe('PrismaDashboardRepository persistence boundaries', () => {
     const repository = fixture(draftTransaction(), audit);
 
     await expect(
-      repository.saveDraft(context, 0, {
+      repository.saveDraft(context, 'home', 0, {
         schemaVersion: 2,
         title: '工作台',
         widgets: [],
@@ -234,7 +240,7 @@ describe('PrismaDashboardRepository persistence boundaries', () => {
     };
     const repository = fixture(transaction);
 
-    await expect(repository.getActivePublication(context)).resolves.toEqual(
+    await expect(repository.getActivePublication(context, 'home')).resolves.toEqual(
       expect.objectContaining({
         configuration: { kind: 'LEGACY', raw: legacy },
       }),
@@ -565,7 +571,13 @@ function draftTransaction(queries: string[] = []) {
     }),
     tenantDashboardConfiguration: {
       create: jest.fn().mockResolvedValue({
+        id: 'dashboard-home',
         tenantId: 'tenant-1',
+        code: 'home',
+        name: '工作台',
+        status: 'ACTIVE',
+        audience: 'ALL',
+        sortOrder: 0,
         draftVersion: 1,
         draftConfiguration: { schemaVersion: 2, title: '工作台', widgets: [] },
         activePublicationId: null,
@@ -573,6 +585,14 @@ function draftTransaction(queries: string[] = []) {
         createdAt: new Date('2026-09-01T00:00:00.000Z'),
         updatedAt: new Date('2026-09-01T00:00:00.000Z'),
       }),
+      aggregate: jest.fn().mockResolvedValue({ _max: { sortOrder: null } }),
+    },
+    tenant: {
+      findUnique: jest.fn().mockResolvedValue({
+        defaultAdminDashboardId: null,
+        defaultEmployeeDashboardId: null,
+      }),
+      update: jest.fn().mockResolvedValue({}),
     },
   };
 }
@@ -583,7 +603,8 @@ function publicationTransaction() {
     $queryRaw: jest.fn(() => {
       queryCount += 1;
       if (queryCount === 1) return Promise.resolve([]);
-      if (queryCount === 2) return Promise.resolve([{ draftVersion: 1 }]);
+      if (queryCount === 2)
+        return Promise.resolve([{ id: 'dashboard-home', draftVersion: 1 }]);
       if (queryCount === 3)
         return Promise.resolve([
           {
@@ -607,7 +628,10 @@ function publicationTransaction() {
         publishedAt: new Date('2026-09-01T00:00:00.000Z'),
       }),
     },
-    tenantDashboardConfiguration: { update: jest.fn().mockResolvedValue({}) },
+    tenantDashboardConfiguration: {
+      findUnique: jest.fn(),
+      update: jest.fn().mockResolvedValue({}),
+    },
   };
 }
 

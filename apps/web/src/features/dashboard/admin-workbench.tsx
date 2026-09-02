@@ -30,7 +30,7 @@ export function AdminWorkbench({
         description={`${tenantName}的已发布工作台。数据会按当前权限更新。`}
         status={<PeriodLabel period={overview.period} publication={overview.publication} />}
         extra={
-          <Link href={`/workspace/${tenantCode}/settings/dashboard`}>
+          <Link href={`/workspace/${tenantCode}/settings/dashboards/home`}>
             <Button>配置工作台</Button>
           </Link>
         }

@@ -499,6 +499,28 @@
         ],
         "type": "object"
       },
+      "CreateDashboardDto": {
+        "properties": {
+          "audience": {
+            "enum": [
+              "ALL",
+              "TENANT_ADMIN",
+              "EMPLOYEE"
+            ],
+            "type": "string"
+          },
+          "copyFrom": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
       "CreateFieldDefinitionDto": {
         "properties": {
           "config": {
@@ -693,6 +715,21 @@
             },
             "type": "array"
           },
+          "dashboard": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DashboardListItemDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "dashboards": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardListItemDto"
+            },
+            "type": "array"
+          },
           "draft": {
             "allOf": [
               {
@@ -714,6 +751,7 @@
         },
         "required": [
           "timezone",
+          "dashboards",
           "candidates",
           "issues"
         ],
@@ -736,6 +774,17 @@
           "path",
           "message"
         ],
+        "type": "object"
+      },
+      "DashboardDefaultsDto": {
+        "properties": {
+          "adminDashboardCode": {
+            "type": "string"
+          },
+          "employeeDashboardCode": {
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "DashboardDistributionDataDto": {
@@ -844,6 +893,17 @@
             "nullable": true,
             "type": "string"
           },
+          "audience": {
+            "enum": [
+              "ALL",
+              "TENANT_ADMIN",
+              "EMPLOYEE"
+            ],
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
           "draftConfiguration": {
             "additionalProperties": true,
             "type": "object"
@@ -852,9 +912,26 @@
             "minimum": 1,
             "type": "number"
           },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "number"
+          },
           "sourceTemplateVersionId": {
             "format": "uuid",
             "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ACTIVE",
+              "ARCHIVED"
+            ],
             "type": "string"
           },
           "updatedAt": {
@@ -863,6 +940,12 @@
           }
         },
         "required": [
+          "id",
+          "code",
+          "name",
+          "status",
+          "audience",
+          "sortOrder",
           "draftVersion",
           "draftConfiguration",
           "updatedAt"
@@ -953,6 +1036,59 @@
           "sortOrder",
           "state",
           "data"
+        ],
+        "type": "object"
+      },
+      "DashboardListItemDto": {
+        "properties": {
+          "audience": {
+            "enum": [
+              "ALL",
+              "TENANT_ADMIN",
+              "EMPLOYEE"
+            ],
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "hasPublishedVersion": {
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isDefaultAdmin": {
+            "type": "boolean"
+          },
+          "isDefaultEmployee": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "number"
+          },
+          "status": {
+            "enum": [
+              "ACTIVE",
+              "ARCHIVED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "status",
+          "audience",
+          "sortOrder",
+          "hasPublishedVersion",
+          "isDefaultAdmin",
+          "isDefaultEmployee"
         ],
         "type": "object"
       },
@@ -4242,6 +4378,29 @@
         ],
         "type": "object"
       },
+      "UpdateDashboardDto": {
+        "properties": {
+          "audience": {
+            "enum": [
+              "ALL",
+              "TENANT_ADMIN",
+              "EMPLOYEE"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ACTIVE",
+              "ARCHIVED"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "UpdateFieldDefinitionDto": {
         "properties": {
           "config": {
@@ -5770,10 +5929,269 @@
         ]
       }
     },
-    "/api/v1/workspaces/{tenantCode}/dashboard/configuration": {
+    "/api/v1/workspaces/{tenantCode}/dashboards": {
+      "get": {
+        "operationId": "DashboardsController_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DashboardListItemDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": [
+          "dashboards"
+        ]
+      },
+      "post": {
+        "operationId": "DashboardsController_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDashboardDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardDraftDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": [
+          "dashboards"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/dashboards/defaults": {
+      "patch": {
+        "operationId": "DashboardsController_setDefaults",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DashboardDefaultsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardDefaultsDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": [
+          "dashboards"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/dashboards/overview": {
+      "get": {
+        "operationId": "DashboardsController_defaultOverview",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 31,
+              "maximum": 366,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dashboardCode",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardOverviewDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": [
+          "dashboards"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/dashboards/{dashboardCode}": {
+      "patch": {
+        "operationId": "DashboardsController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dashboardCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDashboardDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardDraftDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": [
+          "dashboards"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/dashboards/{dashboardCode}/configuration": {
       "get": {
         "operationId": "DashboardsController_configuration",
         "parameters": [
+          {
+            "in": "path",
+            "name": "dashboardCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "in": "path",
             "name": "tenantCode",
@@ -5807,6 +6225,14 @@
       "put": {
         "operationId": "DashboardsController_saveDraft",
         "parameters": [
+          {
+            "in": "path",
+            "name": "dashboardCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "in": "path",
             "name": "tenantCode",
@@ -5848,10 +6274,18 @@
         ]
       }
     },
-    "/api/v1/workspaces/{tenantCode}/dashboard/overview": {
+    "/api/v1/workspaces/{tenantCode}/dashboards/{dashboardCode}/overview": {
       "get": {
         "operationId": "DashboardsController_overview",
         "parameters": [
+          {
+            "in": "path",
+            "name": "dashboardCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "in": "query",
             "name": "from",
@@ -5879,6 +6313,14 @@
               "maximum": 366,
               "minimum": 1,
               "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dashboardCode",
+            "required": false,
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -5912,10 +6354,18 @@
         ]
       }
     },
-    "/api/v1/workspaces/{tenantCode}/dashboard/preview": {
+    "/api/v1/workspaces/{tenantCode}/dashboards/{dashboardCode}/preview": {
       "post": {
         "operationId": "DashboardsController_preview",
         "parameters": [
+          {
+            "in": "path",
+            "name": "dashboardCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "in": "path",
             "name": "tenantCode",
@@ -5957,10 +6407,18 @@
         ]
       }
     },
-    "/api/v1/workspaces/{tenantCode}/dashboard/publications": {
+    "/api/v1/workspaces/{tenantCode}/dashboards/{dashboardCode}/publications": {
       "post": {
         "operationId": "DashboardsController_publish",
         "parameters": [
+          {
+            "in": "path",
+            "name": "dashboardCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "in": "path",
             "name": "tenantCode",
@@ -7209,6 +7667,7 @@
             }
           },
           {
+            "description": "updatedAt、createdAt、recordNo，或当前业务表中可排序的已发布字段键。",
             "in": "query",
             "name": "sort",
             "required": false,

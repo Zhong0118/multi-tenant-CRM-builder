@@ -34,17 +34,25 @@ test("defines the core multi-tenant CRM models", async () => {
   assert.match(schema, /data\s+Json\s+@default\("\{\}"\)\s+@db\.JsonB/);
 });
 
-test("defines tenant dashboard drafts and immutable publications", async () => {
+test("defines named tenant dashboards with per-dashboard publications", async () => {
   const schema = await readFile(schemaUrl, "utf8");
 
+  assert.match(schema, /enum\s+DashboardStatus\s+\{[\s\S]*ACTIVE[\s\S]*ARCHIVED/);
   assert.match(
     schema,
-    /model\s+TenantDashboardConfiguration\s+\{[\s\S]*?draftVersion\s+Int\s+@default\(1\)\s+@map\("version"\)[\s\S]*?draftConfiguration\s+Json\s+@map\("configuration"\)\s+@db\.JsonB[\s\S]*?activePublicationId\s+String\?\s+@map\("active_publication_id"\)\s+@db\.Uuid[\s\S]*?sourceTemplateVersionId\s+String\?\s+@map\("source_template_version_id"\)\s+@db\.Uuid[\s\S]*?publications\s+TenantDashboardPublication\[\]/,
+    /enum\s+DashboardAudience\s+\{[\s\S]*ALL[\s\S]*TENANT_ADMIN[\s\S]*EMPLOYEE/,
   );
-  assert.match(schema, /model\s+TenantDashboardPublication\s+\{/);
   assert.match(
     schema,
-    /model\s+TenantDashboardPublication\s+\{[\s\S]*?publicationNo\s+Int\s+@map\("publication_no"\)[\s\S]*?sourceDraftVersion\s+Int\s+@map\("source_draft_version"\)[\s\S]*?configuration\s+Json\s+@db\.JsonB[\s\S]*?publishedByMemberId\s+String\?\s+@map\("published_by_member_id"\)\s+@db\.Uuid[\s\S]*?publisher\s+TenantMember\?\s+@relation\("TenantDashboardPublicationPublisher",\s*fields:\s*\[tenantId,\s*publishedByMemberId\],\s*references:\s*\[tenantId,\s*id\],\s*onDelete:\s*Restrict\)[\s\S]*?@@unique\(\[tenantId,\s*publicationNo\]\)/,
+    /model\s+Tenant\s+\{[\s\S]*?dashboardConfigurations\s+TenantDashboardConfiguration\[][\s\S]*?defaultAdminDashboardId\s+String\?\s+@map\("default_admin_dashboard_id"\)[\s\S]*?defaultEmployeeDashboardId\s+String\?\s+@map\("default_employee_dashboard_id"\)/,
+  );
+  assert.match(
+    schema,
+    /model\s+TenantDashboardConfiguration\s+\{[\s\S]*?id\s+String\s+@id[\s\S]*?code\s+String\s+@db\.VarChar\(64\)[\s\S]*?name\s+String\s+@db\.VarChar\(100\)[\s\S]*?status\s+DashboardStatus[\s\S]*?audience\s+DashboardAudience[\s\S]*?draftVersion\s+Int\s+@default\(1\)\s+@map\("version"\)[\s\S]*?@@unique\(\[tenantId,\s*code\]\)/,
+  );
+  assert.match(
+    schema,
+    /model\s+TenantDashboardPublication\s+\{[\s\S]*?dashboardId\s+String\s+@map\("dashboard_id"\)[\s\S]*?@@unique\(\[dashboardId,\s*publicationNo\]\)/,
   );
 });
 

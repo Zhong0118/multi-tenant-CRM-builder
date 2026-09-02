@@ -48,7 +48,18 @@ export async function resetTestData(admin) {
     admin.objectDefinition.deleteMany(),
   ]);
   await resetBusinessTemplates(admin);
+  await admin.tenant.updateMany({
+    data: {
+      defaultAdminDashboardId: null,
+      defaultEmployeeDashboardId: null,
+    },
+  });
+  await admin.tenantDashboardConfiguration.updateMany({
+    data: { activePublicationId: null },
+  });
   await admin.$transaction([
+    admin.tenantDashboardPublication.deleteMany(),
+    admin.tenantDashboardConfiguration.deleteMany(),
     admin.tenantInvitation.deleteMany(),
     admin.tenantMember.deleteMany(),
     admin.session.deleteMany(),
@@ -108,7 +119,21 @@ export async function cleanupTestFixtures(
     await admin.objectDefinition.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });
-    await admin.tenantInvitation.deleteMany({
+    await admin.tenant.updateMany({
+      where: { id: { in: tenantIds } },
+      data: {
+        defaultAdminDashboardId: null,
+        defaultEmployeeDashboardId: null,
+      },
+    });
+    await admin.tenantDashboardConfiguration.updateMany({
+      where: { tenantId: { in: tenantIds } },
+      data: { activePublicationId: null },
+    });
+    await admin.tenantDashboardPublication.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await admin.tenantDashboardConfiguration.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });
     await admin.tenantMember.deleteMany({

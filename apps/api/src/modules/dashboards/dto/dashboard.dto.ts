@@ -1,11 +1,16 @@
 import { Type } from 'class-transformer';
 import {
   IsDateString,
+  IsIn,
   IsInt,
   IsObject,
   IsOptional,
+  IsString,
+  Matches,
   Max,
+  MaxLength,
   Min,
+  MinLength,
   ValidateNested,
 } from 'class-validator';
 import {
@@ -22,6 +27,13 @@ export class DashboardConfigurationIssueDto {
 }
 
 export class DashboardDraftDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiProperty() code!: string;
+  @ApiProperty() name!: string;
+  @ApiProperty({ enum: ['ACTIVE', 'ARCHIVED'] }) status!: 'ACTIVE' | 'ARCHIVED';
+  @ApiProperty({ enum: ['ALL', 'TENANT_ADMIN', 'EMPLOYEE'] })
+  audience!: 'ALL' | 'TENANT_ADMIN' | 'EMPLOYEE';
+  @ApiProperty() sortOrder!: number;
   @ApiProperty({ minimum: 1 }) draftVersion!: number;
   @ApiProperty({ type: 'object', additionalProperties: true })
   draftConfiguration!: object;
@@ -30,6 +42,71 @@ export class DashboardDraftDto {
   @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   sourceTemplateVersionId!: string | null;
   @ApiProperty({ format: 'date-time' }) updatedAt!: string;
+}
+
+export class DashboardListItemDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiProperty() code!: string;
+  @ApiProperty() name!: string;
+  @ApiProperty({ enum: ['ACTIVE', 'ARCHIVED'] }) status!: 'ACTIVE' | 'ARCHIVED';
+  @ApiProperty({ enum: ['ALL', 'TENANT_ADMIN', 'EMPLOYEE'] })
+  audience!: 'ALL' | 'TENANT_ADMIN' | 'EMPLOYEE';
+  @ApiProperty() sortOrder!: number;
+  @ApiProperty() hasPublishedVersion!: boolean;
+  @ApiProperty() isDefaultAdmin!: boolean;
+  @ApiProperty() isDefaultEmployee!: boolean;
+}
+
+export class DashboardDefaultsDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Matches(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/)
+  adminDashboardCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Matches(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/)
+  employeeDashboardCode?: string;
+}
+
+export class CreateDashboardDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  name!: string;
+
+  @ApiPropertyOptional({ enum: ['ALL', 'TENANT_ADMIN', 'EMPLOYEE'] })
+  @IsOptional()
+  @IsIn(['ALL', 'TENANT_ADMIN', 'EMPLOYEE'])
+  audience?: 'ALL' | 'TENANT_ADMIN' | 'EMPLOYEE';
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Matches(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/)
+  copyFrom?: string;
+}
+
+export class UpdateDashboardDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  name?: string;
+
+  @ApiPropertyOptional({ enum: ['ALL', 'TENANT_ADMIN', 'EMPLOYEE'] })
+  @IsOptional()
+  @IsIn(['ALL', 'TENANT_ADMIN', 'EMPLOYEE'])
+  audience?: 'ALL' | 'TENANT_ADMIN' | 'EMPLOYEE';
+
+  @ApiPropertyOptional({ enum: ['ACTIVE', 'ARCHIVED'] })
+  @IsOptional()
+  @IsIn(['ACTIVE', 'ARCHIVED'])
+  status?: 'ACTIVE' | 'ARCHIVED';
 }
 
 export class DashboardPublicationSummaryDto {
@@ -41,6 +118,12 @@ export class DashboardPublicationSummaryDto {
 
 export class DashboardConfigurationEnvelopeDto {
   @ApiProperty() timezone!: string;
+
+  @ApiProperty({ type: DashboardListItemDto, isArray: true })
+  dashboards!: DashboardListItemDto[];
+
+  @ApiPropertyOptional({ type: DashboardListItemDto, nullable: true })
+  dashboard!: DashboardListItemDto | null;
 
   @ApiPropertyOptional({ type: DashboardDraftDto, nullable: true })
   draft!: DashboardDraftDto | null;
@@ -124,6 +207,12 @@ export class DashboardOverviewQueryDto {
   @Min(1)
   @Max(366)
   days?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Matches(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/)
+  dashboardCode?: string;
 }
 
 export class DashboardMetricDataDto {

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toApiError, type ApiError } from "@/lib/api/api-error";
 
 import {
+  createDashboard,
   previewDashboardDraft,
   publishDashboardDraft,
   saveDashboardDraft,
@@ -31,9 +32,11 @@ type TrackedIssue = DashboardConfigurationIssue & {
 
 export function DashboardBuilder({
   tenantCode,
+  dashboardCode,
   initial,
 }: {
   tenantCode: string;
+  dashboardCode: string;
   initial: DashboardConfigurationView;
 }) {
   const initialDefinition = useMemo(
@@ -67,10 +70,10 @@ export function DashboardBuilder({
   const visibleIssues = materializeIssues(issues, definition.widgets);
 
   useEffect(() => {
-    const recovered = loadRecovery(tenantCode);
+    const recovered = loadRecovery(tenantCode, dashboardCode);
     if (!recovered) return;
     if (signature(recovered) === signature(initialDefinition)) {
-      clearRecovery(tenantCode);
+      clearRecovery(tenantCode, dashboardCode);
       return;
     }
     let active = true;
@@ -85,7 +88,7 @@ export function DashboardBuilder({
     return () => {
       active = false;
     };
-  }, [initialDefinition, tenantCode]);
+  }, [dashboardCode, initialDefinition, tenantCode]);
 
   useEffect(() => {
     const beforeUnload = (event: BeforeUnloadEvent) => {
@@ -161,13 +164,13 @@ export function DashboardBuilder({
     setFeedback(undefined);
     setServerVersion(undefined);
     try {
-      const saved = await saveDashboardDraft(tenantCode, {
+      const saved = await saveDashboardDraft(tenantCode, dashboardCode, {
         expectedVersion: version,
         configuration: normalized(definition),
       });
       setVersion(saved.draftVersion);
       setSavedSignature(signature(definition));
-      clearRecovery(tenantCode);
+      clearRecovery(tenantCode, dashboardCode);
       setFeedback("草稿已保存，尚未发布。");
     } catch (error) {
       handleOperationError("save", toApiError(error));
@@ -180,7 +183,9 @@ export function DashboardBuilder({
     setServerVersion(undefined);
     try {
       setPreview(
-        await previewDashboardDraft(tenantCode, { expectedVersion: version }),
+        await previewDashboardDraft(tenantCode, dashboardCode, {
+          expectedVersion: version,
+        }),
       );
       setIssues([]);
       setFocusPath(undefined);
@@ -195,9 +200,13 @@ export function DashboardBuilder({
     setBusy("publish");
     setServerVersion(undefined);
     try {
-      const publication = await publishDashboardDraft(tenantCode, {
-        expectedVersion: version,
-      });
+      const publication = await publishDashboardDraft(
+        tenantCode,
+        dashboardCode,
+        {
+          expectedVersion: version,
+        },
+      );
       setActivePublication(publication);
       setIssues([]);
       setFocusPath(undefined);
@@ -220,7 +229,7 @@ export function DashboardBuilder({
     if (error.code === "DASHBOARD_DRAFT_VERSION_CONFLICT") {
       setServerVersion(currentVersion(error.fieldErrors.currentVersion));
       setFeedback(
-        saveRecovery(tenantCode, definition)
+        saveRecovery(tenantCode, dashboardCode, definition)
           ? "草稿版本已变化；本地内容已保存为本标签页的恢复草稿，请重新载入页面后继续处理。"
           : "草稿版本已变化；本地内容仅保留在当前页面，请勿重新载入。",
       );
@@ -248,8 +257,41 @@ export function DashboardBuilder({
     <div className={styles.builderPage}>
       <header className={styles.builderHeader}>
         <div>
-          <h1>组件化工作台</h1>
+          <h1>{initial.dashboard?.name ?? "组件化工作台"}</h1>
           <p>编排已发布业务表的运营组件；保存草稿不会影响线上版本。</p>
+          {initial.dashboards.length > 0 ? (
+            <p>
+              {initial.dashboards
+                .filter((item) => item.status === "ACTIVE")
+                .map((item) => (
+                  <a
+                    key={item.code}
+                    href={`/workspace/${tenantCode}/settings/dashboards/${item.code}`}
+                    style={{ marginRight: 12 }}
+                  >
+                    {item.name}
+                    {item.code === dashboardCode ? "（当前）" : ""}
+                  </a>
+                ))}
+              <button
+                type="button"
+                onClick={() => {
+                  const name = window.prompt("新工作台名称", "销售工作台");
+                  if (!name?.trim()) return;
+                  void createDashboard(tenantCode, {
+                    name: name.trim(),
+                    copyFrom: dashboardCode,
+                  }).then((created) => {
+                    window.location.assign(
+                      `/workspace/${tenantCode}/settings/dashboards/${created.code}`,
+                    );
+                  });
+                }}
+              >
+                复制为新工作台
+              </button>
+            </p>
+          ) : null}
         </div>
         <div className={styles.headerActions}>
           <span>
@@ -484,16 +526,17 @@ function operationLabel(operation: "save" | "preview" | "publish") {
     operation
   ];
 }
-function recoveryKey(tenantCode: string) {
-  return `dashboard-builder-recovery:${tenantCode}`;
+function recoveryKey(tenantCode: string, dashboardCode: string) {
+  return `dashboard-builder-recovery:${tenantCode}:${dashboardCode}`;
 }
 function saveRecovery(
   tenantCode: string,
+  dashboardCode: string,
   definition: DashboardDefinitionV2,
 ): boolean {
   try {
     sessionStorage.setItem(
-      recoveryKey(tenantCode),
+      recoveryKey(tenantCode, dashboardCode),
       JSON.stringify({ definition: normalized(definition) }),
     );
     return true;
@@ -501,13 +544,22 @@ function saveRecovery(
     return false;
   }
 }
-function loadRecovery(tenantCode: string): DashboardDefinitionV2 | undefined {
+function loadRecovery(
+  tenantCode: string,
+  dashboardCode: string,
+): DashboardDefinitionV2 | undefined {
   try {
     const stored = JSON.parse(
-      sessionStorage.getItem(recoveryKey(tenantCode)) ?? "null",
+      sessionStorage.getItem(recoveryKey(tenantCode, dashboardCode)) ?? "null",
     ) as { definition?: unknown } | null;
     if (!stored?.definition) return undefined;
     return parseDraft({
+      id: "recovery",
+      code: dashboardCode,
+      name: "recovery",
+      status: "ACTIVE",
+      audience: "ALL",
+      sortOrder: 0,
       draftVersion: 0,
       draftConfiguration: stored.definition,
       activePublicationId: null,
@@ -515,13 +567,13 @@ function loadRecovery(tenantCode: string): DashboardDefinitionV2 | undefined {
       updatedAt: "recovery",
     }).draftConfiguration;
   } catch {
-    clearRecovery(tenantCode);
+    clearRecovery(tenantCode, dashboardCode);
     return undefined;
   }
 }
-function clearRecovery(tenantCode: string) {
+function clearRecovery(tenantCode: string, dashboardCode: string) {
   try {
-    sessionStorage.removeItem(recoveryKey(tenantCode));
+    sessionStorage.removeItem(recoveryKey(tenantCode, dashboardCode));
   } catch {
     // Storage may be unavailable; the current in-memory draft remains usable.
   }

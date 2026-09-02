@@ -23,11 +23,43 @@ vi.mock("./dashboard-api", () => ({
   saveDashboardDraft: vi.fn(),
   previewDashboardDraft: vi.fn(),
   publishDashboardDraft: vi.fn(),
+  createDashboard: vi.fn(),
+  updateDashboard: vi.fn(),
 }));
 
 const initial = {
   timezone: "Asia/Shanghai",
+  dashboards: [
+    {
+      id: "dashboard-home",
+      code: "home",
+      name: "销售工作台",
+      status: "ACTIVE" as const,
+      audience: "ALL" as const,
+      sortOrder: 0,
+      hasPublishedVersion: true,
+      isDefaultAdmin: true,
+      isDefaultEmployee: true,
+    },
+  ],
+  dashboard: {
+    id: "dashboard-home",
+    code: "home",
+    name: "销售工作台",
+    status: "ACTIVE" as const,
+    audience: "ALL" as const,
+    sortOrder: 0,
+    hasPublishedVersion: true,
+    isDefaultAdmin: true,
+    isDefaultEmployee: true,
+  },
   draft: {
+    id: "dashboard-home",
+    code: "home",
+    name: "销售工作台",
+    status: "ACTIVE" as const,
+    audience: "ALL" as const,
+    sortOrder: 0,
     draftVersion: 4,
     draftConfiguration: {
       schemaVersion: 2 as const,
@@ -117,7 +149,7 @@ beforeEach(() => {
 
 describe("DashboardBuilder", () => {
   it("adds each supported component type from the library", () => {
-    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
 
     for (const label of [
       "添加指标卡",
@@ -134,7 +166,7 @@ describe("DashboardBuilder", () => {
   });
 
   it("selects, copies, and deletes a component without discarding the draft", () => {
-    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
 
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
     fireEvent.click(screen.getByRole("button", { name: "复制组件 指标卡 1" }));
@@ -146,7 +178,7 @@ describe("DashboardBuilder", () => {
   });
 
   it("publishes an existing saved draft after reload and disables publishing only while dirty", async () => {
-    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
 
     expect(screen.getByRole("button", { name: "发布工作台" })).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
@@ -154,7 +186,7 @@ describe("DashboardBuilder", () => {
     fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
 
     await waitFor(() =>
-      expect(saveDashboardDraft).toHaveBeenCalledWith("northwind", {
+      expect(saveDashboardDraft).toHaveBeenCalledWith("northwind", "home", {
         expectedVersion: 4,
         configuration: expect.objectContaining({
           schemaVersion: 2,
@@ -166,7 +198,7 @@ describe("DashboardBuilder", () => {
   });
 
   it("never duplicates component IDs after delete-then-add", async () => {
-    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
 
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
@@ -177,7 +209,7 @@ describe("DashboardBuilder", () => {
     await waitFor(() => expect(saveDashboardDraft).toHaveBeenCalled());
     const saved = vi
       .mocked(saveDashboardDraft)
-      .mock.calls.at(-1)?.[1].configuration;
+      .mock.calls.at(-1)?.[2].configuration;
     const ids = saved?.widgets.map((widget) => widget.id) ?? [];
     expect(new Set(ids).size).toBe(ids.length);
   });
@@ -212,6 +244,7 @@ describe("DashboardBuilder", () => {
     render(
       <DashboardBuilder
         tenantCode="northwind"
+        dashboardCode="home"
         initial={{
           ...initial,
           draft: {
@@ -231,13 +264,13 @@ describe("DashboardBuilder", () => {
     await waitFor(() => expect(saveDashboardDraft).toHaveBeenCalled());
     const saved = vi
       .mocked(saveDashboardDraft)
-      .mock.calls.at(-1)?.[1].configuration;
+      .mock.calls.at(-1)?.[2].configuration;
     const ids = saved?.widgets.map((widget) => widget.id) ?? [];
     expect(new Set(ids).size).toBe(ids.length);
   });
 
   it("updates the active publication indicator immediately after publishing", async () => {
-    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
 
     expect(screen.getByText("线上第 3 版")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
@@ -255,6 +288,7 @@ describe("DashboardBuilder", () => {
     render(
       <DashboardBuilder
         tenantCode="northwind"
+        dashboardCode="home"
         initial={{
           ...initial,
           draft: {
@@ -309,6 +343,7 @@ describe("DashboardBuilder", () => {
     render(
       <DashboardBuilder
         tenantCode="northwind"
+        dashboardCode="home"
         initial={withWidgets(
           [first, second],
           [
@@ -343,6 +378,7 @@ describe("DashboardBuilder", () => {
     render(
       <DashboardBuilder
         tenantCode="northwind"
+        dashboardCode="home"
         initial={withWidgets(
           [first, second],
           [
@@ -381,6 +417,7 @@ describe("DashboardBuilder", () => {
     render(
       <DashboardBuilder
         tenantCode="northwind"
+        dashboardCode="home"
         initial={withWidgets(
           [first, second],
           [
@@ -418,6 +455,7 @@ describe("DashboardBuilder", () => {
     render(
       <DashboardBuilder
         tenantCode="northwind"
+        dashboardCode="home"
         initial={withWidgets(
           [widget],
           [
@@ -471,6 +509,7 @@ describe("DashboardBuilder", () => {
     render(
       <DashboardBuilder
         tenantCode="northwind"
+        dashboardCode="home"
         initial={{
           ...initial,
           draft: {
@@ -507,7 +546,7 @@ describe("DashboardBuilder", () => {
   });
 
   it("saves a newly added record list before display fields are selected", async () => {
-    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
 
     fireEvent.click(screen.getByRole("button", { name: "添加记录列表" }));
     fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
@@ -515,6 +554,7 @@ describe("DashboardBuilder", () => {
     await waitFor(() =>
       expect(saveDashboardDraft).toHaveBeenCalledWith(
         "northwind",
+        "home",
         expect.objectContaining({
           configuration: expect.objectContaining({
             widgets: [expect.objectContaining({ fieldKeys: [] })],
@@ -525,7 +565,7 @@ describe("DashboardBuilder", () => {
   });
 
   it("edits the representative V2 controls, filters, width and keyboard reorder", () => {
-    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
 
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
     expect(screen.getByLabelText("显示格式")).toBeInTheDocument();
@@ -549,7 +589,7 @@ describe("DashboardBuilder", () => {
   });
 
   it("serializes each operator-specific filter value shape", async () => {
-    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
     fireEvent.change(screen.getByLabelText("业务表"), {
       target: { value: "deals" },
@@ -602,6 +642,7 @@ describe("DashboardBuilder", () => {
     await waitFor(() =>
       expect(saveDashboardDraft).toHaveBeenCalledWith(
         "northwind",
+        "home",
         expect.objectContaining({
           configuration: expect.objectContaining({
             widgets: [
@@ -637,6 +678,7 @@ describe("DashboardBuilder", () => {
     render(
       <DashboardBuilder
         tenantCode="northwind"
+        dashboardCode="home"
         initial={withWidgets([widget], [])}
       />,
     );
@@ -653,6 +695,7 @@ describe("DashboardBuilder", () => {
     await waitFor(() =>
       expect(saveDashboardDraft).toHaveBeenCalledWith(
         "northwind",
+        "home",
         expect.objectContaining({
           configuration: expect.objectContaining({
             widgets: [
@@ -690,6 +733,7 @@ describe("DashboardBuilder", () => {
     render(
       <DashboardBuilder
         tenantCode="northwind"
+        dashboardCode="home"
         initial={{
           ...withWidgets([widget], []),
           timezone: "America/New_York",
@@ -715,7 +759,7 @@ describe("DashboardBuilder", () => {
       status: 409,
       fieldErrors: {},
     });
-    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
 
     fireEvent.click(screen.getByRole("button", { name: "发布工作台" }));
 
@@ -739,6 +783,7 @@ describe("DashboardBuilder", () => {
     const view = render(
       <DashboardBuilder
         tenantCode="northwind"
+        dashboardCode="home"
         initial={withWidgets([widget], [])}
       />,
     );
@@ -753,7 +798,7 @@ describe("DashboardBuilder", () => {
     expect(screen.getByText("服务器草稿版本为 7")).toBeInTheDocument();
     view.unmount();
 
-    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
 
     expect(
       await screen.findByText("已从本标签页恢复未解决冲突的草稿。"),
@@ -787,7 +832,7 @@ describe("DashboardBuilder", () => {
       status: 422,
       fieldErrors: {},
     });
-    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
     fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
 
@@ -798,7 +843,7 @@ describe("DashboardBuilder", () => {
   });
 
   it("clears a metric value field when its object changes", async () => {
-    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
     fireEvent.change(screen.getByLabelText("业务表"), {
       target: { value: "deals" },
@@ -817,6 +862,7 @@ describe("DashboardBuilder", () => {
     await waitFor(() =>
       expect(saveDashboardDraft).toHaveBeenCalledWith(
         "northwind",
+        "home",
         expect.objectContaining({
           configuration: expect.objectContaining({
             widgets: [
@@ -833,7 +879,7 @@ describe("DashboardBuilder", () => {
     const link = document.createElement("a");
     link.href = "/workspace/northwind";
     document.body.append(link);
-    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
 
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
     fireEvent.change(screen.getByLabelText("组件标题"), {
@@ -877,7 +923,7 @@ describe("DashboardBuilder", () => {
       status: 409,
       fieldErrors: { currentVersion: ["7"] },
     });
-    render(<DashboardBuilder tenantCode="northwind" initial={initial} />);
+    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
     fireEvent.click(screen.getByRole("button", { name: "预览草稿" }));
     expect(await screen.findByText("真实总数")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));

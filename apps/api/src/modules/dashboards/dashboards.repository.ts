@@ -5,6 +5,7 @@ import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
 import { AuditService } from '../audit/audit.service';
 import { parsePublishedObjectSchema } from '../objects/published-object.service';
+import { DEFAULT_DASHBOARD_NAME } from './dashboard-identity';
 import { migrateLegacyDashboard } from './dashboard-definition';
 import type {
   DashboardQueryExecutor,
@@ -30,12 +31,38 @@ import type {
 
 export type { StoredDashboardPublicationConfiguration } from './dashboard.types';
 
+export type DashboardStatus = 'ACTIVE' | 'ARCHIVED';
+export type DashboardAudience = 'ALL' | 'TENANT_ADMIN' | 'EMPLOYEE';
+
 export interface DashboardDefinitionRecord {
+  id: string;
+  code: string;
+  name: string;
+  status: DashboardStatus;
+  audience: DashboardAudience;
+  sortOrder: number;
   draftVersion: number;
   draftConfiguration: DashboardDefinitionV2;
   activePublicationId: string | null;
   sourceTemplateVersionId: string | null;
   updatedAt: string;
+}
+
+export interface DashboardListItem {
+  id: string;
+  code: string;
+  name: string;
+  status: DashboardStatus;
+  audience: DashboardAudience;
+  sortOrder: number;
+  hasPublishedVersion: boolean;
+  isDefaultAdmin: boolean;
+  isDefaultEmployee: boolean;
+}
+
+export interface DashboardDefaults {
+  adminDashboardCode: string | null;
+  employeeDashboardCode: string | null;
 }
 
 export interface DashboardPublicationRecord {
@@ -83,12 +110,44 @@ export class PrismaDashboardRepository implements DashboardRepository {
     private readonly audit: AuditService,
   ) {}
 
+  listDashboards(context: TenantContext): Promise<DashboardListItem[]> {
+    return this.runner.withTenant(context, async (transaction) => {
+      const [records, tenant] = await Promise.all([
+        transaction.tenantDashboardConfiguration.findMany({
+          where: { tenantId: context.tenantId },
+          orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
+        }),
+        transaction.tenant.findUnique({
+          where: { id: context.tenantId },
+          select: {
+            defaultAdminDashboardId: true,
+            defaultEmployeeDashboardId: true,
+          },
+        }),
+      ]);
+      return records.map((record) => ({
+        id: record.id,
+        code: record.code,
+        name: record.name,
+        status: record.status,
+        audience: record.audience,
+        sortOrder: record.sortOrder,
+        hasPublishedVersion: record.activePublicationId !== null,
+        isDefaultAdmin: tenant?.defaultAdminDashboardId === record.id,
+        isDefaultEmployee: tenant?.defaultEmployeeDashboardId === record.id,
+      }));
+    });
+  }
+
   getDefinition(
     context: TenantContext,
+    dashboardCode: string,
   ): Promise<DashboardDefinitionRecord | null> {
     return this.runner.withTenant(context, async (transaction) => {
       const record = await transaction.tenantDashboardConfiguration.findUnique({
-        where: { tenantId: context.tenantId },
+        where: {
+          tenantId_code: { tenantId: context.tenantId, code: dashboardCode },
+        },
       });
       return record ? definitionRecord(record) : null;
     });
@@ -96,34 +155,35 @@ export class PrismaDashboardRepository implements DashboardRepository {
 
   saveDraft(
     context: TenantContext,
+    dashboardCode: string,
     expectedVersion: number,
     draft: DashboardDefinitionV2,
     audit: DashboardRequestMeta = { requestId: 'req_unknown' },
   ): Promise<DashboardDefinitionRecord | null> {
     return this.runner.withTenant(context, async (transaction) => {
-      const currentVersion = await lockDashboardDefinition(
+      const locked = await lockDashboardDefinition(
         transaction,
         context.tenantId,
+        dashboardCode,
       );
       if (
-        (currentVersion === undefined && expectedVersion !== 0) ||
-        (currentVersion !== undefined && currentVersion !== expectedVersion)
+        (locked === undefined && expectedVersion !== 0) ||
+        (locked !== undefined && locked.draftVersion !== expectedVersion)
       ) {
         return null;
       }
 
       const draftConfiguration = draft as unknown as Prisma.InputJsonValue;
       const record =
-        currentVersion === undefined
-          ? await transaction.tenantDashboardConfiguration.create({
-              data: {
-                tenantId: context.tenantId,
-                draftVersion: 1,
-                draftConfiguration,
-              },
+        locked === undefined
+          ? await createDashboardRow(transaction, {
+              tenantId: context.tenantId,
+              code: dashboardCode,
+              name: draft.title.trim() || DEFAULT_DASHBOARD_NAME,
+              draftConfiguration,
             })
           : await transaction.tenantDashboardConfiguration.update({
-              where: { tenantId: context.tenantId },
+              where: { id: locked.id },
               data: {
                 draftVersion: { increment: 1 },
                 draftConfiguration,
@@ -135,8 +195,9 @@ export class PrismaDashboardRepository implements DashboardRepository {
         actorId: context.userId,
         action: 'dashboard.draft_saved',
         resourceType: 'dashboard_definition',
-        resourceId: context.tenantId,
+        resourceId: record.id,
         after: {
+          dashboardCode: record.code,
           draftVersion: record.draftVersion,
           widgetCount: draft.widgets.length,
         },
@@ -149,17 +210,19 @@ export class PrismaDashboardRepository implements DashboardRepository {
 
   publishDraft(
     context: TenantContext,
+    dashboardCode: string,
     expectedVersion: number,
     compiled: PublishedDashboardDefinitionV2,
     actorMemberId: string,
     audit: DashboardRequestMeta = { requestId: 'req_unknown' },
   ): Promise<DashboardPublishOutcome> {
     return this.runner.withTenant(context, async (transaction) => {
-      const currentVersion = await lockDashboardDefinition(
+      const locked = await lockDashboardDefinition(
         transaction,
         context.tenantId,
+        dashboardCode,
       );
-      if (currentVersion !== expectedVersion) {
+      if (!locked || locked.draftVersion !== expectedVersion) {
         return { kind: 'VERSION_CONFLICT' };
       }
       if (!(await lockCurrentObjectBindings(transaction, context, compiled))) {
@@ -169,11 +232,12 @@ export class PrismaDashboardRepository implements DashboardRepository {
       const numbers = await transaction.$queryRaw<Array<{ number: number }>>`
         SELECT COALESCE(MAX(publication_no), 0)::int + 1 AS number
         FROM tenant_dashboard_publications
-        WHERE tenant_id = ${context.tenantId}::uuid
+        WHERE dashboard_id = ${locked.id}::uuid
       `;
       const publication = await transaction.tenantDashboardPublication.create({
         data: {
           tenantId: context.tenantId,
+          dashboardId: locked.id,
           publicationNo: numbers[0]?.number ?? 1,
           sourceDraftVersion: expectedVersion,
           configuration: compiled as unknown as Prisma.InputJsonValue,
@@ -181,7 +245,7 @@ export class PrismaDashboardRepository implements DashboardRepository {
         },
       });
       await transaction.tenantDashboardConfiguration.update({
-        where: { tenantId: context.tenantId },
+        where: { id: locked.id },
         data: { activePublicationId: publication.id },
       });
       await this.appendAudit(transaction, {
@@ -192,6 +256,7 @@ export class PrismaDashboardRepository implements DashboardRepository {
         resourceType: 'dashboard_publication',
         resourceId: publication.id,
         after: {
+          dashboardCode,
           draftVersion: expectedVersion,
           publicationNumber: publication.publicationNo,
           widgetCount: compiled.widgets.length,
@@ -215,16 +280,161 @@ export class PrismaDashboardRepository implements DashboardRepository {
 
   getActivePublication(
     context: TenantContext,
+    dashboardCode: string,
   ): Promise<DashboardPublicationRecord | null> {
     return this.runner.withTenant(context, async (transaction) => {
       const definition =
         await transaction.tenantDashboardConfiguration.findUnique({
-          where: { tenantId: context.tenantId },
-          select: { activePublication: true },
+          where: {
+            tenantId_code: { tenantId: context.tenantId, code: dashboardCode },
+          },
+          select: { activePublication: true, status: true, audience: true },
         });
       return definition?.activePublication
         ? publicationRecord(definition.activePublication)
         : null;
+    });
+  }
+
+  async createDashboard(
+    context: TenantContext,
+    input: {
+      code: string;
+      name: string;
+      audience: DashboardAudience;
+      draft: DashboardDefinitionV2;
+    },
+    audit: DashboardRequestMeta = { requestId: 'req_unknown' },
+  ): Promise<DashboardDefinitionRecord> {
+    return this.runner.withTenant(context, async (transaction) => {
+      const created = await createDashboardRow(transaction, {
+        tenantId: context.tenantId,
+        code: input.code,
+        name: input.name,
+        audience: input.audience,
+        draftConfiguration: input.draft as unknown as Prisma.InputJsonValue,
+      });
+      await this.appendAudit(transaction, {
+        tenantId: context.tenantId,
+        actorType: 'USER',
+        actorId: context.userId,
+        action: 'dashboard.created',
+        resourceType: 'dashboard_definition',
+        resourceId: created.id,
+        after: { dashboardCode: created.code, name: created.name },
+        requestId: audit.requestId,
+        ip: audit.ip,
+      });
+      return definitionRecord(created);
+    });
+  }
+
+  async updateDashboard(
+    context: TenantContext,
+    dashboardCode: string,
+    input: {
+      name?: string;
+      audience?: DashboardAudience;
+      status?: DashboardStatus;
+    },
+    audit: DashboardRequestMeta = { requestId: 'req_unknown' },
+  ): Promise<DashboardDefinitionRecord | null> {
+    return this.runner.withTenant(context, async (transaction) => {
+      const current = await transaction.tenantDashboardConfiguration.findUnique({
+        where: {
+          tenantId_code: { tenantId: context.tenantId, code: dashboardCode },
+        },
+      });
+      if (!current) return null;
+      const updated = await transaction.tenantDashboardConfiguration.update({
+        where: { id: current.id },
+        data: {
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.audience !== undefined ? { audience: input.audience } : {}),
+          ...(input.status !== undefined ? { status: input.status } : {}),
+        },
+      });
+      await this.appendAudit(transaction, {
+        tenantId: context.tenantId,
+        actorType: 'USER',
+        actorId: context.userId,
+        action: 'dashboard.updated',
+        resourceType: 'dashboard_definition',
+        resourceId: updated.id,
+        after: {
+          dashboardCode: updated.code,
+          name: updated.name,
+          audience: updated.audience,
+          status: updated.status,
+        },
+        requestId: audit.requestId,
+        ip: audit.ip,
+      });
+      return definitionRecord(updated);
+    });
+  }
+
+  async setDefaults(
+    context: TenantContext,
+    input: { adminDashboardCode?: string; employeeDashboardCode?: string },
+    audit: DashboardRequestMeta = { requestId: 'req_unknown' },
+  ): Promise<DashboardDefaults> {
+    return this.runner.withTenant(context, async (transaction) => {
+      const records = await transaction.tenantDashboardConfiguration.findMany({
+        where: { tenantId: context.tenantId, status: 'ACTIVE' },
+      });
+      const byCode = new Map(records.map((record) => [record.code, record]));
+      const admin = input.adminDashboardCode
+        ? byCode.get(input.adminDashboardCode)
+        : undefined;
+      const employee = input.employeeDashboardCode
+        ? byCode.get(input.employeeDashboardCode)
+        : undefined;
+      const tenant = await transaction.tenant.update({
+        where: { id: context.tenantId },
+        data: {
+          ...(admin ? { defaultAdminDashboardId: admin.id } : {}),
+          ...(employee ? { defaultEmployeeDashboardId: employee.id } : {}),
+        },
+        select: {
+          defaultAdminDashboard: { select: { code: true } },
+          defaultEmployeeDashboard: { select: { code: true } },
+        },
+      });
+      await this.appendAudit(transaction, {
+        tenantId: context.tenantId,
+        actorType: 'USER',
+        actorId: context.userId,
+        action: 'dashboard.defaults_updated',
+        resourceType: 'dashboard_definition',
+        resourceId: context.tenantId,
+        after: {
+          adminDashboardCode: tenant.defaultAdminDashboard?.code ?? null,
+          employeeDashboardCode: tenant.defaultEmployeeDashboard?.code ?? null,
+        },
+        requestId: audit.requestId,
+        ip: audit.ip,
+      });
+      return {
+        adminDashboardCode: tenant.defaultAdminDashboard?.code ?? null,
+        employeeDashboardCode: tenant.defaultEmployeeDashboard?.code ?? null,
+      };
+    });
+  }
+
+  getDefaults(context: TenantContext): Promise<DashboardDefaults> {
+    return this.runner.withTenant(context, async (transaction) => {
+      const tenant = await transaction.tenant.findUnique({
+        where: { id: context.tenantId },
+        select: {
+          defaultAdminDashboard: { select: { code: true } },
+          defaultEmployeeDashboard: { select: { code: true } },
+        },
+      });
+      return {
+        adminDashboardCode: tenant?.defaultAdminDashboard?.code ?? null,
+        employeeDashboardCode: tenant?.defaultEmployeeDashboard?.code ?? null,
+      };
     });
   }
 
@@ -897,25 +1107,83 @@ function unavailableResult(plan: DashboardQueryPlan): DashboardWidgetResult {
 async function lockDashboardDefinition(
   transaction: Prisma.TransactionClient,
   tenantId: string,
-): Promise<number | undefined> {
+  dashboardCode: string,
+): Promise<{ id: string; draftVersion: number } | undefined> {
   await transaction.$queryRaw`
     SELECT (
       pg_advisory_xact_lock(
         hashtext('tenant_dashboard_configurations'),
-        hashtext(${tenantId}::text)
+        hashtext(${`${tenantId}:${dashboardCode}`}::text)
       ) IS NULL
     ) AS "acquired"
   `;
-  const locked = await transaction.$queryRaw<Array<{ draftVersion: number }>>`
-    SELECT version AS "draftVersion"
+  const locked = await transaction.$queryRaw<
+    Array<{ id: string; draftVersion: number }>
+  >`
+    SELECT id, version AS "draftVersion"
     FROM tenant_dashboard_configurations
     WHERE tenant_id = ${tenantId}::uuid
+      AND code = ${dashboardCode}
     FOR UPDATE
   `;
-  return locked[0]?.draftVersion;
+  return locked[0];
+}
+
+async function createDashboardRow(
+  transaction: Prisma.TransactionClient,
+  input: {
+    tenantId: string;
+    code: string;
+    name: string;
+    audience?: DashboardAudience;
+    draftConfiguration: Prisma.InputJsonValue;
+  },
+) {
+  const last = await transaction.tenantDashboardConfiguration.aggregate({
+    where: { tenantId: input.tenantId },
+    _max: { sortOrder: true },
+  });
+  const created = await transaction.tenantDashboardConfiguration.create({
+    data: {
+      tenantId: input.tenantId,
+      code: input.code,
+      name: input.name,
+      audience: input.audience ?? 'ALL',
+      sortOrder: (last._max.sortOrder ?? -1) + 10,
+      draftVersion: 1,
+      draftConfiguration: input.draftConfiguration,
+    },
+  });
+  const tenant = await transaction.tenant.findUnique({
+    where: { id: input.tenantId },
+    select: {
+      defaultAdminDashboardId: true,
+      defaultEmployeeDashboardId: true,
+    },
+  });
+  if (!tenant?.defaultAdminDashboardId || !tenant.defaultEmployeeDashboardId) {
+    await transaction.tenant.update({
+      where: { id: input.tenantId },
+      data: {
+        ...(tenant?.defaultAdminDashboardId
+          ? {}
+          : { defaultAdminDashboardId: created.id }),
+        ...(tenant?.defaultEmployeeDashboardId
+          ? {}
+          : { defaultEmployeeDashboardId: created.id }),
+      },
+    });
+  }
+  return created;
 }
 
 function definitionRecord(record: {
+  id: string;
+  code: string;
+  name: string;
+  status: DashboardStatus;
+  audience: DashboardAudience;
+  sortOrder: number;
   draftVersion: number;
   draftConfiguration: Prisma.JsonValue;
   activePublicationId: string | null;
@@ -923,6 +1191,12 @@ function definitionRecord(record: {
   updatedAt: Date;
 }): DashboardDefinitionRecord {
   return {
+    id: record.id,
+    code: record.code,
+    name: record.name,
+    status: record.status,
+    audience: record.audience,
+    sortOrder: record.sortOrder,
     draftVersion: record.draftVersion,
     draftConfiguration: migrateLegacyDashboard(record.draftConfiguration),
     activePublicationId: record.activePublicationId,

@@ -108,7 +108,24 @@ export interface DashboardCandidate {
   object: { code: string; name: string };
   fields: DashboardCandidateField[];
 }
+export interface DashboardListItem {
+  id: string;
+  code: string;
+  name: string;
+  status: "ACTIVE" | "ARCHIVED";
+  audience: "ALL" | "TENANT_ADMIN" | "EMPLOYEE";
+  sortOrder: number;
+  hasPublishedVersion: boolean;
+  isDefaultAdmin: boolean;
+  isDefaultEmployee: boolean;
+}
 export interface DashboardDraft {
+  id: string;
+  code: string;
+  name: string;
+  status: "ACTIVE" | "ARCHIVED";
+  audience: "ALL" | "TENANT_ADMIN" | "EMPLOYEE";
+  sortOrder: number;
   draftVersion: number;
   draftConfiguration: DashboardDefinitionV2;
   activePublicationId: string | null;
@@ -128,6 +145,8 @@ export interface DashboardConfigurationIssue {
 }
 export interface DashboardConfigurationView {
   timezone: string;
+  dashboards: DashboardListItem[];
+  dashboard: DashboardListItem | null;
   draft: DashboardDraft | null;
   activePublication: DashboardPublicationSummary | null;
   candidates: DashboardCandidate[];
@@ -245,6 +264,9 @@ export function parseDashboardConfigurationView(
   const root = object(value);
   return {
     timezone: text(root.timezone),
+    dashboards: array(root.dashboards ?? []).map(parseDashboardListItem),
+    dashboard:
+      root.dashboard == null ? null : parseDashboardListItem(root.dashboard),
     draft: root.draft == null ? null : parseDraft(root.draft),
     activePublication:
       root.activePublication == null
@@ -257,11 +279,31 @@ export function parseDashboardConfigurationView(
 export function parseDraft(value: unknown): DashboardDraft {
   const root = object(value);
   return {
+    id: text(root.id),
+    code: text(root.code),
+    name: text(root.name),
+    status: one(root.status, ["ACTIVE", "ARCHIVED"] as const),
+    audience: one(root.audience, ["ALL", "TENANT_ADMIN", "EMPLOYEE"] as const),
+    sortOrder: num(root.sortOrder),
     draftVersion: num(root.draftVersion),
     draftConfiguration: definition(root.draftConfiguration),
     activePublicationId: nullableText(root.activePublicationId),
     sourceTemplateVersionId: nullableText(root.sourceTemplateVersionId),
     updatedAt: text(root.updatedAt),
+  };
+}
+function parseDashboardListItem(value: unknown): DashboardListItem {
+  const root = object(value);
+  return {
+    id: text(root.id),
+    code: text(root.code),
+    name: text(root.name),
+    status: one(root.status, ["ACTIVE", "ARCHIVED"] as const),
+    audience: one(root.audience, ["ALL", "TENANT_ADMIN", "EMPLOYEE"] as const),
+    sortOrder: num(root.sortOrder),
+    hasPublishedVersion: Boolean(root.hasPublishedVersion),
+    isDefaultAdmin: Boolean(root.isDefaultAdmin),
+    isDefaultEmployee: Boolean(root.isDefaultEmployee),
   };
 }
 export function parsePublication(value: unknown): DashboardPublicationSummary {
