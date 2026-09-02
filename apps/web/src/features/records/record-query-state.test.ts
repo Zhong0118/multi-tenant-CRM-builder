@@ -181,6 +181,37 @@ describe("parseRecordQuery", () => {
     ).toEqual(query);
   });
 
+  it("round-trips a published presence filter through the filters parameter", () => {
+    const query = {
+      ...DEFAULT_RECORD_QUERY,
+      filters: {
+        email: { presence: "not_empty" as const },
+        notes: { presence: "empty" as const },
+      },
+    };
+
+    expect(
+      parseRecordQuery(
+        Object.fromEntries(new URLSearchParams(recordQuerySearch(query))),
+      ),
+    ).toEqual(query);
+  });
+
+  it("round-trips a published relative date filter through the filters parameter", () => {
+    const query = {
+      ...DEFAULT_RECORD_QUERY,
+      filters: {
+        follow_up_on: { relative: "past_7_days" as const },
+      },
+    };
+
+    expect(
+      parseRecordQuery(
+        Object.fromEntries(new URLSearchParams(recordQuerySearch(query))),
+      ),
+    ).toEqual(query);
+  });
+
   it("prefers the published default sort when the object supplies one", () => {
     expect(
       parseRecordQuery({}, { field: "recordNo", direction: "asc" }),

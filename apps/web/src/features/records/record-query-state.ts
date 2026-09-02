@@ -16,14 +16,44 @@ export interface RecordQuery {
 }
 
 export type RecordDateRangeFilter = { from?: string; to?: string };
+export type RecordRelativeDateFilter = { relative: RecordRelativeDatePreset };
 export type RecordNumericRangeFilter = { min?: number; max?: number };
 export type RecordTextContainsFilter = { contains: string };
+export type RecordPresenceFilter = { presence: RecordPresence };
+export type RecordRelativeDatePreset =
+  | "today"
+  | "this_week"
+  | "this_month"
+  | "past_7_days"
+  | "past_30_days";
+export type RecordPresence = "empty" | "not_empty";
 export type RecordFilterValue =
   | string[]
   | boolean
   | RecordDateRangeFilter
+  | RecordRelativeDateFilter
   | RecordNumericRangeFilter
-  | RecordTextContainsFilter;
+  | RecordTextContainsFilter
+  | RecordPresenceFilter;
+
+export const RELATIVE_DATE_PRESETS: RecordRelativeDatePreset[] = [
+  "today",
+  "this_week",
+  "this_month",
+  "past_7_days",
+  "past_30_days",
+];
+
+export const RELATIVE_DATE_PRESET_LABELS: Record<
+  RecordRelativeDatePreset,
+  string
+> = {
+  today: "今天",
+  this_week: "本周",
+  this_month: "本月",
+  past_7_days: "近 7 天",
+  past_30_days: "近 30 天",
+};
 export type RecordFilters = Record<string, RecordFilterValue>;
 
 /** Mirrors the API's own defaults so an untouched list needs no query string. */
@@ -159,6 +189,21 @@ function normalizeFilterValue(value: unknown): RecordFilterValue | undefined {
     return [...new Set(value as string[])];
   }
   if (!isPlainObject(value)) return undefined;
+  if ("presence" in value) {
+    if (value.presence !== "empty" && value.presence !== "not_empty") {
+      return undefined;
+    }
+    return { presence: value.presence };
+  }
+  if ("relative" in value) {
+    if (
+      typeof value.relative !== "string" ||
+      !RELATIVE_DATE_PRESETS.includes(value.relative as RecordRelativeDatePreset)
+    ) {
+      return undefined;
+    }
+    return { relative: value.relative as RecordRelativeDatePreset };
+  }
   if ("from" in value || "to" in value) {
     const from = optionalDateBound(value.from);
     const to = optionalDateBound(value.to);
@@ -219,6 +264,28 @@ export function isDateRangeFilter(
   );
 }
 
+export function isRelativeDateFilter(
+  value: RecordFilterValue | undefined,
+): value is RecordRelativeDateFilter {
+  return (
+    value !== undefined &&
+    typeof value !== "boolean" &&
+    !Array.isArray(value) &&
+    "relative" in value
+  );
+}
+
+export function isPresenceFilter(
+  value: RecordFilterValue | undefined,
+): value is RecordPresenceFilter {
+  return (
+    value !== undefined &&
+    typeof value !== "boolean" &&
+    !Array.isArray(value) &&
+    "presence" in value
+  );
+}
+
 export function isNumericRangeFilter(
   value: RecordFilterValue | undefined,
 ): value is RecordNumericRangeFilter {
@@ -255,6 +322,22 @@ export function dateRangeFilterValue(
 ): RecordDateRangeFilter | undefined {
   const value = filters[fieldKey];
   return isDateRangeFilter(value) ? value : undefined;
+}
+
+export function relativeDateFilterValue(
+  filters: RecordFilters,
+  fieldKey: string,
+): RecordRelativeDatePreset | undefined {
+  const value = filters[fieldKey];
+  return isRelativeDateFilter(value) ? value.relative : undefined;
+}
+
+export function presenceFilterValue(
+  filters: RecordFilters,
+  fieldKey: string,
+): RecordPresence | undefined {
+  const value = filters[fieldKey];
+  return isPresenceFilter(value) ? value.presence : undefined;
 }
 
 export function numericRangeFilterValue(

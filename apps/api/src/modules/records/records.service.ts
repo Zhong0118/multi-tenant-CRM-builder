@@ -90,7 +90,7 @@ export class RecordsService {
         search: input.search?.trim() || undefined,
         searchFieldKeys: searchableFieldKeys(resolved),
         ownerMemberId,
-        filters: parseListFilters(input.filters, resolved),
+        filters: parseListFilters(input.filters, resolved, this.clock()),
         sort: parseListSort(input.sort, resolved),
         direction: input.direction,
       };
@@ -326,6 +326,7 @@ const SEARCHABLE_FIELD_TYPES = new Set([
 function parseListFilters(
   serialized: string | undefined,
   resolved: ResolvedObjectSchema,
+  now: Date,
 ): RecordListFilter[] {
   if (!serialized) return [];
   let parsed: unknown;
@@ -345,12 +346,16 @@ function parseListFilters(
   for (const [fieldKey, rawValue] of entries) {
     const field = visibleFields.get(fieldKey);
     if (!field) throw invalidRecordFilter();
+    if (isPresenceFilterValue(rawValue)) {
+      filters.push(parsePresenceFilter(field.fieldKey, rawValue));
+      continue;
+    }
     if (field.type === 'SINGLE_SELECT' || field.type === 'MULTI_SELECT') {
       filters.push(parseOptionFilter(field, rawValue));
       continue;
     }
     if (field.type === 'DATE' || field.type === 'DATETIME') {
-      filters.push(parseDateFilter(field.fieldKey, rawValue, field.type));
+      filters.push(parseDateFilter(field.fieldKey, rawValue, field.type, now));
       continue;
     }
     if (field.type === 'NUMBER' || field.type === 'MONEY') {
@@ -410,21 +415,107 @@ function parseOptionFilter(
   };
 }
 
+const RELATIVE_DATE_PRESETS = new Set([
+  'today',
+  'this_week',
+  'this_month',
+  'past_7_days',
+  'past_30_days',
+]);
+
 function parseDateFilter(
   fieldKey: string,
   rawValue: unknown,
   type: 'DATE' | 'DATETIME',
+  now: Date,
 ): RecordListFilter {
   if (!isPlainObject(rawValue)) throw invalidRecordFilter();
+  if (typeof rawValue.relative === 'string') {
+    if (
+      !RELATIVE_DATE_PRESETS.has(rawValue.relative) ||
+      rawValue.from !== undefined ||
+      rawValue.to !== undefined
+    ) {
+      throw invalidRecordFilter();
+    }
+    const range = relativeDateRange(rawValue.relative, now);
+    return dateRangeFilter(fieldKey, range.from, range.to, type);
+  }
   const from = optionalDateBound(rawValue.from);
   const to = optionalDateBound(rawValue.to);
   if (!from && !to) throw invalidRecordFilter();
   if (from && to && from > to) throw invalidRecordFilter();
+  return dateRangeFilter(fieldKey, from, to, type);
+}
+
+function dateRangeFilter(
+  fieldKey: string,
+  from: string | undefined,
+  to: string | undefined,
+  type: 'DATE' | 'DATETIME',
+): RecordListFilter {
   return {
     fieldKey,
     mode: 'DATE_RANGE',
     ...(from ? { from } : {}),
     ...(to ? { to: type === 'DATETIME' ? `${to}T23:59:59.999Z` : to } : {}),
+  };
+}
+
+function relativeDateRange(
+  preset: string,
+  now: Date,
+): { from: string; to: string } {
+  const today = utcDateString(now);
+  if (preset === 'today') return { from: today, to: today };
+  if (preset === 'past_7_days') {
+    return { from: utcDateString(addUtcDays(now, -6)), to: today };
+  }
+  if (preset === 'past_30_days') {
+    return { from: utcDateString(addUtcDays(now, -29)), to: today };
+  }
+  if (preset === 'this_week') {
+    const monday = addUtcDays(now, -((now.getUTCDay() + 6) % 7));
+    return {
+      from: utcDateString(monday),
+      to: utcDateString(addUtcDays(monday, 6)),
+    };
+  }
+  const monthStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+  );
+  const monthEnd = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0),
+  );
+  return { from: utcDateString(monthStart), to: utcDateString(monthEnd) };
+}
+
+function utcDateString(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function addUtcDays(date: Date, days: number): Date {
+  const next = new Date(date.getTime());
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
+}
+
+function isPresenceFilterValue(
+  value: unknown,
+): value is { presence: 'empty' | 'not_empty' } {
+  return (
+    isPlainObject(value) &&
+    (value.presence === 'empty' || value.presence === 'not_empty')
+  );
+}
+
+function parsePresenceFilter(
+  fieldKey: string,
+  rawValue: { presence: 'empty' | 'not_empty' },
+): RecordListFilter {
+  return {
+    fieldKey,
+    mode: rawValue.presence === 'empty' ? 'EMPTY' : 'NOT_EMPTY',
   };
 }
 

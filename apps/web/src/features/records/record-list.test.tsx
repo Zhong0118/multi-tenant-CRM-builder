@@ -374,6 +374,9 @@ describe("RecordList table sorting", () => {
       screen.getByRole("group", { name: "按签约日筛选" }),
     ).toBeInTheDocument();
     expect(
+      screen.getByRole("combobox", { name: "按签约日快捷筛选" }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole("group", { name: "按评分筛选" }),
     ).toBeInTheDocument();
     expect(
@@ -383,6 +386,9 @@ describe("RecordList table sorting", () => {
       screen.getByRole("combobox", { name: "按跟进人筛选" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("按备注筛选")).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "按备注填充筛选" }),
+    ).toBeInTheDocument();
     fireEvent.mouseDown(
       screen.getByRole("combobox", { name: "按客户标签筛选" }),
     );

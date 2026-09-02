@@ -389,13 +389,18 @@ function matchesListFilter(
       .toLowerCase()
       .includes(filter.contains.toLowerCase());
   }
+  if (filter.mode === 'EMPTY') return isEmptyFieldValue(value);
+  if (filter.mode === 'NOT_EMPTY') return !isEmptyFieldValue(value);
   if (filter.mode === 'CONTAINS') {
     return (
       Array.isArray(value) &&
       filter.values.some((candidate) => value.includes(candidate))
     );
   }
-  return filter.values.includes(String(value));
+  if (filter.mode === 'EQUALS') {
+    return filter.values.includes(String(value));
+  }
+  return false;
 }
 
 function compareRecords(
@@ -439,6 +444,13 @@ function compareFieldSort(
     return optionSortIndex(leftValue, keys) - optionSortIndex(rightValue, keys);
   }
   return String(leftValue ?? '').localeCompare(String(rightValue ?? ''));
+}
+
+function isEmptyFieldValue(value: unknown): boolean {
+  if (value === null || value === undefined) return true;
+  if (typeof value === 'string' && value.trim() === '') return true;
+  if (Array.isArray(value) && value.length === 0) return true;
+  return false;
 }
 
 function numericSortValue(value: unknown): number {
@@ -747,6 +759,81 @@ describe('RecordsService', () => {
     });
 
     expect(page.items.map((record) => record.title)).toEqual(['甲线索']);
+  });
+
+  it('filters records by empty or not-empty published fields', async () => {
+    const { service } = fixture();
+    await create(service, admin, '有邮箱', employee.memberId, {
+      email: 'alpha@corp.com',
+    });
+    await create(service, admin, '无邮箱', employee.memberId);
+
+    const filled = await service.list(admin, 'leads', {
+      page: 1,
+      limit: 20,
+      filters: '{"email":{"presence":"not_empty"}}',
+      sort: 'updatedAt',
+      direction: 'desc',
+    });
+    const empty = await service.list(admin, 'leads', {
+      page: 1,
+      limit: 20,
+      filters: '{"email":{"presence":"empty"}}',
+      sort: 'updatedAt',
+      direction: 'desc',
+    });
+
+    expect(filled.items.map((record) => record.title)).toEqual(['有邮箱']);
+    expect(empty.items.map((record) => record.title)).toEqual(['无邮箱']);
+  });
+
+  it('filters records by a published relative date window', async () => {
+    const { service } = fixture();
+    await create(service, admin, '上周跟进', employee.memberId, {
+      follow_up_on: '2026-08-10',
+    });
+    await create(service, admin, '本周跟进', employee.memberId, {
+      follow_up_on: '2026-08-20',
+    });
+
+    const page = await service.list(admin, 'leads', {
+      page: 1,
+      limit: 20,
+      filters: '{"follow_up_on":{"relative":"past_7_days"}}',
+      sort: 'updatedAt',
+      direction: 'desc',
+    });
+
+    expect(page.items.map((record) => record.title)).toEqual(['本周跟进']);
+  });
+
+  it('applies published filters while sorting by a typed field', async () => {
+    const { service } = fixture();
+    await create(service, admin, '低分重点', employee.memberId, {
+      score: 12,
+      is_vip: true,
+    });
+    await create(service, admin, '高分普通', employee.memberId, {
+      score: 88,
+      is_vip: false,
+    });
+    await create(service, admin, '高分重点', employee.memberId, {
+      score: 90,
+      is_vip: true,
+    });
+
+    const page = await service.list(admin, 'leads', {
+      page: 1,
+      limit: 20,
+      filters: '{"is_vip":true}',
+      sort: 'score',
+      direction: 'desc',
+    });
+
+    expect(page.items.map((record) => record.title)).toEqual([
+      '高分重点',
+      '低分重点',
+    ]);
   });
 
   it('sorts records by a visible published number field', async () => {

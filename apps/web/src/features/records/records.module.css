@@ -92,6 +92,18 @@
   min-width: 240px;
 }
 
+.dateFilterGroup,
+.textFilterGroup {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.relativeFilter,
+.presenceFilter {
+  width: 132px;
+}
+
 .numericFilter {
   display: inline-flex;
   min-width: 240px;

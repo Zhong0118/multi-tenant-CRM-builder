@@ -45,9 +45,14 @@ import {
   DEFAULT_RECORD_QUERY,
   numericRangeFilterValue,
   optionFilterValues,
+  presenceFilterValue,
   recordQuerySearch,
+  relativeDateFilterValue,
+  RELATIVE_DATE_PRESET_LABELS,
+  RELATIVE_DATE_PRESETS,
   textContainsFilterValue,
   withFilter,
+  type RecordFilterValue,
   type RecordQuery,
 } from "./record-query-state";
 
@@ -117,6 +122,16 @@ export function RecordList({
   function apply(next: RecordQuery) {
     const search = recordQuerySearch(next, queryDefaults);
     go(search === "" ? listPath : `${listPath}?${search}`);
+  }
+
+  function applyFieldFilter(
+    fieldKey: string,
+    value: RecordFilterValue | undefined,
+  ) {
+    const filters = { ...query.filters };
+    if (value === undefined) delete filters[fieldKey];
+    else filters[fieldKey] = value;
+    apply(withFilter(query, { filters }));
   }
 
   function onSearchChange(value: string) {
@@ -447,12 +462,12 @@ export function RecordList({
               allowClear
               className={styles.optionFilter}
               value={optionFilterValues(query.filters, field.fieldKey)}
-              onChange={(values: string[]) => {
-                const filters = { ...query.filters };
-                if (values.length === 0) delete filters[field.fieldKey];
-                else filters[field.fieldKey] = values;
-                apply(withFilter(query, { filters }));
-              }}
+              onChange={(values: string[]) =>
+                applyFieldFilter(
+                  field.fieldKey,
+                  values.length === 0 ? undefined : values,
+                )
+              }
               options={options.map((option) => ({
                 value: option.key,
                 label: <OptionBadge option={option} />,
@@ -462,12 +477,34 @@ export function RecordList({
         })}
         {dateFilterFields.map((field) => {
           const range = dateRangeFilterValue(query.filters, field.fieldKey);
+          const relative = relativeDateFilterValue(
+            query.filters,
+            field.fieldKey,
+          );
           return (
             <div
               key={field.fieldKey}
               role="group"
               aria-label={`按${field.label}筛选`}
+              className={styles.dateFilterGroup}
             >
+              <Select
+                allowClear
+                aria-label={`按${field.label}快捷筛选`}
+                placeholder="快捷时间"
+                className={styles.relativeFilter}
+                value={relative}
+                onChange={(next?: (typeof RELATIVE_DATE_PRESETS)[number]) =>
+                  applyFieldFilter(
+                    field.fieldKey,
+                    next ? { relative: next } : undefined,
+                  )
+                }
+                options={RELATIVE_DATE_PRESETS.map((preset) => ({
+                  value: preset,
+                  label: RELATIVE_DATE_PRESET_LABELS[preset],
+                }))}
+              />
               <DatePicker.RangePicker
                 allowEmpty={[true, true]}
                 allowClear
@@ -479,16 +516,16 @@ export function RecordList({
                   range?.to ? dayjs(range.to) : null,
                 ]}
                 onChange={(next: [Dayjs | null, Dayjs | null] | null) => {
-                  const filters = { ...query.filters };
                   const from = next?.[0]?.isValid()
                     ? next[0].format("YYYY-MM-DD")
                     : undefined;
                   const to = next?.[1]?.isValid()
                     ? next[1].format("YYYY-MM-DD")
                     : undefined;
-                  if (!from && !to) delete filters[field.fieldKey];
-                  else filters[field.fieldKey] = { from, to };
-                  apply(withFilter(query, { filters }));
+                  applyFieldFilter(
+                    field.fieldKey,
+                    !from && !to ? undefined : { from, to },
+                  );
                 }}
               />
             </div>
@@ -512,15 +549,14 @@ export function RecordList({
                 max={field.validation.max}
                 precision={money ? (field.validation.scale ?? 2) : undefined}
                 onChange={(next) => {
-                  const filters = { ...query.filters };
                   const min = typeof next === "number" ? next : undefined;
                   const max = range?.max;
-                  if (min === undefined && max === undefined) {
-                    delete filters[field.fieldKey];
-                  } else {
-                    filters[field.fieldKey] = { min, max };
-                  }
-                  apply(withFilter(query, { filters }));
+                  applyFieldFilter(
+                    field.fieldKey,
+                    min === undefined && max === undefined
+                      ? undefined
+                      : { min, max },
+                  );
                 }}
               />
               <span aria-hidden>至</span>
@@ -532,15 +568,14 @@ export function RecordList({
                 max={field.validation.max}
                 precision={money ? (field.validation.scale ?? 2) : undefined}
                 onChange={(next) => {
-                  const filters = { ...query.filters };
                   const min = range?.min;
                   const max = typeof next === "number" ? next : undefined;
-                  if (min === undefined && max === undefined) {
-                    delete filters[field.fieldKey];
-                  } else {
-                    filters[field.fieldKey] = { min, max };
-                  }
-                  apply(withFilter(query, { filters }));
+                  applyFieldFilter(
+                    field.fieldKey,
+                    min === undefined && max === undefined
+                      ? undefined
+                      : { min, max },
+                  );
                 }}
               />
             </div>
@@ -554,12 +589,9 @@ export function RecordList({
             placeholder={`全部${field.label}`}
             className={styles.booleanFilter}
             value={booleanFilterValue(query.filters, field.fieldKey)}
-            onChange={(next?: boolean) => {
-              const filters = { ...query.filters };
-              if (next === undefined) delete filters[field.fieldKey];
-              else filters[field.fieldKey] = next;
-              apply(withFilter(query, { filters }));
-            }}
+            onChange={(next?: boolean) =>
+              applyFieldFilter(field.fieldKey, next)
+            }
             options={[
               { value: true, label: "是" },
               { value: false, label: "否" },
@@ -577,12 +609,12 @@ export function RecordList({
             placeholder={`全部${field.label}`}
             className={styles.ownerFilter}
             value={optionFilterValues(query.filters, field.fieldKey)}
-            onChange={(values: string[]) => {
-              const filters = { ...query.filters };
-              if (values.length === 0) delete filters[field.fieldKey];
-              else filters[field.fieldKey] = values;
-              apply(withFilter(query, { filters }));
-            }}
+            onChange={(values: string[]) =>
+              applyFieldFilter(
+                field.fieldKey,
+                values.length === 0 ? undefined : values,
+              )
+            }
             options={members.map((member) => ({
               value: member.id,
               label: member.displayName ?? "未设置姓名",
@@ -590,21 +622,41 @@ export function RecordList({
           />
         ))}
         {textFilterFields.map((field) => (
-          <Input
-            key={field.fieldKey}
-            allowClear
-            aria-label={`按${field.label}筛选`}
-            placeholder={`${field.label}包含`}
-            className={styles.searchInput}
-            value={textContainsFilterValue(query.filters, field.fieldKey) ?? ""}
-            onChange={(event) => {
-              const filters = { ...query.filters };
-              const next = event.target.value.trim();
-              if (next === "") delete filters[field.fieldKey];
-              else filters[field.fieldKey] = { contains: next };
-              apply(withFilter(query, { filters }));
-            }}
-          />
+          <div key={field.fieldKey} className={styles.textFilterGroup}>
+            <Select
+              allowClear
+              aria-label={`按${field.label}填充筛选`}
+              placeholder="有值或空值"
+              className={styles.presenceFilter}
+              value={presenceFilterValue(query.filters, field.fieldKey)}
+              onChange={(next?: "empty" | "not_empty") =>
+                applyFieldFilter(
+                  field.fieldKey,
+                  next ? { presence: next } : undefined,
+                )
+              }
+              options={[
+                { value: "not_empty", label: "有值" },
+                { value: "empty", label: "空值" },
+              ]}
+            />
+            <Input
+              allowClear
+              aria-label={`按${field.label}筛选`}
+              placeholder={`${field.label}包含`}
+              className={styles.searchInput}
+              value={
+                textContainsFilterValue(query.filters, field.fieldKey) ?? ""
+              }
+              onChange={(event) => {
+                const next = event.target.value.trim();
+                applyFieldFilter(
+                  field.fieldKey,
+                  next === "" ? undefined : { contains: next },
+                );
+              }}
+            />
+          </div>
         ))}
         {Object.keys(query.filters).length > 0 ? (
           <Button

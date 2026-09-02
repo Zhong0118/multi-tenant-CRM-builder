@@ -3520,7 +3520,7 @@ export interface operations {
         parameters: {
             query?: {
                 direction?: "asc" | "desc";
-                /** @description 按已发布选项、日期、数值、是否、成员或文本字段筛选的 JSON 对象。 */
+                /** @description 按已发布字段筛选的 JSON 对象，支持选项、日期范围或相对时间、数值区间、是否、成员、文本包含，以及有值/空值。 */
                 filters?: string;
                 limit?: number;
                 ownerMemberId?: string;
