@@ -351,6 +351,10 @@ function parseListFilters(
       filters.push(parseDateFilter(field.fieldKey, rawValue, field.type));
       continue;
     }
+    if (field.type === 'NUMBER' || field.type === 'MONEY') {
+      filters.push(parseNumericFilter(field.fieldKey, rawValue));
+      continue;
+    }
     throw invalidRecordFilter();
   }
   return filters;
@@ -410,9 +414,36 @@ function parseDateFilter(
   };
 }
 
+function parseNumericFilter(
+  fieldKey: string,
+  rawValue: unknown,
+): RecordListFilter {
+  if (!isPlainObject(rawValue)) throw invalidRecordFilter();
+  const min = optionalNumericBound(rawValue.min);
+  const max = optionalNumericBound(rawValue.max);
+  if (min === undefined && max === undefined) throw invalidRecordFilter();
+  if (min !== undefined && max !== undefined && min > max) {
+    throw invalidRecordFilter();
+  }
+  return {
+    fieldKey,
+    mode: 'NUMBER_RANGE',
+    ...(min !== undefined ? { min } : {}),
+    ...(max !== undefined ? { max } : {}),
+  };
+}
+
 function optionalDateBound(value: unknown): string | undefined {
   if (value === undefined) return undefined;
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw invalidRecordFilter();
+  }
+  return value;
+}
+
+function optionalNumericBound(value: unknown): number | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
     throw invalidRecordFilter();
   }
   return value;

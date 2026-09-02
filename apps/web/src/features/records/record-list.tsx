@@ -8,6 +8,7 @@ import {
   DatePicker,
   Empty,
   Input,
+  InputNumber,
   Popconfirm,
   Select,
   Space,
@@ -40,6 +41,7 @@ import { toApiError } from "@/lib/api/api-error";
 import {
   dateRangeFilterValue,
   DEFAULT_RECORD_QUERY,
+  numericRangeFilterValue,
   optionFilterValues,
   recordQuerySearch,
   withFilter,
@@ -142,6 +144,9 @@ export function RecordList({
   );
   const dateFilterFields = schema.fields.filter(
     (field) => field.type === "DATE" || field.type === "DATETIME",
+  );
+  const numericFilterFields = schema.fields.filter(
+    (field) => field.type === "NUMBER" || field.type === "MONEY",
   );
   const searchFieldLabels = schema.fields
     .filter(
@@ -441,6 +446,58 @@ export function RecordList({
                     : undefined;
                   if (!from && !to) delete filters[field.fieldKey];
                   else filters[field.fieldKey] = { from, to };
+                  apply(withFilter(query, { filters }));
+                }}
+              />
+            </div>
+          );
+        })}
+        {numericFilterFields.map((field) => {
+          const range = numericRangeFilterValue(query.filters, field.fieldKey);
+          const money = field.type === "MONEY";
+          return (
+            <div
+              key={field.fieldKey}
+              role="group"
+              aria-label={`按${field.label}筛选`}
+              className={styles.numericFilter}
+            >
+              <InputNumber
+                aria-label={`${field.label}最小值`}
+                placeholder={`${field.label}最小`}
+                value={range?.min}
+                min={field.validation.min}
+                max={field.validation.max}
+                precision={money ? (field.validation.scale ?? 2) : undefined}
+                onChange={(next) => {
+                  const filters = { ...query.filters };
+                  const min = typeof next === "number" ? next : undefined;
+                  const max = range?.max;
+                  if (min === undefined && max === undefined) {
+                    delete filters[field.fieldKey];
+                  } else {
+                    filters[field.fieldKey] = { min, max };
+                  }
+                  apply(withFilter(query, { filters }));
+                }}
+              />
+              <span aria-hidden>至</span>
+              <InputNumber
+                aria-label={`${field.label}最大值`}
+                placeholder={`${field.label}最大`}
+                value={range?.max}
+                min={field.validation.min}
+                max={field.validation.max}
+                precision={money ? (field.validation.scale ?? 2) : undefined}
+                onChange={(next) => {
+                  const filters = { ...query.filters };
+                  const min = range?.min;
+                  const max = typeof next === "number" ? next : undefined;
+                  if (min === undefined && max === undefined) {
+                    delete filters[field.fieldKey];
+                  } else {
+                    filters[field.fieldKey] = { min, max };
+                  }
                   apply(withFilter(query, { filters }));
                 }}
               />

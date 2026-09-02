@@ -92,6 +92,17 @@
   min-width: 240px;
 }
 
+.numericFilter {
+  display: inline-flex;
+  min-width: 240px;
+  gap: 8px;
+  align-items: center;
+}
+
+.numericFilter :global(.ant-input-number) {
+  width: 108px;
+}
+
 .optionFilter :global(.ant-select-content) {
   min-height: 32px;
   height: auto;
@@ -289,7 +300,8 @@
   .searchInput,
   .ownerFilter,
   .optionFilter,
-  .dateFilter {
+  .dateFilter,
+  .numericFilter {
     width: 100%;
     max-width: none;
   }

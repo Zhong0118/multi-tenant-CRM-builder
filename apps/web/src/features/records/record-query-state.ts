@@ -15,7 +15,11 @@ export interface RecordQuery {
 }
 
 export type RecordDateRangeFilter = { from?: string; to?: string };
-export type RecordFilterValue = string[] | RecordDateRangeFilter;
+export type RecordNumericRangeFilter = { min?: number; max?: number };
+export type RecordFilterValue =
+  | string[]
+  | RecordDateRangeFilter
+  | RecordNumericRangeFilter;
 export type RecordFilters = Record<string, RecordFilterValue>;
 
 /** Mirrors the API's own defaults so an untouched list needs no query string. */
@@ -144,16 +148,31 @@ function normalizeFilterValue(value: unknown): RecordFilterValue | undefined {
     return [...new Set(value as string[])];
   }
   if (!isPlainObject(value)) return undefined;
-  const from = optionalDateBound(value.from);
-  const to = optionalDateBound(value.to);
-  if (from === false || to === false || (from === undefined && to === undefined)) {
-    return undefined;
+  if ("from" in value || "to" in value) {
+    const from = optionalDateBound(value.from);
+    const to = optionalDateBound(value.to);
+    if (from === false || to === false || (from === undefined && to === undefined)) {
+      return undefined;
+    }
+    if (from && to && from > to) return undefined;
+    return {
+      ...(from ? { from } : {}),
+      ...(to ? { to } : {}),
+    };
   }
-  if (from && to && from > to) return undefined;
-  return {
-    ...(from ? { from } : {}),
-    ...(to ? { to } : {}),
-  };
+  if ("min" in value || "max" in value) {
+    const min = optionalNumericBound(value.min);
+    const max = optionalNumericBound(value.max);
+    if (min === false || max === false || (min === undefined && max === undefined)) {
+      return undefined;
+    }
+    if (min !== undefined && max !== undefined && min > max) return undefined;
+    return {
+      ...(min !== undefined ? { min } : {}),
+      ...(max !== undefined ? { max } : {}),
+    };
+  }
+  return undefined;
 }
 
 function optionalDateBound(value: unknown): string | undefined | false {
@@ -162,10 +181,30 @@ function optionalDateBound(value: unknown): string | undefined | false {
   return value;
 }
 
+function optionalNumericBound(value: unknown): number | undefined | false {
+  if (value === undefined) return undefined;
+  if (typeof value !== "number" || !Number.isFinite(value)) return false;
+  return value;
+}
+
 export function isDateRangeFilter(
   value: RecordFilterValue | undefined,
 ): value is RecordDateRangeFilter {
-  return Boolean(value) && !Array.isArray(value);
+  return (
+    value !== undefined &&
+    !Array.isArray(value) &&
+    ("from" in value || "to" in value)
+  );
+}
+
+export function isNumericRangeFilter(
+  value: RecordFilterValue | undefined,
+): value is RecordNumericRangeFilter {
+  return (
+    value !== undefined &&
+    !Array.isArray(value) &&
+    ("min" in value || "max" in value)
+  );
 }
 
 export function optionFilterValues(
@@ -182,6 +221,14 @@ export function dateRangeFilterValue(
 ): RecordDateRangeFilter | undefined {
   const value = filters[fieldKey];
   return isDateRangeFilter(value) ? value : undefined;
+}
+
+export function numericRangeFilterValue(
+  filters: RecordFilters,
+  fieldKey: string,
+): RecordNumericRangeFilter | undefined {
+  const value = filters[fieldKey];
+  return isNumericRangeFilter(value) ? value : undefined;
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

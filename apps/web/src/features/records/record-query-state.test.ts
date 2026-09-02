@@ -111,6 +111,21 @@ describe("parseRecordQuery", () => {
     ).toEqual(query);
   });
 
+  it("round-trips a published numeric range through the filters parameter", () => {
+    const query = {
+      ...DEFAULT_RECORD_QUERY,
+      filters: {
+        score: { min: 10, max: 80.5 },
+      },
+    };
+
+    expect(
+      parseRecordQuery(
+        Object.fromEntries(new URLSearchParams(recordQuerySearch(query))),
+      ),
+    ).toEqual(query);
+  });
+
   it("prefers the published default sort when the object supplies one", () => {
     expect(
       parseRecordQuery({}, { field: "recordNo", direction: "asc" }),

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '@crm/database';
+import { Prisma } from '@crm/database';
 
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
@@ -33,7 +33,17 @@ export type RecordListDateFilter = {
   to?: string;
 };
 
-export type RecordListFilter = RecordListOptionFilter | RecordListDateFilter;
+export type RecordListNumericFilter = {
+  fieldKey: string;
+  mode: 'NUMBER_RANGE';
+  min?: number;
+  max?: number;
+};
+
+export type RecordListFilter =
+  | RecordListOptionFilter
+  | RecordListDateFilter
+  | RecordListNumericFilter;
 
 export interface RecordListQuery {
   objectId: string;
@@ -311,6 +321,9 @@ function listFilterCondition(filter: RecordListFilter): Prisma.RecordWhereInput 
     }
     return { AND: bounds.map((bound) => ({ data: bound })) };
   }
+  if (filter.mode === 'NUMBER_RANGE') {
+    return numericRangeCondition(filter);
+  }
   return {
     OR: filter.values.map((value) => ({
       data:
@@ -319,6 +332,30 @@ function listFilterCondition(filter: RecordListFilter): Prisma.RecordWhereInput 
           : { path: [filter.fieldKey], equals: value },
     })),
   };
+}
+
+/**
+ * NUMBER is a JSON number; MONEY is a scaled decimal string. Both are read as
+ * text and compared numerically so a money value is never ordered as a string.
+ * Prisma's JsonFilter gte/lte cannot express that cast, so the predicate is
+ * injected as a parameterized SQL fragment the way dashboard metrics do.
+ */
+function numericRangeCondition(
+  filter: RecordListNumericFilter,
+): Prisma.RecordWhereInput {
+  const value = Prisma.sql`data ->> ${filter.fieldKey}`;
+  const bounds: Prisma.Sql[] = [
+    Prisma.sql`${value} ~ '^-?[0-9]+([.][0-9]+)?$'`,
+  ];
+  if (filter.min !== undefined) {
+    bounds.push(Prisma.sql`${value}::numeric >= ${filter.min}`);
+  }
+  if (filter.max !== undefined) {
+    bounds.push(Prisma.sql`${value}::numeric <= ${filter.max}`);
+  }
+  return {
+    AND: Prisma.join(bounds, ' AND '),
+  } as Prisma.RecordWhereInput;
 }
 
 function toPrismaJson(value: unknown): Prisma.InputJsonValue {

@@ -107,6 +107,19 @@ const schema = {
       isSystem: false,
       access: "EDIT",
     },
+    {
+      id: "field-score",
+      fieldKey: "score",
+      label: "评分",
+      type: "NUMBER",
+      required: false,
+      defaultValue: null,
+      validation: {},
+      config: {},
+      sortOrder: 6,
+      isSystem: false,
+      access: "EDIT",
+    },
   ],
   defaultView: {
     code: "default",
@@ -307,6 +320,9 @@ describe("RecordList table sorting", () => {
     expect(screen.getByLabelText("搜索客户名称、手机号")).toBeInTheDocument();
     expect(
       screen.getByRole("group", { name: "按签约日筛选" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("group", { name: "按评分筛选" }),
     ).toBeInTheDocument();
     fireEvent.mouseDown(
       screen.getByRole("combobox", { name: "按客户标签筛选" }),

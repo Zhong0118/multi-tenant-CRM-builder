@@ -132,6 +132,30 @@ function publishedSchema(): PublishedObjectSchema {
         sortOrder: 50,
         isSystem: false,
       },
+      {
+        id: 'field-score',
+        fieldKey: 'score',
+        label: '评分',
+        type: 'NUMBER',
+        required: false,
+        defaultValue: null,
+        validation: {},
+        config: {},
+        sortOrder: 60,
+        isSystem: false,
+      },
+      {
+        id: 'field-quote',
+        fieldKey: 'quote',
+        label: '报价',
+        type: 'MONEY',
+        required: false,
+        defaultValue: null,
+        validation: { scale: 2 },
+        config: {},
+        sortOrder: 70,
+        isSystem: false,
+      },
     ],
     defaultView: {
       code: 'default',
@@ -153,6 +177,8 @@ function publishedSchema(): PublishedObjectSchema {
         secret: 'HIDDEN',
         tags: 'EDIT',
         follow_up_on: 'EDIT',
+        score: 'EDIT',
+        quote: 'EDIT',
       },
     },
   };
@@ -312,6 +338,18 @@ function matchesListFilter(
     if (typeof value !== 'string') return false;
     if (filter.from && value < filter.from) return false;
     if (filter.to && value > filter.to) return false;
+    return true;
+  }
+  if (filter.mode === 'NUMBER_RANGE') {
+    const numeric =
+      typeof value === 'number'
+        ? value
+        : typeof value === 'string'
+          ? Number(value)
+          : Number.NaN;
+    if (!Number.isFinite(numeric)) return false;
+    if (filter.min !== undefined && numeric < filter.min) return false;
+    if (filter.max !== undefined && numeric > filter.max) return false;
     return true;
   }
   if (filter.mode === 'CONTAINS') {
@@ -541,6 +579,38 @@ describe('RecordsService', () => {
     });
 
     expect(page.items.map((record) => record.title)).toEqual(['八月跟进']);
+  });
+
+  it('filters records by a visible published number range', async () => {
+    const { service } = fixture();
+    await create(service, admin, '低分', employee.memberId, { score: 12 });
+    await create(service, admin, '高分', employee.memberId, { score: 88 });
+
+    const page = await service.list(admin, 'leads', {
+      page: 1,
+      limit: 20,
+      filters: '{"score":{"min":50,"max":100}}',
+      sort: 'updatedAt',
+      direction: 'desc',
+    });
+
+    expect(page.items.map((record) => record.title)).toEqual(['高分']);
+  });
+
+  it('filters records by a visible published money range', async () => {
+    const { service } = fixture();
+    await create(service, admin, '小额', employee.memberId, { quote: '80.00' });
+    await create(service, admin, '大额', employee.memberId, { quote: '320.50' });
+
+    const page = await service.list(admin, 'leads', {
+      page: 1,
+      limit: 20,
+      filters: '{"quote":{"min":100,"max":400}}',
+      sort: 'updatedAt',
+      direction: 'desc',
+    });
+
+    expect(page.items.map((record) => record.title)).toEqual(['大额']);
   });
 
   it('rejects filters on hidden or non-select fields', async () => {
