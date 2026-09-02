@@ -18,6 +18,7 @@ export type RecordDateRangeFilter = { from?: string; to?: string };
 export type RecordNumericRangeFilter = { min?: number; max?: number };
 export type RecordFilterValue =
   | string[]
+  | boolean
   | RecordDateRangeFilter
   | RecordNumericRangeFilter;
 export type RecordFilters = Record<string, RecordFilterValue>;
@@ -134,6 +135,7 @@ function parseOptionFilters(value: string | undefined): RecordFilters {
 }
 
 function normalizeFilterValue(value: unknown): RecordFilterValue | undefined {
+  if (typeof value === "boolean") return value;
   if (Array.isArray(value)) {
     if (
       value.length === 0 ||
@@ -192,6 +194,7 @@ export function isDateRangeFilter(
 ): value is RecordDateRangeFilter {
   return (
     value !== undefined &&
+    typeof value !== "boolean" &&
     !Array.isArray(value) &&
     ("from" in value || "to" in value)
   );
@@ -202,6 +205,7 @@ export function isNumericRangeFilter(
 ): value is RecordNumericRangeFilter {
   return (
     value !== undefined &&
+    typeof value !== "boolean" &&
     !Array.isArray(value) &&
     ("min" in value || "max" in value)
   );
@@ -229,6 +233,14 @@ export function numericRangeFilterValue(
 ): RecordNumericRangeFilter | undefined {
   const value = filters[fieldKey];
   return isNumericRangeFilter(value) ? value : undefined;
+}
+
+export function booleanFilterValue(
+  filters: RecordFilters,
+  fieldKey: string,
+): boolean | undefined {
+  const value = filters[fieldKey];
+  return typeof value === "boolean" ? value : undefined;
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

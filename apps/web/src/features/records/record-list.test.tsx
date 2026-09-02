@@ -120,6 +120,19 @@ const schema = {
       isSystem: false,
       access: "EDIT",
     },
+    {
+      id: "field-active",
+      fieldKey: "is_active",
+      label: "已启用",
+      type: "BOOLEAN",
+      required: false,
+      defaultValue: null,
+      validation: {},
+      config: {},
+      sortOrder: 7,
+      isSystem: false,
+      access: "EDIT",
+    },
   ],
   defaultView: {
     code: "default",
@@ -323,6 +336,9 @@ describe("RecordList table sorting", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("group", { name: "按评分筛选" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "按已启用筛选" }),
     ).toBeInTheDocument();
     fireEvent.mouseDown(
       screen.getByRole("combobox", { name: "按客户标签筛选" }),

@@ -39,6 +39,7 @@ import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
 import { recordCardFields } from "./record-card-fields";
 import { toApiError } from "@/lib/api/api-error";
 import {
+  booleanFilterValue,
   dateRangeFilterValue,
   DEFAULT_RECORD_QUERY,
   numericRangeFilterValue,
@@ -147,6 +148,9 @@ export function RecordList({
   );
   const numericFilterFields = schema.fields.filter(
     (field) => field.type === "NUMBER" || field.type === "MONEY",
+  );
+  const booleanFilterFields = schema.fields.filter(
+    (field) => field.type === "BOOLEAN",
   );
   const searchFieldLabels = schema.fields
     .filter(
@@ -504,6 +508,26 @@ export function RecordList({
             </div>
           );
         })}
+        {booleanFilterFields.map((field) => (
+          <Select
+            key={field.fieldKey}
+            allowClear
+            aria-label={`按${field.label}筛选`}
+            placeholder={`全部${field.label}`}
+            className={styles.booleanFilter}
+            value={booleanFilterValue(query.filters, field.fieldKey)}
+            onChange={(next?: boolean) => {
+              const filters = { ...query.filters };
+              if (next === undefined) delete filters[field.fieldKey];
+              else filters[field.fieldKey] = next;
+              apply(withFilter(query, { filters }));
+            }}
+            options={[
+              { value: true, label: "是" },
+              { value: false, label: "否" },
+            ]}
+          />
+        ))}
         {Object.keys(query.filters).length > 0 ? (
           <Button
             type="text"

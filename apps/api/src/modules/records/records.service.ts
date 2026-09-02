@@ -355,6 +355,10 @@ function parseListFilters(
       filters.push(parseNumericFilter(field.fieldKey, rawValue));
       continue;
     }
+    if (field.type === 'BOOLEAN') {
+      filters.push(parseBooleanFilter(field.fieldKey, rawValue));
+      continue;
+    }
     throw invalidRecordFilter();
   }
   return filters;
@@ -431,6 +435,14 @@ function parseNumericFilter(
     ...(min !== undefined ? { min } : {}),
     ...(max !== undefined ? { max } : {}),
   };
+}
+
+function parseBooleanFilter(
+  fieldKey: string,
+  rawValue: unknown,
+): RecordListFilter {
+  if (typeof rawValue !== 'boolean') throw invalidRecordFilter();
+  return { fieldKey, mode: 'BOOLEAN_EQUALS', value: rawValue };
 }
 
 function optionalDateBound(value: unknown): string | undefined {

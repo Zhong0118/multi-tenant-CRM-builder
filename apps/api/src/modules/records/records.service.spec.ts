@@ -156,6 +156,18 @@ function publishedSchema(): PublishedObjectSchema {
         sortOrder: 70,
         isSystem: false,
       },
+      {
+        id: 'field-vip',
+        fieldKey: 'is_vip',
+        label: '重点客户',
+        type: 'BOOLEAN',
+        required: false,
+        defaultValue: null,
+        validation: {},
+        config: {},
+        sortOrder: 80,
+        isSystem: false,
+      },
     ],
     defaultView: {
       code: 'default',
@@ -179,6 +191,7 @@ function publishedSchema(): PublishedObjectSchema {
         follow_up_on: 'EDIT',
         score: 'EDIT',
         quote: 'EDIT',
+        is_vip: 'EDIT',
       },
     },
   };
@@ -351,6 +364,9 @@ function matchesListFilter(
     if (filter.min !== undefined && numeric < filter.min) return false;
     if (filter.max !== undefined && numeric > filter.max) return false;
     return true;
+  }
+  if (filter.mode === 'BOOLEAN_EQUALS') {
+    return value === filter.value;
   }
   if (filter.mode === 'CONTAINS') {
     return (
@@ -611,6 +627,22 @@ describe('RecordsService', () => {
     });
 
     expect(page.items.map((record) => record.title)).toEqual(['大额']);
+  });
+
+  it('filters records by a visible published boolean field', async () => {
+    const { service } = fixture();
+    await create(service, admin, '重点', employee.memberId, { is_vip: true });
+    await create(service, admin, '普通', employee.memberId, { is_vip: false });
+
+    const page = await service.list(admin, 'leads', {
+      page: 1,
+      limit: 20,
+      filters: '{"is_vip":true}',
+      sort: 'updatedAt',
+      direction: 'desc',
+    });
+
+    expect(page.items.map((record) => record.title)).toEqual(['重点']);
   });
 
   it('rejects filters on hidden or non-select fields', async () => {

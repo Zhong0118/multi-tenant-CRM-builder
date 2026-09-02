@@ -99,6 +99,10 @@
   align-items: center;
 }
 
+.booleanFilter {
+  width: 160px;
+}
+
 .numericFilter :global(.ant-input-number) {
   width: 108px;
 }
@@ -301,7 +305,8 @@
   .ownerFilter,
   .optionFilter,
   .dateFilter,
-  .numericFilter {
+  .numericFilter,
+  .booleanFilter {
     width: 100%;
     max-width: none;
   }

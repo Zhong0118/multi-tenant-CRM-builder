@@ -40,10 +40,17 @@ export type RecordListNumericFilter = {
   max?: number;
 };
 
+export type RecordListBooleanFilter = {
+  fieldKey: string;
+  mode: 'BOOLEAN_EQUALS';
+  value: boolean;
+};
+
 export type RecordListFilter =
   | RecordListOptionFilter
   | RecordListDateFilter
-  | RecordListNumericFilter;
+  | RecordListNumericFilter
+  | RecordListBooleanFilter;
 
 export interface RecordListQuery {
   objectId: string;
@@ -323,6 +330,11 @@ function listFilterCondition(filter: RecordListFilter): Prisma.RecordWhereInput 
   }
   if (filter.mode === 'NUMBER_RANGE') {
     return numericRangeCondition(filter);
+  }
+  if (filter.mode === 'BOOLEAN_EQUALS') {
+    return {
+      data: { path: [filter.fieldKey], equals: filter.value },
+    };
   }
   return {
     OR: filter.values.map((value) => ({

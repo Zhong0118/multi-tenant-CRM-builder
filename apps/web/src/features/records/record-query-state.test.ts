@@ -126,6 +126,21 @@ describe("parseRecordQuery", () => {
     ).toEqual(query);
   });
 
+  it("round-trips a published boolean filter through the filters parameter", () => {
+    const query = {
+      ...DEFAULT_RECORD_QUERY,
+      filters: {
+        is_active: true,
+      },
+    };
+
+    expect(
+      parseRecordQuery(
+        Object.fromEntries(new URLSearchParams(recordQuerySearch(query))),
+      ),
+    ).toEqual(query);
+  });
+
   it("prefers the published default sort when the object supplies one", () => {
     expect(
       parseRecordQuery({}, { field: "recordNo", direction: "asc" }),
