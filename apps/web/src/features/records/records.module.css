@@ -108,6 +108,50 @@
   overflow-x: auto;
 }
 
+.cardList {
+  display: none;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.card:last-child {
+  border-bottom: 0;
+}
+
+.cardHeader {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cardMeta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+  margin: 0;
+}
+
+.cardMeta dt {
+  color: var(--ink-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.cardMeta dd {
+  margin: 0;
+  color: var(--ledger-ink);
+  font-size: 14px;
+  line-height: 22px;
+}
+
 .rowActions {
   align-items: center;
   display: inline-flex;
@@ -247,6 +291,18 @@
 
   .formPanel {
     padding: 18px;
+  }
+
+  .register {
+    display: none;
+  }
+
+  .cardList {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
 }
 

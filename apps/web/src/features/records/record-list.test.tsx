@@ -104,6 +104,7 @@ function renderList(
     schema?: RuntimeObjectSchema;
     api?: RecordApi;
     page?: RecordPage;
+    members?: { id: string; displayName: string }[];
   } = {},
 ) {
   const client = new QueryClient({
@@ -122,6 +123,7 @@ function renderList(
         schema={options.schema ?? schema}
         query={query}
         initialPage={options.page ?? page}
+        members={options.members}
         api={api}
         navigate={navigate}
       />
@@ -184,15 +186,16 @@ describe("RecordList table sorting", () => {
 
   it("keeps all three compact actions discoverable when delete is not permitted", () => {
     renderList(vi.fn());
+    const table = screen.getByRole("table", { name: "客户记录" });
 
     expect(
-      screen.getByRole("button", { name: "查看 天际科技" }),
+      within(table).getByRole("button", { name: "查看 天际科技" }),
     ).not.toHaveTextContent("查看");
     expect(
-      screen.getByRole("button", { name: "编辑 天际科技" }),
+      within(table).getByRole("button", { name: "编辑 天际科技" }),
     ).not.toHaveTextContent("编辑");
     expect(
-      screen.getByRole("button", { name: "删除 天际科技" }),
+      within(table).getByRole("button", { name: "删除 天际科技" }),
     ).toBeDisabled();
   });
 
@@ -210,12 +213,22 @@ describe("RecordList table sorting", () => {
       },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "编辑 天际科技" }));
+    fireEvent.click(
+      within(screen.getByRole("table", { name: "客户记录" })).getByRole(
+        "button",
+        { name: "编辑 天际科技" },
+      ),
+    );
     expect(navigate).toHaveBeenCalledWith(
       "/workspace/northwind/objects/customers/record-1?mode=edit",
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "删除 天际科技" }));
+    fireEvent.click(
+      within(screen.getByRole("table", { name: "客户记录" })).getByRole(
+        "button",
+        { name: "删除 天际科技" },
+      ),
+    );
     fireEvent.click(await screen.findByRole("button", { name: "确认删除" }));
     await waitFor(() =>
       expect(api.remove).toHaveBeenCalledWith(
@@ -257,5 +270,31 @@ describe("RecordList table sorting", () => {
     expect(selected.getAllByText("待联系").length).toBeGreaterThan(0);
     expect(selected.getAllByText("跟进中").length).toBeGreaterThan(0);
     expect(selected.queryByText(/^\+\s*1/)).not.toBeInTheDocument();
+  });
+
+  it("renders a compact card list with the same record actions as the table", () => {
+    const navigate = vi.fn();
+    renderList(navigate, DEFAULT_RECORD_QUERY, {
+      members: [{ id: "member-1", displayName: "李明" }],
+      page: {
+        ...page,
+        items: [
+          {
+            ...page.items[0],
+            ownerMemberId: "member-1",
+          },
+        ],
+      },
+    });
+
+    const cards = screen.getByRole("list", { name: "客户记录卡片" });
+    expect(within(cards).getByText("天际科技")).toBeInTheDocument();
+    expect(within(cards).getByText("8")).toBeInTheDocument();
+    expect(within(cards).getByText("待联系")).toBeInTheDocument();
+    expect(within(cards).getByText("李明")).toBeInTheDocument();
+    fireEvent.click(within(cards).getByRole("button", { name: "查看 天际科技" }));
+    expect(navigate).toHaveBeenCalledWith(
+      "/workspace/northwind/objects/customers/record-1",
+    );
   });
 });

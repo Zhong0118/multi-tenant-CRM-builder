@@ -33,6 +33,7 @@ import { OptionBadge } from "@/features/objects/option-badge";
 
 import type { DynamicFieldMember } from "./dynamic-field";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
+import { recordCardFields } from "./record-card-fields";
 import { toApiError } from "@/lib/api/api-error";
 import {
   DEFAULT_RECORD_QUERY,
@@ -203,68 +204,7 @@ export function RecordList({
       key: "actions",
       width: 124,
       fixed: "right",
-      render: (_, row) => (
-        <Space size={2} className={styles.rowActions}>
-          <Tooltip title="查看">
-            <Button
-              type="text"
-              size="small"
-              className={styles.rowActionButton}
-              aria-label={`查看 ${row.title}`}
-              icon={<EyeOutlined />}
-              onClick={() => go(recordPath(row.id))}
-            />
-          </Tooltip>
-          <Tooltip title={schema.actions.canUpdate ? "编辑" : "无编辑权限"}>
-            <span className={styles.actionSlot}>
-              <Button
-                type="text"
-                size="small"
-                className={styles.rowActionButton}
-                aria-label={`编辑 ${row.title}`}
-                icon={<EditOutlined />}
-                disabled={!schema.actions.canUpdate}
-                onClick={() => go(recordPath(row.id, "edit"))}
-              />
-            </span>
-          </Tooltip>
-          {schema.actions.canDelete ? (
-            <Popconfirm
-              title={`确认删除 ${row.title}？`}
-              description="删除后业务列表不再显示，审计历史仍会保留。"
-              okText="确认删除"
-              cancelText="取消"
-              onConfirm={() => remove.mutate(row)}
-            >
-              <Tooltip title="删除">
-                <Button
-                  danger
-                  type="text"
-                  size="small"
-                  className={styles.rowActionButton}
-                  aria-label={`删除 ${row.title}`}
-                  icon={<DeleteOutlined />}
-                  loading={remove.isPending && remove.variables?.id === row.id}
-                />
-              </Tooltip>
-            </Popconfirm>
-          ) : (
-            <Tooltip title="无删除权限">
-              <span className={styles.actionSlot}>
-                <Button
-                  danger
-                  disabled
-                  type="text"
-                  size="small"
-                  className={styles.rowActionButton}
-                  aria-label={`删除 ${row.title}`}
-                  icon={<DeleteOutlined />}
-                />
-              </span>
-            </Tooltip>
-          )}
-        </Space>
-      ),
+      render: (_, row) => recordActions(row),
     },
   ];
 
@@ -301,6 +241,72 @@ export function RecordList({
     query.ownerMemberId ||
     Object.keys(query.filters).length > 0,
   );
+  const cardFields = recordCardFields(schema);
+
+  function recordActions(row: RecordSummary) {
+    return (
+      <Space size={2} className={styles.rowActions}>
+        <Tooltip title="查看">
+          <Button
+            type="text"
+            size="small"
+            className={styles.rowActionButton}
+            aria-label={`查看 ${row.title}`}
+            icon={<EyeOutlined />}
+            onClick={() => go(recordPath(row.id))}
+          />
+        </Tooltip>
+        <Tooltip title={schema.actions.canUpdate ? "编辑" : "无编辑权限"}>
+          <span className={styles.actionSlot}>
+            <Button
+              type="text"
+              size="small"
+              className={styles.rowActionButton}
+              aria-label={`编辑 ${row.title}`}
+              icon={<EditOutlined />}
+              disabled={!schema.actions.canUpdate}
+              onClick={() => go(recordPath(row.id, "edit"))}
+            />
+          </span>
+        </Tooltip>
+        {schema.actions.canDelete ? (
+          <Popconfirm
+            title={`确认删除 ${row.title}？`}
+            description="删除后业务列表不再显示，审计历史仍会保留。"
+            okText="确认删除"
+            cancelText="取消"
+            onConfirm={() => remove.mutate(row)}
+          >
+            <Tooltip title="删除">
+              <Button
+                danger
+                type="text"
+                size="small"
+                className={styles.rowActionButton}
+                aria-label={`删除 ${row.title}`}
+                icon={<DeleteOutlined />}
+                loading={remove.isPending && remove.variables?.id === row.id}
+              />
+            </Tooltip>
+          </Popconfirm>
+        ) : (
+          <Tooltip title="无删除权限">
+            <span className={styles.actionSlot}>
+              <Button
+                danger
+                disabled
+                type="text"
+                size="small"
+                className={styles.rowActionButton}
+                aria-label={`删除 ${row.title}`}
+                icon={<DeleteOutlined />}
+              />
+            </span>
+          </Tooltip>
+        )}
+      </Space>
+    );
+  }
 
   return (
     <div className={styles.list}>
@@ -398,6 +404,75 @@ export function RecordList({
         className={styles.registerPanel}
         ariaLabel={`${schema.object.name}记录表`}
       >
+        {page.items.length === 0 ? (
+          <Empty
+            description={
+              filtered
+                ? "当前筛选条件没有匹配的记录。"
+                : schema.actions.canCreate
+                  ? "还没有记录，新建第一条。"
+                  : "还没有记录。"
+            }
+          />
+        ) : (
+          <ul
+            className={styles.cardList}
+            aria-label={`${schema.object.name}记录卡片`}
+          >
+            {page.items.map((row) => {
+              const ownerName = row.ownerMemberId
+                ? (members.find((member) => member.id === row.ownerMemberId)
+                    ?.displayName ?? "未设置姓名")
+                : "未指定";
+              return (
+                <li key={row.id} className={styles.card}>
+                  <div className={styles.cardHeader}>
+                    <a
+                      className={styles.recordTitle}
+                      href={recordPath(row.id)}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        go(recordPath(row.id));
+                      }}
+                    >
+                      {row.title}
+                    </a>
+                    {cardFields.status
+                      ? displayValue(
+                          cardFields.status,
+                          row.values[cardFields.status.fieldKey],
+                          members,
+                        )
+                      : null}
+                  </div>
+                  <dl className={styles.cardMeta}>
+                    <div>
+                      <dt>业务编号</dt>
+                      <dd className={styles.recordNo}>{row.recordNo}</dd>
+                    </div>
+                    <div>
+                      <dt>负责人</dt>
+                      <dd>{ownerName}</dd>
+                    </div>
+                    {cardFields.extras.map((field) => (
+                      <div key={field.fieldKey}>
+                        <dt>{field.label}</dt>
+                        <dd>
+                          {displayValue(
+                            field,
+                            row.values[field.fieldKey],
+                            members,
+                          )}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                  {recordActions(row)}
+                </li>
+              );
+            })}
+          </ul>
+        )}
         <Table
           className={styles.register}
           rowKey="id"
