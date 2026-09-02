@@ -12,7 +12,7 @@ import {
 } from './record-value-engine';
 import type {
   DynamicRecord,
-  RecordListOptionFilter,
+  RecordListFilter,
   RecordListQuery,
   RecordsRepository,
   RecordsStore,
@@ -324,7 +324,7 @@ const SEARCHABLE_FIELD_TYPES = new Set([
 function parseListFilters(
   serialized: string | undefined,
   resolved: ResolvedObjectSchema,
-): RecordListOptionFilter[] {
+): RecordListFilter[] {
   if (!serialized) return [];
   let parsed: unknown;
   try {
@@ -339,43 +339,83 @@ function parseListFilters(
   const visibleFields = new Map(
     resolved.visibleSchema.fields.map((field) => [field.fieldKey, field]),
   );
-  const filters: RecordListOptionFilter[] = [];
-  for (const [fieldKey, rawValues] of entries) {
+  const filters: RecordListFilter[] = [];
+  for (const [fieldKey, rawValue] of entries) {
     const field = visibleFields.get(fieldKey);
-    if (
-      !field ||
-      (field.type !== 'SINGLE_SELECT' && field.type !== 'MULTI_SELECT') ||
-      !Array.isArray(rawValues) ||
-      rawValues.length === 0 ||
-      rawValues.length > 20 ||
-      rawValues.some(
-        (value) =>
-          typeof value !== 'string' || value.length === 0 || value.length > 100,
-      )
-    ) {
-      throw invalidRecordFilter();
+    if (!field) throw invalidRecordFilter();
+    if (field.type === 'SINGLE_SELECT' || field.type === 'MULTI_SELECT') {
+      filters.push(parseOptionFilter(field, rawValue));
+      continue;
     }
-    const optionKeys = new Set(
-      Array.isArray(field.config.options)
-        ? field.config.options.flatMap((option) => {
-            if (!isPlainObject(option) || typeof option.key !== 'string') {
-              return [];
-            }
-            return [option.key];
-          })
-        : [],
-    );
-    const values = [...new Set(rawValues as string[])];
-    if (values.some((value) => !optionKeys.has(value))) {
-      throw invalidRecordFilter();
+    if (field.type === 'DATE' || field.type === 'DATETIME') {
+      filters.push(parseDateFilter(field.fieldKey, rawValue, field.type));
+      continue;
     }
-    filters.push({
-      fieldKey,
-      mode: field.type === 'MULTI_SELECT' ? 'CONTAINS' : 'EQUALS',
-      values,
-    });
+    throw invalidRecordFilter();
   }
   return filters;
+}
+
+function parseOptionFilter(
+  field: ResolvedObjectSchema['visibleSchema']['fields'][number],
+  rawValues: unknown,
+): RecordListFilter {
+  if (
+    !Array.isArray(rawValues) ||
+    rawValues.length === 0 ||
+    rawValues.length > 20 ||
+    rawValues.some(
+      (value) =>
+        typeof value !== 'string' || value.length === 0 || value.length > 100,
+    )
+  ) {
+    throw invalidRecordFilter();
+  }
+  const optionKeys = new Set(
+    Array.isArray(field.config.options)
+      ? field.config.options.flatMap((option) => {
+          if (!isPlainObject(option) || typeof option.key !== 'string') {
+            return [];
+          }
+          return [option.key];
+        })
+      : [],
+  );
+  const values = [...new Set(rawValues as string[])];
+  if (values.some((value) => !optionKeys.has(value))) {
+    throw invalidRecordFilter();
+  }
+  return {
+    fieldKey: field.fieldKey,
+    mode: field.type === 'MULTI_SELECT' ? 'CONTAINS' : 'EQUALS',
+    values,
+  };
+}
+
+function parseDateFilter(
+  fieldKey: string,
+  rawValue: unknown,
+  type: 'DATE' | 'DATETIME',
+): RecordListFilter {
+  if (!isPlainObject(rawValue)) throw invalidRecordFilter();
+  const from = optionalDateBound(rawValue.from);
+  const to = optionalDateBound(rawValue.to);
+  if (!from && !to) throw invalidRecordFilter();
+  if (from && to && from > to) throw invalidRecordFilter();
+  return {
+    fieldKey,
+    mode: 'DATE_RANGE',
+    ...(from ? { from } : {}),
+    ...(to ? { to: type === 'DATETIME' ? `${to}T23:59:59.999Z` : to } : {}),
+  };
+}
+
+function optionalDateBound(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw invalidRecordFilter();
+  }
+  return value;
 }
 
 function invalidRecordFilter(): ApiException {

@@ -9,12 +9,14 @@ export interface RecordQuery {
   limit: number;
   search?: string;
   ownerMemberId?: string;
-  filters: RecordOptionFilters;
+  filters: RecordFilters;
   sort: RecordSortField;
   direction: RecordSortDirection;
 }
 
-export type RecordOptionFilters = Record<string, string[]>;
+export type RecordDateRangeFilter = { from?: string; to?: string };
+export type RecordFilterValue = string[] | RecordDateRangeFilter;
+export type RecordFilters = Record<string, RecordFilterValue>;
 
 /** Mirrors the API's own defaults so an untouched list needs no query string. */
 export const DEFAULT_RECORD_QUERY: RecordQuery = {
@@ -97,43 +99,89 @@ export function withFilter(
   return { ...query, ...change, page: 1 };
 }
 
-export function recordFilterParameter(filters: RecordOptionFilters): string {
+export function recordFilterParameter(filters: RecordFilters): string {
   const normalized = Object.fromEntries(
     Object.entries(filters)
-      .filter(([, values]) => values.length > 0)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([fieldKey, values]) => [fieldKey, [...new Set(values)]]),
+      .map(([fieldKey, value]) => [fieldKey, normalizeFilterValue(value)] as const)
+      .filter((entry): entry is [string, RecordFilterValue] => entry[1] !== undefined)
+      .sort(([left], [right]) => left.localeCompare(right)),
   );
   return Object.keys(normalized).length > 0 ? JSON.stringify(normalized) : "";
 }
 
-function parseOptionFilters(value: string | undefined): RecordOptionFilters {
+function parseOptionFilters(value: string | undefined): RecordFilters {
   if (!value || value.length > 4000) return {};
   try {
     const parsed: unknown = JSON.parse(value);
     if (!isPlainObject(parsed)) return {};
     const entries = Object.entries(parsed);
     if (entries.length > 8) return {};
-    const filters: RecordOptionFilters = {};
-    for (const [fieldKey, rawValues] of entries) {
-      if (
-        !/^[a-z][a-z0-9_]*$/.test(fieldKey) ||
-        !Array.isArray(rawValues) ||
-        rawValues.length === 0 ||
-        rawValues.length > 20 ||
-        rawValues.some(
-          (item) =>
-            typeof item !== "string" || item.length === 0 || item.length > 100,
-        )
-      ) {
-        return {};
-      }
-      filters[fieldKey] = [...new Set(rawValues as string[])];
+    const filters: RecordFilters = {};
+    for (const [fieldKey, rawValue] of entries) {
+      if (!/^[a-z][a-zA-Z0-9_]*$/.test(fieldKey)) return {};
+      const normalized = normalizeFilterValue(rawValue);
+      if (!normalized) return {};
+      filters[fieldKey] = normalized;
     }
     return filters;
   } catch {
     return {};
   }
+}
+
+function normalizeFilterValue(value: unknown): RecordFilterValue | undefined {
+  if (Array.isArray(value)) {
+    if (
+      value.length === 0 ||
+      value.length > 20 ||
+      value.some(
+        (item) =>
+          typeof item !== "string" || item.length === 0 || item.length > 100,
+      )
+    ) {
+      return undefined;
+    }
+    return [...new Set(value as string[])];
+  }
+  if (!isPlainObject(value)) return undefined;
+  const from = optionalDateBound(value.from);
+  const to = optionalDateBound(value.to);
+  if (from === false || to === false || (from === undefined && to === undefined)) {
+    return undefined;
+  }
+  if (from && to && from > to) return undefined;
+  return {
+    ...(from ? { from } : {}),
+    ...(to ? { to } : {}),
+  };
+}
+
+function optionalDateBound(value: unknown): string | undefined | false {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  return value;
+}
+
+export function isDateRangeFilter(
+  value: RecordFilterValue | undefined,
+): value is RecordDateRangeFilter {
+  return Boolean(value) && !Array.isArray(value);
+}
+
+export function optionFilterValues(
+  filters: RecordFilters,
+  fieldKey: string,
+): string[] {
+  const value = filters[fieldKey];
+  return Array.isArray(value) ? value : [];
+}
+
+export function dateRangeFilterValue(
+  filters: RecordFilters,
+  fieldKey: string,
+): RecordDateRangeFilter | undefined {
+  const value = filters[fieldKey];
+  return isDateRangeFilter(value) ? value : undefined;
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Alert,
   Button,
+  DatePicker,
   Empty,
   Input,
   Popconfirm,
@@ -16,6 +17,7 @@ import {
 } from "antd";
 import type { TableProps } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import dayjs, { type Dayjs } from "dayjs";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
@@ -36,7 +38,9 @@ import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
 import { recordCardFields } from "./record-card-fields";
 import { toApiError } from "@/lib/api/api-error";
 import {
+  dateRangeFilterValue,
   DEFAULT_RECORD_QUERY,
+  optionFilterValues,
   recordQuerySearch,
   withFilter,
   type RecordQuery,
@@ -135,6 +139,9 @@ export function RecordList({
     (field) =>
       (field.type === "SINGLE_SELECT" || field.type === "MULTI_SELECT") &&
       selectOptions(field).length > 0,
+  );
+  const dateFilterFields = schema.fields.filter(
+    (field) => field.type === "DATE" || field.type === "DATETIME",
   );
   const searchFieldLabels = schema.fields
     .filter(
@@ -392,7 +399,7 @@ export function RecordList({
               placeholder={`全部${field.label}`}
               allowClear
               className={styles.optionFilter}
-              value={query.filters[field.fieldKey] ?? []}
+              value={optionFilterValues(query.filters, field.fieldKey)}
               onChange={(values: string[]) => {
                 const filters = { ...query.filters };
                 if (values.length === 0) delete filters[field.fieldKey];
@@ -404,6 +411,40 @@ export function RecordList({
                 label: <OptionBadge option={option} />,
               }))}
             />
+          );
+        })}
+        {dateFilterFields.map((field) => {
+          const range = dateRangeFilterValue(query.filters, field.fieldKey);
+          return (
+            <div
+              key={field.fieldKey}
+              role="group"
+              aria-label={`按${field.label}筛选`}
+            >
+              <DatePicker.RangePicker
+                allowEmpty={[true, true]}
+                allowClear
+                className={styles.dateFilter}
+                separator="至"
+                placeholder={[`${field.label}起`, `${field.label}止`]}
+                value={[
+                  range?.from ? dayjs(range.from) : null,
+                  range?.to ? dayjs(range.to) : null,
+                ]}
+                onChange={(next: [Dayjs | null, Dayjs | null] | null) => {
+                  const filters = { ...query.filters };
+                  const from = next?.[0]?.isValid()
+                    ? next[0].format("YYYY-MM-DD")
+                    : undefined;
+                  const to = next?.[1]?.isValid()
+                    ? next[1].format("YYYY-MM-DD")
+                    : undefined;
+                  if (!from && !to) delete filters[field.fieldKey];
+                  else filters[field.fieldKey] = { from, to };
+                  apply(withFilter(query, { filters }));
+                }}
+              />
+            </div>
           );
         })}
         {Object.keys(query.filters).length > 0 ? (

@@ -26,6 +26,15 @@ export type RecordListOptionFilter = {
   values: string[];
 };
 
+export type RecordListDateFilter = {
+  fieldKey: string;
+  mode: 'DATE_RANGE';
+  from?: string;
+  to?: string;
+};
+
+export type RecordListFilter = RecordListOptionFilter | RecordListDateFilter;
+
 export interface RecordListQuery {
   objectId: string;
   page: number;
@@ -33,7 +42,7 @@ export interface RecordListQuery {
   search?: string;
   searchFieldKeys: string[];
   ownerMemberId?: string;
-  filters: RecordListOptionFilter[];
+  filters: RecordListFilter[];
   sort: 'updatedAt' | 'createdAt' | 'recordNo';
   direction: 'asc' | 'desc';
 }
@@ -153,7 +162,7 @@ class PrismaRecordsStore implements RecordsStore {
       ownerMemberId: query.ownerMemberId,
       AND: [
         ...searchConditions(query.search, query.searchFieldKeys),
-        ...query.filters.map(optionFilterCondition),
+        ...query.filters.map(listFilterCondition),
       ],
     };
     const orderBy: Prisma.RecordOrderByWithRelationInput[] = [
@@ -291,9 +300,17 @@ function searchConditions(
   ];
 }
 
-function optionFilterCondition(
-  filter: RecordListOptionFilter,
-): Prisma.RecordWhereInput {
+function listFilterCondition(filter: RecordListFilter): Prisma.RecordWhereInput {
+  if (filter.mode === 'DATE_RANGE') {
+    const bounds: Prisma.JsonFilter[] = [];
+    if (filter.from) {
+      bounds.push({ path: [filter.fieldKey], gte: filter.from });
+    }
+    if (filter.to) {
+      bounds.push({ path: [filter.fieldKey], lte: filter.to });
+    }
+    return { AND: bounds.map((bound) => ({ data: bound })) };
+  }
   return {
     OR: filter.values.map((value) => ({
       data:

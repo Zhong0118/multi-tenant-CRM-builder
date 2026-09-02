@@ -81,6 +81,36 @@ describe("parseRecordQuery", () => {
     ).toEqual({});
   });
 
+  it("round-trips a published date range through the filters parameter", () => {
+    const query = {
+      ...DEFAULT_RECORD_QUERY,
+      filters: {
+        follow_up_on: { from: "2026-08-01", to: "2026-08-31" },
+      },
+    };
+
+    expect(
+      parseRecordQuery(
+        Object.fromEntries(new URLSearchParams(recordQuerySearch(query))),
+      ),
+    ).toEqual(query);
+  });
+
+  it("keeps camelCase published field keys used by existing templates", () => {
+    const query = {
+      ...DEFAULT_RECORD_QUERY,
+      filters: {
+        closeDate: { from: "2026-09-01", to: "2026-09-30" },
+      },
+    };
+
+    expect(
+      parseRecordQuery(
+        Object.fromEntries(new URLSearchParams(recordQuerySearch(query))),
+      ),
+    ).toEqual(query);
+  });
+
   it("prefers the published default sort when the object supplies one", () => {
     expect(
       parseRecordQuery({}, { field: "recordNo", direction: "asc" }),

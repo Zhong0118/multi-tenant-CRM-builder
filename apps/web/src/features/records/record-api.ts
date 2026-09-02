@@ -11,7 +11,7 @@ import { browserApiClient } from "@/lib/api/browser-client";
 
 import {
   recordFilterParameter,
-  type RecordOptionFilters,
+  type RecordFilters,
 } from "./record-query-state";
 
 export interface RecordListQuery {
@@ -19,7 +19,7 @@ export interface RecordListQuery {
   limit: number;
   search?: string;
   ownerMemberId?: string;
-  filters?: RecordOptionFilters;
+  filters?: RecordFilters;
   sort?: RecordSortField;
   direction?: RecordSortDirection;
 }

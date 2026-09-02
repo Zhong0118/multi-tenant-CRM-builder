@@ -88,6 +88,10 @@
   max-width: 360px;
 }
 
+.dateFilter {
+  min-width: 240px;
+}
+
 .optionFilter :global(.ant-select-content) {
   min-height: 32px;
   height: auto;
@@ -284,7 +288,8 @@
 
   .searchInput,
   .ownerFilter,
-  .optionFilter {
+  .optionFilter,
+  .dateFilter {
     width: 100%;
     max-width: none;
   }

@@ -120,6 +120,18 @@ function publishedSchema(): PublishedObjectSchema {
         sortOrder: 40,
         isSystem: false,
       },
+      {
+        id: 'field-follow-up',
+        fieldKey: 'follow_up_on',
+        label: '下次跟进日',
+        type: 'DATE',
+        required: false,
+        defaultValue: null,
+        validation: {},
+        config: {},
+        sortOrder: 50,
+        isSystem: false,
+      },
     ],
     defaultView: {
       code: 'default',
@@ -140,6 +152,7 @@ function publishedSchema(): PublishedObjectSchema {
         lead_status: 'EDIT',
         secret: 'HIDDEN',
         tags: 'EDIT',
+        follow_up_on: 'EDIT',
       },
     },
   };
@@ -195,7 +208,7 @@ class MemoryRecordsStore implements RecordsStore {
           (!query.ownerMemberId ||
             record.ownerMemberId === query.ownerMemberId) &&
           matchesSearch(record, query) &&
-          query.filters.every((filter) => matchesOptionFilter(record, filter)),
+          query.filters.every((filter) => matchesListFilter(record, filter)),
       )
       .sort((left, right) => compareRecords(left, right, query));
     return Promise.resolve({
@@ -290,11 +303,17 @@ function matchesSearch(record: DynamicRecord, query: RecordListQuery): boolean {
   );
 }
 
-function matchesOptionFilter(
+function matchesListFilter(
   record: DynamicRecord,
   filter: RecordListQuery['filters'][number],
 ): boolean {
   const value = record.values[filter.fieldKey];
+  if (filter.mode === 'DATE_RANGE') {
+    if (typeof value !== 'string') return false;
+    if (filter.from && value < filter.from) return false;
+    if (filter.to && value > filter.to) return false;
+    return true;
+  }
   if (filter.mode === 'CONTAINS') {
     return (
       Array.isArray(value) &&
@@ -502,6 +521,26 @@ describe('RecordsService', () => {
     });
 
     expect(page.items.map((record) => record.title)).toEqual(['重点线索']);
+  });
+
+  it('filters records by a visible published date range', async () => {
+    const { service } = fixture();
+    await create(service, admin, '八月跟进', employee.memberId, {
+      follow_up_on: '2026-08-10',
+    });
+    await create(service, admin, '九月跟进', employee.memberId, {
+      follow_up_on: '2026-09-01',
+    });
+
+    const page = await service.list(admin, 'leads', {
+      page: 1,
+      limit: 20,
+      filters: '{"follow_up_on":{"from":"2026-08-01","to":"2026-08-31"}}',
+      sort: 'updatedAt',
+      direction: 'desc',
+    });
+
+    expect(page.items.map((record) => record.title)).toEqual(['八月跟进']);
   });
 
   it('rejects filters on hidden or non-select fields', async () => {

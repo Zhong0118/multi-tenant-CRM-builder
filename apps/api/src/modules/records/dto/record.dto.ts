@@ -41,7 +41,7 @@ export class RecordListQueryDto {
 
   @ApiPropertyOptional({
     maxLength: 4000,
-    description: '按已发布选项字段筛选的 JSON 对象。',
+    description: '按已发布选项或日期字段筛选的 JSON 对象。',
     example: '{"lead_status":["new","following"]}',
   })
   @IsOptional()
