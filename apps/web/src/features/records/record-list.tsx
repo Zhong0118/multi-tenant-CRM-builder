@@ -152,6 +152,9 @@ export function RecordList({
   const booleanFilterFields = schema.fields.filter(
     (field) => field.type === "BOOLEAN",
   );
+  const memberFilterFields = schema.fields.filter(
+    (field) => field.type === "MEMBER",
+  );
   const searchFieldLabels = schema.fields
     .filter(
       (field) =>
@@ -526,6 +529,29 @@ export function RecordList({
               { value: true, label: "是" },
               { value: false, label: "否" },
             ]}
+          />
+        ))}
+        {memberFilterFields.map((field) => (
+          <Select
+            key={field.fieldKey}
+            mode="multiple"
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            aria-label={`按${field.label}筛选`}
+            placeholder={`全部${field.label}`}
+            className={styles.ownerFilter}
+            value={optionFilterValues(query.filters, field.fieldKey)}
+            onChange={(values: string[]) => {
+              const filters = { ...query.filters };
+              if (values.length === 0) delete filters[field.fieldKey];
+              else filters[field.fieldKey] = values;
+              apply(withFilter(query, { filters }));
+            }}
+            options={members.map((member) => ({
+              value: member.id,
+              label: member.displayName ?? "未设置姓名",
+            }))}
           />
         ))}
         {Object.keys(query.filters).length > 0 ? (

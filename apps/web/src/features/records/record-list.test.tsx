@@ -133,6 +133,19 @@ const schema = {
       isSystem: false,
       access: "EDIT",
     },
+    {
+      id: "field-assignee",
+      fieldKey: "assignee",
+      label: "跟进人",
+      type: "MEMBER",
+      required: false,
+      defaultValue: null,
+      validation: {},
+      config: {},
+      sortOrder: 8,
+      isSystem: false,
+      access: "EDIT",
+    },
   ],
   defaultView: {
     code: "default",
@@ -339,6 +352,9 @@ describe("RecordList table sorting", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("combobox", { name: "按已启用筛选" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "按跟进人筛选" }),
     ).toBeInTheDocument();
     fireEvent.mouseDown(
       screen.getByRole("combobox", { name: "按客户标签筛选" }),

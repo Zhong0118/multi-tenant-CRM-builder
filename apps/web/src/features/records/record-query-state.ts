@@ -125,7 +125,7 @@ function parseOptionFilters(value: string | undefined): RecordFilters {
     for (const [fieldKey, rawValue] of entries) {
       if (!/^[a-z][a-zA-Z0-9_]*$/.test(fieldKey)) return {};
       const normalized = normalizeFilterValue(rawValue);
-      if (!normalized) return {};
+      if (normalized === undefined) return {};
       filters[fieldKey] = normalized;
     }
     return filters;

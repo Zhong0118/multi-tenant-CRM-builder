@@ -46,11 +46,18 @@ export type RecordListBooleanFilter = {
   value: boolean;
 };
 
+export type RecordListMemberFilter = {
+  fieldKey: string;
+  mode: 'MEMBER_EQUALS';
+  values: string[];
+};
+
 export type RecordListFilter =
   | RecordListOptionFilter
   | RecordListDateFilter
   | RecordListNumericFilter
-  | RecordListBooleanFilter;
+  | RecordListBooleanFilter
+  | RecordListMemberFilter;
 
 export interface RecordListQuery {
   objectId: string;
@@ -334,6 +341,13 @@ function listFilterCondition(filter: RecordListFilter): Prisma.RecordWhereInput 
   if (filter.mode === 'BOOLEAN_EQUALS') {
     return {
       data: { path: [filter.fieldKey], equals: filter.value },
+    };
+  }
+  if (filter.mode === 'MEMBER_EQUALS') {
+    return {
+      OR: filter.values.map((value) => ({
+        data: { path: [filter.fieldKey], equals: value },
+      })),
     };
   }
   return {

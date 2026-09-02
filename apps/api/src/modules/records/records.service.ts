@@ -359,6 +359,10 @@ function parseListFilters(
       filters.push(parseBooleanFilter(field.fieldKey, rawValue));
       continue;
     }
+    if (field.type === 'MEMBER') {
+      filters.push(parseMemberFilter(field.fieldKey, rawValue));
+      continue;
+    }
     throw invalidRecordFilter();
   }
   return filters;
@@ -443,6 +447,28 @@ function parseBooleanFilter(
 ): RecordListFilter {
   if (typeof rawValue !== 'boolean') throw invalidRecordFilter();
   return { fieldKey, mode: 'BOOLEAN_EQUALS', value: rawValue };
+}
+
+const MEMBER_ID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function parseMemberFilter(
+  fieldKey: string,
+  rawValues: unknown,
+): RecordListFilter {
+  if (
+    !Array.isArray(rawValues) ||
+    rawValues.length === 0 ||
+    rawValues.length > 20 ||
+    rawValues.some((value) => typeof value !== 'string' || !MEMBER_ID.test(value))
+  ) {
+    throw invalidRecordFilter();
+  }
+  return {
+    fieldKey,
+    mode: 'MEMBER_EQUALS',
+    values: [...new Set(rawValues as string[])],
+  };
 }
 
 function optionalDateBound(value: unknown): string | undefined {

@@ -168,6 +168,18 @@ function publishedSchema(): PublishedObjectSchema {
         sortOrder: 80,
         isSystem: false,
       },
+      {
+        id: 'field-assignee',
+        fieldKey: 'assignee',
+        label: '跟进人',
+        type: 'MEMBER',
+        required: false,
+        defaultValue: null,
+        validation: {},
+        config: {},
+        sortOrder: 90,
+        isSystem: false,
+      },
     ],
     defaultView: {
       code: 'default',
@@ -192,6 +204,7 @@ function publishedSchema(): PublishedObjectSchema {
         score: 'EDIT',
         quote: 'EDIT',
         is_vip: 'EDIT',
+        assignee: 'EDIT',
       },
     },
   };
@@ -367,6 +380,9 @@ function matchesListFilter(
   }
   if (filter.mode === 'BOOLEAN_EQUALS') {
     return value === filter.value;
+  }
+  if (filter.mode === 'MEMBER_EQUALS') {
+    return filter.values.includes(String(value));
   }
   if (filter.mode === 'CONTAINS') {
     return (
@@ -643,6 +659,26 @@ describe('RecordsService', () => {
     });
 
     expect(page.items.map((record) => record.title)).toEqual(['重点']);
+  });
+
+  it('filters records by a visible published member field', async () => {
+    const { service } = fixture();
+    await create(service, admin, '员工跟进', employee.memberId, {
+      assignee: employee.memberId,
+    });
+    await create(service, admin, '他人跟进', employee.memberId, {
+      assignee: otherMemberId,
+    });
+
+    const page = await service.list(admin, 'leads', {
+      page: 1,
+      limit: 20,
+      filters: `{"assignee":["${employee.memberId}"]}`,
+      sort: 'updatedAt',
+      direction: 'desc',
+    });
+
+    expect(page.items.map((record) => record.title)).toEqual(['员工跟进']);
   });
 
   it('rejects filters on hidden or non-select fields', async () => {

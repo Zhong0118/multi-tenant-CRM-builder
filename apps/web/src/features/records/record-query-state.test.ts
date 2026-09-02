@@ -141,6 +141,21 @@ describe("parseRecordQuery", () => {
     ).toEqual(query);
   });
 
+  it("round-trips a published member filter through the filters parameter", () => {
+    const query = {
+      ...DEFAULT_RECORD_QUERY,
+      filters: {
+        assignee: ["018f47a2-4b5c-7d8e-9f01-111111111111"],
+      },
+    };
+
+    expect(
+      parseRecordQuery(
+        Object.fromEntries(new URLSearchParams(recordQuerySearch(query))),
+      ),
+    ).toEqual(query);
+  });
+
   it("prefers the published default sort when the object supplies one", () => {
     expect(
       parseRecordQuery({}, { field: "recordNo", direction: "asc" }),
