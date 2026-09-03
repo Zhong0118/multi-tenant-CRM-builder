@@ -59,6 +59,7 @@ describe("workbenchPeriodHref", () => {
     expect(workbenchPath("northwind", "sales")).toBe(
       "/workspace/northwind/dashboards/sales",
     );
+    expect(workbenchPath("northwind", "home")).toBe("/workspace/northwind");
     expect(dashboardSettingsPath("northwind", "sales")).toBe(
       "/workspace/northwind/settings/dashboards/sales",
     );

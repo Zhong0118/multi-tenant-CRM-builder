@@ -243,6 +243,60 @@ describe("WorkspaceHomeView", () => {
     );
   });
 
+  it("lets administrators and employees switch among the workbenches they can open", () => {
+    render(
+      <WorkspaceHomeView
+        tenantCode="northwind"
+        tenantName="百杰"
+        userName="张三"
+        role="TENANT_ADMIN"
+        businessObjects={objects}
+        overview={{
+          ...readyOverview,
+          dashboardCode: "sales",
+          dashboards: [
+            {
+              id: "dashboard-home",
+              code: "home",
+              name: "管理工作台",
+              status: "ACTIVE",
+              audience: "ALL",
+              sortOrder: 0,
+              hasPublishedVersion: true,
+              isDefaultAdmin: true,
+              isDefaultEmployee: true,
+            },
+            {
+              id: "dashboard-sales",
+              code: "sales",
+              name: "销售工作台",
+              status: "ACTIVE",
+              audience: "ALL",
+              sortOrder: 10,
+              hasPublishedVersion: true,
+              isDefaultAdmin: false,
+              isDefaultEmployee: false,
+            },
+          ],
+        }}
+      />,
+    );
+
+    const switcher = screen.getByRole("navigation", { name: "工作台" });
+    expect(within(switcher).getByRole("link", { name: "管理工作台" })).toHaveAttribute(
+      "href",
+      "/workspace/northwind",
+    );
+    expect(within(switcher).getByRole("link", { name: "销售工作台" })).toHaveAttribute(
+      "href",
+      "/workspace/northwind/dashboards/sales",
+    );
+    expect(within(switcher).getByRole("link", { name: "销售工作台" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
   it("lets employees create and open published objects they can use", () => {
     render(
       <WorkspaceHomeView

@@ -1004,10 +1004,28 @@
         ],
         "type": "object"
       },
+      "DashboardOrderDto": {
+        "properties": {
+          "dashboardCodes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["dashboardCodes"],
+        "type": "object"
+      },
       "DashboardOverviewDto": {
         "properties": {
           "dashboardCode": {
             "type": "string"
+          },
+          "dashboards": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardListItemDto"
+            },
+            "type": "array"
           },
           "period": {
             "$ref": "#/components/schemas/DashboardPeriodDto"
@@ -1052,7 +1070,14 @@
             "type": "array"
           }
         },
-        "required": ["title", "period", "widgets", "state", "role"],
+        "required": [
+          "title",
+          "period",
+          "widgets",
+          "state",
+          "role",
+          "dashboards"
+        ],
         "type": "object"
       },
       "DashboardPeriodDto": {
@@ -5397,6 +5422,52 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardDefaultsDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["dashboards"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/dashboards/order": {
+      "put": {
+        "operationId": "DashboardsController_reorder",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DashboardOrderDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DashboardListItemDto"
+                  },
+                  "type": "array"
                 }
               }
             },

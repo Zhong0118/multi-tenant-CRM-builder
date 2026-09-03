@@ -8,9 +8,13 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  createDashboard,
   previewDashboardDraft,
   publishDashboardDraft,
+  reorderDashboards,
   saveDashboardDraft,
+  setDashboardDefaults,
+  updateDashboard,
 } from "./dashboard-api";
 import { DashboardBuilder } from "./dashboard-builder";
 import {
@@ -25,6 +29,8 @@ vi.mock("./dashboard-api", () => ({
   publishDashboardDraft: vi.fn(),
   createDashboard: vi.fn(),
   updateDashboard: vi.fn(),
+  setDashboardDefaults: vi.fn(),
+  reorderDashboards: vi.fn(),
 }));
 
 const initial = {
@@ -126,6 +132,10 @@ beforeEach(() => {
   vi.mocked(saveDashboardDraft).mockReset();
   vi.mocked(previewDashboardDraft).mockReset();
   vi.mocked(publishDashboardDraft).mockReset();
+  vi.mocked(createDashboard).mockReset();
+  vi.mocked(updateDashboard).mockReset();
+  vi.mocked(setDashboardDefaults).mockReset();
+  vi.mocked(reorderDashboards).mockReset();
   vi.mocked(saveDashboardDraft).mockResolvedValue({
     ...initial.draft,
     draftVersion: 5,
@@ -963,3 +973,145 @@ function withWidgets(
     issues,
   };
 }
+
+describe("DashboardBuilder named workbenches", () => {
+  it("lets an administrator rename, set defaults, archive and copy a workbench", async () => {
+    const sales = {
+      id: "dashboard-sales",
+      code: "sales",
+      name: "销售工作台",
+      status: "ACTIVE" as const,
+      audience: "ALL" as const,
+      sortOrder: 10,
+      hasPublishedVersion: true,
+      isDefaultAdmin: false,
+      isDefaultEmployee: false,
+    };
+    vi.mocked(updateDashboard).mockResolvedValue({
+      ...initial.draft,
+      name: "运营工作台",
+    });
+    vi.mocked(setDashboardDefaults).mockResolvedValue({
+      adminDashboardCode: "home",
+      employeeDashboardCode: "sales",
+    });
+    vi.mocked(createDashboard).mockResolvedValue({
+      ...initial.draft,
+      id: "dashboard-copy",
+      code: "yunying",
+      name: "运营工作台",
+    });
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="home"
+        initial={{
+          ...initial,
+          dashboards: [initial.dashboard!, sales],
+        }}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("工作台名称"), {
+      target: { value: "运营工作台" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存名称" }));
+    await waitFor(() =>
+      expect(updateDashboard).toHaveBeenCalledWith("northwind", "home", {
+        name: "运营工作台",
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "归档工作台" }));
+    await waitFor(() =>
+      expect(updateDashboard).toHaveBeenCalledWith("northwind", "home", {
+        status: "ARCHIVED",
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "复制为新工作台" }));
+    fireEvent.change(screen.getByLabelText("新工作台名称"), {
+      target: { value: "运营副本" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "创建工作台" }));
+    await waitFor(() =>
+      expect(createDashboard).toHaveBeenCalledWith("northwind", {
+        name: "运营副本",
+        copyFrom: "home",
+      }),
+    );
+  });
+
+  it("sets the current workbench as the employee default", async () => {
+    const sales = {
+      id: "dashboard-sales",
+      code: "sales",
+      name: "销售工作台",
+      status: "ACTIVE" as const,
+      audience: "ALL" as const,
+      sortOrder: 10,
+      hasPublishedVersion: true,
+      isDefaultAdmin: false,
+      isDefaultEmployee: false,
+    };
+    vi.mocked(setDashboardDefaults).mockResolvedValue({
+      adminDashboardCode: "home",
+      employeeDashboardCode: "sales",
+    });
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="sales"
+        initial={{
+          ...initial,
+          dashboard: sales,
+          dashboards: [initial.dashboard!, sales],
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "设为员工默认" }));
+    await waitFor(() =>
+      expect(setDashboardDefaults).toHaveBeenCalledWith("northwind", {
+        employeeDashboardCode: "sales",
+      }),
+    );
+  });
+
+  it("reorders workbenches from the keyboard without using a prompt", async () => {
+    const sales = {
+      id: "dashboard-sales",
+      code: "sales",
+      name: "销售工作台",
+      status: "ACTIVE" as const,
+      audience: "ALL" as const,
+      sortOrder: 10,
+      hasPublishedVersion: true,
+      isDefaultAdmin: false,
+      isDefaultEmployee: false,
+    };
+    vi.mocked(reorderDashboards).mockResolvedValue([sales, initial.dashboard!]);
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="home"
+        initial={{
+          ...initial,
+          dashboards: [initial.dashboard!, sales],
+        }}
+      />,
+    );
+
+    fireEvent.keyDown(screen.getByRole("button", { name: "上移 销售工作台" }), {
+      key: "Enter",
+    });
+
+    await waitFor(() =>
+      expect(reorderDashboards).toHaveBeenCalledWith("northwind", [
+        "sales",
+        "home",
+      ]),
+    );
+  });
+});
+

@@ -628,6 +628,22 @@ export interface paths {
     patch: operations["DashboardsController_setDefaults"];
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/dashboards/order": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put: operations["DashboardsController_reorder"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/dashboards/overview": {
     parameters: {
       query?: never;
@@ -1333,8 +1349,12 @@ export interface components {
       /** @enum {string} */
       width: "QUARTER" | "HALF" | "FULL";
     };
+    DashboardOrderDto: {
+      dashboardCodes: string[];
+    };
     DashboardOverviewDto: {
       dashboardCode?: string;
+      dashboards: components["schemas"]["DashboardListItemDto"][];
       period: components["schemas"]["DashboardPeriodDto"];
       publication?: components["schemas"]["DashboardPublicationSummaryDto"];
       /** @enum {string} */
@@ -3398,6 +3418,31 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["DashboardDefaultsDto"];
+        };
+      };
+    };
+  };
+  DashboardsController_reorder: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DashboardOrderDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DashboardListItemDto"][];
         };
       };
     };

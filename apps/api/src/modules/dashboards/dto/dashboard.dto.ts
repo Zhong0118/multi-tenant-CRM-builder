@@ -1,5 +1,7 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayUnique,
+  IsArray,
   IsDateString,
   IsIn,
   IsInt,
@@ -107,6 +109,15 @@ export class UpdateDashboardDto {
   @IsOptional()
   @IsIn(['ACTIVE', 'ARCHIVED'])
   status?: 'ACTIVE' | 'ARCHIVED';
+}
+
+export class DashboardOrderDto {
+  @ApiProperty({ type: String, isArray: true })
+  @IsArray()
+  @ArrayUnique()
+  @IsString({ each: true })
+  @Matches(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/, { each: true })
+  dashboardCodes!: string[];
 }
 
 export class DashboardPublicationSummaryDto {
@@ -435,6 +446,9 @@ export class DashboardOverviewDto extends DashboardRuntimeDto {
 
   @ApiPropertyOptional()
   dashboardCode?: string;
+
+  @ApiProperty({ type: DashboardListItemDto, isArray: true })
+  dashboards!: DashboardListItemDto[];
 
   @ApiPropertyOptional({ type: DashboardPublicationSummaryDto })
   publication?: DashboardPublicationSummaryDto;

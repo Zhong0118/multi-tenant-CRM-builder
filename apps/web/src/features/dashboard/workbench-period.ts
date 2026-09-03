@@ -62,7 +62,7 @@ export function workbenchPeriodHref(
 }
 
 export function workbenchPath(tenantCode: string, dashboardCode?: string) {
-  return dashboardCode
+  return dashboardCode && dashboardCode !== "home"
     ? `/workspace/${tenantCode}/dashboards/${dashboardCode}`
     : `/workspace/${tenantCode}`;
 }

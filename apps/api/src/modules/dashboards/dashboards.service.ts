@@ -79,6 +79,11 @@ export interface DashboardRepository {
     },
     audit: DashboardRequestMeta,
   ): Promise<DashboardDefinitionRecord | null>;
+  reorderDashboards(
+    context: TenantContext,
+    dashboardCodes: string[],
+    audit: DashboardRequestMeta,
+  ): Promise<DashboardListItem[]>;
   setDefaults(
     context: TenantContext,
     input: { adminDashboardCode?: string; employeeDashboardCode?: string },
@@ -135,12 +140,14 @@ export type DashboardOverview =
       role: TenantContext['role'];
       title: string;
       dashboardCode?: string;
+      dashboards: DashboardListItem[];
       widgets: [];
     } & Pick<DashboardRuntimeResult, 'period'>)
   | ({
       state: 'READY';
       role: TenantContext['role'];
       dashboardCode: string;
+      dashboards: DashboardListItem[];
       publication: DashboardPublicationSummary;
     } & DashboardRuntimeResult);
 
@@ -248,12 +255,12 @@ export class DashboardsService {
   ): Promise<DashboardDefinitionRecord> {
     assertAdministrator(context);
     const current = await this.requireDefinition(context, dashboardCode);
+    const dashboards = await this.repository.listDashboards(context);
+    const stillActive = dashboards.filter(
+      (dashboard) =>
+        dashboard.status === 'ACTIVE' && dashboard.code !== dashboardCode,
+    );
     if (input.status === 'ARCHIVED') {
-      const dashboards = await this.repository.listDashboards(context);
-      const stillActive = dashboards.filter(
-        (dashboard) =>
-          dashboard.status === 'ACTIVE' && dashboard.code !== dashboardCode,
-      );
       if (
         (current.isDefaultAdmin || current.isDefaultEmployee) &&
         stillActive.length === 0
@@ -272,7 +279,48 @@ export class DashboardsService {
       audit,
     );
     if (!updated) throw new ApiException('DASHBOARD_NOT_FOUND', 404);
+    if (
+      input.status === 'ARCHIVED' &&
+      (current.isDefaultAdmin || current.isDefaultEmployee)
+    ) {
+      const replacement = stillActive[0];
+      if (replacement) {
+        await this.repository.setDefaults(
+          context,
+          {
+            ...(current.isDefaultAdmin
+              ? { adminDashboardCode: replacement.code }
+              : {}),
+            ...(current.isDefaultEmployee
+              ? { employeeDashboardCode: replacement.code }
+              : {}),
+          },
+          audit,
+        );
+      }
+    }
     return updated;
+  }
+
+  async reorder(
+    context: TenantContext,
+    input: { dashboardCodes: string[] },
+    audit: DashboardRequestMeta = { requestId: 'req_unknown' },
+  ): Promise<DashboardListItem[]> {
+    assertAdministrator(context);
+    const existing = await this.repository.listDashboards(context);
+    const expected = new Set(existing.map((dashboard) => dashboard.code));
+    const submitted = input.dashboardCodes;
+    if (
+      submitted.length !== expected.size ||
+      new Set(submitted).size !== submitted.length ||
+      submitted.some((code) => !expected.has(code))
+    ) {
+      throw new ApiException('VALIDATION_FAILED', 400, {
+        fieldErrors: { dashboardCodes: ['请提交全部工作台的完整排序。'] },
+      });
+    }
+    return this.repository.reorderDashboards(context, submitted, audit);
   }
 
   async setDefaults(
@@ -391,6 +439,7 @@ export class DashboardsService {
         state: 'UNCONFIGURED',
         role: context.role,
         title: DEFAULT_DASHBOARD_NAME,
+        dashboards: visible,
         period,
         widgets: [],
       };
@@ -405,6 +454,7 @@ export class DashboardsService {
         role: context.role,
         title: selected.name,
         dashboardCode: selected.code,
+        dashboards: visible,
         period,
         widgets: [],
       };
@@ -421,6 +471,7 @@ export class DashboardsService {
       state: 'READY',
       role: context.role,
       dashboardCode: selected.code,
+      dashboards: visible,
       publication: publicationSummary(publication),
       ...result,
     };

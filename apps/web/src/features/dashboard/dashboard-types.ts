@@ -256,6 +256,7 @@ export interface DashboardRuntimeResult extends DashboardRuntime {
   state: "READY" | "UNCONFIGURED";
   role: "TENANT_ADMIN" | "EMPLOYEE";
   dashboardCode?: string;
+  dashboards?: DashboardListItem[];
   publication?: DashboardPublicationSummary;
 }
 
@@ -349,6 +350,9 @@ export function parseDashboardOverview(value: unknown): DashboardRuntimeResult {
     ...(typeof root.dashboardCode === "string"
       ? { dashboardCode: root.dashboardCode }
       : {}),
+    ...(root.dashboards === undefined
+      ? {}
+      : { dashboards: array(root.dashboards).map(parseDashboardListItem) }),
     ...(root.publication === undefined
       ? {}
       : { publication: parsePublication(root.publication) }),

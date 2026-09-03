@@ -30,6 +30,7 @@ import {
   DashboardDefaultsDto,
   DashboardDraftDto,
   DashboardListItemDto,
+  DashboardOrderDto,
   DashboardOverviewDto,
   DashboardOverviewQueryDto,
   DashboardPeriodInputDto,
@@ -90,6 +91,16 @@ export class DashboardsController {
       },
       requestMeta(request),
     );
+  }
+
+  @Put('order')
+  @ApiOkResponse({ type: DashboardListItemDto, isArray: true })
+  reorder(
+    @CurrentTenant() context: TenantContext,
+    @Body() dto: DashboardOrderDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.dashboards.reorder(context, dto, requestMeta(request));
   }
 
   @Get('overview')

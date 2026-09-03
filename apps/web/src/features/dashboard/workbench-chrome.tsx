@@ -5,9 +5,10 @@ import Link from "next/link";
 import { StatusTag } from "@/components/workbench/status-tag";
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
-import type { DashboardRuntime } from "./dashboard-types";
+import type { DashboardListItem, DashboardRuntime } from "./dashboard-types";
 import {
   WORKBENCH_PERIOD_PRESETS,
+  workbenchPath,
   workbenchPeriodHref,
   workbenchPeriodPreset,
   workbenchPeriodRange,
@@ -38,6 +39,34 @@ export function WorkbenchPeriodNav({
           aria-current={current === preset.key ? "true" : undefined}
         >
           {preset.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+export function WorkbenchSwitcher({
+  tenantCode,
+  currentCode,
+  dashboards,
+}: {
+  tenantCode: string;
+  currentCode?: string;
+  dashboards?: DashboardListItem[];
+}) {
+  const visible = (dashboards ?? []).filter(
+    (dashboard) => dashboard.status === "ACTIVE",
+  );
+  if (visible.length < 2) return null;
+  return (
+    <nav className={styles.workbenchSwitcher} aria-label="工作台">
+      {visible.map((dashboard) => (
+        <Link
+          key={dashboard.code}
+          href={workbenchPath(tenantCode, dashboard.code)}
+          aria-current={dashboard.code === currentCode ? "page" : undefined}
+        >
+          {dashboard.name}
         </Link>
       ))}
     </nav>

@@ -25,6 +25,48 @@
   color: var(--text-secondary);
   font-size: 13px;
 }
+.catalog {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+.catalogItem {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.catalogItem a {
+  padding: 2px 8px;
+  color: var(--text-secondary);
+  border: 1px solid #d8e0e5;
+  border-radius: 2px;
+  font-size: 12px;
+  font-weight: 650;
+}
+.catalogItem a[aria-current="page"] {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.catalogItem button {
+  padding: 0 4px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid #d8e0e5;
+  border-radius: 2px;
+  font-size: 11px;
+}
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+  margin-top: 10px;
+}
+.metaRow :global(.ant-form-item) {
+  margin: 0;
+}
 .headerActions {
   display: flex;
   flex-wrap: wrap;

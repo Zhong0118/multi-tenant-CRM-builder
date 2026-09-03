@@ -324,6 +324,116 @@ describe('DashboardsService', () => {
       expect.objectContaining({ context: employeeContext(), preview: false }),
     ]);
   });
+
+  it('includes the workbenches the current role can open in the overview', async () => {
+    const { service, repository } = setup();
+    repository.listDashboards.mockResolvedValue([
+      listedDashboard('home', { isDefaultAdmin: true, isDefaultEmployee: true }),
+      listedDashboard('sales', {
+        audience: 'TENANT_ADMIN',
+        hasPublishedVersion: true,
+      }),
+      listedDashboard('pipeline', {
+        audience: 'EMPLOYEE',
+        hasPublishedVersion: true,
+      }),
+      listedDashboard('archived', { status: 'ARCHIVED' }),
+    ]);
+
+    await expect(service.getOverview(adminContext(), period)).resolves.toEqual(
+      expect.objectContaining({
+        dashboards: [
+          expect.objectContaining({ code: 'home' }),
+          expect.objectContaining({ code: 'sales' }),
+          expect.objectContaining({ code: 'pipeline' }),
+        ],
+      }),
+    );
+    await expect(
+      service.getOverview(employeeContext(), period),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        dashboards: [
+          expect.objectContaining({ code: 'home' }),
+          expect.objectContaining({ code: 'pipeline' }),
+        ],
+      }),
+    );
+  });
+
+  it('reorders every workbench by the submitted codes', async () => {
+    const { service, repository } = setup();
+    repository.listDashboards.mockResolvedValue([
+      listedDashboard('home'),
+      listedDashboard('sales'),
+    ]);
+    repository.reorderDashboards.mockResolvedValue([
+      listedDashboard('sales', { sortOrder: 10 }),
+      listedDashboard('home', { sortOrder: 20 }),
+    ]);
+
+    await expect(
+      service.reorder(adminContext(), { dashboardCodes: ['sales', 'home'] }),
+    ).resolves.toEqual([
+      expect.objectContaining({ code: 'sales', sortOrder: 10 }),
+      expect.objectContaining({ code: 'home', sortOrder: 20 }),
+    ]);
+    expect(repository.reorderDashboards).toHaveBeenCalledWith(
+      adminContext(),
+      ['sales', 'home'],
+      { requestId: 'req_unknown' },
+    );
+  });
+
+  it('rejects a partial reorder list instead of silently dropping a workbench', async () => {
+    const { service, repository } = setup();
+    repository.listDashboards.mockResolvedValue([
+      listedDashboard('home'),
+      listedDashboard('sales'),
+    ]);
+
+    await expect(
+      service.reorder(adminContext(), { dashboardCodes: ['sales'] }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    expect(repository.reorderDashboards).not.toHaveBeenCalled();
+  });
+
+  it('moves defaults onto the remaining workbench when the current default is archived', async () => {
+    const { service, repository } = setup();
+    repository.listDashboards.mockResolvedValue([
+      listedDashboard('home', {
+        isDefaultAdmin: true,
+        isDefaultEmployee: true,
+      }),
+      listedDashboard('sales'),
+    ]);
+    repository.updateDashboard.mockResolvedValue({
+      id: 'dashboard-home',
+      code: 'home',
+      name: '工作台',
+      status: 'ARCHIVED',
+      audience: 'ALL',
+      sortOrder: 0,
+      draftVersion: 1,
+      draftConfiguration: completeDraft(),
+      activePublicationId: 'published-2',
+      sourceTemplateVersionId: null,
+      updatedAt: '2026-09-03T00:00:00.000Z',
+    });
+    repository.setDefaults.mockResolvedValue({
+      adminDashboardCode: 'sales',
+      employeeDashboardCode: 'sales',
+    });
+
+    await expect(
+      service.update(adminContext(), 'home', { status: 'ARCHIVED' }),
+    ).resolves.toMatchObject({ status: 'ARCHIVED' });
+    expect(repository.setDefaults).toHaveBeenCalledWith(
+      adminContext(),
+      { adminDashboardCode: 'sales', employeeDashboardCode: 'sales' },
+      { requestId: 'req_unknown' },
+    );
+  });
 });
 
 function setup(input: { draft?: DashboardDefinitionV2 } = {}) {
@@ -377,6 +487,7 @@ function setup(input: { draft?: DashboardDefinitionV2 } = {}) {
     ]),
     createDashboard: jest.fn(),
     updateDashboard: jest.fn(),
+    reorderDashboards: jest.fn(),
     setDefaults: jest.fn(),
     getDefaults: jest.fn().mockResolvedValue({
       adminDashboardCode: 'home',
@@ -398,6 +509,31 @@ function setup(input: { draft?: DashboardDefinitionV2 } = {}) {
       repository,
       engine as unknown as DashboardEngine,
     ),
+  };
+}
+
+function listedDashboard(
+  code: string,
+  overrides: Partial<{
+    status: 'ACTIVE' | 'ARCHIVED';
+    audience: 'ALL' | 'TENANT_ADMIN' | 'EMPLOYEE';
+    sortOrder: number;
+    hasPublishedVersion: boolean;
+    isDefaultAdmin: boolean;
+    isDefaultEmployee: boolean;
+  }> = {},
+) {
+  return {
+    id: `dashboard-${code}`,
+    code,
+    name: code === 'home' ? '工作台' : code,
+    status: 'ACTIVE' as const,
+    audience: 'ALL' as const,
+    sortOrder: 0,
+    hasPublishedVersion: true,
+    isDefaultAdmin: false,
+    isDefaultEmployee: false,
+    ...overrides,
   };
 }
 

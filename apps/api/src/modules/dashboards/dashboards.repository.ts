@@ -374,6 +374,34 @@ export class PrismaDashboardRepository implements DashboardRepository {
     });
   }
 
+  async reorderDashboards(
+    context: TenantContext,
+    dashboardCodes: string[],
+    audit: DashboardRequestMeta = { requestId: 'req_unknown' },
+  ): Promise<DashboardListItem[]> {
+    return this.runner.withTenant(context, async (transaction) => {
+      for (const [index, code] of dashboardCodes.entries()) {
+        await transaction.tenantDashboardConfiguration.update({
+          where: {
+            tenantId_code: { tenantId: context.tenantId, code },
+          },
+          data: { sortOrder: (index + 1) * 10 },
+        });
+      }
+      await this.appendAudit(transaction, {
+        tenantId: context.tenantId,
+        actorType: 'USER',
+        actorId: context.userId,
+        action: 'dashboard.order_updated',
+        resourceType: 'dashboard_definition',
+        resourceId: context.tenantId,
+        after: { dashboardCodes },
+        requestId: audit.requestId,
+        ip: audit.ip,
+      });
+    }).then(() => this.listDashboards(context));
+  }
+
   async setDefaults(
     context: TenantContext,
     input: { adminDashboardCode?: string; employeeDashboardCode?: string },

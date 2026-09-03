@@ -15,6 +15,28 @@
   margin-top: -8px;
 }
 
+.workbenchSwitcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.workbenchSwitcher a {
+  padding: 4px 10px;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: 2px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.workbenchSwitcher a[aria-current="page"] {
+  color: var(--color-primary);
+  background: var(--bg-selected);
+  border-color: var(--color-primary);
+}
+
 .periodNav {
   display: flex;
   flex-wrap: wrap;

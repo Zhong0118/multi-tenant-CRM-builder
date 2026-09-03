@@ -7,6 +7,7 @@ import {
   parseDraft,
   parsePublication,
   type DashboardDefinitionV2,
+  type DashboardListItem,
 } from "./dashboard-types";
 
 const DASHBOARDS_PATH = "/api/v1/workspaces/{tenantCode}/dashboards" as const;
@@ -85,5 +86,29 @@ export async function updateDashboard(
     body: input,
   });
   if (result.data) return parseDraft(result.data);
+  throw toApiError(result.error, result.response.status);
+}
+
+export async function setDashboardDefaults(
+  tenantCode: string,
+  input: { adminDashboardCode?: string; employeeDashboardCode?: string },
+) {
+  const result = await browserApiClient.PATCH(`${DASHBOARDS_PATH}/defaults`, {
+    params: { path: { tenantCode } },
+    body: input,
+  });
+  if (result.data) return result.data;
+  throw toApiError(result.error, result.response.status);
+}
+
+export async function reorderDashboards(
+  tenantCode: string,
+  dashboardCodes: string[],
+): Promise<DashboardListItem[]> {
+  const result = await browserApiClient.PUT(`${DASHBOARDS_PATH}/order`, {
+    params: { path: { tenantCode } },
+    body: { dashboardCodes },
+  });
+  if (result.data) return result.data;
   throw toApiError(result.error, result.response.status);
 }

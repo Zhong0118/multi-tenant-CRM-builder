@@ -5,7 +5,7 @@ import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
 import type { DashboardRuntimeResult } from "./dashboard-types";
 import { DashboardRenderer } from "./dashboard-renderer";
-import { EmployeeShortcuts, WorkbenchPeriodNav } from "./workbench-chrome";
+import { EmployeeShortcuts, WorkbenchPeriodNav, WorkbenchSwitcher } from "./workbench-chrome";
 import { BusinessObjectBar } from "./workbench-elements";
 import { workbenchPath } from "./workbench-period";
 import styles from "./workbench.module.css";
@@ -34,6 +34,11 @@ export function EmployeeWorkbench({
         }
       />
       <div className={styles.workbenchChrome}>
+        <WorkbenchSwitcher
+          tenantCode={tenantCode}
+          currentCode={overview.dashboardCode}
+          dashboards={overview.dashboards}
+        />
         <WorkbenchPeriodNav
           pathname={workbenchPath(tenantCode, overview.dashboardCode)}
           period={overview.period}

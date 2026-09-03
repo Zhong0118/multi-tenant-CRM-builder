@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button } from "antd";
+import { Alert, Button, Form, Input, Modal, Select } from "antd";
 import { useEffect, useMemo, useState } from "react";
 
 import { toApiError, type ApiError } from "@/lib/api/api-error";
@@ -9,16 +9,21 @@ import {
   createDashboard,
   previewDashboardDraft,
   publishDashboardDraft,
+  reorderDashboards,
   saveDashboardDraft,
+  setDashboardDefaults,
+  updateDashboard,
 } from "./dashboard-api";
 import { DashboardCanvas } from "./dashboard-canvas";
 import { DashboardWidgetInspector } from "./dashboard-widget-inspector";
 import { DashboardWidgetLibrary } from "./dashboard-widget-library";
 import { parseDraft } from "./dashboard-types";
 import type {
+  DashboardAudience,
   DashboardConfigurationView,
   DashboardConfigurationIssue,
   DashboardDefinitionV2,
+  DashboardListItem,
   DashboardRuntime,
   DashboardWidgetDraft,
   DashboardWidgetType,
@@ -63,6 +68,17 @@ export function DashboardBuilder({
   const [issues, setIssues] = useState<TrackedIssue[]>(() =>
     bindIssues(initial.issues, initialDefinition.widgets),
   );
+  const [dashboards, setDashboards] = useState(initial.dashboards);
+  const [currentDashboard, setCurrentDashboard] = useState(initial.dashboard);
+  const [nameDraft, setNameDraft] = useState(initial.dashboard?.name ?? "");
+  const [audienceDraft, setAudienceDraft] = useState<DashboardAudience>(
+    initial.dashboard?.audience ?? "ALL",
+  );
+  const [copyOpen, setCopyOpen] = useState(false);
+  const [copyName, setCopyName] = useState("");
+  const [metaBusy, setMetaBusy] = useState<
+    "name" | "audience" | "default-admin" | "default-employee" | "archive" | "copy" | "reorder"
+  >();
   const dirty = signature(definition) !== savedSignature;
   const selected = definition.widgets.find(
     (widget) => widget.id === selectedId,
@@ -242,6 +258,153 @@ export function DashboardBuilder({
     setFeedback(`${operationLabel(operation)}失败：${error.message}`);
   }
 
+  async function saveName() {
+    const name = nameDraft.trim();
+    if (!name) return;
+    setMetaBusy("name");
+    try {
+      const saved = await updateDashboard(tenantCode, dashboardCode, { name });
+      setCurrentDashboard((current) =>
+        current ? { ...current, name: saved.name } : current,
+      );
+      setDashboards((items) =>
+        items.map((item) =>
+          item.code === dashboardCode ? { ...item, name: saved.name } : item,
+        ),
+      );
+      setFeedback("工作台名称已保存。");
+    } catch (error) {
+      setFeedback(`保存名称失败：${toApiError(error).message}`);
+    } finally {
+      setMetaBusy(undefined);
+    }
+  }
+
+  async function saveAudience(audience: DashboardAudience) {
+    setAudienceDraft(audience);
+    setMetaBusy("audience");
+    try {
+      const saved = await updateDashboard(tenantCode, dashboardCode, {
+        audience,
+      });
+      setCurrentDashboard((current) =>
+        current ? { ...current, audience: saved.audience } : current,
+      );
+      setDashboards((items) =>
+        items.map((item) =>
+          item.code === dashboardCode
+            ? { ...item, audience: saved.audience }
+            : item,
+        ),
+      );
+      setFeedback("受众已保存。");
+    } catch (error) {
+      setFeedback(`保存受众失败：${toApiError(error).message}`);
+    } finally {
+      setMetaBusy(undefined);
+    }
+  }
+
+  async function makeDefault(role: "admin" | "employee") {
+    setMetaBusy(role === "admin" ? "default-admin" : "default-employee");
+    try {
+      await setDashboardDefaults(
+        tenantCode,
+        role === "admin"
+          ? { adminDashboardCode: dashboardCode }
+          : { employeeDashboardCode: dashboardCode },
+      );
+      setDashboards((items) =>
+        items.map((item) => ({
+          ...item,
+          isDefaultAdmin:
+            role === "admin" ? item.code === dashboardCode : item.isDefaultAdmin,
+          isDefaultEmployee:
+            role === "employee"
+              ? item.code === dashboardCode
+              : item.isDefaultEmployee,
+        })),
+      );
+      setCurrentDashboard((current) =>
+        current
+          ? {
+              ...current,
+              isDefaultAdmin:
+                role === "admin" ? true : current.isDefaultAdmin,
+              isDefaultEmployee:
+                role === "employee" ? true : current.isDefaultEmployee,
+            }
+          : current,
+      );
+      setFeedback(
+        role === "admin" ? "已设为管理员默认工作台。" : "已设为员工默认工作台。",
+      );
+    } catch (error) {
+      setFeedback(`设置默认工作台失败：${toApiError(error).message}`);
+    } finally {
+      setMetaBusy(undefined);
+    }
+  }
+
+  async function archiveCurrent() {
+    setMetaBusy("archive");
+    try {
+      await updateDashboard(tenantCode, dashboardCode, { status: "ARCHIVED" });
+      const remaining = dashboards.find(
+        (item) => item.status === "ACTIVE" && item.code !== dashboardCode,
+      );
+      window.location.assign(
+        remaining
+          ? `/workspace/${tenantCode}/settings/dashboards/${remaining.code}`
+          : `/workspace/${tenantCode}/settings/dashboards/home`,
+      );
+    } catch (error) {
+      setFeedback(`归档失败：${toApiError(error).message}`);
+      setMetaBusy(undefined);
+    }
+  }
+
+  async function copyCurrent() {
+    const name = copyName.trim();
+    if (!name) return;
+    setMetaBusy("copy");
+    try {
+      const created = await createDashboard(tenantCode, {
+        name,
+        copyFrom: dashboardCode,
+      });
+      window.location.assign(
+        `/workspace/${tenantCode}/settings/dashboards/${created.code}`,
+      );
+    } catch (error) {
+      setFeedback(`复制失败：${toApiError(error).message}`);
+      setMetaBusy(undefined);
+    }
+  }
+
+  async function moveDashboard(code: string, direction: -1 | 1) {
+    const ordered = dashboards.filter((item) => item.status === "ACTIVE");
+    const index = ordered.findIndex((item) => item.code === code);
+    const nextIndex = index + direction;
+    if (index < 0 || nextIndex < 0 || nextIndex >= ordered.length) return;
+    const next = [...ordered];
+    const [moved] = next.splice(index, 1);
+    next.splice(nextIndex, 0, moved);
+    const archived = dashboards.filter((item) => item.status !== "ACTIVE");
+    setMetaBusy("reorder");
+    try {
+      const saved = await reorderDashboards(
+        tenantCode,
+        next.map((item) => item.code),
+      );
+      setDashboards([...saved.filter((item) => item.status === "ACTIVE"), ...archived]);
+    } catch (error) {
+      setFeedback(`调整顺序失败：${toApiError(error).message}`);
+    } finally {
+      setMetaBusy(undefined);
+    }
+  }
+
   function showFieldIssues(error: ApiError): boolean {
     const next = bindIssues(issuesFrom(error), definition.widgets);
     if (next.length === 0) return false;
@@ -257,40 +420,73 @@ export function DashboardBuilder({
     <div className={styles.builderPage}>
       <header className={styles.builderHeader}>
         <div>
-          <h1>{initial.dashboard?.name ?? "组件化工作台"}</h1>
+          <h1>{currentDashboard?.name ?? "组件化工作台"}</h1>
           <p>编排已发布业务表的运营组件；保存草稿不会影响线上版本。</p>
-          {initial.dashboards.length > 0 ? (
-            <p>
-              {initial.dashboards
-                .filter((item) => item.status === "ACTIVE")
-                .map((item) => (
-                  <a
-                    key={item.code}
-                    href={`/workspace/${tenantCode}/settings/dashboards/${item.code}`}
-                    style={{ marginRight: 12 }}
-                  >
-                    {item.name}
-                    {item.code === dashboardCode ? "（当前）" : ""}
-                  </a>
-                ))}
-              <button
-                type="button"
-                onClick={() => {
-                  const name = window.prompt("新工作台名称", "销售工作台");
-                  if (!name?.trim()) return;
-                  void createDashboard(tenantCode, {
-                    name: name.trim(),
-                    copyFrom: dashboardCode,
-                  }).then((created) => {
-                    window.location.assign(
-                      `/workspace/${tenantCode}/settings/dashboards/${created.code}`,
-                    );
-                  });
-                }}
+          <WorkbenchCatalog
+            tenantCode={tenantCode}
+            dashboardCode={dashboardCode}
+            dashboards={dashboards}
+            busy={metaBusy === "reorder"}
+            onMove={moveDashboard}
+            onCopy={() => {
+              setCopyName(`${currentDashboard?.name ?? "工作台"} 副本`);
+              setCopyOpen(true);
+            }}
+          />
+          {currentDashboard ? (
+            <div className={styles.metaRow}>
+              <Form.Item label="工作台名称" htmlFor="dashboard-name">
+                <Input
+                  id="dashboard-name"
+                  value={nameDraft}
+                  onChange={(event) => setNameDraft(event.target.value)}
+                />
+              </Form.Item>
+              <Button
+                onClick={() => void saveName()}
+                loading={metaBusy === "name"}
+                disabled={nameDraft.trim() === (currentDashboard.name ?? "")}
               >
-                复制为新工作台
-              </button>
-            </p>
+                保存名称
+              </Button>
+              <Form.Item label="受众" htmlFor="dashboard-audience">
+                <Select
+                  id="dashboard-audience"
+                  value={audienceDraft}
+                  onChange={(value) => void saveAudience(value)}
+                  options={[
+                    { value: "ALL", label: "全部成员" },
+                    { value: "TENANT_ADMIN", label: "仅管理员" },
+                    { value: "EMPLOYEE", label: "仅员工" },
+                  ]}
+                />
+              </Form.Item>
+              <Button
+                onClick={() => void makeDefault("admin")}
+                loading={metaBusy === "default-admin"}
+                disabled={currentDashboard.isDefaultAdmin}
+              >
+                设为管理员默认
+              </Button>
+              <Button
+                onClick={() => void makeDefault("employee")}
+                loading={metaBusy === "default-employee"}
+                disabled={currentDashboard.isDefaultEmployee}
+              >
+                设为员工默认
+              </Button>
+              <Button
+                danger
+                onClick={() => void archiveCurrent()}
+                loading={metaBusy === "archive"}
+                disabled={
+                  dashboards.filter((item) => item.status === "ACTIVE")
+                    .length < 2
+                }
+              >
+                归档工作台
+              </Button>
+            </div>
           ) : null}
         </div>
         <div className={styles.headerActions}>
@@ -387,7 +583,95 @@ export function DashboardBuilder({
           }
         />
       </div>
+      <Modal
+        title="复制为新工作台"
+        open={copyOpen}
+        onCancel={() => setCopyOpen(false)}
+        footer={null}
+        destroyOnHidden
+      >
+        <Form.Item label="新工作台名称" htmlFor="copy-dashboard-name">
+          <Input
+            id="copy-dashboard-name"
+            value={copyName}
+            onChange={(event) => setCopyName(event.target.value)}
+          />
+        </Form.Item>
+        <Button
+          type="primary"
+          onClick={() => void copyCurrent()}
+          loading={metaBusy === "copy"}
+          disabled={!copyName.trim()}
+        >
+          创建工作台
+        </Button>
+      </Modal>
     </div>
+  );
+}
+
+function WorkbenchCatalog({
+  tenantCode,
+  dashboardCode,
+  dashboards,
+  busy,
+  onMove,
+  onCopy,
+}: {
+  tenantCode: string;
+  dashboardCode: string;
+  dashboards: DashboardListItem[];
+  busy: boolean;
+  onMove: (code: string, direction: -1 | 1) => void;
+  onCopy: () => void;
+}) {
+  const active = dashboards.filter((item) => item.status === "ACTIVE");
+  if (active.length === 0) return null;
+  return (
+    <nav className={styles.catalog} aria-label="工作台目录">
+      {active.map((item, index) => (
+        <span key={item.code} className={styles.catalogItem}>
+          {index > 0 ? (
+            <button
+              type="button"
+              aria-label={`上移 ${item.name}`}
+              disabled={busy}
+              onClick={() => onMove(item.code, -1)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onMove(item.code, -1);
+                }
+              }}
+            >
+              ↑
+            </button>
+          ) : null}
+          {index < active.length - 1 ? (
+            <button
+              type="button"
+              aria-label={`下移 ${item.name}`}
+              disabled={busy}
+              onClick={() => onMove(item.code, 1)}
+            >
+              ↓
+            </button>
+          ) : null}
+          <a
+            href={`/workspace/${tenantCode}/settings/dashboards/${item.code}`}
+            aria-current={item.code === dashboardCode ? "page" : undefined}
+          >
+            {item.name}
+            {item.code === dashboardCode ? "（当前）" : ""}
+            {item.isDefaultAdmin ? " · 管理员默认" : ""}
+            {item.isDefaultEmployee ? " · 员工默认" : ""}
+          </a>
+        </span>
+      ))}
+      <Button type="link" onClick={onCopy}>
+        复制为新工作台
+      </Button>
+    </nav>
   );
 }
 
