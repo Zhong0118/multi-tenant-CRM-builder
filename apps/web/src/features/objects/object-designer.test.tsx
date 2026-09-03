@@ -126,6 +126,15 @@ function renderDesigner(initialDraft: ObjectDraft, api: ObjectApi) {
 }
 
 describe("ObjectDesigner configuration ledger", () => {
+  it("shows the stable identity as tenantCode plus objectCode", () => {
+    renderDesigner(draft(), objectApi());
+    fireEvent.click(screen.getByRole("button", { name: "基本设置" }));
+    expect(screen.getByText("northwind + customers")).toBeInTheDocument();
+    expect(
+      screen.getByText(/稳定标识是 northwind \+ 业务表代码/),
+    ).toBeInTheDocument();
+  });
+
   it("creates a field from the prominent field action", async () => {
     const nextDraft = draft({
       object: { ...draft().object, version: 5 },
@@ -204,7 +213,7 @@ describe("ObjectDesigner configuration ledger", () => {
     expect(
       screen.getByRole("heading", { name: "客户资料" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("customers")).toBeInTheDocument();
+    expect(screen.getByText("northwind + customers")).toBeInTheDocument();
     expect(screen.getByText("v3 当前版本")).toBeInTheDocument();
     expect(screen.queryByText(/项未发布变更/)).not.toBeInTheDocument();
   });

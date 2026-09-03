@@ -33,6 +33,10 @@ function tenantApi(): TenantApi {
       },
     }),
     changeStatus: vi.fn(),
+    countNameConflicts: vi.fn().mockResolvedValue({
+      name: "北辰客户服务",
+      count: 0,
+    }),
   };
 }
 
@@ -88,6 +92,41 @@ describe("CreateTenantForm", () => {
       expect(api.create).not.toHaveBeenCalled();
     },
   );
+
+  it("warns when the company name already exists but still creates the draft", async () => {
+    const api = tenantApi();
+    vi.mocked(api.countNameConflicts).mockResolvedValue({
+      name: "北辰客户服务",
+      count: 2,
+    });
+    renderWithQuery(<CreateTenantForm api={api} />);
+
+    fireEvent.change(screen.getByLabelText("公司名称"), {
+      target: { value: "北辰客户服务" },
+    });
+    fireEvent.blur(screen.getByLabelText("公司名称"));
+
+    expect(
+      await screen.findByText("已有 2 家公司使用相同名称，仍可继续创建。"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/工作空间代码全局唯一/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("工作空间代码"), {
+      target: { value: "northwind-west" },
+    });
+    fireEvent.change(screen.getByLabelText("首位管理员手机号"), {
+      target: { value: "13800138000" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "创建公司" }));
+
+    await waitFor(() =>
+      expect(api.create).toHaveBeenCalledWith({
+        name: "北辰客户服务",
+        code: "northwind-west",
+        firstAdminPhone: "13800138000",
+      }),
+    );
+  });
 });
 
 describe("TenantStatusActions", () => {

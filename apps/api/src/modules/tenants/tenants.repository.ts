@@ -45,6 +45,10 @@ export class PrismaPlatformTenantRepository implements PlatformTenantRepository 
   summarize(actorId: string): Promise<PlatformTenantSummary> {
     return this.transaction(actorId, (store) => store.summarizeTenants());
   }
+
+  countNameConflicts(actorId: string, name: string): Promise<number> {
+    return this.transaction(actorId, (store) => store.countTenantsByName(name));
+  }
 }
 
 class PrismaPlatformTenantStore implements PlatformTenantStore {
@@ -163,6 +167,10 @@ class PrismaPlatformTenantStore implements PlatformTenantStore {
 
   appendAudit(event: AuditEvent): Promise<void> {
     return this.audit.append(this.transaction, event);
+  }
+
+  countTenantsByName(name: string): Promise<number> {
+    return this.transaction.tenant.count({ where: { name } });
   }
 
   async summarizeTenants(): Promise<PlatformTenantSummary> {

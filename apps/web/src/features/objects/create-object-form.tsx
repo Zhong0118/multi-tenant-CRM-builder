@@ -11,7 +11,7 @@ import { z } from "zod";
 import { toApiError } from "@/lib/api/api-error";
 
 import { objectApi as defaultObjectApi, type ObjectApi } from "./object-api";
-import { OBJECT_CODE_PATTERN } from "./object-types";
+import { OBJECT_CODE_PATTERN, objectStableIdHelp } from "./object-types";
 
 import styles from "./objects.module.css";
 
@@ -100,7 +100,7 @@ export function CreateObjectForm({
         htmlFor="new-object-code"
         validateStatus={errors.code ? "error" : undefined}
         help={errors.code?.message}
-        extra="小写字母、数字和下划线，例如 leads。首次发布后不可修改。"
+        extra={objectStableIdHelp(tenantCode)}
       >
         <Controller
           name="code"

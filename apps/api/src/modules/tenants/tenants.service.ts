@@ -71,6 +71,7 @@ export interface PlatformTenantStore {
   countActiveAdmins(tenantId: string): Promise<number>;
   findTenant(id: string): Promise<PlatformTenant | null>;
   listTenants(page: TenantPageQuery): Promise<PlatformTenantPage>;
+  countTenantsByName(name: string): Promise<number>;
   updateTenantStatus(id: string, status: TenantStatus): Promise<PlatformTenant>;
   appendAudit(event: AuditEvent): Promise<void>;
   summarizeTenants(): Promise<PlatformTenantSummary>;
@@ -84,6 +85,10 @@ export interface PlatformTenantRepository {
   list(actorId: string, page: TenantPageQuery): Promise<PlatformTenantPage>;
   find(actorId: string, tenantId: string): Promise<PlatformTenant | null>;
   summarize(actorId: string): Promise<PlatformTenantSummary>;
+  countNameConflicts(
+    actorId: string,
+    name: string,
+  ): Promise<number>;
 }
 
 @Injectable()
@@ -151,6 +156,22 @@ export class TenantsService {
 
   summarize(actor: AuthenticatedUser): Promise<PlatformTenantSummary> {
     return this.repository.summarize(actor.id);
+  }
+
+  async countNameConflicts(
+    actor: AuthenticatedUser,
+    name: string,
+  ): Promise<{ name: string; count: number }> {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      throw new ApiException('VALIDATION_FAILED', 400, {
+        fieldErrors: { name: ['请输入公司名称。'] },
+      });
+    }
+    return {
+      name: trimmed,
+      count: await this.repository.countNameConflicts(actor.id, trimmed),
+    };
   }
 
   async detail(

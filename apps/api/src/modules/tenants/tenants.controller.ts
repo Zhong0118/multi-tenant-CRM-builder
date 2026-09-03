@@ -29,6 +29,8 @@ import {
   PlatformTenantPageQueryDto,
   PlatformTenantPageResponseDto,
   PlatformTenantSummaryDto,
+  TenantNameConflictQueryDto,
+  TenantNameConflictResponseDto,
 } from './dto';
 import { TenantsService } from './tenants.service';
 
@@ -70,6 +72,15 @@ export class TenantsController {
   @ApiOkResponse({ type: PlatformTenantSummaryDto })
   summarize(@CurrentSession() current: SessionPrincipal) {
     return this.tenants.summarize(current.user);
+  }
+
+  @Get('name-conflicts')
+  @ApiOkResponse({ type: TenantNameConflictResponseDto })
+  nameConflicts(
+    @CurrentSession() current: SessionPrincipal,
+    @Query() query: TenantNameConflictQueryDto,
+  ) {
+    return this.tenants.countNameConflicts(current.user, query.name);
   }
 
   @Get(':tenantId')

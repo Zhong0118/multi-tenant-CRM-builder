@@ -188,6 +188,14 @@ export type EmployeePermissionsInput = Schemas["EmployeePermissionsDto"];
 export const OBJECT_CODE_PATTERN = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
 export const FIELD_KEY_PATTERN = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
 
+export function objectStableId(tenantCode: string, objectCode: string): string {
+  return `${tenantCode} + ${objectCode}`;
+}
+
+export function objectStableIdHelp(tenantCode: string): string {
+  return `稳定标识是 ${tenantCode} + 业务表代码。业务表代码在公司内唯一，首次发布后不可修改。`;
+}
+
 /** Title fields must render as a single readable line. */
 export const TITLE_FIELD_TYPES = [
   "TEXT",

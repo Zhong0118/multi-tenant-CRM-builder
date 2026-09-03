@@ -233,7 +233,7 @@ export function RegisterForm({
         label="姓名"
         htmlFor="register-name"
         validateStatus={errors.displayName ? "error" : undefined}
-        help={errors.displayName?.message}
+        extra="登录使用唯一手机号，姓名允许重复。"
       >
         <Controller
           name="displayName"

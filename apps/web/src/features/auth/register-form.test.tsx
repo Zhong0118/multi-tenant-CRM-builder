@@ -18,6 +18,24 @@ function renderForm(ui: ReactNode) {
 }
 
 describe("RegisterForm", () => {
+  it("says login uses the unique phone while display names may repeat", () => {
+    const api: AuthApi = {
+      requestRegisterCode: vi.fn(),
+      register: vi.fn(),
+      login: vi.fn(),
+      requestPasswordResetCode: vi.fn(),
+      resetPassword: vi.fn(),
+      listWorkspaces: vi.fn(),
+    };
+    renderForm(
+      <RegisterForm
+        api={api}
+        device={{ key: "device-test", summary: "Vitest browser" }}
+      />,
+    );
+    expect(screen.getByText("登录使用唯一手机号，姓名允许重复。")).toBeInTheDocument();
+  });
+
   it("requests a code, starts a 60-second lock, and enters the only workspace", async () => {
     const api: AuthApi = {
       requestRegisterCode: vi.fn().mockResolvedValue({ accepted: true }),

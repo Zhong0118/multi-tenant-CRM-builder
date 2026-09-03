@@ -34,6 +34,7 @@ export interface TenantApi {
     tenantId: string,
     input: { status: PlatformTenant["status"]; reason?: string },
   ): Promise<PlatformTenant>;
+  countNameConflicts(name: string): Promise<{ name: string; count: number }>;
 }
 
 export const tenantApi: TenantApi = {
@@ -52,11 +53,20 @@ export const tenantApi: TenantApi = {
     if (result.data) return result.data;
     throw toApiError(result.error, result.response.status);
   },
+  async countNameConflicts(name) {
+    const result = await browserApiClient.GET(
+      "/api/v1/platform/tenants/name-conflicts",
+      { params: { query: { name } } },
+    );
+    if (result.data) return result.data;
+    throw toApiError(result.error, result.response.status);
+  },
 };
 
 export function CreateTenantForm({ api = tenantApi }: { api?: TenantApi }) {
   const [created, setCreated] = useState<PlatformTenant>();
   const [summary, setSummary] = useState<string>();
+  const [nameConflictCount, setNameConflictCount] = useState<number>();
   const {
     control,
     handleSubmit,
@@ -72,6 +82,11 @@ export function CreateTenantForm({ api = tenantApi }: { api?: TenantApi }) {
       const apiError = toApiError(error);
       setSummary(`${apiError.message}（请求编号：${apiError.requestId}）`);
     },
+  });
+  const nameCheck = useMutation({
+    mutationFn: (name: string) => api.countNameConflicts(name),
+    onSuccess: (result) => setNameConflictCount(result.count),
+    onError: () => setNameConflictCount(undefined),
   });
 
   if (created) {
@@ -119,12 +134,29 @@ export function CreateTenantForm({ api = tenantApi }: { api?: TenantApi }) {
         label="公司名称"
         htmlFor="tenant-name"
         validateStatus={errors.name ? "error" : undefined}
-        help={errors.name?.message}
+        help={
+          errors.name?.message ??
+          (nameConflictCount
+            ? `已有 ${nameConflictCount} 家公司使用相同名称，仍可继续创建。`
+            : undefined)
+        }
+        extra="公司名称允许重复，便于同名主体或分支机构入驻。"
       >
         <Controller
           name="name"
           control={control}
-          render={({ field }) => <Input id="tenant-name" {...field} />}
+          render={({ field }) => (
+            <Input
+              id="tenant-name"
+              {...field}
+              onBlur={(event) => {
+                field.onBlur();
+                const name = event.target.value.trim();
+                if (name) nameCheck.mutate(name);
+                else setNameConflictCount(undefined);
+              }}
+            />
+          )}
         />
       </Form.Item>
       <Form.Item
@@ -132,7 +164,7 @@ export function CreateTenantForm({ api = tenantApi }: { api?: TenantApi }) {
         htmlFor="tenant-code"
         validateStatus={errors.code ? "error" : undefined}
         help={errors.code?.message}
-        extra="将出现在工作空间地址中，创建后不可随意变更。"
+        extra="工作空间代码全局唯一，将出现在工作空间地址中，创建后不可随意变更。"
       >
         <Controller
           name="code"

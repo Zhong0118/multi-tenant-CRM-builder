@@ -468,6 +468,22 @@ export interface paths {
     patch: operations["TenantsController_changeStatus"];
     trace?: never;
   };
+  "/api/v1/platform/tenants/name-conflicts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["TenantsController_nameConflicts"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/platform/tenants/summary": {
     parameters: {
       query?: never;
@@ -2294,6 +2310,10 @@ export interface components {
       /** Format: uuid */
       userId: string;
     };
+    TenantNameConflictResponseDto: {
+      count: number;
+      name: string;
+    };
     UpdateDashboardDto: {
       /** @enum {string} */
       audience?: "ALL" | "TENANT_ADMIN" | "EMPLOYEE";
@@ -3093,6 +3113,27 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["PlatformTenantResponseDto"];
+        };
+      };
+    };
+  };
+  TenantsController_nameConflicts: {
+    parameters: {
+      query: {
+        name: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TenantNameConflictResponseDto"];
         };
       };
     };

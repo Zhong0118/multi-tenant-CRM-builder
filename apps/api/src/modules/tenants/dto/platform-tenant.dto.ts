@@ -40,6 +40,18 @@ export class ChangeTenantStatusDto {
   reason?: string;
 }
 
+export class TenantNameConflictQueryDto {
+  @ApiProperty({ minLength: 1, maxLength: 200 })
+  @IsString()
+  @Length(1, 200)
+  name!: string;
+}
+
+export class TenantNameConflictResponseDto {
+  @ApiProperty() name!: string;
+  @ApiProperty({ minimum: 0 }) count!: number;
+}
+
 export class PlatformTenantPageQueryDto {
   @ApiPropertyOptional({ type: Number, minimum: 1, default: 1 })
   @IsOptional()

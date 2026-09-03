@@ -36,6 +36,8 @@ import {
   PUBLISHED_FIELD_TYPES,
   TITLE_FIELD_TYPES,
   objectStatusLabel,
+  objectStableId,
+  objectStableIdHelp,
   type ObjectDraft,
   type PublicationAnalysis,
   type PublishedDataScope,
@@ -313,7 +315,9 @@ export function ObjectDesigner({
               </span>
               <h1>{draft.object.name}</h1>
               <div className={styles.designerMeta}>
-                <span className={styles.stableKey}>{draft.object.code}</span>
+                <span className={styles.stableKey}>
+                  {objectStableId(tenantCode, draft.object.code)}
+                </span>
                 <StatusTag
                   tone={
                     draft.object.hasUnpublishedChanges ? "warning" : "success"
@@ -389,6 +393,7 @@ export function ObjectDesigner({
         <div className={styles.designerWorkspace}>
           {section === "basics" ? (
             <BasicsSection
+              tenantCode={tenantCode}
               draft={draft}
               saving={saveBasics.isPending}
               onSave={(input) => saveBasics.mutate(input)}
@@ -498,10 +503,12 @@ export function ObjectDesigner({
 }
 
 function BasicsSection({
+  tenantCode,
   draft,
   saving,
   onSave,
 }: {
+  tenantCode: string;
   draft: ObjectDraft;
   saving: boolean;
   onSave: (input: {
@@ -557,7 +564,7 @@ function BasicsSection({
         <Form.Item
           label="业务表代码"
           htmlFor="object-code"
-          extra="业务表代码在公司内唯一，供接口和系统稳定识别，首次发布后不可修改。"
+          extra={objectStableIdHelp(tenantCode)}
         >
           <Input id="object-code" value={draft.object.code} disabled />
         </Form.Item>

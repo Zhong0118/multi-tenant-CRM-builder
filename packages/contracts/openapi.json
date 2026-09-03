@@ -3802,6 +3802,19 @@
         "required": ["id", "userId", "tenantId", "role", "status"],
         "type": "object"
       },
+      "TenantNameConflictResponseDto": {
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["name", "count"],
+        "type": "object"
+      },
       "UpdateDashboardDto": {
         "properties": {
           "audience": {
@@ -5060,6 +5073,41 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PlatformTenantResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-tenants"]
+      }
+    },
+    "/api/v1/platform/tenants/name-conflicts": {
+      "get": {
+        "operationId": "TenantsController_nameConflicts",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantNameConflictResponseDto"
                 }
               }
             },

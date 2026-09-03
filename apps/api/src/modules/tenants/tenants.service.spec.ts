@@ -100,6 +100,12 @@ class MemoryStore implements PlatformTenantStore {
     return Promise.resolve();
   }
 
+  countTenantsByName(name: string) {
+    return Promise.resolve(
+      this.tenants.filter((tenant) => tenant.name === name).length,
+    );
+  }
+
   summarizeTenants() {
     const counts = { total: 0, draft: 0, active: 0, suspended: 0, closed: 0 };
     for (const tenant of this.tenants) {
@@ -124,6 +130,8 @@ function fixture() {
       store.listTenants(page),
     find: (_actorId: string, id: string) => store.findTenant(id),
     summarize: () => store.summarizeTenants(),
+    countNameConflicts: (_actorId: string, name: string) =>
+      store.countTenantsByName(name),
   };
   return {
     store,
@@ -269,5 +277,40 @@ describe('TenantsService', () => {
         requestId: 'req-1',
       }),
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
+
+  it('allows a duplicate company name and reports how many already exist', async () => {
+    const { service, store } = fixture();
+    await service.createTenant(platformAdmin, {
+      name: '示例公司',
+      code: 'sample-east',
+      firstAdminPhone: '13800138000',
+      requestId: 'req-1',
+    });
+    store.createTenant = (input) => {
+      const tenant = {
+        id: 'tenant-2',
+        ...input,
+        status: 'DRAFT' as const,
+        activeAdminCount: 0,
+      };
+      store.tenants.push(tenant);
+      return Promise.resolve(tenant);
+    };
+
+    await expect(
+      service.countNameConflicts(platformAdmin, '示例公司'),
+    ).resolves.toEqual({ name: '示例公司', count: 1 });
+    await expect(
+      service.createTenant(platformAdmin, {
+        name: '示例公司',
+        code: 'sample-west',
+        firstAdminPhone: '13800138001',
+        requestId: 'req-2',
+      }),
+    ).resolves.toMatchObject({ name: '示例公司', code: 'sample-west' });
+    await expect(
+      service.countNameConflicts(platformAdmin, ' 示例公司 '),
+    ).resolves.toEqual({ name: '示例公司', count: 2 });
   });
 });
