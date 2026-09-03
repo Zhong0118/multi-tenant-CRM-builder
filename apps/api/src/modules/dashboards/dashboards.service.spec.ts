@@ -266,7 +266,12 @@ describe('DashboardsService', () => {
     repository.getActivePublication.mockResolvedValue(active);
     engine.evaluate.mockResolvedValue(runtimeResult('READY'));
 
-    await service.getOverview(adminContext(), period);
+    await expect(service.getOverview(adminContext(), period)).resolves.toEqual(
+      expect.objectContaining({
+        state: 'READY',
+        dashboardCode: 'home',
+      }),
+    );
 
     expect(engine.evaluate.mock.calls).toContainEqual([
       expect.objectContaining({
@@ -275,6 +280,38 @@ describe('DashboardsService', () => {
         preview: false,
       }),
     ]);
+  });
+
+  it('returns the selected dashboard code when a named workbench is unpublished', async () => {
+    const { service, repository } = setup();
+    repository.listDashboards.mockResolvedValue([
+      {
+        id: 'dashboard-sales',
+        code: 'sales',
+        name: '销售工作台',
+        status: 'ACTIVE',
+        audience: 'ALL',
+        sortOrder: 0,
+        hasPublishedVersion: false,
+        isDefaultAdmin: true,
+        isDefaultEmployee: true,
+      },
+    ]);
+    repository.getDefaults.mockResolvedValue({
+      adminDashboardCode: 'sales',
+      employeeDashboardCode: 'sales',
+    });
+    repository.getActivePublication.mockResolvedValue(null);
+
+    await expect(
+      service.getOverview(adminContext(), { ...period, dashboardCode: 'sales' }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        state: 'UNCONFIGURED',
+        dashboardCode: 'sales',
+        title: '销售工作台',
+      }),
+    );
   });
 
   it('delegates employee scope enforcement to the engine', async () => {

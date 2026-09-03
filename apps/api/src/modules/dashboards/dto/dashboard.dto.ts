@@ -433,6 +433,9 @@ export class DashboardOverviewDto extends DashboardRuntimeDto {
   @ApiProperty({ enum: ['TENANT_ADMIN', 'EMPLOYEE'] })
   role!: 'TENANT_ADMIN' | 'EMPLOYEE';
 
+  @ApiPropertyOptional()
+  dashboardCode?: string;
+
   @ApiPropertyOptional({ type: DashboardPublicationSummaryDto })
   publication?: DashboardPublicationSummaryDto;
 }

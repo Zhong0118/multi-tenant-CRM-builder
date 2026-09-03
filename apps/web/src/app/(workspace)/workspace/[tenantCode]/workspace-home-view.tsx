@@ -5,6 +5,7 @@ import { StatePanel } from "@/components/workbench/state-panel";
 import { AdminWorkbench } from "@/features/dashboard/admin-workbench";
 import type { DashboardRuntimeResult } from "@/features/dashboard/dashboard-types";
 import { EmployeeWorkbench } from "@/features/dashboard/employee-workbench";
+import { dashboardSettingsPath } from "@/features/dashboard/workbench-period";
 import { BusinessObjectBar } from "@/features/dashboard/workbench-elements";
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
@@ -37,7 +38,12 @@ export function WorkspaceHomeView({
         <StatePanel
           title={emptyHomeTitle(role, businessObjects.length)}
           description={emptyHomeDescription(role, businessObjects.length)}
-          action={emptyHomeAction(tenantCode, role, businessObjects.length)}
+          action={emptyHomeAction(
+            tenantCode,
+            role,
+            businessObjects.length,
+            overview.dashboardCode,
+          )}
         />
         <BusinessObjectBar
           tenantCode={tenantCode}
@@ -91,6 +97,7 @@ function emptyHomeAction(
   tenantCode: string,
   role: WorkspaceHomeViewProps["role"],
   objectCount: number,
+  dashboardCode?: string,
 ) {
   if (role !== "TENANT_ADMIN") return undefined;
   if (objectCount === 0) {
@@ -101,7 +108,7 @@ function emptyHomeAction(
     );
   }
   return (
-    <Link href={`/workspace/${tenantCode}/settings/dashboards/home`}>
+    <Link href={dashboardSettingsPath(tenantCode, dashboardCode)}>
       配置工作台
     </Link>
   );

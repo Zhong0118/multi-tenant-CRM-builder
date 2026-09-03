@@ -4,8 +4,10 @@ import { PageHeader } from "@/components/layout/page-header";
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
 import type { DashboardRuntimeResult } from "./dashboard-types";
-import { DashboardRenderer, PeriodLabel } from "./dashboard-renderer";
+import { DashboardRenderer } from "./dashboard-renderer";
+import { EmployeeShortcuts, WorkbenchPeriodNav } from "./workbench-chrome";
 import { BusinessObjectBar } from "./workbench-elements";
+import { workbenchPath } from "./workbench-period";
 import styles from "./workbench.module.css";
 
 export function EmployeeWorkbench({
@@ -24,9 +26,21 @@ export function EmployeeWorkbench({
     <div className={styles.workbench}>
       <PageHeader
         title={overview.title}
-        description={`${tenantName}的已发布工作台。数据只显示你当前有权查看的结果。`}
-        status={<PeriodLabel period={overview.period} publication={overview.publication} />}
+        description={
+          <>
+            {`${tenantName}的已发布工作台。`}
+            <span>数据只显示你当前有权查看的结果。</span>
+          </>
+        }
       />
+      <div className={styles.workbenchChrome}>
+        <WorkbenchPeriodNav
+          pathname={workbenchPath(tenantCode, overview.dashboardCode)}
+          period={overview.period}
+          publication={overview.publication}
+        />
+      </div>
+      <EmployeeShortcuts tenantCode={tenantCode} objects={businessObjects} />
       <DashboardRenderer tenantCode={tenantCode} runtime={overview} />
       <BusinessObjectBar
         tenantCode={tenantCode}

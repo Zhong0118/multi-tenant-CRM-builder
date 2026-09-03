@@ -134,11 +134,13 @@ export type DashboardOverview =
       state: 'UNCONFIGURED';
       role: TenantContext['role'];
       title: string;
+      dashboardCode?: string;
       widgets: [];
     } & Pick<DashboardRuntimeResult, 'period'>)
   | ({
       state: 'READY';
       role: TenantContext['role'];
+      dashboardCode: string;
       publication: DashboardPublicationSummary;
     } & DashboardRuntimeResult);
 
@@ -402,6 +404,7 @@ export class DashboardsService {
         state: 'UNCONFIGURED',
         role: context.role,
         title: selected.name,
+        dashboardCode: selected.code,
         period,
         widgets: [],
       };
@@ -417,6 +420,7 @@ export class DashboardsService {
     return {
       state: 'READY',
       role: context.role,
+      dashboardCode: selected.code,
       publication: publicationSummary(publication),
       ...result,
     };

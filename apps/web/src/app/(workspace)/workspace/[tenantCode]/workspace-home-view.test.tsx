@@ -224,6 +224,127 @@ describe("WorkspaceHomeView", () => {
       screen.queryByRole("link", { name: "配置工作台" }),
     ).not.toBeInTheDocument();
   });
+
+  it("points administrators at the selected dashboard instead of a hardcoded home", () => {
+    render(
+      <WorkspaceHomeView
+        tenantCode="northwind"
+        tenantName="百杰"
+        userName="张三"
+        role="TENANT_ADMIN"
+        businessObjects={objects}
+        overview={{ ...readyOverview, dashboardCode: "sales" }}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "配置工作台" })).toHaveAttribute(
+      "href",
+      "/workspace/northwind/settings/dashboards/sales",
+    );
+  });
+
+  it("lets employees create and open published objects they can use", () => {
+    render(
+      <WorkspaceHomeView
+        tenantCode="northwind"
+        tenantName="百杰"
+        userName="李明"
+        role="EMPLOYEE"
+        businessObjects={[
+          ...objects,
+          {
+            code: "notes",
+            name: "备忘",
+            icon: null,
+            sortOrder: 20,
+            canCreate: false,
+            canRead: true,
+            canUpdate: false,
+          },
+        ]}
+        overview={{ ...readyOverview, role: "EMPLOYEE", dashboardCode: "home" }}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "新建订单" })).toHaveAttribute(
+      "href",
+      "/workspace/northwind/objects/orders/new",
+    );
+    expect(screen.getByRole("link", { name: "打开订单" })).toHaveAttribute(
+      "href",
+      "/workspace/northwind/objects/orders",
+    );
+    expect(screen.queryByRole("link", { name: "新建备忘" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "打开备忘" })).toHaveAttribute(
+      "href",
+      "/workspace/northwind/objects/notes",
+    );
+    expect(screen.queryByRole("link", { name: "配置工作台" })).not.toBeInTheDocument();
+    expect(screen.getByText("数据只显示你当前有权查看的结果。")).toBeInTheDocument();
+  });
+
+  it("exposes a period control with distinct empty-state kinds", () => {
+    const { rerender } = render(
+      <WorkspaceHomeView
+        tenantCode="northwind"
+        tenantName="百杰"
+        userName="张三"
+        role="TENANT_ADMIN"
+        businessObjects={objects}
+        overview={{ ...readyOverview, dashboardCode: "home" }}
+      />,
+    );
+
+    const period = screen.getByRole("navigation", { name: "统计区间" });
+    expect(period).toHaveTextContent("8月1日");
+    expect(period).toHaveTextContent("8月31日");
+    expect(screen.getByRole("link", { name: "本月" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("from="),
+    );
+
+    rerender(
+      <WorkspaceHomeView
+        tenantCode="northwind"
+        tenantName="百杰"
+        userName="张三"
+        role="TENANT_ADMIN"
+        businessObjects={objects}
+        overview={emptyWidgetOverview}
+      />,
+    );
+    expect(screen.getAllByTestId("widget-empty-no-data")).toHaveLength(4);
+
+    rerender(
+      <WorkspaceHomeView
+        tenantCode="northwind"
+        tenantName="百杰"
+        userName="李明"
+        role="EMPLOYEE"
+        businessObjects={objects}
+        overview={{
+          ...readyOverview,
+          role: "EMPLOYEE",
+          widgets: [
+            {
+              id: "hidden",
+              type: "METRIC",
+              title: "隐藏指标",
+              objectCode: "orders",
+              width: "QUARTER",
+              sortOrder: 1,
+              state: "UNAVAILABLE",
+              reason: "FIELD_HIDDEN",
+            },
+          ],
+        }}
+      />,
+    );
+    expect(screen.getByTestId("widget-empty-no-permission")).toHaveTextContent(
+      "没有权限查看",
+    );
+    expect(screen.getByText("当前权限不允许读取此组件所需的数据。")).toBeInTheDocument();
+  });
 });
 
 const runtime = {

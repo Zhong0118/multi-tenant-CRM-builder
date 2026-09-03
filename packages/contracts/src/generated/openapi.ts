@@ -4,3908 +4,4107 @@
  */
 
 export interface paths {
-    "/api/v1/auth/forgot-password": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AuthController_forgotPassword"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "/api/v1/auth/forgot-password": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/auth/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AuthController_login"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post: operations["AuthController_forgotPassword"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/login": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/auth/logout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AuthController_logout"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post: operations["AuthController_login"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/logout": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/auth/register": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AuthController_register"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post: operations["AuthController_logout"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/register": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/auth/reset-password": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AuthController_resetPassword"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post: operations["AuthController_register"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/reset-password": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/auth/verification-challenges": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["AuthController_requestVerification"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post: operations["AuthController_resetPassword"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/verification-challenges": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["HealthController_check"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post: operations["AuthController_requestVerification"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/health": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["MeController_me"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["HealthController_check"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/me": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/me/invitations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["InvitationsController_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["MeController_me"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/me/invitations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/me/invitations/{invitationId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["InvitationsController_detail"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["InvitationsController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/me/invitations/{invitationId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/me/invitations/{invitationId}/accept": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["InvitationsController_accept"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["InvitationsController_detail"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/me/invitations/{invitationId}/accept": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/me/invitations/{invitationId}/decline": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["InvitationsController_decline"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post: operations["InvitationsController_accept"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/me/invitations/{invitationId}/decline": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/me/password": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["MeController_changePassword"];
-        trace?: never;
+    get?: never;
+    put?: never;
+    post: operations["InvitationsController_decline"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/me/password": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/me/sessions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["MeController_sessions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["MeController_changePassword"];
+    trace?: never;
+  };
+  "/api/v1/me/sessions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/me/sessions/{sessionId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete: operations["MeController_revokeSession"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["MeController_sessions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/me/sessions/{sessionId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/me/workspaces": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["MembershipsController_workspaces"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations["MeController_revokeSession"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/me/workspaces": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/platform/audit": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["PlatformOperationsController_audit"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["MembershipsController_workspaces"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/audit": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/platform/business-templates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["BusinessTemplatesController_list"];
-        put?: never;
-        post: operations["BusinessTemplatesController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["PlatformOperationsController_audit"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/business-templates": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/platform/business-templates/{templateId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["BusinessTemplatesController_detail"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["BusinessTemplatesController_list"];
+    put?: never;
+    post: operations["BusinessTemplatesController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/business-templates/{templateId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/platform/business-templates/{templateId}/applications": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["TemplateApplicationController_apply"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["BusinessTemplatesController_detail"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/business-templates/{templateId}/applications": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/platform/business-templates/{templateId}/draft": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: operations["BusinessTemplatesController_saveDraft"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post: operations["TemplateApplicationController_apply"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/business-templates/{templateId}/draft": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/platform/business-templates/{templateId}/publication-analysis": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["BusinessTemplatesController_analyzePublication"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put: operations["BusinessTemplatesController_saveDraft"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/business-templates/{templateId}/publication-analysis": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/platform/business-templates/{templateId}/versions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["BusinessTemplatesController_versions"];
-        put?: never;
-        post: operations["BusinessTemplatesController_publish"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post: operations["BusinessTemplatesController_analyzePublication"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/business-templates/{templateId}/versions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/platform/operations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["PlatformOperationsController_operationHistory"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["BusinessTemplatesController_versions"];
+    put?: never;
+    post: operations["BusinessTemplatesController_publish"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/operations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/platform/runtime-status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["PlatformOperationsController_runtimeStatus"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["PlatformOperationsController_operationHistory"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/runtime-status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/platform/tenants": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["TenantsController_list"];
-        put?: never;
-        post: operations["TenantsController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["PlatformOperationsController_runtimeStatus"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/tenants": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/platform/tenants/{tenantId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["TenantsController_detail"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["TenantsController_list"];
+    put?: never;
+    post: operations["TenantsController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/tenants/{tenantId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/platform/tenants/{tenantId}/business-configuration": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["TemplateApplicationController_summarizeTarget"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["TenantsController_detail"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/tenants/{tenantId}/business-configuration": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/platform/tenants/{tenantId}/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["TenantsController_changeStatus"];
-        trace?: never;
+    get: operations["TemplateApplicationController_summarizeTarget"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/platform/tenants/{tenantId}/status": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/platform/tenants/summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["TenantsController_summarize"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["TenantsController_changeStatus"];
+    trace?: never;
+  };
+  "/api/v1/platform/tenants/summary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["MembershipsController_workspace"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["TenantsController_summarize"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/dashboards": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["DashboardsController_list"];
-        put?: never;
-        post: operations["DashboardsController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["MembershipsController_workspace"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/dashboards": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/dashboards/{dashboardCode}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["DashboardsController_update"];
-        trace?: never;
+    get: operations["DashboardsController_list"];
+    put?: never;
+    post: operations["DashboardsController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/dashboards/{dashboardCode}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/dashboards/{dashboardCode}/configuration": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["DashboardsController_configuration"];
-        put: operations["DashboardsController_saveDraft"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["DashboardsController_update"];
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/dashboards/{dashboardCode}/configuration": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/dashboards/{dashboardCode}/overview": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["DashboardsController_overview"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["DashboardsController_configuration"];
+    put: operations["DashboardsController_saveDraft"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/dashboards/{dashboardCode}/overview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/dashboards/{dashboardCode}/preview": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["DashboardsController_preview"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["DashboardsController_overview"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/dashboards/{dashboardCode}/preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/dashboards/{dashboardCode}/publications": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["DashboardsController_publish"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post: operations["DashboardsController_preview"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/dashboards/{dashboardCode}/publications": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/dashboards/defaults": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["DashboardsController_setDefaults"];
-        trace?: never;
+    get?: never;
+    put?: never;
+    post: operations["DashboardsController_publish"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/dashboards/defaults": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/dashboards/overview": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["DashboardsController_defaultOverview"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["DashboardsController_setDefaults"];
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/dashboards/overview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/invitations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["MembershipsController_invitations"];
-        put?: never;
-        post: operations["MembershipsController_invite"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["DashboardsController_defaultOverview"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/invitations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/invitations/{id}/resend": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["MembershipsController_resend"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["MembershipsController_invitations"];
+    put?: never;
+    post: operations["MembershipsController_invite"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/invitations/{id}/resend": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/invitations/{id}/revoke": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["MembershipsController_revoke"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post: operations["MembershipsController_resend"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/invitations/{id}/revoke": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/members": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["MembershipsController_members"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post: operations["MembershipsController_revoke"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/members": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/members/{memberId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["MembershipsController_changeMember"];
-        trace?: never;
+    get: operations["MembershipsController_members"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/members/{memberId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/members/{memberId}/object-access": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["MembershipsController_memberObjectAccess"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["MembershipsController_changeMember"];
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/members/{memberId}/object-access": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/members/{memberId}/object-access/{objectId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: operations["MembershipsController_setMemberObjectAccess"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["MembershipsController_memberObjectAccess"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/members/{memberId}/object-access/{objectId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/object-definitions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ObjectsController_list"];
-        put?: never;
-        post: operations["ObjectsController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put: operations["MembershipsController_setMemberObjectAccess"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ObjectsController_detail"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["ObjectsController_update"];
-        trace?: never;
+    get: operations["ObjectsController_list"];
+    put?: never;
+    post: operations["ObjectsController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/archive": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["ObjectsController_archive"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["ObjectsController_detail"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["ObjectsController_update"];
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/archive": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/default-view": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: operations["ObjectsController_updateDefaultView"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post: operations["ObjectsController_archive"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/default-view": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/field-order": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: operations["ObjectsController_reorderFields"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put: operations["ObjectsController_updateDefaultView"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/field-order": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/fields": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["ObjectsController_createField"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put: operations["ObjectsController_reorderFields"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/fields": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/fields/{fieldId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["ObjectsController_updateField"];
-        trace?: never;
+    get?: never;
+    put?: never;
+    post: operations["ObjectsController_createField"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/fields/{fieldId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/permissions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: operations["ObjectsController_updatePermissions"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["ObjectsController_updateField"];
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/permissions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/publication-analysis": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["ObjectsController_analyzePublication"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put: operations["ObjectsController_updatePermissions"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/publication-analysis": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/publications": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ObjectsController_publications"];
-        put?: never;
-        post: operations["ObjectsController_publish"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    post: operations["ObjectsController_analyzePublication"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/publications": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/object-definitions/order": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: operations["ObjectsController_reorderObjects"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["ObjectsController_publications"];
+    put?: never;
+    post: operations["ObjectsController_publish"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/order": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/objects": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ObjectsController_runtimeObjects"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put: operations["ObjectsController_reorderObjects"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["RecordsController_list"];
-        put?: never;
-        post: operations["RecordsController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["ObjectsController_runtimeObjects"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["RecordsController_detail"];
-        put?: never;
-        post?: never;
-        delete: operations["RecordsController_remove"];
-        options?: never;
-        head?: never;
-        patch: operations["RecordsController_update"];
-        trace?: never;
+    get: operations["RecordsController_list"];
+    put?: never;
+    post: operations["RecordsController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/schema": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ObjectsController_runtimeSchema"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["RecordsController_detail"];
+    put?: never;
+    post?: never;
+    delete: operations["RecordsController_remove"];
+    options?: never;
+    head?: never;
+    patch: operations["RecordsController_update"];
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/schema": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    get: operations["ObjectsController_runtimeSchema"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        AcceptedResponseDto: {
-            /** @example true */
-            accepted: boolean;
-        };
-        ApiErrorResponseDto: {
-            code: string;
-            fieldErrors: {
-                [key: string]: string[];
-            };
-            message: string;
-            requestId: string;
-            status: number;
-        };
-        ApplyBusinessTemplateDto: {
-            /** Format: uuid */
-            templateVersionId: string;
-            /** Format: uuid */
-            tenantId: string;
-        };
-        AuthenticatedResponseDto: {
-            /** @example true */
-            accepted: boolean;
-            user: components["schemas"]["UserResponseDto"];
-        };
-        BusinessTemplateActiveVersionResponseDto: {
-            /** Format: uuid */
-            id: string;
-            /** Format: date-time */
-            publishedAt: string;
-            sourceDraftVersion: number;
-            versionNo: number;
-        };
-        BusinessTemplateConfigurationDto: {
-            dashboard?: {
-                [key: string]: unknown;
-            };
-            objects: components["schemas"]["TemplateObjectDraftDto"][];
-            /** @enum {number} */
-            schemaVersion: 1;
-        };
-        BusinessTemplateConfigurationResponseDto: {
-            dashboard?: {
-                [key: string]: unknown;
-            };
-            objects: components["schemas"]["TemplateObjectResponseDto"][];
-            /** @enum {number} */
-            schemaVersion: 1;
-        };
-        BusinessTemplateDetailResponseDto: {
-            activeVersion: components["schemas"]["BusinessTemplateActiveVersionResponseDto"] | null;
-            applicationCount: number;
-            code: string;
-            configuration: components["schemas"]["BusinessTemplateConfigurationResponseDto"];
-            /** Format: date-time */
-            createdAt: string;
-            description: string | null;
-            draftVersion: number;
-            fieldCount: number;
-            hasUnpublishedChanges: boolean;
-            /** Format: uuid */
-            id: string;
-            name: string;
-            objectCount: number;
-            /** Format: date-time */
-            publishedAt: string | null;
-            /** @enum {string} */
-            status: "DRAFT" | "PUBLISHED" | "CHANGED" | "ARCHIVED";
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        BusinessTemplatePageResponseDto: {
-            items: components["schemas"]["BusinessTemplateSummaryResponseDto"][];
-            limit: number;
-            page: number;
-            total: number;
-        };
-        BusinessTemplateSummaryResponseDto: {
-            activeVersion: components["schemas"]["BusinessTemplateActiveVersionResponseDto"] | null;
-            applicationCount: number;
-            code: string;
-            /** Format: date-time */
-            createdAt: string;
-            description: string | null;
-            draftVersion: number;
-            fieldCount: number;
-            hasUnpublishedChanges: boolean;
-            /** Format: uuid */
-            id: string;
-            name: string;
-            objectCount: number;
-            /** Format: date-time */
-            publishedAt: string | null;
-            /** @enum {string} */
-            status: "DRAFT" | "PUBLISHED" | "CHANGED" | "ARCHIVED";
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        BusinessTemplateVersionResponseDto: {
-            changeSummary: components["schemas"]["TemplatePublicationChangeResponseDto"][];
-            configuration: components["schemas"]["BusinessTemplateConfigurationDto"];
-            configurationChecksum: string;
-            /** Format: uuid */
-            id: string;
-            /** Format: date-time */
-            publishedAt: string;
-            /** Format: uuid */
-            publishedByUserId: string;
-            /** @enum {number} */
-            schemaVersion: 1;
-            sourceDraftVersion: number;
-            /** Format: uuid */
-            templateId: string;
-            versionNo: number;
-        };
-        ChangeMemberStatusDto: {
-            /** @enum {string} */
-            status: "ACTIVE" | "DISABLED";
-        };
-        ChangePasswordDto: {
-            /** Format: password */
-            currentPassword: string;
-            /** Format: password */
-            newPassword: string;
-        };
-        ChangeTenantStatusDto: {
-            reason?: string;
-            /** @enum {string} */
-            status: "DRAFT" | "ACTIVE" | "SUSPENDED" | "CLOSED";
-        };
-        CreateBusinessTemplateDto: {
-            code: string;
-            description?: string | null;
-            name: string;
-        };
-        CreateDashboardDto: {
-            /** @enum {string} */
-            audience?: "ALL" | "TENANT_ADMIN" | "EMPLOYEE";
-            copyFrom?: string;
-            name: string;
-        };
-        CreatedInvitationResponseDto: {
-            /** Format: uuid */
-            id: string;
-            /** @enum {string} */
-            status: "PENDING";
-        };
-        CreateFieldDefinitionDto: {
-            config?: components["schemas"]["FieldConfigDto"];
-            defaultValue?: (string | number | boolean | unknown[] | {
-                [key: string]: unknown;
-            }) | null;
-            expectedVersion: number;
-            /** @example customer_name */
-            fieldKey: string;
-            /** @default false */
-            isSystem: boolean;
-            label: string;
-            required: boolean;
-            /** @enum {string} */
-            type: "TEXT" | "TEXTAREA" | "PHONE" | "EMAIL" | "NUMBER" | "MONEY" | "DATE" | "DATETIME" | "SINGLE_SELECT" | "MULTI_SELECT" | "MEMBER" | "BOOLEAN";
-            validation?: components["schemas"]["FieldValidationDto"];
-        };
-        CreateInvitationDto: {
-            /** @example 13800138000 */
-            phone: string;
-            /** @enum {string} */
-            role: "TENANT_ADMIN" | "EMPLOYEE";
-        };
-        CreateObjectDefinitionDto: {
-            /** @example leads */
-            code: string;
-            icon?: string | null;
-            /** @example 销售线索 */
-            name: string;
-        };
-        CreatePlatformTenantDto: {
-            code: string;
-            /** @example 13800138000 */
-            firstAdminPhone: string;
-            name: string;
-        };
-        CreateRecordDto: {
-            /** Format: uuid */
-            ownerMemberId?: string | null;
-            values: {
-                [key: string]: unknown;
-            };
-        };
-        DashboardConfigurationEnvelopeDto: {
-            activePublication?: components["schemas"]["DashboardPublicationSummaryDto"] | null;
-            candidates: Record<string, never>[];
-            dashboard?: components["schemas"]["DashboardListItemDto"] | null;
-            dashboards: components["schemas"]["DashboardListItemDto"][];
-            draft?: components["schemas"]["DashboardDraftDto"] | null;
-            issues: components["schemas"]["DashboardConfigurationIssueDto"][];
-            timezone: string;
-        };
-        DashboardConfigurationIssueDto: {
-            code: string;
-            message: string;
-            path: string;
-        };
-        DashboardDefaultsDto: {
-            adminDashboardCode?: string;
-            employeeDashboardCode?: string;
-        };
-        DashboardDistributionDataDto: {
-            /** @enum {string} */
-            display: "FUNNEL" | "BAR" | "DONUT";
-            items: components["schemas"]["DashboardDistributionPointDto"][];
-        };
-        DashboardDistributionPointDto: {
-            color: string;
-            label: string;
-            optionKey: string;
-            value: number;
-        };
-        DashboardDistributionWidgetDto: {
-            data: components["schemas"]["DashboardDistributionDataDto"];
-            description?: string;
-            id: string;
-            objectCode: string;
-            sortOrder: number;
-            /** @enum {string} */
-            state: "READY";
-            title: string;
-            /** @enum {string} */
-            type: "STATUS_DISTRIBUTION";
-            /** @enum {string} */
-            width: "QUARTER" | "HALF" | "FULL";
-        };
-        DashboardDraftDto: {
-            /** Format: uuid */
-            activePublicationId?: string | null;
-            /** @enum {string} */
-            audience: "ALL" | "TENANT_ADMIN" | "EMPLOYEE";
-            code: string;
-            draftConfiguration: {
-                [key: string]: unknown;
-            };
-            draftVersion: number;
-            /** Format: uuid */
-            id: string;
-            name: string;
-            sortOrder: number;
-            /** Format: uuid */
-            sourceTemplateVersionId?: string | null;
-            /** @enum {string} */
-            status: "ACTIVE" | "ARCHIVED";
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        DashboardLeaderboardDataDto: {
-            items: components["schemas"]["DashboardLeaderboardRowDto"][];
-        };
-        DashboardLeaderboardRowDto: {
-            displayName: string;
-            /** Format: uuid */
-            memberId: string;
-            value: number;
-        };
-        DashboardLeaderboardWidgetDto: {
-            data: components["schemas"]["DashboardLeaderboardDataDto"];
-            description?: string;
-            id: string;
-            objectCode: string;
-            sortOrder: number;
-            /** @enum {string} */
-            state: "READY";
-            title: string;
-            /** @enum {string} */
-            type: "LEADERBOARD";
-            /** @enum {string} */
-            width: "QUARTER" | "HALF" | "FULL";
-        };
-        DashboardListItemDto: {
-            /** @enum {string} */
-            audience: "ALL" | "TENANT_ADMIN" | "EMPLOYEE";
-            code: string;
-            hasPublishedVersion: boolean;
-            /** Format: uuid */
-            id: string;
-            isDefaultAdmin: boolean;
-            isDefaultEmployee: boolean;
-            name: string;
-            sortOrder: number;
-            /** @enum {string} */
-            status: "ACTIVE" | "ARCHIVED";
-        };
-        DashboardMetricDataDto: {
-            /** @enum {string} */
-            format?: "NUMBER" | "MONEY" | "PERCENT";
-            value: number | null;
-        };
-        DashboardMetricWidgetDto: {
-            data: components["schemas"]["DashboardMetricDataDto"];
-            description?: string;
-            id: string;
-            objectCode: string;
-            sortOrder: number;
-            /** @enum {string} */
-            state: "READY";
-            title: string;
-            /** @enum {string} */
-            type: "METRIC";
-            /** @enum {string} */
-            width: "QUARTER" | "HALF" | "FULL";
-        };
-        DashboardOverviewDto: {
-            period: components["schemas"]["DashboardPeriodDto"];
-            publication?: components["schemas"]["DashboardPublicationSummaryDto"];
-            /** @enum {string} */
-            role: "TENANT_ADMIN" | "EMPLOYEE";
-            /** @enum {string} */
-            state: "READY" | "UNCONFIGURED";
-            title: string;
-            widgets: (components["schemas"]["DashboardMetricWidgetDto"] | components["schemas"]["DashboardDistributionWidgetDto"] | components["schemas"]["DashboardTrendWidgetDto"] | components["schemas"]["DashboardLeaderboardWidgetDto"] | components["schemas"]["DashboardRecordListWidgetDto"] | components["schemas"]["DashboardUnavailableWidgetDto"])[];
-        };
-        DashboardPeriodDto: {
-            /** Format: date-time */
-            from: string;
-            timezone: string;
-            /** Format: date-time */
-            to: string;
-        };
-        DashboardPeriodInputDto: {
-            /** Format: date-time */
-            from: string;
-            /** Format: date-time */
-            to: string;
-        };
-        DashboardPublicationSummaryDto: {
-            /** Format: uuid */
-            id: string;
-            number: number;
-            /** Format: date-time */
-            publishedAt: string;
-            sourceDraftVersion: number;
-        };
-        DashboardPublishedFieldDto: {
-            fieldKey: string;
-            label: string;
-            /** @enum {string} */
-            type: "TEXT" | "TEXTAREA" | "PHONE" | "EMAIL" | "NUMBER" | "MONEY" | "DATE" | "DATETIME" | "SINGLE_SELECT" | "MULTI_SELECT" | "MEMBER" | "BOOLEAN";
-        };
-        DashboardRecordListDataDto: {
-            fields: components["schemas"]["DashboardPublishedFieldDto"][];
-            items: components["schemas"]["DashboardRecordListRowDto"][];
-        };
-        DashboardRecordListRowDto: {
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            ownerMemberId: string | null;
-            ownerName: string | null;
-            recordNo: string;
-            title: string;
-            /** Format: date-time */
-            updatedAt: string;
-            values: {
-                [key: string]: unknown;
-            };
-        };
-        DashboardRecordListWidgetDto: {
-            data: components["schemas"]["DashboardRecordListDataDto"];
-            description?: string;
-            id: string;
-            objectCode: string;
-            sortOrder: number;
-            /** @enum {string} */
-            state: "READY";
-            title: string;
-            /** @enum {string} */
-            type: "RECORD_LIST";
-            /** @enum {string} */
-            width: "QUARTER" | "HALF" | "FULL";
-        };
-        DashboardRuntimeDto: {
-            period: components["schemas"]["DashboardPeriodDto"];
-            title: string;
-            widgets: (components["schemas"]["DashboardMetricWidgetDto"] | components["schemas"]["DashboardDistributionWidgetDto"] | components["schemas"]["DashboardTrendWidgetDto"] | components["schemas"]["DashboardLeaderboardWidgetDto"] | components["schemas"]["DashboardRecordListWidgetDto"] | components["schemas"]["DashboardUnavailableWidgetDto"])[];
-        };
-        DashboardTrendDataDto: {
-            items: components["schemas"]["DashboardTrendPointDto"][];
-        };
-        DashboardTrendPointDto: {
-            date: string;
-            value: number;
-        };
-        DashboardTrendWidgetDto: {
-            data: components["schemas"]["DashboardTrendDataDto"];
-            description?: string;
-            id: string;
-            objectCode: string;
-            sortOrder: number;
-            /** @enum {string} */
-            state: "READY";
-            title: string;
-            /** @enum {string} */
-            type: "TREND";
-            /** @enum {string} */
-            width: "QUARTER" | "HALF" | "FULL";
-        };
-        DashboardUnavailableWidgetDto: {
-            description?: string;
-            id: string;
-            objectCode: string;
-            /** @enum {string} */
-            reason?: "AUDIENCE_EXCLUDED" | "OBJECT_UNAVAILABLE" | "OBJECT_ACCESS_DENIED" | "FIELD_HIDDEN" | "QUERY_FAILED";
-            sortOrder: number;
-            /** @enum {string} */
-            state: "UNAVAILABLE";
-            title: string;
-            /** @enum {string} */
-            type: "METRIC" | "STATUS_DISTRIBUTION" | "TREND" | "LEADERBOARD" | "RECORD_LIST";
-            /** @enum {string} */
-            width: "QUARTER" | "HALF" | "FULL";
-        };
-        DefaultViewDto: {
-            columnFieldKeys: string[];
-            expectedVersion: number;
-            name: string;
-            sort: components["schemas"]["DefaultViewSortDto"];
-        };
-        DefaultViewSortDto: {
-            /** @enum {string} */
-            direction: "asc" | "desc";
-            /** @enum {string} */
-            field: "updatedAt" | "createdAt" | "recordNo";
-        };
-        DeleteRecordDto: {
-            version: number;
-        };
-        DeleteRecordResponseDto: {
-            /** @enum {boolean} */
-            accepted: true;
-        };
-        EmployeePermissionsDto: {
-            canCreate: boolean;
-            /** @enum {boolean} */
-            canDelete: false;
-            canRead: boolean;
-            canUpdate: boolean;
-            expectedVersion: number;
-            fields: {
-                [key: string]: "EDIT" | "READ_ONLY" | "HIDDEN";
-            };
-            /** @enum {string} */
-            readScope: "ALL" | "OWN" | "NONE";
-            /** @enum {string} */
-            updateScope: "ALL" | "OWN" | "NONE";
-        };
-        ExpectedTemplateVersionDto: {
-            expectedVersion: number;
-        };
-        ExpectedVersionDto: {
-            expectedVersion: number;
-        };
-        FieldConfigDto: {
-            help?: string;
-            options?: components["schemas"]["SelectOptionDto"][];
-            placeholder?: string;
-        };
-        FieldOrderDto: {
-            expectedVersion: number;
-            fieldIds: string[];
-        };
-        FieldValidationDto: {
-            country?: string;
-            max?: number;
-            maxLength?: number;
-            min?: number;
-            minLength?: number;
-            scale?: number;
-        };
-        FirstAdminInvitationResponseDto: {
-            /** Format: date-time */
-            expiresAt: string;
-            /** Format: uuid */
-            id: string;
-            /** @enum {string} */
-            role: "TENANT_ADMIN";
-            /** @enum {string} */
-            status: "PENDING" | "ACCEPTED" | "DECLINED" | "REVOKED" | "EXPIRED";
-            /** @example +8613800138000 */
-            targetPhone: string;
-        };
-        ForgotPasswordDto: {
-            deviceKey: string;
-            /** @example 13800138000 */
-            phone: string;
-        };
-        InvitationActionResponseDto: {
-            /** @example true */
-            accepted: boolean;
-        };
-        InvitationMembershipResponseDto: {
-            /** Format: uuid */
-            id: string;
-            /** @enum {string} */
-            role: "TENANT_ADMIN" | "EMPLOYEE";
-            /** @enum {string} */
-            status: "ACTIVE" | "DISABLED";
-            /** Format: uuid */
-            tenantId: string;
-            /** Format: uuid */
-            userId: string;
-        };
-        InvitationPageResponseDto: {
-            items: components["schemas"]["TenantInvitationResponseDto"][];
-            /** Format: uuid */
-            nextCursor?: string;
-        };
-        InvitationResentResponseDto: {
-            /** @example true */
-            accepted: boolean;
-            /** Format: date-time */
-            expiresAt: string;
-        };
-        LoginDto: {
-            deviceKey: string;
-            deviceSummary: string;
-            /** Format: password */
-            password: string;
-            /** @example 13800138000 */
-            phone: string;
-        };
-        MemberObjectAccessDto: {
-            canCreate?: boolean;
-            canRead?: boolean;
-            canUpdate?: boolean;
-            /** @enum {string} */
-            mode: "INHERIT" | "OVERRIDE";
-            /** @enum {string} */
-            readScope?: "ALL" | "OWN" | "NONE";
-            /** @enum {string} */
-            updateScope?: "ALL" | "OWN" | "NONE";
-        };
-        MemberObjectAccessResponseDto: {
-            effective: components["schemas"]["MemberObjectPolicyResponseDto"];
-            inherited: components["schemas"]["MemberObjectPolicyResponseDto"];
-            /** @enum {string} */
-            mode: "INHERIT" | "OVERRIDE";
-            objectCode: string;
-            /** Format: uuid */
-            objectId: string;
-            objectName: string;
-            override: components["schemas"]["MemberObjectPolicyResponseDto"] | null;
-        };
-        MemberObjectPolicyResponseDto: {
-            canCreate: boolean;
-            /** @enum {boolean} */
-            canDelete: false;
-            canRead: boolean;
-            canUpdate: boolean;
-            /** @enum {string} */
-            readScope: "ALL" | "OWN" | "NONE";
-            /** @enum {string} */
-            updateScope: "ALL" | "OWN" | "NONE";
-        };
-        MembershipActionResponseDto: {
-            /** @example true */
-            accepted: boolean;
-        };
-        ObjectDraftDefaultViewResponseDto: {
-            columnFieldKeys: string[];
-            name: string;
-            sort: components["schemas"]["DefaultViewSortDto"];
-        };
-        ObjectDraftEmployeeAccessResponseDto: {
-            canCreate: boolean;
-            /** @enum {boolean} */
-            canDelete: false;
-            canRead: boolean;
-            canUpdate: boolean;
-            /** @enum {string} */
-            readScope: "ALL" | "OWN" | "NONE";
-            /** @enum {string} */
-            updateScope: "ALL" | "OWN" | "NONE";
-        };
-        ObjectDraftFieldResponseDto: {
-            config: {
-                [key: string]: unknown;
-            };
-            defaultValue: (string | number | boolean | unknown[] | {
-                [key: string]: unknown;
-            }) | null;
-            /** @enum {string} */
-            employeeAccess: "EDIT" | "READ_ONLY" | "HIDDEN";
-            fieldKey: string;
-            /** Format: uuid */
-            id: string;
-            isSystem: boolean;
-            label: string;
-            /** @enum {string|null} */
-            publishedType: "TEXT" | "TEXTAREA" | "PHONE" | "EMAIL" | "NUMBER" | "MONEY" | "DATE" | "DATETIME" | "SINGLE_SELECT" | "MULTI_SELECT" | "MEMBER" | "BOOLEAN" | null;
-            required: boolean;
-            sortOrder: number;
-            /** @enum {string} */
-            status: "ACTIVE" | "INACTIVE";
-            /** @enum {string} */
-            type: "TEXT" | "TEXTAREA" | "PHONE" | "EMAIL" | "NUMBER" | "MONEY" | "DATE" | "DATETIME" | "SINGLE_SELECT" | "MULTI_SELECT" | "MEMBER" | "BOOLEAN";
-            validation: {
-                [key: string]: unknown;
-            };
-        };
-        ObjectDraftObjectResponseDto: {
-            code: string;
-            description: string | null;
-            hasUnpublishedChanges: boolean;
-            icon: string | null;
-            /** Format: uuid */
-            id: string;
-            name: string;
-            publicationNumber: number | null;
-            /** Format: date-time */
-            publishedAt: string | null;
-            sortOrder: number;
-            /** @enum {string} */
-            status: "DRAFT" | "ACTIVE" | "ARCHIVED";
-            titleFieldKey: string;
-            /** Format: date-time */
-            updatedAt: string | null;
-            version: number;
-        };
-        ObjectDraftResponseDto: {
-            activeRecordCount: number;
-            defaultView: components["schemas"]["ObjectDraftDefaultViewResponseDto"] | null;
-            employeeAccess: components["schemas"]["ObjectDraftEmployeeAccessResponseDto"] | null;
-            fields: components["schemas"]["ObjectDraftFieldResponseDto"][];
-            object: components["schemas"]["ObjectDraftObjectResponseDto"];
-        };
-        ObjectOrderDto: {
-            items: components["schemas"]["ObjectOrderItemDto"][];
-        };
-        ObjectOrderItemDto: {
-            expectedVersion: number;
-            /** Format: uuid */
-            objectId: string;
-        };
-        ObjectPublicationResponseDto: {
-            changes: components["schemas"]["PublicationChangeResponseDto"][];
-            /** Format: uuid */
-            id: string;
-            number: number;
-            /** Format: date-time */
-            publishedAt: string;
-            sourceDraftVersion: number;
-        };
-        PersonalInvitationResponseDto: {
-            /** Format: uuid */
-            acceptedByUserId?: string;
-            /** Format: date-time */
-            expiresAt: string;
-            /** Format: uuid */
-            id: string;
-            /** @enum {string} */
-            role: "TENANT_ADMIN" | "EMPLOYEE";
-            /** @enum {string} */
-            status: "PENDING" | "ACCEPTED" | "DECLINED" | "REVOKED" | "EXPIRED";
-            /** @example +8613800138000 */
-            targetPhone: string;
-            /** Format: uuid */
-            targetUserId?: string;
-            tenantCode?: string;
-            /** Format: uuid */
-            tenantId: string;
-            tenantName?: string;
-        };
-        PlatformAuditItemDto: {
-            action: string;
-            /** Format: uuid */
-            actorId?: string | null;
-            actorName?: string | null;
-            /** @enum {string} */
-            actorType: "USER" | "SYSTEM" | "INTEGRATION";
-            after?: {
-                [key: string]: unknown;
-            } | null;
-            before?: {
-                [key: string]: unknown;
-            } | null;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: uuid */
-            id: string;
-            ip?: string | null;
-            reason?: string | null;
-            requestId: string;
-            /** Format: uuid */
-            resourceId?: string | null;
-            resourceType: string;
-            /** Format: uuid */
-            tenantId?: string | null;
-            tenantName?: string | null;
-        };
-        PlatformAuditPageDto: {
-            items: components["schemas"]["PlatformAuditItemDto"][];
-            limit: number;
-            page: number;
-            total: number;
-        };
-        PlatformOperationItemDto: {
-            /** Format: date-time */
-            appliedAt: string;
-            appliedByName: string;
-            /** Format: uuid */
-            appliedByUserId: string;
-            /** Format: uuid */
-            id: string;
-            /** @enum {string} */
-            kind: "TEMPLATE_APPLICATION";
-            objectCount: number;
-            /** @enum {string} */
-            status: "SUCCEEDED";
-            /** Format: uuid */
-            templateId: string;
-            templateName: string;
-            templateVersionNo: number;
-            tenantCode: string;
-            /** Format: uuid */
-            tenantId: string;
-            tenantName: string;
-        };
-        PlatformOperationPageDto: {
-            items: components["schemas"]["PlatformOperationItemDto"][];
-            limit: number;
-            page: number;
-            total: number;
-        };
-        PlatformTenantPageResponseDto: {
-            items: components["schemas"]["PlatformTenantResponseDto"][];
-            limit: number;
-            page: number;
-            total: number;
-        };
-        PlatformTenantResponseDto: {
-            /** Format: date-time */
-            activatedAt?: string;
-            activeAdminCount: number;
-            code: string;
-            /** Format: date-time */
-            createdAt?: string;
-            firstAdminInvitation?: components["schemas"]["FirstAdminInvitationResponseDto"];
-            /** Format: uuid */
-            id: string;
-            locale?: string;
-            name: string;
-            /** @enum {string} */
-            status: "DRAFT" | "ACTIVE" | "SUSPENDED" | "CLOSED";
-            timezone?: string;
-            /** Format: date-time */
-            updatedAt?: string;
-        };
-        PlatformTenantSummaryDto: {
-            active: number;
-            closed: number;
-            draft: number;
-            suspended: number;
-            total: number;
-        };
-        PreviewDashboardDto: {
-            expectedVersion: number;
-            period: components["schemas"]["DashboardPeriodInputDto"];
-        };
-        PublicationAnalysisResponseDto: {
-            blocking: components["schemas"]["PublicationIssueResponseDto"][];
-            changes: components["schemas"]["PublicationChangeResponseDto"][];
-            warnings: components["schemas"]["PublicationIssueResponseDto"][];
-        };
-        PublicationChangeResponseDto: {
-            fieldKey: string;
-            /** @enum {string} */
-            kind: "ADDED" | "UPDATED" | "INACTIVATED";
-        };
-        PublicationIssueResponseDto: {
-            code: string;
-            fieldKey?: string;
-            message: string;
-        };
-        PublishDashboardDto: {
-            expectedVersion: number;
-        };
-        PublishedFieldResponseDto: {
-            /** @enum {string} */
-            access: "EDIT" | "READ_ONLY";
-            config: {
-                [key: string]: unknown;
-            };
-            defaultValue: (string | number | boolean | unknown[] | {
-                [key: string]: unknown;
-            }) | null;
-            fieldKey: string;
-            id: string;
-            isSystem: boolean;
-            label: string;
-            required: boolean;
-            sortOrder: number;
-            /** @enum {string} */
-            type: "TEXT" | "TEXTAREA" | "PHONE" | "EMAIL" | "NUMBER" | "MONEY" | "DATE" | "DATETIME" | "SINGLE_SELECT" | "MULTI_SELECT" | "MEMBER" | "BOOLEAN";
-            validation: {
-                [key: string]: unknown;
-            };
-        };
-        PublishedObjectSchemaResponseDto: {
-            actions: {
-                [key: string]: unknown;
-            };
-            defaultView: {
-                [key: string]: unknown;
-            };
-            fields: components["schemas"]["PublishedFieldResponseDto"][];
-            object: {
-                [key: string]: unknown;
-            };
-            publication: {
-                [key: string]: unknown;
-            };
-            scopes: {
-                [key: string]: unknown;
-            };
-        };
-        RecordPageResponseDto: {
-            items: components["schemas"]["RecordResponseDto"][];
-            limit: number;
-            page: number;
-            total: number;
-        };
-        RecordResponseDto: {
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            ownerMemberId?: string | null;
-            recordNo: string;
-            title: string;
-            /** Format: date-time */
-            updatedAt: string;
-            values: {
-                [key: string]: unknown;
-            };
-            version: number;
-        };
-        RegisterDto: {
-            /** @example 123456 */
-            code: string;
-            deviceSummary: string;
-            displayName: string;
-            /** Format: password */
-            password: string;
-            /** @example 13800138000 */
-            phone: string;
-        };
-        ResetPasswordDto: {
-            /** @example 123456 */
-            code: string;
-            /** Format: password */
-            newPassword: string;
-            /** @example 13800138000 */
-            phone: string;
-        };
-        RuntimeObjectNavigationResponseDto: {
-            canCreate: boolean;
-            canRead: boolean;
-            canUpdate: boolean;
-            code: string;
-            icon?: string | null;
-            name: string;
-            sortOrder: number;
-        };
-        RuntimePoliciesDto: {
-            sessionHistoryRetentionDays: number;
-            sessionTtlDays: number;
-            verificationRetentionDays: number;
-            verificationTtlMinutes: number;
-        };
-        RuntimeServiceStatusDto: {
-            detail: string;
-            /** @enum {string} */
-            key: "database" | "redis" | "sms" | "webOrigin";
-            label: string;
-            /** @enum {string} */
-            status: "READY" | "DEVELOPMENT" | "ACTION_REQUIRED";
-        };
-        RuntimeStatusDto: {
-            environment: string;
-            policies: components["schemas"]["RuntimePoliciesDto"];
-            services: components["schemas"]["RuntimeServiceStatusDto"][];
-        };
-        SaveBusinessTemplateDraftDto: {
-            configuration: components["schemas"]["BusinessTemplateConfigurationDto"];
-            description: string | null;
-            expectedVersion: number;
-            name: string;
-        };
-        SaveDashboardConfigurationDto: {
-            configuration: {
-                [key: string]: unknown;
-            };
-            expectedVersion: number;
-        };
-        SelectOptionDto: {
-            /**
-             * @default GRAY
-             * @enum {string}
-             */
-            color: "GRAY" | "BLUE" | "CYAN" | "GREEN" | "YELLOW" | "ORANGE" | "RED" | "PURPLE";
-            key: string;
-            label: string;
-            /**
-             * @default ACTIVE
-             * @enum {string}
-             */
-            status: "ACTIVE" | "INACTIVE";
-        };
-        SessionPageResponseDto: {
-            items: components["schemas"]["SessionResponseDto"][];
-            limit: number;
-            page: number;
-            total: number;
-        };
-        SessionResponseDto: {
-            /** Format: date-time */
-            createdAt: string;
-            deviceSummary?: string;
-            /** Format: date-time */
-            expiresAt: string;
-            /** Format: uuid */
-            id: string;
-            ipSummary?: string;
-            isCurrent: boolean;
-            /** Format: date-time */
-            lastUsedAt?: string;
-            /** Format: date-time */
-            revokedAt?: string;
-        };
-        TemplateApplicationObjectResponseDto: {
-            code: string;
-            name: string;
-            /** Format: uuid */
-            objectId: string;
-            /** Format: uuid */
-            templateObjectId: string;
-        };
-        TemplateApplicationResponseDto: {
-            /** Format: date-time */
-            appliedAt: string;
-            /** Format: uuid */
-            appliedByUserId: string;
-            configurationChecksum: string;
-            /** Format: uuid */
-            id: string;
-            objects: components["schemas"]["TemplateApplicationObjectResponseDto"][];
-            templateCode: string;
-            /** Format: uuid */
-            templateId: string;
-            templateName: string;
-            /** Format: uuid */
-            templateVersionId: string;
-            templateVersionNo: number;
-            tenantCode: string;
-            /** Format: uuid */
-            tenantId: string;
-            tenantName: string;
-        };
-        TemplateDefaultViewDto: {
-            /** @enum {string} */
-            code: "default";
-            columnFieldKeys: string[];
-            name: string;
-            sort: components["schemas"]["TemplateDefaultViewSortDto"];
-        };
-        TemplateDefaultViewSortDto: {
-            /** @enum {string} */
-            direction: "asc" | "desc";
-            /** @enum {string} */
-            field: "updatedAt" | "createdAt" | "recordNo";
-        };
-        TemplateEmployeeAccessDto: {
-            canCreate: boolean;
-            /** @enum {boolean} */
-            canDelete: false;
-            canRead: boolean;
-            canUpdate: boolean;
-            fields: {
-                [key: string]: "EDIT" | "READ_ONLY" | "HIDDEN";
-            };
-            /** @enum {string} */
-            readScope: "ALL" | "OWN" | "NONE";
-            /** @enum {string} */
-            updateScope: "ALL" | "OWN" | "NONE";
-        };
-        TemplateFieldDraftDto: {
-            config: components["schemas"]["FieldConfigDto"];
-            defaultValue: (string | number | boolean | unknown[] | {
-                [key: string]: unknown;
-            }) | null;
-            fieldKey: string;
-            /** Format: uuid */
-            id: string;
-            isSystem: boolean;
-            label: string;
-            required: boolean;
-            sortOrder: number;
-            /** @enum {string} */
-            status: "ACTIVE" | "INACTIVE";
-            /** @enum {string} */
-            type: "TEXT" | "TEXTAREA" | "PHONE" | "EMAIL" | "NUMBER" | "MONEY" | "DATE" | "DATETIME" | "SINGLE_SELECT" | "MULTI_SELECT" | "MEMBER" | "BOOLEAN";
-            validation: components["schemas"]["FieldValidationDto"];
-        };
-        TemplateFieldResponseDto: {
-            config: components["schemas"]["FieldConfigDto"];
-            defaultValue: (string | number | boolean | unknown[] | {
-                [key: string]: unknown;
-            }) | null;
-            fieldKey: string;
-            /** Format: uuid */
-            id: string;
-            isSystem: boolean;
-            label: string;
-            publishedFieldKey: string | null;
-            /** @enum {string|null} */
-            publishedType: "TEXT" | "TEXTAREA" | "PHONE" | "EMAIL" | "NUMBER" | "MONEY" | "DATE" | "DATETIME" | "SINGLE_SELECT" | "MULTI_SELECT" | "MEMBER" | "BOOLEAN" | null;
-            required: boolean;
-            sortOrder: number;
-            /** @enum {string} */
-            status: "ACTIVE" | "INACTIVE";
-            /** @enum {string} */
-            type: "TEXT" | "TEXTAREA" | "PHONE" | "EMAIL" | "NUMBER" | "MONEY" | "DATE" | "DATETIME" | "SINGLE_SELECT" | "MULTI_SELECT" | "MEMBER" | "BOOLEAN";
-            validation: components["schemas"]["FieldValidationDto"];
-        };
-        TemplateObjectDraftDto: {
-            code: string;
-            defaultView: components["schemas"]["TemplateDefaultViewDto"] | null;
-            description: string | null;
-            employeeAccess: components["schemas"]["TemplateEmployeeAccessDto"] | null;
-            fields: components["schemas"]["TemplateFieldDraftDto"][];
-            icon: string | null;
-            /** Format: uuid */
-            id: string;
-            name: string;
-            sortOrder: number;
-            /** @enum {string} */
-            status: "ACTIVE" | "INACTIVE";
-            titleFieldKey: string;
-        };
-        TemplateObjectResponseDto: {
-            code: string;
-            defaultView: components["schemas"]["TemplateDefaultViewDto"] | null;
-            description: string | null;
-            employeeAccess: components["schemas"]["TemplateEmployeeAccessDto"] | null;
-            fields: components["schemas"]["TemplateFieldResponseDto"][];
-            icon: string | null;
-            /** Format: uuid */
-            id: string;
-            name: string;
-            publishedCode: string | null;
-            sortOrder: number;
-            /** @enum {string} */
-            status: "ACTIVE" | "INACTIVE";
-            titleFieldKey: string;
-        };
-        TemplatePublicationAnalysisResponseDto: {
-            blocking: components["schemas"]["TemplatePublicationIssueResponseDto"][];
-            changes: components["schemas"]["TemplatePublicationChangeResponseDto"][];
-            fieldCount: number;
-            objectCount: number;
-            warnings: components["schemas"]["TemplatePublicationIssueResponseDto"][];
-        };
-        TemplatePublicationChangeResponseDto: {
-            /** @enum {string} */
-            entity: "OBJECT" | "FIELD";
-            fieldKey?: string;
-            /** @enum {string} */
-            kind: "ADDED" | "UPDATED" | "INACTIVATED";
-            /** Format: uuid */
-            objectId: string;
-        };
-        TemplatePublicationIssueResponseDto: {
-            code: string;
-            fieldKey?: string;
-            message: string;
-            objectId: string;
-            path?: string;
-        };
-        TenantBusinessConfigurationSummaryResponseDto: {
-            application: components["schemas"]["TemplateApplicationResponseDto"] | null;
-            /** @enum {string|null} */
-            blockingReason: "TENANT_NOT_DRAFT" | "TARGET_NOT_EMPTY" | null;
-            canApplyTemplate: boolean;
-            objectCount: number;
-        };
-        TenantInvitationResponseDto: {
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            expiresAt: string;
-            /** Format: uuid */
-            id: string;
-            /** @enum {string} */
-            role: "TENANT_ADMIN" | "EMPLOYEE";
-            /** @enum {string} */
-            status: "PENDING" | "ACCEPTED" | "DECLINED" | "REVOKED" | "EXPIRED";
-            /** @example +8613800138000 */
-            targetPhone: string;
-            /** Format: uuid */
-            targetUserId?: string | null;
-        };
-        TenantMemberPageResponseDto: {
-            activeAdminCount: number;
-            items: components["schemas"]["TenantMemberResponseDto"][];
-            limit: number;
-            page: number;
-            total: number;
-        };
-        TenantMemberResponseDto: {
-            displayName?: string;
-            /** Format: uuid */
-            id: string;
-            /** @example +8613800138000 */
-            phone?: string;
-            /** @enum {string} */
-            role: "TENANT_ADMIN" | "EMPLOYEE";
-            /** @enum {string} */
-            status: "ACTIVE" | "DISABLED";
-            /** Format: uuid */
-            tenantId: string;
-            /** Format: uuid */
-            userId: string;
-        };
-        UpdateDashboardDto: {
-            /** @enum {string} */
-            audience?: "ALL" | "TENANT_ADMIN" | "EMPLOYEE";
-            name?: string;
-            /** @enum {string} */
-            status?: "ACTIVE" | "ARCHIVED";
-        };
-        UpdateFieldDefinitionDto: {
-            config?: components["schemas"]["FieldConfigDto"];
-            defaultValue?: (string | number | boolean | unknown[] | {
-                [key: string]: unknown;
-            }) | null;
-            expectedVersion: number;
-            fieldKey?: string;
-            label?: string;
-            required?: boolean;
-            /** @enum {string} */
-            status?: "ACTIVE" | "INACTIVE";
-            /** @enum {string} */
-            type?: "TEXT" | "TEXTAREA" | "PHONE" | "EMAIL" | "NUMBER" | "MONEY" | "DATE" | "DATETIME" | "SINGLE_SELECT" | "MULTI_SELECT" | "MEMBER" | "BOOLEAN";
-            validation?: components["schemas"]["FieldValidationDto"];
-        };
-        UpdateObjectDefinitionDto: {
-            code?: string;
-            description?: string | null;
-            expectedVersion: number;
-            icon?: string | null;
-            name?: string;
-            titleFieldKey?: string;
-        };
-        UpdateRecordDto: {
-            /** Format: uuid */
-            ownerMemberId?: string | null;
-            values?: {
-                [key: string]: unknown;
-            };
-            version: number;
-        };
-        UserResponseDto: {
-            displayName: string;
-            /** Format: uuid */
-            id: string;
-            isPlatformAdmin: boolean;
-            /** @example +8613800138000 */
-            phone: string;
-        };
-        VerificationChallengeDto: {
-            /** @description 浏览器生成并持久化的非敏感设备标识 */
-            deviceKey: string;
-            /** @example 13800138000 */
-            phone: string;
-            /** @enum {string} */
-            purpose: "REGISTER" | "RESET_PASSWORD";
-        };
-        WorkspaceSummaryResponseDto: {
-            /** Format: uuid */
-            memberId: string;
-            /** @enum {string} */
-            memberStatus: "ACTIVE" | "DISABLED";
-            /** @enum {string} */
-            role: "TENANT_ADMIN" | "EMPLOYEE";
-            tenantCode: string;
-            /** Format: uuid */
-            tenantId: string;
-            tenantName: string;
-            /** @enum {string} */
-            tenantStatus: "DRAFT" | "ACTIVE" | "SUSPENDED" | "CLOSED";
-        };
+  schemas: {
+    AcceptedResponseDto: {
+      /** @example true */
+      accepted: boolean;
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    ApiErrorResponseDto: {
+      code: string;
+      fieldErrors: {
+        [key: string]: string[];
+      };
+      message: string;
+      requestId: string;
+      status: number;
+    };
+    ApplyBusinessTemplateDto: {
+      /** Format: uuid */
+      templateVersionId: string;
+      /** Format: uuid */
+      tenantId: string;
+    };
+    AuthenticatedResponseDto: {
+      /** @example true */
+      accepted: boolean;
+      user: components["schemas"]["UserResponseDto"];
+    };
+    BusinessTemplateActiveVersionResponseDto: {
+      /** Format: uuid */
+      id: string;
+      /** Format: date-time */
+      publishedAt: string;
+      sourceDraftVersion: number;
+      versionNo: number;
+    };
+    BusinessTemplateConfigurationDto: {
+      dashboard?: {
+        [key: string]: unknown;
+      };
+      objects: components["schemas"]["TemplateObjectDraftDto"][];
+      /** @enum {number} */
+      schemaVersion: 1;
+    };
+    BusinessTemplateConfigurationResponseDto: {
+      dashboard?: {
+        [key: string]: unknown;
+      };
+      objects: components["schemas"]["TemplateObjectResponseDto"][];
+      /** @enum {number} */
+      schemaVersion: 1;
+    };
+    BusinessTemplateDetailResponseDto: {
+      activeVersion:
+        | components["schemas"]["BusinessTemplateActiveVersionResponseDto"]
+        | null;
+      applicationCount: number;
+      code: string;
+      configuration: components["schemas"]["BusinessTemplateConfigurationResponseDto"];
+      /** Format: date-time */
+      createdAt: string;
+      description: string | null;
+      draftVersion: number;
+      fieldCount: number;
+      hasUnpublishedChanges: boolean;
+      /** Format: uuid */
+      id: string;
+      name: string;
+      objectCount: number;
+      /** Format: date-time */
+      publishedAt: string | null;
+      /** @enum {string} */
+      status: "DRAFT" | "PUBLISHED" | "CHANGED" | "ARCHIVED";
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    BusinessTemplatePageResponseDto: {
+      items: components["schemas"]["BusinessTemplateSummaryResponseDto"][];
+      limit: number;
+      page: number;
+      total: number;
+    };
+    BusinessTemplateSummaryResponseDto: {
+      activeVersion:
+        | components["schemas"]["BusinessTemplateActiveVersionResponseDto"]
+        | null;
+      applicationCount: number;
+      code: string;
+      /** Format: date-time */
+      createdAt: string;
+      description: string | null;
+      draftVersion: number;
+      fieldCount: number;
+      hasUnpublishedChanges: boolean;
+      /** Format: uuid */
+      id: string;
+      name: string;
+      objectCount: number;
+      /** Format: date-time */
+      publishedAt: string | null;
+      /** @enum {string} */
+      status: "DRAFT" | "PUBLISHED" | "CHANGED" | "ARCHIVED";
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    BusinessTemplateVersionResponseDto: {
+      changeSummary: components["schemas"]["TemplatePublicationChangeResponseDto"][];
+      configuration: components["schemas"]["BusinessTemplateConfigurationDto"];
+      configurationChecksum: string;
+      /** Format: uuid */
+      id: string;
+      /** Format: date-time */
+      publishedAt: string;
+      /** Format: uuid */
+      publishedByUserId: string;
+      /** @enum {number} */
+      schemaVersion: 1;
+      sourceDraftVersion: number;
+      /** Format: uuid */
+      templateId: string;
+      versionNo: number;
+    };
+    ChangeMemberStatusDto: {
+      /** @enum {string} */
+      status: "ACTIVE" | "DISABLED";
+    };
+    ChangePasswordDto: {
+      /** Format: password */
+      currentPassword: string;
+      /** Format: password */
+      newPassword: string;
+    };
+    ChangeTenantStatusDto: {
+      reason?: string;
+      /** @enum {string} */
+      status: "DRAFT" | "ACTIVE" | "SUSPENDED" | "CLOSED";
+    };
+    CreateBusinessTemplateDto: {
+      code: string;
+      description?: string | null;
+      name: string;
+    };
+    CreateDashboardDto: {
+      /** @enum {string} */
+      audience?: "ALL" | "TENANT_ADMIN" | "EMPLOYEE";
+      copyFrom?: string;
+      name: string;
+    };
+    CreatedInvitationResponseDto: {
+      /** Format: uuid */
+      id: string;
+      /** @enum {string} */
+      status: "PENDING";
+    };
+    CreateFieldDefinitionDto: {
+      config?: components["schemas"]["FieldConfigDto"];
+      defaultValue?:
+        | (
+            | string
+            | number
+            | boolean
+            | unknown[]
+            | {
+                [key: string]: unknown;
+              }
+          )
+        | null;
+      expectedVersion: number;
+      /** @example customer_name */
+      fieldKey: string;
+      /** @default false */
+      isSystem: boolean;
+      label: string;
+      required: boolean;
+      /** @enum {string} */
+      type:
+        | "TEXT"
+        | "TEXTAREA"
+        | "PHONE"
+        | "EMAIL"
+        | "NUMBER"
+        | "MONEY"
+        | "DATE"
+        | "DATETIME"
+        | "SINGLE_SELECT"
+        | "MULTI_SELECT"
+        | "MEMBER"
+        | "BOOLEAN";
+      validation?: components["schemas"]["FieldValidationDto"];
+    };
+    CreateInvitationDto: {
+      /** @example 13800138000 */
+      phone: string;
+      /** @enum {string} */
+      role: "TENANT_ADMIN" | "EMPLOYEE";
+    };
+    CreateObjectDefinitionDto: {
+      /** @example leads */
+      code: string;
+      icon?: string | null;
+      /** @example 销售线索 */
+      name: string;
+    };
+    CreatePlatformTenantDto: {
+      code: string;
+      /** @example 13800138000 */
+      firstAdminPhone: string;
+      name: string;
+    };
+    CreateRecordDto: {
+      /** Format: uuid */
+      ownerMemberId?: string | null;
+      values: {
+        [key: string]: unknown;
+      };
+    };
+    DashboardConfigurationEnvelopeDto: {
+      activePublication?:
+        components["schemas"]["DashboardPublicationSummaryDto"] | null;
+      candidates: Record<string, never>[];
+      dashboard?: components["schemas"]["DashboardListItemDto"] | null;
+      dashboards: components["schemas"]["DashboardListItemDto"][];
+      draft?: components["schemas"]["DashboardDraftDto"] | null;
+      issues: components["schemas"]["DashboardConfigurationIssueDto"][];
+      timezone: string;
+    };
+    DashboardConfigurationIssueDto: {
+      code: string;
+      message: string;
+      path: string;
+    };
+    DashboardDefaultsDto: {
+      adminDashboardCode?: string;
+      employeeDashboardCode?: string;
+    };
+    DashboardDistributionDataDto: {
+      /** @enum {string} */
+      display: "FUNNEL" | "BAR" | "DONUT";
+      items: components["schemas"]["DashboardDistributionPointDto"][];
+    };
+    DashboardDistributionPointDto: {
+      color: string;
+      label: string;
+      optionKey: string;
+      value: number;
+    };
+    DashboardDistributionWidgetDto: {
+      data: components["schemas"]["DashboardDistributionDataDto"];
+      description?: string;
+      id: string;
+      objectCode: string;
+      sortOrder: number;
+      /** @enum {string} */
+      state: "READY";
+      title: string;
+      /** @enum {string} */
+      type: "STATUS_DISTRIBUTION";
+      /** @enum {string} */
+      width: "QUARTER" | "HALF" | "FULL";
+    };
+    DashboardDraftDto: {
+      /** Format: uuid */
+      activePublicationId?: string | null;
+      /** @enum {string} */
+      audience: "ALL" | "TENANT_ADMIN" | "EMPLOYEE";
+      code: string;
+      draftConfiguration: {
+        [key: string]: unknown;
+      };
+      draftVersion: number;
+      /** Format: uuid */
+      id: string;
+      name: string;
+      sortOrder: number;
+      /** Format: uuid */
+      sourceTemplateVersionId?: string | null;
+      /** @enum {string} */
+      status: "ACTIVE" | "ARCHIVED";
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    DashboardLeaderboardDataDto: {
+      items: components["schemas"]["DashboardLeaderboardRowDto"][];
+    };
+    DashboardLeaderboardRowDto: {
+      displayName: string;
+      /** Format: uuid */
+      memberId: string;
+      value: number;
+    };
+    DashboardLeaderboardWidgetDto: {
+      data: components["schemas"]["DashboardLeaderboardDataDto"];
+      description?: string;
+      id: string;
+      objectCode: string;
+      sortOrder: number;
+      /** @enum {string} */
+      state: "READY";
+      title: string;
+      /** @enum {string} */
+      type: "LEADERBOARD";
+      /** @enum {string} */
+      width: "QUARTER" | "HALF" | "FULL";
+    };
+    DashboardListItemDto: {
+      /** @enum {string} */
+      audience: "ALL" | "TENANT_ADMIN" | "EMPLOYEE";
+      code: string;
+      hasPublishedVersion: boolean;
+      /** Format: uuid */
+      id: string;
+      isDefaultAdmin: boolean;
+      isDefaultEmployee: boolean;
+      name: string;
+      sortOrder: number;
+      /** @enum {string} */
+      status: "ACTIVE" | "ARCHIVED";
+    };
+    DashboardMetricDataDto: {
+      /** @enum {string} */
+      format?: "NUMBER" | "MONEY" | "PERCENT";
+      value: number | null;
+    };
+    DashboardMetricWidgetDto: {
+      data: components["schemas"]["DashboardMetricDataDto"];
+      description?: string;
+      id: string;
+      objectCode: string;
+      sortOrder: number;
+      /** @enum {string} */
+      state: "READY";
+      title: string;
+      /** @enum {string} */
+      type: "METRIC";
+      /** @enum {string} */
+      width: "QUARTER" | "HALF" | "FULL";
+    };
+    DashboardOverviewDto: {
+      dashboardCode?: string;
+      period: components["schemas"]["DashboardPeriodDto"];
+      publication?: components["schemas"]["DashboardPublicationSummaryDto"];
+      /** @enum {string} */
+      role: "TENANT_ADMIN" | "EMPLOYEE";
+      /** @enum {string} */
+      state: "READY" | "UNCONFIGURED";
+      title: string;
+      widgets: (
+        | components["schemas"]["DashboardMetricWidgetDto"]
+        | components["schemas"]["DashboardDistributionWidgetDto"]
+        | components["schemas"]["DashboardTrendWidgetDto"]
+        | components["schemas"]["DashboardLeaderboardWidgetDto"]
+        | components["schemas"]["DashboardRecordListWidgetDto"]
+        | components["schemas"]["DashboardUnavailableWidgetDto"]
+      )[];
+    };
+    DashboardPeriodDto: {
+      /** Format: date-time */
+      from: string;
+      timezone: string;
+      /** Format: date-time */
+      to: string;
+    };
+    DashboardPeriodInputDto: {
+      /** Format: date-time */
+      from: string;
+      /** Format: date-time */
+      to: string;
+    };
+    DashboardPublicationSummaryDto: {
+      /** Format: uuid */
+      id: string;
+      number: number;
+      /** Format: date-time */
+      publishedAt: string;
+      sourceDraftVersion: number;
+    };
+    DashboardPublishedFieldDto: {
+      fieldKey: string;
+      label: string;
+      /** @enum {string} */
+      type:
+        | "TEXT"
+        | "TEXTAREA"
+        | "PHONE"
+        | "EMAIL"
+        | "NUMBER"
+        | "MONEY"
+        | "DATE"
+        | "DATETIME"
+        | "SINGLE_SELECT"
+        | "MULTI_SELECT"
+        | "MEMBER"
+        | "BOOLEAN";
+    };
+    DashboardRecordListDataDto: {
+      fields: components["schemas"]["DashboardPublishedFieldDto"][];
+      items: components["schemas"]["DashboardRecordListRowDto"][];
+    };
+    DashboardRecordListRowDto: {
+      /** Format: uuid */
+      id: string;
+      /** Format: uuid */
+      ownerMemberId: string | null;
+      ownerName: string | null;
+      recordNo: string;
+      title: string;
+      /** Format: date-time */
+      updatedAt: string;
+      values: {
+        [key: string]: unknown;
+      };
+    };
+    DashboardRecordListWidgetDto: {
+      data: components["schemas"]["DashboardRecordListDataDto"];
+      description?: string;
+      id: string;
+      objectCode: string;
+      sortOrder: number;
+      /** @enum {string} */
+      state: "READY";
+      title: string;
+      /** @enum {string} */
+      type: "RECORD_LIST";
+      /** @enum {string} */
+      width: "QUARTER" | "HALF" | "FULL";
+    };
+    DashboardRuntimeDto: {
+      period: components["schemas"]["DashboardPeriodDto"];
+      title: string;
+      widgets: (
+        | components["schemas"]["DashboardMetricWidgetDto"]
+        | components["schemas"]["DashboardDistributionWidgetDto"]
+        | components["schemas"]["DashboardTrendWidgetDto"]
+        | components["schemas"]["DashboardLeaderboardWidgetDto"]
+        | components["schemas"]["DashboardRecordListWidgetDto"]
+        | components["schemas"]["DashboardUnavailableWidgetDto"]
+      )[];
+    };
+    DashboardTrendDataDto: {
+      items: components["schemas"]["DashboardTrendPointDto"][];
+    };
+    DashboardTrendPointDto: {
+      date: string;
+      value: number;
+    };
+    DashboardTrendWidgetDto: {
+      data: components["schemas"]["DashboardTrendDataDto"];
+      description?: string;
+      id: string;
+      objectCode: string;
+      sortOrder: number;
+      /** @enum {string} */
+      state: "READY";
+      title: string;
+      /** @enum {string} */
+      type: "TREND";
+      /** @enum {string} */
+      width: "QUARTER" | "HALF" | "FULL";
+    };
+    DashboardUnavailableWidgetDto: {
+      description?: string;
+      id: string;
+      objectCode: string;
+      /** @enum {string} */
+      reason?:
+        | "AUDIENCE_EXCLUDED"
+        | "OBJECT_UNAVAILABLE"
+        | "OBJECT_ACCESS_DENIED"
+        | "FIELD_HIDDEN"
+        | "QUERY_FAILED";
+      sortOrder: number;
+      /** @enum {string} */
+      state: "UNAVAILABLE";
+      title: string;
+      /** @enum {string} */
+      type:
+        | "METRIC"
+        | "STATUS_DISTRIBUTION"
+        | "TREND"
+        | "LEADERBOARD"
+        | "RECORD_LIST";
+      /** @enum {string} */
+      width: "QUARTER" | "HALF" | "FULL";
+    };
+    DefaultViewDto: {
+      columnFieldKeys: string[];
+      expectedVersion: number;
+      name: string;
+      sort: components["schemas"]["DefaultViewSortDto"];
+    };
+    DefaultViewSortDto: {
+      /** @enum {string} */
+      direction: "asc" | "desc";
+      /** @enum {string} */
+      field: "updatedAt" | "createdAt" | "recordNo";
+    };
+    DeleteRecordDto: {
+      version: number;
+    };
+    DeleteRecordResponseDto: {
+      /** @enum {boolean} */
+      accepted: true;
+    };
+    EmployeePermissionsDto: {
+      canCreate: boolean;
+      /** @enum {boolean} */
+      canDelete: false;
+      canRead: boolean;
+      canUpdate: boolean;
+      expectedVersion: number;
+      fields: {
+        [key: string]: "EDIT" | "READ_ONLY" | "HIDDEN";
+      };
+      /** @enum {string} */
+      readScope: "ALL" | "OWN" | "NONE";
+      /** @enum {string} */
+      updateScope: "ALL" | "OWN" | "NONE";
+    };
+    ExpectedTemplateVersionDto: {
+      expectedVersion: number;
+    };
+    ExpectedVersionDto: {
+      expectedVersion: number;
+    };
+    FieldConfigDto: {
+      help?: string;
+      options?: components["schemas"]["SelectOptionDto"][];
+      placeholder?: string;
+    };
+    FieldOrderDto: {
+      expectedVersion: number;
+      fieldIds: string[];
+    };
+    FieldValidationDto: {
+      country?: string;
+      max?: number;
+      maxLength?: number;
+      min?: number;
+      minLength?: number;
+      scale?: number;
+    };
+    FirstAdminInvitationResponseDto: {
+      /** Format: date-time */
+      expiresAt: string;
+      /** Format: uuid */
+      id: string;
+      /** @enum {string} */
+      role: "TENANT_ADMIN";
+      /** @enum {string} */
+      status: "PENDING" | "ACCEPTED" | "DECLINED" | "REVOKED" | "EXPIRED";
+      /** @example +8613800138000 */
+      targetPhone: string;
+    };
+    ForgotPasswordDto: {
+      deviceKey: string;
+      /** @example 13800138000 */
+      phone: string;
+    };
+    InvitationActionResponseDto: {
+      /** @example true */
+      accepted: boolean;
+    };
+    InvitationMembershipResponseDto: {
+      /** Format: uuid */
+      id: string;
+      /** @enum {string} */
+      role: "TENANT_ADMIN" | "EMPLOYEE";
+      /** @enum {string} */
+      status: "ACTIVE" | "DISABLED";
+      /** Format: uuid */
+      tenantId: string;
+      /** Format: uuid */
+      userId: string;
+    };
+    InvitationPageResponseDto: {
+      items: components["schemas"]["TenantInvitationResponseDto"][];
+      /** Format: uuid */
+      nextCursor?: string;
+    };
+    InvitationResentResponseDto: {
+      /** @example true */
+      accepted: boolean;
+      /** Format: date-time */
+      expiresAt: string;
+    };
+    LoginDto: {
+      deviceKey: string;
+      deviceSummary: string;
+      /** Format: password */
+      password: string;
+      /** @example 13800138000 */
+      phone: string;
+    };
+    MemberObjectAccessDto: {
+      canCreate?: boolean;
+      canRead?: boolean;
+      canUpdate?: boolean;
+      /** @enum {string} */
+      mode: "INHERIT" | "OVERRIDE";
+      /** @enum {string} */
+      readScope?: "ALL" | "OWN" | "NONE";
+      /** @enum {string} */
+      updateScope?: "ALL" | "OWN" | "NONE";
+    };
+    MemberObjectAccessResponseDto: {
+      effective: components["schemas"]["MemberObjectPolicyResponseDto"];
+      inherited: components["schemas"]["MemberObjectPolicyResponseDto"];
+      /** @enum {string} */
+      mode: "INHERIT" | "OVERRIDE";
+      objectCode: string;
+      /** Format: uuid */
+      objectId: string;
+      objectName: string;
+      override: components["schemas"]["MemberObjectPolicyResponseDto"] | null;
+    };
+    MemberObjectPolicyResponseDto: {
+      canCreate: boolean;
+      /** @enum {boolean} */
+      canDelete: false;
+      canRead: boolean;
+      canUpdate: boolean;
+      /** @enum {string} */
+      readScope: "ALL" | "OWN" | "NONE";
+      /** @enum {string} */
+      updateScope: "ALL" | "OWN" | "NONE";
+    };
+    MembershipActionResponseDto: {
+      /** @example true */
+      accepted: boolean;
+    };
+    ObjectDraftDefaultViewResponseDto: {
+      columnFieldKeys: string[];
+      name: string;
+      sort: components["schemas"]["DefaultViewSortDto"];
+    };
+    ObjectDraftEmployeeAccessResponseDto: {
+      canCreate: boolean;
+      /** @enum {boolean} */
+      canDelete: false;
+      canRead: boolean;
+      canUpdate: boolean;
+      /** @enum {string} */
+      readScope: "ALL" | "OWN" | "NONE";
+      /** @enum {string} */
+      updateScope: "ALL" | "OWN" | "NONE";
+    };
+    ObjectDraftFieldResponseDto: {
+      config: {
+        [key: string]: unknown;
+      };
+      defaultValue:
+        | (
+            | string
+            | number
+            | boolean
+            | unknown[]
+            | {
+                [key: string]: unknown;
+              }
+          )
+        | null;
+      /** @enum {string} */
+      employeeAccess: "EDIT" | "READ_ONLY" | "HIDDEN";
+      fieldKey: string;
+      /** Format: uuid */
+      id: string;
+      isSystem: boolean;
+      label: string;
+      /** @enum {string|null} */
+      publishedType:
+        | "TEXT"
+        | "TEXTAREA"
+        | "PHONE"
+        | "EMAIL"
+        | "NUMBER"
+        | "MONEY"
+        | "DATE"
+        | "DATETIME"
+        | "SINGLE_SELECT"
+        | "MULTI_SELECT"
+        | "MEMBER"
+        | "BOOLEAN"
+        | null;
+      required: boolean;
+      sortOrder: number;
+      /** @enum {string} */
+      status: "ACTIVE" | "INACTIVE";
+      /** @enum {string} */
+      type:
+        | "TEXT"
+        | "TEXTAREA"
+        | "PHONE"
+        | "EMAIL"
+        | "NUMBER"
+        | "MONEY"
+        | "DATE"
+        | "DATETIME"
+        | "SINGLE_SELECT"
+        | "MULTI_SELECT"
+        | "MEMBER"
+        | "BOOLEAN";
+      validation: {
+        [key: string]: unknown;
+      };
+    };
+    ObjectDraftObjectResponseDto: {
+      code: string;
+      description: string | null;
+      hasUnpublishedChanges: boolean;
+      icon: string | null;
+      /** Format: uuid */
+      id: string;
+      name: string;
+      publicationNumber: number | null;
+      /** Format: date-time */
+      publishedAt: string | null;
+      sortOrder: number;
+      /** @enum {string} */
+      status: "DRAFT" | "ACTIVE" | "ARCHIVED";
+      titleFieldKey: string;
+      /** Format: date-time */
+      updatedAt: string | null;
+      version: number;
+    };
+    ObjectDraftResponseDto: {
+      activeRecordCount: number;
+      defaultView:
+        components["schemas"]["ObjectDraftDefaultViewResponseDto"] | null;
+      employeeAccess:
+        components["schemas"]["ObjectDraftEmployeeAccessResponseDto"] | null;
+      fields: components["schemas"]["ObjectDraftFieldResponseDto"][];
+      object: components["schemas"]["ObjectDraftObjectResponseDto"];
+    };
+    ObjectOrderDto: {
+      items: components["schemas"]["ObjectOrderItemDto"][];
+    };
+    ObjectOrderItemDto: {
+      expectedVersion: number;
+      /** Format: uuid */
+      objectId: string;
+    };
+    ObjectPublicationResponseDto: {
+      changes: components["schemas"]["PublicationChangeResponseDto"][];
+      /** Format: uuid */
+      id: string;
+      number: number;
+      /** Format: date-time */
+      publishedAt: string;
+      sourceDraftVersion: number;
+    };
+    PersonalInvitationResponseDto: {
+      /** Format: uuid */
+      acceptedByUserId?: string;
+      /** Format: date-time */
+      expiresAt: string;
+      /** Format: uuid */
+      id: string;
+      /** @enum {string} */
+      role: "TENANT_ADMIN" | "EMPLOYEE";
+      /** @enum {string} */
+      status: "PENDING" | "ACCEPTED" | "DECLINED" | "REVOKED" | "EXPIRED";
+      /** @example +8613800138000 */
+      targetPhone: string;
+      /** Format: uuid */
+      targetUserId?: string;
+      tenantCode?: string;
+      /** Format: uuid */
+      tenantId: string;
+      tenantName?: string;
+    };
+    PlatformAuditItemDto: {
+      action: string;
+      /** Format: uuid */
+      actorId?: string | null;
+      actorName?: string | null;
+      /** @enum {string} */
+      actorType: "USER" | "SYSTEM" | "INTEGRATION";
+      after?: {
+        [key: string]: unknown;
+      } | null;
+      before?: {
+        [key: string]: unknown;
+      } | null;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: uuid */
+      id: string;
+      ip?: string | null;
+      reason?: string | null;
+      requestId: string;
+      /** Format: uuid */
+      resourceId?: string | null;
+      resourceType: string;
+      /** Format: uuid */
+      tenantId?: string | null;
+      tenantName?: string | null;
+    };
+    PlatformAuditPageDto: {
+      items: components["schemas"]["PlatformAuditItemDto"][];
+      limit: number;
+      page: number;
+      total: number;
+    };
+    PlatformOperationItemDto: {
+      /** Format: date-time */
+      appliedAt: string;
+      appliedByName: string;
+      /** Format: uuid */
+      appliedByUserId: string;
+      /** Format: uuid */
+      id: string;
+      /** @enum {string} */
+      kind: "TEMPLATE_APPLICATION";
+      objectCount: number;
+      /** @enum {string} */
+      status: "SUCCEEDED";
+      /** Format: uuid */
+      templateId: string;
+      templateName: string;
+      templateVersionNo: number;
+      tenantCode: string;
+      /** Format: uuid */
+      tenantId: string;
+      tenantName: string;
+    };
+    PlatformOperationPageDto: {
+      items: components["schemas"]["PlatformOperationItemDto"][];
+      limit: number;
+      page: number;
+      total: number;
+    };
+    PlatformTenantPageResponseDto: {
+      items: components["schemas"]["PlatformTenantResponseDto"][];
+      limit: number;
+      page: number;
+      total: number;
+    };
+    PlatformTenantResponseDto: {
+      /** Format: date-time */
+      activatedAt?: string;
+      activeAdminCount: number;
+      code: string;
+      /** Format: date-time */
+      createdAt?: string;
+      firstAdminInvitation?: components["schemas"]["FirstAdminInvitationResponseDto"];
+      /** Format: uuid */
+      id: string;
+      locale?: string;
+      name: string;
+      /** @enum {string} */
+      status: "DRAFT" | "ACTIVE" | "SUSPENDED" | "CLOSED";
+      timezone?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+    };
+    PlatformTenantSummaryDto: {
+      active: number;
+      closed: number;
+      draft: number;
+      suspended: number;
+      total: number;
+    };
+    PreviewDashboardDto: {
+      expectedVersion: number;
+      period: components["schemas"]["DashboardPeriodInputDto"];
+    };
+    PublicationAnalysisResponseDto: {
+      blocking: components["schemas"]["PublicationIssueResponseDto"][];
+      changes: components["schemas"]["PublicationChangeResponseDto"][];
+      warnings: components["schemas"]["PublicationIssueResponseDto"][];
+    };
+    PublicationChangeResponseDto: {
+      fieldKey: string;
+      /** @enum {string} */
+      kind: "ADDED" | "UPDATED" | "INACTIVATED";
+    };
+    PublicationIssueResponseDto: {
+      code: string;
+      fieldKey?: string;
+      message: string;
+    };
+    PublishDashboardDto: {
+      expectedVersion: number;
+    };
+    PublishedFieldResponseDto: {
+      /** @enum {string} */
+      access: "EDIT" | "READ_ONLY";
+      config: {
+        [key: string]: unknown;
+      };
+      defaultValue:
+        | (
+            | string
+            | number
+            | boolean
+            | unknown[]
+            | {
+                [key: string]: unknown;
+              }
+          )
+        | null;
+      fieldKey: string;
+      id: string;
+      isSystem: boolean;
+      label: string;
+      required: boolean;
+      sortOrder: number;
+      /** @enum {string} */
+      type:
+        | "TEXT"
+        | "TEXTAREA"
+        | "PHONE"
+        | "EMAIL"
+        | "NUMBER"
+        | "MONEY"
+        | "DATE"
+        | "DATETIME"
+        | "SINGLE_SELECT"
+        | "MULTI_SELECT"
+        | "MEMBER"
+        | "BOOLEAN";
+      validation: {
+        [key: string]: unknown;
+      };
+    };
+    PublishedObjectSchemaResponseDto: {
+      actions: {
+        [key: string]: unknown;
+      };
+      defaultView: {
+        [key: string]: unknown;
+      };
+      fields: components["schemas"]["PublishedFieldResponseDto"][];
+      object: {
+        [key: string]: unknown;
+      };
+      publication: {
+        [key: string]: unknown;
+      };
+      scopes: {
+        [key: string]: unknown;
+      };
+    };
+    RecordPageResponseDto: {
+      items: components["schemas"]["RecordResponseDto"][];
+      limit: number;
+      page: number;
+      total: number;
+    };
+    RecordResponseDto: {
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: uuid */
+      id: string;
+      /** Format: uuid */
+      ownerMemberId?: string | null;
+      recordNo: string;
+      title: string;
+      /** Format: date-time */
+      updatedAt: string;
+      values: {
+        [key: string]: unknown;
+      };
+      version: number;
+    };
+    RegisterDto: {
+      /** @example 123456 */
+      code: string;
+      deviceSummary: string;
+      displayName: string;
+      /** Format: password */
+      password: string;
+      /** @example 13800138000 */
+      phone: string;
+    };
+    ResetPasswordDto: {
+      /** @example 123456 */
+      code: string;
+      /** Format: password */
+      newPassword: string;
+      /** @example 13800138000 */
+      phone: string;
+    };
+    RuntimeObjectNavigationResponseDto: {
+      canCreate: boolean;
+      canRead: boolean;
+      canUpdate: boolean;
+      code: string;
+      icon?: string | null;
+      name: string;
+      sortOrder: number;
+    };
+    RuntimePoliciesDto: {
+      sessionHistoryRetentionDays: number;
+      sessionTtlDays: number;
+      verificationRetentionDays: number;
+      verificationTtlMinutes: number;
+    };
+    RuntimeServiceStatusDto: {
+      detail: string;
+      /** @enum {string} */
+      key: "database" | "redis" | "sms" | "webOrigin";
+      label: string;
+      /** @enum {string} */
+      status: "READY" | "DEVELOPMENT" | "ACTION_REQUIRED";
+    };
+    RuntimeStatusDto: {
+      environment: string;
+      policies: components["schemas"]["RuntimePoliciesDto"];
+      services: components["schemas"]["RuntimeServiceStatusDto"][];
+    };
+    SaveBusinessTemplateDraftDto: {
+      configuration: components["schemas"]["BusinessTemplateConfigurationDto"];
+      description: string | null;
+      expectedVersion: number;
+      name: string;
+    };
+    SaveDashboardConfigurationDto: {
+      configuration: {
+        [key: string]: unknown;
+      };
+      expectedVersion: number;
+    };
+    SelectOptionDto: {
+      /**
+       * @default GRAY
+       * @enum {string}
+       */
+      color:
+        | "GRAY"
+        | "BLUE"
+        | "CYAN"
+        | "GREEN"
+        | "YELLOW"
+        | "ORANGE"
+        | "RED"
+        | "PURPLE";
+      key: string;
+      label: string;
+      /**
+       * @default ACTIVE
+       * @enum {string}
+       */
+      status: "ACTIVE" | "INACTIVE";
+    };
+    SessionPageResponseDto: {
+      items: components["schemas"]["SessionResponseDto"][];
+      limit: number;
+      page: number;
+      total: number;
+    };
+    SessionResponseDto: {
+      /** Format: date-time */
+      createdAt: string;
+      deviceSummary?: string;
+      /** Format: date-time */
+      expiresAt: string;
+      /** Format: uuid */
+      id: string;
+      ipSummary?: string;
+      isCurrent: boolean;
+      /** Format: date-time */
+      lastUsedAt?: string;
+      /** Format: date-time */
+      revokedAt?: string;
+    };
+    TemplateApplicationObjectResponseDto: {
+      code: string;
+      name: string;
+      /** Format: uuid */
+      objectId: string;
+      /** Format: uuid */
+      templateObjectId: string;
+    };
+    TemplateApplicationResponseDto: {
+      /** Format: date-time */
+      appliedAt: string;
+      /** Format: uuid */
+      appliedByUserId: string;
+      configurationChecksum: string;
+      /** Format: uuid */
+      id: string;
+      objects: components["schemas"]["TemplateApplicationObjectResponseDto"][];
+      templateCode: string;
+      /** Format: uuid */
+      templateId: string;
+      templateName: string;
+      /** Format: uuid */
+      templateVersionId: string;
+      templateVersionNo: number;
+      tenantCode: string;
+      /** Format: uuid */
+      tenantId: string;
+      tenantName: string;
+    };
+    TemplateDefaultViewDto: {
+      /** @enum {string} */
+      code: "default";
+      columnFieldKeys: string[];
+      name: string;
+      sort: components["schemas"]["TemplateDefaultViewSortDto"];
+    };
+    TemplateDefaultViewSortDto: {
+      /** @enum {string} */
+      direction: "asc" | "desc";
+      /** @enum {string} */
+      field: "updatedAt" | "createdAt" | "recordNo";
+    };
+    TemplateEmployeeAccessDto: {
+      canCreate: boolean;
+      /** @enum {boolean} */
+      canDelete: false;
+      canRead: boolean;
+      canUpdate: boolean;
+      fields: {
+        [key: string]: "EDIT" | "READ_ONLY" | "HIDDEN";
+      };
+      /** @enum {string} */
+      readScope: "ALL" | "OWN" | "NONE";
+      /** @enum {string} */
+      updateScope: "ALL" | "OWN" | "NONE";
+    };
+    TemplateFieldDraftDto: {
+      config: components["schemas"]["FieldConfigDto"];
+      defaultValue:
+        | (
+            | string
+            | number
+            | boolean
+            | unknown[]
+            | {
+                [key: string]: unknown;
+              }
+          )
+        | null;
+      fieldKey: string;
+      /** Format: uuid */
+      id: string;
+      isSystem: boolean;
+      label: string;
+      required: boolean;
+      sortOrder: number;
+      /** @enum {string} */
+      status: "ACTIVE" | "INACTIVE";
+      /** @enum {string} */
+      type:
+        | "TEXT"
+        | "TEXTAREA"
+        | "PHONE"
+        | "EMAIL"
+        | "NUMBER"
+        | "MONEY"
+        | "DATE"
+        | "DATETIME"
+        | "SINGLE_SELECT"
+        | "MULTI_SELECT"
+        | "MEMBER"
+        | "BOOLEAN";
+      validation: components["schemas"]["FieldValidationDto"];
+    };
+    TemplateFieldResponseDto: {
+      config: components["schemas"]["FieldConfigDto"];
+      defaultValue:
+        | (
+            | string
+            | number
+            | boolean
+            | unknown[]
+            | {
+                [key: string]: unknown;
+              }
+          )
+        | null;
+      fieldKey: string;
+      /** Format: uuid */
+      id: string;
+      isSystem: boolean;
+      label: string;
+      publishedFieldKey: string | null;
+      /** @enum {string|null} */
+      publishedType:
+        | "TEXT"
+        | "TEXTAREA"
+        | "PHONE"
+        | "EMAIL"
+        | "NUMBER"
+        | "MONEY"
+        | "DATE"
+        | "DATETIME"
+        | "SINGLE_SELECT"
+        | "MULTI_SELECT"
+        | "MEMBER"
+        | "BOOLEAN"
+        | null;
+      required: boolean;
+      sortOrder: number;
+      /** @enum {string} */
+      status: "ACTIVE" | "INACTIVE";
+      /** @enum {string} */
+      type:
+        | "TEXT"
+        | "TEXTAREA"
+        | "PHONE"
+        | "EMAIL"
+        | "NUMBER"
+        | "MONEY"
+        | "DATE"
+        | "DATETIME"
+        | "SINGLE_SELECT"
+        | "MULTI_SELECT"
+        | "MEMBER"
+        | "BOOLEAN";
+      validation: components["schemas"]["FieldValidationDto"];
+    };
+    TemplateObjectDraftDto: {
+      code: string;
+      defaultView: components["schemas"]["TemplateDefaultViewDto"] | null;
+      description: string | null;
+      employeeAccess: components["schemas"]["TemplateEmployeeAccessDto"] | null;
+      fields: components["schemas"]["TemplateFieldDraftDto"][];
+      icon: string | null;
+      /** Format: uuid */
+      id: string;
+      name: string;
+      sortOrder: number;
+      /** @enum {string} */
+      status: "ACTIVE" | "INACTIVE";
+      titleFieldKey: string;
+    };
+    TemplateObjectResponseDto: {
+      code: string;
+      defaultView: components["schemas"]["TemplateDefaultViewDto"] | null;
+      description: string | null;
+      employeeAccess: components["schemas"]["TemplateEmployeeAccessDto"] | null;
+      fields: components["schemas"]["TemplateFieldResponseDto"][];
+      icon: string | null;
+      /** Format: uuid */
+      id: string;
+      name: string;
+      publishedCode: string | null;
+      sortOrder: number;
+      /** @enum {string} */
+      status: "ACTIVE" | "INACTIVE";
+      titleFieldKey: string;
+    };
+    TemplatePublicationAnalysisResponseDto: {
+      blocking: components["schemas"]["TemplatePublicationIssueResponseDto"][];
+      changes: components["schemas"]["TemplatePublicationChangeResponseDto"][];
+      fieldCount: number;
+      objectCount: number;
+      warnings: components["schemas"]["TemplatePublicationIssueResponseDto"][];
+    };
+    TemplatePublicationChangeResponseDto: {
+      /** @enum {string} */
+      entity: "OBJECT" | "FIELD";
+      fieldKey?: string;
+      /** @enum {string} */
+      kind: "ADDED" | "UPDATED" | "INACTIVATED";
+      /** Format: uuid */
+      objectId: string;
+    };
+    TemplatePublicationIssueResponseDto: {
+      code: string;
+      fieldKey?: string;
+      message: string;
+      objectId: string;
+      path?: string;
+    };
+    TenantBusinessConfigurationSummaryResponseDto: {
+      application:
+        components["schemas"]["TemplateApplicationResponseDto"] | null;
+      /** @enum {string|null} */
+      blockingReason: "TENANT_NOT_DRAFT" | "TARGET_NOT_EMPTY" | null;
+      canApplyTemplate: boolean;
+      objectCount: number;
+    };
+    TenantInvitationResponseDto: {
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      expiresAt: string;
+      /** Format: uuid */
+      id: string;
+      /** @enum {string} */
+      role: "TENANT_ADMIN" | "EMPLOYEE";
+      /** @enum {string} */
+      status: "PENDING" | "ACCEPTED" | "DECLINED" | "REVOKED" | "EXPIRED";
+      /** @example +8613800138000 */
+      targetPhone: string;
+      /** Format: uuid */
+      targetUserId?: string | null;
+    };
+    TenantMemberPageResponseDto: {
+      activeAdminCount: number;
+      items: components["schemas"]["TenantMemberResponseDto"][];
+      limit: number;
+      page: number;
+      total: number;
+    };
+    TenantMemberResponseDto: {
+      displayName?: string;
+      /** Format: uuid */
+      id: string;
+      /** @example +8613800138000 */
+      phone?: string;
+      /** @enum {string} */
+      role: "TENANT_ADMIN" | "EMPLOYEE";
+      /** @enum {string} */
+      status: "ACTIVE" | "DISABLED";
+      /** Format: uuid */
+      tenantId: string;
+      /** Format: uuid */
+      userId: string;
+    };
+    UpdateDashboardDto: {
+      /** @enum {string} */
+      audience?: "ALL" | "TENANT_ADMIN" | "EMPLOYEE";
+      name?: string;
+      /** @enum {string} */
+      status?: "ACTIVE" | "ARCHIVED";
+    };
+    UpdateFieldDefinitionDto: {
+      config?: components["schemas"]["FieldConfigDto"];
+      defaultValue?:
+        | (
+            | string
+            | number
+            | boolean
+            | unknown[]
+            | {
+                [key: string]: unknown;
+              }
+          )
+        | null;
+      expectedVersion: number;
+      fieldKey?: string;
+      label?: string;
+      required?: boolean;
+      /** @enum {string} */
+      status?: "ACTIVE" | "INACTIVE";
+      /** @enum {string} */
+      type?:
+        | "TEXT"
+        | "TEXTAREA"
+        | "PHONE"
+        | "EMAIL"
+        | "NUMBER"
+        | "MONEY"
+        | "DATE"
+        | "DATETIME"
+        | "SINGLE_SELECT"
+        | "MULTI_SELECT"
+        | "MEMBER"
+        | "BOOLEAN";
+      validation?: components["schemas"]["FieldValidationDto"];
+    };
+    UpdateObjectDefinitionDto: {
+      code?: string;
+      description?: string | null;
+      expectedVersion: number;
+      icon?: string | null;
+      name?: string;
+      titleFieldKey?: string;
+    };
+    UpdateRecordDto: {
+      /** Format: uuid */
+      ownerMemberId?: string | null;
+      values?: {
+        [key: string]: unknown;
+      };
+      version: number;
+    };
+    UserResponseDto: {
+      displayName: string;
+      /** Format: uuid */
+      id: string;
+      isPlatformAdmin: boolean;
+      /** @example +8613800138000 */
+      phone: string;
+    };
+    VerificationChallengeDto: {
+      /** @description 浏览器生成并持久化的非敏感设备标识 */
+      deviceKey: string;
+      /** @example 13800138000 */
+      phone: string;
+      /** @enum {string} */
+      purpose: "REGISTER" | "RESET_PASSWORD";
+    };
+    WorkspaceSummaryResponseDto: {
+      /** Format: uuid */
+      memberId: string;
+      /** @enum {string} */
+      memberStatus: "ACTIVE" | "DISABLED";
+      /** @enum {string} */
+      role: "TENANT_ADMIN" | "EMPLOYEE";
+      tenantCode: string;
+      /** Format: uuid */
+      tenantId: string;
+      tenantName: string;
+      /** @enum {string} */
+      tenantStatus: "DRAFT" | "ACTIVE" | "SUSPENDED" | "CLOSED";
+    };
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    AuthController_forgotPassword: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ForgotPasswordDto"];
-            };
-        };
-        responses: {
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AcceptedResponseDto"];
-                };
-            };
-        };
-    };
-    AuthController_login: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LoginDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AuthenticatedResponseDto"];
-                };
-            };
-        };
-    };
-    AuthController_logout: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AcceptedResponseDto"];
-                };
-            };
-        };
-    };
-    AuthController_register: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RegisterDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AuthenticatedResponseDto"];
-                };
-            };
-        };
-    };
-    AuthController_resetPassword: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ResetPasswordDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AcceptedResponseDto"];
-                };
-            };
-        };
-    };
-    AuthController_requestVerification: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["VerificationChallengeDto"];
-            };
-        };
-        responses: {
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AcceptedResponseDto"];
-                };
-            };
-        };
-    };
-    HealthController_check: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    MeController_me: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserResponseDto"];
-                };
-            };
-        };
-    };
-    InvitationsController_list: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PersonalInvitationResponseDto"][];
-                };
-            };
-        };
-    };
-    InvitationsController_detail: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                invitationId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PersonalInvitationResponseDto"];
-                };
-            };
-        };
-    };
-    InvitationsController_accept: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                invitationId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InvitationMembershipResponseDto"];
-                };
-            };
-        };
-    };
-    InvitationsController_decline: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                invitationId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InvitationActionResponseDto"];
-                };
-            };
-        };
-    };
-    MeController_changePassword: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ChangePasswordDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AcceptedResponseDto"];
-                };
-            };
-        };
-    };
-    MeController_sessions: {
-        parameters: {
-            query?: {
-                kind?: "ACTIVE" | "HISTORY";
-                limit?: number;
-                page?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SessionPageResponseDto"];
-                };
-            };
-        };
-    };
-    MeController_revokeSession: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                sessionId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AcceptedResponseDto"];
-                };
-            };
-        };
-    };
-    MembershipsController_workspaces: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WorkspaceSummaryResponseDto"][];
-                };
-            };
-        };
-    };
-    PlatformOperationsController_audit: {
-        parameters: {
-            query?: {
-                action?: string;
-                limit?: number;
-                page?: number;
-                resourceType?: string;
-                tenantId?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlatformAuditPageDto"];
-                };
-            };
-        };
-    };
-    BusinessTemplatesController_list: {
-        parameters: {
-            query?: {
-                hasActiveVersion?: boolean;
-                limit?: number;
-                page?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BusinessTemplatePageResponseDto"];
-                };
-            };
-        };
-    };
-    BusinessTemplatesController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateBusinessTemplateDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BusinessTemplateDetailResponseDto"];
-                };
-            };
-        };
-    };
-    BusinessTemplatesController_detail: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                templateId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BusinessTemplateDetailResponseDto"];
-                };
-            };
-        };
-    };
-    TemplateApplicationController_apply: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                templateId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ApplyBusinessTemplateDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TemplateApplicationResponseDto"];
-                };
-            };
-        };
-    };
-    BusinessTemplatesController_saveDraft: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                templateId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SaveBusinessTemplateDraftDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BusinessTemplateDetailResponseDto"];
-                };
-            };
-        };
-    };
-    BusinessTemplatesController_analyzePublication: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                templateId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ExpectedTemplateVersionDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TemplatePublicationAnalysisResponseDto"];
-                };
-            };
-        };
-    };
-    BusinessTemplatesController_versions: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                templateId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BusinessTemplateVersionResponseDto"][];
-                };
-            };
-        };
-    };
-    BusinessTemplatesController_publish: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                templateId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ExpectedTemplateVersionDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BusinessTemplateVersionResponseDto"];
-                };
-            };
-        };
-    };
-    PlatformOperationsController_operationHistory: {
-        parameters: {
-            query?: {
-                limit?: number;
-                page?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlatformOperationPageDto"];
-                };
-            };
-        };
-    };
-    PlatformOperationsController_runtimeStatus: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RuntimeStatusDto"];
-                };
-            };
-        };
-    };
-    TenantsController_list: {
-        parameters: {
-            query?: {
-                limit?: number;
-                page?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlatformTenantPageResponseDto"];
-                };
-            };
-        };
-    };
-    TenantsController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreatePlatformTenantDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlatformTenantResponseDto"];
-                };
-            };
-        };
-    };
-    TenantsController_detail: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlatformTenantResponseDto"];
-                };
-            };
-        };
-    };
-    TemplateApplicationController_summarizeTarget: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TenantBusinessConfigurationSummaryResponseDto"];
-                };
-            };
-        };
-    };
-    TenantsController_changeStatus: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ChangeTenantStatusDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlatformTenantResponseDto"];
-                };
-            };
-        };
-    };
-    TenantsController_summarize: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlatformTenantSummaryDto"];
-                };
-            };
-        };
-    };
-    MembershipsController_workspace: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WorkspaceSummaryResponseDto"];
-                };
-            };
-        };
-    };
-    DashboardsController_list: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardListItemDto"][];
-                };
-            };
-        };
-    };
-    DashboardsController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateDashboardDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardDraftDto"];
-                };
-            };
-        };
-    };
-    DashboardsController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                dashboardCode: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateDashboardDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardDraftDto"];
-                };
-            };
-        };
-    };
-    DashboardsController_configuration: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                dashboardCode: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardConfigurationEnvelopeDto"];
-                };
-            };
-        };
-    };
-    DashboardsController_saveDraft: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                dashboardCode: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SaveDashboardConfigurationDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardDraftDto"];
-                };
-            };
-        };
-    };
-    DashboardsController_overview: {
-        parameters: {
-            query?: {
-                dashboardCode?: string;
-                days?: number;
-                from?: string;
-                to?: string;
-            };
-            header?: never;
-            path: {
-                dashboardCode: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardOverviewDto"];
-                };
-            };
-        };
-    };
-    DashboardsController_preview: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                dashboardCode: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PreviewDashboardDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardRuntimeDto"];
-                };
-            };
-        };
-    };
-    DashboardsController_publish: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                dashboardCode: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PublishDashboardDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardPublicationSummaryDto"];
-                };
-            };
-        };
-    };
-    DashboardsController_setDefaults: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DashboardDefaultsDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardDefaultsDto"];
-                };
-            };
-        };
-    };
-    DashboardsController_defaultOverview: {
-        parameters: {
-            query?: {
-                dashboardCode?: string;
-                days?: number;
-                from?: string;
-                to?: string;
-            };
-            header?: never;
-            path: {
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DashboardOverviewDto"];
-                };
-            };
-        };
-    };
-    MembershipsController_invitations: {
-        parameters: {
-            query?: {
-                cursor?: string;
-                limit?: number;
-            };
-            header?: never;
-            path: {
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InvitationPageResponseDto"];
-                };
-            };
-        };
-    };
-    MembershipsController_invite: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateInvitationDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CreatedInvitationResponseDto"];
-                };
-            };
-        };
-    };
-    MembershipsController_resend: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InvitationResentResponseDto"];
-                };
-            };
-        };
-    };
-    MembershipsController_revoke: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MembershipActionResponseDto"];
-                };
-            };
-        };
-    };
-    MembershipsController_members: {
-        parameters: {
-            query?: {
-                limit?: number;
-                page?: number;
-            };
-            header?: never;
-            path: {
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TenantMemberPageResponseDto"];
-                };
-            };
-        };
-    };
-    MembershipsController_changeMember: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                memberId: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ChangeMemberStatusDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TenantMemberResponseDto"];
-                };
-            };
-        };
-    };
-    MembershipsController_memberObjectAccess: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                memberId: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MemberObjectAccessResponseDto"][];
-                };
-            };
-        };
-    };
-    MembershipsController_setMemberObjectAccess: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                memberId: string;
-                objectId: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MemberObjectAccessDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MemberObjectAccessResponseDto"];
-                };
-            };
-        };
-    };
-    ObjectsController_list: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ObjectDraftResponseDto"][];
-                };
-            };
-        };
-    };
-    ObjectsController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateObjectDefinitionDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ObjectDraftResponseDto"];
-                };
-            };
-        };
-    };
-    ObjectsController_detail: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                objectId: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ObjectDraftResponseDto"];
-                };
-            };
-        };
-    };
-    ObjectsController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                objectId: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateObjectDefinitionDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ObjectDraftResponseDto"];
-                };
-            };
-        };
-    };
-    ObjectsController_archive: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                objectId: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ExpectedVersionDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ObjectDraftResponseDto"];
-                };
-            };
-        };
-    };
-    ObjectsController_updateDefaultView: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                objectId: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DefaultViewDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ObjectDraftResponseDto"];
-                };
-            };
-        };
-    };
-    ObjectsController_reorderFields: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                objectId: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["FieldOrderDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ObjectDraftResponseDto"];
-                };
-            };
-        };
-    };
-    ObjectsController_createField: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                objectId: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateFieldDefinitionDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ObjectDraftResponseDto"];
-                };
-            };
-        };
-    };
-    ObjectsController_updateField: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                fieldId: string;
-                objectId: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateFieldDefinitionDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ObjectDraftResponseDto"];
-                };
-            };
-        };
-    };
-    ObjectsController_updatePermissions: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                objectId: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EmployeePermissionsDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ObjectDraftResponseDto"];
-                };
-            };
-        };
-    };
-    ObjectsController_analyzePublication: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                objectId: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ExpectedVersionDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PublicationAnalysisResponseDto"];
-                };
-            };
-        };
-    };
-    ObjectsController_publications: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                objectId: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ObjectPublicationResponseDto"][];
-                };
-            };
-        };
-    };
-    ObjectsController_publish: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                objectId: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ExpectedVersionDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ObjectPublicationResponseDto"];
-                };
-            };
-        };
-    };
-    ObjectsController_reorderObjects: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ObjectOrderDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ObjectDraftResponseDto"][];
-                };
-            };
-        };
-    };
-    ObjectsController_runtimeObjects: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RuntimeObjectNavigationResponseDto"][];
-                };
-            };
-        };
-    };
-    RecordsController_list: {
-        parameters: {
-            query?: {
-                direction?: "asc" | "desc";
-                /** @description 按已发布字段筛选的 JSON 对象，支持选项、日期范围或相对时间、数值区间、是否、成员、文本包含，以及有值/空值。 */
-                filters?: string;
-                limit?: number;
-                ownerMemberId?: string;
-                page?: number;
-                search?: string;
-                /** @description updatedAt、createdAt、recordNo，或当前业务表中可排序的已发布字段键。 */
-                sort?: string;
-            };
-            header?: never;
-            path: {
-                objectCode: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RecordPageResponseDto"];
-                };
-            };
-        };
-    };
-    RecordsController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                objectCode: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateRecordDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RecordResponseDto"];
-                };
-            };
-        };
-    };
-    RecordsController_detail: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                objectCode: string;
-                recordId: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RecordResponseDto"];
-                };
-            };
-        };
-    };
-    RecordsController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                objectCode: string;
-                recordId: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DeleteRecordDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeleteRecordResponseDto"];
-                };
-            };
-        };
-    };
-    RecordsController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                objectCode: string;
-                recordId: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateRecordDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RecordResponseDto"];
-                };
-            };
-        };
-    };
-    ObjectsController_runtimeSchema: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                objectCode: string;
-                tenantCode: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PublishedObjectSchemaResponseDto"];
-                };
-            };
-        };
-    };
+  AuthController_forgotPassword: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ForgotPasswordDto"];
+      };
+    };
+    responses: {
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AcceptedResponseDto"];
+        };
+      };
+    };
+  };
+  AuthController_login: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["LoginDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AuthenticatedResponseDto"];
+        };
+      };
+    };
+  };
+  AuthController_logout: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AcceptedResponseDto"];
+        };
+      };
+    };
+  };
+  AuthController_register: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RegisterDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AuthenticatedResponseDto"];
+        };
+      };
+    };
+  };
+  AuthController_resetPassword: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ResetPasswordDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AcceptedResponseDto"];
+        };
+      };
+    };
+  };
+  AuthController_requestVerification: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["VerificationChallengeDto"];
+      };
+    };
+    responses: {
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AcceptedResponseDto"];
+        };
+      };
+    };
+  };
+  HealthController_check: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+    };
+  };
+  MeController_me: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UserResponseDto"];
+        };
+      };
+    };
+  };
+  InvitationsController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonalInvitationResponseDto"][];
+        };
+      };
+    };
+  };
+  InvitationsController_detail: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        invitationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonalInvitationResponseDto"];
+        };
+      };
+    };
+  };
+  InvitationsController_accept: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        invitationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InvitationMembershipResponseDto"];
+        };
+      };
+    };
+  };
+  InvitationsController_decline: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        invitationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InvitationActionResponseDto"];
+        };
+      };
+    };
+  };
+  MeController_changePassword: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ChangePasswordDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AcceptedResponseDto"];
+        };
+      };
+    };
+  };
+  MeController_sessions: {
+    parameters: {
+      query?: {
+        kind?: "ACTIVE" | "HISTORY";
+        limit?: number;
+        page?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SessionPageResponseDto"];
+        };
+      };
+    };
+  };
+  MeController_revokeSession: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        sessionId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AcceptedResponseDto"];
+        };
+      };
+    };
+  };
+  MembershipsController_workspaces: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkspaceSummaryResponseDto"][];
+        };
+      };
+    };
+  };
+  PlatformOperationsController_audit: {
+    parameters: {
+      query?: {
+        action?: string;
+        limit?: number;
+        page?: number;
+        resourceType?: string;
+        tenantId?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlatformAuditPageDto"];
+        };
+      };
+    };
+  };
+  BusinessTemplatesController_list: {
+    parameters: {
+      query?: {
+        hasActiveVersion?: boolean;
+        limit?: number;
+        page?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BusinessTemplatePageResponseDto"];
+        };
+      };
+    };
+  };
+  BusinessTemplatesController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateBusinessTemplateDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BusinessTemplateDetailResponseDto"];
+        };
+      };
+    };
+  };
+  BusinessTemplatesController_detail: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        templateId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BusinessTemplateDetailResponseDto"];
+        };
+      };
+    };
+  };
+  TemplateApplicationController_apply: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        templateId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ApplyBusinessTemplateDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TemplateApplicationResponseDto"];
+        };
+      };
+    };
+  };
+  BusinessTemplatesController_saveDraft: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        templateId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SaveBusinessTemplateDraftDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BusinessTemplateDetailResponseDto"];
+        };
+      };
+    };
+  };
+  BusinessTemplatesController_analyzePublication: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        templateId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ExpectedTemplateVersionDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TemplatePublicationAnalysisResponseDto"];
+        };
+      };
+    };
+  };
+  BusinessTemplatesController_versions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        templateId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BusinessTemplateVersionResponseDto"][];
+        };
+      };
+    };
+  };
+  BusinessTemplatesController_publish: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        templateId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ExpectedTemplateVersionDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BusinessTemplateVersionResponseDto"];
+        };
+      };
+    };
+  };
+  PlatformOperationsController_operationHistory: {
+    parameters: {
+      query?: {
+        limit?: number;
+        page?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlatformOperationPageDto"];
+        };
+      };
+    };
+  };
+  PlatformOperationsController_runtimeStatus: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RuntimeStatusDto"];
+        };
+      };
+    };
+  };
+  TenantsController_list: {
+    parameters: {
+      query?: {
+        limit?: number;
+        page?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlatformTenantPageResponseDto"];
+        };
+      };
+    };
+  };
+  TenantsController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreatePlatformTenantDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlatformTenantResponseDto"];
+        };
+      };
+    };
+  };
+  TenantsController_detail: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlatformTenantResponseDto"];
+        };
+      };
+    };
+  };
+  TemplateApplicationController_summarizeTarget: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TenantBusinessConfigurationSummaryResponseDto"];
+        };
+      };
+    };
+  };
+  TenantsController_changeStatus: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ChangeTenantStatusDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlatformTenantResponseDto"];
+        };
+      };
+    };
+  };
+  TenantsController_summarize: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlatformTenantSummaryDto"];
+        };
+      };
+    };
+  };
+  MembershipsController_workspace: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkspaceSummaryResponseDto"];
+        };
+      };
+    };
+  };
+  DashboardsController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DashboardListItemDto"][];
+        };
+      };
+    };
+  };
+  DashboardsController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateDashboardDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DashboardDraftDto"];
+        };
+      };
+    };
+  };
+  DashboardsController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        dashboardCode: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateDashboardDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DashboardDraftDto"];
+        };
+      };
+    };
+  };
+  DashboardsController_configuration: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        dashboardCode: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DashboardConfigurationEnvelopeDto"];
+        };
+      };
+    };
+  };
+  DashboardsController_saveDraft: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        dashboardCode: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SaveDashboardConfigurationDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DashboardDraftDto"];
+        };
+      };
+    };
+  };
+  DashboardsController_overview: {
+    parameters: {
+      query?: {
+        dashboardCode?: string;
+        days?: number;
+        from?: string;
+        to?: string;
+      };
+      header?: never;
+      path: {
+        dashboardCode: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DashboardOverviewDto"];
+        };
+      };
+    };
+  };
+  DashboardsController_preview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        dashboardCode: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PreviewDashboardDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DashboardRuntimeDto"];
+        };
+      };
+    };
+  };
+  DashboardsController_publish: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        dashboardCode: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PublishDashboardDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DashboardPublicationSummaryDto"];
+        };
+      };
+    };
+  };
+  DashboardsController_setDefaults: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DashboardDefaultsDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DashboardDefaultsDto"];
+        };
+      };
+    };
+  };
+  DashboardsController_defaultOverview: {
+    parameters: {
+      query?: {
+        dashboardCode?: string;
+        days?: number;
+        from?: string;
+        to?: string;
+      };
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DashboardOverviewDto"];
+        };
+      };
+    };
+  };
+  MembershipsController_invitations: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InvitationPageResponseDto"];
+        };
+      };
+    };
+  };
+  MembershipsController_invite: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateInvitationDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CreatedInvitationResponseDto"];
+        };
+      };
+    };
+  };
+  MembershipsController_resend: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["InvitationResentResponseDto"];
+        };
+      };
+    };
+  };
+  MembershipsController_revoke: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MembershipActionResponseDto"];
+        };
+      };
+    };
+  };
+  MembershipsController_members: {
+    parameters: {
+      query?: {
+        limit?: number;
+        page?: number;
+      };
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TenantMemberPageResponseDto"];
+        };
+      };
+    };
+  };
+  MembershipsController_changeMember: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        memberId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ChangeMemberStatusDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TenantMemberResponseDto"];
+        };
+      };
+    };
+  };
+  MembershipsController_memberObjectAccess: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        memberId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MemberObjectAccessResponseDto"][];
+        };
+      };
+    };
+  };
+  MembershipsController_setMemberObjectAccess: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        memberId: string;
+        objectId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MemberObjectAccessDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MemberObjectAccessResponseDto"];
+        };
+      };
+    };
+  };
+  ObjectsController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"][];
+        };
+      };
+    };
+  };
+  ObjectsController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateObjectDefinitionDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"];
+        };
+      };
+    };
+  };
+  ObjectsController_detail: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"];
+        };
+      };
+    };
+  };
+  ObjectsController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateObjectDefinitionDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"];
+        };
+      };
+    };
+  };
+  ObjectsController_archive: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ExpectedVersionDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"];
+        };
+      };
+    };
+  };
+  ObjectsController_updateDefaultView: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DefaultViewDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"];
+        };
+      };
+    };
+  };
+  ObjectsController_reorderFields: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["FieldOrderDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"];
+        };
+      };
+    };
+  };
+  ObjectsController_createField: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateFieldDefinitionDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"];
+        };
+      };
+    };
+  };
+  ObjectsController_updateField: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        fieldId: string;
+        objectId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateFieldDefinitionDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"];
+        };
+      };
+    };
+  };
+  ObjectsController_updatePermissions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["EmployeePermissionsDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"];
+        };
+      };
+    };
+  };
+  ObjectsController_analyzePublication: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ExpectedVersionDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PublicationAnalysisResponseDto"];
+        };
+      };
+    };
+  };
+  ObjectsController_publications: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ObjectPublicationResponseDto"][];
+        };
+      };
+    };
+  };
+  ObjectsController_publish: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ExpectedVersionDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ObjectPublicationResponseDto"];
+        };
+      };
+    };
+  };
+  ObjectsController_reorderObjects: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ObjectOrderDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"][];
+        };
+      };
+    };
+  };
+  ObjectsController_runtimeObjects: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RuntimeObjectNavigationResponseDto"][];
+        };
+      };
+    };
+  };
+  RecordsController_list: {
+    parameters: {
+      query?: {
+        direction?: "asc" | "desc";
+        /** @description 按已发布字段筛选的 JSON 对象，支持选项、日期范围或相对时间、数值区间、是否、成员、文本包含，以及有值/空值。 */
+        filters?: string;
+        limit?: number;
+        ownerMemberId?: string;
+        page?: number;
+        search?: string;
+        /** @description updatedAt、createdAt、recordNo，或当前业务表中可排序的已发布字段键。 */
+        sort?: string;
+      };
+      header?: never;
+      path: {
+        objectCode: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecordPageResponseDto"];
+        };
+      };
+    };
+  };
+  RecordsController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateRecordDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecordResponseDto"];
+        };
+      };
+    };
+  };
+  RecordsController_detail: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecordResponseDto"];
+        };
+      };
+    };
+  };
+  RecordsController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DeleteRecordDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DeleteRecordResponseDto"];
+        };
+      };
+    };
+  };
+  RecordsController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateRecordDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecordResponseDto"];
+        };
+      };
+    };
+  };
+  ObjectsController_runtimeSchema: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PublishedObjectSchemaResponseDto"];
+        };
+      };
+    };
+  };
 }

@@ -27,20 +27,37 @@ export async function loadDashboardConfiguration(
   return parseDashboardConfigurationView(result.data);
 }
 
+export function dashboardOverviewQuery(
+  searchParams: Record<string, string | string[] | undefined>,
+): { from?: string; to?: string } {
+  const from = firstQueryValue(searchParams.from);
+  const to = firstQueryValue(searchParams.to);
+  return {
+    ...(from ? { from } : {}),
+    ...(to ? { to } : {}),
+  };
+}
+
 export async function loadDashboardOverview(
   tenantCode: string,
   dashboardCode?: string,
+  period?: { from?: string; to?: string },
 ): Promise<DashboardRuntimeResult> {
   const client = await createServerApiClient();
+  const query = period ?? {};
   const result = dashboardCode
     ? await client.GET(OVERVIEW_PATH, {
-        params: { path: { tenantCode, dashboardCode }, query: {} },
+        params: { path: { tenantCode, dashboardCode }, query },
       })
     : await client.GET(DEFAULT_OVERVIEW_PATH, {
-        params: { path: { tenantCode }, query: {} },
+        params: { path: { tenantCode }, query },
       });
   if (!result.data) throw toApiError(result.error, result.response.status);
   return parseDashboardOverview(result.data);
+}
+
+function firstQueryValue(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
 }
 
 export async function loadDashboardList(tenantCode: string) {

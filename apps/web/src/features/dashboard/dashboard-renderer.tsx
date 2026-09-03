@@ -1,10 +1,8 @@
 "use client";
 
-import { Empty, Table } from "antd";
+import { Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
-
-import { StatusTag } from "@/components/workbench/status-tag";
 
 import type {
   DashboardRuntime,
@@ -22,7 +20,13 @@ export function DashboardRenderer({
   runtime: DashboardRuntime;
 }) {
   if (!runtime.widgets.length) {
-    return <Empty description="当前发布的工作台没有可显示的组件" />;
+    return (
+      <WidgetEmpty
+        kind="unconfigured"
+        title="当前发布的工作台没有可显示的组件"
+        description="添加组件并发布后，这里会显示真实业务结果。"
+      />
+    );
   }
 
   const layout = layoutDashboardWidgets(runtime.widgets);
@@ -106,23 +110,6 @@ export function DashboardRenderer({
   );
 }
 
-export function PeriodLabel({
-  period,
-  publication,
-}: {
-  period: DashboardRuntime["period"];
-  publication?: { number: number; publishedAt: string };
-}) {
-  return (
-    <StatusTag tone="neutral">
-      {formatDate(period.from)} 至 {formatDate(period.to)}
-      {publication
-        ? ` · 发布 #${publication.number}（${formatDate(publication.publishedAt)}）`
-        : " · 已发布"}
-    </StatusTag>
-  );
-}
-
 function WidgetSurface({
   widget,
   children,
@@ -166,7 +153,7 @@ function ReadyWidget({
       return widget.data.items.length ? (
         <TrendChart title={widget.title} data={widget.data.items} />
       ) : (
-        <Empty description="当前范围没有数据" />
+        <NoDataEmpty />
       );
     case "LEADERBOARD":
       return <LeaderboardWidget rows={widget.data.items} />;
@@ -200,7 +187,7 @@ function DistributionWidget({
   title: string;
   data: Extract<DashboardRuntimeWidget, { type: "STATUS_DISTRIBUTION"; state: "READY" }>["data"];
 }) {
-  if (!data.items.length) return <Empty description="当前范围没有数据" />;
+  if (!data.items.length) return <NoDataEmpty />;
 
   if (data.display === "FUNNEL") return <FunnelDistribution title={title} data={data} />;
   if (data.display === "DONUT") return <DonutDistribution id={id} title={title} data={data} />;
@@ -400,7 +387,7 @@ function LeaderboardWidget({
       columns={columns}
       dataSource={rows}
       scroll={{ x: true }}
-      locale={{ emptyText: <Empty description="当前范围没有数据" /> }}
+      locale={{ emptyText: <NoDataEmpty /> }}
     />
   );
 }
@@ -443,7 +430,7 @@ function RecordListWidget({
       columns={columns}
       dataSource={data.items}
       scroll={{ x: true }}
-      locale={{ emptyText: <Empty description="当前范围没有数据" /> }}
+      locale={{ emptyText: <NoDataEmpty /> }}
     />
   );
 }
@@ -453,12 +440,67 @@ function UnavailableWidget({
 }: {
   widget: Extract<DashboardRuntimeWidget, { state: "UNAVAILABLE" }>;
 }) {
+  const kind = unavailableKind(widget.reason);
   return (
-    <div className={styles.unavailable}>
-      <strong>此组件暂时无法显示</strong>
-      <p>{unavailableReason(widget.reason)}</p>
+    <WidgetEmpty
+      kind={kind}
+      title={unavailableTitle(kind)}
+      description={unavailableReason(widget.reason)}
+    />
+  );
+}
+
+function NoDataEmpty() {
+  return (
+    <WidgetEmpty
+      kind="no-data"
+      title="当前范围没有数据"
+      description="所选时间范围内没有符合条件的记录。"
+    />
+  );
+}
+
+function WidgetEmpty({
+  kind,
+  title,
+  description,
+}: {
+  kind: "unconfigured" | "no-data" | "no-permission" | "query-failed";
+  title: string;
+  description: string;
+}) {
+  return (
+    <div
+      className={styles.widgetEmpty}
+      data-empty-kind={kind}
+      data-testid={`widget-empty-${kind}`}
+    >
+      <strong>{title}</strong>
+      <p>{description}</p>
     </div>
   );
+}
+
+function unavailableKind(
+  reason?: Extract<DashboardRuntimeWidget, { state: "UNAVAILABLE" }>["reason"],
+): "unconfigured" | "no-data" | "no-permission" | "query-failed" {
+  if (reason === "QUERY_FAILED") return "query-failed";
+  if (
+    reason === "FIELD_HIDDEN" ||
+    reason === "OBJECT_ACCESS_DENIED" ||
+    reason === "AUDIENCE_EXCLUDED"
+  ) {
+    return "no-permission";
+  }
+  return "unconfigured";
+}
+
+function unavailableTitle(
+  kind: "unconfigured" | "no-data" | "no-permission" | "query-failed",
+) {
+  if (kind === "query-failed") return "此组件暂时无法显示";
+  if (kind === "no-permission") return "没有权限查看";
+  return "此组件暂时无法显示";
 }
 
 function formatValue(value: number | null, format?: "NUMBER" | "MONEY" | "PERCENT") {
@@ -481,12 +523,6 @@ function displayValue(value: unknown) {
     return String(value);
   }
   return "—";
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric" }).format(
-    new Date(value),
-  );
 }
 
 function optionColor(color: string) {

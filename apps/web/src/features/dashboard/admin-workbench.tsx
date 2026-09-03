@@ -7,8 +7,10 @@ import { PageHeader } from "@/components/layout/page-header";
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
 import type { DashboardRuntimeResult } from "./dashboard-types";
-import { DashboardRenderer, PeriodLabel } from "./dashboard-renderer";
+import { DashboardRenderer } from "./dashboard-renderer";
+import { WorkbenchPeriodNav } from "./workbench-chrome";
 import { BusinessObjectBar } from "./workbench-elements";
+import { dashboardSettingsPath, workbenchPath } from "./workbench-period";
 import styles from "./workbench.module.css";
 
 export function AdminWorkbench({
@@ -28,13 +30,21 @@ export function AdminWorkbench({
       <PageHeader
         title={overview.title}
         description={`${tenantName}的已发布工作台。数据会按当前权限更新。`}
-        status={<PeriodLabel period={overview.period} publication={overview.publication} />}
         extra={
-          <Link href={`/workspace/${tenantCode}/settings/dashboards/home`}>
+          <Link
+            href={dashboardSettingsPath(tenantCode, overview.dashboardCode)}
+          >
             <Button>配置工作台</Button>
           </Link>
         }
       />
+      <div className={styles.workbenchChrome}>
+        <WorkbenchPeriodNav
+          pathname={workbenchPath(tenantCode, overview.dashboardCode)}
+          period={overview.period}
+          publication={overview.publication}
+        />
+      </div>
       <DashboardRenderer tenantCode={tenantCode} runtime={overview} />
       <BusinessObjectBar
         tenantCode={tenantCode}
