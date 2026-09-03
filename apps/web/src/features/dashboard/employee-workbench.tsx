@@ -45,8 +45,8 @@ export function EmployeeWorkbench({
           publication={overview.publication}
         />
       </div>
-      <EmployeeShortcuts tenantCode={tenantCode} objects={businessObjects} />
       <DashboardRenderer tenantCode={tenantCode} runtime={overview} />
+      <EmployeeShortcuts tenantCode={tenantCode} objects={businessObjects} />
       <BusinessObjectBar
         tenantCode={tenantCode}
         objects={businessObjects}

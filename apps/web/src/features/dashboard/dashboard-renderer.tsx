@@ -53,6 +53,7 @@ export function DashboardRenderer({
         <section
           className={styles.metricBand}
           data-dashboard-band="metrics"
+          data-metric-count={Math.min(layout.metrics.length, 5)}
           aria-label="指标"
         >
           {layout.metrics.map((widget) => renderWidget(widget, styles.metricWidget))}

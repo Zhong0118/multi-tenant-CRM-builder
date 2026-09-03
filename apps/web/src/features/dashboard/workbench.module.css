@@ -451,11 +451,19 @@
 
 .metricBand {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   overflow: hidden;
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
   border-radius: 4px;
+}
+
+.metricBand[data-metric-count="3"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.metricBand[data-metric-count="5"] {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .analysisBand {
@@ -914,7 +922,9 @@
     grid-template-columns: 1fr;
   }
 
-  .metricBand {
+  .metricBand,
+  .metricBand[data-metric-count="3"],
+  .metricBand[data-metric-count="5"] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -959,7 +969,9 @@
     grid-column: 1;
   }
 
-  .metricBand {
+  .metricBand,
+  .metricBand[data-metric-count="3"],
+  .metricBand[data-metric-count="5"] {
     grid-template-columns: 1fr;
   }
 

@@ -5,6 +5,10 @@ import type {
   TemplateFieldConfiguration,
   TemplateObjectConfiguration,
 } from '../modules/business-templates/business-template.schema';
+import type {
+  DashboardDefinitionV2,
+  DashboardWidgetDraft,
+} from '../modules/dashboards/dashboard.types';
 
 export const DEMO_COMPANY_CODE = 'nebula-demo';
 export const DEMO_TEMPLATE_CODE = 'standard-sales-demo';
@@ -472,4 +476,117 @@ function relativeDate(offsetDays: number): string {
   date.setUTCHours(12, 0, 0, 0);
   date.setUTCDate(date.getUTCDate() + offsetDays);
   return date.toISOString().slice(0, 10);
+}
+
+export function buildDemoDashboardDraft(): DashboardDefinitionV2 {
+  const opportunity = {
+    audience: 'ALL' as const,
+    objectCode: DEMO_DASHBOARD_CONFIGURATION.opportunity.objectCode,
+    filters: [] as DashboardWidgetDraft['filters'],
+  };
+  const activeStages = DEMO_DASHBOARD_CONFIGURATION.opportunity.activeOptionKeys;
+  return {
+    schemaVersion: 2,
+    title: '销售运营工作台',
+    widgets: [
+      {
+        ...opportunity,
+        id: 'opportunity-total',
+        type: 'METRIC',
+        title: '商机总数',
+        width: 'QUARTER',
+        sortOrder: 0,
+        aggregation: 'COUNT',
+        displayFormat: 'NUMBER',
+      },
+      {
+        ...opportunity,
+        id: 'opportunity-amount',
+        type: 'METRIC',
+        title: '预计金额',
+        width: 'QUARTER',
+        sortOrder: 1,
+        aggregation: 'SUM',
+        valueFieldKey: DEMO_DASHBOARD_CONFIGURATION.opportunity.amountFieldKey,
+        displayFormat: 'MONEY',
+      },
+      {
+        ...opportunity,
+        id: 'opportunity-active',
+        type: 'METRIC',
+        title: '跟单商机',
+        width: 'QUARTER',
+        sortOrder: 2,
+        aggregation: 'COUNT',
+        displayFormat: 'NUMBER',
+      },
+      {
+        ...opportunity,
+        id: 'opportunity-won',
+        type: 'METRIC',
+        title: '成交金额',
+        width: 'QUARTER',
+        sortOrder: 3,
+        aggregation: 'SUM',
+        valueFieldKey: DEMO_DASHBOARD_CONFIGURATION.opportunity.amountFieldKey,
+        displayFormat: 'MONEY',
+      },
+      {
+        ...opportunity,
+        id: 'opportunity-trend',
+        type: 'TREND',
+        title: '预计成交趋势',
+        width: 'HALF',
+        sortOrder: 4,
+        dateFieldKey: DEMO_DASHBOARD_CONFIGURATION.opportunity.dateFieldKey,
+        granularity: 'MONTH',
+        aggregation: 'SUM',
+        valueFieldKey: DEMO_DASHBOARD_CONFIGURATION.opportunity.amountFieldKey,
+      },
+      {
+        ...opportunity,
+        id: 'opportunity-pipeline',
+        type: 'STATUS_DISTRIBUTION',
+        title: '商机阶段',
+        width: 'HALF',
+        sortOrder: 5,
+        groupByFieldKey: DEMO_DASHBOARD_CONFIGURATION.opportunity.stageFieldKey,
+        optionKeys: [
+          ...activeStages,
+          ...DEMO_DASHBOARD_CONFIGURATION.opportunity.wonOptionKeys,
+          ...DEMO_DASHBOARD_CONFIGURATION.opportunity.lostOptionKeys,
+        ],
+        display: 'BAR',
+        aggregation: 'SUM',
+        valueFieldKey: DEMO_DASHBOARD_CONFIGURATION.opportunity.amountFieldKey,
+      },
+      {
+        ...opportunity,
+        id: 'opportunity-leaderboard',
+        type: 'LEADERBOARD',
+        title: '负责人排行',
+        width: 'HALF',
+        sortOrder: 6,
+        memberSource: 'RECORD_OWNER',
+        aggregation: 'SUM',
+        valueFieldKey: DEMO_DASHBOARD_CONFIGURATION.opportunity.amountFieldKey,
+        limit: 10,
+      },
+      {
+        ...opportunity,
+        id: 'opportunity-records',
+        type: 'RECORD_LIST',
+        title: '近期商机',
+        width: 'FULL',
+        sortOrder: 7,
+        fieldKeys: [
+          DEMO_DASHBOARD_CONFIGURATION.opportunity.stageFieldKey,
+          DEMO_DASHBOARD_CONFIGURATION.opportunity.amountFieldKey,
+          DEMO_DASHBOARD_CONFIGURATION.opportunity.dateFieldKey,
+        ],
+        sort: { field: 'updatedAt', direction: 'DESC' },
+        limit: 10,
+      },
+    ],
+  };
 }

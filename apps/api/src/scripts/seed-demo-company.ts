@@ -11,11 +11,11 @@ import {
 import { hydrateTenantConfiguration } from '../modules/business-templates/template-application.service';
 import { normalizeChineseMobile } from '../modules/auth/phone-number';
 import type {
-  DashboardDefinitionV2,
   PublishedDashboardDefinitionV2,
 } from '../modules/dashboards/dashboard.types';
 import {
   buildDemoCompanyFixture,
+  buildDemoDashboardDraft,
   DEMO_COMPANY_CODE,
   DEMO_DASHBOARD_CONFIGURATION,
   DEMO_TEMPLATE_CODE,
@@ -632,7 +632,7 @@ async function ensureDemoDashboardPublication(
   publishingMemberId: string,
   objectConfiguration: Prisma.JsonValue,
 ): Promise<void> {
-  const draft = demoDashboardDraft();
+  const draft = buildDemoDashboardDraft();
   const definition = await transaction.tenantDashboardConfiguration.findFirst({
     where: { tenantId, code: 'home' },
     include: { activePublication: true },
@@ -691,78 +691,6 @@ async function ensureDemoDashboardPublication(
   });
 }
 
-function demoDashboardDraft(): DashboardDefinitionV2 {
-  const base = {
-    audience: 'ALL' as const,
-    objectCode: 'opportunities',
-    filters: [],
-  };
-  return {
-    schemaVersion: 2,
-    title: '销售运营工作台',
-    widgets: [
-      {
-        ...base,
-        id: 'opportunity-total',
-        type: 'METRIC',
-        title: '商机总数',
-        width: 'QUARTER',
-        sortOrder: 0,
-        aggregation: 'COUNT',
-        displayFormat: 'NUMBER',
-      },
-      {
-        ...base,
-        id: 'opportunity-pipeline',
-        type: 'STATUS_DISTRIBUTION',
-        title: '商机阶段',
-        width: 'HALF',
-        sortOrder: 1,
-        groupByFieldKey: 'stage',
-        optionKeys: ['discovery', 'proposal', 'negotiation', 'won', 'lost'],
-        display: 'BAR',
-        aggregation: 'SUM',
-        valueFieldKey: 'amount',
-      },
-      {
-        ...base,
-        id: 'opportunity-trend',
-        type: 'TREND',
-        title: '预计成交趋势',
-        width: 'HALF',
-        sortOrder: 2,
-        dateFieldKey: 'closeDate',
-        granularity: 'MONTH',
-        aggregation: 'SUM',
-        valueFieldKey: 'amount',
-      },
-      {
-        ...base,
-        id: 'opportunity-leaderboard',
-        type: 'LEADERBOARD',
-        title: '负责人排行',
-        width: 'HALF',
-        sortOrder: 3,
-        memberSource: 'RECORD_OWNER',
-        aggregation: 'SUM',
-        valueFieldKey: 'amount',
-        limit: 10,
-      },
-      {
-        ...base,
-        id: 'opportunity-records',
-        type: 'RECORD_LIST',
-        title: '近期商机',
-        width: 'FULL',
-        sortOrder: 4,
-        fieldKeys: ['stage', 'amount', 'closeDate'],
-        sort: { field: 'updatedAt', direction: 'DESC' },
-        limit: 10,
-      },
-    ],
-  };
-}
-
 function demoPublishedDashboard(
   rawObjectConfiguration: Prisma.JsonValue,
 ): PublishedDashboardDefinitionV2 {
@@ -788,93 +716,50 @@ function demoPublishedDashboard(
     const value = option as Record<string, unknown>;
     return { key: value.key, label: value.label, color: value.color };
   });
-  const base = {
-    objectCode: object.code,
-    objectName: object.name,
-    objectPublicationId: publication.id,
-    objectPublicationNumber: publication.number,
+  const objectBase = {
+    objectCode: object.code as string,
+    objectName: object.name as string,
+    objectPublicationId: publication.id as string,
+    objectPublicationNumber: publication.number as number,
     filterFields: [],
   };
   return {
     schemaVersion: 2,
     title: '销售运营工作台',
-    widgets: [
-      {
-        ...base,
-        id: 'opportunity-total',
-        type: 'METRIC',
-        title: '商机总数',
-        audience: 'ALL',
-        width: 'QUARTER',
-        sortOrder: 0,
-        filters: [],
-        aggregation: 'COUNT',
-        displayFormat: 'NUMBER',
-      },
-      {
-        ...base,
-        id: 'opportunity-pipeline',
-        type: 'STATUS_DISTRIBUTION',
-        title: '商机阶段',
-        audience: 'ALL',
-        width: 'HALF',
-        sortOrder: 1,
-        filters: [],
-        groupByFieldKey: 'stage',
-        groupByField: stage,
-        optionKeys: ['discovery', 'proposal', 'negotiation', 'won', 'lost'],
-        options,
-        display: 'BAR',
-        aggregation: 'SUM',
-        valueFieldKey: 'amount',
-        valueField: amount,
-      },
-      {
-        ...base,
-        id: 'opportunity-trend',
-        type: 'TREND',
-        title: '预计成交趋势',
-        audience: 'ALL',
-        width: 'HALF',
-        sortOrder: 2,
-        filters: [],
-        dateFieldKey: 'closeDate',
-        dateField: closeDate,
-        granularity: 'MONTH',
-        aggregation: 'SUM',
-        valueFieldKey: 'amount',
-        valueField: amount,
-      },
-      {
-        ...base,
-        id: 'opportunity-leaderboard',
-        type: 'LEADERBOARD',
-        title: '负责人排行',
-        audience: 'ALL',
-        width: 'HALF',
-        sortOrder: 3,
-        filters: [],
-        memberSource: 'RECORD_OWNER',
-        aggregation: 'SUM',
-        valueFieldKey: 'amount',
-        valueField: amount,
-        limit: 10,
-      },
-      {
-        ...base,
-        id: 'opportunity-records',
-        type: 'RECORD_LIST',
-        title: '近期商机',
-        audience: 'ALL',
-        width: 'FULL',
-        sortOrder: 4,
-        filters: [],
-        fieldKeys: ['stage', 'amount', 'closeDate'],
-        displayFields: [stage, amount, closeDate],
-        sort: { field: 'updatedAt', direction: 'DESC' },
-        limit: 10,
-      },
-    ],
+    widgets: buildDemoDashboardDraft().widgets.map((widget) => {
+      const published = {
+        ...widget,
+        ...objectBase,
+      };
+      if (widget.type === 'STATUS_DISTRIBUTION') {
+        return {
+          ...published,
+          groupByField: stage,
+          options,
+          valueField: amount,
+        };
+      }
+      if (widget.type === 'TREND') {
+        return {
+          ...published,
+          dateField: closeDate,
+          valueField: amount,
+        };
+      }
+      if (widget.type === 'LEADERBOARD') {
+        return {
+          ...published,
+          valueField: amount,
+        };
+      }
+      if (widget.type === 'RECORD_LIST') {
+        return {
+          ...published,
+          displayFields: [stage, amount, closeDate],
+        };
+      }
+      return published;
+    }),
   } as unknown as PublishedDashboardDefinitionV2;
 }
 

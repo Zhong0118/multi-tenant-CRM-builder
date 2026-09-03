@@ -56,9 +56,9 @@ describe("WorkspaceHomeView", () => {
       "leaderboard",
       "records",
     ]);
-    expect(container.querySelector('[data-dashboard-band="metrics"]')).toContainElement(
-      widgets[0] as HTMLElement,
-    );
+    const metricBand = container.querySelector('[data-dashboard-band="metrics"]');
+    expect(metricBand).toContainElement(widgets[0] as HTMLElement);
+    expect(metricBand).toHaveAttribute("data-metric-count", "2");
     expect(container.querySelector('[data-dashboard-band="analysis"]')).toContainElement(
       screen.getByRole("heading", { name: "每日订单" }),
     );
