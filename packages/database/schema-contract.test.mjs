@@ -34,6 +34,28 @@ test("defines the core multi-tenant CRM models", async () => {
   assert.match(schema, /data\s+Json\s+@default\("\{\}"\)\s+@db\.JsonB/);
 });
 
+test("named dashboard migration can backfill publication owners past the immutability trigger", async () => {
+  const migration = await readFile(
+    new URL(
+      "./prisma/migrations/0010_named_tenant_dashboards/migration.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const disable =
+    /ALTER TABLE "tenant_dashboard_publications"\s+DISABLE TRIGGER "tenant_dashboard_publications_immutable_update"/;
+  const enable =
+    /ALTER TABLE "tenant_dashboard_publications"\s+ENABLE TRIGGER "tenant_dashboard_publications_immutable_update"/;
+  const backfill = migration.match(
+    /DISABLE TRIGGER "tenant_dashboard_publications_immutable_update"([\s\S]*?)ENABLE TRIGGER "tenant_dashboard_publications_immutable_update"/,
+  );
+
+  assert.match(migration, disable);
+  assert.match(migration, enable);
+  assert.ok(backfill, "publication backfill must sit between disable and enable");
+  assert.match(backfill[1], /SET "dashboard_id" = definition\."id"/);
+});
+
 test("defines named tenant dashboards with per-dashboard publications", async () => {
   const schema = await readFile(schemaUrl, "utf8");
 
