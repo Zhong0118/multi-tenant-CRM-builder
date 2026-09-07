@@ -365,6 +365,31 @@ describe("RecordList table sorting", () => {
     );
   });
 
+  it("exports the current list filter from the toolbar", async () => {
+    const navigate = vi.fn();
+    const api = {
+      list: vi.fn().mockResolvedValue(page),
+      export: vi.fn().mockResolvedValue(undefined),
+    } as unknown as RecordApi;
+    renderList(
+      navigate,
+      { ...DEFAULT_RECORD_QUERY, search: "天际" },
+      { api },
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "导出当前结果" }));
+
+    await waitFor(() =>
+      expect(api.export).toHaveBeenCalledWith("northwind", "customers", {
+        search: "天际",
+        ownerMemberId: undefined,
+        filters: {},
+        sort: DEFAULT_RECORD_QUERY.sort,
+        direction: DEFAULT_RECORD_QUERY.direction,
+      }),
+    );
+  });
+
   it("exposes search and option filters from the published schema", async () => {
     const navigate = vi.fn();
     renderList(navigate);

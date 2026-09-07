@@ -7,6 +7,8 @@ import type {
   RecordListSortField,
   RecordSummary,
 } from "@/features/objects/object-types";
+import { toApiError } from "@/lib/api/api-error";
+import { browserApiOrigin } from "@/lib/api/api-origin";
 import { browserApiClient } from "@/lib/api/browser-client";
 
 import {
@@ -107,6 +109,11 @@ export interface RecordApi {
     recordId: string,
     input: CreateRecordActivityInput,
   ): Promise<RecordActivity>;
+  export(
+    tenantCode: string,
+    objectCode: string,
+    query: Omit<RecordListQuery, "page" | "limit">,
+  ): Promise<void>;
 }
 
 const RECORDS_PATH =
@@ -181,7 +188,57 @@ export const recordApi: RecordApi = {
       }),
     );
   },
+  async export(tenantCode, objectCode, query) {
+    const { filters, ...rest } = query;
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(
+      definedEntries({
+        ...rest,
+        filters: filters ? recordFilterParameter(filters) : undefined,
+      }),
+    )) {
+      if (value === undefined || value === null) continue;
+      params.set(key, String(value));
+    }
+    const search = params.toString();
+    const url = `${browserApiOrigin()}/api/v1/workspaces/${encodeURIComponent(
+      tenantCode,
+    )}/objects/${encodeURIComponent(objectCode)}/records/export${
+      search ? `?${search}` : ""
+    }`;
+    const response = await fetch(url, { credentials: "include" });
+    if (!response.ok) {
+      const body = await response.json().catch(() => undefined);
+      throw toApiError(body, response.status);
+    }
+    const blob = await response.blob();
+    const fileName = fileNameFromDisposition(
+      response.headers.get("Content-Disposition"),
+      `${objectCode}.csv`,
+    );
+    downloadBlob(blob, fileName);
+  },
 };
+
+function fileNameFromDisposition(
+  header: string | null,
+  fallback: string,
+): string {
+  if (!header) return fallback;
+  const encoded = header.match(/filename\*=UTF-8''([^;]+)/i);
+  if (encoded?.[1]) return decodeURIComponent(encoded[1]);
+  const quoted = header.match(/filename="([^"]+)"/i);
+  return quoted?.[1] ?? fallback;
+}
+
+function downloadBlob(blob: Blob, fileName: string): void {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(objectUrl);
+}
 
 /**
  * An absent filter and an explicitly empty one mean different things to the

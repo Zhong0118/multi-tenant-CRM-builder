@@ -16,6 +16,11 @@ import {
   type MemberActivityType,
   type RecordActivity,
 } from './record-activity';
+import {
+  RECORD_EXPORT_MAX_ROWS,
+  buildRecordExportCsv,
+  exportFileName,
+} from './record-export';
 import type {
   DynamicRecord,
   RecordListFieldSort,
@@ -68,6 +73,12 @@ export interface RecordActivityPageResponse {
   page: number;
   limit: number;
   total: number;
+}
+
+export interface RecordExportFile {
+  fileName: string;
+  csv: string;
+  rowCount: number;
 }
 
 @Injectable()
@@ -123,6 +134,117 @@ export class RecordsService {
         page,
         limit,
         total: result.total,
+      };
+    });
+  }
+
+  async exportCsv(
+    context: TenantContext,
+    objectCode: string,
+    input: {
+      search?: string;
+      ownerMemberId?: string;
+      filters?: string;
+      sort: string;
+      direction: 'asc' | 'desc';
+    },
+    meta: RequestMeta,
+  ): Promise<RecordExportFile> {
+    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+      context,
+      objectCode,
+    );
+    return this.repository.withTenant(context, async (store) => {
+      const ownerMemberId = await resolveListOwner(
+        context,
+        resolved,
+        store,
+        input.ownerMemberId,
+      );
+      const query: RecordListQuery = {
+        objectId: resolved.schema.object.id,
+        page: 1,
+        limit: RECORD_EXPORT_MAX_ROWS + 1,
+        search: input.search?.trim() || undefined,
+        searchFieldKeys: searchableFieldKeys(resolved),
+        ownerMemberId,
+        filters: parseListFilters(input.filters, resolved, this.clock()),
+        sort: parseListSort(input.sort, resolved),
+        direction: input.direction,
+      };
+      const result = await store.listRecords(query);
+      if (result.total > RECORD_EXPORT_MAX_ROWS) {
+        throw new ApiException('RECORD_EXPORT_LIMIT', 400, {
+          fieldErrors: {
+            export: [
+              `当前 ${result.total} 条，超过 ${RECORD_EXPORT_MAX_ROWS} 条上限。`,
+            ],
+          },
+        });
+      }
+      const visibleFields = resolved.visibleSchema.defaultView.columnFieldKeys
+        .map((fieldKey) =>
+          resolved.visibleSchema.fields.find(
+            (field) => field.fieldKey === fieldKey,
+          ),
+        )
+        .filter((field): field is NonNullable<typeof field> => field !== undefined);
+      const memberIds = [
+        ...new Set(
+          result.items.flatMap((record) => {
+            const ids = record.ownerMemberId ? [record.ownerMemberId] : [];
+            for (const field of visibleFields) {
+              if (field.type !== 'MEMBER') continue;
+              const value = record.values[field.fieldKey];
+              if (typeof value === 'string') ids.push(value);
+            }
+            return ids;
+          }),
+        ),
+      ];
+      const memberNames = await store.listMemberNames(memberIds);
+      const csv = buildRecordExportCsv({
+        fields: visibleFields.map((field) => ({
+          fieldKey: field.fieldKey,
+          label: field.label,
+          type: field.type,
+          config: field.config,
+        })),
+        records: result.items.map((record) => ({
+          recordNo: record.recordNo.toString(),
+          ownerMemberId: record.ownerMemberId,
+          values: projectVisibleValues(
+            resolved.schema,
+            resolved.access,
+            record.values,
+          ),
+          createdAt: record.createdAt,
+          updatedAt: record.updatedAt,
+        })),
+        memberNames,
+      });
+      await store.appendAudit({
+        tenantId: context.tenantId,
+        actorType: 'USER',
+        actorId: context.userId,
+        action: 'record.exported',
+        resourceType: 'object',
+        resourceId: resolved.schema.object.id,
+        after: {
+          objectCode,
+          rowCount: result.items.length,
+          total: result.total,
+        },
+        requestId: meta.requestId,
+        ip: meta.ip,
+      });
+      return {
+        fileName: exportFileName(
+          resolved.visibleSchema.object.name,
+          resolved.visibleSchema.object.code,
+        ),
+        csv,
+        rowCount: result.items.length,
       };
     });
   }

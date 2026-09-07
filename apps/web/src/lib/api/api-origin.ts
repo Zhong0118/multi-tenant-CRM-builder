@@ -14,3 +14,12 @@ export function resolveBrowserApiOrigin(
   }
   return origin.origin;
 }
+
+export function browserApiOrigin(): string {
+  const configuredApiOrigin =
+    process.env.NEXT_PUBLIC_API_ORIGIN ?? "http://localhost:3001";
+  return resolveBrowserApiOrigin(
+    configuredApiOrigin,
+    typeof window === "undefined" ? undefined : window.location.hostname,
+  );
+}

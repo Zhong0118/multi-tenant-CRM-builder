@@ -3,11 +3,14 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   Patch,
   Post,
   Query,
   Req,
+  Res,
+  StreamableFile,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -15,9 +18,10 @@ import {
   ApiCreatedResponse,
   ApiOkResponse,
   ApiParam,
+  ApiProduces,
   ApiTags,
 } from '@nestjs/swagger';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 
 import { CurrentTenant } from '../../common/tenancy/tenant-context.decorator';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
@@ -59,6 +63,31 @@ export class RecordsController {
     @Query() query: RecordListQueryDto,
   ) {
     return this.records.list(context, objectCode, query);
+  }
+
+  @Get('export')
+  @ApiParam({ name: 'objectCode' })
+  @ApiProduces('text/csv')
+  @ApiOkResponse({ description: '当前筛选结果的 CSV 文件。' })
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  async exportCsv(
+    @CurrentTenant() context: TenantContext,
+    @Param('objectCode') objectCode: string,
+    @Query() query: RecordListQueryDto,
+    @Req() request: RequestWithId,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const file = await this.records.exportCsv(
+      context,
+      objectCode,
+      query,
+      requestMeta(request),
+    );
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename*=UTF-8''${encodeURIComponent(file.fileName)}`,
+    );
+    return new StreamableFile(Buffer.from(file.csv, 'utf8'));
   }
 
   @Post()

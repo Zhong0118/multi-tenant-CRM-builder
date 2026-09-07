@@ -359,6 +359,22 @@ class MemoryRecordsStore implements RecordsStore {
     });
   }
 
+  listMemberNames(memberIds: string[]): Promise<Map<string, string>> {
+    const names = new Map<string, string>([
+      [admin.memberId, '管理员'],
+      [employee.memberId, '员工'],
+      [otherMemberId, '其他成员'],
+    ]);
+    return Promise.resolve(
+      new Map(
+        memberIds.flatMap((memberId) => {
+          const name = names.get(memberId);
+          return name ? [[memberId, name] as const] : [];
+        }),
+      ),
+    );
+  }
+
   createActivity(activity: {
     id: string;
     recordId: string;
@@ -1081,6 +1097,60 @@ describe('RecordsService', () => {
     await expect(
       service.detail(employee, 'leads', 'record-missing'),
     ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+  });
+
+  it('exports the current filter as a UTF-8 BOM CSV of visible columns', async () => {
+    const { service } = fixture();
+    await create(service, admin, '公开标题', employee.memberId, {
+      email: 'alpha@example.com',
+      secret: '机密标记',
+    });
+    await create(service, admin, '另一条', otherMemberId, {
+      email: 'beta@example.com',
+    });
+
+    const file = await service.exportCsv(
+      admin,
+      'leads',
+      {
+        search: 'alpha@',
+        sort: 'updatedAt',
+        direction: 'desc',
+      },
+      meta,
+    );
+
+    expect(file.fileName).toBe('销售线索.csv');
+    expect(file.rowCount).toBe(1);
+    expect(file.csv.startsWith('\uFEFF')).toBe(true);
+    expect(file.csv).toContain('业务编号,负责人,姓名,邮箱,创建时间,最近更新');
+    expect(file.csv).toContain('员工');
+    expect(file.csv).toContain('alpha@example.com');
+    expect(file.csv).not.toContain('机密标记');
+    expect(file.csv).not.toContain('beta@example.com');
+  });
+
+  it('rejects an export that exceeds the row cap', async () => {
+    const { service, store } = fixture();
+    for (let index = 0; index < 3; index += 1) {
+      await create(service, admin, `线索${index}`, employee.memberId);
+    }
+    store.listRecords = async (query) => {
+      const result = await MemoryRecordsStore.prototype.listRecords.call(
+        store,
+        query,
+      );
+      return { ...result, total: 5001 };
+    };
+
+    await expect(
+      service.exportCsv(
+        admin,
+        'leads',
+        { sort: 'updatedAt', direction: 'desc' },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'RECORD_EXPORT_LIMIT' });
   });
 
   it('appends a member activity to a visible record without rewriting history', async () => {

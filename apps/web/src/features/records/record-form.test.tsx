@@ -99,6 +99,7 @@ function recordApi(overrides: Partial<RecordApi> = {}): RecordApi {
     remove: vi.fn(),
     listActivities: vi.fn(),
     createActivity: vi.fn(),
+    export: vi.fn(),
     ...overrides,
   };
 }

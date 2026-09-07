@@ -107,6 +107,51 @@ describe("recordApi mutations", () => {
     });
   });
 
+  it("downloads the current list filter as a CSV attachment", async () => {
+    const click = vi.fn();
+    const createObjectURL = vi.fn(() => "blob:export");
+    const revokeObjectURL = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      blob: async () => new Blob(["id,name"], { type: "text/csv" }),
+      headers: {
+        get: (name: string) =>
+          name === "Content-Disposition"
+            ? "attachment; filename*=UTF-8''%E5%AE%A2%E6%88%B7.csv"
+            : null,
+      },
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(URL, "createObjectURL").mockImplementation(createObjectURL);
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(revokeObjectURL);
+    vi.spyOn(document, "createElement").mockImplementation(((
+      tag: string,
+    ) => {
+      if (tag === "a") {
+        return { click } as unknown as HTMLAnchorElement;
+      }
+      return document.createElement(tag);
+    }) as typeof document.createElement);
+
+    await recordApi.export("northwind", "customers", {
+      search: "百杰",
+      sort: "recordNo",
+      direction: "asc",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "/api/v1/workspaces/northwind/objects/customers/records/export?",
+      ),
+      { credentials: "include" },
+    );
+    expect(fetchMock.mock.calls[0][0]).toContain("search=");
+    expect(fetchMock.mock.calls[0][0]).toContain("sort=recordNo");
+    expect(click).toHaveBeenCalled();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
   it("lists and appends activities on the generated nested path", async () => {
     mocks.GET.mockResolvedValue(ok({ items: [], page: 1, limit: 20, total: 0 }));
     mocks.POST.mockResolvedValue(ok({ id: "activity-1" }));

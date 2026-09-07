@@ -7233,6 +7233,110 @@
         "tags": ["records"]
       }
     },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/export": {
+      "get": {
+        "operationId": "RecordsController_exportCsv",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "maxLength": 300,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ownerMemberId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "按已发布字段筛选的 JSON 对象，支持选项、日期范围或相对时间、数值区间、是否、成员、文本包含，以及有值/空值。",
+            "in": "query",
+            "name": "filters",
+            "required": false,
+            "schema": {
+              "example": "{\"lead_status\":[\"new\",\"following\"]}",
+              "maxLength": 4000,
+              "type": "string"
+            }
+          },
+          {
+            "description": "updatedAt、createdAt、recordNo，或当前业务表中可排序的已发布字段键。",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "updatedAt",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "direction",
+            "required": false,
+            "schema": {
+              "default": "desc",
+              "enum": ["asc", "desc"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "当前筛选结果的 CSV 文件。"
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["records"]
+      }
+    },
     "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}": {
       "delete": {
         "operationId": "RecordsController_remove",

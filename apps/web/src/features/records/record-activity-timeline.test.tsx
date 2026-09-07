@@ -34,6 +34,7 @@ function recordApi(overrides: Partial<RecordApi> = {}): RecordApi {
       id: "activity-2",
       content: "已回访确认需求。",
     }),
+    export: vi.fn(),
     ...overrides,
   };
 }

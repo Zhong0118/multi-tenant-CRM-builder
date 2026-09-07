@@ -1012,6 +1012,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/export": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["RecordsController_exportCsv"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/schema": {
     parameters: {
       query?: never;
@@ -4268,6 +4284,37 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["RecordActivityResponseDto"];
         };
+      };
+    };
+  };
+  RecordsController_exportCsv: {
+    parameters: {
+      query?: {
+        direction?: "asc" | "desc";
+        /** @description 按已发布字段筛选的 JSON 对象，支持选项、日期范围或相对时间、数值区间、是否、成员、文本包含，以及有值/空值。 */
+        filters?: string;
+        limit?: number;
+        ownerMemberId?: string;
+        page?: number;
+        search?: string;
+        /** @description updatedAt、createdAt、recordNo，或当前业务表中可排序的已发布字段键。 */
+        sort?: string;
+      };
+      header?: never;
+      path: {
+        objectCode: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 当前筛选结果的 CSV 文件。 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };

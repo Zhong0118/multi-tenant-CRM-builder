@@ -134,6 +134,7 @@ export interface RecordsStore {
     actorMemberId: string;
     createdAt: string;
   }): Promise<RecordActivity>;
+  listMemberNames(memberIds: string[]): Promise<Map<string, string>>;
   appendAudit(event: AuditEvent): Promise<void>;
 }
 
@@ -391,6 +392,24 @@ class PrismaRecordsStore implements RecordsStore {
       },
     });
     return result.count === 1;
+  }
+
+  async listMemberNames(memberIds: string[]): Promise<Map<string, string>> {
+    const unique = [...new Set(memberIds.filter(Boolean))];
+    if (unique.length === 0) return new Map();
+    const members = await this.transaction.tenantMember.findMany({
+      where: {
+        tenantId: this.context.tenantId,
+        id: { in: unique },
+      },
+      select: {
+        id: true,
+        user: { select: { displayName: true } },
+      },
+    });
+    return new Map(
+      members.map((member) => [member.id, member.user.displayName]),
+    );
   }
 
   appendAudit(event: AuditEvent): Promise<void> {

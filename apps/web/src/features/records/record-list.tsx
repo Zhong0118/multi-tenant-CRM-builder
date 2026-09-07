@@ -105,6 +105,22 @@ export function RecordList({
     initialData: initialPage,
     staleTime: 0,
   });
+  const exporting = useMutation({
+    mutationFn: () =>
+      api.export(tenantCode, objectCode, {
+        search: query.search,
+        ownerMemberId: query.ownerMemberId,
+        filters: query.filters,
+        sort: query.sort,
+        direction: query.direction,
+      }),
+    onMutate: () => setError(undefined),
+    onError: (caught) => {
+      const apiError = toApiError(caught);
+      setError(`${apiError.message}（请求编号：${apiError.requestId}）`);
+    },
+  });
+
   const remove = useMutation({
     mutationFn: (record: RecordSummary) =>
       api.remove(tenantCode, objectCode, record.id, record.version),
@@ -428,9 +444,18 @@ export function RecordList({
           />
         }
         batchActions={
-          <Typography.Text type="secondary">
-            共 {page.total} 条 · 第 {page.page} 页
-          </Typography.Text>
+          <Space size={12}>
+            <Typography.Text type="secondary">
+              共 {page.total} 条 · 第 {page.page} 页
+            </Typography.Text>
+            <Button
+              onClick={() => exporting.mutate()}
+              loading={exporting.isPending}
+              disabled={!schema.actions.canRead || page.total === 0}
+            >
+              导出当前结果
+            </Button>
+          </Space>
         }
       >
         {canFilterByOwner ? (
