@@ -120,6 +120,15 @@ enum RecordSource {
   API
 }
 
+enum RecordActivityType {
+  CALL
+  MESSAGE
+  MEETING
+  NOTE
+  STATUS_CHANGE
+  SYSTEM
+}
+
 enum AuditActorType {
   USER
   INTEGRATION
@@ -177,6 +186,7 @@ model Tenant {
   objects            ObjectDefinition[]
   fields             FieldDefinition[]
   records            Record[]
+  recordActivities   RecordActivity[]
   objectPublications ObjectPublication[]
   views              ViewDefinition[]
   objectPermissions  ObjectPermission[]
@@ -255,6 +265,7 @@ model TenantMember {
   user                      User                @relation(fields: [userId], references: [id], onDelete: Restrict)
   ownedRecords              Record[]            @relation("RecordOwner")
   createdRecords            Record[]            @relation("RecordCreator")
+  recordActivities          RecordActivity[]    @relation("RecordActivityActor")
   publishedObjects          ObjectPublication[] @relation("ObjectPublicationPublisher")
   publishedDashboards       TenantDashboardPublication[] @relation("TenantDashboardPublicationPublisher")
   objectPermissionOverrides ObjectPermission[]  @relation("ObjectPermissionMember")
@@ -558,12 +569,34 @@ model Record {
   object                 ObjectDefinition @relation(fields: [tenantId, objectId], references: [tenantId, id], onDelete: Restrict)
   owner                  TenantMember?    @relation("RecordOwner", fields: [tenantId, ownerMemberId], references: [tenantId, id], onDelete: Restrict)
   createdBy              TenantMember?    @relation("RecordCreator", fields: [tenantId, createdByMemberId], references: [tenantId, id], onDelete: Restrict)
+  activities             RecordActivity[]
 
+  @@unique([tenantId, id])
   @@unique([tenantId, objectId, recordNo])
   @@index([tenantId, objectId, deletedAt, updatedAt(sort: Desc)])
   @@index([tenantId, objectId, ownerMemberId, deletedAt, updatedAt(sort: Desc)])
   @@index([tenantId, objectId, statusKey, deletedAt])
   @@map("records")
+}
+
+model RecordActivity {
+  id                  String             @id @default(uuid(7)) @db.Uuid
+  tenantId            String             @map("tenant_id") @db.Uuid
+  recordId            String             @map("record_id") @db.Uuid
+  activityType        RecordActivityType @map("activity_type")
+  content             String
+  resultKey           String?            @map("result_key") @db.VarChar(64)
+  nextActionAt        DateTime?          @map("next_action_at") @db.Timestamptz(3)
+  actorMemberId       String?            @map("actor_member_id") @db.Uuid
+  actorIntegrationId  String?            @map("actor_integration_id") @db.Uuid
+  metadata            Json               @default("{}") @db.JsonB
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  tenant              Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  record              Record             @relation(fields: [tenantId, recordId], references: [tenantId, id], onDelete: Restrict)
+  actor               TenantMember?      @relation("RecordActivityActor", fields: [tenantId, actorMemberId], references: [tenantId, id], onDelete: Restrict)
+
+  @@index([tenantId, recordId, createdAt(sort: Desc)])
+  @@map("record_activities")
 }
 
 model AuditLog {

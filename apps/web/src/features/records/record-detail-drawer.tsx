@@ -11,6 +11,7 @@ import type {
 import { toApiError } from "@/lib/api/api-error";
 
 import type { DynamicFieldMember } from "./dynamic-field";
+import { RecordActivityTimeline } from "./record-activity-timeline";
 import { displayValue } from "./record-list";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
 import { RecordForm } from "./record-form";
@@ -141,6 +142,14 @@ export function RecordDetailDrawer({
               版本 v{record.version}
             </Typography.Text>
           </div>
+
+          <RecordActivityTimeline
+            tenantCode={tenantCode}
+            objectCode={schema.object.code}
+            recordId={record.id}
+            canCreate={schema.actions.canUpdate}
+            api={api}
+          />
         </>
       )}
     </Drawer>

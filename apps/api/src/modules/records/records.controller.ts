@@ -24,9 +24,13 @@ import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { WorkspaceGuard } from '../../common/tenancy/workspace.guard';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
 import {
+  CreateRecordActivityDto,
   CreateRecordDto,
   DeleteRecordResponseDto,
   DeleteRecordDto,
+  RecordActivityListQueryDto,
+  RecordActivityPageResponseDto,
+  RecordActivityResponseDto,
   RecordPageResponseDto,
   RecordListQueryDto,
   RecordResponseDto,
@@ -66,6 +70,37 @@ export class RecordsController {
     @Req() request: RequestWithId,
   ) {
     return this.records.create(context, objectCode, dto, requestMeta(request));
+  }
+
+  @Get(':recordId/activities')
+  @ApiParam({ name: 'recordId', format: 'uuid' })
+  @ApiOkResponse({ type: RecordActivityPageResponseDto })
+  listActivities(
+    @CurrentTenant() context: TenantContext,
+    @Param('objectCode') objectCode: string,
+    @Param('recordId') recordId: string,
+    @Query() query: RecordActivityListQueryDto,
+  ) {
+    return this.records.listActivities(context, objectCode, recordId, query);
+  }
+
+  @Post(':recordId/activities')
+  @ApiParam({ name: 'recordId', format: 'uuid' })
+  @ApiCreatedResponse({ type: RecordActivityResponseDto })
+  createActivity(
+    @CurrentTenant() context: TenantContext,
+    @Param('objectCode') objectCode: string,
+    @Param('recordId') recordId: string,
+    @Body() dto: CreateRecordActivityDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.records.createActivity(
+      context,
+      objectCode,
+      recordId,
+      dto,
+      requestMeta(request),
+    );
   }
 
   @Get(':recordId')

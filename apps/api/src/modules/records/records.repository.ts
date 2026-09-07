@@ -5,6 +5,11 @@ import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
 import type { AuditEvent } from '../audit/audit-event';
 import { AuditService } from '../audit/audit.service';
+import {
+  MEMBER_ACTIVITY_TYPES,
+  type MemberActivityType,
+  type RecordActivity,
+} from './record-activity';
 
 export interface DynamicRecord {
   id: string;
@@ -116,6 +121,19 @@ export interface RecordsStore {
     expectedVersion: number,
     deletedAt: string,
   ): Promise<boolean>;
+  listActivities(
+    recordId: string,
+    query: { page: number; limit: number },
+  ): Promise<{ items: RecordActivity[]; total: number }>;
+  createActivity(activity: {
+    id: string;
+    recordId: string;
+    activityType: MemberActivityType;
+    content: string;
+    nextActionAt: string | null;
+    actorMemberId: string;
+    createdAt: string;
+  }): Promise<RecordActivity>;
   appendAudit(event: AuditEvent): Promise<void>;
 }
 
@@ -305,6 +323,56 @@ class PrismaRecordsStore implements RecordsStore {
     return record ? fromPrismaRecord(record) : null;
   }
 
+  async listActivities(
+    recordId: string,
+    query: { page: number; limit: number },
+  ): Promise<{ items: RecordActivity[]; total: number }> {
+    const where = {
+      tenantId: this.context.tenantId,
+      recordId,
+      activityType: { in: [...MEMBER_ACTIVITY_TYPES] },
+    };
+    const [items, total] = await Promise.all([
+      this.transaction.recordActivity.findMany({
+        where,
+        include: { actor: { include: { user: true } } },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (query.page - 1) * query.limit,
+        take: query.limit,
+      }),
+      this.transaction.recordActivity.count({ where }),
+    ]);
+    return { items: items.map(fromPrismaActivity), total };
+  }
+
+  async createActivity(activity: {
+    id: string;
+    recordId: string;
+    activityType: MemberActivityType;
+    content: string;
+    nextActionAt: string | null;
+    actorMemberId: string;
+    createdAt: string;
+  }): Promise<RecordActivity> {
+    const created = await this.transaction.recordActivity.create({
+      data: {
+        id: activity.id,
+        tenantId: this.context.tenantId,
+        recordId: activity.recordId,
+        activityType: activity.activityType,
+        content: activity.content,
+        nextActionAt: activity.nextActionAt
+          ? new Date(activity.nextActionAt)
+          : null,
+        actorMemberId: activity.actorMemberId,
+        metadata: {},
+        createdAt: new Date(activity.createdAt),
+      },
+      include: { actor: { include: { user: true } } },
+    });
+    return fromPrismaActivity(created);
+  }
+
   async softDeleteRecord(
     recordId: string,
     expectedVersion: number,
@@ -328,6 +396,28 @@ class PrismaRecordsStore implements RecordsStore {
   appendAudit(event: AuditEvent): Promise<void> {
     return this.audit.append(this.transaction, event);
   }
+}
+
+function fromPrismaActivity(activity: {
+  id: string;
+  recordId: string;
+  activityType: string;
+  content: string;
+  nextActionAt: Date | null;
+  actorMemberId: string | null;
+  createdAt: Date;
+  actor?: { user: { displayName: string } } | null;
+}): RecordActivity {
+  return {
+    id: activity.id,
+    recordId: activity.recordId,
+    activityType: activity.activityType as MemberActivityType,
+    content: activity.content,
+    nextActionAt: activity.nextActionAt?.toISOString() ?? null,
+    actorMemberId: activity.actorMemberId,
+    actorDisplayName: activity.actor?.user.displayName ?? null,
+    createdAt: activity.createdAt.toISOString(),
+  };
 }
 
 function fromPrismaRecord(record: {

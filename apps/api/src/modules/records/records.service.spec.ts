@@ -7,6 +7,10 @@ import type {
 } from '../objects/published-object.repository';
 import { PublishedObjectService } from '../objects/published-object.service';
 import type {
+  MemberActivityType,
+  RecordActivity,
+} from './record-activity';
+import type {
   DynamicRecord,
   RecordListQuery,
   RecordsRepository,
@@ -232,6 +236,7 @@ class MemoryPublishedRepository implements PublishedObjectRepository {
 
 class MemoryRecordsStore implements RecordsStore {
   records: DynamicRecord[] = [];
+  activities: RecordActivity[] = [];
   members = new Set([admin.memberId, employee.memberId, otherMemberId]);
   audits: AuditEvent[] = [];
   nextRecordNo = 1n;
@@ -330,6 +335,52 @@ class MemoryRecordsStore implements RecordsStore {
   appendAudit(event: AuditEvent): Promise<void> {
     this.audits.push(structuredClone(event));
     return Promise.resolve();
+  }
+
+  listActivities(
+    recordId: string,
+    query: { page: number; limit: number },
+  ): Promise<{ items: RecordActivity[]; total: number }> {
+    const filtered = this.activities
+      .filter((activity) => activity.recordId === recordId)
+      .sort(
+        (left, right) =>
+          right.createdAt.localeCompare(left.createdAt) ||
+          right.id.localeCompare(left.id),
+      );
+    return Promise.resolve({
+      items: structuredClone(
+        filtered.slice(
+          (query.page - 1) * query.limit,
+          query.page * query.limit,
+        ),
+      ),
+      total: filtered.length,
+    });
+  }
+
+  createActivity(activity: {
+    id: string;
+    recordId: string;
+    activityType: MemberActivityType;
+    content: string;
+    nextActionAt: string | null;
+    actorMemberId: string;
+    createdAt: string;
+  }): Promise<RecordActivity> {
+    const created: RecordActivity = {
+      id: activity.id,
+      recordId: activity.recordId,
+      activityType: activity.activityType,
+      content: activity.content,
+      nextActionAt: activity.nextActionAt,
+      actorMemberId: activity.actorMemberId,
+      actorDisplayName:
+        activity.actorMemberId === admin.memberId ? '管理员' : '员工',
+      createdAt: activity.createdAt,
+    };
+    this.activities.push(structuredClone(created));
+    return Promise.resolve(structuredClone(created));
   }
 }
 
@@ -1030,5 +1081,73 @@ describe('RecordsService', () => {
     await expect(
       service.detail(employee, 'leads', 'record-missing'),
     ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+  });
+
+  it('appends a member activity to a visible record without rewriting history', async () => {
+    const { service, store } = fixture();
+    const record = await create(service, employee, '张三');
+
+    const created = await service.createActivity(
+      employee,
+      'leads',
+      record.id,
+      { activityType: 'CALL', content: '  已电话确认需求  ' },
+      meta,
+    );
+
+    expect(created).toMatchObject({
+      activityType: 'CALL',
+      content: '已电话确认需求',
+      actorMemberId: employee.memberId,
+    });
+    const page = await service.listActivities(employee, 'leads', record.id, {
+      page: 1,
+      limit: 20,
+    });
+    expect(page.total).toBe(1);
+    expect(page.items[0].content).toBe('已电话确认需求');
+    expect(store.audits.map((event) => event.action)).toContain(
+      'record.activity_created',
+    );
+  });
+
+  it('hides activities of records the employee cannot read', async () => {
+    const { service } = fixture();
+    const record = await create(service, admin, '别人的线索', otherMemberId);
+
+    await expect(
+      service.listActivities(employee, 'leads', record.id, {
+        page: 1,
+        limit: 20,
+      }),
+    ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+    await expect(
+      service.createActivity(
+        employee,
+        'leads',
+        record.id,
+        { activityType: 'NOTE', content: '不该写入' },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+  });
+
+  it('requires update access to append an activity', async () => {
+    const { service, publishedRepository } = fixture();
+    const record = await create(service, admin, '只读线索', employee.memberId);
+    const configuration = publishedRepository.record
+      .configuration as PublishedObjectSchema;
+    configuration.employeeAccess.canUpdate = false;
+    configuration.employeeAccess.updateScope = 'NONE';
+
+    await expect(
+      service.createActivity(
+        employee,
+        'leads',
+        record.id,
+        { activityType: 'NOTE', content: '备注' },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
   });
 });

@@ -11,6 +11,11 @@ import {
   RecordValueError,
   validateRecordMutation,
 } from './record-value-engine';
+import {
+  MEMBER_ACTIVITY_TYPES,
+  type MemberActivityType,
+  type RecordActivity,
+} from './record-activity';
 import type {
   DynamicRecord,
   RecordListFieldSort,
@@ -43,6 +48,23 @@ export interface RecordResponse {
 
 export interface RecordPageResponse {
   items: RecordResponse[];
+  page: number;
+  limit: number;
+  total: number;
+}
+
+export interface RecordActivityResponse {
+  id: string;
+  activityType: MemberActivityType;
+  content: string;
+  nextActionAt: string | null;
+  actorMemberId: string | null;
+  actorDisplayName: string | null;
+  createdAt: string;
+}
+
+export interface RecordActivityPageResponse {
+  items: RecordActivityResponse[];
   page: number;
   limit: number;
   total: number;
@@ -267,6 +289,91 @@ export class RecordsService {
         ),
       );
       return { accepted: true };
+    });
+  }
+
+  async listActivities(
+    context: TenantContext,
+    objectCode: string,
+    recordId: string,
+    input: { page: number; limit: number },
+  ): Promise<RecordActivityPageResponse> {
+    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+      context,
+      objectCode,
+    );
+    const page = Math.max(1, Math.trunc(input.page));
+    const limit = Math.min(100, Math.max(1, Math.trunc(input.limit)));
+    return this.repository.withTenant(context, async (store) => {
+      await requireVisibleRecord(store, resolved, context, recordId, 'READ');
+      const result = await store.listActivities(recordId, { page, limit });
+      return {
+        items: result.items.map(projectActivity),
+        page,
+        limit,
+        total: result.total,
+      };
+    });
+  }
+
+  async createActivity(
+    context: TenantContext,
+    objectCode: string,
+    recordId: string,
+    input: {
+      activityType: MemberActivityType;
+      content: string;
+      nextActionAt?: string | null;
+    },
+    meta: RequestMeta,
+  ): Promise<RecordActivityResponse> {
+    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+      context,
+      objectCode,
+    );
+    const content = input.content.trim();
+    if (content.length === 0) {
+      throw new ApiException('VALIDATION_FAILED', 400, {
+        fieldErrors: { content: ['请填写跟进内容。'] },
+      });
+    }
+    if (content.length > 4000) {
+      throw new ApiException('VALIDATION_FAILED', 400, {
+        fieldErrors: { content: ['跟进内容不能超过 4000 字。'] },
+      });
+    }
+    if (!MEMBER_ACTIVITY_TYPES.includes(input.activityType)) {
+      throw new ApiException('VALIDATION_FAILED', 400, {
+        fieldErrors: { activityType: ['不支持该跟进类型。'] },
+      });
+    }
+    return this.repository.withTenant(context, async (store) => {
+      await requireVisibleRecord(store, resolved, context, recordId, 'UPDATE');
+      const created = await store.createActivity({
+        id: this.idGenerator(),
+        recordId,
+        activityType: input.activityType,
+        content,
+        nextActionAt: input.nextActionAt ?? null,
+        actorMemberId: context.memberId,
+        createdAt: this.clock().toISOString(),
+      });
+      await store.appendAudit({
+        tenantId: context.tenantId,
+        actorType: 'USER',
+        actorId: context.userId,
+        action: 'record.activity_created',
+        resourceType: 'record_activity',
+        resourceId: created.id,
+        after: {
+          recordId,
+          activityType: created.activityType,
+          nextActionAt: created.nextActionAt,
+        },
+        requestId: meta.requestId,
+        ip: meta.ip,
+      });
+      return projectActivity(created);
     });
   }
 }
@@ -721,6 +828,18 @@ async function validateMutation(input: {
     }
     throw error;
   }
+}
+
+function projectActivity(activity: RecordActivity): RecordActivityResponse {
+  return {
+    id: activity.id,
+    activityType: activity.activityType,
+    content: activity.content,
+    nextActionAt: activity.nextActionAt,
+    actorMemberId: activity.actorMemberId,
+    actorDisplayName: activity.actorDisplayName,
+    createdAt: activity.createdAt,
+  };
 }
 
 function projectRecord(

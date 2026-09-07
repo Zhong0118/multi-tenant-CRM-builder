@@ -578,6 +578,25 @@
         "required": ["name", "code", "firstAdminPhone"],
         "type": "object"
       },
+      "CreateRecordActivityDto": {
+        "properties": {
+          "activityType": {
+            "enum": ["CALL", "MESSAGE", "MEETING", "NOTE"],
+            "type": "string"
+          },
+          "content": {
+            "maxLength": 4000,
+            "type": "string"
+          },
+          "nextActionAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": ["activityType", "content"],
+        "type": "object"
+      },
       "CreateRecordDto": {
         "properties": {
           "ownerMemberId": {
@@ -2744,6 +2763,70 @@
           "defaultView",
           "actions",
           "scopes"
+        ],
+        "type": "object"
+      },
+      "RecordActivityPageResponseDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecordActivityResponseDto"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": ["items", "page", "limit", "total"],
+        "type": "object"
+      },
+      "RecordActivityResponseDto": {
+        "properties": {
+          "activityType": {
+            "enum": ["CALL", "MESSAGE", "MEETING", "NOTE"],
+            "type": "string"
+          },
+          "actorDisplayName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "actorMemberId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "nextActionAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "activityType",
+          "content",
+          "nextActionAt",
+          "actorMemberId",
+          "actorDisplayName",
+          "createdAt"
         ],
         "type": "object"
       },
@@ -7300,6 +7383,135 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RecordResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["records"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/activities": {
+      "get": {
+        "operationId": "RecordsController_listActivities",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordActivityPageResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["records"]
+      },
+      "post": {
+        "operationId": "RecordsController_createActivity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRecordActivityDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordActivityResponseDto"
                 }
               }
             },

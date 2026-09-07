@@ -307,6 +307,52 @@
   border-top: 1px solid var(--rule);
 }
 
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+}
+
+.timelineHeading h2 {
+  margin: 0 0 4px;
+  color: var(--ledger-ink);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 650;
+}
+
+.timelineComposerRow {
+  max-width: 220px;
+}
+
+.timelineList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timelineItem p {
+  margin: 6px 0 0;
+  color: var(--ledger-ink);
+  font-size: 14px;
+  line-height: 22px;
+  white-space: pre-wrap;
+}
+
+.timelineItemMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--ink-secondary);
+  font-size: 12px;
+}
+
 /* Below the tablet breakpoint a 640px drawer would be wider than the screen. */
 @media (max-width: 767px) {
   .detailDrawer :global(.ant-drawer-content-wrapper) {

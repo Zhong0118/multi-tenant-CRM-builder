@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsDateString,
   IsIn,
   IsInt,
   IsObject,
@@ -10,6 +11,7 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
 
 export class RecordListQueryDto {
@@ -124,4 +126,62 @@ export class RecordPageResponseDto {
 
 export class DeleteRecordResponseDto {
   @ApiProperty({ enum: [true] }) accepted!: true;
+}
+
+const MEMBER_ACTIVITY_TYPES = ['CALL', 'MESSAGE', 'MEETING', 'NOTE'] as const;
+
+export class RecordActivityListQueryDto {
+  @ApiPropertyOptional({ type: Number, minimum: 1, default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page = 1;
+
+  @ApiPropertyOptional({ type: Number, minimum: 1, maximum: 100, default: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit = 20;
+}
+
+export class CreateRecordActivityDto {
+  @ApiProperty({ enum: MEMBER_ACTIVITY_TYPES })
+  @IsIn(MEMBER_ACTIVITY_TYPES)
+  activityType!: (typeof MEMBER_ACTIVITY_TYPES)[number];
+
+  @ApiProperty({ maxLength: 4000 })
+  @IsString()
+  @MaxLength(4000)
+  content!: string;
+
+  @ApiPropertyOptional({ type: String, format: 'date-time', nullable: true })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsDateString({ strict: true })
+  nextActionAt?: string | null;
+}
+
+export class RecordActivityResponseDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiProperty({ enum: MEMBER_ACTIVITY_TYPES })
+  activityType!: (typeof MEMBER_ACTIVITY_TYPES)[number];
+  @ApiProperty() content!: string;
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  nextActionAt!: string | null;
+  @ApiProperty({ type: String, format: 'uuid', nullable: true })
+  actorMemberId!: string | null;
+  @ApiProperty({ type: String, nullable: true })
+  actorDisplayName!: string | null;
+  @ApiProperty({ format: 'date-time' }) createdAt!: string;
+}
+
+export class RecordActivityPageResponseDto {
+  @ApiProperty({ type: RecordActivityResponseDto, isArray: true })
+  items!: RecordActivityResponseDto[];
+  @ApiProperty() page!: number;
+  @ApiProperty() limit!: number;
+  @ApiProperty() total!: number;
 }

@@ -996,6 +996,22 @@ export interface paths {
     patch: operations["RecordsController_update"];
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/activities": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["RecordsController_listActivities"];
+    put?: never;
+    post: operations["RecordsController_createActivity"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/schema": {
     parameters: {
       query?: never;
@@ -1220,6 +1236,13 @@ export interface components {
       /** @example 13800138000 */
       firstAdminPhone: string;
       name: string;
+    };
+    CreateRecordActivityDto: {
+      /** @enum {string} */
+      activityType: "CALL" | "MESSAGE" | "MEETING" | "NOTE";
+      content: string;
+      /** Format: date-time */
+      nextActionAt?: string | null;
     };
     CreateRecordDto: {
       /** Format: uuid */
@@ -1961,6 +1984,26 @@ export interface components {
       scopes: {
         [key: string]: unknown;
       };
+    };
+    RecordActivityPageResponseDto: {
+      items: components["schemas"]["RecordActivityResponseDto"][];
+      limit: number;
+      page: number;
+      total: number;
+    };
+    RecordActivityResponseDto: {
+      /** @enum {string} */
+      activityType: "CALL" | "MESSAGE" | "MEETING" | "NOTE";
+      actorDisplayName: string | null;
+      /** Format: uuid */
+      actorMemberId: string | null;
+      content: string;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: uuid */
+      id: string;
+      /** Format: date-time */
+      nextActionAt: string | null;
     };
     RecordPageResponseDto: {
       items: components["schemas"]["RecordResponseDto"][];
@@ -4171,6 +4214,59 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["RecordResponseDto"];
+        };
+      };
+    };
+  };
+  RecordsController_listActivities: {
+    parameters: {
+      query?: {
+        limit?: number;
+        page?: number;
+      };
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecordActivityPageResponseDto"];
+        };
+      };
+    };
+  };
+  RecordsController_createActivity: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateRecordActivityDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecordActivityResponseDto"];
         };
       };
     };

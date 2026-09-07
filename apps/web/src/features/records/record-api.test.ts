@@ -107,6 +107,44 @@ describe("recordApi mutations", () => {
     });
   });
 
+  it("lists and appends activities on the generated nested path", async () => {
+    mocks.GET.mockResolvedValue(ok({ items: [], page: 1, limit: 20, total: 0 }));
+    mocks.POST.mockResolvedValue(ok({ id: "activity-1" }));
+
+    await recordApi.listActivities("northwind", "customers", "record-1");
+    await recordApi.createActivity("northwind", "customers", "record-1", {
+      activityType: "NOTE",
+      content: "已回访",
+    });
+
+    expect(mocks.GET).toHaveBeenCalledWith(
+      "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/activities",
+      {
+        params: {
+          path: {
+            tenantCode: "northwind",
+            objectCode: "customers",
+            recordId: "record-1",
+          },
+          query: { page: 1, limit: 20 },
+        },
+      },
+    );
+    expect(mocks.POST).toHaveBeenCalledWith(
+      "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/activities",
+      {
+        params: {
+          path: {
+            tenantCode: "northwind",
+            objectCode: "customers",
+            recordId: "record-1",
+          },
+        },
+        body: { activityType: "NOTE", content: "已回访" },
+      },
+    );
+  });
+
   it("sends the optimistic version with a soft delete", async () => {
     mocks.DELETE.mockResolvedValue(ok({ accepted: true }));
 

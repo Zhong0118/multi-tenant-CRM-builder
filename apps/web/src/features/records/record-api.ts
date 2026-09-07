@@ -35,6 +35,38 @@ export interface UpdateRecordInput {
   ownerMemberId?: string | null;
 }
 
+export const MEMBER_ACTIVITY_TYPES = [
+  "CALL",
+  "MESSAGE",
+  "MEETING",
+  "NOTE",
+] as const;
+
+export type MemberActivityType = (typeof MEMBER_ACTIVITY_TYPES)[number];
+
+export interface RecordActivity {
+  id: string;
+  activityType: MemberActivityType;
+  content: string;
+  nextActionAt: string | null;
+  actorMemberId: string | null;
+  actorDisplayName: string | null;
+  createdAt: string;
+}
+
+export interface RecordActivityPage {
+  items: RecordActivity[];
+  page: number;
+  limit: number;
+  total: number;
+}
+
+export interface CreateRecordActivityInput {
+  activityType: MemberActivityType;
+  content: string;
+  nextActionAt?: string | null;
+}
+
 export interface RecordApi {
   list(
     tenantCode: string,
@@ -63,11 +95,24 @@ export interface RecordApi {
     recordId: string,
     version: number,
   ): Promise<{ accepted: true }>;
+  listActivities(
+    tenantCode: string,
+    objectCode: string,
+    recordId: string,
+    query?: { page?: number; limit?: number },
+  ): Promise<RecordActivityPage>;
+  createActivity(
+    tenantCode: string,
+    objectCode: string,
+    recordId: string,
+    input: CreateRecordActivityInput,
+  ): Promise<RecordActivity>;
 }
 
 const RECORDS_PATH =
   "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records" as const;
 const RECORD_PATH = `${RECORDS_PATH}/{recordId}` as const;
+const ACTIVITIES_PATH = `${RECORD_PATH}/activities` as const;
 
 export const recordApi: RecordApi = {
   async list(tenantCode, objectCode, query) {
@@ -112,6 +157,27 @@ export const recordApi: RecordApi = {
       await browserApiClient.DELETE(RECORD_PATH, {
         params: { path: { tenantCode, objectCode, recordId } },
         body: { version },
+      }),
+    );
+  },
+  async listActivities(tenantCode, objectCode, recordId, query = {}) {
+    return dataOrThrow(
+      await browserApiClient.GET(ACTIVITIES_PATH, {
+        params: {
+          path: { tenantCode, objectCode, recordId },
+          query: definedEntries({
+            page: query.page ?? 1,
+            limit: query.limit ?? 20,
+          }),
+        },
+      }),
+    );
+  },
+  async createActivity(tenantCode, objectCode, recordId, input) {
+    return dataOrThrow(
+      await browserApiClient.POST(ACTIVITIES_PATH, {
+        params: { path: { tenantCode, objectCode, recordId } },
+        body: definedEntries(input),
       }),
     );
   },

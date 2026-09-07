@@ -97,6 +97,8 @@ function recordApi(overrides: Partial<RecordApi> = {}): RecordApi {
     detail: vi.fn(),
     update: vi.fn().mockResolvedValue(savedRecord),
     remove: vi.fn(),
+    listActivities: vi.fn(),
+    createActivity: vi.fn(),
     ...overrides,
   };
 }

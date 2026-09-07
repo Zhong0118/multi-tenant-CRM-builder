@@ -21,6 +21,7 @@ test("defines the core multi-tenant CRM models", async () => {
     "FieldPermission",
     "RecordCounter",
     "Record",
+    "RecordActivity",
   ];
 
   for (const model of models) {
@@ -32,6 +33,14 @@ test("defines the core multi-tenant CRM models", async () => {
     /model\s+Record[\s\S]*tenantId\s+String\s+@map\("tenant_id"\)/,
   );
   assert.match(schema, /data\s+Json\s+@default\("\{\}"\)\s+@db\.JsonB/);
+  assert.match(
+    schema,
+    /enum\s+RecordActivityType\s+\{[\s\S]*CALL[\s\S]*MESSAGE[\s\S]*MEETING[\s\S]*NOTE[\s\S]*STATUS_CHANGE[\s\S]*SYSTEM/,
+  );
+  assert.match(
+    schema,
+    /model\s+RecordActivity\s+\{[\s\S]*activityType\s+RecordActivityType[\s\S]*content\s+String[\s\S]*@@index\(\[tenantId,\s*recordId,\s*createdAt\(sort:\s*Desc\)\]\)/,
+  );
 });
 
 test("named dashboard migration can backfill publication owners past the immutability trigger", async () => {
