@@ -36,6 +36,7 @@ function recordApi(overrides: Partial<RecordApi> = {}): RecordApi {
     }),
     export: vi.fn(),
     batchUpdate: vi.fn(),
+    importRows: vi.fn(),
     ...overrides,
   };
 }

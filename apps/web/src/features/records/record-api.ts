@@ -62,6 +62,28 @@ export interface RecordBatchUpdateResult {
   items: RecordBatchUpdateResultItem[];
 }
 
+export interface RecordImportRow {
+  rowNumber: number;
+  values: Record<string, unknown>;
+}
+
+export interface RecordImportInput {
+  rows: RecordImportRow[];
+}
+
+export interface RecordImportResultItem {
+  rowNumber: number;
+  status: "CREATED" | "FAILED";
+  record?: RecordSummary;
+  error?: { code: string; message: string };
+}
+
+export interface RecordImportResult {
+  created: number;
+  failed: number;
+  items: RecordImportResultItem[];
+}
+
 export const MEMBER_ACTIVITY_TYPES = [
   "CALL",
   "MESSAGE",
@@ -144,6 +166,11 @@ export interface RecordApi {
     objectCode: string,
     input: RecordBatchUpdateInput,
   ): Promise<RecordBatchUpdateResult>;
+  importRows(
+    tenantCode: string,
+    objectCode: string,
+    input: RecordImportInput,
+  ): Promise<RecordImportResult>;
 }
 
 const RECORDS_PATH =
@@ -151,6 +178,7 @@ const RECORDS_PATH =
 const RECORD_PATH = `${RECORDS_PATH}/{recordId}` as const;
 const ACTIVITIES_PATH = `${RECORD_PATH}/activities` as const;
 const BATCH_PATH = `${RECORDS_PATH}/batch` as const;
+const IMPORT_PATH = `${RECORDS_PATH}/import` as const;
 
 export const recordApi: RecordApi = {
   async list(tenantCode, objectCode, query) {
@@ -178,6 +206,14 @@ export const recordApi: RecordApi = {
   async batchUpdate(tenantCode, objectCode, input) {
     return dataOrThrow(
       await browserApiClient.POST(BATCH_PATH, {
+        params: { path: { tenantCode, objectCode } },
+        body: definedEntries(input),
+      }),
+    );
+  },
+  async importRows(tenantCode, objectCode, input) {
+    return dataOrThrow(
+      await browserApiClient.POST(IMPORT_PATH, {
         params: { path: { tenantCode, objectCode } },
         body: definedEntries(input),
       }),

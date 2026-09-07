@@ -82,6 +82,7 @@ export interface RecordExportFile {
 }
 
 export const RECORD_BATCH_MAX_ITEMS = 50;
+export const RECORD_IMPORT_MAX_ROWS = 500;
 
 export interface RecordBatchUpdateItemInput {
   recordId: string;
@@ -99,6 +100,24 @@ export interface RecordBatchUpdateResponse {
   updated: number;
   failed: number;
   items: RecordBatchUpdateResultItem[];
+}
+
+export interface RecordImportRowInput {
+  rowNumber: number;
+  values: Record<string, unknown>;
+}
+
+export interface RecordImportResultItem {
+  rowNumber: number;
+  status: 'CREATED' | 'FAILED';
+  record?: RecordResponse;
+  error?: { code: string; message: string };
+}
+
+export interface RecordImportResponse {
+  created: number;
+  failed: number;
+  items: RecordImportResultItem[];
 }
 
 @Injectable()
@@ -277,37 +296,66 @@ export class RecordsService {
       context,
       objectCode,
     );
-    return this.repository.withTenant(context, async (store) => {
-      const ownerMemberId = await resolveCreateOwner(
-        context,
-        store,
-        input.ownerMemberId,
-      );
-      const normalized = await validateMutation({
-        mode: 'CREATE',
-        resolved,
-        submitted: input.values,
-        memberExists: (memberId) => store.memberExists(memberId),
+    return this.repository.withTenant(context, async (store) =>
+      createRecordRow(store, resolved, context, input, meta, this.clock, this.idGenerator),
+    );
+  }
+
+  async importRows(
+    context: TenantContext,
+    objectCode: string,
+    input: { rows: RecordImportRowInput[] },
+    meta: RequestMeta,
+  ): Promise<RecordImportResponse> {
+    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+      context,
+      objectCode,
+    );
+    if (!resolved.access.canCreate) {
+      throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+    }
+    if (input.rows.length === 0 || input.rows.length > RECORD_IMPORT_MAX_ROWS) {
+      throw new ApiException('RECORD_IMPORT_INVALID', 400, {
+        fieldErrors: {
+          rows: [`一次最多导入 ${RECORD_IMPORT_MAX_ROWS} 行。`],
+        },
       });
-      const now = this.clock().toISOString();
-      const record: DynamicRecord = {
-        id: this.idGenerator(),
-        objectId: resolved.schema.object.id,
-        recordNo: await store.allocateRecordNo(resolved.schema.object.id),
-        ownerMemberId,
-        title: normalized.title,
-        values: normalized.values,
-        version: 1,
-        createdByMemberId: context.memberId,
-        createdAt: now,
-        updatedAt: now,
-        deletedAt: null,
+    }
+    return this.repository.withTenant(context, async (store) => {
+      const items: RecordImportResultItem[] = [];
+      for (const row of input.rows) {
+        try {
+          const record = await createRecordRow(
+            store,
+            resolved,
+            context,
+            { values: row.values },
+            meta,
+            this.clock,
+            this.idGenerator,
+          );
+          items.push({
+            rowNumber: row.rowNumber,
+            status: 'CREATED',
+            record,
+          });
+        } catch (error) {
+          if (error instanceof ApiException) {
+            items.push({
+              rowNumber: row.rowNumber,
+              status: 'FAILED',
+              error: { code: error.code, message: error.message },
+            });
+            continue;
+          }
+          throw error;
+        }
+      }
+      return {
+        created: items.filter((item) => item.status === 'CREATED').length,
+        failed: items.filter((item) => item.status === 'FAILED').length,
+        items,
       };
-      const created = await store.createRecord(record);
-      await store.appendAudit(
-        recordAudit(context, meta, 'record.created', created, undefined),
-      );
-      return projectRecord(created, resolved);
     });
   }
 
@@ -974,6 +1022,50 @@ async function requireVisibleRecord(
     throw new ApiException('RECORD_NOT_FOUND', 404);
   }
   return record;
+}
+
+async function createRecordRow(
+  store: RecordsStore,
+  resolved: ResolvedObjectSchema,
+  context: TenantContext,
+  input: {
+    values: Record<string, unknown>;
+    ownerMemberId?: string | null;
+  },
+  meta: RequestMeta,
+  clock: () => Date,
+  idGenerator: () => string,
+): Promise<RecordResponse> {
+  const ownerMemberId = await resolveCreateOwner(
+    context,
+    store,
+    input.ownerMemberId,
+  );
+  const normalized = await validateMutation({
+    mode: 'CREATE',
+    resolved,
+    submitted: input.values,
+    memberExists: (memberId) => store.memberExists(memberId),
+  });
+  const now = clock().toISOString();
+  const record: DynamicRecord = {
+    id: idGenerator(),
+    objectId: resolved.schema.object.id,
+    recordNo: await store.allocateRecordNo(resolved.schema.object.id),
+    ownerMemberId,
+    title: normalized.title,
+    values: normalized.values,
+    version: 1,
+    createdByMemberId: context.memberId,
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
+  };
+  const created = await store.createRecord(record);
+  await store.appendAudit(
+    recordAudit(context, meta, 'record.created', created, undefined),
+  );
+  return projectRecord(created, resolved);
 }
 
 async function applyRecordUpdate(

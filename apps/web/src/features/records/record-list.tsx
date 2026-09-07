@@ -38,6 +38,7 @@ import { OptionBadge } from "@/features/objects/option-badge";
 
 import type { DynamicFieldMember } from "./dynamic-field";
 import { RecordBatchEditDrawer } from "./record-batch-edit";
+import { RecordImportDrawer } from "./record-import";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
 import { recordCardFields } from "./record-card-fields";
 import {
@@ -107,6 +108,7 @@ export function RecordList({
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [batchOpen, setBatchOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [columnFieldKeys, setColumnFieldKeys] = useState(() =>
     resolveRecordColumnKeys(
       schema,
@@ -481,6 +483,9 @@ export function RecordList({
               >
                 批量修改{selectedRowKeys.length > 0 ? ` ${selectedRowKeys.length}` : ""}
               </Button>
+            ) : null}
+            {schema.actions.canCreate ? (
+              <Button onClick={() => setImportOpen(true)}>导入 CSV</Button>
             ) : null}
             <Button onClick={() => setColumnsOpen(true)}>列设置</Button>
             <Button
@@ -886,6 +891,20 @@ export function RecordList({
           恢复默认列
         </Button>
       </Drawer>
+
+      {importOpen ? (
+        <RecordImportDrawer
+          tenantCode={tenantCode}
+          schema={schema}
+          api={api}
+          onClose={() => setImportOpen(false)}
+          onCompleted={async () => {
+            setImportOpen(false);
+            await records.refetch();
+            router.refresh();
+          }}
+        />
+      ) : null}
 
       {batchOpen ? (
         <RecordBatchEditDrawer

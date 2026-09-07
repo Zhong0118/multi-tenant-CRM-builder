@@ -1092,6 +1092,51 @@ describe('RecordsService', () => {
     });
   });
 
+  it('imports mapped rows and reports per-row validation failures', async () => {
+    const { service } = fixture();
+
+    const result = await service.importRows(
+      employee,
+      'leads',
+      {
+        rows: [
+          {
+            rowNumber: 2,
+            values: { name: '导入甲', email: 'alpha@example.com' },
+          },
+          {
+            rowNumber: 3,
+            values: { name: '导入乙', email: 'not-an-email' },
+          },
+        ],
+      },
+      meta,
+    );
+
+    expect(result.created).toBe(1);
+    expect(result.failed).toBe(1);
+    expect(result.items[0]).toMatchObject({
+      rowNumber: 2,
+      status: 'CREATED',
+    });
+    expect(result.items[1]).toMatchObject({
+      rowNumber: 3,
+      status: 'FAILED',
+      error: { code: 'FIELD_INVALID' },
+    });
+    await expect(
+      service.list(employee, 'leads', {
+        page: 1,
+        limit: 20,
+        sort: 'updatedAt',
+        direction: 'desc',
+      }),
+    ).resolves.toMatchObject({
+      total: 1,
+      items: [expect.objectContaining({ title: '导入甲' })],
+    });
+  });
+
   it('returns RECORD_VERSION_CONFLICT for stale updates', async () => {
     const { service } = fixture();
     const record = await create(service, employee, '张三');

@@ -369,6 +369,18 @@ describe("RecordList table sorting", () => {
     );
   });
 
+  it("opens mapped CSV import from the toolbar", async () => {
+    const navigate = vi.fn();
+    const api = {
+      list: vi.fn().mockResolvedValue(page),
+      importRows: vi.fn(),
+    } as unknown as RecordApi;
+    renderList(navigate, DEFAULT_RECORD_QUERY, { api });
+
+    fireEvent.click(screen.getByRole("button", { name: "导入 CSV" }));
+    expect(await screen.findByLabelText("选择 CSV 文件")).toBeInTheDocument();
+  });
+
   it("opens batch edit for selected rows", async () => {
     const navigate = vi.fn();
     const api = {

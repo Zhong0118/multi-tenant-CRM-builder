@@ -94,6 +94,7 @@ function recordApi(overrides: Partial<RecordApi> = {}): RecordApi {
     listActivities: vi.fn(),
     createActivity: vi.fn(),
     export: vi.fn(),
+    importRows: vi.fn(),
     batchUpdate: vi.fn().mockResolvedValue({
       updated: 1,
       failed: 1,

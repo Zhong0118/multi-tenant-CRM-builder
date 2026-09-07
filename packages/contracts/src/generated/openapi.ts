@@ -1044,6 +1044,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/import": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["RecordsController_importRows"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/schema": {
     parameters: {
       query?: never;
@@ -1644,6 +1660,16 @@ export interface components {
       /** @example 13800138000 */
       phone: string;
     };
+    ImportRecordRowDto: {
+      /** @description CSV 行号，表头为第 1 行。 */
+      rowNumber: number;
+      values: {
+        [key: string]: unknown;
+      };
+    };
+    ImportRecordsDto: {
+      rows: components["schemas"]["ImportRecordRowDto"][];
+    };
     InvitationActionResponseDto: {
       /** @example true */
       accepted: boolean;
@@ -2066,6 +2092,18 @@ export interface components {
       recordId: string;
       /** @enum {string} */
       status: "UPDATED" | "FAILED";
+    };
+    RecordImportResponseDto: {
+      created: number;
+      failed: number;
+      items: components["schemas"]["RecordImportResultItemDto"][];
+    };
+    RecordImportResultItemDto: {
+      error?: components["schemas"]["RecordBatchUpdateErrorDto"];
+      record?: components["schemas"]["RecordResponseDto"];
+      rowNumber: number;
+      /** @enum {string} */
+      status: "CREATED" | "FAILED";
     };
     RecordPageResponseDto: {
       items: components["schemas"]["RecordResponseDto"][];
@@ -4391,6 +4429,32 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  RecordsController_importRows: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ImportRecordsDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecordImportResponseDto"];
+        };
       };
     };
   };

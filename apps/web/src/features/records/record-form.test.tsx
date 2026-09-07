@@ -101,6 +101,7 @@ function recordApi(overrides: Partial<RecordApi> = {}): RecordApi {
     createActivity: vi.fn(),
     export: vi.fn(),
     batchUpdate: vi.fn(),
+    importRows: vi.fn(),
     ...overrides,
   };
 }

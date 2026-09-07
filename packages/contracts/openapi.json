@@ -1718,6 +1718,33 @@
         "required": ["phone", "deviceKey"],
         "type": "object"
       },
+      "ImportRecordRowDto": {
+        "properties": {
+          "rowNumber": {
+            "description": "CSV 行号，表头为第 1 行。",
+            "minimum": 2,
+            "type": "number"
+          },
+          "values": {
+            "additionalProperties": true,
+            "type": "object"
+          }
+        },
+        "required": ["rowNumber", "values"],
+        "type": "object"
+      },
+      "ImportRecordsDto": {
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ImportRecordRowDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["rows"],
+        "type": "object"
+      },
       "InvitationActionResponseDto": {
         "properties": {
           "accepted": {
@@ -2913,6 +2940,43 @@
           }
         },
         "required": ["recordId", "status"],
+        "type": "object"
+      },
+      "RecordImportResponseDto": {
+        "properties": {
+          "created": {
+            "type": "number"
+          },
+          "failed": {
+            "type": "number"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecordImportResultItemDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["created", "failed", "items"],
+        "type": "object"
+      },
+      "RecordImportResultItemDto": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/RecordBatchUpdateErrorDto"
+          },
+          "record": {
+            "$ref": "#/components/schemas/RecordResponseDto"
+          },
+          "rowNumber": {
+            "type": "number"
+          },
+          "status": {
+            "enum": ["CREATED", "FAILED"],
+            "type": "string"
+          }
+        },
+        "required": ["rowNumber", "status"],
         "type": "object"
       },
       "RecordPageResponseDto": {
@@ -7487,6 +7551,57 @@
         "responses": {
           "200": {
             "description": "当前筛选结果的 CSV 文件。"
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["records"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/import": {
+      "post": {
+        "operationId": "RecordsController_importRows",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportRecordsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordImportResponseDto"
+                }
+              }
+            },
+            "description": ""
           }
         },
         "security": [

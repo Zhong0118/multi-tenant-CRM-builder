@@ -33,7 +33,9 @@ import {
   CreateRecordDto,
   DeleteRecordResponseDto,
   DeleteRecordDto,
+  ImportRecordsDto,
   RecordBatchUpdateResponseDto,
+  RecordImportResponseDto,
   RecordActivityListQueryDto,
   RecordActivityPageResponseDto,
   RecordActivityResponseDto,
@@ -112,6 +114,22 @@ export class RecordsController {
     @Req() request: RequestWithId,
   ) {
     return this.records.batchUpdate(
+      context,
+      objectCode,
+      dto,
+      requestMeta(request),
+    );
+  }
+
+  @Post('import')
+  @ApiOkResponse({ type: RecordImportResponseDto })
+  importRows(
+    @CurrentTenant() context: TenantContext,
+    @Param('objectCode') objectCode: string,
+    @Body() dto: ImportRecordsDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.records.importRows(
       context,
       objectCode,
       dto,

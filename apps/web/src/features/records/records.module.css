@@ -387,6 +387,24 @@
   line-height: 22px;
 }
 
+.importMap {
+  min-width: 180px;
+}
+
+.importPreview {
+  width: 100%;
+  margin: 16px 0;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.importPreview th,
+.importPreview td {
+  padding: 6px 8px;
+  border: 1px solid var(--rule);
+  text-align: left;
+}
+
 /* Below the tablet breakpoint a 640px drawer would be wider than the screen. */
 @media (max-width: 767px) {
   .detailDrawer :global(.ant-drawer-content-wrapper) {

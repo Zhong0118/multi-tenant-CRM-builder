@@ -196,6 +196,44 @@ export class RecordBatchUpdateResponseDto {
   items!: RecordBatchUpdateResultItemDto[];
 }
 
+export class ImportRecordRowDto {
+  @ApiProperty({ minimum: 2, description: 'CSV 行号，表头为第 1 行。' })
+  @IsInt()
+  @Min(2)
+  rowNumber!: number;
+
+  @ApiProperty({ type: 'object', additionalProperties: true })
+  @IsObject()
+  values!: Record<string, unknown>;
+}
+
+export class ImportRecordsDto {
+  @ApiProperty({ type: ImportRecordRowDto, isArray: true })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(500)
+  @ValidateNested({ each: true })
+  @Type(() => ImportRecordRowDto)
+  rows!: ImportRecordRowDto[];
+}
+
+export class RecordImportResultItemDto {
+  @ApiProperty() rowNumber!: number;
+  @ApiProperty({ enum: ['CREATED', 'FAILED'] })
+  status!: 'CREATED' | 'FAILED';
+  @ApiPropertyOptional({ type: RecordResponseDto })
+  record?: RecordResponseDto;
+  @ApiPropertyOptional({ type: RecordBatchUpdateErrorDto })
+  error?: RecordBatchUpdateErrorDto;
+}
+
+export class RecordImportResponseDto {
+  @ApiProperty() created!: number;
+  @ApiProperty() failed!: number;
+  @ApiProperty({ type: RecordImportResultItemDto, isArray: true })
+  items!: RecordImportResultItemDto[];
+}
+
 export class DeleteRecordResponseDto {
   @ApiProperty({ enum: [true] }) accepted!: true;
 }

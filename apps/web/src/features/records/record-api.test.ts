@@ -71,6 +71,26 @@ describe("recordApi mutations", () => {
     for (const mock of Object.values(mocks)) mock.mockReset();
   });
 
+  it("posts mapped import rows to the generated nested path", async () => {
+    mocks.POST.mockResolvedValue(ok({ created: 1, failed: 0, items: [] }));
+
+    await recordApi.importRows("northwind", "customers", {
+      rows: [{ rowNumber: 2, values: { name: "天际" } }],
+    });
+
+    expect(mocks.POST).toHaveBeenCalledWith(
+      "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/import",
+      {
+        params: {
+          path: { tenantCode: "northwind", objectCode: "customers" },
+        },
+        body: {
+          rows: [{ rowNumber: 2, values: { name: "天际" } }],
+        },
+      },
+    );
+  });
+
   it("posts a batch update to the generated nested path", async () => {
     mocks.POST.mockResolvedValue(ok({ updated: 1, failed: 0, items: [] }));
 
