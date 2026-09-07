@@ -379,6 +379,14 @@
   margin-top: 16px;
 }
 
+.batchErrors {
+  margin: 16px 0;
+  padding-left: 18px;
+  color: var(--stop-red);
+  font-size: 13px;
+  line-height: 22px;
+}
+
 /* Below the tablet breakpoint a 640px drawer would be wider than the screen. */
 @media (max-width: 767px) {
   .detailDrawer :global(.ant-drawer-content-wrapper) {

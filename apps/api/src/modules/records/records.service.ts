@@ -81,6 +81,26 @@ export interface RecordExportFile {
   rowCount: number;
 }
 
+export const RECORD_BATCH_MAX_ITEMS = 50;
+
+export interface RecordBatchUpdateItemInput {
+  recordId: string;
+  version: number;
+}
+
+export interface RecordBatchUpdateResultItem {
+  recordId: string;
+  status: 'UPDATED' | 'FAILED';
+  record?: RecordResponse;
+  error?: { code: string; message: string };
+}
+
+export interface RecordBatchUpdateResponse {
+  updated: number;
+  failed: number;
+  items: RecordBatchUpdateResultItem[];
+}
+
 @Injectable()
 export class RecordsService {
   constructor(
@@ -327,40 +347,83 @@ export class RecordsService {
       context,
       objectCode,
     );
+    return this.repository.withTenant(context, async (store) =>
+      applyRecordUpdate(store, resolved, context, recordId, input, meta),
+    );
+  }
+
+  async batchUpdate(
+    context: TenantContext,
+    objectCode: string,
+    input: {
+      items: RecordBatchUpdateItemInput[];
+      values?: Record<string, unknown>;
+      ownerMemberId?: string | null;
+    },
+    meta: RequestMeta,
+  ): Promise<RecordBatchUpdateResponse> {
+    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+      context,
+      objectCode,
+    );
+    if (!resolved.access.canUpdate) {
+      throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+    }
+    if (input.items.length === 0 || input.items.length > RECORD_BATCH_MAX_ITEMS) {
+      throw new ApiException('RECORD_BATCH_INVALID', 400, {
+        fieldErrors: {
+          items: [`一次最多修改 ${RECORD_BATCH_MAX_ITEMS} 条记录。`],
+        },
+      });
+    }
+    const ids = input.items.map((item) => item.recordId);
+    if (new Set(ids).size !== ids.length) {
+      throw new ApiException('RECORD_BATCH_INVALID', 400, {
+        fieldErrors: { items: ['同一批记录不能重复。'] },
+      });
+    }
+    if (
+      (input.values === undefined || Object.keys(input.values).length === 0) &&
+      input.ownerMemberId === undefined
+    ) {
+      throw new ApiException('RECORD_BATCH_INVALID', 400, {
+        fieldErrors: { values: ['请至少修改一个字段。'] },
+      });
+    }
     return this.repository.withTenant(context, async (store) => {
-      const current = await requireVisibleRecord(
-        store,
-        resolved,
-        context,
-        recordId,
-        'UPDATE',
-      );
-      if (current.version !== input.version) {
-        throw new ApiException('RECORD_VERSION_CONFLICT', 409);
+      const items: RecordBatchUpdateResultItem[] = [];
+      for (const item of input.items) {
+        try {
+          const record = await applyRecordUpdate(
+            store,
+            resolved,
+            context,
+            item.recordId,
+            {
+              version: item.version,
+              values: input.values,
+              ownerMemberId: input.ownerMemberId,
+            },
+            meta,
+          );
+          items.push({ recordId: item.recordId, status: 'UPDATED', record });
+        } catch (error) {
+          if (error instanceof ApiException) {
+            items.push({
+              recordId: item.recordId,
+              status: 'FAILED',
+              error: { code: error.code, message: error.message },
+            });
+            continue;
+          }
+          throw error;
+        }
       }
-      const ownerMemberId = await resolveUpdateOwner(
-        context,
-        store,
-        current.ownerMemberId,
-        input.ownerMemberId,
-      );
-      const normalized = await validateMutation({
-        mode: 'UPDATE',
-        resolved,
-        submitted: input.values ?? {},
-        current: current.values,
-        memberExists: (memberId) => store.memberExists(memberId),
-      });
-      const updated = await store.updateRecord(recordId, input.version, {
-        values: normalized.values,
-        title: normalized.title,
-        ownerMemberId,
-      });
-      if (!updated) throw new ApiException('RECORD_VERSION_CONFLICT', 409);
-      await store.appendAudit(
-        recordAudit(context, meta, 'record.updated', updated, current),
-      );
-      return projectRecord(updated, resolved);
+      return {
+        updated: items.filter((item) => item.status === 'UPDATED').length,
+        failed: items.filter((item) => item.status === 'FAILED').length,
+        items,
+      };
     });
   }
 
@@ -911,6 +974,53 @@ async function requireVisibleRecord(
     throw new ApiException('RECORD_NOT_FOUND', 404);
   }
   return record;
+}
+
+async function applyRecordUpdate(
+  store: RecordsStore,
+  resolved: ResolvedObjectSchema,
+  context: TenantContext,
+  recordId: string,
+  input: {
+    version: number;
+    values?: Record<string, unknown>;
+    ownerMemberId?: string | null;
+  },
+  meta: RequestMeta,
+): Promise<RecordResponse> {
+  const current = await requireVisibleRecord(
+    store,
+    resolved,
+    context,
+    recordId,
+    'UPDATE',
+  );
+  if (current.version !== input.version) {
+    throw new ApiException('RECORD_VERSION_CONFLICT', 409);
+  }
+  const ownerMemberId = await resolveUpdateOwner(
+    context,
+    store,
+    current.ownerMemberId,
+    input.ownerMemberId,
+  );
+  const normalized = await validateMutation({
+    mode: 'UPDATE',
+    resolved,
+    submitted: input.values ?? {},
+    current: current.values,
+    memberExists: (memberId) => store.memberExists(memberId),
+  });
+  const updated = await store.updateRecord(recordId, input.version, {
+    values: normalized.values,
+    title: normalized.title,
+    ownerMemberId,
+  });
+  if (!updated) throw new ApiException('RECORD_VERSION_CONFLICT', 409);
+  await store.appendAudit(
+    recordAudit(context, meta, 'record.updated', updated, current),
+  );
+  return projectRecord(updated, resolved);
 }
 
 function resolveExportFields(

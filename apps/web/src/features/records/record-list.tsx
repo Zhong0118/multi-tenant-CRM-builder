@@ -37,6 +37,7 @@ import {
 import { OptionBadge } from "@/features/objects/option-badge";
 
 import type { DynamicFieldMember } from "./dynamic-field";
+import { RecordBatchEditDrawer } from "./record-batch-edit";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
 import { recordCardFields } from "./record-card-fields";
 import {
@@ -104,6 +105,8 @@ export function RecordList({
   const [searchInput, setSearchInput] = useState(query.search ?? "");
   const [error, setError] = useState<string>();
   const [columnsOpen, setColumnsOpen] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
+  const [batchOpen, setBatchOpen] = useState(false);
   const [columnFieldKeys, setColumnFieldKeys] = useState(() =>
     resolveRecordColumnKeys(
       schema,
@@ -471,6 +474,14 @@ export function RecordList({
             <Typography.Text type="secondary">
               共 {page.total} 条 · 第 {page.page} 页
             </Typography.Text>
+            {schema.actions.canUpdate ? (
+              <Button
+                disabled={selectedRowKeys.length === 0}
+                onClick={() => setBatchOpen(true)}
+              >
+                批量修改{selectedRowKeys.length > 0 ? ` ${selectedRowKeys.length}` : ""}
+              </Button>
+            ) : null}
             <Button onClick={() => setColumnsOpen(true)}>列设置</Button>
             <Button
               onClick={() => exporting.mutate()}
@@ -799,6 +810,17 @@ export function RecordList({
           loading={records.isFetching}
           onChange={handleTableChange}
           scroll={{ x: "max-content" }}
+          rowSelection={
+            schema.actions.canUpdate
+              ? {
+                  selectedRowKeys,
+                  onChange: (keys) => setSelectedRowKeys(keys.map(String)),
+                  getCheckboxProps: (row) => ({
+                    "aria-label": `选择 ${row.title}`,
+                  }),
+                }
+              : undefined
+          }
           aria-label={`${schema.object.name}记录`}
           locale={{
             emptyText: (
@@ -864,6 +886,24 @@ export function RecordList({
           恢复默认列
         </Button>
       </Drawer>
+
+      {batchOpen ? (
+        <RecordBatchEditDrawer
+          tenantCode={tenantCode}
+          schema={schema}
+          records={page.items.filter((item) => selectedRowKeys.includes(item.id))}
+          members={members}
+          canChooseOwner={canFilterByOwner}
+          api={api}
+          onClose={() => setBatchOpen(false)}
+          onCompleted={async () => {
+            setBatchOpen(false);
+            setSelectedRowKeys([]);
+            await records.refetch();
+            router.refresh();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

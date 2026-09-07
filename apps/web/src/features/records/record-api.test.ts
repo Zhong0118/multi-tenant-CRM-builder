@@ -71,6 +71,28 @@ describe("recordApi mutations", () => {
     for (const mock of Object.values(mocks)) mock.mockReset();
   });
 
+  it("posts a batch update to the generated nested path", async () => {
+    mocks.POST.mockResolvedValue(ok({ updated: 1, failed: 0, items: [] }));
+
+    await recordApi.batchUpdate("northwind", "customers", {
+      items: [{ recordId: "record-1", version: 3 }],
+      values: { lead_status: "following" },
+    });
+
+    expect(mocks.POST).toHaveBeenCalledWith(
+      "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/batch",
+      {
+        params: {
+          path: { tenantCode: "northwind", objectCode: "customers" },
+        },
+        body: {
+          items: [{ recordId: "record-1", version: 3 }],
+          values: { lead_status: "following" },
+        },
+      },
+    );
+  });
+
   it("creates a record with values and an optional owner", async () => {
     mocks.POST.mockResolvedValue(ok({ id: "record-1" }));
 

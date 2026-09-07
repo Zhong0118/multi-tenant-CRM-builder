@@ -1048,6 +1048,50 @@ describe('RecordsService', () => {
     });
   });
 
+  it('batch-updates selected records and reports per-row failures', async () => {
+    const { service } = fixture();
+    const first = await create(service, employee, '甲线索');
+    const second = await create(service, employee, '乙线索');
+    const foreign = await create(service, admin, '别人的线索', otherMemberId);
+
+    const result = await service.batchUpdate(
+      employee,
+      'leads',
+      {
+        items: [
+          { recordId: first.id, version: first.version },
+          { recordId: second.id, version: second.version + 1 },
+          { recordId: foreign.id, version: foreign.version },
+        ],
+        values: { lead_status: 'following' },
+      },
+      meta,
+    );
+
+    expect(result.updated).toBe(1);
+    expect(result.failed).toBe(2);
+    expect(result.items[0]).toMatchObject({
+      recordId: first.id,
+      status: 'UPDATED',
+    });
+    expect(result.items[1]).toMatchObject({
+      recordId: second.id,
+      status: 'FAILED',
+      error: { code: 'RECORD_VERSION_CONFLICT' },
+    });
+    expect(result.items[2]).toMatchObject({
+      recordId: foreign.id,
+      status: 'FAILED',
+      error: { code: 'RECORD_NOT_FOUND' },
+    });
+    await expect(service.detail(employee, 'leads', first.id)).resolves.toMatchObject({
+      values: expect.objectContaining({ lead_status: 'following' }),
+    });
+    await expect(service.detail(employee, 'leads', second.id)).resolves.toMatchObject({
+      title: '乙线索',
+    });
+  });
+
   it('returns RECORD_VERSION_CONFLICT for stale updates', async () => {
     const { service } = fixture();
     const record = await create(service, employee, '张三');

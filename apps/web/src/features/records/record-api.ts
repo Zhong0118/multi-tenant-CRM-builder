@@ -38,6 +38,30 @@ export interface UpdateRecordInput {
   ownerMemberId?: string | null;
 }
 
+export interface RecordBatchUpdateItem {
+  recordId: string;
+  version: number;
+}
+
+export interface RecordBatchUpdateInput {
+  items: RecordBatchUpdateItem[];
+  values?: Record<string, unknown>;
+  ownerMemberId?: string | null;
+}
+
+export interface RecordBatchUpdateResultItem {
+  recordId: string;
+  status: "UPDATED" | "FAILED";
+  record?: RecordSummary;
+  error?: { code: string; message: string };
+}
+
+export interface RecordBatchUpdateResult {
+  updated: number;
+  failed: number;
+  items: RecordBatchUpdateResultItem[];
+}
+
 export const MEMBER_ACTIVITY_TYPES = [
   "CALL",
   "MESSAGE",
@@ -115,12 +139,18 @@ export interface RecordApi {
     objectCode: string,
     query: Omit<RecordListQuery, "page" | "limit">,
   ): Promise<void>;
+  batchUpdate(
+    tenantCode: string,
+    objectCode: string,
+    input: RecordBatchUpdateInput,
+  ): Promise<RecordBatchUpdateResult>;
 }
 
 const RECORDS_PATH =
   "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records" as const;
 const RECORD_PATH = `${RECORDS_PATH}/{recordId}` as const;
 const ACTIVITIES_PATH = `${RECORD_PATH}/activities` as const;
+const BATCH_PATH = `${RECORDS_PATH}/batch` as const;
 
 export const recordApi: RecordApi = {
   async list(tenantCode, objectCode, query) {
@@ -140,6 +170,14 @@ export const recordApi: RecordApi = {
   async create(tenantCode, objectCode, input) {
     return dataOrThrow(
       await browserApiClient.POST(RECORDS_PATH, {
+        params: { path: { tenantCode, objectCode } },
+        body: definedEntries(input),
+      }),
+    );
+  },
+  async batchUpdate(tenantCode, objectCode, input) {
+    return dataOrThrow(
+      await browserApiClient.POST(BATCH_PATH, {
         params: { path: { tenantCode, objectCode } },
         body: definedEntries(input),
       }),

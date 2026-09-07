@@ -1012,6 +1012,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/batch": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["RecordsController_batchUpdate"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/export": {
     parameters: {
       query?: never;
@@ -1071,6 +1087,19 @@ export interface components {
       /** @example true */
       accepted: boolean;
       user: components["schemas"]["UserResponseDto"];
+    };
+    BatchUpdateRecordItemDto: {
+      /** Format: uuid */
+      recordId: string;
+      version: number;
+    };
+    BatchUpdateRecordsDto: {
+      items: components["schemas"]["BatchUpdateRecordItemDto"][];
+      /** Format: uuid */
+      ownerMemberId?: string | null;
+      values?: {
+        [key: string]: unknown;
+      };
     };
     BusinessTemplateActiveVersionResponseDto: {
       /** Format: uuid */
@@ -2020,6 +2049,23 @@ export interface components {
       id: string;
       /** Format: date-time */
       nextActionAt: string | null;
+    };
+    RecordBatchUpdateErrorDto: {
+      code: string;
+      message: string;
+    };
+    RecordBatchUpdateResponseDto: {
+      failed: number;
+      items: components["schemas"]["RecordBatchUpdateResultItemDto"][];
+      updated: number;
+    };
+    RecordBatchUpdateResultItemDto: {
+      error?: components["schemas"]["RecordBatchUpdateErrorDto"];
+      record?: components["schemas"]["RecordResponseDto"];
+      /** Format: uuid */
+      recordId: string;
+      /** @enum {string} */
+      status: "UPDATED" | "FAILED";
     };
     RecordPageResponseDto: {
       items: components["schemas"]["RecordResponseDto"][];
@@ -4285,6 +4331,32 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["RecordActivityResponseDto"];
+        };
+      };
+    };
+  };
+  RecordsController_batchUpdate: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["BatchUpdateRecordsDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecordBatchUpdateResponseDto"];
         };
       };
     };

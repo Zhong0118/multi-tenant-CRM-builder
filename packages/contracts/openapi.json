@@ -65,6 +65,41 @@
         "required": ["accepted", "user"],
         "type": "object"
       },
+      "BatchUpdateRecordItemDto": {
+        "properties": {
+          "recordId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": ["recordId", "version"],
+        "type": "object"
+      },
+      "BatchUpdateRecordsDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BatchUpdateRecordItemDto"
+            },
+            "type": "array"
+          },
+          "ownerMemberId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "values": {
+            "additionalProperties": true,
+            "type": "object"
+          }
+        },
+        "required": ["items"],
+        "type": "object"
+      },
       "BusinessTemplateActiveVersionResponseDto": {
         "properties": {
           "id": {
@@ -2828,6 +2863,56 @@
           "actorDisplayName",
           "createdAt"
         ],
+        "type": "object"
+      },
+      "RecordBatchUpdateErrorDto": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": ["code", "message"],
+        "type": "object"
+      },
+      "RecordBatchUpdateResponseDto": {
+        "properties": {
+          "failed": {
+            "type": "number"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecordBatchUpdateResultItemDto"
+            },
+            "type": "array"
+          },
+          "updated": {
+            "type": "number"
+          }
+        },
+        "required": ["updated", "failed", "items"],
+        "type": "object"
+      },
+      "RecordBatchUpdateResultItemDto": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/RecordBatchUpdateErrorDto"
+          },
+          "record": {
+            "$ref": "#/components/schemas/RecordResponseDto"
+          },
+          "recordId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "status": {
+            "enum": ["UPDATED", "FAILED"],
+            "type": "string"
+          }
+        },
+        "required": ["recordId", "status"],
         "type": "object"
       },
       "RecordPageResponseDto": {
@@ -7231,6 +7316,57 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RecordResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["records"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/batch": {
+      "post": {
+        "operationId": "RecordsController_batchUpdate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchUpdateRecordsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordBatchUpdateResponseDto"
                 }
               }
             },

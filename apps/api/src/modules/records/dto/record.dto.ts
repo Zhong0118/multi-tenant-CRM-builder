@@ -1,6 +1,8 @@
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
   ArrayUnique,
   IsArray,
   IsDateString,
@@ -15,6 +17,7 @@ import {
   MaxLength,
   Min,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
 
 export class RecordListQueryDto {
@@ -112,6 +115,38 @@ export class UpdateRecordDto {
   ownerMemberId?: string | null;
 }
 
+export class BatchUpdateRecordItemDto {
+  @ApiProperty({ format: 'uuid' })
+  @IsUUID()
+  recordId!: string;
+
+  @ApiProperty({ minimum: 1 })
+  @IsInt()
+  @Min(1)
+  version!: number;
+}
+
+export class BatchUpdateRecordsDto {
+  @ApiProperty({ type: BatchUpdateRecordItemDto, isArray: true })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(50)
+  @ArrayUnique((item: BatchUpdateRecordItemDto) => item.recordId)
+  @ValidateNested({ each: true })
+  @Type(() => BatchUpdateRecordItemDto)
+  items!: BatchUpdateRecordItemDto[];
+
+  @ApiPropertyOptional({ type: 'object', additionalProperties: true })
+  @IsOptional()
+  @IsObject()
+  values?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
+  @IsOptional()
+  @IsUUID()
+  ownerMemberId?: string | null;
+}
+
 export class DeleteRecordDto {
   @ApiProperty({ minimum: 1 })
   @IsInt()
@@ -137,6 +172,28 @@ export class RecordPageResponseDto {
   @ApiProperty() page!: number;
   @ApiProperty() limit!: number;
   @ApiProperty() total!: number;
+}
+
+export class RecordBatchUpdateErrorDto {
+  @ApiProperty() code!: string;
+  @ApiProperty() message!: string;
+}
+
+export class RecordBatchUpdateResultItemDto {
+  @ApiProperty({ format: 'uuid' }) recordId!: string;
+  @ApiProperty({ enum: ['UPDATED', 'FAILED'] })
+  status!: 'UPDATED' | 'FAILED';
+  @ApiPropertyOptional({ type: RecordResponseDto })
+  record?: RecordResponseDto;
+  @ApiPropertyOptional({ type: RecordBatchUpdateErrorDto })
+  error?: RecordBatchUpdateErrorDto;
+}
+
+export class RecordBatchUpdateResponseDto {
+  @ApiProperty() updated!: number;
+  @ApiProperty() failed!: number;
+  @ApiProperty({ type: RecordBatchUpdateResultItemDto, isArray: true })
+  items!: RecordBatchUpdateResultItemDto[];
 }
 
 export class DeleteRecordResponseDto {

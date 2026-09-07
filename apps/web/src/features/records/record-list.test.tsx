@@ -369,6 +369,20 @@ describe("RecordList table sorting", () => {
     );
   });
 
+  it("opens batch edit for selected rows", async () => {
+    const navigate = vi.fn();
+    const api = {
+      list: vi.fn().mockResolvedValue(page),
+      batchUpdate: vi.fn(),
+    } as unknown as RecordApi;
+    renderList(navigate, DEFAULT_RECORD_QUERY, { api });
+
+    fireEvent.click(await screen.findByRole("checkbox", { name: "选择 天际科技" }));
+    fireEvent.click(await screen.findByRole("button", { name: "批量修改 1" }));
+
+    expect(screen.getByText("批量修改 1 条")).toBeInTheDocument();
+  });
+
   it("lets a member choose personal columns and exports those columns", async () => {
     const navigate = vi.fn();
     const api = {

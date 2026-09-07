@@ -35,6 +35,7 @@ function recordApi(overrides: Partial<RecordApi> = {}): RecordApi {
       content: "已回访确认需求。",
     }),
     export: vi.fn(),
+    batchUpdate: vi.fn(),
     ...overrides,
   };
 }

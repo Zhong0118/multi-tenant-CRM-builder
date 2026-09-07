@@ -28,10 +28,12 @@ import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { WorkspaceGuard } from '../../common/tenancy/workspace.guard';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
 import {
+  BatchUpdateRecordsDto,
   CreateRecordActivityDto,
   CreateRecordDto,
   DeleteRecordResponseDto,
   DeleteRecordDto,
+  RecordBatchUpdateResponseDto,
   RecordActivityListQueryDto,
   RecordActivityPageResponseDto,
   RecordActivityResponseDto,
@@ -99,6 +101,22 @@ export class RecordsController {
     @Req() request: RequestWithId,
   ) {
     return this.records.create(context, objectCode, dto, requestMeta(request));
+  }
+
+  @Post('batch')
+  @ApiOkResponse({ type: RecordBatchUpdateResponseDto })
+  batchUpdate(
+    @CurrentTenant() context: TenantContext,
+    @Param('objectCode') objectCode: string,
+    @Body() dto: BatchUpdateRecordsDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.records.batchUpdate(
+      context,
+      objectCode,
+      dto,
+      requestMeta(request),
+    );
   }
 
   @Get(':recordId/activities')
