@@ -26,6 +26,19 @@ export const SORTABLE_FIELD_TYPES = [
   "SINGLE_SELECT",
 ] as const;
 
+export const SEARCHABLE_FIELD_TYPES = [
+  "TEXT",
+  "TEXTAREA",
+  "PHONE",
+  "EMAIL",
+] as const satisfies readonly PublishedFieldType[];
+
+export function isSearchableFieldType(
+  value: string,
+): value is (typeof SEARCHABLE_FIELD_TYPES)[number] {
+  return (SEARCHABLE_FIELD_TYPES as readonly string[]).includes(value);
+}
+
 export const PUBLISHED_FIELD_TYPES = [
   "TEXT",
   "TEXTAREA",
@@ -147,6 +160,7 @@ export interface RuntimeObjectSchema {
     code: string;
     name: string;
     columnFieldKeys: string[];
+    searchFieldKeys?: string[];
     sort: { field: RecordSortField; direction: RecordSortDirection };
   };
   actions: {
@@ -281,6 +295,17 @@ export function parseRuntimeObjectSchema(
       invalid(`defaultView.columnFieldKeys 引用了未发布字段 ${fieldKey}`);
     }
   }
+  const searchFieldKeys =
+    defaultView.searchFieldKeys === undefined
+      ? undefined
+      : asStringArray(defaultView.searchFieldKeys, "defaultView.searchFieldKeys");
+  if (searchFieldKeys) {
+    for (const fieldKey of searchFieldKeys) {
+      if (!fieldKeys.has(fieldKey)) {
+        invalid(`defaultView.searchFieldKeys 引用了未发布字段 ${fieldKey}`);
+      }
+    }
+  }
 
   return {
     publication: {
@@ -300,6 +325,7 @@ export function parseRuntimeObjectSchema(
       code: asString(defaultView.code, "defaultView.code"),
       name: asString(defaultView.name, "defaultView.name"),
       columnFieldKeys,
+      ...(searchFieldKeys === undefined ? {} : { searchFieldKeys }),
       sort: {
         field: asMember(
           sort.field,

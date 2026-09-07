@@ -181,6 +181,13 @@ function projectRuntimeSchema(
       columnFieldKeys: schema.defaultView.columnFieldKeys.filter((fieldKey) =>
         visibleKeys.has(fieldKey),
       ),
+      ...(schema.defaultView.searchFieldKeys === undefined
+        ? {}
+        : {
+            searchFieldKeys: schema.defaultView.searchFieldKeys.filter(
+              (fieldKey) => visibleKeys.has(fieldKey),
+            ),
+          }),
     },
     actions: {
       canCreate: access.canCreate,
@@ -217,12 +224,7 @@ export function parsePublishedObjectSchema(
     'icon',
     'sortOrder',
   ]);
-  const defaultView = strictObject(root.defaultView, [
-    'code',
-    'name',
-    'columnFieldKeys',
-    'sort',
-  ]);
+  const defaultView = parseDefaultView(root.defaultView);
   const sort = strictObject(defaultView.sort, ['field', 'direction']);
   const employeeAccess = strictObject(root.employeeAccess, [
     'canCreate',
@@ -260,6 +262,13 @@ export function parsePublishedObjectSchema(
   if (columnFieldKeys.some((fieldKey) => !fieldKeys.has(fieldKey))) {
     invalidSnapshot();
   }
+  const searchFieldKeys =
+    defaultView.searchFieldKeys === undefined
+      ? undefined
+      : parseStringArray(defaultView.searchFieldKeys);
+  if (searchFieldKeys?.some((fieldKey) => !fieldKeys.has(fieldKey))) {
+    invalidSnapshot();
+  }
   if (!['updatedAt', 'createdAt', 'recordNo'].includes(String(sort.field))) {
     invalidSnapshot();
   }
@@ -281,6 +290,24 @@ export function parsePublishedObjectSchema(
   }
 
   return structuredClone(value) as PublishedObjectSchema;
+}
+
+function parseDefaultView(value: unknown): Record<string, unknown> {
+  const object = plainObject(value);
+  const allowed = new Set([
+    'code',
+    'name',
+    'columnFieldKeys',
+    'sort',
+    'searchFieldKeys',
+  ]);
+  if (Object.keys(object).some((key) => !allowed.has(key))) {
+    invalidSnapshot();
+  }
+  for (const required of ['code', 'name', 'columnFieldKeys', 'sort']) {
+    if (!(required in object)) invalidSnapshot();
+  }
+  return object;
 }
 
 function parseField(value: unknown): PublishedField {

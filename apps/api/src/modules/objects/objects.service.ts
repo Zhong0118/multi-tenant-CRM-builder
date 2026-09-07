@@ -9,10 +9,11 @@ import {
   type DraftFieldType,
   type PublicationDraftField,
 } from './object-publication.policy';
-import type {
-  JsonValue,
-  PublishedDataScope,
-  PublishedFieldAccess,
+import {
+  isSearchableFieldType,
+  type JsonValue,
+  type PublishedDataScope,
+  type PublishedFieldAccess,
 } from './object-schema';
 import type {
   ObjectDraft,
@@ -67,6 +68,7 @@ interface DefaultViewInput {
   expectedVersion: number;
   name: string;
   columnFieldKeys: string[];
+  searchFieldKeys?: string[];
   sort: {
     field: 'updatedAt' | 'createdAt' | 'recordNo';
     direction: 'asc' | 'desc';
@@ -361,6 +363,16 @@ export class ObjectsService {
           code: 'default',
           name: input.name.trim(),
           columnFieldKeys: [...input.columnFieldKeys],
+          ...(input.searchFieldKeys === undefined
+            ? draft.defaultView?.searchFieldKeys === undefined
+              ? {}
+              : { searchFieldKeys: draft.defaultView.searchFieldKeys }
+            : {
+                searchFieldKeys: normalizeSearchFieldKeys(
+                  input.searchFieldKeys,
+                  draft.fields,
+                ),
+              }),
           sort: { ...input.sort },
         };
       },
@@ -548,6 +560,31 @@ function normalizeFieldKey(value: string): string {
     throw validationError('fieldKey', '仅支持小写字母、数字和下划线。');
   }
   return fieldKey;
+}
+
+function normalizeSearchFieldKeys(
+  value: string[] | undefined,
+  fields: PublicationDraftField[],
+): string[] {
+  const requested = [...new Set((value ?? []).map(normalizeFieldKey))];
+  const active = new Map(
+    fields
+      .filter((field) => field.status === 'ACTIVE')
+      .map((field) => [field.fieldKey, field]),
+  );
+  for (const fieldKey of requested) {
+    const field = active.get(fieldKey);
+    if (!field) {
+      throw validationError('searchFieldKeys', '搜索字段必须是已启用字段。');
+    }
+    if (!isSearchableFieldType(field.type)) {
+      throw validationError(
+        'searchFieldKeys',
+        '搜索字段仅支持文本、长文本、电话和邮箱。',
+      );
+    }
+  }
+  return requested;
 }
 
 function validationError(field: string, message: string): ApiException {

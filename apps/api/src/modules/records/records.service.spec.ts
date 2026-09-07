@@ -633,6 +633,55 @@ describe('RecordsService', () => {
     expect(hidden.total).toBe(0);
   });
 
+  it('searches extra default-view text fields that are not list columns, without scanning hidden values', async () => {
+    const { service, publishedRepository } = fixture();
+    const configuration = publishedRepository.record
+      .configuration as PublishedObjectSchema;
+    configuration.fields.push({
+      id: 'field-phone',
+      fieldKey: 'phone',
+      label: '联系电话',
+      type: 'PHONE',
+      required: false,
+      defaultValue: null,
+      validation: {},
+      config: {},
+      sortOrder: 22,
+      isSystem: false,
+    });
+    configuration.employeeAccess.fields.phone = 'EDIT';
+    Object.assign(configuration.defaultView, {
+      searchFieldKeys: ['phone', 'secret'],
+    });
+
+    await create(service, admin, '公开标题', employee.memberId, {
+      phone: '13800138000',
+      secret: '机密标记',
+    });
+    await create(service, admin, '另一条', employee.memberId, {
+      phone: '13900139000',
+      secret: '无关',
+    });
+
+    const byPhone = await service.list(admin, 'leads', {
+      page: 1,
+      limit: 20,
+      search: '13800138',
+      sort: 'updatedAt',
+      direction: 'desc',
+    });
+    expect(byPhone.items.map((record) => record.title)).toEqual(['公开标题']);
+
+    const hidden = await service.list(employee, 'leads', {
+      page: 1,
+      limit: 20,
+      search: '机密标记',
+      sort: 'updatedAt',
+      direction: 'desc',
+    });
+    expect(hidden.total).toBe(0);
+  });
+
   it('filters records by a visible published multi-select field', async () => {
     const { service } = fixture();
     await create(service, admin, '重点线索', employee.memberId, {

@@ -131,6 +131,11 @@ export function templateDraftFromDetail(
         ? {
             name: object.defaultView.name,
             columnFieldKeys: [...object.defaultView.columnFieldKeys],
+            ...(object.defaultView.searchFieldKeys === undefined
+              ? {}
+              : {
+                  searchFieldKeys: [...object.defaultView.searchFieldKeys],
+                }),
             sort: { ...object.defaultView.sort },
           }
         : null,
@@ -277,6 +282,9 @@ export function updateField(
             columnFieldKeys: object.defaultView.columnFieldKeys.map((key) =>
               key === oldKey ? newKey : key,
             ),
+            searchFieldKeys: object.defaultView.searchFieldKeys?.map((key) =>
+              key === oldKey ? newKey : key,
+            ),
           }
         : null,
     };
@@ -310,6 +318,9 @@ export function setFieldStatus(
           ? {
               ...object.defaultView,
               columnFieldKeys: object.defaultView.columnFieldKeys.filter(
+                (fieldKey) => fieldKey !== field.fieldKey,
+              ),
+              searchFieldKeys: object.defaultView.searchFieldKeys?.filter(
                 (fieldKey) => fieldKey !== field.fieldKey,
               ),
             }
@@ -391,6 +402,7 @@ export function setDefaultView(
   view: {
     name: string;
     columnFieldKeys: string[];
+    searchFieldKeys?: string[];
     sort: { field: RecordSortField; direction: RecordSortDirection };
   } | null,
 ): TemplateDraft {
@@ -400,6 +412,9 @@ export function setDefaultView(
       ? {
           name: view.name,
           columnFieldKeys: [...view.columnFieldKeys],
+          ...(view.searchFieldKeys === undefined
+            ? {}
+            : { searchFieldKeys: [...view.searchFieldKeys] }),
           sort: { ...view.sort },
         }
       : null,
@@ -470,6 +485,11 @@ export function toTemplateConfiguration(
             code: "default",
             name: object.defaultView.name,
             columnFieldKeys: [...object.defaultView.columnFieldKeys],
+            ...(object.defaultView.searchFieldKeys === undefined
+              ? {}
+              : {
+                  searchFieldKeys: [...object.defaultView.searchFieldKeys],
+                }),
             sort: { ...object.defaultView.sort },
           }
         : null,

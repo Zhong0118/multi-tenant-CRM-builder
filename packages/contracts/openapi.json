@@ -1444,6 +1444,13 @@
           "name": {
             "type": "string"
           },
+          "searchFieldKeys": {
+            "description": "Extra searchable field keys. Omit to leave the current draft value unchanged; send an empty array for title-only search.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "sort": {
             "$ref": "#/components/schemas/DefaultViewSortDto"
           }
@@ -1871,6 +1878,12 @@
           },
           "name": {
             "type": "string"
+          },
+          "searchFieldKeys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "sort": {
             "$ref": "#/components/schemas/DefaultViewSortDto"
@@ -3191,6 +3204,12 @@
             "maxLength": 100,
             "minLength": 1,
             "type": "string"
+          },
+          "searchFieldKeys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "sort": {
             "$ref": "#/components/schemas/TemplateDefaultViewSortDto"

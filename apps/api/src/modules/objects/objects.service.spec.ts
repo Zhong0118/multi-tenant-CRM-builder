@@ -379,6 +379,86 @@ describe('ObjectsService', () => {
     ]);
   });
 
+  it('stores explicit extra search fields on the default view', async () => {
+    const { service } = fixture();
+    let draft = await createPublishableDraft(service);
+    draft = await service.createField(
+      admin,
+      draft.object.id,
+      {
+        expectedVersion: draft.object.version,
+        fieldKey: 'phone',
+        label: '手机号',
+        type: 'PHONE',
+        required: false,
+        defaultValue: null,
+        validation: {},
+        config: {},
+        isSystem: false,
+      },
+      meta,
+    );
+
+    draft = await service.updateDefaultView(
+      admin,
+      draft.object.id,
+      {
+        expectedVersion: draft.object.version,
+        name: '全部线索',
+        columnFieldKeys: ['name'],
+        searchFieldKeys: ['phone'],
+        sort: { field: 'updatedAt', direction: 'desc' },
+      },
+      meta,
+    );
+
+    expect(draft.defaultView).toMatchObject({
+      columnFieldKeys: ['name'],
+      searchFieldKeys: ['phone'],
+    });
+  });
+
+  it('rejects a non-text search field before publishing', async () => {
+    const { service } = fixture();
+    let draft = await createPublishableDraft(service);
+    draft = await service.createField(
+      admin,
+      draft.object.id,
+      {
+        expectedVersion: draft.object.version,
+        fieldKey: 'amount',
+        label: '金额',
+        type: 'MONEY',
+        required: false,
+        defaultValue: null,
+        validation: {},
+        config: {},
+        isSystem: false,
+      },
+      meta,
+    );
+
+    await expect(
+      service.updateDefaultView(
+        admin,
+        draft.object.id,
+        {
+          expectedVersion: draft.object.version,
+          name: '全部线索',
+          columnFieldKeys: ['name'],
+          searchFieldKeys: ['amount'],
+          sort: { field: 'updatedAt', direction: 'desc' },
+        },
+        meta,
+      ),
+    ).rejects.toMatchObject({
+      code: 'VALIDATION_FAILED',
+      fieldErrors: {
+        searchFieldKeys: ['搜索字段仅支持文本、长文本、电话和邮箱。'],
+      },
+    });
+  });
+
   it('returns publication blockers without changing the active schema', async () => {
     const { service } = fixture();
     const draft = await createObject(service);

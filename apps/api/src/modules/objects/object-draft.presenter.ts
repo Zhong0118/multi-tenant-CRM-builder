@@ -46,6 +46,7 @@ export interface ObjectDraftResponse {
   defaultView: {
     name: string;
     columnFieldKeys: string[];
+    searchFieldKeys?: string[];
     sort: {
       field: 'updatedAt' | 'createdAt' | 'recordNo';
       direction: 'asc' | 'desc';
@@ -130,6 +131,9 @@ export function toObjectDraftResponse(draft: ObjectDraft): ObjectDraftResponse {
       ? {
           name: draft.defaultView.name,
           columnFieldKeys: draft.defaultView.columnFieldKeys,
+          ...(draft.defaultView.searchFieldKeys === undefined
+            ? {}
+            : { searchFieldKeys: draft.defaultView.searchFieldKeys }),
           sort: draft.defaultView.sort,
         }
       : null,

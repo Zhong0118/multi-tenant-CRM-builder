@@ -21,6 +21,21 @@ export type PublishedFieldType = (typeof PUBLISHED_FIELD_TYPES)[number];
 export type PublishedFieldAccess = 'EDIT' | 'READ_ONLY' | 'HIDDEN';
 export type PublishedDataScope = 'ALL' | 'OWN' | 'NONE';
 
+export const SEARCHABLE_FIELD_TYPES = [
+  'TEXT',
+  'TEXTAREA',
+  'PHONE',
+  'EMAIL',
+] as const satisfies readonly PublishedFieldType[];
+
+export type SearchableFieldType = (typeof SEARCHABLE_FIELD_TYPES)[number];
+
+export function isSearchableFieldType(
+  value: string,
+): value is SearchableFieldType {
+  return (SEARCHABLE_FIELD_TYPES as readonly string[]).includes(value);
+}
+
 export interface PublishedField {
   id: string;
   fieldKey: string;
@@ -55,6 +70,12 @@ export interface PublishedObjectSchema {
     code: 'default';
     name: string;
     columnFieldKeys: string[];
+    /**
+     * Extra JSONB fields included in keyword search. Missing on older
+     * publications means “search the visible default-view text columns”.
+     * An empty array means title-only search.
+     */
+    searchFieldKeys?: string[];
     sort: {
       field: 'updatedAt' | 'createdAt' | 'recordNo';
       direction: 'asc' | 'desc';

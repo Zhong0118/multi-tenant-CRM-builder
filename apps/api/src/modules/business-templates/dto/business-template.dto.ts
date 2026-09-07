@@ -166,6 +166,13 @@ export class TemplateDefaultViewDto {
   @IsString({ each: true })
   columnFieldKeys!: string[];
 
+  @ApiPropertyOptional({ type: String, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsString({ each: true })
+  searchFieldKeys?: string[];
+
   @ApiProperty({ type: TemplateDefaultViewSortDto })
   @ValidateNested()
   @Type(() => TemplateDefaultViewSortDto)

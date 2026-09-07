@@ -45,6 +45,7 @@ export interface ConfigurableObjectView {
   defaultView: {
     name: string;
     columnFieldKeys: string[];
+    searchFieldKeys?: string[];
     sort: { field: RecordSortField; direction: RecordSortDirection };
   } | null;
   employeeAccess: {

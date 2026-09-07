@@ -44,6 +44,12 @@ export interface PublicationDraft {
     code: 'default';
     name: string;
     columnFieldKeys: string[];
+    /**
+     * Extra JSONB fields included in keyword search. Missing means the
+     * publication still uses visible default-view text columns. An empty
+     * array means title-only search.
+     */
+    searchFieldKeys?: string[];
     sort: {
       field: 'updatedAt' | 'createdAt' | 'recordNo';
       direction: 'asc' | 'desc';

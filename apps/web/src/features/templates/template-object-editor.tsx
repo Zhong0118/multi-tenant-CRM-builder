@@ -20,6 +20,7 @@ import { FieldLedger } from "../objects/field-ledger";
 import { ObjectPreview, type PreviewRole } from "../objects/object-preview";
 import {
   DATA_SCOPE_LABELS,
+  isSearchableFieldType,
   TITLE_FIELD_TYPES,
   type PublishedDataScope,
 } from "../objects/object-types";
@@ -104,8 +105,12 @@ export function TemplateObjectEditor({
   const defaultView = object.defaultView ?? {
     name: "默认列表",
     columnFieldKeys: [],
+    searchFieldKeys: [],
     sort: { field: "updatedAt" as const, direction: "desc" as const },
   };
+  const searchableFields = object.fields.filter(
+    (field) => field.status === "ACTIVE" && isSearchableFieldType(field.type),
+  );
   const permissions = object.employeeAccess ?? {
     canCreate: true,
     canRead: true,
@@ -415,6 +420,34 @@ export function TemplateObjectEditor({
                           setDefaultView(draft, objectId, {
                             ...defaultView,
                             columnFieldKeys,
+                          }),
+                        )
+                      }
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    label="关键词搜索字段"
+                    htmlFor={`view-search-${objectId}`}
+                    extra="始终包含记录名称。留空表示只搜标题。"
+                  >
+                    <Select
+                      id={`view-search-${objectId}`}
+                      mode="multiple"
+                      value={defaultView.searchFieldKeys ?? []}
+                      options={searchableFields
+                        .filter(
+                          (field) =>
+                            field.fieldKey !== object.object.titleFieldKey,
+                        )
+                        .map((field) => ({
+                          value: field.fieldKey,
+                          label: field.label,
+                        }))}
+                      onChange={(searchFieldKeys: string[]) =>
+                        onChange(
+                          setDefaultView(draft, objectId, {
+                            ...defaultView,
+                            searchFieldKeys,
                           }),
                         )
                       }

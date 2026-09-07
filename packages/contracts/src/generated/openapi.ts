@@ -1504,6 +1504,8 @@ export interface components {
       columnFieldKeys: string[];
       expectedVersion: number;
       name: string;
+      /** @description Extra searchable field keys. Omit to leave the current draft value unchanged; send an empty array for title-only search. */
+      searchFieldKeys?: string[];
       sort: components["schemas"]["DefaultViewSortDto"];
     };
     DefaultViewSortDto: {
@@ -1649,6 +1651,7 @@ export interface components {
     ObjectDraftDefaultViewResponseDto: {
       columnFieldKeys: string[];
       name: string;
+      searchFieldKeys?: string[];
       sort: components["schemas"]["DefaultViewSortDto"];
     };
     ObjectDraftEmployeeAccessResponseDto: {
@@ -2116,6 +2119,7 @@ export interface components {
       code: "default";
       columnFieldKeys: string[];
       name: string;
+      searchFieldKeys?: string[];
       sort: components["schemas"]["TemplateDefaultViewSortDto"];
     };
     TemplateDefaultViewSortDto: {

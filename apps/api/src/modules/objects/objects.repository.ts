@@ -177,7 +177,7 @@ class PrismaObjectsStore implements ObjectsStore {
         ? {
             code: 'default',
             name: view.name,
-            columnFieldKeys: stringArray(view.columnFieldKeys),
+            ...viewColumns(view.columnFieldKeys),
             sort: viewSort(view.sort),
             updatedAt: view.updatedAt.toISOString(),
           }
@@ -309,13 +309,13 @@ class PrismaObjectsStore implements ObjectsStore {
           objectId: draft.object.id,
           code: 'default',
           name: draft.defaultView.name,
-          columnFieldKeys: toPrismaJson(draft.defaultView.columnFieldKeys),
+          columnFieldKeys: toPrismaJson(viewColumnsJson(draft.defaultView)),
           sort: toPrismaJson(draft.defaultView.sort),
           status: 'ACTIVE',
         },
         update: {
           name: draft.defaultView.name,
-          columnFieldKeys: toPrismaJson(draft.defaultView.columnFieldKeys),
+          columnFieldKeys: toPrismaJson(viewColumnsJson(draft.defaultView)),
           sort: toPrismaJson(draft.defaultView.sort),
           status: 'ACTIVE',
         },
@@ -486,6 +486,37 @@ function stringArray(value: PrismaTypes.JsonValue): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string')
     : [];
+}
+
+function viewColumns(value: PrismaTypes.JsonValue): {
+  columnFieldKeys: string[];
+  searchFieldKeys?: string[];
+} {
+  if (Array.isArray(value)) {
+    return { columnFieldKeys: stringArray(value) };
+  }
+  const object = jsonObject(value);
+  const searchFieldKeys = object.searchFieldKeys;
+  return {
+    columnFieldKeys: stringArray(
+      object.columnFieldKeys as PrismaTypes.JsonValue,
+    ),
+    ...(Array.isArray(searchFieldKeys)
+      ? { searchFieldKeys: stringArray(searchFieldKeys) }
+      : {}),
+  };
+}
+
+function viewColumnsJson(view: NonNullable<ObjectDraft['defaultView']>):
+  | string[]
+  | Record<string, unknown> {
+  if (view.searchFieldKeys === undefined) {
+    return view.columnFieldKeys;
+  }
+  return {
+    columnFieldKeys: view.columnFieldKeys,
+    searchFieldKeys: view.searchFieldKeys,
+  };
 }
 
 function viewSort(

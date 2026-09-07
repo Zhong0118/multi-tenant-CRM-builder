@@ -102,6 +102,29 @@ describe('object publication policy', () => {
     expect(blockingCodes(draft)).toContain('DEFAULT_VIEW_FIELD_INACTIVE');
   });
 
+  it('blocks a search field that is not a searchable type', () => {
+    const draft = validDraft();
+    draft.fields.push({
+      id: 'field-amount',
+      fieldKey: 'amount',
+      label: '金额',
+      type: 'MONEY',
+      required: false,
+      defaultValue: null,
+      validation: {},
+      config: {},
+      sortOrder: 30,
+      isSystem: false,
+      status: 'ACTIVE',
+    });
+    draft.defaultView = {
+      ...draft.defaultView!,
+      searchFieldKeys: ['amount'],
+    };
+
+    expect(blockingCodes(draft)).toContain('SEARCH_FIELD_TYPE_UNSUPPORTED');
+  });
+
   it('blocks a missing explicit employee role policy', () => {
     const draft = validDraft();
     draft.employeeAccess = null;
@@ -194,6 +217,7 @@ describe('object publication policy', () => {
       },
     });
 
+    expect(schema.defaultView.searchFieldKeys).toBeUndefined();
     expect(schema).toEqual({
       publication: {
         id: 'publication-2',
@@ -252,5 +276,23 @@ describe('object publication policy', () => {
         fields: { name: 'EDIT', phone: 'READ_ONLY' },
       },
     });
+  });
+
+  it('compiles explicit searchFieldKeys into the published default view', () => {
+    const schema = compilePublication({
+      ...validDraft(),
+      defaultView: {
+        ...validDraft().defaultView!,
+        searchFieldKeys: ['phone'],
+      },
+      publication: {
+        id: 'publication-2',
+        number: 2,
+        sourceDraftVersion: 7,
+        publishedAt: '2026-08-21T10:00:00.000Z',
+      },
+    });
+
+    expect(schema.defaultView.searchFieldKeys).toEqual(['phone']);
   });
 });

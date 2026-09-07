@@ -201,6 +201,48 @@ describe("ObjectDesigner configuration ledger", () => {
           expectedVersion: 4,
           name: "客户总览",
           columnFieldKeys: ["customer_name"],
+          searchFieldKeys: [],
+          sort: { field: "updatedAt", direction: "desc" },
+        },
+      ),
+    );
+  });
+
+  it("saves extra searchable fields that are not list columns", async () => {
+    const api = objectApi();
+    renderDesigner(
+      draft({
+        fields: [
+          field({}),
+          field({
+            id: "field-phone",
+            fieldKey: "contact_phone",
+            label: "联系电话",
+            type: "PHONE",
+            required: false,
+            sortOrder: 3,
+            publishedType: "PHONE",
+          }),
+        ],
+      }),
+      api,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "列表视图" }));
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "将联系电话纳入关键词搜索" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "保存列表视图" }));
+
+    await waitFor(() =>
+      expect(api.updateDefaultView).toHaveBeenCalledWith(
+        "northwind",
+        "object-1",
+        {
+          expectedVersion: 4,
+          name: "默认视图",
+          columnFieldKeys: ["customer_name"],
+          searchFieldKeys: ["contact_phone"],
           sort: { field: "updatedAt", direction: "desc" },
         },
       ),

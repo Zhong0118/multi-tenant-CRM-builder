@@ -33,6 +33,7 @@ import {
   DATA_SCOPE_LABELS,
   FIELD_KEY_PATTERN,
   FIELD_TYPE_LABELS,
+  isSearchableFieldType,
   PUBLISHED_FIELD_TYPES,
   TITLE_FIELD_TYPES,
   objectStatusLabel,
@@ -238,6 +239,7 @@ export function ObjectDesigner({
     mutationFn: (input: {
       name: string;
       columnFieldKeys: string[];
+      searchFieldKeys: string[];
       sort: { field: RecordSortField; direction: RecordSortDirection };
     }) =>
       api.updateDefaultView(tenantCode, objectId, {
@@ -736,16 +738,26 @@ function DefaultViewSection({
   onSave: (input: {
     name: string;
     columnFieldKeys: string[];
+    searchFieldKeys: string[];
     sort: { field: RecordSortField; direction: RecordSortDirection };
   }) => void;
 }) {
   const activeFields = draft.fields.filter(
     (field) => field.status === "ACTIVE",
   );
+  const searchableFields = activeFields.filter((field) =>
+    isSearchableFieldType(field.type),
+  );
   const [name, setName] = useState(draft.defaultView?.name ?? "默认列表");
   const [columnFieldKeys, setColumnFieldKeys] = useState<string[]>(
     draft.defaultView?.columnFieldKeys ??
       activeFields.map((field) => field.fieldKey),
+  );
+  const [searchFieldKeys, setSearchFieldKeys] = useState<string[]>(
+    draft.defaultView?.searchFieldKeys ??
+      (draft.defaultView?.columnFieldKeys ?? []).filter((fieldKey) =>
+        searchableFields.some((field) => field.fieldKey === fieldKey),
+      ),
   );
   const [sortField, setSortField] = useState<RecordSortField>(
     draft.defaultView?.sort.field ?? "updatedAt",
@@ -779,7 +791,7 @@ function DefaultViewSection({
         <div>
           <h2>默认列表视图</h2>
           <Typography.Text type="secondary">
-            决定员工打开这张业务表时先看到哪些列，以及记录的默认顺序。
+            决定员工打开这张业务表时先看到哪些列、关键词搜索哪些字段，以及记录的默认顺序。
           </Typography.Text>
         </div>
       </div>
@@ -832,6 +844,55 @@ function DefaultViewSection({
             })}
           </div>
         </Form.Item>
+        <Form.Item
+          label="关键词搜索字段"
+          extra="始终包含记录名称。未勾选任何字段时只搜标题；隐藏字段即使勾选也不会进入员工搜索。"
+        >
+          {searchableFields.length === 0 ? (
+            <Typography.Text type="secondary">
+              当前没有可搜索的文本、长文本、电话或邮箱字段。
+            </Typography.Text>
+          ) : (
+            <div className={styles.columnChooser}>
+              {searchableFields.map((field) => {
+                const selected = searchFieldKeys.includes(field.fieldKey);
+                const isTitle = field.fieldKey === draft.object.titleFieldKey;
+                return (
+                  <div key={field.id} className={styles.columnChooserRow}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        aria-label={
+                          isTitle
+                            ? `${field.label}（记录名称，始终可搜索）`
+                            : `将${field.label}纳入关键词搜索`
+                        }
+                        checked={selected || isTitle}
+                        disabled={isTitle}
+                        onChange={(event) =>
+                          setSearchFieldKeys((current) =>
+                            event.target.checked
+                              ? [...current, field.fieldKey]
+                              : current.filter(
+                                  (candidate) => candidate !== field.fieldKey,
+                                ),
+                          )
+                        }
+                      />
+                      <span>{field.label}</span>
+                      <code>{field.fieldKey}</code>
+                    </label>
+                    {isTitle ? (
+                      <Typography.Text type="secondary">
+                        记录名称
+                      </Typography.Text>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Form.Item>
         <div className={styles.formGrid}>
           <Form.Item label="默认排序字段" htmlFor="default-sort-field">
             <Select
@@ -866,6 +927,9 @@ function DefaultViewSection({
           onSave({
             name: name.trim(),
             columnFieldKeys,
+            searchFieldKeys: searchFieldKeys.filter(
+              (fieldKey) => fieldKey !== draft.object.titleFieldKey,
+            ),
             sort: { field: sortField, direction: sortDirection },
           })
         }

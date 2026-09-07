@@ -65,6 +65,23 @@ describe("parseRuntimeObjectSchema", () => {
     expect(schema.actions.canCreate).toBe(true);
     expect(schema.scopes.read).toBe("OWN");
     expect(schema.fields[0].validation.maxLength).toBe(60);
+    expect(schema.defaultView.searchFieldKeys).toBeUndefined();
+  });
+
+  it("keeps optional searchFieldKeys that reference published fields", () => {
+    const schema = parseRuntimeObjectSchema(
+      schemaResponse({
+        defaultView: {
+          code: "default",
+          name: "默认视图",
+          columnFieldKeys: ["customer_name"],
+          searchFieldKeys: ["customer_name"],
+          sort: { field: "updatedAt", direction: "desc" },
+        },
+      } as unknown as Partial<SchemaResponse>),
+    );
+
+    expect(schema.defaultView.searchFieldKeys).toEqual(["customer_name"]);
   });
 
   it("rejects a response whose scopes are not a published data scope", () => {

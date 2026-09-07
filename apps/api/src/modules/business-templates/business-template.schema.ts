@@ -24,6 +24,7 @@ export interface TemplateDefaultView {
   code: 'default';
   name: string;
   columnFieldKeys: string[];
+  searchFieldKeys?: string[];
   sort: {
     field: 'updatedAt' | 'createdAt' | 'recordNo';
     direction: 'asc' | 'desc';

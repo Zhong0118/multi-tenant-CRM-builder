@@ -114,6 +114,20 @@ describe('toObjectDraftResponse', () => {
     expect(response.object.publicationNumber).toBe(2);
     expect(response.object.hasUnpublishedChanges).toBe(false);
     expect(response.activeRecordCount).toBe(12);
+    expect(response.defaultView).not.toHaveProperty('searchFieldKeys');
+  });
+
+  it('exposes configured searchFieldKeys on the designer default view', () => {
+    const response = toObjectDraftResponse(
+      draft({
+        defaultView: {
+          ...draft().defaultView!,
+          searchFieldKeys: ['customer_name'],
+        },
+      }),
+    );
+
+    expect(response.defaultView?.searchFieldKeys).toEqual(['customer_name']);
   });
 
   it('reports unpublished changes once the draft version moves past the live publication', () => {

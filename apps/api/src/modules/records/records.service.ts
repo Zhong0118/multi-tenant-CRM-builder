@@ -3,6 +3,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { AuditEvent } from '../audit/audit-event';
+import { isSearchableFieldType } from '../objects/object-schema';
 import type { ResolvedObjectSchema } from '../objects/published-object.service';
 import { PublishedObjectService } from '../objects/published-object.service';
 import {
@@ -300,28 +301,22 @@ async function resolveUpdateOwner(
 
 function searchableFieldKeys(resolved: ResolvedObjectSchema): string[] {
   const titleFieldKey = resolved.schema.object.titleFieldKey;
-  const searchable = new Set(
-    resolved.visibleSchema.fields
-      .filter(
-        (field) =>
-          SEARCHABLE_FIELD_TYPES.has(field.type) &&
-          (field.fieldKey === titleFieldKey ||
-            resolved.visibleSchema.defaultView.columnFieldKeys.includes(
-              field.fieldKey,
-            )),
-      )
-      .map((field) => field.fieldKey)
-      .filter((fieldKey) => fieldKey !== titleFieldKey),
-  );
-  return [...searchable];
+  const extras =
+    resolved.visibleSchema.defaultView.searchFieldKeys ??
+    resolved.visibleSchema.defaultView.columnFieldKeys;
+  return [
+    ...new Set(
+      resolved.visibleSchema.fields
+        .filter(
+          (field) =>
+            isSearchableFieldType(field.type) &&
+            extras.includes(field.fieldKey) &&
+            field.fieldKey !== titleFieldKey,
+        )
+        .map((field) => field.fieldKey),
+    ),
+  ];
 }
-
-const SEARCHABLE_FIELD_TYPES = new Set([
-  'TEXT',
-  'TEXTAREA',
-  'PHONE',
-  'EMAIL',
-]);
 
 function parseListFilters(
   serialized: string | undefined,
@@ -370,7 +365,7 @@ function parseListFilters(
       filters.push(parseMemberFilter(field.fieldKey, rawValue));
       continue;
     }
-    if (SEARCHABLE_FIELD_TYPES.has(field.type)) {
+    if (isSearchableFieldType(field.type)) {
       filters.push(parseTextContainsFilter(field.fieldKey, rawValue));
       continue;
     }

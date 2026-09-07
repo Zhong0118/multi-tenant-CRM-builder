@@ -1,5 +1,6 @@
 import {
   isPublishedFieldType,
+  isSearchableFieldType,
   type PublishedField,
   type PublishedObjectSchema,
 } from './object-schema';
@@ -165,6 +166,24 @@ export function analyzeObjectConfiguration(
         });
       }
     }
+    for (const fieldKey of input.defaultView.searchFieldKeys ?? []) {
+      const field = activeFieldByKey.get(fieldKey);
+      if (!field) {
+        blocking.push({
+          code: 'SEARCH_FIELD_INACTIVE',
+          message: '搜索字段只能引用已启用字段。',
+          fieldKey,
+        });
+        continue;
+      }
+      if (!isSearchableFieldType(field.type)) {
+        blocking.push({
+          code: 'SEARCH_FIELD_TYPE_UNSUPPORTED',
+          message: '搜索字段仅支持文本、长文本、电话和邮箱。',
+          fieldKey,
+        });
+      }
+    }
   }
 
   if (!input.employeeAccess) {
@@ -218,6 +237,11 @@ export function compileObjectConfiguration(
       code: 'default',
       name: input.defaultView.name,
       columnFieldKeys: [...input.defaultView.columnFieldKeys],
+      ...(input.defaultView.searchFieldKeys === undefined
+        ? {}
+        : {
+            searchFieldKeys: [...input.defaultView.searchFieldKeys],
+          }),
       sort: { ...input.defaultView.sort },
     },
     employeeAccess: {

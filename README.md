@@ -2,7 +2,7 @@
 
 面向多家公司的可配置 CRM 平台。当前仓库采用 pnpm monorepo，Web、API、Worker 分进程部署；API 与 Worker 可以访问数据库包，Web 只调用 REST API。
 
-完整产品与架构设计见 [`docs/design/README.md`](docs/design/README.md)。前两个业务切片已经实现，设计事实来源分别是 [`2026-08-20-account-invitation-workspace-design.md`](docs/superpowers/specs/2026-08-20-account-invitation-workspace-design.md)（账号、邀请与工作空间）和 [`2026-08-21-dynamic-objects-records-design.md`](docs/superpowers/specs/2026-08-21-dynamic-objects-records-design.md)（对象、字段、权限与动态记录）。接手开发前请先读 [`HANDOFF.md`](HANDOFF.md)。
+完整产品与架构设计见 [`docs/design/README.md`](docs/design/README.md)。当前实现事实以 [`HANDOFF.md`](HANDOFF.md) 为准；设计规格分别覆盖账号邀请、动态对象记录、平台模板和组件化工作台。旧设计索引可能落后于本地 `main`。
 
 ## 工程结构
 
@@ -45,7 +45,7 @@ Web 只通过 API 获取业务数据；`packages/database` 仅供 API 与 Worker
 
 - Node.js `>=20.9`
 - pnpm `11.19.0`
-- PostgreSQL 18（本机服务或 Docker 均可）
+- PostgreSQL 15+（本机服务或 Docker 均可；当前本地验证使用 PostgreSQL 15）
 - Redis 7.4（本机服务或 Docker 均可）
 - Docker Desktop 或兼容的 Docker Compose（可选，仅用于快速启动隔离基础设施）
 
@@ -177,7 +177,7 @@ docker compose down
 4. 点「发布变更」先看影响面板：存在阻断项时无法确认；警告项需要知情后确认。
 5. 发布成功后对象才出现在成员的「业务对象」导航中。
 
-本切片支持的字段类型固定为 12 种：
+运行时字段类型固定为 12 种：
 
 `TEXT`、`TEXTAREA`、`PHONE`、`EMAIL`、`NUMBER`、`MONEY`、`DATE`、`DATETIME`、`SINGLE_SELECT`、`MULTI_SELECT`、`MEMBER`、`BOOLEAN`。
 
@@ -189,6 +189,8 @@ docker compose down
 - 成员访问页的**成员覆盖立即生效**，而对象设计器里的员工默认权限**需要发布后生效**。
 
 ## 当前实现边界
+
+最新完成项与未完成项见 [`HANDOFF.md`](HANDOFF.md)。下面保留对象/记录切片的实现要点；其后又落地了平台模板、组件化多工作台、类型化记录筛选和公司生命周期 UX。
 
 已完成第一个“账号、邀请与工作空间”切片：手机号注册/登录/找回密码、服务端会话、平台管理员授权、租户开通、首位管理员邀请、成员邀请与停用、等待页、工作空间选择、租户隔离、OpenAPI 契约及对应页面。
 
@@ -204,7 +206,7 @@ docker compose down
 
 自动化验证覆盖：Web 单元/组件测试、API 单元测试、PostgreSQL 集成测试（RLS、发布快照不可变、record counter 并发）、API E2E（配置→发布→运行时链路、记录权限、并发编号、版本冲突）、OpenAPI 契约漂移。当前不引入 Playwright。
 
-尚未实现（留待后续切片）：记录活动与关系、记录转换与状态机、公式/汇总/查找字段、附件与文件存储、导入导出、批量修改、Dashboard 与图表、看板与日历、个人自定义视图、发布版本回滚。首家公司线索、跟单、客户和期刊模板放在第三个切片，避免把百杰业务规则写死进通用平台核心。
+尚未实现（留待后续切片）：记录活动与关系、记录转换与状态机、公式/汇总/查找字段、附件与文件存储、导入导出、批量修改、看板与日历、个人自定义视图、发布版本回滚、真实短信。Dashboard 与图表已经以组件化工作台形式落地。首家公司线索、跟单、客户和期刊规则不得写死进通用平台核心。
 
 ## 人工验收清单
 

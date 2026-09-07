@@ -343,6 +343,18 @@ export class DefaultViewDto extends ExpectedVersionDto {
   @Matches(/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/, { each: true })
   columnFieldKeys!: string[];
 
+  @ApiPropertyOptional({
+    type: String,
+    isArray: true,
+    description:
+      'Extra searchable field keys. Omit to leave the current draft value unchanged; send an empty array for title-only search.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @Matches(/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/, { each: true })
+  searchFieldKeys?: string[];
+
   @ApiProperty()
   @ValidateNested()
   @Type(() => DefaultViewSortDto)
@@ -457,6 +469,8 @@ export class ObjectDraftFieldResponseDto {
 export class ObjectDraftDefaultViewResponseDto {
   @ApiProperty() name!: string;
   @ApiProperty({ type: String, isArray: true }) columnFieldKeys!: string[];
+  @ApiPropertyOptional({ type: String, isArray: true })
+  searchFieldKeys?: string[];
   @ApiProperty({ type: DefaultViewSortDto }) sort!: DefaultViewSortDto;
 }
 
