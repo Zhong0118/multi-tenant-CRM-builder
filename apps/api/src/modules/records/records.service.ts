@@ -147,6 +147,7 @@ export class RecordsService {
       filters?: string;
       sort: string;
       direction: 'asc' | 'desc';
+      columns?: string[];
     },
     meta: RequestMeta,
   ): Promise<RecordExportFile> {
@@ -182,13 +183,7 @@ export class RecordsService {
           },
         });
       }
-      const visibleFields = resolved.visibleSchema.defaultView.columnFieldKeys
-        .map((fieldKey) =>
-          resolved.visibleSchema.fields.find(
-            (field) => field.fieldKey === fieldKey,
-          ),
-        )
-        .filter((field): field is NonNullable<typeof field> => field !== undefined);
+      const visibleFields = resolveExportFields(resolved, input.columns);
       const memberIds = [
         ...new Set(
           result.items.flatMap((record) => {
@@ -916,6 +911,26 @@ async function requireVisibleRecord(
     throw new ApiException('RECORD_NOT_FOUND', 404);
   }
   return record;
+}
+
+function resolveExportFields(
+  resolved: ResolvedObjectSchema,
+  requested: string[] | undefined,
+) {
+  const visible = new Map(
+    resolved.visibleSchema.fields.map((field) => [field.fieldKey, field]),
+  );
+  const selected = (requested ?? []).flatMap((fieldKey) => {
+    const field = visible.get(fieldKey);
+    return field ? [field] : [];
+  });
+  if (selected.length > 0) return selected;
+  return resolved.visibleSchema.defaultView.columnFieldKeys.flatMap(
+    (fieldKey) => {
+      const field = visible.get(fieldKey);
+      return field ? [field] : [];
+    },
+  );
 }
 
 async function validateMutation(input: {

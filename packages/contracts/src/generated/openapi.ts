@@ -4102,6 +4102,8 @@ export interface operations {
   RecordsController_list: {
     parameters: {
       query?: {
+        /** @description Personal visible field keys for this list or export. Hidden fields are ignored. Omit to use the published default list columns. */
+        columns?: string[];
         direction?: "asc" | "desc";
         /** @description 按已发布字段筛选的 JSON 对象，支持选项、日期范围或相对时间、数值区间、是否、成员、文本包含，以及有值/空值。 */
         filters?: string;
@@ -4290,6 +4292,8 @@ export interface operations {
   RecordsController_exportCsv: {
     parameters: {
       query?: {
+        /** @description Personal visible field keys for this list or export. Hidden fields are ignored. Omit to use the published default list columns. */
+        columns?: string[];
         direction?: "asc" | "desc";
         /** @description 按已发布字段筛选的 JSON 对象，支持选项、日期范围或相对时间、数值区间、是否、成员、文本包含，以及有值/空值。 */
         filters?: string;

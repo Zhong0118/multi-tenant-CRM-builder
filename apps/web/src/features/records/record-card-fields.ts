@@ -8,8 +8,11 @@ export interface RecordCardFields {
   extras: PublishedFieldView[];
 }
 
-export function recordCardFields(schema: RuntimeObjectSchema): RecordCardFields {
-  const visible = schema.defaultView.columnFieldKeys
+export function recordCardFields(
+  schema: RuntimeObjectSchema,
+  columnFieldKeys: string[] = schema.defaultView.columnFieldKeys,
+): RecordCardFields {
+  const visible = columnFieldKeys
     .map((fieldKey) => schema.fields.find((field) => field.fieldKey === fieldKey))
     .filter(
       (field): field is PublishedFieldView =>

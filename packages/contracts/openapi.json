@@ -7156,6 +7156,18 @@
             }
           },
           {
+            "description": "Personal visible field keys for this list or export. Hidden fields are ignored. Omit to use the published default list columns.",
+            "in": "query",
+            "name": "columns",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          {
             "in": "path",
             "name": "tenantCode",
             "required": true,
@@ -7313,6 +7325,18 @@
               "default": "desc",
               "enum": ["asc", "desc"],
               "type": "string"
+            }
+          },
+          {
+            "description": "Personal visible field keys for this list or export. Hidden fields are ignored. Omit to use the published default list columns.",
+            "in": "query",
+            "name": "columns",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
             }
           },
           {

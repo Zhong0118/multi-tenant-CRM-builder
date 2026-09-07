@@ -137,6 +137,7 @@ describe("recordApi mutations", () => {
       search: "百杰",
       sort: "recordNo",
       direction: "asc",
+      columns: ["name", "phone"],
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -147,6 +148,8 @@ describe("recordApi mutations", () => {
     );
     expect(fetchMock.mock.calls[0][0]).toContain("search=");
     expect(fetchMock.mock.calls[0][0]).toContain("sort=recordNo");
+    expect(fetchMock.mock.calls[0][0]).toContain("columns=name");
+    expect(fetchMock.mock.calls[0][0]).toContain("columns=phone");
     expect(click).toHaveBeenCalled();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();

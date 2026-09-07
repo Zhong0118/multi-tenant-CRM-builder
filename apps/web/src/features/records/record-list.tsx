@@ -6,6 +6,7 @@ import {
   Alert,
   Button,
   DatePicker,
+  Drawer,
   Empty,
   Input,
   InputNumber,
@@ -38,6 +39,11 @@ import { OptionBadge } from "@/features/objects/option-badge";
 import type { DynamicFieldMember } from "./dynamic-field";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
 import { recordCardFields } from "./record-card-fields";
+import {
+  readStoredRecordColumnKeys,
+  resolveRecordColumnKeys,
+  writeStoredRecordColumnKeys,
+} from "./record-columns";
 import { toApiError } from "@/lib/api/api-error";
 import {
   booleanFilterValue,
@@ -97,6 +103,13 @@ export function RecordList({
   const go = navigate ?? ((path: string) => router.replace(path));
   const [searchInput, setSearchInput] = useState(query.search ?? "");
   const [error, setError] = useState<string>();
+  const [columnsOpen, setColumnsOpen] = useState(false);
+  const [columnFieldKeys, setColumnFieldKeys] = useState(() =>
+    resolveRecordColumnKeys(
+      schema,
+      readStoredRecordColumnKeys(tenantCode, objectCode),
+    ),
+  );
   const debounce = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const records = useQuery({
@@ -113,6 +126,7 @@ export function RecordList({
         filters: query.filters,
         sort: query.sort,
         direction: query.direction,
+        columns: columnFieldKeys,
       }),
     onMutate: () => setError(undefined),
     onError: (caught) => {
@@ -168,9 +182,13 @@ export function RecordList({
 
   const page = records.data ?? initialPage;
   const owned = schema.scopes.read === "OWN";
-  const visibleColumns = schema.defaultView.columnFieldKeys
-    .map((fieldKey) => schema.fields.find((f) => f.fieldKey === fieldKey))
+  const visibleColumns = resolveRecordColumnKeys(schema, columnFieldKeys)
+    .map((fieldKey) => schema.fields.find((field) => field.fieldKey === fieldKey))
     .filter((field): field is PublishedFieldView => field !== undefined);
+  const choosableFields = schema.fields.filter(
+    (field) => field.access !== "HIDDEN",
+  );
+  const cardFields = recordCardFields(schema, columnFieldKeys);
   const optionFilterFields = schema.fields.filter(
     (field) =>
       (field.type === "SINGLE_SELECT" || field.type === "MULTI_SELECT") &&
@@ -342,7 +360,12 @@ export function RecordList({
     query.ownerMemberId ||
     Object.keys(query.filters).length > 0,
   );
-  const cardFields = recordCardFields(schema);
+
+  function saveColumns(next: string[]) {
+    const resolved = resolveRecordColumnKeys(schema, next);
+    setColumnFieldKeys(resolved);
+    writeStoredRecordColumnKeys(tenantCode, objectCode, resolved);
+  }
 
   function recordActions(row: RecordSummary) {
     return (
@@ -448,6 +471,7 @@ export function RecordList({
             <Typography.Text type="secondary">
               共 {page.total} 条 · 第 {page.page} 页
             </Typography.Text>
+            <Button onClick={() => setColumnsOpen(true)}>列设置</Button>
             <Button
               onClick={() => exporting.mutate()}
               loading={exporting.isPending}
@@ -798,6 +822,48 @@ export function RecordList({
           }}
         />
       </DataPanel>
+
+      <Drawer
+        title="列设置"
+        open={columnsOpen}
+        onClose={() => setColumnsOpen(false)}
+        destroyOnHidden
+      >
+        <Typography.Paragraph type="secondary">
+          只影响你自己看到和导出的列，不会改业务表发布时的默认列表。隐藏字段不会出现在这里。
+        </Typography.Paragraph>
+        <div className={styles.columnChooser}>
+          {choosableFields.map((field) => {
+            const selected = columnFieldKeys.includes(field.fieldKey);
+            return (
+              <label key={field.fieldKey} className={styles.columnChooserRow}>
+                <input
+                  type="checkbox"
+                  aria-label={`显示列 ${field.label}`}
+                  checked={selected}
+                  onChange={(event) =>
+                    saveColumns(
+                      event.target.checked
+                        ? [...columnFieldKeys, field.fieldKey]
+                        : columnFieldKeys.filter(
+                            (fieldKey) => fieldKey !== field.fieldKey,
+                          ),
+                    )
+                  }
+                />
+                <span>{field.label}</span>
+                <code>{field.fieldKey}</code>
+              </label>
+            );
+          })}
+        </div>
+        <Button
+          className={styles.columnReset}
+          onClick={() => saveColumns(schema.defaultView.columnFieldKeys)}
+        >
+          恢复默认列
+        </Button>
+      </Drawer>
     </div>
   );
 }

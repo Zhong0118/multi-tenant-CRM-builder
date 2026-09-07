@@ -6,7 +6,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
   RecordPage,
@@ -20,6 +20,10 @@ import { DEFAULT_RECORD_QUERY, type RecordQuery } from "./record-query-state";
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn() }),
 }));
+
+beforeEach(() => {
+  window.localStorage.clear();
+});
 
 const schema = {
   publication: { number: 1, publishedAt: "2026-08-30T00:00:00.000Z" },
@@ -365,6 +369,32 @@ describe("RecordList table sorting", () => {
     );
   });
 
+  it("lets a member choose personal columns and exports those columns", async () => {
+    const navigate = vi.fn();
+    const api = {
+      list: vi.fn().mockResolvedValue(page),
+      export: vi.fn().mockResolvedValue(undefined),
+    } as unknown as RecordApi;
+    renderList(navigate, DEFAULT_RECORD_QUERY, { api });
+
+    fireEvent.click(screen.getByRole("button", { name: "列设置" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "显示列 手机号" }));
+    fireEvent.click(screen.getByRole("button", { name: "导出当前结果" }));
+
+    await waitFor(() =>
+      expect(api.export).toHaveBeenCalledWith(
+        "northwind",
+        "customers",
+        expect.objectContaining({
+          columns: ["name", "lead_status", "score"],
+        }),
+      ),
+    );
+    expect(window.localStorage.getItem("crm.records.columns.northwind.customers")).toBe(
+      JSON.stringify(["name", "lead_status", "score"]),
+    );
+  });
+
   it("exports the current list filter from the toolbar", async () => {
     const navigate = vi.fn();
     const api = {
@@ -386,6 +416,7 @@ describe("RecordList table sorting", () => {
         filters: {},
         sort: DEFAULT_RECORD_QUERY.sort,
         direction: DEFAULT_RECORD_QUERY.direction,
+        columns: ["name", "lead_status", "phone", "score"],
       }),
     );
   });

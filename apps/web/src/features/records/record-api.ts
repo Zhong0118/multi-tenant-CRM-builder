@@ -24,6 +24,7 @@ export interface RecordListQuery {
   filters?: RecordFilters;
   sort?: RecordListSortField;
   direction?: RecordSortDirection;
+  columns?: string[];
 }
 
 export interface CreateRecordInput {
@@ -191,14 +192,18 @@ export const recordApi: RecordApi = {
   async export(tenantCode, objectCode, query) {
     const { filters, ...rest } = query;
     const params = new URLSearchParams();
+    const { columns, ...queryRest } = rest;
     for (const [key, value] of Object.entries(
       definedEntries({
-        ...rest,
+        ...queryRest,
         filters: filters ? recordFilterParameter(filters) : undefined,
       }),
     )) {
       if (value === undefined || value === null) continue;
       params.set(key, String(value));
+    }
+    for (const fieldKey of columns ?? []) {
+      params.append("columns", fieldKey);
     }
     const search = params.toString();
     const url = `${browserApiOrigin()}/api/v1/workspaces/${encodeURIComponent(

@@ -134,4 +134,11 @@ describe("recordCardFields", () => {
 
     expect(card.extras.map((field) => field.fieldKey)).toEqual(["phone"]);
   });
+
+  it("uses a personal column order when one is provided", () => {
+    const card = recordCardFields(schema, ["city", "lead_status"]);
+
+    expect(card.status?.fieldKey).toBe("lead_status");
+    expect(card.extras.map((field) => field.fieldKey)).toEqual(["city"]);
+  });
 });

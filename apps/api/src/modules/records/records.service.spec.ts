@@ -1130,6 +1130,30 @@ describe('RecordsService', () => {
     expect(file.csv).not.toContain('beta@example.com');
   });
 
+  it('exports only the requested visible personal columns', async () => {
+    const { service } = fixture();
+    await create(service, admin, '公开标题', employee.memberId, {
+      email: 'alpha@example.com',
+      secret: '机密标记',
+    });
+
+    const file = await service.exportCsv(
+      employee,
+      'leads',
+      {
+        sort: 'updatedAt',
+        direction: 'desc',
+        columns: ['email', 'secret'],
+      },
+      meta,
+    );
+
+    expect(file.csv).toContain('业务编号,负责人,邮箱,创建时间,最近更新');
+    expect(file.csv).toContain('alpha@example.com');
+    expect(file.csv).not.toContain('机密标记');
+    expect(file.csv.split('\r\n')[0]).not.toContain('姓名');
+  });
+
   it('rejects an export that exceeds the row cap', async () => {
     const { service, store } = fixture();
     for (let index = 0; index < 3; index += 1) {

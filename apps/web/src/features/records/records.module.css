@@ -353,6 +353,32 @@
   font-size: 12px;
 }
 
+.columnChooser {
+  overflow: hidden;
+  border: 1px solid var(--rule);
+}
+
+.columnChooserRow {
+  display: flex;
+  min-height: 40px;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+}
+
+.columnChooserRow + .columnChooserRow {
+  border-top: 1px solid var(--rule);
+}
+
+.columnChooserRow code {
+  color: var(--ink-secondary);
+  font-size: 11px;
+}
+
+.columnReset {
+  margin-top: 16px;
+}
+
 /* Below the tablet breakpoint a 640px drawer would be wider than the screen. */
 @media (max-width: 767px) {
   .detailDrawer :global(.ant-drawer-content-wrapper) {

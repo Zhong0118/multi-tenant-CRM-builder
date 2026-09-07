@@ -1,6 +1,8 @@
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayUnique,
+  IsArray,
   IsDateString,
   IsIn,
   IsInt,
@@ -8,6 +10,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -67,6 +70,18 @@ export class RecordListQueryDto {
   @IsOptional()
   @IsIn(['asc', 'desc'])
   direction: 'asc' | 'desc' = 'desc';
+
+  @ApiPropertyOptional({
+    type: String,
+    isArray: true,
+    description:
+      'Personal visible field keys for this list or export. Hidden fields are ignored. Omit to use the published default list columns.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @Matches(/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/, { each: true })
+  columns?: string[];
 }
 
 export class CreateRecordDto {
