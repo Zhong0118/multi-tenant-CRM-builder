@@ -1,13 +1,10 @@
 import type { ConfigService } from '@nestjs/config';
 
-import {
-  type PlatformOperationsRepository,
-  PlatformOperationsService,
-} from './platform-operations.service';
+import { PlatformOperationsService } from './platform-operations.service';
 
 describe('PlatformOperationsService', () => {
   it('returns paged audit and operation data from the platform repository', async () => {
-    const repository: jest.Mocked<PlatformOperationsRepository> = {
+    const repository = {
       listAudit: jest.fn().mockResolvedValue({
         items: [{ id: 'audit-1', action: 'TENANT_CREATED' }],
         page: 2,
@@ -20,10 +17,13 @@ describe('PlatformOperationsService', () => {
         limit: 20,
         total: 1,
       }),
-    } as never;
+    };
     const service = new PlatformOperationsService(
       repository,
       config({ NODE_ENV: 'test' }),
+      {
+        check: () => Promise.resolve({ database: true, redis: true }),
+      } as never,
     );
 
     await expect(
@@ -42,7 +42,7 @@ describe('PlatformOperationsService', () => {
     );
   });
 
-  it('reports readiness without returning connection strings or secrets', () => {
+  it('reports readiness without returning connection strings or secrets', async () => {
     const service = new PlatformOperationsService(
       {
         listAudit: jest.fn(),
@@ -54,14 +54,17 @@ describe('PlatformOperationsService', () => {
         REDIS_URL: 'redis://secret',
         WEB_ORIGIN: 'https://crm.example.com',
       }),
+      {
+        check: () => Promise.resolve({ database: false, redis: false }),
+      } as never,
     );
 
-    const result = service.runtimeStatus();
+    const result = await service.runtimeStatus();
 
     expect(result.services).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ key: 'database', status: 'READY' }),
-        expect.objectContaining({ key: 'redis', status: 'READY' }),
+        expect.objectContaining({ key: 'database', status: 'ACTION_REQUIRED' }),
+        expect.objectContaining({ key: 'redis', status: 'ACTION_REQUIRED' }),
         expect.objectContaining({ key: 'sms', status: 'ACTION_REQUIRED' }),
       ]),
     );

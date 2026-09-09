@@ -1,3 +1,4 @@
+import { ApiException } from '../../common/errors/api.exception';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@crm/database';
 
@@ -238,7 +239,21 @@ class PrismaRecordsStore implements RecordsStore {
     return recordNo;
   }
 
+  private async lockActiveOwners(ownerId: string | null) {
+    for (const id of [
+      ...new Set([this.context.memberId, ...(ownerId ? [ownerId] : [])]),
+    ].sort()) {
+      const rows = await this.transaction.$queryRaw<
+        Array<{ id: string; role: string }>
+      >`SELECT m.id,m.role FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id = ${this.context.tenantId}::uuid AND m.id = ${id}::uuid AND m.status = 'ACTIVE' AND u.status='ACTIVE' FOR UPDATE OF m`;
+      if (!rows.length) throw new ApiException('OWNER_INVALID', 400);
+      if (id === this.context.memberId && rows[0].role !== this.context.role)
+        throw new ApiException('WORKSPACE_FORBIDDEN', 403);
+    }
+  }
+
   async createRecord(record: DynamicRecord): Promise<DynamicRecord> {
+    await this.lockActiveOwners(record.ownerMemberId);
     const created = await this.transaction.record.create({
       data: {
         id: record.id,
@@ -344,6 +359,7 @@ class PrismaRecordsStore implements RecordsStore {
       ownerMemberId: string | null;
     },
   ): Promise<DynamicRecord | null> {
+    await this.lockActiveOwners(input.ownerMemberId);
     const result = await this.transaction.record.updateMany({
       where: {
         id: recordId,

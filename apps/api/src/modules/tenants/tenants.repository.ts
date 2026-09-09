@@ -129,6 +129,17 @@ class PrismaPlatformTenantStore implements PlatformTenantStore {
     if (result.count !== 1) throw new ApiException('INVITATION_CONFLICT', 409);
   }
 
+  async revokeFirstAdminInvitation(id: string): Promise<void> {
+    const result = await this.transaction.tenantInvitation.updateMany({
+      where: {
+        id,
+        status: { in: ['PENDING', 'EXPIRED', 'DECLINED', 'REVOKED'] },
+      },
+      data: { status: 'REVOKED' },
+    });
+    if (result.count !== 1) throw new ApiException('INVITATION_CONFLICT', 409);
+  }
+
   countActiveAdmins(tenantId: string): Promise<number> {
     return this.transaction.tenantMember.count({
       where: { tenantId, role: 'TENANT_ADMIN', status: 'ACTIVE' },
@@ -231,7 +242,7 @@ class PrismaPlatformTenantStore implements PlatformTenantStore {
       this.countActiveAdmins(tenant.id),
       this.transaction.tenantInvitation.findFirst({
         where: { tenantId: tenant.id, role: 'TENANT_ADMIN' },
-        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         select: {
           id: true,
           targetPhone: true,

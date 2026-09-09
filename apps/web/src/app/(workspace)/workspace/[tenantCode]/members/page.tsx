@@ -56,6 +56,7 @@ export default async function MembersPage({
         key={page}
         tenantCode={tenantCode}
         viewerRole={workspace.role}
+        viewerMemberId={workspace.memberId}
         initialMemberPage={memberPage}
         initialInvitationPage={invitationPage}
       />

@@ -16,6 +16,7 @@ import { useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { DataPanel, ReadingPanel } from "@/components/workbench/surface";
 
+import { actionLabel, resourceLabel } from "./audit-labels";
 import styles from "./platform-operations.module.css";
 
 type Schemas = components["schemas"];
@@ -28,7 +29,11 @@ export function PlatformAuditView({
   data,
   tenants,
   filters,
+  basePath = "/platform/audit",
+  company = false,
 }: {
+  basePath?: string;
+  company?: boolean;
   data: AuditPage;
   tenants: Array<{ id: string; name: string }>;
   filters: { tenantId?: string; action?: string; resourceType?: string };
@@ -37,30 +42,36 @@ export function PlatformAuditView({
   return (
     <div className={styles.page}>
       <PageHeader
-        title="日志中心"
+        title={company ? "公司审计" : "日志中心"}
         description="追踪公司、模板、成员和业务配置发生过的关键变更。"
         status={<span className={styles.count}>{data.total} 条记录</span>}
       />
 
       <DataPanel className={styles.filterPanel} ariaLabel="审计筛选">
-        <form action="/platform/audit" className={styles.filters}>
-          <label>
-            公司
-            <select name="tenantId" defaultValue={filters.tenantId ?? ""}>
-              <option value="">全部公司</option>
-              {tenants.map((tenant) => (
-                <option key={tenant.id} value={tenant.id}>
-                  {tenant.name}
-                </option>
-              ))}
-            </select>
-          </label>
+        <form action={basePath} className={styles.filters}>
+          {!company ? (
+            <label>
+              公司
+              <select name="tenantId" defaultValue={filters.tenantId ?? ""}>
+                <option value="">全部公司</option>
+                {tenants.map((tenant) => (
+                  <option key={tenant.id} value={tenant.id}>
+                    {tenant.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <label>
             动作
             <input
               name="action"
               defaultValue={filters.action}
-              placeholder="例如 platform.tenant.status_changed"
+              placeholder={
+                company
+                  ? "例如 record.updated"
+                  : "例如 platform.tenant.status_changed"
+              }
             />
           </label>
           <label>
@@ -68,17 +79,20 @@ export function PlatformAuditView({
             <input
               name="resourceType"
               defaultValue={filters.resourceType}
-              placeholder="例如 tenant"
+              placeholder={company ? "例如 record" : "例如 tenant"}
             />
           </label>
           <Button type="primary" htmlType="submit">
             筛选
           </Button>
-          <Link href="/platform/audit">清空</Link>
+          <Link href={basePath}>清空</Link>
         </form>
       </DataPanel>
 
-      <DataPanel className={styles.tablePanel} ariaLabel="平台审计日志">
+      <DataPanel
+        className={styles.tablePanel}
+        ariaLabel={company ? "公司审计日志" : "平台审计日志"}
+      >
         {data.items.length ? (
           <div className={styles.tableScroll}>
             <table className={styles.table}>
@@ -127,7 +141,7 @@ export function PlatformAuditView({
           <Empty description="当前筛选条件下没有审计记录" />
         )}
         <PagePager
-          basePath="/platform/audit"
+          basePath={basePath}
           page={data.page}
           limit={data.limit}
           total={data.total}
@@ -137,7 +151,7 @@ export function PlatformAuditView({
 
       <Drawer
         title="审计详情"
-        width={560}
+        size={560}
         open={Boolean(selected)}
         onClose={() => setSelected(undefined)}
       >
@@ -412,43 +426,13 @@ function PagePager({
 function statusLabel(status: string) {
   if (status === "READY") return "已就绪";
   if (status === "DEVELOPMENT") return "开发模式";
-  return "需要配置";
+  return "需要处理";
 }
 
 function actorLabel(type: string) {
   if (type === "SYSTEM") return "系统";
   if (type === "INTEGRATION") return "集成服务";
   return "用户";
-}
-
-const actionLabels: Record<string, string> = {
-  TENANT_CREATED: "创建公司",
-  TENANT_STATUS_CHANGED: "公司状态变更",
-  BUSINESS_TEMPLATE_CREATED: "创建业务模板",
-  BUSINESS_TEMPLATE_DRAFT_SAVED: "保存模板草稿",
-  BUSINESS_TEMPLATE_PUBLISHED: "发布业务模板",
-  BUSINESS_TEMPLATE_APPLIED: "应用业务模板",
-  MEMBER_UPDATED: "更新成员",
-  OBJECT_PUBLISHED: "发布业务表",
-  RECORD_CREATED: "新增业务记录",
-  RECORD_UPDATED: "更新业务记录",
-  RECORD_DELETED: "删除业务记录",
-};
-
-const resourceLabels: Record<string, string> = {
-  TENANT: "公司",
-  BUSINESS_TEMPLATE: "业务模板",
-  TENANT_MEMBER: "成员",
-  OBJECT_DEFINITION: "业务表",
-  RECORD: "业务记录",
-};
-
-function actionLabel(value: string) {
-  return actionLabels[value] ?? value.replaceAll("_", " ");
-}
-
-function resourceLabel(value: string) {
-  return resourceLabels[value] ?? value;
 }
 
 function shortId(value: string) {

@@ -184,3 +184,25 @@ export class InvitationResentResponseDto {
 export class MembershipActionResponseDto {
   @ApiProperty({ example: true }) accepted!: true;
 }
+
+export class ChangeMemberRoleDto {
+  @ApiProperty({ enum: ['TENANT_ADMIN', 'EMPLOYEE'] })
+  @IsIn(['TENANT_ADMIN', 'EMPLOYEE'])
+  role!: 'TENANT_ADMIN' | 'EMPLOYEE';
+}
+
+export class MemberRecipientDto {
+  @ApiProperty({ format: 'uuid' })
+  @IsUUID()
+  recipientMemberId!: string;
+}
+
+export class OffboardingCountsResponseDto {
+  @ApiProperty() records!: number;
+  @ApiProperty() openTasks!: number;
+}
+
+export class OffboardingPreviewResponseDto extends OffboardingCountsResponseDto {
+  @ApiProperty({ type: TenantMemberResponseDto, isArray: true })
+  recipients!: TenantMemberResponseDto[];
+}

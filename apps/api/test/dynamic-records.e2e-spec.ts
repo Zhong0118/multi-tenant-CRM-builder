@@ -383,6 +383,159 @@ describe('Dynamic records API (e2e)', () => {
     ).toBe(1);
   });
 
+  it('keeps attachments and related record titles within current record permissions', async () => {
+    const owned = await createRecord(fixture.adminCookie, {
+      values: { name: 'Attachment record' },
+      ownerMemberId: fixture.employeeMemberId,
+    });
+    const other = await createRecord(fixture.adminCookie, {
+      values: { name: 'Private related title' },
+      ownerMemberId: fixture.otherMemberId,
+    });
+    const base = `/api/v1/workspaces/${tenantCode}/objects/${objectCode}/records/${owned.id}`;
+    const uploaded = await request(app.getHttpServer())
+      .post(`${base}/attachments`)
+      .set('Cookie', fixture.employeeCookie)
+      .set('Origin', origin)
+      .attach('file', Buffer.from('original attachment bytes'), 'notes.txt')
+      .expect(201);
+    const attachment = uploaded.body as { id: string };
+    expect(typeof attachment.id).toBe('string');
+    await request(app.getHttpServer())
+      .get(`${base}/attachments/${attachment.id}`)
+      .set('Cookie', fixture.employeeCookie)
+      .expect(200)
+      .expect('Content-Type', /application\/octet-stream/)
+      .expect('Cache-Control', 'private, no-store');
+    await request(app.getHttpServer())
+      .post(`${base}/relations`)
+      .set('Cookie', fixture.employeeCookie)
+      .set('Origin', origin)
+      .send({ objectCode, recordId: other.id })
+      .expect(404);
+    await request(app.getHttpServer())
+      .post(`${base}/relations`)
+      .set('Cookie', fixture.adminCookie)
+      .set('Origin', origin)
+      .send({ objectCode, recordId: other.id })
+      .expect(201);
+    await request(app.getHttpServer())
+      .get(`${base}/relations`)
+      .set('Cookie', fixture.employeeCookie)
+      .expect(200)
+      .expect([]);
+    await request(app.getHttpServer())
+      .post(`${base}/attachments`)
+      .set('Cookie', fixture.employeeCookie)
+      .set('Origin', origin)
+      .attach('file', Buffer.from('no'), 'program.exe')
+      .expect(400);
+    await adminDatabase.record.update({
+      where: { id: owned.id },
+      data: { ownerMemberId: fixture.otherMemberId },
+    });
+    await request(app.getHttpServer())
+      .get(`${base}/attachments/${attachment.id}`)
+      .set('Cookie', fixture.employeeCookie)
+      .expect(404);
+    await request(app.getHttpServer())
+      .delete(`${base}/attachments/${attachment.id}`)
+      .set('Cookie', fixture.employeeCookie)
+      .set('Origin', origin)
+      .expect(404);
+    await request(app.getHttpServer())
+      .delete(`${base}/attachments/${attachment.id}`)
+      .set('Cookie', fixture.adminCookie)
+      .set('Origin', origin)
+      .expect(204);
+    await request(app.getHttpServer())
+      .get(`${base}/attachments/${attachment.id}`)
+      .set('Cookie', fixture.adminCookie)
+      .expect(404);
+  });
+
+  it('hands over owned records and open tasks before disabling a member', async () => {
+    const owned = await createRecord(fixture.adminCookie, {
+      values: { name: 'Handover record' },
+      ownerMemberId: fixture.employeeMemberId,
+    });
+    await request(app.getHttpServer())
+      .post(`/api/v1/workspaces/${tenantCode}/follow-ups`)
+      .set('Cookie', fixture.employeeCookie)
+      .set('Origin', origin)
+      .send({
+        objectCode,
+        recordId: owned.id,
+        title: 'Handover task',
+        dueAt: '2026-10-01T08:00:00.000Z',
+      })
+      .expect(201);
+    const base = `/api/v1/workspaces/${tenantCode}/members/${fixture.employeeMemberId}`;
+    await request(app.getHttpServer())
+      .patch(base)
+      .set('Cookie', fixture.adminCookie)
+      .set('Origin', origin)
+      .send({ status: 'DISABLED' })
+      .expect(409);
+    await request(app.getHttpServer())
+      .post(`${base}/offboarding`)
+      .set('Cookie', fixture.adminCookie)
+      .set('Origin', origin)
+      .send({ recipientMemberId: fixture.adminMemberId })
+      .expect(201)
+      .expect({ records: 1, openTasks: 1 });
+    const record = await adminDatabase.record.findUniqueOrThrow({
+      where: { id: owned.id },
+    });
+    expect(record.ownerMemberId).toBe(fixture.adminMemberId);
+    expect(
+      await adminDatabase.recordFollowUp.count({
+        where: {
+          recordId: owned.id,
+          assigneeMemberId: fixture.adminMemberId,
+          status: 'OPEN',
+        },
+      }),
+    ).toBe(1);
+    await request(app.getHttpServer())
+      .get(`/api/v1/workspaces/${tenantCode}/follow-ups`)
+      .set('Cookie', fixture.employeeCookie)
+      .expect(403);
+  });
+
+  it('allows the sole admin to hand over to an employee without leaving no administrator', async () => {
+    const root = `/api/v1/workspaces/${tenantCode}/members`;
+    await request(app.getHttpServer())
+      .post(`${root}/admin-handoff`)
+      .set('Cookie', fixture.adminCookie)
+      .set('Origin', origin)
+      .send({ recipientMemberId: fixture.employeeMemberId })
+      .expect(201);
+    await request(app.getHttpServer())
+      .get(root)
+      .set('Cookie', fixture.adminCookie)
+      .expect(403);
+    await request(app.getHttpServer())
+      .get(root)
+      .set('Cookie', fixture.employeeCookie)
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(`${root}/${fixture.employeeMemberId}/role`)
+      .set('Cookie', fixture.employeeCookie)
+      .set('Origin', origin)
+      .send({ role: 'EMPLOYEE' })
+      .expect(409);
+    expect(
+      await adminDatabase.tenantMember.count({
+        where: {
+          tenantId: fixture.tenantId,
+          role: 'TENANT_ADMIN',
+          status: 'ACTIVE',
+        },
+      }),
+    ).toBe(1);
+  });
+
   afterAll(async () => {
     await cleanup(adminDatabase);
     await app.close();
@@ -693,6 +846,8 @@ async function cleanup(database: PrismaClient): Promise<void> {
       where: { tenantId: { in: tenantIds } },
     });
     for (const tenantId of tenantIds) {
+      await database.$executeRaw`DELETE FROM record_attachments WHERE tenant_id = ${tenantId}::uuid`;
+      await database.$executeRaw`DELETE FROM record_relations WHERE tenant_id = ${tenantId}::uuid`;
       await database.$executeRaw`DELETE FROM record_import_rows WHERE tenant_id = ${tenantId}::uuid`;
     }
     await database.recordFollowUp.deleteMany({

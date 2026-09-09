@@ -1,3 +1,5 @@
+import { AttachmentsModule } from './modules/attachments/attachments.module';
+import { RecordRelationsModule } from './modules/record-relations/record-relations.module';
 import { Module } from '@nestjs/common';
 import { FollowUpsModule } from './modules/follow-ups/follow-ups.module';
 import { ConfigModule } from '@nestjs/config';
@@ -24,6 +26,8 @@ import { PlatformOperationsModule } from './modules/platform-operations/platform
 
 @Module({
   imports: [
+    AttachmentsModule,
+    RecordRelationsModule,
     ConfigModule.forRoot({
       envFilePath: join(__dirname, '../../..', '.env'),
       isGlobal: true,

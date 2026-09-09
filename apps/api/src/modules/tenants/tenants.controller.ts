@@ -24,6 +24,7 @@ import { SessionAuthGuard } from '../auth/session-auth.guard';
 import type { SessionPrincipal } from '../auth/session.service';
 import {
   ChangeTenantStatusDto,
+  CorrectFirstAdminPhoneDto,
   CreatePlatformTenantDto,
   PlatformTenantResponseDto,
   PlatformTenantPageQueryDto,
@@ -105,6 +106,23 @@ export class TenantsController {
       requestId: request.requestId ?? 'req_unknown',
       ip: request.ip,
     });
+  }
+
+  @Patch(':tenantId/first-admin-phone')
+  @ApiParam({ name: 'tenantId', format: 'uuid' })
+  @ApiOkResponse({ type: PlatformTenantResponseDto })
+  correctFirstAdminPhone(
+    @CurrentSession() current: SessionPrincipal,
+    @Param('tenantId') tenantId: string,
+    @Body() dto: CorrectFirstAdminPhoneDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.tenants.correctFirstAdminPhone(
+      current.user,
+      tenantId,
+      dto.firstAdminPhone,
+      { requestId: request.requestId ?? 'req_unknown', ip: request.ip },
+    );
   }
 
   @Patch(':tenantId/status')

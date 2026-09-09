@@ -125,3 +125,10 @@ export class PlatformTenantSummaryDto {
   @ApiProperty({ type: Number, minimum: 0 }) suspended!: number;
   @ApiProperty({ type: Number, minimum: 0 }) closed!: number;
 }
+
+export class CorrectFirstAdminPhoneDto {
+  @ApiProperty({ example: '13900139000' })
+  @IsString()
+  @IsNotEmpty()
+  firstAdminPhone!: string;
+}

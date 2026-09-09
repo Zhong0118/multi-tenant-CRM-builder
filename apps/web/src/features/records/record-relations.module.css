@@ -1,0 +1,37 @@
+.panel {
+  border: 1px solid var(--border, #e8eaed);
+  border-radius: 12px;
+  padding: 18px;
+  background: var(--surface, #fff);
+}
+.panel h2 {
+  margin: 0 0 14px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.list {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+.list li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border, #e8eaed);
+  overflow-wrap: anywhere;
+}
+.controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+.controls > * {
+  width: 100%;
+  min-width: 0;
+}
+@media (max-width: 640px) {
+  .controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

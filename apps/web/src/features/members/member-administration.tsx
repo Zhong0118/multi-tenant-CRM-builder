@@ -12,11 +12,13 @@ import {
 export function MemberAdministration({
   tenantCode,
   viewerRole,
+  viewerMemberId,
   initialMemberPage,
   initialInvitationPage,
 }: {
   tenantCode: string;
   viewerRole: "TENANT_ADMIN" | "EMPLOYEE";
+  viewerMemberId?: string;
   initialMemberPage: TenantMemberPage;
   initialInvitationPage: InvitationPage;
 }) {
@@ -36,6 +38,7 @@ export function MemberAdministration({
         key={`${initialMemberPage.page}:${invitationRevision}`}
         tenantCode={tenantCode}
         viewerRole={viewerRole}
+        viewerMemberId={viewerMemberId}
         initialMemberPage={initialMemberPage}
         initialInvitationPage={initialInvitationPage}
       />

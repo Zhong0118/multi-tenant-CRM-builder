@@ -26,6 +26,7 @@ export function workspaceNavigation(
     { href: root, label: "管理工作台", icon: "home" },
     { href: `${root}/follow-ups`, label: "跟进待办", icon: "calendar" },
     { href: `${root}/members`, label: "成员管理", icon: "members" },
+    { href: `${root}/audit`, label: "公司审计", icon: "audit" },
     { href: `${root}/settings`, label: "设置", icon: "settings" },
   ];
 }

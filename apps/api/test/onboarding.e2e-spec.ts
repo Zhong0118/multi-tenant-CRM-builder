@@ -4,6 +4,8 @@ import request, { type Agent } from 'supertest';
 import type { App } from 'supertest/types';
 
 import { createApp } from '../src/bootstrap';
+import { PrismaMembershipsRepository } from '../src/modules/memberships/memberships.repository';
+import { InvitationsService } from '../src/modules/invitations/invitations.service';
 
 const origin = 'http://localhost:3000';
 const code = '123456';
@@ -173,9 +175,12 @@ describe('Invitation and workspace onboarding (e2e)', () => {
         .set('Origin', origin)
         .send({ status: 'DISABLED' }),
     ]);
-    expect(concurrentDisables.map(({ status }) => status).sort()).toEqual([
-      200, 409,
-    ]);
+    const disableStatuses = concurrentDisables
+      .map(({ status }) => status)
+      .sort();
+    expect(disableStatuses[0]).toBe(200);
+    // The losing request can reach the guard after its actor was disabled.
+    expect([403, 409]).toContain(disableStatuses[1]);
     await expect(
       admin.tenantMember.count({
         where: {
@@ -221,6 +226,73 @@ describe('Invitation and workspace onboarding (e2e)', () => {
         expect(response.body).toMatchObject({ code: 'MEMBERSHIP_INACTIVE' });
       });
   });
+
+  it.each([{ status: 'REVOKED' }, { expiresAt: new Date('2030-01-01') }])(
+    'preserves acceptance when it commits after an administrator read: %p',
+    async (patch) => {
+      const platform = await register(platformPhone, '平台管理员');
+      await admin.user.update({
+        where: { phone: normalized(platformPhone) },
+        data: { isPlatformAdmin: true },
+      });
+      const tenantId = await createTenant(platform, tenantACode, userAPhone);
+      await register(userAPhone, '接收人');
+      const actor = await admin.user.findUniqueOrThrow({
+        where: { phone: normalized(platformPhone) },
+      });
+      const target = await admin.user.findUniqueOrThrow({
+        where: { phone: normalized(userAPhone) },
+      });
+      const invitation = await admin.tenantInvitation.findFirstOrThrow({
+        where: { tenantId, status: 'PENDING' },
+      });
+      const member = await admin.tenantMember.create({
+        data: {
+          tenantId,
+          userId: actor.id,
+          role: 'TENANT_ADMIN',
+          status: 'ACTIVE',
+        },
+      });
+      const memberships = app.get(PrismaMembershipsRepository);
+      const invitations = app.get(InvitationsService);
+      await expect(
+        memberships.withTenant(
+          {
+            tenantId,
+            tenantCode: tenantACode,
+            userId: actor.id,
+            memberId: member.id,
+            role: 'TENANT_ADMIN',
+          },
+          async (store) => {
+            expect((await store.findInvitation(invitation.id))?.status).toBe(
+              'PENDING',
+            );
+            // Independent real transaction commits acceptance while the first transaction holds a stale read.
+            await invitations.accept(target, invitation.id, {
+              requestId: 'accept-race',
+            });
+            await store.updateInvitation(invitation.id, patch);
+          },
+        ),
+      ).rejects.toMatchObject({ code: 'INVITATION_NOT_FOUND' });
+      expect(
+        await admin.tenantInvitation.findUniqueOrThrow({
+          where: { id: invitation.id },
+        }),
+      ).toMatchObject({
+        status: 'ACCEPTED',
+        acceptedByUserId: target.id,
+        expiresAt: invitation.expiresAt,
+      });
+      expect(
+        await admin.tenantMember.count({
+          where: { tenantId, userId: target.id, status: 'ACTIVE' },
+        }),
+      ).toBe(1);
+    },
+  );
 
   afterAll(async () => {
     await cleanup(admin);

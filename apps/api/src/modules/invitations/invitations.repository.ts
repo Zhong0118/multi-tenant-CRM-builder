@@ -68,6 +68,10 @@ class PrismaInvitationStore implements InvitationStore {
 
   async findOwned(id: string): Promise<PersonalInvitation | null> {
     await this.transaction.$queryRawUnsafe(
+      'SELECT id FROM tenants WHERE id = (SELECT tenant_id FROM tenant_invitations WHERE id = $1::uuid) FOR UPDATE',
+      id,
+    );
+    await this.transaction.$queryRawUnsafe(
       'SELECT id FROM tenant_invitations WHERE id = $1::uuid FOR UPDATE',
       id,
     );

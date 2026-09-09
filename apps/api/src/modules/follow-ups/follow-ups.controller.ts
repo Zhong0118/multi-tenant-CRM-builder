@@ -23,6 +23,7 @@ import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { WorkspaceGuard } from '../../common/tenancy/workspace.guard';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
 import {
+  FollowUpRecipientDto,
   CreateFollowUpDto,
   FollowUpPageDto,
   FollowUpQueryDto,
@@ -56,6 +57,15 @@ export class FollowUpsController {
       requestId: req.requestId ?? 'unknown',
       ip: req.ip,
     });
+  }
+  @Get(':id/recipients')
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOkResponse({ type: FollowUpRecipientDto, isArray: true })
+  recipients(
+    @CurrentTenant() context: TenantContext,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.service.recipients(context, id);
   }
   @Patch(':id')
   @ApiParam({ name: 'id', format: 'uuid' })

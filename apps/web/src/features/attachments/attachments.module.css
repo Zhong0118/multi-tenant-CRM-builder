@@ -1,0 +1,47 @@
+.panel {
+  border: 1px solid var(--border-default, #e4e8eb);
+  border-radius: 12px;
+  padding: 18px;
+  margin-top: 16px;
+  background: white;
+}
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.heading h2 {
+  font-size: 16px;
+  margin: 0;
+}
+.hint {
+  display: block;
+  color: var(--text-secondary, #637078);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+.list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid #edf0f2;
+}
+.list li > div {
+  min-width: 0;
+}
+.filename {
+  max-width: 100%;
+  white-space: normal;
+  word-break: break-all;
+  height: auto;
+  padding: 0;
+  text-align: left;
+}

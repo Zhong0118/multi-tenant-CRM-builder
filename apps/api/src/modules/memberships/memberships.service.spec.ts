@@ -16,6 +16,31 @@ const admin: TenantContext = {
 };
 
 class MemoryMembershipStore implements MembershipStore {
+  disabledUsers = new Set<string>();
+  async isUsableMember(id: string) {
+    return (
+      !this.disabledUsers.has(id) &&
+      (await this.findMember(id))?.status === 'ACTIVE'
+    );
+  }
+  counts = { records: 0, openTasks: 0 };
+  lockMembers() {
+    return Promise.resolve();
+  }
+  async updateMemberRole(id: string, role: 'TENANT_ADMIN' | 'EMPLOYEE') {
+    const member = (await this.findMember(id))!;
+    member.role = role;
+    return member;
+  }
+  offboardingCounts() {
+    return Promise.resolve(this.counts);
+  }
+  offboardingRecipients() {
+    return Promise.resolve([this.member]);
+  }
+  transferWork() {
+    return Promise.resolve(this.counts);
+  }
   activeAdminCount = 1;
   adminRosterLocked = false;
   invitationCreated = false;
@@ -107,9 +132,10 @@ class MemoryMembershipStore implements MembershipStore {
     this.adminRosterLocked = true;
     return Promise.resolve();
   }
-  updateMemberStatus(_id: string, status: 'ACTIVE' | 'DISABLED') {
-    this.member.status = status;
-    return Promise.resolve(this.member);
+  async updateMemberStatus(id: string, status: 'ACTIVE' | 'DISABLED') {
+    const member = (await this.findMember(id))!;
+    member.status = status;
+    return member;
   }
   findInvitation() {
     return Promise.resolve(null);
@@ -332,4 +358,60 @@ describe('MembershipsService', () => {
       }),
     ]);
   });
+});
+
+describe('member lifecycle', () => {
+  it('prevents last admin demotion and hands admin role to active employee atomically', async () => {
+    const store = new MemoryMembershipStore();
+    const { service } = serviceFor(store);
+    await expect(
+      service.changeMemberRole(admin, admin.memberId, 'EMPLOYEE', {
+        requestId: 'test',
+      }),
+    ).rejects.toMatchObject({ code: 'TENANT_ADMIN_REQUIRED' });
+    await service.handoffAdmin(admin, store.targetMember.id, {
+      requestId: 'test',
+    });
+    expect(store.targetMember.role).toBe('TENANT_ADMIN');
+    expect(store.member.role).toBe('EMPLOYEE');
+    expect(store.audits.at(-1)?.action).toBe('membership.admin_handoff');
+  });
+  it('requires handover when disabling owned work and rejects an unauthorized recipient', async () => {
+    const store = new MemoryMembershipStore();
+    store.counts = { records: 3, openTasks: 2 };
+    const { service } = serviceFor(store);
+    await expect(
+      service.changeMemberStatus(admin, store.targetMember.id, 'DISABLED', {
+        requestId: 'test',
+      }),
+    ).rejects.toMatchObject({ code: 'WORKSPACE_FORBIDDEN' });
+    await expect(
+      service.offboard(admin, admin.memberId, store.targetMember.id, {
+        requestId: 'test',
+      }),
+    ).rejects.toMatchObject({ code: 'MEMBERSHIP_INACTIVE' });
+    await expect(
+      service.offboard(admin, store.targetMember.id, admin.memberId, {
+        requestId: 'test',
+      }),
+    ).resolves.toEqual({ records: 3, openTasks: 2 });
+    expect(store.audits.at(-1)?.action).toBe('membership.offboarded');
+  });
+});
+
+it('rejects globally disabled users as admin handoff and offboarding recipients', async () => {
+  const { service, store } = serviceFor();
+  store.disabledUsers.add(store.targetMember.id);
+  await expect(
+    service.handoffAdmin(admin, store.targetMember.id, { requestId: 'test' }),
+  ).rejects.toMatchObject({ code: 'MEMBERSHIP_INACTIVE' });
+  store.targetMember.role = 'TENANT_ADMIN';
+  store.activeAdminCount = 2;
+  await expect(
+    service.offboard(admin, admin.memberId, store.targetMember.id, {
+      requestId: 'test',
+    }),
+  ).rejects.toMatchObject({ code: 'MEMBERSHIP_INACTIVE' });
+  expect(store.audits).toEqual([]);
+  expect(store.member.status).toBe('ACTIVE');
 });

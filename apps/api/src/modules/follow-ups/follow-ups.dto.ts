@@ -31,6 +31,10 @@ export class CreateFollowUpDto {
   dueAt!: string;
 }
 export class UpdateFollowUpDto {
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  assigneeMemberId?: string;
   @ApiProperty({ minimum: 1 }) @IsInt() @Min(1) version!: number;
   @ApiPropertyOptional({ enum: ['DONE', 'CANCELLED'] })
   @IsOptional()
@@ -66,6 +70,8 @@ export class FollowUpQueryDto {
   limit?: number;
 }
 export class FollowUpResponseDto {
+  @ApiProperty() assigneeName!: string;
+  @ApiProperty() assigneeMemberId!: string;
   @ApiProperty() id!: string;
   @ApiProperty() recordId!: string;
   @ApiProperty() recordTitle!: string;
@@ -86,4 +92,9 @@ export class FollowUpPageDto {
   @ApiProperty() limit!: number;
   @ApiProperty() openCount!: number;
   @ApiProperty() overdueCount!: number;
+}
+
+export class FollowUpRecipientDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() displayName!: string;
 }

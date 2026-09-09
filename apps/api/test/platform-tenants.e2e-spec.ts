@@ -102,25 +102,34 @@ describe('Platform tenant API (e2e)', () => {
       .set('Origin', origin)
       .send({ status: 'ACTIVE' })
       .expect(409);
-    const firstAdminUser = await adminDatabase.user.findUniqueOrThrow({
-      where: { phone: '+8613922224444' },
-    });
-    await adminDatabase.tenantMember.create({
-      data: {
-        tenantId,
-        userId: firstAdminUser.id,
-        role: 'TENANT_ADMIN',
-        status: 'ACTIVE',
-        joinedAt: new Date(),
-      },
-    });
+    await platform
+      .patch(`/api/v1/platform/tenants/${tenantId}/first-admin-phone`)
+      .set('Origin', origin)
+      .send({ firstAdminPhone: regularPhone })
+      .expect(200);
+    await firstAdmin
+      .post(`/api/v1/me/invitations/${invitation.id}/accept`)
+      .set('Origin', origin)
+      .expect(404);
+    await platform
+      .patch(`/api/v1/platform/tenants/${tenantId}/first-admin-phone`)
+      .set('Origin', origin)
+      .send({ firstAdminPhone: tenantAdminPhone })
+      .expect(200);
+    const currentInvite = await adminDatabase.tenantInvitation.findFirstOrThrow(
+      { where: { tenantId, targetPhone: '+8613922224444', status: 'PENDING' } },
+    );
+    await firstAdmin
+      .post(`/api/v1/me/invitations/${currentInvite.id}/accept`)
+      .set('Origin', origin)
+      .expect(201);
     await platform
       .get(`/api/v1/platform/tenants/${tenantId}`)
       .expect(200)
       .expect((response) => {
         expect(response.body).toMatchObject({
           activeAdminCount: 1,
-          firstAdminInvitation: { id: invitation.id, status: 'PENDING' },
+          firstAdminInvitation: { id: currentInvite.id, status: 'ACCEPTED' },
         });
       });
     await platform
@@ -146,6 +155,26 @@ describe('Platform tenant API (e2e)', () => {
       closed: 0,
     });
 
+    await firstAdmin.get(`/api/v1/workspaces/${tenantCode}/audit`).expect(200);
+    await platform
+      .patch(`/api/v1/platform/tenants/${tenantId}/first-admin-phone`)
+      .set('Origin', origin)
+      .send({ firstAdminPhone: regularPhone })
+      .expect(409);
+    await firstAdmin
+      .post(`/api/v1/workspaces/${tenantCode}/invitations`)
+      .set('Origin', origin)
+      .send({ phone: regularPhone, role: 'EMPLOYEE' })
+      .expect(201);
+    const employeeInvite =
+      await adminDatabase.tenantInvitation.findFirstOrThrow({
+        where: { tenantId, targetPhone: '+8613922225555', status: 'PENDING' },
+      });
+    await regular
+      .post(`/api/v1/me/invitations/${employeeInvite.id}/accept`)
+      .set('Origin', origin)
+      .expect(201);
+    await regular.get(`/api/v1/workspaces/${tenantCode}/audit`).expect(403);
     await firstAdmin.get('/api/v1/me').expect(200);
   });
 

@@ -25,6 +25,11 @@ function fixture() {
     listAccessible: jest.fn().mockResolvedValue([{ code: 'leads' }]),
   };
   const repository = {
+    activeMember: jest.fn().mockResolvedValue({
+      id: 'other',
+      userId: 'other-user',
+      role: 'EMPLOYEE',
+    }),
     findRecord: jest
       .fn()
       .mockResolvedValue({ id: 'record', ownerMemberId: 'me' }),
@@ -43,7 +48,7 @@ function fixture() {
     repository as unknown as FollowUpsRepository,
     objects as unknown as PublishedObjectService,
   );
-  return { service, repository, resolved };
+  return { service, repository, resolved, objects };
 }
 describe('personal record follow-ups', () => {
   it.each([
@@ -116,5 +121,52 @@ describe('personal record follow-ups', () => {
         { requestId: 'req' },
       ),
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
+});
+
+describe('follow-up reassignment', () => {
+  it('denies inactive recipients and performs no mutation', async () => {
+    const { service, repository } = fixture();
+    repository.activeMember.mockResolvedValue(null);
+    await expect(
+      service.update(
+        context,
+        'task',
+        { version: 1, assigneeMemberId: 'other' },
+        { requestId: 'req' },
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    expect(repository.update).not.toHaveBeenCalled();
+  });
+  it('evaluates OWN permissions as the recipient, rather than the actor', async () => {
+    const { service, repository } = fixture();
+    await expect(
+      service.update(
+        context,
+        'task',
+        { version: 1, assigneeMemberId: 'other' },
+        { requestId: 'req' },
+      ),
+    ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+    expect(repository.update).not.toHaveBeenCalled();
+  });
+  it('passes both mutation scopes only when recipient can access the record', async () => {
+    const { service, repository, resolved } = fixture();
+    resolved.access.readScope = 'ALL';
+    resolved.access.updateScope = 'ALL';
+    await service.update(
+      context,
+      'task',
+      { version: 1, assigneeMemberId: 'other' },
+      { requestId: 'req' },
+    );
+    expect(repository.update).toHaveBeenCalledWith(
+      context,
+      'task',
+      { version: 1, assigneeMemberId: 'other' },
+      { requestId: 'req' },
+      expect.objectContaining({ recordId: 'record' }),
+      expect.objectContaining({ recordId: 'record' }),
+    );
   });
 });

@@ -50,6 +50,7 @@ export default async function RecordDetailPage({
 
   return (
     <RecordWorkspace
+      currentMemberId={workspace.memberId}
       tenantCode={tenantCode}
       schema={schema}
       query={query}

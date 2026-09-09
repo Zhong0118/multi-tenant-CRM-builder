@@ -16,6 +16,7 @@ import { recordQuerySearch, type RecordQuery } from "./record-query-state";
 
 export interface RecordWorkspaceProps {
   tenantCode: string;
+  currentMemberId?: string;
   schema: RuntimeObjectSchema;
   query: RecordQuery;
   initialPage: RecordPage;
@@ -37,6 +38,7 @@ export function RecordWorkspace(props: RecordWorkspaceProps) {
 
 function RecordWorkspaceSession({
   tenantCode,
+  currentMemberId,
   schema,
   query,
   initialPage,
@@ -52,6 +54,7 @@ function RecordWorkspaceSession({
   return (
     <>
       <RecordList
+        currentMemberId={currentMemberId}
         tenantCode={tenantCode}
         schema={schema}
         query={query}

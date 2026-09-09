@@ -33,6 +33,10 @@ import { SessionAuthGuard } from '../auth/session-auth.guard';
 import type { SessionPrincipal } from '../auth/session.service';
 import {
   ChangeMemberStatusDto,
+  ChangeMemberRoleDto,
+  MemberRecipientDto,
+  OffboardingCountsResponseDto,
+  OffboardingPreviewResponseDto,
   CreatedInvitationResponseDto,
   CreateInvitationDto,
   InvitationPageResponseDto,
@@ -154,6 +158,72 @@ export class MembershipsController {
       context,
       memberId,
       dto.status,
+      requestMeta(request),
+    );
+  }
+
+  @Patch('workspaces/:tenantCode/members/:memberId/role')
+  @UseGuards(SessionAuthGuard, WorkspaceGuard)
+  @ApiParam({ name: 'tenantCode', type: String })
+  @ApiParam({ name: 'memberId', format: 'uuid' })
+  @ApiOkResponse({ type: TenantMemberResponseDto })
+  changeRole(
+    @CurrentTenant() context: TenantContext,
+    @Param('memberId') memberId: string,
+    @Body() dto: ChangeMemberRoleDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.memberships.changeMemberRole(
+      context,
+      memberId,
+      dto.role,
+      requestMeta(request),
+    );
+  }
+
+  @Post('workspaces/:tenantCode/members/admin-handoff')
+  @UseGuards(SessionAuthGuard, WorkspaceGuard)
+  @ApiParam({ name: 'tenantCode', type: String })
+  @ApiCreatedResponse({ type: MembershipActionResponseDto })
+  handoff(
+    @CurrentTenant() context: TenantContext,
+    @Body() dto: MemberRecipientDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.memberships.handoffAdmin(
+      context,
+      dto.recipientMemberId,
+      requestMeta(request),
+    );
+  }
+
+  @Get('workspaces/:tenantCode/members/:memberId/offboarding')
+  @UseGuards(SessionAuthGuard, WorkspaceGuard)
+  @ApiParam({ name: 'tenantCode', type: String })
+  @ApiParam({ name: 'memberId', format: 'uuid' })
+  @ApiOkResponse({ type: OffboardingPreviewResponseDto })
+  previewOffboarding(
+    @CurrentTenant() context: TenantContext,
+    @Param('memberId') memberId: string,
+  ) {
+    return this.memberships.previewOffboarding(context, memberId);
+  }
+
+  @Post('workspaces/:tenantCode/members/:memberId/offboarding')
+  @UseGuards(SessionAuthGuard, WorkspaceGuard)
+  @ApiParam({ name: 'tenantCode', type: String })
+  @ApiParam({ name: 'memberId', format: 'uuid' })
+  @ApiCreatedResponse({ type: OffboardingCountsResponseDto })
+  offboard(
+    @CurrentTenant() context: TenantContext,
+    @Param('memberId') memberId: string,
+    @Body() dto: MemberRecipientDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.memberships.offboard(
+      context,
+      memberId,
+      dto.recipientMemberId,
       requestMeta(request),
     );
   }

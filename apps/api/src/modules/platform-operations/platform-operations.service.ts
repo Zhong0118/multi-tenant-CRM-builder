@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { RuntimeHealthService } from './runtime-health.service';
 import { ConfigService } from '@nestjs/config';
 
 import type {
@@ -30,6 +31,7 @@ export class PlatformOperationsService {
     @Inject(PLATFORM_OPERATIONS_REPOSITORY)
     private readonly repository: PlatformOperationsRepository,
     private readonly config: ConfigService,
+    private readonly health: RuntimeHealthService,
   ) {}
 
   listAudit(actorId: string, query: PlatformAuditQuery) {
@@ -40,7 +42,8 @@ export class PlatformOperationsService {
     return this.repository.listOperations(actorId, query);
   }
 
-  runtimeStatus(): RuntimeStatus {
+  async runtimeStatus(): Promise<RuntimeStatus> {
+    const health = await this.health.check();
     const environment = this.config.get<string>('NODE_ENV', 'development');
     const redisConfigured = Boolean(this.config.get<string>('REDIS_URL'));
     const webOriginConfigured = Boolean(this.config.get<string>('WEB_ORIGIN'));
@@ -53,19 +56,25 @@ export class PlatformOperationsService {
         {
           key: 'database',
           label: 'PostgreSQL 数据库',
-          status: 'READY',
-          detail: '当前请求已通过数据库读取，连接可用。',
+          status: health.database ? 'READY' : 'ACTION_REQUIRED',
+          detail: health.database
+            ? '数据库实时探测成功。'
+            : '数据库探测失败或超时。',
         },
         {
           key: 'redis',
           label: 'Redis 限流',
           status: redisConfigured
-            ? 'READY'
+            ? health.redis
+              ? 'READY'
+              : 'ACTION_REQUIRED'
             : environment === 'production'
               ? 'ACTION_REQUIRED'
               : 'DEVELOPMENT',
           detail: redisConfigured
-            ? '已配置 Redis 限流存储。'
+            ? health.redis
+              ? 'Redis PING 探测成功。'
+              : 'Redis 探测失败或超时。'
             : '未配置 Redis；非生产环境使用进程内限流。',
         },
         {

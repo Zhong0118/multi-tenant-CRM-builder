@@ -14,6 +14,7 @@ import { toApiError } from "@/lib/api/api-error";
 import { browserApiClient } from "@/lib/api/browser-client";
 
 import styles from "./members.module.css";
+import { MemberLifecycleActions } from "./member-lifecycle-actions";
 
 export type TenantMember = components["schemas"]["TenantMemberResponseDto"];
 export type TenantMemberPage =
@@ -114,6 +115,7 @@ export const memberApi: MemberApi = {
 export function MemberTable({
   tenantCode,
   viewerRole,
+  viewerMemberId,
   initialMemberPage,
   initialInvitationPage,
   api = memberApi,
@@ -121,6 +123,7 @@ export function MemberTable({
 }: {
   tenantCode: string;
   viewerRole: "TENANT_ADMIN" | "EMPLOYEE";
+  viewerMemberId?: string;
   initialMemberPage: TenantMemberPage;
   initialInvitationPage: InvitationPage;
   api?: MemberApi;
@@ -253,6 +256,13 @@ export function MemberTable({
           activeAdminCount <= 1;
         return (
           <Space size={4} wrap className={styles.tableActions}>
+            <MemberLifecycleActions
+              tenantCode={tenantCode}
+              member={member}
+              isSelf={member.id === viewerMemberId}
+              protectsFinalAdmin={protectsFinalAdmin}
+              onChanged={() => void refresh("members")}
+            />
             {/* Only an employee's access can be restricted: an administrator
                 holds fixed full access on every published object. */}
             {member.role === "EMPLOYEE" && member.status === "ACTIVE" ? (

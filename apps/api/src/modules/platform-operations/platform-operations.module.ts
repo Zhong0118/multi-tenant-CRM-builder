@@ -1,3 +1,7 @@
+import { CompanyAuditController } from './company-audit.controller';
+import { CompanyAuditService } from './company-audit.service';
+import { MembershipsModule } from '../memberships/memberships.module';
+import { RuntimeHealthService } from './runtime-health.service';
 import { Module } from '@nestjs/common';
 
 import { PlatformAdminGuard } from '../../common/auth/platform-admin.guard';
@@ -10,9 +14,11 @@ import {
 } from './platform-operations.service';
 
 @Module({
-  imports: [AuthModule],
-  controllers: [PlatformOperationsController],
+  imports: [AuthModule, MembershipsModule],
+  controllers: [PlatformOperationsController, CompanyAuditController],
   providers: [
+    CompanyAuditService,
+    RuntimeHealthService,
     PlatformAdminGuard,
     PlatformOperationsService,
     PrismaPlatformOperationsRepository,

@@ -74,6 +74,7 @@ export interface PlatformTenantStore {
     id: string,
     input: { invitationCodeHash: string; expiresAt: Date },
   ): Promise<void>;
+  revokeFirstAdminInvitation(id: string): Promise<void>;
   countActiveAdmins(tenantId: string): Promise<number>;
   findTenant(id: string, lock?: boolean): Promise<PlatformTenant | null>;
   listTenants(page: TenantPageQuery): Promise<PlatformTenantPage>;
@@ -225,6 +226,50 @@ export class TenantsService {
         ...tenant,
         firstAdminInvitation: { ...invitation, status: 'PENDING', expiresAt },
       };
+    });
+  }
+
+  async correctFirstAdminPhone(
+    actor: AuthenticatedUser,
+    tenantId: string,
+    phone: string,
+    meta: { requestId: string; ip?: string },
+  ): Promise<PlatformTenant> {
+    const targetPhone = normalizeChineseMobile(phone);
+    return this.repository.transaction(actor.id, async (store) => {
+      const tenant = await store.findTenant(tenantId, true);
+      if (!tenant) throw new ApiException('TENANT_NOT_FOUND', 404);
+      if (tenant.status !== 'DRAFT')
+        throw new ApiException('TENANT_STATUS_TRANSITION_INVALID', 409);
+      const previous = tenant.firstAdminInvitation;
+      if (!previous) throw new ApiException('INVITATION_NOT_FOUND', 404);
+      if (tenant.activeAdminCount > 0 || previous.status === 'ACCEPTED')
+        throw new ApiException('INVITATION_CONFLICT', 409);
+      await store.revokeFirstAdminInvitation(previous.id);
+      const invitation = await store.createFirstAdminInvitation({
+        tenantId,
+        targetPhone,
+        role: 'TENANT_ADMIN',
+        createdByUserId: actor.id,
+        invitationCodeHash: sha256(this.tokenGenerator()),
+        expiresAt: new Date(this.clock().getTime() + 7 * 24 * 60 * 60 * 1000),
+      });
+      await store.appendAudit({
+        tenantId,
+        actorType: 'USER',
+        actorId: actor.id,
+        action: 'platform.tenant.admin_phone_corrected',
+        resourceType: 'tenant_invitation',
+        resourceId: invitation.id,
+        before: {
+          invitationId: previous.id,
+          targetPhone: previous.targetPhone,
+        },
+        after: { invitationId: invitation.id, targetPhone },
+        requestId: meta.requestId,
+        ip: meta.ip,
+      });
+      return { ...tenant, firstAdminInvitation: invitation };
     });
   }
 

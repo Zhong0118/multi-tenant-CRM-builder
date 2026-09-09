@@ -138,6 +138,6 @@ export class PrismaPlatformOperationsRepository implements PlatformOperationsRep
 
 function jsonObject(value: Prisma.JsonValue): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
+    ? value
     : {};
 }

@@ -12,6 +12,7 @@ export interface FollowUpRecordScope {
   objectId: string;
   recordId: string;
   requiredOwnerMemberId?: string;
+  expectedRole?: TenantContext['role'];
 }
 export interface FollowUpMeta {
   requestId: string;
@@ -86,6 +87,34 @@ export class FollowUpsService {
     );
   }
 
+  async recipients(context: TenantContext, id: string) {
+    const task = await this.repository.find(context, id);
+    if (!task) throw new ApiException('RECORD_NOT_FOUND', 404);
+    await this.requireRecord(context, task.objectCode, task.recordId);
+    const result: Array<{ id: string; displayName: string }> = [];
+    for (const member of await this.repository.activeMembers(context)) {
+      try {
+        await this.requireRecord(
+          {
+            ...context,
+            memberId: member.id,
+            userId: member.userId,
+            role: member.role,
+          },
+          task.objectCode,
+          task.recordId,
+        );
+        result.push({
+          id: member.id,
+          displayName: member.user.displayName ?? member.employeeNo ?? '成员',
+        });
+      } catch (e) {
+        if (!(e instanceof ApiException) || ![403, 404].includes(e.getStatus()))
+          throw e;
+      }
+    }
+    return result;
+  }
   async update(
     context: TenantContext,
     id: string,
@@ -110,12 +139,33 @@ export class FollowUpsService {
       throw new ApiException('RECORD_VERSION_CONFLICT', 409);
     if (
       task.status !== 'OPEN' ||
-      (!input.status && !input.dueAt) ||
-      (input.status && input.dueAt)
+      [input.status, input.dueAt, input.assigneeMemberId].filter(Boolean)
+        .length !== 1
     ) {
       throw new ApiException('VALIDATION_FAILED', 400, {
         message: '仅待跟进事项可以完成、取消或改期，请选择一个操作。',
       });
+    }
+    let recipientScope: FollowUpRecordScope | undefined;
+    if (input.assigneeMemberId) {
+      const member = await this.repository.activeMember(
+        context,
+        input.assigneeMemberId,
+      );
+      if (!member)
+        throw new ApiException('VALIDATION_FAILED', 400, {
+          message: '请选择在职成员。',
+        });
+      recipientScope = await this.requireRecord(
+        {
+          ...context,
+          memberId: member.id,
+          userId: member.userId,
+          role: member.role,
+        },
+        task.objectCode,
+        task.recordId,
+      );
     }
     const updated = await this.repository.update(
       context,
@@ -123,6 +173,7 @@ export class FollowUpsService {
       input,
       meta,
       scope,
+      recipientScope,
     );
     if (!updated) throw new ApiException('RECORD_VERSION_CONFLICT', 409);
     return updated;
@@ -154,6 +205,7 @@ export class FollowUpsService {
     }
     return {
       objectId: resolved.schema.object.id,
+      expectedRole: context.role,
       recordId,
       requiredOwnerMemberId:
         access.readScope === 'OWN' || access.updateScope === 'OWN'

@@ -1,7 +1,10 @@
 "use client";
+import { relationRequest } from "@/lib/api/relation-request";
 import { dataOrThrow } from "@/features/objects/object-api";
 import { browserApiClient } from "@/lib/api/browser-client";
 export interface FollowUp {
+  assigneeMemberId?: string;
+  assigneeName?: string;
   id: string;
   recordId: string;
   recordTitle: string;
@@ -25,6 +28,14 @@ export interface FollowUpPage {
 export type FollowUpStatus = "OPEN" | "OVERDUE" | "DONE" | "CANCELLED";
 const PATH = "/api/v1/workspaces/{tenantCode}/follow-ups" as const;
 export const followUpApi = {
+  async recipients(
+    tenantCode: string,
+    id: string,
+  ): Promise<Array<{ id: string; displayName: string }>> {
+    return relationRequest(
+      `/api/v1/workspaces/${encodeURIComponent(tenantCode)}/follow-ups/${encodeURIComponent(id)}/recipients`,
+    );
+  },
   async list(
     tenantCode: string,
     query: {
@@ -59,7 +70,12 @@ export const followUpApi = {
   async update(
     tenantCode: string,
     id: string,
-    input: { version: number; status?: "DONE" | "CANCELLED"; dueAt?: string },
+    input: {
+      version: number;
+      assigneeMemberId?: string;
+      status?: "DONE" | "CANCELLED";
+      dueAt?: string;
+    },
   ) {
     return dataOrThrow(
       await browserApiClient.PATCH(`${PATH}/{id}`, {

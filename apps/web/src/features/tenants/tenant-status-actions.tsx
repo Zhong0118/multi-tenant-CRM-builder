@@ -1,5 +1,6 @@
 "use client";
 
+import { CorrectAdminPhone } from "./correct-admin-phone";
 import { useMutation } from "@tanstack/react-query";
 import { Alert, Button, Input, Popconfirm, Space } from "antd";
 import { useRouter } from "next/navigation";
@@ -94,6 +95,7 @@ export function TenantStatusActions({
               重新邀请管理员
             </Button>
           </Popconfirm>
+          <CorrectAdminPhone tenantId={tenant.id} />
         </div>
       ) : null}
       {notice ? <Alert type="success" showIcon title={notice} /> : null}

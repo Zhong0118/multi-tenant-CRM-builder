@@ -52,6 +52,26 @@
         "required": ["tenantId", "templateVersionId"],
         "type": "object"
       },
+      "AttachmentDto": {
+        "properties": {
+          "byteSize": {
+            "type": "number"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["id", "filename", "byteSize", "createdAt"],
+        "type": "object"
+      },
       "AuthenticatedResponseDto": {
         "properties": {
           "accepted": {
@@ -408,6 +428,16 @@
         ],
         "type": "object"
       },
+      "ChangeMemberRoleDto": {
+        "properties": {
+          "role": {
+            "enum": ["TENANT_ADMIN", "EMPLOYEE"],
+            "type": "string"
+          }
+        },
+        "required": ["role"],
+        "type": "object"
+      },
       "ChangeMemberStatusDto": {
         "properties": {
           "status": {
@@ -448,6 +478,16 @@
           }
         },
         "required": ["status"],
+        "type": "object"
+      },
+      "CorrectFirstAdminPhoneDto": {
+        "properties": {
+          "firstAdminPhone": {
+            "example": "13900139000",
+            "type": "string"
+          }
+        },
+        "required": ["firstAdminPhone"],
         "type": "object"
       },
       "CreateBusinessTemplateDto": {
@@ -666,6 +706,19 @@
           }
         },
         "required": ["values"],
+        "type": "object"
+      },
+      "CreateRecordRelationDto": {
+        "properties": {
+          "objectCode": {
+            "type": "string"
+          },
+          "recordId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["objectCode", "recordId"],
         "type": "object"
       },
       "CreatedInvitationResponseDto": {
@@ -1766,8 +1819,26 @@
         ],
         "type": "object"
       },
+      "FollowUpRecipientDto": {
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "displayName"],
+        "type": "object"
+      },
       "FollowUpResponseDto": {
         "properties": {
+          "assigneeMemberId": {
+            "type": "string"
+          },
+          "assigneeName": {
+            "type": "string"
+          },
           "canManage": {
             "type": "boolean"
           },
@@ -1805,6 +1876,8 @@
           }
         },
         "required": [
+          "assigneeName",
+          "assigneeMemberId",
           "id",
           "recordId",
           "recordTitle",
@@ -2058,6 +2131,16 @@
           "readScope",
           "updateScope"
         ],
+        "type": "object"
+      },
+      "MemberRecipientDto": {
+        "properties": {
+          "recipientMemberId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["recipientMemberId"],
         "type": "object"
       },
       "MembershipActionResponseDto": {
@@ -2406,6 +2489,36 @@
           "publishedAt",
           "changes"
         ],
+        "type": "object"
+      },
+      "OffboardingCountsResponseDto": {
+        "properties": {
+          "openTasks": {
+            "type": "number"
+          },
+          "records": {
+            "type": "number"
+          }
+        },
+        "required": ["records", "openTasks"],
+        "type": "object"
+      },
+      "OffboardingPreviewResponseDto": {
+        "properties": {
+          "openTasks": {
+            "type": "number"
+          },
+          "recipients": {
+            "items": {
+              "$ref": "#/components/schemas/TenantMemberResponseDto"
+            },
+            "type": "array"
+          },
+          "records": {
+            "type": "number"
+          }
+        },
+        "required": ["records", "openTasks", "recipients"],
         "type": "object"
       },
       "PersonalInvitationResponseDto": {
@@ -3121,6 +3234,24 @@
         "required": ["items", "page", "limit", "total"],
         "type": "object"
       },
+      "RecordRelationDto": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "objectCode": {
+            "type": "string"
+          },
+          "recordId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "recordId", "objectCode", "title"],
+        "type": "object"
+      },
       "RecordResponseDto": {
         "properties": {
           "createdAt": {
@@ -3201,6 +3332,15 @@
           "password",
           "deviceSummary"
         ],
+        "type": "object"
+      },
+      "RelationResultDto": {
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "required": ["success"],
         "type": "object"
       },
       "ResetPasswordDto": {
@@ -4298,6 +4438,10 @@
       },
       "UpdateFollowUpDto": {
         "properties": {
+          "assigneeMemberId": {
+            "format": "uuid",
+            "type": "string"
+          },
           "dueAt": {
             "format": "date-time",
             "type": "string"
@@ -5681,6 +5825,50 @@
         "tags": ["platform-tenants"]
       }
     },
+    "/api/v1/platform/tenants/{tenantId}/first-admin-phone": {
+      "patch": {
+        "operationId": "TenantsController_correctFirstAdminPhone",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrectFirstAdminPhoneDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformTenantResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-tenants"]
+      }
+    },
     "/api/v1/platform/tenants/{tenantId}/status": {
       "patch": {
         "operationId": "TenantsController_changeStatus",
@@ -5756,6 +5944,87 @@
           }
         ],
         "tags": ["memberships"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/audit": {
+      "get": {
+        "operationId": "CompanyAuditController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tenantId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "resourceType",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformAuditPageDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["company-audit"]
       }
     },
     "/api/v1/workspaces/{tenantCode}/dashboards": {
@@ -6478,6 +6747,51 @@
         "tags": ["follow-ups"]
       }
     },
+    "/api/v1/workspaces/{tenantCode}/follow-ups/{id}/recipients": {
+      "get": {
+        "operationId": "FollowUpsController_recipients",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FollowUpRecipientDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["follow-ups"]
+      }
+    },
     "/api/v1/workspaces/{tenantCode}/invitations": {
       "get": {
         "operationId": "MembershipsController_invitations",
@@ -6710,6 +7024,49 @@
         "tags": ["memberships"]
       }
     },
+    "/api/v1/workspaces/{tenantCode}/members/admin-handoff": {
+      "post": {
+        "operationId": "MembershipsController_handoff",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberRecipientDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MembershipActionResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["memberships"]
+      }
+    },
     "/api/v1/workspaces/{tenantCode}/members/{memberId}": {
       "patch": {
         "operationId": "MembershipsController_changeMember",
@@ -6854,6 +7211,150 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MemberObjectAccessResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["memberships"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/members/{memberId}/offboarding": {
+      "get": {
+        "operationId": "MembershipsController_previewOffboarding",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OffboardingPreviewResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["memberships"]
+      },
+      "post": {
+        "operationId": "MembershipsController_offboard",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberRecipientDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OffboardingCountsResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["memberships"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/members/{memberId}/role": {
+      "patch": {
+        "operationId": "MembershipsController_changeRole",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeMemberRoleDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantMemberResponseDto"
                 }
               }
             },
@@ -8257,6 +8758,398 @@
           }
         ],
         "tags": ["records"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/attachments": {
+      "get": {
+        "operationId": "AttachmentsController_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AttachmentDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["attachments"]
+      },
+      "post": {
+        "operationId": "AttachmentsController_upload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "format": "binary",
+                    "type": "string"
+                  }
+                },
+                "required": ["file"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["attachments"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/attachments/{id}": {
+      "delete": {
+        "operationId": "AttachmentsController_remove",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["attachments"]
+      },
+      "get": {
+        "operationId": "AttachmentsController_download",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["attachments"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/relations": {
+      "get": {
+        "operationId": "RecordRelationsController_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RecordRelationDto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["record-relations"]
+      },
+      "post": {
+        "operationId": "RecordRelationsController_add",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {}
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRecordRelationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelationResultDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["record-relations"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/relations/{relationId}": {
+      "delete": {
+        "operationId": "RecordRelationsController_remove",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "relationId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelationResultDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["record-relations"]
       }
     },
     "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/schema": {

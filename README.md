@@ -2,7 +2,7 @@
 
 面向多家公司的可配置 CRM 平台。当前仓库采用 pnpm monorepo，Web、API、Worker 分进程部署；API 与 Worker 可以访问数据库包，Web 只调用 REST API。
 
-完整产品与架构设计见 [`docs/design/README.md`](docs/design/README.md)。当前实现事实以 [`HANDOFF.md`](HANDOFF.md) 和最新[三角色复审](docs/audits/2026-09-09/roles-and-readiness.md)为准；设计规格分别覆盖账号邀请、动态对象记录、平台模板和组件化工作台。旧设计索引可能落后于本地 `main`。
+完整产品与架构设计见 [`docs/design/README.md`](docs/design/README.md)。当前实现事实以 [`HANDOFF.md`](HANDOFF.md) 和最新[三角色补齐与验证](docs/audits/2026-09-09/role-completion.md)为准；设计规格分别覆盖账号邀请、动态对象记录、平台模板和组件化工作台。旧设计索引可能落后于本地 `main`。
 
 ## 工程结构
 

@@ -112,6 +112,77 @@ class PrismaMembershipStore implements MembershipStore {
     `;
   }
 
+  async isUsableMember(id: string) {
+    return (
+      (await this.transaction.tenantMember.count({
+        where: {
+          id,
+          tenantId: this.tenantId,
+          status: 'ACTIVE',
+          user: { status: 'ACTIVE' },
+        },
+      })) === 1
+    );
+  }
+
+  async lockMembers(ids: string[]) {
+    for (const id of ids)
+      await this.transaction
+        .$queryRaw`SELECT id FROM tenant_members WHERE tenant_id = ${this.tenantId}::uuid AND id = ${id}::uuid FOR UPDATE`;
+  }
+
+  async updateMemberRole(id: string, role: 'TENANT_ADMIN' | 'EMPLOYEE') {
+    return this.transaction.tenantMember.update({
+      where: { id, tenantId: this.tenantId },
+      data: { role },
+    });
+  }
+
+  async offboardingCounts(id: string) {
+    const records = await this.transaction.record.count({
+      where: { tenantId: this.tenantId, ownerMemberId: id },
+    });
+    const openTasks = await this.transaction.recordFollowUp.count({
+      where: { tenantId: this.tenantId, assigneeMemberId: id, status: 'OPEN' },
+    });
+    return { records, openTasks };
+  }
+
+  async offboardingRecipients(id: string) {
+    const members = await this.transaction.tenantMember.findMany({
+      where: {
+        tenantId: this.tenantId,
+        id: { not: id },
+        user: { status: 'ACTIVE' },
+        role: 'TENANT_ADMIN',
+        status: 'ACTIVE',
+      },
+      include: { user: { select: { displayName: true, phone: true } } },
+      orderBy: { id: 'asc' },
+    });
+    return members.map((member) => ({
+      ...member,
+      displayName: member.user.displayName,
+      phone: member.user.phone,
+    }));
+  }
+
+  async transferWork(source: string, recipient: string) {
+    const records = await this.transaction.record.updateMany({
+      where: { tenantId: this.tenantId, ownerMemberId: source },
+      data: { ownerMemberId: recipient, version: { increment: 1 } },
+    });
+    const tasks = await this.transaction.recordFollowUp.updateMany({
+      where: {
+        tenantId: this.tenantId,
+        assigneeMemberId: source,
+        status: 'OPEN',
+      },
+      data: { assigneeMemberId: recipient, version: { increment: 1 } },
+    });
+    return { records: records.count, openTasks: tasks.count };
+  }
+
   async listMembers(page: MemberPageQuery) {
     const [members, total, activeAdminCount] = await Promise.all([
       this.transaction.tenantMember.findMany({
@@ -336,10 +407,12 @@ class PrismaMembershipStore implements MembershipStore {
     id: string,
     input: Record<string, unknown>,
   ): Promise<void> {
-    await this.transaction.tenantInvitation.update({
-      where: { id },
+    const changed = await this.transaction.tenantInvitation.updateMany({
+      where: { id, tenantId: this.tenantId, status: 'PENDING' },
       data: input,
     });
+    if (changed.count !== 1)
+      throw new ApiException('INVITATION_NOT_FOUND', 409);
   }
 
   appendAudit(event: Parameters<AuditService['append']>[1]): Promise<void> {

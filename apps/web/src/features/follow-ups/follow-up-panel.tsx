@@ -11,6 +11,7 @@ import {
   Pagination,
   Popconfirm,
   Segmented,
+  Select,
   Skeleton,
   Tag,
 } from "antd";
@@ -38,6 +39,13 @@ export function FollowUpPanel({
   const [title, setTitle] = useState("");
   const [dueAt, setDueAt] = useState("");
   const [rescheduling, setRescheduling] = useState<FollowUp>();
+  const [reassigning, setReassigning] = useState<FollowUp>();
+  const [assignee, setAssignee] = useState<string>();
+  const recipients = useQuery({
+    queryKey: ["follow-up-recipients", tenantCode, reassigning?.id],
+    queryFn: () => api.recipients(tenantCode, reassigning!.id),
+    enabled: !!reassigning,
+  });
   const [newDate, setNewDate] = useState("");
   const [error, setError] = useState<string>();
   const key = ["workspace", tenantCode, "follow-ups"];
@@ -80,11 +88,13 @@ export function FollowUpPanel({
       ...change
     }: {
       task: FollowUp;
+      assigneeMemberId?: string;
       status?: "DONE" | "CANCELLED";
       dueAt?: string;
     }) => api.update(tenantCode, task.id, { version: task.version, ...change }),
     onSuccess: () => {
       setRescheduling(undefined);
+      setReassigning(undefined);
       refresh();
     },
     onError: (caught) => {
@@ -95,13 +105,16 @@ export function FollowUpPanel({
   const validDate = (value: string) =>
     !!value && Number.isFinite(new Date(value).getTime());
   return (
-    <section className={styles.panel} aria-label="我的跟进待办">
+    <section
+      className={styles.panel}
+      aria-label={record ? "记录跟进事项" : "我的跟进待办"}
+    >
       <div className={styles.heading}>
         <div>
-          <h2>{record ? "下次跟进" : "我的跟进待办"}</h2>
+          <h2>{record ? "记录跟进事项" : "我的跟进待办"}</h2>
           <p>
             {record
-              ? "为自己安排下一步，完成后保留记录。"
+              ? "为自己安排下一步，完成后保留记录。管理员可查看和处理此记录的所有跟进事项。"
               : "只显示分配给你、且你当前有权查看的记录事项。到期未完成即为逾期。"}
           </p>
         </div>
@@ -212,6 +225,11 @@ export function FollowUpPanel({
                   <span className={styles.muted}>· {task.objectName}</span>
                 </Link>
               )}
+              {record && (
+                <span className={styles.muted}>
+                  事项负责人：{task.assigneeName ?? "成员"}
+                </span>
+              )}
               <time dateTime={task.dueAt}>
                 {new Date(task.dueAt).toLocaleString("zh-CN", {
                   year: "numeric",
@@ -243,6 +261,15 @@ export function FollowUpPanel({
                 >
                   改期
                 </Button>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setReassigning(task);
+                    setAssignee(undefined);
+                  }}
+                >
+                  转交
+                </Button>
                 <Popconfirm
                   title="取消这项跟进？"
                   description="取消后仍保留在已取消记录中。"
@@ -269,6 +296,35 @@ export function FollowUpPanel({
           onChange={setPage}
         />
       )}
+      <Modal
+        title="转交跟进事项"
+        open={!!reassigning}
+        onCancel={() => setReassigning(undefined)}
+        okText="确认转交"
+        cancelText="取消"
+        confirmLoading={update.isPending}
+        okButtonProps={{ disabled: !assignee }}
+        onOk={() => {
+          if (reassigning && assignee)
+            update.mutate({ task: reassigning, assigneeMemberId: assignee });
+        }}
+      >
+        <p>仅可转交给当前有权查看和更新该记录的在职成员。</p>
+        {recipients.error && (
+          <Alert type="error" title={toApiError(recipients.error).message} />
+        )}
+        <Select
+          aria-label="接手成员"
+          style={{ width: "100%" }}
+          value={assignee}
+          onChange={setAssignee}
+          loading={recipients.isFetching}
+          options={recipients.data?.map((m) => ({
+            label: m.displayName,
+            value: m.id,
+          }))}
+        />
+      </Modal>
       <Modal
         title="调整跟进时间"
         open={!!rescheduling}

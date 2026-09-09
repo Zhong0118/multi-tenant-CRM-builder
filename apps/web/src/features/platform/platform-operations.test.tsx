@@ -103,7 +103,7 @@ describe("platform operations pages", () => {
       />,
     );
 
-    expect(screen.getByText("需要配置")).toBeInTheDocument();
+    expect(screen.getByText("需要处理")).toBeInTheDocument();
     expect(screen.getByText("登录历史保留 90 天")).toBeInTheDocument();
   });
 });

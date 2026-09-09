@@ -468,6 +468,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/platform/tenants/{tenantId}/first-admin-phone": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["TenantsController_correctFirstAdminPhone"];
+    trace?: never;
+  };
   "/api/v1/platform/tenants/{tenantId}/status": {
     parameters: {
       query?: never;
@@ -524,6 +540,22 @@ export interface paths {
       cookie?: never;
     };
     get: operations["MembershipsController_workspace"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/audit": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["CompanyAuditController_list"];
     put?: never;
     post?: never;
     delete?: never;
@@ -708,6 +740,22 @@ export interface paths {
     patch: operations["FollowUpsController_update"];
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/follow-ups/{id}/recipients": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["FollowUpsController_recipients"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/invitations": {
     parameters: {
       query?: never;
@@ -814,6 +862,54 @@ export interface paths {
     get?: never;
     put: operations["MembershipsController_setMemberObjectAccess"];
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/members/{memberId}/offboarding": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["MembershipsController_previewOffboarding"];
+    put?: never;
+    post: operations["MembershipsController_offboard"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/members/{memberId}/role": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["MembershipsController_changeRole"];
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/members/admin-handoff": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["MembershipsController_handoff"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1060,6 +1156,70 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/attachments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AttachmentsController_list"];
+    put?: never;
+    post: operations["AttachmentsController_upload"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/attachments/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AttachmentsController_download"];
+    put?: never;
+    post?: never;
+    delete: operations["AttachmentsController_remove"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/relations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["RecordRelationsController_list"];
+    put?: never;
+    post: operations["RecordRelationsController_add"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/relations/{relationId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations["RecordRelationsController_remove"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/batch": {
     parameters: {
       query?: never;
@@ -1146,6 +1306,14 @@ export interface components {
       templateVersionId: string;
       /** Format: uuid */
       tenantId: string;
+    };
+    AttachmentDto: {
+      byteSize: number;
+      /** Format: date-time */
+      createdAt: string;
+      filename: string;
+      /** Format: uuid */
+      id: string;
     };
     AuthenticatedResponseDto: {
       /** @example true */
@@ -1259,6 +1427,10 @@ export interface components {
       templateId: string;
       versionNo: number;
     };
+    ChangeMemberRoleDto: {
+      /** @enum {string} */
+      role: "TENANT_ADMIN" | "EMPLOYEE";
+    };
     ChangeMemberStatusDto: {
       /** @enum {string} */
       status: "ACTIVE" | "DISABLED";
@@ -1273,6 +1445,10 @@ export interface components {
       reason?: string;
       /** @enum {string} */
       status: "DRAFT" | "ACTIVE" | "SUSPENDED" | "CLOSED";
+    };
+    CorrectFirstAdminPhoneDto: {
+      /** @example 13900139000 */
+      firstAdminPhone: string;
     };
     CreateBusinessTemplateDto: {
       code: string;
@@ -1367,6 +1543,11 @@ export interface components {
       values: {
         [key: string]: unknown;
       };
+    };
+    CreateRecordRelationDto: {
+      objectCode: string;
+      /** Format: uuid */
+      recordId: string;
     };
     DashboardConfigurationEnvelopeDto: {
       activePublication?:
@@ -1725,7 +1906,13 @@ export interface components {
       page: number;
       total: number;
     };
+    FollowUpRecipientDto: {
+      displayName: string;
+      id: string;
+    };
     FollowUpResponseDto: {
+      assigneeMemberId: string;
+      assigneeName: string;
       canManage: boolean;
       /** Format: date-time */
       dueAt: string;
@@ -1827,6 +2014,10 @@ export interface components {
       readScope: "ALL" | "OWN" | "NONE";
       /** @enum {string} */
       updateScope: "ALL" | "OWN" | "NONE";
+    };
+    MemberRecipientDto: {
+      /** Format: uuid */
+      recipientMemberId: string;
     };
     MembershipActionResponseDto: {
       /** @example true */
@@ -1952,6 +2143,15 @@ export interface components {
       /** Format: date-time */
       publishedAt: string;
       sourceDraftVersion: number;
+    };
+    OffboardingCountsResponseDto: {
+      openTasks: number;
+      records: number;
+    };
+    OffboardingPreviewResponseDto: {
+      openTasks: number;
+      recipients: components["schemas"]["TenantMemberResponseDto"][];
+      records: number;
     };
     PersonalInvitationResponseDto: {
       /** Format: uuid */
@@ -2201,6 +2401,12 @@ export interface components {
       page: number;
       total: number;
     };
+    RecordRelationDto: {
+      id: string;
+      objectCode: string;
+      recordId: string;
+      title: string;
+    };
     RecordResponseDto: {
       /** Format: date-time */
       createdAt: string;
@@ -2226,6 +2432,9 @@ export interface components {
       password: string;
       /** @example 13800138000 */
       phone: string;
+    };
+    RelationResultDto: {
+      success: boolean;
     };
     ResetPasswordDto: {
       /** @example 123456 */
@@ -2614,6 +2823,8 @@ export interface components {
       validation?: components["schemas"]["FieldValidationDto"];
     };
     UpdateFollowUpDto: {
+      /** Format: uuid */
+      assigneeMemberId?: string;
       /** Format: date-time */
       dueAt?: string;
       /** @enum {string} */
@@ -3379,6 +3590,31 @@ export interface operations {
       };
     };
   };
+  TenantsController_correctFirstAdminPhone: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CorrectFirstAdminPhoneDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlatformTenantResponseDto"];
+        };
+      };
+    };
+  };
   TenantsController_changeStatus: {
     parameters: {
       query?: never;
@@ -3461,6 +3697,33 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["WorkspaceSummaryResponseDto"];
+        };
+      };
+    };
+  };
+  CompanyAuditController_list: {
+    parameters: {
+      query?: {
+        action?: string;
+        limit?: number;
+        page?: number;
+        resourceType?: string;
+        tenantId?: string;
+      };
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlatformAuditPageDto"];
         };
       };
     };
@@ -3817,6 +4080,28 @@ export interface operations {
       };
     };
   };
+  FollowUpsController_recipients: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["FollowUpRecipientDto"][];
+        };
+      };
+    };
+  };
   MembershipsController_invitations: {
     parameters: {
       query?: {
@@ -4005,6 +4290,105 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["MemberObjectAccessResponseDto"];
+        };
+      };
+    };
+  };
+  MembershipsController_previewOffboarding: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        memberId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OffboardingPreviewResponseDto"];
+        };
+      };
+    };
+  };
+  MembershipsController_offboard: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        memberId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MemberRecipientDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OffboardingCountsResponseDto"];
+        };
+      };
+    };
+  };
+  MembershipsController_changeRole: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        memberId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ChangeMemberRoleDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TenantMemberResponseDto"];
+        };
+      };
+    };
+  };
+  MembershipsController_handoff: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MemberRecipientDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MembershipActionResponseDto"];
         };
       };
     };
@@ -4566,6 +4950,179 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["RecordActivityResponseDto"];
+        };
+      };
+    };
+  };
+  AttachmentsController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AttachmentDto"][];
+        };
+      };
+    };
+  };
+  AttachmentsController_upload: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": {
+          /** Format: binary */
+          file: string;
+        };
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AttachmentDto"];
+        };
+      };
+    };
+  };
+  AttachmentsController_download: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        objectCode: string;
+        recordId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": string;
+        };
+      };
+    };
+  };
+  AttachmentsController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        objectCode: string;
+        recordId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  RecordRelationsController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+        tenantCode: unknown;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecordRelationDto"][];
+        };
+      };
+    };
+  };
+  RecordRelationsController_add: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+        tenantCode: unknown;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateRecordRelationDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RelationResultDto"];
+        };
+      };
+    };
+  };
+  RecordRelationsController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+        relationId: string;
+        tenantCode: unknown;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RelationResultDto"];
         };
       };
     };

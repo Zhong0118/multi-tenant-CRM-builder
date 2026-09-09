@@ -147,7 +147,7 @@ enum DashboardAudience {
 }
 
 model User {
-  id                  String             @id @default(uuid(7)) @db.Uuid
+  id                  String             @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   displayName         String             @map("display_name") @db.VarChar(100)
   email               String?            @unique @db.VarChar(320)
   phone               String             @unique @db.VarChar(32)
@@ -171,7 +171,7 @@ model User {
 }
 
 model Tenant {
-  id                 String              @id @default(uuid(7)) @db.Uuid
+  id                 String              @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   name               String              @db.VarChar(200)
   code               String              @unique @db.VarChar(64)
   status             TenantStatus        @default(DRAFT)
@@ -205,7 +205,7 @@ model Tenant {
 }
 
 model TenantDashboardConfiguration {
-  id                      String                       @id @default(uuid(7)) @db.Uuid
+  id                      String                       @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId                String                       @map("tenant_id") @db.Uuid
   code                    String                       @db.VarChar(64)
   name                    String                       @db.VarChar(100)
@@ -233,7 +233,7 @@ model TenantDashboardConfiguration {
 }
 
 model TenantDashboardPublication {
-  id                  String                        @id @default(uuid(7)) @db.Uuid
+  id                  String                        @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId            String                        @map("tenant_id") @db.Uuid
   dashboardId         String                        @map("dashboard_id") @db.Uuid
   publicationNo       Int                           @map("publication_no")
@@ -253,7 +253,7 @@ model TenantDashboardPublication {
 }
 
 model TenantMember {
-  id                        String              @id @default(uuid(7)) @db.Uuid
+  id                        String              @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId                  String              @map("tenant_id") @db.Uuid
   userId                    String              @map("user_id") @db.Uuid
   role                      MemberRole
@@ -280,7 +280,7 @@ model TenantMember {
 }
 
 model TenantInvitation {
-  id                  String           @id @default(uuid(7)) @db.Uuid
+  id                  String           @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId            String           @map("tenant_id") @db.Uuid
   targetPhone         String           @map("target_phone") @db.VarChar(32)
   targetUserId        String?          @map("target_user_id") @db.Uuid
@@ -305,7 +305,7 @@ model TenantInvitation {
 }
 
 model VerificationChallenge {
-  id           String              @id @default(uuid(7)) @db.Uuid
+  id           String              @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   phone        String              @db.VarChar(32)
   purpose      VerificationPurpose
   codeHash     String              @map("code_hash")
@@ -321,7 +321,7 @@ model VerificationChallenge {
 }
 
 model Session {
-  id            String    @id @default(uuid(7)) @db.Uuid
+  id            String    @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   userId        String    @map("user_id") @db.Uuid
   tokenHash     String    @unique @map("token_hash")
   expiresAt     DateTime  @map("expires_at") @db.Timestamptz(3)
@@ -337,7 +337,7 @@ model Session {
 }
 
 model ObjectDefinition {
-  id                      String              @id @default(uuid(7)) @db.Uuid
+  id                      String              @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId                String              @map("tenant_id") @db.Uuid
   name                    String              @db.VarChar(100)
   code                    String              @db.VarChar(64)
@@ -373,7 +373,7 @@ model ObjectDefinition {
 }
 
 model BusinessTemplate {
-  id                 String                    @id @default(uuid(7)) @db.Uuid
+  id                 String                    @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   code               String                    @unique @db.VarChar(64)
   name               String                    @db.VarChar(100)
   description        String?                   @db.VarChar(1000)
@@ -393,7 +393,7 @@ model BusinessTemplate {
 }
 
 model BusinessTemplateVersion {
-  id                    String                        @id @default(uuid(7)) @db.Uuid
+  id                    String                        @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   templateId            String                        @map("template_id") @db.Uuid
   versionNo             Int                           @map("version_no")
   sourceDraftVersion    Int                           @map("source_draft_version")
@@ -416,7 +416,7 @@ model BusinessTemplateVersion {
 }
 
 model BusinessTemplateApplication {
-  id                    String                  @id @default(uuid(7)) @db.Uuid
+  id                    String                  @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   templateVersionId     String                  @map("template_version_id") @db.Uuid
   tenantId              String                  @map("tenant_id") @db.Uuid
   appliedByUserId       String                  @map("applied_by_user_id") @db.Uuid
@@ -432,7 +432,7 @@ model BusinessTemplateApplication {
 }
 
 model FieldDefinition {
-  id           String            @id @default(uuid(7)) @db.Uuid
+  id           String            @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId     String            @map("tenant_id") @db.Uuid
   objectId     String            @map("object_id") @db.Uuid
   fieldKey     String            @map("field_key") @db.VarChar(64)
@@ -459,7 +459,7 @@ model FieldDefinition {
 }
 
 model ObjectPublication {
-  id                  String            @id @default(uuid(7)) @db.Uuid
+  id                  String            @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId            String            @map("tenant_id") @db.Uuid
   objectId            String            @map("object_id") @db.Uuid
   publicationNo       Int               @map("publication_no")
@@ -480,7 +480,7 @@ model ObjectPublication {
 }
 
 model ViewDefinition {
-  id              String           @id @default(uuid(7)) @db.Uuid
+  id              String           @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId        String           @map("tenant_id") @db.Uuid
   objectId        String           @map("object_id") @db.Uuid
   code            String           @db.VarChar(64)
@@ -500,7 +500,7 @@ model ViewDefinition {
 }
 
 model ObjectPermission {
-  id              String                @id @default(uuid(7)) @db.Uuid
+  id              String                @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId        String                @map("tenant_id") @db.Uuid
   objectId        String                @map("object_id") @db.Uuid
   subjectType     PermissionSubjectType @map("subject_type")
@@ -523,7 +523,7 @@ model ObjectPermission {
 }
 
 model FieldPermission {
-  id          String           @id @default(uuid(7)) @db.Uuid
+  id          String           @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId    String           @map("tenant_id") @db.Uuid
   objectId    String           @map("object_id") @db.Uuid
   fieldId     String           @map("field_id") @db.Uuid
@@ -552,7 +552,7 @@ model RecordCounter {
 }
 
 model Record {
-  id                     String           @id @default(uuid(7)) @db.Uuid
+  id                     String           @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId               String           @map("tenant_id") @db.Uuid
   objectId               String           @map("object_id") @db.Uuid
   recordNo               BigInt           @map("record_no")
@@ -583,7 +583,7 @@ model Record {
 }
 
 model RecordActivity {
-  id                  String             @id @default(uuid(7)) @db.Uuid
+  id                  String             @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId            String             @map("tenant_id") @db.Uuid
   recordId            String             @map("record_id") @db.Uuid
   activityType        RecordActivityType @map("activity_type")
@@ -603,7 +603,7 @@ model RecordActivity {
 }
 
 model AuditLog {
-  id           String         @id @default(uuid(7)) @db.Uuid
+  id           String         @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId     String?        @map("tenant_id") @db.Uuid
   actorType    AuditActorType @map("actor_type")
   actorId      String?        @map("actor_id") @db.Uuid
@@ -624,7 +624,7 @@ model AuditLog {
 
 
 model RecordFollowUp {
-  id String @id @default(uuid(7)) @db.Uuid
+  id String @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId String @map("tenant_id") @db.Uuid
   recordId String @map("record_id") @db.Uuid
   assigneeMemberId String @map("assignee_member_id") @db.Uuid

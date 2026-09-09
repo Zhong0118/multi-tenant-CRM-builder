@@ -25,6 +25,7 @@ import dayjs, { type Dayjs } from "dayjs";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
+import { SavedRecordFilters } from "./saved-record-filters";
 import { FilterBar } from "@/components/workbench/filter-bar";
 import { DataPanel } from "@/components/workbench/surface";
 import {
@@ -71,6 +72,7 @@ export { displayValue } from "./record-display-value";
 
 export interface RecordListProps {
   tenantCode: string;
+  currentMemberId?: string;
   schema: RuntimeObjectSchema;
   query: RecordQuery;
   initialPage: RecordPage;
@@ -89,6 +91,7 @@ const SEARCH_DEBOUNCE_MS = 300;
  */
 export function RecordList({
   tenantCode,
+  currentMemberId,
   schema,
   query,
   initialPage,
@@ -455,6 +458,16 @@ export function RecordList({
         ) : null}
       </header>
 
+      {currentMemberId && (
+        <SavedRecordFilters
+          key={`${tenantCode}:${currentMemberId}:${objectCode}`}
+          tenantCode={tenantCode}
+          memberId={currentMemberId}
+          objectCode={objectCode}
+          query={query}
+          onApply={apply}
+        />
+      )}
       <FilterBar
         ariaLabel={`${schema.object.name}筛选与排序`}
         search={

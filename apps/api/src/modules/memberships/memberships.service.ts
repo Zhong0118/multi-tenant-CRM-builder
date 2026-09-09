@@ -100,6 +100,17 @@ export interface InvitationPage {
 }
 
 export interface MembershipStore {
+  lockMembers(ids: string[]): Promise<void>;
+  isUsableMember(id: string): Promise<boolean>;
+  updateMemberRole(id: string, role: MemberRole): Promise<TenantMemberSummary>;
+  offboardingCounts(
+    id: string,
+  ): Promise<{ records: number; openTasks: number }>;
+  offboardingRecipients(id: string): Promise<TenantMemberSummary[]>;
+  transferWork(
+    source: string,
+    recipient: string,
+  ): Promise<{ records: number; openTasks: number }>;
   listMembers(page: MemberPageQuery): Promise<TenantMemberPage>;
   lockAdminRoster(): Promise<void>;
   listInvitations(page: InvitationPageQuery): Promise<InvitationPage>;
@@ -208,6 +219,7 @@ export class MembershipsService {
     this.assertAdmin(context);
     return await this.repository.withTenant(context, async (store) => {
       await store.lockAdminRoster();
+      await this.requireCurrentAdmin(store, context, [memberId]);
       const member = await store.findMember(memberId);
       if (!member) throw new ApiException('MEMBERSHIP_INACTIVE', 404);
       if (
@@ -216,6 +228,13 @@ export class MembershipsService {
         (await store.countActiveAdmins()) <= 1
       ) {
         throw new ApiException('TENANT_ADMIN_REQUIRED', 409);
+      }
+      if (status === 'DISABLED') {
+        const counts = await store.offboardingCounts(memberId);
+        if (counts.records || counts.openTasks)
+          throw new ApiException('WORKSPACE_FORBIDDEN', 409, {
+            message: '成员仍有记录或待办，请先使用离职交接。',
+          });
       }
       const changed = await store.updateMemberStatus(memberId, status);
       await store.appendAudit({
@@ -232,6 +251,149 @@ export class MembershipsService {
       });
       return changed;
     });
+  }
+
+  async changeMemberRole(
+    context: TenantContext,
+    memberId: string,
+    role: MemberRole,
+    meta: { requestId: string; ip?: string },
+  ) {
+    this.assertAdmin(context);
+    return this.repository.withTenant(context, async (store) => {
+      await store.lockAdminRoster();
+      await this.requireCurrentAdmin(store, context, [memberId]);
+      const member = await store.findMember(memberId);
+      if (!member || !(await store.isUsableMember(memberId)))
+        throw new ApiException('MEMBERSHIP_INACTIVE', 404);
+      if (
+        member.role === 'TENANT_ADMIN' &&
+        role === 'EMPLOYEE' &&
+        (await store.countActiveAdmins()) <= 1
+      )
+        throw new ApiException('TENANT_ADMIN_REQUIRED', 409);
+      const result = await store.updateMemberRole(memberId, role);
+      await store.appendAudit({
+        tenantId: context.tenantId,
+        actorType: 'USER',
+        actorId: context.userId,
+        action: 'membership.role_changed',
+        resourceType: 'tenant_member',
+        resourceId: memberId,
+        before: { role: member.role },
+        after: { role },
+        ...meta,
+      });
+      return result;
+    });
+  }
+
+  async handoffAdmin(
+    context: TenantContext,
+    recipientMemberId: string,
+    meta: { requestId: string; ip?: string },
+  ) {
+    this.assertAdmin(context);
+    return this.repository.withTenant(context, async (store) => {
+      await store.lockAdminRoster();
+      await this.requireCurrentAdmin(store, context, [recipientMemberId]);
+      const recipient = await store.findMember(recipientMemberId);
+      if (
+        !recipient ||
+        !(await store.isUsableMember(recipient.id)) ||
+        recipient.id === context.memberId
+      )
+        throw new ApiException('MEMBERSHIP_INACTIVE', 409);
+      await store.updateMemberRole(recipient.id, 'TENANT_ADMIN');
+      await store.updateMemberRole(context.memberId, 'EMPLOYEE');
+      await store.appendAudit({
+        tenantId: context.tenantId,
+        actorType: 'USER',
+        actorId: context.userId,
+        action: 'membership.admin_handoff',
+        resourceType: 'tenant_member',
+        resourceId: context.memberId,
+        before: { role: 'TENANT_ADMIN', recipientRole: recipient.role },
+        after: { role: 'EMPLOYEE', recipientMemberId },
+        ...meta,
+      });
+      return { accepted: true };
+    });
+  }
+
+  async previewOffboarding(context: TenantContext, memberId: string) {
+    this.assertAdmin(context);
+    return this.repository.withTenant(context, async (store) => {
+      if (!(await store.findMember(memberId)))
+        throw new ApiException('MEMBERSHIP_INACTIVE', 404);
+      return {
+        ...(await store.offboardingCounts(memberId)),
+        recipients: await store.offboardingRecipients(memberId),
+      };
+    });
+  }
+
+  async offboard(
+    context: TenantContext,
+    memberId: string,
+    recipientMemberId: string,
+    meta: { requestId: string; ip?: string },
+  ) {
+    this.assertAdmin(context);
+    return this.repository.withTenant(context, async (store) => {
+      await store.lockAdminRoster();
+      await this.requireCurrentAdmin(store, context, [
+        memberId,
+        recipientMemberId,
+      ]);
+      const member = await store.findMember(memberId);
+      const recipient = await store.findMember(recipientMemberId);
+      if (
+        !member ||
+        !recipient ||
+        recipient.id === member.id ||
+        !(await store.isUsableMember(recipient.id)) ||
+        recipient.role !== 'TENANT_ADMIN'
+      )
+        throw new ApiException('MEMBERSHIP_INACTIVE', 409, {
+          message: '请选择另一位在职公司管理员接收全部记录和待办。',
+        });
+      if (
+        member.status === 'ACTIVE' &&
+        member.role === 'TENANT_ADMIN' &&
+        (await store.countActiveAdmins()) <= 1
+      )
+        throw new ApiException('TENANT_ADMIN_REQUIRED', 409);
+      const counts = await store.transferWork(memberId, recipientMemberId);
+      await store.updateMemberStatus(memberId, 'DISABLED');
+      await store.appendAudit({
+        tenantId: context.tenantId,
+        actorType: 'USER',
+        actorId: context.userId,
+        action: 'membership.offboarded',
+        resourceType: 'tenant_member',
+        resourceId: memberId,
+        before: { status: member.status },
+        after: { status: 'DISABLED', recipientMemberId, ...counts },
+        ...meta,
+      });
+      return counts;
+    });
+  }
+
+  private async requireCurrentAdmin(
+    store: MembershipStore,
+    context: TenantContext,
+    ids: string[],
+  ) {
+    await store.lockMembers([...new Set([context.memberId, ...ids])].sort());
+    const actor = await store.findMember(context.memberId);
+    if (
+      !actor ||
+      !(await store.isUsableMember(actor.id)) ||
+      actor.role !== 'TENANT_ADMIN'
+    )
+      throw new ApiException('WORKSPACE_FORBIDDEN', 403);
   }
 
   async listMemberObjectAccess(

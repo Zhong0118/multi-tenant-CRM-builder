@@ -27,6 +27,7 @@ function setup(items: FollowUp[] = [], canCreate = true) {
     overdueCount: items.filter((t) => t.overdue).length,
   };
   const api = {
+    recipients: vi.fn().mockResolvedValue([]),
     list: vi.fn().mockResolvedValue(page),
     create: vi.fn().mockResolvedValue(task),
     update: vi.fn().mockResolvedValue(task),

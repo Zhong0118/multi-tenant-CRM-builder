@@ -36,6 +36,7 @@ export default async function ObjectRecordsPage({
 
   return (
     <RecordWorkspace
+      currentMemberId={workspace.memberId}
       tenantCode={tenantCode}
       schema={schema}
       query={query}

@@ -22,6 +22,11 @@ class MemoryStore implements PlatformTenantStore {
     status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'REVOKED' | 'EXPIRED';
     expiresAt: Date;
   };
+  revokedIds: string[] = [];
+  revokeFirstAdminInvitation(id: string) {
+    this.revokedIds.push(id);
+    return Promise.resolve();
+  }
   activeAdminCount = 0;
   tenantPage?: { page: number; limit: number };
   audits: string[] = [];
@@ -391,5 +396,42 @@ describe('first admin invitation recovery', () => {
         requestId: 'req-renew',
       }),
     ).rejects.toMatchObject({ code: 'INVITATION_CONFLICT' });
+  });
+});
+
+describe('first admin phone correction', () => {
+  it('revokes the old invitation and issues an audited invitation for the corrected phone', async () => {
+    const { service, store } = fixture();
+    const tenant = await service.createTenant(platformAdmin, {
+      name: 'A',
+      code: 'a',
+      firstAdminPhone: '13800138000',
+      requestId: 'create',
+    });
+    const result = await service.correctFirstAdminPhone(
+      platformAdmin,
+      tenant.id,
+      '13900139000',
+      { requestId: 'correct' },
+    );
+    expect(store.revokedIds).toEqual(['invite-1']);
+    expect(result.firstAdminInvitation?.targetPhone).toBe('+8613900139000');
+    expect(store.audits).toContain('platform.tenant.admin_phone_corrected');
+  });
+  it('refuses correction after an admin accepts', async () => {
+    const { service, store } = fixture();
+    const tenant = await service.createTenant(platformAdmin, {
+      name: 'A',
+      code: 'a',
+      firstAdminPhone: '13800138000',
+      requestId: 'create',
+    });
+    store.activeAdminCount = 1;
+    await expect(
+      service.correctFirstAdminPhone(platformAdmin, tenant.id, '13900139000', {
+        requestId: 'correct',
+      }),
+    ).rejects.toMatchObject({ code: 'INVITATION_CONFLICT' });
+    expect(store.revokedIds).toEqual([]);
   });
 });

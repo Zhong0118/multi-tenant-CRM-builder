@@ -11,6 +11,8 @@ import type {
 import { toApiError } from "@/lib/api/api-error";
 
 import type { DynamicFieldMember } from "./dynamic-field";
+import { RecordAttachmentsPanel } from "@/features/attachments/record-attachments-panel";
+import { RecordRelationsPanel } from "./record-relations-panel";
 import { FollowUpPanel } from "@/features/follow-ups/follow-up-panel";
 import { RecordActivityTimeline } from "./record-activity-timeline";
 import { displayValue } from "./record-list";
@@ -153,6 +155,18 @@ export function RecordDetailDrawer({
             }}
           />
 
+          <RecordRelationsPanel
+            tenantCode={tenantCode}
+            objectCode={schema.object.code}
+            recordId={record.id}
+            canUpdate={schema.actions.canUpdate}
+          />
+          <RecordAttachmentsPanel
+            tenantCode={tenantCode}
+            objectCode={schema.object.code}
+            recordId={record.id}
+            canUpdate={schema.actions.canUpdate}
+          />
           <RecordActivityTimeline
             tenantCode={tenantCode}
             objectCode={schema.object.code}

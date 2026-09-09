@@ -16,11 +16,17 @@ import type {
   FollowUpRecordScope,
 } from './follow-ups.service';
 
-const include = { record: { include: { object: true } } } as const;
+const include = {
+  record: { include: { object: true } },
+  assignee: { include: { user: { select: { displayName: true } } } },
+} as const;
 type Task = Prisma.RecordFollowUpGetPayload<{ include: typeof include }>;
 function present(task: Task, canManage = true, now = new Date()) {
   return {
     id: task.id,
+    assigneeMemberId: task.assigneeMemberId,
+    assigneeName:
+      task.assignee.user.displayName ?? task.assignee.employeeNo ?? '成员',
     recordId: task.recordId,
     recordTitle: task.record.title,
     objectCode: task.record.object.code,
@@ -39,6 +45,30 @@ export class FollowUpsRepository {
     private readonly runner: DatabaseContextRunner,
     private readonly audit: AuditService,
   ) {}
+  activeMembers(context: TenantContext) {
+    return this.runner.withTenant(context, (tx) =>
+      tx.tenantMember.findMany({
+        where: {
+          tenantId: context.tenantId,
+          status: 'ACTIVE',
+          user: { status: 'ACTIVE' },
+        },
+        include: { user: { select: { displayName: true } } },
+      }),
+    );
+  }
+  activeMember(context: TenantContext, id: string) {
+    return this.runner.withTenant(context, (tx) =>
+      tx.tenantMember.findFirst({
+        where: {
+          id,
+          tenantId: context.tenantId,
+          status: 'ACTIVE',
+          user: { status: 'ACTIVE' },
+        },
+      }),
+    );
+  }
   findRecord(context: TenantContext, objectId: string, recordId: string) {
     return this.runner.withTenant(context, (tx) =>
       tx.record.findFirst({
@@ -58,7 +88,8 @@ export class FollowUpsRepository {
         where: {
           id,
           tenantId: context.tenantId,
-          assigneeMemberId: context.memberId,
+          assigneeMemberId:
+            context.role === 'TENANT_ADMIN' ? undefined : context.memberId,
           record: { deletedAt: null },
         },
         include,
@@ -77,7 +108,10 @@ export class FollowUpsRepository {
       const limit = query.limit ?? 20;
       const base: Prisma.RecordFollowUpWhereInput = {
         tenantId: context.tenantId,
-        assigneeMemberId: context.memberId,
+        assigneeMemberId:
+          context.role === 'TENANT_ADMIN' && query.recordId
+            ? undefined
+            : context.memberId,
         recordId: query.recordId,
         record: {
           tenantId: context.tenantId,
@@ -131,6 +165,11 @@ export class FollowUpsRepository {
     scope: FollowUpRecordScope,
   ) {
     return this.runner.withTenant(context, async (tx) => {
+      const members = await tx.$queryRaw<
+        Array<{ id: string; role: string }>
+      >`SELECT id, role FROM tenant_members WHERE tenant_id=${context.tenantId}::uuid AND id=${context.memberId}::uuid AND status='ACTIVE' FOR UPDATE`;
+      if (!members.length || members[0].role !== context.role)
+        throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
       await this.lockRecord(tx, context, scope);
       const item = await tx.recordFollowUp.create({
         data: {
@@ -157,26 +196,52 @@ export class FollowUpsRepository {
     input: UpdateFollowUpDto,
     meta: FollowUpMeta,
     scope: FollowUpRecordScope,
+    recipientScope?: FollowUpRecordScope,
   ) {
     return this.runner.withTenant(context, async (tx) => {
+      for (const memberId of [
+        ...new Set(
+          [context.memberId, input.assigneeMemberId].filter(
+            (value): value is string => !!value,
+          ),
+        ),
+      ].sort()) {
+        const members = await tx.$queryRaw<
+          Array<{ id: string; role: string }>
+        >`SELECT m.id, m.role FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=${context.tenantId}::uuid AND m.id=${memberId}::uuid AND m.status='ACTIVE' AND u.status='ACTIVE' FOR UPDATE OF m`;
+        if (
+          !members.length ||
+          members[0].role !==
+            (memberId === context.memberId
+              ? context.role
+              : recipientScope?.expectedRole)
+        )
+          throw new ApiException('WORKSPACE_FORBIDDEN', 403);
+      }
       await this.lockRecord(tx, context, scope);
+      if (recipientScope) await this.lockRecord(tx, context, recipientScope);
       const before = await tx.recordFollowUp.findFirst({
         where: {
           id,
           tenantId: context.tenantId,
-          assigneeMemberId: context.memberId,
+          assigneeMemberId:
+            context.role === 'TENANT_ADMIN' ? undefined : context.memberId,
         },
       });
       const result = await tx.recordFollowUp.updateMany({
         where: {
           id,
           tenantId: context.tenantId,
-          assigneeMemberId: context.memberId,
+          assigneeMemberId:
+            context.role === 'TENANT_ADMIN' ? undefined : context.memberId,
           version: input.version,
           status: 'OPEN',
           record: { deletedAt: null },
         },
         data: {
+          ...(input.assigneeMemberId
+            ? { assigneeMemberId: input.assigneeMemberId }
+            : {}),
           ...(input.dueAt ? { dueAt: new Date(input.dueAt) } : {}),
           ...(input.status
             ? {
@@ -196,19 +261,23 @@ export class FollowUpsRepository {
         tx,
         context,
         id,
-        input.status === 'DONE'
-          ? 'follow_up.completed'
-          : input.status === 'CANCELLED'
-            ? 'follow_up.cancelled'
-            : 'follow_up.rescheduled',
+        input.assigneeMemberId
+          ? 'follow_up.reassigned'
+          : input.status === 'DONE'
+            ? 'follow_up.completed'
+            : input.status === 'CANCELLED'
+              ? 'follow_up.cancelled'
+              : 'follow_up.rescheduled',
         meta,
         {
+          assigneeMemberId: item.assigneeMemberId,
           status: item.status,
           dueAt: item.dueAt.toISOString(),
           version: item.version,
         },
         before
           ? {
+              assigneeMemberId: before.assigneeMemberId,
               status: before.status,
               dueAt: before.dueAt.toISOString(),
               version: before.version,

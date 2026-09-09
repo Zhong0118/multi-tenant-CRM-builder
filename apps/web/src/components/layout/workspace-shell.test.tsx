@@ -47,6 +47,7 @@ describe("workspaceNavigation", () => {
       "/workspace/northwind",
       "/workspace/northwind/follow-ups",
       "/workspace/northwind/members",
+      "/workspace/northwind/audit",
       "/workspace/northwind/settings",
     ]);
     expect(items.some((item) => item.href.includes("/objects/"))).toBe(false);
@@ -129,6 +130,9 @@ describe("WorkspaceShell", () => {
       "href",
       "/workspace/northwind/settings",
     );
+    expect(
+      within(system).getByRole("link", { name: "公司审计" }),
+    ).toHaveAttribute("href", "/workspace/northwind/audit");
   });
 
   it("highlights only the most specific workspace destination", () => {
@@ -239,10 +243,7 @@ describe("WorkspaceShell", () => {
     expect(screen.getByText("还没有已发布的业务表")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "创建第一张业务表" }),
-    ).toHaveAttribute(
-      "href",
-      "/workspace/northwind/settings/objects/new",
-    );
+    ).toHaveAttribute("href", "/workspace/northwind/settings/objects/new");
   });
 
   it("keeps the workspace identity and role visible", () => {
