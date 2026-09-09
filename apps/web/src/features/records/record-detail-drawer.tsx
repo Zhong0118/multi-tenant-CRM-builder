@@ -11,6 +11,7 @@ import type {
 import { toApiError } from "@/lib/api/api-error";
 
 import type { DynamicFieldMember } from "./dynamic-field";
+import { FollowUpPanel } from "@/features/follow-ups/follow-up-panel";
 import { RecordActivityTimeline } from "./record-activity-timeline";
 import { displayValue } from "./record-list";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
@@ -142,6 +143,15 @@ export function RecordDetailDrawer({
               版本 v{record.version}
             </Typography.Text>
           </div>
+
+          <FollowUpPanel
+            tenantCode={tenantCode}
+            record={{
+              id: record.id,
+              objectCode: schema.object.code,
+              canCreate: schema.actions.canUpdate,
+            }}
+          />
 
           <RecordActivityTimeline
             tenantCode={tenantCode}

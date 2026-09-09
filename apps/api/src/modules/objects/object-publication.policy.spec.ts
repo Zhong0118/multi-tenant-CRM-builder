@@ -296,3 +296,13 @@ describe('object publication policy', () => {
     expect(schema.defaultView.searchFieldKeys).toEqual(['phone']);
   });
 });
+
+it('blocks publication with a hidden employee title', () => {
+  const draft = validDraft();
+  draft.employeeAccess!.fields.name = 'HIDDEN';
+  expect(analyzePublication(draft).blocking).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ code: 'TITLE_FIELD_HIDDEN', fieldKey: 'name' }),
+    ]),
+  );
+});

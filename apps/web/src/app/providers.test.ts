@@ -37,10 +37,10 @@ describe("design tokens", () => {
     expect(css).toContain(
       `--border-strong: ${TOKENS.borderStrong.toLowerCase()}`,
     );
-    expect(css).toContain("--radius-reading: 10px");
-    expect(css).toContain("--radius-control: 6px");
+    expect(css).toContain("--radius-reading: 12px");
+    expect(css).toContain("--radius-control: 8px");
     expect(css).toContain("--radius-status: 4px");
-    expect(css).toContain("--radius-data: 8px");
+    expect(css).toContain("--radius-data: 12px");
     expect(css).toContain("--sidebar-width: 224px");
     expect(css).toContain("--header-height: 56px");
   });

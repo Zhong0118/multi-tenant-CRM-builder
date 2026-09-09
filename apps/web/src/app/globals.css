@@ -23,10 +23,10 @@
   --color-warning-soft: #fff3e5;
   --color-danger: #b42318;
 
-  --radius-reading: 10px;
-  --radius-control: 6px;
+  --radius-reading: 12px;
+  --radius-control: 8px;
   --radius-status: 4px;
-  --radius-data: 8px;
+  --radius-data: 12px;
   --sidebar-width: 224px;
   --sidebar-collapsed-width: 64px;
   --header-height: 56px;

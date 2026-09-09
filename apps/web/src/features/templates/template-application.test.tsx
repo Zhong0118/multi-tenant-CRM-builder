@@ -196,7 +196,7 @@ describe("TenantBusinessConfiguration", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "选择表方案" }));
+    fireEvent.click(screen.getByRole("button", { name: /应用业务模板/ }));
     await waitFor(() => expect(api.list).toHaveBeenCalledTimes(2));
     const templateSelect = screen.getByRole("combobox");
     fireEvent.mouseDown(templateSelect);
@@ -252,10 +252,12 @@ describe("TenantBusinessConfiguration", () => {
       screen.getByRole("heading", { name: "初始化业务表" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("选择一套业务模板，一次创建其中全部启用的业务表草稿。"),
+      screen.getByText(
+        "模板只是加速器。可以现在应用一套已发布模板，也可以暂不使用，等公司启用后由管理员手工创建。",
+      ),
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "选择表方案" }));
+    fireEvent.click(screen.getByRole("button", { name: /应用业务模板/ }));
 
     expect(
       await screen.findByText("将创建对象草稿，不会直接上线"),
@@ -313,7 +315,7 @@ describe("TenantBusinessConfiguration", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "选择表方案" }));
+    fireEvent.click(screen.getByRole("button", { name: /应用业务模板/ }));
 
     expect(await screen.findByText("加载模板版本失败")).toBeInTheDocument();
     expect(
@@ -349,7 +351,7 @@ describe("TenantBusinessConfiguration", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "选择表方案" }));
+    fireEvent.click(screen.getByRole("button", { name: /应用业务模板/ }));
     await screen.findByText("将创建对象草稿，不会直接上线");
     fireEvent.click(screen.getByRole("button", { name: "确认应用" }));
 
@@ -413,7 +415,7 @@ describe("TenantBusinessConfiguration", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "选择表方案" }));
+    fireEvent.click(screen.getByRole("button", { name: /应用业务模板/ }));
     await screen.findByText("将创建对象草稿，不会直接上线");
     fireEvent.click(screen.getByRole("button", { name: "确认应用" }));
     expect(await screen.findByText(/req_template_a/)).toBeInTheDocument();
@@ -449,10 +451,10 @@ describe("TenantBusinessConfiguration", () => {
     );
 
     expect(
-      screen.queryByRole("button", { name: "选择表方案" }),
+      screen.queryByRole("button", { name: /应用业务模板/ }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText("公司已有业务对象，不能使用初始化模板。"),
+      screen.getByText("公司已有业务表，不能再用模板覆盖初始化。"),
     ).toBeInTheDocument();
   });
 
@@ -471,7 +473,7 @@ describe("TenantBusinessConfiguration", () => {
     );
 
     expect(
-      screen.getByText("只有草稿状态的公司可以使用初始化模板。"),
+      screen.getByText(/公司已启用。模板只能用于尚未初始化的草稿公司/),
     ).toBeInTheDocument();
   });
 });

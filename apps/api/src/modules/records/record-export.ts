@@ -35,7 +35,9 @@ export function buildRecordExportCsv(input: {
     ...input.records.map((record) =>
       columns
         .map((column) =>
-          csvCell(exportColumn(column.key, record, input.fields, input.memberNames)),
+          csvCell(
+            exportColumn(column.key, record, input.fields, input.memberNames),
+          ),
         )
         .join(','),
     ),
@@ -84,9 +86,7 @@ export function formatExportValue(
         .map((key) => optionLabel(field, String(key)))
         .join('；');
     case 'MEMBER':
-      return typeof value === 'string'
-        ? (memberNames.get(value) ?? value)
-        : '';
+      return typeof value === 'string' ? (memberNames.get(value) ?? value) : '';
     case 'DATETIME':
       return formatDateTime(String(value));
     default:
@@ -118,6 +118,14 @@ function formatDateTime(value: string): string {
 }
 
 function csvCell(value: string): string {
+  const firstContent = [...value].find(
+    (character) => character.trim() !== '' && character.charCodeAt(0) > 31,
+  );
+  if (
+    (firstContent !== undefined && '=+@-'.includes(firstContent)) ||
+    ['\t', '\r', '\n'].some((character) => value.startsWith(character))
+  )
+    value = `'${value}`;
   if (/[",\r\n]/.test(value)) {
     return `"${value.replaceAll('"', '""')}"`;
   }

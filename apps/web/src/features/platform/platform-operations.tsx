@@ -60,7 +60,7 @@ export function PlatformAuditView({
             <input
               name="action"
               defaultValue={filters.action}
-              placeholder="例如 STATUS_CHANGED"
+              placeholder="例如 platform.tenant.status_changed"
             />
           </label>
           <label>
@@ -68,7 +68,7 @@ export function PlatformAuditView({
             <input
               name="resourceType"
               defaultValue={filters.resourceType}
-              placeholder="例如 TENANT"
+              placeholder="例如 tenant"
             />
           </label>
           <Button type="primary" htmlType="submit">
@@ -152,14 +152,16 @@ export function PlatformOperationsView({ data }: { data: OperationPage }) {
     <div className={styles.page}>
       <PageHeader
         title="平台操作记录"
-        description="首期记录已完成的模板应用。模板应用是同步事务，不展示虚假的队列进度。"
+        description="查看业务模板为各公司生成业务表草稿的记录。"
         status={<span className={styles.count}>{data.total} 次操作</span>}
       />
       <ReadingPanel className={styles.notice} ariaLabel="任务机制说明">
         <ClockCircleOutlined />
         <div>
-          <strong>当前没有异步任务队列</strong>
-          <span>只有成功提交到数据库的模板应用才会出现在这里。</span>
+          <strong>模板应用结果</strong>
+          <span>
+            这里只记录已成功生成的业务表草稿，不代表已发布。请由公司管理员继续审核、发布。
+          </span>
         </div>
       </ReadingPanel>
       <DataPanel className={styles.tablePanel} ariaLabel="平台操作记录">
@@ -205,7 +207,12 @@ export function PlatformOperationsView({ data }: { data: OperationPage }) {
             </table>
           </div>
         ) : (
-          <Empty description="还没有模板应用记录" />
+          <Empty description="还没有模板应用记录">
+            <p>
+              选择草稿公司可应用已发布模板，也可由公司管理员手工创建业务表。
+            </p>
+            <Link href="/platform/tenants?status=DRAFT">查看草稿公司</Link>
+          </Empty>
         )}
         <PagePager
           basePath="/platform/jobs"

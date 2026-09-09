@@ -1,3 +1,7 @@
+import type {
+  FieldConfigView,
+  FieldValidationView,
+} from "@/features/objects/object-types";
 import type { components } from "@crm/contracts";
 
 export type DashboardWidgetType =
@@ -217,7 +221,13 @@ export type DashboardRuntimeWidget =
       sortOrder: number;
       state: "READY";
       data: {
-        fields: Array<{ fieldKey: string; label: string; type: string }>;
+        fields: Array<{
+          fieldKey: string;
+          label: string;
+          type: string;
+          config?: FieldConfigView;
+          validation?: FieldValidationView;
+        }>;
         items: Array<{
           id: string;
           recordNo: string;
@@ -659,6 +669,10 @@ function parseRuntimeWidget(value: unknown): DashboardRuntimeWidget {
           fieldKey: text(field.fieldKey),
           label: text(field.label),
           type: text(field.type),
+          config: (field.config ? object(field.config) : {}) as FieldConfigView,
+          validation: (field.validation
+            ? object(field.validation)
+            : {}) as FieldValidationView,
         };
       }),
       items: array(data.items).map((item) => {

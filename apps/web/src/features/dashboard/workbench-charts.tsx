@@ -11,11 +11,19 @@ export function TrendChart({
   title: string;
   data: Array<{ date: string; value: number }>;
 }) {
+  if (data.length === 1)
+    return (
+      <div className={styles.singleTrend}>
+        <span>{data[0].date}</span>
+        <strong>{new Intl.NumberFormat("zh-CN").format(data[0].value)}</strong>
+        <p>当前范围仅有一个时间点，积累更多数据后显示趋势。</p>
+      </div>
+    );
   return (
     <>
       <div role="img" aria-label={`${title}趋势图`}>
         <Line
-          height={260}
+          height={220}
           autoFit
           data={data}
           xField="date"

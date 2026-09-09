@@ -93,6 +93,20 @@ export class TenantsController {
     return this.tenants.detail(current.user, tenantId);
   }
 
+  @Post(':tenantId/first-admin-invitation/renew')
+  @ApiParam({ name: 'tenantId', format: 'uuid' })
+  @ApiCreatedResponse({ type: PlatformTenantResponseDto })
+  renewFirstAdminInvitation(
+    @CurrentSession() current: SessionPrincipal,
+    @Param('tenantId') tenantId: string,
+    @Req() request: RequestWithId,
+  ) {
+    return this.tenants.renewFirstAdminInvitation(current.user, tenantId, {
+      requestId: request.requestId ?? 'req_unknown',
+      ip: request.ip,
+    });
+  }
+
   @Patch(':tenantId/status')
   @ApiParam({ name: 'tenantId', format: 'uuid' })
   @ApiOkResponse({ type: PlatformTenantResponseDto })

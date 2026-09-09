@@ -115,6 +115,8 @@ export interface DashboardPublishedField {
   fieldKey: string;
   label: string;
   type: PublishedObjectSchema['fields'][number]['type'];
+  config?: Record<string, unknown>;
+  validation?: Record<string, unknown>;
 }
 
 export interface DashboardPublishedOption {

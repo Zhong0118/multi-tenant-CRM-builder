@@ -100,6 +100,17 @@ export function analyzePublication(
     previousFields: input.activeSchema?.fields,
   });
   const blocking = [...configuration.blocking];
+  if (
+    input.employeeAccess &&
+    (input.employeeAccess.fields[input.object.titleFieldKey] ?? 'HIDDEN') ===
+      'HIDDEN'
+  ) {
+    blocking.push({
+      code: 'TITLE_FIELD_HIDDEN',
+      message: '标题字段会用于记录名称和搜索，员工权限至少应为只读。',
+      fieldKey: input.object.titleFieldKey,
+    });
+  }
   const previousFields = new Map(
     (input.activeSchema?.fields ?? []).map((field) => [field.fieldKey, field]),
   );

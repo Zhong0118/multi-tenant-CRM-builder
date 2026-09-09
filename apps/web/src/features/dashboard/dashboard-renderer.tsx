@@ -1,5 +1,7 @@
 "use client";
 
+import { displayValue } from "@/features/records/record-display-value";
+import type { PublishedFieldView } from "@/features/objects/object-types";
 import { Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
@@ -30,10 +32,14 @@ export function DashboardRenderer({
   }
 
   const layout = layoutDashboardWidgets(runtime.widgets);
-  const hasAnalysis = Boolean(layout.primaryTrend) || layout.distributions.length > 0;
-  const analysisSolo = !layout.primaryTrend || layout.distributions.length === 0;
-  const hasTables = layout.leaderboards.length > 0 || layout.recordLists.length > 0;
-  const tablesSolo = layout.leaderboards.length === 0 || layout.recordLists.length === 0;
+  const hasAnalysis =
+    Boolean(layout.primaryTrend) || layout.distributions.length > 0;
+  const analysisSolo =
+    !layout.primaryTrend || layout.distributions.length === 0;
+  const hasTables =
+    layout.leaderboards.length > 0 || layout.recordLists.length > 0;
+  const tablesSolo =
+    layout.leaderboards.length === 0 || layout.recordLists.length === 0;
 
   function renderWidget(widget: DashboardRuntimeWidget, className?: string) {
     return (
@@ -56,7 +62,9 @@ export function DashboardRenderer({
           data-metric-count={Math.min(layout.metrics.length, 5)}
           aria-label="指标"
         >
-          {layout.metrics.map((widget) => renderWidget(widget, styles.metricWidget))}
+          {layout.metrics.map((widget) =>
+            renderWidget(widget, styles.metricWidget),
+          )}
         </section>
       ) : null}
 
@@ -147,9 +155,17 @@ function ReadyWidget({
 }) {
   switch (widget.type) {
     case "METRIC":
-      return <MetricWidget value={widget.data.value} format={widget.data.format} />;
+      return (
+        <MetricWidget value={widget.data.value} format={widget.data.format} />
+      );
     case "STATUS_DISTRIBUTION":
-      return <DistributionWidget id={widget.id} title={widget.title} data={widget.data} />;
+      return (
+        <DistributionWidget
+          id={widget.id}
+          title={widget.title}
+          data={widget.data}
+        />
+      );
     case "TREND":
       return widget.data.items.length ? (
         <TrendChart title={widget.title} data={widget.data.items} />
@@ -176,7 +192,11 @@ function MetricWidget({
   value: number | null;
   format?: "NUMBER" | "MONEY" | "PERCENT";
 }) {
-  return <strong className={styles.metricValue} data-numeric>{formatValue(value, format)}</strong>;
+  return (
+    <strong className={styles.metricValue} data-numeric>
+      {formatValue(value, format)}
+    </strong>
+  );
 }
 
 function DistributionWidget({
@@ -186,23 +206,38 @@ function DistributionWidget({
 }: {
   id: string;
   title: string;
-  data: Extract<DashboardRuntimeWidget, { type: "STATUS_DISTRIBUTION"; state: "READY" }>["data"];
+  data: Extract<
+    DashboardRuntimeWidget,
+    { type: "STATUS_DISTRIBUTION"; state: "READY" }
+  >["data"];
 }) {
   if (!data.items.length) return <NoDataEmpty />;
 
-  if (data.display === "FUNNEL") return <FunnelDistribution title={title} data={data} />;
-  if (data.display === "DONUT") return <DonutDistribution id={id} title={title} data={data} />;
+  if (data.display === "FUNNEL")
+    return <FunnelDistribution title={title} data={data} />;
+  if (data.display === "DONUT")
+    return <DonutDistribution id={id} title={title} data={data} />;
 
-  const largest = Math.max(1, ...data.items.map((item) => Math.abs(item.value)));
+  const largest = Math.max(
+    1,
+    ...data.items.map((item) => Math.abs(item.value)),
+  );
   return (
     <div className={styles.distributionList} data-display={data.display}>
       {data.items.map((item) => {
         const direction = valueDirection(item.value);
         const width = `${(Math.abs(item.value) / largest) * 100}%`;
         return (
-          <div key={item.optionKey} className={styles.distributionItem} data-direction={direction}>
+          <div
+            key={item.optionKey}
+            className={styles.distributionItem}
+            data-direction={direction}
+          >
             <span className={styles.distributionLabel}>
-              <i style={{ backgroundColor: optionColor(item.color) }} aria-hidden />
+              <i
+                style={{ backgroundColor: optionColor(item.color) }}
+                aria-hidden
+              />
               {item.label}
             </span>
             <span className={styles.distributionBar} aria-hidden>
@@ -239,9 +274,15 @@ function FunnelDistribution({
   data,
 }: {
   title: string;
-  data: Extract<DashboardRuntimeWidget, { type: "STATUS_DISTRIBUTION"; state: "READY" }>["data"];
+  data: Extract<
+    DashboardRuntimeWidget,
+    { type: "STATUS_DISTRIBUTION"; state: "READY" }
+  >["data"];
 }) {
-  const largest = Math.max(1, ...data.items.map((item) => Math.abs(item.value)));
+  const largest = Math.max(
+    1,
+    ...data.items.map((item) => Math.abs(item.value)),
+  );
   return (
     <ol className={styles.funnelList} aria-label={title}>
       {data.items.map((item) => {
@@ -253,14 +294,20 @@ function FunnelDistribution({
             data-funnel-stage
             data-direction={direction}
             aria-label={
-              direction === "negative" ? `${item.label}：${formatValue(item.value)}，负值` : undefined
+              direction === "negative"
+                ? `${item.label}：${formatValue(item.value)}，负值`
+                : undefined
             }
             style={{
               width: `${(Math.abs(item.value) / largest) * 100}%`,
               backgroundColor: optionColor(item.color),
             }}
           >
-            {direction === "negative" ? <span className={styles.negativeMark} aria-hidden>−</span> : null}
+            {direction === "negative" ? (
+              <span className={styles.negativeMark} aria-hidden>
+                −
+              </span>
+            ) : null}
             <span>{item.label}</span>
             <strong data-numeric>{formatValue(item.value)}</strong>
           </li>
@@ -277,7 +324,10 @@ function DonutDistribution({
 }: {
   id: string;
   title: string;
-  data: Extract<DashboardRuntimeWidget, { type: "STATUS_DISTRIBUTION"; state: "READY" }>["data"];
+  data: Extract<
+    DashboardRuntimeWidget,
+    { type: "STATUS_DISTRIBUTION"; state: "READY" }
+  >["data"];
 }) {
   const hasNegative = data.items.some((item) => item.value < 0);
   const total = data.items.reduce((sum, item) => sum + item.value, 0);
@@ -291,7 +341,9 @@ function DonutDistribution({
     <div className={styles.donutLayout}>
       <div className={styles.donutVisual}>
         {hasNegative ? (
-          <p className={styles.donutWarning} role="note">存在负值，无法按整体比例展示。</p>
+          <p className={styles.donutWarning} role="note">
+            存在负值，无法按整体比例展示。
+          </p>
         ) : (
           <svg
             className={styles.donutChart}
@@ -302,7 +354,9 @@ function DonutDistribution({
           >
             <title id={titleId}>{title}</title>
             <desc id={descriptionId}>
-              {total === 0 ? "所有配置项的数值均为零。" : "按各项占总数比例显示。"}
+              {total === 0
+                ? "所有配置项的数值均为零。"
+                : "按各项占总数比例显示。"}
             </desc>
             {total === 0 ? (
               <circle
@@ -316,10 +370,13 @@ function DonutDistribution({
             ) : (
               data.items.map((item, index) => {
                 const length = (item.value / total) * circumference;
-                const segmentOffset = data.items.slice(0, index).reduce(
-                  (sum, priorItem) => sum + (priorItem.value / total) * circumference,
-                  0,
-                );
+                const segmentOffset = data.items
+                  .slice(0, index)
+                  .reduce(
+                    (sum, priorItem) =>
+                      sum + (priorItem.value / total) * circumference,
+                    0,
+                  );
                 return (
                   <circle
                     key={item.optionKey}
@@ -349,7 +406,10 @@ function DonutLegend({
   items,
 }: {
   title: string;
-  items: Extract<DashboardRuntimeWidget, { type: "STATUS_DISTRIBUTION"; state: "READY" }>["data"]["items"];
+  items: Extract<
+    DashboardRuntimeWidget,
+    { type: "STATUS_DISTRIBUTION"; state: "READY" }
+  >["data"]["items"];
 }) {
   return (
     <ul className={styles.donutLegend} aria-label={`${title}数值`}>
@@ -367,7 +427,10 @@ function DonutLegend({
 function LeaderboardWidget({
   rows,
 }: {
-  rows: Extract<DashboardRuntimeWidget, { type: "LEADERBOARD"; state: "READY" }>["data"]["items"];
+  rows: Extract<
+    DashboardRuntimeWidget,
+    { type: "LEADERBOARD"; state: "READY" }
+  >["data"]["items"];
 }) {
   const columns: ColumnsType<(typeof rows)[number]> = [
     { title: "成员", dataIndex: "displayName", key: "displayName" },
@@ -400,7 +463,10 @@ function RecordListWidget({
 }: {
   tenantCode: string;
   objectCode: string;
-  data: Extract<DashboardRuntimeWidget, { type: "RECORD_LIST"; state: "READY" }>["data"];
+  data: Extract<
+    DashboardRuntimeWidget,
+    { type: "RECORD_LIST"; state: "READY" }
+  >["data"];
 }) {
   const columns: ColumnsType<(typeof data.items)[number]> = [
     {
@@ -418,8 +484,20 @@ function RecordListWidget({
     ...data.fields.map((field) => ({
       title: field.label,
       key: field.fieldKey,
+      align:
+        field.type === "NUMBER" || field.type === "MONEY"
+          ? ("right" as const)
+          : ("left" as const),
       render: (_: unknown, row: (typeof data.items)[number]) =>
-        displayValue(row.values[field.fieldKey]),
+        displayValue(
+          {
+            type: field.type as PublishedFieldView["type"],
+            config: field.config ?? {},
+            validation: field.validation ?? {},
+          },
+          row.values[field.fieldKey],
+          [],
+        ),
     })),
   ];
   return (
@@ -456,7 +534,7 @@ function NoDataEmpty() {
     <WidgetEmpty
       kind="no-data"
       title="当前范围没有数据"
-      description="所选时间范围内没有符合条件的记录。"
+      description="当前组件的筛选条件下没有符合条件的记录。"
     />
   );
 }
@@ -504,7 +582,10 @@ function unavailableTitle(
   return "此组件暂时无法显示";
 }
 
-function formatValue(value: number | null, format?: "NUMBER" | "MONEY" | "PERCENT") {
+function formatValue(
+  value: number | null,
+  format?: "NUMBER" | "MONEY" | "PERCENT",
+) {
   if (value === null) return "—";
   if (format === "MONEY") {
     return new Intl.NumberFormat("zh-CN", {
@@ -517,26 +598,19 @@ function formatValue(value: number | null, format?: "NUMBER" | "MONEY" | "PERCEN
   return new Intl.NumberFormat("zh-CN").format(value);
 }
 
-function displayValue(value: unknown) {
-  if (value === null || value === undefined || value === "") return "—";
-  if (Array.isArray(value)) return value.join("、");
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    return String(value);
-  }
-  return "—";
-}
-
 function optionColor(color: string) {
-  return {
-    GRAY: "#7C8992",
-    BLUE: "#3478F6",
-    CYAN: "#0891B2",
-    GREEN: "#167568",
-    YELLOW: "#CA8A04",
-    ORANGE: "#C66C18",
-    RED: "#B42318",
-    PURPLE: "#7C3AED",
-  }[color] ?? "#7C8992";
+  return (
+    {
+      GRAY: "#7C8992",
+      BLUE: "#3478F6",
+      CYAN: "#0891B2",
+      GREEN: "#167568",
+      YELLOW: "#CA8A04",
+      ORANGE: "#C66C18",
+      RED: "#B42318",
+      PURPLE: "#7C3AED",
+    }[color] ?? "#7C8992"
+  );
 }
 
 function valueDirection(value: number) {
@@ -546,7 +620,12 @@ function valueDirection(value: number) {
 }
 
 function unavailableReason(
-  reason?: "AUDIENCE_EXCLUDED" | "OBJECT_UNAVAILABLE" | "OBJECT_ACCESS_DENIED" | "FIELD_HIDDEN" | "QUERY_FAILED",
+  reason?:
+    | "AUDIENCE_EXCLUDED"
+    | "OBJECT_UNAVAILABLE"
+    | "OBJECT_ACCESS_DENIED"
+    | "FIELD_HIDDEN"
+    | "QUERY_FAILED",
 ) {
   if (!reason) return "当前权限或组件状态暂时不允许显示此结果。";
   return {

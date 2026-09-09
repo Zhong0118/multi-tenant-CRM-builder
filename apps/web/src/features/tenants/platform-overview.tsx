@@ -10,6 +10,7 @@ import { StatePanel } from "@/components/workbench/state-panel";
 import { DataPanel } from "@/components/workbench/surface";
 
 import styles from "./platform-overview.module.css";
+import { tenantNextStep } from "./tenant-next-step";
 import { TenantStatusTag } from "./tenant-status";
 
 type PlatformTenantSummary = components["schemas"]["PlatformTenantSummaryDto"];
@@ -71,6 +72,26 @@ export function PlatformOverview({
               tone="danger"
             />
           </div>
+          <section className={styles.actions} aria-label="平台待办">
+            <div>
+              <h2>待处理事项</h2>
+              <p>
+                按公司当前状态继续开通或处理暂停；业务表发布由公司管理员完成。
+              </p>
+            </div>
+            <Link href="/platform/tenants?status=DRAFT">
+              <strong>{summary.draft} 家草稿公司</strong>
+              <span>核对管理员邀请与启用条件 →</span>
+            </Link>
+            <Link href="/platform/tenants?status=SUSPENDED">
+              <strong>{summary.suspended} 家暂停公司</strong>
+              <span>查看公司日志与暂停原因 →</span>
+            </Link>
+            <Link href="/platform/audit">
+              <strong>近期平台变更</strong>
+              <span>查看操作者、原因与变更详情 →</span>
+            </Link>
+          </section>
           <RecentTenants tenants={tenants} />
         </>
       )}
@@ -119,48 +140,43 @@ function RecentTenants({ tenants }: { tenants: PlatformTenantPage }) {
         </div>
         <Link href="/platform/tenants">查看全部</Link>
       </div>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th>名称</th>
-            <th>工作空间代码</th>
-            <th>状态</th>
-            <th>活跃管理员</th>
-            <th>创建时间</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((tenant) => (
-            <tr
-              key={tenant.id}
-              onClick={() => router.push(`/platform/tenants/${tenant.id}`)}
-            >
-              <td>
-                <Link
-                  href={`/platform/tenants/${tenant.id}`}
-                  className={styles.nameLink}
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  {tenant.name}
-                </Link>
-              </td>
-              <td className={styles.code}>{tenant.code}</td>
-              <td>
-                <TenantStatusTag status={tenant.status} />
-              </td>
-              <td data-numeric>{tenant.activeAdminCount}</td>
-              <td>{formatDate(tenant.createdAt)}</td>
+      <div className={styles.tableScroll}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>名称</th>
+              <th>工作空间代码</th>
+              <th>状态</th>
+              <th>活跃管理员</th>
+              <th>下一步</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((tenant) => (
+              <tr
+                key={tenant.id}
+                onClick={() => router.push(`/platform/tenants/${tenant.id}`)}
+              >
+                <td>
+                  <Link
+                    href={`/platform/tenants/${tenant.id}`}
+                    className={styles.nameLink}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    {tenant.name}
+                  </Link>
+                </td>
+                <td className={styles.code}>{tenant.code}</td>
+                <td>
+                  <TenantStatusTag status={tenant.status} />
+                </td>
+                <td data-numeric>{tenant.activeAdminCount}</td>
+                <td className={styles.nextStep}>{tenantNextStep(tenant)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </DataPanel>
-  );
-}
-
-function formatDate(value?: string): string {
-  if (!value) return "—";
-  return new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" }).format(
-    new Date(value),
   );
 }

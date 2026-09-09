@@ -21,6 +21,7 @@ const ICONS: Record<string, ReactNode> = {
   company: <BankOutlined />,
   template: <ApartmentOutlined />,
   jobs: <ScheduleOutlined />,
+  calendar: <ScheduleOutlined />,
   logs: <FileSearchOutlined />,
   settings: <SettingOutlined />,
   home: <HomeOutlined />,

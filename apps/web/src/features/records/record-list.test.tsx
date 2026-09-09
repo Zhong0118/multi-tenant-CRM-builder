@@ -232,7 +232,7 @@ function renderList(
 }
 
 describe("RecordList table sorting", () => {
-  it("separates the current row sequence from the stable business number", () => {
+  it("keeps the stable business number without a redundant row sequence", () => {
     renderList(
       vi.fn(),
       { ...DEFAULT_RECORD_QUERY, page: 3 },
@@ -242,13 +242,13 @@ describe("RecordList table sorting", () => {
     );
 
     expect(
-      screen.getByRole("columnheader", { name: "序号" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("columnheader", { name: "序号" }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("columnheader", { name: /业务编号/ }),
     ).toBeInTheDocument();
     const row = screen.getByRole("row", { name: /天际科技/ });
-    expect(within(row).getByText("41")).toBeInTheDocument();
+    expect(within(row).queryByText("41")).not.toBeInTheDocument();
     expect(within(row).getByText("8")).toBeInTheDocument();
   });
 
@@ -377,7 +377,8 @@ describe("RecordList table sorting", () => {
     } as unknown as RecordApi;
     renderList(navigate, DEFAULT_RECORD_QUERY, { api });
 
-    fireEvent.click(screen.getByRole("button", { name: "导入 CSV" }));
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "导入 CSV" }));
     expect(await screen.findByLabelText("选择 CSV 文件")).toBeInTheDocument();
   });
 
@@ -389,8 +390,13 @@ describe("RecordList table sorting", () => {
     } as unknown as RecordApi;
     renderList(navigate, DEFAULT_RECORD_QUERY, { api });
 
-    fireEvent.click(await screen.findByRole("checkbox", { name: "选择 天际科技" }));
-    fireEvent.click(await screen.findByRole("button", { name: "批量修改 1" }));
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: "选择 天际科技" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "批量修改 1" }),
+    );
 
     expect(screen.getByText("批量修改 1 条")).toBeInTheDocument();
   });
@@ -403,9 +409,14 @@ describe("RecordList table sorting", () => {
     } as unknown as RecordApi;
     renderList(navigate, DEFAULT_RECORD_QUERY, { api });
 
-    fireEvent.click(screen.getByRole("button", { name: "列设置" }));
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "列设置" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "显示列 手机号" }));
-    fireEvent.click(screen.getByRole("button", { name: "导出当前结果" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "导出当前结果" }),
+    );
 
     await waitFor(() =>
       expect(api.export).toHaveBeenCalledWith(
@@ -416,9 +427,9 @@ describe("RecordList table sorting", () => {
         }),
       ),
     );
-    expect(window.localStorage.getItem("crm.records.columns.northwind.customers")).toBe(
-      JSON.stringify(["name", "lead_status", "score"]),
-    );
+    expect(
+      window.localStorage.getItem("crm.records.columns.northwind.customers"),
+    ).toBe(JSON.stringify(["name", "lead_status", "score"]));
   });
 
   it("exports the current list filter from the toolbar", async () => {
@@ -427,13 +438,12 @@ describe("RecordList table sorting", () => {
       list: vi.fn().mockResolvedValue(page),
       export: vi.fn().mockResolvedValue(undefined),
     } as unknown as RecordApi;
-    renderList(
-      navigate,
-      { ...DEFAULT_RECORD_QUERY, search: "天际" },
-      { api },
-    );
+    renderList(navigate, { ...DEFAULT_RECORD_QUERY, search: "天际" }, { api });
 
-    fireEvent.click(screen.getByRole("button", { name: "导出当前结果" }));
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "导出当前结果" }),
+    );
 
     await waitFor(() =>
       expect(api.export).toHaveBeenCalledWith("northwind", "customers", {
@@ -451,6 +461,7 @@ describe("RecordList table sorting", () => {
     const navigate = vi.fn();
     renderList(navigate);
 
+    fireEvent.click(screen.getByRole("button", { name: "更多筛选" }));
     expect(screen.getByLabelText("搜索客户名称、手机号")).toBeInTheDocument();
     expect(
       screen.getByRole("group", { name: "按签约日筛选" }),
@@ -519,7 +530,9 @@ describe("RecordList table sorting", () => {
     expect(within(cards).getByText("8")).toBeInTheDocument();
     expect(within(cards).getByText("待联系")).toBeInTheDocument();
     expect(within(cards).getByText("李明")).toBeInTheDocument();
-    fireEvent.click(within(cards).getByRole("button", { name: "查看 天际科技" }));
+    fireEvent.click(
+      within(cards).getByRole("button", { name: "查看 天际科技" }),
+    );
     expect(navigate).toHaveBeenCalledWith(
       "/workspace/northwind/objects/customers/record-1",
     );

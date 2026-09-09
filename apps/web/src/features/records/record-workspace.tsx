@@ -12,7 +12,7 @@ import type {
 import type { DynamicFieldMember } from "./dynamic-field";
 import { RecordDetailDrawer } from "./record-detail-drawer";
 import { RecordList } from "./record-list";
-import type { RecordQuery } from "./record-query-state";
+import { recordQuerySearch, type RecordQuery } from "./record-query-state";
 
 export interface RecordWorkspaceProps {
   tenantCode: string;
@@ -30,7 +30,12 @@ export interface RecordWorkspaceProps {
  * list behind its drawer, so closing the drawer returns to the same filters and
  * page the member arrived with.
  */
-export function RecordWorkspace({
+export function RecordWorkspace(props: RecordWorkspaceProps) {
+  const key = `${props.tenantCode}:${props.schema.object.code}:${props.openRecord?.id ?? "list"}:${props.openRecord?.version ?? ""}:${props.initialEditing ? "edit" : "view"}`;
+  return <RecordWorkspaceSession key={key} {...props} />;
+}
+
+function RecordWorkspaceSession({
   tenantCode,
   schema,
   query,
@@ -65,7 +70,8 @@ export function RecordWorkspace({
           initialEditing={initialEditing}
           onClose={() => {
             setRecord(undefined);
-            router.back();
+            const search = recordQuerySearch(query);
+            router.replace(`${listPath}${search ? `?${search}` : ""}`);
           }}
           onChanged={(next) => {
             setRecord(next ?? undefined);

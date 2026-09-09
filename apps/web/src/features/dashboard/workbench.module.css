@@ -1069,3 +1069,39 @@
     justify-content: flex-start;
   }
 }
+
+.periodHint {
+  flex-basis: 100%;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.widget {
+  border-radius: 12px;
+  box-shadow: 0 3px 14px #17232d06;
+}
+.periodNav a,
+.workbenchSwitcher a,
+.shortcuts a {
+  border-radius: 8px;
+}
+.trendWidget {
+  min-height: 0;
+  align-self: start;
+}
+.singleTrend {
+  display: grid;
+  gap: 8px;
+  padding: 16px 0;
+  color: var(--text-secondary);
+}
+.singleTrend strong {
+  font-size: 28px;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.singleTrend p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}

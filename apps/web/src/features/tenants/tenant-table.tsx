@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { DataPanel } from "@/components/workbench/surface";
 
 import styles from "./tenants.module.css";
+import { tenantNextStep } from "./tenant-next-step";
 import { TenantStatusTag } from "./tenant-status";
 
 type PlatformTenant = components["schemas"]["PlatformTenantResponseDto"];
@@ -37,7 +38,18 @@ const columns: ColumnsType<PlatformTenant> = [
       <TenantStatusTag status={status} />
     ),
   },
+  {
+    title: "首位管理员",
+    render: (_, tenant) =>
+      tenant.firstAdminInvitation?.targetPhone ?? "尚未邀请",
+  },
   { title: "活跃管理员", dataIndex: "activeAdminCount" },
+  {
+    title: "下一步",
+    render: (_, tenant) => (
+      <span className={styles.nextStep}>{tenantNextStep(tenant)}</span>
+    ),
+  },
   {
     title: "创建时间",
     dataIndex: "createdAt",
@@ -48,9 +60,11 @@ const columns: ColumnsType<PlatformTenant> = [
 export function TenantTable({
   data,
   navigate,
+  filters = {},
 }: {
   data: PlatformTenantPage;
   navigate?: (path: string) => void;
+  filters?: { status?: string; search?: string };
 }) {
   const router = useRouter();
   return (
@@ -59,14 +73,17 @@ export function TenantTable({
         rowKey="id"
         columns={columns}
         dataSource={data.items}
-        scroll={{ x: 760 }}
+        scroll={{ x: 1080 }}
         pagination={{
           current: data.page,
           pageSize: data.limit,
           total: data.total,
           showSizeChanger: false,
+          showTotal: (total) => `共 ${total} 家公司`,
           onChange: (page) =>
-            (navigate ?? router.push)(`/platform/tenants?page=${page}`),
+            (navigate ?? router.push)(
+              `/platform/tenants?${new URLSearchParams({ ...(Object.fromEntries(Object.entries(filters).filter(([, value]) => Boolean(value))) as Record<string, string>), page: String(page) })}`,
+            ),
         }}
         onRow={(tenant) => ({
           onClick: () =>

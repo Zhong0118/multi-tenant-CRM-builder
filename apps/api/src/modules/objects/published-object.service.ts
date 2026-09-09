@@ -85,7 +85,12 @@ export class PublishedObjectService {
           role: context.role,
           memberOverride: record.memberOverride,
         });
-        if (!access.canRead || access.readScope === 'NONE') return [];
+        if (
+          !access.canRead ||
+          access.readScope === 'NONE' ||
+          (access.fields[schema.object.titleFieldKey] ?? 'HIDDEN') === 'HIDDEN'
+        )
+          return [];
         return [
           {
             code: schema.object.code,
@@ -123,7 +128,11 @@ export class PublishedObjectService {
       role: context.role,
       memberOverride: record.memberOverride,
     });
-    if (!access.canRead || access.readScope === 'NONE') {
+    if (
+      !access.canRead ||
+      access.readScope === 'NONE' ||
+      (access.fields[schema.object.titleFieldKey] ?? 'HIDDEN') === 'HIDDEN'
+    ) {
       throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
     }
     return {

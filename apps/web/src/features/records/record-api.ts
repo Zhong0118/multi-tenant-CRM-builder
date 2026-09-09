@@ -68,6 +68,7 @@ export interface RecordImportRow {
 }
 
 export interface RecordImportInput {
+  batchId?: string;
   rows: RecordImportRow[];
 }
 

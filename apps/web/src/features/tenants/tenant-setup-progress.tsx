@@ -20,10 +20,10 @@ export function buildTenantSetupSteps(input: {
   activeAdminCount: number;
   objectCount: number;
 }): ProcessStep[] {
-  const invitationAccepted =
-    input.invitationStatus === "ACCEPTED" || input.activeAdminCount > 0;
+  const invitationAccepted = input.activeAdminCount > 0;
   const companyEnabled = input.tenantStatus === "ACTIVE";
   const hasObjects = input.objectCount > 0;
+  const closed = input.tenantStatus === "CLOSED";
 
   return [
     {
@@ -45,11 +45,13 @@ export function buildTenantSetupSteps(input: {
       label: "管理员已接受",
       description: invitationAccepted
         ? `已有 ${input.activeAdminCount} 位有效公司管理员`
-        : input.invitationStatus === "PENDING"
-          ? "等待被邀请人注册或登录后接受"
-          : input.invitationStatus
-            ? `邀请${invitationStatusText[input.invitationStatus]}，无法启用`
-            : "发出邀请后继续",
+        : input.invitationStatus === "ACCEPTED"
+          ? "邀请曾被接受，但当前没有有效公司管理员"
+          : input.invitationStatus === "PENDING"
+            ? "等待被邀请人注册或登录后接受"
+            : input.invitationStatus
+              ? `邀请${invitationStatusText[input.invitationStatus]}，无法启用`
+              : "发出邀请后继续",
       state: invitationAccepted
         ? "complete"
         : input.invitationStatus
@@ -59,26 +61,32 @@ export function buildTenantSetupSteps(input: {
     {
       key: "enabled",
       label: "公司已启用",
-      description: companyEnabled
-        ? "公司管理员可以进入工作空间"
-        : invitationAccepted
-          ? "管理员门槛已满足，可以启用公司"
-          : "首位管理员接受后才会出现启用动作",
+      description: closed
+        ? "公司已关闭，不能重新启用"
+        : companyEnabled
+          ? "公司管理员可以进入工作空间"
+          : invitationAccepted
+            ? "管理员门槛已满足，可以启用公司"
+            : "首位管理员接受后才会出现启用动作",
       state: companyEnabled
         ? "complete"
-        : invitationAccepted
+        : invitationAccepted && !closed
           ? "current"
           : "upcoming",
     },
     {
       key: "tables",
       label: "创建并发布业务表",
-      description: hasObjects
-        ? `已有 ${input.objectCount} 张业务表。发布后员工才能使用。`
-        : companyEnabled
-          ? "可由公司管理员手工创建，模板不是必选项"
-          : "可选应用模板，或启用后由管理员手工创建",
-      state: hasObjects ? "complete" : companyEnabled ? "current" : "upcoming",
+      description: closed
+        ? "公司已关闭，仅保留历史业务配置。"
+        : input.tenantStatus === "SUSPENDED"
+          ? "公司已暂停。重新启用后，由公司管理员继续配置与发布。"
+          : hasObjects
+            ? `已有 ${input.objectCount} 张业务表。发布后员工才能使用。`
+            : companyEnabled
+              ? "可由公司管理员手工创建，模板不是必选项"
+              : "可选应用模板，或启用后由管理员手工创建",
+      state: companyEnabled ? "current" : "upcoming",
     },
   ];
 }

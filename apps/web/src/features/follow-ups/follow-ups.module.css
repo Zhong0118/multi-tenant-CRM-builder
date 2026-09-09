@@ -1,0 +1,141 @@
+.panel {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  padding: 24px;
+  background: var(--crm-surface, #fff);
+  border: 1px solid var(--crm-border, #e3e9ec);
+  border-radius: 12px;
+}
+.heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.heading h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  line-height: 1.4;
+}
+.heading p {
+  margin: 0;
+  color: #62717d;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.counts {
+  display: flex;
+  gap: 20px;
+  font-size: 13px;
+  color: #62717d;
+}
+.counts strong {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  color: #20313f;
+}
+.overdue,
+.overdue strong {
+  color: #b44239;
+}
+.composer {
+  display: grid;
+  gap: 0 12px;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 16px;
+  border-radius: 8px;
+  background: #f5f8f8;
+}
+.composer :global(.ant-form-item) {
+  margin-bottom: 12px;
+}
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.task {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid #edf0f2;
+}
+.task:last-child {
+  border-bottom: 0;
+}
+.taskBody {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.taskTitle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+.taskBody a {
+  color: #326e65;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.taskBody time {
+  color: #62717d;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.muted {
+  color: #62717d;
+}
+.actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  background: #f0f7f5;
+  border: 1px solid #d3e5df;
+  border-radius: 12px;
+  color: #275d55;
+}
+.summary span:nth-child(2) {
+  display: grid;
+  gap: 3px;
+  flex: 1;
+}
+.summary small {
+  color: #527269;
+  font-size: 12px;
+}
+@media (max-width: 640px) {
+  .panel {
+    padding: 16px;
+  }
+  .task {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .actions {
+    width: 100%;
+  }
+  .actions button {
+    flex: 1;
+  }
+  .panel :global(.ant-segmented) {
+    max-width: 100%;
+  }
+  .summary {
+    padding: 14px;
+  }
+}

@@ -43,6 +43,8 @@ export function RecordImportDrawer({
   const importable = schema.fields.filter(
     (field) => field.access === "EDIT" && field.type !== "MEMBER",
   );
+  const [batchId, setBatchId] = useState<string>();
+  const [completedRows, setCompletedRows] = useState<Set<number>>(new Set());
   const [fileName, setFileName] = useState<string>();
   const [parsed, setParsed] = useState<ParsedCsv>();
   const [mapping, setMapping] = useState<string[]>([]);
@@ -58,9 +60,7 @@ export function RecordImportDrawer({
           field: importable.find((field) => field.fieldKey === fieldKey),
         }))
         .filter(
-          (
-            item,
-          ): item is { index: number; field: PublishedFieldView } =>
+          (item): item is { index: number; field: PublishedFieldView } =>
             item.field !== undefined,
         ),
     [importable, mapping],
@@ -70,28 +70,48 @@ export function RecordImportDrawer({
     mutationFn: () => {
       if (!parsed) throw new Error("missing csv");
       return api.importRows(tenantCode, schema.object.code, {
-        rows: parsed.rows.map((row, index) => ({
-          rowNumber: index + 2,
-          values: Object.fromEntries(
-            mappedFields.map(({ index: column, field }) => [
-              field.fieldKey,
-              coerceImportValue(
-                field.type,
-                row[column] ?? "",
-                selectOptions(field).map((option) => ({
-                  key: option.key,
-                  label: option.label,
-                })),
-              ),
-            ]),
-          ),
-        })),
+        batchId,
+        rows: parsed.rows
+          .map((row, index) => ({
+            rowNumber: index + 2,
+            values: Object.fromEntries(
+              mappedFields.map(({ index: column, field }) => [
+                field.fieldKey,
+                coerceImportValue(
+                  field.type,
+                  row[column] ?? "",
+                  selectOptions(field).map((option) => ({
+                    key: option.key,
+                    label: option.label,
+                  })),
+                ),
+              ]),
+            ),
+          }))
+          .filter((row) => !completedRows.has(row.rowNumber)),
       });
     },
     onSuccess: (next) => {
-      setResult(next);
+      const merged = new Map(
+        result?.items.map((item) => [item.rowNumber, item]) ?? [],
+      );
+      for (const item of next.items) merged.set(item.rowNumber, item);
+      const items = [...merged.values()];
+      const combined = {
+        items,
+        created: items.filter((item) => item.status === "CREATED").length,
+        failed: items.filter((item) => item.status === "FAILED").length,
+      };
+      setCompletedRows(
+        new Set(
+          items
+            .filter((item) => item.status === "CREATED")
+            .map((item) => item.rowNumber),
+        ),
+      );
+      setResult(combined);
       setSummary(undefined);
-      if (next.failed === 0) onCompleted(next);
+      if (combined.failed === 0) onCompleted(combined);
     },
     onError: (caught) => {
       const apiError = toApiError(caught);
@@ -100,6 +120,8 @@ export function RecordImportDrawer({
   });
 
   async function onFile(file: File | undefined) {
+    setBatchId(crypto.randomUUID());
+    setCompletedRows(new Set());
     setParseError(undefined);
     setResult(undefined);
     setSummary(undefined);
@@ -156,11 +178,13 @@ export function RecordImportDrawer({
       ) : null}
 
       <Typography.Paragraph type="secondary">
-        先把 Excel 另存为 CSV。每一列必须映射到一个可写字段，或明确跳过。成员字段不能导入。成功行立即写入，失败行单独列出。
+        先把 Excel 另存为
+        CSV。每一列必须映射到一个可写字段，或明确跳过。成员字段不能导入。成功行立即写入，失败行单独列出。
       </Typography.Paragraph>
 
       <input
         type="file"
+        disabled={save.isPending}
         accept=".csv,text/csv"
         aria-label="选择 CSV 文件"
         onChange={(event) => void onFile(event.target.files?.[0])}
@@ -176,9 +200,13 @@ export function RecordImportDrawer({
           </Typography.Paragraph>
           <div className={styles.columnChooser}>
             {parsed.headers.map((header, index) => (
-              <label key={`${header}-${index}`} className={styles.columnChooserRow}>
+              <label
+                key={`${header}-${index}`}
+                className={styles.columnChooserRow}
+              >
                 <span>{header || `第 ${index + 1} 列`}</span>
                 <Select
+                  disabled={save.isPending}
                   aria-label={`映射 ${header || `第 ${index + 1} 列`}`}
                   className={styles.importMap}
                   value={mapping[index]}
@@ -240,10 +268,14 @@ export function RecordImportDrawer({
         <Button
           type="primary"
           loading={save.isPending}
-          disabled={!parsed || mappedFields.length === 0}
+          disabled={
+            !parsed ||
+            mappedFields.length === 0 ||
+            completedRows.size === parsed.rows.length
+          }
           onClick={() => save.mutate()}
         >
-          导入映射后的行
+          {completedRows.size > 0 ? "重试失败行" : "导入映射后的行"}
         </Button>
         <Button onClick={onClose}>关闭</Button>
       </Space>

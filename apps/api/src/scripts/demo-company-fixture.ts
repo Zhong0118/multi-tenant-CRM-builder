@@ -484,7 +484,8 @@ export function buildDemoDashboardDraft(): DashboardDefinitionV2 {
     objectCode: DEMO_DASHBOARD_CONFIGURATION.opportunity.objectCode,
     filters: [] as DashboardWidgetDraft['filters'],
   };
-  const activeStages = DEMO_DASHBOARD_CONFIGURATION.opportunity.activeOptionKeys;
+  const activeStages =
+    DEMO_DASHBOARD_CONFIGURATION.opportunity.activeOptionKeys;
   return {
     schemaVersion: 2,
     title: '销售运营工作台',
@@ -513,6 +514,13 @@ export function buildDemoDashboardDraft(): DashboardDefinitionV2 {
       {
         ...opportunity,
         id: 'opportunity-active',
+        filters: [
+          {
+            fieldKey: DEMO_DASHBOARD_CONFIGURATION.opportunity.stageFieldKey,
+            operator: 'IN',
+            value: [...activeStages],
+          },
+        ],
         type: 'METRIC',
         title: '跟单商机',
         width: 'QUARTER',
@@ -523,6 +531,14 @@ export function buildDemoDashboardDraft(): DashboardDefinitionV2 {
       {
         ...opportunity,
         id: 'opportunity-won',
+        filters: [
+          {
+            fieldKey: DEMO_DASHBOARD_CONFIGURATION.opportunity.stageFieldKey,
+            operator: 'IN',
+            value: [...DEMO_DASHBOARD_CONFIGURATION.opportunity.wonOptionKeys],
+          },
+        ],
+        description: '已成交商机的预计金额合计',
         type: 'METRIC',
         title: '成交金额',
         width: 'QUARTER',

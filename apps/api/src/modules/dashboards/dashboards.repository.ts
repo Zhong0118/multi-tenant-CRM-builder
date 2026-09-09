@@ -340,11 +340,13 @@ export class PrismaDashboardRepository implements DashboardRepository {
     audit: DashboardRequestMeta = { requestId: 'req_unknown' },
   ): Promise<DashboardDefinitionRecord | null> {
     return this.runner.withTenant(context, async (transaction) => {
-      const current = await transaction.tenantDashboardConfiguration.findUnique({
-        where: {
-          tenantId_code: { tenantId: context.tenantId, code: dashboardCode },
+      const current = await transaction.tenantDashboardConfiguration.findUnique(
+        {
+          where: {
+            tenantId_code: { tenantId: context.tenantId, code: dashboardCode },
+          },
         },
-      });
+      );
       if (!current) return null;
       const updated = await transaction.tenantDashboardConfiguration.update({
         where: { id: current.id },
@@ -379,27 +381,29 @@ export class PrismaDashboardRepository implements DashboardRepository {
     dashboardCodes: string[],
     audit: DashboardRequestMeta = { requestId: 'req_unknown' },
   ): Promise<DashboardListItem[]> {
-    return this.runner.withTenant(context, async (transaction) => {
-      for (const [index, code] of dashboardCodes.entries()) {
-        await transaction.tenantDashboardConfiguration.update({
-          where: {
-            tenantId_code: { tenantId: context.tenantId, code },
-          },
-          data: { sortOrder: (index + 1) * 10 },
+    return this.runner
+      .withTenant(context, async (transaction) => {
+        for (const [index, code] of dashboardCodes.entries()) {
+          await transaction.tenantDashboardConfiguration.update({
+            where: {
+              tenantId_code: { tenantId: context.tenantId, code },
+            },
+            data: { sortOrder: (index + 1) * 10 },
+          });
+        }
+        await this.appendAudit(transaction, {
+          tenantId: context.tenantId,
+          actorType: 'USER',
+          actorId: context.userId,
+          action: 'dashboard.order_updated',
+          resourceType: 'dashboard_definition',
+          resourceId: context.tenantId,
+          after: { dashboardCodes },
+          requestId: audit.requestId,
+          ip: audit.ip,
         });
-      }
-      await this.appendAudit(transaction, {
-        tenantId: context.tenantId,
-        actorType: 'USER',
-        actorId: context.userId,
-        action: 'dashboard.order_updated',
-        resourceType: 'dashboard_definition',
-        resourceId: context.tenantId,
-        after: { dashboardCodes },
-        requestId: audit.requestId,
-        ip: audit.ip,
-      });
-    }).then(() => this.listDashboards(context));
+      })
+      .then(() => this.listDashboards(context));
   }
 
   async setDefaults(
@@ -790,9 +794,18 @@ async function executeRecordList(
     type: 'RECORD_LIST',
     state: 'READY',
     data: {
-      fields: (plan.widget.displayFields ?? []).filter((field) =>
-        visible.has(field.fieldKey),
-      ),
+      fields: (plan.widget.displayFields ?? [])
+        .filter((field) => visible.has(field.fieldKey))
+        .map((field) => {
+          const published = plan.object.fields.find(
+            (item) => item.fieldKey === field.fieldKey,
+          );
+          return {
+            ...field,
+            config: published?.config ?? {},
+            validation: published?.validation ?? {},
+          };
+        }),
       items: rows,
     },
   };

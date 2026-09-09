@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PageHeader } from "@/components/layout/page-header";
 import { ReadingPanel } from "@/components/workbench/surface";
 import { TenantBusinessConfiguration } from "@/features/templates/template-application";
@@ -56,6 +57,11 @@ export default async function TenantDetailPage({
         title={tenant.name}
         status={<TenantStatusTag status={tenant.status} />}
         description={`工作空间代码：${tenant.code}`}
+        extra={
+          <Link href={`/platform/audit?tenantId=${tenant.id}`}>
+            查看公司日志
+          </Link>
+        }
       />
       <TenantSetupProgress
         tenantStatus={tenant.status}
@@ -68,7 +74,10 @@ export default async function TenantDetailPage({
         initialSummary={configurationResult.data}
       />
       <div className={styles.detailLayout}>
-        <ReadingPanel ariaLabel="公司与管理员信息" className={styles.detailPanel}>
+        <ReadingPanel
+          ariaLabel="公司与管理员信息"
+          className={styles.detailPanel}
+        >
           <h2 className={styles.panelTitle}>基本信息</h2>
           <dl className={styles.detailLedger}>
             <div>
@@ -109,6 +118,10 @@ export default async function TenantDetailPage({
               </dd>
             </div>
             <div>
+              <dt>邀请有效期至</dt>
+              <dd>{formatDate(tenant.firstAdminInvitation?.expiresAt)}</dd>
+            </div>
+            <div>
               <dt>活跃管理员人数</dt>
               <dd>{tenant.activeAdminCount} 位</dd>
             </div>
@@ -118,11 +131,13 @@ export default async function TenantDetailPage({
           <ReadingPanel ariaLabel="激活判定" className={styles.checkpoints}>
             <h2>激活判定</h2>
             <p className={styles.intro}>
-              {tenant.status === "ACTIVE"
-                ? "公司已启用，公司管理员可以进入工作空间。"
-                : activeAdminReady
-                  ? "管理员门槛已满足。启用后，公司管理员才能进入工作空间。"
-                  : "首位管理员尚未接受邀请。当前不能启用公司。"}
+              {tenant.status === "CLOSED"
+                ? "公司已关闭，成员无法进入。关闭后不能重新启用。"
+                : tenant.status === "ACTIVE"
+                  ? "公司已启用，公司管理员可以进入工作空间。"
+                  : activeAdminReady
+                    ? "管理员门槛已满足。启用后，公司管理员才能进入工作空间。"
+                    : "当前没有有效公司管理员，不能启用。请核对邀请和成员状态。"}
             </p>
           </ReadingPanel>
           <TenantStatusActions tenant={tenant} />

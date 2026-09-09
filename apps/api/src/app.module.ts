@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { FollowUpsModule } from './modules/follow-ups/follow-ups.module';
 import { ConfigModule } from '@nestjs/config';
 import { join } from 'node:path';
 
@@ -38,6 +39,7 @@ import { PlatformOperationsModule } from './modules/platform-operations/platform
     MembershipsModule,
     ObjectsModule,
     RecordsModule,
+    FollowUpsModule,
     TenantsModule,
     UsersModule,
     HealthModule,

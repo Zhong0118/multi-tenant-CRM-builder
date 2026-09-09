@@ -67,7 +67,12 @@ const schema = {
     columnFieldKeys: ["name"],
     sort: { field: "updatedAt", direction: "desc" },
   },
-  actions: { canCreate: true, canRead: true, canUpdate: true, canDelete: false },
+  actions: {
+    canCreate: true,
+    canRead: true,
+    canUpdate: true,
+    canDelete: false,
+  },
   scopes: { read: "ALL", update: "ALL" },
 } as RuntimeObjectSchema;
 
@@ -136,6 +141,7 @@ describe("RecordImportDrawer", () => {
 
     await waitFor(() =>
       expect(api.importRows).toHaveBeenCalledWith("northwind", "customers", {
+        batchId: expect.any(String),
         rows: [
           {
             rowNumber: 2,
@@ -151,5 +157,12 @@ describe("RecordImportDrawer", () => {
     expect(screen.getByText(/成功 1 行，失败 1 行/)).toBeInTheDocument();
     expect(screen.getByText("第 3 行：字段值无效。")).toBeInTheDocument();
     expect(onCompleted).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: /重试失败行/ }));
+    await waitFor(() => expect(api.importRows).toHaveBeenCalledTimes(2));
+    const calls = vi.mocked(api.importRows).mock.calls;
+    expect(calls[1][2].batchId).toBe(calls[0][2].batchId);
+    expect(calls[1][2].rows).toEqual([
+      { rowNumber: 3, values: { name: "星云", lead_status: "坏状态" } },
+    ]);
   });
 });

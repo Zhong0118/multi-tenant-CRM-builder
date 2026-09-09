@@ -99,6 +99,18 @@ export interface RecordListQuery {
 }
 
 export interface RecordsStore {
+  lockImportBatch(objectId: string, batchId: string): Promise<void>;
+  findImportedRecordId(
+    objectId: string,
+    batchId: string,
+    rowNumber: number,
+  ): Promise<string | null>;
+  saveImportedRecordId(
+    objectId: string,
+    batchId: string,
+    rowNumber: number,
+    recordId: string,
+  ): Promise<void>;
   memberExists(memberId: string): Promise<boolean>;
   allocateRecordNo(objectId: string): Promise<bigint>;
   createRecord(record: DynamicRecord): Promise<DynamicRecord>;
@@ -169,6 +181,37 @@ class PrismaRecordsStore implements RecordsStore {
     private readonly context: TenantContext,
   ) {}
 
+  async lockImportBatch(objectId: string, batchId: string): Promise<void> {
+    const key = `${this.context.tenantId}:${objectId}:${this.context.memberId}:${batchId}`;
+    await this.transaction
+      .$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))::text`;
+  }
+
+  async findImportedRecordId(
+    objectId: string,
+    batchId: string,
+    rowNumber: number,
+  ): Promise<string | null> {
+    const rows = await this.transaction.$queryRaw<Array<{ recordId: string }>>`
+      SELECT record_id AS "recordId" FROM record_import_rows
+      WHERE tenant_id = ${this.context.tenantId}::uuid AND object_id = ${objectId}::uuid
+        AND member_id = ${this.context.memberId}::uuid AND batch_id = ${batchId}::uuid AND row_number = ${rowNumber}
+    `;
+    return rows[0]?.recordId ?? null;
+  }
+
+  async saveImportedRecordId(
+    objectId: string,
+    batchId: string,
+    rowNumber: number,
+    recordId: string,
+  ): Promise<void> {
+    await this.transaction.$executeRaw`
+      INSERT INTO record_import_rows (tenant_id, object_id, member_id, batch_id, row_number, record_id)
+      VALUES (${this.context.tenantId}::uuid, ${objectId}::uuid, ${this.context.memberId}::uuid, ${batchId}::uuid, ${rowNumber}, ${recordId}::uuid)
+    `;
+  }
+
   async memberExists(memberId: string): Promise<boolean> {
     const member = await this.transaction.tenantMember.findFirst({
       where: {
@@ -234,10 +277,7 @@ class PrismaRecordsStore implements RecordsStore {
       const [items, total] = await Promise.all([
         this.transaction.record.findMany({
           where,
-          orderBy: [
-            { [query.sort]: query.direction },
-            { id: query.direction },
-          ],
+          orderBy: [{ [query.sort]: query.direction }, { id: query.direction }],
           skip: (query.page - 1) * query.limit,
           take: query.limit,
         }),
@@ -246,7 +286,8 @@ class PrismaRecordsStore implements RecordsStore {
       return { items: items.map(fromPrismaRecord), total };
     }
 
-    const direction = query.direction === 'asc' ? Prisma.sql`ASC` : Prisma.sql`DESC`;
+    const direction =
+      query.direction === 'asc' ? Prisma.sql`ASC` : Prisma.sql`DESC`;
     const offset = (query.page - 1) * query.limit;
     const filterSql = listWhereSql(this.context.tenantId, query, true);
     const [rows, counted] = await Promise.all([
@@ -488,7 +529,9 @@ function searchConditions(
   ];
 }
 
-function listFilterCondition(filter: RecordListFilter): Prisma.RecordWhereInput {
+function listFilterCondition(
+  filter: RecordListFilter,
+): Prisma.RecordWhereInput {
   if (filter.mode === 'DATE_RANGE') {
     const bounds: Prisma.JsonFilter[] = [];
     if (filter.from) {
@@ -595,7 +638,8 @@ function searchSql(
   const clauses = [
     Prisma.sql`${qualified ? Prisma.sql`r.title` : Prisma.sql`title`} ILIKE ${pattern}`,
     ...searchFieldKeys.map(
-      (fieldKey) => Prisma.sql`${jsonText(fieldKey, qualified)} ILIKE ${pattern}`,
+      (fieldKey) =>
+        Prisma.sql`${jsonText(fieldKey, qualified)} ILIKE ${pattern}`,
     ),
   ];
   return Prisma.sql`(${Prisma.join(clauses, ' OR ')})`;

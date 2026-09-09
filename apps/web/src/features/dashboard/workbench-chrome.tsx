@@ -27,7 +27,8 @@ export function WorkbenchPeriodNav({
   const now = new Date();
   const current = workbenchPeriodPreset(period, period.timezone, now);
   return (
-    <nav className={styles.periodNav} aria-label="统计区间">
+    <nav className={styles.periodNav} aria-label="趋势时间范围">
+      <span>趋势时间范围</span>
       <PeriodLabel period={period} publication={publication} />
       {WORKBENCH_PERIOD_PRESETS.map((preset) => (
         <Link
@@ -41,6 +42,9 @@ export function WorkbenchPeriodNav({
           {preset.label}
         </Link>
       ))}
+      <small className={styles.periodHint}>
+        仅影响趋势图，其余指标按各组件筛选条件统计。
+      </small>
     </nav>
   );
 }
@@ -103,9 +107,7 @@ export function EmployeeShortcuts({
       {objects.map((object) => (
         <span key={object.code} className={styles.shortcutGroup}>
           {object.canCreate ? (
-            <Link
-              href={`/workspace/${tenantCode}/objects/${object.code}/new`}
-            >
+            <Link href={`/workspace/${tenantCode}/objects/${object.code}/new`}>
               {`新建${object.name}`}
             </Link>
           ) : null}

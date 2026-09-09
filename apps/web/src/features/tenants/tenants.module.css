@@ -123,3 +123,88 @@
     grid-template-columns: 1fr;
   }
 }
+
+.filters {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-reading);
+  background: var(--bg-surface);
+}
+.filters label {
+  display: grid;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.filters input,
+.filters select {
+  min-height: 36px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 7px 10px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+.filters input {
+  min-width: 250px;
+}
+.summary {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.summary a {
+  display: flex;
+  gap: 12px;
+  padding: 8px 12px;
+  color: var(--text-secondary);
+  border-radius: 8px;
+}
+.summary a[aria-current] {
+  background: var(--bg-surface);
+  color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px var(--border-default);
+}
+.summary strong {
+  font-variant-numeric: tabular-nums;
+}
+.nextStep {
+  display: block;
+  min-width: 150px;
+  max-width: 240px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.tenantTable :global(.ant-table-tbody > tr) {
+  cursor: pointer;
+}
+@media (max-width: 599px) {
+  .filters label,
+  .filters input {
+    width: 100%;
+    min-width: 0;
+  }
+  .detailLedger div {
+    grid-template-columns: 110px minmax(0, 1fr);
+  }
+  .detailLedger dd {
+    overflow-wrap: anywhere;
+  }
+}
+.invitationRecovery {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-default);
+}
+.invitationRecovery p {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.7;
+  margin-bottom: 10px;
+}

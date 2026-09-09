@@ -268,6 +268,10 @@ export class DashboardLeaderboardDataDto {
 }
 
 export class DashboardPublishedFieldDto {
+  @ApiPropertyOptional({ type: Object, additionalProperties: true })
+  config?: Record<string, unknown>;
+  @ApiPropertyOptional({ type: Object, additionalProperties: true })
+  validation?: Record<string, unknown>;
   @ApiProperty() fieldKey!: string;
   @ApiProperty() label!: string;
   @ApiProperty({

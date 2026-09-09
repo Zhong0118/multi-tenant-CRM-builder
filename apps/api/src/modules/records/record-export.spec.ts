@@ -47,11 +47,7 @@ describe('record export CSV', () => {
     };
     expect(formatExportValue(field, 'new', new Map())).toBe('待联系');
     expect(
-      formatExportValue(
-        { ...field, type: 'BOOLEAN' },
-        true,
-        new Map(),
-      ),
+      formatExportValue({ ...field, type: 'BOOLEAN' }, true, new Map()),
     ).toBe('是');
     expect(
       formatExportValue(
@@ -66,3 +62,23 @@ describe('record export CSV', () => {
     expect(exportFileName('销售/线索', 'leads')).toBe('销售_线索.csv');
   });
 });
+
+it.each(['=1+1', '+cmd', '-cmd', '@SUM(A1)', '\t=1', '  =1'])(
+  'neutralizes spreadsheet formula %s',
+  (value) => {
+    const csv = buildRecordExportCsv({
+      fields: [{ fieldKey: 'name', label: value, type: 'TEXT', config: {} }],
+      records: [
+        {
+          recordNo: '1',
+          ownerMemberId: 'm',
+          values: { name: value },
+          createdAt: '',
+          updatedAt: '',
+        },
+      ],
+      memberNames: new Map([['m', value]]),
+    });
+    expect(csv.split("'" + value)).toHaveLength(4);
+  },
+);

@@ -561,6 +561,27 @@
         ],
         "type": "object"
       },
+      "CreateFollowUpDto": {
+        "properties": {
+          "dueAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "objectCode": {
+            "type": "string"
+          },
+          "recordId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": ["objectCode", "recordId", "title", "dueAt"],
+        "type": "object"
+      },
       "CreateInvitationDto": {
         "properties": {
           "phone": {
@@ -1189,6 +1210,10 @@
       },
       "DashboardPublishedFieldDto": {
         "properties": {
+          "config": {
+            "additionalProperties": true,
+            "type": "object"
+          },
           "fieldKey": {
             "type": "string"
           },
@@ -1211,6 +1236,10 @@
               "BOOLEAN"
             ],
             "type": "string"
+          },
+          "validation": {
+            "additionalProperties": true,
+            "type": "object"
           }
         },
         "required": ["fieldKey", "label", "type"],
@@ -1703,6 +1732,93 @@
         "required": ["id", "targetPhone", "role", "status", "expiresAt"],
         "type": "object"
       },
+      "FollowUpPageDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FollowUpResponseDto"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "openCount": {
+            "type": "number"
+          },
+          "overdueCount": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit",
+          "openCount",
+          "overdueCount"
+        ],
+        "type": "object"
+      },
+      "FollowUpResponseDto": {
+        "properties": {
+          "canManage": {
+            "type": "boolean"
+          },
+          "dueAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "objectCode": {
+            "type": "string"
+          },
+          "objectName": {
+            "type": "string"
+          },
+          "overdue": {
+            "type": "boolean"
+          },
+          "recordId": {
+            "type": "string"
+          },
+          "recordTitle": {
+            "type": "string"
+          },
+          "status": {
+            "enum": ["OPEN", "DONE", "CANCELLED"],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "recordId",
+          "recordTitle",
+          "objectCode",
+          "objectName",
+          "title",
+          "dueAt",
+          "status",
+          "version",
+          "overdue",
+          "canManage"
+        ],
+        "type": "object"
+      },
       "ForgotPasswordDto": {
         "properties": {
           "deviceKey": {
@@ -1735,6 +1851,11 @@
       },
       "ImportRecordsDto": {
         "properties": {
+          "batchId": {
+            "description": "稳定的文件批次 ID，重试时复用以避免重复创建。",
+            "format": "uuid",
+            "type": "string"
+          },
           "rows": {
             "items": {
               "$ref": "#/components/schemas/ImportRecordRowDto"
@@ -4175,6 +4296,24 @@
         "required": ["expectedVersion"],
         "type": "object"
       },
+      "UpdateFollowUpDto": {
+        "properties": {
+          "dueAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "enum": ["DONE", "CANCELLED"],
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": ["version"],
+        "type": "object"
+      },
       "UpdateObjectDefinitionDto": {
         "properties": {
           "code": {
@@ -5291,6 +5430,24 @@
         "parameters": [
           {
             "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": ["DRAFT", "ACTIVE", "SUSPENDED", "CLOSED"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "page",
             "required": false,
             "schema": {
@@ -5488,6 +5645,40 @@
           }
         ],
         "tags": ["platform-business-template-applications"]
+      }
+    },
+    "/api/v1/platform/tenants/{tenantId}/first-admin-invitation/renew": {
+      "post": {
+        "operationId": "TenantsController_renewFirstAdminInvitation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformTenantResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-tenants"]
       }
     },
     "/api/v1/platform/tenants/{tenantId}/status": {
@@ -6122,6 +6313,169 @@
           }
         ],
         "tags": ["dashboards"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/follow-ups": {
+      "get": {
+        "operationId": "FollowUpsController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": ["OPEN", "OVERDUE", "DONE", "CANCELLED"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "recordId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "type": "number"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowUpPageDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["follow-ups"]
+      },
+      "post": {
+        "operationId": "FollowUpsController_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFollowUpDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowUpResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["follow-ups"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/follow-ups/{id}": {
+      "patch": {
+        "operationId": "FollowUpsController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFollowUpDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowUpResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["follow-ups"]
       }
     },
     "/api/v1/workspaces/{tenantCode}/invitations": {

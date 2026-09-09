@@ -52,9 +52,16 @@ describe('demo company fixture', () => {
   it('publishes a compact KPI strip plus analysis and table bands', () => {
     const draft = buildDemoDashboardDraft();
     const byType = Object.fromEntries(
-      ['METRIC', 'TREND', 'STATUS_DISTRIBUTION', 'LEADERBOARD', 'RECORD_LIST'].map(
-        (type) => [type, draft.widgets.filter((widget) => widget.type === type)],
-      ),
+      [
+        'METRIC',
+        'TREND',
+        'STATUS_DISTRIBUTION',
+        'LEADERBOARD',
+        'RECORD_LIST',
+      ].map((type) => [
+        type,
+        draft.widgets.filter((widget) => widget.type === type),
+      ]),
     );
 
     expect(byType.METRIC).toHaveLength(4);
@@ -64,13 +71,25 @@ describe('demo company fixture', () => {
       '跟单商机',
       '成交金额',
     ]);
-    expect(draft.widgets.every((widget) => widget.filters.length === 0)).toBe(
-      true,
-    );
+    expect(
+      draft.widgets.find((widget) => widget.id === 'opportunity-active')
+        ?.filters,
+    ).toEqual([
+      {
+        fieldKey: 'stage',
+        operator: 'IN',
+        value: ['discovery', 'proposal', 'negotiation'],
+      },
+    ]);
+    expect(
+      draft.widgets.find((widget) => widget.id === 'opportunity-won')?.filters,
+    ).toEqual([{ fieldKey: 'stage', operator: 'IN', value: ['won'] }]);
     expect(byType.TREND).toHaveLength(1);
     expect(byType.STATUS_DISTRIBUTION).toHaveLength(1);
     expect(byType.LEADERBOARD).toHaveLength(1);
     expect(byType.RECORD_LIST).toHaveLength(1);
-    expect(draft.widgets.every((widget) => widget.audience === 'ALL')).toBe(true);
+    expect(draft.widgets.every((widget) => widget.audience === 'ALL')).toBe(
+      true,
+    );
   });
 });

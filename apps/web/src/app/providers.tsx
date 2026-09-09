@@ -39,8 +39,8 @@ export function Providers({ children }: { children: ReactNode }) {
         locale={zhCN}
         theme={{
           token: {
-            borderRadius: 6,
-            borderRadiusLG: 10,
+            borderRadius: 8,
+            borderRadiusLG: 12,
             colorBgLayout: TOKENS.page,
             colorBorder: TOKENS.border,
             colorBorderSecondary: TOKENS.border,

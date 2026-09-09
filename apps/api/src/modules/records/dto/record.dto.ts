@@ -208,6 +208,14 @@ export class ImportRecordRowDto {
 }
 
 export class ImportRecordsDto {
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: '稳定的文件批次 ID，重试时复用以避免重复创建。',
+  })
+  @IsOptional()
+  @IsUUID()
+  batchId?: string;
+
   @ApiProperty({ type: ImportRecordRowDto, isArray: true })
   @IsArray()
   @ArrayMinSize(1)

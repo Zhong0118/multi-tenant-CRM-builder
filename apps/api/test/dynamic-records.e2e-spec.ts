@@ -1,8 +1,12 @@
+import { randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import type { PrismaClient } from '@crm/database';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 
+import { FollowUpsRepository } from '../src/modules/follow-ups/follow-ups.repository';
+import { PublishedObjectService } from '../src/modules/objects/published-object.service';
+import type { RecordImportResponse } from '../src/modules/records/records.service';
 import { createApp } from '../src/bootstrap';
 import { hashSessionToken } from '../src/modules/auth/session.service';
 
@@ -247,6 +251,138 @@ describe('Dynamic records API (e2e)', () => {
     });
   });
 
+  it('replays concurrent CSV batches and retries corrected failures without duplicate records', async () => {
+    const batchId = '83a0532e-857d-441d-8cab-b7ef0e47d4b0';
+    const run = (rows: unknown[]) =>
+      request(app.getHttpServer())
+        .post(
+          `/api/v1/workspaces/${tenantCode}/objects/${objectCode}/records/import`,
+        )
+        .set('Cookie', fixture.adminCookie)
+        .set('Origin', origin)
+        .send({ batchId, rows })
+        .expect(201);
+    const rows = [
+      { rowNumber: 2, values: { name: 'CSV success' } },
+      { rowNumber: 3, values: {} },
+    ];
+    const results = await Promise.all([run(rows), run(rows)]);
+    const [first, replay] = results.map(
+      (response) => response.body as RecordImportResponse,
+    );
+    expect(first).toMatchObject({ created: 1, failed: 1 });
+    expect(first.items[0].record?.id).toBe(replay.items[0].record?.id);
+    expect(
+      await adminDatabase.record.count({
+        where: { tenantId: fixture.tenantId },
+      }),
+    ).toBe(1);
+    const corrected = await run([
+      { rowNumber: 2, values: { name: 'Changed' } },
+      { rowNumber: 3, values: { name: 'Fixed' } },
+    ]);
+    const correctedResult = corrected.body as RecordImportResponse;
+    expect(correctedResult.failed).toBe(0);
+    expect(correctedResult.items[0].record?.title).toBe('CSV success');
+    expect(
+      await adminDatabase.record.count({
+        where: { tenantId: fixture.tenantId },
+      }),
+    ).toBe(2);
+  });
+
+  it('rechecks record ownership within follow-up writes and fails closed with no scopes', async () => {
+    const record = await createRecord(fixture.employeeCookie, {
+      values: { name: 'Follow-up race' },
+    });
+    const base = `/api/v1/workspaces/${tenantCode}/follow-ups`;
+    const body = {
+      objectCode,
+      recordId: record.id,
+      title: 'Call',
+      dueAt: '2026-09-10T08:00:00Z',
+    };
+    const post = () =>
+      request(app.getHttpServer())
+        .post(base)
+        .set('Cookie', fixture.employeeCookie)
+        .set('Origin', origin)
+        .send(body);
+    const repository = app.get(FollowUpsRepository);
+    const original = repository.findRecord.bind(repository);
+    const transferDuringCheck = () =>
+      jest
+        .spyOn(repository, 'findRecord')
+        .mockImplementationOnce(async (...args) => {
+          const checked = await original(...args);
+          await adminDatabase.record.update({
+            where: { id: record.id },
+            data: { ownerMemberId: fixture.otherMemberId },
+          });
+          return checked;
+        });
+    let spy = transferDuringCheck();
+    await post().expect(404);
+    spy.mockRestore();
+    expect(
+      await adminDatabase.recordFollowUp.count({
+        where: { tenantId: fixture.tenantId },
+      }),
+    ).toBe(0);
+    await adminDatabase.record.update({
+      where: { id: record.id },
+      data: { ownerMemberId: fixture.employeeMemberId },
+    });
+    const task = await post().expect(201);
+    const taskId = (task.body as { id: string }).id;
+    expect(typeof taskId).toBe('string');
+    const nav = jest
+      .spyOn(app.get(PublishedObjectService), 'listAccessible')
+      .mockResolvedValueOnce([]);
+    const empty = await request(app.getHttpServer())
+      .get(base)
+      .set('Cookie', fixture.employeeCookie)
+      .expect(200);
+    expect(empty.body).toMatchObject({
+      items: [],
+      total: 0,
+      openCount: 0,
+      overdueCount: 0,
+    });
+    nav.mockRestore();
+    spy = transferDuringCheck();
+    await request(app.getHttpServer())
+      .patch(`${base}/${taskId}`)
+      .set('Cookie', fixture.employeeCookie)
+      .set('Origin', origin)
+      .send({ version: 1, status: 'DONE' })
+      .expect(404);
+    spy.mockRestore();
+    const unchanged = await adminDatabase.recordFollowUp.findUniqueOrThrow({
+      where: { id: taskId },
+    });
+    expect(unchanged).toMatchObject({ version: 1, status: 'OPEN' });
+    await adminDatabase.record.update({
+      where: { id: record.id },
+      data: { ownerMemberId: fixture.employeeMemberId },
+    });
+    const complete = () =>
+      request(app.getHttpServer())
+        .patch(`${base}/${taskId}`)
+        .set('Cookie', fixture.employeeCookie)
+        .set('Origin', origin)
+        .send({ version: 1, status: 'DONE' });
+    const completed = await Promise.all([complete(), complete()]);
+    expect(completed.map((response) => response.status).sort()).toEqual([
+      200, 409,
+    ]);
+    expect(
+      await adminDatabase.auditLog.count({
+        where: { resourceId: taskId, action: 'follow_up.completed' },
+      }),
+    ).toBe(1);
+  });
+
   afterAll(async () => {
     await cleanup(adminDatabase);
     await app.close();
@@ -337,6 +473,7 @@ async function provision(database: PrismaClient): Promise<Fixture> {
   const [tenant, foreignTenant] = await Promise.all([
     database.tenant.create({
       data: {
+        id: randomUUID(),
         name: '动态记录测试公司',
         code: tenantCode,
         status: 'ACTIVE',
@@ -345,6 +482,7 @@ async function provision(database: PrismaClient): Promise<Fixture> {
     }),
     database.tenant.create({
       data: {
+        id: randomUUID(),
         name: '其他测试公司',
         code: foreignTenantCode,
         status: 'ACTIVE',
@@ -358,6 +496,7 @@ async function provision(database: PrismaClient): Promise<Fixture> {
     phones.map((phone, index) =>
       database.user.create({
         data: {
+          id: randomUUID(),
           displayName: `记录测试用户 ${index + 1}`,
           phone,
           phoneVerifiedAt: now,
@@ -370,6 +509,7 @@ async function provision(database: PrismaClient): Promise<Fixture> {
   const [adminMember, employeeMember, otherMember] = await Promise.all([
     database.tenantMember.create({
       data: {
+        id: randomUUID(),
         tenantId: tenant.id,
         userId: adminUser.id,
         role: 'TENANT_ADMIN',
@@ -379,6 +519,7 @@ async function provision(database: PrismaClient): Promise<Fixture> {
     }),
     database.tenantMember.create({
       data: {
+        id: randomUUID(),
         tenantId: tenant.id,
         userId: employeeUser.id,
         role: 'EMPLOYEE',
@@ -388,6 +529,7 @@ async function provision(database: PrismaClient): Promise<Fixture> {
     }),
     database.tenantMember.create({
       data: {
+        id: randomUUID(),
         tenantId: tenant.id,
         userId: otherUser.id,
         role: 'EMPLOYEE',
@@ -403,6 +545,7 @@ async function provision(database: PrismaClient): Promise<Fixture> {
   await Promise.all([
     database.session.create({
       data: {
+        id: randomUUID(),
         userId: adminUser.id,
         tokenHash: hashSessionToken(adminToken),
         expiresAt,
@@ -410,6 +553,7 @@ async function provision(database: PrismaClient): Promise<Fixture> {
     }),
     database.session.create({
       data: {
+        id: randomUUID(),
         userId: employeeUser.id,
         tokenHash: hashSessionToken(employeeToken),
         expiresAt,
@@ -419,6 +563,7 @@ async function provision(database: PrismaClient): Promise<Fixture> {
 
   const object = await database.objectDefinition.create({
     data: {
+      id: randomUUID(),
       tenantId: tenant.id,
       name: '销售线索',
       code: objectCode,
@@ -545,6 +690,12 @@ async function cleanup(database: PrismaClient): Promise<void> {
   const userIds = users.map(({ id }) => id);
   if (tenantIds.length > 0) {
     await database.auditLog.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    for (const tenantId of tenantIds) {
+      await database.$executeRaw`DELETE FROM record_import_rows WHERE tenant_id = ${tenantId}::uuid`;
+    }
+    await database.recordFollowUp.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });
     await database.record.deleteMany({

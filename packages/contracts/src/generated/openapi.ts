@@ -452,6 +452,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/platform/tenants/{tenantId}/first-admin-invitation/renew": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["TenantsController_renewFirstAdminInvitation"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/platform/tenants/{tenantId}/status": {
     parameters: {
       query?: never;
@@ -658,6 +674,38 @@ export interface paths {
     options?: never;
     head?: never;
     patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/follow-ups": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["FollowUpsController_list"];
+    put?: never;
+    post: operations["FollowUpsController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/follow-ups/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["FollowUpsController_update"];
     trace?: never;
   };
   "/api/v1/workspaces/{tenantCode}/invitations": {
@@ -1279,6 +1327,14 @@ export interface components {
         | "BOOLEAN";
       validation?: components["schemas"]["FieldValidationDto"];
     };
+    CreateFollowUpDto: {
+      /** Format: date-time */
+      dueAt: string;
+      objectCode: string;
+      /** Format: uuid */
+      recordId: string;
+      title: string;
+    };
     CreateInvitationDto: {
       /** @example 13800138000 */
       phone: string;
@@ -1477,6 +1533,9 @@ export interface components {
       sourceDraftVersion: number;
     };
     DashboardPublishedFieldDto: {
+      config?: {
+        [key: string]: unknown;
+      };
       fieldKey: string;
       label: string;
       /** @enum {string} */
@@ -1493,6 +1552,9 @@ export interface components {
         | "MULTI_SELECT"
         | "MEMBER"
         | "BOOLEAN";
+      validation?: {
+        [key: string]: unknown;
+      };
     };
     DashboardRecordListDataDto: {
       fields: components["schemas"]["DashboardPublishedFieldDto"][];
@@ -1655,6 +1717,29 @@ export interface components {
       /** @example +8613800138000 */
       targetPhone: string;
     };
+    FollowUpPageDto: {
+      items: components["schemas"]["FollowUpResponseDto"][];
+      limit: number;
+      openCount: number;
+      overdueCount: number;
+      page: number;
+      total: number;
+    };
+    FollowUpResponseDto: {
+      canManage: boolean;
+      /** Format: date-time */
+      dueAt: string;
+      id: string;
+      objectCode: string;
+      objectName: string;
+      overdue: boolean;
+      recordId: string;
+      recordTitle: string;
+      /** @enum {string} */
+      status: "OPEN" | "DONE" | "CANCELLED";
+      title: string;
+      version: number;
+    };
     ForgotPasswordDto: {
       deviceKey: string;
       /** @example 13800138000 */
@@ -1668,6 +1753,11 @@ export interface components {
       };
     };
     ImportRecordsDto: {
+      /**
+       * Format: uuid
+       * @description 稳定的文件批次 ID，重试时复用以避免重复创建。
+       */
+      batchId?: string;
       rows: components["schemas"]["ImportRecordRowDto"][];
     };
     InvitationActionResponseDto: {
@@ -2523,6 +2613,13 @@ export interface components {
         | "BOOLEAN";
       validation?: components["schemas"]["FieldValidationDto"];
     };
+    UpdateFollowUpDto: {
+      /** Format: date-time */
+      dueAt?: string;
+      /** @enum {string} */
+      status?: "DONE" | "CANCELLED";
+      version: number;
+    };
     UpdateObjectDefinitionDto: {
       code?: string;
       description?: string | null;
@@ -3177,6 +3274,8 @@ export interface operations {
       query?: {
         limit?: number;
         page?: number;
+        search?: string;
+        status?: "DRAFT" | "ACTIVE" | "SUSPENDED" | "CLOSED";
       };
       header?: never;
       path?: never;
@@ -3255,6 +3354,27 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["TenantBusinessConfigurationSummaryResponseDto"];
+        };
+      };
+    };
+  };
+  TenantsController_renewFirstAdminInvitation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlatformTenantResponseDto"];
         };
       };
     };
@@ -3616,6 +3736,83 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["DashboardOverviewDto"];
+        };
+      };
+    };
+  };
+  FollowUpsController_list: {
+    parameters: {
+      query?: {
+        limit?: number;
+        page?: number;
+        recordId?: string;
+        status?: "OPEN" | "OVERDUE" | "DONE" | "CANCELLED";
+      };
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["FollowUpPageDto"];
+        };
+      };
+    };
+  };
+  FollowUpsController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateFollowUpDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["FollowUpResponseDto"];
+        };
+      };
+    };
+  };
+  FollowUpsController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateFollowUpDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["FollowUpResponseDto"];
         };
       };
     };

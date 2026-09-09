@@ -1,7 +1,10 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { DashboardRuntime, DashboardRuntimeResult } from "@/features/dashboard/dashboard-types";
+import type {
+  DashboardRuntime,
+  DashboardRuntimeResult,
+} from "@/features/dashboard/dashboard-types";
 
 import { WorkspaceHomeView } from "./workspace-home-view";
 
@@ -38,17 +41,27 @@ describe("WorkspaceHomeView", () => {
     expect(
       screen.getByRole("heading", { name: "八月运营概览" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "订单总数" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "处理状态" })).toBeInTheDocument();
-    expect(screen.getByTestId("trend-chart")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "负责人排行" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "订单总数" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "处理状态" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("当前范围仅有一个时间点，积累更多数据后显示趋势。"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "负责人排行" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "北区订单" })).toHaveAttribute(
       "href",
       "/workspace/northwind/objects/orders/record-1",
     );
 
     const widgets = container.querySelectorAll("[data-dashboard-widget]");
-    expect([...widgets].map((widget) => widget.getAttribute("data-widget-id"))).toEqual([
+    expect(
+      [...widgets].map((widget) => widget.getAttribute("data-widget-id")),
+    ).toEqual([
       "total",
       "unavailable",
       "trend",
@@ -56,22 +69,27 @@ describe("WorkspaceHomeView", () => {
       "leaderboard",
       "records",
     ]);
-    const metricBand = container.querySelector('[data-dashboard-band="metrics"]');
+    const metricBand = container.querySelector(
+      '[data-dashboard-band="metrics"]',
+    );
     expect(metricBand).toContainElement(widgets[0] as HTMLElement);
     expect(metricBand).toHaveAttribute("data-metric-count", "2");
-    expect(container.querySelector('[data-dashboard-band="analysis"]')).toContainElement(
-      screen.getByRole("heading", { name: "每日订单" }),
-    );
-    expect(container.querySelector('[data-dashboard-band="tables"]')).toContainElement(
-      screen.getByRole("heading", { name: "近期订单" }),
-    );
-    expect([...widgets].some((widget) =>
-      [...widget.classList].some((name) =>
-        name.includes("widgetQuarter") ||
-        name.includes("widgetHalf") ||
-        name.includes("widgetFull"),
+    expect(
+      container.querySelector('[data-dashboard-band="analysis"]'),
+    ).toContainElement(screen.getByRole("heading", { name: "每日订单" }));
+    expect(
+      container.querySelector('[data-dashboard-band="tables"]'),
+    ).toContainElement(screen.getByRole("heading", { name: "近期订单" }));
+    expect(
+      [...widgets].some((widget) =>
+        [...widget.classList].some(
+          (name) =>
+            name.includes("widgetQuarter") ||
+            name.includes("widgetHalf") ||
+            name.includes("widgetFull"),
+        ),
       ),
-    )).toBe(false);
+    ).toBe(false);
   });
 
   it("keeps ready siblings visible when one published widget is unavailable", () => {
@@ -86,9 +104,13 @@ describe("WorkspaceHomeView", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "负责人排行" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "负责人排行" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("此组件暂时无法显示")).toBeInTheDocument();
-    expect(screen.getByText("查询暂时不可用，请稍后重试。")).toBeInTheDocument();
+    expect(
+      screen.getByText("查询暂时不可用，请稍后重试。"),
+    ).toBeInTheDocument();
   });
 
   it("renders each ready widget's empty result without inventing values", () => {
@@ -142,16 +164,24 @@ describe("WorkspaceHomeView", () => {
     expect(screen.getAllByText("零值")).toHaveLength(2);
     expect(screen.getAllByText("-4")).toHaveLength(3);
     expect(
-      container.querySelector('[data-distribution-mark][data-direction="zero"]'),
+      container.querySelector(
+        '[data-distribution-mark][data-direction="zero"]',
+      ),
     ).toHaveStyle({ width: "0%" });
     expect(
       container.querySelector('[data-funnel-stage][data-direction="zero"]'),
     ).toHaveStyle({ width: "0%" });
     expect(screen.getByLabelText("负向阶段：-4，负值")).toBeInTheDocument();
-    expect(screen.getByText("存在负值，无法按整体比例展示。")).toBeInTheDocument();
-    expect(screen.queryByRole("img", { name: "含负值环图" })).not.toBeInTheDocument();
+    expect(
+      screen.getByText("存在负值，无法按整体比例展示。"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("img", { name: "含负值环图" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("img", { name: "全零环图" })).toBeInTheDocument();
-    expect(screen.getByRole("list", { name: "全零环图数值" })).toHaveTextContent("零值0");
+    expect(
+      screen.getByRole("list", { name: "全零环图数值" }),
+    ).toHaveTextContent("零值0");
   });
 
   it("provides a textual trend-data equivalent alongside the concise chart", () => {
@@ -162,14 +192,33 @@ describe("WorkspaceHomeView", () => {
         userName="张三"
         role="TENANT_ADMIN"
         businessObjects={objects}
-        overview={readyOverview}
+        overview={{
+          ...readyOverview,
+          widgets: readyOverview.widgets.map((widget) =>
+            widget.type === "TREND" && widget.state === "READY"
+              ? {
+                  ...widget,
+                  data: {
+                    items: [
+                      { date: "2026-08-20", value: 2 },
+                      { date: "2026-08-21", value: 3 },
+                    ],
+                  },
+                }
+              : widget,
+          ),
+        }}
       />,
     );
 
     expect(screen.getByTestId("trend-chart")).toBeInTheDocument();
     const dataTable = screen.getByRole("table", { name: "每日订单数据" });
-    expect(within(dataTable).getByRole("cell", { name: "2026-08-20" })).toBeInTheDocument();
-    expect(within(dataTable).getByRole("cell", { name: "2" })).toBeInTheDocument();
+    expect(
+      within(dataTable).getByRole("cell", { name: "2026-08-20" }),
+    ).toBeInTheDocument();
+    expect(
+      within(dataTable).getByRole("cell", { name: "2" }),
+    ).toBeInTheDocument();
   });
 
   it("offers administrators configuration while employees see not-enabled guidance", () => {
@@ -201,7 +250,9 @@ describe("WorkspaceHomeView", () => {
     );
 
     expect(screen.getByText("工作台尚未启用")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "配置工作台" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "配置工作台" }),
+    ).not.toBeInTheDocument();
   });
 
   it("sends an administrator without published tables to create the first business table", () => {
@@ -283,18 +334,15 @@ describe("WorkspaceHomeView", () => {
     );
 
     const switcher = screen.getByRole("navigation", { name: "工作台" });
-    expect(within(switcher).getByRole("link", { name: "管理工作台" })).toHaveAttribute(
-      "href",
-      "/workspace/northwind",
-    );
-    expect(within(switcher).getByRole("link", { name: "销售工作台" })).toHaveAttribute(
-      "href",
-      "/workspace/northwind/dashboards/sales",
-    );
-    expect(within(switcher).getByRole("link", { name: "销售工作台" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    expect(
+      within(switcher).getByRole("link", { name: "管理工作台" }),
+    ).toHaveAttribute("href", "/workspace/northwind");
+    expect(
+      within(switcher).getByRole("link", { name: "销售工作台" }),
+    ).toHaveAttribute("href", "/workspace/northwind/dashboards/sales");
+    expect(
+      within(switcher).getByRole("link", { name: "销售工作台" }),
+    ).toHaveAttribute("aria-current", "page");
   });
 
   it("lets employees create and open published objects they can use", () => {
@@ -328,13 +376,19 @@ describe("WorkspaceHomeView", () => {
       "href",
       "/workspace/northwind/objects/orders",
     );
-    expect(screen.queryByRole("link", { name: "新建备忘" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "新建备忘" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "打开备忘" })).toHaveAttribute(
       "href",
       "/workspace/northwind/objects/notes",
     );
-    expect(screen.queryByRole("link", { name: "配置工作台" })).not.toBeInTheDocument();
-    expect(screen.getByText("数据只显示你当前有权查看的结果。")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "配置工作台" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText("数据只显示你当前有权查看的结果。"),
+    ).toBeInTheDocument();
   });
 
   it("exposes a period control with distinct empty-state kinds", () => {
@@ -349,7 +403,7 @@ describe("WorkspaceHomeView", () => {
       />,
     );
 
-    const period = screen.getByRole("navigation", { name: "统计区间" });
+    const period = screen.getByRole("navigation", { name: "趋势时间范围" });
     expect(period).toHaveTextContent("8月1日");
     expect(period).toHaveTextContent("8月31日");
     expect(screen.getByRole("link", { name: "本月" })).toHaveAttribute(
@@ -397,7 +451,9 @@ describe("WorkspaceHomeView", () => {
     expect(screen.getByTestId("widget-empty-no-permission")).toHaveTextContent(
       "没有权限查看",
     );
-    expect(screen.getByText("当前权限不允许读取此组件所需的数据。")).toBeInTheDocument();
+    expect(
+      screen.getByText("当前权限不允许读取此组件所需的数据。"),
+    ).toBeInTheDocument();
   });
 });
 
@@ -453,7 +509,9 @@ const runtime = {
       width: "HALF",
       sortOrder: 4,
       state: "READY",
-      data: { items: [{ memberId: "member-1", displayName: "王芳", value: 3 }] },
+      data: {
+        items: [{ memberId: "member-1", displayName: "王芳", value: 3 }],
+      },
     },
     {
       id: "records",
@@ -464,7 +522,16 @@ const runtime = {
       sortOrder: 5,
       state: "READY",
       data: {
-        fields: [{ fieldKey: "status", label: "处理状态", type: "SINGLE_SELECT" }],
+        fields: [
+          {
+            fieldKey: "status",
+            label: "处理状态",
+            type: "SINGLE_SELECT",
+            config: {
+              options: [{ key: "open", label: "待处理", color: "BLUE" }],
+            },
+          },
+        ],
         items: [
           {
             id: "record-1",
@@ -473,7 +540,7 @@ const runtime = {
             ownerMemberId: "member-1",
             ownerName: "王芳",
             updatedAt: "2026-08-30T00:00:00.000Z",
-            values: { status: "待处理" },
+            values: { status: "open" },
           },
         ],
       },
@@ -583,7 +650,12 @@ const distributionOverview = {
       data: {
         display: "DONUT",
         items: [
-          { optionKey: "unknown", label: "未知颜色", color: "BRAND_BLUE", value: 3 },
+          {
+            optionKey: "unknown",
+            label: "未知颜色",
+            color: "BRAND_BLUE",
+            value: 3,
+          },
           { optionKey: "done", label: "已完成", color: "GREEN", value: 1 },
         ],
       },
@@ -622,7 +694,12 @@ const signedDistributionOverview = {
       data: {
         display: "FUNNEL",
         items: [
-          { optionKey: "positive", label: "正向阶段", color: "GREEN", value: 8 },
+          {
+            optionKey: "positive",
+            label: "正向阶段",
+            color: "GREEN",
+            value: 8,
+          },
           { optionKey: "zero", label: "零值阶段", color: "GRAY", value: 0 },
           { optionKey: "negative", label: "负向阶段", color: "RED", value: -4 },
         ],
@@ -660,7 +737,9 @@ const signedDistributionOverview = {
   ],
 } satisfies DashboardRuntimeResult;
 
-function emptyOverview(role: DashboardRuntimeResult["role"]): DashboardRuntimeResult {
+function emptyOverview(
+  role: DashboardRuntimeResult["role"],
+): DashboardRuntimeResult {
   return {
     title: "工作台",
     period: runtime.period,

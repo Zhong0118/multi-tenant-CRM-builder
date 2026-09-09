@@ -6,10 +6,7 @@ import type {
   PublishedObjectRepository,
 } from '../objects/published-object.repository';
 import { PublishedObjectService } from '../objects/published-object.service';
-import type {
-  MemberActivityType,
-  RecordActivity,
-} from './record-activity';
+import type { MemberActivityType, RecordActivity } from './record-activity';
 import type {
   DynamicRecord,
   RecordListQuery,
@@ -235,6 +232,23 @@ class MemoryPublishedRepository implements PublishedObjectRepository {
 }
 
 class MemoryRecordsStore implements RecordsStore {
+  imports = new Map<string, string>();
+  async lockImportBatch() {}
+  findImportedRecordId(objectId: string, batchId: string, rowNumber: number) {
+    return Promise.resolve(
+      this.imports.get(`${objectId}:${batchId}:${rowNumber}`) ?? null,
+    );
+  }
+  saveImportedRecordId(
+    objectId: string,
+    batchId: string,
+    rowNumber: number,
+    recordId: string,
+  ) {
+    this.imports.set(`${objectId}:${batchId}:${rowNumber}`, recordId);
+    return Promise.resolve();
+  }
+
   records: DynamicRecord[] = [];
   activities: RecordActivity[] = [];
   members = new Set([admin.memberId, employee.memberId, otherMemberId]);
@@ -566,6 +580,75 @@ async function create(
 }
 
 describe('RecordsService', () => {
+  it('reuses successful import rows after a lost response while corrected failures can succeed', async () => {
+    const { service, store } = fixture();
+    const batchId = '2a7a955c-bf19-4a1d-8cdf-4a94a20bb082';
+    const first = await service.importRows(
+      admin,
+      'leads',
+      {
+        batchId,
+        rows: [
+          { rowNumber: 2, values: { name: 'One' } },
+          { rowNumber: 3, values: {} },
+        ],
+      },
+      meta,
+    );
+    expect(first.created).toBe(1);
+    const retry = await service.importRows(
+      admin,
+      'leads',
+      {
+        batchId,
+        rows: [
+          { rowNumber: 2, values: { name: 'Changed successful row' } },
+          { rowNumber: 3, values: { name: 'Corrected' } },
+        ],
+      },
+      meta,
+    );
+    expect(retry.items[0].record?.id).toBe(first.items[0].record?.id);
+    expect(retry.items[0].record?.title).toBe('One');
+    expect(store.records).toHaveLength(2);
+    expect(retry.failed).toBe(0);
+  });
+
+  it('preserves another owner when an employee with UPDATE ALL edits values', async () => {
+    const { service, publishedRepository } = fixture();
+    const configuration = publishedRepository.record
+      .configuration as PublishedObjectSchema;
+    configuration.employeeAccess.readScope = 'ALL';
+    configuration.employeeAccess.updateScope = 'ALL';
+    const record = await create(service, admin, 'Original', otherMemberId);
+    const updated = await service.update(
+      employee,
+      'leads',
+      record.id,
+      { version: record.version, values: { name: 'Edited' } },
+      meta,
+    );
+    expect(updated.ownerMemberId).toBe(otherMemberId);
+  });
+  it('denies runtime access and navigation when an existing title is hidden', async () => {
+    const { service, publishedRepository } = fixture();
+    const configuration = publishedRepository.record
+      .configuration as PublishedObjectSchema;
+    configuration.employeeAccess.fields.name = 'HIDDEN';
+    await expect(
+      service.list(employee, 'leads', {
+        page: 1,
+        limit: 20,
+        sort: 'updatedAt',
+        direction: 'desc',
+        search: 'secret',
+      }),
+    ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
+    await expect(
+      new PublishedObjectService(publishedRepository).listAccessible(employee),
+    ).resolves.toEqual([]);
+  });
+
   it('enforces CREATE action permission', async () => {
     const { service, publishedRepository } = fixture();
     const configuration = publishedRepository.record
@@ -808,7 +891,9 @@ describe('RecordsService', () => {
   it('filters records by a visible published money range', async () => {
     const { service } = fixture();
     await create(service, admin, '小额', employee.memberId, { quote: '80.00' });
-    await create(service, admin, '大额', employee.memberId, { quote: '320.50' });
+    await create(service, admin, '大额', employee.memberId, {
+      quote: '320.50',
+    });
 
     const page = await service.list(admin, 'leads', {
       page: 1,
@@ -1084,10 +1169,14 @@ describe('RecordsService', () => {
       status: 'FAILED',
       error: { code: 'RECORD_NOT_FOUND' },
     });
-    await expect(service.detail(employee, 'leads', first.id)).resolves.toMatchObject({
+    await expect(
+      service.detail(employee, 'leads', first.id),
+    ).resolves.toMatchObject({
       values: expect.objectContaining({ lead_status: 'following' }),
     });
-    await expect(service.detail(employee, 'leads', second.id)).resolves.toMatchObject({
+    await expect(
+      service.detail(employee, 'leads', second.id),
+    ).resolves.toMatchObject({
       title: '乙线索',
     });
   });

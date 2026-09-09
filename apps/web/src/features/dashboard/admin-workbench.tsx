@@ -3,6 +3,7 @@
 import { Button } from "antd";
 import Link from "next/link";
 
+import { FollowUpSummary } from "@/features/follow-ups/follow-up-summary";
 import { PageHeader } from "@/components/layout/page-header";
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
@@ -50,6 +51,7 @@ export function AdminWorkbench({
           publication={overview.publication}
         />
       </div>
+      <FollowUpSummary tenantCode={tenantCode} />
       <DashboardRenderer tenantCode={tenantCode} runtime={overview} />
       <BusinessObjectBar
         tenantCode={tenantCode}

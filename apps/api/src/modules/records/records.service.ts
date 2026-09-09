@@ -297,14 +297,22 @@ export class RecordsService {
       objectCode,
     );
     return this.repository.withTenant(context, async (store) =>
-      createRecordRow(store, resolved, context, input, meta, this.clock, this.idGenerator),
+      createRecordRow(
+        store,
+        resolved,
+        context,
+        input,
+        meta,
+        this.clock,
+        this.idGenerator,
+      ),
     );
   }
 
   async importRows(
     context: TenantContext,
     objectCode: string,
-    input: { rows: RecordImportRowInput[] },
+    input: { rows: RecordImportRowInput[]; batchId?: string },
     meta: RequestMeta,
   ): Promise<RecordImportResponse> {
     const resolved = await this.publishedObjects.resolveRuntimeSchema(
@@ -322,9 +330,39 @@ export class RecordsService {
       });
     }
     return this.repository.withTenant(context, async (store) => {
+      const objectId = resolved.schema.object.id;
+      if (
+        new Set(input.rows.map((row) => row.rowNumber)).size !==
+        input.rows.length
+      ) {
+        throw new ApiException('RECORD_IMPORT_INVALID', 400);
+      }
+      if (input.batchId) await store.lockImportBatch(objectId, input.batchId);
       const items: RecordImportResultItem[] = [];
       for (const row of input.rows) {
         try {
+          const previousId = input.batchId
+            ? await store.findImportedRecordId(
+                objectId,
+                input.batchId,
+                row.rowNumber,
+              )
+            : null;
+          if (previousId) {
+            const previous = await requireVisibleRecord(
+              store,
+              resolved,
+              context,
+              previousId,
+              'READ',
+            );
+            items.push({
+              rowNumber: row.rowNumber,
+              status: 'CREATED',
+              record: projectRecord(previous, resolved),
+            });
+            continue;
+          }
           const record = await createRecordRow(
             store,
             resolved,
@@ -334,6 +372,13 @@ export class RecordsService {
             this.clock,
             this.idGenerator,
           );
+          if (input.batchId)
+            await store.saveImportedRecordId(
+              objectId,
+              input.batchId,
+              row.rowNumber,
+              record.id,
+            );
           items.push({
             rowNumber: row.rowNumber,
             status: 'CREATED',
@@ -417,7 +462,10 @@ export class RecordsService {
     if (!resolved.access.canUpdate) {
       throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
     }
-    if (input.items.length === 0 || input.items.length > RECORD_BATCH_MAX_ITEMS) {
+    if (
+      input.items.length === 0 ||
+      input.items.length > RECORD_BATCH_MAX_ITEMS
+    ) {
       throw new ApiException('RECORD_BATCH_INVALID', 400, {
         fieldErrors: {
           items: [`一次最多修改 ${RECORD_BATCH_MAX_ITEMS} 条记录。`],
@@ -625,7 +673,7 @@ async function resolveUpdateOwner(
   current: string | null,
   requested: string | null | undefined,
 ): Promise<string | null> {
-  if (context.role === 'EMPLOYEE') return context.memberId;
+  if (context.role === 'EMPLOYEE') return current;
   if (requested === undefined) return current;
   if (requested === null) return null;
   if (!(await store.memberExists(requested))) {
@@ -887,7 +935,9 @@ function parseMemberFilter(
     !Array.isArray(rawValues) ||
     rawValues.length === 0 ||
     rawValues.length > 20 ||
-    rawValues.some((value) => typeof value !== 'string' || !MEMBER_ID.test(value))
+    rawValues.some(
+      (value) => typeof value !== 'string' || !MEMBER_ID.test(value),
+    )
   ) {
     throw invalidRecordFilter();
   }
@@ -917,10 +967,7 @@ const SYSTEM_SORTS = new Set<RecordListSystemSort>([
   'createdAt',
   'recordNo',
 ]);
-const SORTABLE_FIELD_KINDS: Record<
-  string,
-  RecordListFieldSort['kind']
-> = {
+const SORTABLE_FIELD_KINDS: Record<string, RecordListFieldSort['kind']> = {
   TEXT: 'TEXT',
   PHONE: 'TEXT',
   EMAIL: 'TEXT',

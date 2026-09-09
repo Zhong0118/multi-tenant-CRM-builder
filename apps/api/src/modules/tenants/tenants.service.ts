@@ -12,6 +12,8 @@ export const INVITATION_TOKEN_GENERATOR = Symbol('INVITATION_TOKEN_GENERATOR');
 
 export type TenantStatus = 'DRAFT' | 'ACTIVE' | 'SUSPENDED' | 'CLOSED';
 export interface TenantPageQuery {
+  status?: TenantStatus;
+  search?: string;
   page: number;
   limit: number;
 }
@@ -68,8 +70,12 @@ export interface PlatformTenantStore {
     status: 'PENDING';
     expiresAt: Date;
   }>;
+  renewFirstAdminInvitation(
+    id: string,
+    input: { invitationCodeHash: string; expiresAt: Date },
+  ): Promise<void>;
   countActiveAdmins(tenantId: string): Promise<number>;
-  findTenant(id: string): Promise<PlatformTenant | null>;
+  findTenant(id: string, lock?: boolean): Promise<PlatformTenant | null>;
   listTenants(page: TenantPageQuery): Promise<PlatformTenantPage>;
   countTenantsByName(name: string): Promise<number>;
   updateTenantStatus(id: string, status: TenantStatus): Promise<PlatformTenant>;
@@ -85,10 +91,7 @@ export interface PlatformTenantRepository {
   list(actorId: string, page: TenantPageQuery): Promise<PlatformTenantPage>;
   find(actorId: string, tenantId: string): Promise<PlatformTenant | null>;
   summarize(actorId: string): Promise<PlatformTenantSummary>;
-  countNameConflicts(
-    actorId: string,
-    name: string,
-  ): Promise<number>;
+  countNameConflicts(actorId: string, name: string): Promise<number>;
 }
 
 @Injectable()
@@ -183,6 +186,48 @@ export class TenantsService {
     return tenant;
   }
 
+  renewFirstAdminInvitation(
+    actor: AuthenticatedUser,
+    tenantId: string,
+    meta: { requestId: string; ip?: string },
+  ): Promise<PlatformTenant> {
+    return this.repository.transaction(actor.id, async (store) => {
+      const tenant = await store.findTenant(tenantId, true);
+      if (!tenant) throw new ApiException('TENANT_NOT_FOUND', 404);
+      if (tenant.status !== 'DRAFT') {
+        throw new ApiException('TENANT_STATUS_TRANSITION_INVALID', 409);
+      }
+      const invitation = tenant.firstAdminInvitation;
+      if (!invitation) throw new ApiException('INVITATION_NOT_FOUND', 404);
+      if (tenant.activeAdminCount > 0 || invitation.status === 'ACCEPTED') {
+        throw new ApiException('INVITATION_CONFLICT', 409);
+      }
+      const expiresAt = new Date(
+        this.clock().getTime() + 7 * 24 * 60 * 60 * 1000,
+      );
+      await store.renewFirstAdminInvitation(invitation.id, {
+        invitationCodeHash: sha256(this.tokenGenerator()),
+        expiresAt,
+      });
+      await store.appendAudit({
+        tenantId,
+        actorType: 'USER',
+        actorId: actor.id,
+        action: 'platform.tenant.admin_invitation_renewed',
+        resourceType: 'tenant_invitation',
+        resourceId: invitation.id,
+        before: { status: invitation.status },
+        after: { status: 'PENDING', expiresAt: expiresAt.toISOString() },
+        requestId: meta.requestId,
+        ip: meta.ip,
+      });
+      return {
+        ...tenant,
+        firstAdminInvitation: { ...invitation, status: 'PENDING', expiresAt },
+      };
+    });
+  }
+
   changeStatus(
     actor: AuthenticatedUser,
     tenantId: string,
@@ -190,7 +235,7 @@ export class TenantsService {
     meta: { requestId: string; ip?: string; reason?: string },
   ): Promise<PlatformTenant> {
     return this.repository.transaction(actor.id, async (store) => {
-      const before = await store.findTenant(tenantId);
+      const before = await store.findTenant(tenantId, true);
       if (!before) throw new ApiException('TENANT_NOT_FOUND', 404);
       if (!canTransition(before.status, status)) {
         throw new ApiException('TENANT_STATUS_TRANSITION_INVALID', 409);

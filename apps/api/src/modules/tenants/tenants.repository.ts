@@ -115,13 +115,34 @@ class PrismaPlatformTenantStore implements PlatformTenantStore {
     };
   }
 
+  async renewFirstAdminInvitation(
+    id: string,
+    input: { invitationCodeHash: string; expiresAt: Date },
+  ): Promise<void> {
+    const result = await this.transaction.tenantInvitation.updateMany({
+      where: {
+        id,
+        status: { in: ['PENDING', 'EXPIRED', 'DECLINED', 'REVOKED'] },
+      },
+      data: { ...input, status: 'PENDING' },
+    });
+    if (result.count !== 1) throw new ApiException('INVITATION_CONFLICT', 409);
+  }
+
   countActiveAdmins(tenantId: string): Promise<number> {
     return this.transaction.tenantMember.count({
       where: { tenantId, role: 'TENANT_ADMIN', status: 'ACTIVE' },
     });
   }
 
-  async findTenant(id: string): Promise<PlatformTenant | null> {
+  async findTenant(id: string, lock = false): Promise<PlatformTenant | null> {
+    if (lock) {
+      // Serialize lifecycle decisions so a concurrent activation cannot reopen a closed tenant.
+      await this.transaction.$queryRawUnsafe(
+        'SELECT id FROM tenants WHERE id = $1::uuid FOR UPDATE',
+        id,
+      );
+    }
     const tenant = await this.transaction.tenant.findUnique({ where: { id } });
     if (!tenant) return null;
     await this.enterTenant(tenant.id);
@@ -129,13 +150,26 @@ class PrismaPlatformTenantStore implements PlatformTenantStore {
   }
 
   async listTenants(page: TenantPageQuery) {
+    const search = page.search?.trim();
+    const where: Prisma.TenantWhereInput = {
+      ...(page.status ? { status: page.status } : {}),
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' } },
+              { code: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
     const [tenants, total] = await Promise.all([
       this.transaction.tenant.findMany({
+        where,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (page.page - 1) * page.limit,
         take: page.limit,
       }),
-      this.transaction.tenant.count(),
+      this.transaction.tenant.count({ where }),
     ]);
     const enriched: PlatformTenant[] = [];
     for (const tenant of tenants) {
@@ -214,7 +248,11 @@ class PrismaPlatformTenantStore implements PlatformTenantStore {
             id: firstAdminInvitation.id,
             targetPhone: firstAdminInvitation.targetPhone,
             role: 'TENANT_ADMIN',
-            status: firstAdminInvitation.status,
+            status:
+              firstAdminInvitation.status === 'PENDING' &&
+              firstAdminInvitation.expiresAt <= new Date()
+                ? 'EXPIRED'
+                : firstAdminInvitation.status,
             expiresAt: firstAdminInvitation.expiresAt,
           }
         : undefined,

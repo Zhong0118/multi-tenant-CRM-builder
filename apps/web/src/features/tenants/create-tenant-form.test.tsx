@@ -33,6 +33,7 @@ function tenantApi(): TenantApi {
       },
     }),
     changeStatus: vi.fn(),
+    renewFirstAdminInvitation: vi.fn(),
     countNameConflicts: vi.fn().mockResolvedValue({
       name: "北辰客户服务",
       count: 0,
@@ -228,4 +229,82 @@ describe("TenantTable", () => {
       "data",
     );
   });
+});
+
+it("keeps server filters while moving to the next company page", () => {
+  const navigate = vi.fn();
+  render(
+    <TenantTable
+      navigate={navigate}
+      filters={{ status: "DRAFT", search: "north" }}
+      data={{
+        items: [
+          {
+            id: "a",
+            name: "North",
+            code: "north",
+            status: "DRAFT",
+            activeAdminCount: 1,
+          },
+        ],
+        page: 1,
+        limit: 20,
+        total: 21,
+      }}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "right" }));
+  expect(navigate).toHaveBeenCalledWith(
+    "/platform/tenants?status=DRAFT&search=north&page=2",
+  );
+});
+
+it("only renews the first admin invitation after confirmation", async () => {
+  const api = {
+    ...tenantApi(),
+    renewFirstAdminInvitation: vi.fn().mockResolvedValue({}),
+  };
+  renderWithQuery(
+    <TenantStatusActions
+      api={api}
+      tenant={{
+        id: "a",
+        name: "Recovery",
+        code: "recovery",
+        status: "DRAFT",
+        activeAdminCount: 0,
+        firstAdminInvitation: {
+          id: "i",
+          targetPhone: "+8613800138000",
+          role: "TENANT_ADMIN",
+          status: "EXPIRED",
+          expiresAt: "2026-01-01",
+        },
+      }}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "重新邀请管理员" }));
+  expect(api.renewFirstAdminInvitation).not.toHaveBeenCalled();
+  fireEvent.click(await screen.findByRole("button", { name: "重新邀请" }));
+  await waitFor(() =>
+    expect(api.renewFirstAdminInvitation).toHaveBeenCalledWith("a"),
+  );
+});
+
+it("keeps a closed company read-only with no reactivation or reason form", () => {
+  renderWithQuery(
+    <TenantStatusActions
+      api={tenantApi()}
+      tenant={{
+        id: "a",
+        name: "Closed",
+        code: "closed",
+        status: "CLOSED",
+        activeAdminCount: 1,
+      }}
+    />,
+  );
+  expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  expect(screen.getByText(/公司已关闭，不能重新启用/)).toBeInTheDocument();
 });

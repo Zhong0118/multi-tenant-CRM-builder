@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Modal, Select, Spin } from "antd";
-import Link from "next/link";
 import { useState } from "react";
 
 import { toApiError } from "@/lib/api/api-error";
@@ -125,10 +124,7 @@ export function TenantBusinessConfiguration({
   }
 
   return (
-    <ReadingPanel
-      ariaLabel="初始化业务表"
-      className={styles.applicationPanel}
-    >
+    <ReadingPanel ariaLabel="初始化业务表" className={styles.applicationPanel}>
       <div className={styles.applicationHeading}>
         <div>
           <h2>初始化业务表</h2>
@@ -148,7 +144,9 @@ export function TenantBusinessConfiguration({
             onClick={() => setOpen(true)}
           >
             <strong>应用业务模板</strong>
-            <span>一次生成模板中的全部业务表草稿。公司管理员仍需审核并发布。</span>
+            <span>
+              一次生成模板中的全部业务表草稿。公司管理员仍需审核并发布。
+            </span>
           </button>
           <div className={styles.applicationChoice}>
             <strong>暂不使用模板</strong>
@@ -166,11 +164,8 @@ export function TenantBusinessConfiguration({
           {tenant.status === "ACTIVE" && summary.objectCount === 0 ? (
             <>
               {" "}
-              公司管理员可在工作空间设置中
-              <Link href={`/workspace/${tenant.code}/settings/objects/new`}>
-                创建第一张业务表
-              </Link>
-              。
+              请公司管理员登录自己的账号，在工作空间「设置 →
+              业务表」中创建第一张业务表。
             </>
           ) : null}
         </p>

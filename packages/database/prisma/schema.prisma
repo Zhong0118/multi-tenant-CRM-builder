@@ -187,6 +187,7 @@ model Tenant {
   fields             FieldDefinition[]
   records            Record[]
   recordActivities   RecordActivity[]
+  followUps          RecordFollowUp[]
   objectPublications ObjectPublication[]
   views              ViewDefinition[]
   objectPermissions  ObjectPermission[]
@@ -266,6 +267,7 @@ model TenantMember {
   ownedRecords              Record[]            @relation("RecordOwner")
   createdRecords            Record[]            @relation("RecordCreator")
   recordActivities          RecordActivity[]    @relation("RecordActivityActor")
+  followUps                 RecordFollowUp[]
   publishedObjects          ObjectPublication[] @relation("ObjectPublicationPublisher")
   publishedDashboards       TenantDashboardPublication[] @relation("TenantDashboardPublicationPublisher")
   objectPermissionOverrides ObjectPermission[]  @relation("ObjectPermissionMember")
@@ -570,6 +572,7 @@ model Record {
   owner                  TenantMember?    @relation("RecordOwner", fields: [tenantId, ownerMemberId], references: [tenantId, id], onDelete: Restrict)
   createdBy              TenantMember?    @relation("RecordCreator", fields: [tenantId, createdByMemberId], references: [tenantId, id], onDelete: Restrict)
   activities             RecordActivity[]
+  followUps              RecordFollowUp[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, objectId, recordNo])
@@ -617,4 +620,24 @@ model AuditLog {
   @@index([tenantId, createdAt(sort: Desc)])
   @@index([resourceType, resourceId])
   @@map("audit_logs")
+}
+
+
+model RecordFollowUp {
+  id String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  recordId String @map("record_id") @db.Uuid
+  assigneeMemberId String @map("assignee_member_id") @db.Uuid
+  title String @db.VarChar(200)
+  dueAt DateTime @map("due_at") @db.Timestamptz(3)
+  status String @default("OPEN") @db.VarChar(16)
+  version Int @default(1)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  record Record @relation(fields: [tenantId, recordId], references: [tenantId, id], onDelete: Restrict)
+  assignee TenantMember @relation(fields: [tenantId, assigneeMemberId], references: [tenantId, id], onDelete: Restrict)
+  @@index([tenantId, assigneeMemberId, status, dueAt])
+  @@map("record_follow_ups")
 }

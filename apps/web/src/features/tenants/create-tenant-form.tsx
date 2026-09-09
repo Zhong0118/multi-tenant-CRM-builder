@@ -35,9 +35,20 @@ export interface TenantApi {
     input: { status: PlatformTenant["status"]; reason?: string },
   ): Promise<PlatformTenant>;
   countNameConflicts(name: string): Promise<{ name: string; count: number }>;
+  renewFirstAdminInvitation(tenantId: string): Promise<PlatformTenant>;
 }
 
 export const tenantApi: TenantApi = {
+  async renewFirstAdminInvitation(tenantId) {
+    const result = await browserApiClient.POST(
+      "/api/v1/platform/tenants/{tenantId}/first-admin-invitation/renew",
+      {
+        params: { path: { tenantId } },
+      },
+    );
+    if (result.data) return result.data;
+    throw toApiError(result.error, result.response.status);
+  },
   async create(input) {
     const result = await browserApiClient.POST("/api/v1/platform/tenants", {
       body: input,

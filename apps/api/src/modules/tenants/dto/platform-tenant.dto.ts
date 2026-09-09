@@ -53,6 +53,17 @@ export class TenantNameConflictResponseDto {
 }
 
 export class PlatformTenantPageQueryDto {
+  @ApiPropertyOptional({ enum: ['DRAFT', 'ACTIVE', 'SUSPENDED', 'CLOSED'] })
+  @IsOptional()
+  @IsIn(['DRAFT', 'ACTIVE', 'SUSPENDED', 'CLOSED'])
+  status?: 'DRAFT' | 'ACTIVE' | 'SUSPENDED' | 'CLOSED';
+
+  @ApiPropertyOptional({ maxLength: 200 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  search?: string;
+
   @ApiPropertyOptional({ type: Number, minimum: 1, default: 1 })
   @IsOptional()
   @Type(() => Number)

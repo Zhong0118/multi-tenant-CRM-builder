@@ -19,7 +19,7 @@ class MemoryStore implements PlatformTenantStore {
     id: string;
     targetPhone: string;
     role: 'TENANT_ADMIN';
-    status: 'PENDING';
+    status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'REVOKED' | 'EXPIRED';
     expiresAt: Date;
   };
   activeAdminCount = 0;
@@ -53,7 +53,21 @@ class MemoryStore implements PlatformTenantStore {
       status: 'PENDING',
       expiresAt: input.expiresAt,
     };
-    return Promise.resolve(this.firstAdminInvitation);
+    return Promise.resolve({
+      ...this.firstAdminInvitation,
+      status: 'PENDING' as const,
+    });
+  }
+  renewFirstAdminInvitation(
+    _id: string,
+    input: { invitationCodeHash: string; expiresAt: Date },
+  ) {
+    this.firstAdminInvitation = {
+      ...this.firstAdminInvitation!,
+      status: 'PENDING',
+      expiresAt: input.expiresAt,
+    };
+    return Promise.resolve();
   }
   countActiveAdmins() {
     return Promise.resolve(this.activeAdminCount);
@@ -312,5 +326,70 @@ describe('TenantsService', () => {
     await expect(
       service.countNameConflicts(platformAdmin, ' 示例公司 '),
     ).resolves.toEqual({ name: '示例公司', count: 2 });
+  });
+});
+
+describe('first admin invitation recovery', () => {
+  it('renews an expired draft invitation for the same phone and audits it', async () => {
+    const { service, store } = fixture();
+    const tenant = await service.createTenant(platformAdmin, {
+      name: 'Recovery',
+      code: 'recovery',
+      firstAdminPhone: '13800138000',
+      requestId: 'req-create',
+    });
+    store.firstAdminInvitation!.status = 'EXPIRED';
+    store.firstAdminInvitation!.expiresAt = new Date('2026-08-01');
+    const result = await service.renewFirstAdminInvitation(
+      platformAdmin,
+      tenant.id,
+      { requestId: 'req-renew' },
+    );
+    expect(result.firstAdminInvitation).toMatchObject({
+      targetPhone: '+8613800138000',
+      status: 'PENDING',
+      expiresAt: new Date('2026-08-27T00:00:00Z'),
+    });
+    expect(store.audits).toContain('platform.tenant.admin_invitation_renewed');
+  });
+  it.each(['ACTIVE', 'SUSPENDED', 'CLOSED'] as const)(
+    'does not renew after tenant becomes %s',
+    async (status) => {
+      const { service, store } = fixture();
+      const tenant = await service.createTenant(platformAdmin, {
+        name: 'Recovery',
+        code: 'recovery',
+        firstAdminPhone: '13800138000',
+        requestId: 'req-create',
+      });
+      store.tenants[0].status = status;
+      await expect(
+        service.renewFirstAdminInvitation(platformAdmin, tenant.id, {
+          requestId: 'req-renew',
+        }),
+      ).rejects.toMatchObject({ code: 'TENANT_STATUS_TRANSITION_INVALID' });
+    },
+  );
+  it('does not replace an accepted invitation or an existing active admin', async () => {
+    const { service, store } = fixture();
+    const tenant = await service.createTenant(platformAdmin, {
+      name: 'Recovery',
+      code: 'recovery',
+      firstAdminPhone: '13800138000',
+      requestId: 'req-create',
+    });
+    store.firstAdminInvitation!.status = 'ACCEPTED';
+    await expect(
+      service.renewFirstAdminInvitation(platformAdmin, tenant.id, {
+        requestId: 'req-renew',
+      }),
+    ).rejects.toMatchObject({ code: 'INVITATION_CONFLICT' });
+    store.firstAdminInvitation!.status = 'PENDING';
+    store.activeAdminCount = 1;
+    await expect(
+      service.renewFirstAdminInvitation(platformAdmin, tenant.id, {
+        requestId: 'req-renew',
+      }),
+    ).rejects.toMatchObject({ code: 'INVITATION_CONFLICT' });
   });
 });
