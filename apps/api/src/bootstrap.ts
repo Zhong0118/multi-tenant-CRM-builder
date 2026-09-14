@@ -11,8 +11,10 @@ import type { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 
 import { AppModule } from './app.module';
+import { ApiException } from './common/errors/api.exception';
 import { ApiExceptionFilter } from './common/errors/api-exception.filter';
 import { ApiErrorResponseDto } from './common/errors/api-error.dto';
+import { validationFieldErrors } from './common/errors/validation-field-errors';
 import { createHttpLogger } from './common/security/http-logger';
 import { OriginGuard } from './common/security/origin.guard';
 import { RequestIdMiddleware } from './common/security/request-id.middleware';
@@ -40,6 +42,10 @@ export async function createApp(): Promise<INestApplication> {
       forbidNonWhitelisted: true,
       transform: true,
       whitelist: true,
+      exceptionFactory: (errors) =>
+        new ApiException('VALIDATION_FAILED', 400, {
+          fieldErrors: validationFieldErrors(errors),
+        }),
     }),
   );
   app.useGlobalGuards(app.get(OriginGuard));
