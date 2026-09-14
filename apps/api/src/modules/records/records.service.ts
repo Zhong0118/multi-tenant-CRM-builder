@@ -111,7 +111,7 @@ export interface RecordImportResultItem {
   rowNumber: number;
   status: 'CREATED' | 'FAILED';
   record?: RecordResponse;
-  error?: { code: string; message: string };
+  error?: { code: string; message: string; fields?: string[] };
 }
 
 export interface RecordImportResponse {
@@ -389,7 +389,11 @@ export class RecordsService {
             items.push({
               rowNumber: row.rowNumber,
               status: 'FAILED',
-              error: { code: error.code, message: error.message },
+              error: {
+                code: error.code,
+                message: error.message,
+                fields: Object.keys(error.fieldErrors),
+              },
             });
             continue;
           }

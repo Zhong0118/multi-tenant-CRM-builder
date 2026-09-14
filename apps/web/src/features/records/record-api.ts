@@ -76,7 +76,7 @@ export interface RecordImportResultItem {
   rowNumber: number;
   status: "CREATED" | "FAILED";
   record?: RecordSummary;
-  error?: { code: string; message: string };
+  error?: { code: string; message: string; fields?: string[] };
 }
 
 export interface RecordImportResult {

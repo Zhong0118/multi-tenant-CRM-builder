@@ -2383,13 +2383,19 @@ export interface components {
       /** @enum {string} */
       status: "UPDATED" | "FAILED";
     };
+    RecordImportErrorDto: {
+      code: string;
+      /** @description 导致该行失败的字段键，便于在导入回执里定位到具体列。 */
+      fields?: string[];
+      message: string;
+    };
     RecordImportResponseDto: {
       created: number;
       failed: number;
       items: components["schemas"]["RecordImportResultItemDto"][];
     };
     RecordImportResultItemDto: {
-      error?: components["schemas"]["RecordBatchUpdateErrorDto"];
+      error?: components["schemas"]["RecordImportErrorDto"];
       record?: components["schemas"]["RecordResponseDto"];
       rowNumber: number;
       /** @enum {string} */

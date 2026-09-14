@@ -1211,7 +1211,7 @@ describe('RecordsService', () => {
     expect(result.items[1]).toMatchObject({
       rowNumber: 3,
       status: 'FAILED',
-      error: { code: 'FIELD_INVALID' },
+      error: { code: 'FIELD_INVALID', fields: ['email'] },
     });
     await expect(
       service.list(employee, 'leads', {

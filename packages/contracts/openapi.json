@@ -3176,6 +3176,25 @@
         "required": ["recordId", "status"],
         "type": "object"
       },
+      "RecordImportErrorDto": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "fields": {
+            "description": "导致该行失败的字段键，便于在导入回执里定位到具体列。",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": ["code", "message"],
+        "type": "object"
+      },
       "RecordImportResponseDto": {
         "properties": {
           "created": {
@@ -3197,7 +3216,7 @@
       "RecordImportResultItemDto": {
         "properties": {
           "error": {
-            "$ref": "#/components/schemas/RecordBatchUpdateErrorDto"
+            "$ref": "#/components/schemas/RecordImportErrorDto"
           },
           "record": {
             "$ref": "#/components/schemas/RecordResponseDto"

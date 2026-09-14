@@ -95,7 +95,11 @@ function recordApi(overrides: Partial<RecordApi> = {}): RecordApi {
         {
           rowNumber: 3,
           status: "FAILED",
-          error: { code: "FIELD_INVALID", message: "字段值无效。" },
+          error: {
+            code: "FIELD_INVALID",
+            message: "字段值无效。",
+            fields: ["lead_status"],
+          },
         },
       ],
     }),
@@ -155,7 +159,9 @@ describe("RecordImportDrawer", () => {
       }),
     );
     expect(screen.getByText(/成功 1 行，失败 1 行/)).toBeInTheDocument();
-    expect(screen.getByText("第 3 行：字段值无效。")).toBeInTheDocument();
+    expect(
+      screen.getByText(/第 3 行：线索状态：字段值无效。/),
+    ).toBeInTheDocument();
     expect(onCompleted).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: /重试失败行/ }));
     await waitFor(() => expect(api.importRows).toHaveBeenCalledTimes(2));

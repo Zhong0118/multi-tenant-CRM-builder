@@ -258,7 +258,18 @@ export function RecordImportDrawer({
             .filter((item) => item.status === "FAILED")
             .map((item) => (
               <li key={item.rowNumber}>
-                第 {item.rowNumber} 行：{item.error?.message ?? "导入失败"}
+                第 {item.rowNumber} 行：
+                {item.error?.fields?.length
+                  ? `${item.error.fields
+                      .map(
+                        (fieldKey) =>
+                          schema.fields.find(
+                            (field) => field.fieldKey === fieldKey,
+                          )?.label ?? fieldKey,
+                      )
+                      .join("、")}：`
+                  : ""}
+                {item.error?.message ?? "导入失败"}
               </li>
             ))}
         </ul>

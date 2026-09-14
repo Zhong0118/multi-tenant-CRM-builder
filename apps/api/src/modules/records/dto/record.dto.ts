@@ -225,14 +225,25 @@ export class ImportRecordsDto {
   rows!: ImportRecordRowDto[];
 }
 
+export class RecordImportErrorDto {
+  @ApiProperty() code!: string;
+  @ApiProperty() message!: string;
+  @ApiPropertyOptional({
+    type: String,
+    isArray: true,
+    description: '导致该行失败的字段键，便于在导入回执里定位到具体列。',
+  })
+  fields?: string[];
+}
+
 export class RecordImportResultItemDto {
   @ApiProperty() rowNumber!: number;
   @ApiProperty({ enum: ['CREATED', 'FAILED'] })
   status!: 'CREATED' | 'FAILED';
   @ApiPropertyOptional({ type: RecordResponseDto })
   record?: RecordResponseDto;
-  @ApiPropertyOptional({ type: RecordBatchUpdateErrorDto })
-  error?: RecordBatchUpdateErrorDto;
+  @ApiPropertyOptional({ type: RecordImportErrorDto })
+  error?: RecordImportErrorDto;
 }
 
 export class RecordImportResponseDto {
