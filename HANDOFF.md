@@ -2,7 +2,7 @@
 
 更新时间：2026-09-15
 
-当前功能基线：`227e8d9`，位于 `main`，已推送 `origin/main`。
+当前功能基线：`227e8d9`（其上是文档提交，`git log -1` 会显示 `12aeff7`），位于 `main`，已推送 `origin/main`。
 
 状态：`codex/crm-polish-followups` 已快进合并进 `main`；此后又完成一轮人工验收，
 共 16 个修复提交（清单见第 7 节）。未部署。
@@ -17,7 +17,7 @@
    - `apps/web/src/app/(auth)/register/page.tsx`
    - `chat会话.md`
    - `.superpowers/sdd/2026-08-26-platform-business-template-designer/progress.md`
-3. `main` 与 `origin/main` 已在 `227e8d9` 同步。不要 reset、rebase、强推或部署。推送要等用户明确要求；本次会话中用户每次确认后都要求把修复推送上去，但仍未授权部署。
+3. `main` 与 `origin/main` 已同步（`227e8d9` 为功能基线，其上可能有文档提交）。不要 reset、rebase、强推或部署。推送要等用户明确要求；本次会话中用户每次确认后都要求把修复推送上去，但仍未授权部署。
 4. 仓库存在 `.codegraph/`，理解代码时先运行 `codegraph explore "问题或符号"`。
 5. 用户要求快速实现。每个 Bug 只保留一个能复现用户症状的聚焦验证；不要反复跑全仓测试或多轮审查。
 
@@ -333,7 +333,7 @@ HANDOFF.md 与 docs/superpowers/plans/2026-09-01-productization-follow-up.md。
 - chat会话.md
 - .superpowers/sdd/2026-08-26-platform-business-template-designer/progress.md
 
-2026-09-15 基线 `227e8d9` 与 `origin/main` 同步。不要 reset、rebase、强推或部署。
+2026-09-15 功能基线 `227e8d9` 与 `origin/main` 同步（其上可能有文档提交）。不要 reset、rebase、强推或部署。
 
 P0–P5 主干已经落地。P7 表管理主干已齐：活动、导出、列设置、批量修改、映射 CSV
 导入，以及个人跟进待办/逾期筛选。2026-09-15 一轮人工验收又提交了 16 个修复，
