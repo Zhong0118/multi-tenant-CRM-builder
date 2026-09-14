@@ -88,15 +88,17 @@ export function ObjectDesigner({
   const [analysis, setAnalysis] = useState<PublicationAnalysis>();
   const [panelOpen, setPanelOpen] = useState(false);
   const [error, setError] = useState<string>();
+  const [notice, setNotice] = useState<string>();
   const [conflicted, setConflicted] = useState(false);
 
   const objectId = draft.object.id;
   const archived = draft.object.status === "ARCHIVED";
   const configurableDraft = draft as unknown as ConfigurableObjectView;
 
-  function accept(next: ObjectDraft) {
+  function accept(next: ObjectDraft, saved?: string) {
     setDraft(next);
     setError(undefined);
+    setNotice(saved);
     setConflicted(false);
     void queryClient.invalidateQueries({
       queryKey: ["workspace", tenantCode, "object-definitions"],
@@ -107,6 +109,7 @@ export function ObjectDesigner({
   function reject(caught: unknown) {
     const apiError = toApiError(caught);
     setError(`${apiError.message}（请求编号：${apiError.requestId}）`);
+    setNotice(undefined);
     setConflicted(
       apiError.code === "CONFIG_VERSION_CONFLICT" || apiError.status === 409,
     );
@@ -118,7 +121,7 @@ export function ObjectDesigner({
         expectedVersion: draft.object.version,
         fieldIds,
       }),
-    onSuccess: accept,
+    onSuccess: (next) => accept(next, "字段顺序已保存"),
     onError: reject,
   });
 
@@ -141,7 +144,7 @@ export function ObjectDesigner({
         isSystem: false,
       }),
     onSuccess: (next, input) => {
-      accept(next);
+      accept(next, "字段已创建");
       setFieldCreatorOpen(false);
       const created = next.fields.find(
         (field) => field.fieldKey === input.fieldKey,
@@ -213,7 +216,7 @@ export function ObjectDesigner({
       return updateField();
     },
     onSuccess: (next) => {
-      accept(next);
+      accept(next, "字段已保存");
       setEditingField(null);
     },
     onError: reject,
@@ -231,7 +234,7 @@ export function ObjectDesigner({
         titleFieldKey: input.titleFieldKey,
         description: input.description === "" ? null : input.description,
       }),
-    onSuccess: accept,
+    onSuccess: (next) => accept(next, "基本设置已保存"),
     onError: reject,
   });
 
@@ -246,7 +249,7 @@ export function ObjectDesigner({
         expectedVersion: draft.object.version,
         ...input,
       }),
-    onSuccess: accept,
+    onSuccess: (next) => accept(next, "列表视图已保存"),
     onError: reject,
   });
 
@@ -266,7 +269,7 @@ export function ObjectDesigner({
         ),
         ...input,
       }),
-    onSuccess: accept,
+    onSuccess: (next) => accept(next, "员工权限已保存"),
     onError: reject,
   });
 
@@ -287,7 +290,7 @@ export function ObjectDesigner({
     onSuccess: async () => {
       setPanelOpen(false);
       setAnalysis(undefined);
-      accept(await api.draft(tenantCode, objectId));
+      accept(await api.draft(tenantCode, objectId), "已发布");
     },
     onError: reject,
   });
@@ -350,6 +353,16 @@ export function ObjectDesigner({
               </Button>
             </div>
           </header>
+
+          {notice ? (
+            <Alert
+              type="success"
+              showIcon
+              closable
+              title={notice}
+              onClose={() => setNotice(undefined)}
+            />
+          ) : null}
 
           {error ? (
             <Alert

@@ -206,6 +206,7 @@ describe("ObjectDesigner configuration ledger", () => {
         },
       ),
     );
+    expect(await screen.findByText("列表视图已保存")).toBeInTheDocument();
   });
 
   it("saves extra searchable fields that are not list columns", async () => {
