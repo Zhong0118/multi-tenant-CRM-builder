@@ -1,10 +1,11 @@
 # 多租户 CRM Builder 接手说明
 
-更新时间：2026-09-14
+更新时间：2026-09-15
 
-当前功能基线：`f0b3cc6`，位于 `main`，已推送 `origin/main`。
+当前功能基线：`cc0266f`，位于 `main`，已推送 `origin/main`。
 
-状态：`codex/crm-polish-followups` 经独立复验后已快进合并进 `main` 并推送；未部署。
+状态：`codex/crm-polish-followups` 已快进合并进 `main`；此后又完成一轮人工验收，
+共 16 个修复提交（清单见第 7 节）。未部署。
 
 本文只记录当前事实。已完成与未完成对照见
 `docs/superpowers/plans/2026-09-01-productization-follow-up.md`。
@@ -16,7 +17,7 @@
    - `apps/web/src/app/(auth)/register/page.tsx`
    - `chat会话.md`
    - `.superpowers/sdd/2026-08-26-platform-business-template-designer/progress.md`
-3. `main` 与 `origin/main` 已在 `f0b3cc6` 同步。不要 reset、rebase、强推或部署；推送要等用户明确要求。
+3. `main` 与 `origin/main` 已在 `cc0266f` 同步。不要 reset、rebase、强推或部署。推送要等用户明确要求；本次会话中用户每次确认后都要求把修复推送上去，但仍未授权部署。
 4. 仓库存在 `.codegraph/`，理解代码时先运行 `codegraph explore "问题或符号"`。
 5. 用户要求快速实现。每个 Bug 只保留一个能复现用户症状的聚焦验证；不要反复跑全仓测试或多轮审查。
 
@@ -138,17 +139,17 @@ git log -10 --oneline
 
 ## 5. 编码和唯一性
 
-| 标识 | 当前数据库规则 |
-|---|---|
-| 公司代码 `tenant.code` | 全平台唯一 |
-| 公司名称 `tenant.name` | 允许重复，创建时警告 |
-| 业务模板代码 | 全平台唯一 |
-| 业务对象代码 | 同一公司内唯一，不同公司可重复 |
-| 字段键 | 同一公司、同一对象内唯一 |
-| 员工编号 | 同一公司内唯一；允许多个未填写值 |
-| 登录手机号 | 全平台唯一 |
-| 显示姓名 | 可重复 |
-| 独立用户名 | 当前不存在 |
+| 标识                   | 当前数据库规则                   |
+| ---------------------- | -------------------------------- |
+| 公司代码 `tenant.code` | 全平台唯一                       |
+| 公司名称 `tenant.name` | 允许重复，创建时警告             |
+| 业务模板代码           | 全平台唯一                       |
+| 业务对象代码           | 同一公司内唯一，不同公司可重复   |
+| 字段键                 | 同一公司、同一对象内唯一         |
+| 员工编号               | 同一公司内唯一；允许多个未填写值 |
+| 登录手机号             | 全平台唯一                       |
+| 显示姓名               | 可重复                           |
+| 独立用户名             | 当前不存在                       |
 
 业务对象的稳定定位是 `(tenantCode, objectCode)`，HTTP 路径形如
 `/api/v1/workspaces/{tenantCode}/objects/{objectCode}`。
@@ -168,10 +169,15 @@ git log -10 --oneline
 - 公司代码：`nebula-demo`
 - 公司名称：星云科技演示公司
 
-| 角色 | 手机号 | 密码 | 姓名 |
-|---|---|---|---|
-| 公司管理员 | `18800001001` | `Demo@123456` | 陈静 |
-| 普通员工 | `18800001003` | `Demo@123456` | 赵晨 / EMP001 |
+| 角色       | 手机号                                     | 密码          | 姓名                                           |
+| ---------- | ------------------------------------------ | ------------- | ---------------------------------------------- |
+| 公司管理员 | `18800001001`                              | `Demo@123456` | 陈静                                           |
+| 普通员工   | `18800001003`                              | `Demo@123456` | 赵晨 / EMP001                                  |
+| 普通员工   | `18800001002`、`18800001004`–`18800001010` | `Demo@123456` | 刘洋、钱宇、孙悦、李昂、周岚、吴桐、郑凯、王宁 |
+| 平台管理员 | `15562266465`、`13966660001`               | —             | admin、Task 9 平台管理员                       |
+
+演示租户 `nebula-demo` 的种子数据：6 张业务对象，16 条商机（`closeDate` 从 2026-08-17
+到 2026-09-13），工作台发布 #7。
 
 开发验证码来自 `.env` 的 `DEV_VERIFICATION_CODE`，目前通常为 `123456`，仅限本地。
 
@@ -181,7 +187,32 @@ git log -10 --oneline
 
 2026-09-14 合并前独立复验（不依赖上述审计自述）：`pnpm typecheck` 6 个 workspace 全过；API 聚焦 103 测试通过；Web 全量 63 文件 352 测试通过；`pnpm contracts:check` 无漂移；本地 16 个迁移已应用。
 
-已知既有失败，非合并引入：`apps/api/src/architecture.spec.ts` 因 `dashboards.repository.ts` 运行时导入 ESM 的 `@crm/database` 而报 `SyntaxError: Unexpected token 'export'`，已实测合并前的 `main` 同样失败。API 全量为 48/49 套件、391 个测试通过。修复需给 `@crm/database` 配 jest 映射或收敛为类型导入，属于独立切片，不要顺手塞进别的提交。
+已知既有失败已全部清零。此前 `apps/api/src/architecture.spec.ts` 因 `dashboards.repository.ts` 运行时导入 ESM 的 `@crm/database` 而报 `SyntaxError: Unexpected token 'export'`，现在该 spec 用 `jest.mock('@crm/database', …)` 处理（Prisma 是运行时值，`import type` 和 `moduleNameMapper` 都不成立）。
+
+2026-09-15 全量 `pnpm test` 退出码 0：API 51 套件 403 测试、Web 63 文件 360 测试、contracts 7、database 6、tenant-templates 2、worker 2。
+
+### 2026-09-15 验收修复（`f0b3cc6..cc0266f`，16 个提交）
+
+以真实浏览器操作逐页走查得来，不依赖审计自述：
+
+- `07b0e16` 会话时区固定为 UTC。pg 适配器原本按会话时区渲染 `timestamptz` 再按 UTC 读回墙钟，写入 −8h、读回 +8h；DB `now()` 生成的值统一偏移 +8h（附件时间显示成 `2026/9/15`）。已回填 101 条历史记录的偏移。
+- `db8175d` 个人列设置在挂载后写入 state，消除水合不一致。
+- `f9cc4f4`、`eaf4053` ValidationPipe 与 CSV 导入回执都带上失败字段路径，不再只说“请求参数不合法”。
+- `d37f15a` 拒绝 `canRead: true` + `readScope: 'NONE'` 这类自相矛盾的权限组合。
+- `7277343` 对象设计器按保存的列顺序渲染列清单。
+- `3046bab` 对象编码沿用服务端连字符规则，不再让前端先放行再被后端拒绝。
+- `cb196dd` 设计器每类保存都给出具名成功提示（此前成功只是清空错误横幅）。
+- `0be1dee` 未发布的草稿可以真正删除（此前误删 `object_publications` 报 42501）。
+- `8380095` 被停用成员访问 `/me/workspaces` 不再 500（RLS 会隐藏非 ACTIVE 成员关系的 tenant 行，`flatMap` 跳过）。
+- `172dace` 趋势图分桶标签裁剪到所选区间。31 天滚动窗口配 MONTH 粒度时，第一个桶标为 `2026-08-01`，落在页头声明的区间之外。注意 `GROUP BY` 必须用序号而不是重述表达式：Prisma 给每个 `?` 单独绑定参数，重述的表达式与 `GROUP BY` 里的不再是同一文本，PostgreSQL 报 42803。
+- `3b43896` 工作台区间导航三处同源缺陷：预设从不被高亮（用当前时钟反查精确相等，只可能毫秒级命中）、渲染期读 `new Date()` 导致每次加载都报水合不一致、后端隐含窗口是 31 天而唯一的相关预设是 30 天。改为从区间自身反推预设，并把 API 默认窗口对齐到 30 天。
+- `cc0266f` 成员覆盖保存给出具名成功提示。切回“继承默认”会收起面板，此前完全没有可见结果。
+
+同轮人工验收（未改代码即通过）：
+
+- 权限边界正确：员工看到 2 条线索而管理员看到 16 条；员工访问 `members` 与 `object-definitions` 均 403；员工导航隐藏成员、审计和设置。
+- 成员覆盖生效并整条替换：把赵晨的线索查看范围放到“全部”，可见线索 0 → 16，而客户与商机仍为 0；改回继承后 6 张业务表全部回到 `INHERIT`。
+- 真实执行过一次离职交接（赵晨 → 陈静，12 条记录，0 个未结待办），随后把赵晨恢复为 ACTIVE。**记录没有搬回**：交接本身不可逆，恢复成员身份不会回滚已转移的记录。
 
 ### 已完成（相对 2026-09-01 交接清单）
 
@@ -210,10 +241,15 @@ git log -10 --oneline
 
 ### 产品与 UX 缺口
 
+- 验收尚未覆盖：工作台设计器（`apps/web/src/features/dashboard/dashboard-builder.tsx`）与平台后台。这两块是下一刀的首选。
+- 被停用成员回到 `/workspaces` 时显示「尚未加入公司」，与「已被停用」不是同一件事，文案不准。
+- 附件大小格式化把 25 字节显示成「1 KB」。
+- 映射导入创建的记录负责人显示「未指定」；产品上是否应强制指定负责人尚未决策。
 - 跟进待办支持转派给有权限的有效成员；未接团队总览、主动提醒或异常队列。
 - 普通记录列表目前不开放 `MEMBER` / `BOOLEAN` / `TEXTAREA` / `MULTI_SELECT` 排序。
 - 侧边栏只能收起/展开或拖拽宽度，没有更多个性化。
 - P0.2 邀请/启用人工走查没有写入仓库的验收记录。
+- Web 测试债：36 个文件里有 207 处 `getByRole(..., { name })`。在 jsdom + antd 下每次调用约 2.7s（成本在可访问名计算，不在渲染），是套件慢的主因；已改成 `getByText` / `getByLabelText` 的地方快了约 20 倍。
 
 ### 尚未实现
 
@@ -228,6 +264,10 @@ git log -10 --oneline
 - 平台管理员受控进入租户协助排错的代管流程。
 - 模板升级同步到已初始化公司。
 - 生产数据库备份恢复、监控告警、日志脱敏与保留、迁移回滚、域名、HTTPS、Cookie 和跨域配置。
+- 附件目前存在 PostgreSQL `bytea`（单文件 5MB）。上生产前必须换成对象存储。
+- 仓库是公开的，且 `HANDOFF.md` 内含演示口令；对外交付前必须处理。
+- 根 `engines` 声明 Node `>=20.9.0`，但 `@crm/database` 是 ESM 包，Node 20 会 `ERR_REQUIRE_ESM`。要么提高下限，要么收敛导入方式。
+- `origin/backup/v3-design-tokens` 尚未合并，与 `codex/crm-polish-followups` 在 `globals.css` 和 `providers.tsx` 上冲突。需要一次「保留还是丢弃」的决策。
 
 ## 8. 验证边界
 
@@ -289,10 +329,16 @@ HANDOFF.md 与 docs/superpowers/plans/2026-09-01-productization-follow-up.md。
 - chat会话.md
 - .superpowers/sdd/2026-08-26-platform-business-template-designer/progress.md
 
-2026-09-09 基线 main 与 origin/main 同步；本轮交付分支为 codex/crm-polish-followups。不要 reset、rebase、强推或部署。
+2026-09-15 基线 `cc0266f` 与 `origin/main` 同步。不要 reset、rebase、强推或部署。
 
 P0–P5 主干已经落地。P7 表管理主干已齐：活动、导出、列设置、批量修改、映射 CSV
-导入，以及个人跟进待办/逾期筛选。短信与 AI 按用户要求暂缓。先读 docs/audits/2026-09-09/implementation.md 的验证与边界；不要反复跑全仓测试，每个 Bug 一个聚焦复现。
+导入，以及个人跟进待办/逾期筛选。2026-09-15 一轮人工验收又提交了 16 个修复，
+清单见第 7 节；全量 pnpm test 退出码 0。短信与 AI 按用户要求暂缓。
+
+验收还剩两块没走：工作台设计器与平台后台。这是下一刀的首选。
+
+不要反复跑全仓测试，每个 Bug 一个聚焦复现；新写的回归测试要先证明「去掉修复就会失败」。
+优先用 Playwright 在真实页面上核实，而不是只看编译通过。
 
 读完后先汇报：当前角色边界、公司开通顺序、模板是否必需、权限如何落库，以及你准备
 处理的唯一下一刀。得到用户确认后再改代码。
