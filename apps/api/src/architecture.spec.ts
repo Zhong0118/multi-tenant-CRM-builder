@@ -1,5 +1,25 @@
 import { Test } from '@nestjs/testing';
 
+/**
+ * @crm/database ships as ESM, which the CommonJS unit-test runtime cannot
+ * parse. This spec only asserts dependency wiring and never runs a query, so
+ * the driver is stubbed here. Real database behaviour is covered by the e2e
+ * suite, which runs against PostgreSQL.
+ */
+jest.mock('@crm/database', () => ({
+  createDatabaseClient: () => ({
+    $transaction: jest.fn(),
+    $disconnect: jest.fn(),
+  }),
+  PrismaClient: class PrismaClient {},
+  AuditActorType: {},
+  Prisma: {
+    empty: Object.freeze({}),
+    join: jest.fn(() => ({})),
+    sql: jest.fn(() => ({})),
+  },
+}));
+
 import { AppModule } from './app.module';
 import { ApiExceptionFilter } from './common/errors/api-exception.filter';
 import { OriginGuard } from './common/security/origin.guard';

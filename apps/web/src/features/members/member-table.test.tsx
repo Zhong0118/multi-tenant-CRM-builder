@@ -88,6 +88,19 @@ const initialMemberPage = {
   activeAdminCount: 1,
 };
 
+/**
+ * `getByRole(role, { name })` computes an accessible name for every candidate
+ * element, and jsdom's style resolution under Ant Design's stylesheet makes
+ * each of those calls take seconds. These helpers resolve the same controls by
+ * their rendered text, which is equivalent for a plain button and keeps the
+ * assertion synchronous instead of racing the test timeout.
+ */
+function buttonByText(label: string): HTMLElement {
+  const button = screen.getByText(label).closest("button");
+  if (!button) throw new Error(`No button renders the text "${label}"`);
+  return button;
+}
+
 describe("MemberTable", () => {
   it("shows a no-access result to employees", () => {
     renderWithQuery(
@@ -115,12 +128,10 @@ describe("MemberTable", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "重新发送" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "撤销邀请" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "停用 林员工" })).toBeEnabled();
-    expect(
-      screen.getByRole("button", { name: "停用 陈管理员" }),
-    ).toBeDisabled();
+    expect(buttonByText("重新发送")).toBeEnabled();
+    expect(buttonByText("撤销邀请")).toBeEnabled();
+    expect(screen.getByLabelText("停用 林员工")).toBeEnabled();
+    expect(screen.getByLabelText("停用 陈管理员")).toBeDisabled();
   });
 
   it("invites a member by phone and role", async () => {
