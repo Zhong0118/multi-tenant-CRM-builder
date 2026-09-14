@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  WORKBENCH_PERIOD_PRESETS,
   dashboardSettingsPath,
   workbenchPath,
   workbenchPeriodHref,
@@ -35,12 +36,45 @@ describe("workbenchPeriodRange", () => {
 });
 
 describe("workbenchPeriodPreset", () => {
+  const now = new Date("2026-09-03T08:30:00.000Z");
+
   it("matches a range back to the preset that produced it", () => {
-    const now = new Date("2026-09-03T08:30:00.000Z");
-    const range = workbenchPeriodRange("this_month", "Asia/Shanghai", now);
+    for (const { key } of WORKBENCH_PERIOD_PRESETS) {
+      const range = workbenchPeriodRange(key, "Asia/Shanghai", now);
+      expect(workbenchPeriodPreset(range, "Asia/Shanghai")).toBe(key);
+    }
+  });
+
+  it("still matches after the clock has moved past the range it produced", () => {
+    // The header is rendered from a range that was produced by an earlier
+    // clock; reverse-mapping must not depend on the current time.
+    const range = workbenchPeriodRange("past_30_days", "Asia/Shanghai", now);
+    expect(workbenchPeriodPreset(range, "Asia/Shanghai")).toBe("past_30_days");
+  });
+
+  it("prefers the narrower window when a month begins on a Monday", () => {
+    // 2026-06-01 is a Monday, so that week and that month start on the same
+    // instant and the URL cannot distinguish them.
+    const monday = new Date("2026-06-01T08:30:00.000Z");
+    const month = workbenchPeriodRange("this_month", "Asia/Shanghai", monday);
+    const week = workbenchPeriodRange("this_week", "Asia/Shanghai", monday);
+    expect(month).toEqual(week);
+    expect(workbenchPeriodPreset(month, "Asia/Shanghai")).toBe("this_week");
+  });
+
+  it("returns null for a range no preset produces", () => {
     expect(
-      workbenchPeriodPreset(range, "Asia/Shanghai", now),
-    ).toBe("this_month");
+      workbenchPeriodPreset(
+        {
+          from: "2026-01-09T08:30:00.000Z",
+          to: "2026-01-24T08:30:00.000Z",
+        },
+        "Asia/Shanghai",
+      ),
+    ).toBeNull();
+    expect(
+      workbenchPeriodPreset({ from: "not-a-date", to: "nope" }, "Asia/Shanghai"),
+    ).toBeNull();
   });
 });
 

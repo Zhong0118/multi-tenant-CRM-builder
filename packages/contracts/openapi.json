@@ -6249,7 +6249,7 @@
             "name": "days",
             "required": false,
             "schema": {
-              "default": 31,
+              "default": 30,
               "maximum": 366,
               "minimum": 1,
               "type": "number"
@@ -6468,7 +6468,7 @@
             "name": "days",
             "required": false,
             "schema": {
-              "default": 31,
+              "default": 30,
               "maximum": 366,
               "minimum": 1,
               "type": "number"

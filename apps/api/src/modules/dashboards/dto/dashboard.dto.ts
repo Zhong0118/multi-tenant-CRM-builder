@@ -211,7 +211,10 @@ export class DashboardOverviewQueryDto {
   @IsDateString({ strict: true })
   to?: string;
 
-  @ApiPropertyOptional({ minimum: 1, maximum: 366, default: 31 })
+  // Sizes the implicit window when no `from` is given. It must equal the
+  // workbench "近 30 天" preset, otherwise the landing page renders a range that
+  // no preset chip represents and none of them can show as active.
+  @ApiPropertyOptional({ minimum: 1, maximum: 366, default: 30 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()

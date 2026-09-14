@@ -24,8 +24,11 @@ export function WorkbenchPeriodNav({
   period: DashboardRuntime["period"];
   publication?: { number: number; publishedAt: string };
 }) {
-  const now = new Date();
-  const current = workbenchPeriodPreset(period, period.timezone, now);
+  // Anchor the preset links to the range the page was rendered with, never to a
+  // clock read during render: the server and the client would otherwise produce
+  // different hrefs and React would report a hydration mismatch.
+  const anchor = new Date(period.to);
+  const current = workbenchPeriodPreset(period, period.timezone);
   return (
     <nav className={styles.periodNav} aria-label="趋势时间范围">
       <span>趋势时间范围</span>
@@ -35,7 +38,7 @@ export function WorkbenchPeriodNav({
           key={preset.key}
           href={workbenchPeriodHref(
             pathname,
-            workbenchPeriodRange(preset.key, period.timezone, now),
+            workbenchPeriodRange(preset.key, period.timezone, anchor),
           )}
           aria-current={current === preset.key ? "true" : undefined}
         >

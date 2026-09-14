@@ -3,6 +3,8 @@ import {
   utcIsoToDatetimeLocal,
 } from "./dashboard-timezone";
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 export type WorkbenchPeriodPreset =
   | "this_week"
   | "this_month"
@@ -41,15 +43,35 @@ export function workbenchPeriodRange(
   };
 }
 
+/**
+ * Reverse-maps a range back to the preset that produced it.
+ *
+ * Deliberately reads no clock. The workbench header renders on both the server
+ * and the client, so a render-time `new Date()` makes the two renders disagree
+ * (a hydration mismatch), and comparing against a freshly read clock never
+ * matches anyway: the range in the URL was produced by a clock that has since
+ * moved on. The range itself carries everything the preset needs — its `from`
+ * names a tenant-calendar boundary, or its span matches a rolling window.
+ */
 export function workbenchPeriodPreset(
   range: { from: string; to: string },
   timeZone: string,
-  now: Date = new Date(),
 ): WorkbenchPeriodPreset | null {
-  for (const { key } of WORKBENCH_PERIOD_PRESETS) {
-    const candidate = workbenchPeriodRange(key, timeZone, now);
-    if (candidate.from === range.from && candidate.to === range.to) return key;
+  const from = new Date(range.from);
+  const to = new Date(range.to);
+  if (!Number.isFinite(from.getTime()) || !Number.isFinite(to.getTime())) {
+    return null;
   }
+  const localFrom = utcIsoToDatetimeLocal(range.from, timeZone);
+  if (localFrom.endsWith("T00:00:00.000")) {
+    // Within a month that begins on a Monday, "本周" and "本月" name the very
+    // same range. Nothing in the URL separates them, so prefer the narrower one.
+    if (isoWeekdayMondayZero(from, timeZone) === 0) return "this_week";
+    if (localFrom.slice(8, 10) === "01") return "this_month";
+  }
+  const span = to.getTime() - from.getTime();
+  if (span === 7 * DAY_MS) return "past_7_days";
+  if (span === 30 * DAY_MS) return "past_30_days";
   return null;
 }
 
@@ -108,7 +130,7 @@ function isoWeekdayMondayZero(now: Date, timeZone: string): number {
 }
 
 function addUtcDays(value: Date, days: number): Date {
-  return new Date(value.getTime() + days * 24 * 60 * 60 * 1000);
+  return new Date(value.getTime() + days * DAY_MS);
 }
 
 function pad(value: number): string {

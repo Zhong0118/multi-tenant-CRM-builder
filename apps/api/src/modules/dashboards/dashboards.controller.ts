@@ -211,11 +211,11 @@ function requestMeta(request: RequestWithId) {
   return { requestId: request.requestId ?? 'req_unknown', ip: request.ip };
 }
 
-function overviewPeriod(query: DashboardOverviewQueryDto) {
+export function overviewPeriod(query: DashboardOverviewQueryDto) {
   const to = query.to ? new Date(query.to) : new Date();
   const from = query.from
     ? new Date(query.from)
-    : new Date(to.getTime() - (query.days ?? 31) * 24 * 60 * 60 * 1000);
+    : new Date(to.getTime() - (query.days ?? 30) * 24 * 60 * 60 * 1000);
   return checkedPeriod({ from, to });
 }
 
