@@ -465,6 +465,59 @@ describe('PrismaDashboardQueryExecutor', () => {
     expect(queries[1]?.sql).toMatch(/< [\s\S]*INTERVAL '1 day'/);
   });
 
+  it('clips a trend bucket label to the selected period instead of naming a date outside it', async () => {
+    const queries: Array<{ sql: string; values: unknown[] }> = [];
+    const transaction = {
+      $queryRaw: jest.fn((query: { sql: string; values: unknown[] }) => {
+        queries.push(query);
+        return Promise.resolve([]);
+      }),
+    };
+    const executor = new PrismaDashboardQueryExecutor(runner(transaction));
+    const period = {
+      from: '2026-08-15T17:06:41.809Z',
+      to: '2026-09-14T17:06:41.809Z',
+      timezone: 'Asia/Shanghai',
+    };
+
+    await executor.execute(context, [
+      {
+        ...trendPlan('calendar-trend', 'close_date', 'DATE'),
+        period,
+        widget: {
+          ...trendPlan('calendar-trend', 'close_date', 'DATE').widget,
+          granularity: 'MONTH' as const,
+        },
+      },
+      {
+        ...trendPlan('instant-trend', 'closed_at', 'DATETIME'),
+        period,
+        widget: {
+          ...trendPlan('instant-trend', 'closed_at', 'DATETIME').widget,
+          granularity: 'MONTH' as const,
+        },
+      },
+    ]);
+
+    // A MONTH bucket starts on the 1st, which for a rolling window is a date the
+    // user never selected. Both timelines pull the label forward to the period.
+    expect(queries[0]?.sql).toMatch(
+      /GREATEST\([\s\S]*\)::date::timestamp[\s\S]*'YYYY-MM-DD'/,
+    );
+    expect(queries[1]?.sql).toMatch(
+      /GREATEST\([\s\S]*AT TIME ZONE \?[\s\S]*'YYYY-MM-DD'/,
+    );
+    expect(queries[1]?.sql).not.toMatch(/GREATEST\([\s\S]*\)::date::timestamp/);
+    expect(queries[0]?.values).toContain(period.from);
+    expect(queries[1]?.values).toContain(period.from);
+    // Prisma binds one parameter per placeholder, so restating the bucket in
+    // GROUP BY produces an ungrouped-column error (42803) at runtime.
+    expect(queries[0]?.sql).toMatch(/GROUP BY 1\b/);
+    expect(queries[1]?.sql).toMatch(/GROUP BY 1\b/);
+    expect(queries[0]?.sql).not.toMatch(/GROUP BY date_trunc/);
+    expect(queries[1]?.sql).not.toMatch(/GROUP BY date_trunc/);
+  });
+
   it('formats record-list updatedAt as an explicit UTC ISO timestamp', async () => {
     const queries: Array<{ sql: string; values: unknown[] }> = [];
     const transaction = {

@@ -671,12 +671,17 @@ async function executeTrend(
     dateType === 'DATE'
       ? Prisma.sql`${date}::timestamp`
       : Prisma.sql`${date} AT TIME ZONE ${plan.period.timezone}`;
+  const bucketStart = Prisma.sql`date_trunc(${granularity}, ${bucket})`;
+  const periodStart = trendPeriodStart(plan, dateType);
+  // Group by ordinal, not by re-stating the bucket expression: Prisma gives each
+  // `?` its own parameter, so a repeated expression is no longer textually
+  // identical to the one in GROUP BY and PostgreSQL rejects it as ungrouped.
   const rows = await transaction.$queryRaw<
     Array<{ date: string; value: number }>
   >(Prisma.sql`
     SELECT
       to_char(
-        date_trunc(${granularity}, ${bucket}),
+        GREATEST(${bucketStart}, ${periodStart}),
         'YYYY-MM-DD'
       ) AS date,
       ${aggregateExpression(
@@ -1083,6 +1088,22 @@ function trendPeriodPredicate(
         ${expression} >= ${plan.period.from}::timestamptz
         AND ${expression} < ${plan.period.to}::timestamptz
       `;
+}
+
+/**
+ * The period start rendered in the same timeline the bucket expression lives on.
+ * Clipping a bucket label to it keeps every returned date inside the selected
+ * range: a rolling window such as 8月15日–9月15日 grouped by MONTH would
+ * otherwise label its first bucket `2026-08-01`, a date the user never asked
+ * for and one that claims a full month of data.
+ */
+function trendPeriodStart(
+  plan: DashboardQueryPlan,
+  type: 'DATE' | 'DATETIME',
+): Prisma.Sql {
+  return type === 'DATE'
+    ? Prisma.sql`(${plan.period.from}::timestamptz AT TIME ZONE ${plan.period.timezone})::date::timestamp`
+    : Prisma.sql`${plan.period.from}::timestamptz AT TIME ZONE ${plan.period.timezone}`;
 }
 
 function trendGranularity(
