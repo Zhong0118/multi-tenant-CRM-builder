@@ -47,6 +47,13 @@ const actionLabels: Record<string, string> = {
   "follow_up.cancelled": "取消跟进",
   "follow_up.rescheduled": "改期跟进",
   "follow_up.reassigned": "转派跟进",
+  "dashboard.defaults_updated": "设置默认工作台",
+  "dashboard.order_updated": "调整工作台顺序",
+  "object.draft_deleted": "删除业务表草稿",
+  "object.order_updated": "调整业务表顺序",
+  "platform.admin.granted": "授予平台管理员",
+  "record.activity_created": "新增记录跟进",
+  "record.exported": "导出业务记录",
 
   TENANT_CREATED: "创建公司",
   TENANT_STATUS_CHANGED: "公司状态变更",
@@ -84,7 +91,10 @@ const resourceLabels: Record<string, string> = {
 };
 
 export function actionLabel(value: string) {
-  return actionLabels[value] ?? value.replaceAll("_", " ");
+  // No half-translation for an action nobody labelled yet: "object.order updated"
+  // reads as a translated label that happens to be broken. Returning the code
+  // lets the caller show it once, as the raw identifier it is.
+  return actionLabels[value] ?? value;
 }
 
 export function resourceLabel(value: string) {

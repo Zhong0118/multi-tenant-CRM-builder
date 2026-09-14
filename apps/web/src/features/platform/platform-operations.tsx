@@ -115,7 +115,9 @@ export function PlatformAuditView({
                     <td>{item.tenantName ?? "平台级"}</td>
                     <td>
                       <strong>{actionLabel(item.action)}</strong>
-                      <small>{item.action}</small>
+                      {actionLabel(item.action) === item.action ? null : (
+                        <small>{item.action}</small>
+                      )}
                     </td>
                     <td>
                       {resourceLabel(item.resourceType)}
