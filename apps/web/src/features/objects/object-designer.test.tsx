@@ -12,6 +12,10 @@ import { ObjectDesigner } from "./object-designer";
 import type { ObjectApi } from "./object-api";
 import type { ObjectDraft, ObjectDraftField } from "./object-types";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
+
 function field(overrides: Partial<ObjectDraftField>): ObjectDraftField {
   return {
     id: "field-name",
@@ -106,6 +110,7 @@ function objectApi(overrides: Partial<ObjectApi> = {}): ObjectApi {
     }),
     listPublications: vi.fn().mockResolvedValue([]),
     archive: vi.fn(),
+    removeDraft: vi.fn().mockResolvedValue({ deleted: true }),
     ...overrides,
   };
 }
@@ -312,6 +317,32 @@ describe("ObjectDesigner configuration ledger", () => {
         (input) => input.closest("label")?.querySelector("code")?.textContent,
       );
     expect(keys).toEqual(["contact_phone", "customer_name"]);
+  });
+
+  it("deletes a draft that was never published", async () => {
+    const api = objectApi();
+    const base = draft();
+    renderDesigner(
+      draft({
+        object: { ...base.object, publicationNumber: null, publishedAt: null },
+      }),
+      api,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "删除草稿" }));
+    fireEvent.click(await screen.findByRole("button", { name: "确认删除" }));
+
+    await waitFor(() =>
+      expect(api.removeDraft).toHaveBeenCalledWith("northwind", "object-1", 4),
+    );
+  });
+
+  it("hides draft deletion once the object published", () => {
+    renderDesigner(draft(), objectApi());
+
+    expect(
+      screen.queryByRole("button", { name: "删除草稿" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the object identity, live version and no pending change", () => {

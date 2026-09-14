@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Param,
@@ -27,6 +28,7 @@ import {
   CreateFieldDefinitionDto,
   CreateObjectDefinitionDto,
   DefaultViewDto,
+  DeleteObjectDraftResponseDto,
   EmployeePermissionsDto,
   ExpectedVersionDto,
   FieldOrderDto,
@@ -283,6 +285,22 @@ export class ObjectsController {
   ) {
     return toObjectDraftResponse(
       await this.objects.archive(context, objectId, dto, requestMeta(request)),
+    );
+  }
+
+  @Delete('object-definitions/:objectId')
+  @ApiOkResponse({ type: DeleteObjectDraftResponseDto })
+  removeDraft(
+    @CurrentTenant() context: TenantContext,
+    @Param('objectId') objectId: string,
+    @Body() dto: ExpectedVersionDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.objects.removeDraft(
+      context,
+      objectId,
+      dto,
+      requestMeta(request),
     );
   }
 }

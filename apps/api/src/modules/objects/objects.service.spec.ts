@@ -62,6 +62,19 @@ class MemoryObjectsStore implements ObjectsStore {
     return Promise.resolve(structuredClone(draft));
   }
 
+  deleteObject(objectId: string, expectedVersion: number): Promise<boolean> {
+    const index = this.objects.findIndex(
+      (item) => item.object.id === objectId,
+    );
+    if (index < 0) return Promise.resolve(false);
+    if (this.objects[index].object.version !== expectedVersion) {
+      return Promise.resolve(false);
+    }
+    this.objects.splice(index, 1);
+    this.publications.delete(objectId);
+    return Promise.resolve(true);
+  }
+
   saveObject(
     draft: ObjectDraft,
     expectedVersion: number,
@@ -572,6 +585,48 @@ describe('ObjectsService', () => {
       status: 400,
       fieldErrors: { readScope: expect.any(Array) },
     });
+  });
+
+  it('deletes a draft that was never published', async () => {
+    const { service, store } = fixture();
+    const draft = await createObject(service);
+
+    await expect(
+      service.removeDraft(
+        admin,
+        draft.object.id,
+        { expectedVersion: draft.object.version },
+        meta,
+      ),
+    ).resolves.toEqual({ deleted: true });
+
+    expect(store.objects).toHaveLength(0);
+    await expect(
+      service.detail(admin, draft.object.id),
+    ).rejects.toMatchObject({
+      code: 'OBJECT_NOT_FOUND',
+    });
+  });
+
+  it('refuses to delete an object that once published', async () => {
+    const { service } = fixture();
+    let draft = await createPublishableDraft(service);
+    await service.publish(
+      admin,
+      draft.object.id,
+      { expectedVersion: draft.object.version },
+      meta,
+    );
+    draft = await service.detail(admin, draft.object.id);
+
+    await expect(
+      service.removeDraft(
+        admin,
+        draft.object.id,
+        { expectedVersion: draft.object.version },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'OBJECT_ALREADY_PUBLISHED', status: 409 });
   });
 
   it('blocks invalid publication and archives an active object', async () => {

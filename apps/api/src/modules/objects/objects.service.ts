@@ -516,6 +516,31 @@ export class ObjectsService {
     );
   }
 
+  /**
+   * Hard delete for a draft that was never published. An object that reached a
+   * publication keeps its history, so it can only be archived.
+   */
+  removeDraft(
+    context: TenantContext,
+    objectId: string,
+    input: { expectedVersion: number },
+    meta: RequestMeta,
+  ): Promise<{ deleted: true }> {
+    assertTenantAdmin(context);
+    return this.repository.withTenant(context, async (store) => {
+      const draft = await requireDraft(store, objectId);
+      assertVersion(draft, input.expectedVersion);
+      if (draft.activeSchema || draft.object.activePublicationId)
+        throw new ApiException('OBJECT_ALREADY_PUBLISHED', 409);
+      if (!(await store.deleteObject(objectId, input.expectedVersion)))
+        throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
+      await store.appendAudit(
+        auditEvent(context, meta, 'object.draft_deleted', objectId, {}),
+      );
+      return { deleted: true };
+    });
+  }
+
   private mutateDraft(
     context: TenantContext,
     objectId: string,

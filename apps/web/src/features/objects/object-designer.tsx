@@ -8,11 +8,13 @@ import {
   Form,
   Input,
   Modal,
+  Popconfirm,
   Select,
   Space,
   Switch,
   Typography,
 } from "antd";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { StatusTag } from "@/components/workbench/status-tag";
@@ -78,6 +80,7 @@ export function ObjectDesigner({
   api = defaultObjectApi,
 }: ObjectDesignerProps) {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const [draft, setDraft] = useState(initialDraft);
   const [section, setSection] = useState<Section>("fields");
   const [previewRole, setPreviewRole] = useState<PreviewRole>("TENANT_ADMIN");
@@ -305,6 +308,21 @@ export function ObjectDesigner({
     onError: reject,
   });
 
+  // A draft that never published has no history to keep, so it is deleted
+  // outright; the API refuses this once a publication exists.
+  const removeDraft = useMutation({
+    mutationFn: () => api.removeDraft(tenantCode, objectId, draft.object.version),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["workspace", tenantCode, "object-definitions"],
+        exact: false,
+      });
+      router.push(`/workspace/${tenantCode}/settings/objects`);
+      router.refresh();
+    },
+    onError: reject,
+  });
+
   return (
     <>
       <p className={styles.desktopOnly}>
@@ -351,6 +369,23 @@ export function ObjectDesigner({
               >
                 发布变更
               </Button>
+              {draft.object.publicationNumber === null ? (
+                <Popconfirm
+                  title="删除这个业务表草稿？"
+                  description="它从未发布，删除后不会保留配置，也不能恢复。"
+                  okText="确认删除"
+                  cancelText="取消"
+                  onConfirm={() => removeDraft.mutate()}
+                >
+                  <Button
+                    danger
+                    loading={removeDraft.isPending}
+                    disabled={archived}
+                  >
+                    删除草稿
+                  </Button>
+                </Popconfirm>
+              ) : null}
             </div>
           </header>
 

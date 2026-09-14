@@ -87,6 +87,11 @@ export interface ObjectApi {
     objectId: string,
     expectedVersion: number,
   ): Promise<ObjectDraft>;
+  removeDraft(
+    tenantCode: string,
+    objectId: string,
+    expectedVersion: number,
+  ): Promise<{ deleted: true }>;
 }
 
 export async function dataOrThrow<T>(result: {
@@ -224,6 +229,14 @@ export const objectApi: ObjectApi = {
   async archive(tenantCode, objectId, expectedVersion) {
     return dataOrThrow(
       await browserApiClient.POST(`${DEFINITION}/archive`, {
+        params: { path: { tenantCode, objectId } },
+        body: { expectedVersion },
+      }),
+    );
+  },
+  async removeDraft(tenantCode, objectId, expectedVersion) {
+    return dataOrThrow(
+      await browserApiClient.DELETE(DEFINITION, {
         params: { path: { tenantCode, objectId } },
         body: { expectedVersion },
       }),

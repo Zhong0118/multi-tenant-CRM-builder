@@ -49,6 +49,10 @@ export class ExpectedVersionDto {
   expectedVersion!: number;
 }
 
+export class DeleteObjectDraftResponseDto {
+  @ApiProperty({ enum: [true] }) deleted!: true;
+}
+
 /**
  * A published field default is any JSON value, so it cannot be described by a
  * single scalar type. Declaring the union keeps generated clients usable

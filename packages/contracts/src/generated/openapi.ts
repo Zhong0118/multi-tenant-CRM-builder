@@ -942,7 +942,7 @@ export interface paths {
     get: operations["ObjectsController_detail"];
     put?: never;
     post?: never;
-    delete?: never;
+    delete: operations["ObjectsController_removeDraft"];
     options?: never;
     head?: never;
     patch: operations["ObjectsController_update"];
@@ -1840,6 +1840,10 @@ export interface components {
       direction: "asc" | "desc";
       /** @enum {string} */
       field: "updatedAt" | "createdAt" | "recordNo";
+    };
+    DeleteObjectDraftResponseDto: {
+      /** @enum {boolean} */
+      deleted: true;
     };
     DeleteRecordDto: {
       version: number;
@@ -4463,6 +4467,32 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ObjectDraftResponseDto"];
+        };
+      };
+    };
+  };
+  ObjectsController_removeDraft: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ExpectedVersionDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DeleteObjectDraftResponseDto"];
         };
       };
     };

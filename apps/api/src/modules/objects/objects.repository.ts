@@ -40,6 +40,11 @@ export interface ObjectsStore {
     expectedVersion: number,
     options?: { bumpVersion?: boolean },
   ): Promise<ObjectDraft | null>;
+  /**
+   * Hard delete for a draft that was never published. Returns false when the
+   * optimistic lock no longer matches, mirroring `saveObject`.
+   */
+  deleteObject(objectId: string, expectedVersion: number): Promise<boolean>;
   countActiveRecords(objectId: string): Promise<number>;
   nextPublicationNumber(objectId: string): Promise<number>;
   createPublication(input: {
@@ -391,6 +396,37 @@ class PrismaObjectsStore implements ObjectsStore {
         deletedAt: null,
       },
     });
+  }
+
+  async deleteObject(
+    objectId: string,
+    expectedVersion: number,
+  ): Promise<boolean> {
+    const locked = await this.transaction.$queryRaw<
+      Array<{ version: number }>
+    >`
+      SELECT version
+      FROM object_definitions
+      WHERE tenant_id = ${this.context.tenantId}::uuid
+        AND id = ${objectId}::uuid
+      FOR UPDATE
+    `;
+    if (locked[0]?.version !== expectedVersion) return false;
+
+    // The active publication pointer references object_publications, so it is
+    // cleared first. Publication rows themselves are append-only history and
+    // the app role has no DELETE grant on them — a never-published draft has
+    // none, and the service refuses to delete anything that published.
+    await this.transaction.objectDefinition.update({
+      where: { id: objectId },
+      data: { activePublicationId: null },
+    });
+    await this.transaction.fieldPermission.deleteMany({ where: { objectId } });
+    await this.transaction.objectPermission.deleteMany({ where: { objectId } });
+    await this.transaction.viewDefinition.deleteMany({ where: { objectId } });
+    await this.transaction.fieldDefinition.deleteMany({ where: { objectId } });
+    await this.transaction.objectDefinition.delete({ where: { id: objectId } });
+    return true;
   }
 
   async nextPublicationNumber(objectId: string): Promise<number> {

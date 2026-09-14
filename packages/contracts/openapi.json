@@ -1608,6 +1608,16 @@
         "required": ["field", "direction"],
         "type": "object"
       },
+      "DeleteObjectDraftResponseDto": {
+        "properties": {
+          "deleted": {
+            "enum": [true],
+            "type": "boolean"
+          }
+        },
+        "required": ["deleted"],
+        "type": "object"
+      },
       "DeleteRecordDto": {
         "properties": {
           "version": {
@@ -7512,6 +7522,55 @@
       }
     },
     "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}": {
+      "delete": {
+        "operationId": "ObjectsController_removeDraft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpectedVersionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteObjectDraftResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      },
       "get": {
         "operationId": "ObjectsController_detail",
         "parameters": [
