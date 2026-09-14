@@ -209,6 +209,35 @@ describe("ObjectDesigner configuration ledger", () => {
     expect(await screen.findByText("列表视图已保存")).toBeInTheDocument();
   });
 
+  it("widens the read scope when employee reading is granted", async () => {
+    const api = objectApi();
+    renderDesigner(
+      draft({
+        employeeAccess: {
+          canCreate: false,
+          canRead: false,
+          canUpdate: false,
+          canDelete: false,
+          readScope: "NONE",
+          updateScope: "NONE",
+        },
+      }),
+      api,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "员工权限" }));
+    fireEvent.click(screen.getByRole("switch", { name: "可以查看记录" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存员工权限" }));
+
+    await waitFor(() =>
+      expect(api.updatePermissions).toHaveBeenCalledWith(
+        "northwind",
+        "object-1",
+        expect.objectContaining({ canRead: true, readScope: "ALL" }),
+      ),
+    );
+  });
+
   it("saves extra searchable fields that are not list columns", async () => {
     const api = objectApi();
     renderDesigner(

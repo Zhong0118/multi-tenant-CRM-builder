@@ -547,6 +547,33 @@ describe('ObjectsService', () => {
     expect(store.publications.get(draft.object.id)).toBeUndefined();
   });
 
+  it('rejects granting an employee action whose scope denies all access', async () => {
+    const { service } = fixture();
+    const draft = await createPublishableDraft(service);
+
+    await expect(
+      service.updatePermissions(
+        admin,
+        draft.object.id,
+        {
+          expectedVersion: draft.object.version,
+          canCreate: false,
+          canRead: true,
+          canUpdate: false,
+          canDelete: false,
+          readScope: 'NONE',
+          updateScope: 'NONE',
+          fields: { name: 'EDIT' },
+        },
+        meta,
+      ),
+    ).rejects.toMatchObject({
+      code: 'VALIDATION_FAILED',
+      status: 400,
+      fieldErrors: { readScope: expect.any(Array) },
+    });
+  });
+
   it('blocks invalid publication and archives an active object', async () => {
     const { service } = fixture();
     const invalid = await createObject(service);

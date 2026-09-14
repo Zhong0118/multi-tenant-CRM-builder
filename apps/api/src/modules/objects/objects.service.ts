@@ -392,6 +392,22 @@ export class ObjectsService {
       meta,
       'object.permissions_updated',
       (draft) => {
+        // A granted action with "no access" as its scope is contradictory: the
+        // designer showed the switch as on while every record read was denied,
+        // and the publication analysis let that reach employees. Rejecting it
+        // here keeps one clear meaning per permission.
+        if (input.canRead && input.readScope === 'NONE')
+          throw new ApiException('VALIDATION_FAILED', 400, {
+            fieldErrors: {
+              readScope: ['勾选“可以查看记录”后，查看范围不能是“无权访问”。'],
+            },
+          });
+        if (input.canUpdate && input.updateScope === 'NONE')
+          throw new ApiException('VALIDATION_FAILED', 400, {
+            fieldErrors: {
+              updateScope: ['勾选“可以修改记录”后，修改范围不能是“无权访问”。'],
+            },
+          });
         draft.employeeAccess = {
           canCreate: input.canCreate,
           canRead: input.canRead,

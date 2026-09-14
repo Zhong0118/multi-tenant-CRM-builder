@@ -1002,7 +1002,13 @@ function PermissionsSection({
               id="employee-can-read"
               aria-label="可以查看记录"
               checked={canRead}
-              onChange={setCanRead}
+              onChange={(next) => {
+                setCanRead(next);
+                // Granting an action while its scope says "no access" is a
+                // contradiction the API now rejects; widen the scope instead of
+                // letting the admin save something that cannot work.
+                if (next && readScope === "NONE") setReadScope("ALL");
+              }}
             />
           </Form.Item>
           <Form.Item label="可以修改记录" htmlFor="employee-can-update">
@@ -1010,7 +1016,10 @@ function PermissionsSection({
               id="employee-can-update"
               aria-label="可以修改记录"
               checked={canUpdate}
-              onChange={setCanUpdate}
+              onChange={(next) => {
+                setCanUpdate(next);
+                if (next && updateScope === "NONE") setUpdateScope("ALL");
+              }}
             />
           </Form.Item>
           <Form.Item label="查看范围" htmlFor="employee-read-scope">
