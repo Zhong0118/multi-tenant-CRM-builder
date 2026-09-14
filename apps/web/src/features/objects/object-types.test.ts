@@ -2,6 +2,8 @@ import type { components } from "@crm/contracts";
 import { describe, expect, it } from "vitest";
 
 import {
+  FIELD_KEY_PATTERN,
+  OBJECT_CODE_PATTERN,
   parseRuntimeObjectSchema,
   selectOptions,
   type PublishedFieldView,
@@ -136,5 +138,16 @@ describe("selectOptions", () => {
     expect(
       selectOptions({ config: {} } as unknown as PublishedFieldView),
     ).toEqual([]);
+  });
+});
+
+describe("identifier patterns", () => {
+  it("keeps object codes on hyphens and field keys on underscores", () => {
+    // Mirrors the server rules in objects.service.ts: normalizeObjectCode
+    // accepts hyphens and normalizeFieldKey accepts underscores.
+    expect(OBJECT_CODE_PATTERN.test("customer-order")).toBe(true);
+    expect(OBJECT_CODE_PATTERN.test("customer_order")).toBe(false);
+    expect(FIELD_KEY_PATTERN.test("customer_name")).toBe(true);
+    expect(FIELD_KEY_PATTERN.test("customer-name")).toBe(false);
   });
 });

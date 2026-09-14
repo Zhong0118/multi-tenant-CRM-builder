@@ -198,8 +198,13 @@ export type UpdateFieldInput = Schemas["UpdateFieldDefinitionDto"];
 export type DefaultViewInput = Schemas["DefaultViewDto"];
 export type EmployeePermissionsInput = Schemas["EmployeePermissionsDto"];
 
-/** Object codes and field keys are stable identifiers, not display text. */
-export const OBJECT_CODE_PATTERN = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
+/**
+ * Object codes allow hyphens, field keys allow underscores. The server draws
+ * the same line (`normalizeObjectCode` vs `normalizeFieldKey`). The object code
+ * used to reuse the field-key pattern here, so the designer accepted
+ * `customer_order` and the API rejected it as an unsupported character.
+ */
+export const OBJECT_CODE_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 export const FIELD_KEY_PATTERN = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
 
 export function objectStableId(tenantCode: string, objectCode: string): string {

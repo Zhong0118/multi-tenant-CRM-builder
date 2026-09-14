@@ -28,7 +28,7 @@ const createObjectSchema = z.object({
     .max(64, "业务表代码最多 64 个字符。")
     .regex(
       OBJECT_CODE_PATTERN,
-      "业务表代码只能使用小写字母、数字和下划线，且以字母开头。",
+      "业务表代码只能使用小写字母、数字和单个连字符，且以字母开头。",
     ),
 });
 
