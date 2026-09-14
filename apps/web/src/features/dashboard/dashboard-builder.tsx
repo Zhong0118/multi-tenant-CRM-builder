@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button, Form, Input, Modal, Select } from "antd";
+import { Alert, Button, Form, Input, Modal, Popconfirm, Select } from "antd";
 import { useEffect, useMemo, useState } from "react";
 
 import { toApiError, type ApiError } from "@/lib/api/api-error";
@@ -475,17 +475,25 @@ export function DashboardBuilder({
               >
                 设为员工默认
               </Button>
-              <Button
-                danger
-                onClick={() => void archiveCurrent()}
-                loading={metaBusy === "archive"}
-                disabled={
-                  dashboards.filter((item) => item.status === "ACTIVE")
-                    .length < 2
-                }
+              <Popconfirm
+                title={`归档「${currentDashboard.name}」？`}
+                description="归档后它不再出现在工作台目录里，本页也无法取消归档。"
+                okText="确认归档"
+                cancelText="取消"
+                okButtonProps={{ danger: true }}
+                onConfirm={() => void archiveCurrent()}
               >
-                归档工作台
-              </Button>
+                <Button
+                  danger
+                  loading={metaBusy === "archive"}
+                  disabled={
+                    dashboards.filter((item) => item.status === "ACTIVE")
+                      .length < 2
+                  }
+                >
+                  归档工作台
+                </Button>
+              </Popconfirm>
             </div>
           ) : null}
         </div>

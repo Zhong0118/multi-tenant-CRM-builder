@@ -63,6 +63,11 @@ export function DashboardCanvas({
       </div>
       {widgets.length ? (
         <DndContext
+          // dnd-kit falls back to a module-level counter for its generated ids
+          // when DndContext has no id, so the server and the client number the
+          // drag handles differently and React reports a hydration mismatch on
+          // every designer load. An explicit id makes the ids deterministic.
+          id="dashboard-canvas"
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragEnd={dragEnd}

@@ -207,6 +207,59 @@ describe("DashboardBuilder", () => {
     expect(screen.getByRole("button", { name: "发布工作台" })).toBeEnabled();
   });
 
+  it("asks before archiving, because nothing in the UI can un-archive a workbench", async () => {
+    const assign = vi.fn();
+    const original = window.location;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...original, assign },
+    });
+    vi.mocked(updateDashboard).mockResolvedValue(initial.dashboard);
+    try {
+      render(
+        <DashboardBuilder
+          tenantCode="northwind"
+          dashboardCode="home"
+          initial={{
+            ...initial,
+            dashboards: [
+              initial.dashboards[0],
+              {
+                ...initial.dashboards[0],
+                id: "dashboard-ops",
+                code: "ops",
+                name: "运营工作台",
+                sortOrder: 1,
+                isDefaultAdmin: false,
+                isDefaultEmployee: false,
+              },
+            ],
+          }}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "归档工作台" }));
+      expect(updateDashboard).not.toHaveBeenCalled();
+
+      // antd inserts a space inside a two-character CJK button label.
+      fireEvent.click(await screen.findByRole("button", { name: /取\s*消/ }));
+      expect(updateDashboard).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole("button", { name: "归档工作台" }));
+      fireEvent.click(await screen.findByRole("button", { name: "确认归档" }));
+      await waitFor(() =>
+        expect(updateDashboard).toHaveBeenCalledWith("northwind", "home", {
+          status: "ARCHIVED",
+        }),
+      );
+    } finally {
+      Object.defineProperty(window, "location", {
+        configurable: true,
+        value: original,
+      });
+    }
+  });
+
   it("never duplicates component IDs after delete-then-add", async () => {
     render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
 
@@ -1023,6 +1076,7 @@ describe("DashboardBuilder named workbenches", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "归档工作台" }));
+    fireEvent.click(await screen.findByRole("button", { name: "确认归档" }));
     await waitFor(() =>
       expect(updateDashboard).toHaveBeenCalledWith("northwind", "home", {
         status: "ARCHIVED",
