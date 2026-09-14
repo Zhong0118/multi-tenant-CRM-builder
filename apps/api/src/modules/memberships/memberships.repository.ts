@@ -55,15 +55,26 @@ export class PrismaMembershipsRepository
         include: { tenant: true },
         orderBy: [{ tenant: { name: 'asc' } }, { id: 'asc' }],
       });
-      return members.map((member) => ({
-        tenantId: member.tenantId,
-        tenantCode: member.tenant.code,
-        tenantName: member.tenant.name,
-        tenantStatus: member.tenant.status,
-        memberId: member.id,
-        memberStatus: member.status,
-        role: member.role,
-      }));
+      // `tenants_member_select` only exposes a company while the membership is
+      // ACTIVE, so the relation comes back empty for a member whose access was
+      // revoked even though the foreign key guarantees a row exists. Returning
+      // the membership anyway used to dereference null and answer 500; the
+      // caller gets an empty list, which the account page already renders.
+      return members.flatMap((member) => {
+        const tenant = member.tenant as typeof member.tenant | null;
+        if (!tenant) return [];
+        return [
+          {
+            tenantId: member.tenantId,
+            tenantCode: tenant.code,
+            tenantName: tenant.name,
+            tenantStatus: tenant.status,
+            memberId: member.id,
+            memberStatus: member.status,
+            role: member.role,
+          },
+        ];
+      });
     });
   }
 
