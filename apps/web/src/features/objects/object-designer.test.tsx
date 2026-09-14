@@ -279,6 +279,41 @@ describe("ObjectDesigner configuration ledger", () => {
     );
   });
 
+  it("renders the column list in the saved view order", () => {
+    const api = objectApi();
+    renderDesigner(
+      draft({
+        fields: [
+          field({}),
+          field({
+            id: "field-phone",
+            fieldKey: "contact_phone",
+            label: "联系电话",
+            type: "PHONE",
+            required: false,
+            sortOrder: 3,
+            publishedType: "PHONE",
+          }),
+        ],
+        defaultView: {
+          name: "默认视图",
+          columnFieldKeys: ["contact_phone", "customer_name"],
+          sort: { field: "updatedAt", direction: "desc" },
+        },
+      }),
+      api,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "列表视图" }));
+
+    const keys = [...document.querySelectorAll('input[type="checkbox"]')]
+      .slice(0, 2)
+      .map(
+        (input) => input.closest("label")?.querySelector("code")?.textContent,
+      );
+    expect(keys).toEqual(["contact_phone", "customer_name"]);
+  });
+
   it("shows the object identity, live version and no pending change", () => {
     renderDesigner(draft(), objectApi());
 

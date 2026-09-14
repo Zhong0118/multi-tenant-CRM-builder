@@ -798,6 +798,20 @@ function DefaultViewSection({
     });
   }
 
+  // The list has to follow the saved column order. Rendering it in field
+  // definition order instead showed the columns in a sequence the view did not
+  // use, so the move buttons looked like they did nothing and the admin could
+  // not read back the order they had configured.
+  const orderedFields = [
+    ...columnFieldKeys.flatMap((fieldKey) => {
+      const field = activeFields.find((item) => item.fieldKey === fieldKey);
+      return field ? [field] : [];
+    }),
+    ...activeFields.filter(
+      (field) => !columnFieldKeys.includes(field.fieldKey),
+    ),
+  ];
+
   return (
     <section className={styles.panel}>
       <div className={styles.sectionHeading}>
@@ -818,7 +832,7 @@ function DefaultViewSection({
         </Form.Item>
         <Form.Item label="显示列及顺序">
           <div className={styles.columnChooser}>
-            {activeFields.map((field) => {
+            {orderedFields.map((field) => {
               const selectedIndex = columnFieldKeys.indexOf(field.fieldKey);
               const selected = selectedIndex >= 0;
               return (
