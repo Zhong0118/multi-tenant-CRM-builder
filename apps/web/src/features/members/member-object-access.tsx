@@ -93,6 +93,7 @@ export function MemberObjectAccess({
   const queryClient = useQueryClient();
   const [rows, setRows] = useState(initialRows);
   const [error, setError] = useState<string>();
+  const [notice, setNotice] = useState<string>();
 
   const save = useMutation({
     mutationFn: ({
@@ -102,12 +103,20 @@ export function MemberObjectAccess({
       objectId: string;
       input: MemberObjectAccessInput;
     }) => api.set(tenantCode, memberId, objectId, input),
-    onMutate: () => setError(undefined),
+    onMutate: () => {
+      setError(undefined);
+      setNotice(undefined);
+    },
     onSuccess: (updated) => {
       setRows((current) =>
         current.map((row) =>
           row.objectId === updated.objectId ? updated : row,
         ),
+      );
+      setNotice(
+        updated.mode === "INHERIT"
+          ? `${updated.objectName}已恢复为员工默认权限`
+          : `${updated.objectName}的成员覆盖已保存`,
       );
       void queryClient.invalidateQueries({
         queryKey: ["workspace", tenantCode, "members"],
@@ -116,6 +125,7 @@ export function MemberObjectAccess({
     },
     onError: (caught) => {
       const apiError = toApiError(caught);
+      setNotice(undefined);
       setError(`${apiError.message}（请求编号：${apiError.requestId}）`);
     },
   });
@@ -138,6 +148,16 @@ export function MemberObjectAccess({
         showIcon
         title="成员覆盖保存后立即生效，无需重新发布对象；员工默认权限需要在对象设计器中发布后生效。"
       />
+      {notice ? (
+        <Alert
+          type="success"
+          showIcon
+          closable
+          title={notice}
+          onClose={() => setNotice(undefined)}
+        />
+      ) : null}
+
       {error ? <Alert type="error" showIcon title={error} /> : null}
 
       {rows.map((row) => (

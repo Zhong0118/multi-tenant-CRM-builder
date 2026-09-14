@@ -12,6 +12,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   MemberObjectAccess,
   type MemberAccessApi,
+  type MemberObjectAccessInput,
   type MemberObjectAccessRow,
 } from "./member-object-access";
 
@@ -225,6 +226,62 @@ describe("MemberObjectAccess", () => {
         { mode: "INHERIT" },
       ),
     );
+  });
+
+  it("names the object and the mode each save applied", async () => {
+    const api = accessApi({
+      set: vi.fn(
+        async (
+          _tenantCode: string,
+          _memberId: string,
+          objectId: string,
+          input: MemberObjectAccessInput,
+        ) =>
+          row({
+            objectId,
+            mode: input.mode,
+            override:
+              input.mode === "OVERRIDE"
+                ? {
+                    canCreate: true,
+                    canRead: true,
+                    canUpdate: true,
+                    canDelete: false,
+                    readScope: "OWN",
+                    updateScope: "OWN",
+                  }
+                : null,
+          }),
+      ),
+    });
+    renderAccess(
+      <MemberObjectAccess
+        tenantCode="northwind"
+        memberId="member-lin"
+        memberName="林员工"
+        initialRows={[row()]}
+        api={api}
+      />,
+    );
+
+    fireEvent.click(
+      within(panel("客户资料")).getByRole("radio", { name: "成员覆盖" }),
+    );
+    fireEvent.click(
+      within(panel("客户资料")).getByRole("button", { name: "保存覆盖" }),
+    );
+    expect(
+      await screen.findByText("客户资料的成员覆盖已保存"),
+    ).toBeInTheDocument();
+
+    // Returning to the default collapses the panel, so this notice is the only
+    // thing left telling the administrator the change landed.
+    fireEvent.click(
+      within(panel("客户资料")).getByRole("radio", { name: "使用员工默认" }),
+    );
+    expect(
+      await screen.findByText("客户资料已恢复为员工默认权限"),
+    ).toBeInTheDocument();
   });
 
   it("explains an empty list instead of showing a bare page", () => {
