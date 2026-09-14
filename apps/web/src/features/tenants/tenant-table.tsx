@@ -40,8 +40,12 @@ const columns: ColumnsType<PlatformTenant> = [
   },
   {
     title: "首位管理员",
+    // A company that is already running has no pending invitation to show, and
+    // "尚未邀请" beside a non-zero 活跃管理员 count contradicts itself. Say what
+    // is actually true — no invitation row — as the company detail page does.
     render: (_, tenant) =>
-      tenant.firstAdminInvitation?.targetPhone ?? "尚未邀请",
+      tenant.firstAdminInvitation?.targetPhone ??
+      (tenant.activeAdminCount > 0 ? "未创建邀请" : "尚未邀请"),
   },
   { title: "活跃管理员", dataIndex: "activeAdminCount" },
   {
