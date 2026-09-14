@@ -9013,7 +9013,9 @@
             "in": "path",
             "name": "tenantCode",
             "required": true,
-            "schema": {}
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -9062,7 +9064,9 @@
             "in": "path",
             "name": "tenantCode",
             "required": true,
-            "schema": {}
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -9129,7 +9133,9 @@
             "in": "path",
             "name": "tenantCode",
             "required": true,
-            "schema": {}
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {

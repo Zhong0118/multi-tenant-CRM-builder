@@ -45,7 +45,7 @@ export class RelationResultDto {
 )
 @ApiTags('record-relations')
 @ApiCookieAuth('crm_session')
-@ApiParam({ name: 'tenantCode' })
+@ApiParam({ name: 'tenantCode', type: String })
 @ApiParam({ name: 'objectCode' })
 @ApiParam({ name: 'recordId', format: 'uuid' })
 @UseGuards(SessionAuthGuard, WorkspaceGuard)
