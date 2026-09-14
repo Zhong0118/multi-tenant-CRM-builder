@@ -23,7 +23,7 @@ import type { TableProps } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import dayjs, { type Dayjs } from "dayjs";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { SavedRecordFilters } from "./saved-record-filters";
 import { FilterBar } from "@/components/workbench/filter-bar";
@@ -116,11 +116,18 @@ export function RecordList({
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [batchOpen, setBatchOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
-  const [columnFieldKeys, setColumnFieldKeys] = useState(() =>
-    resolveRecordColumnKeys(
-      schema,
-      readStoredRecordColumnKeys(tenantCode, objectCode),
-    ),
+  // Personal columns live in localStorage, which does not exist while the
+  // server renders this page. Starting from the published default keeps the
+  // first client render identical to the server one and applies the stored
+  // choice after mount. Reading it during render instead made the table and
+  // the card list disagree with the server and failed hydration on every load.
+  const [storedColumnKeys, setStoredColumnKeys] = useState<string[]>([]);
+  useEffect(() => {
+    setStoredColumnKeys(readStoredRecordColumnKeys(tenantCode, objectCode));
+  }, [tenantCode, objectCode]);
+  const columnFieldKeys = useMemo(
+    () => resolveRecordColumnKeys(schema, storedColumnKeys),
+    [schema, storedColumnKeys],
   );
   const debounce = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -372,7 +379,7 @@ export function RecordList({
 
   function saveColumns(next: string[]) {
     const resolved = resolveRecordColumnKeys(schema, next);
-    setColumnFieldKeys(resolved);
+    setStoredColumnKeys(resolved);
     writeStoredRecordColumnKeys(tenantCode, objectCode, resolved);
   }
 
