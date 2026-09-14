@@ -1,10 +1,10 @@
 # 多租户 CRM Builder 接手说明
 
-更新时间：2026-09-09
+更新时间：2026-09-14
 
-当前功能基线：`297ad7a`；本轮修复及角色复审位于 `codex/crm-polish-followups`。
+当前功能基线：`f0b3cc6`，位于 `main`，已推送 `origin/main`。
 
-状态：本轮开始时 `main` 与 `origin/main` 同步；本轮按用户授权提交并推送功能分支，不合并 main、不部署；远端结果以任务回执为准。
+状态：`codex/crm-polish-followups` 经独立复验后已快进合并进 `main` 并推送；未部署。
 
 本文只记录当前事实。已完成与未完成对照见
 `docs/superpowers/plans/2026-09-01-productization-follow-up.md`。
@@ -16,7 +16,7 @@
    - `apps/web/src/app/(auth)/register/page.tsx`
    - `chat会话.md`
    - `.superpowers/sdd/2026-08-26-platform-business-template-designer/progress.md`
-3. 2026-09-09 基线 `main` 与 `origin/main` 同步；用户已授权本轮功能分支提交和 push。不要 reset、rebase、强推、擅自合并 main 或部署。
+3. `main` 与 `origin/main` 已在 `f0b3cc6` 同步。不要 reset、rebase、强推或部署；推送要等用户明确要求。
 4. 仓库存在 `.codegraph/`，理解代码时先运行 `codegraph explore "问题或符号"`。
 5. 用户要求快速实现。每个 Bug 只保留一个能复现用户症状的聚焦验证；不要反复跑全仓测试或多轮审查。
 
@@ -161,7 +161,7 @@ git log -10 --oneline
 - API：`http://localhost:3001/`
 - PostgreSQL：本机 5432（Homebrew 与 Docker 都可能占用该端口，以当前 `.env` 为准）
 - Redis：端口 6379
-- 已应用迁移：`0013_record_follow_ups`（包含 `0012_record_import_idempotency`）
+- 已应用迁移：`0016_database_uuid_defaults`（本地 16 个迁移全部应用，`prisma migrate status` 显示 up to date）
 
 确定性演示租户：
 
@@ -178,6 +178,10 @@ git log -10 --oneline
 ## 7. 当前真实缺口与已知问题
 
 最新状态以 `docs/audits/2026-09-09/role-completion.md` 为准：默认 UUID 与邀请状态竞态已修复；独立数据库开通、并发邀请、业务交接共 10 项 E2E 通过。已补角色升降/管理员移交/离职交接、首管纠错、公司审计、真实健康探测、任务转派、浏览器常用筛选、关联与附件。迁移增加至 0016。尚不能以此宣称生产验收完成。
+
+2026-09-14 合并前独立复验（不依赖上述审计自述）：`pnpm typecheck` 6 个 workspace 全过；API 聚焦 103 测试通过；Web 全量 63 文件 352 测试通过；`pnpm contracts:check` 无漂移；本地 16 个迁移已应用。
+
+已知既有失败，非合并引入：`apps/api/src/architecture.spec.ts` 因 `dashboards.repository.ts` 运行时导入 ESM 的 `@crm/database` 而报 `SyntaxError: Unexpected token 'export'`，已实测合并前的 `main` 同样失败。API 全量为 48/49 套件、391 个测试通过。修复需给 `@crm/database` 配 jest 映射或收敛为类型导入，属于独立切片，不要顺手塞进别的提交。
 
 ### 已完成（相对 2026-09-01 交接清单）
 
