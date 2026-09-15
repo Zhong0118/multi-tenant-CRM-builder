@@ -649,6 +649,54 @@ describe('RecordsService', () => {
     ).resolves.toEqual([]);
   });
 
+  it('initializes new records with the published workflow initial state', async () => {
+    const { service, store, publishedRepository } = fixture();
+    const configuration = publishedRepository.record
+      .configuration as PublishedObjectSchema;
+    configuration.workflow = {
+      initialStateKey: 'new',
+      states: [
+        { key: 'new', label: '新建', sortOrder: 10, isTerminal: false },
+      ],
+      transitions: [],
+    };
+
+    await create(service, admin, '新线索');
+    expect(store.records[0]?.workflowStateKey).toBe('new');
+  });
+
+  it('leaves workflow state empty when the object has no workflow', async () => {
+    const { service, store } = fixture();
+    await create(service, admin, '普通线索');
+    expect(store.records[0]?.workflowStateKey).toBeNull();
+  });
+
+  it('ignores a client-supplied workflowStateKey on create', async () => {
+    const { service, store, publishedRepository } = fixture();
+    const configuration = publishedRepository.record
+      .configuration as PublishedObjectSchema;
+    configuration.workflow = {
+      initialStateKey: 'new',
+      states: [
+        { key: 'new', label: '新建', sortOrder: 10, isTerminal: false },
+        { key: 'won', label: '赢单', sortOrder: 20, isTerminal: true },
+      ],
+      transitions: [],
+    };
+
+    await expect(
+      service.create(
+        admin,
+        'leads',
+        {
+          values: { name: '恶意状态', workflowStateKey: 'won' },
+        },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'FIELD_UNKNOWN' });
+    expect(store.records).toEqual([]);
+  });
+
   it('enforces CREATE action permission', async () => {
     const { service, publishedRepository } = fixture();
     const configuration = publishedRepository.record

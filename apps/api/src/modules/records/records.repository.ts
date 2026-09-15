@@ -17,6 +17,7 @@ export interface DynamicRecord {
   objectId: string;
   recordNo: bigint;
   ownerMemberId: string | null;
+  workflowStateKey: string | null;
   title: string;
   values: Record<string, unknown>;
   version: number;
@@ -261,7 +262,7 @@ class PrismaRecordsStore implements RecordsStore {
         objectId: record.objectId,
         recordNo: record.recordNo,
         ownerMemberId: record.ownerMemberId,
-        statusKey: null,
+        statusKey: record.workflowStateKey,
         title: record.title,
         data: toPrismaJson(record.values),
         source: 'MANUAL',
@@ -501,6 +502,7 @@ function fromPrismaRecord(record: {
   objectId: string;
   recordNo: bigint;
   ownerMemberId: string | null;
+  statusKey: string | null;
   title: string;
   data: Prisma.JsonValue;
   version: number;
@@ -514,6 +516,7 @@ function fromPrismaRecord(record: {
     objectId: record.objectId,
     recordNo: record.recordNo,
     ownerMemberId: record.ownerMemberId,
+    workflowStateKey: record.statusKey,
     title: record.title,
     values: jsonRecord(record.data),
     version: record.version,

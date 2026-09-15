@@ -1104,6 +1104,7 @@ async function createRecordRow(
     objectId: resolved.schema.object.id,
     recordNo: await store.allocateRecordNo(resolved.schema.object.id),
     ownerMemberId,
+    workflowStateKey: resolved.schema.workflow?.initialStateKey ?? null,
     title: normalized.title,
     values: normalized.values,
     version: 1,
