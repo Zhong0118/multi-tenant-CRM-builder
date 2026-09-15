@@ -23,7 +23,8 @@
 
 - `packages/database/prisma/migrations/0017_workflow_state_machine/migration.sql`
 - 本地 Homebrew PostgreSQL 5432 已 apply
-- 独立测试库 `compose.test.yaml:5433` 本轮 Docker daemon 未开，未部署
+- 独立测试库 `compose.test.yaml:5433` 已 apply 到 `0017`
+- `workflow-rls.test.mjs`：3 passed
 
 ## Tests
 
