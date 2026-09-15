@@ -4,7 +4,11 @@ import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { validateWorkflowDraft } from './workflow-draft.policy';
 import type { WorkflowRepository, WorkflowStore } from './workflow.repository';
-import type { WorkflowDraft, WorkflowDraftResponse } from './workflow.types';
+import type {
+  WorkflowDraft,
+  WorkflowDraftInput,
+  WorkflowDraftResponse,
+} from './workflow.types';
 
 export const WORKFLOW_REPOSITORY = Symbol('WORKFLOW_REPOSITORY');
 
@@ -42,7 +46,7 @@ export class WorkflowAdminService {
   async save(
     context: TenantContext,
     objectId: string,
-    input: WorkflowDraft & { expectedDraftRevision: number },
+    input: WorkflowDraftInput & { expectedDraftRevision: number },
     meta: RequestMeta,
   ): Promise<WorkflowDraftResponse> {
     assertTenantAdmin(context);

@@ -17,6 +17,7 @@ import {
 } from 'class-validator';
 
 import { WORKFLOW_KEY_PATTERN, WORKFLOW_ROLES } from '../workflow.types';
+import { WORKFLOW_ACTION_TYPES } from '../../actions/action.types';
 
 export class WorkflowStateDraftDto {
   @ApiProperty({ example: 'new' })
@@ -43,6 +44,60 @@ export class WorkflowStateDraftDto {
   @ApiProperty()
   @IsBoolean()
   isTerminal!: boolean;
+}
+
+/**
+ * Shallow structural declaration of an Action step.
+ *
+ * It declares the union of the keys the five V1 Action types may use so
+ * `forbidNonWhitelisted` accepts legitimate saves and rejects undeclared ones.
+ * Exact per-type shape (required keys, value sources, ordering) is validated by
+ * `validateTransitionActions()` — hence no per-property type validators here.
+ */
+export class WorkflowActionDraftDto {
+  @ApiPropertyOptional({ example: 'create-customer' })
+  @IsOptional()
+  key?: string;
+
+  @ApiPropertyOptional({ enum: WORKFLOW_ACTION_TYPES })
+  @IsOptional()
+  type?: string;
+
+  @ApiPropertyOptional({ example: 'customer' })
+  @IsOptional()
+  targetObjectCode?: string;
+
+  @ApiPropertyOptional({ type: Object })
+  @IsOptional()
+  values?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ type: Object })
+  @IsOptional()
+  owner?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ example: 'SOURCE_RECORD' })
+  @IsOptional()
+  target?: string;
+
+  @ApiPropertyOptional({ type: Object })
+  @IsOptional()
+  left?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ type: Object })
+  @IsOptional()
+  right?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ type: Object })
+  @IsOptional()
+  title?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ type: Object })
+  @IsOptional()
+  dueAt?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ type: Object })
+  @IsOptional()
+  assignee?: Record<string, unknown>;
 }
 
 export class WorkflowTransitionDraftDto {
@@ -83,6 +138,18 @@ export class WorkflowTransitionDraftDto {
   @IsInt()
   @Min(0)
   sortOrder!: number;
+
+  @ApiPropertyOptional({
+    type: WorkflowActionDraftDto,
+    isArray: true,
+    description:
+      '按顺序执行的 Action 列表：客户端应发送数组；省略等同于空数组。',
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => WorkflowActionDraftDto)
+  actions?: WorkflowActionDraftDto[];
 }
 
 export class SaveWorkflowDraftDto {

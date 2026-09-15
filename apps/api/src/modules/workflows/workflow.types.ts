@@ -1,3 +1,5 @@
+import type { WorkflowActionDraft } from '../actions/action.types';
+
 export const WORKFLOW_KEY_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
 export const WORKFLOW_ROLES = ['TENANT_ADMIN', 'EMPLOYEE'] as const;
 
@@ -19,6 +21,11 @@ export interface WorkflowTransitionDraft {
   allowedRoles: WorkflowRole[];
   requiredFieldKeys: string[];
   sortOrder: number;
+  /**
+   * Ordered Action steps of this Transition (§28). Absent means "no actions":
+   * legacy drafts and publications without an `actions` column parse as `[]`.
+   */
+  actions?: WorkflowActionDraft[];
 }
 
 export interface WorkflowDraft {
@@ -26,6 +33,21 @@ export interface WorkflowDraft {
   initialStateKey: string | null;
   states: WorkflowStateDraft[];
   transitions: WorkflowTransitionDraft[];
+}
+
+/**
+ * Untrusted transition input (HTTP DTO or persisted legacy data). `actions` are
+ * deliberately untyped here; `validateTransitionActions()` owns their shape.
+ */
+export interface WorkflowTransitionDraftInput extends Omit<
+  WorkflowTransitionDraft,
+  'actions'
+> {
+  actions?: readonly unknown[];
+}
+
+export interface WorkflowDraftInput extends Omit<WorkflowDraft, 'transitions'> {
+  transitions: WorkflowTransitionDraftInput[];
 }
 
 export interface WorkflowDraftResponse extends WorkflowDraft {
