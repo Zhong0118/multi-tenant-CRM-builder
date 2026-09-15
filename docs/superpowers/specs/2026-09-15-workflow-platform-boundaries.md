@@ -233,13 +233,18 @@ Workflow State 具有强语义：
 - 可能触发未来 Action；
 - 未来会成为 Event 来源。
 
-因此 V1 推荐使用：
+因此 V1 的正式决策是：
 
 ```text
-Record.workflowStateKey
+数据库物理列：records.status_key
+Prisma 字段：Record.statusKey
+领域 / API 名称：workflowStateKey
 ```
 
-作为独立运行时状态，而不是把某个普通 `SINGLE_SELECT` 当作魔法字段。
+这是 2026-08-21 动态记录设计预留给受控状态机的列，不是新加第二列。  
+不要再 migration 出 `workflow_state_key`。
+
+它是独立运行时状态，而不是某个普通 `SINGLE_SELECT` 魔法字段。
 
 普通 `Record Update` 不允许直接修改该字段。
 

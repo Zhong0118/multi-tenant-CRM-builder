@@ -154,7 +154,9 @@ RecordTransitionHistory
 修改：
 
 ```text
-Record.workflowStateKey String?
+复用 Record.statusKey / records.status_key
+领域与 API 对外仍称 workflowStateKey
+不要新增 workflow_state_key 列
 ```
 
 关系必须包含 `tenantId`，遵循当前复合外键 / Tenant RLS 模式。

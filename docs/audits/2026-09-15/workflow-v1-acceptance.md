@@ -1,8 +1,8 @@
 # Workflow V1 验收记录
 
 日期：2026-09-15  
-分支：`feat/workflow-v1`（未合并 `main`，未 push）  
-功能基线：`227e8d9` 之上的 Workflow 提交，HEAD 以 `git log -1 --oneline` 为准。
+分支：`feat/workflow-v1`，已 push `origin/feat/workflow-v1`，未合并 `main`。  
+`main` 功能基线仍是 `227e8d9`（其上可能有文档提交）。本分支 HEAD 以 `git log -1 --oneline` 为准，本文不硬编码。
 
 本轮只交付 State + Transition + Manual Execution + History + Audit。没有 Action Engine、Automation、模板 Workflow、列表状态筛选或批量 Transition。
 
@@ -60,14 +60,14 @@
 
 ## Spec Deviations
 
-1. 运行时列复用 `records.status_key`，API/领域名 `workflowStateKey`（用户确认方案 A）。
+1. 正式决策（不再是偏差）：数据库物理列复用 `records.status_key`，Prisma `statusKey`，领域/API 使用 `workflowStateKey`。用户确认方案 A。Boundary 与 Design 已改成同一表述。
 2. Web 客户端在 contracts 生成前用 `relationRequest` 调新路径；contracts 随后已 regenerate。
 3. 第一次发布时员工默认「可以查看」仍关着，所以员工导航没有该表。补开查看/新建并再发布后，员工 Runtime 与管理员一致。这是验收对象权限配置问题，不是 Workflow Runtime 缺入口。
 
 ## Known Gaps
 
-- 未在独立 5433 测试库跑完整 database integration（Docker 未开）。本地 5432 跑过 workflow RLS 3 项。
+- 独立测试库 `compose.test.yaml:5433`：收口时已 `docker compose -f compose.test.yaml up`，`prisma migrate deploy` 应用到 `0017`，`workflow-rls.test.mjs` 3 passed（租户隔离草稿、租户隔离 history、runtime 不能 update/delete history）。
 - 员工账号执行 Transition 已在真实页面走通（赵晨 / 员工验收记录）。
 - 未做双标签页 stale version 的浏览器冲突演示（API 单测覆盖 `RECORD_VERSION_CONFLICT`）。
 - 演示主对象（线索/商机）未启用 Workflow。
-- 未 push、未部署、未开始 Action Engine。
+- 已 push `origin/feat/workflow-v1`，未合并 `main`，未部署，未开始 Action Engine。

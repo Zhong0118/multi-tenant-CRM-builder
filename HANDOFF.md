@@ -2,12 +2,12 @@
 
 更新时间：2026-09-15
 
-当前功能基线：`227e8d9`，位于 `main`，已推送 `origin/main`。
+`main` 当前功能基线：`227e8d9`，已推送 `origin/main`。其后 `main` 上可能还有文档提交。**不要把某次 `git log -1` 的输出写死进本文。**
 
-该功能基线之后只有 HANDOFF 与验收记录等文档提交。**实际 HEAD 以 `git log -1 --oneline` 为准，本文不硬编码 HEAD**——上一版曾写「`git log -1` 会显示某个 commit」，结果写下这句话的提交自己就把它变成假的了。
+待合并功能在 `feat/workflow-v1` / `origin/feat/workflow-v1`：Workflow V1（可配置状态机与人工 Transition）。该分支有真实功能提交，不是「只有文档」。验收见 `docs/audits/2026-09-15/workflow-v1-acceptance.md`。未合并 `main`，未部署。
 
-`main` 与 `origin/main` 是唯一开发基线。`codex/crm-polish-followups` 已快进合并进入 `main`。
-2026-09-15 完成一轮人工验收并修复（清单见第 7 节）。未部署生产环境。
+`main` 与 `origin/main` 仍是已发布开发基线。`codex/crm-polish-followups` 已快进合并进入 `main`。
+2026-09-15 完成一轮人工验收并修复（清单见第 7 节）。
 
 本文只记录当前事实。已完成与未完成对照见
 `docs/superpowers/plans/2026-09-01-productization-follow-up.md`。
@@ -19,7 +19,7 @@
    - `apps/web/src/app/(auth)/register/page.tsx`
    - `chat会话.md`
    - `.superpowers/sdd/2026-08-26-platform-business-template-designer/progress.md`
-3. `main` 与 `origin/main` 已同步（`227e8d9` 为功能基线，其上可能有文档提交）。不要 reset、rebase、强推或部署。推送要等用户明确要求；本次会话中用户每次确认后都要求把修复推送上去，但仍未授权部署。
+3. `main` 与 `origin/main` 已同步（`227e8d9` 为 main 功能基线，其上可能有文档提交）。Workflow V1 在 `feat/workflow-v1`，已 push，未合并。不要 reset、rebase、强推或部署。推送要等用户明确要求。
 4. 仓库存在 `.codegraph/`，理解代码时先运行 `codegraph explore "问题或符号"`。
 5. 用户要求快速实现。每个 Bug 只保留一个能复现用户症状的聚焦验证；不要反复跑全仓测试或多轮审查。
 
@@ -170,7 +170,7 @@ git log -10 --oneline
 - API：`http://localhost:3001/`
 - PostgreSQL：本机 5432（Homebrew 与 Docker 都可能占用该端口，以当前 `.env` 为准）
 - Redis：端口 6379
-- 已应用迁移：`0017_workflow_state_machine`（本地 Homebrew 5432；独立 5433 测试库本轮未启动）
+- 已应用迁移：`0017_workflow_state_machine`（本地 Homebrew 5432；独立测试库 5433 在合并前收口时已 migrate 并跑通 workflow RLS 3 项）
 
 确定性演示租户：
 
@@ -352,10 +352,10 @@ HANDOFF.md 与 docs/superpowers/plans/2026-09-01-productization-follow-up.md。
 - chat会话.md
 - .superpowers/sdd/2026-08-26-platform-business-template-designer/progress.md
 
-2026-09-15 功能基线 `227e8d9` 与 `origin/main` 同步（其上可能有文档提交）。不要 reset、rebase、强推或部署。
+`main` 功能基线 `227e8d9` 与 `origin/main` 同步（其上可能有文档提交）。
+Workflow V1 在已 push 的 `feat/workflow-v1`，未合并。不要 reset、rebase、强推或部署。
 
-P0–P5 主干已经落地。P7 表管理主干已齐。Workflow V1 在 `feat/workflow-v1`，
-验收见 docs/audits/2026-09-15/workflow-v1-acceptance.md。不要自行开始 Action Engine。
+P0–P5 主干已经落地。P7 表管理主干已齐。不要自行开始 Action Engine。
 短信与 AI 按用户要求暂缓。
 
 第一轮页面验收已覆盖：业务对象设计器、记录列表与权限边界、成员覆盖、离职交接、

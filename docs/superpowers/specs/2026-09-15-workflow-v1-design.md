@@ -184,7 +184,7 @@ ObjectPublication
   └── schema.workflow (immutable snapshot)
 
 Record
-  └── workflowStateKey?
+  └── workflowStateKey?   # 物理列 records.status_key / Prisma statusKey
 
 RecordTransitionHistory
 ```
@@ -351,13 +351,15 @@ V1 不实现任意表达式。
 
 # 10. Record Workflow State
 
-在 `Record` 增加：
+正式决策：复用已有列，不新增第二列。
 
 ```text
-workflowStateKey String?
+数据库：records.status_key
+Prisma：Record.statusKey
+领域 / API：workflowStateKey
 ```
 
-原因见 Architecture Boundary。
+2026-08-21 动态记录设计已把 `statusKey` 预留给受控状态机。V1 启用该列，普通 Record Create/Update 仍不能由客户端写入。原因见 Architecture Boundary。
 
 普通 Record Create/Update DTO 不允许客户端直接写：
 
