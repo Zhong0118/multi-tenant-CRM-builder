@@ -41,6 +41,7 @@ import { ImportsService } from './modules/imports/imports.service';
 import { IntegrationsService } from './modules/integrations/integrations.service';
 import { AuditService } from './modules/audit/audit.service';
 import { WorkflowAdminService } from './modules/workflows/workflow-admin.service';
+import { WorkflowRuntimeService } from './modules/workflows/workflow-runtime.service';
 
 const services = [
   AuthService,
@@ -55,6 +56,7 @@ const services = [
   IntegrationsService,
   AuditService,
   WorkflowAdminService,
+  WorkflowRuntimeService,
 ];
 
 describe('AppModule architecture', () => {

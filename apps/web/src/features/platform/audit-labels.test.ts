@@ -19,6 +19,9 @@ it("labels every action the audit log was showing without a Chinese name", () =>
   expect(actionLabel("platform.admin.granted")).toBe("授予平台管理员");
   expect(actionLabel("record.activity_created")).toBe("新增记录跟进");
   expect(actionLabel("record.exported")).toBe("导出业务记录");
+  expect(actionLabel("workflow.draft_updated")).toBe("更新流程配置");
+  expect(actionLabel("record.workflow_started")).toBe("记录进入流程");
+  expect(actionLabel("record.transition_executed")).toBe("执行流程动作");
 });
 
 it("passes an unlabelled action through instead of inventing a translation", () => {

@@ -1,0 +1,228 @@
+import { ApiException } from '../../common/errors/api.exception';
+import type { TenantContext } from '../../common/tenancy/tenant-context';
+import type { EffectiveObjectAccess } from '../objects/effective-access';
+import type { PublishedObjectSchema } from '../objects/object-schema';
+import type { DynamicRecord } from '../records/records.repository';
+import type {
+  PublishedWorkflow,
+  PublishedWorkflowState,
+  PublishedWorkflowTransition,
+} from './workflow.types';
+
+export const START_TRANSITION_KEY = '__start__';
+
+export interface RuntimeWorkflowState {
+  key: string;
+  label: string;
+  isTerminal: boolean;
+}
+
+export interface RuntimeAvailableTransition {
+  key: string;
+  label: string;
+  toState?: { key: string; label: string };
+  requiredFieldKeys: string[];
+}
+
+export interface RuntimeWorkflowView {
+  currentState: RuntimeWorkflowState | null;
+  availableTransitions: RuntimeAvailableTransition[];
+  recordVersion: number;
+}
+
+export interface ResolvedTransition {
+  key: string;
+  label: string;
+  fromStateKey: string | null;
+  fromStateLabel: string | null;
+  toStateKey: string;
+  toStateLabel: string;
+}
+
+export function requirePublishedWorkflow(
+  schema: PublishedObjectSchema,
+): PublishedWorkflow {
+  if (!schema.workflow) {
+    throw new ApiException('WORKFLOW_NOT_PUBLISHED', 409);
+  }
+  return schema.workflow;
+}
+
+export function runtimeWorkflowView(input: {
+  schema: PublishedObjectSchema;
+  access: EffectiveObjectAccess;
+  role: TenantContext['role'];
+  record: DynamicRecord;
+}): RuntimeWorkflowView {
+  const workflow = input.schema.workflow;
+  if (!workflow) {
+    throw new ApiException('WORKFLOW_NOT_PUBLISHED', 409);
+  }
+  return {
+    currentState: currentStateView(workflow, input.record.workflowStateKey),
+    availableTransitions: availableTransitions({
+      workflow,
+      access: input.access,
+      role: input.role,
+      currentStateKey: input.record.workflowStateKey,
+    }),
+    recordVersion: input.record.version,
+  };
+}
+
+export function resolveExecutableTransition(input: {
+  schema: PublishedObjectSchema;
+  access: EffectiveObjectAccess;
+  role: TenantContext['role'];
+  record: DynamicRecord;
+  transitionKey: string;
+}): ResolvedTransition {
+  const workflow = requirePublishedWorkflow(input.schema);
+  if (!input.access.canUpdate || input.access.updateScope === 'NONE') {
+    throw new ApiException('WORKFLOW_TRANSITION_FORBIDDEN', 403);
+  }
+  if (input.transitionKey === START_TRANSITION_KEY) {
+    if (input.record.workflowStateKey !== null) {
+      throw new ApiException('WORKFLOW_TRANSITION_NOT_AVAILABLE', 409);
+    }
+    const initial = stateByKey(workflow, workflow.initialStateKey);
+    return {
+      key: START_TRANSITION_KEY,
+      label: '进入流程',
+      fromStateKey: null,
+      fromStateLabel: null,
+      toStateKey: initial.key,
+      toStateLabel: initial.label,
+    };
+  }
+
+  const currentKey = input.record.workflowStateKey;
+  if (currentKey === null) {
+    throw new ApiException('WORKFLOW_TRANSITION_NOT_AVAILABLE', 409);
+  }
+  const current = stateByKey(workflow, currentKey);
+  if (current.isTerminal) {
+    throw new ApiException('WORKFLOW_TRANSITION_NOT_AVAILABLE', 409);
+  }
+  const transition = workflow.transitions.find(
+    (candidate) =>
+      candidate.key === input.transitionKey &&
+      candidate.fromStateKey === currentKey,
+  );
+  if (!transition) {
+    throw new ApiException('WORKFLOW_TRANSITION_NOT_AVAILABLE', 409);
+  }
+  if (!transition.allowedRoles.includes(input.role)) {
+    throw new ApiException('WORKFLOW_TRANSITION_FORBIDDEN', 403);
+  }
+  assertRequiredFields(input.schema, input.access, input.record, transition);
+  const toState = stateByKey(workflow, transition.toStateKey);
+  return {
+    key: transition.key,
+    label: transition.label,
+    fromStateKey: current.key,
+    fromStateLabel: current.label,
+    toStateKey: toState.key,
+    toStateLabel: toState.label,
+  };
+}
+
+function availableTransitions(input: {
+  workflow: PublishedWorkflow;
+  access: EffectiveObjectAccess;
+  role: TenantContext['role'];
+  currentStateKey: string | null;
+}): RuntimeAvailableTransition[] {
+  if (!input.access.canUpdate || input.access.updateScope === 'NONE') {
+    return [];
+  }
+  if (input.currentStateKey === null) {
+    const initial = stateByKey(input.workflow, input.workflow.initialStateKey);
+    return [
+      {
+        key: START_TRANSITION_KEY,
+        label: '进入流程',
+        toState: { key: initial.key, label: initial.label },
+        requiredFieldKeys: [],
+      },
+    ];
+  }
+  const current = input.workflow.states.find(
+    (state) => state.key === input.currentStateKey,
+  );
+  if (!current || current.isTerminal) return [];
+  return input.workflow.transitions
+    .filter(
+      (transition) =>
+        transition.fromStateKey === current.key &&
+        transition.allowedRoles.includes(input.role),
+    )
+    .map((transition) => {
+      const toState = stateByKey(input.workflow, transition.toStateKey);
+      return {
+        key: transition.key,
+        label: transition.label,
+        toState: { key: toState.key, label: toState.label },
+        requiredFieldKeys: transition.requiredFieldKeys,
+      };
+    });
+}
+
+function currentStateView(
+  workflow: PublishedWorkflow,
+  stateKey: string | null,
+): RuntimeWorkflowState | null {
+  if (stateKey === null) return null;
+  const state = workflow.states.find((candidate) => candidate.key === stateKey);
+  if (!state) {
+    return { key: stateKey, label: stateKey, isTerminal: true };
+  }
+  return {
+    key: state.key,
+    label: state.label,
+    isTerminal: state.isTerminal,
+  };
+}
+
+function stateByKey(
+  workflow: PublishedWorkflow,
+  key: string,
+): PublishedWorkflowState {
+  const state = workflow.states.find((candidate) => candidate.key === key);
+  if (!state) throw new ApiException('WORKFLOW_NOT_PUBLISHED', 409);
+  return state;
+}
+
+function assertRequiredFields(
+  schema: PublishedObjectSchema,
+  access: EffectiveObjectAccess,
+  record: DynamicRecord,
+  transition: PublishedWorkflowTransition,
+): void {
+  const missing: string[] = [];
+  for (const fieldKey of transition.requiredFieldKeys) {
+    if ((access.fields[fieldKey] ?? 'HIDDEN') === 'HIDDEN') {
+      missing.push(fieldKey);
+      continue;
+    }
+    if (isEmptyFieldValue(record.values[fieldKey])) missing.push(fieldKey);
+  }
+  if (missing.length === 0) return;
+  const labels = missing.map((fieldKey) => {
+    const field = schema.fields.find((candidate) => candidate.fieldKey === fieldKey);
+    return field?.label ?? fieldKey;
+  });
+  throw new ApiException('WORKFLOW_REQUIRED_FIELDS_MISSING', 400, {
+    fieldErrors: Object.fromEntries(
+      missing.map((fieldKey) => [fieldKey, ['请填写必填字段。']]),
+    ),
+    message: `“${transition.label}”前需要补充：${labels.join('、')}`,
+  });
+}
+
+function isEmptyFieldValue(value: unknown): boolean {
+  if (value === undefined || value === null) return true;
+  if (typeof value === 'string') return value.trim() === '';
+  if (Array.isArray(value)) return value.length === 0;
+  return false;
+}

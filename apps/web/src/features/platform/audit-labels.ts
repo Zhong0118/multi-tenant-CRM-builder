@@ -54,6 +54,9 @@ const actionLabels: Record<string, string> = {
   "platform.admin.granted": "授予平台管理员",
   "record.activity_created": "新增记录跟进",
   "record.exported": "导出业务记录",
+  "workflow.draft_updated": "更新流程配置",
+  "record.workflow_started": "记录进入流程",
+  "record.transition_executed": "执行流程动作",
 
   TENANT_CREATED: "创建公司",
   TENANT_STATUS_CHANGED: "公司状态变更",
@@ -82,6 +85,7 @@ const resourceLabels: Record<string, string> = {
   record_attachment: "记录附件",
   record_relation: "业务关联",
   record_follow_up: "跟进任务",
+  record_transition_history: "流程历史",
 
   TENANT: "公司",
   BUSINESS_TEMPLATE: "业务模板",

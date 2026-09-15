@@ -150,6 +150,42 @@ export interface RecordsStore {
   }): Promise<RecordActivity>;
   listMemberNames(memberIds: string[]): Promise<Map<string, string>>;
   appendAudit(event: AuditEvent): Promise<void>;
+  applyWorkflowTransition(input: {
+    recordId: string;
+    expectedVersion: number;
+    workflowStateKey: string;
+    history: {
+      objectDefinitionId: string;
+      objectPublicationId: string;
+      transitionKey: string;
+      transitionLabel: string;
+      fromStateKey: string | null;
+      fromStateLabel: string | null;
+      toStateKey: string;
+      toStateLabel: string;
+      actorMemberId: string;
+    };
+  }): Promise<DynamicRecord | null>;
+  listTransitionHistory(
+    recordId: string,
+    query: { page: number; limit: number },
+  ): Promise<{
+    items: Array<{
+      id: string;
+      transitionKey: string;
+      transitionLabel: string;
+      fromStateKey: string | null;
+      fromStateLabel: string | null;
+      toStateKey: string;
+      toStateLabel: string;
+      actorMemberId: string;
+      actorDisplayName: string | null;
+      createdAt: string;
+    }>;
+    page: number;
+    limit: number;
+    total: number;
+  }>;
 }
 
 export interface RecordsRepository {
@@ -380,6 +416,97 @@ class PrismaRecordsStore implements RecordsStore {
       where: { id: recordId },
     });
     return record ? fromPrismaRecord(record) : null;
+  }
+
+  async applyWorkflowTransition(input: {
+    recordId: string;
+    expectedVersion: number;
+    workflowStateKey: string;
+    history: {
+      objectDefinitionId: string;
+      objectPublicationId: string;
+      transitionKey: string;
+      transitionLabel: string;
+      fromStateKey: string | null;
+      fromStateLabel: string | null;
+      toStateKey: string;
+      toStateLabel: string;
+      actorMemberId: string;
+    };
+  }): Promise<DynamicRecord | null> {
+    const result = await this.transaction.record.updateMany({
+      where: {
+        id: input.recordId,
+        tenantId: this.context.tenantId,
+        version: input.expectedVersion,
+        deletedAt: null,
+      },
+      data: {
+        statusKey: input.workflowStateKey,
+        version: { increment: 1 },
+      },
+    });
+    if (result.count !== 1) return null;
+    await this.transaction.recordTransitionHistory.create({
+      data: {
+        tenantId: this.context.tenantId,
+        objectDefinitionId: input.history.objectDefinitionId,
+        recordId: input.recordId,
+        objectPublicationId: input.history.objectPublicationId,
+        transitionKey: input.history.transitionKey,
+        transitionLabel: input.history.transitionLabel,
+        fromStateKey: input.history.fromStateKey,
+        fromStateLabel: input.history.fromStateLabel,
+        toStateKey: input.history.toStateKey,
+        toStateLabel: input.history.toStateLabel,
+        actorMemberId: input.history.actorMemberId,
+        recordVersionBefore: input.expectedVersion,
+        recordVersionAfter: input.expectedVersion + 1,
+      },
+    });
+    const record = await this.transaction.record.findUnique({
+      where: { id: input.recordId },
+    });
+    return record ? fromPrismaRecord(record) : null;
+  }
+
+  async listTransitionHistory(
+    recordId: string,
+    query: { page: number; limit: number },
+  ) {
+    const where = {
+      tenantId: this.context.tenantId,
+      recordId,
+    };
+    const [rows, total] = await Promise.all([
+      this.transaction.recordTransitionHistory.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (query.page - 1) * query.limit,
+        take: query.limit,
+        include: {
+          actor: { include: { user: { select: { displayName: true } } } },
+        },
+      }),
+      this.transaction.recordTransitionHistory.count({ where }),
+    ]);
+    return {
+      items: rows.map((row) => ({
+        id: row.id,
+        transitionKey: row.transitionKey,
+        transitionLabel: row.transitionLabel,
+        fromStateKey: row.fromStateKey,
+        fromStateLabel: row.fromStateLabel,
+        toStateKey: row.toStateKey,
+        toStateLabel: row.toStateLabel,
+        actorMemberId: row.actorMemberId,
+        actorDisplayName: row.actor.user.displayName,
+        createdAt: row.createdAt.toISOString(),
+      })),
+      page: query.page,
+      limit: query.limit,
+      total,
+    };
   }
 
   async listActivities(

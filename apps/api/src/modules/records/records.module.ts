@@ -24,6 +24,6 @@ import {
     { provide: RECORDS_CLOCK, useValue: () => new Date() },
     { provide: RECORDS_ID_GENERATOR, useValue: randomUUID },
   ],
-  exports: [RecordsService],
+  exports: [RecordsService, RECORDS_REPOSITORY],
 })
 export class RecordsModule {}

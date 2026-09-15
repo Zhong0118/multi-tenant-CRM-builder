@@ -124,3 +124,68 @@ export class WorkflowDraftResponseDto {
   transitions!: WorkflowTransitionDraftDto[];
   @ApiProperty() objectVersion!: number;
 }
+
+export class ExecuteWorkflowTransitionDto {
+  @ApiProperty({ minimum: 1 })
+  @IsInt()
+  @Min(1)
+  expectedVersion!: number;
+}
+
+export class RuntimeWorkflowStateDto {
+  @ApiProperty() key!: string;
+  @ApiProperty() label!: string;
+  @ApiProperty() isTerminal!: boolean;
+}
+
+export class RuntimeAvailableTransitionDto {
+  @ApiProperty() key!: string;
+  @ApiProperty() label!: string;
+  @ApiPropertyOptional() toState?: { key: string; label: string };
+  @ApiProperty({ type: String, isArray: true }) requiredFieldKeys!: string[];
+}
+
+export class RuntimeWorkflowResponseDto {
+  @ApiPropertyOptional({ type: RuntimeWorkflowStateDto, nullable: true })
+  currentState!: RuntimeWorkflowStateDto | null;
+  @ApiProperty({ type: RuntimeAvailableTransitionDto, isArray: true })
+  availableTransitions!: RuntimeAvailableTransitionDto[];
+  @ApiProperty() recordVersion!: number;
+}
+
+export class WorkflowHistoryItemDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() transitionKey!: string;
+  @ApiProperty() transitionLabel!: string;
+  @ApiPropertyOptional({ nullable: true }) fromStateKey!: string | null;
+  @ApiPropertyOptional({ nullable: true }) fromStateLabel!: string | null;
+  @ApiProperty() toStateKey!: string;
+  @ApiProperty() toStateLabel!: string;
+  @ApiProperty() actorMemberId!: string;
+  @ApiPropertyOptional({ nullable: true }) actorDisplayName!: string | null;
+  @ApiProperty() createdAt!: string;
+}
+
+export class WorkflowHistoryPageDto {
+  @ApiProperty({ type: WorkflowHistoryItemDto, isArray: true })
+  items!: WorkflowHistoryItemDto[];
+  @ApiProperty() page!: number;
+  @ApiProperty() limit!: number;
+  @ApiProperty() total!: number;
+}
+
+export class WorkflowHistoryQueryDto {
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page = 1;
+
+  @ApiPropertyOptional({ default: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  limit = 20;
+}

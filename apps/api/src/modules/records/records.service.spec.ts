@@ -351,6 +351,14 @@ class MemoryRecordsStore implements RecordsStore {
     return Promise.resolve();
   }
 
+  applyWorkflowTransition(): Promise<null> {
+    return Promise.resolve(null);
+  }
+
+  listTransitionHistory() {
+    return Promise.resolve({ items: [], page: 1, limit: 20, total: 0 });
+  }
+
   listActivities(
     recordId: string,
     query: { page: number; limit: number },
