@@ -105,6 +105,10 @@ git log -10 --oneline
 - 记录列表可勾选当前页记录做批量修改：只改勾选的可写字段，逐条校验权限和乐观锁，部分失败不回滚已成功行。一次最多 50 条。
 - 窄屏下记录列表切换为卡片，不另建接口。
 - 服务端执行字段校验、隐藏字段裁剪、只读拒绝、乐观锁、租户隔离和 RLS。
+- 任意动态对象可配置 Workflow 草稿（状态、动作、角色、必填字段）。保存仍是草稿；随对象 Publish 冻结进 publication snapshot。
+- 运行时状态复用 `records.status_key`（API 名 `workflowStateKey`）。新记录写入当前发布的初始状态；旧记录 `null` 需显式「进入流程」。
+- Record Detail 展示当前状态、当前用户可执行 Transition 和流程历史。普通 PATCH 不能改流程状态。
+- 独立测试对象 `workflow-check` 已在本地 nebula-demo 发布并走通管理员执行链路；员工导航是否露出该表取决于该对象的员工默认权限。
 
 ### 权限事实
 
@@ -166,7 +170,7 @@ git log -10 --oneline
 - API：`http://localhost:3001/`
 - PostgreSQL：本机 5432（Homebrew 与 Docker 都可能占用该端口，以当前 `.env` 为准）
 - Redis：端口 6379
-- 已应用迁移：`0016_database_uuid_defaults`（本地 16 个迁移全部应用，`prisma migrate status` 显示 up to date）
+- 已应用迁移：`0017_workflow_state_machine`（本地 Homebrew 5432；独立 5433 测试库本轮未启动）
 
 确定性演示租户：
 
@@ -310,13 +314,17 @@ Worker 进程可以连接 Redis，但没有注册业务队列。
 2. `docs/superpowers/specs/2026-08-21-dynamic-objects-records-design.md`
 3. `docs/superpowers/specs/2026-08-26-platform-business-template-designer-design.md`
 4. `docs/superpowers/specs/2026-09-01-componentized-dashboard-design.md`
-5. `docs/superpowers/plans/2026-09-01-componentized-dashboard.md`
-6. `docs/superpowers/plans/2026-09-01-productization-follow-up.md`
+5. `docs/superpowers/plans/2026-09-01-productization-follow-up.md`
+6. `docs/superpowers/specs/2026-09-15-crm-process-roadmap.md`
+7. `docs/superpowers/plans/2026-09-15-workflow-v1-design.md`
+8. `docs/audits/2026-09-15/workflow-v1-acceptance.md`
 
 关键实现入口：
 
 - `apps/api/src/modules/objects/effective-access.ts`
 - `apps/api/src/modules/objects/object-publication.policy.ts`
+- `apps/api/src/modules/workflows/workflow-admin.service.ts`
+- `apps/api/src/modules/workflows/workflow-runtime.ts`
 - `apps/api/src/modules/records/records.service.ts`
 - `apps/api/src/modules/dashboards/dashboard-engine.ts`
 - `apps/api/src/modules/dashboards/dashboards.service.ts`
@@ -344,9 +352,9 @@ HANDOFF.md 与 docs/superpowers/plans/2026-09-01-productization-follow-up.md。
 
 2026-09-15 功能基线 `227e8d9` 与 `origin/main` 同步（其上可能有文档提交）。不要 reset、rebase、强推或部署。
 
-P0–P5 主干已经落地。P7 表管理主干已齐：活动、导出、列设置、批量修改、映射 CSV
-导入，以及个人跟进待办/逾期筛选。2026-09-15 一轮人工验收修复的清单见第 7 节；
-全量 pnpm test 退出码 0。短信与 AI 按用户要求暂缓。
+P0–P5 主干已经落地。P7 表管理主干已齐。Workflow V1 在 `feat/workflow-v1`，
+验收见 docs/audits/2026-09-15/workflow-v1-acceptance.md。不要自行开始 Action Engine。
+短信与 AI 按用户要求暂缓。
 
 第一轮页面验收已覆盖：业务对象设计器、记录列表与权限边界、成员覆盖、离职交接、
 Dashboard 基础操作（复制 / 归档 / 组件顺序）、平台审计、公司列表、模板列表、

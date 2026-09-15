@@ -214,7 +214,7 @@ describe("DashboardBuilder", () => {
       configurable: true,
       value: { ...original, assign },
     });
-    vi.mocked(updateDashboard).mockResolvedValue(initial.dashboard);
+    vi.mocked(updateDashboard).mockResolvedValue(initial.draft);
     try {
       render(
         <DashboardBuilder

@@ -1,7 +1,10 @@
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
 import type { DashboardQueryPlan } from './dashboard-engine';
-import type { PublishedDashboardDefinitionV2 } from './dashboard.types';
+import type {
+  PublishedDashboardDefinitionV2,
+  PublishedDashboardWidgetV2,
+} from './dashboard.types';
 import {
   PrismaDashboardQueryExecutor,
   PrismaDashboardRepository,
@@ -487,7 +490,7 @@ describe('PrismaDashboardQueryExecutor', () => {
         widget: {
           ...trendPlan('calendar-trend', 'close_date', 'DATE').widget,
           granularity: 'MONTH' as const,
-        },
+        } as PublishedDashboardWidgetV2,
       },
       {
         ...trendPlan('instant-trend', 'closed_at', 'DATETIME'),
@@ -495,7 +498,7 @@ describe('PrismaDashboardQueryExecutor', () => {
         widget: {
           ...trendPlan('instant-trend', 'closed_at', 'DATETIME').widget,
           granularity: 'MONTH' as const,
-        },
+        } as PublishedDashboardWidgetV2,
       },
     ]);
 

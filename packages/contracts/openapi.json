@@ -2173,10 +2173,6 @@
         "required": ["accepted"],
         "type": "object"
       },
-      "Object": {
-        "properties": {},
-        "type": "object"
-      },
       "ObjectDraftDefaultViewResponseDto": {
         "properties": {
           "columnFieldKeys": {
@@ -3424,7 +3420,7 @@
             "type": "array"
           },
           "toState": {
-            "type": "object"
+            "$ref": "#/components/schemas/RuntimeTransitionTargetDto"
           }
         },
         "required": ["key", "label", "requiredFieldKeys"],
@@ -3526,6 +3522,18 @@
         "required": ["environment", "services", "policies"],
         "type": "object"
       },
+      "RuntimeTransitionTargetDto": {
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": ["key", "label"],
+        "type": "object"
+      },
       "RuntimeWorkflowResponseDto": {
         "properties": {
           "availableTransitions": {
@@ -3610,7 +3618,7 @@
           },
           "initialStateKey": {
             "nullable": true,
-            "type": "object"
+            "type": "string"
           },
           "isEnabled": {
             "type": "boolean"
@@ -4683,7 +4691,7 @@
         "properties": {
           "initialStateKey": {
             "nullable": true,
-            "type": "object"
+            "type": "string"
           },
           "isEnabled": {
             "type": "boolean"
@@ -4711,7 +4719,7 @@
         "properties": {
           "actorDisplayName": {
             "nullable": true,
-            "type": "object"
+            "type": "string"
           },
           "actorMemberId": {
             "type": "string"
@@ -4721,11 +4729,11 @@
           },
           "fromStateKey": {
             "nullable": true,
-            "type": "object"
+            "type": "string"
           },
           "fromStateLabel": {
             "nullable": true,
-            "type": "object"
+            "type": "string"
           },
           "id": {
             "type": "string"
@@ -4778,8 +4786,9 @@
       "WorkflowStateDraftDto": {
         "properties": {
           "description": {
+            "maxLength": 1000,
             "nullable": true,
-            "type": "object"
+            "type": "string"
           },
           "isTerminal": {
             "type": "boolean"
@@ -9676,12 +9685,9 @@
             "name": "page",
             "required": false,
             "schema": {
-              "allOf": [
-                {
-                  "$ref": "#/components/schemas/Object"
-                }
-              ],
-              "default": 1
+              "default": 1,
+              "minimum": 1,
+              "type": "number"
             }
           },
           {
@@ -9689,12 +9695,9 @@
             "name": "limit",
             "required": false,
             "schema": {
-              "allOf": [
-                {
-                  "$ref": "#/components/schemas/Object"
-                }
-              ],
-              "default": 20
+              "default": 20,
+              "minimum": 1,
+              "type": "number"
             }
           },
           {

@@ -29,7 +29,7 @@ export class WorkflowStateDraftDto {
   @MaxLength(100)
   label!: string;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true, maxLength: 1000 })
   @IsOptional()
   @IsString()
   @MaxLength(1000)
@@ -95,7 +95,7 @@ export class SaveWorkflowDraftDto {
   @IsBoolean()
   isEnabled!: boolean;
 
-  @ApiPropertyOptional({ nullable: true })
+  @ApiPropertyOptional({ type: String, nullable: true })
   @ValidateIf((_, value) => value !== null)
   @IsOptional()
   @IsString()
@@ -117,7 +117,8 @@ export class SaveWorkflowDraftDto {
 
 export class WorkflowDraftResponseDto {
   @ApiProperty() isEnabled!: boolean;
-  @ApiPropertyOptional({ nullable: true }) initialStateKey!: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true })
+  initialStateKey!: string | null;
   @ApiProperty({ type: WorkflowStateDraftDto, isArray: true })
   states!: WorkflowStateDraftDto[];
   @ApiProperty({ type: WorkflowTransitionDraftDto, isArray: true })
@@ -138,10 +139,16 @@ export class RuntimeWorkflowStateDto {
   @ApiProperty() isTerminal!: boolean;
 }
 
+export class RuntimeTransitionTargetDto {
+  @ApiProperty() key!: string;
+  @ApiProperty() label!: string;
+}
+
 export class RuntimeAvailableTransitionDto {
   @ApiProperty() key!: string;
   @ApiProperty() label!: string;
-  @ApiPropertyOptional() toState?: { key: string; label: string };
+  @ApiPropertyOptional({ type: RuntimeTransitionTargetDto })
+  toState?: RuntimeTransitionTargetDto;
   @ApiProperty({ type: String, isArray: true }) requiredFieldKeys!: string[];
 }
 
@@ -157,12 +164,15 @@ export class WorkflowHistoryItemDto {
   @ApiProperty() id!: string;
   @ApiProperty() transitionKey!: string;
   @ApiProperty() transitionLabel!: string;
-  @ApiPropertyOptional({ nullable: true }) fromStateKey!: string | null;
-  @ApiPropertyOptional({ nullable: true }) fromStateLabel!: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true })
+  fromStateKey!: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true })
+  fromStateLabel!: string | null;
   @ApiProperty() toStateKey!: string;
   @ApiProperty() toStateLabel!: string;
   @ApiProperty() actorMemberId!: string;
-  @ApiPropertyOptional({ nullable: true }) actorDisplayName!: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true })
+  actorDisplayName!: string | null;
   @ApiProperty() createdAt!: string;
 }
 
@@ -175,14 +185,14 @@ export class WorkflowHistoryPageDto {
 }
 
 export class WorkflowHistoryQueryDto {
-  @ApiPropertyOptional({ default: 1 })
+  @ApiPropertyOptional({ type: Number, minimum: 1, default: 1 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   page = 1;
 
-  @ApiPropertyOptional({ default: 20 })
+  @ApiPropertyOptional({ type: Number, minimum: 1, default: 20 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()

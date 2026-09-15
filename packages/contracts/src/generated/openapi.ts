@@ -2094,7 +2094,6 @@ export interface components {
       /** @example true */
       accepted: boolean;
     };
-    Object: Record<string, never>;
     ObjectDraftDefaultViewResponseDto: {
       columnFieldKeys: string[];
       name: string;
@@ -2526,7 +2525,7 @@ export interface components {
       key: string;
       label: string;
       requiredFieldKeys: string[];
-      toState?: Record<string, never>;
+      toState?: components["schemas"]["RuntimeTransitionTargetDto"];
     };
     RuntimeObjectNavigationResponseDto: {
       canCreate: boolean;
@@ -2556,6 +2555,10 @@ export interface components {
       policies: components["schemas"]["RuntimePoliciesDto"];
       services: components["schemas"]["RuntimeServiceStatusDto"][];
     };
+    RuntimeTransitionTargetDto: {
+      key: string;
+      label: string;
+    };
     RuntimeWorkflowResponseDto: {
       availableTransitions: components["schemas"]["RuntimeAvailableTransitionDto"][];
       currentState?: components["schemas"]["RuntimeWorkflowStateDto"] | null;
@@ -2580,7 +2583,7 @@ export interface components {
     };
     SaveWorkflowDraftDto: {
       expectedDraftRevision: number;
-      initialStateKey?: Record<string, never> | null;
+      initialStateKey?: string | null;
       isEnabled: boolean;
       states: components["schemas"]["WorkflowStateDraftDto"][];
       transitions: components["schemas"]["WorkflowTransitionDraftDto"][];
@@ -2965,18 +2968,18 @@ export interface components {
       purpose: "REGISTER" | "RESET_PASSWORD";
     };
     WorkflowDraftResponseDto: {
-      initialStateKey?: Record<string, never> | null;
+      initialStateKey?: string | null;
       isEnabled: boolean;
       objectVersion: number;
       states: components["schemas"]["WorkflowStateDraftDto"][];
       transitions: components["schemas"]["WorkflowTransitionDraftDto"][];
     };
     WorkflowHistoryItemDto: {
-      actorDisplayName?: Record<string, never> | null;
+      actorDisplayName?: string | null;
       actorMemberId: string;
       createdAt: string;
-      fromStateKey?: Record<string, never> | null;
-      fromStateLabel?: Record<string, never> | null;
+      fromStateKey?: string | null;
+      fromStateLabel?: string | null;
       id: string;
       toStateKey: string;
       toStateLabel: string;
@@ -2990,7 +2993,7 @@ export interface components {
       total: number;
     };
     WorkflowStateDraftDto: {
-      description?: Record<string, never> | null;
+      description?: string | null;
       isTerminal: boolean;
       /** @example new */
       key: string;
@@ -5373,8 +5376,8 @@ export interface operations {
   WorkflowRuntimeController_history: {
     parameters: {
       query?: {
-        limit?: components["schemas"]["Object"];
-        page?: components["schemas"]["Object"];
+        limit?: number;
+        page?: number;
       };
       header?: never;
       path: {
