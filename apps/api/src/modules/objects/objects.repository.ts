@@ -5,6 +5,7 @@ import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
 import type { AuditEvent } from '../audit/audit-event';
 import { AuditService } from '../audit/audit.service';
+import type { ActionPublicationTarget } from '../actions/action-publication.policy';
 import type {
   PublicationAnalysis,
   PublicationDraft,
@@ -54,6 +55,15 @@ export interface ObjectsStore {
     objectId: string,
   ): Promise<Record<string, number>>;
   findWorkflowDraft(objectId: string): Promise<WorkflowDraft | null>;
+  /**
+   * §25/§26: the CURRENT Active Publication of each referenced Target Object,
+   * read inside the caller's tenant transaction. A code that has no object in
+   * this tenant is simply absent from the result — the lookup is scoped by the
+   * `TenantContext` and never falls back to another tenant's object.
+   */
+  findActionTargetObjects(
+    codes: readonly string[],
+  ): Promise<Map<string, ActionPublicationTarget>>;
   nextPublicationNumber(objectId: string): Promise<number>;
   createPublication(input: {
     objectId: string;
@@ -462,13 +472,39 @@ class PrismaObjectsStore implements ObjectsStore {
     };
   }
 
+  async findActionTargetObjects(
+    codes: readonly string[],
+  ): Promise<Map<string, ActionPublicationTarget>> {
+    const unique = [...new Set(codes)];
+    if (unique.length === 0) return new Map();
+    const objects = await this.transaction.objectDefinition.findMany({
+      where: { tenantId: this.context.tenantId, code: { in: unique } },
+      select: {
+        code: true,
+        status: true,
+        activePublication: { select: { configuration: true } },
+      },
+    });
+    return new Map(
+      objects.map((object) => [
+        object.code,
+        {
+          code: object.code,
+          status: object.status,
+          schema: object.activePublication
+            ? (object.activePublication
+                .configuration as unknown as PublishedObjectSchema)
+            : null,
+        },
+      ]),
+    );
+  }
+
   async deleteObject(
     objectId: string,
     expectedVersion: number,
   ): Promise<boolean> {
-    const locked = await this.transaction.$queryRaw<
-      Array<{ version: number }>
-    >`
+    const locked = await this.transaction.$queryRaw<Array<{ version: number }>>`
       SELECT version
       FROM object_definitions
       WHERE tenant_id = ${this.context.tenantId}::uuid
@@ -607,9 +643,9 @@ function viewColumns(value: PrismaTypes.JsonValue): {
   };
 }
 
-function viewColumnsJson(view: NonNullable<ObjectDraft['defaultView']>):
-  | string[]
-  | Record<string, unknown> {
+function viewColumnsJson(
+  view: NonNullable<ObjectDraft['defaultView']>,
+): string[] | Record<string, unknown> {
   if (view.searchFieldKeys === undefined) {
     return view.columnFieldKeys;
   }

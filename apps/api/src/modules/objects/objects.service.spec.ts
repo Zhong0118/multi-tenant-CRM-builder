@@ -1,4 +1,6 @@
 import type { TenantContext } from '../../common/tenancy/tenant-context';
+import type { ActionPublicationTarget } from '../actions/action-publication.policy';
+import type { WorkflowDraft } from '../workflows/workflow.types';
 import type { PublishedObjectSchema } from './object-schema';
 import type {
   ObjectDraft,
@@ -30,6 +32,9 @@ class MemoryObjectsStore implements ObjectsStore {
   publications = new Map<string, ObjectPublicationSummary[]>();
   audits: Array<{ action: string; after?: Record<string, unknown> }> = [];
   onLock?: (objectId: string) => void;
+  workflow: WorkflowDraft | null = null;
+  actionTargets = new Map<string, ActionPublicationTarget>();
+  actionTargetLookups: string[][] = [];
 
   lockObject(objectId: string): Promise<void> {
     this.onLock?.(objectId);
@@ -63,9 +68,7 @@ class MemoryObjectsStore implements ObjectsStore {
   }
 
   deleteObject(objectId: string, expectedVersion: number): Promise<boolean> {
-    const index = this.objects.findIndex(
-      (item) => item.object.id === objectId,
-    );
+    const index = this.objects.findIndex((item) => item.object.id === objectId);
     if (index < 0) return Promise.resolve(false);
     if (this.objects[index].object.version !== expectedVersion) {
       return Promise.resolve(false);
@@ -104,10 +107,22 @@ class MemoryObjectsStore implements ObjectsStore {
     return Promise.resolve({});
   }
 
-  findWorkflowDraft(): Promise<null> {
-    return Promise.resolve(null);
+  findWorkflowDraft(): Promise<WorkflowDraft | null> {
+    return Promise.resolve(this.workflow);
   }
 
+  findActionTargetObjects(
+    codes: readonly string[],
+  ): Promise<Map<string, ActionPublicationTarget>> {
+    this.actionTargetLookups.push([...codes]);
+    return Promise.resolve(
+      new Map(
+        [...this.actionTargets]
+          .filter(([code]) => codes.includes(code))
+          .map(([code, target]) => [code, structuredClone(target)]),
+      ),
+    );
+  }
   nextPublicationNumber(objectId: string): Promise<number> {
     const publications = this.publications.get(objectId) ?? [];
     return Promise.resolve(
@@ -609,9 +624,7 @@ describe('ObjectsService', () => {
     ).resolves.toEqual({ deleted: true });
 
     expect(store.objects).toHaveLength(0);
-    await expect(
-      service.detail(admin, draft.object.id),
-    ).rejects.toMatchObject({
+    await expect(service.detail(admin, draft.object.id)).rejects.toMatchObject({
       code: 'OBJECT_NOT_FOUND',
     });
   });
@@ -666,5 +679,148 @@ describe('ObjectsService', () => {
         meta,
       ),
     ).resolves.toMatchObject({ object: { status: 'ARCHIVED' } });
+  });
+});
+
+/**
+ * Task 8 — both publication flows must resolve the same Target Object context
+ * before the pure analysis runs (§25, §26), inside the tenant transaction.
+ */
+function enabledWorkflow(
+  actions: WorkflowDraft['transitions'][number]['actions'],
+): WorkflowDraft {
+  return {
+    isEnabled: true,
+    initialStateKey: 'new',
+    states: [
+      { key: 'new', label: '新建', sortOrder: 10, isTerminal: false },
+      { key: 'won', label: '赢单', sortOrder: 20, isTerminal: true },
+    ],
+    transitions: [
+      {
+        key: 'mark-won',
+        label: '标记赢单',
+        fromStateKey: 'new',
+        toStateKey: 'won',
+        allowedRoles: ['TENANT_ADMIN'],
+        requiredFieldKeys: [],
+        sortOrder: 10,
+        actions,
+      },
+    ],
+  };
+}
+
+function createContactAction(
+  targetObjectCode: string,
+): NonNullable<WorkflowDraft['transitions'][number]['actions']>[number] {
+  return {
+    key: 'create-contact',
+    type: 'CREATE_RECORD',
+    targetObjectCode,
+    values: { name: { source: 'SOURCE_FIELD', fieldKey: 'name' } },
+  };
+}
+
+function publishedContactTarget(): ActionPublicationTarget {
+  return {
+    code: 'contacts',
+    status: 'ACTIVE',
+    schema: {
+      fields: [
+        {
+          fieldKey: 'name',
+          type: 'TEXT',
+          required: true,
+          defaultValue: '未命名',
+          config: {},
+          isSystem: false,
+        },
+      ],
+      employeeAccess: {
+        canCreate: true,
+        canRead: true,
+        canUpdate: true,
+        canDelete: false,
+        readScope: 'ALL',
+        updateScope: 'ALL',
+        fields: { name: 'EDIT' },
+      },
+    },
+  };
+}
+
+describe('ObjectsService workflow action publication', () => {
+  it('loads the Target Object context before analyzing publication', async () => {
+    const { service, store } = fixture();
+    const draft = await createPublishableDraft(service);
+    store.workflow = enabledWorkflow([createContactAction('contacts')]);
+
+    const analysis = await service.analyzePublication(admin, draft.object.id, {
+      expectedVersion: draft.object.version,
+    });
+
+    expect(store.actionTargetLookups).toEqual([['contacts']]);
+    expect(analysis.blocking).toEqual([
+      expect.objectContaining({
+        code: 'WORKFLOW_ACTION_TARGET_OBJECT_INVALID',
+      }),
+    ]);
+  });
+
+  it('refuses to publish a workflow whose target object is missing', async () => {
+    const { service, store } = fixture();
+    const draft = await createPublishableDraft(service);
+    store.workflow = enabledWorkflow([createContactAction('contacts')]);
+
+    await expect(
+      service.publish(
+        admin,
+        draft.object.id,
+        { expectedVersion: draft.object.version },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'PUBLICATION_BLOCKED', status: 422 });
+
+    // The same context is loaded by the publish flow, and nothing was written.
+    expect(store.actionTargetLookups).toEqual([['contacts']]);
+    expect(store.publications.get(draft.object.id)).toBeUndefined();
+    expect(store.objects[0].object).toMatchObject({
+      status: 'DRAFT',
+      activePublicationId: null,
+    });
+  });
+
+  it('publishes an action whose current target publication is compatible', async () => {
+    const { service, store } = fixture();
+    const draft = await createPublishableDraft(service);
+    store.workflow = enabledWorkflow([createContactAction('contacts')]);
+    store.actionTargets.set('contacts', publishedContactTarget());
+
+    await expect(
+      service.publish(
+        admin,
+        draft.object.id,
+        { expectedVersion: draft.object.version },
+        meta,
+      ),
+    ).resolves.toMatchObject({ number: 1 });
+    expect(store.publications.get(draft.object.id)).toHaveLength(1);
+  });
+
+  it('resolves no target schema when the workflow has no actions', async () => {
+    const { service, store } = fixture();
+    const draft = await createPublishableDraft(service);
+    store.workflow = enabledWorkflow([]);
+
+    await expect(
+      service.publish(
+        admin,
+        draft.object.id,
+        { expectedVersion: draft.object.version },
+        meta,
+      ),
+    ).resolves.toMatchObject({ number: 1 });
+    expect(store.actionTargetLookups).toEqual([[]]);
   });
 });

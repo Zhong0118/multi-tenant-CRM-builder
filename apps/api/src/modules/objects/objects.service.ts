@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
+import { collectActionTargetObjectCodes } from '../actions/action-publication.policy';
 import type { AuditEvent } from '../audit/audit-event';
 import {
   analyzePublication,
@@ -434,6 +435,7 @@ export class ObjectsService {
       draft.workflow = await store.findWorkflowDraft(objectId);
       draft.workflowStateRecordCounts =
         await store.countRecordsByWorkflowState(objectId);
+      await loadActionTargets(store, draft);
       return analyzePublication(draft);
     });
   }
@@ -453,6 +455,7 @@ export class ObjectsService {
       draft.workflow = await store.findWorkflowDraft(objectId);
       draft.workflowStateRecordCounts =
         await store.countRecordsByWorkflowState(objectId);
+      await loadActionTargets(store, draft);
       const analysis = analyzePublication(draft);
       if (analysis.blocking.length > 0) {
         throw new ApiException('PUBLICATION_BLOCKED', 422, {
@@ -576,6 +579,21 @@ function assertTenantAdmin(context: TenantContext): void {
   if (context.role !== 'TENANT_ADMIN') {
     throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
   }
+}
+
+/**
+ * §25/§26: both publication flows resolve the Actions' Target Objects in the
+ * SAME tenant transaction before the pure analysis runs, so the analysis the
+ * administrator previews and the analysis that gates the write agree.
+ */
+async function loadActionTargets(
+  store: ObjectsStore,
+  draft: ObjectDraft,
+): Promise<void> {
+  if (!draft.workflow?.isEnabled) return;
+  draft.actionTargets = await store.findActionTargetObjects(
+    collectActionTargetObjectCodes(draft.workflow.transitions),
+  );
 }
 
 async function requireDraft(

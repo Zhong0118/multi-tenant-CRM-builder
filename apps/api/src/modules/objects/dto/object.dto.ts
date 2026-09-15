@@ -511,6 +511,12 @@ export class PublicationIssueResponseDto {
   @ApiProperty() code!: string;
   @ApiProperty() message!: string;
   @ApiPropertyOptional({ type: String }) fieldKey?: string;
+  /**
+   * §34: present on Action-originated issues so the designer can locate the
+   * offending Transition / Action. Absent on object- and workflow-level issues.
+   */
+  @ApiPropertyOptional({ type: String }) transitionKey?: string;
+  @ApiPropertyOptional({ type: String }) actionKey?: string;
 }
 
 export class PublicationChangeResponseDto {
