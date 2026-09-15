@@ -10,7 +10,10 @@ import type {
   PublicationDraft,
 } from './object-publication.policy';
 import type { PublishedObjectSchema } from './object-schema';
-import type { WorkflowDraft } from '../workflows/workflow.types';
+import {
+  toWorkflowActions,
+  type WorkflowDraft,
+} from '../workflows/workflow.types';
 
 export interface ObjectDraft extends PublicationDraft {
   object: PublicationDraft['object'] & {
@@ -453,6 +456,7 @@ class PrismaObjectsStore implements ObjectsStore {
         allowedRoles:
           transition.allowedRoles as WorkflowDraft['transitions'][number]['allowedRoles'],
         requiredFieldKeys: transition.requiredFieldKeys,
+        actions: toWorkflowActions(transition.actions),
         sortOrder: transition.sortOrder,
       })),
     };

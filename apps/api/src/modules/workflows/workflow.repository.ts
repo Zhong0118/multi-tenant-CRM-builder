@@ -5,7 +5,11 @@ import { DatabaseContextRunner } from '../../infrastructure/database/context-run
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { AuditService } from '../audit/audit.service';
 import type { AuditEvent } from '../audit/audit-event';
-import type { WorkflowDraft, WorkflowDraftResponse } from './workflow.types';
+import {
+  toWorkflowActions,
+  type WorkflowDraft,
+  type WorkflowDraftResponse,
+} from './workflow.types';
 
 export interface WorkflowStore {
   findObjectVersion(
@@ -100,6 +104,7 @@ class PrismaWorkflowStore implements WorkflowStore {
         toStateKey: transition.toStateKey,
         allowedRoles: transition.allowedRoles as WorkflowDraft['transitions'][number]['allowedRoles'],
         requiredFieldKeys: transition.requiredFieldKeys,
+        actions: toWorkflowActions(transition.actions),
         sortOrder: transition.sortOrder,
       })),
     };
@@ -164,6 +169,10 @@ class PrismaWorkflowStore implements WorkflowStore {
             toStateKey: transition.toStateKey,
             allowedRoles: transition.allowedRoles,
             requiredFieldKeys: transition.requiredFieldKeys,
+            // The Action union is built from interfaces, which cannot satisfy
+            // Prisma's `InputJsonValue` index signature without an assertion.
+            // The steps are already validated by `validateTransitionActions()`.
+            actions: toWorkflowActionsJson(transition.actions ?? []),
             sortOrder: transition.sortOrder,
           })),
         },
@@ -184,4 +193,8 @@ class PrismaWorkflowStore implements WorkflowStore {
   appendAudit(event: AuditEvent): Promise<void> {
     return this.audit.append(this.transaction, event);
   }
+}
+
+function toWorkflowActionsJson(value: unknown): Prisma.InputJsonValue {
+  return value as Prisma.InputJsonValue;
 }

@@ -704,6 +704,7 @@ model WorkflowTransitionDefinition {
   toStateKey           String                   @map("to_state_key") @db.VarChar(64)
   allowedRoles         MemberRole[]             @map("allowed_roles")
   requiredFieldKeys    String[]                 @map("required_field_keys")
+  actions              Json                     @default("[]") @db.JsonB
   sortOrder            Int                      @default(0) @map("sort_order")
   createdAt            DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt            DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)

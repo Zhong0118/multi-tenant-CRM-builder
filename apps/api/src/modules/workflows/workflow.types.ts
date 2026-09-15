@@ -36,6 +36,17 @@ export interface WorkflowDraft {
 }
 
 /**
+ * Narrows the raw `JsonValue` a Draft read gets from the `actions` JSONB column.
+ *
+ * Action steps are validated before persistence, so this only re-types the
+ * column value and normalizes a missing/legacy value to `[]`. Array order is
+ * execution order (§28) and is handed back exactly as stored.
+ */
+export function toWorkflowActions(value: unknown): WorkflowActionDraft[] {
+  return Array.isArray(value) ? (value as WorkflowActionDraft[]) : [];
+}
+
+/**
  * Untrusted transition input (HTTP DTO or persisted legacy data). `actions` are
  * deliberately untyped here; `validateTransitionActions()` owns their shape.
  */

@@ -89,6 +89,39 @@ test("defines tenant-scoped workflow drafts and append-only transition history",
   assert.match(migration, /record_transition_histories are immutable/);
 });
 
+test("persists ordered workflow actions on transitions", async () => {
+  const schema = await readFile(schemaUrl, "utf8");
+
+  assert.match(
+    schema,
+    /model\s+WorkflowTransitionDefinition\s+\{[\s\S]*?requiredFieldKeys\s+String\[\][\s\S]*?actions\s+Json\s+@default\("\[\]"\)\s+@db\.JsonB[\s\S]*?@@map\("workflow_transition_definitions"\)/,
+  );
+
+  const migration = await readFile(
+    new URL(
+      "./prisma/migrations/0018_workflow_actions/migration.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const statements = migration
+    .split("\n")
+    .filter((line) => !line.trimStart().startsWith("--"))
+    .join("\n");
+
+  assert.match(
+    statements,
+    /ALTER TABLE "workflow_transition_definitions"\s+ADD COLUMN "actions" JSONB NOT NULL DEFAULT '\[\]'::jsonb;/,
+  );
+  assert.match(
+    statements,
+    /ALTER TABLE "workflow_transition_definitions"\s+ADD CONSTRAINT "workflow_transition_definitions_actions_array"\s+CHECK \(jsonb_typeof\("actions"\) = 'array'\);/,
+  );
+  assert.doesNotMatch(statements, /CREATE TABLE/i);
+  assert.doesNotMatch(statements, /ROW LEVEL SECURITY/i);
+  assert.doesNotMatch(statements, /GRANT /i);
+});
+
 test("named dashboard migration can backfill publication owners past the immutability trigger", async () => {
   const migration = await readFile(
     new URL(
