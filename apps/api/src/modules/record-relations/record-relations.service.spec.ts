@@ -37,6 +37,8 @@ function fixture() {
   return {
     tx,
     objects,
+    audit,
+    runner,
     service: new RecordRelationsService(
       runner as never,
       objects as never,
@@ -141,5 +143,109 @@ describe('relation actor mutation lock', () => {
       service.remove(context, 'leads', 'source', 'link', { requestId: 'req' }),
     ).rejects.toMatchObject({ code: 'WORKSPACE_FORBIDDEN' });
     expect(tx.$executeRaw).not.toHaveBeenCalled();
+  });
+
+  it('removes a visible relation under the same locks and audits it', async () => {
+    const { service, tx, audit } = fixture();
+    tx.$queryRaw
+      .mockResolvedValueOnce([
+        { id: 'link', targetId: 'target', objectCode: 'contacts' },
+      ])
+      .mockResolvedValueOnce([{ role: 'EMPLOYEE' }])
+      .mockResolvedValueOnce([{ id: 'source' }])
+      .mockResolvedValueOnce([{ id: 'target' }]);
+    tx.$executeRaw.mockResolvedValue(1);
+
+    await expect(
+      service.remove(context, 'leads', 'source', 'link', { requestId: 'req' }),
+    ).resolves.toEqual({ success: true });
+
+    expect(audit.append).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({
+        action: 'record.relation_removed',
+        resourceId: 'source',
+        before: { targetRecordId: 'target' },
+        requestId: 'req',
+      }),
+    );
+  });
+
+  it('fails a remove that deleted no row', async () => {
+    const { service, tx, audit } = fixture();
+    tx.$queryRaw
+      .mockResolvedValueOnce([
+        { id: 'link', targetId: 'target', objectCode: 'contacts' },
+      ])
+      .mockResolvedValueOnce([{ role: 'EMPLOYEE' }])
+      .mockResolvedValueOnce([{ id: 'source' }])
+      .mockResolvedValueOnce([{ id: 'target' }]);
+    tx.$executeRaw.mockResolvedValue(0);
+
+    await expect(
+      service.remove(context, 'leads', 'source', 'link', { requestId: 'req' }),
+    ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+    expect(audit.append).not.toHaveBeenCalled();
+  });
+});
+
+describe('relation service transaction boundary', () => {
+  it('runs the shared command inside one tenant transaction and audits on its client', async () => {
+    const { service, tx, objects, audit, runner } = fixture();
+    tx.$queryRaw
+      .mockResolvedValueOnce([{ role: 'EMPLOYEE' }])
+      .mockResolvedValueOnce([{ id: 'source' }])
+      .mockResolvedValueOnce([{ id: 'target' }]);
+
+    await expect(
+      service.add(
+        context,
+        'leads',
+        'source',
+        { objectCode: 'contacts', recordId: 'target' },
+        { requestId: 'req' },
+      ),
+    ).resolves.toEqual({ success: true });
+
+    expect(runner.withTenant).toHaveBeenCalledTimes(1);
+    expect(audit.append).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({
+        action: 'record.relation_added',
+        resourceId: 'source',
+        after: { targetRecordId: 'target' },
+      }),
+    );
+    // Pins order only, NOT atomicity: `add()` now opens its write transaction
+    // before the command resolves scopes, and each `resolveRuntimeSchema` call
+    // still opens its OWN transaction (see the `resolveScope` contract in
+    // record-relation-command.ts). Consequence: a 400/403 now aborts an already
+    // opened transaction. This assertion makes that order deliberate rather
+    // than claiming the resolver runs inside `tx`.
+    expect(runner.withTenant.mock.invocationCallOrder[0]).toBeLessThan(
+      objects.resolveRuntimeSchema.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('returns a duplicate relation as a no-op without a second transaction', async () => {
+    const { service, tx, audit, runner } = fixture();
+    tx.$queryRaw
+      .mockResolvedValueOnce([{ role: 'EMPLOYEE' }])
+      .mockResolvedValueOnce([{ id: 'source' }])
+      .mockResolvedValueOnce([{ id: 'target' }])
+      .mockResolvedValueOnce([]);
+
+    await expect(
+      service.add(
+        context,
+        'leads',
+        'source',
+        { objectCode: 'contacts', recordId: 'target' },
+        { requestId: 'req' },
+      ),
+    ).resolves.toEqual({ success: true });
+
+    expect(runner.withTenant).toHaveBeenCalledTimes(1);
+    expect(audit.append).not.toHaveBeenCalled();
   });
 });

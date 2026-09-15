@@ -83,6 +83,55 @@ describe('personal record follow-ups', () => {
     ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
     expect(repository.create).not.toHaveBeenCalled();
   });
+
+  it.each([
+    { title: '   ', dueAt: '2026-09-10T08:00:00Z' },
+    { title: 'Call', dueAt: '2026-09-10T08:00:00' },
+    { title: 'Call', dueAt: 'not-a-date' },
+    { title: 42, dueAt: '2026-09-10T08:00:00Z' },
+  ])('rejects an invalid follow-up create input %j', async (input) => {
+    const { service, repository } = fixture();
+    await expect(
+      service.create(
+        context,
+        { objectCode: 'leads', recordId: 'record', ...input } as never,
+        { requestId: 'req' },
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    expect(repository.create).not.toHaveBeenCalled();
+  });
+
+  it('trims the title and hands the resolved record scope to the repository transaction', async () => {
+    const { service, repository } = fixture();
+    await service.create(
+      context,
+      {
+        objectCode: 'leads',
+        recordId: 'record',
+        title: '  Call  ',
+        dueAt: '2026-09-10T08:00:00Z',
+      },
+      { requestId: 'req' },
+    );
+    expect(repository.create).toHaveBeenCalledTimes(1);
+    expect(repository.create).toHaveBeenCalledWith(
+      context,
+      {
+        objectCode: 'leads',
+        recordId: 'record',
+        title: 'Call',
+        dueAt: '2026-09-10T08:00:00Z',
+      },
+      { requestId: 'req' },
+      {
+        objectId: 'object',
+        recordId: 'record',
+        expectedRole: 'EMPLOYEE',
+        requiredOwnerMemberId: 'me',
+      },
+    );
+  });
+
   it('rechecks UPDATE permission when completing an existing task', async () => {
     const { service, repository, resolved } = fixture();
     resolved.access.canUpdate = false;

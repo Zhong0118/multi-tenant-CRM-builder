@@ -7,17 +7,9 @@ import type {
   FollowUpQueryDto,
   UpdateFollowUpDto,
 } from './follow-ups.dto';
+import type { FollowUpMeta, FollowUpRecordScope } from './follow-up-command';
 import { FollowUpsRepository } from './follow-ups.repository';
-export interface FollowUpRecordScope {
-  objectId: string;
-  recordId: string;
-  requiredOwnerMemberId?: string;
-  expectedRole?: TenantContext['role'];
-}
-export interface FollowUpMeta {
-  requestId: string;
-  ip?: string;
-}
+export type { FollowUpMeta, FollowUpRecordScope } from './follow-up-command';
 export interface FollowUpScope {
   objectId: string;
   ownerMemberId?: string;
@@ -79,6 +71,12 @@ export class FollowUpsService {
       !validDueAt(input.dueAt)
     )
       throw new ApiException('VALIDATION_FAILED', 400);
+    /**
+     * §24: the HTTP boundary keeps its own tenant transaction (opened by the
+     * repository) and runs the shared transaction-aware command inside it, so
+     * the Action Engine can later run the same command inside the Transition's
+     * transaction. The assignee stays hard-coded to the acting member.
+     */
     return this.repository.create(
       context,
       { ...input, title: input.title.trim() },
