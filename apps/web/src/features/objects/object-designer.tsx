@@ -49,16 +49,24 @@ import {
   type RecordSortField,
 } from "./object-types";
 import { PublicationPanel } from "./publication-panel";
+import { WorkflowDesigner } from "./workflow-designer";
 
 import styles from "./objects.module.css";
 
-type Section = "basics" | "fields" | "view" | "permissions" | "publications";
+type Section =
+  | "basics"
+  | "fields"
+  | "view"
+  | "permissions"
+  | "workflow"
+  | "publications";
 
 const SECTIONS: Array<{ key: Section; label: string }> = [
   { key: "basics", label: "基本设置" },
   { key: "fields", label: "字段" },
   { key: "view", label: "列表视图" },
   { key: "permissions", label: "员工权限" },
+  { key: "workflow", label: "流程" },
   { key: "publications", label: "发布记录" },
 ];
 
@@ -490,6 +498,14 @@ export function ObjectDesigner({
               draft={draft}
               saving={savePermissions.isPending}
               onSave={(input) => savePermissions.mutate(input)}
+            />
+          ) : null}
+
+          {section === "workflow" ? (
+            <WorkflowDesigner
+              tenantCode={tenantCode}
+              draft={draft}
+              onObjectVersion={setDraft}
             />
           ) : null}
 

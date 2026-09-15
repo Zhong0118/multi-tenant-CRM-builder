@@ -3,11 +3,11 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { PublishedObjectService } from '../objects/published-object.service';
-import {
-  RECORDS_REPOSITORY,
-  type RecordsRepository,
-} from '../records/records.service';
-import type { DynamicRecord } from '../records/records.repository';
+import { RECORDS_REPOSITORY } from '../records/records.service';
+import type {
+  DynamicRecord,
+  RecordsRepository,
+} from '../records/records.repository';
 import {
   resolveExecutableTransition,
   runtimeWorkflowView,

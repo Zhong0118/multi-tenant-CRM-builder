@@ -15,6 +15,7 @@ import { RecordAttachmentsPanel } from "@/features/attachments/record-attachment
 import { RecordRelationsPanel } from "./record-relations-panel";
 import { FollowUpPanel } from "@/features/follow-ups/follow-up-panel";
 import { RecordActivityTimeline } from "./record-activity-timeline";
+import { RecordWorkflowPanel } from "./record-workflow-panel";
 import { displayValue } from "./record-list";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
 import { RecordForm } from "./record-form";
@@ -145,6 +146,18 @@ export function RecordDetailDrawer({
               版本 v{record.version}
             </Typography.Text>
           </div>
+
+          <RecordWorkflowPanel
+            tenantCode={tenantCode}
+            objectCode={schema.object.code}
+            recordId={record.id}
+            recordVersion={record.version}
+            onRecordChanged={() =>
+              void api
+                .detail(tenantCode, schema.object.code, record.id)
+                .then(onChanged)
+            }
+          />
 
           <FollowUpPanel
             tenantCode={tenantCode}

@@ -1684,6 +1684,16 @@
         ],
         "type": "object"
       },
+      "ExecuteWorkflowTransitionDto": {
+        "properties": {
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": ["expectedVersion"],
+        "type": "object"
+      },
       "ExpectedTemplateVersionDto": {
         "properties": {
           "expectedVersion": {
@@ -2161,6 +2171,10 @@
           }
         },
         "required": ["accepted"],
+        "type": "object"
+      },
+      "Object": {
+        "properties": {},
         "type": "object"
       },
       "ObjectDraftDefaultViewResponseDto": {
@@ -3395,6 +3409,27 @@
         "required": ["phone", "code", "newPassword"],
         "type": "object"
       },
+      "RuntimeAvailableTransitionDto": {
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "requiredFieldKeys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "toState": {
+            "type": "object"
+          }
+        },
+        "required": ["key", "label", "requiredFieldKeys"],
+        "type": "object"
+      },
       "RuntimeObjectNavigationResponseDto": {
         "properties": {
           "canCreate": {
@@ -3491,6 +3526,45 @@
         "required": ["environment", "services", "policies"],
         "type": "object"
       },
+      "RuntimeWorkflowResponseDto": {
+        "properties": {
+          "availableTransitions": {
+            "items": {
+              "$ref": "#/components/schemas/RuntimeAvailableTransitionDto"
+            },
+            "type": "array"
+          },
+          "currentState": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RuntimeWorkflowStateDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "recordVersion": {
+            "type": "number"
+          }
+        },
+        "required": ["availableTransitions", "recordVersion"],
+        "type": "object"
+      },
+      "RuntimeWorkflowStateDto": {
+        "properties": {
+          "isTerminal": {
+            "type": "boolean"
+          },
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": ["key", "label", "isTerminal"],
+        "type": "object"
+      },
       "SaveBusinessTemplateDraftDto": {
         "properties": {
           "configuration": {
@@ -3526,6 +3600,40 @@
           }
         },
         "required": ["expectedVersion", "configuration"],
+        "type": "object"
+      },
+      "SaveWorkflowDraftDto": {
+        "properties": {
+          "expectedDraftRevision": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "initialStateKey": {
+            "nullable": true,
+            "type": "object"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "states": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowStateDraftDto"
+            },
+            "type": "array"
+          },
+          "transitions": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowTransitionDraftDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "expectedDraftRevision",
+          "isEnabled",
+          "states",
+          "transitions"
+        ],
         "type": "object"
       },
       "SelectOptionDto": {
@@ -4569,6 +4677,170 @@
           }
         },
         "required": ["phone", "purpose", "deviceKey"],
+        "type": "object"
+      },
+      "WorkflowDraftResponseDto": {
+        "properties": {
+          "initialStateKey": {
+            "nullable": true,
+            "type": "object"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "objectVersion": {
+            "type": "number"
+          },
+          "states": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowStateDraftDto"
+            },
+            "type": "array"
+          },
+          "transitions": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowTransitionDraftDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["isEnabled", "states", "transitions", "objectVersion"],
+        "type": "object"
+      },
+      "WorkflowHistoryItemDto": {
+        "properties": {
+          "actorDisplayName": {
+            "nullable": true,
+            "type": "object"
+          },
+          "actorMemberId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "fromStateKey": {
+            "nullable": true,
+            "type": "object"
+          },
+          "fromStateLabel": {
+            "nullable": true,
+            "type": "object"
+          },
+          "id": {
+            "type": "string"
+          },
+          "toStateKey": {
+            "type": "string"
+          },
+          "toStateLabel": {
+            "type": "string"
+          },
+          "transitionKey": {
+            "type": "string"
+          },
+          "transitionLabel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "transitionKey",
+          "transitionLabel",
+          "toStateKey",
+          "toStateLabel",
+          "actorMemberId",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "WorkflowHistoryPageDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowHistoryItemDto"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": ["items", "page", "limit", "total"],
+        "type": "object"
+      },
+      "WorkflowStateDraftDto": {
+        "properties": {
+          "description": {
+            "nullable": true,
+            "type": "object"
+          },
+          "isTerminal": {
+            "type": "boolean"
+          },
+          "key": {
+            "example": "new",
+            "type": "string"
+          },
+          "label": {
+            "example": "新建",
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "number"
+          }
+        },
+        "required": ["key", "label", "sortOrder", "isTerminal"],
+        "type": "object"
+      },
+      "WorkflowTransitionDraftDto": {
+        "properties": {
+          "allowedRoles": {
+            "items": {
+              "enum": ["TENANT_ADMIN", "EMPLOYEE"],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "fromStateKey": {
+            "type": "string"
+          },
+          "key": {
+            "example": "mark-won",
+            "type": "string"
+          },
+          "label": {
+            "example": "标记赢单",
+            "type": "string"
+          },
+          "requiredFieldKeys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "sortOrder": {
+            "type": "number"
+          },
+          "toStateKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "fromStateKey",
+          "toStateKey",
+          "allowedRoles",
+          "requiredFieldKeys",
+          "sortOrder"
+        ],
         "type": "object"
       },
       "WorkspaceSummaryResponseDto": {
@@ -8119,6 +8391,98 @@
         "tags": ["object-definitions"]
       }
     },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/workflow": {
+      "get": {
+        "operationId": "WorkflowAdminController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowDraftResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["workflows"]
+      },
+      "put": {
+        "operationId": "WorkflowAdminController_save",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveWorkflowDraftDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowDraftResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["workflows"]
+      }
+    },
     "/api/v1/workspaces/{tenantCode}/objects": {
       "get": {
         "operationId": "ObjectsController_runtimeObjects",
@@ -9234,6 +9598,200 @@
           }
         ],
         "tags": ["record-relations"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/workflow": {
+      "get": {
+        "operationId": "WorkflowRuntimeController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeWorkflowResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["workflows"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/workflow/history": {
+      "get": {
+        "operationId": "WorkflowRuntimeController_history",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ],
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ],
+              "default": 20
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowHistoryPageDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["workflows"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/workflow/transitions/{transitionKey}": {
+      "post": {
+        "operationId": "WorkflowRuntimeController_execute",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "transitionKey",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecuteWorkflowTransitionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeWorkflowResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["workflows"]
       }
     },
     "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/schema": {

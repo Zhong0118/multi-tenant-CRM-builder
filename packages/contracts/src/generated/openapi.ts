@@ -1076,6 +1076,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/workflow": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorkflowAdminController_get"];
+    put: operations["WorkflowAdminController_save"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/object-definitions/order": {
     parameters: {
       query?: never;
@@ -1215,6 +1231,54 @@ export interface paths {
     put?: never;
     post?: never;
     delete: operations["RecordRelationsController_remove"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/workflow": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorkflowRuntimeController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/workflow/history": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorkflowRuntimeController_history"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/workflow/transitions/{transitionKey}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["WorkflowRuntimeController_execute"];
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -1867,6 +1931,9 @@ export interface components {
       /** @enum {string} */
       updateScope: "ALL" | "OWN" | "NONE";
     };
+    ExecuteWorkflowTransitionDto: {
+      expectedVersion: number;
+    };
     ExpectedTemplateVersionDto: {
       expectedVersion: number;
     };
@@ -2027,6 +2094,7 @@ export interface components {
       /** @example true */
       accepted: boolean;
     };
+    Object: Record<string, never>;
     ObjectDraftDefaultViewResponseDto: {
       columnFieldKeys: string[];
       name: string;
@@ -2454,6 +2522,12 @@ export interface components {
       /** @example 13800138000 */
       phone: string;
     };
+    RuntimeAvailableTransitionDto: {
+      key: string;
+      label: string;
+      requiredFieldKeys: string[];
+      toState?: Record<string, never>;
+    };
     RuntimeObjectNavigationResponseDto: {
       canCreate: boolean;
       canRead: boolean;
@@ -2482,6 +2556,16 @@ export interface components {
       policies: components["schemas"]["RuntimePoliciesDto"];
       services: components["schemas"]["RuntimeServiceStatusDto"][];
     };
+    RuntimeWorkflowResponseDto: {
+      availableTransitions: components["schemas"]["RuntimeAvailableTransitionDto"][];
+      currentState?: components["schemas"]["RuntimeWorkflowStateDto"] | null;
+      recordVersion: number;
+    };
+    RuntimeWorkflowStateDto: {
+      isTerminal: boolean;
+      key: string;
+      label: string;
+    };
     SaveBusinessTemplateDraftDto: {
       configuration: components["schemas"]["BusinessTemplateConfigurationDto"];
       description: string | null;
@@ -2493,6 +2577,13 @@ export interface components {
         [key: string]: unknown;
       };
       expectedVersion: number;
+    };
+    SaveWorkflowDraftDto: {
+      expectedDraftRevision: number;
+      initialStateKey?: Record<string, never> | null;
+      isEnabled: boolean;
+      states: components["schemas"]["WorkflowStateDraftDto"][];
+      transitions: components["schemas"]["WorkflowTransitionDraftDto"][];
     };
     SelectOptionDto: {
       /**
@@ -2872,6 +2963,51 @@ export interface components {
       phone: string;
       /** @enum {string} */
       purpose: "REGISTER" | "RESET_PASSWORD";
+    };
+    WorkflowDraftResponseDto: {
+      initialStateKey?: Record<string, never> | null;
+      isEnabled: boolean;
+      objectVersion: number;
+      states: components["schemas"]["WorkflowStateDraftDto"][];
+      transitions: components["schemas"]["WorkflowTransitionDraftDto"][];
+    };
+    WorkflowHistoryItemDto: {
+      actorDisplayName?: Record<string, never> | null;
+      actorMemberId: string;
+      createdAt: string;
+      fromStateKey?: Record<string, never> | null;
+      fromStateLabel?: Record<string, never> | null;
+      id: string;
+      toStateKey: string;
+      toStateLabel: string;
+      transitionKey: string;
+      transitionLabel: string;
+    };
+    WorkflowHistoryPageDto: {
+      items: components["schemas"]["WorkflowHistoryItemDto"][];
+      limit: number;
+      page: number;
+      total: number;
+    };
+    WorkflowStateDraftDto: {
+      description?: Record<string, never> | null;
+      isTerminal: boolean;
+      /** @example new */
+      key: string;
+      /** @example 新建 */
+      label: string;
+      sortOrder: number;
+    };
+    WorkflowTransitionDraftDto: {
+      allowedRoles: ("TENANT_ADMIN" | "EMPLOYEE")[];
+      fromStateKey: string;
+      /** @example mark-won */
+      key: string;
+      /** @example 标记赢单 */
+      label: string;
+      requiredFieldKeys: string[];
+      sortOrder: number;
+      toStateKey: string;
     };
     WorkspaceSummaryResponseDto: {
       /** Format: uuid */
@@ -4754,6 +4890,54 @@ export interface operations {
       };
     };
   };
+  WorkflowAdminController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkflowDraftResponseDto"];
+        };
+      };
+    };
+  };
+  WorkflowAdminController_save: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SaveWorkflowDraftDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkflowDraftResponseDto"];
+        };
+      };
+    };
+  };
   ObjectsController_reorderObjects: {
     parameters: {
       query?: never;
@@ -5159,6 +5343,83 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["RelationResultDto"];
+        };
+      };
+    };
+  };
+  WorkflowRuntimeController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RuntimeWorkflowResponseDto"];
+        };
+      };
+    };
+  };
+  WorkflowRuntimeController_history: {
+    parameters: {
+      query?: {
+        limit?: components["schemas"]["Object"];
+        page?: components["schemas"]["Object"];
+      };
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkflowHistoryPageDto"];
+        };
+      };
+    };
+  };
+  WorkflowRuntimeController_execute: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+        tenantCode: string;
+        transitionKey: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ExecuteWorkflowTransitionDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RuntimeWorkflowResponseDto"];
         };
       };
     };
