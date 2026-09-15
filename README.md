@@ -2,7 +2,9 @@
 
 面向多家公司的可配置 CRM 平台。当前仓库采用 pnpm monorepo，Web、API、Worker 分进程部署；API 与 Worker 可以访问数据库包，Web 只调用 REST API。
 
-完整产品与架构设计见 [`docs/design/README.md`](docs/design/README.md)。当前实现事实以 [`HANDOFF.md`](HANDOFF.md) 和最新[三角色补齐与验证](docs/audits/2026-09-09/role-completion.md)为准；设计规格分别覆盖账号邀请、动态对象记录、平台模板和组件化工作台。旧设计索引可能落后于本地 `main`。
+完整产品与架构设计见 [`docs/design/README.md`](docs/design/README.md)。**当前实现事实以 [`HANDOFF.md`](HANDOFF.md) 为准**，这里不重复维护状态。
+
+`docs/audits/` 下是历史验收记录，其中 [2026-09-09 三角色补齐与验证](docs/audits/2026-09-09/role-completion.md) 记录的是三角色功能补齐阶段；其后的修复与人工验收都已汇总进 `HANDOFF.md`。设计规格分别覆盖账号邀请、动态对象记录、平台模板和组件化工作台；旧设计索引可能落后于本地 `main`。
 
 ## 工程结构
 
@@ -43,7 +45,7 @@ Web 只通过 API 获取业务数据；`packages/database` 仅供 API 与 Worker
 
 ## 环境要求
 
-- Node.js `>=20.9`
+- Node.js `>=24`（本地验证版本 24.19.0）。`@crm/database` 是 ESM 包而 `apps/api` 编译为 CJS，需要支持 `require(esm)` 的 Node；若要在 Node 22 LTS 上运行，先实测再放宽 `package.json` 的 `engines`。
 - pnpm `11.19.0`
 - PostgreSQL 15+（本机服务或 Docker 均可；当前本地验证使用 PostgreSQL 15）
 - Redis 7.4（本机服务或 Docker 均可）

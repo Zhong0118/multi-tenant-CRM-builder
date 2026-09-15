@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@11.19.0",
   "engines": {
-    "node": ">=20.9.0"
+    "node": ">=24"
   },
   "scripts": {
     "predev": "pnpm --filter @crm/contracts --filter @crm/database build",
