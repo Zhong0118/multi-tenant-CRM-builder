@@ -1,3 +1,4 @@
+import type { WorkflowActionDraft } from '../actions/action.types';
 import {
   analyzePublication,
   compilePublication,
@@ -322,6 +323,7 @@ describe('object publication policy', () => {
           toStateKey: 'won',
           allowedRoles: ['TENANT_ADMIN', 'EMPLOYEE'],
           requiredFieldKeys: ['phone'],
+          actions: [],
         },
       ],
     });
@@ -432,6 +434,76 @@ describe('object publication policy', () => {
     });
 
     expect(schema.defaultView.searchFieldKeys).toEqual(['phone']);
+  });
+
+  it('freezes transition actions into the published snapshot in order', () => {
+    const actions: WorkflowActionDraft[] = [
+      {
+        key: 'create-contact',
+        type: 'CREATE_RECORD',
+        targetObjectCode: 'contacts',
+        values: { name: { source: 'SOURCE_FIELD', fieldKey: 'name' } },
+        owner: { source: 'ACTOR' },
+      },
+      {
+        key: 'link-contact',
+        type: 'CREATE_RELATION',
+        left: { source: 'SOURCE_RECORD' },
+        right: {
+          source: 'ACTION_OUTPUT',
+          actionKey: 'create-contact',
+          property: 'recordId',
+        },
+      },
+      {
+        key: 'assign-actor',
+        type: 'ASSIGN_OWNER',
+        target: 'SOURCE_RECORD',
+        owner: { source: 'ACTOR' },
+      },
+    ];
+    const draft = validDraft();
+    draft.workflow = {
+      isEnabled: true,
+      initialStateKey: 'new',
+      states: [
+        { key: 'new', label: '新建', sortOrder: 10, isTerminal: false },
+        { key: 'won', label: '赢单', sortOrder: 20, isTerminal: true },
+      ],
+      transitions: [
+        {
+          key: 'mark-won',
+          label: '标记赢单',
+          fromStateKey: 'new',
+          toStateKey: 'won',
+          allowedRoles: ['TENANT_ADMIN'],
+          requiredFieldKeys: ['phone'],
+          sortOrder: 10,
+          actions,
+        },
+      ],
+    };
+
+    const schema = compilePublication({
+      ...draft,
+      publication: {
+        id: 'publication-2',
+        number: 2,
+        sourceDraftVersion: 7,
+        publishedAt: '2026-08-21T10:00:00.000Z',
+      },
+    });
+
+    // Array order is execution order (§28), so the frozen copy keeps it.
+    expect(schema.workflow?.transitions[0]?.actions).toEqual(actions);
+    expect(
+      schema.workflow?.transitions[0]?.actions.map((action) => action.key),
+    ).toEqual(['create-contact', 'link-contact', 'assign-actor']);
+    // Frozen by copy: later draft edits must not reach the snapshot.
+    actions[0].key = 'renamed';
+    expect(schema.workflow?.transitions[0]?.actions[0]?.key).toBe(
+      'create-contact',
+    );
   });
 });
 

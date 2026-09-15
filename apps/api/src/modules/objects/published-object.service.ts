@@ -2,6 +2,14 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
+import type { PublishedAction } from '../actions/action.types';
+import { validateTransitionActions } from '../actions/action-draft.policy';
+import type {
+  PublishedWorkflow,
+  PublishedWorkflowState,
+  PublishedWorkflowTransition,
+  WorkflowRole,
+} from '../workflows/workflow.types';
 import {
   resolveEffectiveAccess,
   type EffectiveObjectAccess,
@@ -211,14 +219,11 @@ function projectRuntimeSchema(
 export function parsePublishedObjectSchema(
   value: unknown,
 ): PublishedObjectSchema {
-  const root = optionalKeyedObject(value, [
-    'publication',
-    'object',
-    'fields',
-    'defaultView',
-    'employeeAccess',
-    'workflow',
-  ]);
+  const root = keyedObject(
+    value,
+    ['publication', 'object', 'fields', 'defaultView', 'employeeAccess'],
+    ['workflow'],
+  );
   const publication = strictObject(root.publication, [
     'id',
     'number',
@@ -298,15 +303,23 @@ export function parsePublishedObjectSchema(
       invalidSnapshot();
     }
   }
-  if (root.workflow !== undefined) parseWorkflow(root.workflow, fieldKeys);
+  const workflow =
+    root.workflow === undefined
+      ? undefined
+      : parseWorkflow(root.workflow, fieldKeys);
 
-  return structuredClone(value) as PublishedObjectSchema;
+  const schema = structuredClone(value) as PublishedObjectSchema;
+  // §35: the parsed workflow is the normalized representation Runtime executes.
+  // Snapshots published before Action Engine V1 carry no `actions` key at all
+  // and come back with `actions: []` instead of `undefined`.
+  if (workflow !== undefined) schema.workflow = workflow;
+  return schema;
 }
 
 function parseWorkflow(
   value: unknown,
   fieldKeys: Set<string>,
-): void {
+): PublishedWorkflow {
   const workflow = strictObject(value, [
     'initialStateKey',
     'states',
@@ -318,6 +331,7 @@ function parseWorkflow(
   }
   if (!Array.isArray(workflow.transitions)) invalidSnapshot();
   const stateKeys = new Set<string>();
+  const states: PublishedWorkflowState[] = [];
   for (const stateValue of workflow.states) {
     const state = strictObject(stateValue, [
       'key',
@@ -331,18 +345,31 @@ function parseWorkflow(
     assertBoolean(state.isTerminal);
     if (stateKeys.has(state.key)) invalidSnapshot();
     stateKeys.add(state.key);
+    states.push({
+      key: state.key,
+      label: state.label,
+      sortOrder: state.sortOrder,
+      isTerminal: state.isTerminal,
+    });
   }
   if (!stateKeys.has(String(workflow.initialStateKey))) invalidSnapshot();
   const edges = new Set<string>();
-  for (const transitionValue of workflow.transitions) {
-    const transition = strictObject(transitionValue, [
-      'key',
-      'label',
-      'fromStateKey',
-      'toStateKey',
-      'allowedRoles',
-      'requiredFieldKeys',
-    ]);
+  const transitions: PublishedWorkflowTransition[] = [];
+  for (const [index, transitionValue] of workflow.transitions.entries()) {
+    // `actions` is optional here on purpose: a transition published before
+    // Action Engine V1 has no such key, and every other key stays strict (§35).
+    const transition = keyedObject(
+      transitionValue,
+      [
+        'key',
+        'label',
+        'fromStateKey',
+        'toStateKey',
+        'allowedRoles',
+        'requiredFieldKeys',
+      ],
+      ['actions'],
+    );
     assertString(transition.key);
     assertString(transition.label);
     assertString(transition.fromStateKey);
@@ -364,25 +391,55 @@ function parseWorkflow(
     if (requiredFieldKeys.some((fieldKey) => !fieldKeys.has(fieldKey))) {
       invalidSnapshot();
     }
+    transitions.push({
+      key: transition.key,
+      label: transition.label,
+      fromStateKey: transition.fromStateKey,
+      toStateKey: transition.toStateKey,
+      allowedRoles: roles as WorkflowRole[],
+      requiredFieldKeys,
+      actions: parseTransitionActions(transition.actions, index),
+    });
+  }
+  return {
+    initialStateKey: workflow.initialStateKey,
+    states,
+    transitions,
+  };
+}
+
+/**
+ * §10 / §35: Transition actions ride inside the frozen snapshot.
+ *
+ * Absent means the publication predates Action Engine V1 and yields `[]`;
+ * present is parsed strictly, so a corrupted or hand-edited action still fails
+ * the whole snapshot closed.
+ */
+function parseTransitionActions(
+  value: unknown,
+  transitionIndex: number,
+): PublishedAction[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) invalidSnapshot();
+  try {
+    // The published Action shape is the validated draft shape (§46.7), so this
+    // reuses the draft validator rather than keeping a second copy of it that
+    // could drift. It is pure and idempotent on its own output: it only
+    // normalizes case/whitespace and reconstructs the same objects.
+    return validateTransitionActions(value, {
+      fieldPath: `transitions.${transitionIndex}.actions`,
+    });
+  } catch {
+    invalidSnapshot();
   }
 }
 
 function parseDefaultView(value: unknown): Record<string, unknown> {
-  const object = plainObject(value);
-  const allowed = new Set([
-    'code',
-    'name',
-    'columnFieldKeys',
-    'sort',
-    'searchFieldKeys',
-  ]);
-  if (Object.keys(object).some((key) => !allowed.has(key))) {
-    invalidSnapshot();
-  }
-  for (const required of ['code', 'name', 'columnFieldKeys', 'sort']) {
-    if (!(required in object)) invalidSnapshot();
-  }
-  return object;
+  return keyedObject(
+    value,
+    ['code', 'name', 'columnFieldKeys', 'sort'],
+    ['searchFieldKeys'],
+  );
 }
 
 function parseField(value: unknown): PublishedField {
@@ -411,21 +468,23 @@ function parseField(value: unknown): PublishedField {
   return field as unknown as PublishedField;
 }
 
-function optionalKeyedObject(
+/**
+ * Strict keyed-object check for a shape that gained a key after its first
+ * published version: every present key must be allowed and every required key
+ * must be present. `optional` carries those later keys — `workflow` on the
+ * snapshot root and `actions` on a workflow transition — so legacy snapshots
+ * keep parsing without loosening the check for anything else (§35).
+ */
+function keyedObject(
   value: unknown,
-  keys: readonly string[],
+  required: readonly string[],
+  optional: readonly string[],
 ): Record<string, unknown> {
   const object = plainObject(value);
-  const allowed = new Set(keys);
+  const allowed = new Set([...required, ...optional]);
   if (Object.keys(object).some((key) => !allowed.has(key))) invalidSnapshot();
-  for (const required of [
-    'publication',
-    'object',
-    'fields',
-    'defaultView',
-    'employeeAccess',
-  ]) {
-    if (!(required in object)) invalidSnapshot();
+  for (const key of required) {
+    if (!(key in object)) invalidSnapshot();
   }
   return object;
 }

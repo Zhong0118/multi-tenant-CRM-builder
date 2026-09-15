@@ -96,6 +96,7 @@ function publishedSchema(): PublishedObjectSchema {
           toStateKey: 'won',
           allowedRoles: ['EMPLOYEE', 'TENANT_ADMIN'],
           requiredFieldKeys: ['amount'],
+          actions: [],
         },
       ],
     },

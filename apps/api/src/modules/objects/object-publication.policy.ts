@@ -256,6 +256,10 @@ function compilePublishedWorkflow(
       toStateKey: transition.toStateKey,
       allowedRoles: transition.allowedRoles,
       requiredFieldKeys: transition.requiredFieldKeys,
+      // §10: actions are frozen into the snapshot by copy from the validated
+      // normalized draft actions; array order is execution order (§28). Legacy
+      // drafts without actions publish an explicit empty list.
+      actions: transition.actions ?? [],
     })),
   };
 }

@@ -80,6 +80,7 @@ function schema(): PublishedObjectSchema {
           toStateKey: 'won',
           allowedRoles: ['TENANT_ADMIN', 'EMPLOYEE'],
           requiredFieldKeys: ['amount'],
+          actions: [],
         },
       ],
     },

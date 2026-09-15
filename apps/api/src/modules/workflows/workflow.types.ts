@@ -1,4 +1,7 @@
-import type { WorkflowActionDraft } from '../actions/action.types';
+import type {
+  PublishedAction,
+  WorkflowActionDraft,
+} from '../actions/action.types';
 
 export const WORKFLOW_KEY_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
 export const WORKFLOW_ROLES = ['TENANT_ADMIN', 'EMPLOYEE'] as const;
@@ -79,6 +82,12 @@ export interface PublishedWorkflowTransition {
   toStateKey: string;
   allowedRoles: WorkflowRole[];
   requiredFieldKeys: string[];
+  /**
+   * Ordered frozen Action steps of this Transition (§10, §28). Always present
+   * on the in-memory published representation: snapshots published before
+   * Action Engine V1 have no `actions` key and parse as `[]` (§35).
+   */
+  actions: PublishedAction[];
 }
 
 export interface PublishedWorkflow {

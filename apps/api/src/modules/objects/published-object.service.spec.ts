@@ -299,3 +299,120 @@ describe('PublishedObjectService', () => {
     ).rejects.toMatchObject({ code: 'INTERNAL_ERROR' });
   });
 });
+
+/**
+ * A Workflow V1 transition exactly as it was published before Action Engine V1:
+ * the stored JSON has no `actions` key at all. It is deliberately not
+ * `actions: []` — those are different snapshots, and only this one proves the
+ * backward-compatibility guarantee.
+ */
+function legacyTransition(): Record<string, unknown> {
+  return {
+    key: 'mark-won',
+    label: '标记赢单',
+    fromStateKey: 'new',
+    toStateKey: 'won',
+    allowedRoles: ['TENANT_ADMIN', 'EMPLOYEE'],
+    requiredFieldKeys: ['phone'],
+  };
+}
+
+function legacyWorkflow(): Record<string, unknown> {
+  return {
+    initialStateKey: 'new',
+    states: [
+      { key: 'new', label: '新建', sortOrder: 10, isTerminal: false },
+      { key: 'won', label: '赢单', sortOrder: 20, isTerminal: true },
+    ],
+    transitions: [legacyTransition()],
+  };
+}
+
+function workflowSnapshot(workflow: Record<string, unknown>): unknown {
+  // Round-trip through JSON so the fixture is the JSONB a real read gets back,
+  // not an in-memory literal that could silently carry extra keys.
+  return JSON.parse(
+    JSON.stringify({
+      ...schema({ code: 'leads', name: '销售线索', sortOrder: 10 }),
+      workflow,
+    }),
+  ) as unknown;
+}
+
+function snapshotWithActions(actions: unknown): unknown {
+  return workflowSnapshot({
+    ...legacyWorkflow(),
+    transitions: [{ ...legacyTransition(), actions }],
+  });
+}
+
+const createContactAction = {
+  key: 'create-contact',
+  type: 'CREATE_RECORD',
+  targetObjectCode: 'contacts',
+  values: { name: { source: 'SOURCE_FIELD', fieldKey: 'name' } },
+  owner: { source: 'ACTOR' },
+};
+
+const linkContactAction = {
+  key: 'link-contact',
+  type: 'CREATE_RELATION',
+  left: { source: 'SOURCE_RECORD' },
+  right: {
+    source: 'ACTION_OUTPUT',
+    actionKey: 'create-contact',
+    property: 'recordId',
+  },
+};
+
+describe('published snapshot workflow actions', () => {
+  it('parses a new publication that freezes transition actions', () => {
+    const parsed = parsePublishedObjectSchema(
+      snapshotWithActions([createContactAction, linkContactAction]),
+    );
+
+    expect(parsed.workflow?.transitions[0]?.actions).toEqual([
+      createContactAction,
+      linkContactAction,
+    ]);
+  });
+
+  it('parses an old Workflow V1 publication without actions and yields actions=[]', () => {
+    const snapshot = workflowSnapshot(legacyWorkflow()) as {
+      workflow: { transitions: Array<Record<string, unknown>> };
+    };
+    expect(Object.keys(snapshot.workflow.transitions[0])).not.toContain(
+      'actions',
+    );
+
+    const parsed = parsePublishedObjectSchema(snapshot);
+
+    expect(parsed.workflow?.transitions[0]?.key).toBe('mark-won');
+    expect(parsed.workflow?.transitions[0]?.actions).toEqual([]);
+  });
+
+  it('rejects an action that carries an unknown property', () => {
+    expect(() =>
+      parsePublishedObjectSchema(
+        snapshotWithActions([{ ...createContactAction, runAsSystem: true }]),
+      ),
+    ).toThrow('Invalid published object snapshot');
+  });
+
+  it('rejects a present actions value that is not an array', () => {
+    expect(() =>
+      parsePublishedObjectSchema(snapshotWithActions({ 'create-contact': {} })),
+    ).toThrow('Invalid published object snapshot');
+  });
+
+  it('still rejects an unknown top-level transition key', () => {
+    const workflow = {
+      ...legacyWorkflow(),
+      transitions: [{ ...legacyTransition(), when: { fieldKey: 'phone' } }],
+    };
+
+    expect(() =>
+      parsePublishedObjectSchema(workflowSnapshot(workflow)),
+    ).toThrow('Invalid published object snapshot');
+  });
+});

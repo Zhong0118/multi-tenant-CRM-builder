@@ -186,3 +186,13 @@ export type WorkflowActionDraft =
   | CreateRelationAction
   | CreateFollowUpAction
   | AssignOwnerAction;
+
+/**
+ * §10 / §11: the frozen copy of a Transition's Action steps inside an
+ * ObjectPublication. The Runtime executes this representation, so `workflows`
+ * may import it while Action Engine never reads Workflow Draft (§11).
+ *
+ * Structurally identical to the validated draft shape today; the alias names
+ * the published contract instead of letting the snapshot expose a draft type.
+ */
+export type PublishedAction = WorkflowActionDraft;
