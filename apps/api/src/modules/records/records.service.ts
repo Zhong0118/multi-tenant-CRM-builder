@@ -2,15 +2,17 @@ import { Inject, Injectable } from '@nestjs/common';
 
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
-import type { AuditEvent } from '../audit/audit-event';
 import { isSearchableFieldType } from '../objects/object-schema';
 import type { ResolvedObjectSchema } from '../objects/published-object.service';
 import { PublishedObjectService } from '../objects/published-object.service';
 import {
-  projectVisibleValues,
-  RecordValueError,
-  validateRecordMutation,
-} from './record-value-engine';
+  applySourceRecordPatch,
+  createRecordCommand,
+  prepareSourceRecordPatch,
+  recordAudit,
+  type RecordRequestMeta,
+} from './record-command';
+import { projectVisibleValues } from './record-value-engine';
 import {
   MEMBER_ACTIVITY_TYPES,
   type MemberActivityType,
@@ -35,10 +37,7 @@ export const RECORDS_REPOSITORY = Symbol('RECORDS_REPOSITORY');
 export const RECORDS_CLOCK = Symbol('RECORDS_CLOCK');
 export const RECORDS_ID_GENERATOR = Symbol('RECORDS_ID_GENERATOR');
 
-interface RequestMeta {
-  requestId: string;
-  ip?: string;
-}
+type RequestMeta = RecordRequestMeta;
 
 export interface RecordResponse {
   id: string;
@@ -297,14 +296,18 @@ export class RecordsService {
       objectCode,
     );
     return this.repository.withTenant(context, async (store) =>
-      createRecordRow(
-        store,
+      projectRecord(
+        await createRecordCommand({
+          store,
+          resolved,
+          context,
+          values: input.values,
+          ownerMemberId: input.ownerMemberId,
+          meta,
+          clock: this.clock,
+          idGenerator: this.idGenerator,
+        }),
         resolved,
-        context,
-        input,
-        meta,
-        this.clock,
-        this.idGenerator,
       ),
     );
   }
@@ -363,15 +366,15 @@ export class RecordsService {
             });
             continue;
           }
-          const record = await createRecordRow(
+          const record = await createRecordCommand({
             store,
             resolved,
             context,
-            { values: row.values },
+            values: row.values,
             meta,
-            this.clock,
-            this.idGenerator,
-          );
+            clock: this.clock,
+            idGenerator: this.idGenerator,
+          });
           if (input.batchId)
             await store.saveImportedRecordId(
               objectId,
@@ -382,7 +385,7 @@ export class RecordsService {
           items.push({
             rowNumber: row.rowNumber,
             status: 'CREATED',
-            record,
+            record: projectRecord(record, resolved),
           });
         } catch (error) {
           if (error instanceof ApiException) {
@@ -445,7 +448,7 @@ export class RecordsService {
       objectCode,
     );
     return this.repository.withTenant(context, async (store) =>
-      applyRecordUpdate(store, resolved, context, recordId, input, meta),
+      updateRecordRow(store, resolved, context, recordId, input, meta),
     );
   }
 
@@ -494,7 +497,7 @@ export class RecordsService {
       const items: RecordBatchUpdateResultItem[] = [];
       for (const item of input.items) {
         try {
-          const record = await applyRecordUpdate(
+          const record = await updateRecordRow(
             store,
             resolved,
             context,
@@ -656,34 +659,6 @@ export class RecordsService {
       return projectActivity(created);
     });
   }
-}
-
-async function resolveCreateOwner(
-  context: TenantContext,
-  store: RecordsStore,
-  requested: string | null | undefined,
-): Promise<string | null> {
-  if (context.role === 'EMPLOYEE') return context.memberId;
-  if (requested === undefined || requested === null) return null;
-  if (!(await store.memberExists(requested))) {
-    throw new ApiException('OWNER_INVALID', 400);
-  }
-  return requested;
-}
-
-async function resolveUpdateOwner(
-  context: TenantContext,
-  store: RecordsStore,
-  current: string | null,
-  requested: string | null | undefined,
-): Promise<string | null> {
-  if (context.role === 'EMPLOYEE') return current;
-  if (requested === undefined) return current;
-  if (requested === null) return null;
-  if (!(await store.memberExists(requested))) {
-    throw new ApiException('OWNER_INVALID', 400);
-  }
-  return requested;
 }
 
 function searchableFieldKeys(resolved: ResolvedObjectSchema): string[] {
@@ -1075,52 +1050,32 @@ async function requireVisibleRecord(
   return record;
 }
 
-async function createRecordRow(
-  store: RecordsStore,
+function resolveExportFields(
   resolved: ResolvedObjectSchema,
-  context: TenantContext,
-  input: {
-    values: Record<string, unknown>;
-    ownerMemberId?: string | null;
-  },
-  meta: RequestMeta,
-  clock: () => Date,
-  idGenerator: () => string,
-): Promise<RecordResponse> {
-  const ownerMemberId = await resolveCreateOwner(
-    context,
-    store,
-    input.ownerMemberId,
+  requested: string[] | undefined,
+) {
+  const visible = new Map(
+    resolved.visibleSchema.fields.map((field) => [field.fieldKey, field]),
   );
-  const normalized = await validateMutation({
-    mode: 'CREATE',
-    resolved,
-    submitted: input.values,
-    memberExists: (memberId) => store.memberExists(memberId),
+  const selected = (requested ?? []).flatMap((fieldKey) => {
+    const field = visible.get(fieldKey);
+    return field ? [field] : [];
   });
-  const now = clock().toISOString();
-  const record: DynamicRecord = {
-    id: idGenerator(),
-    objectId: resolved.schema.object.id,
-    recordNo: await store.allocateRecordNo(resolved.schema.object.id),
-    ownerMemberId,
-    workflowStateKey: resolved.schema.workflow?.initialStateKey ?? null,
-    title: normalized.title,
-    values: normalized.values,
-    version: 1,
-    createdByMemberId: context.memberId,
-    createdAt: now,
-    updatedAt: now,
-    deletedAt: null,
-  };
-  const created = await store.createRecord(record);
-  await store.appendAudit(
-    recordAudit(context, meta, 'record.created', created, undefined),
+  if (selected.length > 0) return selected;
+  return resolved.visibleSchema.defaultView.columnFieldKeys.flatMap(
+    (fieldKey) => {
+      const field = visible.get(fieldKey);
+      return field ? [field] : [];
+    },
   );
-  return projectRecord(created, resolved);
 }
 
-async function applyRecordUpdate(
+/**
+ * HTTP update orchestration: visibility, optimistic version check, then the
+ * shared transaction-aware commands. The validation itself lives in
+ * `record-command.ts` so plain HTTP and the Action Engine cannot drift apart.
+ */
+async function updateRecordRow(
   store: RecordsStore,
   resolved: ResolvedObjectSchema,
   context: TenantContext,
@@ -1142,83 +1097,24 @@ async function applyRecordUpdate(
   if (current.version !== input.version) {
     throw new ApiException('RECORD_VERSION_CONFLICT', 409);
   }
-  const ownerMemberId = await resolveUpdateOwner(
-    context,
+  const patch = await prepareSourceRecordPatch({
     store,
-    current.ownerMemberId,
-    input.ownerMemberId,
-  );
-  const normalized = await validateMutation({
-    mode: 'UPDATE',
     resolved,
-    submitted: input.values ?? {},
-    current: current.values,
-    memberExists: (memberId) => store.memberExists(memberId),
+    context,
+    current,
+    values: input.values,
+    ownerMemberId: input.ownerMemberId,
   });
-  const updated = await store.updateRecord(recordId, input.version, {
-    values: normalized.values,
-    title: normalized.title,
-    ownerMemberId,
+  const updated = await applySourceRecordPatch({
+    store,
+    recordId,
+    expectedVersion: input.version,
+    patch,
   });
-  if (!updated) throw new ApiException('RECORD_VERSION_CONFLICT', 409);
   await store.appendAudit(
     recordAudit(context, meta, 'record.updated', updated, current),
   );
   return projectRecord(updated, resolved);
-}
-
-function resolveExportFields(
-  resolved: ResolvedObjectSchema,
-  requested: string[] | undefined,
-) {
-  const visible = new Map(
-    resolved.visibleSchema.fields.map((field) => [field.fieldKey, field]),
-  );
-  const selected = (requested ?? []).flatMap((fieldKey) => {
-    const field = visible.get(fieldKey);
-    return field ? [field] : [];
-  });
-  if (selected.length > 0) return selected;
-  return resolved.visibleSchema.defaultView.columnFieldKeys.flatMap(
-    (fieldKey) => {
-      const field = visible.get(fieldKey);
-      return field ? [field] : [];
-    },
-  );
-}
-
-async function validateMutation(input: {
-  mode: 'CREATE' | 'UPDATE';
-  resolved: ResolvedObjectSchema;
-  submitted: Record<string, unknown>;
-  current?: Record<string, unknown>;
-  memberExists: (id: string) => Promise<boolean>;
-}) {
-  try {
-    return await validateRecordMutation({
-      mode: input.mode,
-      schema: input.resolved.schema,
-      access: input.resolved.access,
-      submitted: input.submitted,
-      current: input.current,
-      memberExists: input.memberExists,
-    });
-  } catch (error) {
-    if (error instanceof RecordValueError) {
-      const status =
-        error.code === 'OBJECT_ACTION_FORBIDDEN' ||
-        error.code === 'FIELD_READ_ONLY' ||
-        error.code === 'FIELD_HIDDEN'
-          ? 403
-          : 400;
-      throw new ApiException(error.code, status, {
-        fieldErrors: error.fieldKey
-          ? { [error.fieldKey]: [error.message] }
-          : undefined,
-      });
-    }
-    throw error;
-  }
 }
 
 function projectActivity(activity: RecordActivity): RecordActivityResponse {
@@ -1250,38 +1146,5 @@ function projectRecord(
     version: record.version,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
-  };
-}
-
-function recordAudit(
-  context: TenantContext,
-  meta: RequestMeta,
-  action: string,
-  after: DynamicRecord,
-  before: DynamicRecord | undefined,
-): AuditEvent {
-  return {
-    tenantId: context.tenantId,
-    actorType: 'USER',
-    actorId: context.userId,
-    action,
-    resourceType: 'record',
-    resourceId: after.id,
-    before: before ? auditRecord(before) : undefined,
-    after: auditRecord(after),
-    requestId: meta.requestId,
-    ip: meta.ip,
-  };
-}
-
-function auditRecord(record: DynamicRecord): Record<string, unknown> {
-  return {
-    objectId: record.objectId,
-    recordNo: record.recordNo.toString(),
-    ownerMemberId: record.ownerMemberId,
-    title: record.title,
-    values: record.values,
-    version: record.version,
-    deletedAt: record.deletedAt,
   };
 }

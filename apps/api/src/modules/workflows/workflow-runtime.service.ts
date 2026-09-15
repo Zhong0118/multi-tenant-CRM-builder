@@ -100,10 +100,20 @@ export class WorkflowRuntimeService {
         record: current,
         transitionKey,
       });
-      const updated = await store.applyWorkflowTransition({
+      // The Transition intent, NOT the ordinary-update intent: it deliberately
+      // skips the ACTIVE-owner lock, so an admin can advance a record whose
+      // owner has since been offboarded (see `RecordsStore.applyTransition`).
+      const updated = await store.applyTransition({
         recordId,
         expectedVersion: input.expectedVersion,
-        workflowStateKey: transition.toStateKey,
+        // A plain transition only moves state: values, title and owner are
+        // carried over unchanged from the record the caller just locked.
+        patch: {
+          values: current.values,
+          title: current.title,
+          ownerMemberId: current.ownerMemberId,
+          workflowStateKey: transition.toStateKey,
+        },
         history: {
           objectDefinitionId: resolved.schema.object.id,
           objectPublicationId: resolved.schema.publication.id,

@@ -134,21 +134,31 @@ class MemoryRecordsStore implements Partial<RecordsStore> {
     );
   }
 
-  applyWorkflowTransition(input: {
+  applyTransition(input: {
     recordId: string;
     expectedVersion: number;
-    workflowStateKey: string;
-    history: { transitionKey: string };
+    patch: {
+      values: Record<string, unknown>;
+      title: string;
+      ownerMemberId: string | null;
+      workflowStateKey?: string;
+    };
+    history?: { transitionKey: string };
   }) {
     const record = this.records.find((item) => item.id === input.recordId);
     if (!record || record.version !== input.expectedVersion) {
       return Promise.resolve(null);
     }
-    record.workflowStateKey = input.workflowStateKey;
+    record.values = input.patch.values;
+    record.title = input.patch.title;
+    record.ownerMemberId = input.patch.ownerMemberId;
+    if (input.patch.workflowStateKey !== undefined) {
+      record.workflowStateKey = input.patch.workflowStateKey;
+    }
     record.version += 1;
     this.history.push({
       recordId: input.recordId,
-      transitionKey: input.history.transitionKey,
+      transitionKey: input.history?.transitionKey ?? '',
     });
     return Promise.resolve(structuredClone(record));
   }

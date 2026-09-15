@@ -30,6 +30,14 @@ export class RecordValueError extends Error {
   }
 }
 
+/**
+ * `records.title` is VARCHAR(300). The only title-eligible field type that can
+ * derive a longer title is EMAIL (valid up to 320 characters), so without this
+ * limit an over-long title would reach PostgreSQL and fail as 22001 (a 500).
+ * It is rejected in domain validation instead, and never truncated.
+ */
+export const RECORD_TITLE_MAX_LENGTH = 300;
+
 export async function validateRecordMutation(input: {
   mode: 'CREATE' | 'UPDATE';
   schema: PublishedObjectSchema;
@@ -328,13 +336,20 @@ function deriveTitle(
   if (typeof value !== 'string') {
     throw new RecordValueError('FIELD_REQUIRED', titleField.fieldKey);
   }
-  if (titleField.type === 'SINGLE_SELECT') {
-    return (
-      selectOptions(titleField).find((option) => option.key === value)?.label ??
-      value
-    );
+  const title =
+    titleField.type === 'SINGLE_SELECT'
+      ? (selectOptions(titleField).find((option) => option.key === value)
+          ?.label ?? value)
+      : value;
+  // `records.title` is VARCHAR(300), and PostgreSQL measures a VARCHAR in
+  // CHARACTERS, while `String.prototype.length` counts UTF-16 code units.
+  // Spreading iterates code points, so a title of 300 astral-plane characters
+  // (600 code units) is accepted here exactly as the column accepts it, instead
+  // of being over-rejected by this guard.
+  if ([...title].length > RECORD_TITLE_MAX_LENGTH) {
+    throw new RecordValueError('FIELD_INVALID', titleField.fieldKey);
   }
-  return value;
+  return title;
 }
 
 interface SelectOption {
