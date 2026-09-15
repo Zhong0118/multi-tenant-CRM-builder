@@ -188,9 +188,10 @@ export function resolvePublishedObjectRecord(
 
 /**
  * Read visibility: readable, with a readable scope and a visible title field.
- * Only the UI read paths apply it — never the Action target resolver.
+ * The UI read paths and the Action Engine's READ paths apply it — never the
+ * Action target resolver, which only resolves a schema for a create (§46.3).
  */
-function isReadable(
+export function isReadable(
   schema: PublishedObjectSchema,
   access: EffectiveObjectAccess,
 ): boolean {

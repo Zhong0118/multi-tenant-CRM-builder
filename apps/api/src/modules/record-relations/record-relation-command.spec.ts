@@ -40,6 +40,8 @@ const relationalInput = {
   recordId: LOW_RECORD,
 };
 
+const EXISTING_RELATION_ID = '018f47a2-4b5c-7d8e-9f01-eeeeeeeeeeee';
+
 const UUID_V4 =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
@@ -103,6 +105,8 @@ function harness(options: HarnessOptions = {}) {
         }
         if (/INSERT INTO record_relations/.test(sql))
           return options.duplicate ? [] : [{ id: String(values[0]) }];
+        if (/^SELECT id FROM record_relations/.test(sql))
+          return [{ id: EXISTING_RELATION_ID }];
         throw new Error(`unexpected SQL: ${sql}`);
       },
     ),
@@ -181,9 +185,10 @@ describe('createRecordRelationCommand', () => {
   it('writes the relation in the caller tenant transaction and audits there', async () => {
     const fixture = harness();
 
-    await expect(fixture.run(relationalInput)).resolves.toEqual({
-      success: true,
-    });
+    const result = await fixture.run(relationalInput);
+
+    expect(result.success).toBe(true);
+    expect(result.relationId).toMatch(UUID_V4);
 
     const insert = fixture.insert()!;
     expect(insert).toBeDefined();
@@ -248,9 +253,10 @@ describe('createRecordRelationCommand', () => {
       },
     });
 
-    await expect(fixture.run(relationalInput)).resolves.toEqual({
-      success: true,
-    });
+    const result = await fixture.run(relationalInput);
+
+    expect(result.success).toBe(true);
+    expect(result.relationId).toMatch(UUID_V4);
   });
 
   it('scopes an OWN target (and an OWN source) to the acting member', async () => {
@@ -395,9 +401,60 @@ describe('createRecordRelationCommand', () => {
 
     await expect(fixture.run(relationalInput)).resolves.toEqual({
       success: true,
+      relationId: EXISTING_RELATION_ID,
     });
 
     expect(fixture.append).not.toHaveBeenCalled();
+  });
+
+  it('reports the id of the row the insert created', async () => {
+    const fixture = harness();
+
+    const result = await fixture.run(relationalInput);
+
+    expect(result.relationId).toBe(String(fixture.insert()!.values[0]));
+    // The insert itself is untouched: `ON CONFLICT DO NOTHING` still owns
+    // idempotency, and the id arrives in the same `RETURNING` clause.
+    expect(
+      fixture.sqlCalls.filter((call) =>
+        /^SELECT id FROM record_relations/.test(call.sql),
+      ),
+    ).toHaveLength(0);
+  });
+
+  it('merges the §30 action audit metadata into the domain audit', async () => {
+    const fixture = harness();
+    const actionMeta = {
+      ...meta,
+      actionAudit: {
+        workflowExecutionId: 'execution-1',
+        transitionKey: 'convert',
+        actionKey: 'link-customer-contact',
+        actionType: 'CREATE_RELATION',
+      },
+    };
+
+    await createRecordRelationCommand(
+      fixture.tx as never,
+      context,
+      relationalInput,
+      actionMeta,
+      fixture.deps,
+    );
+
+    expect(fixture.append).toHaveBeenCalledWith(
+      fixture.tx,
+      expect.objectContaining({
+        action: 'record.relation_added',
+        after: {
+          targetRecordId: LOW_RECORD,
+          workflowExecutionId: 'execution-1',
+          transitionKey: 'convert',
+          actionKey: 'link-customer-contact',
+          actionType: 'CREATE_RELATION',
+        },
+      }),
+    );
   });
 });
 

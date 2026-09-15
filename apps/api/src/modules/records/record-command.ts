@@ -1,6 +1,9 @@
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
-import type { AuditEvent } from '../audit/audit-event';
+import type {
+  AuditEvent,
+  WorkflowActionAuditMetadata,
+} from '../audit/audit-event';
 import type { ResolvedObjectSchema } from '../objects/published-object.service';
 import {
   RecordValueError,
@@ -31,6 +34,12 @@ import type {
 export interface RecordRequestMeta {
   requestId: string;
   ip?: string;
+  /**
+   * §30: set only when an Action Engine executor calls this command, so the
+   * `record.created` audit row can be correlated with the Transition and the
+   * Action that produced it. The ordinary HTTP path leaves it unset.
+   */
+  actionAudit?: WorkflowActionAuditMetadata;
 }
 
 export interface CreateRecordCommandInput {
@@ -200,7 +209,7 @@ export function recordAudit(
     resourceType: 'record',
     resourceId: after.id,
     before: before ? auditRecord(before) : undefined,
-    after: auditRecord(after),
+    after: { ...auditRecord(after), ...(meta.actionAudit ?? {}) },
     requestId: meta.requestId,
     ip: meta.ip,
   };

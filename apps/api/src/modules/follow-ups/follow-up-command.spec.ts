@@ -6,6 +6,7 @@ import {
   lockFollowUpActor,
   lockFollowUpRecord,
   presentFollowUp,
+  type CreateFollowUpCommandInput,
   type FollowUpRecordScope,
 } from './follow-up-command';
 
@@ -24,13 +25,14 @@ const context: TenantContext = {
 };
 const meta = { requestId: 'req-1', ip: '127.0.0.1' };
 const RECORD_ID = '018f47a2-4b5c-7d8e-9f01-00000000000f';
+const ASSIGNEE = '018f47a2-4b5c-7d8e-9f01-444444444444';
 const SCOPE: FollowUpRecordScope = {
   objectId: 'object-leads',
   recordId: RECORD_ID,
   expectedRole: 'EMPLOYEE',
   requiredOwnerMemberId: context.memberId,
 };
-const INPUT = {
+const INPUT: CreateFollowUpCommandInput = {
   recordId: RECORD_ID,
   title: '回访客户',
   dueAt: '2026-09-20T08:00:00+08:00',
@@ -44,6 +46,11 @@ interface HarnessOptions {
   actors?: Array<{ id: string; role: string }>;
   /** `false` makes both record locks report a missing/soft-deleted record. */
   recordExists?: boolean;
+  /**
+   * Rows the explicit-assignee lock returns. `null` means "not an ACTIVE
+   * member"; omitted means the assignee is ACTIVE.
+   */
+  assignee?: string | null;
 }
 
 function harness(options: HarnessOptions = {}) {
@@ -56,6 +63,11 @@ function harness(options: HarnessOptions = {}) {
       (strings: TemplateStringsArray, ...values: unknown[]) => {
         const sql = strings.join('$').replace(/\s+/g, ' ').trim();
         sqlCalls.push({ sql, values });
+        if (/FROM tenant_members m JOIN users u/.test(sql)) {
+          const memberId = values[1];
+          if (options.assignee === null) return [];
+          return [{ id: options.assignee ?? memberId }];
+        }
         if (/FROM tenant_members/.test(sql))
           return (
             options.actors ?? [{ id: context.memberId, role: context.role }]
@@ -240,16 +252,91 @@ describe('createFollowUpCommand', () => {
     expect(fixture.sqlCalls[1].values).toContain(upper);
   });
 
-  it('hard-codes the assignee to the acting member', async () => {
+  it('defaults the assignee to the acting member when none is named', async () => {
     const fixture = harness();
 
-    await fixture.run({
-      ...INPUT,
-      // A caller-supplied assignee is deliberately ignored on this path.
-      assigneeMemberId: 'member-other',
-    } as typeof INPUT);
+    await fixture.run();
 
     expect(fixture.createArgs[0].data.assigneeMemberId).toBe('member-actor');
+    // The ordinary HTTP path names nobody: it keeps the historical behaviour
+    // and the historical two lock statements.
+    expect(fixture.sqlCalls).toHaveLength(2);
+  });
+
+  it('creates for an explicit ACTIVE assignee without reassigning the actor', async () => {
+    // §22 / A2: an Action may assign a follow-up to `SOURCE_OWNER`, so the
+    // command needs an explicit assignee instead of hard-coding the actor.
+    const fixture = harness({ assignee: ASSIGNEE });
+
+    await fixture.run({ ...INPUT, assigneeMemberId: ASSIGNEE });
+
+    expect(fixture.createArgs[0].data.assigneeMemberId).toBe(ASSIGNEE);
+    // The assignee is re-checked ACTIVE under the caller's transaction.
+    expect(fixture.sqlCalls).toHaveLength(3);
+    const assigneeLock = fixture.sqlCalls[1];
+    expect(assigneeLock.sql).toContain('FROM tenant_members m JOIN users u');
+    expect(assigneeLock.sql).toContain('FOR UPDATE OF m');
+    expect(assigneeLock.values).toEqual(['tenant-a', ASSIGNEE]);
+  });
+
+  it('rejects an explicit assignee that is not an ACTIVE member', async () => {
+    const fixture = harness({ assignee: null });
+
+    const error = await rejection(
+      fixture.run({ ...INPUT, assigneeMemberId: ASSIGNEE }),
+    );
+
+    expect(error.code).toBe('VALIDATION_FAILED');
+    expect(error.getStatus()).toBe(400);
+    expect(fixture.createArgs).toHaveLength(0);
+    expect(fixture.append).not.toHaveBeenCalled();
+  });
+
+  it('does not re-lock the acting member when it is also the assignee', async () => {
+    const fixture = harness();
+
+    await fixture.run({ ...INPUT, assigneeMemberId: context.memberId });
+
+    expect(fixture.createArgs[0].data.assigneeMemberId).toBe(context.memberId);
+    expect(fixture.sqlCalls).toHaveLength(2);
+  });
+
+  it('merges the §30 action audit metadata into follow_up.created', async () => {
+    const fixture = harness({ assignee: ASSIGNEE });
+    const actionMeta = {
+      ...meta,
+      actionAudit: {
+        workflowExecutionId: 'execution-1',
+        transitionKey: 'convert',
+        actionKey: 'follow-up-call',
+        actionType: 'CREATE_FOLLOW_UP',
+      },
+    };
+
+    await createFollowUpCommand(
+      fixture.tx as never,
+      context,
+      { ...INPUT, assigneeMemberId: ASSIGNEE },
+      actionMeta,
+      SCOPE,
+      { audit: { append: fixture.append } as never },
+    );
+
+    expect(fixture.append).toHaveBeenCalledWith(
+      fixture.tx,
+      expect.objectContaining({
+        action: 'follow_up.created',
+        after: {
+          title: '回访客户',
+          dueAt: '2026-09-20T00:00:00.000Z',
+          recordId: RECORD_ID,
+          workflowExecutionId: 'execution-1',
+          transitionKey: 'convert',
+          actionKey: 'follow-up-call',
+          actionType: 'CREATE_FOLLOW_UP',
+        },
+      }),
+    );
   });
 
   it('generates the id server-side and leaves status and version to the defaults', async () => {

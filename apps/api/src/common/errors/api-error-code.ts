@@ -55,6 +55,7 @@ export const API_ERROR_CODES = [
   'WORKFLOW_ACTION_FORWARD_REFERENCE',
   'WORKFLOW_ACTION_OUTPUT_INVALID',
   'WORKFLOW_ACTION_SOURCE_PATCH_CONFLICT',
+  'ACTION_EXECUTION_FAILED',
   'OWNER_INVALID',
   'RATE_LIMITED',
   'CSRF_REJECTED',
@@ -122,6 +123,7 @@ export const API_ERROR_MESSAGES: Record<ApiErrorCode, string> = {
   WORKFLOW_ACTION_OUTPUT_INVALID: '执行动作输出的引用无效。',
   WORKFLOW_ACTION_SOURCE_PATCH_CONFLICT:
     '多个执行动作不能更新当前记录的同一字段。',
+  ACTION_EXECUTION_FAILED: '执行动作失败，所有变更均未保存。',
   OWNER_INVALID: '指定的记录负责人不可用。',
   RATE_LIMITED: '操作过于频繁，请稍后再试。',
   CSRF_REJECTED: '请求来源不受信任，请刷新页面后重试。',

@@ -537,6 +537,45 @@ describe('createRecordCommand', () => {
     expect(first.createdByMemberId).toBe(admin.memberId);
   });
 
+  it('merges the §30 action audit metadata into record.created', async () => {
+    // §30: a record created by an Action keeps the domain action
+    // (`record.created`) and additionally carries the execution correlation.
+    const { store } = fixture();
+    let sequence = 0;
+    const created = await createRecordCommand({
+      store,
+      resolved: resolved(),
+      context: admin,
+      values: { name: '张三' },
+      meta: {
+        ...meta,
+        actionAudit: {
+          workflowExecutionId: 'execution-1',
+          transitionKey: 'convert',
+          actionKey: 'create-customer',
+          actionType: 'CREATE_RECORD',
+        },
+      },
+      clock: () => createdAt,
+      idGenerator: () => `record-${++sequence}`,
+    });
+
+    expect(store.audits).toHaveLength(1);
+    expect(store.audits[0]).toMatchObject({
+      action: 'record.created',
+      resourceId: created.id,
+      after: {
+        title: '张三',
+        values: { name: '张三', source: '官网' },
+        version: 1,
+        workflowExecutionId: 'execution-1',
+        transitionKey: 'convert',
+        actionKey: 'create-customer',
+        actionType: 'CREATE_RECORD',
+      },
+    });
+  });
+
   it('appends a record.created audit carrying the stored values', async () => {
     const { store, command } = fixture();
     const created = await command({ values: { name: '张三' } });

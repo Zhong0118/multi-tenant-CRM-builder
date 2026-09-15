@@ -73,8 +73,8 @@ export class RecordRelationsService {
      * the shared transaction-aware command inside it, so the Action Engine can
      * later run the same command inside the Transition's transaction.
      */
-    return this.runner.withTenant(context, (tx) =>
-      createRecordRelationCommand(
+    return this.runner.withTenant(context, async (tx) => {
+      const { success } = await createRecordRelationCommand(
         tx,
         context,
         {
@@ -89,8 +89,12 @@ export class RecordRelationsService {
             this.scope(ctx, objectCode, recordId, write),
           audit: this.audit,
         },
-      ),
-    );
+      );
+      // The command additionally reports the canonical `relationId` (§16, for
+      // the Action Engine). This HTTP endpoint's contract stays exactly
+      // `RelationResultDto = { success: boolean }`.
+      return { success };
+    });
   }
   async remove(
     context: TenantContext,

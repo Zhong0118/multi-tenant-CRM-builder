@@ -4,6 +4,7 @@ import type { Prisma } from '@crm/database';
 
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
+import type { WorkflowActionAuditMetadata } from '../audit/audit-event';
 import type { AuditService } from '../audit/audit.service';
 
 /**
@@ -32,6 +33,12 @@ export type FollowUpTask = Prisma.RecordFollowUpGetPayload<{
 export interface FollowUpMeta {
   requestId: string;
   ip?: string;
+  /**
+   * §30: set only when the Action Engine calls this command, so the
+   * `follow_up.created` audit row carries the Transition / Action correlation.
+   * The ordinary HTTP path leaves it unset.
+   */
+  actionAudit?: WorkflowActionAuditMetadata;
 }
 
 export interface FollowUpRecordScope {
@@ -117,7 +124,8 @@ export function appendFollowUpAudit(
     action,
     after,
     before,
-    ...meta,
+    requestId: meta.requestId,
+    ip: meta.ip,
   });
 }
 
@@ -127,6 +135,13 @@ export interface CreateFollowUpCommandInput {
   title: string;
   /** Validated by the caller; the command maps it with `new Date()`. */
   dueAt: string;
+  /**
+   * §22 / A2: the explicit assignee (`ACTOR` or `SOURCE_OWNER`, already
+   * resolved to a member id by the caller). Omitted keeps the historical
+   * behaviour of assigning to the acting member, which is what the HTTP path
+   * does. A named member is re-checked ACTIVE inside the caller's transaction.
+   */
+  assigneeMemberId?: string;
 }
 
 export interface CreateFollowUpCommandDeps {
@@ -134,9 +149,30 @@ export interface CreateFollowUpCommandDeps {
 }
 
 /**
- * Creates one follow-up for the ACTING member. The assignee is hard-coded to
- * `context.memberId` on purpose: an explicit or other assignee is a later
- * Action Engine concern and needs its own command input (§22).
+ * Re-checks a named assignee under lock: an ACTIVE member of this tenant whose
+ * user is ACTIVE. The acting member is skipped because `lockFollowUpActor`
+ * just proved the same thing (including the role match) for them.
+ */
+export async function lockFollowUpAssignee(
+  tx: Prisma.TransactionClient,
+  context: TenantContext,
+  assigneeMemberId: string,
+): Promise<void> {
+  if (assigneeMemberId === context.memberId) return;
+  const rows = await tx.$queryRaw<
+    Array<{ id: string }>
+  >`SELECT m.id FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=${context.tenantId}::uuid AND m.id=${assigneeMemberId}::uuid AND m.status='ACTIVE' AND u.status='ACTIVE' FOR UPDATE OF m`;
+  if (!rows.length) {
+    throw new ApiException('VALIDATION_FAILED', 400, {
+      message: '请选择在职成员。',
+    });
+  }
+}
+
+/**
+ * Creates one follow-up for the acting member by default, or for the explicit
+ * assignee an Action resolved (§22 / A2). No assignee is ever silently
+ * substituted: a named member that is not ACTIVE fails here.
  */
 export async function createFollowUpCommand(
   tx: Prisma.TransactionClient,
@@ -146,13 +182,15 @@ export async function createFollowUpCommand(
   scope: FollowUpRecordScope,
   deps: CreateFollowUpCommandDeps,
 ) {
+  const assigneeMemberId = input.assigneeMemberId ?? context.memberId;
   await lockFollowUpActor(tx, context);
+  await lockFollowUpAssignee(tx, context, assigneeMemberId);
   await lockFollowUpRecord(tx, context, scope);
   const item = await tx.recordFollowUp.create({
     data: {
       id: randomUUID(),
       tenantId: context.tenantId,
-      assigneeMemberId: context.memberId,
+      assigneeMemberId,
       recordId: input.recordId,
       title: input.title,
       dueAt: new Date(input.dueAt),
@@ -170,6 +208,7 @@ export async function createFollowUpCommand(
       title: item.title,
       dueAt: item.dueAt.toISOString(),
       recordId: item.recordId,
+      ...(meta.actionAudit ?? {}),
     },
   );
   return presentFollowUp(item);

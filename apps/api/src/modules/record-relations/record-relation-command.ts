@@ -4,6 +4,7 @@ import type { Prisma } from '@crm/database';
 
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
+import type { WorkflowActionAuditMetadata } from '../audit/audit-event';
 import type { AuditService } from '../audit/audit.service';
 import type { PublishedObjectService } from '../objects/published-object.service';
 import type { ResolvedObjectSchema } from '../objects/published-object.service';
@@ -30,6 +31,12 @@ export interface RecordRelationScope {
 export interface RecordRelationMeta {
   requestId: string;
   ip?: string;
+  /**
+   * §30: set only when the Action Engine calls this command, so the
+   * `record.relation_added` audit row carries the Transition / Action
+   * correlation. The ordinary HTTP path leaves it unset.
+   */
+  actionAudit?: WorkflowActionAuditMetadata;
 }
 
 /** Only the one read path the ordinary relation service uses. */
@@ -183,6 +190,12 @@ export interface CreateRecordRelationCommandDeps {
  * `success: true` is returned both when the relation was inserted and when the
  * deterministic pair already existed: a duplicate is a no-op and writes no
  * audit row.
+ *
+ * `relationId` is the id of that canonical row — the one just inserted, or the
+ * one that already existed. §16 needs it for the `CREATE_RELATION` Action
+ * output, and only an id read back from this table can be trusted on the
+ * idempotent path. The HTTP service keeps returning `{ success: true }`, so no
+ * client-visible response changes.
  */
 export async function createRecordRelationCommand(
   tx: Prisma.TransactionClient,
@@ -190,7 +203,7 @@ export async function createRecordRelationCommand(
   input: CreateRecordRelationCommandInput,
   meta: RecordRelationMeta,
   deps: CreateRecordRelationCommandDeps,
-): Promise<{ success: true }> {
+): Promise<{ success: true; relationId: string }> {
   const id = input.id.toLowerCase();
   const recordId = input.recordId.toLowerCase();
   if (id === recordId) throw new ApiException('VALIDATION_FAILED', 400);
@@ -208,6 +221,7 @@ export async function createRecordRelationCommand(
   const rows = await tx.$queryRaw<
     Array<{ id: string }>
   >`INSERT INTO record_relations (id,tenant_id,source_record_id,target_record_id) VALUES (${randomUUID()}::uuid,${context.tenantId}::uuid,${pair[0]}::uuid,${pair[1]}::uuid) ON CONFLICT (tenant_id,source_record_id,target_record_id) DO NOTHING RETURNING id`;
+  const relationId = rows[0]?.id ?? (await findRelationId(tx, context, pair));
   if (rows.length)
     await deps.audit.append(tx, {
       tenantId: context.tenantId,
@@ -216,8 +230,25 @@ export async function createRecordRelationCommand(
       action: 'record.relation_added',
       resourceType: 'record',
       resourceId: id,
-      after: { targetRecordId: recordId },
-      ...meta,
+      after: { targetRecordId: recordId, ...(meta.actionAudit ?? {}) },
+      requestId: meta.requestId,
+      ip: meta.ip,
     });
-  return { success: true };
+  return { success: true, relationId };
+}
+
+/**
+ * The idempotent insert reports no row when the deterministic pair already
+ * exists, so the canonical id is read back. Read-only: `ON CONFLICT DO NOTHING`
+ * still owns idempotency and still writes no audit row.
+ */
+async function findRelationId(
+  tx: Prisma.TransactionClient,
+  context: TenantContext,
+  pair: string[],
+): Promise<string> {
+  const rows = await tx.$queryRaw<Array<{ id: string }>>`
+    SELECT id FROM record_relations WHERE tenant_id=${context.tenantId}::uuid AND source_record_id=${pair[0]}::uuid AND target_record_id=${pair[1]}::uuid`;
+  if (!rows.length) throw new ApiException('RECORD_NOT_FOUND', 404);
+  return rows[0].id;
 }
