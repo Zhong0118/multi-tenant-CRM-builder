@@ -452,12 +452,19 @@ export async function executeActions(
             recordId: source.snapshot.id,
             objectCode: source.objectCode,
           });
-          effects.push({
-            actionKey: action.key,
-            type: action.type,
-            effect: 'SOURCE_OWNER_ASSIGNED',
-            recordId: source.snapshot.id,
-          });
+          // §30: assigning the record to the member who already owns it is a
+          // legal Action that changes nothing, so it emits NO effect — and
+          // therefore no `record.owner_assigned` audit row claiming a change
+          // that did not happen (the immutable snapshot decides, not the patch
+          // the Action just staged).
+          if (source.snapshot.ownerMemberId !== context.memberId) {
+            effects.push({
+              actionKey: action.key,
+              type: action.type,
+              effect: 'SOURCE_OWNER_ASSIGNED',
+              recordId: source.snapshot.id,
+            });
+          }
           break;
         }
 

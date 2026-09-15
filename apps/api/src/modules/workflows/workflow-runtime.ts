@@ -1,5 +1,6 @@
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
+import type { PublishedAction } from '../actions/action.types';
 import type { EffectiveObjectAccess } from '../objects/effective-access';
 import type { PublishedObjectSchema } from '../objects/object-schema';
 import type { DynamicRecord } from '../records/records.repository';
@@ -37,6 +38,13 @@ export interface ResolvedTransition {
   fromStateLabel: string | null;
   toStateKey: string;
   toStateLabel: string;
+  /**
+   * §10 / §28: the ordered Action steps frozen into the published Transition.
+   * They travel with the resolved transition so the execute path can never run
+   * a draft's Actions, or the wrong publication's; array order is execution
+   * order. The synthetic start transition has none.
+   */
+  actions: PublishedAction[];
 }
 
 export function requirePublishedWorkflow(
@@ -93,6 +101,9 @@ export function resolveExecutableTransition(input: {
       fromStateLabel: null,
       toStateKey: initial.key,
       toStateLabel: initial.label,
+      // Starting a workflow is not a configured Transition: it has no draft and
+      // therefore no Action steps.
+      actions: [],
     };
   }
 
@@ -124,6 +135,7 @@ export function resolveExecutableTransition(input: {
     fromStateLabel: current.label,
     toStateKey: toState.key,
     toStateLabel: toState.label,
+    actions: transition.actions,
   };
 }
 

@@ -1,3 +1,5 @@
+import type { Prisma } from '@crm/database';
+
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { AuditEvent } from '../audit/audit-event';
 import type { PublishedObjectSchema } from '../objects/object-schema';
@@ -13,6 +15,7 @@ import type {
   RecordListQuery,
   RecordsRepository,
   RecordsStore,
+  RecordsTransaction,
 } from './records.repository';
 import { RecordsService } from './records.service';
 
@@ -318,6 +321,27 @@ class MemoryRecordsStore implements RecordsStore {
     );
   }
 
+  /**
+   * §23 step 7: the Workflow transition lock. This spec never drives the
+   * execute path, so the in-memory store only mirrors the owner-scope filter of
+   * the real `FOR UPDATE` statement — there is no row lock to model here.
+   */
+  async lockRecord(input: {
+    objectId: string;
+    recordId: string;
+    ownerMemberId: string | null;
+  }): Promise<DynamicRecord | null> {
+    const record = await this.findRecord(input.objectId, input.recordId);
+    if (!record) return null;
+    if (
+      input.ownerMemberId !== null &&
+      record.ownerMemberId !== input.ownerMemberId
+    ) {
+      return null;
+    }
+    return record;
+  }
+
   updateRecord(
     recordId: string,
     expectedVersion: number,
@@ -475,10 +499,27 @@ class MemoryRecordsRepository implements RecordsRepository {
   constructor(readonly store: MemoryRecordsStore) {}
 
   withTenant<T>(
-    _context: TenantContext,
+    context: TenantContext,
     work: (store: RecordsStore) => Promise<T>,
   ): Promise<T> {
-    return work(this.store);
+    return this.withTenantTransaction(context, (session) =>
+      work(session.store),
+    );
+  }
+
+  /**
+   * §24/T8b: this spec drives the ordinary record services, which never reach
+   * for the transaction itself, so the in-memory session hands over a `tx`
+   * placeholder alongside the store.
+   */
+  withTenantTransaction<T>(
+    _context: TenantContext,
+    work: (session: RecordsTransaction) => Promise<T>,
+  ): Promise<T> {
+    return work({
+      tx: {} as Prisma.TransactionClient,
+      store: this.store,
+    });
   }
 }
 

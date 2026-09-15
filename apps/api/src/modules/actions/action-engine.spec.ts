@@ -258,6 +258,26 @@ class MemoryStore implements RecordsStore {
       ),
     );
   }
+  /**
+   * §23 step 7: the Workflow transition lock. This spec never drives the
+   * execute path, so the in-memory store only mirrors the owner-scope filter of
+   * the real `FOR UPDATE` statement — there is no row lock to model here.
+   */
+  async lockRecord(input: {
+    objectId: string;
+    recordId: string;
+    ownerMemberId: string | null;
+  }): Promise<DynamicRecord | null> {
+    const record = await this.findRecord(input.objectId, input.recordId);
+    if (!record) return null;
+    if (
+      input.ownerMemberId !== null &&
+      record.ownerMemberId !== input.ownerMemberId
+    ) {
+      return null;
+    }
+    return record;
+  }
   updateRecord(): Promise<never> {
     return Promise.reject(new Error('updateRecord is superseded'));
   }
@@ -832,6 +852,34 @@ describe('UPDATE_RECORD and ASSIGN_OWNER accumulate one source patch (§13, §14
     expect(store.writeCount).toBe(0);
     expect(store.records[0].ownerMemberId).toBe(OWNER);
     expect(store.records[0].version).toBe(4);
+  });
+
+  it('emits no SOURCE_OWNER_ASSIGNED effect — and no audit — when the actor already owns the record', async () => {
+    const { run, store, source } = fixture();
+
+    // The Source Record is already owned by the acting member, so this
+    // ASSIGN_OWNER changes nothing.
+    const alreadyOwned = {
+      ...source,
+      snapshot: { ...source.snapshot, ownerMemberId: admin.memberId },
+    };
+
+    const result = await run([ASSIGN_SOURCE], { source: alreadyOwned });
+
+    // The Action stays legal: it resolves to the same owner and stages the
+    // same (unchanged) owner on the patch.
+    expect(result.outputs.get('assign-source')).toEqual({
+      type: 'ASSIGN_OWNER',
+      recordId: SNAPSHOT_ID,
+      ownerMemberId: admin.memberId,
+    });
+    expect(result.sourcePatch?.ownerMemberId).toBe(admin.memberId);
+    // A no-op change must not claim that it changed anything: no effect, and
+    // therefore no `record.owner_assigned` audit row for the auditor to read.
+    expect(result.effects).toEqual([]);
+    expect(store.audits.map((event) => event.action)).not.toContain(
+      'record.owner_assigned',
+    );
   });
 
   it('validates the patch through the shared prepareSourceRecordPatch', async () => {

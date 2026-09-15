@@ -1,4 +1,5 @@
 import { ApiException } from '../../common/errors/api.exception';
+import type { PublishedAction } from '../actions/action.types';
 import type { EffectiveObjectAccess } from '../objects/effective-access';
 import type { PublishedObjectSchema } from '../objects/object-schema';
 import type { DynamicRecord } from '../records/records.repository';
@@ -8,7 +9,7 @@ import {
   START_TRANSITION_KEY,
 } from './workflow-runtime';
 
-function schema(): PublishedObjectSchema {
+function schema(actions: PublishedAction[] = []): PublishedObjectSchema {
   return {
     publication: {
       id: 'publication-leads',
@@ -80,7 +81,7 @@ function schema(): PublishedObjectSchema {
           toStateKey: 'won',
           allowedRoles: ['TENANT_ADMIN', 'EMPLOYEE'],
           requiredFieldKeys: ['amount'],
-          actions: [],
+          actions,
         },
       ],
     },
@@ -160,6 +161,51 @@ describe('workflow runtime', () => {
       fromStateKey: 'new',
       toStateKey: 'won',
     });
+  });
+
+  it('resolves the published actions of the transition in array order', () => {
+    const actions: PublishedAction[] = [
+      {
+        key: 'create-customer',
+        type: 'CREATE_RECORD',
+        targetObjectCode: 'customers',
+        values: { name: { source: 'SOURCE_FIELD', fieldKey: 'name' } },
+      },
+      {
+        key: 'take-ownership',
+        type: 'ASSIGN_OWNER',
+        target: 'SOURCE_RECORD',
+        owner: { source: 'ACTOR' },
+      },
+    ];
+    expect(
+      resolveExecutableTransition({
+        schema: schema(actions),
+        access: access(),
+        role: 'EMPLOYEE',
+        record: record(),
+        transitionKey: 'mark-won',
+      }).actions,
+    ).toEqual(actions);
+  });
+
+  it('resolves no actions for the synthetic start transition', () => {
+    expect(
+      resolveExecutableTransition({
+        schema: schema([
+          {
+            key: 'set-amount',
+            type: 'UPDATE_RECORD',
+            target: 'SOURCE_RECORD',
+            values: { amount: { source: 'LITERAL', value: '200.00' } },
+          },
+        ]),
+        access: access(),
+        role: 'EMPLOYEE',
+        record: record({ workflowStateKey: null }),
+        transitionKey: START_TRANSITION_KEY,
+      }).actions,
+    ).toEqual([]);
   });
 
   it('rejects the wrong current state', () => {

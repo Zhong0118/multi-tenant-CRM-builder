@@ -251,6 +251,26 @@ class MemoryStore implements RecordsStore {
       ),
     );
   }
+  /**
+   * §23 step 7: the Workflow transition lock. This spec never drives the
+   * execute path, so the in-memory store only mirrors the owner-scope filter of
+   * the real `FOR UPDATE` statement — there is no row lock to model here.
+   */
+  async lockRecord(input: {
+    objectId: string;
+    recordId: string;
+    ownerMemberId: string | null;
+  }): Promise<DynamicRecord | null> {
+    const record = await this.findRecord(input.objectId, input.recordId);
+    if (!record) return null;
+    if (
+      input.ownerMemberId !== null &&
+      record.ownerMemberId !== input.ownerMemberId
+    ) {
+      return null;
+    }
+    return record;
+  }
   updateRecord(
     recordId: string,
     expectedVersion: number,

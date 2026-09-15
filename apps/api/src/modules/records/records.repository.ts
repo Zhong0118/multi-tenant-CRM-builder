@@ -155,6 +155,23 @@ export interface RecordsStore {
   }>;
   findRecord(objectId: string, recordId: string): Promise<DynamicRecord | null>;
   /**
+   * §23 step 7 / §36: locks the Source Record row (`FOR UPDATE`) for the rest
+   * of the caller's transaction and returns a fresh read of it. It is the write
+   * path's counterpart of `findRecord`: a Transition must hold the row it is
+   * about to move, not merely have read it.
+   *
+   * `ownerMemberId` narrows the row to that owner, which is how an OWN update
+   * scope keeps the "you may only touch what you own" rule once the row is
+   * locked instead of read. It returns null for a record that is missing,
+   * soft-deleted or out of scope, so the caller raises RECORD_NOT_FOUND exactly
+   * as the read path does.
+   */
+  lockRecord(input: {
+    objectId: string;
+    recordId: string;
+    ownerMemberId: string | null;
+  }): Promise<DynamicRecord | null>;
+  /**
    * Superseded by `applyRecordPatch` and no longer called by any production
    * path; kept because removing it is tracked as a separate cleanup.
    */
@@ -234,10 +251,32 @@ export interface RecordsStore {
   }>;
 }
 
+/**
+ * §24 / T8b: the tenant transaction itself, next to the `RecordsStore` bound to
+ * it. The Workflow execute path needs both — the Action Engine takes a
+ * `Prisma.TransactionClient` while the Source Record write goes through the
+ * store — and they must be the SAME transaction, or a Transition could commit
+ * its Actions and never its source write (§4).
+ */
+export interface RecordsTransaction {
+  tx: Prisma.TransactionClient;
+  store: RecordsStore;
+}
+
 export interface RecordsRepository {
   withTenant<T>(
     context: TenantContext,
     work: (store: RecordsStore) => Promise<T>,
+  ): Promise<T>;
+  /**
+   * §4 / §24: the same single tenant transaction, handed over as
+   * `{ tx, store }` so a caller that also drives transaction-taking commands
+   * (the Action Engine) can run them and the store inside ONE transaction. It
+   * never opens a second transaction, and never nests one.
+   */
+  withTenantTransaction<T>(
+    context: TenantContext,
+    work: (session: RecordsTransaction) => Promise<T>,
   ): Promise<T>;
 }
 
@@ -252,8 +291,20 @@ export class PrismaRecordsRepository implements RecordsRepository {
     context: TenantContext,
     work: (store: RecordsStore) => Promise<T>,
   ): Promise<T> {
+    return this.withTenantTransaction(context, (session) =>
+      work(session.store),
+    );
+  }
+
+  withTenantTransaction<T>(
+    context: TenantContext,
+    work: (session: RecordsTransaction) => Promise<T>,
+  ): Promise<T> {
     return this.runner.withTenant(context, (transaction) =>
-      work(new PrismaRecordsStore(transaction, this.audit, context)),
+      work({
+        tx: transaction,
+        store: new PrismaRecordsStore(transaction, this.audit, context),
+      }),
     );
   }
 }
@@ -431,6 +482,34 @@ class PrismaRecordsStore implements RecordsStore {
       },
     });
     return record ? fromPrismaRecord(record) : null;
+  }
+
+  /**
+   * §23 step 7 / §36: `SELECT … FOR UPDATE` on the Source Record, then a fresh
+   * read of it. The lock is what stops two concurrent Transitions on the same
+   * record from both passing the `expectedVersion` check; the read is the
+   * immutable snapshot the Transition then works from.
+   *
+   * The owner predicate is deliberately part of the lock statement: an OWN
+   * update scope must not be able to lock — or even learn about — another
+   * member's record.
+   */
+  async lockRecord(input: {
+    objectId: string;
+    recordId: string;
+    ownerMemberId: string | null;
+  }): Promise<DynamicRecord | null> {
+    const rows = await this.transaction.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM records
+      WHERE tenant_id = ${this.context.tenantId}::uuid
+        AND object_id = ${input.objectId}::uuid
+        AND id = ${input.recordId}::uuid
+        AND deleted_at IS NULL
+        AND (${input.ownerMemberId}::uuid IS NULL OR owner_member_id = ${input.ownerMemberId}::uuid)
+      FOR UPDATE
+    `;
+    if (rows.length === 0) return null;
+    return this.findRecord(input.objectId, input.recordId);
   }
 
   /**
