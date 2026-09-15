@@ -211,12 +211,13 @@ function projectRuntimeSchema(
 export function parsePublishedObjectSchema(
   value: unknown,
 ): PublishedObjectSchema {
-  const root = strictObject(value, [
+  const root = optionalKeyedObject(value, [
     'publication',
     'object',
     'fields',
     'defaultView',
     'employeeAccess',
+    'workflow',
   ]);
   const publication = strictObject(root.publication, [
     'id',
@@ -297,8 +298,73 @@ export function parsePublishedObjectSchema(
       invalidSnapshot();
     }
   }
+  if (root.workflow !== undefined) parseWorkflow(root.workflow, fieldKeys);
 
   return structuredClone(value) as PublishedObjectSchema;
+}
+
+function parseWorkflow(
+  value: unknown,
+  fieldKeys: Set<string>,
+): void {
+  const workflow = strictObject(value, [
+    'initialStateKey',
+    'states',
+    'transitions',
+  ]);
+  assertString(workflow.initialStateKey);
+  if (!Array.isArray(workflow.states) || workflow.states.length < 1) {
+    invalidSnapshot();
+  }
+  if (!Array.isArray(workflow.transitions)) invalidSnapshot();
+  const stateKeys = new Set<string>();
+  for (const stateValue of workflow.states) {
+    const state = strictObject(stateValue, [
+      'key',
+      'label',
+      'sortOrder',
+      'isTerminal',
+    ]);
+    assertString(state.key);
+    assertString(state.label);
+    assertInteger(state.sortOrder);
+    assertBoolean(state.isTerminal);
+    if (stateKeys.has(state.key)) invalidSnapshot();
+    stateKeys.add(state.key);
+  }
+  if (!stateKeys.has(String(workflow.initialStateKey))) invalidSnapshot();
+  const edges = new Set<string>();
+  for (const transitionValue of workflow.transitions) {
+    const transition = strictObject(transitionValue, [
+      'key',
+      'label',
+      'fromStateKey',
+      'toStateKey',
+      'allowedRoles',
+      'requiredFieldKeys',
+    ]);
+    assertString(transition.key);
+    assertString(transition.label);
+    assertString(transition.fromStateKey);
+    assertString(transition.toStateKey);
+    if (!stateKeys.has(transition.fromStateKey)) invalidSnapshot();
+    if (!stateKeys.has(transition.toStateKey)) invalidSnapshot();
+    if (transition.fromStateKey === transition.toStateKey) invalidSnapshot();
+    const edge = `${transition.fromStateKey}>${transition.toStateKey}`;
+    if (edges.has(edge)) invalidSnapshot();
+    edges.add(edge);
+    const roles = parseStringArray(transition.allowedRoles);
+    if (
+      roles.length === 0 ||
+      roles.some((role) => role !== 'TENANT_ADMIN' && role !== 'EMPLOYEE')
+    ) {
+      invalidSnapshot();
+    }
+    const requiredFieldKeys = parseStringArray(transition.requiredFieldKeys);
+    if (requiredFieldKeys.some((fieldKey) => !fieldKeys.has(fieldKey))) {
+      invalidSnapshot();
+    }
+  }
 }
 
 function parseDefaultView(value: unknown): Record<string, unknown> {
@@ -343,6 +409,25 @@ function parseField(value: unknown): PublishedField {
   assertInteger(field.sortOrder);
   assertBoolean(field.isSystem);
   return field as unknown as PublishedField;
+}
+
+function optionalKeyedObject(
+  value: unknown,
+  keys: readonly string[],
+): Record<string, unknown> {
+  const object = plainObject(value);
+  const allowed = new Set(keys);
+  if (Object.keys(object).some((key) => !allowed.has(key))) invalidSnapshot();
+  for (const required of [
+    'publication',
+    'object',
+    'fields',
+    'defaultView',
+    'employeeAccess',
+  ]) {
+    if (!(required in object)) invalidSnapshot();
+  }
+  return object;
 }
 
 function strictObject(

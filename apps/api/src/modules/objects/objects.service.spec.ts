@@ -100,6 +100,14 @@ class MemoryObjectsStore implements ObjectsStore {
     );
   }
 
+  countRecordsByWorkflowState(): Promise<Record<string, number>> {
+    return Promise.resolve({});
+  }
+
+  findWorkflowDraft(): Promise<null> {
+    return Promise.resolve(null);
+  }
+
   nextPublicationNumber(objectId: string): Promise<number> {
     const publications = this.publications.get(objectId) ?? [];
     return Promise.resolve(

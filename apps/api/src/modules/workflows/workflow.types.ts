@@ -31,3 +31,25 @@ export interface WorkflowDraft {
 export interface WorkflowDraftResponse extends WorkflowDraft {
   objectVersion: number;
 }
+
+export interface PublishedWorkflowState {
+  key: string;
+  label: string;
+  sortOrder: number;
+  isTerminal: boolean;
+}
+
+export interface PublishedWorkflowTransition {
+  key: string;
+  label: string;
+  fromStateKey: string;
+  toStateKey: string;
+  allowedRoles: WorkflowRole[];
+  requiredFieldKeys: string[];
+}
+
+export interface PublishedWorkflow {
+  initialStateKey: string;
+  states: PublishedWorkflowState[];
+  transitions: PublishedWorkflowTransition[];
+}

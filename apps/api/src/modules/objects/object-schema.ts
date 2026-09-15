@@ -1,3 +1,5 @@
+import type { PublishedWorkflow } from '../workflows/workflow.types';
+
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue =
   JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
@@ -90,6 +92,7 @@ export interface PublishedObjectSchema {
     updateScope: PublishedDataScope;
     fields: Record<string, PublishedFieldAccess>;
   };
+  workflow?: PublishedWorkflow;
 }
 
 export function isPublishedFieldType(

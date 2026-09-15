@@ -278,6 +278,144 @@ describe('object publication policy', () => {
     });
   });
 
+  it('compiles an enabled workflow into the published snapshot', () => {
+    const schema = compilePublication({
+      ...validDraft(),
+      workflow: {
+        isEnabled: true,
+        initialStateKey: 'new',
+        states: [
+          { key: 'new', label: '新建', sortOrder: 10, isTerminal: false },
+          { key: 'won', label: '赢单', sortOrder: 20, isTerminal: true },
+        ],
+        transitions: [
+          {
+            key: 'mark-won',
+            label: '标记赢单',
+            fromStateKey: 'new',
+            toStateKey: 'won',
+            allowedRoles: ['TENANT_ADMIN', 'EMPLOYEE'],
+            requiredFieldKeys: ['phone'],
+            sortOrder: 10,
+          },
+        ],
+      },
+      publication: {
+        id: 'publication-2',
+        number: 2,
+        sourceDraftVersion: 7,
+        publishedAt: '2026-08-21T10:00:00.000Z',
+      },
+    });
+
+    expect(schema.workflow).toEqual({
+      initialStateKey: 'new',
+      states: [
+        { key: 'new', label: '新建', sortOrder: 10, isTerminal: false },
+        { key: 'won', label: '赢单', sortOrder: 20, isTerminal: true },
+      ],
+      transitions: [
+        {
+          key: 'mark-won',
+          label: '标记赢单',
+          fromStateKey: 'new',
+          toStateKey: 'won',
+          allowedRoles: ['TENANT_ADMIN', 'EMPLOYEE'],
+          requiredFieldKeys: ['phone'],
+        },
+      ],
+    });
+  });
+
+  it('omits workflow from snapshots when the draft is disabled', () => {
+    const schema = compilePublication({
+      ...validDraft(),
+      workflow: {
+        isEnabled: false,
+        initialStateKey: 'new',
+        states: [
+          { key: 'new', label: '新建', sortOrder: 10, isTerminal: false },
+        ],
+        transitions: [],
+      },
+      publication: {
+        id: 'publication-2',
+        number: 2,
+        sourceDraftVersion: 7,
+        publishedAt: '2026-08-21T10:00:00.000Z',
+      },
+    });
+
+    expect(schema.workflow).toBeUndefined();
+  });
+
+  it('blocks a required field that does not exist on the object', () => {
+    const draft = validDraft();
+    draft.workflow = {
+      isEnabled: true,
+      initialStateKey: 'new',
+      states: [
+        { key: 'new', label: '新建', sortOrder: 10, isTerminal: false },
+        { key: 'won', label: '赢单', sortOrder: 20, isTerminal: true },
+      ],
+      transitions: [
+        {
+          key: 'mark-won',
+          label: '标记赢单',
+          fromStateKey: 'new',
+          toStateKey: 'won',
+          allowedRoles: ['TENANT_ADMIN'],
+          requiredFieldKeys: ['amount'],
+          sortOrder: 10,
+        },
+      ],
+    };
+
+    expect(blockingCodes(draft)).toContain('WORKFLOW_REQUIRED_FIELD_UNKNOWN');
+  });
+
+  it('blocks removing a published state that records still use', () => {
+    const draft = validDraft();
+    draft.activeSchema = {
+      ...compilePublication({
+        ...validDraft(),
+        workflow: {
+          isEnabled: true,
+          initialStateKey: 'new',
+          states: [
+            { key: 'new', label: '新建', sortOrder: 10, isTerminal: false },
+            { key: 'won', label: '赢单', sortOrder: 20, isTerminal: true },
+          ],
+          transitions: [],
+        },
+        publication: {
+          id: 'publication-1',
+          number: 1,
+          sourceDraftVersion: 6,
+          publishedAt: '2026-08-21T09:00:00.000Z',
+        },
+      }),
+    };
+    draft.workflow = {
+      isEnabled: true,
+      initialStateKey: 'new',
+      states: [
+        { key: 'new', label: '新建', sortOrder: 10, isTerminal: false },
+      ],
+      transitions: [],
+    };
+    draft.workflowStateRecordCounts = { won: 3 };
+
+    expect(analyzePublication(draft).blocking).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'WORKFLOW_STATE_IN_USE',
+          fieldKey: 'won',
+        }),
+      ]),
+    );
+  });
+
   it('compiles explicit searchFieldKeys into the published default view', () => {
     const schema = compilePublication({
       ...validDraft(),

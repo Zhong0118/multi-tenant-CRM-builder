@@ -9,6 +9,9 @@ import {
   analyzeObjectConfiguration,
   compileObjectConfiguration,
 } from './object-configuration.policy';
+import { ApiException } from '../../common/errors/api.exception';
+import { validateWorkflowDraft } from '../workflows/workflow-draft.policy';
+import type { WorkflowDraft } from '../workflows/workflow.types';
 
 export type DraftFieldType = PublishedField['type'] | 'ATTACHMENT';
 
@@ -69,6 +72,8 @@ export interface PublicationDraft {
   activeSchema: PublishedObjectSchema | null;
   activeRecordCount: number;
   missingRequiredValueCounts?: Record<string, number>;
+  workflow?: WorkflowDraft | null;
+  workflowStateRecordCounts?: Record<string, number>;
 }
 
 export interface PublicationIssue {
@@ -111,6 +116,7 @@ export function analyzePublication(
       fieldKey: input.object.titleFieldKey,
     });
   }
+  blocking.push(...analyzeWorkflowPublication(input));
   const previousFields = new Map(
     (input.activeSchema?.fields ?? []).map((field) => [field.fieldKey, field]),
   );
@@ -157,8 +163,99 @@ export function compilePublication(
     employeeAccess: input.employeeAccess,
   });
 
+  const workflow = compilePublishedWorkflow(input);
   return {
     publication: { ...input.publication },
     ...configuration,
+    ...(workflow ? { workflow } : {}),
+  };
+}
+
+function analyzeWorkflowPublication(
+  input: PublicationDraft,
+): PublicationIssue[] {
+  const workflow = input.workflow;
+  if (!workflow?.isEnabled) return [];
+
+  const knownFieldKeys = input.fields
+    .filter((field) => field.status === 'ACTIVE')
+    .map((field) => field.fieldKey);
+  const fieldAccess = input.employeeAccess?.fields ?? {};
+  try {
+    validateWorkflowDraft(workflow, { knownFieldKeys });
+  } catch (error) {
+    const fieldErrors =
+      error instanceof ApiException ? error.fieldErrors : undefined;
+    const first = fieldErrors
+      ? Object.values(fieldErrors).flat()[0]
+      : undefined;
+    return [
+      {
+        code: first?.includes('必填字段')
+          ? 'WORKFLOW_REQUIRED_FIELD_UNKNOWN'
+          : 'WORKFLOW_INVALID_DRAFT',
+        message: first ?? '流程配置不合法，暂时不能发布。',
+      },
+    ];
+  }
+
+  const issues: PublicationIssue[] = [];
+  for (const transition of workflow.transitions) {
+    if (!transition.allowedRoles.includes('EMPLOYEE')) continue;
+    for (const fieldKey of transition.requiredFieldKeys) {
+      if ((fieldAccess[fieldKey] ?? 'HIDDEN') === 'HIDDEN') {
+        issues.push({
+          code: 'WORKFLOW_REQUIRED_FIELD_HIDDEN',
+          message: `员工无法看到流程动作所需字段「${fieldKey}」。`,
+          fieldKey,
+        });
+      }
+    }
+  }
+
+  const nextKeys = new Set(workflow.states.map((state) => state.key));
+  for (const [stateKey, count] of Object.entries(
+    input.workflowStateRecordCounts ?? {},
+  )) {
+    if (count > 0 && !nextKeys.has(stateKey)) {
+      issues.push({
+        code: 'WORKFLOW_STATE_IN_USE',
+        message: `仍有 ${count} 条记录使用状态「${stateKey}」，不能从新版本中删除。`,
+        fieldKey: stateKey,
+      });
+    }
+  }
+  return issues;
+}
+
+function compilePublishedWorkflow(
+  input: PublicationDraft,
+): PublishedObjectSchema['workflow'] {
+  const workflow = input.workflow;
+  if (!workflow?.isEnabled) return undefined;
+  const normalized = validateWorkflowDraft(workflow, {
+    knownFieldKeys: input.fields
+      .filter((field) => field.status === 'ACTIVE')
+      .map((field) => field.fieldKey),
+  });
+  if (!normalized.initialStateKey) {
+    throw new Error('Enabled workflow is missing an initial state');
+  }
+  return {
+    initialStateKey: normalized.initialStateKey,
+    states: normalized.states.map((state) => ({
+      key: state.key,
+      label: state.label,
+      sortOrder: state.sortOrder,
+      isTerminal: state.isTerminal,
+    })),
+    transitions: normalized.transitions.map((transition) => ({
+      key: transition.key,
+      label: transition.label,
+      fromStateKey: transition.fromStateKey,
+      toStateKey: transition.toStateKey,
+      allowedRoles: transition.allowedRoles,
+      requiredFieldKeys: transition.requiredFieldKeys,
+    })),
   };
 }

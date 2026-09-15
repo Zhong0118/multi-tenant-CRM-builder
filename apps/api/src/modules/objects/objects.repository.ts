@@ -10,6 +10,7 @@ import type {
   PublicationDraft,
 } from './object-publication.policy';
 import type { PublishedObjectSchema } from './object-schema';
+import type { WorkflowDraft } from '../workflows/workflow.types';
 
 export interface ObjectDraft extends PublicationDraft {
   object: PublicationDraft['object'] & {
@@ -46,6 +47,10 @@ export interface ObjectsStore {
    */
   deleteObject(objectId: string, expectedVersion: number): Promise<boolean>;
   countActiveRecords(objectId: string): Promise<number>;
+  countRecordsByWorkflowState(
+    objectId: string,
+  ): Promise<Record<string, number>>;
+  findWorkflowDraft(objectId: string): Promise<WorkflowDraft | null>;
   nextPublicationNumber(objectId: string): Promise<number>;
   createPublication(input: {
     objectId: string;
@@ -396,6 +401,61 @@ class PrismaObjectsStore implements ObjectsStore {
         deletedAt: null,
       },
     });
+  }
+
+  async countRecordsByWorkflowState(
+    objectId: string,
+  ): Promise<Record<string, number>> {
+    const rows = await this.transaction.record.groupBy({
+      by: ['statusKey'],
+      where: {
+        tenantId: this.context.tenantId,
+        objectId,
+        deletedAt: null,
+        statusKey: { not: null },
+      },
+      _count: { _all: true },
+    });
+    return Object.fromEntries(
+      rows.flatMap((row) =>
+        row.statusKey ? [[row.statusKey, row._count._all]] : [],
+      ),
+    );
+  }
+
+  async findWorkflowDraft(objectId: string): Promise<WorkflowDraft | null> {
+    const workflow = await this.transaction.objectWorkflowDefinition.findFirst({
+      where: {
+        tenantId: this.context.tenantId,
+        objectDefinitionId: objectId,
+      },
+      include: {
+        states: { orderBy: [{ sortOrder: 'asc' }, { key: 'asc' }] },
+        transitions: { orderBy: [{ sortOrder: 'asc' }, { key: 'asc' }] },
+      },
+    });
+    if (!workflow) return null;
+    return {
+      isEnabled: workflow.isEnabled,
+      initialStateKey: workflow.initialStateKey,
+      states: workflow.states.map((state) => ({
+        key: state.key,
+        label: state.label,
+        description: state.description,
+        sortOrder: state.sortOrder,
+        isTerminal: state.isTerminal,
+      })),
+      transitions: workflow.transitions.map((transition) => ({
+        key: transition.key,
+        label: transition.label,
+        fromStateKey: transition.fromStateKey,
+        toStateKey: transition.toStateKey,
+        allowedRoles:
+          transition.allowedRoles as WorkflowDraft['transitions'][number]['allowedRoles'],
+        requiredFieldKeys: transition.requiredFieldKeys,
+        sortOrder: transition.sortOrder,
+      })),
+    };
   }
 
   async deleteObject(

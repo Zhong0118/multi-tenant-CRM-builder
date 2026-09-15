@@ -431,6 +431,9 @@ export class ObjectsService {
       const draft = await requireDraft(store, objectId);
       assertVersion(draft, input.expectedVersion);
       draft.activeRecordCount = await store.countActiveRecords(objectId);
+      draft.workflow = await store.findWorkflowDraft(objectId);
+      draft.workflowStateRecordCounts =
+        await store.countRecordsByWorkflowState(objectId);
       return analyzePublication(draft);
     });
   }
@@ -447,6 +450,9 @@ export class ObjectsService {
       const draft = await requireDraft(store, objectId);
       assertVersion(draft, input.expectedVersion);
       draft.activeRecordCount = await store.countActiveRecords(objectId);
+      draft.workflow = await store.findWorkflowDraft(objectId);
+      draft.workflowStateRecordCounts =
+        await store.countRecordsByWorkflowState(objectId);
       const analysis = analyzePublication(draft);
       if (analysis.blocking.length > 0) {
         throw new ApiException('PUBLICATION_BLOCKED', 422, {

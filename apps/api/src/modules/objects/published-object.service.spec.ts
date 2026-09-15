@@ -5,7 +5,10 @@ import type {
   PublishedObjectRecord,
   PublishedObjectRepository,
 } from './published-object.repository';
-import { PublishedObjectService } from './published-object.service';
+import {
+  parsePublishedObjectSchema,
+  PublishedObjectService,
+} from './published-object.service';
 
 const admin: TenantContext = {
   userId: 'user-admin',
@@ -258,6 +261,24 @@ describe('PublishedObjectService', () => {
         service.resolveRuntimeSchema(employee, code),
       ).rejects.toMatchObject({ code: 'OBJECT_NOT_FOUND' });
     }
+  });
+
+  it('parses snapshots without workflow and snapshots that include one', () => {
+    const base = schema({ code: 'leads', name: '销售线索', sortOrder: 10 });
+    expect(parsePublishedObjectSchema(base).workflow).toBeUndefined();
+    const withWorkflow = {
+      ...base,
+      workflow: {
+        initialStateKey: 'new',
+        states: [
+          { key: 'new', label: '新建', sortOrder: 10, isTerminal: false },
+        ],
+        transitions: [],
+      },
+    };
+    expect(parsePublishedObjectSchema(withWorkflow).workflow?.initialStateKey).toBe(
+      'new',
+    );
   });
 
   it('rejects malformed persisted snapshots as INTERNAL_ERROR', async () => {
