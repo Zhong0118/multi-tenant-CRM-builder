@@ -1,8 +1,7 @@
 # Workflow V1 验收记录
 
 日期：2026-09-15  
-分支：`feat/workflow-v1`，已 push `origin/feat/workflow-v1`，未合并 `main`。  
-`main` 功能基线仍是 `227e8d9`（其上可能有文档提交）。本分支 HEAD 以 `git log -1 --oneline` 为准，本文不硬编码。
+Workflow V1 已快进合并进入 `main` 并推送 `origin/main`。未部署。HEAD 以 `git log -1 --oneline` 为准，本文不硬编码。
 
 本轮只交付 State + Transition + Manual Execution + History + Audit。没有 Action Engine、Automation、模板 Workflow、列表状态筛选或批量 Transition。
 
@@ -71,4 +70,4 @@
 - 员工账号执行 Transition 已在真实页面走通（赵晨 / 员工验收记录）。
 - 未做双标签页 stale version 的浏览器冲突演示（API 单测覆盖 `RECORD_VERSION_CONFLICT`）。
 - 演示主对象（线索/商机）未启用 Workflow。
-- 已 push `origin/feat/workflow-v1`，未合并 `main`，未部署，未开始 Action Engine。
+- 已合并并推送 `origin/main`，未部署，未开始 Action Engine。

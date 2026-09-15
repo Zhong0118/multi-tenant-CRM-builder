@@ -533,7 +533,7 @@ docs/audits/YYYY-MM-DD/<task>-acceptance.md
 
 # 15. 当前唯一产品开发任务
 
-Workflow V1 已在 `feat/workflow-v1` 落地，验收见
+Workflow V1 已进入 `main`，验收见
 `docs/audits/2026-09-15/workflow-v1-acceptance.md`。
 
 下一主要产品 Task 待用户确认后再从 `PLANNED` 提升为 `ACTIVE`。当前不要自行进入：
