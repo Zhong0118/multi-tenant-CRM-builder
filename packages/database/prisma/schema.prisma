@@ -193,6 +193,10 @@ model Tenant {
   objectPermissions  ObjectPermission[]
   fieldPermissions   FieldPermission[]
   recordCounters     RecordCounter[]
+  workflows          ObjectWorkflowDefinition[]
+  workflowStates     WorkflowStateDefinition[]
+  workflowTransitions WorkflowTransitionDefinition[]
+  transitionHistories RecordTransitionHistory[]
   templateApplications BusinessTemplateApplication[]
   dashboardConfigurations TenantDashboardConfiguration[]
   dashboardPublications TenantDashboardPublication[]
@@ -271,6 +275,9 @@ model TenantMember {
   publishedObjects          ObjectPublication[] @relation("ObjectPublicationPublisher")
   publishedDashboards       TenantDashboardPublication[] @relation("TenantDashboardPublicationPublisher")
   objectPermissionOverrides ObjectPermission[]  @relation("ObjectPermissionMember")
+  createdWorkflows          ObjectWorkflowDefinition[] @relation("WorkflowCreatedBy")
+  updatedWorkflows          ObjectWorkflowDefinition[] @relation("WorkflowUpdatedBy")
+  transitionHistories       RecordTransitionHistory[] @relation("TransitionActor")
 
   @@unique([tenantId, userId])
   @@unique([tenantId, id])
@@ -364,6 +371,8 @@ model ObjectDefinition {
   permissions             ObjectPermission[]
   fieldPermissions        FieldPermission[]
   recordCounter           RecordCounter?
+  workflow                ObjectWorkflowDefinition?
+  transitionHistories     RecordTransitionHistory[]
 
   @@unique([tenantId, code])
   @@unique([tenantId, id])
@@ -472,6 +481,7 @@ model ObjectPublication {
   object              ObjectDefinition  @relation("ObjectPublications", fields: [tenantId, objectId], references: [tenantId, id], onDelete: Restrict)
   publisher           TenantMember      @relation("ObjectPublicationPublisher", fields: [tenantId, publishedByMemberId], references: [tenantId, id], onDelete: Restrict)
   activeFor           ObjectDefinition? @relation("ActiveObjectPublication")
+  transitionHistories RecordTransitionHistory[]
 
   @@unique([tenantId, objectId, publicationNo])
   @@unique([tenantId, id])
@@ -573,6 +583,7 @@ model Record {
   createdBy              TenantMember?    @relation("RecordCreator", fields: [tenantId, createdByMemberId], references: [tenantId, id], onDelete: Restrict)
   activities             RecordActivity[]
   followUps              RecordFollowUp[]
+  transitionHistories    RecordTransitionHistory[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, objectId, recordNo])
@@ -640,4 +651,93 @@ model RecordFollowUp {
   assignee TenantMember @relation(fields: [tenantId, assigneeMemberId], references: [tenantId, id], onDelete: Restrict)
   @@index([tenantId, assigneeMemberId, status, dueAt])
   @@map("record_follow_ups")
+}
+
+model ObjectWorkflowDefinition {
+  id                 String                         @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId           String                         @map("tenant_id") @db.Uuid
+  objectDefinitionId String                         @unique @map("object_definition_id") @db.Uuid
+  isEnabled          Boolean                        @default(false) @map("is_enabled")
+  initialStateKey    String?                        @map("initial_state_key") @db.VarChar(64)
+  createdByMemberId  String                         @map("created_by_member_id") @db.Uuid
+  updatedByMemberId  String                         @map("updated_by_member_id") @db.Uuid
+  createdAt          DateTime                       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime                       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant             Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  object             ObjectDefinition               @relation(fields: [tenantId, objectDefinitionId], references: [tenantId, id], onDelete: Restrict)
+  createdBy          TenantMember                   @relation("WorkflowCreatedBy", fields: [tenantId, createdByMemberId], references: [tenantId, id], onDelete: Restrict)
+  updatedBy          TenantMember                   @relation("WorkflowUpdatedBy", fields: [tenantId, updatedByMemberId], references: [tenantId, id], onDelete: Restrict)
+  states             WorkflowStateDefinition[]
+  transitions        WorkflowTransitionDefinition[]
+
+  @@unique([tenantId, objectDefinitionId])
+  @@unique([tenantId, id])
+  @@map("object_workflow_definitions")
+}
+
+model WorkflowStateDefinition {
+  id                   String                   @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId             String                   @map("tenant_id") @db.Uuid
+  workflowDefinitionId String                   @map("workflow_definition_id") @db.Uuid
+  key                  String                   @db.VarChar(64)
+  label                String                   @db.VarChar(100)
+  description          String?                  @db.VarChar(1000)
+  sortOrder            Int                      @default(0) @map("sort_order")
+  isTerminal           Boolean                  @default(false) @map("is_terminal")
+  createdAt            DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant               Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  workflow             ObjectWorkflowDefinition @relation(fields: [tenantId, workflowDefinitionId], references: [tenantId, id], onDelete: Restrict)
+
+  @@unique([tenantId, workflowDefinitionId, key], map: "workflow_state_definitions_tenant_workflow_key")
+  @@index([tenantId, workflowDefinitionId, sortOrder], map: "workflow_state_definitions_tenant_workflow_sort_idx")
+  @@map("workflow_state_definitions")
+}
+
+model WorkflowTransitionDefinition {
+  id                   String                   @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId             String                   @map("tenant_id") @db.Uuid
+  workflowDefinitionId String                   @map("workflow_definition_id") @db.Uuid
+  key                  String                   @db.VarChar(64)
+  label                String                   @db.VarChar(100)
+  fromStateKey         String                   @map("from_state_key") @db.VarChar(64)
+  toStateKey           String                   @map("to_state_key") @db.VarChar(64)
+  allowedRoles         MemberRole[]             @map("allowed_roles")
+  requiredFieldKeys    String[]                 @map("required_field_keys")
+  sortOrder            Int                      @default(0) @map("sort_order")
+  createdAt            DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant               Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  workflow             ObjectWorkflowDefinition @relation(fields: [tenantId, workflowDefinitionId], references: [tenantId, id], onDelete: Restrict)
+
+  @@unique([tenantId, workflowDefinitionId, key], map: "workflow_transition_definitions_tenant_workflow_key")
+  @@unique([tenantId, workflowDefinitionId, fromStateKey, toStateKey], map: "workflow_transition_definitions_tenant_from_to")
+  @@index([tenantId, workflowDefinitionId, sortOrder], map: "workflow_transition_definitions_tenant_workflow_sort_idx")
+  @@map("workflow_transition_definitions")
+}
+
+model RecordTransitionHistory {
+  id                  String             @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId            String             @map("tenant_id") @db.Uuid
+  objectDefinitionId  String             @map("object_definition_id") @db.Uuid
+  recordId            String             @map("record_id") @db.Uuid
+  objectPublicationId String             @map("object_publication_id") @db.Uuid
+  transitionKey       String             @map("transition_key") @db.VarChar(64)
+  transitionLabel     String             @map("transition_label") @db.VarChar(100)
+  fromStateKey        String?            @map("from_state_key") @db.VarChar(64)
+  fromStateLabel      String?            @map("from_state_label") @db.VarChar(100)
+  toStateKey          String             @map("to_state_key") @db.VarChar(64)
+  toStateLabel        String             @map("to_state_label") @db.VarChar(100)
+  actorMemberId       String             @map("actor_member_id") @db.Uuid
+  recordVersionBefore Int                @map("record_version_before")
+  recordVersionAfter  Int                @map("record_version_after")
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  tenant              Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  object              ObjectDefinition   @relation(fields: [tenantId, objectDefinitionId], references: [tenantId, id], onDelete: Restrict)
+  record              Record             @relation(fields: [tenantId, recordId], references: [tenantId, id], onDelete: Restrict)
+  publication         ObjectPublication  @relation(fields: [tenantId, objectPublicationId], references: [tenantId, id], onDelete: Restrict)
+  actor               TenantMember       @relation("TransitionActor", fields: [tenantId, actorMemberId], references: [tenantId, id], onDelete: Restrict)
+
+  @@index([tenantId, recordId, createdAt(sort: Desc)])
+  @@map("record_transition_histories")
 }

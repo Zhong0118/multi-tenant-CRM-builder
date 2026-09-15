@@ -22,6 +22,10 @@ test("defines the core multi-tenant CRM models", async () => {
     "RecordCounter",
     "Record",
     "RecordActivity",
+    "ObjectWorkflowDefinition",
+    "WorkflowStateDefinition",
+    "WorkflowTransitionDefinition",
+    "RecordTransitionHistory",
   ];
 
   for (const model of models) {
@@ -41,6 +45,48 @@ test("defines the core multi-tenant CRM models", async () => {
     schema,
     /model\s+RecordActivity\s+\{[\s\S]*activityType\s+RecordActivityType[\s\S]*content\s+String[\s\S]*@@index\(\[tenantId,\s*recordId,\s*createdAt\(sort:\s*Desc\)\]\)/,
   );
+});
+
+test("defines tenant-scoped workflow drafts and append-only transition history", async () => {
+  const schema = await readFile(schemaUrl, "utf8");
+
+  assert.match(
+    schema,
+    /model\s+ObjectWorkflowDefinition\s+\{[\s\S]*objectDefinitionId\s+String[\s\S]*isEnabled\s+Boolean[\s\S]*initialStateKey\s+String\?[\s\S]*@@unique\(\[tenantId,\s*objectDefinitionId\]\)/,
+  );
+  assert.match(
+    schema,
+    /model\s+WorkflowStateDefinition\s+\{[\s\S]*key\s+String[\s\S]*isTerminal\s+Boolean[\s\S]*@@unique\(\[tenantId,\s*workflowDefinitionId,\s*key\]/,
+  );
+  assert.match(
+    schema,
+    /model\s+WorkflowTransitionDefinition\s+\{[\s\S]*fromStateKey\s+String[\s\S]*toStateKey\s+String[\s\S]*allowedRoles\s+MemberRole\[][\s\S]*requiredFieldKeys\s+String\[]/,
+  );
+  assert.match(
+    schema,
+    /model\s+RecordTransitionHistory\s+\{[\s\S]*transitionKey\s+String[\s\S]*toStateKey\s+String[\s\S]*recordVersionBefore\s+Int[\s\S]*recordVersionAfter\s+Int/,
+  );
+  assert.match(
+    schema,
+    /model\s+Record[\s\S]*statusKey\s+String\?\s+@map\("status_key"\)/,
+  );
+
+  const migration = await readFile(
+    new URL(
+      "./prisma/migrations/0017_workflow_state_machine/migration.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.match(migration, /ENABLE ROW LEVEL SECURITY/);
+  assert.match(migration, /FORCE ROW LEVEL SECURITY/);
+  assert.match(migration, /GRANT SELECT, INSERT ON TABLE "record_transition_histories"/);
+  assert.match(
+    migration,
+    /GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE[\s\S]*"object_workflow_definitions"/,
+  );
+  assert.match(migration, /record_transition_histories are immutable/);
 });
 
 test("named dashboard migration can backfill publication owners past the immutability trigger", async () => {
