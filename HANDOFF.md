@@ -108,7 +108,7 @@ git log -10 --oneline
 - 任意动态对象可配置 Workflow 草稿（状态、动作、角色、必填字段）。保存仍是草稿；随对象 Publish 冻结进 publication snapshot。
 - 运行时状态复用 `records.status_key`（API 名 `workflowStateKey`）。新记录写入当前发布的初始状态；旧记录 `null` 需显式「进入流程」。
 - Record Detail 展示当前状态、当前用户可执行 Transition 和流程历史。普通 PATCH 不能改流程状态。
-- 独立测试对象 `workflow-check` 已在本地 nebula-demo 发布并走通管理员执行链路；员工导航是否露出该表取决于该对象的员工默认权限。
+- 独立测试对象 `workflow-check` 已在本地 nebula-demo 发布。管理员与员工（赵晨）均已走通新建记录 → 初始状态 → 执行 Transition。员工默认必须打开「可以查看」才会出现在导航中。
 
 ### 权限事实
 

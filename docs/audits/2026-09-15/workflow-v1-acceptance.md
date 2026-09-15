@@ -55,17 +55,19 @@
 5. 新建记录「验收记录甲」进入详情：流程状态「新建」，按钮「标记赢单」。
 6. 执行后状态「赢单」，版本 v2，历史「陈静 · 标记赢单 / 新建 → 赢单」，终态无后续按钮。
 7. 员工 `18800001003` 访问 `/settings/objects` 为 404（不能进设计器）。
+8. 补开该对象员工「可以查看 / 可以新建」并再发布后，员工导航出现「流程验收表」。
+9. 员工新建「员工验收记录」进入「新建」，执行「标记赢单」后状态「赢单」、版本 v2、历史「赵晨 · 标记赢单」。
 
 ## Spec Deviations
 
 1. 运行时列复用 `records.status_key`，API/领域名 `workflowStateKey`（用户确认方案 A）。
 2. Web 客户端在 contracts 生成前用 `relationRequest` 调新路径；contracts 随后已 regenerate。
-3. 员工对本次验收对象未出现在导航中。更可能是该对象员工默认权限未真正放开，而不是 Runtime 缺入口。管理员主链路已走通。
+3. 第一次发布时员工默认「可以查看」仍关着，所以员工导航没有该表。补开查看/新建并再发布后，员工 Runtime 与管理员一致。这是验收对象权限配置问题，不是 Workflow Runtime 缺入口。
 
 ## Known Gaps
 
 - 未在独立 5433 测试库跑完整 database integration（Docker 未开）。本地 5432 跑过 workflow RLS 3 项。
-- 未做员工账号执行 Transition 的页面走查。
+- 员工账号执行 Transition 已在真实页面走通（赵晨 / 员工验收记录）。
 - 未做双标签页 stale version 的浏览器冲突演示（API 单测覆盖 `RECORD_VERSION_CONFLICT`）。
 - 演示主对象（线索/商机）未启用 Workflow。
 - 未 push、未部署、未开始 Action Engine。
