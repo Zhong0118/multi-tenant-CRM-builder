@@ -315,9 +315,11 @@ Worker 进程可以连接 Redis，但没有注册业务队列。
 3. `docs/superpowers/specs/2026-08-26-platform-business-template-designer-design.md`
 4. `docs/superpowers/specs/2026-09-01-componentized-dashboard-design.md`
 5. `docs/superpowers/plans/2026-09-01-productization-follow-up.md`
-6. `docs/superpowers/specs/2026-09-15-crm-process-roadmap.md`
-7. `docs/superpowers/plans/2026-09-15-workflow-v1-design.md`
-8. `docs/audits/2026-09-15/workflow-v1-acceptance.md`
+6. `docs/superpowers/plans/2026-09-15-crm-process-roadmap.md`
+7. `docs/superpowers/specs/2026-09-15-workflow-platform-boundaries.md`
+8. `docs/superpowers/specs/2026-09-15-workflow-v1-design.md`
+9. `docs/superpowers/plans/2026-09-15-workflow-v1-implementation.md`
+10. `docs/audits/2026-09-15/workflow-v1-acceptance.md`
 
 关键实现入口：
 

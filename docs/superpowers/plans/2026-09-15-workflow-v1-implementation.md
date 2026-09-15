@@ -2,7 +2,7 @@
 
 > 日期：2026-09-15  
 > 文档类型：Current Task Implementation Plan  
-> 状态：READY  
+> 状态：IMPLEMENTED — 验收见 `docs/audits/2026-09-15/workflow-v1-acceptance.md`  
 > 设计规格：`docs/superpowers/specs/2026-09-15-workflow-v1-design.md`  
 > 架构边界：`docs/superpowers/specs/2026-09-15-workflow-platform-boundaries.md`
 
