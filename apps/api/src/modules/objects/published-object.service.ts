@@ -72,8 +72,6 @@ export interface ResolvedObjectSchema {
 
 @Injectable()
 export class PublishedObjectService {
-  private readonly logger = new Logger(PublishedObjectService.name);
-
   constructor(
     @Inject(PUBLISHED_OBJECT_REPOSITORY)
     private readonly repository: PublishedObjectRepository,
@@ -87,18 +85,13 @@ export class PublishedObjectService {
       .flatMap((record) => {
         if (record.status !== 'ACTIVE' || record.configuration === null)
           return [];
-        const schema = this.parseRecord(record);
+        const schema = parsePublishedObjectRecord(record);
         const access = resolveEffectiveAccess({
           schema,
           role: context.role,
           memberOverride: record.memberOverride,
         });
-        if (
-          !access.canRead ||
-          access.readScope === 'NONE' ||
-          (access.fields[schema.object.titleFieldKey] ?? 'HIDDEN') === 'HIDDEN'
-        )
-          return [];
+        if (!isReadable(schema, access)) return [];
         return [
           {
             code: schema.object.code,
@@ -122,52 +115,90 @@ export class PublishedObjectService {
     context: TenantContext,
     objectCode: string,
   ): Promise<ResolvedObjectSchema> {
-    const record = await this.repository.findByCode(context, objectCode);
-    if (
-      !record ||
-      record.status !== 'ACTIVE' ||
-      record.configuration === null
-    ) {
-      throw new ApiException('OBJECT_NOT_FOUND', 404);
-    }
-    const schema = this.parseRecord(record);
-    const access = resolveEffectiveAccess({
-      schema,
-      role: context.role,
-      memberOverride: record.memberOverride,
-    });
-    if (
-      !access.canRead ||
-      access.readScope === 'NONE' ||
-      (access.fields[schema.object.titleFieldKey] ?? 'HIDDEN') === 'HIDDEN'
-    ) {
+    const resolved = resolvePublishedObjectRecord(
+      await this.repository.findByCode(context, objectCode),
+      context.role,
+    );
+    // The UI read path stays gated: unlike an Action target, a schema handed to
+    // a reader must be readable (§46.3).
+    if (!isReadable(resolved.schema, resolved.access)) {
       throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
     }
-    return {
-      schema,
-      access,
-      visibleSchema: projectRuntimeSchema(schema, access),
-    };
+    return resolved;
   }
+}
 
-  private parseRecord(record: PublishedObjectRecord): PublishedObjectSchema {
-    try {
-      const schema = parsePublishedObjectSchema(record.configuration);
-      if (
-        schema.object.id !== record.id ||
-        schema.object.code !== record.code ||
-        schema.object.sortOrder !== record.sortOrder
-      ) {
-        throw new Error('Published snapshot does not match active object');
-      }
-      return schema;
-    } catch {
-      this.logger.error(
-        `Invalid published object snapshot for object ${record.id} (${record.code})`,
-      );
-      throw new ApiException('INTERNAL_ERROR', 500);
+const logger = new Logger('PublishedObjectService');
+
+/**
+ * Parses a stored publication record and proves the snapshot still matches the
+ * object definition it was published for. A snapshot that cannot be read is a
+ * server fault, never a client one.
+ */
+export function parsePublishedObjectRecord(
+  record: PublishedObjectRecord,
+): PublishedObjectSchema {
+  try {
+    const schema = parsePublishedObjectSchema(record.configuration);
+    if (
+      schema.object.id !== record.id ||
+      schema.object.code !== record.code ||
+      schema.object.sortOrder !== record.sortOrder
+    ) {
+      throw new Error('Published snapshot does not match active object');
     }
+    return schema;
+  } catch {
+    logger.error(
+      `Invalid published object snapshot for object ${record.id} (${record.code})`,
+    );
+    throw new ApiException('INTERNAL_ERROR', 500);
   }
+}
+
+/**
+ * The single resolution path from a stored record to runtime schema, effective
+ * access and the projected Web schema, for every caller: HTTP read paths and
+ * the Action Engine's transaction-aware resolver.
+ *
+ * It applies NO read gate. §46.3 requires a Transition to resolve a Target the
+ * Actor may create but not read, so `canCreate`/`canUpdate` and field
+ * permission stay the consuming domain command's decision (see `isReadable`
+ * for the gate the UI path adds on top).
+ */
+export function resolvePublishedObjectRecord(
+  record: PublishedObjectRecord | null,
+  role: TenantContext['role'],
+): ResolvedObjectSchema {
+  if (!record || record.status !== 'ACTIVE' || record.configuration === null) {
+    throw new ApiException('OBJECT_NOT_FOUND', 404);
+  }
+  const schema = parsePublishedObjectRecord(record);
+  const access = resolveEffectiveAccess({
+    schema,
+    role,
+    memberOverride: record.memberOverride,
+  });
+  return {
+    schema,
+    access,
+    visibleSchema: projectRuntimeSchema(schema, access),
+  };
+}
+
+/**
+ * Read visibility: readable, with a readable scope and a visible title field.
+ * Only the UI read paths apply it — never the Action target resolver.
+ */
+function isReadable(
+  schema: PublishedObjectSchema,
+  access: EffectiveObjectAccess,
+): boolean {
+  return (
+    access.canRead &&
+    access.readScope !== 'NONE' &&
+    (access.fields[schema.object.titleFieldKey] ?? 'HIDDEN') !== 'HIDDEN'
+  );
 }
 
 function projectRuntimeSchema(

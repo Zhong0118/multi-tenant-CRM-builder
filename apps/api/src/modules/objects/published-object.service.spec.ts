@@ -276,9 +276,39 @@ describe('PublishedObjectService', () => {
         transitions: [],
       },
     };
-    expect(parsePublishedObjectSchema(withWorkflow).workflow?.initialStateKey).toBe(
-      'new',
-    );
+    expect(
+      parsePublishedObjectSchema(withWorkflow).workflow?.initialStateKey,
+    ).toBe('new');
+  });
+
+  it('keeps the read gate on the public runtime resolver', async () => {
+    const { service, repository } = fixture();
+    // A create-only target: the same record the Action Engine resolves without
+    // a gate must still be refused to a normal reader.
+    const createOnly = schema({
+      code: 'contacts',
+      name: '联系人',
+      sortOrder: 10,
+      canRead: false,
+    });
+    // ...and a readable object whose title field is hidden.
+    const hiddenTitle = schema({
+      code: 'hidden-title',
+      name: '隐藏标题',
+      sortOrder: 20,
+    });
+    hiddenTitle.employeeAccess = {
+      ...hiddenTitle.employeeAccess,
+      readScope: 'ALL',
+      fields: { name: 'HIDDEN', phone: 'READ_ONLY' },
+    };
+    repository.rows = [row(createOnly), row(hiddenTitle)];
+
+    for (const code of ['contacts', 'hidden-title']) {
+      await expect(
+        service.resolveRuntimeSchema(employee, code),
+      ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
+    }
   });
 
   it('rejects malformed persisted snapshots as INTERNAL_ERROR', async () => {
