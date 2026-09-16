@@ -160,6 +160,14 @@ export function resolveExecutableTransition(input: {
   if (!transition.allowedRoles.includes(input.role)) {
     throw new ApiException('WORKFLOW_TRANSITION_FORBIDDEN', 403);
   }
+  if (hasHiddenRequiredFields(transition, input.access)) {
+    // Authorization, not validation: an Actor who cannot see a required field
+    // can never satisfy it, so the whole Transition is forbidden. Deliberately
+    // the same generic 403 as an out-of-role attempt — naming the field key or
+    // its label here would hand back exactly the metadata the field permission
+    // withholds. §6.
+    throw new ApiException('WORKFLOW_TRANSITION_FORBIDDEN', 403);
+  }
   assertRequiredFields(input.schema, input.access, input.record, transition);
   const toState = stateByKey(workflow, transition.toStateKey);
   return {
@@ -204,7 +212,8 @@ function availableTransitions(input: {
     .filter(
       (transition) =>
         transition.fromStateKey === current.key &&
-        transition.allowedRoles.includes(input.role),
+        transition.allowedRoles.includes(input.role) &&
+        !hasHiddenRequiredFields(transition, input.access),
     )
     .map((transition) => {
       const toState = stateByKey(input.workflow, transition.toStateKey);
@@ -304,6 +313,40 @@ function stateByKey(
   return state;
 }
 
+/**
+ * §4 / §8: does this Transition require a field the Actor cannot see?
+ *
+ * A key whose entry is missing from `access.fields` counts as HIDDEN, the same
+ * fail-closed default `assertRequiredFields()` and `resolveEffectiveAccess()`
+ * already use. The two callers — the GET projection in `availableTransitions()`
+ * and the POST authorization in `resolveExecutableTransition()` — share this one
+ * predicate so the read rule and the write rule cannot drift apart.
+ *
+ * Do NOT "simplify" the membership test back to
+ * `(access.fields[fieldKey] ?? 'HIDDEN') === 'HIDDEN'`. `access.fields` is an
+ * object literal built by the permission layer, so it inherits
+ * `Object.prototype`: for a required key like `constructor`, `__proto__` or
+ * `toString`, `access.fields[fieldKey]` returns the INHERITED member — neither
+ * `null` nor `undefined` — and `??` therefore reports the key as visible, which
+ * would offer and execute a Transition whose required field is not in the map at
+ * all. `Object.hasOwn` asks the question §8 actually means: absent from
+ * `access.fields` is unconditionally HIDDEN.
+ *
+ * It is intentionally module-private: the security rule is a property of the
+ * Runtime view, not a new public API, and `workflow-runtime.spec.ts` exercises
+ * it through both callers.
+ */
+function hasHiddenRequiredFields(
+  transition: Pick<PublishedWorkflowTransition, 'requiredFieldKeys'>,
+  access: EffectiveObjectAccess,
+): boolean {
+  return transition.requiredFieldKeys.some(
+    (fieldKey) =>
+      !Object.hasOwn(access.fields, fieldKey) ||
+      access.fields[fieldKey] === 'HIDDEN',
+  );
+}
+
 function assertRequiredFields(
   schema: PublishedObjectSchema,
   access: EffectiveObjectAccess,
@@ -312,6 +355,9 @@ function assertRequiredFields(
 ): void {
   const missing: string[] = [];
   for (const fieldKey of transition.requiredFieldKeys) {
+    // Unreachable through `resolveExecutableTransition()`, which now forbids any
+    // Transition with a hidden required field before it gets here (§6). Kept as
+    // the fail-closed default for the field's own value check below.
     if ((access.fields[fieldKey] ?? 'HIDDEN') === 'HIDDEN') {
       missing.push(fieldKey);
       continue;
