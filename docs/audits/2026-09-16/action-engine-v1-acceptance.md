@@ -2,7 +2,16 @@
 
 日期：2026-09-16
 分支：`feat/action-engine-v1`（worktree `.worktrees/action-engine-v1`），本轮提交区间 **`a01b6ae..ca9cf80`**。
-**已推送 `origin/feat/action-engine-v1`，未合并进 `main`，未部署。** HEAD 以 `git log -1 --oneline` 为准，本文不硬编码单个 HEAD 值。
+功能代码的验收点为 `ca9cf80`。HEAD 以 `git log -1 --oneline` 为准，本文不硬编码单个 HEAD 值。
+
+## Post-merge status
+
+2026-09-16：PR #1 已合并进入 `main`。
+Merge commit：`e590c23da6aa9c5fe0d0c3cd71250270ea265ebd`。
+功能代码验收点仍为 `ca9cf80`；其后到 feature tip 的提交均为文档变更，因此原验收证据仍对应实际运行时代码。
+未部署生产环境。
+
+> 下文"Commits"与"Tests"等小节是**合并前**记录的验收事实，保留原样，不回填、不重算。文中出现的"未合并进 `main`"均属**当时的**历史状态，当前状态以上方 Post-merge status 为准。
 
 本轮交付：Transition 的同步结构化业务动作 —— typed `actions[]`、严格 Draft Validator、Actions 冻结进 Object Publication、事务内 Action Engine（五类 Action）、Admin Action 设计器、员工静态确认、执行失败文案。
 不在本轮范围：Trigger / Event / Automation / 异步 Worker / Outbox / 外部 I/O。
@@ -252,4 +261,4 @@ Task 1–17 的审查共累积 **100 条 Minor finding（M1–M100，其中 M72 
 
 ## 未部署
 
-分支已推送 `origin`，但未合并 `main`、未部署。生产迁移、域名/HTTPS/Cookie 与短信供应商仍未就绪（见 `HANDOFF.md`）。
+已通过 PR #1 合并进 `main`，**未部署**。生产迁移、域名/HTTPS/Cookie 与短信供应商仍未就绪（见 `HANDOFF.md`）。

@@ -76,7 +76,7 @@ Acceptance / Audit
 
 > **Configurable CRM Builder + Workflow Primitives**
 
-它已经具备流程化所需的若干原语。State、Transition 与 Action 均已落地（Action Engine V1 的代码在本地分支 `feat/action-engine-v1` 上，见第 7 节），因此仍缺少真正自动推进业务的：
+它已经具备流程化所需的若干原语。State、Transition 与 Action 均已落地（Action Engine V1 已通过 PR #1 合并进 `main`，见第 7 节），因此仍缺少真正自动推进业务的：
 
 - Event / Trigger；
 - Worker 与异步任务；
@@ -208,7 +208,7 @@ Required Fields
 只有 Workflow V1 验收完成后才允许设计详细 Spec。
 
 验收证据：`docs/audits/2026-09-16/action-engine-v1-acceptance.md`。
-实现代码位于分支 `feat/action-engine-v1`（**已推送 `origin`、尚未合并进 `main`、未部署**）；验收记录里列明了仍然存在的缺口与偏差。
+Action Engine V1 已通过 PR #1 合并进入 `main`；验收记录里列明了仍然存在的缺口与偏差。
 
 ## 7.1 目标
 
@@ -544,8 +544,8 @@ Workflow V1 已进入 `main`，验收见
 `docs/audits/2026-09-15/workflow-v1-acceptance.md`。
 
 V2.1B Action Engine 已完成并验收，验收证据见
-`docs/audits/2026-09-16/action-engine-v1-acceptance.md`。代码位于分支
-`feat/action-engine-v1`，**已推送 `origin`、尚未合并进 `main`、未部署**。
+`docs/audits/2026-09-16/action-engine-v1-acceptance.md`。代码已通过 PR #1
+合并进入 `main`；未部署。
 
 它之所以在本轮从 `ACTIVE` 记为 `COMPLETED`：按第 2 节的状态定义，`COMPLETED` 需要验收证据，而验收记录里记录的是本轮实际重跑得到的事实（门禁输出、回滚 / 权限 / 并发 / RLS 证明、真实浏览器走查），不是计划或预测。记录里同时列出了仍然存在的缺口与偏差。
 
