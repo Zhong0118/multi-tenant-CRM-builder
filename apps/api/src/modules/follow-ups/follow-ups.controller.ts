@@ -28,6 +28,7 @@ import {
   FollowUpPageDto,
   FollowUpQueryDto,
   FollowUpResponseDto,
+  FollowUpWorkbenchResponseDto,
   UpdateFollowUpDto,
 } from './follow-ups.dto';
 import { FollowUpsService } from './follow-ups.service';
@@ -45,6 +46,16 @@ export class FollowUpsController {
     @Query() query: FollowUpQueryDto,
   ) {
     return this.service.list(context, query);
+  }
+  /**
+   * The personal Workbench. No `@Query()` on purpose: the actor, tenant and
+   * role all come from the server-derived `TenantContext`, so there is no
+   * request parameter that could ask for somebody else's Follow-ups.
+   */
+  @Get('workbench')
+  @ApiOkResponse({ type: FollowUpWorkbenchResponseDto })
+  workbench(@CurrentTenant() context: TenantContext) {
+    return this.service.workbench(context);
   }
   @Post()
   @ApiCreatedResponse({ type: FollowUpResponseDto })

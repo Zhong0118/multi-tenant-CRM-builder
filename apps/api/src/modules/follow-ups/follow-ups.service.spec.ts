@@ -43,6 +43,12 @@ function fixture() {
     }),
     update: jest.fn().mockResolvedValue({ id: 'task', status: 'DONE' }),
     list: jest.fn().mockResolvedValue({ items: [], total: 0 }),
+    getTenantTimezone: jest.fn().mockResolvedValue('Asia/Shanghai'),
+    workbench: jest.fn().mockResolvedValue({
+      timezone: 'Asia/Shanghai',
+      counts: { allOpen: 0, overdue: 0, today: 0, upcoming: 0 },
+      preview: { overdue: [], today: [], upcoming: [] },
+    }),
   };
   const service = new FollowUpsService(
     repository as unknown as FollowUpsRepository,
@@ -217,5 +223,69 @@ describe('follow-up reassignment', () => {
       expect.objectContaining({ recordId: 'record' }),
       expect.objectContaining({ recordId: 'record' }),
     );
+  });
+});
+
+describe('personal follow-up workbench', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('resolves the actor scopes and the exact tenant-calendar range once', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-09-17T02:00:00.000Z'));
+    const { service, repository, objects } = fixture();
+
+    await service.workbench(context);
+
+    expect(objects.listAccessible).toHaveBeenCalledWith(context);
+    expect(repository.getTenantTimezone).toHaveBeenCalledWith(context);
+    expect(repository.workbench).toHaveBeenCalledTimes(1);
+    expect(repository.workbench).toHaveBeenCalledWith(
+      context,
+      [
+        {
+          objectId: 'object',
+          ownerMemberId: 'me',
+          updateOwnerMemberId: 'me',
+          canUpdate: true,
+        },
+      ],
+      {
+        todayStart: new Date('2026-09-16T16:00:00.000Z'),
+        tomorrowStart: new Date('2026-09-17T16:00:00.000Z'),
+        day8Start: new Date('2026-09-24T16:00:00.000Z'),
+      },
+      'Asia/Shanghai',
+    );
+  });
+
+  it('accepts no actor-selection argument at all', () => {
+    const { service } = fixture();
+
+    // The Workbench is always "my own". A second parameter — including an
+    // optional one — would let a caller name another member, so the arity is
+    // asserted rather than merely documented.
+    expect(service.workbench.length).toBe(1);
+  });
+
+  it('fails closed on an invalid tenant timezone without querying', async () => {
+    const { service, repository } = fixture();
+    repository.getTenantTimezone.mockResolvedValue('Not/A_Timezone');
+
+    await expect(service.workbench(context)).rejects.toMatchObject({
+      code: 'INTERNAL_ERROR',
+    });
+    expect(repository.workbench).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the tenant has no timezone configured', async () => {
+    const { service, repository } = fixture();
+    repository.getTenantTimezone.mockResolvedValue(null);
+
+    await expect(service.workbench(context)).rejects.toMatchObject({
+      code: 'INTERNAL_ERROR',
+    });
+    expect(repository.workbench).not.toHaveBeenCalled();
   });
 });

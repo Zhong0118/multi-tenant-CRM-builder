@@ -1912,6 +1912,111 @@
         ],
         "type": "object"
       },
+      "FollowUpWorkbenchCountsDto": {
+        "properties": {
+          "allOpen": {
+            "type": "number"
+          },
+          "overdue": {
+            "type": "number"
+          },
+          "today": {
+            "type": "number"
+          },
+          "upcoming": {
+            "type": "number"
+          }
+        },
+        "required": ["allOpen", "overdue", "today", "upcoming"],
+        "type": "object"
+      },
+      "FollowUpWorkbenchItemDto": {
+        "properties": {
+          "canManage": {
+            "type": "boolean"
+          },
+          "dueAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "objectCode": {
+            "type": "string"
+          },
+          "objectName": {
+            "type": "string"
+          },
+          "overdue": {
+            "type": "boolean"
+          },
+          "recordId": {
+            "type": "string"
+          },
+          "recordTitle": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "recordId",
+          "recordTitle",
+          "objectCode",
+          "objectName",
+          "title",
+          "dueAt",
+          "version",
+          "overdue",
+          "canManage"
+        ],
+        "type": "object"
+      },
+      "FollowUpWorkbenchPreviewDto": {
+        "properties": {
+          "overdue": {
+            "items": {
+              "$ref": "#/components/schemas/FollowUpWorkbenchItemDto"
+            },
+            "type": "array"
+          },
+          "today": {
+            "items": {
+              "$ref": "#/components/schemas/FollowUpWorkbenchItemDto"
+            },
+            "type": "array"
+          },
+          "upcoming": {
+            "items": {
+              "$ref": "#/components/schemas/FollowUpWorkbenchItemDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["overdue", "today", "upcoming"],
+        "type": "object"
+      },
+      "FollowUpWorkbenchResponseDto": {
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/FollowUpWorkbenchCountsDto"
+          },
+          "preview": {
+            "$ref": "#/components/schemas/FollowUpWorkbenchPreviewDto"
+          },
+          "timezone": {
+            "type": "string"
+          }
+        },
+        "required": ["timezone", "counts", "preview"],
+        "type": "object"
+      },
       "ForgotPasswordDto": {
         "properties": {
           "deviceKey": {
@@ -7114,6 +7219,39 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/FollowUpResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["follow-ups"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/follow-ups/workbench": {
+      "get": {
+        "operationId": "FollowUpsController_workbench",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowUpWorkbenchResponseDto"
                 }
               }
             },
