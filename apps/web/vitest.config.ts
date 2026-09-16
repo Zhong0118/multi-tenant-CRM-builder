@@ -22,6 +22,13 @@ export default defineConfig({
     // Design's stylesheet and slower still when the suite competes for workers.
     // Prefer getByText/getByLabelText for new assertions; this timeout only
     // covers the older named-role queries that have not been converted yet.
-    testTimeout: 20000,
+    //
+    // 20s was calibrated on a fast local machine and is not enough on a clean
+    // GitHub runner: `template-editor.test.tsx` > "lets the template wrapper
+    // inactivate and restore a field" needs 12.5s locally but 25.4s on
+    // ubuntu-24.04, so it hit the budget and turned the Unit Tests gate red.
+    // 60s keeps ~2.4x headroom over the worst observed case while still
+    // bounding a genuinely hung test.
+    testTimeout: 60000,
   },
 });
