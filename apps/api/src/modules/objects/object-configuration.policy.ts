@@ -200,6 +200,22 @@ export function analyzeObjectConfiguration(
           fieldKey: field.fieldKey,
         });
       }
+
+      // A required field the employee cannot see is unfillable, so the object
+      // can never be created for them. The `defaultValue == null` carve-out is
+      // deliberate: a non-null default is materialized on create, which makes
+      // the same configuration legitimate.
+      if (
+        field.required &&
+        input.employeeAccess.fields[field.fieldKey] === 'HIDDEN' &&
+        field.defaultValue == null
+      ) {
+        blocking.push({
+          code: 'REQUIRED_FIELD_HIDDEN',
+          message: `必填字段「${field.label}」对员工隐藏且没有默认值，员工无法填写，记录将无法创建。请改为可见、取消必填或设置默认值。`,
+          fieldKey: field.fieldKey,
+        });
+      }
     }
   }
 

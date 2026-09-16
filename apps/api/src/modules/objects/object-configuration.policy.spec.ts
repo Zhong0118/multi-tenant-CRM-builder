@@ -73,6 +73,42 @@ describe('object configuration policy', () => {
     });
   });
 
+  it('blocks a required field that is hidden from employees without a default', () => {
+    const input = validObjectConfiguration();
+    input.fields[1] = {
+      ...input.fields[1],
+      required: true,
+      defaultValue: null,
+    };
+    input.employeeAccess!.fields.email = 'HIDDEN';
+
+    const blocker = analyzeObjectConfiguration(input).blocking.find(
+      (issue) => issue.code === 'REQUIRED_FIELD_HIDDEN',
+    );
+    expect(blocker).toMatchObject({ fieldKey: 'email' });
+    // The message must name the field for the designer, since the whole point
+    // is that employees can never fill it in.
+    expect(blocker?.message).toContain('邮箱');
+  });
+
+  it('accepts a required field hidden from employees when a default fills it', () => {
+    const input = validObjectConfiguration();
+    input.fields[1] = {
+      ...input.fields[1],
+      required: true,
+      defaultValue: 'default@example.com',
+    };
+    input.employeeAccess!.fields.email = 'HIDDEN';
+
+    // The default is materialized on create, so this configuration is
+    // legitimate: blocking it would be an over-rejection.
+    expect(
+      analyzeObjectConfiguration(input).blocking.filter(
+        (issue) => issue.code === 'REQUIRED_FIELD_HIDDEN',
+      ),
+    ).toEqual([]);
+  });
+
   it('rejects numeric validation on a text field', () => {
     const input = validObjectConfiguration();
     input.fields[0].validation = { min: 1 };
