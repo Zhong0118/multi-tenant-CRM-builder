@@ -388,6 +388,9 @@ Worker 进程可以连接 Redis，但没有注册业务队列。
 14. `docs/audits/2026-09-16/action-engine-v1-acceptance.md`
 15. `docs/superpowers/plans/2026-09-16-crm-lean-roadmap.md`（近期执行路线）
 16. `docs/superpowers/specs/2026-09-16-ai-assistant-v1-design.md`（AI 方向，未批准开发）
+17. `docs/audits/2026-09-16/workflow-required-field-visibility-hardening.md`
+18. `docs/audits/2026-09-16/record-required-field-visibility-hardening.md`
+19. **`docs/superpowers/briefs/`** —— Lean Roadmap 各阶段的 stage brief（`README.md` 为索引）：`engineering-gate-lite`、`sales-workbench-lite`、`ai-assistant-v1a`、`ai-assistant-v1b`、`production-essentials`、`email-adapter`。**这些是方向/范围说明，不等于批准开发**：每个阶段仍须各自批准 design spec 与 implementation plan 后才动代码。
 
 关键实现入口：
 
