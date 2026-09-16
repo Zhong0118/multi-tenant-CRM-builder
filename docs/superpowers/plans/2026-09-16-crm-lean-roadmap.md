@@ -20,7 +20,7 @@
 | 阶段 | 状态 | 内容 | V1 相对开销估计 |
 |---|---|---|---:|
 | Security Closeout | **COMPLETED**（Workflow 侧 PR #2；Record 侧 PR #3） | Workflow + Record required/HIDDEN metadata hardening（含 publish 期"默认值永不生效"拦截）；**残留**：`MEMBER` 默认值存在性无法在分析期校验、`action-engine.ts` 嵌套 fieldErrors 过滤（各自独立任务） | 0.1–0.2× |
-| Engineering Gate Lite | PLANNED | CI、main protection、关键回归检查 | 0.2–0.4× |
+| Engineering Gate Lite | **COMPLETED**（PR #4，合并提交 `77af603`） | GitHub Actions CI：`Typecheck` / `Contracts` / `Unit Tests` / `Database Integration` / `Build` 五个 required checks；Database Integration 起仓库自己的 PostgreSQL 18 并跑真实 integration suite（runtime 角色 `crm_app` / `NOBYPASSRLS`）；`main` 已开启分支保护（需 PR、分支必须最新、禁强推与删除、approvals = 0）。验收见 `docs/audits/2026-09-16/engineering-gate-lite-acceptance.md`；**API Critical E2E 仍未 required**，属 Engineering Gate Hardening | 0.2–0.4× |
 | Sales Workbench Lite | PLANNED | Dashboard 中的我的跟进 / 今日 / 逾期 / 近期事项 | 0.3–0.5× |
 | AI Assistant V1A | PLANNED | 只读 Ask / Analyze | 0.4–0.7× |
 | AI Assistant V1B | PLANNED | Proposal → Preview → Confirm → Typed Write → Audit | 0.5–0.8× |
@@ -28,6 +28,11 @@
 | Email Adapter | OPTIONAL | 保留统一邮件接口，按需求接 Provider | 0.1–0.2× |
 
 近期完整路线预计约 **2.1–3.6 个 Workflow V1 工作量**。
+
+**Engineering Gate Hardening**（follow-up，**PLANNED，不是 ACTIVE**）：把 Critical API E2E
+（Auth/Session、Tenant 隔离、Record CRUD、Workflow Transition、代表性 Action 原子性）稳定后提升为
+第六个 required check，目标形态 `Required Gate V2`；在稳定之前不提升。
+完成 Engineering Gate Lite **不自动** Promote Sales Workbench Lite。
 
 ## 4. Sales Workbench Lite
 

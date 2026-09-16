@@ -9,6 +9,11 @@ Workflow V1 与 Action Engine V1 **均已合并进入 `main`**。Action Engine V
 `docs/audits/2026-09-16/action-engine-v1-acceptance.md`。未部署生产环境。
 不要自行开始 V2.2 Sales Execution。
 
+Engineering Gate Lite 已通过 PR #4 合并：`main` 现在有 CI 与分支保护（五个 required checks：
+`Typecheck` / `Contracts` / `Unit Tests` / `Database Integration` / `Build`），此后改 `main` 必须走 PR
+且五项全绿。验收见 `docs/audits/2026-09-16/engineering-gate-lite-acceptance.md`。
+**API Critical E2E 仍未 required**，属 Engineering Gate Hardening follow-up（PLANNED，不是 ACTIVE）。
+
 Workflow Required Field Visibility Hardening **已通过 PR #2 合并进入 `main`**，合并提交
 `0612d8ad521895c7ca7bd9efe2ef2f942cd28b40`（同样只作历史事实记录）。它修掉了
 「对 Actor 隐藏的必填字段 key 会从 Runtime GET 与 direct execute 泄露」的 metadata
@@ -252,6 +257,8 @@ Transition 不再只是改状态，还能产生结构化业务动作：
 
 2026-09-15 全量 `pnpm test` 退出码 0：API 51 套件 403 测试、Web 63 文件 360 测试、contracts 7、database 6、tenant-templates 2、worker 2。
 
+2026-09-16 在 `main`（`77af603`）与 GitHub runner 上重新实测：API 69 套件 942 测试、Web 66 文件 411 测试（另有 architecture 3）、contracts 8、database 8、tenant-templates 2、worker 2；`pnpm typecheck` 6 个 workspace 全过；`pnpm contracts:check` 无漂移；DB integration 18 测试全过。上面 09-15 那行是当时的历史数字，写文档时请用现测值。
+
 ### Action Engine V1 已知缺口（已合并在 `main`）
 
 - **已由 `c8acbf1` 修复，并已在 `main` 中**（PR #2 合并提交 `0612d8ad521895c7ca7bd9efe2ef2f942cd28b40`，完整提交 `c8acbf1` / `3773834` / `dfe568c` / `b5c28ce`）——Workflow Required Field Visibility Hardening：required field 为 `HIDDEN`（或不在 `access.fields` 中）时，整个 Transition 对该 Actor 不可执行 —— GET 不返回该 Transition，direct execute 返回通用 `WORKFLOW_TRANSITION_FORBIDDEN` (403)，不带 key / label / `fieldErrors`。可见 required field 的 `WORKFLOW_REQUIRED_FIELDS_MISSING` 行为不变。运行时判断基于 `EffectiveObjectAccess.fields`（`Object.hasOwn` fail-closed，防 `constructor` / `__proto__` / `toString` 原型链绕过）。验收见 `docs/audits/2026-09-16/workflow-required-field-visibility-hardening.md`。
@@ -327,7 +334,7 @@ Transition 不再只是改状态，还能产生结构化业务动作：
 - 普通记录列表目前不开放 `MEMBER` / `BOOLEAN` / `TEXTAREA` / `MULTI_SELECT` 排序。
 - 侧边栏只能收起/展开或拖拽宽度，没有更多个性化。
 - P0.2 邀请/启用人工走查没有写入仓库的验收记录。
-- Web 测试债：36 个文件里有 207 处 `getByRole(..., { name })`。在 jsdom + antd 下每次调用约 2.7s（成本在可访问名计算，不在渲染），是套件慢的主因；已改成 `getByText` / `getByLabelText` 的地方快了约 20 倍。
+- Web 测试债：36 个文件里有 207 处 `getByRole(..., { name })`。在 jsdom + antd 下每次调用约 2.7s（成本在可访问名计算，不在渲染），是套件慢的主因；已改成 `getByText` / `getByLabelText` 的地方快了约 20 倍。2026-09-16：`apps/web/vitest.config.ts` 的共享预算已从 20s 提到 60s（`template-editor.test.tsx` 里一个测试本机 12.5s、GitHub runner 25.4s，20s 会把它判红）；这是给未转换的 named-role 查询留的余量，不是修掉债务——转换完成后应把预算收回。
 
 ### 尚未实现
 
@@ -345,7 +352,7 @@ Transition 不再只是改状态，还能产生结构化业务动作：
 - 附件目前存在 PostgreSQL `bytea`（单文件 5MB）。上生产前必须换成对象存储。
 - 仓库是公开的，所以口令不写进本文（见第 6 节）；演示口令本身由公开的种子常量决定，只能视为公开信息，不得复用到任何真实环境。
 - 根 `engines` 已从 `>=20.9.0` 提高到 `>=24`：`@crm/database` 是 ESM 包而 `apps/api` 编译为 CJS，需要支持 `require(esm)` 的 Node，而本地只验证过 Node 24.19.0。若确认 22 LTS 可用，可以再放宽下限，但必须实测过再改。
-- **没有 CI，也没有分支保护**：`.github/workflows/` 不存在，GitHub Actions 运行数为 0，`origin/main` 的 branch protection 返回 404、required status checks 为空。当前流程是「本地跑测试 → 直接 push main」，主干在服务端没有任何守门。
+- **CI 与分支保护已就位（2026-09-16，Engineering Gate Lite 随 PR #4 合并，合并提交 `77af603`）**：`.github/workflows/ci.yml` 存在；`main` 已受保护，五个 required checks 为 `Typecheck` / `Contracts` / `Unit Tests` / `Database Integration` / `Build`（读回值：`strict: true`、`allow_force_pushes: false`、`allow_deletions: false`、required approving reviews = 0）。Database Integration 在 runner 上起仓库自己的 PostgreSQL 18（`compose.yaml`）并跑真实 integration suite（18 测试），runtime 角色是 `crm_app`（`NOBYPASSRLS`），跑完 `docker compose down -v` 销毁卷。**仍未做**：API Critical E2E 尚未提升为 required —— 它保留为 **Engineering Gate Hardening follow-up（PLANNED，不是 ACTIVE）**；repo-wide lint 也仍不是 required。验收与全部实测证据见 `docs/audits/2026-09-16/engineering-gate-lite-acceptance.md`。注意 `enforce_admins` 仍是 GitHub 默认的 `false`。
 - `origin/backup/v3-design-tokens`：相对 `main` 落后 139 个提交，只独有 1 个提交 `e8812d8`「align design tokens with the V3 palette」，改的是 `globals.css` / `providers.tsx` / `providers.test.ts`，纯配色、无功能。而且 `main` 此后已自行演进到**另一套**配色（`primary: #167568` 青绿，backup 提的是 `#2563EB` 蓝），方向已经不同。结论：**不合并，也不需要「解冲突」**；它属于已经后置的配色议题，保留归档或直接删分支即可，不要长期挂在待决策清单里。
 
 ## 8. 验证边界
