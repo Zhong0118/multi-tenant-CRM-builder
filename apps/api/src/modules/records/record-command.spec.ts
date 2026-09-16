@@ -87,6 +87,7 @@ function publishableSchema(): PublishedObjectSchema {
         id: 'field-secret',
         fieldKey: 'secret',
         label: '内部备注',
+        required: true,
         sortOrder: 30,
       }),
       field('MEMBER', {
@@ -119,6 +120,12 @@ function publishableSchema(): PublishedObjectSchema {
   };
 }
 
+/**
+ * The default fabricated actor mirrors `publishableSchema().employeeAccess`:
+ * `secret` is a required internal note that is HIDDEN for employees, so the
+ * default fixture stays able to write every other field. Tests that need the
+ * visible-required half of the rule opt in with `secret: 'EDIT'`.
+ */
 function access(
   overrides: Partial<EffectiveObjectAccess> = {},
 ): EffectiveObjectAccess {
@@ -129,7 +136,12 @@ function access(
     canDelete: false,
     readScope: 'ALL',
     updateScope: 'ALL',
-    fields: { name: 'EDIT', source: 'EDIT', secret: 'EDIT', owner_ref: 'EDIT' },
+    fields: {
+      name: 'EDIT',
+      source: 'EDIT',
+      secret: 'HIDDEN',
+      owner_ref: 'EDIT',
+    },
     ...overrides,
   };
 }
@@ -460,6 +472,47 @@ describe('createRecordCommand', () => {
 
     const created = await command({ values: { name: '张三' } });
     expect(created.values).toEqual({ name: '张三', source: '官网' });
+  });
+
+  it('skips required validation for a field hidden from the actor', async () => {
+    // `secret` is required but HIDDEN: the actor can never submit it, so
+    // requiredness is not enforceable against it. Reporting it as
+    // `FIELD_REQUIRED` would hand the actor the key of a field it may not see.
+    const hidden = fixture({
+      access: access({
+        fields: {
+          name: 'EDIT',
+          source: 'EDIT',
+          secret: 'HIDDEN',
+          owner_ref: 'EDIT',
+        },
+      }),
+    });
+
+    const created = await hidden.command({ values: { name: '张三' } });
+    expect(created.values).toEqual({ name: '张三', source: '官网' });
+    expect(created.values).not.toHaveProperty('secret');
+    expect(hidden.store.records).toHaveLength(1);
+
+    // The visible half of the same rule is unchanged: an omitted visible
+    // required field is still reported, by key.
+    const visible = fixture({
+      access: access({
+        fields: {
+          name: 'EDIT',
+          source: 'EDIT',
+          secret: 'EDIT',
+          owner_ref: 'EDIT',
+        },
+      }),
+    });
+    await expect(
+      visible.command({ values: { name: '张三' } }),
+    ).rejects.toMatchObject({
+      code: 'FIELD_REQUIRED',
+      fieldErrors: { secret: [expect.any(String)] },
+    });
+    expect(visible.store.records).toEqual([]);
   });
 
   it('validates MEMBER values against active members', async () => {

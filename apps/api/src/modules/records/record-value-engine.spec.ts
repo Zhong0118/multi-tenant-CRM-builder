@@ -330,6 +330,48 @@ describe('dynamic record values', () => {
     ).rejects.toMatchObject({ code: 'FIELD_UNKNOWN', fieldKey: 'forged' });
   });
 
+  it('skips the required check for a hidden field and keeps it for a visible one', async () => {
+    const testSchema = schema(
+      field('TEXT', {
+        id: 'field-note',
+        fieldKey: 'note',
+        label: '内部备注',
+        required: true,
+        sortOrder: 20,
+      }),
+    );
+    const access = editableAccess(testSchema);
+    const input = {
+      mode: 'CREATE' as const,
+      schema: testSchema,
+      access,
+      submitted: { name: '张三' },
+      memberExists: () => Promise.resolve(true),
+    };
+
+    // HIDDEN: the actor cannot submit `note`, so the required check must not
+    // fire — and no value is written for it.
+    access.fields.note = 'HIDDEN';
+    await expect(validateRecordMutation(input)).resolves.toEqual({
+      values: { name: '张三' },
+      title: '张三',
+    });
+
+    // An entry missing from `access.fields` is the same fail-closed case.
+    delete access.fields.note;
+    await expect(validateRecordMutation(input)).resolves.toEqual({
+      values: { name: '张三' },
+      title: '张三',
+    });
+
+    // Visible: byte-for-byte the old behaviour, key included.
+    access.fields.note = 'EDIT';
+    await expect(validateRecordMutation(input)).rejects.toMatchObject({
+      code: 'FIELD_REQUIRED',
+      fieldKey: 'note',
+    });
+  });
+
   it.each(['READ_ONLY', 'HIDDEN'] as const)(
     'rejects forged submissions to %s fields',
     async (fieldAccess) => {

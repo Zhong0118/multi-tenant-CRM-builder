@@ -94,6 +94,7 @@ export async function validateRecordMutation(input: {
 
     if (
       field.required &&
+      isFieldVisible(field.fieldKey, input.access) &&
       (values[field.fieldKey] === undefined || values[field.fieldKey] === null)
     ) {
       throw new RecordValueError('FIELD_REQUIRED', field.fieldKey);
@@ -102,7 +103,7 @@ export async function validateRecordMutation(input: {
 
   return {
     values,
-    title: deriveTitle(input.schema, values),
+    title: deriveTitle(input.schema, input.access, values),
   };
 }
 
@@ -148,6 +149,28 @@ function assertFieldWritable(
   if (fieldAccess === 'READ_ONLY') {
     throw new RecordValueError('FIELD_READ_ONLY', fieldKey);
   }
+}
+
+/**
+ * Requiredness is only enforceable against a field the actor may fill: a
+ * `HIDDEN` field can never be submitted by the client, so reporting it as
+ * `FIELD_REQUIRED` would return the key of a field the actor is not allowed to
+ * see. The same predicate guards `deriveTitle`, and because the field loop
+ * serves CREATE and UPDATE alike it is the single implementation of the rule.
+ *
+ * `Object.hasOwn` asks the question directly, exactly as the workflow hardening
+ * does: a key absent from `access.fields` is unconditionally HIDDEN, while `??`
+ * would resolve prototype members (`constructor`, `toString`) and report an
+ * absent key as visible.
+ */
+function isFieldVisible(
+  fieldKey: string,
+  access: EffectiveObjectAccess,
+): boolean {
+  return (
+    Object.hasOwn(access.fields, fieldKey) &&
+    access.fields[fieldKey] !== 'HIDDEN'
+  );
 }
 
 async function normalizeValue(
@@ -324,17 +347,18 @@ async function normalizeMember(
 
 function deriveTitle(
   schema: PublishedObjectSchema,
+  access: EffectiveObjectAccess,
   values: Record<string, unknown>,
 ): string {
   const titleField = schema.fields.find(
     (field) => field.fieldKey === schema.object.titleFieldKey,
   );
   if (!titleField) {
-    throw new RecordValueError('FIELD_REQUIRED', schema.object.titleFieldKey);
+    throw titleRequiredError(schema.object.titleFieldKey, access);
   }
   const value = values[titleField.fieldKey];
   if (typeof value !== 'string') {
-    throw new RecordValueError('FIELD_REQUIRED', titleField.fieldKey);
+    throw titleRequiredError(titleField.fieldKey, access);
   }
   const title =
     titleField.type === 'SINGLE_SELECT'
@@ -350,6 +374,22 @@ function deriveTitle(
     throw new RecordValueError('FIELD_INVALID', titleField.fieldKey);
   }
   return title;
+}
+
+/**
+ * A title field the actor cannot see is never named: publish forbids a HIDDEN
+ * title field (`TITLE_FIELD_HIDDEN`) and the read gate refuses one
+ * (`isReadable`), so the keyless branch is defence in depth for the write paths
+ * that resolve a schema without that gate (an Action target). The two rules
+ * must not disagree.
+ */
+function titleRequiredError(
+  fieldKey: string,
+  access: EffectiveObjectAccess,
+): RecordValueError {
+  return isFieldVisible(fieldKey, access)
+    ? new RecordValueError('FIELD_REQUIRED', fieldKey)
+    : new RecordValueError('FIELD_REQUIRED');
 }
 
 interface SelectOption {
