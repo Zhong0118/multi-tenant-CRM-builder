@@ -98,3 +98,51 @@ export class FollowUpRecipientDto {
   @ApiProperty() id!: string;
   @ApiProperty() displayName!: string;
 }
+
+/**
+ * Personal Workbench read model. Deliberately narrower than
+ * `FollowUpResponseDto`: it carries no assignee identity, no tenant/member id,
+ * no workflow status and no Record values, because a home page must not become
+ * a metadata side channel (§5.3 of the design).
+ *
+ * `overdue` mirrors the bucket the item came from — `dueAt < todayStart` on the
+ * tenant calendar — so the flag can never contradict the section it renders in.
+ */
+export class FollowUpWorkbenchItemDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() recordId!: string;
+  @ApiProperty() recordTitle!: string;
+  @ApiProperty() objectCode!: string;
+  @ApiProperty() objectName!: string;
+  @ApiProperty() title!: string;
+  @ApiProperty({ format: 'date-time' }) dueAt!: string;
+  @ApiProperty() version!: number;
+  @ApiProperty() overdue!: boolean;
+  @ApiProperty() canManage!: boolean;
+}
+
+export class FollowUpWorkbenchCountsDto {
+  @ApiProperty() allOpen!: number;
+  @ApiProperty() overdue!: number;
+  @ApiProperty() today!: number;
+  @ApiProperty() upcoming!: number;
+}
+
+export class FollowUpWorkbenchPreviewDto {
+  @ApiProperty({ type: FollowUpWorkbenchItemDto, isArray: true })
+  overdue!: FollowUpWorkbenchItemDto[];
+
+  @ApiProperty({ type: FollowUpWorkbenchItemDto, isArray: true })
+  today!: FollowUpWorkbenchItemDto[];
+
+  @ApiProperty({ type: FollowUpWorkbenchItemDto, isArray: true })
+  upcoming!: FollowUpWorkbenchItemDto[];
+}
+
+export class FollowUpWorkbenchResponseDto {
+  @ApiProperty() timezone!: string;
+  @ApiProperty({ type: FollowUpWorkbenchCountsDto })
+  counts!: FollowUpWorkbenchCountsDto;
+  @ApiProperty({ type: FollowUpWorkbenchPreviewDto })
+  preview!: FollowUpWorkbenchPreviewDto;
+}

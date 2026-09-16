@@ -52,6 +52,13 @@ interface HarnessOptions {
   tenantTimezone?: string | null;
 }
 
+interface WorkbenchQueryArgs {
+  where: Record<string, unknown>;
+  orderBy?: unknown;
+  take?: number;
+  include?: unknown;
+}
+
 function harness(options: HarnessOptions = {}) {
   const sqlCalls: string[] = [];
   const tx = {
@@ -80,6 +87,10 @@ function harness(options: HarnessOptions = {}) {
       ),
       updateMany: jest.fn(() =>
         Promise.resolve({ count: options.updateCount ?? 1 }),
+      ),
+      count: jest.fn((_args: WorkbenchQueryArgs) => Promise.resolve(0)),
+      findMany: jest.fn((_args: WorkbenchQueryArgs) =>
+        Promise.resolve([] as unknown[]),
       ),
     },
     tenant: {
@@ -237,5 +248,178 @@ describe('FollowUpsRepository tenant timezone', () => {
     await expect(
       fixture.repository.getTenantTimezone(context),
     ).resolves.toBeNull();
+  });
+});
+
+describe('FollowUpsRepository personal workbench', () => {
+  const RANGE = {
+    todayStart: new Date('2026-09-16T16:00:00.000Z'),
+    tomorrowStart: new Date('2026-09-17T16:00:00.000Z'),
+    day8Start: new Date('2026-09-24T16:00:00.000Z'),
+  };
+  const SCOPES = [{ objectId: 'object-leads', canUpdate: true }];
+
+  it('hard-binds every workbench query to the tenant and the acting member', async () => {
+    const fixture = harness();
+
+    await fixture.repository.workbench(context, SCOPES, RANGE, 'Asia/Shanghai');
+
+    const queries = [
+      ...fixture.tx.recordFollowUp.count.mock.calls,
+      ...fixture.tx.recordFollowUp.findMany.mock.calls,
+    ];
+    expect(queries).toHaveLength(7);
+    for (const [args] of queries) {
+      expect(args.where).toMatchObject({
+        tenantId: context.tenantId,
+        assigneeMemberId: context.memberId,
+        status: 'OPEN',
+      });
+      expect(args.where).not.toHaveProperty('recordId');
+      // The Record must still exist and still be inside a readable scope.
+      expect(args.where.record).toMatchObject({
+        tenantId: context.tenantId,
+        deletedAt: null,
+      });
+    }
+  });
+
+  it('splits the tenant calendar into non-overlapping bucket predicates', async () => {
+    const fixture = harness();
+
+    await fixture.repository.workbench(context, SCOPES, RANGE, 'Asia/Shanghai');
+
+    const counts = fixture.tx.recordFollowUp.count.mock.calls.map(
+      (call) => call[0].where,
+    );
+    expect(counts[0].dueAt).toBeUndefined();
+    expect(counts[1].dueAt).toEqual({ lt: RANGE.todayStart });
+    expect(counts[2].dueAt).toEqual({
+      gte: RANGE.todayStart,
+      lt: RANGE.tomorrowStart,
+    });
+    expect(counts[3].dueAt).toEqual({
+      gte: RANGE.tomorrowStart,
+      lt: RANGE.day8Start,
+    });
+  });
+
+  it('orders every preview by dueAt then id and caps it at five', async () => {
+    const fixture = harness();
+
+    await fixture.repository.workbench(context, SCOPES, RANGE, 'Asia/Shanghai');
+
+    const previews = fixture.tx.recordFollowUp.findMany.mock.calls.map(
+      (call) => call[0],
+    );
+    expect(previews).toHaveLength(3);
+    for (const args of previews) {
+      expect(args.orderBy).toEqual([{ dueAt: 'asc' }, { id: 'asc' }]);
+      expect(args.take).toBe(5);
+      expect(args.include).toBeDefined();
+    }
+    expect(previews[0].where.dueAt).toEqual({ lt: RANGE.todayStart });
+    expect(previews[1].where.dueAt).toEqual({
+      gte: RANGE.todayStart,
+      lt: RANGE.tomorrowStart,
+    });
+    expect(previews[2].where.dueAt).toEqual({
+      gte: RANGE.tomorrowStart,
+      lt: RANGE.day8Start,
+    });
+  });
+
+  it('returns full-set counts that are independent of the preview limit', async () => {
+    const fixture = harness();
+    fixture.tx.recordFollowUp.count
+      .mockResolvedValueOnce(9)
+      .mockResolvedValueOnce(2)
+      .mockResolvedValueOnce(1)
+      .mockResolvedValueOnce(4);
+
+    const result = await fixture.repository.workbench(
+      context,
+      SCOPES,
+      RANGE,
+      'Asia/Shanghai',
+    );
+
+    expect(result.counts).toEqual({
+      allOpen: 9,
+      overdue: 2,
+      today: 1,
+      upcoming: 4,
+    });
+  });
+
+  it('returns the empty safe shape without querying when nothing is readable', async () => {
+    const fixture = harness();
+
+    await expect(
+      fixture.repository.workbench(context, [], RANGE, 'Asia/Shanghai'),
+    ).resolves.toEqual({
+      timezone: 'Asia/Shanghai',
+      counts: { allOpen: 0, overdue: 0, today: 0, upcoming: 0 },
+      preview: { overdue: [], today: [], upcoming: [] },
+    });
+    expect(fixture.tx.recordFollowUp.count).not.toHaveBeenCalled();
+    expect(fixture.tx.recordFollowUp.findMany).not.toHaveBeenCalled();
+  });
+
+  it('projects only the safe workbench fields, with overdue driven by the bucket', async () => {
+    const fixture = harness();
+    fixture.tx.recordFollowUp.findMany.mockResolvedValue([taskRow()]);
+
+    const result = await fixture.repository.workbench(
+      context,
+      SCOPES,
+      RANGE,
+      'Asia/Shanghai',
+    );
+
+    const item = result.preview.overdue[0];
+    expect(Object.keys(item).sort()).toEqual([
+      'canManage',
+      'dueAt',
+      'id',
+      'objectCode',
+      'objectName',
+      'overdue',
+      'recordId',
+      'recordTitle',
+      'title',
+      'version',
+    ]);
+    expect(item).toMatchObject({
+      id: 'task-1',
+      recordId: RECORD_ID,
+      recordTitle: '张三',
+      objectCode: 'leads',
+      objectName: '销售线索',
+      title: '回访客户',
+      dueAt: '2026-09-20T00:00:00.000Z',
+      version: 1,
+      overdue: true,
+      canManage: true,
+    });
+    expect(item).not.toHaveProperty('assigneeMemberId');
+    expect(item).not.toHaveProperty('assigneeName');
+    expect(item).not.toHaveProperty('status');
+    expect(result.preview.today[0].overdue).toBe(false);
+    expect(result.preview.upcoming[0].overdue).toBe(false);
+  });
+
+  it('withholds canManage when the actor cannot update the record', async () => {
+    const fixture = harness();
+    fixture.tx.recordFollowUp.findMany.mockResolvedValue([taskRow()]);
+
+    const result = await fixture.repository.workbench(
+      context,
+      [{ objectId: 'object-leads', canUpdate: false }],
+      RANGE,
+      'Asia/Shanghai',
+    );
+
+    expect(result.preview.overdue[0].canManage).toBe(false);
   });
 });
