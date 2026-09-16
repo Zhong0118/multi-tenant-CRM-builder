@@ -3,6 +3,7 @@ import {
   compileObjectConfiguration,
   type ObjectConfigurationDraft,
 } from './object-configuration.policy';
+import type { PublicationDraftField } from './object-publication.policy';
 
 function validObjectConfiguration(): ObjectConfigurationDraft {
   return {
@@ -106,6 +107,249 @@ describe('object configuration policy', () => {
       analyzeObjectConfiguration(input).blocking.filter(
         (issue) => issue.code === 'REQUIRED_FIELD_HIDDEN',
       ),
+    ).toEqual([]);
+  });
+
+  // A non-null default is only a legitimate escape hatch when it actually lands
+  // on create: the engine's `normalizeValue` rejects each of these shapes with
+  // `FIELD_INVALID`/`FIELD_OPTION_INACTIVE`, so the record still cannot be
+  // created for the employee while the key stays invisible.
+  it.each([
+    {
+      name: 'an EMAIL default that is an empty string',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'EMAIL';
+        field.defaultValue = '';
+      },
+    },
+    {
+      name: 'a SINGLE_SELECT default with an unknown option key',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'SINGLE_SELECT';
+        field.defaultValue = 'missing';
+        field.config = { options: [{ key: 'vip', label: '重点客户' }] };
+      },
+    },
+    {
+      name: 'a MULTI_SELECT default with one unknown option key',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'MULTI_SELECT';
+        field.defaultValue = ['vip', 'missing'];
+        field.config = { options: [{ key: 'vip', label: '重点客户' }] };
+      },
+    },
+    {
+      name: 'a SINGLE_SELECT default whose option is inactive',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'SINGLE_SELECT';
+        field.defaultValue = 'vip';
+        field.config = {
+          options: [{ key: 'vip', label: '重点客户', status: 'INACTIVE' }],
+        };
+      },
+    },
+    {
+      name: 'a TEXT default shorter than the configured minimum length',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'TEXT';
+        field.defaultValue = 'ab';
+        field.validation = { minLength: 3 };
+      },
+    },
+    {
+      name: 'a NUMBER default outside the configured range',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'NUMBER';
+        field.defaultValue = 101;
+        field.validation = { min: 0, max: 100 };
+      },
+    },
+    {
+      name: 'a MONEY default that is a JSON number instead of the engine string',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'MONEY';
+        field.defaultValue = 12.5;
+      },
+    },
+    {
+      name: 'a MONEY default with more decimals than its scale',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'MONEY';
+        field.defaultValue = '1.234';
+        field.validation = { scale: 2 };
+      },
+    },
+    {
+      name: 'a DATE default that is not a real calendar date',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'DATE';
+        field.defaultValue = '2024-02-31';
+      },
+    },
+    {
+      name: 'a DATETIME default without a time-zone offset',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'DATETIME';
+        field.defaultValue = '2024-01-01T00:00:00';
+      },
+    },
+    {
+      name: 'a BOOLEAN default that is not a boolean',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'BOOLEAN';
+        field.defaultValue = 'true';
+      },
+    },
+  ])(
+    'blocks a hidden required field whose default can never land: $name',
+    ({ mutate }) => {
+      const input = validObjectConfiguration();
+      input.fields[1] = { ...input.fields[1], required: true };
+      input.employeeAccess!.fields.email = 'HIDDEN';
+      mutate(input.fields[1]);
+
+      const blocker = analyzeObjectConfiguration(input).blocking.find(
+        (issue) => issue.code === 'REQUIRED_FIELD_HIDDEN',
+      );
+      expect(blocker).toMatchObject({ fieldKey: 'email' });
+      expect(blocker?.message).toContain('邮箱');
+    },
+  );
+
+  // The mirror of the matrix above: every default the engine's `normalizeValue`
+  // accepts must stay publishable, otherwise the new rule over-rejects.
+  it.each([
+    {
+      name: 'TEXT',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'TEXT';
+        field.defaultValue = '默认值';
+      },
+    },
+    {
+      name: 'PHONE',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'PHONE';
+        field.defaultValue = '+8613900000000';
+        field.validation = { country: 'CN', minLength: 8 };
+      },
+    },
+    {
+      name: 'TEXTAREA',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'TEXTAREA';
+        field.defaultValue = '';
+      },
+    },
+    {
+      name: 'EMAIL',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'EMAIL';
+        field.defaultValue = 'A@B.com';
+      },
+    },
+    {
+      name: 'SINGLE_SELECT',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'SINGLE_SELECT';
+        field.defaultValue = 'vip';
+        field.config = { options: [{ key: 'vip', label: '重点客户' }] };
+      },
+    },
+    {
+      name: 'MULTI_SELECT',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'MULTI_SELECT';
+        field.defaultValue = ['vip'];
+        field.config = { options: [{ key: 'vip', label: '重点客户' }] };
+      },
+    },
+    {
+      name: 'NUMBER',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'NUMBER';
+        field.defaultValue = 12;
+        field.validation = { min: 0, max: 100, scale: 0 };
+      },
+    },
+    {
+      name: 'MONEY',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'MONEY';
+        field.defaultValue = '12.50';
+        field.validation = { scale: 2 };
+      },
+    },
+    {
+      name: 'DATE',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'DATE';
+        field.defaultValue = '2024-02-29';
+      },
+    },
+    {
+      name: 'DATETIME',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'DATETIME';
+        field.defaultValue = '2024-01-01T00:00:00Z';
+      },
+    },
+    {
+      name: 'BOOLEAN',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'BOOLEAN';
+        field.defaultValue = true;
+      },
+    },
+  ])(
+    'keeps accepting a hidden required field whose $name default still lands',
+    ({ mutate }) => {
+      const input = validObjectConfiguration();
+      input.fields[1] = { ...input.fields[1], required: true };
+      input.employeeAccess!.fields.email = 'HIDDEN';
+      mutate(input.fields[1]);
+
+      expect(
+        analyzeObjectConfiguration(input).blocking.filter(
+          (issue) => issue.code === 'REQUIRED_FIELD_HIDDEN',
+        ),
+      ).toEqual([]);
+    },
+  );
+
+  it('treats a non-empty MEMBER default as materializable, because no database is reachable here', () => {
+    const input = validObjectConfiguration();
+    input.fields[1] = {
+      ...input.fields[1],
+      type: 'MEMBER',
+      required: true,
+      defaultValue: 'member-1',
+      validation: {},
+      config: {},
+    };
+    input.employeeAccess!.fields.email = 'HIDDEN';
+
+    // The engine checks the id's shape and existence against the database on
+    // every write, and `analyzeObjectConfiguration` runs before any such lookup,
+    // so this rule cannot mirror it. Only a default that is not a non-empty
+    // string is rejected; a stale-but-well-formed id is left to write time.
+    expect(
+      analyzeObjectConfiguration(input).blocking.filter(
+        (issue) => issue.code === 'REQUIRED_FIELD_HIDDEN',
+      ),
+    ).toEqual([]);
+
+    input.fields[1] = { ...input.fields[1], defaultValue: '' };
+    expect(
+      analyzeObjectConfiguration(input).blocking.find(
+        (issue) => issue.code === 'REQUIRED_FIELD_HIDDEN',
+      ),
+    ).toMatchObject({ fieldKey: 'email' });
+  });
+
+  it('still accepts the untouched valid object configuration', () => {
+    expect(
+      analyzeObjectConfiguration(validObjectConfiguration()).blocking,
     ).toEqual([]);
   });
 
