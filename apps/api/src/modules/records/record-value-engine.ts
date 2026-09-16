@@ -84,7 +84,17 @@ export async function validateRecordMutation(input: {
       continue;
     }
 
-    if (input.mode === 'CREATE' && field.defaultValue !== null) {
+    // A default is only materialized for a field the actor can see. An invisible
+    // field's default is never evaluated, so a default that would fail
+    // `normalizeValue` (an empty string on TEXT/PHONE/EMAIL, a stale MEMBER id,
+    // an option id absent from the config, a wrong JSON shape) can neither leak
+    // the hidden key through `FIELD_INVALID` nor block the write. The field then
+    // stays `undefined`, exactly as it does today when there is no default.
+    if (
+      input.mode === 'CREATE' &&
+      field.defaultValue !== null &&
+      isFieldVisible(field.fieldKey, input.access)
+    ) {
       values[field.fieldKey] = await normalizeValue(
         field,
         field.defaultValue,
