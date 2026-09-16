@@ -4,9 +4,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Input, Select, Space, Switch, Typography } from "antd";
 import { useEffect, useState } from "react";
 
-import { toApiError } from "@/lib/api/api-error";
+import { toApiError, type FieldErrors } from "@/lib/api/api-error";
 
 import type { ObjectDraft } from "./object-types";
+import { objectApi as defaultObjectApi, type ObjectApi } from "./object-api";
+import {
+  WorkflowActionEditor,
+  actionFieldErrors,
+  actionTargetObjects,
+} from "./workflow-action-editor";
 import { workflowApi as defaultWorkflowApi, type WorkflowApi } from "./workflow-api";
 import type {
   WorkflowDraft,
@@ -28,6 +34,12 @@ export interface WorkflowDesignerProps {
   draft: ObjectDraft;
   onObjectVersion: (next: ObjectDraft) => void;
   api?: WorkflowApi;
+  /**
+   * Existing admin object API. The Action editor reads every Target Object's
+   * field metadata from its list endpoint (`listDrafts`), so no new endpoint is
+   * added for the Action Editor.
+   */
+  objectApi?: ObjectApi;
 }
 
 export function WorkflowDesigner({
@@ -35,15 +47,25 @@ export function WorkflowDesigner({
   draft,
   onObjectVersion,
   api = defaultWorkflowApi,
+  objectApi = defaultObjectApi,
 }: WorkflowDesignerProps) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string>();
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [notice, setNotice] = useState<string>();
   const [form, setForm] = useState<WorkflowDraft>();
   const queryKey = ["workspace", tenantCode, "workflow-draft", draft.object.id];
   const query = useQuery({
     queryKey,
     queryFn: () => api.getDraft(tenantCode, draft.object.id),
+  });
+
+  // §33: the CREATE_RECORD editor needs each Target Object's fields. The object
+  // list is an existing administrative endpoint; the shared query key lets the
+  // object designer's own invalidation refresh it after a publication.
+  const objectsQuery = useQuery({
+    queryKey: ["workspace", tenantCode, "object-definitions"],
+    queryFn: () => objectApi.listDrafts(tenantCode),
   });
 
   useEffect(() => {
@@ -63,6 +85,7 @@ export function WorkflowDesigner({
       setForm(saved);
       setNotice("流程配置已保存");
       setError(undefined);
+      setFieldErrors({});
       void queryClient.invalidateQueries({ queryKey });
       onObjectVersion({
         ...draft,
@@ -73,6 +96,9 @@ export function WorkflowDesigner({
       const apiError = toApiError(caught);
       setNotice(undefined);
       setError(`${apiError.message}（请求编号：${apiError.requestId}）`);
+      // §34: the envelope message is generic; the located reason only exists in
+      // the field errors, so they are kept for the Action editor to render.
+      setFieldErrors(apiError.fieldErrors);
     },
   });
 
@@ -83,9 +109,31 @@ export function WorkflowDesigner({
   const terminalKeys = new Set(
     form.states.filter((state) => state.isTerminal).map((state) => state.key),
   );
-  const fieldOptions = draft.fields
+  // §19/§22: the Action editor reads the same fields, with their types — the
+  // pending publication freezes this draft's own ACTIVE fields, so the draft
+  // type (not the published type) is what a mapping must match.
+  const sourceFields = draft.fields
     .filter((field) => field.status === "ACTIVE")
-    .map((field) => ({ value: field.fieldKey, label: field.label }));
+    .map((field) => ({
+      fieldKey: field.fieldKey,
+      label: field.label,
+      type: field.type,
+    }));
+  const fieldOptions = sourceFields.map((field) => ({
+    value: field.fieldKey,
+    label: field.label,
+  }));
+  const targetObjects = actionTargetObjects(objectsQuery.data ?? [], draft);
+  // §33: without this list the CREATE_RECORD 目标业务表 select is simply empty.
+  // A failed query has to say so, in the same shape as every other API failure
+  // the designer reports, instead of looking like "no objects exist yet".
+  const objectsFailure = objectsQuery.isError
+    ? toApiError(objectsQuery.error)
+    : undefined;
+  const objectListError =
+    objectsFailure === undefined
+      ? undefined
+      : `无法载入目标业务表列表：${objectsFailure.message}（请求编号：${objectsFailure.requestId}）`;
 
   return (
     <section className={styles.panel}>
@@ -188,6 +236,9 @@ export function WorkflowDesigner({
       </Button>
 
       <Typography.Text type="secondary">动作</Typography.Text>
+      {objectListError ? (
+        <Alert type="error" showIcon title={objectListError} />
+      ) : null}
       {form.transitions.map((transition, index) => (
         <div key={`transition-${index}`} className={styles.designerMeta}>
           <Input
@@ -305,6 +356,22 @@ export function WorkflowDesigner({
           >
             删除动作
           </Button>
+          <WorkflowActionEditor
+            transitionIndex={index}
+            actions={transition.actions}
+            errors={actionFieldErrors(fieldErrors, index)}
+            sourceFields={sourceFields}
+            targetObjects={targetObjects}
+            onChange={(actions) =>
+              setForm({
+                ...form,
+                transitions: replaceAt(form.transitions, index, {
+                  ...transition,
+                  actions,
+                }),
+              })
+            }
+          />
         </div>
       ))}
       <Button
@@ -362,6 +429,8 @@ function emptyTransition(
     allowedRoles: ["TENANT_ADMIN", "EMPLOYEE"],
     requiredFieldKeys: [],
     sortOrder: (index + 1) * 10,
+    /** §35: a transition without Actions stays a state-only transition. */
+    actions: [],
   };
 }
 
