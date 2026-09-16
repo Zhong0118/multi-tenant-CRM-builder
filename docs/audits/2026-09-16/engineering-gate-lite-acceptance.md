@@ -297,6 +297,24 @@ named-role 查询。实测该测试在本机需 12.5s、在 ubuntu-24.04 上需 
 - **repo-wide lint 目前不是 required。** 仓库存在历史 lint 债务，按设计规格 §10 不在本阶段清零。
 - **浏览器 E2E、Redis/Worker 队列测试、部署/CD、SAST/依赖扫描、覆盖率门槛、release 自动化**均不在本阶段。
 
+### 10.1 设计规格 §13 中未在 GitHub 上执行的验收项
+
+设计规格 §13「CI 行为」共 10 项。已实际执行并记录的有：第 1/2 项（PR 与 `main` push 都触发，
+见 §3.1–§3.3）、第 3 项（同 PR 新 push 取消旧 run，见 §6.1）、第 7/8 项（真实 PostgreSQL 18 +
+`crm_app` 跑通 18 个测试，见 §5）、第 10 项（required job 无 `continue-on-error`，见 §2 的 grep）。
+
+**第 4/5/6/9 项没有在 GitHub 上执行**：即"人为制造 type error 让 `Typecheck` 红""人为制造 contract
+drift 让 `Contracts` 红""人为制造 failing test 让 `Unit Tests` 红""真实 production build 失败让
+`Build` 红"。原因是这四项要验证的是仓库自己的脚本（`pnpm typecheck` / `pnpm contracts:check` /
+`pnpm test` / `pnpm build`），要观察到红灯就必须把**临时损坏的代码**推上分支；而实现计划 Task 3
+只要求"五项全绿 + 并发取消 + 查看 Database Integration 日志"，且本任务的硬范围不允许改 `apps/**`
+与 `packages/**` 去注入合成缺陷。
+
+设计规格 §13 原文允许这类破坏性验证**临时执行后还原**（"不要求把破坏性验证提交到最终分支"），
+因此这是一项**明确记录为未做**的可选项，而不是被悄悄跳过的必做项；建议与 Engineering Gate
+Hardening 一并补做。相对地，§3.1 那次真实红灯（Unit Tests 超时）是一次**非人为**的捕获，
+它证明了这个门禁确实会拦下本地绿、干净 runner 红的改动。
+
 ## 11. Definition of Done 对照
 
 | 条件 | 状态 | 证据 |
