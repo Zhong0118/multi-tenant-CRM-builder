@@ -12,6 +12,16 @@ Workflow V1 与 Action Engine V1 **均已合并进入 `main`**。Action Engine V
 Engineering Gate Lite 已通过 PR #4 合并：`main` 现在有 CI 与分支保护（五个 required checks：
 `Typecheck` / `Contracts` / `Unit Tests` / `Database Integration` / `Build`），此后改 `main` 必须走 PR
 且五项全绿。验收见 `docs/audits/2026-09-16/engineering-gate-lite-acceptance.md`。
+
+**当前主要产品 Task（2026-09-17 起）= Sales Workbench Lite，状态 ACTIVE，正在实现中**：员工首页固定
+Personal Follow-up Workbench（全部待办 / 今日 / 已逾期 / 未来 7 个租户日历日），新增只读
+`GET /workspaces/:tenantCode/follow-ups/workbench`——服务端解析 Actor，不接受 `memberId` /
+`assigneeMemberId` / `tenantId` / role 覆盖；**不新增 Dashboard widget、不改 Dashboard publication
+schema、不加 Prisma 迁移**；完成动作复用既有 `PATCH /follow-ups/:id`（保留 version / 权限 / audit）。
+文档：`docs/superpowers/specs/2026-09-17-sales-workbench-lite-design.md` 与
+`docs/superpowers/plans/2026-09-17-sales-workbench-lite-implementation.md`。
+后续顺序不变：Sales Workbench Lite → **Engineering Gate Hardening**（Critical API E2E 升为第六个
+required check）→ AI Assistant V1A。**AI 开发仍未批准。**
 **API Critical E2E 仍未 required**，属 Engineering Gate Hardening follow-up（PLANNED，不是 ACTIVE）。
 
 Workflow Required Field Visibility Hardening **已通过 PR #2 合并进入 `main`**，合并提交
