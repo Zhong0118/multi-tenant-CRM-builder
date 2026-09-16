@@ -4,7 +4,7 @@
 > Spec：`docs/superpowers/specs/2026-09-16-record-required-field-visibility-hardening-design.md`
 > 前置事实：`.superpowers/sdd/records-path-leak-investigation.md`
 > 基线：`main` @ `06ae55b`（PR #2 已合并）
-> 状态：DRAFT — **等待用户批准后才可开工**。按 Lean Roadmap 纪律，`PLANNED` 阶段不得提前实现。
+> 状态：**已执行完毕并合并**（PR #3，合并提交 `df090c02211143fc2511df3493cb6d4790f7756d`）。Task 1–4 均已完成；验收见 `docs/audits/2026-09-16/record-required-field-visibility-hardening.md`。
 
 本计划把一个已定的小改动拆成任务。它不讲产品方向，只讲**改哪个文件、先写什么失败测试、跑什么命令、什么算完成**。
 

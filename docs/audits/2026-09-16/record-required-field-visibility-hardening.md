@@ -16,9 +16,20 @@
 | 分支 | `fix/record-required-field-visibility` |
 | 基线 | `66ed859`（= 当时的 `origin/main`，含 Record hardening 的 spec/plan） |
 | 提交 | `45c9f08` 记录写入不再泄露隐藏必填字段 key<br>`00eb7af` publish 期拦截"必填+隐藏+无默认值"<br>`1368a1e` 隐藏字段的默认值永不 materialize<br>`f0053b5` publish 期改为拦截"默认值永不生效"<br>外加一个只动文档的收口提交（本文件所在提交：设计勘误、验收、HANDOFF / Lean Roadmap 状态同步） |
-| 状态 | **未合并、未部署**（合并由用户决定） |
+| 状态 | **已通过 PR #3 合并进 `main`**（合并提交 `df090c02211143fc2511df3493cb6d4790f7756d`）；**未部署** |
 
-未 reset / rebase / force-push / push / 建 PR / 部署。
+未 reset / rebase / force-push / 部署。分支已 push 并开 PR #3（合并由用户执行）。
+
+## Post-merge status
+
+> 本节由合并后补记，**不回填、不重算**下方任何验收数据。
+>
+> - **PR #3 已合并进 `main`**：https://github.com/Zhong0118/multi-tenant-CRM-builder/pull/3
+> - 合并提交：`df090c02211143fc2511df3493cb6d4790f7756d`
+> - 分支提交：`45c9f08`（记录写入）/ `00eb7af`（publish 拦截）/ `1368a1e`（默认值不 materialize）/ `f0053b5`（publish 收紧）/ `6171835` + `ce045b1`（文档）
+> - 下游同步：`HANDOFF.md`（顶部与"Action Engine V1 已知缺口"节）、`docs/superpowers/plans/2026-09-16-crm-lean-roadmap.md` 的 Security Closeout 行、本特性的 design/plan 状态行
+> - **未部署生产环境**
+> - **仍未做（独立任务）**：`MEMBER` 默认值存在性无法在分析期校验；`action-engine.ts:631-655` 嵌套 `fieldErrors` 不按 actor 权限过滤；`effective-access.ts` 的 `?? 'EDIT'` / `?? 'HIDDEN'` 未统一（详见 §7）
 
 ## 2. 被修复的问题
 

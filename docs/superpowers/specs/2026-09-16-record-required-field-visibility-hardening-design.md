@@ -2,7 +2,7 @@
 
 > 日期：2026-09-16
 > 类型：Workflow hardening（PR #2）之后的 bounded security hardening（非新功能）
-> 状态：DRAFT — 等待用户批准后才可进入 Implementation Plan 之外的任何代码改动
+> 状态：**已实现并合并**（PR #3，合并提交 `df090c02211143fc2511df3493cb6d4790f7756d`）。实现期间由独立评审修正了两处设计断言，见 §1.1 与 §4 的勘误。
 > 前置事实：`.superpowers/sdd/records-path-leak-investigation.md`（只读调查，HEAD `06ae55b`）
 
 ---

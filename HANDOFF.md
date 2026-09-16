@@ -3,7 +3,7 @@
 更新时间：2026-09-16
 
 `main` 与 `origin/main` 是当前开发基线。**不要把某次 `git log -1` 的输出写死进本文。**
-Workflow V1 与 Action Engine V1 **均已合并进入 `main`**。Action Engine V1 通过 PR #1 合并，合并提交 `e590c23da6aa9c5fe0d0c3cd71250270ea265ebd`（该 SHA 只作为这一次历史事实记录，不是"main 永远等于它"）。Workflow Required Field Visibility Hardening 已通过 PR #2 合并（详见下方）。
+Workflow V1 与 Action Engine V1 **均已合并进入 `main`**。Action Engine V1 通过 PR #1 合并，合并提交 `e590c23da6aa9c5fe0d0c3cd71250270ea265ebd`（该 SHA 只作为这一次历史事实记录，不是"main 永远等于它"）。Workflow Required Field Visibility Hardening 已通过 PR #2 合并；Record Required Field Visibility Hardening 已通过 PR #3 合并（均详见下方）。
 
 验收见 `docs/audits/2026-09-15/workflow-v1-acceptance.md` 与
 `docs/audits/2026-09-16/action-engine-v1-acceptance.md`。未部署生产环境。
@@ -13,9 +13,10 @@ Workflow Required Field Visibility Hardening **已通过 PR #2 合并进入 `mai
 `0612d8ad521895c7ca7bd9efe2ef2f942cd28b40`（同样只作历史事实记录）。它修掉了
 「对 Actor 隐藏的必填字段 key 会从 Runtime GET 与 direct execute 泄露」的 metadata
 side channel，验收见 `docs/audits/2026-09-16/workflow-required-field-visibility-hardening.md`。
-独立评审另发现**普通 records CREATE 路径存在同类但不同路径**的泄露（对员工 HIDDEN 的
-required 字段会以 `FIELD_REQUIRED` + `fieldErrors.<hiddenKey>` 暴露），**本轮未修，需另开
-独立 bounded 任务**，不要顺手在别的任务里改。
+独立评审另发现**普通 records 写入路径存在同类问题**（不同代码路径），**已由 Record Required
+Field Visibility Hardening 修复并通过 PR #3 合并**（合并提交 `df090c02211143fc2511df3493cb6d4790f7756d`）：
+对 Actor 不可见的字段完全不参与他的写入；publish 期新增 `REQUIRED_FIELD_HIDDEN` 拦截"必填 + 隐藏 +
+默认值永不生效"的配置。验收见 `docs/audits/2026-09-16/record-required-field-visibility-hardening.md`。
 
 `codex/crm-polish-followups` 已快进合并进入 `main`。
 2026-09-15 完成一轮人工验收并修复（清单见第 7 节）。
@@ -259,7 +260,7 @@ Transition 不再只是改状态，还能产生结构化业务动作：
 - **`executionSummary` 目前没有任何消费者**，属可删的额外面。
 - **「重试耗尽」的确定性证明来自单元测试**，e2e 的并发 A/B 用例没走到那条分支。重试上界仍是 3 次且无退避/抖动。
 - **合并已完成，不再需要接手者决定。** Action Engine V1 已通过 PR #1 合并进 `main`。
-- **普通 records CREATE 路径的同类 metadata 泄露 → 已由 Record Required Field Visibility Hardening 修复**（分支 `fix/record-required-field-visibility`，提交 `45c9f08` / `00eb7af` / `1368a1e` / `f0053b5`）：对 Actor 不可见的字段**完全不参与他的写入**——既跳过必填检查、也不 materialize 默认值（否则非空但过不了归一化的默认值会抛 `FIELD_INVALID` 带出隐藏 key）；可见字段语义不变。publish 期新增 `REQUIRED_FIELD_HIDDEN`，触发条件是「**默认值永不生效**」（`null`，或过不了类型/长度/格式/范围/scale/选项检查的非空值），不是"非空即可"。验收见 `docs/audits/2026-09-16/record-required-field-visibility-hardening.md`。**仍未做**：`MEMBER` 默认值存在性无法在分析期校验（无数据库）、`effective-access.ts` 里 `?? 'EDIT'` 与 `?? 'HIDDEN'` 的统一（见该验收文档 §7）。
+- **普通 records 写入路径的同类 metadata 泄露 → 已由 Record Required Field Visibility Hardening 修复，并已通过 PR #3 合并进 `main`**（合并提交 `df090c02211143fc2511df3493cb6d4790f7756d`；分支提交 `45c9f08` / `00eb7af` / `1368a1e` / `f0053b5`）：对 Actor 不可见的字段**完全不参与他的写入**——既跳过必填检查、也不 materialize 默认值（否则非空但过不了归一化的默认值会抛 `FIELD_INVALID` 带出隐藏 key）；可见字段语义不变。publish 期新增 `REQUIRED_FIELD_HIDDEN`，触发条件是「**默认值永不生效**」（`null`，或过不了类型/长度/格式/范围/scale/选项检查的非空值），不是"非空即可"。验收见 `docs/audits/2026-09-16/record-required-field-visibility-hardening.md`。**仍未做**：`MEMBER` 默认值存在性无法在分析期校验（无数据库）、`effective-access.ts` 里 `?? 'EDIT'` 与 `?? 'HIDDEN'` 的统一（见该验收文档 §7）。
 - **Action 失败重抛的 `actions.<actionKey>.<fieldKey>` 通道**（`action-engine.ts:631-655`）：内层 `fieldErrors` 被原样重抛且**不按 actor 权限过滤**，是**独立通道**——Record 侧的修复关不掉它，需单独任务。此处原写的"仅 legacy / 手写快照可达"**需要重新核实**：一个普通已发布的目标对象带 required+HIDDEN 字段，无需 legacy 快照即可到达。
 - **验收与偏差清单**（含 100 条累积 Minor finding 的索引）在 `docs/audits/2026-09-16/action-engine-v1-acceptance.md`，逐条台账在 `.superpowers/sdd/progress.md`。
 
