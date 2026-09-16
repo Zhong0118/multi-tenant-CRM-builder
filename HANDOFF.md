@@ -227,7 +227,9 @@ Transition 不再只是改状态，还能产生结构化业务动作：
 
 2026-09-15 全量 `pnpm test` 退出码 0：API 51 套件 403 测试、Web 63 文件 360 测试、contracts 7、database 6、tenant-templates 2、worker 2。
 
-### Action Engine V1 已知缺口（在 `feat/action-engine-v1` 分支上，未合并）- **`requiredFieldKeys` 没有按执行人的字段权限过滤**：同一响应体可能泄露一个对该员工是隐藏的必填字段 key。已核实是早于本特性的既有问题，需要独立任务修。Member Override 会在 publish 之后动态改变字段权限，所以 publish 期分析挡不住它。
+### Action Engine V1 已知缺口（在 `feat/action-engine-v1` 分支上，未合并）
+
+- **`requiredFieldKeys` 没有按执行人的字段权限过滤**：同一响应体可能泄露一个对该员工是隐藏的必填字段 key。已核实是早于本特性的既有问题，需要独立任务修。Member Override 会在 publish 之后动态改变字段权限，所以 publish 期分析挡不住它。
 - **publish 分析没有真正处理「只读 / 隐藏」和「有效默认值」**：对某个角色的 Transition 而言，一个实际只读或隐藏的必填字段仍然会被要求映射，映射与不映射两种配法**都发不出去**；且任何非空默认值都被当作有效。属「publish 说没问题、runtime 才会失败」的形状。
 - **六个结构性 `WORKFLOW_ACTION_*` 错误码没有定位信息**（只有一条 message，没有 transitionKey / actionKey / fieldKey）。同样是既有截断行为，本特性只是让它更有后果。
 - **`executionSummary` 目前没有任何消费者**，属可删的额外面。
