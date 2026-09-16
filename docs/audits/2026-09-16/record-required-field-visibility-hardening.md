@@ -15,7 +15,7 @@
 | --- | --- |
 | 分支 | `fix/record-required-field-visibility` |
 | 基线 | `66ed859`（= 当时的 `origin/main`，含 Record hardening 的 spec/plan） |
-| 提交 | `45c9f08` 记录写入不再泄露隐藏必填字段 key<br>`00eb7af` publish 期拦截"必填+隐藏+无默认值"<br>`1368a1e` 隐藏字段的默认值永不 materialize<br>外加一个只动文档的收口提交（本文件所在提交：设计勘误、验收、HANDOFF / Lean Roadmap 状态同步） |
+| 提交 | `45c9f08` 记录写入不再泄露隐藏必填字段 key<br>`00eb7af` publish 期拦截"必填+隐藏+无默认值"<br>`1368a1e` 隐藏字段的默认值永不 materialize<br>`f0053b5` publish 期改为拦截"默认值永不生效"<br>外加一个只动文档的收口提交（本文件所在提交：设计勘误、验收、HANDOFF / Lean Roadmap 状态同步） |
 | 状态 | **未合并、未部署**（合并由用户决定） |
 
 未 reset / rebase / force-push / push / 建 PR / 部署。
@@ -47,11 +47,12 @@
 
 ```text
 code:    REQUIRED_FIELD_HIDDEN
-触发:    field.required && employeeAccess.fields[fieldKey] === 'HIDDEN' && defaultValue == null
+触发:    field.required && employeeAccess.fields[fieldKey] === 'HIDDEN' && !defaultMaterializes(field)
 定位:    带 fieldKey
 ```
 
-`defaultValue == null` 豁免**保留**（有能落值的默认值时该配置合法）。该函数被两处调用——对象发布（`object-publication.policy.ts:120`）与业务模板发布（`business-template-publication.policy.ts:112`，另 `:286` 为 changes-only）——两条流都已实测触发。
+豁免条件是「**默认值确实能生效**」，不是"非空即可"：`null` 永不 materialize；非空默认值还必须过类型/长度/格式/范围/scale/选项 key 检查（镜像引擎 `normalizeValue` 的**约束**，见 `defaultMaterializes()`）。**已知限制**：`MEMBER` 的默认值无法在 publish 期校验（分析期没有数据库），非空字符串一律视为可生效，其 UUID 形状与成员是否存在由引擎在每次写入时校验。
+该函数被两处调用——对象发布（`object-publication.policy.ts:120`）与业务模板发布（`business-template-publication.policy.ts:112`，另 `:286` 为 changes-only）——两条流都已实测触发。
 
 ## 4. 改动文件
 
@@ -76,14 +77,15 @@ apps/api/src/modules/objects/object-configuration.policy.spec.ts
   - `record-command` / 引擎：`ApiException: 请填写必填字段。`（来自 `record-command.ts:291`），即 `FIELD_REQUIRED` 带着隐藏的 `secret` / `note` key。
 - `object-configuration`：**1 failed / 11 passed**（尚无 `REQUIRED_FIELD_HIDDEN`）；负例（有默认值不拦截）在修复前即绿。
 - 第二轮 RED（`1368a1e` 之前）：隐藏 `EMAIL` 默认值 `''` → `Received promise rejected instead of resolved: [RecordValueError: 字段值格式不正确。]`；隐藏标题错误**带 key**（`Received: "name"`）。2 failed / 44 passed，无类型错误。
+- 第三轮 RED（`f0053b5` 之前）：`object-configuration` **12 failed / 24 passed / 36 total**——11 种"默认值永不生效"的配置**找不到** `REQUIRED_FIELD_HIDDEN` blocker（即无声发布），外加 `MEMBER` 空串一条。行为性失败，非类型错误。
 
 ### 5.2 GREEN（实现之后，由控制者独立复跑）
 
 | 命令 | 结果 |
 | --- | --- |
 | `pnpm --filter @crm/api test -- record-value-engine record-command records.service` | **3 套件 / 109 通过** |
-| `pnpm --filter @crm/api test -- object-configuration` | **1 套件 / 12 通过** |
-| `pnpm --filter @crm/api test`（全 api 单测） | **69 套件 / 918 通过**（基线 915，+3） |
+| `pnpm --filter @crm/api test -- object-configuration` | **1 套件 / 36 通过**（收紧 publish 规则后新增 24 条：各种"默认值永不生效"的正例 + 合法默认值的负例） |
+| `pnpm --filter @crm/api test`（全 api 单测） | **69 套件 / 942 通过**（基线 915） |
 | `pnpm --filter @crm/api typecheck` | **exit 0** |
 
 ### 5.3 变异证明（测试有牙齿）
@@ -108,18 +110,18 @@ apps/api/src/modules/objects/object-configuration.policy.spec.ts
 
 ## 7. 本任务闭合到哪一步（诚实边界）
 
-- **已闭合**：隐藏字段的 key 不再出现在记录写入路径的 `fieldErrors`（CREATE / UPDATE / CSV 导入 / 默认值路径）。
+- **已闭合**：
+  1. 隐藏字段的 key 不再出现在记录写入路径的 `fieldErrors`（CREATE / UPDATE / CSV 导入 / 默认值路径）；
+  2. **publish 期不再放行"默认值永不生效"的必填隐藏字段**——`REQUIRED_FIELD_HIDDEN` 从"`defaultValue == null`"收紧为"默认值落不了值"，因此 `required + HIDDEN + 过不了归一化的非空默认值` 这种配置**现在会被 publish 拦下**（`f0053b5`），不再无声发布。（`MEMBER` 存在性无法在分析期校验，见 §3.1 已知限制。）
 - **仍开放（不属本任务）**：
-  1. **publish 期不校验默认值本身能否落值**。因此 `required + HIDDEN + 过不了归一化的非空默认值` 仍可发布；修好后它不再泄露 key、也不再阻塞员工创建，但该字段对每名员工都是空值——配置错误从"员工端永不明白的 400"变成"负责人端可见的数据质量问题"。
-  2. `action-engine.ts:631-655`：内层 `fieldErrors` 被原样重抛为 `actions.<actionKey>.<fieldKey>`，且**不按 actor 权限过滤**。同一类、独立通道，**只修建记录循环关不掉它**——需单独任务。（既有验收文档写的"仅 legacy 快照可达"**需要重新核实**：一个普通已发布的目标对象带 required+HIDDEN 字段，无需 legacy 快照即可到达。）
-  3. `effective-access.ts` 的 `?? 'EDIT'` 对"缺失条目 + prototype 型字段名"（如 `constructor`）会取到原型链成员并判为可见；`resolveEffectiveAccess` 会为每个 schema 字段 materialize key，加上 `EMPLOYEE_FIELD_ACCESS_REQUIRED` 在 publish 期拦截缺失条目，所以仅 legacy 快照可达。本任务的引擎谓词在该边界上已 fail-closed（`Object.hasOwn`），但上游那几处 `?? 'HIDDEN'` / `?? 'EDIT'` 未统一，记为跟进项。
-  4. `record-value-engine.spec.ts` 里一条"删除 access 条目"的断言钉的是一个真实解析器**不会产出**的 map 形状（信息级，不影响行为）。
+  1. `action-engine.ts:631-655`：内层 `fieldErrors` 被原样重抛为 `actions.<actionKey>.<fieldKey>`，且**不按 actor 权限过滤**。同一类、独立通道，**只修建记录循环关不掉它**——需单独任务。（既有验收文档写的"仅 legacy 快照可达"**需要重新核实**：一个普通已发布的目标对象带 required+HIDDEN 字段，无需 legacy 快照即可到达。）
+  2. `effective-access.ts` 的 `?? 'EDIT'` 对"缺失条目 + prototype 型字段名"（如 `constructor`）会取到原型链成员并判为可见；`resolveEffectiveAccess` 会为每个 schema 字段 materialize key，加上 `EMPLOYEE_FIELD_ACCESS_REQUIRED` 在 publish 期拦截缺失条目，所以仅 legacy 快照可达。本任务的引擎谓词在该边界上已 fail-closed（`Object.hasOwn`），但上游那几处 `?? 'HIDDEN'` / `?? 'EDIT'` 未统一，记为跟进项。
+  3. `record-value-engine.spec.ts` 里一条"删除 access 条目"的断言钉的是一个真实解析器**不会产出**的 map 形状（信息级，不影响行为）。
 
 ## 8. 不做的（Non-goals）
 
 ```text
 Action Engine 嵌套 fieldErrors 过滤
-publish 期默认值合法性校验
 有效访问解析器的 `?? 'EDIT'` / `?? 'HIDDEN'` 统一
 错误码 / HTTP status 语义变更
 DB / migration / Prisma / contracts / OpenAPI

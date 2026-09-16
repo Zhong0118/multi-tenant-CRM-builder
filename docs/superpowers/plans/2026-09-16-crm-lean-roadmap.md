@@ -19,7 +19,7 @@
 
 | 阶段 | 状态 | 内容 | V1 相对开销估计 |
 |---|---|---|---:|
-| Security Closeout | **COMPLETED**（Workflow 侧 PR #2；Record 侧 `fix/record-required-field-visibility`） | Workflow + Record required/HIDDEN metadata hardening；**残留**：publish 期默认值合法性校验、`action-engine.ts` 嵌套 fieldErrors 过滤（各自独立任务） | 0.1–0.2× |
+| Security Closeout | **COMPLETED**（Workflow 侧 PR #2；Record 侧 `fix/record-required-field-visibility`） | Workflow + Record required/HIDDEN metadata hardening（含 publish 期"默认值永不生效"拦截）；**残留**：`MEMBER` 默认值存在性无法在分析期校验、`action-engine.ts` 嵌套 fieldErrors 过滤（各自独立任务） | 0.1–0.2× |
 | Engineering Gate Lite | PLANNED | CI、main protection、关键回归检查 | 0.2–0.4× |
 | Sales Workbench Lite | PLANNED | Dashboard 中的我的跟进 / 今日 / 逾期 / 近期事项 | 0.3–0.5× |
 | AI Assistant V1A | PLANNED | 只读 Ask / Analyze | 0.4–0.7× |
