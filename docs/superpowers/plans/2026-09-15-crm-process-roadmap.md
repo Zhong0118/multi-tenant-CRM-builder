@@ -74,7 +74,7 @@ Acceptance / Audit
 
 当前系统已经不是单纯 CRUD 型 CRM。
 
-（本节描述长期能力地图上的位置。**近期实际执行顺序见 `2026-09-16-crm-lean-roadmap.md`**，本节以下 V2.2 及之后的阶段均为长期需求，未获实现批准。）
+（本节描述长期能力地图上的位置。**近期实际执行顺序见 `2026-09-16-crm-lean-roadmap.md`**，本节以下 V2.2 及之后的阶段均为长期需求，未获实现批准。V2.1B Action Engine 之后的 Workflow Required Field Visibility Hardening 已通过 PR #2 合并进 `main`，属补丁而非新阶段。）
 
 现有基础包括：
 

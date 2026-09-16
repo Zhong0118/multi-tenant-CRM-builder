@@ -19,7 +19,7 @@
 
 | 阶段 | 状态 | 内容 | V1 相对开销估计 |
 |---|---|---|---:|
-| Security Closeout | ACTIVE/收口中 | Workflow + Record required/HIDDEN metadata hardening | 0.1–0.2× |
+| Security Closeout | Workflow 侧 COMPLETED；Record 侧 PLANNED | Workflow required/HIDDEN metadata hardening（PR #2 已合并）；Record CREATE 路径同类泄露仍待独立 bounded 任务 | 0.1–0.2× |
 | Engineering Gate Lite | PLANNED | CI、main protection、关键回归检查 | 0.2–0.4× |
 | Sales Workbench Lite | PLANNED | Dashboard 中的我的跟进 / 今日 / 逾期 / 近期事项 | 0.3–0.5× |
 | AI Assistant V1A | PLANNED | 只读 Ask / Analyze | 0.4–0.7× |
@@ -77,14 +77,15 @@ Duplicate Rule、Merge、迁移、SMS、Feishu、多 Adapter、复杂通知全�
 ## 11. 近期推荐顺序
 
 ```text
-Current Security Closeout
-→ Engineering Gate Lite
+Engineering Gate Lite
 → Sales Workbench Lite
 → AI Assistant V1A
 → AI Assistant V1B
 → Production Essentials
 → Optional Email Adapter
 ```
+
+（Security Closeout 的 Workflow 侧已随 PR #2 完成；Record CREATE 路径的同类 hardening 是随时可插入的独立小任务，不占用上面的主要产品 Task 序列。）
 
 如果业务更急于展示 AI，可允许 Engineering Gate Lite → AI Assistant V1A → Sales Workbench Lite，但 V1B 仍建议在 V1A 实际验证后再开发。
 

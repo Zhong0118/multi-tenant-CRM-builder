@@ -8,6 +8,17 @@
 本文件只记录本轮**实际观察到的**事实。所有命令都在
 `.worktrees/workflow-required-field-visibility` 内执行。
 
+## Post-merge status
+
+> 本节由合并后补记，**不回填、不重算**下方任何验收数据。
+>
+> - **PR #2 已合并进 `main`**：https://github.com/Zhong0118/multi-tenant-CRM-builder/pull/2
+> - 合并提交：`0612d8ad521895c7ca7bd9efe2ef2f942cd28b40`
+> - 分支提交：`c8acbf1`（主修复）/ `3773834`（评审后加固）/ `dfe568c`（验收文档）/ `b5c28ce`（文档收口与路径归位）
+> - 下游同步已完成（同一次文档提交）：`HANDOFF.md` 顶部与「Action Engine V1 已知缺口」、`docs/superpowers/plans/2026-09-16-crm-lean-roadmap.md` 的 Security Closeout 行、`docs/superpowers/plans/2026-09-15-crm-process-roadmap.md` 第 3 节
+> - **未部署生产环境**
+> - 合并后仍**未修**的同类问题（需独立任务）：普通 records CREATE 路径的 `FIELD_REQUIRED` + `fieldErrors.<hiddenKey>` 泄露；Action 失败重抛的 `actions.<actionKey>.<fieldKey>`（仅 legacy 快照可达）
+
 ## 1. 基线与提交
 
 | 项 | 值 |

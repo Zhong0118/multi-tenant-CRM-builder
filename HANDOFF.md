@@ -3,11 +3,19 @@
 更新时间：2026-09-16
 
 `main` 与 `origin/main` 是当前开发基线。**不要把某次 `git log -1` 的输出写死进本文。**
-Workflow V1 与 Action Engine V1 **均已合并进入 `main`**。Action Engine V1 通过 PR #1 合并，合并提交 `e590c23da6aa9c5fe0d0c3cd71250270ea265ebd`（该 SHA 只作为这一次历史事实记录，不是"main 永远等于它"）。
+Workflow V1 与 Action Engine V1 **均已合并进入 `main`**。Action Engine V1 通过 PR #1 合并，合并提交 `e590c23da6aa9c5fe0d0c3cd71250270ea265ebd`（该 SHA 只作为这一次历史事实记录，不是"main 永远等于它"）。Workflow Required Field Visibility Hardening 已通过 PR #2 合并（详见下方）。
 
 验收见 `docs/audits/2026-09-15/workflow-v1-acceptance.md` 与
 `docs/audits/2026-09-16/action-engine-v1-acceptance.md`。未部署生产环境。
 不要自行开始 V2.2 Sales Execution。
+
+Workflow Required Field Visibility Hardening **已通过 PR #2 合并进入 `main`**，合并提交
+`0612d8ad521895c7ca7bd9efe2ef2f942cd28b40`（同样只作历史事实记录）。它修掉了
+「对 Actor 隐藏的必填字段 key 会从 Runtime GET 与 direct execute 泄露」的 metadata
+side channel，验收见 `docs/audits/2026-09-16/workflow-required-field-visibility-hardening.md`。
+独立评审另发现**普通 records CREATE 路径存在同类但不同路径**的泄露（对员工 HIDDEN 的
+required 字段会以 `FIELD_REQUIRED` + `fieldErrors.<hiddenKey>` 暴露），**本轮未修，需另开
+独立 bounded 任务**，不要顺手在别的任务里改。
 
 `codex/crm-polish-followups` 已快进合并进入 `main`。
 2026-09-15 完成一轮人工验收并修复（清单见第 7 节）。
@@ -245,12 +253,14 @@ Transition 不再只是改状态，还能产生结构化业务动作：
 
 ### Action Engine V1 已知缺口（已合并在 `main`）
 
-- ~~**`requiredFieldKeys` 没有按执行人的字段权限过滤**：同一响应体可能泄露一个对该员工是隐藏的必填字段 key。~~ **已由 `c8acbf1`（Workflow Required Field Visibility Hardening）修复**：required field 为 `HIDDEN`（或不在 `access.fields` 中）时，整个 Transition 对该 Actor 不可执行 —— GET 不返回该 Transition，direct execute 返回通用 `WORKFLOW_TRANSITION_FORBIDDEN` (403)，不带 key / label / `fieldErrors`。可见 required field 的 `WORKFLOW_REQUIRED_FIELDS_MISSING` 行为不变。验收见 `docs/audits/2026-09-16/workflow-required-field-visibility-hardening.md`。运行时判断基于 `EffectiveObjectAccess.fields`，所以将来若引入 Member-level Field Permission，运行时边界也已覆盖；publish 期分析照旧不替代运行时边界。
+- **已由 `c8acbf1` 修复，并已在 `main` 中**（PR #2 合并提交 `0612d8ad521895c7ca7bd9efe2ef2f942cd28b40`，完整提交 `c8acbf1` / `3773834` / `dfe568c` / `b5c28ce`）——Workflow Required Field Visibility Hardening：required field 为 `HIDDEN`（或不在 `access.fields` 中）时，整个 Transition 对该 Actor 不可执行 —— GET 不返回该 Transition，direct execute 返回通用 `WORKFLOW_TRANSITION_FORBIDDEN` (403)，不带 key / label / `fieldErrors`。可见 required field 的 `WORKFLOW_REQUIRED_FIELDS_MISSING` 行为不变。运行时判断基于 `EffectiveObjectAccess.fields`（`Object.hasOwn` fail-closed，防 `constructor` / `__proto__` / `toString` 原型链绕过）。验收见 `docs/audits/2026-09-16/workflow-required-field-visibility-hardening.md`。
 - **publish 分析没有真正处理「只读 / 隐藏」和「有效默认值」**：对某个角色的 Transition 而言，一个实际只读或隐藏的必填字段仍然会被要求映射，映射与不映射两种配法**都发不出去**；且任何非空默认值都被当作有效。属「publish 说没问题、runtime 才会失败」的形状。
 - **六个结构性 `WORKFLOW_ACTION_*` 错误码没有定位信息**（只有一条 message，没有 transitionKey / actionKey / fieldKey）。同样是既有截断行为，本特性只是让它更有后果。
 - **`executionSummary` 目前没有任何消费者**，属可删的额外面。
 - **「重试耗尽」的确定性证明来自单元测试**，e2e 的并发 A/B 用例没走到那条分支。重试上界仍是 3 次且无退避/抖动。
 - **合并已完成，不再需要接手者决定。** Action Engine V1 已通过 PR #1 合并进 `main`。
+- **普通 records CREATE 路径的同类 metadata 泄露（独立评审 H1，本轮未修）**：某个 required 非标题字段对员工是 `HIDDEN` 时，创建记录会抛 `FIELD_REQUIRED` 并带 `fieldErrors.<hiddenFieldKey>`；且 publish 期没有规则把「required + HIDDEN」判成配置错误，员工永远无法自己补上该字段。属**另一条路径的另一类问题**（写侧校验 + publish 规则），需要独立 bounded 任务（含 blocking publish issue），不要塞进无关任务顺手改。
+- **Action 失败重抛的 `actions.<actionKey>.<fieldKey>` 通道**（`action-engine.ts`）：仅 legacy / 手写快照可达（新的 publish 分析已挡住），属残留，**不要因为本轮的 hardening 就认为该类问题已彻底关闭**。
 - **验收与偏差清单**（含 100 条累积 Minor finding 的索引）在 `docs/audits/2026-09-16/action-engine-v1-acceptance.md`，逐条台账在 `.superpowers/sdd/progress.md`。
 
 **与本分支无关的既有红灯**：`apps/api/test/auth.e2e-spec.ts` 有一条用例期望 `GET /api/v1/me/sessions` 返回数组、而接口返回分页对象（已核实早于本特性）；全仓 lint 有 57 个既有的 API 错误，而本分支自己的文件是 lint 干净的。此外 `pnpm test` **不跑 e2e**，e2e 必须单独按路径执行。
