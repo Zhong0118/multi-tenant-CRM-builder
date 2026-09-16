@@ -152,6 +152,9 @@ export async function cleanupTestFixtures(
     await admin.tenantDashboardConfiguration.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });
+    await admin.tenantInvitation.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
     await admin.tenantMember.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });
