@@ -1,5 +1,6 @@
 import type { Prisma } from '@crm/database';
 
+import type { ApiErrorCode } from '../../common/errors/api-error-code';
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type {
@@ -1209,27 +1210,139 @@ describe('WorkflowRuntimeService.execute — bounded write-conflict retry (§32,
     expect(repository.transactions).toBe(1);
   });
 
-  it('gives up after the bounded attempts and rethrows the original conflict', async () => {
+  it('rethrows every ApiException unchanged, never remapped to a conflict', async () => {
+    // §32: the mapping belongs to the exhausted write conflict alone. An
+    // ApiException is already the right answer — same object, same code, same
+    // status — and must travel untouched.
+    const cases: Array<[ApiErrorCode, number]> = [
+      ['ACTION_EXECUTION_FAILED', 400],
+      ['WORKFLOW_TRANSITION_FORBIDDEN', 403],
+      ['RECORD_NOT_FOUND', 404],
+    ];
+
+    for (const [code, status] of cases) {
+      const { service, store, repository } = fixture({
+        actions: [ASSIGN_ACTOR],
+      });
+      const failure = new ApiException(code, status);
+      jest
+        .spyOn(store, 'lockRecord')
+        .mockImplementation((): Promise<never> => Promise.reject(failure));
+
+      const thrown = await service
+        .execute(
+          employee,
+          'leads',
+          'record-1',
+          'mark-won',
+          { expectedVersion: 7 },
+          meta,
+        )
+        .catch((error: unknown) => error);
+
+      expect(thrown).toBe(failure);
+      expect((thrown as ApiException).code).toBe(code);
+      expect((thrown as ApiException).getStatus()).toBe(status);
+      // Never retried, never re-shaped into the conflict response.
+      expect(repository.transactions).toBe(1);
+    }
+  });
+
+  it('propagates a non-conflict programming error unchanged, never as a conflict', async () => {
     const { service, store, repository } = fixture({ actions: [ASSIGN_ACTOR] });
-    const conflict = writeConflict();
+    const failure = new Error('TypeError: cannot read properties of undefined');
     jest
       .spyOn(store, 'lockRecord')
-      .mockImplementation((): Promise<never> => Promise.reject(conflict));
+      .mockImplementation((): Promise<never> => Promise.reject(failure));
 
-    // No wrong success and no silent swallow: the caller sees the conflict.
-    await expect(
-      service.execute(
+    const thrown = await service
+      .execute(
         employee,
         'leads',
         'record-1',
         'mark-won',
         { expectedVersion: 7 },
         meta,
-      ),
-    ).rejects.toBe(conflict);
+      )
+      .catch((error: unknown) => error);
+
+    // A real bug must keep failing loudly instead of hiding behind a 409.
+    expect(thrown).toBe(failure);
+    expect(thrown).not.toBeInstanceOf(ApiException);
+    expect(repository.transactions).toBe(1);
+  });
+
+  it('surfaces an exhausted write conflict as RECORD_VERSION_CONFLICT (409), not a raw driver error', async () => {
+    const { service, store, repository } = fixture({ actions: [ASSIGN_ACTOR] });
+    const conflict = writeConflict();
+    jest
+      .spyOn(store, 'lockRecord')
+      .mockImplementation((): Promise<never> => Promise.reject(conflict));
+
+    const thrown = await service
+      .execute(
+        employee,
+        'leads',
+        'record-1',
+        'mark-won',
+        { expectedVersion: 7 },
+        meta,
+      )
+      .catch((error: unknown) => error);
+
+    // §32: the raw driver error is not an ApiException, so rethrowing it would
+    // reach the caller as a vague 500. Contention that outlives the bounded
+    // retry surfaces as the conflict it is.
+    expect(thrown).not.toBe(conflict);
+    expect(thrown).toBeInstanceOf(ApiException);
+    expect((thrown as ApiException).code).toBe('RECORD_VERSION_CONFLICT');
+    expect((thrown as ApiException).getStatus()).toBe(409);
+    // §36: the same clean domain conflict the losing request gets, carrying the
+    // instruction that actually applies to it.
+    expect((thrown as ApiException).message).toBe(
+      '该记录已被其他人修改，请刷新后重试。',
+    );
+
+    // No wrong success and no silent swallow: still bounded, still nothing
+    // committed by any of the three rolled-back attempts.
     expect(repository.transactions).toBe(3);
     expect(store.history).toEqual([]);
+    expect(store.audits).toEqual([]);
     expect(lastRecord(store).version).toBe(7);
+    expect(lastRecord(store).workflowStateKey).toBe('new');
+  });
+
+  it('still commits exactly once when the last attempt is the one that wins', async () => {
+    const { service, store, repository } = fixture({ actions: [ASSIGN_ACTOR] });
+    const appendAudit = store.appendAudit.bind(store);
+    let audits = 0;
+    jest.spyOn(store, 'appendAudit').mockImplementation((event) => {
+      audits += 1;
+      // The first TWO attempts die on their transition audit; the third, which
+      // is also the last, commits.
+      if (audits <= 2) return Promise.reject(writeConflict());
+      return appendAudit(event);
+    });
+
+    const result = await service.execute(
+      employee,
+      'leads',
+      'record-1',
+      'mark-won',
+      { expectedVersion: 7 },
+      meta,
+    );
+
+    expect(repository.transactions).toBe(3);
+    expect(lastRecord(store).version).toBe(8);
+    expect(result.recordVersion).toBe(8);
+    expect(store.history).toHaveLength(1);
+    expect(store.audits.map((event) => event.action)).toEqual([
+      'record.transition_executed',
+    ]);
+    expect(responseBody(result).executionSummary?.workflowExecutionId).toEqual(
+      expect.any(String),
+    );
   });
 });
 

@@ -115,7 +115,9 @@ export class WorkflowRuntimeService {
    * can deadlock (T1 holds A, T2 holds B). PostgreSQL aborts one of them with a
    * write conflict, which would otherwise surface as a vague 500. The retry
    * below re-runs the WHOLE transaction on that one error class, bounded to
-   * three attempts; every other failure propagates untouched.
+   * three attempts; every other failure propagates untouched, and a conflict
+   * that outlives all three attempts is reported as the conflict it is rather
+   * than as the raw driver error (§32 / §36).
    */
   async execute(
     context: TenantContext,
@@ -144,17 +146,23 @@ export class WorkflowRuntimeService {
         // on every attempt (so a Transition that lost the race on the version
         // now fails with RECORD_VERSION_CONFLICT instead of committing twice).
         // Anything that is not a write conflict — including every ApiException
-        // — is rethrown unchanged, and an exhausted conflict is never turned
-        // into a success or swallowed.
-        if (
-          !isWriteConflict(error) ||
-          attempt === WORKFLOW_EXECUTE_ATTEMPTS - 1
-        ) {
-          throw error;
-        }
+        // and every programming error — is rethrown untouched and is never
+        // retried. A write conflict falls through to the next attempt; when
+        // there is no next attempt the loop ends and the mapping below applies.
+        if (!isWriteConflict(error)) throw error;
       }
     }
-    throw new Error('Unreachable workflow transition retry');
+
+    // §32: only write conflicts reach this point, and only because every one of
+    // the bounded attempts lost the race. The exhausted conflict is NOT
+    // rethrown raw: a `P2010` / `P2034` is not an ApiException, so rethrowing it
+    // surfaces as the vague 500 §32 forbids. It is reported as the conflict it
+    // is — §36's own outcome for the losing request — whose existing message
+    // 「该记录已被其他人修改，请刷新后重试。」 is exactly the instruction that
+    // applies to contention which outlived its retries. An exhausted conflict is
+    // still never turned into a success and never swallowed; only its error type
+    // changes.
+    throw new ApiException('RECORD_VERSION_CONFLICT', 409);
   }
 
   /**
