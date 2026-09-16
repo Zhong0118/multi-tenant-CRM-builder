@@ -239,7 +239,14 @@ export class WorkflowRuntimeService {
           store,
           source: { objectCode, resolved, snapshot },
           actions: transition.actions,
-          execution: { workflowExecutionId, transitionKey: transition.key },
+          // §32: the resolved Transition's published label travels with the
+          // identity, so an Action failure can name the step the employee saw
+          // instead of the admin-authored keys.
+          execution: {
+            workflowExecutionId,
+            transitionKey: transition.key,
+            transitionLabel: transition.label,
+          },
           meta: { requestId: meta.requestId, ip: meta.ip },
         });
 

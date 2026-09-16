@@ -63,6 +63,8 @@ const meta = { requestId: 'req-engine', ip: '127.0.0.1' };
 const execution = {
   workflowExecutionId: 'execution-1',
   transitionKey: 'convert',
+  /** §32: the published Transition label the employee saw, not its key. */
+  transitionLabel: '转化',
 };
 
 function field(
@@ -434,6 +436,7 @@ function fixture(
       overrides: {
         context?: TenantContext;
         source?: typeof source;
+        execution?: Partial<typeof execution>;
       } = {},
     ) =>
       executeActions({
@@ -441,7 +444,7 @@ function fixture(
         context: overrides.context ?? admin,
         source: overrides.source ?? source,
         actions,
-        execution,
+        execution: { ...execution, ...overrides.execution },
         meta,
         deps,
       }),
@@ -935,7 +938,11 @@ describe('UPDATE_RECORD and ASSIGN_OWNER accumulate one source patch (§13, §14
     );
 
     expect(error.code).toBe('ACTION_EXECUTION_FAILED');
-    expect(error.message).toContain('update-source-2');
+    // §32: the step is named by its label, not by the admin-authored key.
+    expect(error.message).toBe(
+      '无法完成“转化”：步骤“更新当前记录”失败。所有变更均未保存。',
+    );
+    expect(error.message).not.toContain('update-source-2');
     expect(store.writeCount).toBe(0);
   });
 
@@ -1402,6 +1409,11 @@ describe('runtime action errors (§32)', () => {
 
     expect(error.code).toBe('RECORD_VERSION_CONFLICT');
     expect(error.getStatus()).toBe(409);
+    // The outer Source Record conflict is not an Action failure: it keeps its
+    // own code, status and body.
+    expect(error.fieldErrors).toEqual({});
+    expect(error.message).not.toContain('所有变更均未保存');
+    expect(error.message).not.toContain('转化');
   });
 
   it('keeps a programming error a programming error', async () => {
@@ -1413,7 +1425,7 @@ describe('runtime action errors (§32)', () => {
     );
   });
 
-  it('names the failing step in the message', async () => {
+  it('names the failing step by Transition and Action label, never by key (§32)', async () => {
     const { run } = fixture({
       resolveObject: objectResolver({
         [TARGET_CODE]: { canCreate: false },
@@ -1422,8 +1434,52 @@ describe('runtime action errors (§32)', () => {
 
     const error = await rejection(run([CREATE_CUSTOMER]));
 
-    expect(error.message).toContain('convert');
-    expect(error.message).toContain('create-customer');
+    // §32 punctuation, verbatim: the Transition LABEL and the Action LABEL.
+    expect(error.message).toBe(
+      '无法完成“转化”：步骤“创建 1 条记录”失败。所有变更均未保存。',
+    );
+    // §32 / Task 13: the admin-authored keys are not the employee's business.
+    expect(error.message).not.toContain('convert');
+    expect(error.message).not.toContain('create-customer');
+  });
+
+  it('prefers an admin-authored Action label when the snapshot carries one (§32)', async () => {
+    const { run } = fixture({
+      resolveObject: objectResolver({
+        [TARGET_CODE]: { canCreate: false },
+      }),
+    });
+    // V1's published Action shape has no `label`; this mirrors a snapshot that
+    // carries one, which is exactly §32's 「创建客户」 example.
+    const labelled = {
+      ...CREATE_CUSTOMER,
+      label: '创建客户',
+    } as WorkflowActionDraft;
+
+    const error = await rejection(run([labelled]));
+
+    expect(error.message).toBe(
+      '无法完成“转化”：步骤“创建客户”失败。所有变更均未保存。',
+    );
+  });
+
+  it('falls back to the raw key for a blank label instead of rendering “” (§32)', async () => {
+    const { run } = fixture({
+      resolveObject: objectResolver({
+        [TARGET_CODE]: { canCreate: false },
+      }),
+    });
+
+    // The published Transition label is required, so a blank one only reaches
+    // the engine from a hand-made snapshot; the message must stay sensible.
+    const error = await rejection(
+      run([CREATE_CUSTOMER], { execution: { transitionLabel: '  ' } }),
+    );
+
+    expect(error.message).toBe(
+      '无法完成“convert”：步骤“创建 1 条记录”失败。所有变更均未保存。',
+    );
+    expect(error.message).not.toContain('“”');
   });
 
   it('does not run later Actions after a failure', async () => {

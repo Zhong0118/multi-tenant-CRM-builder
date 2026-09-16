@@ -30,6 +30,7 @@ import type {
   DynamicRecord,
   RecordsStore,
 } from '../records/records.repository';
+import { WORKFLOW_ACTION_EFFECT_LABELS } from './action.types';
 import type {
   ActionMemberSource,
   ActionOutput,
@@ -90,6 +91,13 @@ export interface ActionRequestMeta {
 export interface ActionExecutionIdentity {
   workflowExecutionId: string;
   transitionKey: string;
+  /**
+   * §32: the published Transition's human label. A runtime failure names the
+   * Transition the employee actually saw, so the message never embeds the
+   * admin-authored key (the caller resolves the Transition, the engine does not
+   * read a Workflow Draft — §11).
+   */
+  transitionLabel: string;
 }
 
 export interface ActionSourceInput {
@@ -562,7 +570,7 @@ export async function executeActions(
         }
       }
     } catch (error) {
-      throw actionFailure(action, input.execution.transitionKey, error);
+      throw actionFailure(action, input.execution, error);
     }
   }
 
@@ -594,6 +602,12 @@ function asFieldError(fieldKey: string, error: unknown): unknown {
  * path `actions.<actionKey>.<fieldKey>`, keeping the underlying domain message
  * for that field.
  *
+ * §32's employee-facing `message` names LABELS, never the admin-authored keys:
+ * the Transition label and the failing Action's label. The keys stay in
+ * `fieldErrors`, which is the admin-facing validation path — Task 13 renders
+ * only those messages, so a key left in the prose would defeat that
+ * suppression.
+ *
  * Two errors stay untouched:
  * - `RECORD_VERSION_CONFLICT` belongs to the OUTER Source Record write, not to
  *   an Action, so it keeps its own code and status.
@@ -602,7 +616,7 @@ function asFieldError(fieldKey: string, error: unknown): unknown {
  */
 function actionFailure(
   action: WorkflowActionDraft,
-  transitionKey: string,
+  execution: ActionExecutionIdentity,
   error: unknown,
 ): unknown {
   if (error instanceof ApiException) {
@@ -636,7 +650,41 @@ function actionFailure(
       ? error.getStatus()
       : 400;
   return new ApiException('ACTION_EXECUTION_FAILED', status, {
-    message: `无法完成“${transitionKey}”：步骤“${action.key}”失败。所有变更均未保存。`,
+    message: `无法完成“${transitionLabel(execution)}”：步骤“${actionLabel(action)}”失败。所有变更均未保存。`,
     fieldErrors,
   });
+}
+
+/**
+ * §32: the Transition's published label, falling back to its key. A published
+ * Transition always carries a label, so the fallback only covers a blank one on
+ * a hand-made snapshot — never an empty `“”`.
+ */
+function transitionLabel(execution: ActionExecutionIdentity): string {
+  const label = execution.transitionLabel?.trim();
+  return label ? label : execution.transitionKey;
+}
+
+/**
+ * §32: the failing Action's label, never the admin-authored key.
+ *
+ * The published Action shape of V1 (§15) carries no `label`, so this is the
+ * chain, and it can never yield an empty `“”`:
+ *
+ * 1. a `label` on the published Action, if a snapshot ever carries one — the
+ *    admin-authored name, and exactly §32's 「创建客户」 example;
+ * 2. §31's employee-facing name of the Action TYPE, the same label the
+ *    employee confirmed the Transition against, and deliberately generic so no
+ *    Target Object, field key or mapping can leak through it;
+ * 3. the raw key, reachable only for an Action whose type is outside the five
+ *    V1 types — which no validated publication can produce, since the draft
+ *    validator rejects an unsupported type before it is ever frozen.
+ */
+function actionLabel(action: WorkflowActionDraft): string {
+  const authored = (action as { label?: unknown }).label;
+  if (typeof authored === 'string' && authored.trim().length > 0) {
+    return authored.trim();
+  }
+  const byType: string | undefined = WORKFLOW_ACTION_EFFECT_LABELS[action.type];
+  return byType?.trim() || action.key;
 }

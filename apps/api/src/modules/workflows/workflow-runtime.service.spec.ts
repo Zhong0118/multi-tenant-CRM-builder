@@ -574,6 +574,9 @@ describe('WorkflowRuntimeService.execute — §23 atomic execution', () => {
     // same transaction the repository opened.
     expect(call.context).toBe(employee);
     expect(call.execution.transitionKey).toBe('mark-won');
+    // §32: the engine gets the published Transition LABEL too, so a failure
+    // message names the step by label and never by the admin-authored key.
+    expect(call.execution.transitionLabel).toBe('标记赢单');
     expect(call.tx).toBe(tx);
   });
 
