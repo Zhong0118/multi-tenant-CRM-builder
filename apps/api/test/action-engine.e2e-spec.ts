@@ -301,7 +301,9 @@ describe('Action Engine V1 atomicity and tenant safety (e2e, real PostgreSQL)', 
       fixture.objects['foreign-secrets'],
     );
     expect(foreignSecretsBefore).toBe(1); // fixture seeds exactly one such row
-    const escalateBefore = await snapshotSource(fixture.records.dealEscalate.id);
+    const escalateBefore = await snapshotSource(
+      fixture.records.dealEscalate.id,
+    );
     const foreignRecordBefore = await snapshotSource(fixture.foreignRecordId);
 
     // (1) An Action may not resolve an object that exists only in the other
@@ -600,7 +602,8 @@ describe('Action Engine V1 atomicity and tenant safety (e2e, real PostgreSQL)', 
       }
     }
 
-    const response = await (run.http ?? Promise.reject(new Error('no request')));
+    const response = await (run.http ??
+      Promise.reject(new Error('no request')));
     const deadlocksAfter = await deadlockCount();
     console.log(
       `[T10b-i in-service] blockerSecond=${run.blockerSecond} status=${response.status} deadlocks ${deadlocksBefore} -> ${deadlocksAfter}`,
@@ -927,7 +930,9 @@ describe('Action Engine V1 atomicity and tenant safety (e2e, real PostgreSQL)', 
   async function waitForLockWaiter(timeoutMs: number): Promise<boolean> {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
-      const rows = await adminDatabase.$queryRawUnsafe<Array<{ count: number }>>(
+      const rows = await adminDatabase.$queryRawUnsafe<
+        Array<{ count: number }>
+      >(
         `SELECT count(*)::int AS count FROM pg_stat_activity
          WHERE datname = current_database()
            AND wait_event_type = 'Lock'
@@ -994,7 +999,9 @@ describe('Action Engine V1 atomicity and tenant safety (e2e, real PostgreSQL)', 
         ? { status: 'fulfilled' as const }
         : {
             status: 'rejected' as const,
-            error: result.reason,
+            // Widen the driver's rejection reason: PromiseSettledResult.reason
+            // is `any`, and RealError.error is `unknown` on purpose.
+            error: result.reason as unknown,
             originalCode: readOriginalCode(result.reason),
           },
     );
@@ -1734,10 +1741,38 @@ async function provision(database: PrismaClient): Promise<Fixture> {
     foreignRecord,
     foreignSecretRecord,
   ] = await Promise.all([
-    createRecordIn(tenant.id, objects.deals, actorA.memberId, '回滚商机', 'open', 1),
-    createRecordIn(tenant.id, objects.deals, actorA.memberId, '跨租户商机', 'open', 2),
-    createRecordIn(tenant.id, objects.deals, actorA.memberId, '共享商机', 'open', 3),
-    createRecordIn(tenant.id, objects.cases, actorA.memberId, '覆盖工单', 'open', 1),
+    createRecordIn(
+      tenant.id,
+      objects.deals,
+      actorA.memberId,
+      '回滚商机',
+      'open',
+      1,
+    ),
+    createRecordIn(
+      tenant.id,
+      objects.deals,
+      actorA.memberId,
+      '跨租户商机',
+      'open',
+      2,
+    ),
+    createRecordIn(
+      tenant.id,
+      objects.deals,
+      actorA.memberId,
+      '共享商机',
+      'open',
+      3,
+    ),
+    createRecordIn(
+      tenant.id,
+      objects.cases,
+      actorA.memberId,
+      '覆盖工单',
+      'open',
+      1,
+    ),
     createRecordIn(
       tenant.id,
       objects.vaults,
@@ -1746,11 +1781,46 @@ async function provision(database: PrismaClient): Promise<Fixture> {
       'locked',
       1,
     ),
-    createRecordIn(tenant.id, objects.ledgers, actorB.memberId, '他人台账', 'open', 1),
-    createRecordIn(tenant.id, objects.orders, actorA.memberId, '并发订单', 'open', 1),
-    createRecordIn(tenant.id, objects.handoffs, actorB.memberId, '交接单', 'open', 1),
-    createRecordIn(tenant.id, objects.pickups, actorB.memberId, '领取单 A', 'open', 1),
-    createRecordIn(tenant.id, objects.pickups, actorA.memberId, '领取单 B', 'open', 2),
+    createRecordIn(
+      tenant.id,
+      objects.ledgers,
+      actorB.memberId,
+      '他人台账',
+      'open',
+      1,
+    ),
+    createRecordIn(
+      tenant.id,
+      objects.orders,
+      actorA.memberId,
+      '并发订单',
+      'open',
+      1,
+    ),
+    createRecordIn(
+      tenant.id,
+      objects.handoffs,
+      actorB.memberId,
+      '交接单',
+      'open',
+      1,
+    ),
+    createRecordIn(
+      tenant.id,
+      objects.pickups,
+      actorB.memberId,
+      '领取单 A',
+      'open',
+      1,
+    ),
+    createRecordIn(
+      tenant.id,
+      objects.pickups,
+      actorA.memberId,
+      '领取单 B',
+      'open',
+      2,
+    ),
     createRecordIn(
       foreignTenant.id,
       objects['foreign-shared-report'],
@@ -1843,8 +1913,7 @@ function toPrismaJson(value: unknown): Prisma.InputJsonValue {
 function readOriginalCode(error: unknown): string | null {
   const meta = (error as { meta?: Record<string, unknown> } | null)?.meta;
   const driver = meta?.driverAdapterError as
-    | { cause?: { originalCode?: string } }
-    | undefined;
+    { cause?: { originalCode?: string } } | undefined;
   return driver?.cause?.originalCode ?? null;
 }
 
