@@ -42,7 +42,11 @@ side channel。
   `assertRequiredFields(...)` 之前抛出 `ApiException('WORKFLOW_TRANSITION_FORBIDDEN', 403)`
   —— 与「角色不允许」使用同一个通用错误码，不带 fieldKey、不带 label、
   不带 `fieldErrors`、不带 hidden field 计数，也不新增会暴露原因的错误码。
-- `access.fields[fieldKey] ?? 'HIDDEN'`：缺失即 `HIDDEN`（fail closed）。
+- `access.fields` 中**不存在**该 key：判定为 `HIDDEN`（fail closed）。缺失必须是
+  own-property 缺失（`!Object.hasOwn(access.fields, fieldKey)`），不能写成
+  `access.fields[fieldKey] ?? 'HIDDEN'` —— 后者对 `constructor` / `__proto__` /
+  `toString` 会取到 `Object.prototype` 的继承成员，把缺失判成可见（本轮补丁，
+  见 §4.1）。
 - 可见 required field（`EDIT` / `READ_ONLY`）为空时，行为**完全不变**：
   仍是 `WORKFLOW_REQUIRED_FIELDS_MISSING`（400），仍带 `fieldErrors.<fieldKey>`
   与人类 label。
@@ -58,32 +62,106 @@ function hasHiddenRequiredFields(
   access: EffectiveObjectAccess,
 ): boolean {
   return transition.requiredFieldKeys.some(
-    (fieldKey) => (access.fields[fieldKey] ?? 'HIDDEN') === 'HIDDEN',
+    (fieldKey) =>
+      !Object.hasOwn(access.fields, fieldKey) ||
+      access.fields[fieldKey] === 'HIDDEN',
   );
 }
 ```
+
+（上面的表达式是**本轮补丁后**的当前实现；`c8acbf1` 当时写的是
+`(access.fields[fieldKey] ?? 'HIDDEN') === 'HIDDEN'`，对 prototype 名不 fail
+closed，已在 §4.1 修正。）
 
 `assertRequiredFields()` 的 `HIDDEN` 分支按计划保留（最小 diff），对合法调用者
 已不可达；它上面新增的授权 guard 才是本轮的修复点。
 
 ## 4. 改动文件
 
-```text
-apps/api/src/modules/workflows/workflow-runtime.ts
-apps/api/src/modules/workflows/workflow-runtime.spec.ts
-```
-
-`git diff --name-only`（提交 `c8acbf1` 时）：
+本分支（`main` → HEAD）的完整改动集是 4 个文件：
 
 ```text
+HANDOFF.md
+apps/api/src/modules/workflows/workflow-runtime.spec.ts
+apps/api/src/modules/workflows/workflow-runtime.ts
+docs/audits/2026-09-16-workflow-required-field-visibility-hardening.md
+```
+
+其中**只有代码提交** `c8acbf1`（`fix: hide inaccessible workflow required fields`）
+改动 2 个文件：
+
+```text
 apps/api/src/modules/workflows/workflow-runtime.spec.ts
 apps/api/src/modules/workflows/workflow-runtime.ts
 ```
+
+其余 2 个文件（`HANDOFF.md` 与本验收文档）来自 `dfe568c`
+（`docs: record workflow field visibility hardening`）与本节下面的补丁轮。
 
 没有 `packages/contracts/**`、`packages/database/**`、`apps/web/**` 改动。
 没有迁移、没有 Prisma schema 改动、没有 contracts 重新生成。Runtime DTO 形状
 不变（`availableTransitions[].requiredFieldKeys: string[]`），只是服务端保证
 其中只可能出现当前 Actor 可见的 key。
+
+### 4.1 独立评审后的补丁轮（本轮）
+
+独立评审（`.superpowers/sdd/hardening-review.md`）的 4 条具体缺陷已在本轮修复，
+改动仍限于上面 4 个路径：
+
+1. **prototype 名 fail-closed（the real bug）**：谓词
+   `(access.fields[fieldKey] ?? 'HIDDEN') === 'HIDDEN'` 对 `constructor` /
+   `__proto__` / `toString` 这类 key 会取到 `Object.prototype` 的**继承**成员
+   （既不是 `null` 也不是 `undefined`），于是把「不在 `access.fields` 中」的
+   key 判成可见，与 §8 相矛盾。改为 own-property 判断：
+   `!Object.hasOwn(access.fields, fieldKey) || access.fields[fieldKey] === 'HIDDEN'`，
+   并在 helper 上写明「不要简化回 `??`」的原因。
+2. **删除一条无牙断言**：§5 GET 测试里
+   `expect(body).not.toContain(HIDDEN_FIELD_LABEL)` 无论实现如何都不可能失败
+   （`RuntimeWorkflowView` 从不含字段 label），已删除；保留
+   `expect(body).not.toContain('"secret"')` 这条强断言。
+3. **补 3 条测试**（原计划 2 条 + prototype 用例）：
+   空 `requiredFieldKeys: []` 仍被返回且可执行；`READ_ONLY` 必填字段缺值时
+   仍返回该 Transition 且 direct execute 仍抛
+   `WORKFLOW_REQUIRED_FIELDS_MISSING`（400，`fieldErrors` 含该字段）；
+   `requiredFieldKeys: ['constructor']` 按 §8 判为 HIDDEN。
+
+**RED / GREEN（真实输出）**：把谓词单独 `git stash` 回 `dfe568c` 的旧表达式后，
+原型用例失败；恢复后通过。两次运行的命令与结果：
+
+```bash
+pnpm --filter @crm/api test -- workflow-runtime.spec -t "prototype name"
+```
+
+```text
+# 旧谓词（`?? 'HIDDEN'`）
+  ● workflow runtime required field visibility (§4–§8) › treats a required prototype name absent from access.fields as HIDDEN (§8)
+    Expected value: not "prototype-transition"
+    Received array:     ["visible-transition", "prototype-transition", "empty-transition"]
+Test Suites: 1 failed, 68 passed, 69 total
+Tests:       1 failed, 909 passed, 910 total
+
+# 恢复修复后（同一条命令）
+Test Suites: 69 passed, 69 total
+Tests:       910 passed, 910 total
+```
+
+（该命令的 `-t` 过滤在 pnpm 下未生效，因此实际跑的是整个 `@crm/api` 测试集；
+两次运行的差值正好是这一条新测试。）
+
+补丁轮后的聚焦计数：
+
+```bash
+pnpm --filter @crm/api test -- workflow-runtime
+```
+
+```text
+Test Suites: 2 passed, 2 total
+Tests:       54 passed, 54 total
+```
+
+分套件实测：`workflow-runtime.spec.ts` 20（上轮 17 + 本轮新增 3 条：prototype、
+空必填、READ_ONLY），`workflow-runtime.service.spec.ts` 34。上轮基线 51，
+本轮 +3 = 54。
 
 ## 5. TDD 过程（RED → GREEN，真实输出）
 
@@ -153,13 +231,18 @@ Time:        0.336 s, estimated 1 s
 
 | 用例 | 断言 |
 | --- | --- |
-| GET projection（§5） | `visible-transition` 仍在且 `requiredFieldKeys` 仍是 `['amount']`；`hidden-transition` 整个不在；序列化 body 不含 `"secret"`、不含 hidden 字段 label `内部评级` |
+| GET projection（§5） | `visible-transition` 仍在且 `requiredFieldKeys` 仍是 `['amount']`；`hidden-transition` 整个不在；序列化 body 不含 `"secret"`（原先还有一条 `内部评级` label 断言，实测无论如何都不可能失败，本轮已删除，见 §4.1） |
 | Direct execute（§6） | `WORKFLOW_TRANSITION_FORBIDDEN` + `getStatus() === 403` + `fieldErrors === {}`；错误体不含 `secret`、不含 `内部评级`、不含 `WORKFLOW_REQUIRED_FIELDS_MISSING` |
 | Unknown access key（§8） | `legacy-secret` 不在 `access.fields` → GET 不返回该 Transition，body 不含 `legacy-secret`；POST 同样是 403 且错误体不泄露该 key |
 | Visible missing regression（§7） | `amount = EDIT` 且值为空 → GET 仍返回 Transition；POST 仍 `WORKFLOW_REQUIRED_FIELDS_MISSING`（400），`Object.keys(fieldErrors) === ['amount']`，message 仍含 label `预计金额` |
 | Admin regression（§13） | `resolveEffectiveAccess({ role: 'TENANT_ADMIN' })` 下 `fields.secret === 'EDIT'`，GET 仍返回 `hidden-transition`，POST 可正常解析；同时 `legacy-secret`（根本不是已发布字段）对 Admin 也按 `HIDDEN` 拒绝 |
 
 ## 6. 聚焦验证结果（Task 3）
+
+> 下表是 `c8acbf1` + `dfe568c` 当时的原始记录；本轮补丁把
+> `workflow-runtime.spec.ts` 从 17 条加到 20 条，因此现在同一条命令是
+> `Test Suites: 5 passed` / `Tests: 272 passed`（269 + 新增 3 条），
+> `pnpm --filter @crm/api typecheck` 仍 **exit 0**。
 
 | 命令 | 结果 |
 | --- | --- |
@@ -168,9 +251,10 @@ Time:        0.336 s, estimated 1 s
 | `pnpm typecheck`（全仓，可选） | exit 0 |
 | `pnpm contracts:check` | exit 0，无漂移（`packages/contracts/openapi.json` / `packages/contracts/src/generated/openapi.ts` 未发生变化） |
 | `npx prettier --check` + `npx eslint`（仅两个改动文件） | 均 exit 0，本分支自己的文件 lint 干净 |
-| `git diff --name-only` | 仅上面 §4 的两个文件 |
+| `git diff --name-only` | 见 §4：本分支完整改动集 4 个路径（其中 `c8acbf1` 当时为 2 个） |
 
 基线聚焦套件（改动前）`workflow-runtime` 2 套件 46 测试全绿，未出现既有红灯。
+§4.1 补丁轮后基线是 51，现为 54。
 
 ## 7. 已知非目标（本轮明确不做）
 
@@ -198,5 +282,8 @@ V2.2 / Sales Execution / Automation / Agent
   按计划取「最小安全 diff」。若后续重构该函数，需保留 fail-closed 语义。
 - `READ_ONLY` 必填字段为空导致用户无法自行补齐，仍是另一个 publication/UX
   议题，不在本轮范围。
+- 独立评审还记录了两条**同类但不在本分支范围**的残留信息通道（普通记录路径的
+  `FIELD_REQUIRED` `fieldErrors`、Action 失败重抛的 `ACTION_EXECUTION_FAILED`
+  `fieldErrors`），本轮明确不修、只记录，需各自单独开任务。
 - 本文件按任务给定的路径写在 `docs/audits/` 根下，仓库既有约定是
   `docs/audits/<日期>/<名称>.md`；此处遵循任务显式给定的文件名，未擅自改路径。

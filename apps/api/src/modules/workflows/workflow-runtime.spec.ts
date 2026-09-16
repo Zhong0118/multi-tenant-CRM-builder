@@ -436,7 +436,11 @@ function configuredTransition(
  * - `visible-transition` requires `amount`, which the employee has as EDIT;
  * - `hidden-transition` requires `secret`, which the employee has as HIDDEN;
  * - `legacy-transition` requires `legacy-secret`, a key that is not a published
- *   field at all and therefore absent from `access.fields`.
+ *   field at all and therefore absent from `access.fields`;
+ * - `prototype-transition` requires `constructor`, which is absent from
+ *   `access.fields` but present on the prototype chain — the case an `??`-based
+ *   membership test gets wrong;
+ * - `empty-transition` requires nothing, which must stay available.
  */
 function visibilitySchema(): PublishedObjectSchema {
   const base = schema();
@@ -450,6 +454,8 @@ function visibilitySchema(): PublishedObjectSchema {
       configuredTransition('visible-transition', '推进可见', ['amount']),
       configuredTransition('hidden-transition', '推进隐藏', ['secret']),
       configuredTransition('legacy-transition', '推进遗留', ['legacy-secret']),
+      configuredTransition('prototype-transition', '推进原型', ['constructor']),
+      configuredTransition('empty-transition', '推进空必填', []),
     ],
   };
   return {
@@ -545,7 +551,6 @@ describe('workflow runtime required field visibility (§4–§8)', () => {
 
     const body = JSON.stringify(view);
     expect(body).not.toContain('"secret"');
-    expect(body).not.toContain(HIDDEN_FIELD_LABEL);
   });
 
   it('refuses a direct execute of a HIDDEN required field with a generic 403 (§6)', () => {
@@ -591,6 +596,94 @@ describe('workflow runtime required field visibility (§4–§8)', () => {
     expect(exception.code).toBe('WORKFLOW_TRANSITION_FORBIDDEN');
     expect(exception.getStatus()).toBe(403);
     expect(errorBody(exception)).not.toContain('legacy-secret');
+  });
+
+  it('treats a required prototype name absent from access.fields as HIDDEN (§8)', () => {
+    // `constructor` is not an own entry of `access.fields`, but the object
+    // literal inherits `Object.prototype.constructor`, so a membership test
+    // written with `??` sees a value instead of `undefined` and judges this
+    // required key VISIBLE. §8 says an absent key is HIDDEN, unconditionally.
+    const employeeAccess = employeeVisibilityAccess();
+    expect(Object.hasOwn(employeeAccess.fields, 'constructor')).toBe(false);
+    expect(employeeAccess.fields['constructor']).toBeDefined();
+
+    const view = runtimeWorkflowView({
+      schema: visibilitySchema(),
+      access: employeeAccess,
+      role: 'EMPLOYEE',
+      record: visibilityRecord(),
+    });
+    const keys = view.availableTransitions.map((item) => item.key);
+
+    expect(keys).toContain('empty-transition');
+    expect(keys).not.toContain('prototype-transition');
+    expect(JSON.stringify(view)).not.toContain('constructor');
+
+    const exception = executeVisibilityTransition({
+      schema: visibilitySchema(),
+      access: employeeAccess,
+      role: 'EMPLOYEE',
+      record: visibilityRecord(),
+      transitionKey: 'prototype-transition',
+    });
+    expect(exception.code).toBe('WORKFLOW_TRANSITION_FORBIDDEN');
+    expect(exception.getStatus()).toBe(403);
+    expect(errorBody(exception)).not.toContain('constructor');
+  });
+
+  it('still offers and executes a transition that requires no field at all (§7)', () => {
+    const input = {
+      schema: visibilitySchema(),
+      access: employeeVisibilityAccess(),
+      role: 'EMPLOYEE' as const,
+      record: visibilityRecord(),
+    };
+
+    // An empty required list must not be filtered out: the predicate is a
+    // `.some()`, so "no required fields" stays available exactly as before.
+    expect(
+      runtimeWorkflowView(input).availableTransitions.map((item) => item.key),
+    ).toContain('empty-transition');
+
+    expect(
+      resolveExecutableTransition({
+        ...input,
+        transitionKey: 'empty-transition',
+      }),
+    ).toMatchObject({
+      key: 'empty-transition',
+      fromStateKey: 'new',
+      toStateKey: 'won',
+    });
+  });
+
+  it('treats a READ_ONLY required field as visible, with its normal missing-value error (§7)', () => {
+    const readOnlyAccess = access({
+      updateScope: 'ALL',
+      fields: { name: 'EDIT', amount: 'READ_ONLY', secret: 'HIDDEN' },
+    });
+    expect(readOnlyAccess.fields.amount).toBe('READ_ONLY');
+    const input = {
+      schema: visibilitySchema(),
+      access: readOnlyAccess,
+      role: 'EMPLOYEE' as const,
+      // `amount` is READ_ONLY for this Actor and its record value is absent.
+      record: visibilityRecord({ values: { name: '张三', secret: 'A' } }),
+    };
+
+    // §7: READ_ONLY counts as visible, so the Transition is still offered...
+    expect(
+      runtimeWorkflowView(input).availableTransitions.map((item) => item.key),
+    ).toContain('visible-transition');
+
+    // ...and direct execute still reports the ordinary, actionable field error.
+    const exception = executeVisibilityTransition({
+      ...input,
+      transitionKey: 'visible-transition',
+    });
+    expect(exception.code).toBe('WORKFLOW_REQUIRED_FIELDS_MISSING');
+    expect(exception.getStatus()).toBe(400);
+    expect(Object.keys(exception.fieldErrors)).toEqual(['amount']);
   });
 
   it('keeps the missing-value error for a visible required field (§7)', () => {

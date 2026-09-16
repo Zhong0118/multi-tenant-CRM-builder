@@ -322,6 +322,16 @@ function stateByKey(
  * and the POST authorization in `resolveExecutableTransition()` — share this one
  * predicate so the read rule and the write rule cannot drift apart.
  *
+ * Do NOT "simplify" the membership test back to
+ * `(access.fields[fieldKey] ?? 'HIDDEN') === 'HIDDEN'`. `access.fields` is an
+ * object literal built by the permission layer, so it inherits
+ * `Object.prototype`: for a required key like `constructor`, `__proto__` or
+ * `toString`, `access.fields[fieldKey]` returns the INHERITED member — neither
+ * `null` nor `undefined` — and `??` therefore reports the key as visible, which
+ * would offer and execute a Transition whose required field is not in the map at
+ * all. `Object.hasOwn` asks the question §8 actually means: absent from
+ * `access.fields` is unconditionally HIDDEN.
+ *
  * It is intentionally module-private: the security rule is a property of the
  * Runtime view, not a new public API, and `workflow-runtime.spec.ts` exercises
  * it through both callers.
@@ -331,7 +341,9 @@ function hasHiddenRequiredFields(
   access: EffectiveObjectAccess,
 ): boolean {
   return transition.requiredFieldKeys.some(
-    (fieldKey) => (access.fields[fieldKey] ?? 'HIDDEN') === 'HIDDEN',
+    (fieldKey) =>
+      !Object.hasOwn(access.fields, fieldKey) ||
+      access.fields[fieldKey] === 'HIDDEN',
   );
 }
 
