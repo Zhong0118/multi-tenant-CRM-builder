@@ -1,7 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Empty, Space, Typography } from "antd";
+import { Alert, Button, Empty, Modal, Space, Typography } from "antd";
+import { useState } from "react";
 
 import { toApiError } from "@/lib/api/api-error";
 import { StatusTag } from "@/components/workbench/status-tag";
@@ -9,7 +10,7 @@ import {
   workflowApi as defaultWorkflowApi,
   type WorkflowApi,
 } from "@/features/objects/workflow-api";
-import type { RuntimeWorkflow } from "@/features/objects/workflow-types";
+import type { RuntimeAvailableTransition } from "@/features/objects/workflow-types";
 
 import styles from "./records.module.css";
 
@@ -31,6 +32,13 @@ export function RecordWorkflowPanel({
   api = defaultWorkflowApi,
 }: RecordWorkflowPanelProps) {
   const queryClient = useQueryClient();
+  /**
+   * §31: the Transition awaiting confirmation. It is the transition the employee
+   * actually saw, so the modal keeps rendering that static summary even if the
+   * runtime query refetches behind it.
+   */
+  const [confirming, setConfirming] =
+    useState<RuntimeAvailableTransition | null>(null);
   const runtimeKey = [
     "workspace",
     tenantCode,
@@ -73,6 +81,30 @@ export function RecordWorkflowPanel({
 
   const view = runtime.data;
   const executeError = execute.error ? toApiError(execute.error) : undefined;
+  /**
+   * §32: why the failing step failed, which the message alone cannot say — it
+   * only names the step and the rollback. Only the messages are rendered: the
+   * keys are API paths of the form `actions.<actionKey>.<fieldKey>`, so showing
+   * them would disclose an Action's internal key. Duplicates are collapsed
+   * because several mappings can fail for the same reason.
+   */
+  const failureReasons = executeError
+    ? [...new Set(Object.values(executeError.fieldErrors).flat())]
+    : [];
+
+  /**
+   * §31: a Transition that will run Actions is confirmed first; one that runs
+   * none keeps today's single click. The confirmation is static — it repeats the
+   * server's effect labels and states what will be attempted, never what will
+   * succeed, because the final decision belongs to the Execute API.
+   */
+  function requestTransition(transition: RuntimeAvailableTransition) {
+    if (transition.effects.length === 0) {
+      execute.mutate(transition.key);
+      return;
+    }
+    setConfirming(transition);
+  }
 
   return (
     <section className={styles.detailMeta}>
@@ -95,13 +127,33 @@ export function RecordWorkflowPanel({
               loading={
                 execute.isPending && execute.variables === transition.key
               }
-              onClick={() => execute.mutate(transition.key)}
+              onClick={() => requestTransition(transition)}
             >
               {transition.label}
             </Button>
           ))}
         </Space>
       ) : null}
+
+      <Modal
+        title={confirming ? `执行“${confirming.label}”后将：` : undefined}
+        open={confirming !== null}
+        okText="确认执行"
+        cancelText="取消"
+        onCancel={() => setConfirming(null)}
+        onOk={() => {
+          const transitionKey = confirming?.key;
+          setConfirming(null);
+          if (transitionKey) execute.mutate(transitionKey);
+        }}
+      >
+        <ul>
+          {confirming?.effects.map((effect, index) => (
+            <li key={`${effect.type}-${index}`}>{effect.label}</li>
+          ))}
+        </ul>
+        <p>所有操作将同时成功或全部取消。</p>
+      </Modal>
 
       {executeError ? (
         <Alert
@@ -111,6 +163,15 @@ export function RecordWorkflowPanel({
             executeError.code === "RECORD_VERSION_CONFLICT"
               ? "记录已被其他人更新，请刷新后再操作。"
               : executeError.message
+          }
+          description={
+            failureReasons.length > 0 ? (
+              <ul>
+                {failureReasons.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            ) : undefined
           }
         />
       ) : null}

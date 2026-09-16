@@ -241,17 +241,47 @@ export interface RuntimeWorkflowState {
   isTerminal: boolean;
 }
 
+/**
+ * §31: one static effect of a Transition. `label` is the API's generic,
+ * type-only label (e.g. 「创建 1 条记录」) — it deliberately names no Target
+ * Object, field key or mapping, so the employee confirmation can render it
+ * verbatim without disclosing the Action's configuration.
+ */
+export interface RuntimeTransitionEffect {
+  type: WorkflowActionType;
+  label: string;
+}
+
+/**
+ * §31: what an executed Transition actually did. Additive to the Runtime
+ * Workflow View (§35) and returned by the Execute API only — a read never
+ * carries one. The panel mirrors it so the response type stays truthful; it
+ * renders nothing from it.
+ */
+export interface RuntimeExecutionSummary {
+  workflowExecutionId: string;
+  transitionKey: string;
+  actions: RuntimeTransitionEffect[];
+}
+
 export interface RuntimeAvailableTransition {
   key: string;
   label: string;
   toState?: { key: string; label: string };
   requiredFieldKeys: string[];
+  /**
+   * §31: the static Effect Summary, in execution order. Required, not optional:
+   * the API always projects it and normalizes a Transition without Actions to
+   * `[]`, so a consumer can read it without a fallback.
+   */
+  effects: RuntimeTransitionEffect[];
 }
 
 export interface RuntimeWorkflow {
   currentState: RuntimeWorkflowState | null;
   availableTransitions: RuntimeAvailableTransition[];
   recordVersion: number;
+  executionSummary?: RuntimeExecutionSummary;
 }
 
 export interface WorkflowHistoryItem {
