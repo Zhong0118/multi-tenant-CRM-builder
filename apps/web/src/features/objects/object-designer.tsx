@@ -506,6 +506,7 @@ export function ObjectDesigner({
               tenantCode={tenantCode}
               draft={draft}
               onObjectVersion={setDraft}
+              objectApi={api}
             />
           ) : null}
 

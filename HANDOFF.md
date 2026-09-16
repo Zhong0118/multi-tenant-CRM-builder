@@ -1,10 +1,13 @@
 # 多租户 CRM Builder 接手说明
 
-更新时间：2026-09-15
+更新时间：2026-09-16
 
-`main` 与 `origin/main` 是当前开发基线。Workflow V1 已快进合并进入 `main` 并推送。**不要把某次 `git log -1` 的输出写死进本文。**
+`main` 与 `origin/main` 是当前开发基线。**不要把某次 `git log -1` 的输出写死进本文。**
+Action Engine V1 的代码**不在 `main` 上**：它存在于分支 `feat/action-engine-v1`（worktree `.worktrees/action-engine-v1`），**已推送 `origin`、未合并进 `main`**。开 PR 的入口：`https://github.com/Zhong0118/multi-tenant-CRM-builder/pull/new/feat/action-engine-v1`。
 
-验收见 `docs/audits/2026-09-15/workflow-v1-acceptance.md`。未部署生产环境。不要自行开始 Action Engine。
+验收见 `docs/audits/2026-09-15/workflow-v1-acceptance.md`（Workflow V1，已在 `main`）与
+`docs/audits/2026-09-16/action-engine-v1-acceptance.md`（Action Engine V1，在分支上）。未部署生产环境。
+不要自行开始 V2.2 Sales Execution。
 
 `codex/crm-polish-followups` 已快进合并进入 `main`。
 2026-09-15 完成一轮人工验收并修复（清单见第 7 节）。
@@ -20,6 +23,7 @@
    - `chat会话.md`
    - `.superpowers/sdd/2026-08-26-platform-business-template-designer/progress.md`
 3. `main` 与 `origin/main` 已同步，含 Workflow V1。不要 reset、rebase、强推或部署。推送要等用户明确要求。
+   `feat/action-engine-v1` 已推送 `origin`（`origin/feat/action-engine-v1`），但**未合并进 `main`**；合不合并、何时合并由用户决定，不要自行快进或合并。
 4. 仓库存在 `.codegraph/`，理解代码时先运行 `codegraph explore "问题或符号"`。
 5. 用户要求快速实现。每个 Bug 只保留一个能复现用户症状的聚焦验证；不要反复跑全仓测试或多轮审查。
 
@@ -110,6 +114,19 @@ git log -10 --oneline
 - Record Detail 展示当前状态、当前用户可执行 Transition 和流程历史。普通 PATCH 不能改流程状态。
 - 独立测试对象 `workflow-check` 已在本地 nebula-demo 发布。管理员与员工（赵晨）均已走通新建记录 → 初始状态 → 执行 Transition。员工默认必须打开「可以查看」才会出现在导航中。
 
+### Workflow Action Engine（**在分支 `feat/action-engine-v1`，已推送 `origin`、未合并进 `main`、未部署**）
+
+Transition 不再只是改状态，还能产生结构化业务动作：
+
+- Transition 草稿带 typed `actions[]`（五类），有一套严格草稿校验；Actions 随对象 Publish 一起冻结进 publication snapshot，旧 publication 读取时补成空数组，保持向后兼容。
+- 迁移 `0018_workflow_actions` 只给既有表加一列（JSONB，数组 CHECK），**不新增表、不新增 RLS Policy、不新增 GRANT**，也没有 ActionExecution 表。它只被应用到独立测试库 5433。
+- 事务架构：一次 Transition 是**一个租户事务**；Action Engine 自己不开事务、也不写 Source，它只累积 Source patch，由调用方在**一次**写入里连同下一个流程状态和 `version + 1` 一起落库。Source 的这次写入走 `RecordsStore.applyTransition`（**不加** ACTIVE-owner 锁），普通记录更新走 `applyRecordPatch`（**会**加锁）—— 两者共用同一条写语句，**故意保持为两个意图，不要合并**。
+- 五类 Action：`CREATE_RECORD`、`UPDATE_RECORD`（只改当前 Source）、`CREATE_RELATION`、`CREATE_FOLLOW_UP`、`ASSIGN_OWNER`（Source 的负责人改为执行人）。引用只能指向 `SOURCE_RECORD` 或前序 Action 的输出。
+- 对象设计器里可编辑 Action；员工点带 Action 的 Transition 先看到静态效果清单确认，再执行；执行失败时文案用人类标签点名失败的步骤，并明确「所有变更均未保存」。
+- 同一次 Transition 的全部变更**同时成功或全部回滚**；成功的 audit 共享一个 `workflowExecutionId`。
+- 已用真实 PostgreSQL 证明：中途失败零残留回滚、权限继承与 Member Override 拒绝整条回滚、同一记录并发得到一个成功一个 `RECORD_VERSION_CONFLICT`、真实 `40P01` 死锁被有界重试消化且只提交一次、跨租户 RLS 隔离；并用真实浏览器走通成功 / 回滚 / 员工 / 错误四项。
+- 验收事实、偏差与已知缺口见 `docs/audits/2026-09-16/action-engine-v1-acceptance.md`。
+
 ### 权限事实
 
 - “员工默认”是对象发布快照中的 `EMPLOYEE` 角色策略。
@@ -170,7 +187,13 @@ git log -10 --oneline
 - API：`http://localhost:3001/`
 - PostgreSQL：本机 5432（Homebrew 与 Docker 都可能占用该端口，以当前 `.env` 为准）
 - Redis：端口 6379
-- 已应用迁移：`0017_workflow_state_machine`（本地 Homebrew 5432；独立测试库 5433 在合并前收口时已 migrate 并跑通 workflow RLS 3 项）
+- 迁移：`main` 上最新是 `0017_workflow_state_machine`（本地 Homebrew 5432）。Action Engine 分支新增 `0018_workflow_actions`，**只应用到了独立测试库 5433**（`TEST_DATABASE_ADMIN_URL`）；本轮没有连接 5432，所以 `0018` 在 5432 上的状态未经验证。
+
+独立测试库 5433（`compose.test.yaml`，库名 `crm_test`）当前保存着 Action Engine 的**已发布验收夹具**，不是空库：
+
+- 演示租户 `nebula-demo`（ACTIVE）与 4 个已发布对象：`process-source`、`process-source-employee`、`process-target-a`、`process-target-b`。
+- 一件**刻意保留**的夹具：员工周岚（`18800001007`）在 `process-target-b` 上有 Member Override `可以新建记录 = 关`，用于复现回滚走查。要还原，打开 `/workspace/nebula-demo/members/e4f8811a-cab4-4f2e-9492-7b7a2e4c48ba/access`，对 `process-target-b` 选「使用员工默认」并保存。
+- 一个**孤儿用户** `+8613911112222`（`memberships = 0`），来自一次失败的 auth spec 复现，无害但可清理。
 
 确定性演示租户：
 
@@ -203,6 +226,18 @@ git log -10 --oneline
 已知既有失败已全部清零。此前 `apps/api/src/architecture.spec.ts` 因 `dashboards.repository.ts` 运行时导入 ESM 的 `@crm/database` 而报 `SyntaxError: Unexpected token 'export'`，现在该 spec 用 `jest.mock('@crm/database', …)` 处理（Prisma 是运行时值，`import type` 和 `moduleNameMapper` 都不成立）。
 
 2026-09-15 全量 `pnpm test` 退出码 0：API 51 套件 403 测试、Web 63 文件 360 测试、contracts 7、database 6、tenant-templates 2、worker 2。
+
+### Action Engine V1 已知缺口（在 `feat/action-engine-v1` 分支上，未合并）
+
+- **`requiredFieldKeys` 没有按执行人的字段权限过滤**：同一响应体可能泄露一个对该员工是隐藏的必填字段 key。已核实是早于本特性的既有问题，需要独立任务修。Member Override 会在 publish 之后动态改变字段权限，所以 publish 期分析挡不住它。
+- **publish 分析没有真正处理「只读 / 隐藏」和「有效默认值」**：对某个角色的 Transition 而言，一个实际只读或隐藏的必填字段仍然会被要求映射，映射与不映射两种配法**都发不出去**；且任何非空默认值都被当作有效。属「publish 说没问题、runtime 才会失败」的形状。
+- **六个结构性 `WORKFLOW_ACTION_*` 错误码没有定位信息**（只有一条 message，没有 transitionKey / actionKey / fieldKey）。同样是既有截断行为，本特性只是让它更有后果。
+- **`executionSummary` 目前没有任何消费者**，属可删的额外面。
+- **「重试耗尽」的确定性证明来自单元测试**，e2e 的并发 A/B 用例没走到那条分支。重试上界仍是 3 次且无退避/抖动。
+- **合并不由接手者决定。** 分支已推送 `origin`，但**未合并进 `main`**；要合并必须由用户明确要求。
+- 分支的**验收与偏差清单**（含 100 条累积 Minor finding 的索引）在 `docs/audits/2026-09-16/action-engine-v1-acceptance.md`，逐条台账在 `.superpowers/sdd/progress.md`。
+
+**与本分支无关的既有红灯**：`apps/api/test/auth.e2e-spec.ts` 有一条用例期望 `GET /api/v1/me/sessions` 返回数组、而接口返回分页对象（已核实早于本特性）；全仓 lint 有 57 个既有的 API 错误，而本分支自己的文件是 lint 干净的。此外 `pnpm test` **不跑 e2e**，e2e 必须单独按路径执行。
 
 ### 2026-09-15 验收修复（提交范围 `f0b3cc6..227e8d9`）
 
@@ -320,6 +355,10 @@ Worker 进程可以连接 Redis，但没有注册业务队列。
 8. `docs/superpowers/specs/2026-09-15-workflow-v1-design.md`
 9. `docs/superpowers/plans/2026-09-15-workflow-v1-implementation.md`
 10. `docs/audits/2026-09-15/workflow-v1-acceptance.md`
+11. `docs/superpowers/specs/2026-09-16-action-engine-v1-design.md`
+12. `docs/superpowers/plans/2026-09-16-action-engine-v1-implementation.md`
+13. `docs/superpowers/specs/2026-09-16-action-engine-v1-compatibility-review.md`
+14. `docs/audits/2026-09-16/action-engine-v1-acceptance.md`
 
 关键实现入口：
 
@@ -327,6 +366,13 @@ Worker 进程可以连接 Redis，但没有注册业务队列。
 - `apps/api/src/modules/objects/object-publication.policy.ts`
 - `apps/api/src/modules/workflows/workflow-admin.service.ts`
 - `apps/api/src/modules/workflows/workflow-runtime.ts`
+- `apps/api/src/modules/workflows/workflow-runtime.service.ts`
+- `apps/api/src/modules/actions/action-engine.ts`
+- `apps/api/src/modules/actions/action-draft.policy.ts`
+- `apps/api/src/modules/actions/action-publication.policy.ts`
+- `apps/api/src/modules/actions/action-value-resolver.ts`
+- `apps/api/src/modules/records/record-command.ts`
+- `apps/api/src/modules/records/records.repository.ts`
 - `apps/api/src/modules/records/records.service.ts`
 - `apps/api/src/modules/dashboards/dashboard-engine.ts`
 - `apps/api/src/modules/dashboards/dashboards.service.ts`
@@ -353,8 +399,12 @@ HANDOFF.md 与 docs/superpowers/plans/2026-09-01-productization-follow-up.md。
 - .superpowers/sdd/2026-08-26-platform-business-template-designer/progress.md
 
 `main` 与 `origin/main` 已同步，含 Workflow V1。不要 reset、rebase、强推或部署。
+Action Engine V1 已完成并验收，在**已推送 `origin`、未合并进 `main`** 的分支 `feat/action-engine-v1` 上：
+不要自行合并，等用户明确要求。分支上的验收文档见 `docs/audits/2026-09-16/action-engine-v1-acceptance.md`。
 
-P0–P5 主干已经落地。P7 表管理主干已齐。不要自行开始 Action Engine。
+P0–P5 主干已经落地。P7 表管理主干已齐。Workflow V1 与 Action Engine V1 的代码都已存在，
+不要重新实现它们。**下一个阶段 V2.2 Sales Execution 尚未批准，不要自行开始**（Trigger /
+Automation / Dedup / Notification / Template Upgrade / Agent 同样不要开始）。
 短信与 AI 按用户要求暂缓。
 
 第一轮页面验收已覆盖：业务对象设计器、记录列表与权限边界、成员覆盖、离职交接、

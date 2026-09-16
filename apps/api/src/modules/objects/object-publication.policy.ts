@@ -1,4 +1,5 @@
 import {
+  isPublishedFieldType,
   type JsonValue,
   type PublishedDataScope,
   type PublishedField,
@@ -10,6 +11,11 @@ import {
   compileObjectConfiguration,
 } from './object-configuration.policy';
 import { ApiException } from '../../common/errors/api.exception';
+import {
+  analyzeActionPublication,
+  type ActionPublicationSchema,
+  type ActionPublicationTarget,
+} from '../actions/action-publication.policy';
 import { validateWorkflowDraft } from '../workflows/workflow-draft.policy';
 import type { WorkflowDraft } from '../workflows/workflow.types';
 
@@ -74,12 +80,26 @@ export interface PublicationDraft {
   missingRequiredValueCounts?: Record<string, number>;
   workflow?: WorkflowDraft | null;
   workflowStateRecordCounts?: Record<string, number>;
+  /**
+   * §25/§26: the CURRENT Active Publications of the Workflow Actions' Target
+   * Objects, loaded by the caller inside the same tenant transaction. The
+   * policy never queries; a missing entry is reported as an invalid target.
+   */
+  actionTargets?: ReadonlyMap<string, ActionPublicationTarget>;
 }
 
 export interface PublicationIssue {
   code: string;
   message: string;
   fieldKey?: string;
+  /**
+   * §34: the Transition and Action an Action-originated issue belongs to, so
+   * the UI can locate the offending step instead of parsing the message (two
+   * Transitions can produce byte-identical text). Optional: every non-action
+   * workflow issue (states, transitions, required fields) has no Action.
+   */
+  transitionKey?: string;
+  actionKey?: string;
 }
 
 export interface PublicationAnalysis {
@@ -181,8 +201,9 @@ function analyzeWorkflowPublication(
     .filter((field) => field.status === 'ACTIVE')
     .map((field) => field.fieldKey);
   const fieldAccess = input.employeeAccess?.fields ?? {};
+  let normalized;
   try {
-    validateWorkflowDraft(workflow, { knownFieldKeys });
+    normalized = validateWorkflowDraft(workflow, { knownFieldKeys });
   } catch (error) {
     const fieldErrors =
       error instanceof ApiException ? error.fieldErrors : undefined;
@@ -191,16 +212,14 @@ function analyzeWorkflowPublication(
       : undefined;
     return [
       {
-        code: first?.includes('必填字段')
-          ? 'WORKFLOW_REQUIRED_FIELD_UNKNOWN'
-          : 'WORKFLOW_INVALID_DRAFT',
+        code: publicationIssueCode(error, first),
         message: first ?? '流程配置不合法，暂时不能发布。',
       },
     ];
   }
 
   const issues: PublicationIssue[] = [];
-  for (const transition of workflow.transitions) {
+  for (const transition of normalized.transitions) {
     if (!transition.allowedRoles.includes('EMPLOYEE')) continue;
     for (const fieldKey of transition.requiredFieldKeys) {
       if ((fieldAccess[fieldKey] ?? 'HIDDEN') === 'HIDDEN') {
@@ -225,7 +244,69 @@ function analyzeWorkflowPublication(
       });
     }
   }
+
+  // §25/§26: the structural Action rules were already enforced above by the
+  // draft validator; this adds only the cross-object rules, against the CURRENT
+  // Target Object publications the caller loaded.
+  issues.push(
+    ...analyzeActionPublication({
+      source: {
+        code: input.object.code,
+        schema: toActionPublicationSchema(input),
+      },
+      transitions: normalized.transitions.map((transition) => ({
+        key: transition.key,
+        allowedRoles: transition.allowedRoles,
+        actions: transition.actions ?? [],
+      })),
+      targets: input.actionTargets ?? new Map(),
+    }),
+  );
   return issues;
+}
+
+/**
+ * §34: a structurally invalid Action keeps its own stable code instead of being
+ * flattened into the generic draft code, so the designer can locate the exact
+ * reason (limit, duplicate key, forward reference, output, source patch).
+ */
+function publicationIssueCode(
+  error: unknown,
+  firstMessage: string | undefined,
+): string {
+  if (error instanceof ApiException) {
+    const code: string = error.code;
+    if (code.startsWith('WORKFLOW_ACTION_')) return code;
+  }
+  return firstMessage?.includes('必填字段')
+    ? 'WORKFLOW_REQUIRED_FIELD_UNKNOWN'
+    : 'WORKFLOW_INVALID_DRAFT';
+}
+
+/**
+ * The Source Object exactly as this publication will freeze it: active fields
+ * of a publishable type, plus the operator's employee policy.
+ */
+function toActionPublicationSchema(
+  input: PublicationDraft,
+): ActionPublicationSchema {
+  return {
+    fields: input.fields.flatMap((field) =>
+      field.status === 'ACTIVE' && isPublishedFieldType(field.type)
+        ? [
+            {
+              fieldKey: field.fieldKey,
+              type: field.type,
+              required: field.required,
+              defaultValue: field.defaultValue,
+              config: field.config,
+              isSystem: field.isSystem,
+            },
+          ]
+        : [],
+    ),
+    employeeAccess: input.employeeAccess,
+  };
 }
 
 function compilePublishedWorkflow(
@@ -256,6 +337,10 @@ function compilePublishedWorkflow(
       toStateKey: transition.toStateKey,
       allowedRoles: transition.allowedRoles,
       requiredFieldKeys: transition.requiredFieldKeys,
+      // §10: actions are frozen into the snapshot by copy from the validated
+      // normalized draft actions; array order is execution order (§28). Legacy
+      // drafts without actions publish an explicit empty list.
+      actions: transition.actions ?? [],
     })),
   };
 }

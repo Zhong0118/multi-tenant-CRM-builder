@@ -6,6 +6,7 @@ import type {
 import type { EffectiveObjectAccess } from '../objects/effective-access';
 import {
   projectVisibleValues,
+  RECORD_TITLE_MAX_LENGTH,
   RecordValueError,
   validateRecordMutation,
 } from './record-value-engine';
@@ -31,7 +32,16 @@ function field(
   };
 }
 
-function schema(testField: PublishedField): PublishedObjectSchema {
+function schema(
+  testField: PublishedField,
+  titleField: PublishedField = field('TEXT', {
+    id: 'field-name',
+    fieldKey: 'name',
+    label: '姓名',
+    required: true,
+    sortOrder: 10,
+  }),
+): PublishedObjectSchema {
   return {
     publication: {
       id: 'publication-1',
@@ -44,24 +54,18 @@ function schema(testField: PublishedField): PublishedObjectSchema {
       code: 'leads',
       name: '线索',
       description: null,
-      titleFieldKey: 'name',
+      titleFieldKey: titleField.fieldKey,
       icon: null,
       sortOrder: 10,
     },
-    fields: [
-      field('TEXT', {
-        id: 'field-name',
-        fieldKey: 'name',
-        label: '姓名',
-        required: true,
-        sortOrder: 10,
-      }),
-      testField,
-    ],
+    fields: [titleField, testField].filter(
+      (candidate, index, all) =>
+        all.findIndex((item) => item.fieldKey === candidate.fieldKey) === index,
+    ),
     defaultView: {
       code: 'default',
       name: '全部线索',
-      columnFieldKeys: ['name', testField.fieldKey],
+      columnFieldKeys: [...new Set([titleField.fieldKey, testField.fieldKey])],
       sort: { field: 'updatedAt', direction: 'desc' },
     },
     employeeAccess: {
@@ -71,7 +75,10 @@ function schema(testField: PublishedField): PublishedObjectSchema {
       canDelete: false,
       readScope: 'ALL',
       updateScope: 'ALL',
-      fields: { name: 'EDIT', [testField.fieldKey]: 'EDIT' },
+      fields: {
+        [titleField.fieldKey]: 'EDIT',
+        [testField.fieldKey]: 'EDIT',
+      },
     },
   };
 }
@@ -105,6 +112,60 @@ async function validate(
     memberExists: (id) => Promise.resolve(id === ACTIVE_MEMBER_ID),
   });
   return result.values;
+}
+
+/** `local@example.com`, so the derived title is exactly `length` characters. */
+function emailOfLength(length: number): string {
+  const domain = '@example.com';
+  return `${'a'.repeat(length - domain.length)}${domain}`;
+}
+
+const EMAIL_TITLE_FIELD = field('EMAIL', {
+  id: 'field-name',
+  fieldKey: 'name',
+  label: '邮箱',
+  required: true,
+  sortOrder: 10,
+});
+
+function validateEmailTitle() {
+  const testSchema = schema(field('PHONE'), EMAIL_TITLE_FIELD);
+  return (email: string) =>
+    validateRecordMutation({
+      mode: 'CREATE',
+      schema: testSchema,
+      access: editableAccess(testSchema),
+      submitted: { name: email },
+      memberExists: () => Promise.resolve(true),
+    });
+}
+
+/**
+ * A TEXT title field whose configured `maxLength` (1000) is above the
+ * `records.title` column limit, so the FIELD-level check cannot decide the
+ * 300-character boundary: only the derived-title guard can. TEXT/PHONE default
+ * to a 300 UTF-16-unit `maxLength`, which would mask the boundary, and
+ * TEXTAREA is not a legal title field type (`TITLE_FIELD_TYPES`).
+ */
+const TEXT_TITLE_FIELD = field('TEXT', {
+  id: 'field-name',
+  fieldKey: 'name',
+  label: '姓名',
+  required: true,
+  validation: { maxLength: 1000 },
+  sortOrder: 10,
+});
+
+function validateTextTitle() {
+  const testSchema = schema(field('PHONE'), TEXT_TITLE_FIELD);
+  return (title: string) =>
+    validateRecordMutation({
+      mode: 'CREATE',
+      schema: testSchema,
+      access: editableAccess(testSchema),
+      submitted: { name: title },
+      memberExists: () => Promise.resolve(true),
+    });
 }
 
 async function expectInvalid(
@@ -337,6 +398,105 @@ describe('dynamic record values', () => {
         memberExists: () => Promise.resolve(true),
       }),
     ).resolves.toMatchObject({ title: '新线索' });
+  });
+
+  it('accepts a derived title that is a valid EMAIL within the column length', async () => {
+    const validateEmail = validateEmailTitle();
+    const email = 'user@example.com';
+
+    await expect(validateEmail(email)).resolves.toEqual({
+      values: { name: email },
+      title: email,
+    });
+  });
+
+  it('accepts a derived EMAIL title of exactly the column length, and rejects one character more', async () => {
+    const validateEmail = validateEmailTitle();
+    // `'a'.repeat(288) + '@example.com'` is exactly 300 characters: the 288
+    // characters of local part plus the 12 of the domain. It is a valid EMAIL
+    // as well (300 <= the 320-character EMAIL limit), so the 300/301 boundary
+    // IS constructible and is pinned here rather than only asserted as `> 300`.
+    const boundary = emailOfLength(RECORD_TITLE_MAX_LENGTH);
+    expect(boundary).toBe(`${'a'.repeat(288)}@example.com`);
+    expect(boundary).toHaveLength(300);
+
+    await expect(validateEmail(boundary)).resolves.toEqual({
+      values: { name: boundary },
+      title: boundary,
+    });
+
+    const oneMore = `${boundary}a`;
+    expect(oneMore).toHaveLength(301);
+    await expect(validateEmail(oneMore)).rejects.toMatchObject({
+      code: 'FIELD_INVALID',
+      fieldKey: 'name',
+    });
+  });
+
+  it('counts the derived title in characters, not UTF-16 units, at the column boundary', async () => {
+    const validateText = validateTextTitle();
+
+    // ASCII: 300 characters == 300 UTF-16 units, so both counts agree.
+    const asciiBoundary = 'a'.repeat(RECORD_TITLE_MAX_LENGTH);
+    await expect(validateText(asciiBoundary)).resolves.toEqual({
+      values: { name: asciiBoundary },
+      title: asciiBoundary,
+    });
+    await expect(validateText(`${asciiBoundary}a`)).rejects.toMatchObject({
+      code: 'FIELD_INVALID',
+      fieldKey: 'name',
+    });
+
+    // Astral plane: each emoji is ONE character to PostgreSQL's VARCHAR(300)
+    // but TWO UTF-16 code units to `String.prototype.length`. Counting code
+    // units would reject titles of 151-300 astral characters that base
+    // accepted and the column stores.
+    const astralBoundary = '😀'.repeat(RECORD_TITLE_MAX_LENGTH);
+    expect(astralBoundary.length).toBe(600);
+    expect([...astralBoundary]).toHaveLength(300);
+    await expect(validateText(astralBoundary)).resolves.toEqual({
+      values: { name: astralBoundary },
+      title: astralBoundary,
+    });
+
+    const astralOver = `${astralBoundary}😀`;
+    expect([...astralOver]).toHaveLength(301);
+    await expect(validateText(astralOver)).rejects.toMatchObject({
+      code: 'FIELD_INVALID',
+      fieldKey: 'name',
+    });
+  });
+
+  it('rejects a derived title longer than the records.title column length', async () => {
+    const validateEmail = validateEmailTitle();
+    // EMAIL accepts up to 320 characters while records.title is VARCHAR(300),
+    // so an over-long derived title is reachable. It must be rejected as a
+    // domain validation error instead of becoming a database 22001 -> 500.
+    const overLong = emailOfLength(301);
+
+    expect(overLong.length).toBeGreaterThan(RECORD_TITLE_MAX_LENGTH);
+    await expect(validateEmail(overLong)).rejects.toMatchObject({
+      code: 'FIELD_INVALID',
+      fieldKey: 'name',
+    });
+  });
+
+  it.each([301, 310, 320])(
+    'rejects a derived EMAIL title of %i characters before any write',
+    async (length) => {
+      const validateEmail = validateEmailTitle();
+      await expect(validateEmail(emailOfLength(length))).rejects.toMatchObject({
+        code: 'FIELD_INVALID',
+        fieldKey: 'name',
+      });
+    },
+  );
+
+  it('never truncates an over-long derived title to fit the column', async () => {
+    const validateEmail = validateEmailTitle();
+    await expect(validateEmail(emailOfLength(320))).rejects.toMatchObject({
+      code: 'FIELD_INVALID',
+    });
   });
 
   it('projects response values by field visibility', () => {

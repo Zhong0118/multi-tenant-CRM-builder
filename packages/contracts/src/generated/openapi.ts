@@ -2351,9 +2351,11 @@ export interface components {
       kind: "ADDED" | "UPDATED" | "INACTIVATED";
     };
     PublicationIssueResponseDto: {
+      actionKey?: string;
       code: string;
       fieldKey?: string;
       message: string;
+      transitionKey?: string;
     };
     PublishDashboardDto: {
       expectedVersion: number;
@@ -2522,10 +2524,19 @@ export interface components {
       phone: string;
     };
     RuntimeAvailableTransitionDto: {
+      /** @description 静态 Effect Summary：该 Transition 将执行的动作类型，按执行顺序；没有 Action 时为空数组。不含字段映射细节。 */
+      effects: components["schemas"]["RuntimeTransitionEffectDto"][];
       key: string;
       label: string;
       requiredFieldKeys: string[];
       toState?: components["schemas"]["RuntimeTransitionTargetDto"];
+    };
+    RuntimeExecutionSummaryDto: {
+      actions: components["schemas"]["RuntimeTransitionEffectDto"][];
+      /** @example mark-won */
+      transitionKey: string;
+      /** Format: uuid */
+      workflowExecutionId: string;
     };
     RuntimeObjectNavigationResponseDto: {
       canCreate: boolean;
@@ -2555,6 +2566,17 @@ export interface components {
       policies: components["schemas"]["RuntimePoliciesDto"];
       services: components["schemas"]["RuntimeServiceStatusDto"][];
     };
+    RuntimeTransitionEffectDto: {
+      /** @example 创建 1 条记录 */
+      label: string;
+      /** @enum {string} */
+      type:
+        | "CREATE_RECORD"
+        | "UPDATE_RECORD"
+        | "CREATE_RELATION"
+        | "CREATE_FOLLOW_UP"
+        | "ASSIGN_OWNER";
+    };
     RuntimeTransitionTargetDto: {
       key: string;
       label: string;
@@ -2562,6 +2584,8 @@ export interface components {
     RuntimeWorkflowResponseDto: {
       availableTransitions: components["schemas"]["RuntimeAvailableTransitionDto"][];
       currentState?: components["schemas"]["RuntimeWorkflowStateDto"] | null;
+      /** @description 仅在 Transition 执行成功后返回；读取接口不返回。无 Action 的 Transition 返回空 actions 数组。 */
+      executionSummary?: components["schemas"]["RuntimeExecutionSummaryDto"];
       recordVersion: number;
     };
     RuntimeWorkflowStateDto: {
@@ -2967,6 +2991,42 @@ export interface components {
       /** @enum {string} */
       purpose: "REGISTER" | "RESET_PASSWORD";
     };
+    WorkflowActionDraftDto: {
+      assignee?: {
+        [key: string]: unknown;
+      };
+      dueAt?: {
+        [key: string]: unknown;
+      };
+      /** @example create-customer */
+      key?: string;
+      left?: {
+        [key: string]: unknown;
+      };
+      owner?: {
+        [key: string]: unknown;
+      };
+      right?: {
+        [key: string]: unknown;
+      };
+      /** @example SOURCE_RECORD */
+      target?: string;
+      /** @example customer */
+      targetObjectCode?: string;
+      title?: {
+        [key: string]: unknown;
+      };
+      /** @enum {string} */
+      type?:
+        | "CREATE_RECORD"
+        | "UPDATE_RECORD"
+        | "CREATE_RELATION"
+        | "CREATE_FOLLOW_UP"
+        | "ASSIGN_OWNER";
+      values?: {
+        [key: string]: unknown;
+      };
+    };
     WorkflowDraftResponseDto: {
       initialStateKey?: string | null;
       isEnabled: boolean;
@@ -3002,6 +3062,8 @@ export interface components {
       sortOrder: number;
     };
     WorkflowTransitionDraftDto: {
+      /** @description 按顺序执行的 Action 列表：客户端应发送数组；省略等同于空数组。 */
+      actions?: components["schemas"]["WorkflowActionDraftDto"][];
       allowedRoles: ("TENANT_ADMIN" | "EMPLOYEE")[];
       fromStateKey: string;
       /** @example mark-won */

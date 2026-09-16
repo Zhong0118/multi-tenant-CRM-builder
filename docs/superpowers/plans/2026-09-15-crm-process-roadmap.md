@@ -76,12 +76,11 @@ Acceptance / Audit
 
 > **Configurable CRM Builder + Workflow Primitives**
 
-它已经具备流程化所需的若干原语，但还缺少真正控制业务推进的：
+它已经具备流程化所需的若干原语。State、Transition 与 Action 均已落地（Action Engine V1 的代码在本地分支 `feat/action-engine-v1` 上，见第 7 节），因此仍缺少真正自动推进业务的：
 
-- State；
-- Transition；
-- Action；
-- Event / Trigger。
+- Event / Trigger；
+- Worker 与异步任务；
+- 以及 V2.2 起才规划的团队执行、数据质量与 Agent 能力。
 
 ## 4. 总体阶段
 
@@ -90,7 +89,7 @@ Acceptance / Audit
 | V2.0 数据与 SaaS 基础 | `COMPLETED` | 多租户、动态对象、记录、权限、模板、Dashboard | 可配置数据型 CRM Builder |
 | 工程守门 | `GATE` | CI、main protection、剩余关键人工验收 | 为后续核心改造提供回归保护 |
 | V2.1A Workflow Core | `COMPLETED` | State + Transition + Manual Execution | 从“改字段”进入“走流程” |
-| V2.1B Action Engine | `PLANNED` | 结构化业务动作 | 形成通用 CRM 业务闭环 |
+| V2.1B Action Engine | `COMPLETED` | 结构化业务动作 | 形成通用 CRM 业务闭环 |
 | V2.2 Sales Execution | `PLANNED` | 团队任务、主管队列、逾期升级 | CRM 主动组织销售执行 |
 | V2.3 Automation | `PLANNED` | Event + Trigger + Worker | 自动化 CRM |
 | V2.4 Data Quality & Integration | `PLANNED` | 去重合并、通知、外部集成 | 长期运营与触达能力 |
@@ -199,9 +198,17 @@ Required Fields
 
 # 7. V2.1B — Action Engine
 
-状态：`PLANNED`
+状态：`COMPLETED`
+
+详细规格：
+
+- `docs/superpowers/specs/2026-09-16-action-engine-v1-design.md`
+- `docs/superpowers/plans/2026-09-16-action-engine-v1-implementation.md`
 
 只有 Workflow V1 验收完成后才允许设计详细 Spec。
+
+验收证据：`docs/audits/2026-09-16/action-engine-v1-acceptance.md`。
+实现代码位于分支 `feat/action-engine-v1`（**已推送 `origin`、尚未合并进 `main`、未部署**）；验收记录里列明了仍然存在的缺口与偏差。
 
 ## 7.1 目标
 
@@ -531,18 +538,28 @@ docs/audits/YYYY-MM-DD/<task>-acceptance.md
 
 ---
 
-# 15. 当前唯一产品开发任务
+# 15. 当前产品开发任务
 
 Workflow V1 已进入 `main`，验收见
 `docs/audits/2026-09-15/workflow-v1-acceptance.md`。
 
-下一主要产品 Task 待用户确认后再从 `PLANNED` 提升为 `ACTIVE`。当前不要自行进入：
+V2.1B Action Engine 已完成并验收，验收证据见
+`docs/audits/2026-09-16/action-engine-v1-acceptance.md`。代码位于分支
+`feat/action-engine-v1`，**已推送 `origin`、尚未合并进 `main`、未部署**。
 
-- Action Engine；
-- Automation；
+它之所以在本轮从 `ACTIVE` 记为 `COMPLETED`：按第 2 节的状态定义，`COMPLETED` 需要验收证据，而验收记录里记录的是本轮实际重跑得到的事实（门禁输出、回滚 / 权限 / 并发 / RLS 证明、真实浏览器走查），不是计划或预测。记录里同时列出了仍然存在的缺口与偏差。
+
+因此第 4 节的阶段表里**当前没有 `ACTIVE` 的主要产品 Task**。按第 2 节的规则，下一阶段要从 `PLANNED` 提升为 `ACTIVE` 属于一次 Promote，需要用户批准，本文不做这次提升：
+
+```text
+V2.2 Sales Execution   （仍为 PLANNED，等待用户批准）
+```
+
+在用户批准 V2.2 之前，不要自行进入：
+
+- Sales Execution（团队任务 / 主管队列 / 逾期升级）；
+- Automation / Event / Trigger / Worker；
 - Dedup / Merge；
 - Notification；
 - Template Upgrade；
 - Agent。
-
-Workflow V1 通过验收后，再决定下一 Task 的详细设计。

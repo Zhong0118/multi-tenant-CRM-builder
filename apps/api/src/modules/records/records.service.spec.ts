@@ -1,3 +1,5 @@
+import type { Prisma } from '@crm/database';
+
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { AuditEvent } from '../audit/audit-event';
 import type { PublishedObjectSchema } from '../objects/object-schema';
@@ -8,10 +10,12 @@ import type {
 import { PublishedObjectService } from '../objects/published-object.service';
 import type { MemberActivityType, RecordActivity } from './record-activity';
 import type {
+  ApplySourceRecordPatchStoreInput,
   DynamicRecord,
   RecordListQuery,
   RecordsRepository,
   RecordsStore,
+  RecordsTransaction,
 } from './records.repository';
 import { RecordsService } from './records.service';
 
@@ -254,6 +258,14 @@ class MemoryRecordsStore implements RecordsStore {
   members = new Set([admin.memberId, employee.memberId, otherMemberId]);
   audits: AuditEvent[] = [];
   nextRecordNo = 1n;
+  /**
+   * Per-intent call logs. The two intents are NOT interchangeable: only
+   * `applyRecordPatch` takes the ACTIVE-owner lock, so which intent a caller
+   * uses is observable behaviour rather than an in-memory detail (pinned by
+   * "routes an ordinary HTTP update through the locking write intent").
+   */
+  recordPatchCalls: ApplySourceRecordPatchStoreInput[] = [];
+  transitionCalls: ApplySourceRecordPatchStoreInput[] = [];
 
   memberExists(memberId: string): Promise<boolean> {
     return Promise.resolve(this.members.has(memberId));
@@ -309,6 +321,27 @@ class MemoryRecordsStore implements RecordsStore {
     );
   }
 
+  /**
+   * §23 step 7: the Workflow transition lock. This spec never drives the
+   * execute path, so the in-memory store only mirrors the owner-scope filter of
+   * the real `FOR UPDATE` statement — there is no row lock to model here.
+   */
+  async lockRecord(input: {
+    objectId: string;
+    recordId: string;
+    ownerMemberId: string | null;
+  }): Promise<DynamicRecord | null> {
+    const record = await this.findRecord(input.objectId, input.recordId);
+    if (!record) return null;
+    if (
+      input.ownerMemberId !== null &&
+      record.ownerMemberId !== input.ownerMemberId
+    ) {
+      return null;
+    }
+    return record;
+  }
+
   updateRecord(
     recordId: string,
     expectedVersion: number,
@@ -351,8 +384,48 @@ class MemoryRecordsStore implements RecordsStore {
     return Promise.resolve();
   }
 
-  applyWorkflowTransition(): Promise<null> {
-    return Promise.resolve(null);
+  /**
+   * The ordinary-update intent. In the real store it takes the ACTIVE-owner
+   * lock before the write; here it is logged under its own heading so a caller
+   * that switches to the Transition intent is visible to a test.
+   */
+  applyRecordPatch(
+    input: ApplySourceRecordPatchStoreInput,
+  ): Promise<DynamicRecord | null> {
+    this.recordPatchCalls.push(structuredClone(input));
+    return this.applyWrite(input);
+  }
+
+  /**
+   * The Transition intent. It shares this in-memory write body with
+   * `applyRecordPatch` — the real store differs only by that ACTIVE-owner lock,
+   * which `records.repository.spec.ts` pins — but it is logged separately.
+   */
+  applyTransition(
+    input: ApplySourceRecordPatchStoreInput,
+  ): Promise<DynamicRecord | null> {
+    this.transitionCalls.push(structuredClone(input));
+    return this.applyWrite(input);
+  }
+
+  private applyWrite(
+    input: ApplySourceRecordPatchStoreInput,
+  ): Promise<DynamicRecord | null> {
+    const record = this.records.find(
+      (candidate) =>
+        candidate.id === input.recordId && candidate.deletedAt === null,
+    );
+    if (!record || record.version !== input.expectedVersion)
+      return Promise.resolve(null);
+    record.values = structuredClone(input.patch.values);
+    record.title = input.patch.title;
+    record.ownerMemberId = input.patch.ownerMemberId;
+    if (input.patch.workflowStateKey !== undefined) {
+      record.workflowStateKey = input.patch.workflowStateKey;
+    }
+    record.version += 1;
+    record.updatedAt = '2026-08-21T11:00:00.000Z';
+    return Promise.resolve(structuredClone(record));
   }
 
   listTransitionHistory() {
@@ -426,10 +499,27 @@ class MemoryRecordsRepository implements RecordsRepository {
   constructor(readonly store: MemoryRecordsStore) {}
 
   withTenant<T>(
-    _context: TenantContext,
+    context: TenantContext,
     work: (store: RecordsStore) => Promise<T>,
   ): Promise<T> {
-    return work(this.store);
+    return this.withTenantTransaction(context, (session) =>
+      work(session.store),
+    );
+  }
+
+  /**
+   * §24/T8b: this spec drives the ordinary record services, which never reach
+   * for the transaction itself, so the in-memory session hands over a `tx`
+   * placeholder alongside the store.
+   */
+  withTenantTransaction<T>(
+    _context: TenantContext,
+    work: (session: RecordsTransaction) => Promise<T>,
+  ): Promise<T> {
+    return work({
+      tx: {} as Prisma.TransactionClient,
+      store: this.store,
+    });
   }
 }
 
@@ -638,6 +728,55 @@ describe('RecordsService', () => {
     );
     expect(updated.ownerMemberId).toBe(otherMemberId);
   });
+
+  it('routes an ordinary HTTP update through the locking write intent, never the transition intent', async () => {
+    const { service, store } = fixture();
+    const record = await create(service, admin, '原始线索');
+
+    await service.update(
+      admin,
+      'leads',
+      record.id,
+      { version: record.version, values: { name: '普通更新' } },
+      meta,
+    );
+
+    // An ordinary update must take the ACTIVE-owner lock, which only
+    // `applyRecordPatch` does. Rewiring `record-command.ts` to the Transition
+    // intent would flip both counts and silently drop the lock from every
+    // ordinary update, so these assertions are the guard for exactly that.
+    expect(store.recordPatchCalls).toHaveLength(1);
+    expect(store.transitionCalls).toHaveLength(0);
+
+    // An ordinary update never carries Transition history either.
+    expect(store.recordPatchCalls[0]?.history).toBeUndefined();
+    expect(store.recordPatchCalls[0]?.patch).toMatchObject({
+      title: '普通更新',
+    });
+  });
+
+  it('routes a batch update through the locking write intent as well', async () => {
+    const { service, store } = fixture();
+    const first = await create(service, admin, '甲线索');
+    const second = await create(service, admin, '乙线索');
+
+    await service.batchUpdate(
+      admin,
+      'leads',
+      {
+        items: [
+          { recordId: first.id, version: first.version },
+          { recordId: second.id, version: second.version },
+        ],
+        values: { name: '批量改名' },
+      },
+      meta,
+    );
+
+    expect(store.recordPatchCalls).toHaveLength(2);
+    expect(store.transitionCalls).toHaveLength(0);
+  });
+
   it('denies runtime access and navigation when an existing title is hidden', async () => {
     const { service, publishedRepository } = fixture();
     const configuration = publishedRepository.record
@@ -704,6 +843,31 @@ describe('RecordsService', () => {
     ).rejects.toMatchObject({ code: 'FIELD_UNKNOWN' });
     expect(store.records).toEqual([]);
   });
+
+  it.each([301, 320])(
+    'rejects a %i-character derived EMAIL title before writing a record',
+    async (length) => {
+      const { service, store, publishedRepository } = fixture();
+      const configuration = publishedRepository.record
+        .configuration as PublishedObjectSchema;
+      configuration.object.titleFieldKey = 'email';
+      configuration.fields = configuration.fields.map((field) =>
+        field.fieldKey === 'email'
+          ? { ...field, required: true }
+          : field.fieldKey === 'name'
+            ? { ...field, required: false }
+            : field,
+      );
+      const domain = '@example.com';
+      const email = `${'a'.repeat(length - domain.length)}${domain}`;
+
+      await expect(
+        service.create(admin, 'leads', { values: { email } }, meta),
+      ).rejects.toMatchObject({ code: 'FIELD_INVALID' });
+      expect(store.records).toEqual([]);
+      expect(store.audits).toEqual([]);
+    },
+  );
 
   it('enforces CREATE action permission', async () => {
     const { service, publishedRepository } = fixture();

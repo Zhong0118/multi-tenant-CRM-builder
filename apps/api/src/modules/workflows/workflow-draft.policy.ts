@@ -1,13 +1,16 @@
 import { ApiException } from '../../common/errors/api.exception';
+import { validateTransitionActions } from '../actions/action-draft.policy';
 import {
   WORKFLOW_KEY_PATTERN,
   WORKFLOW_ROLES,
   type WorkflowDraft,
+  type WorkflowDraftInput,
   type WorkflowRole,
+  type WorkflowTransitionDraftInput,
 } from './workflow.types';
 
 export function validateWorkflowDraft(
-  draft: WorkflowDraft,
+  draft: WorkflowDraftInput,
   options: { knownFieldKeys?: Iterable<string> } = {},
 ): WorkflowDraft {
   const states = draft.states.map(normalizeState);
@@ -64,7 +67,10 @@ export function validateWorkflowDraft(
       throw fieldError(`transitions.${index}.toStateKey`, '目标状态不存在。');
     }
     if (transition.fromStateKey === transition.toStateKey) {
-      throw fieldError(`transitions.${index}.toStateKey`, '不能迁移到同一状态。');
+      throw fieldError(
+        `transitions.${index}.toStateKey`,
+        '不能迁移到同一状态。',
+      );
     }
     if (terminalKeys.has(transition.fromStateKey)) {
       throw fieldError(
@@ -81,14 +87,20 @@ export function validateWorkflowDraft(
     }
     fromTo.add(edge);
     if (transition.allowedRoles.length === 0) {
-      throw fieldError(`transitions.${index}.allowedRoles`, '请至少选择一个角色。');
+      throw fieldError(
+        `transitions.${index}.allowedRoles`,
+        '请至少选择一个角色。',
+      );
     }
     for (const role of transition.allowedRoles) {
       if (!WORKFLOW_ROLES.includes(role)) {
         throw fieldError(`transitions.${index}.allowedRoles`, '角色不受支持。');
       }
     }
-    for (const [fieldIndex, fieldKey] of transition.requiredFieldKeys.entries()) {
+    for (const [
+      fieldIndex,
+      fieldKey,
+    ] of transition.requiredFieldKeys.entries()) {
       if (knownFields && !knownFields.has(fieldKey)) {
         throw fieldError(
           `transitions.${index}.requiredFieldKeys.${fieldIndex}`,
@@ -117,7 +129,7 @@ function normalizeState(state: WorkflowDraft['states'][number], index: number) {
 }
 
 function normalizeTransition(
-  transition: WorkflowDraft['transitions'][number],
+  transition: WorkflowTransitionDraftInput,
   index: number,
 ) {
   return {
@@ -134,6 +146,10 @@ function normalizeTransition(
     allowedRoles: [...new Set(transition.allowedRoles)] as WorkflowRole[],
     requiredFieldKeys: [...new Set(transition.requiredFieldKeys)],
     sortOrder: transition.sortOrder,
+    // Legacy drafts/published snapshots without actions normalize to `[]`.
+    actions: validateTransitionActions(transition.actions, {
+      fieldPath: `transitions.${index}.actions`,
+    }),
   };
 }
 

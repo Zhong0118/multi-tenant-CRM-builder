@@ -1,44 +1,25 @@
 import { Injectable } from '@nestjs/common';
-import { ApiException } from '../../common/errors/api.exception';
-import { randomUUID } from 'node:crypto';
 import type { Prisma } from '@crm/database';
+import { ApiException } from '../../common/errors/api.exception';
 import { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { AuditService } from '../audit/audit.service';
+import {
+  appendFollowUpAudit,
+  createFollowUpCommand,
+  followUpInclude,
+  lockFollowUpRecord,
+  presentFollowUp,
+  type FollowUpMeta,
+  type FollowUpRecordScope,
+} from './follow-up-command';
 import type {
   CreateFollowUpDto,
   FollowUpQueryDto,
   UpdateFollowUpDto,
 } from './follow-ups.dto';
-import type {
-  FollowUpMeta,
-  FollowUpScope,
-  FollowUpRecordScope,
-} from './follow-ups.service';
+import type { FollowUpScope } from './follow-ups.service';
 
-const include = {
-  record: { include: { object: true } },
-  assignee: { include: { user: { select: { displayName: true } } } },
-} as const;
-type Task = Prisma.RecordFollowUpGetPayload<{ include: typeof include }>;
-function present(task: Task, canManage = true, now = new Date()) {
-  return {
-    id: task.id,
-    assigneeMemberId: task.assigneeMemberId,
-    assigneeName:
-      task.assignee.user.displayName ?? task.assignee.employeeNo ?? '成员',
-    recordId: task.recordId,
-    recordTitle: task.record.title,
-    objectCode: task.record.object.code,
-    objectName: task.record.object.name,
-    title: task.title,
-    dueAt: task.dueAt.toISOString(),
-    status: task.status,
-    version: task.version,
-    overdue: task.status === 'OPEN' && task.dueAt < now,
-    canManage,
-  };
-}
 @Injectable()
 export class FollowUpsRepository {
   constructor(
@@ -92,9 +73,9 @@ export class FollowUpsRepository {
             context.role === 'TENANT_ADMIN' ? undefined : context.memberId,
           record: { deletedAt: null },
         },
-        include,
+        include: followUpInclude,
       });
-      return item ? present(item) : null;
+      return item ? presentFollowUp(item) : null;
     });
   }
   list(
@@ -130,7 +111,7 @@ export class FollowUpsRepository {
       const [items, total, openCount, overdueCount] = await Promise.all([
         tx.recordFollowUp.findMany({
           where,
-          include,
+          include: followUpInclude,
           orderBy: [{ dueAt: 'asc' }, { id: 'asc' }],
           skip: (page - 1) * limit,
           take: limit,
@@ -148,7 +129,7 @@ export class FollowUpsRepository {
             !!scope?.canUpdate &&
             (!scope.updateOwnerMemberId ||
               scope.updateOwnerMemberId === item.record.ownerMemberId);
-          return present(item, canManage, now);
+          return presentFollowUp(item, canManage, now);
         }),
         total,
         openCount,
@@ -158,37 +139,21 @@ export class FollowUpsRepository {
       };
     });
   }
+  /**
+   * Ordinary HTTP boundary: keeps its own tenant transaction and runs the
+   * shared transaction-aware command inside it (§24).
+   */
   create(
     context: TenantContext,
     input: CreateFollowUpDto,
     meta: FollowUpMeta,
     scope: FollowUpRecordScope,
   ) {
-    return this.runner.withTenant(context, async (tx) => {
-      const members = await tx.$queryRaw<
-        Array<{ id: string; role: string }>
-      >`SELECT id, role FROM tenant_members WHERE tenant_id=${context.tenantId}::uuid AND id=${context.memberId}::uuid AND status='ACTIVE' FOR UPDATE`;
-      if (!members.length || members[0].role !== context.role)
-        throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
-      await this.lockRecord(tx, context, scope);
-      const item = await tx.recordFollowUp.create({
-        data: {
-          id: randomUUID(),
-          tenantId: context.tenantId,
-          assigneeMemberId: context.memberId,
-          recordId: input.recordId,
-          title: input.title,
-          dueAt: new Date(input.dueAt),
-        },
-        include,
-      });
-      await this.log(tx, context, item.id, 'follow_up.created', meta, {
-        title: item.title,
-        dueAt: item.dueAt.toISOString(),
-        recordId: item.recordId,
-      });
-      return present(item);
-    });
+    return this.runner.withTenant(context, (tx) =>
+      createFollowUpCommand(tx, context, input, meta, scope, {
+        audit: this.audit,
+      }),
+    );
   }
   update(
     context: TenantContext,
@@ -218,8 +183,8 @@ export class FollowUpsRepository {
         )
           throw new ApiException('WORKSPACE_FORBIDDEN', 403);
       }
-      await this.lockRecord(tx, context, scope);
-      if (recipientScope) await this.lockRecord(tx, context, recipientScope);
+      await lockFollowUpRecord(tx, context, scope);
+      if (recipientScope) await lockFollowUpRecord(tx, context, recipientScope);
       const before = await tx.recordFollowUp.findFirst({
         where: {
           id,
@@ -255,10 +220,11 @@ export class FollowUpsRepository {
       if (result.count !== 1) return null;
       const item = await tx.recordFollowUp.findFirstOrThrow({
         where: { id, tenantId: context.tenantId },
-        include,
+        include: followUpInclude,
       });
-      await this.log(
+      await appendFollowUpAudit(
         tx,
+        this.audit,
         context,
         id,
         input.assigneeMemberId
@@ -284,42 +250,7 @@ export class FollowUpsRepository {
             }
           : undefined,
       );
-      return present(item);
-    });
-  }
-  private async lockRecord(
-    tx: Prisma.TransactionClient,
-    context: TenantContext,
-    scope: FollowUpRecordScope,
-  ) {
-    const rows = await tx.$queryRaw<Array<{ id: string }>>`
-      SELECT id FROM records WHERE tenant_id = ${context.tenantId}::uuid
-        AND object_id = ${scope.objectId}::uuid AND id = ${scope.recordId}::uuid AND deleted_at IS NULL
-        AND (${scope.requiredOwnerMemberId ?? null}::uuid IS NULL OR owner_member_id = ${scope.requiredOwnerMemberId ?? null}::uuid)
-      FOR UPDATE
-    `;
-    if (!rows.length) throw new ApiException('RECORD_NOT_FOUND', 404);
-  }
-
-  private log(
-    tx: Prisma.TransactionClient,
-    context: TenantContext,
-    id: string,
-    action: string,
-    meta: FollowUpMeta,
-    after: Record<string, unknown>,
-    before?: Record<string, unknown>,
-  ) {
-    return this.audit.append(tx, {
-      tenantId: context.tenantId,
-      actorType: 'USER',
-      actorId: context.userId,
-      resourceType: 'record_follow_up',
-      resourceId: id,
-      action,
-      after,
-      before,
-      ...meta,
+      return presentFollowUp(item);
     });
   }
 }

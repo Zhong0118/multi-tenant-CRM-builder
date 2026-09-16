@@ -1,4 +1,5 @@
 import { ApiException } from '../../common/errors/api.exception';
+import type { PublishedAction } from '../actions/action.types';
 import type { EffectiveObjectAccess } from '../objects/effective-access';
 import type { PublishedObjectSchema } from '../objects/object-schema';
 import type { DynamicRecord } from '../records/records.repository';
@@ -8,7 +9,7 @@ import {
   START_TRANSITION_KEY,
 } from './workflow-runtime';
 
-function schema(): PublishedObjectSchema {
+function schema(actions: PublishedAction[] = []): PublishedObjectSchema {
   return {
     publication: {
       id: 'publication-leads',
@@ -80,6 +81,7 @@ function schema(): PublishedObjectSchema {
           toStateKey: 'won',
           allowedRoles: ['TENANT_ADMIN', 'EMPLOYEE'],
           requiredFieldKeys: ['amount'],
+          actions,
         },
       ],
     },
@@ -101,9 +103,7 @@ function access(
   };
 }
 
-function record(
-  overrides: Partial<DynamicRecord> = {},
-): DynamicRecord {
+function record(overrides: Partial<DynamicRecord> = {}): DynamicRecord {
   return {
     id: 'record-1',
     objectId: 'object-leads',
@@ -121,6 +121,75 @@ function record(
   };
 }
 
+/**
+ * §31 — the Effect Summary is asserted on the serialized body, because that is
+ * the JSON a client receives and the exact byte string the leakage assertions
+ * below scan.
+ */
+interface TransitionEffectBody {
+  type: string;
+  label: string;
+}
+
+function responseBody(view: object): {
+  availableTransitions: Array<
+    Record<string, unknown> & { effects?: TransitionEffectBody[] }
+  >;
+} {
+  return JSON.parse(JSON.stringify(view)) as {
+    availableTransitions: Array<
+      Record<string, unknown> & { effects?: TransitionEffectBody[] }
+    >;
+  };
+}
+
+/**
+ * One of every V1 Action type, each carrying exactly the internals §31 forbids
+ * the Effect Summary from echoing: a hidden field key (`phone`), the mapping
+ * sources (`SOURCE_FIELD` / `LITERAL` / `NOW_PLUS_DAYS` / `ACTION_OUTPUT`), a
+ * mapped value (`200.00`), a follow-up title, the Target Object code
+ * (`customers`) and the Action keys themselves.
+ */
+const LEAKY_ACTIONS: PublishedAction[] = [
+  {
+    key: 'create-customer',
+    type: 'CREATE_RECORD',
+    targetObjectCode: 'customers',
+    values: { phone: { source: 'SOURCE_FIELD', fieldKey: 'phone' } },
+    owner: { source: 'ACTOR' },
+  },
+  {
+    key: 'set-amount',
+    type: 'UPDATE_RECORD',
+    target: 'SOURCE_RECORD',
+    values: { amount: { source: 'LITERAL', value: '200.00' } },
+  },
+  {
+    key: 'link-customer',
+    type: 'CREATE_RELATION',
+    left: { source: 'SOURCE_RECORD' },
+    right: {
+      source: 'ACTION_OUTPUT',
+      actionKey: 'create-customer',
+      property: 'recordId',
+    },
+  },
+  {
+    key: 'follow-up',
+    type: 'CREATE_FOLLOW_UP',
+    target: { source: 'SOURCE_RECORD' },
+    title: { source: 'LITERAL', value: '首次回访' },
+    dueAt: { source: 'NOW_PLUS_DAYS', days: 3 },
+    assignee: { source: 'ACTOR' },
+  },
+  {
+    key: 'take-ownership',
+    type: 'ASSIGN_OWNER',
+    target: 'SOURCE_RECORD',
+    owner: { source: 'ACTOR' },
+  },
+];
+
 describe('workflow runtime', () => {
   it('offers start for a legacy record with update access', () => {
     const view = runtimeWorkflowView({
@@ -133,6 +202,85 @@ describe('workflow runtime', () => {
     expect(view.availableTransitions.map((item) => item.key)).toEqual([
       START_TRANSITION_KEY,
     ]);
+  });
+
+  it('describes every published action as a safe static effect (§31)', () => {
+    const body = responseBody(
+      runtimeWorkflowView({
+        schema: schema(LEAKY_ACTIONS),
+        access: access(),
+        role: 'EMPLOYEE',
+        record: record(),
+      }),
+    );
+
+    expect(body.availableTransitions[0].effects).toEqual([
+      { type: 'CREATE_RECORD', label: '创建 1 条记录' },
+      { type: 'UPDATE_RECORD', label: '更新当前记录' },
+      { type: 'CREATE_RELATION', label: '建立 1 条记录关联' },
+      { type: 'CREATE_FOLLOW_UP', label: '创建 1 个待跟进事项' },
+      { type: 'ASSIGN_OWNER', label: '将当前记录分配给执行人' },
+    ]);
+  });
+
+  it('keeps field keys, mappings, values and object codes out of the effects (§31)', () => {
+    const body = responseBody(
+      runtimeWorkflowView({
+        schema: schema(LEAKY_ACTIONS),
+        access: access(),
+        role: 'EMPLOYEE',
+        record: record(),
+      }),
+    );
+    const serialized = JSON.stringify(body.availableTransitions[0].effects);
+
+    for (const secret of [
+      'phone',
+      'customers',
+      'customer',
+      '200.00',
+      'SOURCE_FIELD',
+      'SOURCE_RECORD',
+      'LITERAL',
+      'NOW_PLUS_DAYS',
+      'ACTION_OUTPUT',
+      'recordId',
+      '首次回访',
+      'name',
+    ]) {
+      expect(serialized).not.toContain(secret);
+    }
+  });
+
+  it('lists an empty effect array for a transition without actions', () => {
+    const body = responseBody(
+      runtimeWorkflowView({
+        schema: schema(),
+        access: access(),
+        role: 'EMPLOYEE',
+        record: record(),
+      }),
+    );
+
+    // Present-and-empty, never omitted: a consumer can always read `effects`.
+    expect(body.availableTransitions[0]).toHaveProperty('effects');
+    expect(body.availableTransitions[0].effects).toEqual([]);
+  });
+
+  it('lists no effects for the synthetic start transition', () => {
+    const body = responseBody(
+      runtimeWorkflowView({
+        schema: schema(LEAKY_ACTIONS),
+        access: access(),
+        role: 'EMPLOYEE',
+        record: record({ workflowStateKey: null }),
+      }),
+    );
+
+    expect(body.availableTransitions.map((item) => item.key)).toEqual([
+      START_TRANSITION_KEY,
+    ]);
+    expect(body.availableTransitions[0].effects).toEqual([]);
   });
 
   it('hides transitions when the member cannot update', () => {
@@ -159,6 +307,51 @@ describe('workflow runtime', () => {
       fromStateKey: 'new',
       toStateKey: 'won',
     });
+  });
+
+  it('resolves the published actions of the transition in array order', () => {
+    const actions: PublishedAction[] = [
+      {
+        key: 'create-customer',
+        type: 'CREATE_RECORD',
+        targetObjectCode: 'customers',
+        values: { name: { source: 'SOURCE_FIELD', fieldKey: 'name' } },
+      },
+      {
+        key: 'take-ownership',
+        type: 'ASSIGN_OWNER',
+        target: 'SOURCE_RECORD',
+        owner: { source: 'ACTOR' },
+      },
+    ];
+    expect(
+      resolveExecutableTransition({
+        schema: schema(actions),
+        access: access(),
+        role: 'EMPLOYEE',
+        record: record(),
+        transitionKey: 'mark-won',
+      }).actions,
+    ).toEqual(actions);
+  });
+
+  it('resolves no actions for the synthetic start transition', () => {
+    expect(
+      resolveExecutableTransition({
+        schema: schema([
+          {
+            key: 'set-amount',
+            type: 'UPDATE_RECORD',
+            target: 'SOURCE_RECORD',
+            values: { amount: { source: 'LITERAL', value: '200.00' } },
+          },
+        ]),
+        access: access(),
+        role: 'EMPLOYEE',
+        record: record({ workflowStateKey: null }),
+        transitionKey: START_TRANSITION_KEY,
+      }).actions,
+    ).toEqual([]);
   });
 
   it('rejects the wrong current state', () => {

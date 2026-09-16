@@ -1,5 +1,10 @@
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
+import {
+  WORKFLOW_ACTION_EFFECT_LABELS,
+  type PublishedAction,
+  type WorkflowActionType,
+} from '../actions/action.types';
 import type { EffectiveObjectAccess } from '../objects/effective-access';
 import type { PublishedObjectSchema } from '../objects/object-schema';
 import type { DynamicRecord } from '../records/records.repository';
@@ -17,17 +22,47 @@ export interface RuntimeWorkflowState {
   isTerminal: boolean;
 }
 
+/**
+ * §31: one entry of the static Effect Summary — what a Transition will do.
+ *
+ * It carries the Action *type* and a label taken from a closed map keyed by
+ * that type. Nothing here reads the Action payload, so a hidden field key, a
+ * mapping source, a mapped value, a Target Object code or a permission cannot
+ * be summarised into a runtime response.
+ */
+export interface RuntimeTransitionEffect {
+  type: WorkflowActionType;
+  label: string;
+}
+
+/**
+ * §31: the lightweight summary of what a Transition actually did. It names the
+ * audited execution (§30) and repeats the same safe per-Action effects.
+ */
+export interface RuntimeExecutionSummary {
+  workflowExecutionId: string;
+  transitionKey: string;
+  actions: RuntimeTransitionEffect[];
+}
+
 export interface RuntimeAvailableTransition {
   key: string;
   label: string;
   toState?: { key: string; label: string };
   requiredFieldKeys: string[];
+  /** §31: static, safe preview. Always present; empty when there are no Actions. */
+  effects: RuntimeTransitionEffect[];
 }
 
 export interface RuntimeWorkflowView {
   currentState: RuntimeWorkflowState | null;
   availableTransitions: RuntimeAvailableTransition[];
   recordVersion: number;
+  /**
+   * §31 / §35: additive and execute-only. A read never writes an execution, so
+   * `get()` leaves it absent and a pre-Task-11 client keeps seeing its old body.
+   */
+  executionSummary?: RuntimeExecutionSummary;
 }
 
 export interface ResolvedTransition {
@@ -37,6 +72,13 @@ export interface ResolvedTransition {
   fromStateLabel: string | null;
   toStateKey: string;
   toStateLabel: string;
+  /**
+   * §10 / §28: the ordered Action steps frozen into the published Transition.
+   * They travel with the resolved transition so the execute path can never run
+   * a draft's Actions, or the wrong publication's; array order is execution
+   * order. The synthetic start transition has none.
+   */
+  actions: PublishedAction[];
 }
 
 export function requirePublishedWorkflow(
@@ -93,6 +135,9 @@ export function resolveExecutableTransition(input: {
       fromStateLabel: null,
       toStateKey: initial.key,
       toStateLabel: initial.label,
+      // Starting a workflow is not a configured Transition: it has no draft and
+      // therefore no Action steps.
+      actions: [],
     };
   }
 
@@ -124,6 +169,7 @@ export function resolveExecutableTransition(input: {
     fromStateLabel: current.label,
     toStateKey: toState.key,
     toStateLabel: toState.label,
+    actions: transition.actions,
   };
 }
 
@@ -144,6 +190,9 @@ function availableTransitions(input: {
         label: '进入流程',
         toState: { key: initial.key, label: initial.label },
         requiredFieldKeys: [],
+        // Starting a workflow is not a configured Transition, so it runs no
+        // Actions: an empty preview, never a missing one.
+        effects: [],
       },
     ];
   }
@@ -164,8 +213,70 @@ function availableTransitions(input: {
         label: transition.label,
         toState: { key: toState.key, label: toState.label },
         requiredFieldKeys: transition.requiredFieldKeys,
+        effects: runtimeTransitionEffects(transition.actions),
       };
     });
+}
+
+/**
+ * §31: the label used when an Action type has no entry in the closed map.
+ *
+ * Generic on purpose, exactly like the mapped labels: naming a Target Object, a
+ * field or a mapping here would leak the same thing the map refuses to leak.
+ */
+const UNKNOWN_ACTION_EFFECT_LABEL = '执行 1 个动作';
+
+/**
+ * §31: the static Effect Summary of an ordered Action list, in execution order
+ * (§28). Only each Action's TYPE is read — the payload is never touched — so
+ * the summary is safe by construction rather than by redaction.
+ */
+export function runtimeTransitionEffects(
+  actions: readonly PublishedAction[],
+): RuntimeTransitionEffect[] {
+  return actions.map((action) => ({
+    type: action.type,
+    label: actionEffectLabel(action.type),
+  }));
+}
+
+/**
+ * §31: the label of one Action type, guaranteed to be a string.
+ *
+ * `WORKFLOW_ACTION_EFFECT_LABELS` is exhaustive over `WorkflowActionType`, so
+ * for a published plan — one that passed `validateTransitionActions` before it
+ * could be stored — the fallback is unreachable. It exists because the lookup
+ * is a plain index on a value that arrives from a persisted JSON column, which
+ * the type system cannot re-validate at runtime: an out-of-enum type would
+ * yield `undefined`, and `JSON.stringify` DROPS an undefined property, so the
+ * response would silently carry an effect entry missing the `label` that §31's
+ * schema requires instead of failing loudly. The view is widened here rather
+ * than in the map so the map itself stays exhaustive for V1 code.
+ */
+function actionEffectLabel(type: WorkflowActionType): string {
+  const labels: Record<string, string | undefined> =
+    WORKFLOW_ACTION_EFFECT_LABELS;
+  return labels[type] ?? UNKNOWN_ACTION_EFFECT_LABEL;
+}
+
+/**
+ * §31: the `executionSummary` of a successful execute response.
+ *
+ * It is projected from the Transition's PUBLISHED Action plan, which §4's
+ * all-or-nothing commit means equals what ran, and never from the engine's
+ * per-effect internals — those carry record ids and Target Object details that
+ * must not reach the client.
+ */
+export function runtimeExecutionSummary(input: {
+  workflowExecutionId: string;
+  transitionKey: string;
+  actions: readonly PublishedAction[];
+}): RuntimeExecutionSummary {
+  return {
+    workflowExecutionId: input.workflowExecutionId,
+    transitionKey: input.transitionKey,
+    actions: runtimeTransitionEffects(input.actions),
+  };
 }
 
 function currentStateView(
@@ -209,7 +320,9 @@ function assertRequiredFields(
   }
   if (missing.length === 0) return;
   const labels = missing.map((fieldKey) => {
-    const field = schema.fields.find((candidate) => candidate.fieldKey === fieldKey);
+    const field = schema.fields.find(
+      (candidate) => candidate.fieldKey === fieldKey,
+    );
     return field?.label ?? fieldKey;
   });
   throw new ApiException('WORKFLOW_REQUIRED_FIELDS_MISSING', 400, {

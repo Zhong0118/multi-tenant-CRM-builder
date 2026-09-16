@@ -81,7 +81,6 @@ export type RecordListFilter =
 
 export type RecordListSystemSort = 'updatedAt' | 'createdAt' | 'recordNo';
 export type RecordListFieldSortKind = 'TEXT' | 'NUMBER' | 'DATE' | 'OPTION';
-
 export type RecordListFieldSort = {
   fieldKey: string;
   kind: RecordListFieldSortKind;
@@ -98,6 +97,40 @@ export interface RecordListQuery {
   filters: RecordListFilter[];
   sort: RecordListSystemSort | RecordListFieldSort;
   direction: 'asc' | 'desc';
+}
+
+/**
+ * §14 / §19: the accumulated Source Record changes a Transition applies once.
+ * It is data, not a write: `prepareSourceRecordPatch` returns one without
+ * touching the stored record, and `applyRecordPatch` / `applyTransition` are
+ * the only places that persist it.
+ */
+export interface RecordSourcePatch {
+  values: Record<string, unknown>;
+  title: string;
+  ownerMemberId: string | null;
+  /** Next Workflow state; omitted to leave the current state unchanged. */
+  workflowStateKey?: string;
+}
+
+/** §30: the Transition History row written together with the source patch. */
+export interface SourceRecordPatchHistory {
+  objectDefinitionId: string;
+  objectPublicationId: string;
+  transitionKey: string;
+  transitionLabel: string;
+  fromStateKey: string | null;
+  fromStateLabel: string | null;
+  toStateKey: string;
+  toStateLabel: string;
+  actorMemberId: string;
+}
+
+export interface ApplySourceRecordPatchStoreInput {
+  recordId: string;
+  expectedVersion: number;
+  patch: RecordSourcePatch;
+  history?: SourceRecordPatchHistory;
 }
 
 export interface RecordsStore {
@@ -121,6 +154,27 @@ export interface RecordsStore {
     total: number;
   }>;
   findRecord(objectId: string, recordId: string): Promise<DynamicRecord | null>;
+  /**
+   * §23 step 7 / §36: locks the Source Record row (`FOR UPDATE`) for the rest
+   * of the caller's transaction and returns a fresh read of it. It is the write
+   * path's counterpart of `findRecord`: a Transition must hold the row it is
+   * about to move, not merely have read it.
+   *
+   * `ownerMemberId` narrows the row to that owner, which is how an OWN update
+   * scope keeps the "you may only touch what you own" rule once the row is
+   * locked instead of read. It returns null for a record that is missing,
+   * soft-deleted or out of scope, so the caller raises RECORD_NOT_FOUND exactly
+   * as the read path does.
+   */
+  lockRecord(input: {
+    objectId: string;
+    recordId: string;
+    ownerMemberId: string | null;
+  }): Promise<DynamicRecord | null>;
+  /**
+   * Superseded by `applyRecordPatch` and no longer called by any production
+   * path; kept because removing it is tracked as a separate cleanup.
+   */
   updateRecord(
     recordId: string,
     expectedVersion: number,
@@ -150,22 +204,31 @@ export interface RecordsStore {
   }): Promise<RecordActivity>;
   listMemberNames(memberIds: string[]): Promise<Map<string, string>>;
   appendAudit(event: AuditEvent): Promise<void>;
-  applyWorkflowTransition(input: {
-    recordId: string;
-    expectedVersion: number;
-    workflowStateKey: string;
-    history: {
-      objectDefinitionId: string;
-      objectPublicationId: string;
-      transitionKey: string;
-      transitionLabel: string;
-      fromStateKey: string | null;
-      fromStateLabel: string | null;
-      toStateKey: string;
-      toStateLabel: string;
-      actorMemberId: string;
-    };
-  }): Promise<DynamicRecord | null>;
+  /**
+   * §14 / §23: the ONE final Source Record write for an ORDINARY update. It
+   * atomically writes values, title, owner, workflow state and `version + 1`
+   * guarded by `expectedVersion`, so a caller that accumulates several changes
+   * still moves the version exactly once. It returns null when the record is
+   * gone or the version moved, so the caller can raise RECORD_VERSION_CONFLICT.
+   *
+   * It locks the ACTIVE member rows of the actor and of `patch.ownerMemberId`
+   * first, which is why an ordinary update is rejected with OWNER_INVALID when
+   * the record's CURRENT owner is no longer an ACTIVE member/user, and with
+   * WORKSPACE_FORBIDDEN when the actor is not ACTIVE or changed role.
+   */
+  applyRecordPatch(
+    input: ApplySourceRecordPatchStoreInput,
+  ): Promise<DynamicRecord | null>;
+  /**
+   * §14 / §23: the ONE final Source Record write for a WORKFLOW TRANSITION.
+   * Same statement and same guards as `applyRecordPatch`, deliberately WITHOUT
+   * the ACTIVE-owner lock. See the implementation for why the two intents
+   * differ; the difference is inherited from the pre-refactor store, not a new
+   * policy decision.
+   */
+  applyTransition(
+    input: ApplySourceRecordPatchStoreInput,
+  ): Promise<DynamicRecord | null>;
   listTransitionHistory(
     recordId: string,
     query: { page: number; limit: number },
@@ -188,10 +251,32 @@ export interface RecordsStore {
   }>;
 }
 
+/**
+ * §24 / T8b: the tenant transaction itself, next to the `RecordsStore` bound to
+ * it. The Workflow execute path needs both — the Action Engine takes a
+ * `Prisma.TransactionClient` while the Source Record write goes through the
+ * store — and they must be the SAME transaction, or a Transition could commit
+ * its Actions and never its source write (§4).
+ */
+export interface RecordsTransaction {
+  tx: Prisma.TransactionClient;
+  store: RecordsStore;
+}
+
 export interface RecordsRepository {
   withTenant<T>(
     context: TenantContext,
     work: (store: RecordsStore) => Promise<T>,
+  ): Promise<T>;
+  /**
+   * §4 / §24: the same single tenant transaction, handed over as
+   * `{ tx, store }` so a caller that also drives transaction-taking commands
+   * (the Action Engine) can run them and the store inside ONE transaction. It
+   * never opens a second transaction, and never nests one.
+   */
+  withTenantTransaction<T>(
+    context: TenantContext,
+    work: (session: RecordsTransaction) => Promise<T>,
   ): Promise<T>;
 }
 
@@ -206,8 +291,20 @@ export class PrismaRecordsRepository implements RecordsRepository {
     context: TenantContext,
     work: (store: RecordsStore) => Promise<T>,
   ): Promise<T> {
+    return this.withTenantTransaction(context, (session) =>
+      work(session.store),
+    );
+  }
+
+  withTenantTransaction<T>(
+    context: TenantContext,
+    work: (session: RecordsTransaction) => Promise<T>,
+  ): Promise<T> {
     return this.runner.withTenant(context, (transaction) =>
-      work(new PrismaRecordsStore(transaction, this.audit, context)),
+      work({
+        tx: transaction,
+        store: new PrismaRecordsStore(transaction, this.audit, context),
+      }),
     );
   }
 }
@@ -387,6 +484,39 @@ class PrismaRecordsStore implements RecordsStore {
     return record ? fromPrismaRecord(record) : null;
   }
 
+  /**
+   * §23 step 7 / §36: `SELECT … FOR UPDATE` on the Source Record, then a fresh
+   * read of it. The lock is what stops two concurrent Transitions on the same
+   * record from both passing the `expectedVersion` check; the read is the
+   * immutable snapshot the Transition then works from.
+   *
+   * The owner predicate is deliberately part of the lock statement: an OWN
+   * update scope must not be able to lock — or even learn about — another
+   * member's record.
+   */
+  async lockRecord(input: {
+    objectId: string;
+    recordId: string;
+    ownerMemberId: string | null;
+  }): Promise<DynamicRecord | null> {
+    const rows = await this.transaction.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM records
+      WHERE tenant_id = ${this.context.tenantId}::uuid
+        AND object_id = ${input.objectId}::uuid
+        AND id = ${input.recordId}::uuid
+        AND deleted_at IS NULL
+        AND (${input.ownerMemberId}::uuid IS NULL OR owner_member_id = ${input.ownerMemberId}::uuid)
+      FOR UPDATE
+    `;
+    if (rows.length === 0) return null;
+    return this.findRecord(input.objectId, input.recordId);
+  }
+
+  /**
+   * Dead: superseded by `applyRecordPatch`, which carries the same
+   * unconditional ACTIVE-owner lock plus the optional workflow-state and
+   * history support. Kept only until the separate cleanup removes it.
+   */
   async updateRecord(
     recordId: string,
     expectedVersion: number,
@@ -418,22 +548,62 @@ class PrismaRecordsStore implements RecordsStore {
     return record ? fromPrismaRecord(record) : null;
   }
 
-  async applyWorkflowTransition(input: {
-    recordId: string;
-    expectedVersion: number;
-    workflowStateKey: string;
-    history: {
-      objectDefinitionId: string;
-      objectPublicationId: string;
-      transitionKey: string;
-      transitionLabel: string;
-      fromStateKey: string | null;
-      fromStateLabel: string | null;
-      toStateKey: string;
-      toStateLabel: string;
-      actorMemberId: string;
-    };
-  }): Promise<DynamicRecord | null> {
+  /**
+   * ORDINARY-UPDATE intent. The ACTIVE-owner lock is UNCONDITIONAL and
+   * deliberate: it preserves the exact semantics of the pre-refactor
+   * `updateRecord`, which locked `input.ownerMemberId` before every write. An
+   * ordinary update therefore fails with OWNER_INVALID when the record's
+   * CURRENT owner is not an ACTIVE member/user, or with WORKSPACE_FORBIDDEN
+   * when the ACTOR's member/user is no longer ACTIVE or its role moved. Do not
+   * make it conditional on an owner change: `resolveUpdateOwner` keeps the
+   * existing owner on an ordinary update, so a deactivated owner would
+   * silently start being accepted here.
+   *
+   * Consequence for later tasks: reassigning a record away from a deactivated
+   * owner cannot go through an ordinary update; it needs the explicit
+   * ASSIGN_OWNER path, which takes the lock for the new owner itself.
+   */
+  async applyRecordPatch(
+    input: ApplySourceRecordPatchStoreInput,
+  ): Promise<DynamicRecord | null> {
+    await this.lockActiveOwners(input.patch.ownerMemberId);
+    return this.applyPatchBody(input);
+  }
+
+  /**
+   * WORKFLOW-TRANSITION intent. This deliberately takes NO ACTIVE-owner lock:
+   * the pre-refactor `applyWorkflowTransition` never called `lockActiveOwners`
+   * and relied on `expectedVersion` alone, so a transition may advance a record
+   * whose current owner has since been offboarded. That matters in this
+   * product because the 离职交接 (offboarding handover) flow does not rewrite
+   * every record, so records owned by deactivated members legitimately exist
+   * and an admin must still be able to move them.
+   *
+   * The actor half of the lock would also be redundant on the HTTP path:
+   * `workflow-runtime.controller.ts` applies `WorkspaceGuard`, which
+   * re-resolves member and tenant status before the transition runs.
+   *
+   * This asymmetry is INHERITED from the pre-refactor code, NOT a new policy
+   * decision. If the product later wants transitions to require an ACTIVE
+   * owner too, that is a separate, deliberate change — do not consolidate
+   * these two intents back into one method.
+   */
+  applyTransition(
+    input: ApplySourceRecordPatchStoreInput,
+  ): Promise<DynamicRecord | null> {
+    return this.applyPatchBody(input);
+  }
+
+  /**
+   * The shared write body of both intents: one `updateMany` guarded by
+   * `expectedVersion`, the optional Transition History row, and the reload.
+   * Keeping it here is what stops the two intents from drifting apart; only
+   * the lock above them differs.
+   */
+  private async applyPatchBody(
+    input: ApplySourceRecordPatchStoreInput,
+  ): Promise<DynamicRecord | null> {
+    const { patch, history } = input;
     const result = await this.transaction.record.updateMany({
       where: {
         id: input.recordId,
@@ -442,28 +612,35 @@ class PrismaRecordsStore implements RecordsStore {
         deletedAt: null,
       },
       data: {
-        statusKey: input.workflowStateKey,
+        data: toPrismaJson(patch.values),
+        title: patch.title,
+        ownerMemberId: patch.ownerMemberId,
+        ...(patch.workflowStateKey === undefined
+          ? {}
+          : { statusKey: patch.workflowStateKey }),
         version: { increment: 1 },
       },
     });
     if (result.count !== 1) return null;
-    await this.transaction.recordTransitionHistory.create({
-      data: {
-        tenantId: this.context.tenantId,
-        objectDefinitionId: input.history.objectDefinitionId,
-        recordId: input.recordId,
-        objectPublicationId: input.history.objectPublicationId,
-        transitionKey: input.history.transitionKey,
-        transitionLabel: input.history.transitionLabel,
-        fromStateKey: input.history.fromStateKey,
-        fromStateLabel: input.history.fromStateLabel,
-        toStateKey: input.history.toStateKey,
-        toStateLabel: input.history.toStateLabel,
-        actorMemberId: input.history.actorMemberId,
-        recordVersionBefore: input.expectedVersion,
-        recordVersionAfter: input.expectedVersion + 1,
-      },
-    });
+    if (history) {
+      await this.transaction.recordTransitionHistory.create({
+        data: {
+          tenantId: this.context.tenantId,
+          objectDefinitionId: history.objectDefinitionId,
+          recordId: input.recordId,
+          objectPublicationId: history.objectPublicationId,
+          transitionKey: history.transitionKey,
+          transitionLabel: history.transitionLabel,
+          fromStateKey: history.fromStateKey,
+          fromStateLabel: history.fromStateLabel,
+          toStateKey: history.toStateKey,
+          toStateLabel: history.toStateLabel,
+          actorMemberId: history.actorMemberId,
+          recordVersionBefore: input.expectedVersion,
+          recordVersionAfter: input.expectedVersion + 1,
+        },
+      });
+    }
     const record = await this.transaction.record.findUnique({
       where: { id: input.recordId },
     });

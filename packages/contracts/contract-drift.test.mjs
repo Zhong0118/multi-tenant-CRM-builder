@@ -296,3 +296,71 @@ test("gives every parameter and property a usable JSON type", async () => {
 
   assert.deepEqual(opaque, []);
 });
+
+/**
+ * §31 — the runtime response exposes a STATIC effect summary (what a transition
+ * will do) and a lightweight execution summary (what it did), and both are
+ * NAMED component schemas so the generated client gets a usable type.
+ *
+ * The static summary is a safety boundary: the schema itself must have nowhere
+ * to put a field key, a mapping source or a permission. Asserting the property
+ * list here pins that at the contract level, not only in the API tests.
+ */
+test("names the runtime effect summary schema and keeps it static", async () => {
+  const document = JSON.parse(
+    await readFile(new URL("./openapi.json", import.meta.url), "utf8"),
+  );
+  const schemas = document.components.schemas;
+
+  const effect = schemas.RuntimeTransitionEffectDto;
+  assert.ok(effect, "RuntimeTransitionEffectDto must be a named schema");
+  assert.deepEqual(Object.keys(effect.properties).toSorted(), [
+    "label",
+    "type",
+  ]);
+  assert.deepEqual(effect.required.toSorted(), ["label", "type"]);
+  assert.equal(effect.properties.label.type, "string");
+  assert.deepEqual(effect.properties.type.enum.toSorted(), [
+    "ASSIGN_OWNER",
+    "CREATE_FOLLOW_UP",
+    "CREATE_RECORD",
+    "CREATE_RELATION",
+    "UPDATE_RECORD",
+  ]);
+  assert.equal(effect.properties.type.type, "string");
+
+  const effectRef = { $ref: "#/components/schemas/RuntimeTransitionEffectDto" };
+  const effects = schemas.RuntimeAvailableTransitionDto.properties.effects;
+  assert.equal(effects.type, "array");
+  assert.deepEqual(effects.items, effectRef);
+  assert.ok(schemas.RuntimeAvailableTransitionDto.required.includes("effects"));
+
+  const summary = schemas.RuntimeExecutionSummaryDto;
+  assert.ok(summary, "RuntimeExecutionSummaryDto must be a named schema");
+  assert.deepEqual(Object.keys(summary.properties).toSorted(), [
+    "actions",
+    "transitionKey",
+    "workflowExecutionId",
+  ]);
+  assert.deepEqual(summary.required.toSorted(), [
+    "actions",
+    "transitionKey",
+    "workflowExecutionId",
+  ]);
+  assert.deepEqual(summary.properties.actions, {
+    items: effectRef,
+    type: "array",
+  });
+  assert.deepEqual(
+    // A documented `$ref` is emitted as a single-entry `allOf`; either way the
+    // property resolves to the NAMED schema, not to an inline object.
+    schemas.RuntimeWorkflowResponseDto.properties.executionSummary.allOf,
+    [{ $ref: "#/components/schemas/RuntimeExecutionSummaryDto" }],
+  );
+  // §35: additive only — a client written before Task 11 still type-checks
+  // against the same response body.
+  assert.equal(
+    schemas.RuntimeWorkflowResponseDto.required.includes("executionSummary"),
+    false,
+  );
+});

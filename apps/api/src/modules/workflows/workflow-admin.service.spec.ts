@@ -1,5 +1,6 @@
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
+import type { WorkflowActionDraft } from '../actions/action.types';
 import { WorkflowAdminService } from './workflow-admin.service';
 import type {
   WorkflowRepository,
@@ -44,6 +45,30 @@ const validDraft: WorkflowDraft = {
   ],
 };
 
+/** Two ordered Action steps: an UPDATE_RECORD followed by an ASSIGN_OWNER. */
+const orderedActions: WorkflowActionDraft[] = [
+  {
+    key: 'update-source',
+    type: 'UPDATE_RECORD',
+    target: 'SOURCE_RECORD',
+    values: { note: { source: 'LITERAL', value: '已转化' } },
+  },
+  {
+    key: 'assign-actor',
+    type: 'ASSIGN_OWNER',
+    target: 'SOURCE_RECORD',
+    owner: { source: 'ACTOR' },
+  },
+];
+
+const actionsDraft: WorkflowDraft = {
+  ...validDraft,
+  transitions: validDraft.transitions.map((transition) => ({
+    ...transition,
+    actions: orderedActions,
+  })),
+};
+
 class MemoryWorkflowStore implements WorkflowStore {
   object = {
     id: 'object-1',
@@ -67,10 +92,10 @@ class MemoryWorkflowStore implements WorkflowStore {
     draft: WorkflowDraft;
   }): Promise<WorkflowDraftResponse | null> {
     if (input.expectedVersion !== this.object.version) return Promise.resolve(null);
-    this.draft = structuredClone(input.draft);
+    this.draft = this.snapshot(input.draft);
     this.object.version += 1;
     return Promise.resolve({
-      ...structuredClone(input.draft),
+      ...this.snapshot(input.draft),
       objectVersion: this.object.version,
     });
   }
@@ -78,6 +103,16 @@ class MemoryWorkflowStore implements WorkflowStore {
   appendAudit(event: { action: string }) {
     this.audits.push(event);
     return Promise.resolve();
+  }
+
+  /**
+   * The Prisma store persists a draft through JSONB columns. Keeping object
+   * references here would let a round-trip assertion pass without ever crossing
+   * that boundary, so the fake goes through JSON too: `undefined` disappears and
+   * array order is whatever the serializer preserves.
+   */
+  private snapshot(draft: WorkflowDraft): WorkflowDraft {
+    return JSON.parse(JSON.stringify(draft)) as WorkflowDraft;
   }
 }
 
@@ -197,5 +232,44 @@ describe('WorkflowAdminService', () => {
     expect(store.audits.map((event) => event.action)).toEqual([
       'workflow.draft_updated',
     ]);
+  });
+
+  it('round-trips two ordered actions through save and get', async () => {
+    const { service, store } = fixture();
+
+    const saved = await service.save(
+      admin,
+      'object-1',
+      { ...actionsDraft, expectedDraftRevision: 12 },
+      meta,
+    );
+    const loaded = await service.get(admin, 'object-1');
+
+    expect(loaded.transitions[0]?.actions).toEqual(orderedActions);
+    expect(saved.transitions[0]?.actions).toEqual(orderedActions);
+    expect(loaded.transitions[0]?.actions?.map((action) => action.key)).toEqual(
+      ['update-source', 'assign-actor'],
+    );
+    expect(
+      loaded.transitions[0]?.actions?.map((action) => action.type),
+    ).toEqual(['UPDATE_RECORD', 'ASSIGN_OWNER']);
+    // Order is execution order (§28): it must survive the persistence boundary
+    // exactly as saved, not merely contain the same steps.
+    expect(store.draft?.transitions[0]?.actions).toEqual(orderedActions);
+  });
+
+  it('persists a transition without actions as an empty list', async () => {
+    const { service } = fixture();
+
+    const saved = await service.save(
+      admin,
+      'object-1',
+      { ...validDraft, expectedDraftRevision: 12 },
+      meta,
+    );
+    const loaded = await service.get(admin, 'object-1');
+
+    expect(saved.transitions[0]?.actions).toEqual([]);
+    expect(loaded.transitions[0]?.actions).toEqual([]);
   });
 });

@@ -89,6 +89,95 @@
   align-items: center;
 }
 
+/* §33: the ordered Action step list of one Transition. A list, not a canvas. */
+.actionEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--rule);
+  border-radius: 4px;
+  background: var(--bg-subtle, transparent);
+}
+
+.actionEditorHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.actionStep {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--paper);
+}
+
+.actionStepHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.actionStepForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.actionField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ink-secondary);
+}
+
+.actionMappings {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.actionMappingHead,
+.actionMappingRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.actionMappingHead {
+  font-size: 12px;
+  color: var(--ink-secondary);
+}
+
+.actionMappingHead span {
+  min-width: 160px;
+}
+
+.actionErrorList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.actionErrorList code {
+  margin-right: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
 /* Left rail encodes the real configuration steps, not decorative numbering. */
 .designerNav {
   position: sticky;

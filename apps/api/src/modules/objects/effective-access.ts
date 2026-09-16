@@ -1,5 +1,6 @@
 import type {
   PublishedDataScope,
+  PublishedField,
   PublishedFieldAccess,
   PublishedObjectSchema,
 } from './object-schema';
@@ -17,8 +18,20 @@ export interface EffectiveObjectAccess extends ObjectAccessPolicy {
   fields: Record<string, PublishedFieldAccess>;
 }
 
+/**
+ * What `resolveEffectiveAccess` actually reads from a schema. `PublishedObjectSchema`
+ * satisfies it; so does the pending schema the publication analyzer projects
+ * from a draft (`action-publication.policy.ts`), which is why the analyzer can
+ * resolve employee access through this one implementation instead of repeating
+ * the `isSystem` / default-access rules.
+ */
+export interface AccessibleObjectSchema {
+  fields: ReadonlyArray<Pick<PublishedField, 'fieldKey' | 'isSystem'>>;
+  employeeAccess?: NonNullable<PublishedObjectSchema['employeeAccess']> | null;
+}
+
 export function resolveEffectiveAccess(input: {
-  schema: PublishedObjectSchema;
+  schema: AccessibleObjectSchema;
   role: 'TENANT_ADMIN' | 'EMPLOYEE';
   memberOverride?: ObjectAccessPolicy;
 }): EffectiveObjectAccess {
@@ -38,8 +51,7 @@ export function resolveEffectiveAccess(input: {
     };
   }
 
-  const employeeAccess = input.schema.employeeAccess as
-    PublishedObjectSchema['employeeAccess'] | undefined;
+  const employeeAccess = input.schema.employeeAccess ?? undefined;
 
   if (!employeeAccess) {
     return {

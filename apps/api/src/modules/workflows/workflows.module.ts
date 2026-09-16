@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { ActionsModule } from '../actions/actions.module';
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { MembershipsModule } from '../memberships/memberships.module';
@@ -16,6 +17,7 @@ import { PrismaWorkflowRepository } from './workflow.repository';
 
 @Module({
   imports: [
+    ActionsModule,
     AuditModule,
     AuthModule,
     MembershipsModule,
