@@ -63,6 +63,20 @@ export class FollowUpsRepository {
       }),
     );
   }
+  /**
+   * The Workbench buckets by the tenant's calendar day, so the caller needs the
+   * tenant zone before it can compute a range. `null` means "not configured"
+   * and is reported as-is; the service decides to fail closed.
+   */
+  getTenantTimezone(context: TenantContext): Promise<string | null> {
+    return this.runner.withTenant(context, async (tx) => {
+      const tenant = await tx.tenant.findUnique({
+        where: { id: context.tenantId },
+        select: { timezone: true },
+      });
+      return tenant?.timezone ?? null;
+    });
+  }
   find(context: TenantContext, id: string) {
     return this.runner.withTenant(context, async (tx) => {
       const item = await tx.recordFollowUp.findFirst({

@@ -49,6 +49,7 @@ interface HarnessOptions {
   actorRows?: Array<{ id: string; role: string }>;
   recordRows?: Array<{ id: string }>;
   updateCount?: number;
+  tenantTimezone?: string | null;
 }
 
 function harness(options: HarnessOptions = {}) {
@@ -79,6 +80,16 @@ function harness(options: HarnessOptions = {}) {
       ),
       updateMany: jest.fn(() =>
         Promise.resolve({ count: options.updateCount ?? 1 }),
+      ),
+    },
+    tenant: {
+      findUnique: jest.fn(() =>
+        Promise.resolve({
+          timezone:
+            options.tenantTimezone === undefined
+              ? 'Asia/Shanghai'
+              : options.tenantTimezone,
+        }),
       ),
     },
   };
@@ -199,5 +210,32 @@ describe('FollowUpsRepository transaction boundary', () => {
     const event = fixture.append.mock.calls[0][1];
     expect(event.after).toMatchObject({ status: 'DONE', version: 2 });
     expect(event.before).toMatchObject({ status: 'OPEN', version: 1 });
+  });
+});
+
+describe('FollowUpsRepository tenant timezone', () => {
+  it('reads the current tenant timezone through the tenant context runner', async () => {
+    const fixture = harness();
+
+    await expect(
+      fixture.repository.getTenantTimezone(context),
+    ).resolves.toBe('Asia/Shanghai');
+
+    expect(fixture.withTenant).toHaveBeenCalledWith(
+      context,
+      expect.any(Function),
+    );
+    expect(fixture.tx.tenant.findUnique).toHaveBeenCalledWith({
+      where: { id: context.tenantId },
+      select: { timezone: true },
+    });
+  });
+
+  it('reports a missing tenant row as null instead of guessing a zone', async () => {
+    const fixture = harness({ tenantTimezone: null });
+
+    await expect(
+      fixture.repository.getTenantTimezone(context),
+    ).resolves.toBeNull();
   });
 });
