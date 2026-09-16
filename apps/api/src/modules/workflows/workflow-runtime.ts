@@ -219,6 +219,14 @@ function availableTransitions(input: {
 }
 
 /**
+ * §31: the label used when an Action type has no entry in the closed map.
+ *
+ * Generic on purpose, exactly like the mapped labels: naming a Target Object, a
+ * field or a mapping here would leak the same thing the map refuses to leak.
+ */
+const UNKNOWN_ACTION_EFFECT_LABEL = '执行 1 个动作';
+
+/**
  * §31: the static Effect Summary of an ordered Action list, in execution order
  * (§28). Only each Action's TYPE is read — the payload is never touched — so
  * the summary is safe by construction rather than by redaction.
@@ -228,8 +236,27 @@ export function runtimeTransitionEffects(
 ): RuntimeTransitionEffect[] {
   return actions.map((action) => ({
     type: action.type,
-    label: WORKFLOW_ACTION_EFFECT_LABELS[action.type],
+    label: actionEffectLabel(action.type),
   }));
+}
+
+/**
+ * §31: the label of one Action type, guaranteed to be a string.
+ *
+ * `WORKFLOW_ACTION_EFFECT_LABELS` is exhaustive over `WorkflowActionType`, so
+ * for a published plan — one that passed `validateTransitionActions` before it
+ * could be stored — the fallback is unreachable. It exists because the lookup
+ * is a plain index on a value that arrives from a persisted JSON column, which
+ * the type system cannot re-validate at runtime: an out-of-enum type would
+ * yield `undefined`, and `JSON.stringify` DROPS an undefined property, so the
+ * response would silently carry an effect entry missing the `label` that §31's
+ * schema requires instead of failing loudly. The view is widened here rather
+ * than in the map so the map itself stays exhaustive for V1 code.
+ */
+function actionEffectLabel(type: WorkflowActionType): string {
+  const labels: Record<string, string | undefined> =
+    WORKFLOW_ACTION_EFFECT_LABELS;
+  return labels[type] ?? UNKNOWN_ACTION_EFFECT_LABEL;
 }
 
 /**

@@ -5,6 +5,13 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 
 import { createApp } from '../src/bootstrap';
+// Static and extensionless, like `../src/bootstrap` above: `apps/api` is
+// CommonJS (no `"type": "module"`), so a static relative import resolves by the
+// CJS rules `nodenext` applies here. A dynamic `import()` of the same path is
+// resolved as ESM instead, which demands a `.js` extension that ts-jest's
+// resolver does not map back to the `.ts` source (test/jest-e2e.json has no
+// `moduleNameMapper`).
+import { isWriteConflict } from '../src/infrastructure/database/write-conflict';
 import { hashSessionToken } from '../src/modules/auth/session.service';
 
 /**
@@ -486,9 +493,6 @@ describe('Action Engine V1 atomicity and tenant safety (e2e, real PostgreSQL)', 
 
   it('T10b-i classifies a REAL PostgreSQL 40P01 deadlock as retryable', async () => {
     const { realDeadlock, survivor } = await forceRealDeadlock();
-    const { isWriteConflict } = await import(
-      '../src/infrastructure/database/write-conflict'
-    );
     let realOtherCode = 'unknown';
 
     // The genuine shape, straight from @prisma/adapter-pg: P2010 with the
@@ -1811,13 +1815,29 @@ async function createRecord(
       ownerMemberId: input.ownerMemberId,
       statusKey: input.statusKey,
       title: input.title,
-      data: input.values,
+      data: toPrismaJson(input.values),
       source: 'MANUAL',
       version: 1,
       createdByMemberId: input.ownerMemberId,
     },
     select: { id: true, version: true },
   });
+}
+
+/**
+ * The write-side counterpart of the reads this suite does through the API.
+ *
+ * `input.values` is a plain `Record<string, unknown>`, which Prisma's generated
+ * `Json` write type (`InputJsonValue`) does not accept structurally. Production
+ * code writes this very column with a narrow assertion —
+ * `records.repository.ts`'s `toPrismaJson` — rather than a JSON round-trip, so
+ * the value handed to the driver stays identical to the one the fixture built
+ * (a round-trip would drop `undefined` members and reformat dates). The
+ * assertion is the same one the repository makes, for the same reason: these
+ * values were validated by the API before they ever reached the column.
+ */
+function toPrismaJson(value: unknown): Prisma.InputJsonValue {
+  return value as Prisma.InputJsonValue;
 }
 
 function readOriginalCode(error: unknown): string | null {
