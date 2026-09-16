@@ -646,7 +646,95 @@ currentState
 
 ---
 
-# 18. 变更本边界的流程
+# 18. BOUNDARY-16：同步 Action 继承 Actor 权限并与 Transition 共享同一事务
+
+同步数据库 Action 不是新的权限入口，而是受控 Transition 在同一个事务内产生的副作用。
+
+因此它必须同时满足权限与事务两方面约束。
+
+## 18.1 权限：继承真实 Actor，不允许提权
+
+Action 全部继承 Transition 发起人（真实 Actor）的：
+
+- Tenant Context；
+- Active Membership；
+- Role；
+- Effective Object Access；
+- Member Override；
+- Field Permission；
+- Read / Update Scope；
+- PostgreSQL RLS。
+
+V1 不提供：
+
+```text
+runAsSystem
+runAsAdmin
+bypassPermission
+elevatedPermission
+```
+
+任何形式的隐式提权。
+
+例如员工对源记录有 Transition 权限，但对目标对象没有 `canCreate`：
+
+```text
+Transition validation ✅
+CREATE_RECORD target ❌
+```
+
+结果：
+
+```text
+整个事务 rollback
+```
+
+`allowedRoles` 只表示“谁可以请求这个 Transition”，不代表请求者因此获得目标对象的权限。
+
+## 18.2 事务：Transition 与它的全部 Action 同生共死
+
+一次 Transition 必须在同一个 Tenant DB Transaction 内完成：
+
+```text
+Transition
+  + Actions[]
+  + Source Patch
+  + State Change
+  + Transition History
+  + Audit
+```
+
+其中任何一步失败，以上全部 rollback。
+
+```text
+No partial success
+```
+
+不允许出现“状态已经迁移，但 Action 只执行了一部分”的中间态。
+
+## 18.3 外部 I/O 不属于同步 Action
+
+SMS / Email / Feishu / Webhook / 任意 HTTP 调用都不属于同步 DB Action 的范围。
+
+它们不能参与上述事务，也就无法获得事务回滚的保护，因此必须交给未来独立的 Outbox / Worker 设计（见 Roadmap 的 Automation 阶段），而不是塞进同步 Action。
+
+把外部 I/O 放进同步 Action 会直接破坏“无部分成功”的承诺，所以 V1 明确不做。
+
+## 18.4 V1 不新增 Employee Owner Change 能力
+
+`EMPLOYEE` + `ASSIGN_OWNER` 在 Publish 阶段就被阻止：
+
+```text
+EMPLOYEE + ASSIGN_OWNER
+  ↓
+Publish blocked
+```
+
+“员工领取 / 归我负责”如果要做，应作为独立 capability 单独设计，而不是借 Transition 顺带提权。
+
+---
+
+# 19. 变更本边界的流程
 
 如果开发中发现必须改变本文中的长期决策：
 
@@ -662,7 +750,7 @@ currentState
 
 ---
 
-# 19. 当前必须遵守的结论
+# 20. 当前必须遵守的结论
 
 当前 Workflow V1 必须满足：
 
@@ -673,6 +761,7 @@ currentState
 - 使用 Record Version 做乐观锁；
 - 有 Transition History；
 - 有 Audit；
-- 不做 Action / Trigger / Agent；
+- Action 只作为 Transition 的同步 Action 执行，见 BOUNDARY-16；
+- 不做 Trigger / Agent；
 - 老 Record 不被 Publish 静默改写；
 - 无 Workflow Object 完全兼容旧行为。

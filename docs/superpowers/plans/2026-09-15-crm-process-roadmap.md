@@ -90,7 +90,7 @@ Acceptance / Audit
 | V2.0 数据与 SaaS 基础 | `COMPLETED` | 多租户、动态对象、记录、权限、模板、Dashboard | 可配置数据型 CRM Builder |
 | 工程守门 | `GATE` | CI、main protection、剩余关键人工验收 | 为后续核心改造提供回归保护 |
 | V2.1A Workflow Core | `COMPLETED` | State + Transition + Manual Execution | 从“改字段”进入“走流程” |
-| V2.1B Action Engine | `PLANNED` | 结构化业务动作 | 形成通用 CRM 业务闭环 |
+| V2.1B Action Engine | `ACTIVE` | 结构化业务动作 | 形成通用 CRM 业务闭环 |
 | V2.2 Sales Execution | `PLANNED` | 团队任务、主管队列、逾期升级 | CRM 主动组织销售执行 |
 | V2.3 Automation | `PLANNED` | Event + Trigger + Worker | 自动化 CRM |
 | V2.4 Data Quality & Integration | `PLANNED` | 去重合并、通知、外部集成 | 长期运营与触达能力 |
@@ -199,7 +199,12 @@ Required Fields
 
 # 7. V2.1B — Action Engine
 
-状态：`PLANNED`
+状态：`ACTIVE`
+
+详细规格：
+
+- `docs/superpowers/specs/2026-09-16-action-engine-v1-design.md`
+- `docs/superpowers/plans/2026-09-16-action-engine-v1-implementation.md`
 
 只有 Workflow V1 验收完成后才允许设计详细 Spec。
 
@@ -536,13 +541,29 @@ docs/audits/YYYY-MM-DD/<task>-acceptance.md
 Workflow V1 已进入 `main`，验收见
 `docs/audits/2026-09-15/workflow-v1-acceptance.md`。
 
-下一主要产品 Task 待用户确认后再从 `PLANNED` 提升为 `ACTIVE`。当前不要自行进入：
+依据第 14 节的 Step 1 — Promote，当前唯一主要产品 Task 是：
 
-- Action Engine；
+```text
+V2.1B Action Engine
+```
+
+详细规格：
+
+- `docs/superpowers/specs/2026-09-16-action-engine-v1-design.md`
+- `docs/superpowers/plans/2026-09-16-action-engine-v1-implementation.md`
+
+它在本文中记为 `ACTIVE` 而不是 `COMPLETED`：按第 2 节的状态定义，`COMPLETED` 需要验收证据，而 Action Engine V1 尚未完成验收。验收事实将记录在：
+
+```text
+docs/audits/YYYY-MM-DD/action-engine-v1-acceptance.md
+```
+
+本文不预设该文件的内容。
+
+在 Action Engine 验收完成前，不要自行进入：
+
 - Automation；
 - Dedup / Merge；
 - Notification；
 - Template Upgrade；
 - Agent。
-
-Workflow V1 通过验收后，再决定下一 Task 的详细设计。
