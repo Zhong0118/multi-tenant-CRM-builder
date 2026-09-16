@@ -208,7 +208,7 @@ Required Fields
 只有 Workflow V1 验收完成后才允许设计详细 Spec。
 
 验收证据：`docs/audits/2026-09-16/action-engine-v1-acceptance.md`。
-实现代码位于本地分支 `feat/action-engine-v1`，**尚未合并进 `main`、未推送、未部署**；验收记录里列明了仍然存在的缺口与偏差。
+实现代码位于分支 `feat/action-engine-v1`（**已推送 `origin`、尚未合并进 `main`、未部署**）；验收记录里列明了仍然存在的缺口与偏差。
 
 ## 7.1 目标
 
@@ -544,8 +544,8 @@ Workflow V1 已进入 `main`，验收见
 `docs/audits/2026-09-15/workflow-v1-acceptance.md`。
 
 V2.1B Action Engine 已完成并验收，验收证据见
-`docs/audits/2026-09-16/action-engine-v1-acceptance.md`。代码位于本地分支
-`feat/action-engine-v1`，**尚未合并进 `main`、未推送、未部署**。
+`docs/audits/2026-09-16/action-engine-v1-acceptance.md`。代码位于分支
+`feat/action-engine-v1`，**已推送 `origin`、尚未合并进 `main`、未部署**。
 
 它之所以在本轮从 `ACTIVE` 记为 `COMPLETED`：按第 2 节的状态定义，`COMPLETED` 需要验收证据，而验收记录里记录的是本轮实际重跑得到的事实（门禁输出、回滚 / 权限 / 并发 / RLS 证明、真实浏览器走查），不是计划或预测。记录里同时列出了仍然存在的缺口与偏差。
 

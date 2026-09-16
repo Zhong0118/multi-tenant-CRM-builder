@@ -3,7 +3,7 @@
 更新时间：2026-09-16
 
 `main` 与 `origin/main` 是当前开发基线。**不要把某次 `git log -1` 的输出写死进本文。**
-Action Engine V1 的代码**不在 `main` 上**：它只存在于本地分支 `feat/action-engine-v1`（worktree `.worktrees/action-engine-v1`），**未合并、未推送**。
+Action Engine V1 的代码**不在 `main` 上**：它存在于分支 `feat/action-engine-v1`（worktree `.worktrees/action-engine-v1`），**已推送 `origin`、未合并进 `main`**。开 PR 的入口：`https://github.com/Zhong0118/multi-tenant-CRM-builder/pull/new/feat/action-engine-v1`。
 
 验收见 `docs/audits/2026-09-15/workflow-v1-acceptance.md`（Workflow V1，已在 `main`）与
 `docs/audits/2026-09-16/action-engine-v1-acceptance.md`（Action Engine V1，在分支上）。未部署生产环境。
@@ -23,7 +23,7 @@ Action Engine V1 的代码**不在 `main` 上**：它只存在于本地分支 `f
    - `chat会话.md`
    - `.superpowers/sdd/2026-08-26-platform-business-template-designer/progress.md`
 3. `main` 与 `origin/main` 已同步，含 Workflow V1。不要 reset、rebase、强推或部署。推送要等用户明确要求。
-   `feat/action-engine-v1` 是**未合并、未推送**的本地分支；合不合并、何时合并由用户决定，不要自行快进或推送。
+   `feat/action-engine-v1` 已推送 `origin`（`origin/feat/action-engine-v1`），但**未合并进 `main`**；合不合并、何时合并由用户决定，不要自行快进或合并。
 4. 仓库存在 `.codegraph/`，理解代码时先运行 `codegraph explore "问题或符号"`。
 5. 用户要求快速实现。每个 Bug 只保留一个能复现用户症状的聚焦验证；不要反复跑全仓测试或多轮审查。
 
@@ -114,7 +114,7 @@ git log -10 --oneline
 - Record Detail 展示当前状态、当前用户可执行 Transition 和流程历史。普通 PATCH 不能改流程状态。
 - 独立测试对象 `workflow-check` 已在本地 nebula-demo 发布。管理员与员工（赵晨）均已走通新建记录 → 初始状态 → 执行 Transition。员工默认必须打开「可以查看」才会出现在导航中。
 
-### Workflow Action Engine（**只在本地分支 `feat/action-engine-v1`，未合并、未推送、未部署**）
+### Workflow Action Engine（**在分支 `feat/action-engine-v1`，已推送 `origin`、未合并进 `main`、未部署**）
 
 Transition 不再只是改状态，还能产生结构化业务动作：
 
@@ -227,14 +227,12 @@ Transition 不再只是改状态，还能产生结构化业务动作：
 
 2026-09-15 全量 `pnpm test` 退出码 0：API 51 套件 403 测试、Web 63 文件 360 测试、contracts 7、database 6、tenant-templates 2、worker 2。
 
-### Action Engine V1 已知缺口（在 `feat/action-engine-v1` 分支上，未合并）
-
-- **`requiredFieldKeys` 没有按执行人的字段权限过滤**：同一响应体可能泄露一个对该员工是隐藏的必填字段 key。已核实是早于本特性的既有问题，需要独立任务修。Member Override 会在 publish 之后动态改变字段权限，所以 publish 期分析挡不住它。
+### Action Engine V1 已知缺口（在 `feat/action-engine-v1` 分支上，未合并）- **`requiredFieldKeys` 没有按执行人的字段权限过滤**：同一响应体可能泄露一个对该员工是隐藏的必填字段 key。已核实是早于本特性的既有问题，需要独立任务修。Member Override 会在 publish 之后动态改变字段权限，所以 publish 期分析挡不住它。
 - **publish 分析没有真正处理「只读 / 隐藏」和「有效默认值」**：对某个角色的 Transition 而言，一个实际只读或隐藏的必填字段仍然会被要求映射，映射与不映射两种配法**都发不出去**；且任何非空默认值都被当作有效。属「publish 说没问题、runtime 才会失败」的形状。
 - **六个结构性 `WORKFLOW_ACTION_*` 错误码没有定位信息**（只有一条 message，没有 transitionKey / actionKey / fieldKey）。同样是既有截断行为，本特性只是让它更有后果。
 - **`executionSummary` 目前没有任何消费者**，属可删的额外面。
 - **「重试耗尽」的确定性证明来自单元测试**，e2e 的并发 A/B 用例没走到那条分支。重试上界仍是 3 次且无退避/抖动。
-- **合并不由接手者决定。** 分支未合并、未推送；要合并或推送必须由用户明确要求。
+- **合并不由接手者决定。** 分支已推送 `origin`，但**未合并进 `main`**；要合并必须由用户明确要求。
 - 分支的**验收与偏差清单**（含 100 条累积 Minor finding 的索引）在 `docs/audits/2026-09-16/action-engine-v1-acceptance.md`，逐条台账在 `.superpowers/sdd/progress.md`。
 
 **与本分支无关的既有红灯**：`apps/api/test/auth.e2e-spec.ts` 有一条用例期望 `GET /api/v1/me/sessions` 返回数组、而接口返回分页对象（已核实早于本特性）；全仓 lint 有 57 个既有的 API 错误，而本分支自己的文件是 lint 干净的。此外 `pnpm test` **不跑 e2e**，e2e 必须单独按路径执行。
@@ -399,8 +397,8 @@ HANDOFF.md 与 docs/superpowers/plans/2026-09-01-productization-follow-up.md。
 - .superpowers/sdd/2026-08-26-platform-business-template-designer/progress.md
 
 `main` 与 `origin/main` 已同步，含 Workflow V1。不要 reset、rebase、强推或部署。
-Action Engine V1 已完成并验收，但只在**未合并、未推送**的本地分支 `feat/action-engine-v1` 上：
-不要自行合并或推送，等用户明确要求。
+Action Engine V1 已完成并验收，在**已推送 `origin`、未合并进 `main`** 的分支 `feat/action-engine-v1` 上：
+不要自行合并，等用户明确要求。分支上的验收文档见 `docs/audits/2026-09-16/action-engine-v1-acceptance.md`。
 
 P0–P5 主干已经落地。P7 表管理主干已齐。Workflow V1 与 Action Engine V1 的代码都已存在，
 不要重新实现它们。**下一个阶段 V2.2 Sales Execution 尚未批准，不要自行开始**（Trigger /
