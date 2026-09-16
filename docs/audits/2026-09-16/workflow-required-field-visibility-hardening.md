@@ -84,7 +84,7 @@ closed，已在 §4.1 修正。）
 HANDOFF.md
 apps/api/src/modules/workflows/workflow-runtime.spec.ts
 apps/api/src/modules/workflows/workflow-runtime.ts
-docs/audits/2026-09-16-workflow-required-field-visibility-hardening.md
+docs/audits/2026-09-16/workflow-required-field-visibility-hardening.md
 ```
 
 其中**只有代码提交** `c8acbf1`（`fix: hide inaccessible workflow required fields`）
@@ -285,5 +285,7 @@ V2.2 / Sales Execution / Automation / Agent
 - 独立评审还记录了两条**同类但不在本分支范围**的残留信息通道（普通记录路径的
   `FIELD_REQUIRED` `fieldErrors`、Action 失败重抛的 `ACTION_EXECUTION_FAILED`
   `fieldErrors`），本轮明确不修、只记录，需各自单独开任务。
-- 本文件按任务给定的路径写在 `docs/audits/` 根下，仓库既有约定是
-  `docs/audits/<日期>/<名称>.md`；此处遵循任务显式给定的文件名，未擅自改路径。
+- 本文件最初按实现任务显式给定的文件名写在 `docs/audits/` 根下
+  （`2026-09-16-<名称>.md`）。收口时统一到仓库既有约定
+  `docs/audits/<日期>/<名称>.md`，已用 `git mv` 移到当前路径，并同步修正
+  `HANDOFF.md`、本文件与 implementation plan 中对它的全部引用（旧路径零残留）。

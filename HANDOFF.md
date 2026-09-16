@@ -229,7 +229,7 @@ Transition 不再只是改状态，还能产生结构化业务动作：
 
 ### Action Engine V1 已知缺口（已合并在 `main`）
 
-- ~~**`requiredFieldKeys` 没有按执行人的字段权限过滤**：同一响应体可能泄露一个对该员工是隐藏的必填字段 key。~~ **已由 `c8acbf1`（Workflow Required Field Visibility Hardening）修复**：required field 为 `HIDDEN`（或不在 `access.fields` 中）时，整个 Transition 对该 Actor 不可执行 —— GET 不返回该 Transition，direct execute 返回通用 `WORKFLOW_TRANSITION_FORBIDDEN` (403)，不带 key / label / `fieldErrors`。可见 required field 的 `WORKFLOW_REQUIRED_FIELDS_MISSING` 行为不变。验收见 `docs/audits/2026-09-16-workflow-required-field-visibility-hardening.md`。运行时判断基于 `EffectiveObjectAccess.fields`，所以将来若引入 Member-level Field Permission，运行时边界也已覆盖；publish 期分析照旧不替代运行时边界。
+- ~~**`requiredFieldKeys` 没有按执行人的字段权限过滤**：同一响应体可能泄露一个对该员工是隐藏的必填字段 key。~~ **已由 `c8acbf1`（Workflow Required Field Visibility Hardening）修复**：required field 为 `HIDDEN`（或不在 `access.fields` 中）时，整个 Transition 对该 Actor 不可执行 —— GET 不返回该 Transition，direct execute 返回通用 `WORKFLOW_TRANSITION_FORBIDDEN` (403)，不带 key / label / `fieldErrors`。可见 required field 的 `WORKFLOW_REQUIRED_FIELDS_MISSING` 行为不变。验收见 `docs/audits/2026-09-16/workflow-required-field-visibility-hardening.md`。运行时判断基于 `EffectiveObjectAccess.fields`，所以将来若引入 Member-level Field Permission，运行时边界也已覆盖；publish 期分析照旧不替代运行时边界。
 - **publish 分析没有真正处理「只读 / 隐藏」和「有效默认值」**：对某个角色的 Transition 而言，一个实际只读或隐藏的必填字段仍然会被要求映射，映射与不映射两种配法**都发不出去**；且任何非空默认值都被当作有效。属「publish 说没问题、runtime 才会失败」的形状。
 - **六个结构性 `WORKFLOW_ACTION_*` 错误码没有定位信息**（只有一条 message，没有 transitionKey / actionKey / fieldKey）。同样是既有截断行为，本特性只是让它更有后果。
 - **`executionSummary` 目前没有任何消费者**，属可删的额外面。
