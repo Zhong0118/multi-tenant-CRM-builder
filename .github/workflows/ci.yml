@@ -1,0 +1,185 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: "true"
+  # packages/database/prisma.config.ts resolves DATABASE_ADMIN_URL through
+  # prisma/config `env()`, so the variable must exist for the config module to
+  # load at all. `prisma generate` never opens a database connection; this is an
+  # ephemeral, non-secret placeholder matching compose.yaml, not a credential.
+  # The Database Integration job overrides it via TEST_DATABASE_ADMIN_URL for
+  # `prisma migrate deploy` only.
+  DATABASE_ADMIN_URL: postgresql://crm:crm@localhost:5432/crm?schema=public
+
+jobs:
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build internal prerequisites
+        run: pnpm --filter @crm/contracts --filter @crm/database build
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+  contracts:
+    name: Contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build internal prerequisites
+        run: pnpm --filter @crm/contracts --filter @crm/database build
+
+      - name: Check generated contracts
+        run: pnpm contracts:check
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-24.04
+    # The only job that runs every workspace suite; measured 28s locally, so 45
+    # minutes keeps ~100x headroom on slower runners while still bounding a hang.
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build internal prerequisites
+        run: pnpm --filter @crm/contracts --filter @crm/database build
+
+      - name: Run workspace tests
+        run: pnpm test
+
+  build:
+    name: Build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+  database-integration:
+    name: Database Integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start PostgreSQL
+        run: docker compose up -d --wait postgres
+
+      - name: Build database package
+        run: pnpm --filter @crm/database build
+
+      - name: Run database integration tests
+        env:
+          TEST_DATABASE_ADMIN_URL: postgresql://crm:crm@localhost:5432/crm?schema=public
+          TEST_DATABASE_URL: postgresql://crm_app:crm_app@localhost:5432/crm?schema=public
+        run: pnpm --filter @crm/database test:integration
+
+      - name: Show PostgreSQL logs on failure
+        if: failure()
+        run: docker compose logs --no-color postgres
+
+      - name: Stop PostgreSQL
+        if: always()
+        run: docker compose down -v
