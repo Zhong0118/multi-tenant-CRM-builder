@@ -34,6 +34,15 @@
 - **未部署生产环境。**
 - **仍未做（独立任务）**：API Critical E2E 提升为 required（见 §10）；`apps/web` 的 named-role
   查询测试债（HANDOFF 第 7 节）；`actions/*@v4` 的 Node 20 弃用告警（见 §12）。
+- **后续（2026-09-16，用户决定后补记）**：`enforce_admins` **已打开**。执行
+  `POST /repos/{owner}/{repo}/branches/main/protection/enforce_admins` 后独立读回：
+  `enforce_admins.enabled: true`，canonical `required_status_checks` 的 `enforcement_level`
+  由 `non_admins` 变为 **`everyone`**；其余设置均未变（`strict: true`、五个 contexts 不变、
+  approvals 0、force push / deletion 仍为 `false`）。因此 **§9 第 3 项与 §12 第 4 项里"保持默认
+  `false`"是开启前的历史事实，不回填**。
+- 运维注记：GitHub 的 `protection/enforce_admins` 子资源只接受 **`POST`（启用）/ `DELETE`（停用）**，
+  **没有 `PATCH`** —— 用 `gh api -X PATCH .../protection/enforce_admins -F enabled=true` 会返回
+  404（本次实测踩到）。紧急恢复流程：`DELETE` → 修 CI → 重新 `POST` → 读回确认。
 
 ## 2. 五个 Required Checks
 
@@ -287,6 +296,7 @@ named-role 查询。实测该测试在本机需 12.5s、在 ubuntu-24.04 上需 
    不给边界等于默认 6 小时挂死。实测本地 5s / 27s，余量充足。
 3. **`enforce_admins` 保持 GitHub 默认 `false`。** 设计规格 §8 的设置清单未包含该项，因此没有自行加大；
    含义是仓库管理员仍可绕过 required checks。这是**有意披露**的选择，不是遗漏（见 §12）。
+   **（2026-09-16 后续已由用户决定打开为 `true`，读回 `enforcement_level: everyone`；本节保留开启前的历史事实，见 Post-merge status。）**
 
 ## 10. 已知排除项（Known exclusions）
 
@@ -342,4 +352,4 @@ Hardening 一并补做。相对地，§3.1 那次真实红灯（Unit Tests 超�
 3. **`actions/*@v4` 的 Node 20 弃用告警**：三次运行都出现
    `Node.js 20 is deprecated ... actions/checkout@v4, actions/setup-node@v4, pnpm/action-setup@v4`。
    当前不影响结论（被强制跑在 Node 24 上），但后续应升级 action 版本。
-4. **是否把 `enforce_admins` 打开**：由 owner 决定；打开后管理员也必须走 PR + 五项 check。
+4. **是否把 `enforce_admins` 打开**：**已于 2026-09-16 由 owner 决定并执行（= 打开）**，管理员也必须走 PR + 五项 check；见 Post-merge status 的读回证据。
