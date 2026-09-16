@@ -188,7 +188,18 @@ concurrency:
 同一个 PR 的 group 是 `ci-CI-<PR number>`，同一分支的 push 会进入同一个 group，因此新 run 到达时
 旧 run 被取消。
 
-观察记录见 §6.1（推送本文件所在分支的后续提交时实测补记）。
+### 6.1 实测观察（本文件所在的收口 PR）
+
+在本文件所在的 PR 上实测：先推 `b9ef5ff`（run `35112924792`），随后推 `e65ba99`（run `35112963673`）。
+`gh run list` 读回：
+
+```text
+35112963673 e65ba99 status=in_progress  conclusion=
+35112924792 b9ef5ff status=completed    conclusion=cancelled
+```
+
+即**旧 run 被取消（`cancelled`），新 commit 的 run 继续**，与设计规格 §13 第 3 条一致。
+被取消的 run 只有取消结论、没有被误报成失败或成功。
 
 ## 7. 过程中发现并修复的三个真实缺陷
 
