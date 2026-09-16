@@ -32,6 +32,7 @@
 **Engineering Gate Hardening**（follow-up，**PLANNED，不是 ACTIVE**）：把 Critical API E2E
 （Auth/Session、Tenant 隔离、Record CRUD、Workflow Transition、代表性 Action 原子性）稳定后提升为
 第六个 required check，目标形态 `Required Gate V2`；在稳定之前不提升。
+**位置由用户定为 Sales Workbench Lite 之后、AI Assistant V1A 之前**（理由见 §11）。
 完成 Engineering Gate Lite **不自动** Promote Sales Workbench Lite。
 
 ## 4. Sales Workbench Lite
@@ -82,17 +83,24 @@ Duplicate Rule、Merge、迁移、SMS、Feishu、多 Adapter、复杂通知全�
 ## 11. 近期推荐顺序
 
 ```text
-Engineering Gate Lite
-→ Sales Workbench Lite
+Engineering Gate Lite          ✅ COMPLETED（PR #4）
+→ Sales Workbench Lite         ← 下一个主要产品 Task
+→ Engineering Gate Hardening   ← 第六个 required check：Critical API E2E
 → AI Assistant V1A
 → AI Assistant V1B
 → Production Essentials
 → Optional Email Adapter
 ```
 
+**Engineering Gate Hardening 的位置由用户 2026-09-16 明确定下**：排在 Sales Workbench Lite 之后、
+AI Assistant V1A **之前**。理由（用户原话）：「Sales Workbench 主要是在已有 Follow-up/Dashboard 上做
+员工首页聚合，现有 5 门已经够保护这一步；但到了 AI V1A，我们会大量依赖 Auth、Tenant、Record 权限链，
+我会更希望 Critical API E2E 在 AI 开发前补上。这样既不会现在为了一个历史 Auth E2E 漂移卡死所有开发，
+又不会把 API 门禁无限期拖延。」因此**不把完整 C 一次性补上**，但也**不允许无限期拖延**。
+
 （Security Closeout 的 Workflow 侧已随 PR #2 完成，Record 侧随 PR #3 完成；仍开放的 `action-engine.ts` 嵌套 fieldErrors 过滤与 `MEMBER` 默认值存在性校验是随时可插入的独立小任务，不占用上面的主要产品 Task 序列。）
 
-如果业务更急于展示 AI，可允许 Engineering Gate Lite → AI Assistant V1A → Sales Workbench Lite，但 V1B 仍建议在 V1A 实际验证后再开发。
+AI V1B 仍建议在 V1A 实际验证之后再开发。
 
 ## 12. 目标
 

@@ -56,6 +56,11 @@ AI Assistant 的方向见 `docs/superpowers/specs/2026-09-16-ai-assistant-v1-des
    `feat/action-engine-v1` 是**历史开发分支**（已通过 PR #1 合并进 `main`），不再作为当前开发基线。
 4. 仓库存在 `.codegraph/`，理解代码时先运行 `codegraph explore "问题或符号"`。
 5. 用户要求快速实现。每个 Bug 只保留一个能复现用户症状的聚焦验证；不要反复跑全仓测试或多轮审查。
+6. **CI / 门禁基础设施的改动，与产品代码或测试的修复，分 PR 提交。** 2026-09-16 Engineering Gate Lite 的
+   PR #4 把 `packages/database` 的 fixture 修复和 `apps/web/vitest.config.ts` 的 timeout 调整一起带了进去
+   （两者都是 CI 抓出的**真实**缺陷、各自独立 commit、有实测证据，事后判定**不需要回滚**），但纪律以
+   「CI 基础设施一个 PR，产品/测试修复各自一个 PR」为准；`main` 现已要求 PR + 五项 required checks，
+   照此执行即可。发现 CI 缺陷时应先停下来报告，而不是顺手塞进 CI 的 PR。
 
 接手后先执行：
 
@@ -352,7 +357,7 @@ Transition 不再只是改状态，还能产生结构化业务动作：
 - 附件目前存在 PostgreSQL `bytea`（单文件 5MB）。上生产前必须换成对象存储。
 - 仓库是公开的，所以口令不写进本文（见第 6 节）；演示口令本身由公开的种子常量决定，只能视为公开信息，不得复用到任何真实环境。
 - 根 `engines` 已从 `>=20.9.0` 提高到 `>=24`：`@crm/database` 是 ESM 包而 `apps/api` 编译为 CJS，需要支持 `require(esm)` 的 Node，而本地只验证过 Node 24.19.0。若确认 22 LTS 可用，可以再放宽下限，但必须实测过再改。
-- **CI 与分支保护已就位（2026-09-16，Engineering Gate Lite 随 PR #4 合并，合并提交 `77af603`）**：`.github/workflows/ci.yml` 存在；`main` 已受保护，五个 required checks 为 `Typecheck` / `Contracts` / `Unit Tests` / `Database Integration` / `Build`（读回值：`strict: true`、`allow_force_pushes: false`、`allow_deletions: false`、required approving reviews = 0）。Database Integration 在 runner 上起仓库自己的 PostgreSQL 18（`compose.yaml`）并跑真实 integration suite（18 测试），runtime 角色是 `crm_app`（`NOBYPASSRLS`），跑完 `docker compose down -v` 销毁卷。**仍未做**：API Critical E2E 尚未提升为 required —— 它保留为 **Engineering Gate Hardening follow-up（PLANNED，不是 ACTIVE）**；repo-wide lint 也仍不是 required。验收与全部实测证据见 `docs/audits/2026-09-16/engineering-gate-lite-acceptance.md`。注意 `enforce_admins` 仍是 GitHub 默认的 `false`。
+- **CI 与分支保护已就位（2026-09-16，Engineering Gate Lite 随 PR #4 合并，合并提交 `77af603`）**：`.github/workflows/ci.yml` 存在；`main` 已受保护，五个 required checks 为 `Typecheck` / `Contracts` / `Unit Tests` / `Database Integration` / `Build`（读回值：`strict: true`、`allow_force_pushes: false`、`allow_deletions: false`、required approving reviews = 0）。Database Integration 在 runner 上起仓库自己的 PostgreSQL 18（`compose.yaml`）并跑真实 integration suite（18 测试），runtime 角色是 `crm_app`（`NOBYPASSRLS`），跑完 `docker compose down -v` 销毁卷。**仍未做**：API Critical E2E 尚未提升为 required —— 它保留为 **Engineering Gate Hardening follow-up（PLANNED，不是 ACTIVE）**，**位置由用户定在 Sales Workbench Lite 之后、AI Assistant V1A 之前**（到 AI V1A 会大量依赖 Auth / Tenant / Record 权限链）；repo-wide lint 也仍不是 required。验收与全部实测证据见 `docs/audits/2026-09-16/engineering-gate-lite-acceptance.md`。注意 `enforce_admins` 仍是 GitHub 默认的 `false`。
 - `origin/backup/v3-design-tokens`：相对 `main` 落后 139 个提交，只独有 1 个提交 `e8812d8`「align design tokens with the V3 palette」，改的是 `globals.css` / `providers.tsx` / `providers.test.ts`，纯配色、无功能。而且 `main` 此后已自行演进到**另一套**配色（`primary: #167568` 青绿，backup 提的是 `#2563EB` 蓝），方向已经不同。结论：**不合并，也不需要「解冲突」**；它属于已经后置的配色议题，保留归档或直接删分支即可，不要长期挂在待决策清单里。
 
 ## 8. 验证边界
