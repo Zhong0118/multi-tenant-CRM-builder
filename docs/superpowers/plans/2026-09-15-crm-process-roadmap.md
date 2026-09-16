@@ -2,9 +2,26 @@
 
 > 日期：2026-09-15  
 > 文档类型：Program Roadmap  
-> 状态：ACTIVE  
+> 状态：**ACTIVE — Full Capability Roadmap（长期需求池）**；本文的 `PLANNED` 阶段不构成实现批准，近期实际执行以 `2026-09-16-crm-lean-roadmap.md` 为准
 > 当前事实来源：`HANDOFF.md`  
 > 详细设计原则：`docs/superpowers/specs/2026-09-15-workflow-platform-boundaries.md`
+
+## 0. Full Roadmap 与 Lean Roadmap 的关系
+
+从 2026-09-16 起，路线图分两层：
+
+| 文档 | 角色 | 管什么 |
+|---|---|---|
+| 本文（`2026-09-15-crm-process-roadmap.md`） | **Full Capability Roadmap** | 完整产品能力地图与长期需求池。标记为 `PLANNED` 的阶段只代表方向与优先级，不代表批准了数据模型、API 或页面设计。 |
+| `2026-09-16-crm-lean-roadmap.md` | **Lean Execution Roadmap** | 近期真实执行路线。同一时间只激活一个主要产品 Task。 |
+
+配套规则：
+
+- 本文中的长期需求**不因 Lean Roadmap 而删除**。没有真实需求的阶段留在本文 Backlog，不作为任何近期任务的前置依赖。
+- 某个阶段从本文被提升为近期执行时，才在 Lean Roadmap 中登记为 `ACTIVE`，并按第 14 节的生命周期走完 Promote → Design → Plan → Development → Acceptance → Handoff。
+- 两份文档冲突时，以 Lean Roadmap 的近期执行状态与 `HANDOFF.md` 的当前事实为准；本文继续负责长期优先级判断。
+
+AI Assistant 的方向另见 `docs/superpowers/specs/2026-09-16-ai-assistant-v1-design.md`，分 V1A（只读 Ask / Analyze）与 V1B（人工确认后才执行的写操作）。**当前不要开始 AI 开发。**
 
 ## 1. 文档目的
 
@@ -56,6 +73,8 @@ Acceptance / Audit
 ## 3. 当前产品位置
 
 当前系统已经不是单纯 CRUD 型 CRM。
+
+（本节描述长期能力地图上的位置。**近期实际执行顺序见 `2026-09-16-crm-lean-roadmap.md`**，本节以下 V2.2 及之后的阶段均为长期需求，未获实现批准。）
 
 现有基础包括：
 

@@ -12,6 +12,22 @@ Workflow V1 与 Action Engine V1 **均已合并进入 `main`**。Action Engine V
 `codex/crm-polish-followups` 已快进合并进入 `main`。
 2026-09-15 完成一轮人工验收并修复（清单见第 7 节）。
 
+## 路线图层级（2026-09-16 起）
+
+| 文档 | 角色 |
+|---|---|
+| `docs/superpowers/plans/2026-09-15-crm-process-roadmap.md` | **Full Capability Roadmap**：长期需求池与完整能力地图，标记为 `PLANNED` 的阶段不构成实现批准 |
+| `docs/superpowers/plans/2026-09-16-crm-lean-roadmap.md` | **Lean Execution Roadmap**：近期实际执行路线，同一时间只激活一个主要产品 Task |
+
+对照关系：Full Roadmap 上的长期需求不因 Lean Roadmap 而消失；只有从 Full Roadmap 提升出来的阶段才进入 Lean Roadmap 并成为 `ACTIVE`。两份文档与本文冲突时，以本文的当前事实为准。
+
+AI Assistant 的方向见 `docs/superpowers/specs/2026-09-16-ai-assistant-v1-design.md`，分两阶段：
+
+- **V1A Ask / Analyze**：只读，受当前登录用户权限约束（先裁剪、再交给 AI）；
+- **V1B Confirmed Edit**：AI 只产出 Proposal，用户确认后服务端重新校验权限与版本，再执行 Typed Command 并写审计。
+
+**当前不要开始 AI 开发**：V1A 与 V1B 都还只是方向，需要各自批准的设计规格与实现计划；V1B 应在 V1A 实际验证之后再开发。Sales Workbench、Automation、Production Essentials 同样尚未批准。
+
 本文只记录当前事实。已完成与未完成对照见
 `docs/superpowers/plans/2026-09-01-productization-follow-up.md`。
 
@@ -359,6 +375,8 @@ Worker 进程可以连接 Redis，但没有注册业务队列。
 12. `docs/superpowers/plans/2026-09-16-action-engine-v1-implementation.md`
 13. `docs/superpowers/specs/2026-09-16-action-engine-v1-compatibility-review.md`
 14. `docs/audits/2026-09-16/action-engine-v1-acceptance.md`
+15. `docs/superpowers/plans/2026-09-16-crm-lean-roadmap.md`（近期执行路线）
+16. `docs/superpowers/specs/2026-09-16-ai-assistant-v1-design.md`（AI 方向，未批准开发）
 
 关键实现入口：
 
@@ -405,7 +423,11 @@ Action Engine V1 已完成、验收，并已通过 PR #1 合并进 `main`：
 P0–P5 主干已经落地。P7 表管理主干已齐。Workflow V1 与 Action Engine V1 的代码都已存在，
 不要重新实现它们。**下一个阶段 V2.2 Sales Execution 尚未批准，不要自行开始**（Trigger /
 Automation / Dedup / Notification / Template Upgrade / Agent 同样不要开始）。
-短信与 AI 按用户要求暂缓。
+**AI 开发同样不要开始**：`docs/superpowers/specs/2026-09-16-ai-assistant-v1-design.md` 只是
+V1A（只读）/ V1B（人工确认后写）的方向，需要各自的设计规格与实现计划并获批准。
+近期实际执行路线看 `docs/superpowers/plans/2026-09-16-crm-lean-roadmap.md`；
+`2026-09-15-crm-process-roadmap.md` 只是长期需求池，不要把它标记为 PLANNED 的阶段当成已批准的开发任务。
+短信按用户要求暂缓（腾讯云凭据未提供）。
 
 第一轮页面验收已覆盖：业务对象设计器、记录列表与权限边界、成员覆盖、离职交接、
 Dashboard 基础操作（复制 / 归档 / 组件顺序）、平台审计、公司列表、模板列表、
