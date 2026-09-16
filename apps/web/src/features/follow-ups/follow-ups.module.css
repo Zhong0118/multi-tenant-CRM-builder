@@ -118,6 +118,62 @@
   color: #527269;
   font-size: 12px;
 }
+.workbench {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  padding: 24px;
+  background: var(--crm-surface, #fff);
+  border: 1px solid var(--crm-border, #e3e9ec);
+  border-radius: 12px;
+}
+.workbenchHeading h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  line-height: 1.4;
+}
+.workbenchHeading p {
+  margin: 0;
+  color: #62717d;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.workbenchCounts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.workbenchCounts span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  font-size: 12px;
+  color: #62717d;
+}
+.workbenchCounts strong {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  color: #20313f;
+}
+.workbenchEmpty {
+  margin: 0;
+  color: #62717d;
+  font-size: 13px;
+}
+.bucket {
+  display: grid;
+  gap: 6px;
+}
+.bucketTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #20313f;
+}
+.workbenchAll {
+  color: #326e65;
+  font-size: 13px;
+}
 @media (max-width: 640px) {
   .panel {
     padding: 16px;
@@ -137,5 +193,12 @@
   }
   .summary {
     padding: 14px;
+  }
+  .workbench {
+    padding: 16px;
+  }
+  /* Two by two, never four cards squeezed onto one narrow row. */
+  .workbenchCounts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
