@@ -1446,6 +1446,39 @@ describe('RecordsService', () => {
     });
   });
 
+  it('never names a hidden required field in an import row failure', async () => {
+    const { service, publishedRepository } = fixture();
+    const configuration = publishedRepository.record
+      .configuration as PublishedObjectSchema;
+    const secret = configuration.fields.find(
+      (candidate) => candidate.fieldKey === 'secret',
+    );
+    if (!secret) throw new Error('Expected the secret fixture field');
+    secret.required = true;
+
+    const result = await service.importRows(
+      employee,
+      'leads',
+      {
+        rows: [
+          {
+            rowNumber: 2,
+            values: { name: '导入甲', email: 'alpha@example.com' },
+          },
+        ],
+      },
+      meta,
+    );
+
+    // `secret` is HIDDEN for the employee, so a row can never fill it in. It
+    // must be created, and no failure body may carry that key.
+    expect(
+      result.items.flatMap((item) => item.error?.fields ?? []),
+    ).not.toContain('secret');
+    expect(result).toMatchObject({ created: 1, failed: 0 });
+    expect(result.items[0]).toMatchObject({ rowNumber: 2, status: 'CREATED' });
+  });
+
   it('returns RECORD_VERSION_CONFLICT for stale updates', async () => {
     const { service } = fixture();
     const record = await create(service, employee, '张三');

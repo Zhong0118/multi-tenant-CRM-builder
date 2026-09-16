@@ -168,6 +168,32 @@ function validateTextTitle() {
     });
 }
 
+/**
+ * The same CREATE shape as `validateEmailTitle`, but with the title field's
+ * access as the single knob: the title is never submitted, so the derived title
+ * can only be missing. A visible title must be named; a HIDDEN one must not.
+ */
+function validateMissingTitle(fieldAccess: 'EDIT' | 'HIDDEN') {
+  const titleField = field('TEXT', {
+    id: 'field-name',
+    fieldKey: 'name',
+    label: '姓名',
+    required: true,
+    sortOrder: 10,
+  });
+  const testSchema = schema(field('PHONE'), titleField);
+  const access = editableAccess(testSchema);
+  access.fields[titleField.fieldKey] = fieldAccess;
+  return () =>
+    validateRecordMutation({
+      mode: 'CREATE',
+      schema: testSchema,
+      access,
+      submitted: {},
+      memberExists: () => Promise.resolve(true),
+    });
+}
+
 async function expectInvalid(
   testField: PublishedField,
   value: unknown,
@@ -328,6 +354,109 @@ describe('dynamic record values', () => {
         submitted: { name: '张三', forged: true },
       }),
     ).rejects.toMatchObject({ code: 'FIELD_UNKNOWN', fieldKey: 'forged' });
+  });
+
+  it('skips the required check for a hidden field and keeps it for a visible one', async () => {
+    const testSchema = schema(
+      field('TEXT', {
+        id: 'field-note',
+        fieldKey: 'note',
+        label: '内部备注',
+        required: true,
+        sortOrder: 20,
+      }),
+    );
+    const access = editableAccess(testSchema);
+    const input = {
+      mode: 'CREATE' as const,
+      schema: testSchema,
+      access,
+      submitted: { name: '张三' },
+      memberExists: () => Promise.resolve(true),
+    };
+
+    // HIDDEN: the actor cannot submit `note`, so the required check must not
+    // fire — and no value is written for it.
+    access.fields.note = 'HIDDEN';
+    await expect(validateRecordMutation(input)).resolves.toEqual({
+      values: { name: '张三' },
+      title: '张三',
+    });
+
+    // An entry missing from `access.fields` is the same fail-closed case.
+    delete access.fields.note;
+    await expect(validateRecordMutation(input)).resolves.toEqual({
+      values: { name: '张三' },
+      title: '张三',
+    });
+
+    // Visible: byte-for-byte the old behaviour, key included.
+    access.fields.note = 'EDIT';
+    await expect(validateRecordMutation(input)).rejects.toMatchObject({
+      code: 'FIELD_REQUIRED',
+      fieldKey: 'note',
+    });
+  });
+
+  it('never materializes a hidden field default that cannot be normalized', async () => {
+    const testSchema = schema(
+      field('EMAIL', {
+        id: 'field-note',
+        fieldKey: 'note',
+        label: '内部备注',
+        required: true,
+        defaultValue: '',
+        sortOrder: 20,
+      }),
+    );
+    const access = editableAccess(testSchema);
+
+    // HIDDEN: `''` is not a valid EMAIL, so materializing the default would
+    // reject the write while naming a field the actor cannot see. The gate must
+    // skip the default entirely: no value, no error.
+    access.fields.note = 'HIDDEN';
+    await expect(
+      validateRecordMutation({
+        mode: 'CREATE',
+        schema: testSchema,
+        access,
+        submitted: { name: '张三' },
+        memberExists: () => Promise.resolve(true),
+      }),
+    ).resolves.toEqual({ values: { name: '张三' }, title: '张三' });
+
+    // Visible: the same default keeps rejecting, and still names the field.
+    access.fields.note = 'EDIT';
+    await expect(
+      validateRecordMutation({
+        mode: 'CREATE',
+        schema: testSchema,
+        access,
+        submitted: { name: '张三' },
+        memberExists: () => Promise.resolve(true),
+      }),
+    ).rejects.toMatchObject({ code: 'FIELD_INVALID', fieldKey: 'note' });
+  });
+
+  it('never names a hidden title field when the derived title is missing', async () => {
+    const error = await validateMissingTitle('HIDDEN')().catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toBeInstanceOf(RecordValueError);
+    expect(error).toMatchObject({ code: 'FIELD_REQUIRED' });
+    // The key carries no value: `RecordValueError` declares `fieldKey` as a
+    // class property, so the declaration is an own property even when the value
+    // is undefined — the contract is that no key is named, not that the
+    // property is missing.
+    expect((error as RecordValueError).fieldKey).toBeUndefined();
+  });
+
+  it('names a visible title field when the derived title is missing', async () => {
+    await expect(validateMissingTitle('EDIT')()).rejects.toMatchObject({
+      code: 'FIELD_REQUIRED',
+      fieldKey: 'name',
+    });
   });
 
   it.each(['READ_ONLY', 'HIDDEN'] as const)(

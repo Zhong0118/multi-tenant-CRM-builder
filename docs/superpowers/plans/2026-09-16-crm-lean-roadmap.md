@@ -19,7 +19,7 @@
 
 | 阶段 | 状态 | 内容 | V1 相对开销估计 |
 |---|---|---|---:|
-| Security Closeout | Workflow 侧 COMPLETED；Record 侧 PLANNED | Workflow required/HIDDEN metadata hardening（PR #2 已合并）；Record CREATE 路径同类泄露仍待独立 bounded 任务 | 0.1–0.2× |
+| Security Closeout | **COMPLETED**（Workflow 侧 PR #2；Record 侧 `fix/record-required-field-visibility`） | Workflow + Record required/HIDDEN metadata hardening（含 publish 期"默认值永不生效"拦截）；**残留**：`MEMBER` 默认值存在性无法在分析期校验、`action-engine.ts` 嵌套 fieldErrors 过滤（各自独立任务） | 0.1–0.2× |
 | Engineering Gate Lite | PLANNED | CI、main protection、关键回归检查 | 0.2–0.4× |
 | Sales Workbench Lite | PLANNED | Dashboard 中的我的跟进 / 今日 / 逾期 / 近期事项 | 0.3–0.5× |
 | AI Assistant V1A | PLANNED | 只读 Ask / Analyze | 0.4–0.7× |
@@ -85,7 +85,7 @@ Engineering Gate Lite
 → Optional Email Adapter
 ```
 
-（Security Closeout 的 Workflow 侧已随 PR #2 完成；Record CREATE 路径的同类 hardening 是随时可插入的独立小任务，不占用上面的主要产品 Task 序列。）
+（Security Closeout 的 Workflow 侧已随 PR #2 完成，Record 侧随 `fix/record-required-field-visibility` 完成；仍开放的 `action-engine.ts` 嵌套 fieldErrors 过滤与 publish 期默认值校验是随时可插入的独立小任务，不占用上面的主要产品 Task 序列。）
 
 如果业务更急于展示 AI，可允许 Engineering Gate Lite → AI Assistant V1A → Sales Workbench Lite，但 V1B 仍建议在 V1A 实际验证后再开发。
 

@@ -200,6 +200,24 @@ export function analyzeObjectConfiguration(
           fieldKey: field.fieldKey,
         });
       }
+
+      // A required field the employee cannot see is unfillable, so the object
+      // can never be created for them. A non-null default only rescues the
+      // configuration when the engine actually materializes it on create: a
+      // default `normalizeValue` rejects (an empty string on TEXT/PHONE/EMAIL, an
+      // option key absent from the config, a wrong JSON shape) never lands, so
+      // it is the same operator error as a missing default.
+      if (
+        field.required &&
+        input.employeeAccess.fields[field.fieldKey] === 'HIDDEN' &&
+        !defaultMaterializes(field)
+      ) {
+        blocking.push({
+          code: 'REQUIRED_FIELD_HIDDEN',
+          message: `必填字段「${field.label}」对员工隐藏且没有可生效的默认值，员工无法填写，记录将无法创建。请改为可见、取消必填或设置一个能生效的默认值。`,
+          fieldKey: field.fieldKey,
+        });
+      }
     }
   }
 
@@ -420,6 +438,182 @@ function hasIncompatibleValidation(field: PublicationDraftField): boolean {
   const allowedKeys = VALIDATION_KEYS_BY_FIELD_TYPE[field.type] ?? [];
   return Object.keys(field.validation).some(
     (key) => !allowedKeys.includes(key),
+  );
+}
+
+/**
+ * Whether the engine would turn this field's default into a stored value on
+ * create. This mirrors the *constraints* of `normalizeValue` and its
+ * `normalize*` helpers in `record-value-engine.ts` (`TEXT`/`PHONE`/`EMAIL`
+ * length and format, `NUMBER`/`MONEY` range and scale, `DATE`/`DATETIME`
+ * format, select keys present in the config, `BOOLEAN`), not the normalizer
+ * itself: publishing only needs to know whether the default lands, and the
+ * engine remains the single implementation that produces the value.
+ *
+ * `null` is never materialized - the engine skips it outright - so a required
+ * hidden field with a null default is blocked exactly as before.
+ */
+function defaultMaterializes(field: PublicationDraftField): boolean {
+  const value = field.defaultValue;
+  if (value === null || value === undefined) return false;
+
+  switch (field.type) {
+    case 'TEXT':
+    case 'PHONE':
+      return acceptsTextLength(field, value, 1, 300);
+    case 'TEXTAREA':
+      return acceptsTextLength(field, value, 0, 10_000);
+    case 'EMAIL': {
+      if (typeof value !== 'string') return false;
+      const normalized = value.toLowerCase();
+      return (
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized) &&
+        normalized.length <= 320
+      );
+    }
+    case 'NUMBER': {
+      if (typeof value !== 'number' || !Number.isFinite(value)) return false;
+      const min = numericValidation(field, 'min');
+      const max = numericValidation(field, 'max');
+      const scale = integerValidation(field, 'scale');
+      if (min !== undefined && value < min) return false;
+      if (max !== undefined && value > max) return false;
+      if (scale !== undefined && !hasScale(value, scale)) return false;
+      return true;
+    }
+    case 'MONEY': {
+      // MONEY is stored as a canonical decimal string, not a JSON number, so the
+      // engine rejects a numeric default outright. Accepting one here would let
+      // an unmaterializable default through, which is the whole point of this
+      // rule.
+      if (typeof value !== 'string' || !/^-?\d+(?:\.\d+)?$/.test(value)) {
+        return false;
+      }
+      const scale = integerValidation(field, 'scale') ?? 2;
+      const fraction = value.split('.')[1] ?? '';
+      if (scale < 0 || scale > 12 || fraction.length > scale) return false;
+
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return false;
+      const min = numericValidation(field, 'min');
+      const max = numericValidation(field, 'max');
+      if (min !== undefined && numeric < min) return false;
+      if (max !== undefined && numeric > max) return false;
+      return true;
+    }
+    case 'DATE':
+      return acceptsDate(value);
+    case 'DATETIME':
+      return acceptsDateTime(value);
+    case 'SINGLE_SELECT':
+      return acceptsSelectKey(field, value);
+    case 'MULTI_SELECT':
+      return (
+        Array.isArray(value) &&
+        value.every((item) => acceptsSelectKey(field, item))
+      );
+    case 'BOOLEAN':
+      return typeof value === 'boolean';
+    case 'MEMBER':
+      // LIMITATION: the engine also checks the id's UUID shape and that the
+      // member exists in the database. No database is reachable while a draft is
+      // analyzed, so existence cannot be mirrored here; a non-empty string is
+      // treated as materializable and both the shape and the existence are
+      // validated by the engine on every write.
+      return typeof value === 'string' && value.length > 0;
+    default:
+      // ATTACHMENT is not a publishable field type: there is no engine
+      // normalizer to mirror and FIELD_TYPE_UNSUPPORTED already blocks the
+      // publication with a more accurate message.
+      return false;
+  }
+}
+
+function acceptsTextLength(
+  field: PublicationDraftField,
+  value: unknown,
+  defaultMin: number,
+  defaultMax: number,
+): boolean {
+  if (typeof value !== 'string') return false;
+  const minLength = numericValidation(field, 'minLength') ?? defaultMin;
+  const maxLength = numericValidation(field, 'maxLength') ?? defaultMax;
+  return value.length >= minLength && value.length <= maxLength;
+}
+
+function acceptsDate(value: unknown): boolean {
+  if (typeof value !== 'string') return false;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
+function acceptsDateTime(value: unknown): boolean {
+  if (
+    typeof value !== 'string' ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2})$/.test(
+      value,
+    )
+  ) {
+    return false;
+  }
+  return Number.isFinite(Date.parse(value));
+}
+
+/**
+ * Mirrors `selectOptions` in the engine: a malformed option is dropped, so its
+ * key is not usable as a default, and an INACTIVE option makes the engine throw
+ * `FIELD_OPTION_INACTIVE` instead of storing the value.
+ */
+function acceptsSelectKey(
+  field: PublicationDraftField,
+  value: unknown,
+): boolean {
+  if (typeof value !== 'string') return false;
+  const options = field.config.options;
+  if (!Array.isArray(options)) return false;
+  return options.some(
+    (option) =>
+      isPlainRecord(option) &&
+      typeof option.key === 'string' &&
+      typeof option.label === 'string' &&
+      option.key === value &&
+      option.status !== 'INACTIVE',
+  );
+}
+
+function numericValidation(
+  field: PublicationDraftField,
+  key: string,
+): number | undefined {
+  const value = field.validation[key];
+  return typeof value === 'number' && Number.isFinite(value)
+    ? value
+    : undefined;
+}
+
+function integerValidation(
+  field: PublicationDraftField,
+  key: string,
+): number | undefined {
+  const value = numericValidation(field, key);
+  return value !== undefined && Number.isInteger(value) ? value : undefined;
+}
+
+function hasScale(value: number, scale: number): boolean {
+  if (scale < 0 || scale > 12) return false;
+  const factor = 10 ** scale;
+  return (
+    Math.abs(value * factor - Math.round(value * factor)) <
+    Number.EPSILON * factor
   );
 }
 

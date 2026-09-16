@@ -259,8 +259,8 @@ Transition 不再只是改状态，还能产生结构化业务动作：
 - **`executionSummary` 目前没有任何消费者**，属可删的额外面。
 - **「重试耗尽」的确定性证明来自单元测试**，e2e 的并发 A/B 用例没走到那条分支。重试上界仍是 3 次且无退避/抖动。
 - **合并已完成，不再需要接手者决定。** Action Engine V1 已通过 PR #1 合并进 `main`。
-- **普通 records CREATE 路径的同类 metadata 泄露（独立评审 H1，本轮未修）**：某个 required 非标题字段对员工是 `HIDDEN` 时，创建记录会抛 `FIELD_REQUIRED` 并带 `fieldErrors.<hiddenFieldKey>`；且 publish 期没有规则把「required + HIDDEN」判成配置错误，员工永远无法自己补上该字段。属**另一条路径的另一类问题**（写侧校验 + publish 规则），需要独立 bounded 任务（含 blocking publish issue），不要塞进无关任务顺手改。
-- **Action 失败重抛的 `actions.<actionKey>.<fieldKey>` 通道**（`action-engine.ts`）：仅 legacy / 手写快照可达（新的 publish 分析已挡住），属残留，**不要因为本轮的 hardening 就认为该类问题已彻底关闭**。
+- **普通 records CREATE 路径的同类 metadata 泄露 → 已由 Record Required Field Visibility Hardening 修复**（分支 `fix/record-required-field-visibility`，提交 `45c9f08` / `00eb7af` / `1368a1e` / `f0053b5`）：对 Actor 不可见的字段**完全不参与他的写入**——既跳过必填检查、也不 materialize 默认值（否则非空但过不了归一化的默认值会抛 `FIELD_INVALID` 带出隐藏 key）；可见字段语义不变。publish 期新增 `REQUIRED_FIELD_HIDDEN`，触发条件是「**默认值永不生效**」（`null`，或过不了类型/长度/格式/范围/scale/选项检查的非空值），不是"非空即可"。验收见 `docs/audits/2026-09-16/record-required-field-visibility-hardening.md`。**仍未做**：`MEMBER` 默认值存在性无法在分析期校验（无数据库）、`effective-access.ts` 里 `?? 'EDIT'` 与 `?? 'HIDDEN'` 的统一（见该验收文档 §7）。
+- **Action 失败重抛的 `actions.<actionKey>.<fieldKey>` 通道**（`action-engine.ts:631-655`）：内层 `fieldErrors` 被原样重抛且**不按 actor 权限过滤**，是**独立通道**——Record 侧的修复关不掉它，需单独任务。此处原写的"仅 legacy / 手写快照可达"**需要重新核实**：一个普通已发布的目标对象带 required+HIDDEN 字段，无需 legacy 快照即可到达。
 - **验收与偏差清单**（含 100 条累积 Minor finding 的索引）在 `docs/audits/2026-09-16/action-engine-v1-acceptance.md`，逐条台账在 `.superpowers/sdd/progress.md`。
 
 **与本分支无关的既有红灯**：`apps/api/test/auth.e2e-spec.ts` 有一条用例期望 `GET /api/v1/me/sessions` 返回数组、而接口返回分页对象（已核实早于本特性）；全仓 lint 有 57 个既有的 API 错误，而本分支自己的文件是 lint 干净的。此外 `pnpm test` **不跑 e2e**，e2e 必须单独按路径执行。

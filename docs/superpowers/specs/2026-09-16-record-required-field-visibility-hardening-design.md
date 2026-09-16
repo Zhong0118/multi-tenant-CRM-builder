@@ -23,10 +23,12 @@
 |---|---|
 | 1 | 该字段 `required: true` 且**不是标题字段** |
 | 2 | `access.fields[fieldKey] === 'HIDDEN'`（或 key 不在 map 中；`?? 'HIDDEN'` fail-closed 默认在 `:144` / `:116`） |
-| 3 | `field.defaultValue === null` —— **有非空默认值时 `:87-93` 会直接落默认值，创建成功、不报错** |
+| 3 | `field.defaultValue === null` —— 有**能落值**的非空默认值时，`:87-93` 直接落默认值、创建成功且不报错 |
 | 4 | 客户端没有提交该 key（他无法提交） |
 
 条件 3 决定了"员工永远建不出这条记录"**只对一半**：真正的前提是「必填 + 隐藏 + 空」。
+
+> **勘误（2026-09-16，由独立评审发现，已在本任务内修正）**：条件 3 初稿写成"有非空默认值就一定创建成功"——**这是错的**。默认值同样要过 `normalizeValue()`：`''` 用在 TEXT / PHONE / EMAIL、失效的 MEMBER id、不在配置里的选项 key、形状不对的 JSON，都会抛 `FIELD_INVALID` **带着该隐藏字段的 key**，于是员工每次创建都拿到 400 + `fieldErrors.<hiddenKey>`——**与本任务要关闭的泄露是同一类**。因此实现必须保证：**对 Actor 不可见的字段，其默认值根本不参与该 Actor 的写入**（跳过默认值 materialize），而不是只跳过必填检查。
 
 ### 1.2 玩家可见症状（为什么要修）
 
@@ -64,6 +66,14 @@
 
 `records.service.ts:396-401`（CSV 导入 `importRows`）的逐行失败回执带 `fields: Object.keys(error.fieldErrors)`，所以 `POST /records/import` 会在 `items[].error.fields` 里吐回同一个隐藏 key（HTTP 200）。**§3 的规则落地后它会自动一起消失**，但需要一个 RED 测试钉住，因为它是未来任何 `fieldErrors` key 的第二个出口。
 
+### 3.3 本任务闭合到哪一步（诚实边界）
+
+本任务闭合的是**泄露类（leak class）**：隐藏字段的 key 不再出现在任何记录写入路径的 `fieldErrors` 里，包括"默认值过不了归一化"这条路径——做法是**对 Actor 不可见的字段完全不参与他的写入**（既跳过必填检查，也不 materialize 默认值）。
+
+同时，**publish 期也不再放行"默认值永不生效"的必填隐藏字段**（`!defaultMaterializes(field)`）：配置错误在发布时就被指出，而不是留给运行时。
+
+**明确仍开放**（不属本任务，需后续任务）：① `MEMBER` 默认值的**存在性**无法在分析期校验（没有数据库），只能校验非空字符串；② `action-engine.ts:631-655` 的嵌套 `fieldErrors` 通道；③ `effective-access.ts` 的 `?? 'EDIT'` / `?? 'HIDDEN'` 未统一。（详见验收文档 §7。）
+
 ---
 
 ## 4. Publish 期规则（需要补，且要留豁免）
@@ -75,11 +85,13 @@ code:     REQUIRED_FIELD_HIDDEN            （新）
 位置:     object-configuration.policy.ts，紧邻 EMPLOYEE_FIELD_ACCESS_REQUIRED
 触发:     field.required
           && employeeAccess.fields[field.fieldKey] === 'HIDDEN'
-          && field.defaultValue == null
+          && !defaultMaterializes(field)      （见下方勘误：不再是 defaultValue == null）
 message:  指明该字段；说明它会让员工无法填写，因而对象对员工不可创建
 ```
 
-**豁免是强制的**：`required + HIDDEN + 非空默认值`是**合法配置**（`:87-93` 会materialize 默认值），挡住它就是过度拒绝。
+**豁免的含义是"该默认值确实能生效"**：`required + HIDDEN + 能过 `normalizeValue()` 约束的默认值`是合法配置，挡住它就是过度拒绝。**注意这不等于"非空即可"**——一个过不了归一化的非空默认值（见 §1.1 勘误）同样让配置对每名员工都不可用，必须一起拦下。
+
+> **勘误（2026-09-16，独立评审发现）**：本节初稿把触发条件写成 `defaultValue == null`，等于宣称"非空默认值必然生效"——**这是错的**（`''`、失效选项 key、形状不对的 JSON 都过不了归一化）。已收紧为 `!defaultMaterializes(field)`：`defaultMaterializes()` 镜像引擎 `normalizeValue` 的**约束**（长度/格式/范围/scale/选项 key 且非 INACTIVE/BOOLEAN），`null` 永不生效。**已知限制**：`MEMBER` 默认值的存在性无法在分析期校验（没有数据库），非空字符串视为可生效，形状与存在性由引擎在写入时校验。
 
 **为什么 publish 期足够覆盖本类问题**：字段权限来自冻结的 `employeeAccess` map，运行时没有任何东西能改它（§2）。未来若真的引入 **member-level field permission（当前不存在）**，这条规则对"角色默认值"仍然正确，但不再充分——**那个未来的改动才应该引入运行时过滤，而不是本次**。
 
@@ -121,8 +133,9 @@ V2.2 Sales Execution / Automation / AI / Production Essentials —— 全部未�
 - [ ] `HIDDEN` 必填字段不再出现在任何记录写入路径的 `fieldErrors` 中（CREATE / UPDATE / CSV 导入）；
 - [ ] 可见必填字段缺值的行为**完全不变**（`FIELD_REQUIRED`、400、`fieldErrors.<fieldKey>`）；
 - [ ] 谓词在 CREATE 与 UPDATE 两条路径上由**同一处**实现，不出现第二份拷贝；
-- [ ] `deriveTitle` 使用同一谓词，不与之矛盾；
-- [ ] 新增 publish blocking 规则 `REQUIRED_FIELD_HIDDEN`，且**对 `defaultValue != null` 不触发**（有负例测试）；
+- [ ] **对 Actor 不可见的字段，其默认值不参与该 Actor 的写入**（默认值过不了归一化时既不泄露 key、也不阻塞写入）；可见字段的默认值语义不变（仍 `FIELD_INVALID` 带 key）；
+- [ ] `deriveTitle` 使用同一谓词，不与之矛盾，且其 keyless 分支**有测试钉住**（隐藏标题 → `fieldKey === undefined`；可见标题 → 带 key）；
+- [ ] 新增 publish blocking 规则 `REQUIRED_FIELD_HIDDEN`，触发条件为「**默认值永不生效**」；**对能生效的默认值不触发**（有负例测试），且对 `null` 与过不了归一化的非空默认值**都**触发（各有正例测试）；
 - [ ] `records.service.ts:396-401` 的第二出口有测试钉住；
 - [ ] 新增测试必须先证明**在修复前是红的**（行为性 RED），且测试有牙齿（可用变异证明）；
 - [ ] focused 测试与 `pnpm --filter @crm/api typecheck` 均通过；
