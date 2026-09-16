@@ -20,6 +20,7 @@ import type {
 } from '../records/records.repository';
 import {
   resolveExecutableTransition,
+  runtimeExecutionSummary,
   runtimeWorkflowView,
   START_TRANSITION_KEY,
   type RuntimeWorkflowView,
@@ -324,12 +325,21 @@ export class WorkflowRuntimeService {
 
         // §23 steps 19–20: the transaction commits everything above and the
         // Runtime Workflow View is projected from the record that was written.
-        return runtimeWorkflowView({
-          schema: resolved.schema,
-          access: resolved.access,
-          role: context.role,
-          record: updated,
-        });
+        // §31: the execute response alone carries the lightweight execution
+        // summary — same record view plus what the Transition did.
+        return {
+          ...runtimeWorkflowView({
+            schema: resolved.schema,
+            access: resolved.access,
+            role: context.role,
+            record: updated,
+          }),
+          executionSummary: runtimeExecutionSummary({
+            workflowExecutionId,
+            transitionKey: transition.key,
+            actions: transition.actions,
+          }),
+        };
       },
     );
   }

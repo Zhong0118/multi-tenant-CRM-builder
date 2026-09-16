@@ -19,6 +19,28 @@ export const WORKFLOW_ACTION_TYPES = [
 
 export type WorkflowActionType = (typeof WORKFLOW_ACTION_TYPES)[number];
 
+/**
+ * §31: the static Effect Summary label of each Action type — the text an
+ * employee confirms a Transition against.
+ *
+ * It is keyed by the Action TYPE, so the summary is derived from the type alone
+ * and never from an Action payload: no hidden field key, mapping source, mapped
+ * value, Target Object code or permission can reach a runtime response. Deliberately
+ * generic where §31's sketch named a Target Object ("创建 1 条客户") — naming it
+ * would leak the Target Object of a mapping the Actor may not even be able to read.
+ *
+ * `Record<WorkflowActionType, string>` makes it exhaustive: a V2 Action type
+ * cannot ship without its label.
+ */
+export const WORKFLOW_ACTION_EFFECT_LABELS: Record<WorkflowActionType, string> =
+  {
+    CREATE_RECORD: '创建 1 条记录',
+    UPDATE_RECORD: '更新当前记录',
+    CREATE_RELATION: '建立 1 条记录关联',
+    CREATE_FOLLOW_UP: '创建 1 个待跟进事项',
+    ASSIGN_OWNER: '将当前记录分配给执行人',
+  };
+
 /** §7: 每个 Transition 最多 20 个 Actions。 */
 export const MAX_ACTIONS_PER_TRANSITION = 20;
 

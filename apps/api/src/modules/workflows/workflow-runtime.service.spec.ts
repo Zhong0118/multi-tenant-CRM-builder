@@ -1230,6 +1230,213 @@ describe('WorkflowRuntimeService.execute — bounded write-conflict retry (§32,
   });
 });
 
+/**
+ * §31 — the lightweight `executionSummary` of the execute response.
+ *
+ * Asserted on the serialized body: that is the JSON a client receives, and it
+ * is also the exact byte string the leakage assertion scans below.
+ */
+interface ExecutionSummaryActionBody {
+  type: string;
+  label: string;
+}
+
+interface ExecutionSummaryBody {
+  workflowExecutionId: string;
+  transitionKey: string;
+  actions: ExecutionSummaryActionBody[];
+}
+
+function responseBody(view: object): {
+  availableTransitions: Array<
+    Record<string, unknown> & { effects?: ExecutionSummaryActionBody[] }
+  >;
+  executionSummary?: ExecutionSummaryBody;
+} {
+  return JSON.parse(JSON.stringify(view)) as {
+    availableTransitions: Array<
+      Record<string, unknown> & { effects?: ExecutionSummaryActionBody[] }
+    >;
+    executionSummary?: ExecutionSummaryBody;
+  };
+}
+
+/**
+ * One of every V1 Action type, each carrying the internals §31 forbids the
+ * execution summary from echoing: a hidden field key (`phone`), the mapping
+ * sources, a mapped value (`200.00`), a follow-up title and the Target Object
+ * code (`customers`).
+ */
+const LEAKY_SUMMARY_ACTIONS: WorkflowActionDraft[] = [
+  CREATE_CUSTOMER,
+  UPDATE_AMOUNT,
+  ASSIGN_ACTOR,
+  {
+    key: 'link-customer',
+    type: 'CREATE_RELATION',
+    left: { source: 'SOURCE_RECORD' },
+    right: {
+      source: 'ACTION_OUTPUT',
+      actionKey: 'create-customer',
+      property: 'recordId',
+    },
+  },
+  {
+    key: 'follow-up',
+    type: 'CREATE_FOLLOW_UP',
+    target: { source: 'SOURCE_RECORD' },
+    title: { source: 'LITERAL', value: '首次回访' },
+    dueAt: { source: 'NOW_PLUS_DAYS', days: 3 },
+    assignee: { source: 'ACTOR' },
+  },
+];
+
+describe('WorkflowRuntimeService.execute — §31 execution summary', () => {
+  it('summarises the executed actions under the audited execution id', async () => {
+    const { service, store } = fixture({
+      actions: [CREATE_CUSTOMER, UPDATE_AMOUNT],
+      effects: [
+        {
+          actionKey: 'create-customer',
+          type: 'CREATE_RECORD',
+          effect: 'RECORD_CREATED',
+          recordId: 'record-new',
+        },
+        {
+          actionKey: 'set-amount',
+          type: 'UPDATE_RECORD',
+          effect: 'SOURCE_RECORD_UPDATED',
+          recordId: 'record-1',
+        },
+      ],
+      sourcePatch: {
+        values: { name: '张三', amount: '200.00' },
+        title: '张三',
+        ownerMemberId: employee.memberId,
+      },
+    });
+
+    const result = await service.execute(
+      employee,
+      'leads',
+      'record-1',
+      'mark-won',
+      { expectedVersion: 7 },
+      meta,
+    );
+    const summary = responseBody(result).executionSummary;
+
+    expect(summary?.workflowExecutionId).toEqual(expect.any(String));
+    expect(summary?.transitionKey).toBe('mark-won');
+    expect(summary?.actions).toEqual([
+      { type: 'CREATE_RECORD', label: '创建 1 条记录' },
+      { type: 'UPDATE_RECORD', label: '更新当前记录' },
+    ]);
+    // §30: the summary names the same execution id the audit trail carries.
+    expect(
+      store.audits.find(
+        (event) => event.action === 'record.transition_executed',
+      )?.after,
+    ).toMatchObject({
+      workflowExecutionId: summary?.workflowExecutionId,
+      transitionKey: 'mark-won',
+    });
+  });
+
+  it('keeps field keys, mappings, values and object codes out of the summary (§31)', async () => {
+    const { service } = fixture({
+      actions: LEAKY_SUMMARY_ACTIONS,
+      sourcePatch: {
+        values: { name: '张三', amount: '200.00' },
+        title: '张三',
+        ownerMemberId: employee.memberId,
+      },
+    });
+
+    const result = await service.execute(
+      employee,
+      'leads',
+      'record-1',
+      'mark-won',
+      { expectedVersion: 7 },
+      meta,
+    );
+    const serialized = JSON.stringify(responseBody(result).executionSummary);
+
+    for (const secret of [
+      'phone',
+      'customers',
+      'customer',
+      '200.00',
+      'SOURCE_FIELD',
+      'SOURCE_RECORD',
+      'LITERAL',
+      'NOW_PLUS_DAYS',
+      'ACTION_OUTPUT',
+      'recordId',
+      '首次回访',
+      'create-customer',
+      'set-amount',
+      'take-ownership',
+      'values',
+      'name',
+    ]) {
+      expect(serialized).not.toContain(secret);
+    }
+    // The summary still names what happened, per Action, in execution order.
+    expect(
+      responseBody(result).executionSummary?.actions.map((a) => a.type),
+    ).toEqual([
+      'CREATE_RECORD',
+      'UPDATE_RECORD',
+      'ASSIGN_OWNER',
+      'CREATE_RELATION',
+      'CREATE_FOLLOW_UP',
+    ]);
+  });
+
+  it('returns an empty action list when the transition has no actions', async () => {
+    const { service } = fixture();
+
+    const summary = responseBody(
+      await service.execute(
+        employee,
+        'leads',
+        'record-1',
+        'mark-won',
+        { expectedVersion: 7 },
+        meta,
+      ),
+    ).executionSummary;
+
+    // Present but empty, never omitted: the field is additive and a consumer
+    // can always read `actions`.
+    expect(summary).toBeDefined();
+    expect(summary?.workflowExecutionId).toEqual(expect.any(String));
+    expect(summary?.transitionKey).toBe('mark-won');
+    expect(summary?.actions).toEqual([]);
+  });
+
+  it('summarises the synthetic start transition under its own key', async () => {
+    const { service } = fixture({ record: { workflowStateKey: null } });
+
+    const summary = responseBody(
+      await service.execute(
+        employee,
+        'leads',
+        'record-1',
+        START_TRANSITION_KEY,
+        { expectedVersion: 7 },
+        meta,
+      ),
+    ).executionSummary;
+
+    expect(summary?.workflowExecutionId).toEqual(expect.any(String));
+    expect(summary?.transitionKey).toBe(START_TRANSITION_KEY);
+    expect(summary?.actions).toEqual([]);
+  });
+});
+
 describe('WorkflowRuntimeService read paths', () => {
   it('still reads the runtime view through the read-gated resolver', async () => {
     const { service } = fixture();
@@ -1240,6 +1447,20 @@ describe('WorkflowRuntimeService read paths', () => {
     expect(view.recordVersion).toBe(7);
     expect(view.availableTransitions.map((item) => item.key)).toEqual([
       'mark-won',
+    ]);
+  });
+
+  it('keeps the GET body free of an execution summary (§31, §35)', async () => {
+    const { service } = fixture({ actions: [UPDATE_AMOUNT] });
+
+    const body = responseBody(await service.get(employee, 'leads', 'record-1'));
+
+    // Nothing was executed by a read, so the field is absent — a client written
+    // against the pre-Task-11 body sees exactly the shape it saw before.
+    expect(body).not.toHaveProperty('executionSummary');
+    // The static effect summary is additive and lives on both paths.
+    expect(body.availableTransitions[0].effects).toEqual([
+      { type: 'UPDATE_RECORD', label: '更新当前记录' },
     ]);
   });
 });

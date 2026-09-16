@@ -17,7 +17,10 @@ import {
 } from 'class-validator';
 
 import { WORKFLOW_KEY_PATTERN, WORKFLOW_ROLES } from '../workflow.types';
-import { WORKFLOW_ACTION_TYPES } from '../../actions/action.types';
+import {
+  WORKFLOW_ACTION_TYPES,
+  type WorkflowActionType,
+} from '../../actions/action.types';
 
 export class WorkflowStateDraftDto {
   @ApiProperty({ example: 'new' })
@@ -67,11 +70,11 @@ export class WorkflowActionDraftDto {
   @IsOptional()
   targetObjectCode?: string;
 
-  @ApiPropertyOptional({ type: Object })
+  @ApiPropertyOptional({ type: Object, additionalProperties: true })
   @IsOptional()
   values?: Record<string, unknown>;
 
-  @ApiPropertyOptional({ type: Object })
+  @ApiPropertyOptional({ type: Object, additionalProperties: true })
   @IsOptional()
   owner?: Record<string, unknown>;
 
@@ -79,23 +82,23 @@ export class WorkflowActionDraftDto {
   @IsOptional()
   target?: string;
 
-  @ApiPropertyOptional({ type: Object })
+  @ApiPropertyOptional({ type: Object, additionalProperties: true })
   @IsOptional()
   left?: Record<string, unknown>;
 
-  @ApiPropertyOptional({ type: Object })
+  @ApiPropertyOptional({ type: Object, additionalProperties: true })
   @IsOptional()
   right?: Record<string, unknown>;
 
-  @ApiPropertyOptional({ type: Object })
+  @ApiPropertyOptional({ type: Object, additionalProperties: true })
   @IsOptional()
   title?: Record<string, unknown>;
 
-  @ApiPropertyOptional({ type: Object })
+  @ApiPropertyOptional({ type: Object, additionalProperties: true })
   @IsOptional()
   dueAt?: Record<string, unknown>;
 
-  @ApiPropertyOptional({ type: Object })
+  @ApiPropertyOptional({ type: Object, additionalProperties: true })
   @IsOptional()
   assignee?: Record<string, unknown>;
 }
@@ -211,12 +214,53 @@ export class RuntimeTransitionTargetDto {
   @ApiProperty() label!: string;
 }
 
+/**
+ * §31: one safe static effect of a Transition — its Action TYPE and a
+ * human-readable label.
+ *
+ * The label is not derived from the Action payload (see
+ * `WORKFLOW_ACTION_EFFECT_LABELS`), so an employee confirmation can never echo
+ * a hidden field key, a mapping source, a mapped value, a Target Object code or
+ * a permission. A NAMED class, not an inline type: Swagger then emits a real
+ * component schema and the generated client gets a usable type.
+ */
+export class RuntimeTransitionEffectDto {
+  @ApiProperty({ enum: WORKFLOW_ACTION_TYPES })
+  type!: WorkflowActionType;
+
+  @ApiProperty({ example: '创建 1 条记录' })
+  label!: string;
+}
+
+/**
+ * §31: the lightweight summary of what an executed Transition did. Additive to
+ * the Runtime Workflow View (§35), and named after the execution id the §30
+ * audits carry.
+ */
+export class RuntimeExecutionSummaryDto {
+  @ApiProperty({ format: 'uuid' })
+  workflowExecutionId!: string;
+
+  @ApiProperty({ example: 'mark-won' })
+  transitionKey!: string;
+
+  @ApiProperty({ type: RuntimeTransitionEffectDto, isArray: true })
+  actions!: RuntimeTransitionEffectDto[];
+}
+
 export class RuntimeAvailableTransitionDto {
   @ApiProperty() key!: string;
   @ApiProperty() label!: string;
   @ApiPropertyOptional({ type: RuntimeTransitionTargetDto })
   toState?: RuntimeTransitionTargetDto;
   @ApiProperty({ type: String, isArray: true }) requiredFieldKeys!: string[];
+  @ApiProperty({
+    type: RuntimeTransitionEffectDto,
+    isArray: true,
+    description:
+      '静态 Effect Summary：该 Transition 将执行的动作类型，按执行顺序；没有 Action 时为空数组。不含字段映射细节。',
+  })
+  effects!: RuntimeTransitionEffectDto[];
 }
 
 export class RuntimeWorkflowResponseDto {
@@ -225,6 +269,12 @@ export class RuntimeWorkflowResponseDto {
   @ApiProperty({ type: RuntimeAvailableTransitionDto, isArray: true })
   availableTransitions!: RuntimeAvailableTransitionDto[];
   @ApiProperty() recordVersion!: number;
+  @ApiPropertyOptional({
+    type: RuntimeExecutionSummaryDto,
+    description:
+      '仅在 Transition 执行成功后返回；读取接口不返回。无 Action 的 Transition 返回空 actions 数组。',
+  })
+  executionSummary?: RuntimeExecutionSummaryDto;
 }
 
 export class WorkflowHistoryItemDto {

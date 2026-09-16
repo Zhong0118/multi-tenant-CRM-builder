@@ -2933,6 +2933,9 @@
       },
       "PublicationIssueResponseDto": {
         "properties": {
+          "actionKey": {
+            "type": "string"
+          },
           "code": {
             "type": "string"
           },
@@ -2940,6 +2943,9 @@
             "type": "string"
           },
           "message": {
+            "type": "string"
+          },
+          "transitionKey": {
             "type": "string"
           }
         },
@@ -3407,6 +3413,13 @@
       },
       "RuntimeAvailableTransitionDto": {
         "properties": {
+          "effects": {
+            "description": "静态 Effect Summary：该 Transition 将执行的动作类型，按执行顺序；没有 Action 时为空数组。不含字段映射细节。",
+            "items": {
+              "$ref": "#/components/schemas/RuntimeTransitionEffectDto"
+            },
+            "type": "array"
+          },
           "key": {
             "type": "string"
           },
@@ -3423,7 +3436,27 @@
             "$ref": "#/components/schemas/RuntimeTransitionTargetDto"
           }
         },
-        "required": ["key", "label", "requiredFieldKeys"],
+        "required": ["key", "label", "requiredFieldKeys", "effects"],
+        "type": "object"
+      },
+      "RuntimeExecutionSummaryDto": {
+        "properties": {
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/RuntimeTransitionEffectDto"
+            },
+            "type": "array"
+          },
+          "transitionKey": {
+            "example": "mark-won",
+            "type": "string"
+          },
+          "workflowExecutionId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["workflowExecutionId", "transitionKey", "actions"],
         "type": "object"
       },
       "RuntimeObjectNavigationResponseDto": {
@@ -3522,6 +3555,26 @@
         "required": ["environment", "services", "policies"],
         "type": "object"
       },
+      "RuntimeTransitionEffectDto": {
+        "properties": {
+          "label": {
+            "example": "创建 1 条记录",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "CREATE_RECORD",
+              "UPDATE_RECORD",
+              "CREATE_RELATION",
+              "CREATE_FOLLOW_UP",
+              "ASSIGN_OWNER"
+            ],
+            "type": "string"
+          }
+        },
+        "required": ["type", "label"],
+        "type": "object"
+      },
       "RuntimeTransitionTargetDto": {
         "properties": {
           "key": {
@@ -3550,6 +3603,14 @@
             ],
             "nullable": true,
             "type": "object"
+          },
+          "executionSummary": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RuntimeExecutionSummaryDto"
+              }
+            ],
+            "description": "仅在 Transition 执行成功后返回；读取接口不返回。无 Action 的 Transition 返回空 actions 数组。"
           },
           "recordVersion": {
             "type": "number"
@@ -4687,6 +4748,61 @@
         "required": ["phone", "purpose", "deviceKey"],
         "type": "object"
       },
+      "WorkflowActionDraftDto": {
+        "properties": {
+          "assignee": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "dueAt": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "key": {
+            "example": "create-customer",
+            "type": "string"
+          },
+          "left": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "owner": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "right": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "target": {
+            "example": "SOURCE_RECORD",
+            "type": "string"
+          },
+          "targetObjectCode": {
+            "example": "customer",
+            "type": "string"
+          },
+          "title": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": {
+            "enum": [
+              "CREATE_RECORD",
+              "UPDATE_RECORD",
+              "CREATE_RELATION",
+              "CREATE_FOLLOW_UP",
+              "ASSIGN_OWNER"
+            ],
+            "type": "string"
+          },
+          "values": {
+            "additionalProperties": true,
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
       "WorkflowDraftResponseDto": {
         "properties": {
           "initialStateKey": {
@@ -4810,6 +4926,13 @@
       },
       "WorkflowTransitionDraftDto": {
         "properties": {
+          "actions": {
+            "description": "按顺序执行的 Action 列表：客户端应发送数组；省略等同于空数组。",
+            "items": {
+              "$ref": "#/components/schemas/WorkflowActionDraftDto"
+            },
+            "type": "array"
+          },
           "allowedRoles": {
             "items": {
               "enum": ["TENANT_ADMIN", "EMPLOYEE"],
