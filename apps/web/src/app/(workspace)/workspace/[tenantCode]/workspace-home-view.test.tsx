@@ -13,6 +13,14 @@ vi.mock("@ant-design/charts", () => ({
   Line: () => <div data-testid="trend-chart" />,
 }));
 
+vi.mock("@/features/follow-ups/follow-up-workbench", () => ({
+  PersonalFollowUpWorkbench: ({ tenantCode }: { tenantCode: string }) => (
+    <section data-testid="personal-follow-up-workbench">
+      follow-ups:{tenantCode}
+    </section>
+  ),
+}));
+
 const objects = [
   {
     code: "orders",
@@ -237,6 +245,11 @@ describe("WorkspaceHomeView", () => {
       "href",
       "/workspace/northwind/settings/dashboards/home",
     );
+    // The tenant-admin home is deliberately untouched by this task: no personal
+    // workbench is added there.
+    expect(
+      screen.queryByTestId("personal-follow-up-workbench"),
+    ).not.toBeInTheDocument();
 
     rerender(
       <WorkspaceHomeView
@@ -253,6 +266,10 @@ describe("WorkspaceHomeView", () => {
     expect(
       screen.queryByRole("link", { name: "配置工作台" }),
     ).not.toBeInTheDocument();
+    // Personal execution data must not depend on a published dashboard.
+    expect(screen.getByTestId("personal-follow-up-workbench")).toHaveTextContent(
+      "follow-ups:northwind",
+    );
   });
 
   it("sends an administrator without published tables to create the first business table", () => {

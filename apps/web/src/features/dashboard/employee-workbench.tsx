@@ -1,6 +1,6 @@
 "use client";
 
-import { FollowUpSummary } from "@/features/follow-ups/follow-up-summary";
+import { PersonalFollowUpWorkbench } from "@/features/follow-ups/follow-up-workbench";
 import { PageHeader } from "@/components/layout/page-header";
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
@@ -50,7 +50,7 @@ export function EmployeeWorkbench({
           publication={overview.publication}
         />
       </div>
-      <FollowUpSummary tenantCode={tenantCode} />
+      <PersonalFollowUpWorkbench tenantCode={tenantCode} />
       <DashboardRenderer tenantCode={tenantCode} runtime={overview} />
       <EmployeeShortcuts tenantCode={tenantCode} objects={businessObjects} />
       <BusinessObjectBar

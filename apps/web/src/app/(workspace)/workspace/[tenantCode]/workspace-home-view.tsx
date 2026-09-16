@@ -7,6 +7,7 @@ import type { DashboardRuntimeResult } from "@/features/dashboard/dashboard-type
 import { EmployeeWorkbench } from "@/features/dashboard/employee-workbench";
 import { dashboardSettingsPath } from "@/features/dashboard/workbench-period";
 import { BusinessObjectBar } from "@/features/dashboard/workbench-elements";
+import { PersonalFollowUpWorkbench } from "@/features/follow-ups/follow-up-workbench";
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
 import styles from "./workspace-home.module.css";
@@ -29,26 +30,52 @@ export function WorkspaceHomeView({
   overview,
 }: WorkspaceHomeViewProps) {
   if (overview.state === "UNCONFIGURED") {
+    if (role === "TENANT_ADMIN") {
+      return (
+        <div className={styles.home}>
+          <PageHeader
+            title="管理工作台"
+            description={`${userName}，这里会使用 ${tenantName} 的真实业务记录生成工作摘要。`}
+          />
+          <StatePanel
+            title={emptyHomeTitle(role, businessObjects.length)}
+            description={emptyHomeDescription(role, businessObjects.length)}
+            action={emptyHomeAction(
+              tenantCode,
+              role,
+              businessObjects.length,
+              overview.dashboardCode,
+            )}
+          />
+          <BusinessObjectBar
+            tenantCode={tenantCode}
+            objects={businessObjects}
+            role={role}
+          />
+        </div>
+      );
+    }
+
+    /**
+     * An employee's own follow-ups are personal execution data, so they must not
+     * wait for an administrator to publish a dashboard (§10.1). The personal
+     * workbench therefore renders above the "not enabled yet" state.
+     */
     return (
       <div className={styles.home}>
         <PageHeader
-          title={role === "TENANT_ADMIN" ? "管理工作台" : "我的工作台"}
+          title="我的工作台"
           description={`${userName}，这里会使用 ${tenantName} 的真实业务记录生成工作摘要。`}
         />
+        <PersonalFollowUpWorkbench tenantCode={tenantCode} />
         <StatePanel
-          title={emptyHomeTitle(role, businessObjects.length)}
-          description={emptyHomeDescription(role, businessObjects.length)}
-          action={emptyHomeAction(
-            tenantCode,
-            role,
-            businessObjects.length,
-            overview.dashboardCode,
-          )}
+          title="工作台尚未启用"
+          description="公司管理员发布工作台后，这里会显示你有权限查看的结果。"
         />
         <BusinessObjectBar
           tenantCode={tenantCode}
           objects={businessObjects}
-          role={role}
+          role="EMPLOYEE"
         />
       </div>
     );
