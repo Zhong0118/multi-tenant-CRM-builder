@@ -7,7 +7,7 @@
 本轮交付：Transition 的同步结构化业务动作 —— typed `actions[]`、严格 Draft Validator、Actions 冻结进 Object Publication、事务内 Action Engine（五类 Action）、Admin Action 设计器、员工静态确认、执行失败文案。
 不在本轮范围：Trigger / Event / Automation / 异步 Worker / Outbox / 外部 I/O。
 
-本文所有数字都来自本轮在区间末端提交上**实际重跑**的命令输出，或明确标注来源的任务报告；没有预测值。
+本文所有数字都来自本轮在区间末端提交上**实际重跑**的命令输出，或明确标注来源的任务报告；没有预测值。门禁的**完整七步序列**在提交本文档之前整体跑过一次（即 Tests 小节的第 0–6 步，全部 exit 0），其中第 0–4 步此前也单独跑过一次并得到同样结果。其后本文只产生 **Markdown 文档提交**，不改变任何代码文件。
 
 ---
 
@@ -222,11 +222,11 @@ CHECK (jsonb_typeof("actions") = 'array');
 - **六个结构性 `WORKFLOW_ACTION_*` 码没有 locator**（M72）：`object-publication.policy.ts:205-218` 对结构性非法的 actions 只返回**一条** `{code, message}`，把 validator 精确的 `transitions.N.actions.M.key` 路径丢掉了。**已核实为既有行为**（`ed4fd4f:186-192` 上同样的 `Object.values(fieldErrors).flat()[0]` 截断早于本特性存在），本特性只是让它更有后果（这些码现在有了独立 §34 code）。设计器若需要逐 action 定位，那是设计器的一次刻意改动。
 - **`executionSummary` 目前没有消费者**（M85/M94/M98）：它按 §31 允许存在、有测试覆盖，但计划里的 Web 任务只消费 `effects`；OpenAPI 又把 `executionSummary` 标成可选，而 GET 永不返回它。属 YAGNI 可删的额外面。
 - **5433 上留着两件测试残留，按指示保留：**
-  1. 一个**孤儿用户** `01a0a857-…`，手机号 `+8613911112222`，`memberships=0` —— 一次失败的 auth spec 复现留下（该 spec 是既有红灯，见下）。
+  1. 一个**孤儿用户**，手机号 `+8613911112222`，`memberships = 0` —— 是复现那条既有红灯 auth spec 的副作用。**它的 UUID 每次复现都会变**（该 spec 的 `beforeEach` 会先删掉这个手机号的用户、用例在 `:83` 失败后再把它留在库里）。同时留下 1 行该手机号的 `verification_challenges`。本轮复现该红灯后，库里仍是**恰好 1 个**这样的孤儿用户。
   2. 周岚（`+8618800001007`）在 `process-target-b` 上的 **Member Override `can_create=false`**（`can_read=true`、`can_update=true`）—— 为让回滚用例可复现而**刻意**保留。要还原：打开 `/workspace/nebula-demo/members/e4f8811a-cab4-4f2e-9492-7b7a2e4c48ba/access`，对 `process-target-b` 选「使用员工默认」并保存。
   其余 5433 状态是连贯的已发布验收夹具：租户 `nebula-demo`（ACTIVE）、4 个对象 `process-source` / `process-source-employee` / `process-target-a` / `process-target-b` **全部已发布**（本轮复核：`status=ACTIVE` 且 `active_publication_id` 非空）。
 - **`pnpm test` 不跑 e2e 套件**（见 Tests 小节）。任何只跑 `pnpm test` 的绿色结论都不覆盖 e2e。
-- **既有红灯，非本轮回归：(a)** `apps/api/test/auth.e2e-spec.ts:83` 期望 `GET /api/v1/me/sessions` 返回数组，而 controller 返回分页 `SessionPageResponseDto`。已证明早于本特性：分支没有任何提交碰过 auth（`git diff a01b6ae HEAD -- apps/api/test/auth.e2e-spec.ts apps/api/src/modules/auth` 为空），且 `a01b6ae` 的 `auth.controller.ts` 已是同一行为。**(b)** 全仓 lint 仍是既有的 57 个 API 错误，而**本分支自己的文件是 lint 干净的**（Task 17 把分支新增的 `test/action-engine.e2e-spec.ts` 从 14 个错误清到 0；5 个被分支触碰的 lint 错误文件在 merge-base 上有 19 个错误、现在只有 15 个，分支没有新增 lint 债）。
+- **既有红灯，非本轮回归：(a)** `apps/api/test/auth.e2e-spec.ts:83` 期望 `GET /api/v1/me/sessions` 返回数组，而 controller 返回分页 `SessionPageResponseDto`。**本轮亲自复现**：exit 1，`Test Suites: 1 failed, 1 total` / `Tests: 1 failed, 1 passed, 2 total`，断言在 `auth.e2e-spec.ts:83` 失败，`Received has value: {"items": [...], "limit": 20, "page": 1, "total": 2}`。并已证明早于本特性：分支没有任何提交碰过 auth（`git diff a01b6ae HEAD -- apps/api/test/auth.e2e-spec.ts apps/api/src/modules/auth` 为空），`auth.controller.ts` 与 `a01b6ae` **逐字节相同**（`git diff --exit-code` 返回 0），且失败断言 `expect(sessions.body).toHaveLength(2)` 在 `a01b6ae` 的同名文件第 83 行就已存在。**(b)** 全仓 lint 仍是既有的 57 个 API 错误，而**本分支自己的文件是 lint 干净的**（Task 17 把分支新增的 `test/action-engine.e2e-spec.ts` 从 14 个错误清到 0；5 个被分支触碰的 lint 错误文件在 merge-base 上有 19 个错误、现在只有 15 个，分支没有新增 lint 债）。
 - **A/B 场景的重试上界是 V1 接受的残余风险**：`WORKFLOW_EXECUTE_ATTEMPTS = 3`，一次运行里 3 次尝试中有 2 次自身被死锁回滚、第 3 次提交。`ca9cf80` 之后第 4 次也不会再裸 500（会得到 409 `RECORD_VERSION_CONFLICT`），但没有退避/抖动。未改上界。
 - **确定性「耗尽重试」只由单元测试覆盖**，e2e 的 A/B 用例没走到（见 Concurrency 小节）。
 - **未做**：双标签页 stale version 的浏览器冲突演示（`RECORD_VERSION_CONFLICT` 由 API/单元测试覆盖）；§40 的 Permission/Concurrency 子清单**没有在浏览器里**逐条走（它们由 Task 10 的真实 PostgreSQL 套件覆盖，见上文各节）。
