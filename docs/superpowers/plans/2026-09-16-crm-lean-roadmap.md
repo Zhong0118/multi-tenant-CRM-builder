@@ -21,7 +21,7 @@
 |---|---|---|---:|
 | Security Closeout | **COMPLETED**（Workflow 侧 PR #2；Record 侧 PR #3） | Workflow + Record required/HIDDEN metadata hardening（含 publish 期"默认值永不生效"拦截）；**残留**：`MEMBER` 默认值存在性无法在分析期校验、`action-engine.ts` 嵌套 fieldErrors 过滤（各自独立任务） | 0.1–0.2× |
 | Engineering Gate Lite | **COMPLETED**（PR #4，合并提交 `77af603`） | GitHub Actions CI：`Typecheck` / `Contracts` / `Unit Tests` / `Database Integration` / `Build` 五个 required checks；Database Integration 起仓库自己的 PostgreSQL 18 并跑真实 integration suite（runtime 角色 `crm_app` / `NOBYPASSRLS`）；`main` 已开启分支保护（需 PR、分支必须最新、禁强推与删除、approvals = 0）。验收见 `docs/audits/2026-09-16/engineering-gate-lite-acceptance.md`；**API Critical E2E 仍未 required**，属 Engineering Gate Hardening | 0.2–0.4× |
-| Sales Workbench Lite | **ACTIVE**（2026-09-17 起） | 员工首页固定 Personal Follow-up Workbench：全部待办 / 今日 / 已逾期 / 未来 7 个租户日历日；新增只读 `GET /workspaces/:tenantCode/follow-ups/workbench`（服务端解析 Actor、不接受 member 覆盖），**不新增 Dashboard widget、不改 publication schema、不加迁移**，完成动作复用既有 `PATCH /follow-ups/:id`。设计 `docs/superpowers/specs/2026-09-17-sales-workbench-lite-design.md`、计划 `docs/superpowers/plans/2026-09-17-sales-workbench-lite-implementation.md` | 0.3–0.5× |
+| Sales Workbench Lite | **COMPLETED**（PR #9，合并提交 `a6e08b2`） | 员工首页固定 Personal Follow-up Workbench：全部待办 / 今日 / 已逾期 / 未来 7 个租户日历日；只读 `GET /workspaces/:tenantCode/follow-ups/workbench`（服务端解析 Actor、不接受 member 覆盖）；**overdue = `dueAt < now`**（与完整 Follow-up Domain 对齐）；**不新增 Dashboard widget、不改 publication schema、不加迁移**，完成动作复用既有 `PATCH /follow-ups/:id`。验收 `docs/audits/2026-09-17/sales-workbench-lite-acceptance.md` | 0.3–0.5× |
 | AI Assistant V1A | PLANNED | 只读 Ask / Analyze | 0.4–0.7× |
 | AI Assistant V1B | PLANNED | Proposal → Preview → Confirm → Typed Write → Audit | 0.5–0.8× |
 | Production Essentials | PLANNED | 安全、日志、备份、监控、对象存储、生产配置 | 0.6–1.0× |
@@ -32,8 +32,8 @@
 **Engineering Gate Hardening**（follow-up，**PLANNED，不是 ACTIVE**）：把 Critical API E2E
 （Auth/Session、Tenant 隔离、Record CRUD、Workflow Transition、代表性 Action 原子性）稳定后提升为
 第六个 required check，目标形态 `Required Gate V2`；在稳定之前不提升。
-**位置由用户定为 Sales Workbench Lite 之后、AI Assistant V1A 之前**（理由见 §11）。
-完成 Engineering Gate Lite **不自动** Promote Sales Workbench Lite。
+**位置由用户定为已完成的 Sales Workbench Lite 之后、AI Assistant V1A 之前**（理由见 §11）。
+完成 Sales Workbench Lite **不自动** Promote Engineering Gate Hardening 或 AI V1A。
 
 ## 4. Sales Workbench Lite
 
@@ -84,8 +84,8 @@ Duplicate Rule、Merge、迁移、SMS、Feishu、多 Adapter、复杂通知全�
 
 ```text
 Engineering Gate Lite          ✅ COMPLETED（PR #4）
-→ Sales Workbench Lite         ← 当前 ACTIVE（2026-09-17 起）
-→ Engineering Gate Hardening   ← 第六个 required check：Critical API E2E
+→ Sales Workbench Lite         ✅ COMPLETED（PR #9）
+→ Engineering Gate Hardening   ← 下一阶段（PLANNED）：第六个 required check：Critical API E2E
 → AI Assistant V1A
 → AI Assistant V1B
 → Production Essentials

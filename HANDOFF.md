@@ -1,6 +1,6 @@
 # 多租户 CRM Builder 接手说明
 
-更新时间：2026-09-16
+更新时间：2026-09-17
 
 `main` 与 `origin/main` 是当前开发基线。**不要把某次 `git log -1` 的输出写死进本文。**
 Workflow V1 与 Action Engine V1 **均已合并进入 `main`**。Action Engine V1 通过 PR #1 合并，合并提交 `e590c23da6aa9c5fe0d0c3cd71250270ea265ebd`（该 SHA 只作为这一次历史事实记录，不是"main 永远等于它"）。Workflow Required Field Visibility Hardening 已通过 PR #2 合并；Record Required Field Visibility Hardening 已通过 PR #3 合并（均详见下方）。
@@ -13,15 +13,15 @@ Engineering Gate Lite 已通过 PR #4 合并：`main` 现在有 CI 与分支保�
 `Typecheck` / `Contracts` / `Unit Tests` / `Database Integration` / `Build`），此后改 `main` 必须走 PR
 且五项全绿。验收见 `docs/audits/2026-09-16/engineering-gate-lite-acceptance.md`。
 
-**当前主要产品 Task（2026-09-17 起）= Sales Workbench Lite，状态 ACTIVE，正在实现中**：员工首页固定
-Personal Follow-up Workbench（全部待办 / 今日 / 已逾期 / 未来 7 个租户日历日），新增只读
-`GET /workspaces/:tenantCode/follow-ups/workbench`——服务端解析 Actor，不接受 `memberId` /
-`assigneeMemberId` / `tenantId` / role 覆盖；**不新增 Dashboard widget、不改 Dashboard publication
-schema、不加 Prisma 迁移**；完成动作复用既有 `PATCH /follow-ups/:id`（保留 version / 权限 / audit）。
-文档：`docs/superpowers/specs/2026-09-17-sales-workbench-lite-design.md` 与
-`docs/superpowers/plans/2026-09-17-sales-workbench-lite-implementation.md`。
-后续顺序不变：Sales Workbench Lite → **Engineering Gate Hardening**（Critical API E2E 升为第六个
-required check）→ AI Assistant V1A。**AI 开发仍未批准。**
+Sales Workbench Lite **已通过 PR #9 合并进入 `main`**，合并提交
+`a6e08b2d853424ae4146abdc769ec6c007fb8e35`（只作历史事实记录）。员工首页固定
+Personal Follow-up Workbench（全部待办 / 今日 / 已逾期 / 未来 7 个租户日历日），只读
+`GET /workspaces/:tenantCode/follow-ups/workbench`——服务端解析 Actor，不接受 member 覆盖；
+**overdue = `dueAt < now`**，与完整 Follow-up Domain 对齐（today 下界是 `now`）；**不新增 Dashboard
+widget、不改 publication schema、不加 Prisma 迁移**；完成动作复用既有 `PATCH /follow-ups/:id`。
+验收见 `docs/audits/2026-09-17/sales-workbench-lite-acceptance.md`。
+**下一个主要产品 Task 尚未 ACTIVE**：位置已定的下一步是 **Engineering Gate Hardening**（Critical API E2E
+升为第六个 required check，PLANNED）→ 然后才是 AI Assistant V1A。**AI 开发仍未批准。**
 **API Critical E2E 仍未 required**，属 Engineering Gate Hardening follow-up（PLANNED，不是 ACTIVE）。
 
 Workflow Required Field Visibility Hardening **已通过 PR #2 合并进入 `main`**，合并提交
@@ -50,7 +50,7 @@ AI Assistant 的方向见 `docs/superpowers/specs/2026-09-16-ai-assistant-v1-des
 - **V1A Ask / Analyze**：只读，受当前登录用户权限约束（先裁剪、再交给 AI）；
 - **V1B Confirmed Edit**：AI 只产出 Proposal，用户确认后服务端重新校验权限与版本，再执行 Typed Command 并写审计。
 
-**当前不要开始 AI 开发**：V1A 与 V1B 都还只是方向，需要各自批准的设计规格与实现计划；V1B 应在 V1A 实际验证之后再开发。Sales Workbench、Automation、Production Essentials 同样尚未批准。
+**当前不要开始 AI 开发**：V1A 与 V1B 都还只是方向，需要各自批准的设计规格与实现计划；V1B 应在 V1A 实际验证之后再开发。Automation、Production Essentials 同样尚未批准。Sales Workbench Lite 已完成（PR #9）。
 
 本文只记录当前事实。已完成与未完成对照见
 `docs/superpowers/plans/2026-09-01-productization-follow-up.md`。
@@ -367,7 +367,7 @@ Transition 不再只是改状态，还能产生结构化业务动作：
 - 附件目前存在 PostgreSQL `bytea`（单文件 5MB）。上生产前必须换成对象存储。
 - 仓库是公开的，所以口令不写进本文（见第 6 节）；演示口令本身由公开的种子常量决定，只能视为公开信息，不得复用到任何真实环境。
 - 根 `engines` 已从 `>=20.9.0` 提高到 `>=24`：`@crm/database` 是 ESM 包而 `apps/api` 编译为 CJS，需要支持 `require(esm)` 的 Node，而本地只验证过 Node 24.19.0。若确认 22 LTS 可用，可以再放宽下限，但必须实测过再改。
-- **CI 与分支保护已就位（2026-09-16，Engineering Gate Lite 随 PR #4 合并，合并提交 `77af603`）**：`.github/workflows/ci.yml` 存在；`main` 已受保护，五个 required checks 为 `Typecheck` / `Contracts` / `Unit Tests` / `Database Integration` / `Build`（读回值：`strict: true`、`allow_force_pushes: false`、`allow_deletions: false`、required approving reviews = 0）。Database Integration 在 runner 上起仓库自己的 PostgreSQL 18（`compose.yaml`）并跑真实 integration suite（18 测试），runtime 角色是 `crm_app`（`NOBYPASSRLS`），跑完 `docker compose down -v` 销毁卷。**仍未做**：API Critical E2E 尚未提升为 required —— 它保留为 **Engineering Gate Hardening follow-up（PLANNED，不是 ACTIVE）**，**位置由用户定在 Sales Workbench Lite 之后、AI Assistant V1A 之前**（到 AI V1A 会大量依赖 Auth / Tenant / Record 权限链）；repo-wide lint 也仍不是 required。验收与全部实测证据见 `docs/audits/2026-09-16/engineering-gate-lite-acceptance.md`。**`enforce_admins` 已于 2026-09-16 由用户决定打开**：执行 `POST .../branches/main/protection/enforce_admins` 后独立读回 `enforce_admins.enabled: true`、canonical `required_status_checks.enforcement_level` 由 `non_admins` 变为 **`everyone`** —— 现在**管理员同样不能直推 `main`**，必须走 PR + 五项全绿。紧急情况（例如 CI 自身损坏）是显式的低频操作：`DELETE .../protection/enforce_admins`（或临时关保护）→ 修 CI → 立刻恢复并读回确认。注意该子资源只接受 `POST`(启用) / `DELETE`(停用)，**没有 `PATCH`**（`PATCH` 返回 404）。
+- **CI 与分支保护已就位（2026-09-16，Engineering Gate Lite 随 PR #4 合并，合并提交 `77af603`）**：`.github/workflows/ci.yml` 存在；`main` 已受保护，五个 required checks 为 `Typecheck` / `Contracts` / `Unit Tests` / `Database Integration` / `Build`（读回值：`strict: true`、`allow_force_pushes: false`、`allow_deletions: false`、required approving reviews = 0）。Database Integration 在 runner 上起仓库自己的 PostgreSQL 18（`compose.yaml`）并跑真实 integration suite（18 测试），runtime 角色是 `crm_app`（`NOBYPASSRLS`），跑完 `docker compose down -v` 销毁卷。**仍未做**：API Critical E2E 尚未提升为 required —— 它保留为 **Engineering Gate Hardening follow-up（PLANNED，不是 ACTIVE）**，**位置由用户定在已完成的 Sales Workbench Lite（PR #9）之后、AI Assistant V1A 之前**（到 AI V1A 会大量依赖 Auth / Tenant / Record 权限链）；repo-wide lint 也仍不是 required。验收与全部实测证据见 `docs/audits/2026-09-16/engineering-gate-lite-acceptance.md`。**`enforce_admins` 已于 2026-09-16 由用户决定打开**：执行 `POST .../branches/main/protection/enforce_admins` 后独立读回 `enforce_admins.enabled: true`、canonical `required_status_checks.enforcement_level` 由 `non_admins` 变为 **`everyone`** —— 现在**管理员同样不能直推 `main`**，必须走 PR + 五项全绿。紧急情况（例如 CI 自身损坏）是显式的低频操作：`DELETE .../protection/enforce_admins`（或临时关保护）→ 修 CI → 立刻恢复并读回确认。注意该子资源只接受 `POST`(启用) / `DELETE`(停用)，**没有 `PATCH`**（`PATCH` 返回 404）。
 - `origin/backup/v3-design-tokens`：相对 `main` 落后 139 个提交，只独有 1 个提交 `e8812d8`「align design tokens with the V3 palette」，改的是 `globals.css` / `providers.tsx` / `providers.test.ts`，纯配色、无功能。而且 `main` 此后已自行演进到**另一套**配色（`primary: #167568` 青绿，backup 提的是 `#2563EB` 蓝），方向已经不同。结论：**不合并，也不需要「解冲突」**；它属于已经后置的配色议题，保留归档或直接删分支即可，不要长期挂在待决策清单里。
 
 ## 8. 验证边界

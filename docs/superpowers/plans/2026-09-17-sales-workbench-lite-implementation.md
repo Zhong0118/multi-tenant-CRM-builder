@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> 状态：已实现并合并（PR #9，合并提交 `a6e08b2`）
+
 **Goal:** Turn the existing personal Follow-up capability into a fixed employee-home workbench that shows overdue, today, and next-7-calendar-day items without introducing a second task domain or a new Dashboard widget type.
 
 **Architecture:** Add one read-only `GET /workspaces/:tenantCode/follow-ups/workbench` endpoint inside the existing Follow-up module. The endpoint derives the current actor and tenant on the server, reuses existing object/effective-access scopes, calculates tenant-calendar buckets on the API side, and returns bounded previews plus counts. The web app replaces the static Follow-up summary link with a React Query-powered personal workbench; completion continues through the existing Follow-up PATCH command path and audit/version checks.

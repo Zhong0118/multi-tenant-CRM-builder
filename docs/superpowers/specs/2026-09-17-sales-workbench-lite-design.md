@@ -2,7 +2,7 @@
 
 > 日期：2026-09-17  
 > 类型：Product / Architecture Design  
-> 状态：APPROVED / IMPLEMENTED IN PR #9
+> 状态：已实现并合并（PR #9，合并提交 `a6e08b2`）
 > Stage Brief：`docs/superpowers/briefs/2026-09-16-sales-workbench-lite-stage-brief.md`  
 > 当前基线：`main` @ `aa505d37766816fc751a91280f6cd82d1153eae5`  
 > 前置条件：Engineering Gate Lite 已完成；`main` protection 已对管理员生效；五个 required checks 已就位。  
