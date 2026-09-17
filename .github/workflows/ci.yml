@@ -183,3 +183,52 @@ jobs:
       - name: Stop PostgreSQL
         if: always()
         run: docker compose down -v
+
+  critical-api-e2e:
+    name: Critical API E2E
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start PostgreSQL
+        run: docker compose up -d --wait postgres
+
+      - name: Build internal prerequisites
+        run: pnpm --filter @crm/contracts --filter @crm/database build
+
+      - name: Deploy migrations
+        env:
+          DATABASE_ADMIN_URL: postgresql://crm:crm@localhost:5432/crm?schema=public
+        run: pnpm --filter @crm/database prisma:migrate:deploy
+
+      - name: Run Critical API E2E
+        env:
+          DATABASE_ADMIN_URL: postgresql://crm:crm@localhost:5432/crm?schema=public
+          TEST_DATABASE_ADMIN_URL: postgresql://crm:crm@localhost:5432/crm?schema=public
+          TEST_DATABASE_URL: postgresql://crm_app:crm_app@localhost:5432/crm?schema=public
+        run: pnpm --filter @crm/api test:e2e:critical
+
+      - name: Show PostgreSQL logs on failure
+        if: failure()
+        run: docker compose logs --no-color postgres
+
+      - name: Stop PostgreSQL
+        if: always()
+        run: docker compose down -v
