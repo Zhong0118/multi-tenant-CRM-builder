@@ -157,7 +157,10 @@ export async function provisionCriticalFixture(
     employee: 'critical-employee-token',
     other: 'critical-other-token',
   };
-  const expiresAt = new Date('2026-10-17T00:00:00.000Z');
+  // Fixture metadata can use a frozen 2026-09-17 `now`, but session expiry is
+  // compared to wall-clock time at request. A near-future date would make the
+  // required Critical gate fail deterministically after that instant.
+  const expiresAt = new Date('2099-12-31T00:00:00.000Z');
   await Promise.all(
     [
       { userId: adminUser.id, token: tokens.admin },

@@ -9,9 +9,12 @@ Workflow V1 与 Action Engine V1 **均已合并进入 `main`**。Action Engine V
 `docs/audits/2026-09-16/action-engine-v1-acceptance.md`。未部署生产环境。
 不要自行开始 V2.2 Sales Execution。
 
-Engineering Gate Lite 已通过 PR #4 合并：`main` 现在有 CI 与分支保护（五个 required checks：
-`Typecheck` / `Contracts` / `Unit Tests` / `Database Integration` / `Build`），此后改 `main` 必须走 PR
-且五项全绿。验收见 `docs/audits/2026-09-16/engineering-gate-lite-acceptance.md`。
+Engineering Gate Lite 已通过 PR #4 合并；Engineering Gate Hardening 已通过 PR #11/#12 把第六个
+required check `Critical API E2E` Promote 上去。`main` 现在有 CI 与分支保护（六个 required checks：
+`Typecheck` / `Contracts` / `Unit Tests` / `Database Integration` / `Build` / `Critical API E2E`），
+此后改 `main` 必须走 PR 且六项全绿。验收见
+`docs/audits/2026-09-16/engineering-gate-lite-acceptance.md` 与
+`docs/audits/2026-09-17/engineering-gate-hardening-acceptance.md`。
 
 Sales Workbench Lite **已通过 PR #9 合并进入 `main`**，合并提交
 `a6e08b2d853424ae4146abdc769ec6c007fb8e35`（只作历史事实记录）。员工首页固定
@@ -20,13 +23,12 @@ Personal Follow-up Workbench（全部待办 / 今日 / 已逾期 / 未来 7 个�
 **overdue = `dueAt < now`**，与完整 Follow-up Domain 对齐（today 下界是 `now`）；**不新增 Dashboard
 widget、不改 publication schema、不加 Prisma 迁移**；完成动作复用既有 `PATCH /follow-ups/:id`。
 验收见 `docs/audits/2026-09-17/sales-workbench-lite-acceptance.md`。
-**当前主要产品 Task = Engineering Gate Hardening — PR B Critical API E2E Gate Promotion（ACTIVE）**：
-PR A 已通过 PR #11 合并进入 `main`（合并提交 `bc6cad2`）。PR B（#12）已在 hosted run
-`35231285009`（head `9b93ea8`）上跑出六个 job 全绿，并把 required checks Promote 为六项
-（读回含 `Critical API E2E`，`strict: true`，`enforcement_level: everyone`）。
-**最终 COMPLETED 仍取决于 PR B merge + `main` 6/6。** 未改产品代码。
-**AI Assistant V1A 仍为 PLANNED，不得开始 AI 开发。**
-验收（pre-merge）：`docs/audits/2026-09-17/engineering-gate-hardening-acceptance.md`。
+Engineering Gate Hardening **已 COMPLETED**：PR A #11 合并 `bc6cad2`；PR B #12 squash `4eac32c`。
+`main` 六个 required checks 为 `Typecheck` / `Contracts` / `Unit Tests` / `Database Integration` /
+`Build` / `Critical API E2E`（`strict: true`，`enforcement_level: everyone`）。post-merge `main` run
+`35232613694` 六门 success。验收
+`docs/audits/2026-09-17/engineering-gate-hardening-acceptance.md`。
+**下一个主要产品 Task 尚未 ACTIVE**：AI Assistant V1A 仍为 **PLANNED**，不得自行开始 AI 开发。
 
 Workflow Required Field Visibility Hardening **已通过 PR #2 合并进入 `main`**，合并提交
 `0612d8ad521895c7ca7bd9efe2ef2f942cd28b40`（同样只作历史事实记录）。它修掉了
@@ -371,7 +373,7 @@ Transition 不再只是改状态，还能产生结构化业务动作：
 - 附件目前存在 PostgreSQL `bytea`（单文件 5MB）。上生产前必须换成对象存储。
 - 仓库是公开的，所以口令不写进本文（见第 6 节）；演示口令本身由公开的种子常量决定，只能视为公开信息，不得复用到任何真实环境。
 - 根 `engines` 已从 `>=20.9.0` 提高到 `>=24`：`@crm/database` 是 ESM 包而 `apps/api` 编译为 CJS，需要支持 `require(esm)` 的 Node，而本地只验证过 Node 24.19.0。若确认 22 LTS 可用，可以再放宽下限，但必须实测过再改。
-- **CI 与分支保护已就位（2026-09-16，Engineering Gate Lite 随 PR #4 合并，合并提交 `77af603`）**：`.github/workflows/ci.yml` 存在；`main` 已受保护，五个 required checks 为 `Typecheck` / `Contracts` / `Unit Tests` / `Database Integration` / `Build`（读回值：`strict: true`、`allow_force_pushes: false`、`allow_deletions: false`、required approving reviews = 0）。Database Integration 在 runner 上起仓库自己的 PostgreSQL 18（`compose.yaml`）并跑真实 integration suite（18 测试），runtime 角色是 `crm_app`（`NOBYPASSRLS`），跑完 `docker compose down -v` 销毁卷。**仍未做**：API Critical E2E 尚未提升为 required —— 它保留为 **Engineering Gate Hardening follow-up（PLANNED，不是 ACTIVE）**，**位置由用户定在已完成的 Sales Workbench Lite（PR #9）之后、AI Assistant V1A 之前**（到 AI V1A 会大量依赖 Auth / Tenant / Record 权限链）；repo-wide lint 也仍不是 required。验收与全部实测证据见 `docs/audits/2026-09-16/engineering-gate-lite-acceptance.md`。**`enforce_admins` 已于 2026-09-16 由用户决定打开**：执行 `POST .../branches/main/protection/enforce_admins` 后独立读回 `enforce_admins.enabled: true`、canonical `required_status_checks.enforcement_level` 由 `non_admins` 变为 **`everyone`** —— 现在**管理员同样不能直推 `main`**，必须走 PR + 五项全绿。紧急情况（例如 CI 自身损坏）是显式的低频操作：`DELETE .../protection/enforce_admins`（或临时关保护）→ 修 CI → 立刻恢复并读回确认。注意该子资源只接受 `POST`(启用) / `DELETE`(停用)，**没有 `PATCH`**（`PATCH` 返回 404）。
+- **CI 与分支保护已就位（Engineering Gate Lite PR #4 + Hardening PR #11/#12）**：`.github/workflows/ci.yml` 存在；`main` 已受保护，六个 required checks 为 `Typecheck` / `Contracts` / `Unit Tests` / `Database Integration` / `Build` / `Critical API E2E`（读回值：`strict: true`、`allow_force_pushes: false`、`allow_deletions: false`、required approving reviews = 0、`enforcement_level: everyone`）。Database Integration 与 Critical API E2E 各自起仓库自己的 PostgreSQL 18（`compose.yaml`）；Critical job 用 `crm_app` / `NOBYPASSRLS` 跑 `pnpm --filter @crm/api test:e2e:critical`，跑完 `docker compose down -v`。Hardening 验收见 `docs/audits/2026-09-17/engineering-gate-hardening-acceptance.md`。**`enforce_admins` 已打开**：管理员同样不能直推 `main`，必须走 PR + 六项全绿。该子资源只接受 `POST`(启用) / `DELETE`(停用)，**没有 `PATCH`**。repo-wide lint 仍不是 required。**AI Assistant V1A 仍为 PLANNED。**
 - `origin/backup/v3-design-tokens`：相对 `main` 落后 139 个提交，只独有 1 个提交 `e8812d8`「align design tokens with the V3 palette」，改的是 `globals.css` / `providers.tsx` / `providers.test.ts`，纯配色、无功能。而且 `main` 此后已自行演进到**另一套**配色（`primary: #167568` 青绿，backup 提的是 `#2563EB` 蓝），方向已经不同。结论：**不合并，也不需要「解冲突」**；它属于已经后置的配色议题，保留归档或直接删分支即可，不要长期挂在待决策清单里。
 
 ## 8. 验证边界

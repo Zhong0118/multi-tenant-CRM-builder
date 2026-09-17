@@ -1,12 +1,12 @@
 # Engineering Gate Hardening — Acceptance
 
 > 日期：2026-09-17
-> 状态：PR B PRE-MERGE VERIFIED; FINAL COMPLETION REQUIRES POST-MERGE MAIN 6/6
+> 状态：COMPLETED
 > 设计：`docs/superpowers/specs/2026-09-17-engineering-gate-hardening-design.md`
 > PR A 计划：`docs/superpowers/plans/2026-09-17-critical-api-e2e-stabilization-implementation.md`
 > PR B 计划：`docs/superpowers/plans/2026-09-17-critical-api-e2e-gate-promotion-implementation.md`
 
-本文件只记录**当前可观察**的事实。PR B 尚未合并，因此**不声称** `main` 上已有 6/6 run。
+本文件记录 Hardening 的观察证据。下方 §1–§4 是 PR B 合入前已核实的事实，**不回填、不重算**。§5 为 post-merge 补记。
 
 ## 1. PR A — Critical API E2E Stabilization
 
@@ -81,11 +81,15 @@ required_approving_review_count = 0
 
 未放宽管理员强制、未打开强推/删分支。
 
-## 5. Post-merge final gate
+## 5. Post-merge status
 
-**本文提交时 PR B 尚未合并**，因此没有 `main` 的 6/6 run id。
-Engineering Gate Hardening 只有在 PR B merge 后、`main` 上六个 required jobs 全绿时才算 COMPLETED。
-最终 `main` run 证据记在合并后的 PR 讨论/验证报告里；不为这个 run id 再开第三个纯文档 PR。
+> 本节由合并后补记，**不回填、不重算**上方任何验收数据。
+
+- PR B 已 squash 合入 `main`：`4eac32cb101c6500c189f684b61fa382223b38e7`（https://github.com/Zhong0118/multi-tenant-CRM-builder/pull/12）。
+- `main` push run `35232613694` 六个 required job 均为 success：Typecheck / Contracts / Unit Tests / Database Integration / Build / Critical API E2E。
+- 评论记录：https://github.com/Zhong0118/multi-tenant-CRM-builder/pull/12#issuecomment-5715953457
+- Critical fixture 的 seed session `expiresAt` 随后从 `2026-10-17` 改为 `2099-12-31`（独立 test/docs PR），避免 required gate 在一个月后确定性变红。
+- Engineering Gate Hardening **COMPLETED**。AI Assistant V1A 仍为 PLANNED。
 
 ## 6. Next Roadmap Stage
 
