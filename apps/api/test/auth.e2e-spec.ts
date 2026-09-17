@@ -79,21 +79,31 @@ describe('Auth API (e2e)', () => {
         deviceSummary: 'Safari / iPhone',
       })
       .expect(200);
-    const sessions = await second.get('/api/v1/me/sessions').expect(200);
-    expect(sessions.body).toHaveLength(2);
-    const sessionBodies: unknown = sessions.body;
-    if (!Array.isArray(sessionBodies) || sessionBodies.length !== 2) {
-      throw new Error('Expected exactly two sessions');
-    }
-    expect(sessionBodies[0]).not.toHaveProperty('tokenHash');
-    const oldSession: unknown = sessionBodies[1];
-    if (!oldSession || typeof oldSession !== 'object') {
-      throw new Error('Expected a session object');
-    }
-    const oldSessionId: unknown = Reflect.get(oldSession, 'id');
-    if (typeof oldSessionId !== 'string') {
-      throw new Error('Expected a session id');
-    }
+    const sessions = await second
+      .get('/api/v1/me/sessions?kind=ACTIVE&page=1&limit=100')
+      .expect(200);
+
+    expect(sessions.body).toMatchObject({
+      page: 1,
+      limit: 100,
+      total: 2,
+    });
+
+    const sessionPage = sessions.body as {
+      items: Array<Record<string, unknown>>;
+      page: number;
+      limit: number;
+      total: number;
+    };
+    expect(sessionPage.items).toHaveLength(2);
+    expect(sessionPage.items[0]).not.toHaveProperty('tokenHash');
+
+    const oldSession = sessionPage.items.find(
+      (item) => item.deviceSummary === 'Chrome / macOS',
+    );
+    expect(oldSession).toBeDefined();
+    const oldSessionId = oldSession?.id;
+    expect(typeof oldSessionId).toBe('string');
     await second
       .delete(`/api/v1/me/sessions/${oldSessionId}`)
       .set('Origin', origin)
