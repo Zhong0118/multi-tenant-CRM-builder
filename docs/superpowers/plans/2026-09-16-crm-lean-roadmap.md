@@ -29,11 +29,12 @@
 
 近期完整路线预计约 **2.1–3.6 个 Workflow V1 工作量**。
 
-**Engineering Gate Hardening**（follow-up，**PLANNED，不是 ACTIVE**）：把 Critical API E2E
-（Auth/Session、Tenant 隔离、Record CRUD、Workflow Transition、代表性 Action 原子性）稳定后提升为
-第六个 required check，目标形态 `Required Gate V2`；在稳定之前不提升。
+**Engineering Gate Hardening**（**ACTIVE**，2026-09-17 起，PR A）：稳定专用 Critical API E2E
+（Auth/Session、Tenant 隔离、Record CRUD、Workflow Transition、代表性 Action 原子性）。
+PR A **不改 CI / branch protection**；PR B 才把 Critical API E2E Promote 为第六个 required check
+（目标形态 `Required Gate V2`）。**AI Assistant V1A 保持 PLANNED。**
 **位置由用户定为已完成的 Sales Workbench Lite 之后、AI Assistant V1A 之前**（理由见 §11）。
-完成 Sales Workbench Lite **不自动** Promote Engineering Gate Hardening 或 AI V1A。
+完成 Sales Workbench Lite **不自动** Promote AI V1A；完成 PR A **不自动** Promote PR B。
 
 ## 4. Sales Workbench Lite
 
@@ -85,8 +86,8 @@ Duplicate Rule、Merge、迁移、SMS、Feishu、多 Adapter、复杂通知全�
 ```text
 Engineering Gate Lite          ✅ COMPLETED（PR #4）
 → Sales Workbench Lite         ✅ COMPLETED（PR #9）
-→ Engineering Gate Hardening   ← 下一阶段（PLANNED）：第六个 required check：Critical API E2E
-→ AI Assistant V1A
+→ Engineering Gate Hardening   ← 当前 ACTIVE（PR A：Critical API E2E Stabilization）
+→ AI Assistant V1A             PLANNED
 → AI Assistant V1B
 → Production Essentials
 → Optional Email Adapter

@@ -20,9 +20,20 @@ Personal Follow-up Workbench（全部待办 / 今日 / 已逾期 / 未来 7 个�
 **overdue = `dueAt < now`**，与完整 Follow-up Domain 对齐（today 下界是 `now`）；**不新增 Dashboard
 widget、不改 publication schema、不加 Prisma 迁移**；完成动作复用既有 `PATCH /follow-ups/:id`。
 验收见 `docs/audits/2026-09-17/sales-workbench-lite-acceptance.md`。
-**下一个主要产品 Task 尚未 ACTIVE**：位置已定的下一步是 **Engineering Gate Hardening**（Critical API E2E
-升为第六个 required check，PLANNED）→ 然后才是 AI Assistant V1A。**AI 开发仍未批准。**
-**API Critical E2E 仍未 required**，属 Engineering Gate Hardening follow-up（PLANNED，不是 ACTIVE）。
+**当前主要产品 Task = Engineering Gate Hardening — PR A Critical API E2E Stabilization（ACTIVE）**：
+只稳定专用 Critical API E2E（Auth/Session、租户隔离、Record 权限、Workflow Transition、代表性 Action 回滚）；
+**不改 `.github/workflows/**`、不改 branch protection、不 Promote 第六个 required check**。
+PR A 合并后再做 **PR B Critical API E2E Gate Promotion**。**AI Assistant V1A 仍为 PLANNED，不得开始 AI 开发。**
+**API Critical E2E 仍未 required**（要等 PR B）。设计
+`docs/superpowers/specs/2026-09-17-engineering-gate-hardening-design.md`；计划
+`docs/superpowers/plans/2026-09-17-critical-api-e2e-stabilization-implementation.md` 与
+`docs/superpowers/plans/2026-09-17-critical-api-e2e-gate-promotion-implementation.md`。
+
+PR A 本地观察（未 push）：Critical API E2E **5 tests**，同一 commit 在 fresh PostgreSQL 上 **3/3 clean green**
+（约 1.1s/次）；Auth E2E 已按当前分页 contract `{items,page,limit,total}` 全绿（2/2）；现有五门仍绿
+（typecheck / contracts / unit 70 suites 960 tests + web 416 / Database Integration 18/18 / build）。
+**Required Gate 仍是 5 个 check；本分支未改 CI / branch protection。** Engineering Gate Hardening 保持 ACTIVE；
+PR A 合并后的下一步是 PR B Gate Promotion；AI V1A 仍为 PLANNED。
 
 Workflow Required Field Visibility Hardening **已通过 PR #2 合并进入 `main`**，合并提交
 `0612d8ad521895c7ca7bd9efe2ef2f942cd28b40`（同样只作历史事实记录）。它修掉了
