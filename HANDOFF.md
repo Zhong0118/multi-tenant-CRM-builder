@@ -29,6 +29,12 @@ PR A 合并后再做 **PR B Critical API E2E Gate Promotion**。**AI Assistant V
 `docs/superpowers/plans/2026-09-17-critical-api-e2e-stabilization-implementation.md` 与
 `docs/superpowers/plans/2026-09-17-critical-api-e2e-gate-promotion-implementation.md`。
 
+PR A 本地观察（未 push）：Critical API E2E **5 tests**，同一 commit 在 fresh PostgreSQL 上 **3/3 clean green**
+（约 1.1s/次）；Auth E2E 已按当前分页 contract `{items,page,limit,total}` 全绿（2/2）；现有五门仍绿
+（typecheck / contracts / unit 70 suites 960 tests + web 416 / Database Integration 18/18 / build）。
+**Required Gate 仍是 5 个 check；本分支未改 CI / branch protection。** Engineering Gate Hardening 保持 ACTIVE；
+PR A 合并后的下一步是 PR B Gate Promotion；AI V1A 仍为 PLANNED。
+
 Workflow Required Field Visibility Hardening **已通过 PR #2 合并进入 `main`**，合并提交
 `0612d8ad521895c7ca7bd9efe2ef2f942cd28b40`（同样只作历史事实记录）。它修掉了
 「对 Actor 隐藏的必填字段 key 会从 Runtime GET 与 direct execute 泄露」的 metadata
