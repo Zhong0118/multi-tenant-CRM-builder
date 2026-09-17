@@ -213,11 +213,11 @@ export class FollowUpsRepository {
       };
       const overdueWhere: Prisma.RecordFollowUpWhereInput = {
         ...base,
-        dueAt: { lt: range.todayStart },
+        dueAt: { lt: range.now },
       };
       const todayWhere: Prisma.RecordFollowUpWhereInput = {
         ...base,
-        dueAt: { gte: range.todayStart, lt: range.tomorrowStart },
+        dueAt: { gte: range.now, lt: range.tomorrowStart },
       };
       const upcomingWhere: Prisma.RecordFollowUpWhereInput = {
         ...base,

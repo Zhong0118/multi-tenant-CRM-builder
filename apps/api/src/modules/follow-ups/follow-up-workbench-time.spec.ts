@@ -29,6 +29,19 @@ describe('follow-up workbench tenant calendar', () => {
     );
   });
 
+  it('puts a same-day 09:00 due into overdue when queried at 15:00, not today', () => {
+    // 15:00 Asia/Shanghai. Canonical Follow-up overdue is `dueAt < now`, so a
+    // 09:00 local due must not sit in today just because it is still that
+    // tenant calendar day.
+    const now = new Date('2026-09-17T07:00:00.000Z');
+    const dueAt = new Date('2026-09-17T01:00:00.000Z');
+    const range = followUpWorkbenchRange(now, 'Asia/Shanghai');
+
+    expect(range.now.toISOString()).toBe(now.toISOString());
+    expect(dueAt < range.now).toBe(true);
+    expect(dueAt >= range.now && dueAt < range.tomorrowStart).toBe(false);
+  });
+
   it('rejects an invalid timezone', () => {
     expect(isValidFollowUpTimeZone('Not/A_Timezone')).toBe(false);
     expect(() =>

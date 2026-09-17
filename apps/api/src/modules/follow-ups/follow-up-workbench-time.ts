@@ -9,6 +9,12 @@
  * requested local date.
  */
 export interface FollowUpWorkbenchRange {
+  /**
+   * The single request clock. Canonical overdue is `dueAt < now`, matching
+   * `presentFollowUp()` and the full Follow-up list — not "before tenant
+   * midnight", which would leave a 09:00 due in "today" when queried at 15:00.
+   */
+  now: Date;
   todayStart: Date;
   tomorrowStart: Date;
   day8Start: Date;
@@ -47,6 +53,7 @@ export function followUpWorkbenchRange(
 
   const today = localDateAt(now, timeZone);
   return {
+    now: new Date(now.getTime()),
     todayStart: localMidnightUtc(today, timeZone),
     tomorrowStart: localMidnightUtc(addCalendarDays(today, 1), timeZone),
     day8Start: localMidnightUtc(addCalendarDays(today, 8), timeZone),

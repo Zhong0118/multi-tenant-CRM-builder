@@ -2,7 +2,7 @@
 
 > 日期：2026-09-17  
 > 类型：Product / Architecture Design  
-> 状态：DESIGN APPROVED IN CHAT — WRITTEN SPEC READY FOR REVIEW  
+> 状态：APPROVED / IMPLEMENTED IN PR #9
 > Stage Brief：`docs/superpowers/briefs/2026-09-16-sales-workbench-lite-stage-brief.md`  
 > 当前基线：`main` @ `aa505d37766816fc751a91280f6cd82d1153eae5`  
 > 前置条件：Engineering Gate Lite 已完成；`main` protection 已对管理员生效；五个 required checks 已就位。  
@@ -297,18 +297,20 @@ day8Start
 status = OPEN
 ```
 
-定义：
+定义（与完整 Follow-up Domain 的 `overdue = status === OPEN && dueAt < now` 对齐；同一次请求只用一个 `now`）：
 
 ```text
 overdue:
-dueAt < todayStart
+dueAt < now
 
 today:
-todayStart <= dueAt < tomorrowStart
+now <= dueAt < tomorrowStart
 
 upcoming:
 tomorrowStart <= dueAt < day8Start
 ```
+
+`todayStart` 仍是租户日历当天 00:00，用于 DST / 日历加天，但 **today 桶的下界是 `now`，不是 `todayStart`**。因此租户本地当天 09:00 到期、15:00 查询时进入 overdue，不得进入 today。三个 preview 仍互不重叠。
 
 其中 `day8Start` 表示“今天开始后的第 8 个租户日历日 00:00”，所以 upcoming 恰好覆盖未来 7 个完整日历日。
 

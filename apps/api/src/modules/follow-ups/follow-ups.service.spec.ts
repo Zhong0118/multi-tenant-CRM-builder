@@ -252,6 +252,7 @@ describe('personal follow-up workbench', () => {
         },
       ],
       {
+        now: new Date('2026-09-17T02:00:00.000Z'),
         todayStart: new Date('2026-09-16T16:00:00.000Z'),
         tomorrowStart: new Date('2026-09-17T16:00:00.000Z'),
         day8Start: new Date('2026-09-24T16:00:00.000Z'),

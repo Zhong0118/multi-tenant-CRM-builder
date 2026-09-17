@@ -253,6 +253,7 @@ describe('FollowUpsRepository tenant timezone', () => {
 
 describe('FollowUpsRepository personal workbench', () => {
   const RANGE = {
+    now: new Date('2026-09-17T07:00:00.000Z'),
     todayStart: new Date('2026-09-16T16:00:00.000Z'),
     tomorrowStart: new Date('2026-09-17T16:00:00.000Z'),
     day8Start: new Date('2026-09-24T16:00:00.000Z'),
@@ -293,15 +294,29 @@ describe('FollowUpsRepository personal workbench', () => {
       (call) => call[0].where,
     );
     expect(counts[0].dueAt).toBeUndefined();
-    expect(counts[1].dueAt).toEqual({ lt: RANGE.todayStart });
+    expect(counts[1].dueAt).toEqual({ lt: RANGE.now });
     expect(counts[2].dueAt).toEqual({
-      gte: RANGE.todayStart,
+      gte: RANGE.now,
       lt: RANGE.tomorrowStart,
     });
     expect(counts[3].dueAt).toEqual({
       gte: RANGE.tomorrowStart,
       lt: RANGE.day8Start,
     });
+  });
+
+  it('puts a same-day 09:00 due into overdue when queried at 15:00, not today', async () => {
+    const fixture = harness();
+    const dueAt = new Date('2026-09-17T01:00:00.000Z');
+
+    await fixture.repository.workbench(context, SCOPES, RANGE, 'Asia/Shanghai');
+
+    const overdue = fixture.tx.recordFollowUp.count.mock.calls[1][0].where
+      .dueAt as { lt: Date };
+    const today = fixture.tx.recordFollowUp.count.mock.calls[2][0].where
+      .dueAt as { gte: Date; lt: Date };
+    expect(dueAt < overdue.lt).toBe(true);
+    expect(dueAt >= today.gte && dueAt < today.lt).toBe(false);
   });
 
   it('orders every preview by dueAt then id and caps it at five', async () => {
@@ -318,9 +333,9 @@ describe('FollowUpsRepository personal workbench', () => {
       expect(args.take).toBe(5);
       expect(args.include).toBeDefined();
     }
-    expect(previews[0].where.dueAt).toEqual({ lt: RANGE.todayStart });
+    expect(previews[0].where.dueAt).toEqual({ lt: RANGE.now });
     expect(previews[1].where.dueAt).toEqual({
-      gte: RANGE.todayStart,
+      gte: RANGE.now,
       lt: RANGE.tomorrowStart,
     });
     expect(previews[2].where.dueAt).toEqual({
@@ -366,7 +381,7 @@ describe('FollowUpsRepository personal workbench', () => {
     expect(fixture.tx.recordFollowUp.findMany).not.toHaveBeenCalled();
   });
 
-  it('projects only the safe workbench fields, with overdue driven by the bucket', async () => {
+  it('projects only the safe workbench fields, with overdue matching dueAt < now', async () => {
     const fixture = harness();
     fixture.tx.recordFollowUp.findMany.mockResolvedValue([taskRow()]);
 

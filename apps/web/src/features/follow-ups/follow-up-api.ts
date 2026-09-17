@@ -91,7 +91,8 @@ export const followUpApi = {
       title: string;
       dueAt: string;
     },
-  ) {    return dataOrThrow(
+  ) {
+    return dataOrThrow(
       await browserApiClient.POST(PATH, {
         params: { path: { tenantCode } },
         body: input,

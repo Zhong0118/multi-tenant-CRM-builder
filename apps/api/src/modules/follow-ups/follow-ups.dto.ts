@@ -105,8 +105,9 @@ export class FollowUpRecipientDto {
  * no workflow status and no Record values, because a home page must not become
  * a metadata side channel (§5.3 of the design).
  *
- * `overdue` mirrors the bucket the item came from — `dueAt < todayStart` on the
- * tenant calendar — so the flag can never contradict the section it renders in.
+ * `overdue` is the same flag as the full Follow-up list: `dueAt < now` on the
+ * single request clock. The overdue bucket is that predicate; today starts at
+ * `now`, so the flag cannot contradict the section it renders in.
  */
 export class FollowUpWorkbenchItemDto {
   @ApiProperty() id!: string;
