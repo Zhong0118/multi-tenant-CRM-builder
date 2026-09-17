@@ -12,13 +12,35 @@ import {
   presentFollowUp,
   type FollowUpMeta,
   type FollowUpRecordScope,
+  type FollowUpTask,
 } from './follow-up-command';
 import type {
   CreateFollowUpDto,
   FollowUpQueryDto,
+  FollowUpWorkbenchResponseDto,
   UpdateFollowUpDto,
 } from './follow-ups.dto';
 import type { FollowUpScope } from './follow-ups.service';
+import type { FollowUpWorkbenchRange } from './follow-up-workbench-time';
+
+/** §7.4: each preview bucket is capped, independently of the full counts. */
+const WORKBENCH_PREVIEW_LIMIT = 5;
+
+/**
+ * One definition of "this actor may manage this Follow-up", shared by the list
+ * page and the Workbench so the two permission surfaces cannot drift.
+ */
+function canManageRecord(
+  scopes: FollowUpScope[],
+  objectId: string,
+  ownerMemberId: string | null,
+): boolean {
+  const scope = scopes.find((entry) => entry.objectId === objectId);
+  return (
+    !!scope?.canUpdate &&
+    (!scope.updateOwnerMemberId || scope.updateOwnerMemberId === ownerMemberId)
+  );
+}
 
 @Injectable()
 export class FollowUpsRepository {
@@ -62,6 +84,20 @@ export class FollowUpsRepository {
         select: { id: true, ownerMemberId: true },
       }),
     );
+  }
+  /**
+   * The Workbench buckets by the tenant's calendar day, so the caller needs the
+   * tenant zone before it can compute a range. `null` means "not configured"
+   * and is reported as-is; the service decides to fail closed.
+   */
+  getTenantTimezone(context: TenantContext): Promise<string | null> {
+    return this.runner.withTenant(context, async (tx) => {
+      const tenant = await tx.tenant.findUnique({
+        where: { id: context.tenantId },
+        select: { timezone: true },
+      });
+      return tenant?.timezone ?? null;
+    });
   }
   find(context: TenantContext, id: string) {
     return this.runner.withTenant(context, async (tx) => {
@@ -123,19 +159,117 @@ export class FollowUpsRepository {
         }),
       ]);
       return {
-        items: items.map((item) => {
-          const scope = scopes.find((s) => s.objectId === item.record.objectId);
-          const canManage =
-            !!scope?.canUpdate &&
-            (!scope.updateOwnerMemberId ||
-              scope.updateOwnerMemberId === item.record.ownerMemberId);
-          return presentFollowUp(item, canManage, now);
-        }),
+        items: items.map((item) =>
+          presentFollowUp(
+            item,
+            canManageRecord(scopes, item.record.objectId, item.record.ownerMemberId),
+            now,
+          ),
+        ),
         total,
         openCount,
         overdueCount,
         page,
         limit,
+      };
+    });
+  }
+  /**
+   * Personal Workbench read model (§7): the current actor's own OPEN Follow-ups,
+   * bucketed by the tenant calendar. The assignee is hard-bound to
+   * `context.memberId` — the repository exposes no assignee argument — and every
+   * query keeps the Record inside a readable object scope, so a Follow-up whose
+   * Record the actor can no longer see disappears instead of leaking metadata.
+   *
+   * Four counts plus three bounded previews, all inside one tenant transaction.
+   */
+  workbench(
+    context: TenantContext,
+    scopes: FollowUpScope[],
+    range: FollowUpWorkbenchRange,
+    timezone: string,
+  ): Promise<FollowUpWorkbenchResponseDto> {
+    return this.runner.withTenant(context, async (tx) => {
+      if (!scopes.length) {
+        return {
+          timezone,
+          counts: { allOpen: 0, overdue: 0, today: 0, upcoming: 0 },
+          preview: { overdue: [], today: [], upcoming: [] },
+        };
+      }
+
+      const base: Prisma.RecordFollowUpWhereInput = {
+        tenantId: context.tenantId,
+        assigneeMemberId: context.memberId,
+        status: 'OPEN',
+        record: {
+          tenantId: context.tenantId,
+          deletedAt: null,
+          OR: scopes.map((scope) => ({
+            objectId: scope.objectId,
+            ownerMemberId: scope.ownerMemberId,
+          })),
+        },
+      };
+      const overdueWhere: Prisma.RecordFollowUpWhereInput = {
+        ...base,
+        dueAt: { lt: range.now },
+      };
+      const todayWhere: Prisma.RecordFollowUpWhereInput = {
+        ...base,
+        dueAt: { gte: range.now, lt: range.tomorrowStart },
+      };
+      const upcomingWhere: Prisma.RecordFollowUpWhereInput = {
+        ...base,
+        dueAt: { gte: range.tomorrowStart, lt: range.day8Start },
+      };
+      const preview = (where: Prisma.RecordFollowUpWhereInput) =>
+        tx.recordFollowUp.findMany({
+          where,
+          include: followUpInclude,
+          orderBy: [{ dueAt: 'asc' }, { id: 'asc' }],
+          take: WORKBENCH_PREVIEW_LIMIT,
+        });
+
+      const [
+        allOpen,
+        overdue,
+        today,
+        upcoming,
+        overdueRows,
+        todayRows,
+        upcomingRows,
+      ] = await Promise.all([
+        tx.recordFollowUp.count({ where: base }),
+        tx.recordFollowUp.count({ where: overdueWhere }),
+        tx.recordFollowUp.count({ where: todayWhere }),
+        tx.recordFollowUp.count({ where: upcomingWhere }),
+        preview(overdueWhere),
+        preview(todayWhere),
+        preview(upcomingWhere),
+      ]);
+
+      const project = (row: FollowUpTask, isOverdue: boolean) => ({
+        id: row.id,
+        recordId: row.recordId,
+        recordTitle: row.record.title,
+        objectCode: row.record.object.code,
+        objectName: row.record.object.name,
+        title: row.title,
+        dueAt: row.dueAt.toISOString(),
+        version: row.version,
+        overdue: isOverdue,
+        canManage: canManageRecord(scopes, row.record.objectId, row.record.ownerMemberId),
+      });
+
+      return {
+        timezone,
+        counts: { allOpen, overdue, today, upcoming },
+        preview: {
+          overdue: overdueRows.map((row) => project(row, true)),
+          today: todayRows.map((row) => project(row, false)),
+          upcoming: upcomingRows.map((row) => project(row, false)),
+        },
       };
     });
   }

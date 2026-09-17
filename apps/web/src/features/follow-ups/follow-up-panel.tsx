@@ -19,6 +19,7 @@ import Link from "next/link";
 import { toApiError } from "@/lib/api/api-error";
 import {
   followUpApi,
+  followUpQueryKeys,
   type FollowUp,
   type FollowUpStatus,
 } from "./follow-up-api";
@@ -48,7 +49,7 @@ export function FollowUpPanel({
   });
   const [newDate, setNewDate] = useState("");
   const [error, setError] = useState<string>();
-  const key = ["workspace", tenantCode, "follow-ups"];
+  const key = followUpQueryKeys.root(tenantCode);
   const query = useQuery({
     queryKey: [...key, record?.id, status, page],
     queryFn: () =>

@@ -756,6 +756,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/follow-ups/workbench": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["FollowUpsController_workbench"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/invitations": {
     parameters: {
       query?: never;
@@ -1997,6 +2013,35 @@ export interface components {
       status: "OPEN" | "DONE" | "CANCELLED";
       title: string;
       version: number;
+    };
+    FollowUpWorkbenchCountsDto: {
+      allOpen: number;
+      overdue: number;
+      today: number;
+      upcoming: number;
+    };
+    FollowUpWorkbenchItemDto: {
+      canManage: boolean;
+      /** Format: date-time */
+      dueAt: string;
+      id: string;
+      objectCode: string;
+      objectName: string;
+      overdue: boolean;
+      recordId: string;
+      recordTitle: string;
+      title: string;
+      version: number;
+    };
+    FollowUpWorkbenchPreviewDto: {
+      overdue: components["schemas"]["FollowUpWorkbenchItemDto"][];
+      today: components["schemas"]["FollowUpWorkbenchItemDto"][];
+      upcoming: components["schemas"]["FollowUpWorkbenchItemDto"][];
+    };
+    FollowUpWorkbenchResponseDto: {
+      counts: components["schemas"]["FollowUpWorkbenchCountsDto"];
+      preview: components["schemas"]["FollowUpWorkbenchPreviewDto"];
+      timezone: string;
     };
     ForgotPasswordDto: {
       deviceKey: string;
@@ -4309,6 +4354,27 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["FollowUpRecipientDto"][];
+        };
+      };
+    };
+  };
+  FollowUpsController_workbench: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["FollowUpWorkbenchResponseDto"];
         };
       };
     };

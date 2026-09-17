@@ -31,6 +31,11 @@ function setup(items: FollowUp[] = [], canCreate = true) {
     list: vi.fn().mockResolvedValue(page),
     create: vi.fn().mockResolvedValue(task),
     update: vi.fn().mockResolvedValue(task),
+    workbench: vi.fn().mockResolvedValue({
+      timezone: "Asia/Shanghai",
+      counts: { allOpen: 0, overdue: 0, today: 0, upcoming: 0 },
+      preview: { overdue: [], today: [], upcoming: [] },
+    }),
   };
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },

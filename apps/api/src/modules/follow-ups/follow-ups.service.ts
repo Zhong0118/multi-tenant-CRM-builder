@@ -5,10 +5,15 @@ import { PublishedObjectService } from '../objects/published-object.service';
 import type {
   CreateFollowUpDto,
   FollowUpQueryDto,
+  FollowUpWorkbenchResponseDto,
   UpdateFollowUpDto,
 } from './follow-ups.dto';
 import type { FollowUpMeta, FollowUpRecordScope } from './follow-up-command';
 import { FollowUpsRepository } from './follow-ups.repository';
+import {
+  followUpWorkbenchRange,
+  isValidFollowUpTimeZone,
+} from './follow-up-workbench-time';
 export type { FollowUpMeta, FollowUpRecordScope } from './follow-up-command';
 export interface FollowUpScope {
   objectId: string;
@@ -25,6 +30,51 @@ export class FollowUpsService {
   ) {}
 
   async list(context: TenantContext, query: FollowUpQueryDto) {
+    return this.repository.list(
+      context,
+      await this.resolveReadableScopes(context),
+      query,
+    );
+  }
+
+  /**
+   * Personal Workbench (§7). Takes the actor context and nothing else: there is
+   * deliberately no way for a caller to name another member, because the home
+   * page always shows the current actor's own Follow-ups.
+   *
+   * An unusable tenant timezone fails closed. Falling back to UTC would silently
+   * move every user's "today", so the request errors instead.
+   */
+  async workbench(
+    context: TenantContext,
+  ): Promise<FollowUpWorkbenchResponseDto> {
+    const [scopes, timezone] = await Promise.all([
+      this.resolveReadableScopes(context),
+      this.repository.getTenantTimezone(context),
+    ]);
+
+    if (!isValidFollowUpTimeZone(timezone)) {
+      throw new ApiException('INTERNAL_ERROR', 500, {
+        message: '租户时区配置无效，请联系平台管理员。',
+      });
+    }
+
+    return this.repository.workbench(
+      context,
+      scopes,
+      followUpWorkbenchRange(new Date(), timezone),
+      timezone,
+    );
+  }
+
+  /**
+   * The single resolution of "which objects may this actor read, and how deep",
+   * shared by the list page and the Workbench so the two read paths cannot
+   * drift into different permission models.
+   */
+  private async resolveReadableScopes(
+    context: TenantContext,
+  ): Promise<FollowUpScope[]> {
     const navigation = await this.objects.listAccessible(context);
     const scopes: FollowUpScope[] = [];
     for (const object of navigation) {
@@ -52,7 +102,7 @@ export class FollowUpsService {
           throw error;
       }
     }
-    return this.repository.list(context, scopes, query);
+    return scopes;
   }
 
   async create(
