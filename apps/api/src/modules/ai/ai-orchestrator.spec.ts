@@ -121,7 +121,11 @@ describe('AiOrchestrator.streamTurn', () => {
     });
     const orchestrator = new AiOrchestrator(conversations, provider);
     const events = await collect(
-      orchestrator.streamTurn(context, { content: '帮我看看本月商机' }, new AbortController().signal),
+      await orchestrator.streamTurn(
+        context,
+        { content: '帮我看看本月商机' },
+        new AbortController().signal,
+      ),
     );
     expect(conversations.beginTurn).toHaveBeenCalledTimes(1);
     expect(conversations.beginTurn.mock.invocationCallOrder[0]).toBeLessThan(
@@ -173,7 +177,7 @@ describe('AiOrchestrator.streamTurn', () => {
     });
     const orchestrator = new AiOrchestrator(conversations, provider);
     const events = await collect(
-      orchestrator.streamTurn(context, { content: '停' }, abort.signal),
+      await orchestrator.streamTurn(context, { content: '停' }, abort.signal),
     );
     expect(conversations.finalizeAssistant).toHaveBeenCalledWith(
       context,
@@ -194,7 +198,11 @@ describe('AiOrchestrator.streamTurn', () => {
     ]);
     const orchestrator = new AiOrchestrator(conversations, provider);
     const events = await collect(
-      orchestrator.streamTurn(context, { content: '问' }, new AbortController().signal),
+      await orchestrator.streamTurn(
+        context,
+        { content: '问' },
+        new AbortController().signal,
+      ),
     );
     expect(conversations.finalizeAssistant).toHaveBeenCalledWith(
       context,
@@ -209,5 +217,85 @@ describe('AiOrchestrator.streamTurn', () => {
       data: { turnId: 'turn-1', code: 'AI_PROVIDER_TIMEOUT', messageId: 'asst-msg' },
     });
     expect(JSON.stringify(events)).not.toMatch(/ECONNRESET|sk-|stack/i);
+  });
+
+  it('times out a hung provider as FAILED AI_PROVIDER_TIMEOUT, not CANCELLED', async () => {
+    const previous = process.env.AI_TIMEOUT_MS;
+    process.env.AI_TIMEOUT_MS = '20';
+    const conversations = conversationMock();
+    const provider = providerWith((signal) => {
+      return {
+        async *[Symbol.asyncIterator]() {
+          await new Promise<void>((resolve) => {
+            if (signal.aborted) {
+              resolve();
+              return;
+            }
+            signal.addEventListener('abort', () => resolve(), { once: true });
+          });
+        },
+      };
+    });
+    const orchestrator = new AiOrchestrator(conversations, provider);
+    try {
+      const events = await collect(
+        await orchestrator.streamTurn(
+          context,
+          { content: '挂起' },
+          new AbortController().signal,
+        ),
+      );
+      expect(conversations.finalizeAssistant).toHaveBeenCalledWith(
+        context,
+        'turn-1',
+        expect.objectContaining({
+          status: 'FAILED',
+          errorCode: 'AI_PROVIDER_TIMEOUT',
+        }),
+      );
+      expect(events.find((event) => event.event === 'turn.failed')).toEqual({
+        event: 'turn.failed',
+        data: {
+          turnId: 'turn-1',
+          code: 'AI_PROVIDER_TIMEOUT',
+          messageId: 'asst-msg',
+        },
+      });
+      expect(events.map((event) => event.event)).not.toContain('turn.cancelled');
+    } finally {
+      if (previous === undefined) delete process.env.AI_TIMEOUT_MS;
+      else process.env.AI_TIMEOUT_MS = previous;
+    }
+  });
+
+  it('finalizes FAILED AI_TURN_FAILED when messages() throws after beginTurn', async () => {
+    const conversations = conversationMock();
+    conversations.messages.mockRejectedValue(new Error('db unavailable'));
+    const provider = providerWith([{ type: 'COMPLETED' }]);
+    const orchestrator = new AiOrchestrator(conversations, provider);
+    const events = await collect(
+      await orchestrator.streamTurn(
+        context,
+        { content: '问' },
+        new AbortController().signal,
+      ),
+    );
+    expect(conversations.finalizeAssistant).toHaveBeenCalledWith(
+      context,
+      'turn-1',
+      expect.objectContaining({
+        status: 'FAILED',
+        errorCode: 'AI_TURN_FAILED',
+      }),
+    );
+    expect(events.find((event) => event.event === 'turn.failed')).toEqual({
+      event: 'turn.failed',
+      data: {
+        turnId: 'turn-1',
+        code: 'AI_TURN_FAILED',
+        messageId: 'asst-msg',
+      },
+    });
+    expect(JSON.stringify(events)).not.toMatch(/db unavailable|stack/i);
   });
 });

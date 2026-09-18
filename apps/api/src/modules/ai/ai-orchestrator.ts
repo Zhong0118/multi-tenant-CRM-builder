@@ -14,6 +14,8 @@ import type { StartAiTurnDto } from './dto/ai-turn.dto';
 export const AI_SYSTEM_PROMPT =
   'You are a CRM assistant. Answer only from the current conversation context. Do not invent records, members, or tenant internals. This turn has no tools.\n你是 CRM 助手。只根据当前会话上下文回答，不要编造业务记录或泄露租户内部信息。本轮没有可用工具。';
 
+const DEFAULT_AI_TIMEOUT_MS = 45_000;
+
 const PUBLIC_FAILURE_CODES = new Set([
   'AI_PROVIDER_UNAVAILABLE',
   'AI_PROVIDER_TIMEOUT',
@@ -30,33 +32,30 @@ export class AiOrchestrator {
     @Inject(AI_PROVIDER) private readonly provider: AiProvider,
   ) {}
 
-  streamTurn(
+  async streamTurn(
     context: TenantContext,
     dto: StartAiTurnDto,
     abortSignal: AbortSignal,
-  ): AsyncIterable<AiPublicStreamEvent> {
-    return this.run(context, () => this.conversations.beginTurn(context, dto), abortSignal);
+  ): Promise<AsyncIterable<AiPublicStreamEvent>> {
+    const begun = await this.conversations.beginTurn(context, dto);
+    return this.continueTurn(context, begun, abortSignal);
   }
 
-  retryTurn(
+  async retryTurn(
     context: TenantContext,
     turnId: string,
     abortSignal: AbortSignal,
-  ): AsyncIterable<AiPublicStreamEvent> {
-    return this.run(
-      context,
-      () => this.conversations.retryTurn(context, turnId),
-      abortSignal,
-    );
+  ): Promise<AsyncIterable<AiPublicStreamEvent>> {
+    const begun = await this.conversations.retryTurn(context, turnId);
+    return this.continueTurn(context, begun, abortSignal);
   }
 
-  private async *run(
+  private async *continueTurn(
     context: TenantContext,
-    begin: () => Promise<BeginTurnResult>,
-    abortSignal: AbortSignal,
+    begun: BeginTurnResult,
+    clientAbort: AbortSignal,
   ): AsyncIterable<AiPublicStreamEvent> {
     const startedAt = Date.now();
-    const begun = await begin();
     yield {
       event: 'conversation.ready',
       data: {
@@ -67,137 +66,194 @@ export class AiOrchestrator {
     };
     yield { event: 'turn.started', data: { turnId: begun.turnId } };
 
-    const history = await this.conversations.messages(
-      context,
-      begun.conversationId,
-      { limit: 20 },
-    );
-    const messages = toProviderMessages(history.items, begun);
-
     let buffer = '';
-    let inputTokens: number | undefined;
-    let outputTokens: number | undefined;
-    let failedCode: string | null = null;
-    let completed = false;
-
     try {
-      for await (const event of this.provider.streamTurn({
-        messages,
-        system: AI_SYSTEM_PROMPT,
-        tools: [],
-        abortSignal,
-      })) {
-        if (abortSignal.aborted) break;
-        switch (event.type) {
-          case 'TEXT_DELTA':
-            buffer += event.text;
-            yield { event: 'assistant.delta', data: { text: event.text } };
-            break;
-          case 'USAGE':
-            inputTokens = event.inputTokens;
-            outputTokens = event.outputTokens;
-            break;
-          case 'COMPLETED':
-            completed = true;
-            break;
-          case 'FAILED':
-            failedCode = publicFailureCode(event.code);
-            break;
-          default:
-            break;
-        }
-      }
-    } catch {
-      if (!abortSignal.aborted) failedCode = 'AI_TURN_FAILED';
-    }
+      const history = await this.conversations.messages(
+        context,
+        begun.conversationId,
+        { limit: 20 },
+      );
+      const messages = toProviderMessages(history.items, begun);
+      const timeout = AbortSignal.timeout(timeoutMs());
+      const abortSignal = AbortSignal.any([clientAbort, timeout]);
 
-    const latencyMs = Date.now() - startedAt;
-    if (abortSignal.aborted && !completed && !failedCode) {
-      await this.conversations.finalizeAssistant(context, begun.turnId, {
-        status: 'CANCELLED',
+      let inputTokens: number | undefined;
+      let outputTokens: number | undefined;
+      let failedCode: string | null = null;
+      let completed = false;
+
+      try {
+        for await (const event of iterateUntilAborted(
+          this.provider.streamTurn({
+            messages,
+            system: AI_SYSTEM_PROMPT,
+            tools: [],
+            abortSignal,
+          }),
+          abortSignal,
+        )) {
+          if (abortSignal.aborted) break;
+          switch (event.type) {
+            case 'TEXT_DELTA':
+              buffer += event.text;
+              yield { event: 'assistant.delta', data: { text: event.text } };
+              break;
+            case 'USAGE':
+              inputTokens = event.inputTokens;
+              outputTokens = event.outputTokens;
+              break;
+            case 'COMPLETED':
+              completed = true;
+              break;
+            case 'FAILED':
+              failedCode = publicFailureCode(event.code);
+              break;
+            default:
+              break;
+          }
+        }
+      } catch {
+        if (!abortSignal.aborted) failedCode = 'AI_TURN_FAILED';
+      }
+
+      const latencyMs = Date.now() - startedAt;
+      if (clientAbort.aborted && !completed && !failedCode) {
+        await this.finish(context, begun, latencyMs, {
+          status: 'CANCELLED',
+          content: buffer,
+        });
+        yield {
+          event: 'turn.cancelled',
+          data: { turnId: begun.turnId, messageId: begun.assistant.id },
+        };
+        return;
+      }
+
+      if (timeout.aborted && !completed && !failedCode) {
+        failedCode = 'AI_PROVIDER_TIMEOUT';
+      }
+
+      if (failedCode) {
+        await this.finish(context, begun, latencyMs, {
+          status: 'FAILED',
+          content: buffer,
+          errorCode: failedCode,
+        });
+        yield {
+          event: 'turn.failed',
+          data: {
+            turnId: begun.turnId,
+            code: failedCode,
+            messageId: begun.assistant.id,
+          },
+        };
+        return;
+      }
+
+      if (!completed) {
+        const code = 'AI_TURN_FAILED';
+        await this.finish(context, begun, latencyMs, {
+          status: 'FAILED',
+          content: buffer,
+          errorCode: code,
+        });
+        yield {
+          event: 'turn.failed',
+          data: {
+            turnId: begun.turnId,
+            code,
+            messageId: begun.assistant.id,
+          },
+        };
+        return;
+      }
+
+      await this.finish(context, begun, latencyMs, {
+        status: 'COMPLETED',
         content: buffer,
-      });
-      this.logger.log({
-        conversationId: begun.conversationId,
-        turnId: begun.turnId,
-        code: 'CANCELLED',
-        latencyMs,
+        usage: {
+          inputTokens,
+          outputTokens,
+          providerKey: this.provider.providerKey,
+          modelKey: this.provider.modelKey,
+        },
       });
       yield {
-        event: 'turn.cancelled',
+        event: 'turn.completed',
         data: { turnId: begun.turnId, messageId: begun.assistant.id },
       };
-      return;
-    }
-
-    if (failedCode) {
-      await this.conversations.finalizeAssistant(context, begun.turnId, {
+    } catch {
+      const latencyMs = Date.now() - startedAt;
+      await this.finish(context, begun, latencyMs, {
         status: 'FAILED',
         content: buffer,
-        errorCode: failedCode,
-      });
-      this.logger.log({
-        conversationId: begun.conversationId,
-        turnId: begun.turnId,
-        code: failedCode,
-        latencyMs,
+        errorCode: 'AI_TURN_FAILED',
       });
       yield {
         event: 'turn.failed',
         data: {
           turnId: begun.turnId,
-          code: failedCode,
+          code: 'AI_TURN_FAILED',
           messageId: begun.assistant.id,
         },
       };
-      return;
     }
+  }
 
-    if (!completed) {
-      const code = 'AI_TURN_FAILED';
-      await this.conversations.finalizeAssistant(context, begun.turnId, {
-        status: 'FAILED',
-        content: buffer,
-        errorCode: code,
-      });
-      this.logger.log({
-        conversationId: begun.conversationId,
-        turnId: begun.turnId,
-        code,
-        latencyMs,
-      });
-      yield {
-        event: 'turn.failed',
-        data: {
-          turnId: begun.turnId,
-          code,
-          messageId: begun.assistant.id,
-        },
-      };
-      return;
-    }
-
-    await this.conversations.finalizeAssistant(context, begun.turnId, {
-      status: 'COMPLETED',
-      content: buffer,
-      usage: {
-        inputTokens,
-        outputTokens,
-        providerKey: this.provider.providerKey,
-        modelKey: this.provider.modelKey,
-      },
-    });
+  private async finish(
+    context: TenantContext,
+    begun: BeginTurnResult,
+    latencyMs: number,
+    outcome: {
+      status: 'COMPLETED' | 'FAILED' | 'CANCELLED';
+      content: string;
+      usage?: Record<string, unknown>;
+      errorCode?: string | null;
+    },
+  ): Promise<void> {
+    await this.conversations.finalizeAssistant(context, begun.turnId, outcome);
     this.logger.log({
       conversationId: begun.conversationId,
       turnId: begun.turnId,
-      code: 'COMPLETED',
+      code: outcome.errorCode ?? outcome.status,
       latencyMs,
     });
-    yield {
-      event: 'turn.completed',
-      data: { turnId: begun.turnId, messageId: begun.assistant.id },
-    };
   }
+}
+
+async function* iterateUntilAborted<T>(
+  source: AsyncIterable<T>,
+  signal: AbortSignal,
+): AsyncIterable<T> {
+  const iterator = source[Symbol.asyncIterator]();
+  try {
+    while (!signal.aborted) {
+      const next = await Promise.race([
+        iterator.next(),
+        aborted(signal).then(() => undefined),
+      ]);
+      if (!next || next.done) break;
+      yield next.value;
+    }
+  } finally {
+    await iterator.return?.();
+  }
+}
+
+function aborted(signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal.aborted) {
+      resolve();
+      return;
+    }
+    signal.addEventListener('abort', () => resolve(), { once: true });
+  });
+}
+
+function timeoutMs(): number {
+  const raw = process.env.AI_TIMEOUT_MS;
+  const parsed = raw ? Number.parseInt(raw, 10) : DEFAULT_AI_TIMEOUT_MS;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_AI_TIMEOUT_MS;
 }
 
 function publicFailureCode(code: string): string {

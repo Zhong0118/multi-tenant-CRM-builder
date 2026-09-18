@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  Header,
   HttpCode,
   Param,
   ParseUUIDPipe,
@@ -98,60 +97,56 @@ export class AiController {
   @Post('turns')
   @HttpCode(200)
   @ApiProduces('text/event-stream')
-  @Header('Content-Type', 'text/event-stream; charset=utf-8')
-  @Header('Cache-Control', 'no-store')
-  @Header('Connection', 'keep-alive')
   @ApiOkResponse({ description: 'AI turn SSE stream' })
-  startTurn(
+  async startTurn(
     @CurrentTenant() context: TenantContext,
     @Body() dto: StartAiTurnDto,
     @Req() request: Request,
     @Res() response: Response,
   ) {
-    return this.writeSse(
-      request,
-      response,
-      this.orchestrator.streamTurn(context, dto, this.bindAbort(request).signal),
+    void request;
+    const abort = this.bindAbort(response);
+    const events = await this.orchestrator.streamTurn(
+      context,
+      dto,
+      abort.signal,
     );
+    await this.writeSse(response, events);
   }
 
   @Post('turns/:turnId/retry')
   @HttpCode(200)
   @ApiProduces('text/event-stream')
-  @Header('Content-Type', 'text/event-stream; charset=utf-8')
-  @Header('Cache-Control', 'no-store')
-  @Header('Connection', 'keep-alive')
   @ApiParam({ name: 'turnId', format: 'uuid' })
   @ApiOkResponse({ description: 'AI turn retry SSE stream' })
-  retryTurn(
+  async retryTurn(
     @CurrentTenant() context: TenantContext,
     @Param('turnId', ParseUUIDPipe) turnId: string,
     @Req() request: Request,
     @Res() response: Response,
   ) {
-    return this.writeSse(
-      request,
-      response,
-      this.orchestrator.retryTurn(
-        context,
-        turnId,
-        this.bindAbort(request).signal,
-      ),
+    void request;
+    const abort = this.bindAbort(response);
+    const events = await this.orchestrator.retryTurn(
+      context,
+      turnId,
+      abort.signal,
     );
+    await this.writeSse(response, events);
   }
 
-  private bindAbort(request: Request): AbortController {
+  private bindAbort(response: Response): AbortController {
     const abort = new AbortController();
-    request.on('close', () => abort.abort());
+    response.on('close', () => {
+      if (!response.writableEnded) abort.abort();
+    });
     return abort;
   }
 
   private async writeSse(
-    request: Request,
     response: Response,
     events: AsyncIterable<AiPublicStreamEvent>,
   ): Promise<void> {
-    void request;
     response.status(200);
     response.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
     response.setHeader('Cache-Control', 'no-store');
@@ -162,6 +157,8 @@ export class AiController {
       for await (const event of events) {
         if (!response.writableEnded) response.write(sseFrame(event));
       }
+    } catch {
+      // Headers are already flushed; never dump JSON/stack onto the SSE body.
     } finally {
       if (!response.writableEnded) response.end();
     }

@@ -1,9 +1,12 @@
+import { EventEmitter } from 'node:events';
+
+import { ApiException } from '../../common/errors/api.exception';
+import type { TenantContext } from '../../common/tenancy/tenant-context';
+import type { AiPublicStreamEvent } from '../../../../../packages/contracts/src/ai/stream';
 import { AiController } from './ai.controller';
 import { AiOrchestrator } from './ai-orchestrator';
-import { ConversationService } from './conversation.service';
-import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { sseFrame } from './ai-stream';
-import type { AiPublicStreamEvent } from '../../../../../packages/contracts/src/ai/stream';
+import { ConversationService } from './conversation.service';
 
 const context: TenantContext = {
   tenantId: '0198ad18-a74d-7b69-b81a-49a74f9a3e0d',
@@ -16,6 +19,7 @@ const context: TenantContext = {
 function mockResponse() {
   const writes: string[] = [];
   const headers = new Map<string, string>();
+  const emitter = new EventEmitter();
   const response = {
     statusCode: 0,
     writableEnded: false,
@@ -34,7 +38,10 @@ function mockResponse() {
     },
     end() {
       this.writableEnded = true;
+      emitter.emit('end');
     },
+    on: emitter.on.bind(emitter),
+    emit: emitter.emit.bind(emitter),
     headers,
     writes,
   };
@@ -68,8 +75,10 @@ describe('AiController', () => {
       },
       { event: 'turn.started', data: { turnId: 'turn-1' } },
     ];
-    orchestrator.streamTurn.mockImplementation(async function* () {
-      yield* events;
+    orchestrator.streamTurn.mockImplementation(async () => {
+      return (async function* () {
+        yield* events;
+      })();
     });
     const response = mockResponse();
     const request = { on: jest.fn() };
@@ -86,9 +95,104 @@ describe('AiController', () => {
     expect(response.headers.get('Cache-Control')).toBe('no-store');
     expect(response.headers.get('Connection')).toBe('keep-alive');
     expect(response.flushHeaders).toHaveBeenCalled();
-    expect(request.on).toHaveBeenCalledWith('close', expect.any(Function));
     expect(response.writes).toEqual(events.map((event) => sseFrame(event)));
     expect(response.writableEnded).toBe(true);
+  });
+
+  it('does not flush SSE headers when beginTurn rejects, so JSON errors stay available', async () => {
+    orchestrator.streamTurn.mockRejectedValue(
+      new ApiException('AI_RATE_LIMITED', 429),
+    );
+    const response = mockResponse();
+    const request = { on: jest.fn() };
+    await expect(
+      controller.startTurn(
+        context,
+        { content: '你好' },
+        request as never,
+        response as never,
+      ),
+    ).rejects.toMatchObject({ code: 'AI_RATE_LIMITED', status: 429 });
+    expect(response.flushHeaders).not.toHaveBeenCalled();
+    expect(response.writes).toEqual([]);
+  });
+
+  it('does not flush SSE headers when retryTurn rejects in-progress', async () => {
+    orchestrator.retryTurn.mockRejectedValue(
+      new ApiException('AI_MEMBER_TURN_IN_PROGRESS', 409),
+    );
+    const response = mockResponse();
+    const request = { on: jest.fn() };
+    await expect(
+      controller.retryTurn(
+        context,
+        '00000000-0000-7000-8000-000000000001',
+        request as never,
+        response as never,
+      ),
+    ).rejects.toMatchObject({
+      code: 'AI_MEMBER_TURN_IN_PROGRESS',
+      status: 409,
+    });
+    expect(response.flushHeaders).not.toHaveBeenCalled();
+    expect(response.writes).toEqual([]);
+  });
+
+  it('aborts only on response close while the stream is still open', async () => {
+    let observed: AbortSignal | undefined;
+    let release: (() => void) | undefined;
+    orchestrator.streamTurn.mockImplementation(
+      async (_context, _dto, signal: AbortSignal) => {
+        observed = signal;
+        return (async function* () {
+          yield {
+            event: 'conversation.ready',
+            data: { conversationId: 'c1', title: 't', turnId: 'turn-1' },
+          };
+          await new Promise<void>((resolve) => {
+            release = resolve;
+            signal.addEventListener('abort', () => resolve(), { once: true });
+          });
+        })();
+      },
+    );
+    const response = mockResponse();
+    const request = { on: jest.fn() };
+    const done = controller.startTurn(
+      context,
+      { content: '你好' },
+      request as never,
+      response as never,
+    );
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(observed?.aborted).toBe(false);
+    response.emit('close');
+    await done;
+    expect(observed?.aborted).toBe(true);
+    expect(response.writableEnded).toBe(true);
+    release?.();
+  });
+
+  it('does not treat a clean response.end as client cancel', async () => {
+    let observed: AbortSignal | undefined;
+    orchestrator.streamTurn.mockImplementation(
+      async (_context, _dto, signal: AbortSignal) => {
+        observed = signal;
+        return (async function* () {
+          yield { event: 'turn.started', data: { turnId: 'turn-1' } };
+        })();
+      },
+    );
+    const response = mockResponse();
+    const request = { on: jest.fn() };
+    await controller.startTurn(
+      context,
+      { content: '你好' },
+      request as never,
+      response as never,
+    );
+    expect(response.writableEnded).toBe(true);
+    expect(observed?.aborted).toBe(false);
   });
 
   it('CRUD routes use CurrentTenant context and never actor query params', async () => {
