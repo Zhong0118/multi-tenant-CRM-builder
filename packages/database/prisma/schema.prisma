@@ -146,64 +146,77 @@ enum DashboardAudience {
   EMPLOYEE
 }
 
+enum AiMessageRole {
+  USER
+  ASSISTANT
+}
+
+enum AiMessageStatus {
+  GENERATING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
 model User {
-  id                  String             @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
-  displayName         String             @map("display_name") @db.VarChar(100)
-  email               String?            @unique @db.VarChar(320)
-  phone               String             @unique @db.VarChar(32)
-  phoneVerifiedAt     DateTime           @map("phone_verified_at") @db.Timestamptz(3)
-  passwordHash        String             @map("password_hash")
-  isPlatformAdmin     Boolean            @default(false) @map("is_platform_admin")
-  status              UserStatus         @default(ACTIVE)
-  lastLoginAt         DateTime?          @map("last_login_at") @db.Timestamptz(3)
-  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt           DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                  String                        @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  displayName         String                        @map("display_name") @db.VarChar(100)
+  email               String?                       @unique @db.VarChar(320)
+  phone               String                        @unique @db.VarChar(32)
+  phoneVerifiedAt     DateTime                      @map("phone_verified_at") @db.Timestamptz(3)
+  passwordHash        String                        @map("password_hash")
+  isPlatformAdmin     Boolean                       @default(false) @map("is_platform_admin")
+  status              UserStatus                    @default(ACTIVE)
+  lastLoginAt         DateTime?                     @map("last_login_at") @db.Timestamptz(3)
+  createdAt           DateTime                      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime                      @updatedAt @map("updated_at") @db.Timestamptz(3)
   members             TenantMember[]
   sessions            Session[]
-  targetInvitations   TenantInvitation[] @relation("InvitationTargetUser")
-  createdInvitations  TenantInvitation[] @relation("InvitationCreatedBy")
-  acceptedInvitations TenantInvitation[] @relation("InvitationAcceptedBy")
-  createdTemplates    BusinessTemplate[] @relation("BusinessTemplateCreator")
-  publishedTemplates  BusinessTemplateVersion[] @relation("BusinessTemplateVersionPublisher")
+  targetInvitations   TenantInvitation[]            @relation("InvitationTargetUser")
+  createdInvitations  TenantInvitation[]            @relation("InvitationCreatedBy")
+  acceptedInvitations TenantInvitation[]            @relation("InvitationAcceptedBy")
+  createdTemplates    BusinessTemplate[]            @relation("BusinessTemplateCreator")
+  publishedTemplates  BusinessTemplateVersion[]     @relation("BusinessTemplateVersionPublisher")
   appliedTemplates    BusinessTemplateApplication[] @relation("BusinessTemplateApplicationApplier")
 
   @@map("users")
 }
 
 model Tenant {
-  id                 String              @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
-  name               String              @db.VarChar(200)
-  code               String              @unique @db.VarChar(64)
-  status             TenantStatus        @default(DRAFT)
-  timezone           String              @default("Asia/Shanghai") @db.VarChar(64)
-  locale             String              @default("zh-CN") @db.VarChar(16)
-  settings           Json                @default("{}") @db.JsonB
-  activatedAt        DateTime?           @map("activated_at") @db.Timestamptz(3)
-  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt          DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
-  members            TenantMember[]
-  invitations        TenantInvitation[]
-  objects            ObjectDefinition[]
-  fields             FieldDefinition[]
-  records            Record[]
-  recordActivities   RecordActivity[]
-  followUps          RecordFollowUp[]
-  objectPublications ObjectPublication[]
-  views              ViewDefinition[]
-  objectPermissions  ObjectPermission[]
-  fieldPermissions   FieldPermission[]
-  recordCounters     RecordCounter[]
-  workflows          ObjectWorkflowDefinition[]
-  workflowStates     WorkflowStateDefinition[]
-  workflowTransitions WorkflowTransitionDefinition[]
-  transitionHistories RecordTransitionHistory[]
-  templateApplications BusinessTemplateApplication[]
-  dashboardConfigurations TenantDashboardConfiguration[]
-  dashboardPublications TenantDashboardPublication[]
-  defaultAdminDashboardId String? @map("default_admin_dashboard_id") @db.Uuid
-  defaultEmployeeDashboardId String? @map("default_employee_dashboard_id") @db.Uuid
-  defaultAdminDashboard TenantDashboardConfiguration? @relation("DefaultAdminDashboard", fields: [id, defaultAdminDashboardId], references: [tenantId, id], onDelete: Restrict)
-  defaultEmployeeDashboard TenantDashboardConfiguration? @relation("DefaultEmployeeDashboard", fields: [id, defaultEmployeeDashboardId], references: [tenantId, id], onDelete: Restrict)
+  id                         String                         @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  name                       String                         @db.VarChar(200)
+  code                       String                         @unique @db.VarChar(64)
+  status                     TenantStatus                   @default(DRAFT)
+  timezone                   String                         @default("Asia/Shanghai") @db.VarChar(64)
+  locale                     String                         @default("zh-CN") @db.VarChar(16)
+  settings                   Json                           @default("{}") @db.JsonB
+  activatedAt                DateTime?                      @map("activated_at") @db.Timestamptz(3)
+  createdAt                  DateTime                       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                  DateTime                       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  members                    TenantMember[]
+  invitations                TenantInvitation[]
+  objects                    ObjectDefinition[]
+  fields                     FieldDefinition[]
+  records                    Record[]
+  recordActivities           RecordActivity[]
+  followUps                  RecordFollowUp[]
+  objectPublications         ObjectPublication[]
+  views                      ViewDefinition[]
+  objectPermissions          ObjectPermission[]
+  fieldPermissions           FieldPermission[]
+  recordCounters             RecordCounter[]
+  workflows                  ObjectWorkflowDefinition[]
+  workflowStates             WorkflowStateDefinition[]
+  workflowTransitions        WorkflowTransitionDefinition[]
+  transitionHistories        RecordTransitionHistory[]
+  templateApplications       BusinessTemplateApplication[]
+  dashboardConfigurations    TenantDashboardConfiguration[]
+  dashboardPublications      TenantDashboardPublication[]
+  defaultAdminDashboardId    String?                        @map("default_admin_dashboard_id") @db.Uuid
+  defaultEmployeeDashboardId String?                        @map("default_employee_dashboard_id") @db.Uuid
+  defaultAdminDashboard      TenantDashboardConfiguration?  @relation("DefaultAdminDashboard", fields: [id, defaultAdminDashboardId], references: [tenantId, id], onDelete: Restrict)
+  defaultEmployeeDashboard   TenantDashboardConfiguration?  @relation("DefaultEmployeeDashboard", fields: [id, defaultEmployeeDashboardId], references: [tenantId, id], onDelete: Restrict)
+  aiConversations            AiConversation[]
 
   @@map("tenants")
 }
@@ -257,27 +270,28 @@ model TenantDashboardPublication {
 }
 
 model TenantMember {
-  id                        String              @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
-  tenantId                  String              @map("tenant_id") @db.Uuid
-  userId                    String              @map("user_id") @db.Uuid
+  id                        String                       @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId                  String                       @map("tenant_id") @db.Uuid
+  userId                    String                       @map("user_id") @db.Uuid
   role                      MemberRole
-  status                    MemberStatus        @default(ACTIVE)
-  employeeNo                String?             @map("employee_no") @db.VarChar(64)
-  joinedAt                  DateTime?           @map("joined_at") @db.Timestamptz(3)
-  createdAt                 DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt                 DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
-  tenant                    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  user                      User                @relation(fields: [userId], references: [id], onDelete: Restrict)
-  ownedRecords              Record[]            @relation("RecordOwner")
-  createdRecords            Record[]            @relation("RecordCreator")
-  recordActivities          RecordActivity[]    @relation("RecordActivityActor")
+  status                    MemberStatus                 @default(ACTIVE)
+  employeeNo                String?                      @map("employee_no") @db.VarChar(64)
+  joinedAt                  DateTime?                    @map("joined_at") @db.Timestamptz(3)
+  createdAt                 DateTime                     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                 DateTime                     @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant                    Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  user                      User                         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  ownedRecords              Record[]                     @relation("RecordOwner")
+  createdRecords            Record[]                     @relation("RecordCreator")
+  recordActivities          RecordActivity[]             @relation("RecordActivityActor")
   followUps                 RecordFollowUp[]
-  publishedObjects          ObjectPublication[] @relation("ObjectPublicationPublisher")
+  publishedObjects          ObjectPublication[]          @relation("ObjectPublicationPublisher")
   publishedDashboards       TenantDashboardPublication[] @relation("TenantDashboardPublicationPublisher")
-  objectPermissionOverrides ObjectPermission[]  @relation("ObjectPermissionMember")
-  createdWorkflows          ObjectWorkflowDefinition[] @relation("WorkflowCreatedBy")
-  updatedWorkflows          ObjectWorkflowDefinition[] @relation("WorkflowUpdatedBy")
-  transitionHistories       RecordTransitionHistory[] @relation("TransitionActor")
+  objectPermissionOverrides ObjectPermission[]           @relation("ObjectPermissionMember")
+  createdWorkflows          ObjectWorkflowDefinition[]   @relation("WorkflowCreatedBy")
+  updatedWorkflows          ObjectWorkflowDefinition[]   @relation("WorkflowUpdatedBy")
+  transitionHistories       RecordTransitionHistory[]    @relation("TransitionActor")
+  aiConversations           AiConversation[]             @relation("AiConversationCreator")
 
   @@unique([tenantId, userId])
   @@unique([tenantId, id])
@@ -344,29 +358,29 @@ model Session {
 }
 
 model ObjectDefinition {
-  id                      String              @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
-  tenantId                String              @map("tenant_id") @db.Uuid
-  name                    String              @db.VarChar(100)
-  code                    String              @db.VarChar(64)
-  kind                    ObjectKind          @default(GENERIC)
-  titleFieldKey           String              @map("title_field_key") @db.VarChar(64)
-  icon                    String?             @db.VarChar(64)
-  status                  ObjectStatus        @default(DRAFT)
-  sortOrder               Int                 @default(0) @map("sort_order")
-  settings                Json                @default("{}") @db.JsonB
-  sourceTemplateVersionId String?             @map("source_template_version_id") @db.Uuid
-  activePublicationId     String?             @map("active_publication_id") @db.Uuid
-  publishedAt             DateTime?           @map("published_at") @db.Timestamptz(3)
-  version                 Int                 @default(1)
-  createdAt               DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt               DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
-  deletedAt               DateTime?           @map("deleted_at") @db.Timestamptz(3)
-  tenant                  Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  sourceTemplateVersion   BusinessTemplateVersion? @relation(fields: [sourceTemplateVersionId], references: [id], onDelete: Restrict)
+  id                      String                    @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId                String                    @map("tenant_id") @db.Uuid
+  name                    String                    @db.VarChar(100)
+  code                    String                    @db.VarChar(64)
+  kind                    ObjectKind                @default(GENERIC)
+  titleFieldKey           String                    @map("title_field_key") @db.VarChar(64)
+  icon                    String?                   @db.VarChar(64)
+  status                  ObjectStatus              @default(DRAFT)
+  sortOrder               Int                       @default(0) @map("sort_order")
+  settings                Json                      @default("{}") @db.JsonB
+  sourceTemplateVersionId String?                   @map("source_template_version_id") @db.Uuid
+  activePublicationId     String?                   @map("active_publication_id") @db.Uuid
+  publishedAt             DateTime?                 @map("published_at") @db.Timestamptz(3)
+  version                 Int                       @default(1)
+  createdAt               DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt               DateTime?                 @map("deleted_at") @db.Timestamptz(3)
+  tenant                  Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  sourceTemplateVersion   BusinessTemplateVersion?  @relation(fields: [sourceTemplateVersionId], references: [id], onDelete: Restrict)
   fields                  FieldDefinition[]
   records                 Record[]
-  publications            ObjectPublication[] @relation("ObjectPublications")
-  activePublication       ObjectPublication?  @relation("ActiveObjectPublication", fields: [tenantId, activePublicationId], references: [tenantId, id], onDelete: Restrict)
+  publications            ObjectPublication[]       @relation("ObjectPublications")
+  activePublication       ObjectPublication?        @relation("ActiveObjectPublication", fields: [tenantId, activePublicationId], references: [tenantId, id], onDelete: Restrict)
   views                   ViewDefinition[]
   permissions             ObjectPermission[]
   fieldPermissions        FieldPermission[]
@@ -402,19 +416,19 @@ model BusinessTemplate {
 }
 
 model BusinessTemplateVersion {
-  id                    String                        @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
-  templateId            String                        @map("template_id") @db.Uuid
-  versionNo             Int                           @map("version_no")
-  sourceDraftVersion    Int                           @map("source_draft_version")
-  schemaVersion         Int                           @map("schema_version")
-  configuration         Json                          @db.JsonB
-  configurationChecksum String                        @map("configuration_checksum") @db.Char(64)
-  changeSummary         Json                          @map("change_summary") @db.JsonB
-  publishedByUserId     String                        @map("published_by_user_id") @db.Uuid
-  publishedAt           DateTime                      @default(now()) @map("published_at") @db.Timestamptz(3)
-  template              BusinessTemplate              @relation("BusinessTemplateVersions", fields: [templateId], references: [id], onDelete: Restrict)
-  activeForTemplate     BusinessTemplate?             @relation("ActiveBusinessTemplateVersion")
-  publisher             User                          @relation("BusinessTemplateVersionPublisher", fields: [publishedByUserId], references: [id], onDelete: Restrict)
+  id                    String                         @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  templateId            String                         @map("template_id") @db.Uuid
+  versionNo             Int                            @map("version_no")
+  sourceDraftVersion    Int                            @map("source_draft_version")
+  schemaVersion         Int                            @map("schema_version")
+  configuration         Json                           @db.JsonB
+  configurationChecksum String                         @map("configuration_checksum") @db.Char(64)
+  changeSummary         Json                           @map("change_summary") @db.JsonB
+  publishedByUserId     String                         @map("published_by_user_id") @db.Uuid
+  publishedAt           DateTime                       @default(now()) @map("published_at") @db.Timestamptz(3)
+  template              BusinessTemplate               @relation("BusinessTemplateVersions", fields: [templateId], references: [id], onDelete: Restrict)
+  activeForTemplate     BusinessTemplate?              @relation("ActiveBusinessTemplateVersion")
+  publisher             User                           @relation("BusinessTemplateVersionPublisher", fields: [publishedByUserId], references: [id], onDelete: Restrict)
   applications          BusinessTemplateApplication[]
   sourceObjects         ObjectDefinition[]
   sourceDashboards      TenantDashboardConfiguration[]
@@ -468,19 +482,19 @@ model FieldDefinition {
 }
 
 model ObjectPublication {
-  id                  String            @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
-  tenantId            String            @map("tenant_id") @db.Uuid
-  objectId            String            @map("object_id") @db.Uuid
-  publicationNo       Int               @map("publication_no")
-  sourceDraftVersion  Int               @map("source_draft_version")
-  configuration       Json              @db.JsonB
-  changeSummary       Json              @map("change_summary") @db.JsonB
-  publishedByMemberId String            @map("published_by_member_id") @db.Uuid
-  publishedAt         DateTime          @default(now()) @map("published_at") @db.Timestamptz(3)
-  tenant              Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  object              ObjectDefinition  @relation("ObjectPublications", fields: [tenantId, objectId], references: [tenantId, id], onDelete: Restrict)
-  publisher           TenantMember      @relation("ObjectPublicationPublisher", fields: [tenantId, publishedByMemberId], references: [tenantId, id], onDelete: Restrict)
-  activeFor           ObjectDefinition? @relation("ActiveObjectPublication")
+  id                  String                    @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId            String                    @map("tenant_id") @db.Uuid
+  objectId            String                    @map("object_id") @db.Uuid
+  publicationNo       Int                       @map("publication_no")
+  sourceDraftVersion  Int                       @map("source_draft_version")
+  configuration       Json                      @db.JsonB
+  changeSummary       Json                      @map("change_summary") @db.JsonB
+  publishedByMemberId String                    @map("published_by_member_id") @db.Uuid
+  publishedAt         DateTime                  @default(now()) @map("published_at") @db.Timestamptz(3)
+  tenant              Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  object              ObjectDefinition          @relation("ObjectPublications", fields: [tenantId, objectId], references: [tenantId, id], onDelete: Restrict)
+  publisher           TenantMember              @relation("ObjectPublicationPublisher", fields: [tenantId, publishedByMemberId], references: [tenantId, id], onDelete: Restrict)
+  activeFor           ObjectDefinition?         @relation("ActiveObjectPublication")
   transitionHistories RecordTransitionHistory[]
 
   @@unique([tenantId, objectId, publicationNo])
@@ -562,25 +576,25 @@ model RecordCounter {
 }
 
 model Record {
-  id                     String           @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
-  tenantId               String           @map("tenant_id") @db.Uuid
-  objectId               String           @map("object_id") @db.Uuid
-  recordNo               BigInt           @map("record_no")
-  ownerMemberId          String?          @map("owner_member_id") @db.Uuid
-  statusKey              String?          @map("status_key") @db.VarChar(64)
-  title                  String           @db.VarChar(300)
-  data                   Json             @default("{}") @db.JsonB
-  source                 RecordSource     @default(MANUAL)
-  createdByMemberId      String?          @map("created_by_member_id") @db.Uuid
-  createdByIntegrationId String?          @map("created_by_integration_id") @db.Uuid
-  version                Int              @default(1)
-  createdAt              DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt              DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
-  deletedAt              DateTime?        @map("deleted_at") @db.Timestamptz(3)
-  tenant                 Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  object                 ObjectDefinition @relation(fields: [tenantId, objectId], references: [tenantId, id], onDelete: Restrict)
-  owner                  TenantMember?    @relation("RecordOwner", fields: [tenantId, ownerMemberId], references: [tenantId, id], onDelete: Restrict)
-  createdBy              TenantMember?    @relation("RecordCreator", fields: [tenantId, createdByMemberId], references: [tenantId, id], onDelete: Restrict)
+  id                     String                    @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId               String                    @map("tenant_id") @db.Uuid
+  objectId               String                    @map("object_id") @db.Uuid
+  recordNo               BigInt                    @map("record_no")
+  ownerMemberId          String?                   @map("owner_member_id") @db.Uuid
+  statusKey              String?                   @map("status_key") @db.VarChar(64)
+  title                  String                    @db.VarChar(300)
+  data                   Json                      @default("{}") @db.JsonB
+  source                 RecordSource              @default(MANUAL)
+  createdByMemberId      String?                   @map("created_by_member_id") @db.Uuid
+  createdByIntegrationId String?                   @map("created_by_integration_id") @db.Uuid
+  version                Int                       @default(1)
+  createdAt              DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt              DateTime?                 @map("deleted_at") @db.Timestamptz(3)
+  tenant                 Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  object                 ObjectDefinition          @relation(fields: [tenantId, objectId], references: [tenantId, id], onDelete: Restrict)
+  owner                  TenantMember?             @relation("RecordOwner", fields: [tenantId, ownerMemberId], references: [tenantId, id], onDelete: Restrict)
+  createdBy              TenantMember?             @relation("RecordCreator", fields: [tenantId, createdByMemberId], references: [tenantId, id], onDelete: Restrict)
   activities             RecordActivity[]
   followUps              RecordFollowUp[]
   transitionHistories    RecordTransitionHistory[]
@@ -594,20 +608,20 @@ model Record {
 }
 
 model RecordActivity {
-  id                  String             @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
-  tenantId            String             @map("tenant_id") @db.Uuid
-  recordId            String             @map("record_id") @db.Uuid
-  activityType        RecordActivityType @map("activity_type")
-  content             String
-  resultKey           String?            @map("result_key") @db.VarChar(64)
-  nextActionAt        DateTime?          @map("next_action_at") @db.Timestamptz(3)
-  actorMemberId       String?            @map("actor_member_id") @db.Uuid
-  actorIntegrationId  String?            @map("actor_integration_id") @db.Uuid
-  metadata            Json               @default("{}") @db.JsonB
-  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
-  tenant              Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  record              Record             @relation(fields: [tenantId, recordId], references: [tenantId, id], onDelete: Restrict)
-  actor               TenantMember?      @relation("RecordActivityActor", fields: [tenantId, actorMemberId], references: [tenantId, id], onDelete: Restrict)
+  id                 String             @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId           String             @map("tenant_id") @db.Uuid
+  recordId           String             @map("record_id") @db.Uuid
+  activityType       RecordActivityType @map("activity_type")
+  content            String
+  resultKey          String?            @map("result_key") @db.VarChar(64)
+  nextActionAt       DateTime?          @map("next_action_at") @db.Timestamptz(3)
+  actorMemberId      String?            @map("actor_member_id") @db.Uuid
+  actorIntegrationId String?            @map("actor_integration_id") @db.Uuid
+  metadata           Json               @default("{}") @db.JsonB
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  record             Record             @relation(fields: [tenantId, recordId], references: [tenantId, id], onDelete: Restrict)
+  actor              TenantMember?      @relation("RecordActivityActor", fields: [tenantId, actorMemberId], references: [tenantId, id], onDelete: Restrict)
 
   @@index([tenantId, recordId, createdAt(sort: Desc)])
   @@map("record_activities")
@@ -633,22 +647,22 @@ model AuditLog {
   @@map("audit_logs")
 }
 
-
 model RecordFollowUp {
-  id String @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
-  tenantId String @map("tenant_id") @db.Uuid
-  recordId String @map("record_id") @db.Uuid
-  assigneeMemberId String @map("assignee_member_id") @db.Uuid
-  title String @db.VarChar(200)
-  dueAt DateTime @map("due_at") @db.Timestamptz(3)
-  status String @default("OPEN") @db.VarChar(16)
-  version Int @default(1)
-  completedAt DateTime? @map("completed_at") @db.Timestamptz(3)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  record Record @relation(fields: [tenantId, recordId], references: [tenantId, id], onDelete: Restrict)
-  assignee TenantMember @relation(fields: [tenantId, assigneeMemberId], references: [tenantId, id], onDelete: Restrict)
+  id               String       @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId         String       @map("tenant_id") @db.Uuid
+  recordId         String       @map("record_id") @db.Uuid
+  assigneeMemberId String       @map("assignee_member_id") @db.Uuid
+  title            String       @db.VarChar(200)
+  dueAt            DateTime     @map("due_at") @db.Timestamptz(3)
+  status           String       @default("OPEN") @db.VarChar(16)
+  version          Int          @default(1)
+  completedAt      DateTime?    @map("completed_at") @db.Timestamptz(3)
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant           Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  record           Record       @relation(fields: [tenantId, recordId], references: [tenantId, id], onDelete: Restrict)
+  assignee         TenantMember @relation(fields: [tenantId, assigneeMemberId], references: [tenantId, id], onDelete: Restrict)
+
   @@index([tenantId, assigneeMemberId, status, dueAt])
   @@map("record_follow_ups")
 }
@@ -718,27 +732,72 @@ model WorkflowTransitionDefinition {
 }
 
 model RecordTransitionHistory {
-  id                  String             @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
-  tenantId            String             @map("tenant_id") @db.Uuid
-  objectDefinitionId  String             @map("object_definition_id") @db.Uuid
-  recordId            String             @map("record_id") @db.Uuid
-  objectPublicationId String             @map("object_publication_id") @db.Uuid
-  transitionKey       String             @map("transition_key") @db.VarChar(64)
-  transitionLabel     String             @map("transition_label") @db.VarChar(100)
-  fromStateKey        String?            @map("from_state_key") @db.VarChar(64)
-  fromStateLabel      String?            @map("from_state_label") @db.VarChar(100)
-  toStateKey          String             @map("to_state_key") @db.VarChar(64)
-  toStateLabel        String             @map("to_state_label") @db.VarChar(100)
-  actorMemberId       String             @map("actor_member_id") @db.Uuid
-  recordVersionBefore Int                @map("record_version_before")
-  recordVersionAfter  Int                @map("record_version_after")
-  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
-  tenant              Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  object              ObjectDefinition   @relation(fields: [tenantId, objectDefinitionId], references: [tenantId, id], onDelete: Restrict)
-  record              Record             @relation(fields: [tenantId, recordId], references: [tenantId, id], onDelete: Restrict)
-  publication         ObjectPublication  @relation(fields: [tenantId, objectPublicationId], references: [tenantId, id], onDelete: Restrict)
-  actor               TenantMember       @relation("TransitionActor", fields: [tenantId, actorMemberId], references: [tenantId, id], onDelete: Restrict)
+  id                  String            @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId            String            @map("tenant_id") @db.Uuid
+  objectDefinitionId  String            @map("object_definition_id") @db.Uuid
+  recordId            String            @map("record_id") @db.Uuid
+  objectPublicationId String            @map("object_publication_id") @db.Uuid
+  transitionKey       String            @map("transition_key") @db.VarChar(64)
+  transitionLabel     String            @map("transition_label") @db.VarChar(100)
+  fromStateKey        String?           @map("from_state_key") @db.VarChar(64)
+  fromStateLabel      String?           @map("from_state_label") @db.VarChar(100)
+  toStateKey          String            @map("to_state_key") @db.VarChar(64)
+  toStateLabel        String            @map("to_state_label") @db.VarChar(100)
+  actorMemberId       String            @map("actor_member_id") @db.Uuid
+  recordVersionBefore Int               @map("record_version_before")
+  recordVersionAfter  Int               @map("record_version_after")
+  createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  tenant              Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  object              ObjectDefinition  @relation(fields: [tenantId, objectDefinitionId], references: [tenantId, id], onDelete: Restrict)
+  record              Record            @relation(fields: [tenantId, recordId], references: [tenantId, id], onDelete: Restrict)
+  publication         ObjectPublication @relation(fields: [tenantId, objectPublicationId], references: [tenantId, id], onDelete: Restrict)
+  actor               TenantMember      @relation("TransitionActor", fields: [tenantId, actorMemberId], references: [tenantId, id], onDelete: Restrict)
 
   @@index([tenantId, recordId, createdAt(sort: Desc)])
   @@map("record_transition_histories")
+}
+
+model AiConversation {
+  id                String    @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  createdByMemberId String    @map("created_by_member_id") @db.Uuid
+  title             String    @db.VarChar(120)
+  lastMessageAt     DateTime  @map("last_message_at") @db.Timestamptz(3)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt         DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  createdBy TenantMember @relation("AiConversationCreator", fields: [tenantId, createdByMemberId], references: [tenantId, id], onDelete: Restrict)
+  messages  AiMessage[]
+
+  @@unique([tenantId, id])
+  @@index([tenantId, createdByMemberId, lastMessageAt(sort: Desc), id])
+  @@map("ai_conversations")
+}
+
+model AiMessage {
+  id             String          @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId       String          @map("tenant_id") @db.Uuid
+  conversationId String          @map("conversation_id") @db.Uuid
+  turnId         String          @map("turn_id") @db.Uuid
+  role           AiMessageRole
+  status         AiMessageStatus
+  content        String          @default("") @db.Text
+  toolSummary    Json            @default("[]") @map("tool_summary") @db.JsonB
+  sourceSummary  Json            @default("[]") @map("source_summary") @db.JsonB
+  providerUsage  Json            @default("{}") @map("provider_usage") @db.JsonB
+  providerKey    String?         @map("provider_key") @db.VarChar(64)
+  modelKey       String?         @map("model_key") @db.VarChar(128)
+  errorCode      String?         @map("error_code") @db.VarChar(64)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+  completedAt    DateTime?       @map("completed_at") @db.Timestamptz(3)
+
+  conversation AiConversation @relation(fields: [tenantId, conversationId], references: [tenantId, id], onDelete: Restrict)
+
+  @@unique([tenantId, conversationId, turnId, role])
+  @@index([tenantId, conversationId, createdAt, id])
+  @@index([tenantId, status, createdAt])
+  @@map("ai_messages")
 }
