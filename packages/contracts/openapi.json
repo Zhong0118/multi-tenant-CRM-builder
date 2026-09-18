@@ -86,13 +86,21 @@
             "type": "string"
           },
           "sourceSummary": {
-            "type": "object"
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
           },
           "status": {
             "type": "string"
           },
           "toolSummary": {
-            "type": "object"
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
           },
           "turnId": {
             "type": "string"

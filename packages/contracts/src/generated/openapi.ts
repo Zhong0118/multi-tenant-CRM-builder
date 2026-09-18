@@ -1474,9 +1474,13 @@ export interface components {
       errorCode?: string | null;
       id: string;
       role: string;
-      sourceSummary: Record<string, never>;
+      sourceSummary: {
+        [key: string]: unknown;
+      }[];
       status: string;
-      toolSummary: Record<string, never>;
+      toolSummary: {
+        [key: string]: unknown;
+      }[];
       turnId: string;
     };
     ApiErrorResponseDto: {

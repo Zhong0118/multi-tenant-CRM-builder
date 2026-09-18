@@ -64,8 +64,10 @@ export class AiMessageResponseDto {
   @ApiProperty() role!: 'USER' | 'ASSISTANT';
   @ApiProperty() status!: 'GENERATING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
   @ApiProperty() content!: string;
-  @ApiProperty() toolSummary!: unknown;
-  @ApiProperty() sourceSummary!: unknown;
+  @ApiProperty({ type: 'array', items: { type: 'object', additionalProperties: true } })
+  toolSummary!: unknown[];
+  @ApiProperty({ type: 'array', items: { type: 'object', additionalProperties: true } })
+  sourceSummary!: unknown[];
   @ApiPropertyOptional({ nullable: true, type: String }) errorCode!:
     | string
     | null;
