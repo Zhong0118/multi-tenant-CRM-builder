@@ -580,6 +580,8 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
       status: 'COMPLETED',
       content: '答案',
       usage: { inputTokens: 3, outputTokens: 5 },
+      providerKey: 'openai',
+      modelKey: 'gpt-4.1',
     });
     const page = await fixture.service.messages(context, begun.conversationId, {});
     for (const item of page.items) {
@@ -587,6 +589,68 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
       expect(item).not.toHaveProperty('providerKey');
       expect(item).not.toHaveProperty('modelKey');
     }
+  });
+
+  it('persists providerKey and modelKey on the assistant row, not only inside usage JSON', async () => {
+    const fixture = harness();
+    const begun = await fixture.repository.beginTurn(context, { content: '用量列' });
+    await fixture.repository.finalizeAssistant(context, begun.turnId, {
+      status: 'COMPLETED',
+      content: '答案',
+      usage: { inputTokens: 3, outputTokens: 5, latencyMs: 12 },
+      providerKey: 'openai',
+      modelKey: 'gpt-4.1',
+    });
+    const assistant = fixture.messages.find((row) => row.id === begun.assistant.id);
+    expect(assistant?.providerKey).toBe('openai');
+    expect(assistant?.modelKey).toBe('gpt-4.1');
+    expect(assistant?.providerUsage).toEqual({
+      inputTokens: 3,
+      outputTokens: 5,
+      latencyMs: 12,
+    });
+    expect(assistant?.providerUsage).not.toHaveProperty('providerKey');
+    expect(assistant?.providerUsage).not.toHaveProperty('modelKey');
+  });
+
+  it('persists providerKey and modelKey on FAILED turns when already known', async () => {
+    const fixture = harness();
+    const begun = await fixture.repository.beginTurn(context, { content: '失败也记' });
+    await fixture.repository.finalizeAssistant(context, begun.turnId, {
+      status: 'FAILED',
+      content: '半段',
+      errorCode: 'AI_PROVIDER_TIMEOUT',
+      providerKey: 'openai',
+      modelKey: 'gpt-4.1',
+    });
+    const assistant = fixture.messages.find((row) => row.id === begun.assistant.id);
+    expect(assistant?.providerKey).toBe('openai');
+    expect(assistant?.modelKey).toBe('gpt-4.1');
+    expect(assistant?.errorCode).toBe('AI_PROVIDER_TIMEOUT');
+  });
+
+  it('rejects deleting a conversation that still has a GENERATING assistant', async () => {
+    const fixture = harness();
+    const begun = await fixture.repository.beginTurn(context, { content: '别删' });
+    await expect(
+      fixture.repository.remove(context, begun.conversationId),
+    ).rejects.toMatchObject({
+      code: 'AI_MEMBER_TURN_IN_PROGRESS',
+      status: 409,
+    });
+    expect(
+      fixture.conversations.find((row) => row.id === begun.conversationId)?.deletedAt,
+    ).toBeNull();
+    await fixture.repository.finalizeAssistant(context, begun.turnId, {
+      status: 'CANCELLED',
+      content: '停',
+    });
+    await expect(
+      fixture.repository.remove(context, begun.conversationId),
+    ).resolves.toBeUndefined();
+    expect(
+      fixture.conversations.find((row) => row.id === begun.conversationId)?.deletedAt,
+    ).toBeInstanceOf(Date);
   });
 
   it('maps invalid conversation cursors to AI_CURSOR_INVALID instead of JSON errors', async () => {
@@ -600,6 +664,25 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     await expect(
       fixture.service.list(context, {
         cursor: Buffer.from('{}', 'utf8').toString('base64url'),
+      }),
+    ).rejects.toMatchObject({ code: 'AI_CURSOR_INVALID', status: 400 });
+    await expect(
+      fixture.service.list(context, {
+        cursor: Buffer.from(
+          JSON.stringify({ lastMessageAt: 'abc', id: context.tenantId }),
+          'utf8',
+        ).toString('base64url'),
+      }),
+    ).rejects.toMatchObject({ code: 'AI_CURSOR_INVALID', status: 400 });
+    await expect(
+      fixture.service.list(context, {
+        cursor: Buffer.from(
+          JSON.stringify({
+            lastMessageAt: '2026-09-18T12:00:00.000Z',
+            id: 'not-a-uuid',
+          }),
+          'utf8',
+        ).toString('base64url'),
       }),
     ).rejects.toMatchObject({ code: 'AI_CURSOR_INVALID', status: 400 });
   });

@@ -43,6 +43,9 @@ export function encodeConversationCursor(input: {
   return Buffer.from(JSON.stringify(input), 'utf8').toString('base64url');
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export function decodeConversationCursor(value: string): {
   lastMessageAt: string;
   id: string;
@@ -53,6 +56,12 @@ export function decodeConversationCursor(value: string): {
       typeof parsed?.lastMessageAt !== 'string' ||
       typeof parsed?.id !== 'string'
     ) {
+      throw new ApiException('AI_CURSOR_INVALID', 400);
+    }
+    if (Number.isNaN(Date.parse(parsed.lastMessageAt))) {
+      throw new ApiException('AI_CURSOR_INVALID', 400);
+    }
+    if (!UUID_RE.test(parsed.id)) {
       throw new ApiException('AI_CURSOR_INVALID', 400);
     }
     return parsed;
@@ -411,18 +420,27 @@ export class ConversationRepository {
 
   remove(context: TenantContext, conversationId: string): Promise<void> {
     return this.runner.withTenant(context, async (tx) => {
-      const result = await tx.aiConversation.updateMany({
+      const conversation = await requireOwnedConversation(
+        tx,
+        context,
+        conversationId,
+      );
+      const generating = await tx.aiMessage.findFirst({
         where: {
-          id: conversationId,
           tenantId: context.tenantId,
-          createdByMemberId: context.memberId,
-          deletedAt: null,
+          conversationId: conversation.id,
+          role: 'ASSISTANT',
+          status: 'GENERATING',
         },
+        select: { id: true },
+      });
+      if (generating) {
+        throw new ApiException('AI_MEMBER_TURN_IN_PROGRESS', 409);
+      }
+      await tx.aiConversation.update({
+        where: { id: conversation.id },
         data: { deletedAt: new Date() },
       });
-      if (result.count !== 1) {
-        throw new ApiException('AI_CONVERSATION_NOT_FOUND', 404);
-      }
     });
   }
 
@@ -573,6 +591,8 @@ export class ConversationRepository {
           status: outcome.status,
           content: outcome.content,
           providerUsage: (outcome.usage ?? {}) as Prisma.InputJsonValue,
+          providerKey: outcome.providerKey ?? assistant.providerKey,
+          modelKey: outcome.modelKey ?? assistant.modelKey,
           errorCode: outcome.errorCode ?? null,
           completedAt: new Date(),
         },

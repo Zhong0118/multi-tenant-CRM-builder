@@ -544,6 +544,16 @@ describe('ConversationService lifecycle', () => {
   it('soft-deletes on remove and hides the conversation from list and messages', async () => {
     const { service, conversations } = createService();
     const begun = await service.beginTurn(context, { content: '删我' });
+    await expect(
+      service.remove(context, begun.conversationId),
+    ).rejects.toMatchObject({
+      code: 'AI_MEMBER_TURN_IN_PROGRESS',
+      status: 409,
+    });
+    await service.finalizeAssistant(context, begun.turnId, {
+      status: 'CANCELLED',
+      content: '停',
+    });
     await service.remove(context, begun.conversationId);
     expect(conversations[0]!.deletedAt).toEqual(expect.any(Date));
     expect((await service.list(context, {})).items).toEqual([]);

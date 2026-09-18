@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import type { AiPublicStreamEvent } from '../../../../../packages/contracts/src/ai/stream';
+import type { AiPublicStreamEvent } from '@crm/contracts';
 
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import {
@@ -121,6 +121,8 @@ export class AiOrchestrator {
         await this.finish(context, begun, latencyMs, {
           status: 'CANCELLED',
           content: buffer,
+          providerKey: this.provider.providerKey,
+          modelKey: this.provider.modelKey,
         });
         yield {
           event: 'turn.cancelled',
@@ -138,6 +140,8 @@ export class AiOrchestrator {
           status: 'FAILED',
           content: buffer,
           errorCode: failedCode,
+          providerKey: this.provider.providerKey,
+          modelKey: this.provider.modelKey,
         });
         yield {
           event: 'turn.failed',
@@ -156,6 +160,8 @@ export class AiOrchestrator {
           status: 'FAILED',
           content: buffer,
           errorCode: code,
+          providerKey: this.provider.providerKey,
+          modelKey: this.provider.modelKey,
         });
         yield {
           event: 'turn.failed',
@@ -174,9 +180,9 @@ export class AiOrchestrator {
         usage: {
           inputTokens,
           outputTokens,
-          providerKey: this.provider.providerKey,
-          modelKey: this.provider.modelKey,
         },
+        providerKey: this.provider.providerKey,
+        modelKey: this.provider.modelKey,
       });
       yield {
         event: 'turn.completed',
@@ -188,6 +194,8 @@ export class AiOrchestrator {
         status: 'FAILED',
         content: buffer,
         errorCode: 'AI_TURN_FAILED',
+        providerKey: this.provider.providerKey,
+        modelKey: this.provider.modelKey,
       });
       yield {
         event: 'turn.failed',
@@ -208,6 +216,8 @@ export class AiOrchestrator {
       status: 'COMPLETED' | 'FAILED' | 'CANCELLED';
       content: string;
       usage?: Record<string, unknown>;
+      providerKey?: string | null;
+      modelKey?: string | null;
       errorCode?: string | null;
     },
   ): Promise<void> {

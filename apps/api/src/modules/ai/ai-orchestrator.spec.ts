@@ -2,7 +2,7 @@ import { AiOrchestrator } from './ai-orchestrator';
 import type { AiProvider, AiProviderEvent } from './ai-provider';
 import type { ConversationService } from './conversation.service';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
-import type { AiPublicStreamEvent } from '../../../../../packages/contracts/src/ai/stream';
+import type { AiPublicStreamEvent } from '@crm/contracts';
 import type { BeginTurnResult } from './ai.types';
 
 const context: TenantContext = {
@@ -153,12 +153,9 @@ describe('AiOrchestrator.streamTurn', () => {
       expect.objectContaining({
         status: 'COMPLETED',
         content: '测试回答',
-        usage: expect.objectContaining({
-          inputTokens: 3,
-          outputTokens: 2,
-          providerKey: 'fake',
-          modelKey: 'fake-model',
-        }),
+        usage: { inputTokens: 3, outputTokens: 2 },
+        providerKey: 'fake',
+        modelKey: 'fake-model',
       }),
     );
     expect(conversations.messages).toHaveBeenCalledWith(context, 'conv-1', {

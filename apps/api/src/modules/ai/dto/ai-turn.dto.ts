@@ -3,6 +3,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -17,5 +18,6 @@ export class StartAiTurnDto {
   @IsString()
   @MinLength(1)
   @MaxLength(2000)
+  @Matches(/\S/)
   content!: string;
 }

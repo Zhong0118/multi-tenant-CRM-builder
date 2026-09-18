@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events';
 
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
-import type { AiPublicStreamEvent } from '../../../../../packages/contracts/src/ai/stream';
+import type { AiPublicStreamEvent } from '@crm/contracts';
 import { AiController } from './ai.controller';
 import { AiOrchestrator } from './ai-orchestrator';
 import { sseFrame } from './ai-stream';

@@ -22,7 +22,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import type { AiPublicStreamEvent } from '../../../../../packages/contracts/src/ai/stream';
+import type { AiPublicStreamEvent } from '@crm/contracts';
 
 import { CurrentTenant } from '../../common/tenancy/tenant-context.decorator';
 import type { TenantContext } from '../../common/tenancy/tenant-context';

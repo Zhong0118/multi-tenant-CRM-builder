@@ -217,6 +217,7 @@ model Tenant {
   defaultAdminDashboard      TenantDashboardConfiguration?  @relation("DefaultAdminDashboard", fields: [id, defaultAdminDashboardId], references: [tenantId, id], onDelete: Restrict)
   defaultEmployeeDashboard   TenantDashboardConfiguration?  @relation("DefaultEmployeeDashboard", fields: [id, defaultEmployeeDashboardId], references: [tenantId, id], onDelete: Restrict)
   aiConversations            AiConversation[]
+  aiMessages                 AiMessage[]
 
   @@map("tenants")
 }
@@ -794,6 +795,7 @@ model AiMessage {
   updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
   completedAt    DateTime?       @map("completed_at") @db.Timestamptz(3)
 
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   conversation AiConversation @relation(fields: [tenantId, conversationId], references: [tenantId, id], onDelete: Restrict)
 
   @@unique([tenantId, conversationId, turnId, role])

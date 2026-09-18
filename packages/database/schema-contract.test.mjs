@@ -229,7 +229,11 @@ test("defines personal AI conversations and messages", async () => {
   );
   assert.match(
     schema,
-    /model\s+AiMessage\s+\{[\s\S]*conversationId[\s\S]*turnId[\s\S]*toolSummary[\s\S]*sourceSummary[\s\S]*@@unique\(\[tenantId,\s*conversationId,\s*turnId,\s*role\]\)/,
+    /model\s+AiMessage\s+\{[\s\S]*conversationId[\s\S]*turnId[\s\S]*toolSummary[\s\S]*sourceSummary[\s\S]*tenant\s+Tenant[\s\S]*@@unique\(\[tenantId,\s*conversationId,\s*turnId,\s*role\]\)/,
+  );
+  assert.match(
+    schema,
+    /model\s+Tenant\s+\{[\s\S]*aiConversations[\s\S]*aiMessages\s+AiMessage\[\]/,
   );
 
   const migration = await readFile(

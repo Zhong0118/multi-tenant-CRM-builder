@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -16,6 +17,7 @@ export class RenameAiConversationDto {
   @IsString()
   @MinLength(1)
   @MaxLength(120)
+  @Matches(/\S/)
   title!: string;
 }
 
