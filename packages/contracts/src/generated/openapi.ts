@@ -548,6 +548,86 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/ai/conversations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AiController_listConversations"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/ai/conversations/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations["AiController_removeConversation"];
+    options?: never;
+    head?: never;
+    patch: operations["AiController_renameConversation"];
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/ai/conversations/{id}/messages": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AiController_listMessages"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/ai/turns": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AiController_startTurn"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/ai/turns/{turnId}/retry": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AiController_retryTurn"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/audit": {
     parameters: {
       query?: never;
@@ -1371,6 +1451,33 @@ export interface components {
     AcceptedResponseDto: {
       /** @example true */
       accepted: boolean;
+    };
+    AiConversationPageDto: {
+      items: components["schemas"]["AiConversationResponseDto"][];
+      nextCursor?: string;
+    };
+    AiConversationResponseDto: {
+      id: string;
+      lastMessageAt: string;
+      latestUserPreview?: string | null;
+      title: string;
+    };
+    AiMessagePageDto: {
+      items: components["schemas"]["AiMessageResponseDto"][];
+      nextBefore?: string;
+    };
+    AiMessageResponseDto: {
+      completedAt?: string | null;
+      content: string;
+      conversationId: string;
+      createdAt: string;
+      errorCode?: string | null;
+      id: string;
+      role: string;
+      sourceSummary: Record<string, never>;
+      status: string;
+      toolSummary: Record<string, never>;
+      turnId: string;
     };
     ApiErrorResponseDto: {
       code: string;
@@ -2560,6 +2667,9 @@ export interface components {
     RelationResultDto: {
       success: boolean;
     };
+    RenameAiConversationDto: {
+      title: string;
+    };
     ResetPasswordDto: {
       /** @example 123456 */
       code: string;
@@ -2699,6 +2809,11 @@ export interface components {
       lastUsedAt?: string;
       /** Format: date-time */
       revokedAt?: string;
+    };
+    StartAiTurnDto: {
+      content: string;
+      /** Format: uuid */
+      conversationId?: string;
     };
     TemplateApplicationObjectResponseDto: {
       code: string;
@@ -3954,6 +4069,146 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["WorkspaceSummaryResponseDto"];
         };
+      };
+    };
+  };
+  AiController_listConversations: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AiConversationPageDto"];
+        };
+      };
+    };
+  };
+  AiController_removeConversation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AiController_renameConversation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RenameAiConversationDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AiConversationResponseDto"];
+        };
+      };
+    };
+  };
+  AiController_listMessages: {
+    parameters: {
+      query?: {
+        before?: string;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        id: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AiMessagePageDto"];
+        };
+      };
+    };
+  };
+  AiController_startTurn: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["StartAiTurnDto"];
+      };
+    };
+    responses: {
+      /** @description AI turn SSE stream */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AiController_retryTurn: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+        turnId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description AI turn retry SSE stream */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };

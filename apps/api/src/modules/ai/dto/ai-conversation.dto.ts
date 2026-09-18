@@ -53,7 +53,8 @@ export class AiConversationResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() title!: string;
   @ApiProperty() lastMessageAt!: string;
-  @ApiPropertyOptional({ nullable: true }) latestUserPreview!: string | null;
+  @ApiPropertyOptional({ nullable: true, type: String })
+  latestUserPreview!: string | null;
 }
 
 export class AiMessageResponseDto {
@@ -65,7 +66,23 @@ export class AiMessageResponseDto {
   @ApiProperty() content!: string;
   @ApiProperty() toolSummary!: unknown;
   @ApiProperty() sourceSummary!: unknown;
-  @ApiPropertyOptional({ nullable: true }) errorCode!: string | null;
+  @ApiPropertyOptional({ nullable: true, type: String }) errorCode!:
+    | string
+    | null;
   @ApiProperty() createdAt!: string;
-  @ApiPropertyOptional({ nullable: true }) completedAt!: string | null;
+  @ApiPropertyOptional({ nullable: true, type: String }) completedAt!:
+    | string
+    | null;
+}
+
+export class AiConversationPageDto {
+  @ApiProperty({ type: AiConversationResponseDto, isArray: true })
+  items!: AiConversationResponseDto[];
+  @ApiPropertyOptional() nextCursor?: string;
+}
+
+export class AiMessagePageDto {
+  @ApiProperty({ type: AiMessageResponseDto, isArray: true })
+  items!: AiMessageResponseDto[];
+  @ApiPropertyOptional() nextBefore?: string;
 }
