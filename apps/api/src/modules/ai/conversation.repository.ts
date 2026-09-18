@@ -420,6 +420,7 @@ export class ConversationRepository {
 
   remove(context: TenantContext, conversationId: string): Promise<void> {
     return this.runner.withTenant(context, async (tx) => {
+      await lockActiveMember(tx, context);
       const conversation = await requireOwnedConversation(
         tx,
         context,

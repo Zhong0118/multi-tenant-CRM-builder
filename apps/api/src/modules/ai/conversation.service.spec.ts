@@ -579,7 +579,7 @@ describe('ConversationService lifecycle', () => {
     ).rejects.toMatchObject({ code: 'AI_CONVERSATION_NOT_FOUND' });
     await expect(
       service.remove(otherMember, begun.conversationId),
-    ).rejects.toMatchObject({ code: 'AI_CONVERSATION_NOT_FOUND' });
+    ).rejects.toMatchObject({ code: 'WORKSPACE_FORBIDDEN', status: 403 });
     expect((await service.list(otherMember, {})).items).toEqual([]);
   });
 

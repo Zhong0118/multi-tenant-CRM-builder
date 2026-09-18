@@ -632,12 +632,15 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
   it('rejects deleting a conversation that still has a GENERATING assistant', async () => {
     const fixture = harness();
     const begun = await fixture.repository.beginTurn(context, { content: '别删' });
+    fixture.sqlCalls.length = 0;
     await expect(
       fixture.repository.remove(context, begun.conversationId),
     ).rejects.toMatchObject({
       code: 'AI_MEMBER_TURN_IN_PROGRESS',
       status: 409,
     });
+    expect(fixture.sqlCalls[0]).toContain('FROM tenant_members');
+    expect(fixture.sqlCalls[0]).toContain('FOR UPDATE');
     expect(
       fixture.conversations.find((row) => row.id === begun.conversationId)?.deletedAt,
     ).toBeNull();

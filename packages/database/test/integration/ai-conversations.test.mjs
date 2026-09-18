@@ -232,6 +232,154 @@ test("denies runtime DELETE on AI conversations and messages", async () => {
   assert.equal(stillThere.id, fixture.conversationA.id);
 });
 
+test("member row lock serializes delete and beginTurn so deleted+GENERATING cannot coexist", async () => {
+  const fixture = await createAiFixture();
+  const conversationId = fixture.conversationA.id;
+  const memberId = fixture.memberA.id;
+  const tenantId = fixture.tenantA.id;
+  const userId = fixture.userA.id;
+
+  const lockMember = (tx) =>
+    tx.$queryRawUnsafe(
+      `SELECT id FROM tenant_members
+       WHERE tenant_id = $1::uuid AND id = $2::uuid AND user_id = $3::uuid AND status = 'ACTIVE'
+       FOR UPDATE`,
+      tenantId,
+      memberId,
+      userId,
+    );
+
+  const beginTurnAfterLock = async (tx) => {
+    const generating = await tx.aiMessage.findFirst({
+      where: {
+        tenantId,
+        conversationId,
+        role: "ASSISTANT",
+        status: "GENERATING",
+      },
+      select: { id: true },
+    });
+    if (generating) {
+      throw new Error("AI_MEMBER_TURN_IN_PROGRESS");
+    }
+    const conversation = await tx.aiConversation.findFirst({
+      where: { id: conversationId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!conversation) {
+      throw new Error("AI_CONVERSATION_NOT_FOUND");
+    }
+    const turnId = randomUUID();
+    await tx.aiMessage.create({
+      data: {
+        tenantId,
+        conversationId,
+        turnId,
+        role: "USER",
+        status: "COMPLETED",
+        content: "concurrent begin",
+      },
+    });
+    await tx.aiMessage.create({
+      data: {
+        tenantId,
+        conversationId,
+        turnId,
+        role: "ASSISTANT",
+        status: "GENERATING",
+        content: "",
+      },
+    });
+  };
+
+  const removeAfterLock = async (tx) => {
+    const generating = await tx.aiMessage.findFirst({
+      where: {
+        tenantId,
+        conversationId,
+        role: "ASSISTANT",
+        status: "GENERATING",
+      },
+      select: { id: true },
+    });
+    if (generating) {
+      throw new Error("AI_MEMBER_TURN_IN_PROGRESS");
+    }
+    const conversation = await tx.aiConversation.findFirst({
+      where: { id: conversationId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!conversation) {
+      throw new Error("AI_CONVERSATION_NOT_FOUND");
+    }
+    await tx.aiConversation.update({
+      where: { id: conversationId },
+      data: { deletedAt: new Date() },
+    });
+  };
+
+  const runBothOrders = async (first, second) => {
+    await admin.aiConversation.update({
+      where: { id: conversationId },
+      data: { deletedAt: null },
+    });
+    await admin.aiMessage.deleteMany({
+      where: { conversationId, content: "concurrent begin" },
+    });
+    await admin.aiMessage.deleteMany({
+      where: { conversationId, role: "ASSISTANT", status: "GENERATING" },
+    });
+
+    let releaseHold;
+    const hold = new Promise((resolve) => {
+      releaseHold = resolve;
+    });
+    let locked;
+    const lockedGate = new Promise((resolve) => {
+      locked = resolve;
+    });
+
+    const firstTx = withSettings(
+      runtime,
+      { userId, tenantId },
+      async (tx) => {
+        await lockMember(tx);
+        locked();
+        await hold;
+        await first(tx);
+      },
+    );
+    await lockedGate;
+    const secondTx = withSettings(
+      runtime,
+      { userId, tenantId },
+      async (tx) => {
+        await lockMember(tx);
+        await second(tx);
+      },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    releaseHold();
+    const settled = await Promise.allSettled([firstTx, secondTx]);
+    const conversation = await admin.aiConversation.findUnique({
+      where: { id: conversationId },
+      select: { deletedAt: true },
+    });
+    const generating = await admin.aiMessage.findMany({
+      where: { conversationId, role: "ASSISTANT", status: "GENERATING" },
+      select: { id: true },
+    });
+    assert.equal(
+      Boolean(conversation.deletedAt) && generating.length > 0,
+      false,
+      `deleted+GENERATING coexisted; outcomes=${JSON.stringify(settled.map((item) => item.status))}`,
+    );
+  };
+
+  await runBothOrders(removeAfterLock, beginTurnAfterLock);
+  await runBothOrders(beginTurnAfterLock, removeAfterLock);
+});
+
 async function createAiFixture() {
   const [userA, userA2, userB] = await Promise.all([
     createUser("+8613800002101", "AI User A"),
