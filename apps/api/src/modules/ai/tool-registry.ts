@@ -5,6 +5,7 @@ import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { PublishedObjectService } from '../objects/published-object.service';
 import { RecordsService } from '../records/records.service';
 import type { AiProviderTool } from './ai-provider';
+import { createAggregateRecordsTool } from './tools/aggregate-records.tool';
 import { createDescribeObjectTool } from './tools/describe-object.tool';
 import { createGetRecordTool } from './tools/get-record.tool';
 import { createListActivitiesTool } from './tools/list-activities.tool';
@@ -56,7 +57,7 @@ export class AiToolRegistry {
       createDescribeObjectTool(this.publishedObjects, context),
       createSearchRecordsTool(this.records, context),
       createGetRecordTool(this.records, context),
-      unimplementedTool('aggregate_records'),
+      createAggregateRecordsTool(this.records, context),
       createListActivitiesTool(this.records, context),
       unimplementedTool('list_followups'),
     ];
@@ -70,6 +71,7 @@ function unimplementedTool(
     | 'describe_object'
     | 'search_records'
     | 'get_record'
+    | 'aggregate_records'
     | 'list_activities'
   >,
 ): AiProviderTool {

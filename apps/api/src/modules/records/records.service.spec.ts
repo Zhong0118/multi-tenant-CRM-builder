@@ -12,6 +12,7 @@ import type { MemberActivityType, RecordActivity } from './record-activity';
 import type {
   ApplySourceRecordPatchStoreInput,
   DynamicRecord,
+  RecordAggregateQuery,
   RecordListQuery,
   RecordsRepository,
   RecordsStore,
@@ -302,6 +303,80 @@ class MemoryRecordsStore implements RecordsStore {
         ),
       ),
       total: filtered.length,
+    });
+  }
+
+  lastAggregateQuery?: RecordAggregateQuery;
+
+  aggregateRecords(query: RecordAggregateQuery) {
+    this.lastAggregateQuery = structuredClone(query);
+    const filtered = this.records.filter(
+      (record) =>
+        record.objectId === query.objectId &&
+        record.deletedAt === null &&
+        (!query.ownerMemberId || record.ownerMemberId === query.ownerMemberId) &&
+        query.filters.every((filter) => matchesListFilter(record, filter)),
+    );
+    const numericOf = (record: DynamicRecord): number | null => {
+      if (!query.valueFieldKey) return null;
+      const raw = record.values[query.valueFieldKey];
+      const numeric =
+        typeof raw === 'number'
+          ? raw
+          : typeof raw === 'string'
+            ? Number(raw)
+            : Number.NaN;
+      return Number.isFinite(numeric) ? numeric : null;
+    };
+    const numbers = filtered
+      .map(numericOf)
+      .filter((value): value is number => value !== null);
+    const totalValue =
+      query.aggregation === 'COUNT'
+        ? filtered.length
+        : query.aggregation === 'SUM'
+          ? numbers.reduce((sum, value) => sum + value, 0)
+          : numbers.length === 0
+            ? 0
+            : numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
+    const buckets = new Map<
+      string | null,
+      { value: number; count: number; numbers: number[] }
+    >();
+    if (query.groupByFieldKey) {
+      for (const record of filtered) {
+        const raw = record.values[query.groupByFieldKey];
+        const key =
+          raw === null || raw === undefined ? null : String(raw);
+        const current = buckets.get(key) ?? { value: 0, count: 0, numbers: [] };
+        current.count += 1;
+        const numeric = numericOf(record);
+        if (numeric !== null) current.numbers.push(numeric);
+        buckets.set(key, current);
+      }
+    }
+    const groups = [...buckets.entries()]
+      .map(([key, bucket]) => {
+        const value =
+          query.aggregation === 'COUNT'
+            ? bucket.count
+            : query.aggregation === 'SUM'
+              ? bucket.numbers.reduce((sum, item) => sum + item, 0)
+              : bucket.numbers.length === 0
+                ? 0
+                : bucket.numbers.reduce((sum, item) => sum + item, 0) /
+                  bucket.numbers.length;
+        return { key, value: String(value), count: bucket.count };
+      })
+      .sort(
+        (left, right) =>
+          right.count - left.count ||
+          String(left.key ?? '').localeCompare(String(right.key ?? '')),
+      )
+      .slice(0, Math.min(query.limit, 20));
+    return Promise.resolve({
+      value: String(totalValue),
+      groups,
     });
   }
 
@@ -1674,5 +1749,171 @@ describe('RecordsService', () => {
         meta,
       ),
     ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
+  });
+
+  it('counts visible records without a value field', async () => {
+    const { service } = fixture();
+    await create(service, admin, '自己的线索', employee.memberId);
+    await create(service, admin, '别人的线索', otherMemberId);
+
+    await expect(
+      service.aggregate(employee, 'leads', {
+        aggregation: 'COUNT',
+        limit: 20,
+      }),
+    ).resolves.toMatchObject({ value: '1', groups: [] });
+  });
+
+  it('requires a visible NUMBER or MONEY field for SUM and AVG', async () => {
+    const { service } = fixture();
+
+    await expect(
+      service.aggregate(employee, 'leads', {
+        aggregation: 'SUM',
+        limit: 20,
+      }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    await expect(
+      service.aggregate(employee, 'leads', {
+        aggregation: 'AVG',
+        valueFieldKey: 'name',
+        limit: 20,
+      }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    await expect(
+      service.aggregate(employee, 'leads', {
+        aggregation: 'SUM',
+        valueFieldKey: 'secret',
+        limit: 20,
+      }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
+
+  it('accepts only visible SINGLE_SELECT, MEMBER, or BOOLEAN groupBy fields', async () => {
+    const { service } = fixture();
+
+    await expect(
+      service.aggregate(employee, 'leads', {
+        aggregation: 'COUNT',
+        groupByFieldKey: 'name',
+        limit: 20,
+      }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    await expect(
+      service.aggregate(employee, 'leads', {
+        aggregation: 'COUNT',
+        groupByFieldKey: 'secret',
+        limit: 20,
+      }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
+
+  it('fails hidden groupBy and value fields with a generic aggregate-validation error', async () => {
+    const { service } = fixture();
+
+    await expect(
+      service.aggregate(employee, 'leads', {
+        aggregation: 'SUM',
+        valueFieldKey: 'secret',
+        groupByFieldKey: 'secret',
+        limit: 20,
+      }),
+    ).rejects.toMatchObject({
+      code: 'VALIDATION_FAILED',
+      message: '提交内容有误，请检查后重试。',
+    });
+  });
+
+  it('injects the actor member id for OWN aggregate and fails NONE closed', async () => {
+    const { service, store, publishedRepository } = fixture();
+    await create(service, admin, '自己的线索', employee.memberId, {
+      quote: '10.50',
+    });
+    await create(service, admin, '别人的线索', otherMemberId, {
+      quote: '99.00',
+    });
+
+    await expect(
+      service.aggregate(employee, 'leads', {
+        aggregation: 'SUM',
+        valueFieldKey: 'quote',
+        limit: 20,
+      }),
+    ).resolves.toMatchObject({ value: '10.5' });
+    expect(store.lastAggregateQuery?.ownerMemberId).toBe(employee.memberId);
+
+    const configuration = publishedRepository.record
+      .configuration as PublishedObjectSchema;
+    configuration.employeeAccess.readScope = 'NONE';
+    configuration.employeeAccess.canRead = false;
+    await expect(
+      service.aggregate(employee, 'leads', {
+        aggregation: 'COUNT',
+        limit: 20,
+      }),
+    ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
+  });
+
+  it('caps grouped aggregate results at 20', async () => {
+    const { service } = fixture();
+
+    await expect(
+      service.aggregate(employee, 'leads', {
+        aggregation: 'COUNT',
+        groupByFieldKey: 'lead_status',
+        limit: 21,
+      }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
+
+  it('projects group labels for select, member, boolean, and empty values', async () => {
+    const { service } = fixture();
+    await create(service, admin, '待联系', employee.memberId, {
+      lead_status: 'new',
+      assignee: employee.memberId,
+      is_vip: true,
+    });
+    await create(service, admin, '未填写', employee.memberId, {
+      lead_status: null,
+      assignee: null,
+      is_vip: false,
+    });
+
+    await expect(
+      service.aggregate(employee, 'leads', {
+        aggregation: 'COUNT',
+        groupByFieldKey: 'lead_status',
+        limit: 20,
+      }),
+    ).resolves.toMatchObject({
+      groups: expect.arrayContaining([
+        expect.objectContaining({ key: '待联系', count: 1 }),
+        expect.objectContaining({ key: '未填写', count: 1 }),
+      ]),
+    });
+    await expect(
+      service.aggregate(employee, 'leads', {
+        aggregation: 'COUNT',
+        groupByFieldKey: 'assignee',
+        limit: 20,
+      }),
+    ).resolves.toMatchObject({
+      groups: expect.arrayContaining([
+        expect.objectContaining({ key: '员工', count: 1 }),
+        expect.objectContaining({ key: '未填写', count: 1 }),
+      ]),
+    });
+    await expect(
+      service.aggregate(employee, 'leads', {
+        aggregation: 'COUNT',
+        groupByFieldKey: 'is_vip',
+        limit: 20,
+      }),
+    ).resolves.toMatchObject({
+      groups: expect.arrayContaining([
+        expect.objectContaining({ key: 'true', count: 1 }),
+        expect.objectContaining({ key: 'false', count: 1 }),
+      ]),
+    });
   });
 });

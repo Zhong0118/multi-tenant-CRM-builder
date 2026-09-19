@@ -25,6 +25,7 @@ import {
 } from './record-export';
 import type {
   DynamicRecord,
+  RecordAggregateResult,
   RecordListFieldSort,
   RecordListFilter,
   RecordListQuery,
@@ -55,6 +56,14 @@ export interface RecordPageResponse {
   page: number;
   limit: number;
   total: number;
+}
+
+export interface RecordAggregateInput {
+  filters?: Record<string, unknown>;
+  aggregation: 'COUNT' | 'SUM' | 'AVG';
+  valueFieldKey?: string;
+  groupByFieldKey?: string;
+  limit: number;
 }
 
 export interface RecordActivityResponse {
@@ -172,6 +181,58 @@ export class RecordsService {
         page,
         limit,
         total: result.total,
+      };
+    });
+  }
+
+  async aggregate(
+    context: TenantContext,
+    objectCode: string,
+    input: RecordAggregateInput,
+  ): Promise<RecordAggregateResult> {
+    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+      context,
+      objectCode,
+    );
+    if (
+      !Number.isInteger(input.limit) ||
+      input.limit < 1 ||
+      input.limit > 20
+    ) {
+      throw invalidAggregate();
+    }
+    const valueFieldKey = resolveAggregateValueField(
+      resolved,
+      input.aggregation,
+      input.valueFieldKey,
+    );
+    const groupByField = resolveAggregateGroupField(
+      resolved,
+      input.groupByFieldKey,
+    );
+    return this.repository.withTenant(context, async (store) => {
+      const ownerMemberId = await resolveListOwner(
+        context,
+        resolved,
+        store,
+        undefined,
+      );
+      const result = await store.aggregateRecords({
+        objectId: resolved.schema.object.id,
+        ownerMemberId,
+        filters: parseListFilters(
+          input.filters ? JSON.stringify(input.filters) : undefined,
+          resolved,
+          this.clock(),
+        ),
+        aggregation: input.aggregation,
+        valueFieldKey,
+        groupByFieldKey: groupByField?.fieldKey,
+        limit: input.limit,
+      });
+      return {
+        value: result.value,
+        groups: await projectAggregateGroups(store, groupByField, result.groups),
       };
     });
   }
@@ -1003,6 +1064,89 @@ function invalidRecordFilter(): ApiException {
   return new ApiException('RECORD_FILTER_INVALID', 400, {
     fieldErrors: { filters: ['请选择当前业务表中可见的选项。'] },
   });
+}
+
+function invalidAggregate(): ApiException {
+  return new ApiException('VALIDATION_FAILED', 400);
+}
+
+const AGGREGATE_VALUE_TYPES = new Set(['NUMBER', 'MONEY']);
+const AGGREGATE_GROUP_TYPES = new Set(['SINGLE_SELECT', 'MEMBER', 'BOOLEAN']);
+
+function visibleAggregateField(
+  resolved: ResolvedObjectSchema,
+  fieldKey: string | undefined,
+) {
+  if (!fieldKey) return undefined;
+  return resolved.visibleSchema.fields.find(
+    (field) => field.fieldKey === fieldKey,
+  );
+}
+
+function resolveAggregateValueField(
+  resolved: ResolvedObjectSchema,
+  aggregation: RecordAggregateInput['aggregation'],
+  fieldKey: string | undefined,
+): string | undefined {
+  if (aggregation === 'COUNT') return undefined;
+  const field = visibleAggregateField(resolved, fieldKey);
+  if (!field || !AGGREGATE_VALUE_TYPES.has(field.type)) {
+    throw invalidAggregate();
+  }
+  return field.fieldKey;
+}
+
+function resolveAggregateGroupField(
+  resolved: ResolvedObjectSchema,
+  fieldKey: string | undefined,
+) {
+  if (!fieldKey) return undefined;
+  const field = visibleAggregateField(resolved, fieldKey);
+  if (!field || !AGGREGATE_GROUP_TYPES.has(field.type)) {
+    throw invalidAggregate();
+  }
+  return field;
+}
+
+async function projectAggregateGroups(
+  store: RecordsStore,
+  field:
+    | NonNullable<ReturnType<typeof resolveAggregateGroupField>>
+    | undefined,
+  groups: RecordAggregateResult['groups'],
+): Promise<RecordAggregateResult['groups']> {
+  if (!field) return groups;
+  if (field.type === 'BOOLEAN') {
+    return groups.map((group) => ({
+      ...group,
+      key: group.key === null ? '未填写' : group.key,
+    }));
+  }
+  if (field.type === 'MEMBER') {
+    const names = await store.listMemberNames(
+      groups.flatMap((group) => (group.key ? [group.key] : [])),
+    );
+    return groups.map((group) => ({
+      ...group,
+      key: group.key ? (names.get(group.key) ?? '未填写') : '未填写',
+    }));
+  }
+  const labels = new Map(
+    Array.isArray(field.config.options)
+      ? field.config.options.flatMap((option) => {
+          if (!isPlainObject(option) || typeof option.key !== 'string') {
+            return [];
+          }
+          const label =
+            typeof option.label === 'string' ? option.label : option.key;
+          return [[option.key, label] as const];
+        })
+      : [],
+  );
+  return groups.map((group) => ({
+    ...group,
+    key: group.key === null ? '未填写' : (labels.get(group.key) ?? group.key),
+  }));
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

@@ -99,6 +99,26 @@ export interface RecordListQuery {
   direction: 'asc' | 'desc';
 }
 
+export type RecordReadPredicate = Pick<
+  RecordListQuery,
+  'objectId' | 'ownerMemberId' | 'filters' | 'search' | 'searchFieldKeys'
+>;
+
+export interface RecordAggregateQuery {
+  objectId: string;
+  ownerMemberId?: string;
+  filters: RecordListFilter[];
+  aggregation: 'COUNT' | 'SUM' | 'AVG';
+  valueFieldKey?: string;
+  groupByFieldKey?: string;
+  limit: number;
+}
+
+export interface RecordAggregateResult {
+  value: string;
+  groups: Array<{ key: string | null; value: string; count: number }>;
+}
+
 /**
  * §14 / §19: the accumulated Source Record changes a Transition applies once.
  * It is data, not a write: `prepareSourceRecordPatch` returns one without
@@ -153,6 +173,7 @@ export interface RecordsStore {
     items: DynamicRecord[];
     total: number;
   }>;
+  aggregateRecords(query: RecordAggregateQuery): Promise<RecordAggregateResult>;
   findRecord(objectId: string, recordId: string): Promise<DynamicRecord | null>;
   /**
    * §23 step 7 / §36: locks the Source Record row (`FOR UPDATE`) for the rest
@@ -467,6 +488,45 @@ class PrismaRecordsStore implements RecordsStore {
       }),
       total,
     };
+  }
+
+  async aggregateRecords(
+    query: RecordAggregateQuery,
+  ): Promise<RecordAggregateResult> {
+    const limit = Math.min(20, Math.max(1, Math.trunc(query.limit)));
+    const predicate: RecordReadPredicate = {
+      objectId: query.objectId,
+      ownerMemberId: query.ownerMemberId,
+      filters: query.filters,
+      searchFieldKeys: [],
+    };
+    const filterSql = listWhereSql(this.context.tenantId, predicate, true);
+    const valueSql = aggregateValueSql(query);
+    const totals = await this.transaction.$queryRaw<Array<{ value: string }>>(
+      Prisma.sql`
+        SELECT ${valueSql} AS value
+        FROM records r
+        WHERE ${filterSql}
+      `,
+    );
+    const value = totals[0]?.value ?? '0';
+    if (!query.groupByFieldKey) {
+      return { value, groups: [] };
+    }
+    const groups = await this.transaction.$queryRaw<
+      Array<{ key: string | null; value: string; count: number }>
+    >(Prisma.sql`
+      SELECT
+        r.data ->> ${query.groupByFieldKey} AS key,
+        ${valueSql} AS value,
+        COUNT(*)::int AS count
+      FROM records r
+      WHERE ${filterSql}
+      GROUP BY 1
+      ORDER BY count DESC, key ASC
+      LIMIT ${limit}
+    `);
+    return { value, groups };
   }
 
   async findRecord(
@@ -928,9 +988,23 @@ function numericRangeCondition(
   } as Prisma.RecordWhereInput;
 }
 
+function aggregateValueSql(query: RecordAggregateQuery): Prisma.Sql {
+  if (query.aggregation === 'COUNT') return Prisma.sql`COUNT(*)::text`;
+  const numeric = Prisma.sql`
+    CASE
+      WHEN r.data ->> ${query.valueFieldKey} ~ '^-?[0-9]+([.][0-9]+)?$'
+      THEN (r.data ->> ${query.valueFieldKey})::numeric
+      ELSE NULL
+    END
+  `;
+  return query.aggregation === 'AVG'
+    ? Prisma.sql`COALESCE(AVG(${numeric}), 0)::text`
+    : Prisma.sql`COALESCE(SUM(${numeric}), 0)::text`;
+}
+
 function listWhereSql(
   tenantId: string,
-  query: RecordListQuery,
+  query: RecordReadPredicate,
   qualified: boolean,
 ): Prisma.Sql {
   const parts: Prisma.Sql[] = [

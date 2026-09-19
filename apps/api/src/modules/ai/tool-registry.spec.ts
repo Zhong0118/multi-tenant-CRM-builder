@@ -79,7 +79,7 @@ describe('AiToolRegistry', () => {
   });
 
   it('throws DATA_UNAVAILABLE from unimplemented tools', async () => {
-    const unimplemented = ['aggregate_records', 'list_followups'];
+    const unimplemented = ['list_followups'];
     const tools = registry().forActor(context, {});
     for (const name of unimplemented) {
       const tool = tools.find((entry) => entry.name === name);
