@@ -5,6 +5,7 @@ import type { App } from 'supertest/types';
 
 import { createApp } from '../../src/bootstrap';
 import { hashSessionToken } from '../../src/modules/auth/session.service';
+import { resetFakeAiProviderCapture } from '../../src/modules/ai/providers/fake-ai.provider';
 
 const origin = 'http://localhost:3000';
 
@@ -37,6 +38,7 @@ export interface CriticalFixture {
   admin: CriticalActor;
   employee: CriticalActor;
   otherEmployee: CriticalActor;
+  tenantBAdmin: CriticalActor;
   object: { id: string; code: string };
   ownedRecord: { id: string; version: number };
   otherRecord: { id: string; version: number };
@@ -50,6 +52,10 @@ export async function createCriticalHarness(): Promise<CriticalHarness> {
   process.env.NODE_ENV = 'test';
   process.env.DEV_VERIFICATION_CODE = '123456';
   process.env.WEB_ORIGIN = origin;
+  process.env.AI_PROVIDER = 'fake';
+  process.env.AI_MODEL = 'fake-critical';
+  process.env.AI_API_KEY = '';
+  process.env.AI_TIMEOUT_MS = '45000';
   process.env.DATABASE_URL = requiredEnvironment('TEST_DATABASE_URL');
   const { createDatabaseClient } = await import('@crm/database');
   const adminDatabase = createDatabaseClient(
@@ -66,6 +72,7 @@ export async function provisionCriticalFixture(
   harness: CriticalHarness,
 ): Promise<CriticalFixture> {
   await cleanupCriticalData(harness.adminDatabase);
+  resetFakeAiProviderCapture();
   const database = harness.adminDatabase;
   const now = new Date('2026-09-17T00:00:00.000Z');
 
@@ -156,6 +163,7 @@ export async function provisionCriticalFixture(
     admin: 'critical-admin-token',
     employee: 'critical-employee-token',
     other: 'critical-other-token',
+    tenantB: 'critical-tenant-b-token',
   };
   // Fixture metadata can use a frozen 2026-09-17 `now`, but session expiry is
   // compared to wall-clock time at request. A near-future date would make the
@@ -166,6 +174,7 @@ export async function provisionCriticalFixture(
       { userId: adminUser.id, token: tokens.admin },
       { userId: employeeUser.id, token: tokens.employee },
       { userId: otherUser.id, token: tokens.other },
+      { userId: tenantBUser.id, token: tokens.tenantB },
     ].map(({ userId, token }) =>
       database.session.create({
         data: {
@@ -192,6 +201,11 @@ export async function provisionCriticalFixture(
     userId: otherUser.id,
     memberId: otherMember.id,
     cookie: `crm_session=${tokens.other}`,
+  };
+  const tenantBAdmin: CriticalActor = {
+    userId: tenantBUser.id,
+    memberId: tenantBMember.id,
+    cookie: `crm_session=${tokens.tenantB}`,
   };
 
   const leadWorkflow = {
@@ -417,6 +431,7 @@ export async function provisionCriticalFixture(
     admin,
     employee,
     otherEmployee,
+    tenantBAdmin,
     object: { id: leadObject.id, code: 'leads' },
     ownedRecord,
     otherRecord,
@@ -452,6 +467,12 @@ async function cleanupCriticalData(database: PrismaClient): Promise<void> {
   const userIds = users.map(({ id }) => id);
 
   if (tenantIds.length > 0) {
+    await database.aiMessage.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await database.aiConversation.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
     await database.auditLog.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });
