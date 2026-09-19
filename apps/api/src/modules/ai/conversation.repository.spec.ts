@@ -512,7 +512,7 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     });
   });
 
-  it('rate-limits the 21st new USER turn in five minutes and ignores retry', async () => {
+  it('rate-limits the 21st new USER turn in five minutes', async () => {
     const now = new Date('2026-09-18T12:00:00.000Z');
     jest.useFakeTimers({ now });
     const fixture = harness();
@@ -528,14 +528,69 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     await expect(
       fixture.repository.beginTurn(context, { content: '第21问' }),
     ).rejects.toMatchObject({ code: 'AI_RATE_LIMITED', status: 429 });
-
-    const failed = fixture.messages.find(
-      (row) => row.role === 'ASSISTANT' && row.status === 'FAILED',
-    );
-    expect(failed).toBeDefined();
-    const retried = await fixture.repository.retryTurn(context, failed!.turnId);
-    expect(retried.assistant.status).toBe('GENERATING');
     expect(fixture.messages.filter((row) => row.role === 'USER')).toHaveLength(20);
+  });
+
+  it('counts extra retry attempts toward the same 20-per-5-minutes member budget', async () => {
+    const now = new Date('2026-09-18T12:00:00.000Z');
+    jest.useFakeTimers({ now });
+    const fixture = harness();
+    for (let index = 0; index < 19; index += 1) {
+      const begun = await fixture.repository.beginTurn(context, {
+        content: `问题${index}`,
+      });
+      await fixture.repository.finalizeAssistant(context, begun.turnId, {
+        status: 'FAILED',
+        content: '',
+      });
+    }
+    const last = await fixture.repository.beginTurn(context, { content: '第20问' });
+    await fixture.repository.finalizeAssistant(context, last.turnId, {
+      status: 'FAILED',
+      content: '',
+    });
+    expect(
+      (last.assistant.providerUsage as { providerAttempts?: number }).providerAttempts,
+    ).toBe(1);
+
+    await expect(
+      fixture.repository.retryTurn(context, last.turnId),
+    ).rejects.toMatchObject({ code: 'AI_RATE_LIMITED', status: 429 });
+
+    const nineteenth = fixture.messages.find(
+      (row) => row.role === 'USER' && row.content === '问题0',
+    );
+    expect(nineteenth).toBeDefined();
+  });
+
+  it('allows a retry when USER+extra attempts are still under 20, then blocks the next begin', async () => {
+    const now = new Date('2026-09-18T12:00:00.000Z');
+    jest.useFakeTimers({ now });
+    const fixture = harness();
+    const turns: string[] = [];
+    for (let index = 0; index < 19; index += 1) {
+      const begun = await fixture.repository.beginTurn(context, {
+        content: `问题${index}`,
+      });
+      await fixture.repository.finalizeAssistant(context, begun.turnId, {
+        status: 'FAILED',
+        content: '',
+      });
+      turns.push(begun.turnId);
+    }
+    const retried = await fixture.repository.retryTurn(context, turns[0]!);
+    expect(retried.assistant.status).toBe('GENERATING');
+    expect(
+      (retried.assistant.providerUsage as { providerAttempts: number }).providerAttempts,
+    ).toBe(2);
+    await fixture.repository.finalizeAssistant(context, retried.turnId, {
+      status: 'COMPLETED',
+      content: '重试完成',
+    });
+
+    await expect(
+      fixture.repository.beginTurn(context, { content: '第20问应被拦住' }),
+    ).rejects.toMatchObject({ code: 'AI_RATE_LIMITED', status: 429 });
   });
 
   it('retry resets the existing assistant and does not duplicate the USER row', async () => {
@@ -555,7 +610,7 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     expect(retried.assistant.content).toBe('');
     expect(retried.assistant.toolSummary).toEqual([]);
     expect(retried.assistant.sourceSummary).toEqual([]);
-    expect(retried.assistant.providerUsage).toEqual({});
+    expect(retried.assistant.providerUsage).toEqual({ providerAttempts: 2 });
     expect(retried.assistant.errorCode).toBeNull();
     expect(retried.assistant.completedAt).toBeNull();
     expect(fixture.messages.filter((row) => row.role === 'USER')).toHaveLength(before);
@@ -608,6 +663,7 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
       inputTokens: 3,
       outputTokens: 5,
       latencyMs: 12,
+      providerAttempts: 1,
     });
     expect(assistant?.providerUsage).not.toHaveProperty('providerKey');
     expect(assistant?.providerUsage).not.toHaveProperty('modelKey');

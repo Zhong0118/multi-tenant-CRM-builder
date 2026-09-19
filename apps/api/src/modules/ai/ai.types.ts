@@ -28,6 +28,8 @@ export interface AssistantFinalizeOutcome {
   status: 'COMPLETED' | 'FAILED' | 'CANCELLED';
   content: string;
   usage?: Record<string, unknown>;
+  toolSummary?: unknown;
+  sourceSummary?: unknown;
   providerKey?: string | null;
   modelKey?: string | null;
   errorCode?: string | null;
