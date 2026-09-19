@@ -1,5 +1,6 @@
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { PublishedObjectService } from '../objects/published-object.service';
+import type { RecordsService } from '../records/records.service';
 import { AiToolRegistry } from './tool-registry';
 
 const context: TenantContext = {
@@ -25,7 +26,10 @@ const EXTRA_FORBIDDEN_KEYS = {
 };
 
 function registry() {
-  return new AiToolRegistry({} as PublishedObjectService);
+  return new AiToolRegistry(
+    {} as PublishedObjectService,
+    {} as RecordsService,
+  );
 }
 
 describe('AiToolRegistry', () => {
@@ -75,13 +79,7 @@ describe('AiToolRegistry', () => {
   });
 
   it('throws DATA_UNAVAILABLE from unimplemented tools', async () => {
-    const unimplemented = [
-      'search_records',
-      'get_record',
-      'aggregate_records',
-      'list_activities',
-      'list_followups',
-    ];
+    const unimplemented = ['aggregate_records', 'list_followups'];
     const tools = registry().forActor(context, {});
     for (const name of unimplemented) {
       const tool = tools.find((entry) => entry.name === name);

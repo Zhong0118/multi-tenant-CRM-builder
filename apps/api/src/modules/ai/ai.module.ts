@@ -5,6 +5,7 @@ import { DatabaseModule } from '../../infrastructure/database/database.module';
 import { AuthModule } from '../auth/auth.module';
 import { MembershipsModule } from '../memberships/memberships.module';
 import { ObjectsModule } from '../objects/objects.module';
+import { RecordsModule } from '../records/records.module';
 import { AiController } from './ai.controller';
 import { AiOrchestrator } from './ai-orchestrator';
 import { AI_PROVIDER, createAiProvider } from './ai-provider';
@@ -13,7 +14,13 @@ import { ConversationService } from './conversation.service';
 import { AiToolRegistry } from './tool-registry';
 
 @Module({
-  imports: [AuthModule, MembershipsModule, DatabaseModule, ObjectsModule],
+  imports: [
+    AuthModule,
+    MembershipsModule,
+    DatabaseModule,
+    ObjectsModule,
+    RecordsModule,
+  ],
   controllers: [AiController],
   providers: [
     ConversationRepository,

@@ -3,9 +3,13 @@ import { z } from 'zod';
 
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { PublishedObjectService } from '../objects/published-object.service';
+import { RecordsService } from '../records/records.service';
 import type { AiProviderTool } from './ai-provider';
 import { createDescribeObjectTool } from './tools/describe-object.tool';
+import { createGetRecordTool } from './tools/get-record.tool';
+import { createListActivitiesTool } from './tools/list-activities.tool';
 import { createListObjectsTool } from './tools/list-objects.tool';
+import { createSearchRecordsTool } from './tools/search-records.tool';
 
 export const AI_READ_TOOL_NAMES = [
   'list_objects',
@@ -34,7 +38,10 @@ const emptyInput = z.object({}).strict();
 
 @Injectable()
 export class AiToolRegistry {
-  constructor(private readonly publishedObjects: PublishedObjectService) {}
+  constructor(
+    private readonly publishedObjects: PublishedObjectService,
+    private readonly records: RecordsService,
+  ) {}
 
   names(): AiReadToolName[] {
     return [...AI_READ_TOOL_NAMES];
@@ -47,17 +54,24 @@ export class AiToolRegistry {
     return [
       createListObjectsTool(this.publishedObjects, context),
       createDescribeObjectTool(this.publishedObjects, context),
-      unimplementedTool('search_records'),
-      unimplementedTool('get_record'),
+      createSearchRecordsTool(this.records, context),
+      createGetRecordTool(this.records, context),
       unimplementedTool('aggregate_records'),
-      unimplementedTool('list_activities'),
+      createListActivitiesTool(this.records, context),
       unimplementedTool('list_followups'),
     ];
   }
 }
 
 function unimplementedTool(
-  name: Exclude<AiReadToolName, 'list_objects' | 'describe_object'>,
+  name: Exclude<
+    AiReadToolName,
+    | 'list_objects'
+    | 'describe_object'
+    | 'search_records'
+    | 'get_record'
+    | 'list_activities'
+  >,
 ): AiProviderTool {
   return {
     name,
