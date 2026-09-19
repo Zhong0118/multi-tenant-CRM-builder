@@ -631,14 +631,14 @@ export class ConversationRepository {
         data: {
           status: outcome.status,
           content: outcome.content,
-          toolSummary:
-            outcome.toolSummary === undefined
-              ? assistant.toolSummary
-              : (outcome.toolSummary as Prisma.InputJsonValue),
-          sourceSummary:
-            outcome.sourceSummary === undefined
-              ? assistant.sourceSummary
-              : (outcome.sourceSummary as Prisma.InputJsonValue),
+          ...(outcome.toolSummary === undefined
+            ? {}
+            : { toolSummary: outcome.toolSummary as Prisma.InputJsonValue }),
+          ...(outcome.sourceSummary === undefined
+            ? {}
+            : {
+                sourceSummary: outcome.sourceSummary as Prisma.InputJsonValue,
+              }),
           providerUsage: withProviderAttempts(
             outcome.usage ?? {},
             providerAttemptsOf(assistant.providerUsage),
