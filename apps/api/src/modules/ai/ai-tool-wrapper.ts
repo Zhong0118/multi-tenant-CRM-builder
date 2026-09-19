@@ -1,3 +1,5 @@
+import { ZodError } from 'zod';
+
 import type {
   AiPublicStreamEvent,
   AiSourceSummary,
@@ -16,15 +18,6 @@ export interface AiToolCallbacks {
   toolSummaries: AiToolSummary[];
   sources: AiSourceSummary[];
 }
-
-const SHORT_OBJECT_NAMES: Record<string, string> = {
-  leads: '销售线索',
-  customers: '客户',
-  opportunities: '商机',
-  activities: '跟进活动',
-  contracts: '合同',
-  payments: '回款',
-};
 
 export function defaultAiToolCallbacks(): AiToolCallbacks {
   return {
@@ -64,6 +57,7 @@ export function wrapAiReadTool(
         const parsed = tool.inputSchema.parse(input);
         const raw = await tool.execute(parsed, callId);
         if (callbacks.abortSignal.aborted) {
+          markFailed(callbacks, started);
           return { unavailable: true, code: 'DATA_UNAVAILABLE' };
         }
         const sanitized = AiSanitizer.sanitizeToolResult(raw);
@@ -90,17 +84,20 @@ export function wrapAiReadTool(
         return sanitized;
       } catch (error) {
         if (begun) {
-          const failed: AiToolSummary = {
+          markFailed(callbacks, {
             callId,
             toolName: tool.name,
             displayName,
-            status: 'FAILED',
-          };
-          upsertSummary(callbacks.toolSummaries, failed);
-          callbacks.emit({ event: 'tool.failed', data: failed });
+            status: 'RUNNING',
+          });
         }
-        void error;
-        return { unavailable: true, code: 'DATA_UNAVAILABLE' };
+        return {
+          unavailable: true,
+          code:
+            error instanceof ZodError
+              ? 'INVALID_TOOL_ARGUMENT'
+              : 'DATA_UNAVAILABLE',
+        };
       } finally {
         if (begun) callbacks.budget.endTool();
       }
@@ -110,27 +107,24 @@ export function wrapAiReadTool(
 
 export function toolDisplayName(toolName: string, input: unknown): string {
   const objectCode =
-    isRecord(input) && typeof input.objectCode === 'string'
+    isRecord(input) && typeof input.objectCode === 'string' && input.objectCode
       ? input.objectCode
       : undefined;
-  const objectLabel = objectCode
-    ? (SHORT_OBJECT_NAMES[objectCode] ?? objectCode)
-    : '业务';
   switch (toolName) {
     case 'list_objects':
       return '查询业务对象';
     case 'describe_object':
-      return '查询对象结构';
+      return objectCode ? `查询${objectCode}结构` : '查询对象结构';
     case 'search_records':
-      return `查询${objectLabel}记录`;
+      return objectCode ? `查询${objectCode}记录` : '查询记录';
     case 'get_record':
-      return `查询${objectLabel}详情`;
+      return objectCode ? `查询${objectCode}详情` : '查询记录';
     case 'aggregate_records':
-      return `统计${objectLabel}`;
+      return objectCode ? `统计${objectCode}` : '查询统计';
     case 'list_activities':
-      return '查询相关跟进';
+      return objectCode ? `查询${objectCode}活动` : '查询活动';
     case 'list_followups':
-      return '查询待办跟进';
+      return objectCode ? `查询${objectCode}跟进` : '查询跟进';
     default:
       return '查询数据';
   }
@@ -142,6 +136,15 @@ function sourceDetail(source: AiSourceSummary | null): string | undefined {
     return `${source.count} 条`;
   }
   return source.value;
+}
+
+function markFailed(
+  callbacks: AiToolCallbacks,
+  started: AiToolSummary,
+): void {
+  const failed: AiToolSummary = { ...started, status: 'FAILED', detail: undefined };
+  upsertSummary(callbacks.toolSummaries, failed);
+  callbacks.emit({ event: 'tool.failed', data: failed });
 }
 
 function upsertSummary(list: AiToolSummary[], summary: AiToolSummary): void {

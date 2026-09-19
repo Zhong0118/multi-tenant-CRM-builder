@@ -397,7 +397,7 @@ describe('AiOrchestrator.streamTurn', () => {
     expect(events.find((event) => event.event === 'tool.started')?.data).toEqual({
       callId: 'call-1',
       toolName: 'search_records',
-      displayName: '查询销售线索记录',
+      displayName: '查询leads记录',
       status: 'RUNNING',
     });
     expect(JSON.stringify(events)).not.toContain('内部备注');
@@ -490,8 +490,9 @@ describe('AiOrchestrator.streamTurn', () => {
         new AbortController().signal,
       ),
     );
+    expect(results[4]).toEqual({ unavailable: true, code: 'DATA_UNAVAILABLE' });
     expect(results[6]).toEqual({ unavailable: true, code: 'DATA_UNAVAILABLE' });
-    expect(events.filter((event) => event.event === 'tool.completed')).toHaveLength(6);
+    expect(events.filter((event) => event.event === 'tool.completed')).toHaveLength(4);
     expect(JSON.stringify(events)).not.toContain('secret');
     expect(events.map((event) => event.event)).toContain('turn.completed');
   });
@@ -562,5 +563,38 @@ describe('AiOrchestrator.streamTurn', () => {
       'turn-1',
       expect.objectContaining({ status: 'CANCELLED', content: '半' }),
     );
+  });
+
+  it('refuses a fifth provider tool-request round without executing the domain tool', async () => {
+    const conversations = conversationMock();
+    const execute = jest.fn(async () => ({ items: [] }));
+    const results: unknown[] = [];
+    const provider = providerWith(async function* (_signal, tools) {
+      for (let index = 0; index < 5; index += 1) {
+        results.push(
+          await tools[0]!.execute({ objectCode: 'leads' }, `round-${index}`),
+        );
+      }
+      yield { type: 'TEXT_DELTA', text: '已达模型轮次上限。' };
+      yield { type: 'COMPLETED' };
+    });
+    const orchestrator = new AiOrchestrator(
+      conversations,
+      provider,
+      registryWith([searchTool(execute)]),
+    );
+    const events = await collect(
+      await orchestrator.streamTurn(
+        context,
+        { content: '轮次' },
+        new AbortController().signal,
+      ),
+    );
+    expect(execute).toHaveBeenCalledTimes(4);
+    expect(results[4]).toEqual({ unavailable: true, code: 'DATA_UNAVAILABLE' });
+    expect(events.filter((event) => event.event === 'tool.completed')).toHaveLength(
+      4,
+    );
+    expect(events.map((event) => event.event)).toContain('turn.completed');
   });
 });

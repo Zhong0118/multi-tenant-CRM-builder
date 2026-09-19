@@ -1,14 +1,5 @@
 import type { AiSourceSummary } from '@crm/contracts';
 
-const OBJECT_NAMES: Record<string, string> = {
-  leads: '销售线索',
-  customers: '客户',
-  opportunities: '跟单商机',
-  activities: '跟进活动',
-  contracts: '合同',
-  payments: '回款',
-};
-
 export class AiSourceBuilder {
   static fromTool(input: {
     toolName: string;
@@ -16,20 +7,21 @@ export class AiSourceBuilder {
     result: unknown;
   }): AiSourceSummary | null {
     const objectCode = objectCodeFrom(input.input, input.result);
+    const objectName = publishedObjectName(input.result) ?? objectCode;
     switch (input.toolName) {
       case 'search_records':
       case 'get_record':
         return {
           kind: 'RECORDS',
           objectCode: objectCode ?? 'records',
-          objectName: objectName(objectCode),
+          objectName: objectName ?? '记录',
           count: recordCount(input.toolName, input.result),
         };
       case 'aggregate_records':
         return {
           kind: 'AGGREGATE',
           objectCode: objectCode ?? 'records',
-          objectName: objectName(objectCode),
+          objectName: objectName ?? '统计',
           label: aggregateLabel(input.input),
           value: aggregateValue(input.result),
         };
@@ -37,7 +29,7 @@ export class AiSourceBuilder {
         return {
           kind: 'TIMELINE',
           objectCode: objectCode ?? 'records',
-          objectName: objectName(objectCode),
+          objectName: objectName ?? '活动',
           recordId: recordIdFrom(input.input),
           count: listCount(input.result),
         };
@@ -45,7 +37,7 @@ export class AiSourceBuilder {
         return {
           kind: 'TIMELINE',
           objectCode: objectCode ?? 'followups',
-          objectName: objectName(objectCode) === '业务对象' ? '待办跟进' : objectName(objectCode),
+          objectName: objectName ?? '跟进',
           count: listCount(input.result),
         };
       default:
@@ -95,9 +87,21 @@ function aggregateValue(result: unknown): string {
   return '0';
 }
 
-function objectName(objectCode: string | undefined): string {
-  if (!objectCode) return '业务对象';
-  return OBJECT_NAMES[objectCode] ?? objectCode;
+function publishedObjectName(result: unknown): string | undefined {
+  if (Array.isArray(result)) {
+    return publishedObjectName(result[0]);
+  }
+  if (!isRecord(result)) return undefined;
+  if (typeof result.objectName === 'string' && result.objectName) {
+    return result.objectName;
+  }
+  if (isRecord(result.object) && typeof result.object.name === 'string' && result.object.name) {
+    return result.object.name;
+  }
+  if (Array.isArray(result.items)) {
+    return publishedObjectName(result.items[0]);
+  }
+  return undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

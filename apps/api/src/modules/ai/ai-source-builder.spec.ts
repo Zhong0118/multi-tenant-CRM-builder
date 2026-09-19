@@ -19,7 +19,7 @@ describe('AiSourceBuilder.fromTool', () => {
     expect(source).toEqual({
       kind: 'RECORDS',
       objectCode: 'leads',
-      objectName: '销售线索',
+      objectName: 'leads',
       count: 1,
     });
     expect(JSON.stringify(source)).not.toContain('内部备注');
@@ -35,9 +35,56 @@ describe('AiSourceBuilder.fromTool', () => {
     expect(source).toEqual({
       kind: 'AGGREGATE',
       objectCode: 'opportunities',
-      objectName: '跟单商机',
+      objectName: 'opportunities',
       label: '合计',
       value: '320000',
+    });
+  });
+
+  it('prefers published objectName from the sanitized result over objectCode', () => {
+    const source = AiSourceBuilder.fromTool({
+      toolName: 'search_records',
+      input: { objectCode: 'leads', limit: 20 },
+      result: {
+        objectName: '线索',
+        items: [{ id: 'rec-1', title: '自己的线索' }],
+        total: 1,
+      },
+    });
+    expect(source).toEqual({
+      kind: 'RECORDS',
+      objectCode: 'leads',
+      objectName: '线索',
+      count: 1,
+    });
+    expect(JSON.stringify(source)).not.toContain('销售线索');
+  });
+
+  it('falls back to a generic kind label when no published name is present', () => {
+    expect(
+      AiSourceBuilder.fromTool({
+        toolName: 'list_followups',
+        input: { limit: 20 },
+        result: [{ id: 'f1' }],
+      }),
+    ).toEqual({
+      kind: 'TIMELINE',
+      objectCode: 'followups',
+      objectName: '跟进',
+      count: 1,
+    });
+    expect(
+      AiSourceBuilder.fromTool({
+        toolName: 'list_activities',
+        input: { recordId: '0198ad18-a74d-7b69-b81a-49a74f9a3e01' },
+        result: { items: [{ id: 'a1' }], total: 1 },
+      }),
+    ).toEqual({
+      kind: 'TIMELINE',
+      objectCode: 'records',
+      objectName: '活动',
+      recordId: '0198ad18-a74d-7b69-b81a-49a74f9a3e01',
+      count: 1,
     });
   });
 
@@ -51,7 +98,7 @@ describe('AiSourceBuilder.fromTool', () => {
     ).toEqual({
       kind: 'TIMELINE',
       objectCode: 'leads',
-      objectName: '销售线索',
+      objectName: 'leads',
       recordId: '0198ad18-a74d-7b69-b81a-49a74f9a3e01',
       count: 2,
     });
@@ -59,12 +106,12 @@ describe('AiSourceBuilder.fromTool', () => {
       AiSourceBuilder.fromTool({
         toolName: 'list_followups',
         input: { objectCode: 'leads', limit: 20 },
-        result: [{ id: 'f1', objectCode: 'leads', objectName: '销售线索', recordId: 'r1' }],
+        result: [{ id: 'f1', objectCode: 'leads', objectName: '线索', recordId: 'r1' }],
       }),
     ).toEqual({
       kind: 'TIMELINE',
       objectCode: 'leads',
-      objectName: '销售线索',
+      objectName: '线索',
       count: 1,
     });
   });

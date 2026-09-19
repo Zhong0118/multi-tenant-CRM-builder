@@ -97,6 +97,10 @@ describe('FakeAiProvider', () => {
       { type: 'USAGE', inputTokens: 8, outputTokens: 12 },
       { type: 'COMPLETED' },
     ]);
+    expect(events.filter((event) => event.type === 'TOOL_CALL_REQUESTED')).toHaveLength(
+      1,
+    );
+    expect(execute).toHaveBeenCalledTimes(1);
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });

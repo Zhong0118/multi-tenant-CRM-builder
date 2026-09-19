@@ -1,12 +1,28 @@
 import { AiTurnBudget } from './ai-turn-budget';
 
 describe('AiTurnBudget', () => {
-  it('allows six sequential tool executions and rejects the seventh', () => {
+  it('allows four sequential tool rounds and rejects the fifth', () => {
     const budget = new AiTurnBudget();
-    for (let index = 0; index < 6; index += 1) {
+    for (let index = 0; index < 4; index += 1) {
       budget.beginTool();
       budget.endTool();
     }
+    expect(() => budget.beginTool()).toThrow(
+      expect.objectContaining({ code: 'AI_TOOL_BUDGET_EXCEEDED', status: 400 }),
+    );
+  });
+
+  it('allows six tools across two parallel rounds and still rejects a seventh', () => {
+    const budget = new AiTurnBudget();
+    for (let round = 0; round < 2; round += 1) {
+      budget.beginTool();
+      budget.beginTool();
+      budget.beginTool();
+      budget.endTool();
+      budget.endTool();
+      budget.endTool();
+    }
+    expect(budget.toolCalls).toBe(6);
     expect(() => budget.beginTool()).toThrow(
       expect.objectContaining({ code: 'AI_TOOL_BUDGET_EXCEEDED', status: 400 }),
     );
