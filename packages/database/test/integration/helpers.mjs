@@ -38,6 +38,8 @@ export async function resetTestData(admin) {
   });
   await admin.$transaction([
     admin.auditLog.deleteMany(),
+    admin.aiMessage.deleteMany(),
+    admin.aiConversation.deleteMany(),
     admin.recordTransitionHistory.deleteMany(),
     admin.workflowTransitionDefinition.deleteMany(),
     admin.workflowStateDefinition.deleteMany(),
@@ -90,6 +92,12 @@ export async function cleanupTestFixtures(
 
   if (tenantIds.length > 0) {
     await admin.auditLog.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await admin.aiMessage.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await admin.aiConversation.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });
     await admin.recordTransitionHistory.deleteMany({

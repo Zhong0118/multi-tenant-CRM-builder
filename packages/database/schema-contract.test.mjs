@@ -214,3 +214,37 @@ test("allows a verified user to discover invitations sent before registration", 
   assert.match(migration, /users.*phone/is);
   assert.match(migration, /current_setting\('app\.user_id', true\)/);
 });
+
+test("defines personal AI conversations and messages", async () => {
+  const schema = await readFile(schemaUrl, "utf8");
+
+  assert.match(schema, /enum\s+AiMessageRole\s+\{[\s\S]*USER[\s\S]*ASSISTANT/);
+  assert.match(
+    schema,
+    /enum\s+AiMessageStatus\s+\{[\s\S]*GENERATING[\s\S]*COMPLETED[\s\S]*FAILED[\s\S]*CANCELLED/,
+  );
+  assert.match(
+    schema,
+    /model\s+AiConversation\s+\{[\s\S]*createdByMemberId[\s\S]*lastMessageAt[\s\S]*deletedAt[\s\S]*@@unique\(\[tenantId,\s*id\]\)/,
+  );
+  assert.match(
+    schema,
+    /model\s+AiMessage\s+\{[\s\S]*conversationId[\s\S]*turnId[\s\S]*toolSummary[\s\S]*sourceSummary[\s\S]*tenant\s+Tenant[\s\S]*@@unique\(\[tenantId,\s*conversationId,\s*turnId,\s*role\]\)/,
+  );
+  assert.match(
+    schema,
+    /model\s+Tenant\s+\{[\s\S]*aiConversations[\s\S]*aiMessages\s+AiMessage\[\]/,
+  );
+
+  const migration = await readFile(
+    new URL("./prisma/migrations/0019_ai_conversations/migration.sql", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(migration, /ENABLE ROW LEVEL SECURITY/);
+  assert.match(migration, /FORCE ROW LEVEL SECURITY/);
+  assert.match(migration, /current_setting\('app\.tenant_id', true\)/);
+  assert.match(migration, /current_setting\('app\.user_id', true\)/);
+  assert.match(migration, /GRANT SELECT, INSERT, UPDATE ON TABLE "ai_conversations"/);
+  assert.match(migration, /GRANT SELECT, INSERT, UPDATE ON TABLE "ai_messages"/);
+});

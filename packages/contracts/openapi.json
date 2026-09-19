@@ -11,6 +11,114 @@
         "required": ["accepted"],
         "type": "object"
       },
+      "AiConversationPageDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AiConversationResponseDto"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        },
+        "required": ["items"],
+        "type": "object"
+      },
+      "AiConversationResponseDto": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "lastMessageAt": {
+            "type": "string"
+          },
+          "latestUserPreview": {
+            "nullable": true,
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "title", "lastMessageAt"],
+        "type": "object"
+      },
+      "AiMessagePageDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AiMessageResponseDto"
+            },
+            "type": "array"
+          },
+          "nextBefore": {
+            "type": "string"
+          }
+        },
+        "required": ["items"],
+        "type": "object"
+      },
+      "AiMessageResponseDto": {
+        "properties": {
+          "completedAt": {
+            "nullable": true,
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "errorCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "sourceSummary": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "status": {
+            "type": "string"
+          },
+          "toolSummary": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "conversationId",
+          "turnId",
+          "role",
+          "status",
+          "content",
+          "toolSummary",
+          "sourceSummary",
+          "createdAt"
+        ],
+        "type": "object"
+      },
       "ApiErrorResponseDto": {
         "properties": {
           "code": {
@@ -3493,6 +3601,17 @@
         "required": ["success"],
         "type": "object"
       },
+      "RenameAiConversationDto": {
+        "properties": {
+          "title": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["title"],
+        "type": "object"
+      },
       "ResetPasswordDto": {
         "properties": {
           "code": {
@@ -3899,6 +4018,21 @@
           }
         },
         "required": ["id", "expiresAt", "isCurrent", "createdAt"],
+        "type": "object"
+      },
+      "StartAiTurnDto": {
+        "properties": {
+          "content": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "conversationId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["content"],
         "type": "object"
       },
       "TemplateApplicationObjectResponseDto": {
@@ -6482,6 +6616,274 @@
           }
         ],
         "tags": ["memberships"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/ai/conversations": {
+      "get": {
+        "operationId": "AiController_listConversations",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 50,
+              "type": "number"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiConversationPageDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["ai"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/ai/conversations/{id}": {
+      "delete": {
+        "operationId": "AiController_removeConversation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["ai"]
+      },
+      "patch": {
+        "operationId": "AiController_renameConversation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameAiConversationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiConversationResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["ai"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/ai/conversations/{id}/messages": {
+      "get": {
+        "operationId": "AiController_listMessages",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 50,
+              "type": "number"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiMessagePageDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["ai"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/ai/turns": {
+      "post": {
+        "operationId": "AiController_startTurn",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartAiTurnDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "AI turn SSE stream"
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["ai"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/ai/turns/{turnId}/retry": {
+      "post": {
+        "operationId": "AiController_retryTurn",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "turnId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "AI turn retry SSE stream"
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["ai"]
       }
     },
     "/api/v1/workspaces/{tenantCode}/audit": {

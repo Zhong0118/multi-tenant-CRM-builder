@@ -24,6 +24,7 @@ import { UsersModule } from './modules/users/users.module';
 import { HealthModule } from './modules/health/health.module';
 import { PlatformOperationsModule } from './modules/platform-operations/platform-operations.module';
 import { WorkflowsModule } from './modules/workflows/workflows.module';
+import { AiModule } from './modules/ai/ai.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
     ObjectsModule,
     RecordsModule,
     FollowUpsModule,
+    AiModule,
     TenantsModule,
     UsersModule,
     HealthModule,
