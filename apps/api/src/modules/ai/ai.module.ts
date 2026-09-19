@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 
 import { DatabaseModule } from '../../infrastructure/database/database.module';
 import { AuthModule } from '../auth/auth.module';
+import { FollowUpsModule } from '../follow-ups/follow-ups.module';
 import { MembershipsModule } from '../memberships/memberships.module';
 import { ObjectsModule } from '../objects/objects.module';
 import { RecordsModule } from '../records/records.module';
@@ -20,6 +21,7 @@ import { AiToolRegistry } from './tool-registry';
     DatabaseModule,
     ObjectsModule,
     RecordsModule,
+    FollowUpsModule,
   ],
   controllers: [AiController],
   providers: [

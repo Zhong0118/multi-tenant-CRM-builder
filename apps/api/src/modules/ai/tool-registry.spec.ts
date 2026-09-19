@@ -1,4 +1,5 @@
 import type { TenantContext } from '../../common/tenancy/tenant-context';
+import type { FollowUpsService } from '../follow-ups/follow-ups.service';
 import type { PublishedObjectService } from '../objects/published-object.service';
 import type { RecordsService } from '../records/records.service';
 import { AiToolRegistry } from './tool-registry';
@@ -29,6 +30,7 @@ function registry() {
   return new AiToolRegistry(
     {} as PublishedObjectService,
     {} as RecordsService,
+    {} as FollowUpsService,
   );
 }
 
@@ -78,15 +80,16 @@ describe('AiToolRegistry', () => {
     expect(result.success).toBe(false);
   });
 
-  it('throws DATA_UNAVAILABLE from unimplemented tools', async () => {
-    const unimplemented = ['list_followups'];
-    const tools = registry().forActor(context, {});
-    for (const name of unimplemented) {
-      const tool = tools.find((entry) => entry.name === name);
-      expect(tool).toBeDefined();
-      await expect(tool!.execute({}, 'call-1')).rejects.toMatchObject({
-        code: 'DATA_UNAVAILABLE',
-      });
-    }
+  it('exposes a real list_followups tool instead of DATA_UNAVAILABLE', async () => {
+    const listForAi = jest.fn().mockResolvedValue([]);
+    const tools = new AiToolRegistry(
+      {} as PublishedObjectService,
+      {} as RecordsService,
+      { listForAi } as unknown as FollowUpsService,
+    ).forActor(context, {});
+    const followups = tools.find((tool) => tool.name === 'list_followups');
+    expect(followups).toBeDefined();
+    await expect(followups!.execute({}, 'call-1')).resolves.toEqual([]);
+    expect(listForAi).toHaveBeenCalledWith(context, { limit: 20 });
   });
 });
