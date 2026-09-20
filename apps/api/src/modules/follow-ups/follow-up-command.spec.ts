@@ -131,7 +131,13 @@ async function rejection(promise: Promise<unknown>): Promise<ApiException> {
 }
 
 describe('createFollowUpCommand', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('locks the acting member first and creates the follow-up in the caller transaction', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-09-19T00:00:00.000Z'));
     const fixture = harness();
 
     const created = await fixture.run();
