@@ -282,7 +282,7 @@ export class AiOrchestrator {
   }
 }
 
-async function* mergeProviderAndPublicEvents(
+export async function* mergeProviderAndPublicEvents(
   source: AsyncIterable<AiProviderEvent>,
   publicEvents: AiPublicEventQueue,
   signal: AbortSignal,
@@ -296,6 +296,8 @@ async function* mergeProviderAndPublicEvents(
     | undefined;
   let publicPending: Promise<AiPublicStreamEvent | undefined> | undefined;
   let providerDone = false;
+  let openTools = 0;
+  const abortPromise = aborted(signal);
   try {
     while (!signal.aborted && !providerDone) {
       providerPending ??= iterator.next();
@@ -303,24 +305,15 @@ async function* mergeProviderAndPublicEvents(
       const winner = await Promise.race([
         providerPending.then((result) => ({ type: 'provider' as const, result })),
         publicPending.then((event) => ({ type: 'public' as const, event })),
-        aborted(signal).then(() => ({ type: 'abort' as const })),
+        abortPromise.then(() => ({ type: 'abort' as const })),
       ]);
-      if (winner.type === 'abort') {
-        await Promise.resolve();
-        await Promise.resolve();
-        if (publicPending) {
-          const queued = await Promise.race([
-            publicPending,
-            Promise.resolve(undefined),
-          ]);
-          publicPending = undefined;
-          if (queued) yield { kind: 'public', event: queued };
-        }
-        break;
-      }
+      if (winner.type === 'abort') break;
       if (winner.type === 'public') {
         publicPending = undefined;
-        if (winner.event) yield { kind: 'public', event: winner.event };
+        if (winner.event) {
+          openTools += publicToolDelta(winner.event);
+          yield { kind: 'public', event: winner.event };
+        }
         continue;
       }
       providerPending = undefined;
@@ -330,17 +323,34 @@ async function* mergeProviderAndPublicEvents(
       }
       yield { kind: 'provider', event: winner.result.value };
     }
-    await Promise.resolve();
-    await Promise.resolve();
-    while (true) {
-      const leftover = publicEvents.takeQueued();
+    if (publicPending) {
+      if (openTools > 0 || publicEvents.size > 0) {
+        const queued = await publicPending;
+        if (queued) {
+          openTools += publicToolDelta(queued);
+          yield { kind: 'public', event: queued };
+        }
+      }
+      publicPending = undefined;
+    }
+    while (openTools > 0 || publicEvents.size > 0) {
+      const leftover = await publicEvents.next();
       if (!leftover) break;
+      openTools += publicToolDelta(leftover);
       yield { kind: 'public', event: leftover };
     }
   } finally {
     publicEvents.close();
     await iterator.return?.();
   }
+}
+
+function publicToolDelta(event: AiPublicStreamEvent): number {
+  if (event.event === 'tool.started') return 1;
+  if (event.event === 'tool.failed' || event.event === 'tool.completed') {
+    return -1;
+  }
+  return 0;
 }
 
 function aborted(signal: AbortSignal): Promise<void> {

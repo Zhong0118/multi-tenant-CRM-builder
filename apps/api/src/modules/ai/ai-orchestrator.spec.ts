@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
-import { AiOrchestrator, AI_SYSTEM_PROMPT } from './ai-orchestrator';
+import {
+  AiOrchestrator,
+  AI_SYSTEM_PROMPT,
+  mergeProviderAndPublicEvents,
+} from './ai-orchestrator';
+import { AiPublicEventQueue } from './ai-public-event-queue';
 import type { AiProvider, AiProviderEvent, AiProviderTool } from './ai-provider';
 import type { ConversationService } from './conversation.service';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
@@ -668,4 +673,135 @@ describe('AiOrchestrator.streamTurn', () => {
     );
   });
 
+  it('still yields a delayed tool.failed after abort without a two-microtask drain', async () => {
+    const conversations = conversationMock();
+    const abort = new AbortController();
+    const hanging = new Promise(() => undefined);
+    const provider = providerWith(async function* (signal, tools) {
+      const pending = tools[0]!.execute({ objectCode: 'leads' }, 'late-fail');
+      await new Promise((resolve) => setImmediate(resolve));
+      abort.abort();
+      await new Promise<void>((resolve) => {
+        if (signal.aborted) {
+          resolve();
+          return;
+        }
+        signal.addEventListener('abort', () => resolve(), { once: true });
+      });
+      void pending;
+    });
+    const orchestrator = new AiOrchestrator(
+      conversations,
+      provider,
+      {
+        forActor(_context: TenantContext, callbacks: AiToolCallbacks) {
+          const delayed: AiToolCallbacks = {
+            ...callbacks,
+            emit(event) {
+              if (event.event !== 'tool.failed') {
+                callbacks.emit(event);
+                return;
+              }
+              void (async () => {
+                for (let index = 0; index < 5; index += 1) {
+                  await Promise.resolve();
+                }
+                callbacks.emit(event);
+              })();
+            },
+          };
+          return [wrapAiReadTool(searchTool(() => hanging), delayed)];
+        },
+        names: () => ['search_records'],
+      } as unknown as AiToolRegistry,
+    );
+    const events = await collect(
+      await orchestrator.streamTurn(context, { content: '延迟失败' }, abort.signal),
+    );
+    expect(events.map((event) => event.event)).toContain('tool.started');
+    expect(events.map((event) => event.event)).toContain('tool.failed');
+    expect(events.filter((event) => event.event === 'tool.started')).toHaveLength(
+      1,
+    );
+    expect(events.filter((event) => event.event === 'tool.failed')).toHaveLength(
+      1,
+    );
+    expect(events.map((event) => event.event)).not.toContain('tool.completed');
+  });
+
+  it('fails every in-flight parallel tool after abort', async () => {
+    const conversations = conversationMock();
+    const abort = new AbortController();
+    const hanging = new Promise(() => undefined);
+    const provider = providerWith(async function* (signal, tools) {
+      const pending = Promise.all([
+        tools[0]!.execute({ objectCode: 'leads' }, 'p1'),
+        tools[0]!.execute({ objectCode: 'leads' }, 'p2'),
+        tools[0]!.execute({ objectCode: 'leads' }, 'p3'),
+      ]);
+      await new Promise((resolve) => setImmediate(resolve));
+      abort.abort();
+      await new Promise<void>((resolve) => {
+        if (signal.aborted) {
+          resolve();
+          return;
+        }
+        signal.addEventListener('abort', () => resolve(), { once: true });
+      });
+      void pending;
+    });
+    const orchestrator = new AiOrchestrator(
+      conversations,
+      provider,
+      registryWith([searchTool(() => hanging)]),
+    );
+    const events = await collect(
+      await orchestrator.streamTurn(context, { content: '三路' }, abort.signal),
+    );
+    expect(events.filter((event) => event.event === 'tool.started')).toHaveLength(
+      3,
+    );
+    expect(events.filter((event) => event.event === 'tool.failed')).toHaveLength(
+      3,
+    );
+    expect(events.map((event) => event.event)).not.toContain('tool.completed');
+    expect(
+      events
+        .filter((event) => event.event === 'tool.failed')
+        .map((event) => event.data.callId)
+        .sort(),
+    ).toEqual(['p1', 'p2', 'p3']);
+  });
+
+  it('registers one abort listener while merging many provider deltas', async () => {
+    const queue = new AiPublicEventQueue();
+    const abort = new AbortController();
+    const addEventListener = jest.spyOn(abort.signal, 'addEventListener');
+    async function* source() {
+      for (let index = 0; index < 100; index += 1) {
+        yield { type: 'TEXT_DELTA' as const, text: 'x' };
+      }
+      yield { type: 'COMPLETED' as const };
+    }
+    const items: unknown[] = [];
+    for await (const item of mergeProviderAndPublicEvents(
+      source(),
+      queue,
+      abort.signal,
+    )) {
+      items.push(item);
+    }
+    expect(
+      addEventListener.mock.calls.filter((call) => call[0] === 'abort'),
+    ).toHaveLength(1);
+    expect(
+      items.filter(
+        (item) =>
+          typeof item === 'object' &&
+          item !== null &&
+          'kind' in item &&
+          item.kind === 'provider',
+      ),
+    ).toHaveLength(101);
+  });
 });
