@@ -9,6 +9,10 @@ export class AiPublicEventQueue {
     return this.pending.length;
   }
 
+  get isClosed(): boolean {
+    return this.closed;
+  }
+
   push(event: AiPublicStreamEvent): void {
     if (this.closed) return;
     this.pending.push(event);
@@ -21,10 +25,14 @@ export class AiPublicEventQueue {
     this.notify();
   }
 
-  async next(): Promise<AiPublicStreamEvent | undefined> {
-    if (this.pending.length > 0) return this.pending.shift();
-    if (this.closed) return undefined;
-    await this.ready();
+  async waitForData(): Promise<void> {
+    if (this.pending.length > 0 || this.closed) return;
+    await new Promise<void>((resolve) => {
+      this.waiters.add(resolve);
+    });
+  }
+
+  takeQueued(): AiPublicStreamEvent | undefined {
     return this.pending.shift();
   }
 
@@ -32,11 +40,5 @@ export class AiPublicEventQueue {
     const waiters = [...this.waiters];
     this.waiters.clear();
     for (const waiter of waiters) waiter();
-  }
-
-  private ready(): Promise<void> {
-    return new Promise((resolve) => {
-      this.waiters.add(resolve);
-    });
   }
 }

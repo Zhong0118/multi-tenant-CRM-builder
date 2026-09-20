@@ -673,6 +673,98 @@ describe('AiOrchestrator.streamTurn', () => {
     );
   });
 
+  it('keeps a valid in-flight tool after an unmatched tool.failed from invalid args', async () => {
+    const conversations = conversationMock();
+    const abort = new AbortController();
+    const hanging = new Promise(() => undefined);
+    const provider = providerWith(async function* (signal, tools) {
+      await tools[0]!.execute(
+        { objectCode: 'leads', tenantId: 'other-tenant' },
+        'invalid-call',
+      );
+      const pending = tools[0]!.execute({ objectCode: 'leads' }, 'valid-call');
+      await new Promise((resolve) => setImmediate(resolve));
+      abort.abort();
+      await new Promise<void>((resolve) => {
+        if (signal.aborted) {
+          resolve();
+          return;
+        }
+        signal.addEventListener('abort', () => resolve(), { once: true });
+      });
+      void pending;
+    });
+    const orchestrator = new AiOrchestrator(
+      conversations,
+      provider,
+      {
+        forActor(_context: TenantContext, callbacks: AiToolCallbacks) {
+          const delayed: AiToolCallbacks = {
+            ...callbacks,
+            emit(event) {
+              if (
+                event.event !== 'tool.failed' ||
+                event.data.callId !== 'valid-call'
+              ) {
+                callbacks.emit(event);
+                return;
+              }
+              void (async () => {
+                for (let index = 0; index < 5; index += 1) {
+                  await Promise.resolve();
+                }
+                callbacks.emit(event);
+              })();
+            },
+          };
+          return [
+            wrapAiReadTool(
+              {
+                name: 'search_records',
+                description: 'search',
+                inputSchema: z
+                  .object({
+                    objectCode: z.string().min(1).max(64),
+                    limit: z.number().int().min(1).max(20).default(10),
+                  })
+                  .strict(),
+                execute: () => hanging,
+              },
+              delayed,
+            ),
+          ];
+        },
+        names: () => ['search_records'],
+      } as unknown as AiToolRegistry,
+    );
+    const events = await collect(
+      await orchestrator.streamTurn(
+        context,
+        { content: 'unmatched failed' },
+        abort.signal,
+      ),
+    );
+    const toolEvents = events.filter(
+      (
+        event,
+      ): event is Extract<
+        AiPublicStreamEvent,
+        { event: 'tool.started' | 'tool.failed' | 'tool.completed' }
+      > =>
+        event.event === 'tool.started' ||
+        event.event === 'tool.failed' ||
+        event.event === 'tool.completed',
+    );
+    expect(
+      toolEvents.map((event) => `${event.event}:${event.data.callId}`),
+    ).toEqual([
+      'tool.failed:invalid-call',
+      'tool.started:valid-call',
+      'tool.failed:valid-call',
+    ]);
+    expect(events.map((event) => event.event)).not.toContain('tool.completed');
+  });
+
   it('still yields a delayed tool.failed after abort without a two-microtask drain', async () => {
     const conversations = conversationMock();
     const abort = new AbortController();

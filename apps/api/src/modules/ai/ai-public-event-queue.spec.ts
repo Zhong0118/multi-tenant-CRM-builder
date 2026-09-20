@@ -27,21 +27,25 @@ function failed(callId: string): AiPublicStreamEvent {
 }
 
 describe('AiPublicEventQueue', () => {
-  it('keeps a pushed event after an abandoned waiter is discarded', async () => {
+  it('does not let an abandoned waiter consume a later event', async () => {
     const queue = new AiPublicEventQueue();
-    const abandoned = queue.next();
+    const abandoned = queue.waitForData();
     queue.push(started('call-1'));
+    await Promise.resolve();
+    await Promise.resolve();
     void abandoned;
-    await expect(queue.next()).resolves.toEqual(started('call-1'));
+    expect(queue.takeQueued()).toEqual(started('call-1'));
+    expect(queue.takeQueued()).toBeUndefined();
   });
 
-  it('delivers a later push to a new consumer after several microtasks', async () => {
+  it('wakes a waiter without giving it the event', async () => {
     const queue = new AiPublicEventQueue();
-    const pending = queue.next();
+    const pending = queue.waitForData();
     void (async () => {
       for (let index = 0; index < 5; index += 1) await Promise.resolve();
       queue.push(failed('call-1'));
     })();
-    await expect(pending).resolves.toEqual(failed('call-1'));
+    await pending;
+    expect(queue.takeQueued()).toEqual(failed('call-1'));
   });
 });

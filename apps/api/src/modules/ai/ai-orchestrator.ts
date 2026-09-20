@@ -294,25 +294,26 @@ export async function* mergeProviderAndPublicEvents(
   let providerPending:
     | Promise<IteratorResult<AiProviderEvent>>
     | undefined;
-  let publicPending: Promise<AiPublicStreamEvent | undefined> | undefined;
+  let publicWakePending: Promise<void> | undefined;
   let providerDone = false;
-  let openTools = 0;
+  const openToolCallIds = new Set<string>();
   const abortPromise = aborted(signal);
   try {
     while (!signal.aborted && !providerDone) {
       providerPending ??= iterator.next();
-      publicPending ??= publicEvents.next();
+      publicWakePending ??= publicEvents.waitForData();
       const winner = await Promise.race([
         providerPending.then((result) => ({ type: 'provider' as const, result })),
-        publicPending.then((event) => ({ type: 'public' as const, event })),
+        publicWakePending.then(() => ({ type: 'public' as const })),
         abortPromise.then(() => ({ type: 'abort' as const })),
       ]);
       if (winner.type === 'abort') break;
       if (winner.type === 'public') {
-        publicPending = undefined;
-        if (winner.event) {
-          openTools += publicToolDelta(winner.event);
-          yield { kind: 'public', event: winner.event };
+        publicWakePending = undefined;
+        const event = publicEvents.takeQueued();
+        if (event) {
+          trackOpenTool(openToolCallIds, event);
+          yield { kind: 'public', event };
         }
         continue;
       }
@@ -323,20 +324,17 @@ export async function* mergeProviderAndPublicEvents(
       }
       yield { kind: 'provider', event: winner.result.value };
     }
-    if (publicPending) {
-      if (openTools > 0 || publicEvents.size > 0) {
-        const queued = await publicPending;
-        if (queued) {
-          openTools += publicToolDelta(queued);
-          yield { kind: 'public', event: queued };
-        }
+    while (openToolCallIds.size > 0 || publicEvents.size > 0) {
+      if (publicEvents.size === 0) {
+        if (publicEvents.isClosed) break;
+        await publicEvents.waitForData();
       }
-      publicPending = undefined;
-    }
-    while (openTools > 0 || publicEvents.size > 0) {
-      const leftover = await publicEvents.next();
-      if (!leftover) break;
-      openTools += publicToolDelta(leftover);
+      const leftover = publicEvents.takeQueued();
+      if (!leftover) {
+        if (publicEvents.isClosed) break;
+        continue;
+      }
+      trackOpenTool(openToolCallIds, leftover);
       yield { kind: 'public', event: leftover };
     }
   } finally {
@@ -345,12 +343,22 @@ export async function* mergeProviderAndPublicEvents(
   }
 }
 
-function publicToolDelta(event: AiPublicStreamEvent): number {
-  if (event.event === 'tool.started') return 1;
-  if (event.event === 'tool.failed' || event.event === 'tool.completed') {
-    return -1;
+function trackOpenTool(
+  openToolCallIds: Set<string>,
+  event: AiPublicStreamEvent,
+): void {
+  if (
+    event.event !== 'tool.started' &&
+    event.event !== 'tool.failed' &&
+    event.event !== 'tool.completed'
+  ) {
+    return;
   }
-  return 0;
+  if (event.event === 'tool.started') {
+    openToolCallIds.add(event.data.callId);
+    return;
+  }
+  openToolCallIds.delete(event.data.callId);
 }
 
 function aborted(signal: AbortSignal): Promise<void> {
