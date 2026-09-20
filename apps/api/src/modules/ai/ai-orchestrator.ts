@@ -5,8 +5,10 @@ import type { TenantContext } from '../../common/tenancy/tenant-context';
 import {
   AI_PROVIDER,
   type AiProvider,
+  type AiProviderEvent,
   type AiProviderMessage,
 } from './ai-provider';
+import { AiPublicEventQueue } from './ai-public-event-queue';
 import { AiTurnBudget } from './ai-turn-budget';
 import type { AiToolCallbacks } from './ai-tool-wrapper';
 import type { BeginTurnResult, PublicAiMessage } from './ai.types';
@@ -78,7 +80,7 @@ export class AiOrchestrator {
     yield { event: 'turn.started', data: { turnId: begun.turnId } };
 
     let buffer = '';
-    const pending: AiPublicStreamEvent[] = [];
+    const publicEvents = new AiPublicEventQueue();
     const budget = new AiTurnBudget();
     const toolSummaries: AiToolCallbacks['toolSummaries'] = [];
     const sources: AiToolCallbacks['sources'] = [];
@@ -86,7 +88,7 @@ export class AiOrchestrator {
       const timeout = AbortSignal.timeout(timeoutMs());
       const abortSignal = AbortSignal.any([clientAbort, timeout]);
       const callbacks: AiToolCallbacks = {
-        emit: (event) => pending.push(event),
+        emit: (event) => publicEvents.push(event),
         budget,
         abortSignal,
         toolSummaries,
@@ -105,17 +107,22 @@ export class AiOrchestrator {
       let completed = false;
 
       try {
-        for await (const event of iterateUntilAborted(
+        const merged = mergeProviderAndPublicEvents(
           this.provider.streamTurn({
             messages,
             system: AI_SYSTEM_PROMPT,
             tools,
             abortSignal,
           }),
+          publicEvents,
           abortSignal,
-        )) {
-          yield* drain(pending);
-          if (abortSignal.aborted) break;
+        );
+        for await (const item of merged) {
+          if (item.kind === 'public') {
+            yield item.event;
+            continue;
+          }
+          const event = item.event;
           switch (event.type) {
             case 'TEXT_DELTA':
               buffer += event.text;
@@ -138,8 +145,6 @@ export class AiOrchestrator {
       } catch {
         if (!abortSignal.aborted) failedCode = 'AI_TURN_FAILED';
       }
-
-      yield* drain(pending);
       const latencyMs = Date.now() - startedAt;
       const usage = {
         inputTokens,
@@ -277,29 +282,63 @@ export class AiOrchestrator {
   }
 }
 
-async function* drain(
-  pending: AiPublicStreamEvent[],
-): AsyncIterable<AiPublicStreamEvent> {
-  while (pending.length > 0) {
-    yield pending.shift()!;
-  }
-}
-
-async function* iterateUntilAborted<T>(
-  source: AsyncIterable<T>,
+async function* mergeProviderAndPublicEvents(
+  source: AsyncIterable<AiProviderEvent>,
+  publicEvents: AiPublicEventQueue,
   signal: AbortSignal,
-): AsyncIterable<T> {
+): AsyncIterable<
+  | { kind: 'public'; event: AiPublicStreamEvent }
+  | { kind: 'provider'; event: AiProviderEvent }
+> {
   const iterator = source[Symbol.asyncIterator]();
+  let providerPending:
+    | Promise<IteratorResult<AiProviderEvent>>
+    | undefined;
+  let publicPending: Promise<AiPublicStreamEvent | undefined> | undefined;
+  let providerDone = false;
   try {
-    while (!signal.aborted) {
-      const next = await Promise.race([
-        iterator.next(),
-        aborted(signal).then(() => undefined),
+    while (!signal.aborted && !providerDone) {
+      providerPending ??= iterator.next();
+      publicPending ??= publicEvents.next();
+      const winner = await Promise.race([
+        providerPending.then((result) => ({ type: 'provider' as const, result })),
+        publicPending.then((event) => ({ type: 'public' as const, event })),
+        aborted(signal).then(() => ({ type: 'abort' as const })),
       ]);
-      if (!next || next.done) break;
-      yield next.value;
+      if (winner.type === 'abort') {
+        await Promise.resolve();
+        await Promise.resolve();
+        if (publicPending) {
+          const queued = await Promise.race([
+            publicPending,
+            Promise.resolve(undefined),
+          ]);
+          publicPending = undefined;
+          if (queued) yield { kind: 'public', event: queued };
+        }
+        break;
+      }
+      if (winner.type === 'public') {
+        publicPending = undefined;
+        if (winner.event) yield { kind: 'public', event: winner.event };
+        continue;
+      }
+      providerPending = undefined;
+      if (winner.result.done) {
+        providerDone = true;
+        break;
+      }
+      yield { kind: 'provider', event: winner.result.value };
+    }
+    await Promise.resolve();
+    await Promise.resolve();
+    while (true) {
+      const leftover = publicEvents.takeQueued();
+      if (!leftover) break;
+      yield { kind: 'public', event: leftover };
     }
   } finally {
+    publicEvents.close();
     await iterator.return?.();
   }
 }

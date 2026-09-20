@@ -33,7 +33,7 @@ function searchTool(execute: AiProviderTool['execute']): AiProviderTool {
     description: 'search',
     inputSchema: z
       .object({
-        objectCode: z.string(),
+        objectCode: z.string().min(1).max(64),
         limit: z.number().int().min(1).max(20).default(10),
       })
       .strict(),
@@ -205,6 +205,78 @@ describe('wrapAiReadTool', () => {
     );
   });
 
+  it('does not put raw invalid objectCode into public tool.failed metadata', async () => {
+    const { events, callbacks: cb } = callbacks();
+    const execute = jest.fn();
+    const wrapped = wrapAiReadTool(searchTool(execute), cb);
+    const rawObjectCode = 'VERY-LONG/INJECTED/RAW-VALUE-SHOULD-NOT-LEAK';
+
+    await expect(
+      wrapped.execute(
+        {
+          objectCode: rawObjectCode,
+          tenantId: 'other-tenant',
+          includeHidden: true,
+        },
+        'call-raw',
+      ),
+    ).resolves.toEqual({ unavailable: true, code: 'INVALID_TOOL_ARGUMENT' });
+    expect(execute).not.toHaveBeenCalled();
+    expect(events.map((event) => event.event)).toEqual(['tool.failed']);
+    expect(events[0]).toEqual({
+      event: 'tool.failed',
+      data: {
+        callId: 'call-raw',
+        toolName: 'search_records',
+        displayName: '查询记录',
+        status: 'FAILED',
+      },
+    });
+    const serialized = JSON.stringify(events);
+    expect(serialized).not.toContain(rawObjectCode);
+    expect(serialized).not.toContain('other-tenant');
+    expect(serialized).not.toContain('includeHidden');
+    expect(serialized).not.toContain('tenantId');
+  });
+
+  it('returns immediately when abort fires while the domain tool is still pending', async () => {
+    const abort = new AbortController();
+    let resolveDomain!: (value: unknown) => void;
+    let rejectDomain!: (reason?: unknown) => void;
+    const domain = new Promise((resolve, reject) => {
+      resolveDomain = resolve;
+      rejectDomain = reject;
+    });
+    const execute = jest.fn(() => domain);
+    const { events, callbacks: cb, toolSummaries } = callbacks({
+      abortSignal: abort.signal,
+    });
+    const wrapped = wrapAiReadTool(searchTool(execute), cb);
+    const pending = wrapped.execute({ objectCode: 'leads', limit: 5 }, 'call-hang');
+    await Promise.resolve();
+    expect(events.map((event) => event.event)).toEqual(['tool.started']);
+    abort.abort();
+    await expect(pending).resolves.toEqual({
+      unavailable: true,
+      code: 'DATA_UNAVAILABLE',
+    });
+    expect(events.map((event) => event.event)).toEqual([
+      'tool.started',
+      'tool.failed',
+    ]);
+    expect(toolSummaries.at(-1)?.status).toBe('FAILED');
+    const after = events.length;
+    resolveDomain({ items: [{ id: 'late', title: '迟到结果' }], total: 1 });
+    await Promise.resolve();
+    expect(events).toHaveLength(after);
+    expect(JSON.stringify(events)).not.toContain('迟到结果');
+    expect(JSON.stringify(events)).not.toContain('tool.completed');
+    expect(JSON.stringify(events)).not.toContain('sources.updated');
+    rejectDomain(new Error('late rejection must be consumed'));
+    await Promise.resolve();
+    expect(events).toHaveLength(after);
+  });
+
   it('returns INVALID_TOOL_ARGUMENT to the provider on schema parse failure without leaking args', async () => {
     const { events, callbacks: cb } = callbacks();
     const execute = jest.fn();
@@ -221,15 +293,13 @@ describe('wrapAiReadTool', () => {
       ),
     ).resolves.toEqual({ unavailable: true, code: 'INVALID_TOOL_ARGUMENT' });
     expect(execute).not.toHaveBeenCalled();
-    expect(events.map((event) => event.event)).toEqual([
-      'tool.started',
-      'tool.failed',
-    ]);
-    expect(events[1]).toMatchObject({
+    expect(events.map((event) => event.event)).toEqual(['tool.failed']);
+    expect(events[0]).toMatchObject({
       event: 'tool.failed',
       data: {
         callId: 'call-invalid',
         toolName: 'search_records',
+        displayName: '查询记录',
         status: 'FAILED',
       },
     });

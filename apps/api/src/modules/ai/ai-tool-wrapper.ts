@@ -29,6 +29,12 @@ export function defaultAiToolCallbacks(): AiToolCallbacks {
   };
 }
 
+const UNAVAILABLE = { unavailable: true, code: 'DATA_UNAVAILABLE' } as const;
+const INVALID_ARGUMENT = {
+  unavailable: true,
+  code: 'INVALID_TOOL_ARGUMENT',
+} as const;
+
 export function wrapAiReadTool(
   tool: AiProviderTool,
   callbacks: AiToolCallbacks,
@@ -38,28 +44,47 @@ export function wrapAiReadTool(
     description: tool.description,
     inputSchema: tool.inputSchema,
     async execute(input, callId) {
-      if (callbacks.abortSignal.aborted) {
-        return { unavailable: true, code: 'DATA_UNAVAILABLE' };
+      if (callbacks.abortSignal.aborted) return UNAVAILABLE;
+
+      let parsed: unknown;
+      try {
+        parsed = tool.inputSchema.parse(input);
+      } catch (error) {
+        if (error instanceof ZodError) {
+          markFailed(callbacks, {
+            callId,
+            toolName: tool.name,
+            displayName: genericToolDisplayName(tool.name),
+            status: 'RUNNING',
+          });
+          return INVALID_ARGUMENT;
+        }
+        throw error;
       }
+
       let begun = false;
-      const displayName = toolDisplayName(tool.name, input);
+      const displayName = toolDisplayName(tool.name, parsed);
+      const started: AiToolSummary = {
+        callId,
+        toolName: tool.name,
+        displayName,
+        status: 'RUNNING',
+      };
       try {
         callbacks.budget.beginTool();
         begun = true;
-        const started: AiToolSummary = {
-          callId,
-          toolName: tool.name,
-          displayName,
-          status: 'RUNNING',
-        };
         upsertSummary(callbacks.toolSummaries, started);
         callbacks.emit({ event: 'tool.started', data: started });
-        const parsed = tool.inputSchema.parse(input);
-        const raw = await tool.execute(parsed, callId);
-        if (callbacks.abortSignal.aborted) {
+
+        const raw = await raceDomainTool(
+          tool.execute(parsed, callId),
+          callbacks.abortSignal,
+        );
+        if (raw === abortedSentinel || callbacks.abortSignal.aborted) {
           markFailed(callbacks, started);
-          return { unavailable: true, code: 'DATA_UNAVAILABLE' };
+          return UNAVAILABLE;
         }
+
         const sanitized = AiSanitizer.sanitizeToolResult(raw);
         callbacks.budget.addPayload(AiSanitizer.serializedBytes(sanitized));
         const source = AiSourceBuilder.fromTool({
@@ -83,21 +108,8 @@ export function wrapAiReadTool(
         callbacks.emit({ event: 'tool.completed', data: completed });
         return sanitized;
       } catch (error) {
-        if (begun) {
-          markFailed(callbacks, {
-            callId,
-            toolName: tool.name,
-            displayName,
-            status: 'RUNNING',
-          });
-        }
-        return {
-          unavailable: true,
-          code:
-            error instanceof ZodError
-              ? 'INVALID_TOOL_ARGUMENT'
-              : 'DATA_UNAVAILABLE',
-        };
+        if (begun) markFailed(callbacks, started);
+        return error instanceof ZodError ? INVALID_ARGUMENT : UNAVAILABLE;
       } finally {
         if (begun) callbacks.budget.endTool();
       }
@@ -105,28 +117,82 @@ export function wrapAiReadTool(
   };
 }
 
+export function genericToolDisplayName(toolName: string): string {
+  switch (toolName) {
+    case 'list_objects':
+      return '查询业务对象';
+    case 'describe_object':
+      return '查询对象结构';
+    case 'search_records':
+    case 'get_record':
+      return '查询记录';
+    case 'aggregate_records':
+      return '查询统计';
+    case 'list_activities':
+      return '查询活动';
+    case 'list_followups':
+      return '查询跟进';
+    default:
+      return '查询数据';
+  }
+}
+
 export function toolDisplayName(toolName: string, input: unknown): string {
   const objectCode =
     isRecord(input) && typeof input.objectCode === 'string' && input.objectCode
       ? input.objectCode
       : undefined;
+  if (!objectCode) return genericToolDisplayName(toolName);
   switch (toolName) {
-    case 'list_objects':
-      return '查询业务对象';
     case 'describe_object':
-      return objectCode ? `查询${objectCode}结构` : '查询对象结构';
+      return `查询${objectCode}结构`;
     case 'search_records':
-      return objectCode ? `查询${objectCode}记录` : '查询记录';
+      return `查询${objectCode}记录`;
     case 'get_record':
-      return objectCode ? `查询${objectCode}详情` : '查询记录';
+      return `查询${objectCode}详情`;
     case 'aggregate_records':
-      return objectCode ? `统计${objectCode}` : '查询统计';
+      return `统计${objectCode}`;
     case 'list_activities':
-      return objectCode ? `查询${objectCode}活动` : '查询活动';
+      return `查询${objectCode}活动`;
     case 'list_followups':
-      return objectCode ? `查询${objectCode}跟进` : '查询跟进';
+      return `查询${objectCode}跟进`;
     default:
-      return '查询数据';
+      return genericToolDisplayName(toolName);
+  }
+}
+
+const abortedSentinel = Symbol('ai-tool-aborted');
+
+async function raceDomainTool(
+  domain: Promise<unknown>,
+  signal: AbortSignal,
+): Promise<unknown> {
+  let onAbort: (() => void) | undefined;
+  const abort = new Promise<typeof abortedSentinel>((resolve) => {
+    if (signal.aborted) {
+      resolve(abortedSentinel);
+      return;
+    }
+    onAbort = () => resolve(abortedSentinel);
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+  try {
+    return await Promise.race([
+      domain.then(
+        (value) => value,
+        (error: unknown) => {
+          if (signal.aborted) return abortedSentinel;
+          throw error;
+        },
+      ),
+      abort,
+    ]);
+  } finally {
+    if (onAbort) signal.removeEventListener('abort', onAbort);
+    void domain.then(
+      () => undefined,
+      () => undefined,
+    );
   }
 }
 
@@ -138,11 +204,12 @@ function sourceDetail(source: AiSourceSummary | null): string | undefined {
   return source.value;
 }
 
-function markFailed(
-  callbacks: AiToolCallbacks,
-  started: AiToolSummary,
-): void {
-  const failed: AiToolSummary = { ...started, status: 'FAILED', detail: undefined };
+function markFailed(callbacks: AiToolCallbacks, started: AiToolSummary): void {
+  const failed: AiToolSummary = {
+    ...started,
+    status: 'FAILED',
+    detail: undefined,
+  };
   upsertSummary(callbacks.toolSummaries, failed);
   callbacks.emit({ event: 'tool.failed', data: failed });
 }

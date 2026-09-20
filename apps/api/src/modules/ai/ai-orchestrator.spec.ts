@@ -389,9 +389,9 @@ describe('AiOrchestrator.streamTurn', () => {
       'conversation.ready',
       'turn.started',
       'tool.started',
+      'assistant.delta',
       'sources.updated',
       'tool.completed',
-      'assistant.delta',
       'turn.completed',
     ]);
     expect(events.find((event) => event.event === 'tool.started')?.data).toEqual({
@@ -490,9 +490,11 @@ describe('AiOrchestrator.streamTurn', () => {
         new AbortController().signal,
       ),
     );
-    expect(results[4]).toEqual({ unavailable: true, code: 'DATA_UNAVAILABLE' });
+    expect(results[5]).toEqual({
+      items: [{ id: '1', values: { secret: 'x' } }],
+    });
     expect(results[6]).toEqual({ unavailable: true, code: 'DATA_UNAVAILABLE' });
-    expect(events.filter((event) => event.event === 'tool.completed')).toHaveLength(4);
+    expect(events.filter((event) => event.event === 'tool.completed')).toHaveLength(6);
     expect(JSON.stringify(events)).not.toContain('secret');
     expect(events.map((event) => event.event)).toContain('turn.completed');
   });
@@ -537,6 +539,107 @@ describe('AiOrchestrator.streamTurn', () => {
     expect(JSON.stringify(events)).not.toContain('secret');
   });
 
+  it('yields tool.started before a deferred domain tool resolves', async () => {
+    const conversations = conversationMock();
+    let resolveDomain!: (value: unknown) => void;
+    const domain = new Promise((resolve) => {
+      resolveDomain = resolve;
+    });
+    const seen: string[] = [];
+    const provider = providerWith(async function* (_signal, tools) {
+      const pending = tools[0]!.execute({ objectCode: 'leads' }, 'live-1');
+      await new Promise((resolve) => setImmediate(resolve));
+      resolveDomain({ items: [{ id: '1', title: '自己的线索' }], total: 1 });
+      await pending;
+      yield { type: 'TEXT_DELTA', text: '查完了。' };
+      yield { type: 'COMPLETED' };
+    });
+    const orchestrator = new AiOrchestrator(
+      conversations,
+      provider,
+      registryWith([searchTool(() => domain)]),
+    );
+    const stream = await orchestrator.streamTurn(
+      context,
+      { content: '实时' },
+      new AbortController().signal,
+    );
+    for await (const event of stream) {
+      seen.push(event.event);
+      if (event.event === 'tool.started') {
+        expect(seen).not.toContain('tool.completed');
+        expect(seen).not.toContain('sources.updated');
+      }
+    }
+    const startedAt = seen.indexOf('tool.started');
+    const completedAt = seen.indexOf('tool.completed');
+    expect(startedAt).toBeGreaterThanOrEqual(0);
+    expect(completedAt).toBeGreaterThan(startedAt);
+    expect(seen.indexOf('sources.updated')).toBeGreaterThan(startedAt);
+  });
+
+  it('finalizes AI_PROVIDER_TIMEOUT while an in-flight tool is still pending', async () => {
+    const previous = process.env.AI_TIMEOUT_MS;
+    process.env.AI_TIMEOUT_MS = '20';
+    const conversations = conversationMock();
+    let resolveDomain!: (value: unknown) => void;
+    const domain = new Promise((resolve) => {
+      resolveDomain = resolve;
+    });
+    const execute = jest.fn(() => domain);
+    const provider = providerWith(async function* (signal, tools) {
+      const hanging = tools[0]!.execute({ objectCode: 'leads' }, 'hang-1');
+      await new Promise<void>((resolve) => {
+        if (signal.aborted) {
+          resolve();
+          return;
+        }
+        signal.addEventListener('abort', () => resolve(), { once: true });
+      });
+      void hanging;
+    });
+    const orchestrator = new AiOrchestrator(
+      conversations,
+      provider,
+      registryWith([searchTool(execute)]),
+    );
+    try {
+      const events = await collect(
+        await orchestrator.streamTurn(
+          context,
+          { content: '卡住' },
+          new AbortController().signal,
+        ),
+      );
+      expect(conversations.finalizeAssistant).toHaveBeenCalledWith(
+        context,
+        'turn-1',
+        expect.objectContaining({
+          status: 'FAILED',
+          errorCode: 'AI_PROVIDER_TIMEOUT',
+        }),
+      );
+      expect(events.find((event) => event.event === 'turn.failed')).toEqual({
+        event: 'turn.failed',
+        data: {
+          turnId: 'turn-1',
+          code: 'AI_PROVIDER_TIMEOUT',
+          messageId: 'asst-msg',
+        },
+      });
+      expect(events.map((event) => event.event)).toContain('tool.started');
+      expect(events.map((event) => event.event)).toContain('tool.failed');
+      expect(events.map((event) => event.event)).not.toContain('tool.completed');
+      const after = events.length;
+      resolveDomain({ items: [{ id: 'late' }], total: 1 });
+      await Promise.resolve();
+      expect(events).toHaveLength(after);
+    } finally {
+      if (previous === undefined) delete process.env.AI_TIMEOUT_MS;
+      else process.env.AI_TIMEOUT_MS = previous;
+    }
+  });
+
   it('does not start new tools after abort', async () => {
     const conversations = conversationMock();
     const abort = new AbortController();
@@ -565,36 +668,4 @@ describe('AiOrchestrator.streamTurn', () => {
     );
   });
 
-  it('refuses a fifth provider tool-request round without executing the domain tool', async () => {
-    const conversations = conversationMock();
-    const execute = jest.fn(async () => ({ items: [] }));
-    const results: unknown[] = [];
-    const provider = providerWith(async function* (_signal, tools) {
-      for (let index = 0; index < 5; index += 1) {
-        results.push(
-          await tools[0]!.execute({ objectCode: 'leads' }, `round-${index}`),
-        );
-      }
-      yield { type: 'TEXT_DELTA', text: '已达模型轮次上限。' };
-      yield { type: 'COMPLETED' };
-    });
-    const orchestrator = new AiOrchestrator(
-      conversations,
-      provider,
-      registryWith([searchTool(execute)]),
-    );
-    const events = await collect(
-      await orchestrator.streamTurn(
-        context,
-        { content: '轮次' },
-        new AbortController().signal,
-      ),
-    );
-    expect(execute).toHaveBeenCalledTimes(4);
-    expect(results[4]).toEqual({ unavailable: true, code: 'DATA_UNAVAILABLE' });
-    expect(events.filter((event) => event.event === 'tool.completed')).toHaveLength(
-      4,
-    );
-    expect(events.map((event) => event.event)).toContain('turn.completed');
-  });
 });
