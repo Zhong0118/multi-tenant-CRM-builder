@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Drawer, Tag } from "antd";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 
@@ -37,8 +37,9 @@ export function AiAssistantPage({
   const client = useQueryClient();
   const [state, dispatch] = useReducer(aiTurnReducer, initialAiTurnState);
   const abortRef = useRef<AbortController | null>(null);
+  const generationRef = useRef(0);
   const [railOpen, setRailOpen] = useState(false);
-  const composerRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<import("antd/es/input/TextArea").TextAreaRef>(null);
 
   const conversations = useInfiniteQuery({
     queryKey: aiQueryKeys.conversations(tenantCode),
@@ -46,9 +47,12 @@ export function AiAssistantPage({
     queryFn: ({ pageParam }) => aiApi.listConversations(tenantCode, pageParam),
     getNextPageParam: (last) => last.nextCursor,
   });
-  const messages = useQuery({
+  const messages = useInfiniteQuery({
     queryKey: aiQueryKeys.messages(tenantCode, conversationId ?? ""),
-    queryFn: () => aiApi.listMessages(tenantCode, conversationId!),
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) =>
+      aiApi.listMessages(tenantCode, conversationId!, pageParam),
+    getNextPageParam: (last) => last.nextBefore,
     enabled: !!conversationId,
   });
 
@@ -65,27 +69,82 @@ export function AiAssistantPage({
     }
   }, [conversationId, pathname, router, searchParams, state.conversationId]);
 
-  const history = useMemo(
-    () => (messages.data?.items ?? []) as AiMessage[],
-    [messages.data],
-  );
+  const history = useMemo(() => {
+    const pages = messages.data?.pages ?? [];
+    return [...pages].reverse().flatMap((page) => page.items) as AiMessage[];
+  }, [messages.data]);
   const live = toAssistantMessage(state);
-  const shown = live
-    ? [
-        ...history.filter((item) => item.turnId !== live.turnId || item.role === "USER"),
-        live,
-      ]
-    : history;
+  const pendingUser: AiMessage | null =
+    state.pendingUserContent && state.conversationId
+      ? {
+          id: `pending-${state.turnId ?? "new"}`,
+          conversationId: state.conversationId,
+          turnId: state.turnId ?? "pending",
+          role: "USER",
+          status: "COMPLETED",
+          content: state.pendingUserContent,
+          toolSummary: [],
+          sourceSummary: [],
+          createdAt: new Date().toISOString(),
+        }
+      : state.pendingUserContent
+        ? {
+            id: "pending-new",
+            conversationId: "pending",
+            turnId: "pending",
+            role: "USER",
+            status: "COMPLETED",
+            content: state.pendingUserContent,
+            toolSummary: [],
+            sourceSummary: [],
+            createdAt: new Date().toISOString(),
+          }
+        : null;
+  const shown = [
+    ...history.filter(
+      (item) =>
+        !(live && item.turnId === live.turnId && item.role !== "USER") &&
+        !(pendingUser && item.role === "USER" && item.content === pendingUser.content),
+    ),
+    ...(pendingUser ? [pendingUser] : []),
+    ...(live ? [live] : []),
+  ];
 
   async function consume(
     iterable: AsyncIterable<import("./ai-types").AiPublicStreamEvent>,
+    controller: AbortController,
+    generation: number,
   ) {
+    const stillCurrent = () => generation === generationRef.current;
+    let liveConversationId = conversationId;
     try {
       for await (const event of iterable) {
+        if (!stillCurrent()) return;
         dispatch({ type: "event", event });
+        if (event.event === "conversation.ready") {
+          liveConversationId = event.data.conversationId;
+          void client.invalidateQueries({
+            queryKey: aiQueryKeys.conversations(tenantCode),
+          });
+        }
+        if (
+          event.event === "turn.completed" ||
+          event.event === "turn.failed" ||
+          event.event === "turn.cancelled"
+        ) {
+          if (liveConversationId) {
+            void client.invalidateQueries({
+              queryKey: aiQueryKeys.messages(tenantCode, liveConversationId),
+            });
+          }
+          void client.invalidateQueries({
+            queryKey: aiQueryKeys.conversations(tenantCode),
+          });
+        }
       }
     } catch (error) {
-      if (abortRef.current?.signal.aborted) {
+      if (!stillCurrent()) return;
+      if (controller.signal.aborted) {
         dispatch({ type: "cancel" });
         return;
       }
@@ -95,8 +154,8 @@ export function AiAssistantPage({
         event: {
           event: "turn.failed",
           data: {
-            turnId: state.turnId ?? "unknown",
-            code: apiError.code,
+            turnId: "unknown",
+            code: apiError.code === "AI_STREAM_INVALID" ? "NETWORK" : apiError.code,
             messageId: "unknown",
           },
         },
@@ -104,35 +163,35 @@ export function AiAssistantPage({
     }
   }
 
+  function startTurn(
+    factory: (signal: AbortSignal) => AsyncIterable<import("./ai-types").AiPublicStreamEvent>,
+  ) {
+    abortRef.current?.abort();
+    generationRef.current += 1;
+    const generation = generationRef.current;
+    const abort = new AbortController();
+    abortRef.current = abort;
+    void consume(factory(abort.signal), abort, generation);
+    queueMicrotask(() => composerRef.current?.focus?.());
+  }
+
   function send(content = state.draft) {
     const text = content.trim();
     if (!text) return;
-    abortRef.current?.abort();
-    const abort = new AbortController();
-    abortRef.current = abort;
-    dispatch({ type: "draft", value: text });
-    dispatch({ type: "send" });
-    void consume(
-      aiApi.streamTurn(
-        tenantCode,
-        { conversationId, content: text },
-        abort.signal,
-      ),
+    dispatch({ type: "beginNewTurn", content: text });
+    startTurn((signal) =>
+      aiApi.streamTurn(tenantCode, { conversationId, content: text }, signal),
     );
   }
 
   function stop() {
     abortRef.current?.abort();
-    dispatch({ type: "cancel" });
   }
 
-  function retry() {
-    if (!state.turnId) return;
-    abortRef.current?.abort();
-    const abort = new AbortController();
-    abortRef.current = abort;
-    dispatch({ type: "send" });
-    void consume(aiApi.retryTurn(tenantCode, state.turnId, abort.signal));
+  function retry(turnId = state.turnId) {
+    if (!turnId) return;
+    dispatch({ type: "beginRetryTurn", turnId });
+    startTurn((signal) => aiApi.retryTurn(tenantCode, turnId, signal));
   }
 
   const rename = useMutation({
@@ -217,22 +276,11 @@ export function AiAssistantPage({
             streaming={state.phase === "STREAMING"}
             phase={state.phase}
             onLoadOlder={
-              messages.data?.nextBefore
-                ? () =>
-                    void client.fetchQuery({
-                      queryKey: [
-                        ...aiQueryKeys.messages(tenantCode, conversationId ?? ""),
-                        messages.data.nextBefore,
-                      ],
-                      queryFn: () =>
-                        aiApi.listMessages(
-                          tenantCode,
-                          conversationId!,
-                          messages.data?.nextBefore,
-                        ),
-                    })
+              messages.hasNextPage
+                ? () => void messages.fetchNextPage()
                 : undefined
             }
+            onRetry={retry}
           />
         )}
         {state.errorMessage ? (
@@ -244,20 +292,19 @@ export function AiAssistantPage({
             }
             onRetry={
               state.phase === "FAILED" || state.phase === "CANCELLED"
-                ? retry
+                ? () => retry()
                 : undefined
             }
           />
         ) : null}
-        <div ref={composerRef}>
-          <AiComposer
-            value={state.draft}
-            phase={state.phase}
-            onChange={(value) => dispatch({ type: "draft", value })}
-            onSend={() => send()}
-            onStop={stop}
-          />
-        </div>
+        <AiComposer
+          value={state.draft}
+          phase={state.phase}
+          inputRef={composerRef}
+          onChange={(value) => dispatch({ type: "draft", value })}
+          onSend={() => send()}
+          onStop={stop}
+        />
       </section>
     </div>
   );

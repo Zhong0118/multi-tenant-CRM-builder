@@ -15,6 +15,7 @@ export function AiMessageList({
   streaming,
   phase,
   onLoadOlder,
+  onRetry,
 }: {
   tenantCode: string;
   messages: AiMessage[];
@@ -22,14 +23,25 @@ export function AiMessageList({
   streaming?: boolean;
   phase: AiTurnPhase;
   onLoadOlder?: () => void;
+  onRetry?: (turnId: string) => void;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const [follow, setFollow] = useState(true);
   const live = useRef<HTMLDivElement>(null);
+  const previousCount = useRef(messages.length);
 
   useEffect(() => {
-    if (!follow) return;
-    scroller.current?.scrollTo?.({ top: scroller.current.scrollHeight });
+    const node = scroller.current;
+    if (!node) return;
+    if (messages.length > previousCount.current && !follow) {
+      const previousHeight = node.scrollHeight;
+      requestAnimationFrame(() => {
+        node.scrollTop += node.scrollHeight - previousHeight;
+      });
+    } else if (follow) {
+      node.scrollTo?.({ top: node.scrollHeight });
+    }
+    previousCount.current = messages.length;
   }, [follow, messages, streaming]);
 
   return (
@@ -57,6 +69,7 @@ export function AiMessageList({
             key={message.id}
             tenantCode={tenantCode}
             message={message}
+            onRetry={onRetry}
           />
         ),
       )}

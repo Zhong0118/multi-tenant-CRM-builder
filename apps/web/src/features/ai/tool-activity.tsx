@@ -9,16 +9,21 @@ import type { AiToolSummary } from "./ai-types";
 export function ToolActivity({ tools }: { tools: AiToolSummary[] }) {
   const active = tools.some((tool) => tool.status === "RUNNING");
   const [open, setOpen] = useState(active);
+  const [manual, setManual] = useState(false);
   useEffect(() => {
-    if (active) setOpen(true);
-  }, [active]);
+    if (manual) return;
+    setOpen(active);
+  }, [active, manual]);
   if (tools.length === 0) return null;
   return (
     <div className={styles.tools}>
       <button
         type="button"
         aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => {
+          setManual(true);
+          setOpen((value) => !value);
+        }}
       >
         {active ? "正在查询 CRM 数据" : "已完成的查询"}
       </button>

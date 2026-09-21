@@ -57,4 +57,22 @@ describe("AiStreamParser", () => {
       feed(["event: tool-call\ndata: {\"name\":\"search_records\"}\n\n"]),
     ).toThrow(AiStreamError);
   });
+
+  it("rejects a valid event name with an illegal payload", () => {
+    const cases = [
+      'event: sources.updated\ndata: {}\n\n',
+      'event: assistant.delta\ndata: {"text":123}\n\n',
+      'event: tool.started\ndata: {"toolName":"search_records","displayName":"查询记录","status":"RUNNING"}\n\n',
+      'event: sources.updated\ndata: {"sources":[{"kind":"RECORDS","objectCode":"leads","objectName":"销售线索"}]}\n\n',
+      'event: sources.updated\ndata: {"sources":[{"kind":"AGGREGATE","objectCode":"leads","objectName":"销售线索","label":"金额"}]}\n\n',
+    ];
+    for (const chunk of cases) {
+      expect(() => feed([chunk])).toThrow(AiStreamError);
+      try {
+        feed([chunk]);
+      } catch (error) {
+        expect(error).toMatchObject({ code: "AI_STREAM_INVALID" });
+      }
+    }
+  });
 });

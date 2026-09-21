@@ -28,5 +28,6 @@ describe("AiComposer", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "停止" }));
     expect(onStop).toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "发送" })).toBeEnabled();
   });
 });

@@ -13,10 +13,10 @@ export function AiErrorState({
     <Alert
       type="warning"
       showIcon
-      message={message}
+      title={message}
       action={
         onRetry ? (
-          <Button size="small" onClick={onRetry}>
+          <Button size="small" aria-label="重试" onClick={onRetry}>
             重试
           </Button>
         ) : undefined

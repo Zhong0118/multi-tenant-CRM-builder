@@ -1,6 +1,8 @@
 "use client";
 
 import { Button, Input } from "antd";
+import type { TextAreaRef } from "antd/es/input/TextArea";
+import type { RefObject } from "react";
 
 import styles from "./ai-assistant.module.css";
 import { AI_MAX_INPUT, type AiTurnPhase } from "./ai-types";
@@ -11,17 +13,20 @@ export function AiComposer({
   onChange,
   onSend,
   onStop,
+  inputRef,
 }: {
   value: string;
   phase: AiTurnPhase;
   onChange: (value: string) => void;
   onSend: () => void;
   onStop: () => void;
+  inputRef?: RefObject<TextAreaRef | null>;
 }) {
   const generating = phase === "SENDING" || phase === "STREAMING";
   return (
     <div className={styles.composer}>
       <Input.TextArea
+        ref={inputRef}
         value={value}
         maxLength={AI_MAX_INPUT}
         autoSize={{ minRows: 2, maxRows: 6 }}
@@ -30,7 +35,7 @@ export function AiComposer({
         onPressEnter={(event) => {
           if (event.shiftKey) return;
           event.preventDefault();
-          if (!generating && value.trim()) onSend();
+          if (value.trim()) onSend();
         }}
       />
       <div className={styles.composerActions}>
@@ -38,16 +43,15 @@ export function AiComposer({
           <Button aria-label="停止" onClick={onStop}>
             停止
           </Button>
-        ) : (
-          <Button
-            type="primary"
-            aria-label="发送"
-            disabled={!value.trim()}
-            onClick={onSend}
-          >
-            发送
-          </Button>
-        )}
+        ) : null}
+        <Button
+          type="primary"
+          aria-label="发送"
+          disabled={!value.trim()}
+          onClick={onSend}
+        >
+          发送
+        </Button>
       </div>
     </div>
   );

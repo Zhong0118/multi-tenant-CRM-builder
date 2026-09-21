@@ -18,6 +18,7 @@ export interface AiTurnState {
   errorCode?: string | null;
   errorMessage?: string;
   partial: boolean;
+  pendingUserContent?: string;
 }
 
 export const initialAiTurnState: AiTurnState = {
@@ -31,7 +32,8 @@ export const initialAiTurnState: AiTurnState = {
 
 export type AiTurnAction =
   | { type: "draft"; value: string }
-  | { type: "send" }
+  | { type: "beginNewTurn"; content: string }
+  | { type: "beginRetryTurn"; turnId: string }
   | { type: "event"; event: AiPublicStreamEvent }
   | { type: "cancel" }
   | { type: "network" }
@@ -46,16 +48,18 @@ export function aiTurnReducer(
     case "draft":
       return { ...state, draft: action.value.slice(0, 2000) };
     case "hydrate":
+      if (state.conversationId === action.conversationId) return state;
       return {
         ...initialAiTurnState,
         conversationId: action.conversationId,
       };
     case "reset":
       return { ...initialAiTurnState, conversationId: undefined };
-    case "send":
+    case "beginNewTurn":
       return {
         ...state,
         phase: "SENDING",
+        turnId: undefined,
         streamingText: "",
         tools: [],
         sources: [],
@@ -63,6 +67,20 @@ export function aiTurnReducer(
         errorMessage: undefined,
         partial: false,
         draft: "",
+        pendingUserContent: action.content,
+      };
+    case "beginRetryTurn":
+      return {
+        ...state,
+        phase: "SENDING",
+        turnId: action.turnId,
+        streamingText: "",
+        tools: [],
+        sources: [],
+        errorCode: null,
+        errorMessage: undefined,
+        partial: false,
+        pendingUserContent: undefined,
       };
     case "cancel":
       if (state.phase !== "SENDING" && state.phase !== "STREAMING") {
@@ -125,6 +143,7 @@ function applyEvent(
       return {
         ...state,
         phase: state.partial ? "PARTIAL_COMPLETED" : "COMPLETED",
+        pendingUserContent: undefined,
         errorMessage: state.partial
           ? "部分 CRM 数据暂时无法读取，本次回答可能不完整"
           : undefined,
@@ -133,6 +152,7 @@ function applyEvent(
       return {
         ...state,
         phase: "FAILED",
+        turnId: event.data.turnId,
         errorCode: event.data.code,
         errorMessage: userErrorMessage(event.data.code),
       };
