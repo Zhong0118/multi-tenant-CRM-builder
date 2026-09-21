@@ -3,7 +3,7 @@
 > 日期：2026-09-18  
 > 文档类型：Task Design Spec  
 > 状态：APPROVED FOR EXECUTION — V1A ACTIVE  
-> Roadmap：AI Assistant V1A（ACTIVE；当前实现切片 = PR A — AI Foundation）；AI Assistant V1B = PLANNED  
+> Roadmap：AI Assistant V1A（ACTIVE；当前实现切片 = PR C — AI Workspace UI + Closeout；PR A/B MERGED AND VERIFIED）；AI Assistant V1B = PLANNED  
 > 设计基线：`main` / `89fb842bbe3a506340e3047fabb615ac5656ca9b`  
 > 上位方向：`docs/superpowers/specs/2026-09-16-ai-assistant-v1-design.md`  
 > Stage Brief：`docs/superpowers/briefs/2026-09-16-ai-assistant-v1a-stage-brief.md`
