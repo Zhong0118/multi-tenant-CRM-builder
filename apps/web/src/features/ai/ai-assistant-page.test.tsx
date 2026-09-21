@@ -385,6 +385,7 @@ describe("AiAssistantPage", () => {
       expect(screen.getByText("基于你当前权限，帮助你查询和总结 CRM 数据")).toBeInTheDocument(),
     );
     expect(screen.queryByText("不该出现")).not.toBeInTheDocument();
+    expect(mocks.replace).toHaveBeenCalledWith("/workspace/northwind/ai");
   });
 
   it("abandons A when browser history opens a different conversation", async () => {

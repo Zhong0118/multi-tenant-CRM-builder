@@ -74,13 +74,6 @@ export function AiAssistantPage({
   }, [conversationId]);
 
   useEffect(() => {
-    if (!state.conversationId || conversationId) return;
-    const next = new URLSearchParams(searchParams.toString());
-    next.set("conversation", state.conversationId);
-    router.replace(`${pathname}?${next.toString()}`);
-  }, [conversationId, pathname, router, searchParams, state.conversationId]);
-
-  useEffect(() => {
     return () => {
       generationRef.current += 1;
       abortRef.current?.abort();
@@ -149,6 +142,9 @@ export function AiAssistantPage({
         dispatch({ type: "event", event });
         if (event.event === "conversation.ready") {
           liveConversationId = event.data.conversationId;
+          router.replace(
+            `${pathname}?conversation=${encodeURIComponent(event.data.conversationId)}`,
+          );
           void client.invalidateQueries({
             queryKey: aiQueryKeys.conversations(tenantCode),
           });

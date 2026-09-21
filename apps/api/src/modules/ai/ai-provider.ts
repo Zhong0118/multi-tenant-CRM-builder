@@ -67,6 +67,9 @@ export function createAiProvider(env: AiProviderEnv = {}): AiProvider {
   if (nodeEnv === 'test' && provider === 'fake') {
     return new FakeAiProvider();
   }
+  if (nodeEnv === 'test') {
+    return new UnavailableAiProvider();
+  }
   if (provider === 'openai' && model && apiKey) {
     return loadVercelOpenAiProvider(apiKey, model, baseURL);
   }

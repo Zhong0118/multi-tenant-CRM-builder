@@ -6,7 +6,7 @@ import {
   resetFakeAiProviderCapture,
 } from './providers/fake-ai.provider';
 import { VercelOpenAiProvider } from './providers/vercel-openai.provider';
-import { createAiProvider } from './ai-provider';
+import { createAiProvider, UnavailableAiProvider } from './ai-provider';
 import { sseFrame } from './ai-stream';
 import type { AiProviderEvent } from './ai-provider';
 
@@ -114,6 +114,17 @@ describe('createAiProvider factory', () => {
       provider: 'fake',
     });
     expect(provider).toBeInstanceOf(FakeAiProvider);
+  });
+
+  it('does not load the OpenAI SDK when NODE_ENV=test even if openai credentials are set', () => {
+    const provider = createAiProvider({
+      nodeEnv: 'test',
+      provider: 'openai',
+      model: 'deepseek-flash',
+      apiKey: 'sk-test',
+      baseURL: 'https://www.micuapi.ai/v1',
+    });
+    expect(provider).toBeInstanceOf(UnavailableAiProvider);
   });
 
   it('does not silently fall back to fake outside test+fake', () => {
