@@ -35,7 +35,7 @@ export interface AiMessage {
   id: string;
   conversationId: string;
   turnId: string;
-  role: "USER" | "ASSISTANT";
+  role: string;
   status: string;
   content: string;
   toolSummary: AiToolSummary[];

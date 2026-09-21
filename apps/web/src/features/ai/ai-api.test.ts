@@ -55,7 +55,7 @@ describe("aiApi", () => {
     });
     expect(mocks.GET).toHaveBeenCalledWith(
       "/api/v1/workspaces/{tenantCode}/ai/conversations",
-      { params: { path: { tenantCode: "northwind" }, query: {} } },
+      { params: { path: { tenantCode: "northwind" } } },
     );
   });
 
@@ -67,7 +67,7 @@ describe("aiApi", () => {
       ]),
     );
     vi.stubGlobal("fetch", fetchMock);
-    const events = [];
+    const events: unknown[] = [];
     await expect(async () => {
       for await (const event of aiApi.streamTurn(
         "northwind",

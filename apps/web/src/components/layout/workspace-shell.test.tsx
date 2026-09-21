@@ -46,6 +46,7 @@ describe("workspaceNavigation", () => {
     expect(items.map((item) => item.href)).toEqual([
       "/workspace/northwind",
       "/workspace/northwind/follow-ups",
+      "/workspace/northwind/ai",
       "/workspace/northwind/members",
       "/workspace/northwind/audit",
       "/workspace/northwind/settings",
@@ -64,6 +65,11 @@ describe("workspaceNavigation", () => {
         href: "/workspace/northwind/follow-ups",
         label: "跟进待办",
         icon: "calendar",
+      },
+      {
+        href: "/workspace/northwind/ai",
+        label: "AI 助手",
+        icon: "ai",
       },
     ]);
   });

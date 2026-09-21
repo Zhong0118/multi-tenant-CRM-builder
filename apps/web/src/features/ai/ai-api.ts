@@ -9,9 +9,12 @@ import { AiStreamError, AiStreamParser } from "./ai-stream-parser";
 import type {
   AiConversation,
   AiConversationPage,
+  AiMessage,
   AiMessagePage,
   AiPublicStreamEvent,
+  AiSourceSummary,
   AiStreamTurnInput,
+  AiToolSummary,
 } from "./ai-types";
 
 const CONVERSATIONS = "/api/v1/workspaces/{tenantCode}/ai/conversations";
@@ -32,7 +35,10 @@ export const aiApi = {
   ): Promise<AiConversationPage> {
     return dataOrThrow(
       await browserApiClient.GET(CONVERSATIONS, {
-        params: { path: { tenantCode }, query: cursor ? { cursor } : {} },
+        params: {
+          path: { tenantCode },
+          ...(cursor ? { query: { cursor } } : {}),
+        },
       }),
     );
   },
@@ -42,7 +48,7 @@ export const aiApi = {
     conversationId: string,
     before?: string,
   ): Promise<AiMessagePage> {
-    return dataOrThrow(
+    const page = await dataOrThrow(
       await browserApiClient.GET(MESSAGES, {
         params: {
           path: { tenantCode, id: conversationId },
@@ -50,6 +56,10 @@ export const aiApi = {
         },
       }),
     );
+    return {
+      nextBefore: page.nextBefore,
+      items: page.items.map(presentMessage),
+    };
   },
 
   async rename(
@@ -95,6 +105,51 @@ export const aiApi = {
     );
   },
 };
+
+function presentMessage(item: {
+  id: string;
+  conversationId: string;
+  turnId: string;
+  role: string;
+  status: string;
+  content: string;
+  toolSummary: unknown[];
+  sourceSummary: unknown[];
+  errorCode?: string | null;
+  createdAt: string;
+  completedAt?: string | null;
+}): AiMessage {
+  return {
+    ...item,
+    toolSummary: item.toolSummary.filter(isToolSummary),
+    sourceSummary: item.sourceSummary.filter(isSourceSummary),
+  };
+}
+
+function isToolSummary(value: unknown): value is AiToolSummary {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.callId === "string" &&
+    typeof record.toolName === "string" &&
+    typeof record.displayName === "string" &&
+    (record.status === "RUNNING" ||
+      record.status === "COMPLETED" ||
+      record.status === "FAILED")
+  );
+}
+
+function isSourceSummary(value: unknown): value is AiSourceSummary {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  return (
+    (record.kind === "RECORDS" ||
+      record.kind === "AGGREGATE" ||
+      record.kind === "TIMELINE") &&
+    typeof record.objectCode === "string" &&
+    typeof record.objectName === "string"
+  );
+}
 
 async function* readSse(
   url: string,
