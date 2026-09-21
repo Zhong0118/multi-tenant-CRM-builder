@@ -69,6 +69,8 @@ export function ConversationRail({
                     {item.title}
                   </button>
                   <Dropdown
+                    trigger={["click"]}
+                    getPopupContainer={() => document.body}
                     menu={{
                       items: [
                         {

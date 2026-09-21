@@ -7,6 +7,8 @@
 }
 
 .rail {
+  position: relative;
+  z-index: 2;
   display: none;
   flex: 0 0 260px;
   width: 260px;
@@ -67,6 +69,8 @@
 }
 
 .chat {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex: 1;
   flex-direction: column;
