@@ -19,12 +19,19 @@ export function AssistantMessage({
 }) {
   const retryable =
     (message.status === "FAILED" || message.status === "CANCELLED") && onRetry;
+  const partial =
+    message.status === "PARTIAL_COMPLETED" ||
+    (message.status === "COMPLETED" &&
+      message.toolSummary.some((tool) => tool.status === "FAILED"));
   return (
     <article className={styles.assistantSurface}>
       <ToolActivity tools={message.toolSummary} />
       {renderSafeText(message.content).map((paragraph, index) => (
         <p key={`${message.id}-${index}`}>{paragraph}</p>
       ))}
+      {partial ? (
+        <AiErrorState message="部分 CRM 数据暂时无法读取，本次回答可能不完整" />
+      ) : null}
       {retryable ? (
         <AiErrorState
           message={

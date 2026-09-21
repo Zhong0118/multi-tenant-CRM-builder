@@ -80,6 +80,14 @@ export function AiAssistantPage({
     router.replace(`${pathname}?${next.toString()}`);
   }, [conversationId, pathname, router, searchParams, state.conversationId]);
 
+  useEffect(() => {
+    return () => {
+      generationRef.current += 1;
+      abortRef.current?.abort();
+      abortRef.current = null;
+    };
+  }, []);
+
   const history = useMemo(() => {
     const pages = messages.data?.pages ?? [];
     return [...pages].reverse().flatMap((page) => page.items) as AiMessage[];
@@ -295,10 +303,14 @@ export function AiAssistantPage({
             phase={state.phase}
             onLoadOlder={
               messages.hasNextPage
-                ? () => void messages.fetchNextPage()
+                ? () => messages.fetchNextPage()
                 : undefined
             }
-            onRetry={retry}
+            onRetry={
+              state.phase === "SENDING" || state.phase === "STREAMING"
+                ? undefined
+                : retry
+            }
           />
         )}
         {state.errorMessage && !live ? (

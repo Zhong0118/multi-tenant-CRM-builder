@@ -29,7 +29,7 @@ export function AiMessageList({
   loading?: boolean;
   streaming?: boolean;
   phase: AiTurnPhase;
-  onLoadOlder?: () => void;
+  onLoadOlder?: () => void | Promise<unknown>;
   onRetry?: (turnId: string) => void;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
@@ -72,7 +72,9 @@ export function AiMessageList({
                 top: node.scrollTop,
               };
             }
-            onLoadOlder();
+            void Promise.resolve(onLoadOlder()).catch(() => {
+              prependAnchor.current = null;
+            });
           }}
         >
           加载更早消息

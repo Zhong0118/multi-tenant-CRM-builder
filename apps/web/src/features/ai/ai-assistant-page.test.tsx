@@ -568,4 +568,130 @@ describe("AiAssistantPage", () => {
     expect(screen.getAllByRole("button", { name: "重试" })).toHaveLength(1);
     expect(screen.queryByText("AI 服务暂时不可用，请稍后重试")).not.toBeInTheDocument();
   });
+
+  it("shows the partial warning once after a tool failure completes the turn", async () => {
+    mocks.streamTurn.mockImplementation(async function* () {
+      yield {
+        event: "conversation.ready",
+        data: { conversationId: "c1", title: "问", turnId: "t1" },
+      };
+      yield {
+        event: "tool.failed",
+        data: {
+          callId: "x",
+          toolName: "list_followups",
+          displayName: "查询跟进",
+          status: "FAILED",
+        },
+      };
+      yield { event: "assistant.delta", data: { text: "部分结果" } };
+      yield { event: "turn.completed", data: { turnId: "t1", messageId: "m1" } };
+    });
+    renderPage();
+    fireEvent.change(
+      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      { target: { value: "问跟进" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "发送" }));
+    await waitFor(() =>
+      expect(
+        screen.getAllByText("部分 CRM 数据暂时无法读取，本次回答可能不完整"),
+      ).toHaveLength(1),
+    );
+    expect(screen.queryByRole("button", { name: "重试" })).not.toBeInTheDocument();
+  });
+
+  it("shows the partial warning once for persisted COMPLETED with a failed tool", async () => {
+    mocks.conversation = "c1";
+    mocks.listMessages.mockResolvedValue({
+      items: [
+        {
+          id: "partial",
+          conversationId: "c1",
+          turnId: "t-partial",
+          role: "ASSISTANT",
+          status: "COMPLETED",
+          content: "部分结果",
+          toolSummary: [
+            {
+              callId: "x",
+              toolName: "list_followups",
+              displayName: "查询跟进",
+              status: "FAILED",
+            },
+          ],
+          sourceSummary: [],
+          createdAt: "2026-09-21T00:00:00.000Z",
+        },
+      ],
+    });
+    renderPage();
+    await waitFor(() =>
+      expect(
+        screen.getAllByText("部分 CRM 数据暂时无法读取，本次回答可能不完整"),
+      ).toHaveLength(1),
+    );
+    expect(screen.queryByRole("button", { name: "重试" })).not.toBeInTheDocument();
+  });
+
+  it("does not run historical Retry while a turn is generating", async () => {
+    mocks.conversation = "c1";
+    mocks.listMessages.mockResolvedValue({
+      items: [
+        {
+          id: "old-failed",
+          conversationId: "c1",
+          turnId: "t-failed",
+          role: "ASSISTANT",
+          status: "FAILED",
+          content: "旧回答失败",
+          toolSummary: [],
+          sourceSummary: [],
+          errorCode: "AI_PROVIDER_TIMEOUT",
+          createdAt: "2026-09-21T00:00:00.000Z",
+        },
+      ],
+    });
+    mocks.streamTurn.mockImplementation(async function* () {
+      yield {
+        event: "conversation.ready",
+        data: { conversationId: "c1", title: "问", turnId: "t-live" },
+      };
+      await new Promise(() => undefined);
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByText("旧回答失败")).toBeInTheDocument());
+    fireEvent.change(
+      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      { target: { value: "新问题" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "发送" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "停止" })).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "重试" })).not.toBeInTheDocument();
+    expect(mocks.retryTurn).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "停止" }));
+    await waitFor(() =>
+      expect(screen.getAllByRole("button", { name: "重试" }).length).toBeGreaterThan(0),
+    );
+  });
+
+  it("aborts the in-flight stream when the page unmounts", async () => {
+    mocks.streamTurn.mockImplementation(async function* () {
+      yield {
+        event: "conversation.ready",
+        data: { conversationId: "c1", title: "问", turnId: "t1" },
+      };
+      await new Promise(() => undefined);
+    });
+    const view = renderPage();
+    fireEvent.change(
+      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      { target: { value: "进行中" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "发送" }));
+    await waitFor(() => expect(mocks.streamTurn).toHaveBeenCalled());
+    const signal = mocks.streamTurn.mock.calls.at(-1)?.[2] as AbortSignal;
+    view.unmount();
+    expect(signal.aborted).toBe(true);
+  });
 });

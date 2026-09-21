@@ -67,4 +67,51 @@ describe("AiMessageList prepend anchor", () => {
     expect(screen.getByText("更早的问题")).toBeInTheDocument();
     expect(top).toBe(600);
   });
+
+  it("clears the prepend anchor when older history fails to load", async () => {
+    let height = 1000;
+    let top = 200;
+    const { rerender } = render(
+      <AiMessageList
+        tenantCode="northwind"
+        messages={[message("latest", "最近的问题")]}
+        phase="IDLE"
+        onLoadOlder={async () => {
+          throw new Error("load older failed");
+        }}
+      />,
+    );
+    const scroller = screen.getByTestId("ai-message-scroller");
+    Object.defineProperty(scroller, "scrollHeight", {
+      configurable: true,
+      get: () => height,
+    });
+    Object.defineProperty(scroller, "clientHeight", {
+      configurable: true,
+      get: () => 400,
+    });
+    Object.defineProperty(scroller, "scrollTop", {
+      configurable: true,
+      get: () => top,
+      set: (value: number) => {
+        top = value;
+      },
+    });
+    fireEvent.scroll(scroller);
+    fireEvent.click(screen.getByRole("button", { name: "加载更早消息" }));
+    await Promise.resolve();
+    await Promise.resolve();
+    height = 1400;
+    rerender(
+      <AiMessageList
+        tenantCode="northwind"
+        messages={[
+          message("latest", "最近的问题"),
+          message("newer", "更新的问题"),
+        ]}
+        phase="IDLE"
+      />,
+    );
+    expect(top).toBe(200);
+  });
 });
