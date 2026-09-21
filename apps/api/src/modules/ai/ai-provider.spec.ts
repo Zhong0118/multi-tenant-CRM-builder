@@ -21,6 +21,7 @@ jest.mock('@ai-sdk/openai', () => ({
 }));
 
 import { streamText } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
 
 const streamInput = {
   messages: [{ role: 'user' as const, content: '你好' }],
@@ -145,6 +146,25 @@ describe('createAiProvider factory', () => {
 describe('VercelOpenAiProvider mapping', () => {
   beforeEach(() => {
     (streamText as jest.Mock).mockReset();
+  });
+
+  it('passes a custom OpenAI-compatible baseURL to createOpenAI', async () => {
+    (streamText as jest.Mock).mockReturnValue({
+      fullStream: (async function* () {
+        yield { type: 'text-delta', text: 'ok' };
+        yield { type: 'finish', totalUsage: { inputTokens: 1, outputTokens: 1 } };
+      })(),
+    });
+    const provider = new VercelOpenAiProvider({
+      apiKey: 'sk-test',
+      modelKey: 'deepseek-flash',
+      baseURL: 'https://www.micuapi.ai/v1',
+    });
+    await collect(provider.streamTurn(streamInput));
+    expect(createOpenAI).toHaveBeenCalledWith({
+      apiKey: 'sk-test',
+      baseURL: 'https://www.micuapi.ai/v1',
+    });
   });
 
   it('maps text-delta, tool-call, and finish; never forwards raw or reasoning payloads', async () => {

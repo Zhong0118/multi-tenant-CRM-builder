@@ -12,10 +12,12 @@ export class VercelOpenAiProvider implements AiProvider {
   readonly providerKey = 'openai';
   readonly modelKey: string;
   private readonly apiKey: string;
+  private readonly baseURL?: string;
 
-  constructor(input: { apiKey: string; modelKey: string }) {
+  constructor(input: { apiKey: string; modelKey: string; baseURL?: string }) {
     this.apiKey = input.apiKey;
     this.modelKey = input.modelKey;
+    this.baseURL = input.baseURL;
   }
 
   async *streamTurn(input: {
@@ -25,7 +27,10 @@ export class VercelOpenAiProvider implements AiProvider {
     abortSignal: AbortSignal;
   }): AsyncIterable<AiProviderEvent> {
     try {
-      const openai = createOpenAI({ apiKey: this.apiKey });
+      const openai = createOpenAI({
+        apiKey: this.apiKey,
+        ...(this.baseURL ? { baseURL: this.baseURL } : {}),
+      });
       const result = streamText({
         model: openai(this.modelKey),
         system: input.system,
