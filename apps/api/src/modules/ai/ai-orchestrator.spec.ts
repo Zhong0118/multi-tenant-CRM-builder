@@ -205,6 +205,77 @@ describe('AiOrchestrator.streamTurn', () => {
     expect(AI_SYSTEM_PROMPT).toMatch(/user's language/);
   });
 
+  it('persists official openai providerKey when the adapter has no compatible baseURL', async () => {
+    const conversations = conversationMock();
+    const provider: AiProvider = {
+      providerKey: 'openai',
+      modelKey: 'gpt-4.1-mini',
+      async *streamTurn() {
+        yield { type: 'TEXT_DELTA', text: '官方路径' };
+        yield { type: 'COMPLETED' };
+      },
+    };
+    const orchestrator = new AiOrchestrator(
+      conversations,
+      provider,
+      registryWith([]),
+    );
+    const events = await collect(
+      await orchestrator.streamTurn(
+        context,
+        { content: '帮我看看本月商机' },
+        new AbortController().signal,
+      ),
+    );
+    expect(conversations.finalizeAssistant).toHaveBeenCalledWith(
+      context,
+      'turn-1',
+      expect.objectContaining({
+        providerKey: 'openai',
+        modelKey: 'gpt-4.1-mini',
+      }),
+    );
+    expect(JSON.stringify(events)).not.toContain('providerKey');
+    expect(JSON.stringify(events)).not.toContain('gpt-4.1-mini');
+  });
+
+  it('persists openai-compatible providerKey for a compatible endpoint without leaking the URL', async () => {
+    const conversations = conversationMock();
+    const provider: AiProvider = {
+      providerKey: 'openai-compatible',
+      modelKey: 'deepseek-flash',
+      async *streamTurn() {
+        yield { type: 'TEXT_DELTA', text: '兼容路径' };
+        yield { type: 'COMPLETED' };
+      },
+    };
+    const orchestrator = new AiOrchestrator(
+      conversations,
+      provider,
+      registryWith([]),
+    );
+    const events = await collect(
+      await orchestrator.streamTurn(
+        context,
+        { content: '帮我看看本月商机' },
+        new AbortController().signal,
+      ),
+    );
+    expect(conversations.finalizeAssistant).toHaveBeenCalledWith(
+      context,
+      'turn-1',
+      expect.objectContaining({
+        providerKey: 'openai-compatible',
+        modelKey: 'deepseek-flash',
+      }),
+    );
+    const serialized = JSON.stringify(events);
+    expect(serialized).not.toContain('openai-compatible');
+    expect(serialized).not.toContain('deepseek-flash');
+    expect(serialized).not.toContain('baseURL');
+    expect(serialized).not.toContain('micuapi');
+  });
+
   it('persists CANCELLED with partial text on abort', async () => {
     const conversations = conversationMock();
     const abort = new AbortController();

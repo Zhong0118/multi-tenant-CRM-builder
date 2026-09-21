@@ -741,10 +741,13 @@ Append to `.env.example`:
 AI_PROVIDER=openai
 AI_MODEL=
 AI_API_KEY=
+AI_BASE_URL=
 AI_TIMEOUT_MS=45000
 ```
 
 An empty model/key means “not configured”; do not insert a real secret or model credential.
+
+**Approved implementation deviation:** keep a single Vercel OpenAI adapter. Optional server-only `AI_BASE_URL` selects the deployment endpoint. Unset → official OpenAI, persist `providerKey=openai`. Set → OpenAI-compatible gateway, persist `providerKey=openai-compatible`. Do not persist the URL or API key; ordinary message DTOs still omit `providerKey` / `modelKey` / `providerUsage`.
 
 - [ ] **Step 3: Write provider contract tests**
 
@@ -2063,10 +2066,11 @@ Environment:
 AI_PROVIDER=openai
 AI_MODEL=<the approved deployment model value>
 AI_API_KEY=<local secret, never commit>
+AI_BASE_URL=<optional OpenAI-compatible endpoint, never commit secrets>
 AI_TIMEOUT_MS=45000
 ```
 
-The model value is operational configuration, not hard-coded source. Do not paste the key into docs/logs.
+The model value is operational configuration, not hard-coded source. Do not paste the key into docs/logs. If `AI_BASE_URL` is set, persist `providerKey=openai-compatible`; otherwise `openai`.
 
 - [ ] **Step 3: Desktop >=1200px**
 

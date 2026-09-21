@@ -649,6 +649,8 @@ AI_API_KEY
 AI_TIMEOUT_MS
 ```
 
+**Approved V1A deviation（最小）：** 仍只有一个初始 adapter family：Vercel AI SDK OpenAI adapter（`AI_PROVIDER=openai`）。可选、仅服务端、仅 deployment 级的 `AI_BASE_URL` 可指向 OpenAI-compatible endpoint。未设置时走官方/默认 OpenAI endpoint，`providerKey=openai`；设置后走兼容 endpoint，`providerKey=openai-compatible`。`modelKey` 仍记录真实 `AI_MODEL`。不持久化 API key 或完整 baseURL，不把 URL 写入 `providerKey`，不把它做成多 Provider 平台，不改变 permission pipeline。
+
 API Key 仅服务端存在。
 
 如果 provider 未配置，AI 页面可以存在，但第一次发送得到明确的“AI 服务未配置/不可用”产品错误；不把 secret 配置暴露给客户端。

@@ -62,7 +62,7 @@ export function createAiProvider(env: AiProviderEnv = {}): AiProvider {
   const provider = env.provider ?? process.env.AI_PROVIDER;
   const model = env.model ?? process.env.AI_MODEL;
   const apiKey = env.apiKey ?? process.env.AI_API_KEY;
-  const baseURL = env.baseURL ?? process.env.AI_BASE_URL;
+  const baseURL = (env.baseURL ?? process.env.AI_BASE_URL)?.trim() || undefined;
 
   if (nodeEnv === 'test' && provider === 'fake') {
     return new FakeAiProvider();

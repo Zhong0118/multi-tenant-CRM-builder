@@ -159,7 +159,33 @@ describe('VercelOpenAiProvider mapping', () => {
     (streamText as jest.Mock).mockReset();
   });
 
-  it('passes a custom OpenAI-compatible baseURL to createOpenAI', async () => {
+  it('uses official OpenAI identity when baseURL is unset', async () => {
+    (streamText as jest.Mock).mockReturnValue({
+      fullStream: (async function* () {
+        yield { type: 'text-delta', text: 'ok' };
+        yield { type: 'finish', totalUsage: { inputTokens: 1, outputTokens: 1 } };
+      })(),
+    });
+    const provider = new VercelOpenAiProvider({
+      apiKey: 'sk-test',
+      modelKey: 'gpt-4.1-mini',
+    });
+    expect(provider.providerKey).toBe('openai');
+    expect(
+      new VercelOpenAiProvider({
+        apiKey: 'sk-test',
+        modelKey: 'gpt-4.1-mini',
+        baseURL: '   ',
+      }).providerKey,
+    ).toBe('openai');
+    await collect(provider.streamTurn(streamInput));
+    expect(createOpenAI).toHaveBeenCalledWith({ apiKey: 'sk-test' });
+    expect(createOpenAI).toHaveBeenCalledWith(
+      expect.not.objectContaining({ baseURL: expect.anything() }),
+    );
+  });
+
+  it('uses openai-compatible identity when a deployment baseURL is set', async () => {
     (streamText as jest.Mock).mockReturnValue({
       fullStream: (async function* () {
         yield { type: 'text-delta', text: 'ok' };
@@ -169,13 +195,26 @@ describe('VercelOpenAiProvider mapping', () => {
     const provider = new VercelOpenAiProvider({
       apiKey: 'sk-test',
       modelKey: 'deepseek-flash',
-      baseURL: 'https://www.micuapi.ai/v1',
+      baseURL: 'https://example-compatible.invalid/v1',
     });
+    expect(provider.providerKey).toBe('openai-compatible');
+    expect(provider.modelKey).toBe('deepseek-flash');
     await collect(provider.streamTurn(streamInput));
     expect(createOpenAI).toHaveBeenCalledWith({
       apiKey: 'sk-test',
-      baseURL: 'https://www.micuapi.ai/v1',
+      baseURL: 'https://example-compatible.invalid/v1',
     });
+    const events = await collect(
+      new VercelOpenAiProvider({
+        apiKey: 'sk-test',
+        modelKey: 'deepseek-flash',
+        baseURL: 'https://example-compatible.invalid/v1',
+      }).streamTurn(streamInput),
+    );
+    expect(JSON.stringify(events)).not.toContain(
+      'https://example-compatible.invalid/v1',
+    );
+    expect(JSON.stringify(events)).not.toContain('sk-test');
   });
 
   it('maps text-delta, tool-call, and finish; never forwards raw or reasoning payloads', async () => {

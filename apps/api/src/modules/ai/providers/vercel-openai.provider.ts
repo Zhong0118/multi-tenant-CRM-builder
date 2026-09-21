@@ -9,7 +9,7 @@ import type {
 } from '../ai-provider';
 
 export class VercelOpenAiProvider implements AiProvider {
-  readonly providerKey = 'openai';
+  readonly providerKey: 'openai' | 'openai-compatible';
   readonly modelKey: string;
   private readonly apiKey: string;
   private readonly baseURL?: string;
@@ -17,7 +17,8 @@ export class VercelOpenAiProvider implements AiProvider {
   constructor(input: { apiKey: string; modelKey: string; baseURL?: string }) {
     this.apiKey = input.apiKey;
     this.modelKey = input.modelKey;
-    this.baseURL = input.baseURL;
+    this.baseURL = input.baseURL?.trim() || undefined;
+    this.providerKey = this.baseURL ? 'openai-compatible' : 'openai';
   }
 
   async *streamTurn(input: {

@@ -30,13 +30,23 @@ PR B post-merge main CI：https://github.com/Zhong0118/multi-tenant-CRM-builder/
 | AI_TIMEOUT_MS | 45000 |
 | AI_API_KEY | SET（仅 gitignored worktree `.env`） |
 
-适配器通过可选 `AI_BASE_URL` 走 OpenAI 兼容网关。未使用 Fake Provider。
-
 ```text
-AI_BASE_URL_SCOPE_DECISION_REQUIRED
+APPROVED DEVIATION:
+optional server-only AI_BASE_URL retained
 ```
 
-正式 Design/Plan 原配置面没有 `AI_BASE_URL`。`providerKey` 仍持久化为 `"openai"`，实际 endpoint 是 micuapi.ai、模型 `deepseek-flash`。等待 human 决定：A) PR C 前 revert 兼容网关；或 B) 明确批准保留并修正 provider identity / docs deviation。本轮未再扩 Provider abstraction。
+Human 选择 B：正式保留可选、仅服务端、仅 deployment 级的 `AI_BASE_URL`。walkthrough provider：
+
+| 项 | 值 |
+|---|---|
+| adapter family | openai |
+| runtime provider identity | openai-compatible |
+| model | deepseek-flash |
+| endpoint host | www.micuapi.ai |
+
+未使用 Fake Provider。不写 API key。未新增第二套 adapter，未改变 permission pipeline。
+
+identity 修正后的最小真实 smoke（赵晨，conversation `01a0c49e-6598-79b4-8da4-8583cfea72d2`）：turn completed；持久化 assistant `provider_key=openai-compatible`、`model_key=deepseek-flash`。未导出 raw payload。
 
 ## 4. Permission fixture（仅本地 nebula-demo，未提交）
 
@@ -112,7 +122,7 @@ AI_BASE_URL_SCOPE_DECISION_REQUIRED
 | Important | 会话操作 Dropdown 被 chat 层挡住 / rail overflow 裁切 | `getPopupContainer=document.body`；rail `z-index:2` |
 | Observed | 本地未迁 AI 表时 conversations 500 | 对本地库 `prisma migrate deploy` |
 | Observed | 首次 OWN 发布时 readScope 仍 ALL，员工能看到钱宇记录 | Admin UI 改 OWN 后重新发布，员工列表变为 1 条 |
-| Scope | `AI_BASE_URL` / providerKey=openai vs 兼容网关 | `AI_BASE_URL_SCOPE_DECISION_REQUIRED` |
+| Scope | 可选 `AI_BASE_URL` | APPROVED：`providerKey=openai-compatible`，不持久化 URL/key |
 
 ## 7. Non-goals（保持）
 
