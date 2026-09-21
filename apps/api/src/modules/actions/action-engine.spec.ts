@@ -295,6 +295,9 @@ class MemoryStore implements RecordsStore {
   listMemberNames() {
     return Promise.resolve(new Map<string, string>());
   }
+  aggregateRecords() {
+    return Promise.resolve({ value: '0', groups: [] });
+  }
   appendAudit(event: AuditEvent): Promise<void> {
     this.audits.push(structuredClone(event));
     return Promise.resolve();

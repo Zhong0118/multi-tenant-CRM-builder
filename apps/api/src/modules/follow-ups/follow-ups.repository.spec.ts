@@ -438,3 +438,119 @@ describe('FollowUpsRepository personal workbench', () => {
     expect(result.preview.overdue[0].canManage).toBe(false);
   });
 });
+
+describe('FollowUpsRepository listForAi', () => {
+  const SCOPES = [
+    { objectId: 'object-leads', ownerMemberId: 'member-actor', canUpdate: true },
+  ];
+  const admin: TenantContext = { ...context, role: 'TENANT_ADMIN' };
+
+  it('hard-binds assigneeMemberId to the actor, including TENANT_ADMIN', async () => {
+    const fixture = harness();
+
+    await fixture.repository.listForAi(admin, SCOPES, { limit: 20 });
+
+    expect(fixture.tx.recordFollowUp.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          tenantId: admin.tenantId,
+          assigneeMemberId: admin.memberId,
+          record: {
+            tenantId: admin.tenantId,
+            deletedAt: null,
+            OR: [
+              {
+                objectId: 'object-leads',
+                ownerMemberId: 'member-actor',
+              },
+            ],
+          },
+        }),
+        orderBy: [{ dueAt: 'asc' }, { id: 'asc' }],
+        take: 20,
+      }),
+    );
+  });
+
+  it('intersects status, due window, and recordId with readable scopes', async () => {
+    const fixture = harness();
+
+    await fixture.repository.listForAi(context, SCOPES, {
+      status: 'OPEN',
+      dueFrom: '2026-09-01T00:00:00.000Z',
+      dueTo: '2026-09-30T00:00:00.000Z',
+      recordId: RECORD_ID,
+      limit: 7,
+    });
+
+    expect(fixture.tx.recordFollowUp.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          tenantId: context.tenantId,
+          assigneeMemberId: context.memberId,
+          status: 'OPEN',
+          dueAt: {
+            gte: new Date('2026-09-01T00:00:00.000Z'),
+            lte: new Date('2026-09-30T00:00:00.000Z'),
+          },
+          recordId: RECORD_ID,
+          record: {
+            tenantId: context.tenantId,
+            deletedAt: null,
+            OR: [
+              {
+                objectId: 'object-leads',
+                ownerMemberId: 'member-actor',
+              },
+            ],
+          },
+        },
+        take: 7,
+      }),
+    );
+  });
+
+  it('returns no rows and does not query when nothing is readable', async () => {
+    const fixture = harness();
+
+    await expect(
+      fixture.repository.listForAi(context, [], { limit: 20 }),
+    ).resolves.toEqual([]);
+    expect(fixture.tx.recordFollowUp.findMany).not.toHaveBeenCalled();
+  });
+
+  it('projects only the safe AI DTO and excludes deleted-record metadata', async () => {
+    const fixture = harness();
+    fixture.tx.recordFollowUp.findMany.mockResolvedValue([taskRow()]);
+
+    const items = await fixture.repository.listForAi(context, SCOPES, {
+      limit: 20,
+    });
+
+    expect(items).toHaveLength(1);
+    expect(Object.keys(items[0]).sort()).toEqual([
+      'dueAt',
+      'id',
+      'objectCode',
+      'objectName',
+      'overdue',
+      'recordId',
+      'recordTitle',
+      'status',
+      'title',
+    ]);
+    expect(items[0]).toMatchObject({
+      id: 'task-1',
+      objectCode: 'leads',
+      objectName: '销售线索',
+      recordId: RECORD_ID,
+      recordTitle: '张三',
+      title: '回访客户',
+      dueAt: '2026-09-20T00:00:00.000Z',
+      status: 'OPEN',
+    });
+    expect(items[0]).not.toHaveProperty('assigneeMemberId');
+    expect(items[0]).not.toHaveProperty('tenantId');
+    expect(JSON.stringify(items)).not.toMatch(/assignee|tenantId/);
+  });
+});

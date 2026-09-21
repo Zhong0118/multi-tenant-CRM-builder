@@ -12,12 +12,12 @@
 
 **Authored baseline:** `main` / `89fb842bbe3a506340e3047fabb615ac5656ca9b`
 
-**Status:** APPROVED FOR EXECUTION — AI Assistant V1A = ACTIVE; Current implementation slice = PR A — AI Foundation; AI Assistant V1B = PLANNED
+**Status:** APPROVED FOR EXECUTION — AI Assistant V1A = ACTIVE; Current implementation slice = PR B — Read Runtime; PR A — AI Foundation = MERGED AND VERIFIED; AI Assistant V1B = PLANNED
 
 ## Global Constraints
 
 - Refresh `origin/main` before starting PR A. If `main` is no longer the authored baseline, inspect the diff and refresh exact file paths/signatures before changing code; do not reset/rebase/force-push.
-- V1A is **ACTIVE**; current implementation slice is **PR A — AI Foundation**. PR A and PR B merges do not mark it completed. V1B remains **PLANNED**.
+- V1A is **ACTIVE**; current implementation slice is **PR B — Read Runtime**. PR A is MERGED AND VERIFIED. PR B merge does not mark V1A completed. Do not start PR C / AI Workspace UI. V1B remains **PLANNED**.
 - Do not start AI Assistant V1B.
 - Do not add any business write tool. The runtime registry must contain exactly seven read tools: `list_objects`, `describe_object`, `search_records`, `get_record`, `aggregate_records`, `list_activities`, `list_followups`.
 - AI tools must never accept `tenantId`, `memberId`, `userId`, `role`, `readScope`, `includeHidden`, `bypassPermission`, or `runAsAdmin`.

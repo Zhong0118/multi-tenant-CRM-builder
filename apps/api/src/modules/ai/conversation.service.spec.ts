@@ -618,6 +618,81 @@ describe('ConversationService lifecycle', () => {
     expect(messages).toHaveLength(0);
   });
 
+  it('contextMessages returns the last 20 USER/ASSISTANT rows and skips empty failed or cancelled assistants', async () => {
+    const { service, messages } = createService();
+    const first = await service.beginTurn(context, { content: 'seed' });
+    await service.finalizeAssistant(context, first.turnId, {
+      status: 'COMPLETED',
+      content: 'seed-answer',
+    });
+    const failedEmpty = await service.beginTurn(context, {
+      conversationId: first.conversationId,
+      content: '失败空回复',
+    });
+    await service.finalizeAssistant(context, failedEmpty.turnId, {
+      status: 'FAILED',
+      content: '',
+    });
+    const cancelledEmpty = await service.beginTurn(context, {
+      conversationId: first.conversationId,
+      content: '取消空回复',
+    });
+    await service.finalizeAssistant(context, cancelledEmpty.turnId, {
+      status: 'CANCELLED',
+      content: '',
+    });
+    const cancelledPartial = await service.beginTurn(context, {
+      conversationId: first.conversationId,
+      content: '取消有内容',
+    });
+    await service.finalizeAssistant(context, cancelledPartial.turnId, {
+      status: 'CANCELLED',
+      content: '半段',
+    });
+    for (let index = 0; index < 7; index += 1) {
+      const turn = await service.beginTurn(context, {
+        conversationId: first.conversationId,
+        content: `追问${index}`,
+      });
+      await service.finalizeAssistant(context, turn.turnId, {
+        status: 'COMPLETED',
+        content: `答${index}`,
+      });
+    }
+    const contextPage = await service.contextMessages(
+      context,
+      first.conversationId,
+    );
+    expect(contextPage).toHaveLength(20);
+    expect(
+      contextPage.some(
+        (message) => message.turnId === failedEmpty.turnId && message.role === 'USER',
+      ),
+    ).toBe(true);
+    expect(
+      contextPage.some(
+        (message) => message.turnId === failedEmpty.turnId && message.role === 'ASSISTANT',
+      ),
+    ).toBe(false);
+    expect(
+      contextPage.some(
+        (message) =>
+          message.turnId === cancelledEmpty.turnId && message.role === 'ASSISTANT',
+      ),
+    ).toBe(false);
+    expect(
+      contextPage.some(
+        (message) =>
+          message.turnId === cancelledPartial.turnId && message.content === '半段',
+      ),
+    ).toBe(true);
+    const latestUser = contextPage.filter((message) => message.role === 'USER').at(-1);
+    expect(latestUser?.content).toBe('追问6');
+    await expect(
+      service.contextMessages(otherMember, first.conversationId),
+    ).rejects.toMatchObject({ code: 'AI_CONVERSATION_NOT_FOUND', status: 404 });
+  });
+
   it('retries only FAILED or CANCELLED assistant turns', async () => {
     const { service, messages } = createService();
     const generating = await service.beginTurn(context, { content: '进行中不能重试' });

@@ -32,10 +32,6 @@ function emptyJsonArray(): Prisma.InputJsonValue {
   return [];
 }
 
-function emptyJsonObject(): Prisma.InputJsonValue {
-  return {};
-}
-
 export function encodeConversationCursor(input: {
   lastMessageAt: string;
   id: string;
@@ -229,20 +225,62 @@ async function rejectInProgress(
   }
 }
 
-async function enforceNewTurnRateLimit(
+function providerAttemptsOf(usage: unknown): number {
+  if (
+    usage &&
+    typeof usage === 'object' &&
+    !Array.isArray(usage) &&
+    'providerAttempts' in usage
+  ) {
+    const value = (usage as { providerAttempts?: unknown }).providerAttempts;
+    if (typeof value === 'number' && Number.isFinite(value) && value >= 1) {
+      return Math.trunc(value);
+    }
+  }
+  return 1;
+}
+
+function withProviderAttempts(
+  usage: unknown,
+  providerAttempts: number,
+): Prisma.InputJsonValue {
+  const base =
+    usage && typeof usage === 'object' && !Array.isArray(usage)
+      ? { ...(usage as Record<string, unknown>) }
+      : {};
+  delete base.providerKey;
+  delete base.modelKey;
+  return { ...base, providerAttempts } as Prisma.InputJsonValue;
+}
+
+async function enforceMemberTurnBudget(
   tx: Tx,
   context: TenantContext,
   now: Date,
 ): Promise<void> {
-  const recentTurns = await tx.aiMessage.count({
+  const windowStart = new Date(now.getTime() - NEW_TURN_WINDOW_MS);
+  const userCount = await tx.aiMessage.count({
     where: {
       tenantId: context.tenantId,
       role: 'USER',
-      createdAt: { gte: new Date(now.getTime() - NEW_TURN_WINDOW_MS) },
+      createdAt: { gte: windowStart },
       conversation: memberConversationWhere(context),
     },
   });
-  if (recentTurns >= NEW_TURN_LIMIT) {
+  const assistants = await tx.aiMessage.findMany({
+    where: {
+      tenantId: context.tenantId,
+      role: 'ASSISTANT',
+      updatedAt: { gte: windowStart },
+      conversation: memberConversationWhere(context),
+    },
+    select: { providerUsage: true },
+  });
+  const extraRetries = assistants.reduce(
+    (sum, row) => sum + Math.max(0, providerAttemptsOf(row.providerUsage) - 1),
+    0,
+  );
+  if (userCount + extraRetries >= NEW_TURN_LIMIT) {
     throw new ApiException('AI_RATE_LIMITED', 429);
   }
 }
@@ -457,7 +495,7 @@ export class ConversationRepository {
         ? await requireOwnedConversation(tx, context, input.conversationId)
         : null;
       await rejectInProgress(tx, context);
-      await enforceNewTurnRateLimit(tx, context, now);
+      await enforceMemberTurnBudget(tx, context, now);
 
       const conversation =
         existing ??
@@ -492,7 +530,7 @@ export class ConversationRepository {
           content: '',
           toolSummary: emptyJsonArray(),
           sourceSummary: emptyJsonArray(),
-          providerUsage: emptyJsonObject(),
+          providerUsage: withProviderAttempts({}, 1),
         },
       });
       if (existing) {
@@ -540,7 +578,9 @@ export class ConversationRepository {
         throw new ApiException('AI_TURN_NOT_FOUND', 404);
       }
       await rejectInProgress(tx, context, assistant.id);
+      await enforceMemberTurnBudget(tx, context, now);
 
+      const nextAttempts = providerAttemptsOf(assistant.providerUsage) + 1;
       const reset = await tx.aiMessage.update({
         where: { id: assistant.id },
         data: {
@@ -548,7 +588,7 @@ export class ConversationRepository {
           content: '',
           toolSummary: emptyJsonArray(),
           sourceSummary: emptyJsonArray(),
-          providerUsage: emptyJsonObject(),
+          providerUsage: withProviderAttempts({}, nextAttempts),
           errorCode: null,
           completedAt: null,
         },
@@ -591,13 +631,50 @@ export class ConversationRepository {
         data: {
           status: outcome.status,
           content: outcome.content,
-          providerUsage: (outcome.usage ?? {}) as Prisma.InputJsonValue,
+          ...(outcome.toolSummary === undefined
+            ? {}
+            : { toolSummary: outcome.toolSummary as Prisma.InputJsonValue }),
+          ...(outcome.sourceSummary === undefined
+            ? {}
+            : {
+                sourceSummary: outcome.sourceSummary as Prisma.InputJsonValue,
+              }),
+          providerUsage: withProviderAttempts(
+            outcome.usage ?? {},
+            providerAttemptsOf(assistant.providerUsage),
+          ),
           providerKey: outcome.providerKey ?? assistant.providerKey,
           modelKey: outcome.modelKey ?? assistant.modelKey,
           errorCode: outcome.errorCode ?? null,
           completedAt: new Date(),
         },
       });
+    });
+  }
+
+  contextMessages(
+    context: TenantContext,
+    conversationId: string,
+  ): Promise<PublicAiMessage[]> {
+    return this.runner.withTenant(context, async (tx) => {
+      await requireOwnedConversation(tx, context, conversationId);
+      const rows = await tx.aiMessage.findMany({
+        where: {
+          tenantId: context.tenantId,
+          conversationId,
+          role: { in: ['USER', 'ASSISTANT'] },
+          NOT: {
+            AND: [
+              { role: 'ASSISTANT' },
+              { status: { in: ['FAILED', 'CANCELLED'] } },
+              { content: '' },
+            ],
+          },
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: 20,
+      });
+      return [...rows].reverse().map(toPublicMessage);
     });
   }
 }

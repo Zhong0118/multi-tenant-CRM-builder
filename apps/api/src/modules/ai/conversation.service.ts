@@ -9,6 +9,7 @@ import type {
   ConversationListQuery,
   ConversationMessagePage,
   ConversationMessageQuery,
+  PublicAiMessage,
 } from './ai.types';
 import { ConversationRepository } from './conversation.repository';
 
@@ -29,6 +30,13 @@ export class ConversationService {
     query: ConversationMessageQuery,
   ): Promise<ConversationMessagePage> {
     return this.repository.messages(context, conversationId, query);
+  }
+
+  contextMessages(
+    context: TenantContext,
+    conversationId: string,
+  ): Promise<PublicAiMessage[]> {
+    return this.repository.contextMessages(context, conversationId);
   }
 
   rename(

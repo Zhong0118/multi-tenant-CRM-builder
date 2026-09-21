@@ -1,4 +1,10 @@
-import { FakeAiProvider } from './providers/fake-ai.provider';
+import {
+  FakeAiProvider,
+  CRITICAL_SEARCH_OBJECT_CODE,
+  CRITICAL_SEARCH_OWN_LEADS_MARKER,
+  getFakeAiProviderCapturedToolResult,
+  resetFakeAiProviderCapture,
+} from './providers/fake-ai.provider';
 import { VercelOpenAiProvider } from './providers/vercel-openai.provider';
 import { createAiProvider } from './ai-provider';
 import { sseFrame } from './ai-stream';
@@ -32,6 +38,10 @@ async function collect(
 }
 
 describe('FakeAiProvider', () => {
+  afterEach(() => {
+    resetFakeAiProviderCapture();
+  });
+
   it('emits TEXT_DELTA 测试回答 then COMPLETED without touching the network', async () => {
     const fetchSpy = jest.spyOn(globalThis, 'fetch');
     const provider = new FakeAiProvider();
@@ -40,6 +50,57 @@ describe('FakeAiProvider', () => {
       { type: 'TEXT_DELTA', text: '测试回答' },
       { type: 'COMPLETED' },
     ]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+
+  it('requests search_records for critical:search-own-leads using the Critical fixture object code', async () => {
+    const fetchSpy = jest.spyOn(globalThis, 'fetch');
+    const execute = jest.fn().mockResolvedValue({
+      items: [{ id: 'owned', title: '自己的线索' }],
+    });
+    const provider = new FakeAiProvider();
+    const events = await collect(
+      provider.streamTurn({
+        ...streamInput,
+        messages: [
+          { role: 'user', content: `请查询 ${CRITICAL_SEARCH_OWN_LEADS_MARKER}` },
+        ],
+        tools: [
+          {
+            name: 'search_records',
+            description: 'search',
+            inputSchema: { parse: (value: unknown) => value } as never,
+            execute,
+          },
+        ],
+      }),
+    );
+    expect(CRITICAL_SEARCH_OBJECT_CODE).toBe('leads');
+    expect(execute).toHaveBeenCalledWith(
+      { objectCode: 'leads', limit: 20 },
+      expect.any(String),
+    );
+    expect(getFakeAiProviderCapturedToolResult()).toEqual({
+      items: [{ id: 'owned', title: '自己的线索' }],
+    });
+    expect(events).toEqual([
+      {
+        type: 'TOOL_CALL_REQUESTED',
+        callId: expect.any(String),
+        toolName: 'search_records',
+      },
+      {
+        type: 'TEXT_DELTA',
+        text: '已查询你有权访问的销售线索。',
+      },
+      { type: 'USAGE', inputTokens: 8, outputTokens: 12 },
+      { type: 'COMPLETED' },
+    ]);
+    expect(events.filter((event) => event.type === 'TOOL_CALL_REQUESTED')).toHaveLength(
+      1,
+    );
+    expect(execute).toHaveBeenCalledTimes(1);
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });
@@ -130,6 +191,12 @@ describe('VercelOpenAiProvider mapping', () => {
     expect(serialized).not.toContain('secret-filter');
     expect(serialized).not.toContain('internal.example');
     expect(events.every((event) => !('rawValue' in event))).toBe(true);
+    expect(streamText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stopWhen: 4,
+        maxOutputTokens: 2000,
+      }),
+    );
   });
 
   it('normalizes provider errors to public FAILED codes without raw strings', async () => {

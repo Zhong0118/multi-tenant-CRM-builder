@@ -1,7 +1,8 @@
-import { FollowUpsService } from './follow-ups.service';
-import type { FollowUpsRepository } from './follow-ups.repository';
-import type { PublishedObjectService } from '../objects/published-object.service';
+import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
+import type { PublishedObjectService } from '../objects/published-object.service';
+import type { FollowUpsRepository } from './follow-ups.repository';
+import { FollowUpsService } from './follow-ups.service';
 
 const context: TenantContext = {
   tenantId: 'tenant',
@@ -43,6 +44,7 @@ function fixture() {
     }),
     update: jest.fn().mockResolvedValue({ id: 'task', status: 'DONE' }),
     list: jest.fn().mockResolvedValue({ items: [], total: 0 }),
+    listForAi: jest.fn().mockResolvedValue([]),
     getTenantTimezone: jest.fn().mockResolvedValue('Asia/Shanghai'),
     workbench: jest.fn().mockResolvedValue({
       timezone: 'Asia/Shanghai',
@@ -288,5 +290,141 @@ describe('personal follow-up workbench', () => {
       code: 'INTERNAL_ERROR',
     });
     expect(repository.workbench).not.toHaveBeenCalled();
+  });
+});
+
+describe('personal follow-up AI read', () => {
+  const admin: TenantContext = { ...context, role: 'TENANT_ADMIN' };
+
+  it('binds assignee to the actor and has no assignee parameter', async () => {
+    const { service, repository, objects } = fixture();
+    const input = {
+      status: 'OPEN' as const,
+      dueFrom: '2026-09-01T00:00:00.000Z',
+      dueTo: '2026-09-30T00:00:00.000Z',
+      recordId: '018f47a2-4b5c-7d8e-9f01-00000000000f',
+      limit: 10,
+    };
+
+    await service.listForAi(context, input);
+
+    expect(service.listForAi.length).toBe(2);
+    expect(objects.listAccessible).toHaveBeenCalledWith(context);
+    expect(repository.listForAi).toHaveBeenCalledWith(
+      context,
+      [
+        {
+          objectId: 'object',
+          ownerMemberId: 'me',
+          updateOwnerMemberId: 'me',
+          canUpdate: true,
+        },
+      ],
+      input,
+    );
+    expect(repository.listForAi.mock.calls[0][2]).not.toHaveProperty(
+      'assigneeMemberId',
+    );
+  });
+
+  it('still binds TENANT_ADMIN to own follow-ups, not a team list', async () => {
+    const { service, repository, resolved } = fixture();
+    resolved.access.readScope = 'ALL';
+    resolved.access.updateScope = 'ALL';
+
+    await service.listForAi(admin, { limit: 20 });
+
+    expect(repository.listForAi).toHaveBeenCalledWith(
+      admin,
+      [
+        {
+          objectId: 'object',
+          ownerMemberId: undefined,
+          updateOwnerMemberId: undefined,
+          canUpdate: true,
+        },
+      ],
+      { limit: 20 },
+    );
+  });
+
+  it('returns the safe DTO without assignee or tenant ids', async () => {
+    const { service, repository } = fixture();
+    repository.listForAi.mockResolvedValue([
+      {
+        id: 'task-1',
+        objectCode: 'leads',
+        objectName: '销售线索',
+        recordId: 'record',
+        recordTitle: '张三',
+        title: '回访客户',
+        dueAt: '2026-09-20T00:00:00.000Z',
+        status: 'OPEN',
+        overdue: true,
+      },
+    ]);
+
+    const items = await service.listForAi(context, { limit: 20 });
+
+    expect(items).toEqual([
+      {
+        id: 'task-1',
+        objectCode: 'leads',
+        objectName: '销售线索',
+        recordId: 'record',
+        recordTitle: '张三',
+        title: '回访客户',
+        dueAt: '2026-09-20T00:00:00.000Z',
+        status: 'OPEN',
+        overdue: true,
+      },
+    ]);
+    expect(JSON.stringify(items)).not.toMatch(/assignee|tenantId|memberId/);
+  });
+
+  it('rejects an invisible objectCode before querying follow-ups', async () => {
+    const { service, repository, objects } = fixture();
+    objects.resolveRuntimeSchema.mockRejectedValue(
+      new ApiException('OBJECT_ACTION_FORBIDDEN', 403),
+    );
+
+    await expect(
+      service.listForAi(context, { objectCode: 'secret', limit: 20 }),
+    ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
+    expect(repository.listForAi).not.toHaveBeenCalled();
+  });
+
+  it('narrows readable scopes to the requested objectCode', async () => {
+    const { service, repository, objects, resolved } = fixture();
+    objects.listAccessible.mockResolvedValue([
+      { code: 'leads' },
+      { code: 'deals' },
+    ]);
+    objects.resolveRuntimeSchema.mockImplementation(
+      async (_ctx: TenantContext, code: string) =>
+        code === 'leads'
+          ? resolved
+          : {
+              schema: { object: { id: 'object-deals', code: 'deals' } },
+              access: {
+                canRead: true,
+                canUpdate: true,
+                readScope: 'ALL',
+                updateScope: 'ALL',
+              },
+            },
+    );
+
+    await service.listForAi(context, { objectCode: 'leads', limit: 5 });
+
+    expect(objects.resolveRuntimeSchema).toHaveBeenCalledWith(context, 'leads');
+    expect(repository.listForAi.mock.calls[0][1]).toEqual([
+      {
+        objectId: 'object',
+        ownerMemberId: 'me',
+        updateOwnerMemberId: 'me',
+        canUpdate: true,
+      },
+    ]);
   });
 });

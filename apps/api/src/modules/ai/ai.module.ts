@@ -3,20 +3,32 @@ import { ConfigService } from '@nestjs/config';
 
 import { DatabaseModule } from '../../infrastructure/database/database.module';
 import { AuthModule } from '../auth/auth.module';
+import { FollowUpsModule } from '../follow-ups/follow-ups.module';
 import { MembershipsModule } from '../memberships/memberships.module';
+import { ObjectsModule } from '../objects/objects.module';
+import { RecordsModule } from '../records/records.module';
 import { AiController } from './ai.controller';
 import { AiOrchestrator } from './ai-orchestrator';
 import { AI_PROVIDER, createAiProvider } from './ai-provider';
 import { ConversationRepository } from './conversation.repository';
 import { ConversationService } from './conversation.service';
+import { AiToolRegistry } from './tool-registry';
 
 @Module({
-  imports: [AuthModule, MembershipsModule, DatabaseModule],
+  imports: [
+    AuthModule,
+    MembershipsModule,
+    DatabaseModule,
+    ObjectsModule,
+    RecordsModule,
+    FollowUpsModule,
+  ],
   controllers: [AiController],
   providers: [
     ConversationRepository,
     ConversationService,
     AiOrchestrator,
+    AiToolRegistry,
     {
       provide: AI_PROVIDER,
       inject: [ConfigService],

@@ -4,14 +4,50 @@ import type { DatabaseService } from '../../infrastructure/database/database.ser
 import type { AuditService } from '../audit/audit.service';
 import {
   PrismaRecordsRepository,
+  type RecordAggregateQuery,
   type SourceRecordPatchHistory,
 } from './records.repository';
 
-// `@crm/database` ships ESM that Jest does not transform. This spec exercises
-// `applyRecordPatch` / `applyTransition`, which use `Prisma` only as a type
-// namespace, so a bare stub is enough. (Same approach as
-// `dashboards.repository.spec.ts`.)
-jest.mock('@crm/database', () => ({ Prisma: {} }));
+// `@crm/database` ships ESM that Jest does not transform. Write-intent tests
+// only need Prisma as a type namespace; aggregate SQL tests use the same
+// parameterized fragment helper as `dashboards.repository.spec.ts`.
+jest.mock('@crm/database', () => {
+  type Sql = { sql: string; values: unknown[] };
+  const fragment = (sql: string, values: unknown[] = []): Sql => ({
+    sql,
+    values,
+  });
+  const isSql = (value: unknown): value is Sql =>
+    value !== null &&
+    typeof value === 'object' &&
+    'sql' in value &&
+    'values' in value;
+  const sql = (strings: TemplateStringsArray, ...values: unknown[]) => {
+    let text = strings[0] ?? '';
+    const bound: unknown[] = [];
+    values.forEach((value, index) => {
+      if (isSql(value)) {
+        text += value.sql;
+        bound.push(...value.values);
+      } else {
+        text += '?';
+        bound.push(value);
+      }
+      text += strings[index + 1] ?? '';
+    });
+    return fragment(text, bound);
+  };
+  const join = (values: unknown[], separator = ', ') => {
+    const parts = values.map((value) =>
+      isSql(value) ? value : fragment('?', [value]),
+    );
+    return fragment(
+      parts.map((part) => part.sql).join(separator),
+      parts.flatMap((part) => part.values),
+    );
+  };
+  return { Prisma: { sql, join, empty: fragment('') } };
+});
 
 const OBJECT_ID = 'object-leads';
 const RECORD_ID = 'record-1';
@@ -381,5 +417,114 @@ describe('PrismaRecordsRepository.applyRecordPatch active-owner lock', () => {
     expect(updates).toEqual([]);
     expect(record.version).toBe(3);
     expect(record.ownerMemberId).toBe(OWNER_MEMBER_ID);
+  });
+});
+
+describe('PrismaRecordsStore.aggregateRecords', () => {
+  function aggregateQuery(
+    overrides: Partial<RecordAggregateQuery> = {},
+  ): RecordAggregateQuery {
+    return {
+      objectId: OBJECT_ID,
+      ownerMemberId: OWNER_MEMBER_ID,
+      filters: [
+        {
+          fieldKey: 'lead_status',
+          mode: 'EQUALS',
+          values: ["new' OR 1=1 --"],
+        },
+      ],
+      aggregation: 'SUM',
+      valueFieldKey: 'quote',
+      groupByFieldKey: 'lead_status',
+      limit: 20,
+      ...overrides,
+    };
+  }
+
+  function aggregateRepository() {
+    const queries: Array<{ sql: string; values: unknown[] }> = [];
+    const transaction = {
+      $queryRawUnsafe: () => Promise.resolve([]),
+      $queryRaw: (query: { sql: string; values: unknown[] }) => {
+        queries.push(query);
+        if (query.sql.includes('GROUP BY')) {
+          return Promise.resolve([
+            { key: 'new', value: '10.50', count: 2 },
+            { key: null, value: '1.00', count: 1 },
+          ]);
+        }
+        return Promise.resolve([{ value: '11.50' }]);
+      },
+    };
+    const database = {
+      transaction: (work: (client: unknown) => unknown) => work(transaction),
+    } as unknown as DatabaseService;
+    return {
+      queries,
+      repository: new PrismaRecordsRepository(
+        new DatabaseContextRunner(database),
+        {} as AuditService,
+      ),
+    };
+  }
+
+  it('parameterizes tenant, owner, deleted, and numeric CASE fragments', async () => {
+    const { repository, queries } = aggregateRepository();
+
+    await expect(
+      repository.withTenant(actor, (store) =>
+        store.aggregateRecords(aggregateQuery()),
+      ),
+    ).resolves.toEqual({
+      value: '11.50',
+      groups: [
+        { key: 'new', value: '10.50', count: 2 },
+        { key: null, value: '1.00', count: 1 },
+      ],
+    });
+
+    const sql = queries.map((query) => query.sql).join('\n');
+    const values = queries.flatMap((query) => query.values);
+    expect(sql).toMatch(/r\.tenant_id = .*::uuid/);
+    expect(sql).toMatch(/r\.object_id = .*::uuid/);
+    expect(sql).toMatch(/r\.deleted_at IS NULL/);
+    expect(sql).toMatch(/r\.owner_member_id = .*::uuid/);
+    expect(sql).toContain(
+      "WHEN r.data ->> ? ~ '^-?[0-9]+([.][0-9]+)?$'",
+    );
+    expect(sql).toContain('THEN (r.data ->> ?)::numeric');
+    expect(sql).toMatch(/ORDER BY count DESC/);
+    expect(sql).toMatch(/LIMIT \?/);
+    expect(sql).not.toContain("new' OR 1=1 --");
+    expect(values).toEqual(
+      expect.arrayContaining([
+        actor.tenantId,
+        OBJECT_ID,
+        OWNER_MEMBER_ID,
+        'quote',
+        'lead_status',
+        "new' OR 1=1 --",
+        20,
+      ]),
+    );
+  });
+
+  it('counts without a value field and still reuses the read predicate', async () => {
+    const { repository, queries } = aggregateRepository();
+
+    await repository.withTenant(actor, (store) =>
+      store.aggregateRecords(
+        aggregateQuery({
+          aggregation: 'COUNT',
+          valueFieldKey: undefined,
+          groupByFieldKey: undefined,
+        }),
+      ),
+    );
+
+    expect(queries[0]?.sql).toMatch(/COUNT\(\*\)/);
+    expect(queries[0]?.sql).toMatch(/r\.deleted_at IS NULL/);
+    expect(queries[0]?.sql).not.toMatch(/GROUP BY/);
   });
 });

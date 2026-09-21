@@ -20,7 +20,11 @@ import type {
   FollowUpWorkbenchResponseDto,
   UpdateFollowUpDto,
 } from './follow-ups.dto';
-import type { FollowUpScope } from './follow-ups.service';
+import type {
+  AiFollowUpReadInput,
+  AiFollowUpReadItem,
+  FollowUpScope,
+} from './follow-ups.service';
 import type { FollowUpWorkbenchRange } from './follow-up-workbench-time';
 
 /** §7.4: each preview bucket is capped, independently of the full counts. */
@@ -271,6 +275,56 @@ export class FollowUpsRepository {
           upcoming: upcomingRows.map((row) => project(row, false)),
         },
       };
+    });
+  }
+  /**
+   * Personal AI read: the acting member's own Follow-ups on still-readable,
+   * non-deleted records. Assignee is always `context.memberId`, including
+   * Tenant Admin — there is no assignee argument.
+   */
+  listForAi(
+    context: TenantContext,
+    scopes: FollowUpScope[],
+    input: AiFollowUpReadInput,
+  ): Promise<AiFollowUpReadItem[]> {
+    return this.runner.withTenant(context, async (tx) => {
+      if (!scopes.length) return [];
+      const now = new Date();
+      const where: Prisma.RecordFollowUpWhereInput = {
+        tenantId: context.tenantId,
+        assigneeMemberId: context.memberId,
+        status: input.status,
+        dueAt: {
+          ...(input.dueFrom ? { gte: new Date(input.dueFrom) } : {}),
+          ...(input.dueTo ? { lte: new Date(input.dueTo) } : {}),
+        },
+        recordId: input.recordId,
+        record: {
+          tenantId: context.tenantId,
+          deletedAt: null,
+          OR: scopes.map((scope) => ({
+            objectId: scope.objectId,
+            ownerMemberId: scope.ownerMemberId,
+          })),
+        },
+      };
+      const items = await tx.recordFollowUp.findMany({
+        where,
+        include: followUpInclude,
+        orderBy: [{ dueAt: 'asc' }, { id: 'asc' }],
+        take: input.limit,
+      });
+      return items.map((item) => ({
+        id: item.id,
+        objectCode: item.record.object.code,
+        objectName: item.record.object.name,
+        recordId: item.recordId,
+        recordTitle: item.record.title,
+        title: item.title,
+        dueAt: item.dueAt.toISOString(),
+        status: item.status,
+        overdue: item.status === 'OPEN' && item.dueAt < now,
+      }));
     });
   }
   /**

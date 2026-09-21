@@ -22,6 +22,27 @@ export interface FollowUpScope {
   canUpdate: boolean;
 }
 
+export interface AiFollowUpReadInput {
+  status?: 'OPEN' | 'DONE' | 'CANCELLED';
+  dueFrom?: string;
+  dueTo?: string;
+  objectCode?: string;
+  recordId?: string;
+  limit: number;
+}
+
+export interface AiFollowUpReadItem {
+  id: string;
+  objectCode: string;
+  objectName: string;
+  recordId: string;
+  recordTitle: string;
+  title: string;
+  dueAt: string;
+  status: string;
+  overdue: boolean;
+}
+
 @Injectable()
 export class FollowUpsService {
   constructor(
@@ -68,9 +89,30 @@ export class FollowUpsService {
   }
 
   /**
+   * Personal AI read: always the acting member's own Follow-ups, including
+   * Tenant Admin. Optional object/record/date filters still intersect the same
+   * readable record scopes as the list page and Workbench.
+   */
+  async listForAi(
+    context: TenantContext,
+    input: AiFollowUpReadInput,
+  ): Promise<AiFollowUpReadItem[]> {
+    let scopes = await this.resolveReadableScopes(context);
+    if (input.objectCode) {
+      const resolved = await this.objects.resolveRuntimeSchema(
+        context,
+        input.objectCode,
+      );
+      const objectId = resolved.schema.object.id;
+      scopes = scopes.filter((scope) => scope.objectId === objectId);
+    }
+    return this.repository.listForAi(context, scopes, input);
+  }
+
+  /**
    * The single resolution of "which objects may this actor read, and how deep",
-   * shared by the list page and the Workbench so the two read paths cannot
-   * drift into different permission models.
+   * shared by the list page, the Workbench, and the AI read tool so those
+   * paths cannot drift into different permission models.
    */
   private async resolveReadableScopes(
     context: TenantContext,
