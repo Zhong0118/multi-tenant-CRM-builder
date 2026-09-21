@@ -115,4 +115,35 @@ describe("aiTurnReducer", () => {
     expect(retry.turnId).toBe("old-turn");
     expect(retry.phase).toBe("SENDING");
   });
+
+  it("keeps a real turnId on transport failure and does not invent unknown", () => {
+    const ready = aiTurnReducer(
+      aiTurnReducer(initialAiTurnState, {
+        type: "beginNewTurn",
+        content: "问",
+      }),
+      {
+        type: "event",
+        event: {
+          event: "conversation.ready",
+          data: { conversationId: "c1", title: "问", turnId: "t1" },
+        },
+      },
+    );
+    const afterReady = aiTurnReducer(ready, {
+      type: "transportFailure",
+      code: "NETWORK",
+    });
+    expect(afterReady.turnId).toBe("t1");
+    expect(afterReady.phase).toBe("FAILED");
+    const beforeReady = aiTurnReducer(
+      aiTurnReducer(initialAiTurnState, {
+        type: "beginNewTurn",
+        content: "问",
+      }),
+      { type: "transportFailure", code: "NETWORK" },
+    );
+    expect(beforeReady.turnId).toBeUndefined();
+    expect(beforeReady.phase).toBe("FAILED");
+  });
 });

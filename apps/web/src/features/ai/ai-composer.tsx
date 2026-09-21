@@ -35,7 +35,8 @@ export function AiComposer({
         onPressEnter={(event) => {
           if (event.shiftKey) return;
           event.preventDefault();
-          if (value.trim()) onSend();
+          if (generating || !value.trim()) return;
+          onSend();
         }}
       />
       <div className={styles.composerActions}>
@@ -43,15 +44,16 @@ export function AiComposer({
           <Button aria-label="停止" onClick={onStop}>
             停止
           </Button>
-        ) : null}
-        <Button
-          type="primary"
-          aria-label="发送"
-          disabled={!value.trim()}
-          onClick={onSend}
-        >
-          发送
-        </Button>
+        ) : (
+          <Button
+            type="primary"
+            aria-label="发送"
+            disabled={!value.trim()}
+            onClick={onSend}
+          >
+            发送
+          </Button>
+        )}
       </div>
     </div>
   );

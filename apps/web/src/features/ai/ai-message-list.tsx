@@ -1,12 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Button, Skeleton } from "antd";
 
 import styles from "./ai-assistant.module.css";
 import { AssistantMessage } from "./assistant-message";
 import { UserMessage } from "./user-message";
 import type { AiMessage, AiTurnPhase } from "./ai-types";
+
+export function nextPrependScrollTop(
+  anchor: { height: number; top: number },
+  newHeight: number,
+): number {
+  return anchor.top + (newHeight - anchor.height);
+}
 
 export function AiMessageList({
   tenantCode,
@@ -28,25 +35,24 @@ export function AiMessageList({
   const scroller = useRef<HTMLDivElement>(null);
   const [follow, setFollow] = useState(true);
   const live = useRef<HTMLDivElement>(null);
-  const previousCount = useRef(messages.length);
+  const prependAnchor = useRef<{ height: number; top: number } | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const node = scroller.current;
     if (!node) return;
-    if (messages.length > previousCount.current && !follow) {
-      const previousHeight = node.scrollHeight;
-      requestAnimationFrame(() => {
-        node.scrollTop += node.scrollHeight - previousHeight;
-      });
-    } else if (follow) {
-      node.scrollTo?.({ top: node.scrollHeight });
+    const anchor = prependAnchor.current;
+    if (anchor) {
+      node.scrollTop = nextPrependScrollTop(anchor, node.scrollHeight);
+      prependAnchor.current = null;
+      return;
     }
-    previousCount.current = messages.length;
+    if (follow) node.scrollTo?.({ top: node.scrollHeight });
   }, [follow, messages, streaming]);
 
   return (
     <div
       className={styles.messages}
+      data-testid="ai-message-scroller"
       ref={scroller}
       onScroll={() => {
         const node = scroller.current;
@@ -56,7 +62,19 @@ export function AiMessageList({
       }}
     >
       {onLoadOlder ? (
-        <Button type="link" onClick={onLoadOlder}>
+        <Button
+          type="link"
+          onClick={() => {
+            const node = scroller.current;
+            if (node) {
+              prependAnchor.current = {
+                height: node.scrollHeight,
+                top: node.scrollTop,
+              };
+            }
+            onLoadOlder();
+          }}
+        >
           加载更早消息
         </Button>
       ) : null}

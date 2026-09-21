@@ -37,6 +37,7 @@ export type AiTurnAction =
   | { type: "event"; event: AiPublicStreamEvent }
   | { type: "cancel" }
   | { type: "network" }
+  | { type: "transportFailure"; code: string }
   | { type: "reset" }
   | { type: "hydrate"; conversationId: string };
 
@@ -92,14 +93,17 @@ export function aiTurnReducer(
         errorMessage: "回答已停止",
       };
     case "network":
+      return aiTurnReducer(state, { type: "transportFailure", code: "NETWORK" });
+    case "transportFailure":
       if (state.phase !== "SENDING" && state.phase !== "STREAMING") {
         return state;
       }
       return {
         ...state,
         phase: "FAILED",
-        errorCode: "NETWORK",
-        errorMessage: "连接已中断",
+        errorCode: action.code,
+        errorMessage: userErrorMessage(action.code),
+        draft: state.turnId ? state.draft : (state.pendingUserContent ?? state.draft),
       };
     case "event":
       return applyEvent(state, action.event);

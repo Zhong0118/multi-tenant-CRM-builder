@@ -38,6 +38,8 @@ export function AiAssistantPage({
   const [state, dispatch] = useReducer(aiTurnReducer, initialAiTurnState);
   const abortRef = useRef<AbortController | null>(null);
   const generationRef = useRef(0);
+  const stateRef = useRef(state);
+  stateRef.current = state;
   const [railOpen, setRailOpen] = useState(false);
   const composerRef = useRef<import("antd/es/input/TextArea").TextAreaRef>(null);
 
@@ -56,17 +58,26 @@ export function AiAssistantPage({
     enabled: !!conversationId,
   });
 
+  function abandonActiveTurn() {
+    generationRef.current += 1;
+    abortRef.current?.abort();
+    abortRef.current = null;
+  }
+
   useEffect(() => {
+    const live = stateRef.current;
+    if (conversationId === live.conversationId) return;
+    const generating = live.phase === "SENDING" || live.phase === "STREAMING";
+    if (generating) abandonActiveTurn();
     if (conversationId) dispatch({ type: "hydrate", conversationId });
     else dispatch({ type: "reset" });
   }, [conversationId]);
 
   useEffect(() => {
-    if (state.conversationId && state.conversationId !== conversationId) {
-      const next = new URLSearchParams(searchParams.toString());
-      next.set("conversation", state.conversationId);
-      router.replace(`${pathname}?${next.toString()}`);
-    }
+    if (!state.conversationId || conversationId) return;
+    const next = new URLSearchParams(searchParams.toString());
+    next.set("conversation", state.conversationId);
+    router.replace(`${pathname}?${next.toString()}`);
   }, [conversationId, pathname, router, searchParams, state.conversationId]);
 
   const history = useMemo(() => {
@@ -101,11 +112,18 @@ export function AiAssistantPage({
           }
         : null;
   const shown = [
-    ...history.filter(
-      (item) =>
-        !(live && item.turnId === live.turnId && item.role !== "USER") &&
-        !(pendingUser && item.role === "USER" && item.content === pendingUser.content),
-    ),
+    ...history.filter((item) => {
+      if (live && item.turnId === live.turnId && item.role !== "USER") return false;
+      if (
+        pendingUser &&
+        state.turnId &&
+        item.role === "USER" &&
+        item.turnId === state.turnId
+      ) {
+        return false;
+      }
+      return true;
+    }),
     ...(pendingUser ? [pendingUser] : []),
     ...(live ? [live] : []),
   ];
@@ -149,17 +167,12 @@ export function AiAssistantPage({
         return;
       }
       const apiError = toApiError(error);
-      dispatch({
-        type: "event",
-        event: {
-          event: "turn.failed",
-          data: {
-            turnId: "unknown",
-            code: apiError.code === "AI_STREAM_INVALID" ? "NETWORK" : apiError.code,
-            messageId: "unknown",
-          },
-        },
-      });
+      const code =
+        apiError.code === "AI_STREAM_INVALID" ||
+        apiError.code === "INTERNAL_ERROR"
+          ? "NETWORK"
+          : apiError.code;
+      dispatch({ type: "transportFailure", code });
     }
   }
 
@@ -185,7 +198,10 @@ export function AiAssistantPage({
   }
 
   function stop() {
+    generationRef.current += 1;
     abortRef.current?.abort();
+    abortRef.current = null;
+    dispatch({ type: "cancel" });
   }
 
   function retry(turnId = state.turnId) {
@@ -216,10 +232,12 @@ export function AiAssistantPage({
       selectedId={conversationId}
       loading={conversations.isLoading}
       onNew={() => {
+        abandonActiveTurn();
         router.replace(pathname);
         setRailOpen(false);
       }}
       onSelect={(id) => {
+        if (id !== (conversationId ?? state.conversationId)) abandonActiveTurn();
         router.replace(`${pathname}?conversation=${encodeURIComponent(id)}`);
         setRailOpen(false);
       }}
@@ -283,7 +301,7 @@ export function AiAssistantPage({
             onRetry={retry}
           />
         )}
-        {state.errorMessage ? (
+        {state.errorMessage && !live ? (
           <AiErrorState
             message={
               state.phase === "PARTIAL_COMPLETED"
@@ -291,7 +309,8 @@ export function AiAssistantPage({
                 : state.errorMessage || userErrorMessage(state.errorCode)
             }
             onRetry={
-              state.phase === "FAILED" || state.phase === "CANCELLED"
+              (state.phase === "FAILED" || state.phase === "CANCELLED") &&
+              state.turnId
                 ? () => retry()
                 : undefined
             }

@@ -27,7 +27,11 @@ export function AssistantMessage({
       ))}
       {retryable ? (
         <AiErrorState
-          message={userErrorMessage(message.errorCode)}
+          message={
+            message.status === "CANCELLED"
+              ? "回答已停止"
+              : userErrorMessage(message.errorCode)
+          }
           onRetry={() => onRetry(message.turnId)}
         />
       ) : null}
