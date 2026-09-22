@@ -22,7 +22,7 @@ Human review 后重判：
 CRM MVP READINESS:
 NOT BLOCKED BY A CONFIRMED P0
 CONFIRMED P1: F-02 Dashboard seeded filtered widgets
-PLATFORM JOURNEY: REQUIRES CLEAN RE-VERIFICATION WITH KNOWN CREDENTIAL
+PLATFORM JOURNEY: RE-VERIFIED WITH KNOWN CREDENTIAL — PASSED
 AI UI V2: VISUALLY ACCEPTED, NOT YET MERGED TO MAIN
 ```
 
@@ -48,7 +48,7 @@ AI UI V2: VISUALLY ACCEPTED, NOT YET MERGED TO MAIN
 - 因此 **创建公司 → 邀请首位管理员 → 模板/无模板 → 启用公司 → 公司详情 → 平台日志/设置** 本轮 **未能在真实浏览器完成**。这不能证明平台认证链损坏：`seed-demo-company.ts` 不为平台管理员写入 `DEMO_PASSWORD`；这些账号来自历史注册 + `platform-admin:grant`，密码未知。正确复验是新注册已知密码用户再 grant。
 - 员工会话访问 `/platform`、`/platform/tenants`：被重定向回 `/workspace/nebula-demo`（未进入平台日常业务数据，符合隔离方向，但失败反馈不是「无平台权限」页）。
 
-未观察到：DRAFT/ACTIVE/SUSPENDED 文案、平台 Empty State、平台 destructive confirmation。
+**复验（已知密码，2026-09-22）：** 新注册 `18800001999` → `platform-admin:grant` → 登录进入 `/platform`。创建草稿公司 `ready-audit-onboard`、邀请 `18800001998`、对方注册并接受、平台启用后状态变为「运行中」。模板页 / 日志中心 / 系统设置可打开。F-01 **关闭**：不是 Auth 产品缺陷。
 
 ---
 
@@ -143,7 +143,7 @@ AI UI V2: VISUALLY ACCEPTED, NOT YET MERGED TO MAIN
 
 | ID | Role | Route | Severity | Issue | Evidence | Recommended action |
 |---|---|---|---|---|---|---|
-| F-01 | Platform | `/login` | **夹具 / 待复验** | 文档平台号 + `Demo@123456` 登不上；**未证明 Auth P0** | 11 位号「手机号或密码不正确」；库中账号 ACTIVE。seed 不为平台管理员设演示口令。后端已 normalize 11 位与 `+86` | 新注册已知密码用户 → `platform-admin:grant` → 再跑开通链路。仍失败才升 P0 |
+| F-01 | Platform | `/login` | **关闭** | 文档平台号 + 演示口令登不上，是夹具不是 Auth P0 | 新注册 `18800001999` grant 后可登录；创建/邀请/接受/启用 `ready-audit-onboard` 成功 | 文档说明：平台管理员须自建账号 + grant，不要用 DEMO_PASSWORD |
 | F-02 | Tenant Admin / Employee | `/workspace/nebula-demo` | **P1（已确认根因）** | 带 `stage IN` 的 seeded widget 因 `filterFields: []` 查询失败 | 「跟单商机」「成交金额」QUERY_FAILED。`demoPublishedDashboard()` 共用 `filterFields: []`；runtime `filterFields.find` 缺失即抛错 | 按 widget.filters 填充 filterFields；补 deterministic 测试 |
 | F-03 | Employee | `/follow-ups` | **P2 demo fixture** | 赵晨无 Follow-up，今日待办为空 | 待跟进 0 / 已逾期 0；空态已提示去记录详情安排 | 可选：给演示员工加一条今日 Follow-up。不是功能损坏 |
 | F-04 / F-05 | Employee | `/settings`, `/audit` | **P2** | admin-only 直链反馈不一致 | settings 显式 `notFound()`；audit 打 API 后变「页面加载失败」。侧栏无这两入口 | 统一 unauthorized-route UX。非主流程 blocker |
@@ -163,7 +163,7 @@ AI UI V2: VISUALLY ACCEPTED, NOT YET MERGED TO MAIN
 
 - **Confirmed P0:** 0
 - **Confirmed P1:** 1（F-02）
-- **Fixture / pending re-verification:** F-01
+- **Closed after re-verification:** F-01
 - **P2:** F-03, F-04/F-05, F-06, F-07–F-12
 - **P3:** 2（F-13, F-14）
 
@@ -175,7 +175,7 @@ AI UI V2: VISUALLY ACCEPTED, NOT YET MERGED TO MAIN
 
 ```text
 NOT BLOCKED BY A CONFIRMED P0
-CONFIRMED P1: F-02 Dashboard filtered widgets
-PLATFORM JOURNEY: REQUIRES CLEAN RE-VERIFICATION WITH KNOWN CREDENTIAL
+CONFIRMED P1: F-02 Dashboard filtered widgets (fix pushed, not merged)
+PLATFORM JOURNEY: RE-VERIFIED WITH KNOWN CREDENTIAL — PASSED
 AI UI V2: VISUALLY ACCEPTED, NOT YET MERGED TO MAIN
 ```
