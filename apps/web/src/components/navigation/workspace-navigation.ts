@@ -15,16 +15,20 @@ export function workspaceNavigation(
 ): WorkspaceNavigationItem[] {
   const root = `/workspace/${tenantCode}`;
 
-  if (role === "EMPLOYEE") {
-    return [
-      { href: root, label: "我的工作台", icon: "home" },
-      { href: `${root}/follow-ups`, label: "跟进待办", icon: "calendar" },
-    ];
-  }
+  const shared: WorkspaceNavigationItem[] = [
+    {
+      href: root,
+      label: role === "EMPLOYEE" ? "我的工作台" : "管理工作台",
+      icon: "home",
+    },
+    { href: `${root}/follow-ups`, label: "跟进待办", icon: "calendar" },
+    { href: `${root}/ai`, label: "AI 助手", icon: "ai" },
+  ];
+
+  if (role === "EMPLOYEE") return shared;
 
   return [
-    { href: root, label: "管理工作台", icon: "home" },
-    { href: `${root}/follow-ups`, label: "跟进待办", icon: "calendar" },
+    ...shared,
     { href: `${root}/members`, label: "成员管理", icon: "members" },
     { href: `${root}/audit`, label: "公司审计", icon: "audit" },
     { href: `${root}/settings`, label: "设置", icon: "settings" },

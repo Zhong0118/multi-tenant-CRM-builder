@@ -38,6 +38,7 @@ import { AiToolRegistry } from './tool-registry';
           provider: config.get<string>('AI_PROVIDER'),
           model: config.get<string>('AI_MODEL'),
           apiKey: config.get<string>('AI_API_KEY'),
+          baseURL: config.get<string>('AI_BASE_URL'),
         }),
     },
   ],

@@ -54,6 +54,7 @@ export interface AiProviderEnv {
   provider?: string;
   model?: string;
   apiKey?: string;
+  baseURL?: string;
 }
 
 export function createAiProvider(env: AiProviderEnv = {}): AiProvider {
@@ -61,23 +62,36 @@ export function createAiProvider(env: AiProviderEnv = {}): AiProvider {
   const provider = env.provider ?? process.env.AI_PROVIDER;
   const model = env.model ?? process.env.AI_MODEL;
   const apiKey = env.apiKey ?? process.env.AI_API_KEY;
+  const baseURL = (env.baseURL ?? process.env.AI_BASE_URL)?.trim() || undefined;
 
   if (nodeEnv === 'test' && provider === 'fake') {
     return new FakeAiProvider();
   }
+  if (nodeEnv === 'test') {
+    return new UnavailableAiProvider();
+  }
   if (provider === 'openai' && model && apiKey) {
-    return loadVercelOpenAiProvider(apiKey, model);
+    return loadVercelOpenAiProvider(apiKey, model, baseURL);
   }
   return new UnavailableAiProvider();
 }
 
-function loadVercelOpenAiProvider(apiKey: string, modelKey: string): AiProvider {
+function loadVercelOpenAiProvider(
+  apiKey: string,
+  modelKey: string,
+  baseURL?: string,
+): AiProvider {
   const requireFromModule = createRequire(__filename);
   const loaded = requireFromModule('./providers/vercel-openai.provider') as {
     VercelOpenAiProvider: new (input: {
       apiKey: string;
       modelKey: string;
+      baseURL?: string;
     }) => AiProvider;
   };
-  return new loaded.VercelOpenAiProvider({ apiKey, modelKey });
+  return new loaded.VercelOpenAiProvider({
+    apiKey,
+    modelKey,
+    ...(baseURL ? { baseURL } : {}),
+  });
 }

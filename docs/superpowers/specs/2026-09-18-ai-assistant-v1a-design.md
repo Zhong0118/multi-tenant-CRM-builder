@@ -3,7 +3,7 @@
 > 日期：2026-09-18  
 > 文档类型：Task Design Spec  
 > 状态：APPROVED FOR EXECUTION — V1A ACTIVE  
-> Roadmap：AI Assistant V1A（ACTIVE；当前实现切片 = PR A — AI Foundation）；AI Assistant V1B = PLANNED  
+> Roadmap：AI Assistant V1A（ACTIVE；当前实现切片 = PR C — AI Workspace UI + Closeout；PR A/B MERGED AND VERIFIED）；AI Assistant V1B = PLANNED  
 > 设计基线：`main` / `89fb842bbe3a506340e3047fabb615ac5656ca9b`  
 > 上位方向：`docs/superpowers/specs/2026-09-16-ai-assistant-v1-design.md`  
 > Stage Brief：`docs/superpowers/briefs/2026-09-16-ai-assistant-v1a-stage-brief.md`
@@ -648,6 +648,8 @@ AI_MODEL
 AI_API_KEY
 AI_TIMEOUT_MS
 ```
+
+**Approved V1A deviation（最小）：** 仍只有一个初始 adapter family：Vercel AI SDK OpenAI adapter（`AI_PROVIDER=openai`）。可选、仅服务端、仅 deployment 级的 `AI_BASE_URL` 可指向 OpenAI-compatible endpoint。未设置时走官方/默认 OpenAI endpoint，`providerKey=openai`；设置后走兼容 endpoint，`providerKey=openai-compatible`。`modelKey` 仍记录真实 `AI_MODEL`。不持久化 API key 或完整 baseURL，不把 URL 写入 `providerKey`，不把它做成多 Provider 平台，不改变 permission pipeline。
 
 API Key 仅服务端存在。
 

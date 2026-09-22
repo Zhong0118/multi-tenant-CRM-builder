@@ -669,6 +669,27 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     expect(assistant?.providerUsage).not.toHaveProperty('modelKey');
   });
 
+  it('persists openai-compatible providerKey on the assistant row without exposing it on the DTO', async () => {
+    const fixture = harness();
+    const begun = await fixture.repository.beginTurn(context, { content: '兼容网关' });
+    await fixture.repository.finalizeAssistant(context, begun.turnId, {
+      status: 'COMPLETED',
+      content: '答案',
+      usage: { inputTokens: 3, outputTokens: 5, latencyMs: 12 },
+      providerKey: 'openai-compatible',
+      modelKey: 'deepseek-flash',
+    });
+    const assistant = fixture.messages.find((row) => row.id === begun.assistant.id);
+    expect(assistant?.providerKey).toBe('openai-compatible');
+    expect(assistant?.modelKey).toBe('deepseek-flash');
+    const page = await fixture.service.messages(context, begun.conversationId, {});
+    for (const item of page.items) {
+      expect(item).not.toHaveProperty('providerUsage');
+      expect(item).not.toHaveProperty('providerKey');
+      expect(item).not.toHaveProperty('modelKey');
+    }
+  });
+
   it('persists providerKey and modelKey on FAILED turns when already known', async () => {
     const fixture = harness();
     const begun = await fixture.repository.beginTurn(context, { content: '失败也记' });
