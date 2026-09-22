@@ -9,17 +9,22 @@
 
 产品主干（对象发布、记录 CRUD、OWN 范围、跟进、AI 只读助手、管理员配置）在 **Tenant Admin + Employee** 路径上可以走通，适合用 `nebula-demo` 做受控演示。
 
-当前 **不能** 宣称「任意真实用户可自助开通并试用」，主要卡在：
+Human review 后重判：
 
-1. 本机 **Platform Super Admin 无法用文档记录的手机号 + 演示口令登录**（账号在库中 ACTIVE，但登录页拒绝）。未完成创建公司 / 邀请首管 / 启用公司的真实浏览器走查。
-2. 员工首页工作台多个核心组件显示「此组件暂时无法显示」。
-3. 员工「今天该做什么」几乎空白：跟进待办 0、销售线索列表 0（OWN），首页 CTA 弱。
-4. 若干权限失败页不一致：设置 404、审计「页面加载失败」、平台路由被重定向回工作台。
+- **没有已确认的产品 P0。** F-01 目前只证明「没有已知密码的可重复平台管理员夹具」，不能证明 Auth 链损坏。后端 `normalizeChineseMobile()` 已接受 11 位与 `+86`。
+- **已确认的代码 P1 只有 F-02：** 演示 Dashboard 带 `stage IN (...)` 的「跟单商机 / 成交金额」因 `filterFields: []` 在 runtime 抛 `Compiled dashboard filter metadata missing` → `QUERY_FAILED`。
+- F-03 是 demo fixture 空态（赵晨无 Follow-up），产品 empty state 合法。
+- F-04 是员工 settings 的显式 `notFound()` fail-closed。
+- F-05 是 admin-only 路由反馈不一致。
+- F-06 是 UI 11 位国标号 → 后端 E.164，属设计而非必然 bug。
 
-**MVP READINESS: READY AFTER P0/P1 FIXES**
-
-受控演示（已有 nebula-demo + 已知管理员/员工账号）：接近 READY。  
-陌生用户自助开通 + 稳定试用：NOT READY，直到 P0/P1 关闭。
+```text
+CRM MVP READINESS:
+NOT BLOCKED BY A CONFIRMED P0
+CONFIRMED P1: F-02 Dashboard seeded filtered widgets
+PLATFORM JOURNEY: REQUIRES CLEAN RE-VERIFICATION WITH KNOWN CREDENTIAL
+AI UI V2: VISUALLY ACCEPTED, NOT YET MERGED TO MAIN
+```
 
 前置确认：
 
@@ -40,7 +45,7 @@
 - 登录页对 11 位国内号提交后：**「手机号或密码不正确」**（有请求编号）。
 - `+8613800000999` 被前端拦截：**「请输入有效的中国大陆手机号」**。
 - 数据库（admin 只读）：三名平台管理员均为 `ACTIVE` / `is_platform_admin=true`，phone 存 `+86138…` 形式。
-- 因此 **创建公司 → 邀请首位管理员 → 模板/无模板 → 启用公司 → 公司详情 → 平台日志/设置** 本轮 **未能在真实浏览器完成**。
+- 因此 **创建公司 → 邀请首位管理员 → 模板/无模板 → 启用公司 → 公司详情 → 平台日志/设置** 本轮 **未能在真实浏览器完成**。这不能证明平台认证链损坏：`seed-demo-company.ts` 不为平台管理员写入 `DEMO_PASSWORD`；这些账号来自历史注册 + `platform-admin:grant`，密码未知。正确复验是新注册已知密码用户再 grant。
 - 员工会话访问 `/platform`、`/platform/tenants`：被重定向回 `/workspace/nebula-demo`（未进入平台日常业务数据，符合隔离方向，但失败反馈不是「无平台权限」页）。
 
 未观察到：DRAFT/ACTIVE/SUSPENDED 文案、平台 Empty State、平台 destructive confirmation。
@@ -138,12 +143,11 @@
 
 | ID | Role | Route | Severity | Issue | Evidence | Recommended action |
 |---|---|---|---|---|---|---|
-| F-01 | Platform | `/login` | **P0** | 文档中的平台管理员无法登录；自助开通公司链路未验证 | `13800000999` / `15562266465` / `13966660001` + 演示口令 →「手机号或密码不正确」；库中三账号 ACTIVE 且 `is_platform_admin`；`+86` 输入被前端拒绝 | 修复登录规范化（11 位 vs `+86`）与平台种子口令；补一条可演示的平台登录路径 |
-| F-02 | Tenant Admin / Employee | `/workspace/nebula-demo` | **P1** | 工作台核心组件失败，演示像坏了 | 管理员与员工均见「跟单商机」「成交金额」→「此组件暂时无法显示」 | 查发布 #8 组件配置/权限；失败时给出可理解空态或修复数据 |
-| F-03 | Employee | `/workspace/nebula-demo` + `/follow-ups` | **P1** | 「今天该做什么」几乎为空，首页 CTA 弱 | 待跟进 0、已逾期 0；线索 OWN=0；空态把人赶到记录详情，但首页商机组件还是失败态 | 演示种子给试用员工至少 1 条今日跟进；首页失败组件不要压过「我的跟进」 |
-| F-04 | Employee | `/workspace/.../settings` | **P1** | 无权限走 404 | 赵晨打开设置 →「页面不存在 / 返回登录」 | 403/无权限页，保留工作区壳，不要像路由写错 |
-| F-05 | Employee | `/workspace/.../audit` | **P1** | 无权限走「页面加载失败」 | 赵晨打开审计 → 加载失败 + 重新加载 | 与 F-04 统一为权限拒绝 |
-| F-06 | Platform | `/login` 字段 | **P1** | 库存储 E.164，UI 只接受 11 位 | `+8613800000999` →「请输入有效的中国大陆手机号」 | 登录规范化去掉/接受 +86，与存储一致 |
+| F-01 | Platform | `/login` | **夹具 / 待复验** | 文档平台号 + `Demo@123456` 登不上；**未证明 Auth P0** | 11 位号「手机号或密码不正确」；库中账号 ACTIVE。seed 不为平台管理员设演示口令。后端已 normalize 11 位与 `+86` | 新注册已知密码用户 → `platform-admin:grant` → 再跑开通链路。仍失败才升 P0 |
+| F-02 | Tenant Admin / Employee | `/workspace/nebula-demo` | **P1（已确认根因）** | 带 `stage IN` 的 seeded widget 因 `filterFields: []` 查询失败 | 「跟单商机」「成交金额」QUERY_FAILED。`demoPublishedDashboard()` 共用 `filterFields: []`；runtime `filterFields.find` 缺失即抛错 | 按 widget.filters 填充 filterFields；补 deterministic 测试 |
+| F-03 | Employee | `/follow-ups` | **P2 demo fixture** | 赵晨无 Follow-up，今日待办为空 | 待跟进 0 / 已逾期 0；空态已提示去记录详情安排 | 可选：给演示员工加一条今日 Follow-up。不是功能损坏 |
+| F-04 / F-05 | Employee | `/settings`, `/audit` | **P2** | admin-only 直链反馈不一致 | settings 显式 `notFound()`；audit 打 API 后变「页面加载失败」。侧栏无这两入口 | 统一 unauthorized-route UX。非主流程 blocker |
+| F-06 | Platform | `/login` | **P2 易用性** | UI 只要 11 位国标号 | `/^1[3-9]\d{9}$/`；后端再转 E.164。合理设计 | 可选支持粘贴 `+86`；不是 P1 |
 | F-07 | Any | `/platform` as employee | **P2** | 无平台权限时静默回工作台 | 赵晨访问 `/platform` → 落到 `/workspace/nebula-demo` | 明确「无平台权限」 |
 | F-08 | Tenant Admin | `/objects/leads` | **P2** | 同一记录两套可见链接，点击不稳定 | 卡片+表格同 href；Playwright 需 force click | 桌面只保留一套主列表交互 |
 | F-09 | Employee | `/objects/leads` | **P2** | 种子标题「新线索 赵晨」实际非赵晨 OWN，试用易误解 | 列表 0 条；V1A 已记录属管理员 | 修正演示种子 owner，或改标题 |
@@ -157,17 +161,21 @@
 
 ## Counts
 
-- **P0:** 1（F-01）
-- **P1:** 5（F-02, F-03, F-04, F-05, F-06）
-- **P2:** 6（F-07–F-12）
+- **Confirmed P0:** 0
+- **Confirmed P1:** 1（F-02）
+- **Fixture / pending re-verification:** F-01
+- **P2:** F-03, F-04/F-05, F-06, F-07–F-12
 - **P3:** 2（F-13, F-14）
 
-P2 进 backlog。P3 不修。P0/P1 待审阅后拆独立修复批次。
+下一步（已按 human review 收口）：修正本文件严重度 → 只修 F-02 → 用已知密码复验 Platform Journey → 把 main merge 进 UI V2（不 rebase）再开 PR → 短 readiness smoke。
 
 ---
 
 ## MVP READINESS
 
-**READY AFTER P0/P1 FIXES**
-
-关闭 F-01（平台可登录并走完开通）以及 F-02–F-06（工作台组件、员工今日工作、权限失败页、手机号规范化）后，可宣称受控试用。在此之前：用 nebula-demo + 陈静/赵晨 做销售演示可以，但不要把「自助开通」和「员工打开首页即知今日工作」当成已验证能力。
+```text
+NOT BLOCKED BY A CONFIRMED P0
+CONFIRMED P1: F-02 Dashboard filtered widgets
+PLATFORM JOURNEY: REQUIRES CLEAN RE-VERIFICATION WITH KNOWN CREDENTIAL
+AI UI V2: VISUALLY ACCEPTED, NOT YET MERGED TO MAIN
+```
