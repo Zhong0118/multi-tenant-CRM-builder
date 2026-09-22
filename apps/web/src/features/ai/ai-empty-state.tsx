@@ -1,7 +1,5 @@
 "use client";
 
-import { Button } from "antd";
-
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
 import styles from "./ai-assistant.module.css";
@@ -13,20 +11,30 @@ export function AiEmptyState({
   objects: RuntimeObjectNavigation[];
   onPrompt: (text: string) => void;
 }) {
-  const named = objects.slice(0, 3);
-  const prompts =
-    named.length > 0
-      ? named.map((object) => `帮我看看最近的${object.name}`)
-      : ["帮我看看我能访问的业务数据"];
+  const named = objects.slice(0, 2);
+  const prompts = [
+    named[0] ? `总结我负责的${named[0].name}` : "总结我负责的客户",
+    "最近有哪些需要跟进？",
+    named[1] ? `按阶段统计当前${named[1].name}` : "按阶段统计当前商机",
+    "总结某条记录的最近活动",
+  ];
   return (
     <div className={styles.empty}>
-      <h2>从一条问题开始</h2>
-      <p>只读取你当前可访问的数据，不会修改业务数据。</p>
-      <div>
+      <div className={styles.emptyMark} aria-hidden>
+        AI
+      </div>
+      <h2>有什么可以帮你查的？</h2>
+      <p>我只会读取你当前有权限访问的 CRM 数据</p>
+      <div className={styles.promptGrid}>
         {prompts.map((prompt) => (
-          <Button key={prompt} type="link" onClick={() => onPrompt(prompt)}>
+          <button
+            key={prompt}
+            type="button"
+            className={styles.promptChip}
+            onClick={() => onPrompt(prompt)}
+          >
             {prompt}
-          </Button>
+          </button>
         ))}
       </div>
     </div>

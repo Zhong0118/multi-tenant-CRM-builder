@@ -76,6 +76,9 @@ describe("AiAssistantPage", () => {
     renderPage();
     expect(screen.getByRole("heading", { name: /AI 助手/ })).toBeInTheDocument();
     expect(screen.getByText("只读")).toBeInTheDocument();
+    expect(screen.getByTestId("ai-conversation-canvas")).toBeInTheDocument();
+    expect(screen.getByText("Enter 发送 · Shift+Enter 换行")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "会话" })).toBeInTheDocument();
     fireEvent.change(
       screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
       { target: { value: "帮我看看" } },
@@ -382,7 +385,7 @@ describe("AiAssistantPage", () => {
     );
     releaseA();
     await waitFor(() =>
-      expect(screen.getByText("基于你当前权限，帮助你查询和总结 CRM 数据")).toBeInTheDocument(),
+      expect(screen.getByText("基于你当前 CRM 权限回答")).toBeInTheDocument(),
     );
     expect(screen.queryByText("不该出现")).not.toBeInTheDocument();
     expect(mocks.replace).toHaveBeenCalledWith("/workspace/northwind/ai");

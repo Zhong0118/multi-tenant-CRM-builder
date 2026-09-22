@@ -268,70 +268,72 @@ export function AiAssistantPage({
       </Drawer>
       <section className={styles.chat}>
         <header className={styles.header}>
-          <div>
-            <h1>
+          <div className={styles.headerCopy}>
+            <h1 className={styles.headerTitle}>
               AI 助手 <Tag>只读</Tag>
             </h1>
-            <p>基于你当前权限，帮助你查询和总结 CRM 数据</p>
-            <p>只读取你当前可访问的数据 · 不会修改业务数据</p>
+            <p className={styles.headerHint}>基于你当前 CRM 权限回答</p>
           </div>
           <Button
             className={styles.mobileRailButton}
+            aria-label="会话"
             onClick={() => setRailOpen(true)}
           >
             会话
           </Button>
         </header>
-        {shown.length === 0 && state.phase === "IDLE" ? (
-          <AiEmptyState
-            objects={businessObjects}
-            onPrompt={(text) => {
-              dispatch({ type: "draft", value: text });
-              send(text);
-            }}
-          />
-        ) : (
-          <AiMessageList
-            tenantCode={tenantCode}
-            messages={shown}
-            loading={messages.isLoading}
-            streaming={state.phase === "STREAMING"}
+        <div className={styles.canvas} data-testid="ai-conversation-canvas">
+          {shown.length === 0 && state.phase === "IDLE" ? (
+            <AiEmptyState
+              objects={businessObjects}
+              onPrompt={(text) => {
+                dispatch({ type: "draft", value: text });
+                send(text);
+              }}
+            />
+          ) : (
+            <AiMessageList
+              tenantCode={tenantCode}
+              messages={shown}
+              loading={messages.isLoading}
+              streaming={state.phase === "STREAMING"}
+              phase={state.phase}
+              onLoadOlder={
+                messages.hasNextPage
+                  ? () => messages.fetchNextPage()
+                  : undefined
+              }
+              onRetry={
+                state.phase === "SENDING" || state.phase === "STREAMING"
+                  ? undefined
+                  : retry
+              }
+            />
+          )}
+          {state.errorMessage && !live ? (
+            <AiErrorState
+              message={
+                state.phase === "PARTIAL_COMPLETED"
+                  ? state.errorMessage
+                  : state.errorMessage || userErrorMessage(state.errorCode)
+              }
+              onRetry={
+                (state.phase === "FAILED" || state.phase === "CANCELLED") &&
+                state.turnId
+                  ? () => retry()
+                  : undefined
+              }
+            />
+          ) : null}
+          <AiComposer
+            value={state.draft}
             phase={state.phase}
-            onLoadOlder={
-              messages.hasNextPage
-                ? () => messages.fetchNextPage()
-                : undefined
-            }
-            onRetry={
-              state.phase === "SENDING" || state.phase === "STREAMING"
-                ? undefined
-                : retry
-            }
+            inputRef={composerRef}
+            onChange={(value) => dispatch({ type: "draft", value })}
+            onSend={() => send()}
+            onStop={stop}
           />
-        )}
-        {state.errorMessage && !live ? (
-          <AiErrorState
-            message={
-              state.phase === "PARTIAL_COMPLETED"
-                ? state.errorMessage
-                : state.errorMessage || userErrorMessage(state.errorCode)
-            }
-            onRetry={
-              (state.phase === "FAILED" || state.phase === "CANCELLED") &&
-              state.turnId
-                ? () => retry()
-                : undefined
-            }
-          />
-        ) : null}
-        <AiComposer
-          value={state.draft}
-          phase={state.phase}
-          inputRef={composerRef}
-          onChange={(value) => dispatch({ type: "draft", value })}
-          onSend={() => send()}
-          onStop={stop}
-        />
+        </div>
       </section>
     </div>
   );

@@ -24,12 +24,21 @@ export function SourceCard({
     source.kind === "AGGREGATE"
       ? source.value
       : source.kind === "RECORDS"
-        ? `${source.count} 条`
+        ? `${source.count} 条记录`
         : `${source.count} 条活动`;
+  const glyph = source.objectName.slice(0, 1);
   return (
     <Link className={styles.sourceCard} href={href}>
-      <strong>{title}</strong>
-      <div>{detail}</div>
+      <span className={styles.sourceGlyph} aria-hidden>
+        {glyph}
+      </span>
+      <span>
+        <span className={styles.sourceTitle}>{title}</span>
+        <span className={styles.sourceDetail}>{detail}</span>
+      </span>
+      <span className={styles.sourceArrow} aria-hidden>
+        →
+      </span>
     </Link>
   );
 }
