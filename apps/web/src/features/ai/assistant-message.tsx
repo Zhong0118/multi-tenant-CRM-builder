@@ -24,35 +24,43 @@ export function AssistantMessage({
     (message.status === "COMPLETED" &&
       message.toolSummary.some((tool) => tool.status === "FAILED"));
   return (
-    <article className={styles.assistantSurface}>
-      <ToolActivity tools={message.toolSummary} />
-      {renderSafeText(message.content).map((paragraph, index) => (
-        <p key={`${message.id}-${index}`}>{paragraph}</p>
-      ))}
-      {partial ? (
-        <AiErrorState message="部分 CRM 数据暂时无法读取，本次回答可能不完整" />
-      ) : null}
-      {retryable ? (
-        <AiErrorState
-          message={
-            message.status === "CANCELLED"
-              ? "回答已停止"
-              : userErrorMessage(message.errorCode)
-          }
-          onRetry={() => onRetry(message.turnId)}
-        />
-      ) : null}
-      {message.sourceSummary.length > 0 ? (
-        <div className={styles.sources}>
-          {message.sourceSummary.map((source, index) => (
-            <SourceCard
-              key={`${source.kind}-${source.objectCode}-${index}`}
-              tenantCode={tenantCode}
-              source={source}
-            />
-          ))}
-        </div>
-      ) : null}
+    <article className={styles.assistantRow}>
+      <div className={styles.avatar} aria-hidden>
+        AI
+      </div>
+      <div className={styles.assistantSurface}>
+        <ToolActivity tools={message.toolSummary} />
+        {renderSafeText(message.content).map((paragraph, index) => (
+          <p key={`${message.id}-${index}`}>{paragraph}</p>
+        ))}
+        {partial ? (
+          <AiErrorState message="部分 CRM 数据暂时无法读取，本次回答可能不完整" />
+        ) : null}
+        {retryable ? (
+          <AiErrorState
+            message={
+              message.status === "CANCELLED"
+                ? "回答已停止"
+                : userErrorMessage(message.errorCode)
+            }
+            onRetry={() => onRetry(message.turnId)}
+          />
+        ) : null}
+        {message.sourceSummary.length > 0 ? (
+          <div className={styles.sourceBlock}>
+            <div className={styles.sourceLabel}>数据来源</div>
+            <div className={styles.sources}>
+              {message.sourceSummary.map((source, index) => (
+                <SourceCard
+                  key={`${source.kind}-${source.objectCode}-${index}`}
+                  tenantCode={tenantCode}
+                  source={source}
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
     </article>
   );
 }
