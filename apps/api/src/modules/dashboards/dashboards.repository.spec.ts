@@ -309,6 +309,61 @@ describe('PrismaDashboardQueryExecutor', () => {
     ]);
   });
 
+  it('executes a seeded stage IN metric when filterFields include stage', async () => {
+    const transaction = {
+      $queryRaw: jest.fn(() => Promise.resolve([{ value: 4 }])),
+    };
+    const executor = new PrismaDashboardQueryExecutor(runner(transaction));
+    const plan = metricPlan('opportunity-active', {
+      widget: {
+        ...metricPlan('opportunity-active').widget,
+        filters: [
+          {
+            fieldKey: 'stage',
+            operator: 'IN',
+            value: ['discovery', 'proposal', 'negotiation'],
+          },
+        ],
+        filterFields: [
+          { fieldKey: 'stage', label: '商机阶段', type: 'SINGLE_SELECT' },
+        ],
+      },
+    });
+    const results = await executor.execute(context, [plan]);
+    const result = results.get('opportunity-active');
+    expect(result).toMatchObject({ state: 'READY', type: 'METRIC' });
+    expect(transaction.$queryRaw).toHaveBeenCalled();
+  });
+
+  it('marks a seeded stage IN metric QUERY_FAILED when filterFields omit stage', async () => {
+    const transaction = {
+      $queryRaw: jest.fn(() => Promise.resolve([{ value: 4 }])),
+    };
+    const executor = new PrismaDashboardQueryExecutor(runner(transaction));
+    const plan = metricPlan('opportunity-active', {
+      widget: {
+        ...metricPlan('opportunity-active').widget,
+        filters: [
+          {
+            fieldKey: 'stage',
+            operator: 'IN',
+            value: ['discovery', 'proposal', 'negotiation'],
+          },
+        ],
+        filterFields: [],
+      },
+    });
+    const results = await executor.execute(context, [plan]);
+    expect(results.get('opportunity-active')).toEqual(
+      expect.objectContaining({
+        id: 'opportunity-active',
+        state: 'UNAVAILABLE',
+        reason: 'QUERY_FAILED',
+      }),
+    );
+    expect(transaction.$queryRaw).not.toHaveBeenCalled();
+  });
+
   it('binds JSON keys and hostile filter values while enforcing every scope predicate', async () => {
     const queries: Array<{ sql: string; values: unknown[] }> = [];
     const transaction = {
