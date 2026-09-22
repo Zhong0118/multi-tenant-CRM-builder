@@ -2,6 +2,7 @@ import {
   buildDemoCompanyFixture,
   buildDemoDashboardDraft,
   DEMO_DASHBOARD_CONFIGURATION,
+  demoPublishedDashboard,
 } from './demo-company-fixture';
 
 describe('demo company fixture', () => {
@@ -91,5 +92,49 @@ describe('demo company fixture', () => {
     expect(draft.widgets.every((widget) => widget.audience === 'ALL')).toBe(
       true,
     );
+  });
+
+  it('compiles filterFields from widget.filters so seeded stage IN metrics can execute', () => {
+    const published = demoPublishedDashboard({
+      publication: { id: 'pub-1', number: 1 },
+      object: { code: 'opportunities', name: '跟单商机' },
+      fields: [
+        {
+          fieldKey: 'stage',
+          label: '商机阶段',
+          type: 'SINGLE_SELECT',
+          config: { options: [] },
+        },
+        { fieldKey: 'amount', label: '预计金额', type: 'NUMBER' },
+        { fieldKey: 'closeDate', label: '预计成交日', type: 'DATE' },
+      ],
+    });
+    const active = published.widgets.find(
+      (widget) => widget.id === 'opportunity-active',
+    );
+    const won = published.widgets.find(
+      (widget) => widget.id === 'opportunity-won',
+    );
+    const total = published.widgets.find(
+      (widget) => widget.id === 'opportunity-total',
+    );
+    expect(active?.filterFields).toEqual([
+      { fieldKey: 'stage', label: '商机阶段', type: 'SINGLE_SELECT' },
+    ]);
+    expect(won?.filterFields).toEqual([
+      { fieldKey: 'stage', label: '商机阶段', type: 'SINGLE_SELECT' },
+    ]);
+    expect(total?.filterFields).toEqual([]);
+    expect(
+      published.widgets
+        .filter((widget) => widget.filters.length > 0)
+        .every((widget) =>
+          widget.filters.every((filter) =>
+            widget.filterFields.some(
+              (field) => field.fieldKey === filter.fieldKey,
+            ),
+          ),
+        ),
+    ).toBe(true);
   });
 });

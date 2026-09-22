@@ -7,7 +7,9 @@ import type {
 } from '../modules/business-templates/business-template.schema';
 import type {
   DashboardDefinitionV2,
+  DashboardPublishedField,
   DashboardWidgetDraft,
+  PublishedDashboardDefinitionV2,
 } from '../modules/dashboards/dashboard.types';
 
 export const DEMO_COMPANY_CODE = 'nebula-demo';
@@ -604,5 +606,78 @@ export function buildDemoDashboardDraft(): DashboardDefinitionV2 {
         limit: 10,
       },
     ],
+  };
+}
+
+export function demoPublishedDashboard(
+  rawObjectConfiguration: unknown,
+): PublishedDashboardDefinitionV2 {
+  const raw = rawObjectConfiguration as Record<string, unknown>;
+  const publication = raw.publication as Record<string, unknown>;
+  const object = raw.object as Record<string, unknown>;
+  const fields = raw.fields as Array<Record<string, unknown>>;
+  const field = (fieldKey: string): DashboardPublishedField => {
+    const value = fields.find((item) => item.fieldKey === fieldKey);
+    if (!value) throw new Error(`Demo dashboard field ${fieldKey} is missing`);
+    return {
+      fieldKey,
+      label: String(value.label),
+      type: value.type as DashboardPublishedField['type'],
+    };
+  };
+  const stage = field('stage');
+  const amount = field('amount');
+  const closeDate = field('closeDate');
+  const stageConfig = fields.find((item) => item.fieldKey === 'stage')
+    ?.config as { options?: unknown[] } | undefined;
+  const options = (stageConfig?.options ?? []).map((option) => {
+    const value = option as Record<string, unknown>;
+    return {
+      key: String(value.key),
+      label: String(value.label),
+      color: String(value.color),
+    };
+  });
+  return {
+    schemaVersion: 2,
+    title: '销售运营工作台',
+    widgets: buildDemoDashboardDraft().widgets.map((widget) => {
+      const published = {
+        ...widget,
+        objectCode: object.code as string,
+        objectName: object.name as string,
+        objectPublicationId: publication.id as string,
+        objectPublicationNumber: publication.number as number,
+        filterFields: widget.filters.map((filter) => field(filter.fieldKey)),
+      };
+      if (widget.type === 'STATUS_DISTRIBUTION') {
+        return {
+          ...published,
+          groupByField: stage,
+          options,
+          valueField: amount,
+        };
+      }
+      if (widget.type === 'TREND') {
+        return {
+          ...published,
+          dateField: closeDate,
+          valueField: amount,
+        };
+      }
+      if (widget.type === 'LEADERBOARD') {
+        return {
+          ...published,
+          valueField: amount,
+        };
+      }
+      if (widget.type === 'RECORD_LIST') {
+        return {
+          ...published,
+          displayFields: [stage, amount, closeDate],
+        };
+      }
+      return published;
+    }),
   };
 }
