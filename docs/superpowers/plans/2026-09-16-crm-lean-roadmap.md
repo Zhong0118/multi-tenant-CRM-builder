@@ -22,7 +22,7 @@
 | Security Closeout | **COMPLETED**（Workflow 侧 PR #2；Record 侧 PR #3） | Workflow + Record required/HIDDEN metadata hardening（含 publish 期"默认值永不生效"拦截）；**残留**：`MEMBER` 默认值存在性无法在分析期校验、`action-engine.ts` 嵌套 fieldErrors 过滤（各自独立任务） | 0.1–0.2× |
 | Engineering Gate Lite | **COMPLETED**（PR #4，合并提交 `77af603`） | GitHub Actions CI 落地五个 required checks；Database Integration 起仓库自己的 PostgreSQL 18。第六个 check 由随后的 Engineering Gate Hardening 完成。验收见 `docs/audits/2026-09-16/engineering-gate-lite-acceptance.md` | 0.2–0.4× |
 | Sales Workbench Lite | **COMPLETED**（PR #9，合并提交 `a6e08b2`） | 员工首页固定 Personal Follow-up Workbench：全部待办 / 今日 / 已逾期 / 未来 7 个租户日历日；只读 `GET /workspaces/:tenantCode/follow-ups/workbench`（服务端解析 Actor、不接受 member 覆盖）；**overdue = `dueAt < now`**（与完整 Follow-up Domain 对齐）；**不新增 Dashboard widget、不改 publication schema、不加迁移**，完成动作复用既有 `PATCH /follow-ups/:id`。验收 `docs/audits/2026-09-17/sales-workbench-lite-acceptance.md` | 0.3–0.5× |
-| AI Assistant V1A | **ACTIVE**（当前实现切片 = PR C — AI Workspace UI + Closeout = READY FOR PR；PR A/B MERGED AND VERIFIED；browser walkthrough = VERIFIED） | 只读 Ask / Analyze | 0.4–0.7× |
+| AI Assistant V1A | **COMPLETED**（PR A/B/C MERGED AND VERIFIED；#17 merge `b3bc59a`；browser walkthrough = VERIFIED；post-merge 六门 SUCCESS） | 只读 Ask / Analyze | 0.4–0.7× |
 | AI Assistant V1B | PLANNED | Proposal → Preview → Confirm → Typed Write → Audit | 0.5–0.8× |
 | Production Essentials | PLANNED | 安全、日志、备份、监控、对象存储、生产配置 | 0.6–1.0× |
 | Email Adapter | OPTIONAL | 保留统一邮件接口，按需求接 Provider | 0.1–0.2× |
@@ -31,7 +31,7 @@
 
 **Engineering Gate Hardening**（**COMPLETED**，PR A #11 `bc6cad2` + PR B #12 `4eac32c`）：
 六个 required checks 含 `Critical API E2E`；`main` post-merge run `35232613694` 6/6。
-**AI Assistant V1A = ACTIVE**（当前实现切片 = PR C — AI Workspace UI + Closeout = READY FOR PR；PR A/B MERGED AND VERIFIED）。browser walkthrough = **VERIFIED**。完成仍须等 PR C merge + post-merge main 六门 SUCCESS。**AI Assistant V1B = PLANNED**。完成 Hardening 本身不自动 Promote AI。
+**AI Assistant V1A = COMPLETED**（PR A/B/C MERGED AND VERIFIED；#17 merge `b3bc59a`）。browser walkthrough = **VERIFIED**。post-merge main 六门 SUCCESS（run `35696132661`）。**AI Assistant V1B = PLANNED**。完成 V1A 本身不自动 Promote V1B。
 **位置由用户定为已完成的 Sales Workbench Lite 之后、AI Assistant V1A 之前**（理由见 §11）。
 
 ## 4. Sales Workbench Lite
@@ -85,7 +85,7 @@ Duplicate Rule、Merge、迁移、SMS、Feishu、多 Adapter、复杂通知全�
 Engineering Gate Lite          ✅ COMPLETED（PR #4）
 → Sales Workbench Lite         ✅ COMPLETED（PR #9）
 → Engineering Gate Hardening   ✅ COMPLETED（PR #11/#12）
-→ AI Assistant V1A             ACTIVE（PR C READY FOR PR；PR A/B MERGED AND VERIFIED；browser walkthrough VERIFIED）
+→ AI Assistant V1A             ✅ COMPLETED（PR #14/#16/#17；browser walkthrough VERIFIED；post-merge 六门 SUCCESS）
 → AI Assistant V1B             PLANNED
 → Production Essentials
 → Optional Email Adapter
