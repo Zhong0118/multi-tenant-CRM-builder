@@ -10,15 +10,13 @@ import {
 } from '../modules/business-templates/business-template-publication.policy';
 import { hydrateTenantConfiguration } from '../modules/business-templates/template-application.service';
 import { normalizeChineseMobile } from '../modules/auth/phone-number';
-import type {
-  PublishedDashboardDefinitionV2,
-} from '../modules/dashboards/dashboard.types';
 import {
   buildDemoCompanyFixture,
   buildDemoDashboardDraft,
   DEMO_COMPANY_CODE,
   DEMO_DASHBOARD_CONFIGURATION,
   DEMO_TEMPLATE_CODE,
+  demoPublishedDashboard,
   type DemoCompanyFixture,
 } from './demo-company-fixture';
 
@@ -689,78 +687,6 @@ async function ensureDemoDashboardPublication(
       defaultEmployeeDashboardId: saved.id,
     },
   });
-}
-
-function demoPublishedDashboard(
-  rawObjectConfiguration: Prisma.JsonValue,
-): PublishedDashboardDefinitionV2 {
-  const raw = rawObjectConfiguration as unknown as Record<string, unknown>;
-  const publication = raw.publication as Record<string, unknown>;
-  const object = raw.object as Record<string, unknown>;
-  const fields = raw.fields as Array<Record<string, unknown>>;
-  const field = (fieldKey: string) => {
-    const value = fields.find((item) => item.fieldKey === fieldKey);
-    if (!value) throw new Error(`Demo dashboard field ${fieldKey} is missing`);
-    return {
-      fieldKey,
-      label: value.label,
-      type: value.type,
-    };
-  };
-  const stage = field('stage');
-  const amount = field('amount');
-  const closeDate = field('closeDate');
-  const stageConfig = fields.find((item) => item.fieldKey === 'stage')
-    ?.config as { options?: unknown[] } | undefined;
-  const options = (stageConfig?.options ?? []).map((option) => {
-    const value = option as Record<string, unknown>;
-    return { key: value.key, label: value.label, color: value.color };
-  });
-  const objectBase = {
-    objectCode: object.code as string,
-    objectName: object.name as string,
-    objectPublicationId: publication.id as string,
-    objectPublicationNumber: publication.number as number,
-    filterFields: [],
-  };
-  return {
-    schemaVersion: 2,
-    title: '销售运营工作台',
-    widgets: buildDemoDashboardDraft().widgets.map((widget) => {
-      const published = {
-        ...widget,
-        ...objectBase,
-      };
-      if (widget.type === 'STATUS_DISTRIBUTION') {
-        return {
-          ...published,
-          groupByField: stage,
-          options,
-          valueField: amount,
-        };
-      }
-      if (widget.type === 'TREND') {
-        return {
-          ...published,
-          dateField: closeDate,
-          valueField: amount,
-        };
-      }
-      if (widget.type === 'LEADERBOARD') {
-        return {
-          ...published,
-          valueField: amount,
-        };
-      }
-      if (widget.type === 'RECORD_LIST') {
-        return {
-          ...published,
-          displayFields: [stage, amount, closeDate],
-        };
-      }
-      return published;
-    }),
-  } as unknown as PublishedDashboardDefinitionV2;
 }
 
 function stageConfigurationMatches(
