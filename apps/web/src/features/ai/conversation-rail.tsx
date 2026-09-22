@@ -45,8 +45,8 @@ export function ConversationRail({
   return (
     <aside className={styles.railInner}>
       <div className={styles.railHeader}>
-        <strong>会话</strong>
-        <Button type="primary" onClick={onNew}>
+        <p className={styles.railBrand}>AI 会话</p>
+        <Button className={styles.railNew} type="primary" onClick={onNew}>
           + 新建会话
         </Button>
       </div>
@@ -90,7 +90,11 @@ export function ConversationRail({
                       ],
                     }}
                   >
-                    <Button type="text" aria-label="会话操作">
+                    <Button
+                      type="text"
+                      className={styles.rowMenu}
+                      aria-label="会话操作"
+                    >
                       ···
                     </Button>
                   </Dropdown>
