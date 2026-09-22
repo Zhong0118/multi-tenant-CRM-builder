@@ -1,8 +1,8 @@
 # AI Assistant V1A — Acceptance
 
-> 日期：2026-09-21
-> 类型：产品阶段验收草稿（Ask / Analyze）
-> 状态：**V1A 仍 ACTIVE**。COMPLETED 须等 PR C merge + post-merge main 六门 SUCCESS。PR C 尚未开 PR。
+> 日期：2026-09-22
+> 类型：产品阶段验收（Ask / Analyze）
+> 状态：**AI Assistant V1A = COMPLETED**。PR A/B/C MERGED AND VERIFIED。browser walkthrough VERIFIED。post-merge main 六门 SUCCESS。**AI Assistant V1B = PLANNED**。
 
 本文件只记录**已经发生**的事实。未观察到的项不预填为通过。
 
@@ -12,9 +12,10 @@
 |---|---|---|---|
 | PR A — AI Foundation | #14 | `64a22cde18eb5888f64b503c8873f627596b1e8d` | MERGED AND VERIFIED |
 | PR B — Read Runtime | #16 | `466d9af80280c9d26f4c194c9f4787da57817137` | MERGED AND VERIFIED |
-| PR C — Workspace UI + Closeout | 未开 | 走查起点 `2f8b39fb115c9036c2ebfa731d60fc394db78ee5`；随后本地修 rail overlay / Dropdown portal | pending merge |
+| PR C — Workspace UI + Closeout | #17 | `b3bc59acba4e16dbee556ead0670386344822eec` | MERGED AND VERIFIED |
 
 PR B post-merge main CI：https://github.com/Zhong0118/multi-tenant-CRM-builder/actions/runs/35559049090 （六门 SUCCESS）。
+PR C post-merge main CI：https://github.com/Zhong0118/multi-tenant-CRM-builder/actions/runs/35696132661 （六门 SUCCESS）。
 
 ## 2. Critical AI cases（已在 PR B）
 
@@ -126,12 +127,15 @@ identity 修正后的最小真实 smoke（赵晨，conversation `01a0c49e-6598-7
 
 ## 7. Non-goals（保持）
 
-无 write tools、无 V1B、无 RAG、无 CI yaml 改动。未开 PR、未 merge。fixture 仅本地，未提交。
+无 write tools、无 V1B、无 RAG、无 CI yaml 改动。fixture 仅本地，未提交。
 
 ## 8. Known limitations
 
-- V1A COMPLETED 尚未成立
 - Web Unit 历史上存在 unrelated `window is not defined` teardown flaky
 - Source Card 只使用 `AiSourceSummary`
 - 本机 walkthrough 使用米醋 OpenAI 兼容网关，不是官方 api.openai.com
-- older-history 真实长会话未观察
+- older-history：**NOT OBSERVED — INSUFFICIENT LOCAL HISTORY**；由 deterministic pagination / scroll tests 覆盖
+
+## Post-merge status
+
+PR C #17 已 merge。merge commit / `origin/main` = `b3bc59acba4e16dbee556ead0670386344822eec`。post-merge run `35696132661` 六门 SUCCESS。本节**不回填、不重算**走查证据。**AI Assistant V1A = COMPLETED**。**AI Assistant V1B = PLANNED**。
