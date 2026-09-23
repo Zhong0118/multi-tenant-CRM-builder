@@ -215,6 +215,29 @@ test("allows a verified user to discover invitations sent before registration", 
   assert.match(migration, /current_setting\('app\.user_id', true\)/);
 });
 
+test("persists owner-scoped AI operations with immutable per-turn identity and enforced RLS", async () => {
+  const schema = await readFile(schemaUrl, "utf8");
+  const model = schema.match(/model AiOperation \{([\s\S]*?)\n\}/)?.[1];
+  assert.ok(model, "AiOperation model must exist");
+  for (const field of ["tenantId", "conversationId", "turnId", "requestedByMemberId", "status", "expiresAt", "auditId", "expectedPublicationId"]) {
+    assert.match(model, new RegExp(`\\b${field}\\b`));
+  }
+  assert.match(model, /@@unique\(\[tenantId, id\]\)/);
+  assert.match(model, /@@unique\(\[tenantId, conversationId, turnId\]\)/);
+  assert.match(model, /references: \[tenantId, id\]/);
+  const migration = await readFile(new URL("./prisma/migrations/0020_ai_operations/migration.sql", import.meta.url), "utf8");
+  assert.match(migration, /FOREIGN KEY \("tenant_id", "conversation_id"\) REFERENCES "ai_conversations"\("tenant_id", "id"\)/);
+  assert.match(migration, /"requested_by_member_id"/);
+  assert.match(migration, /ALTER TABLE "ai_operations" ENABLE ROW LEVEL SECURITY/);
+  assert.match(migration, /ALTER TABLE "ai_operations" FORCE ROW LEVEL SECURITY/);
+  assert.match(migration, /current_setting\('app\.tenant_id', true\)/);
+  assert.match(migration, /current_setting\('app\.user_id', true\)/);
+  assert.match(migration, /"deleted_at" IS NULL/);
+  assert.match(migration, /m\."status" = 'ACTIVE'/);
+  assert.match(migration, /GRANT SELECT, INSERT, UPDATE ON TABLE "ai_operations" TO crm_app/);
+  assert.doesNotMatch(migration, /GRANT[^;]*DELETE[^;]*ai_operations/i);
+});
+
 test("defines personal AI conversations and messages", async () => {
   const schema = await readFile(schemaUrl, "utf8");
 

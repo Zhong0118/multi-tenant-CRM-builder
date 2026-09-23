@@ -146,6 +146,21 @@ enum DashboardAudience {
   EMPLOYEE
 }
 
+enum AiOperationType {
+  UPDATE_RECORD
+  CREATE_FOLLOW_UP
+  ADD_ACTIVITY_NOTE
+}
+
+enum AiOperationStatus {
+  PROPOSED
+  REJECTED
+  EXPIRED
+  CONFLICTED
+  FAILED
+  EXECUTED
+}
+
 enum AiMessageRole {
   USER
   ASSISTANT
@@ -218,6 +233,7 @@ model Tenant {
   defaultEmployeeDashboard   TenantDashboardConfiguration?  @relation("DefaultEmployeeDashboard", fields: [id, defaultEmployeeDashboardId], references: [tenantId, id], onDelete: Restrict)
   aiConversations            AiConversation[]
   aiMessages                 AiMessage[]
+  aiOperations               AiOperation[]
 
   @@map("tenants")
 }
@@ -293,6 +309,8 @@ model TenantMember {
   updatedWorkflows          ObjectWorkflowDefinition[]   @relation("WorkflowUpdatedBy")
   transitionHistories       RecordTransitionHistory[]    @relation("TransitionActor")
   aiConversations           AiConversation[]             @relation("AiConversationCreator")
+  requestedAiOperations     AiOperation[]                @relation("AiOperationRequester")
+  confirmedAiOperations     AiOperation[]                @relation("AiOperationConfirmer")
 
   @@unique([tenantId, userId])
   @@unique([tenantId, id])
@@ -771,10 +789,47 @@ model AiConversation {
   tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   createdBy TenantMember @relation("AiConversationCreator", fields: [tenantId, createdByMemberId], references: [tenantId, id], onDelete: Restrict)
   messages  AiMessage[]
+  operations AiOperation[]
 
   @@unique([tenantId, id])
   @@index([tenantId, createdByMemberId, lastMessageAt(sort: Desc), id])
   @@map("ai_conversations")
+}
+
+model AiOperation {
+  id                     String            @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId               String            @map("tenant_id") @db.Uuid
+  conversationId         String            @map("conversation_id") @db.Uuid
+  turnId                 String            @map("turn_id") @db.Uuid
+  requestedByMemberId    String            @map("requested_by_member_id") @db.Uuid
+  confirmedByMemberId    String?           @map("confirmed_by_member_id") @db.Uuid
+  operationType          AiOperationType   @map("operation_type")
+  status                 AiOperationStatus @default(PROPOSED)
+  requestText            String            @map("request_text") @db.Text
+  proposalJson           Json              @map("proposal_json") @db.JsonB
+  displayChangesJson     Json              @map("display_changes_json") @db.JsonB
+  targetRefJson          Json              @map("target_ref_json") @db.JsonB
+  expectedVersion        Int?              @map("expected_version")
+  expectedPublicationId  String            @map("expected_publication_id") @db.Uuid
+  resultJson             Json?             @map("result_json") @db.JsonB
+  auditId                String?           @map("audit_id") @db.Uuid
+  failureCode            String?           @map("failure_code") @db.VarChar(64)
+  expiresAt              DateTime          @map("expires_at") @db.Timestamptz(3)
+  createdAt              DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+  confirmedAt            DateTime?         @map("confirmed_at") @db.Timestamptz(3)
+  executedAt             DateTime?         @map("executed_at") @db.Timestamptz(3)
+
+  tenant                 Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  conversation           AiConversation    @relation(fields: [tenantId, conversationId], references: [tenantId, id], onDelete: Restrict)
+  requester              TenantMember      @relation("AiOperationRequester", fields: [tenantId, requestedByMemberId], references: [tenantId, id], onDelete: Restrict)
+  confirmer              TenantMember?     @relation("AiOperationConfirmer", fields: [tenantId, confirmedByMemberId], references: [tenantId, id], onDelete: Restrict)
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, conversationId, turnId])
+  @@index([tenantId, requestedByMemberId, conversationId, createdAt(sort: Desc)])
+  @@index([tenantId, status, expiresAt])
+  @@map("ai_operations")
 }
 
 model AiMessage {
