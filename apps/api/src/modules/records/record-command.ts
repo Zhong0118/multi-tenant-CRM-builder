@@ -2,7 +2,7 @@ import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type {
   AuditEvent,
-  WorkflowActionAuditMetadata,
+  DomainAuditCorrelation,
 } from '../audit/audit-event';
 import type { ResolvedObjectSchema } from '../objects/published-object.service';
 import { projectVisibleValues } from './record-value-engine';
@@ -42,11 +42,10 @@ export interface RecordRequestMeta {
   requestId: string;
   ip?: string;
   /**
-   * §30: set only when an Action Engine executor calls this command, so the
-   * `record.created` audit row can be correlated with the Transition and the
-   * Action that produced it. The ordinary HTTP path leaves it unset.
+   * Optional correlation for Workflow Actions or a confirmed AI operation.
+   * The ordinary HTTP path leaves it unset.
    */
-  actionAudit?: WorkflowActionAuditMetadata;
+  actionAudit?: DomainAuditCorrelation;
 }
 
 export interface CreateRecordCommandInput {
@@ -207,6 +206,7 @@ export async function createRecordActivityCommand({
       recordId,
       activityType: created.activityType,
       nextActionAt: created.nextActionAt,
+      ...(meta.actionAudit ?? {}),
     },
     requestId: meta.requestId,
     ip: meta.ip,

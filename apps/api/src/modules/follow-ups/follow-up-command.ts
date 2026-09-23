@@ -6,7 +6,7 @@ import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type {
   AuditEvent,
-  WorkflowActionAuditMetadata,
+  DomainAuditCorrelation,
 } from '../audit/audit-event';
 import type { AuditService } from '../audit/audit.service';
 
@@ -37,11 +37,10 @@ export interface FollowUpMeta {
   requestId: string;
   ip?: string;
   /**
-   * §30: set only when the Action Engine calls this command, so the
-   * `follow_up.created` audit row carries the Transition / Action correlation.
-   * The ordinary HTTP path leaves it unset.
+   * Correlates the follow-up audit to a Workflow Action or confirmed AI
+   * operation. The ordinary HTTP path leaves it unset.
    */
-  actionAudit?: WorkflowActionAuditMetadata;
+  actionAudit?: DomainAuditCorrelation;
 }
 
 export interface FollowUpRecordScope {

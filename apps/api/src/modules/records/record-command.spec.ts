@@ -767,6 +767,25 @@ describe('HTTP-compatible tenant transaction commands', () => {
     ]);
   });
 
+  it('includes AI operation correlation in the NOTE audit, not the activity', async () => {
+    const store = new MemoryStore();
+    await seed(store);
+    const result = await createRecordActivityCommand({
+      store,
+      resolved: resolved(),
+      context: admin,
+      recordId: 'record-seed',
+      input: { activityType: 'NOTE', content: 'Private note' },
+      meta: { ...meta, actionAudit: { aiOperationId: 'ai-op-123' } },
+      clock: () => createdAt,
+      idGenerator: () => 'activity-ai',
+    });
+    expect(store.audits).toMatchObject([
+      { after: { recordId: 'record-seed', aiOperationId: 'ai-op-123' } },
+    ]);
+    expect(result.activity).not.toHaveProperty('aiOperationId');
+  });
+
   it('trims NOTE content and returns the matching activity audit ID', async () => {
     const store = new MemoryStore();
     await seed(store);

@@ -16,6 +16,10 @@ export interface WorkflowActionAuditMetadata {
   actionType: string;
 }
 
+export type DomainAuditCorrelation =
+  | WorkflowActionAuditMetadata
+  | { aiOperationId: string };
+
 export interface AuditEvent {
   tenantId?: string;
   actorType: 'USER' | 'SYSTEM';
