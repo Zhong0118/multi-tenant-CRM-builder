@@ -30,7 +30,7 @@ AI Assistant V1B 是现有多租户 CRM 的**人工确认后写入**阶段。用
 首批三种写操作全部纳入：
 
 1. `UPDATE_RECORD`：更新一条业务记录的一个或多个可编辑字段；
-2. `CREATE_FOLLOW_UP`：为一条当前可见且允许操作的业务记录创建跟进，首版负责人固定为当前执行人；
+2. `CREATE_FOLLOW_UP`：为一条当前可见且允许操作的业务记录创建跟进，首版只支持标题与到期时间，负责人固定为当前执行人；
 3. `ADD_ACTIVITY_NOTE`：向一条当前可见且允许追加活动的业务记录追加 `NOTE` 活动。
 
 交互粒度固定为：
@@ -171,7 +171,7 @@ updatedAt
 - `proposalJson` 必须是服务端 schema 校验后的结构化参数；
 - `displayChangesJson` 只存可展示、已脱敏的差异摘要；HIDDEN 字段不得进入；
 - 目标引用使用受控的 object/record/follow-up 引用，不保存完整 Record before/after JSON；
-- Proposal 设置短有效期，建议默认 15 分钟，具体常量和边界由实施测试固定；
+- Proposal 有效期固定 15 分钟，自持久化创建时计算；到期状态可在读取/确认时按时钟惰性推进；
 - 不提供以删除操作记录来绕过审计的用户路径；retention 属于后续运维设计。
 
 ---
@@ -211,7 +211,6 @@ target:
 
 input:
   title
-  description?
   dueAt
   assignee: CURRENT_ACTOR
 ```
@@ -275,7 +274,7 @@ Confirm 请求只接受：
 9. 提交事务
 ```
 
-如果任何一步失败，业务数据不变，并返回可区分的 `CONFLICTED`、`FORBIDDEN`、`VALIDATION_FAILED` 或 `FAILED` 语义。业务写入、Audit 和操作状态更新必须在同一个租户事务内完成；若技术上无法保证，应缩小实现而不是接受不确定状态。
+若业务命令失败，执行事务回滚，业务数据与成功审计都不落库；错误终态在回滚后由单独的状态事务按 `PROPOSED` 条件更新（若有竞争，读取最终权威状态），不能在会回滚的事务内写了 `FAILED` 就认为已持久化。业务写入、成功 Audit 和 `EXECUTED` 状态更新必须在同一个租户事务内完成；现有 Audit append 返回 void，实施时让它返回所插入的 Audit ID，以便同事务关联 AiOperation.auditId。若技术上无法保证，应缩小实现而不是接受不确定状态。
 
 ### 5.3 Public stream events
 
@@ -319,7 +318,7 @@ Proposal Card 必须清楚展示：
 - 目标 Record / Follow-up 的安全摘要；
 - 操作类型和人类可读的影响；
 - Record 更新的 before → after；
-- 新建跟进的标题、关联 Record、当前执行人、到期时间；
+- 新建跟进的标题、关联 Record、当前执行人、到期时间；首版没有 description 字段，不新增字段迁移；
 - NOTE 标签、关联 Record 和备注内容；
 - `确认执行` 与 `拒绝`；
 - 过期、权限变化、版本冲突、业务校验失败的具体状态；
