@@ -135,6 +135,31 @@ describe('createFollowUpCommand', () => {
     jest.useRealTimers();
   });
 
+  it('captures the persisted follow-up audit ID without changing the HTTP projection', async () => {
+    const fixture = harness();
+    const onAuditId = jest.fn();
+    const created = await createFollowUpCommand(
+      fixture.tx as never,
+      context,
+      INPUT,
+      meta,
+      SCOPE,
+      {
+        audit: {
+          appendReturningId: jest.fn().mockResolvedValue('audit-db-created'),
+        } as never,
+        onAuditId,
+      },
+    );
+    expect(onAuditId).toHaveBeenCalledTimes(1);
+    expect(onAuditId).toHaveBeenCalledWith('audit-db-created');
+    expect(created).not.toHaveProperty('auditId');
+    expect(created).toMatchObject({
+      assigneeMemberId: context.memberId,
+      title: INPUT.title,
+    });
+  });
+
   it('locks the acting member first and creates the follow-up in the caller transaction', async () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2026-09-19T00:00:00.000Z'));

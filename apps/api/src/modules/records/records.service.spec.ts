@@ -315,7 +315,8 @@ class MemoryRecordsStore implements RecordsStore {
       (record) =>
         record.objectId === query.objectId &&
         record.deletedAt === null &&
-        (!query.ownerMemberId || record.ownerMemberId === query.ownerMemberId) &&
+        (!query.ownerMemberId ||
+          record.ownerMemberId === query.ownerMemberId) &&
         query.filters.every((filter) => matchesListFilter(record, filter)),
     );
     const numericOf = (record: DynamicRecord): number | null => {
@@ -347,8 +348,7 @@ class MemoryRecordsStore implements RecordsStore {
     if (query.groupByFieldKey) {
       for (const record of filtered) {
         const raw = record.values[query.groupByFieldKey];
-        const key =
-          raw === null || raw === undefined ? null : String(raw);
+        const key = raw === null || raw === undefined ? null : String(raw);
         const current = buckets.get(key) ?? { value: 0, count: 0, numbers: [] };
         current.count += 1;
         const numeric = numericOf(record);
@@ -455,9 +455,9 @@ class MemoryRecordsStore implements RecordsStore {
     return Promise.resolve(true);
   }
 
-  appendAudit(event: AuditEvent): Promise<void> {
+  appendAudit(event: AuditEvent): Promise<string> {
     this.audits.push(structuredClone(event));
-    return Promise.resolve();
+    return Promise.resolve(`audit-${this.audits.length}`);
   }
 
   /**
@@ -878,9 +878,7 @@ describe('RecordsService', () => {
       .configuration as PublishedObjectSchema;
     configuration.workflow = {
       initialStateKey: 'new',
-      states: [
-        { key: 'new', label: '新建', sortOrder: 10, isTerminal: false },
-      ],
+      states: [{ key: 'new', label: '新建', sortOrder: 10, isTerminal: false }],
       transitions: [],
     };
 
@@ -1790,6 +1788,25 @@ describe('RecordsService', () => {
         }),
       }),
     ]);
+  });
+
+  it('accepts exactly 4000 NOTE characters in the unchanged HTTP projection', async () => {
+    const { service, store } = fixture();
+    const record = await create(service, employee, '张三');
+    const note = await service.createActivity(
+      employee,
+      'leads',
+      record.id,
+      { activityType: 'NOTE', content: 'x'.repeat(4000) },
+      meta,
+    );
+    expect(note.content).toHaveLength(4000);
+    expect(note).not.toHaveProperty('auditId');
+    expect(
+      store.audits.filter(
+        (event) => event.action === 'record.activity_created',
+      ),
+    ).toHaveLength(1);
   });
 
   it.each(['   ', 'x'.repeat(4001)])(

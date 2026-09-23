@@ -308,10 +308,10 @@ class MemoryRecordsStore implements Partial<RecordsStore> {
     return Promise.reject(new ApiException('OWNER_INVALID', 400));
   }
 
-  appendAudit(event: AuditEvent) {
+  appendAudit(event: AuditEvent): Promise<string> {
     this.journal.record(`audit:${event.action}`);
     this.audits.push(event);
-    return Promise.resolve();
+    return Promise.resolve(`audit-${this.audits.length}`);
   }
 
   listTransitionHistory(recordId: string) {

@@ -224,7 +224,7 @@ export interface RecordsStore {
     createdAt: string;
   }): Promise<RecordActivity>;
   listMemberNames(memberIds: string[]): Promise<Map<string, string>>;
-  appendAudit(event: AuditEvent): Promise<void>;
+  appendAudit(event: AuditEvent): Promise<string>;
   /**
    * §14 / §23: the ONE final Source Record write for an ORDINARY update. It
    * atomically writes values, title, owner, workflow state and `version + 1`
@@ -834,8 +834,8 @@ class PrismaRecordsStore implements RecordsStore {
     );
   }
 
-  appendAudit(event: AuditEvent): Promise<void> {
-    return this.audit.append(this.transaction, event);
+  appendAudit(event: AuditEvent): Promise<string> {
+    return this.audit.appendReturningId(this.transaction, event);
   }
 }
 

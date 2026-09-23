@@ -4,7 +4,10 @@ import type { Prisma } from '@crm/database';
 
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
-import type { WorkflowActionAuditMetadata } from '../audit/audit-event';
+import type {
+  AuditEvent,
+  WorkflowActionAuditMetadata,
+} from '../audit/audit-event';
 import type { AuditService } from '../audit/audit.service';
 
 /**
@@ -115,7 +118,21 @@ export function appendFollowUpAudit(
   after: Record<string, unknown>,
   before?: Record<string, unknown>,
 ): Promise<void> {
-  return audit.append(tx, {
+  return audit.append(
+    tx,
+    followUpAuditEvent(context, id, action, meta, after, before),
+  );
+}
+
+function followUpAuditEvent(
+  context: TenantContext,
+  id: string,
+  action: string,
+  meta: FollowUpMeta,
+  after: Record<string, unknown>,
+  before?: Record<string, unknown>,
+): AuditEvent {
+  return {
     tenantId: context.tenantId,
     actorType: 'USER',
     actorId: context.userId,
@@ -126,7 +143,7 @@ export function appendFollowUpAudit(
     before,
     requestId: meta.requestId,
     ip: meta.ip,
-  });
+  };
 }
 
 export interface CreateFollowUpCommandInput {
@@ -146,6 +163,7 @@ export interface CreateFollowUpCommandInput {
 
 export interface CreateFollowUpCommandDeps {
   audit: AuditService;
+  onAuditId?: (id: string) => void;
 }
 
 /**
@@ -197,19 +215,28 @@ export async function createFollowUpCommand(
     },
     include: followUpInclude,
   });
-  await appendFollowUpAudit(
-    tx,
-    deps.audit,
-    context,
-    item.id,
-    'follow_up.created',
-    meta,
-    {
-      title: item.title,
-      dueAt: item.dueAt.toISOString(),
-      recordId: item.recordId,
-      ...(meta.actionAudit ?? {}),
-    },
-  );
+  const after = {
+    title: item.title,
+    dueAt: item.dueAt.toISOString(),
+    recordId: item.recordId,
+    ...(meta.actionAudit ?? {}),
+  };
+  if (deps.onAuditId) {
+    const auditId = await deps.audit.appendReturningId(
+      tx,
+      followUpAuditEvent(context, item.id, 'follow_up.created', meta, after),
+    );
+    deps.onAuditId(auditId);
+  } else {
+    await appendFollowUpAudit(
+      tx,
+      deps.audit,
+      context,
+      item.id,
+      'follow_up.created',
+      meta,
+      after,
+    );
+  }
   return presentFollowUp(item);
 }

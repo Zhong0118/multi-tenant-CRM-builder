@@ -298,9 +298,9 @@ class MemoryStore implements RecordsStore {
   aggregateRecords() {
     return Promise.resolve({ value: '0', groups: [] });
   }
-  appendAudit(event: AuditEvent): Promise<void> {
+  appendAudit(event: AuditEvent): Promise<string> {
     this.audits.push(structuredClone(event));
-    return Promise.resolve();
+    return Promise.resolve(`audit-${this.audits.length}`);
   }
   applyRecordPatch(input: unknown): Promise<DynamicRecord | null> {
     this.recordPatchCalls.push(structuredClone(input));

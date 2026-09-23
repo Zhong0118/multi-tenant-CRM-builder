@@ -8,8 +8,8 @@ export class AuditRepository {
   async append(
     transaction: Prisma.TransactionClient,
     event: AuditEvent,
-  ): Promise<void> {
-    await transaction.auditLog.create({
+  ): Promise<string> {
+    const row = await transaction.auditLog.create({
       data: {
         tenantId: event.tenantId,
         actorType: event.actorType,
@@ -23,6 +23,8 @@ export class AuditRepository {
         requestId: event.requestId,
         ip: event.ip,
       },
+      select: { id: true },
     });
+    return row.id;
   }
 }

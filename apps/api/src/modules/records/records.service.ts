@@ -6,25 +6,24 @@ import { isSearchableFieldType } from '../objects/object-schema';
 import type { ResolvedObjectSchema } from '../objects/published-object.service';
 import { PublishedObjectService } from '../objects/published-object.service';
 import {
-  applySourceRecordPatch,
   createRecordCommand,
-  prepareSourceRecordPatch,
+  createRecordActivityCommand,
+  projectActivity,
+  projectRecord,
   recordAudit,
+  requireVisibleRecord,
+  updateRecordCommand,
+  validateRecordActivityInput,
   type RecordRequestMeta,
 } from './record-command';
+import type { MemberActivityType } from './record-activity';
 import { projectVisibleValues } from './record-value-engine';
-import {
-  MEMBER_ACTIVITY_TYPES,
-  type MemberActivityType,
-  type RecordActivity,
-} from './record-activity';
 import {
   RECORD_EXPORT_MAX_ROWS,
   buildRecordExportCsv,
   exportFileName,
 } from './record-export';
 import type {
-  DynamicRecord,
   RecordAggregateResult,
   RecordListFieldSort,
   RecordListFilter,
@@ -194,11 +193,7 @@ export class RecordsService {
       context,
       objectCode,
     );
-    if (
-      !Number.isInteger(input.limit) ||
-      input.limit < 1 ||
-      input.limit > 20
-    ) {
+    if (!Number.isInteger(input.limit) || input.limit < 1 || input.limit > 20) {
       throw invalidAggregate();
     }
     const valueFieldKey = resolveAggregateValueField(
@@ -232,7 +227,11 @@ export class RecordsService {
       });
       return {
         value: result.value,
-        groups: await projectAggregateGroups(store, groupByField, result.groups),
+        groups: await projectAggregateGroups(
+          store,
+          groupByField,
+          result.groups,
+        ),
       };
     });
   }
@@ -508,9 +507,17 @@ export class RecordsService {
       context,
       objectCode,
     );
-    return this.repository.withTenant(context, async (store) =>
-      updateRecordRow(store, resolved, context, recordId, input, meta),
-    );
+    return this.repository.withTenant(context, async (store) => {
+      const { record } = await updateRecordCommand({
+        store,
+        resolved,
+        context,
+        recordId,
+        input,
+        meta,
+      });
+      return record;
+    });
   }
 
   async batchUpdate(
@@ -558,18 +565,18 @@ export class RecordsService {
       const items: RecordBatchUpdateResultItem[] = [];
       for (const item of input.items) {
         try {
-          const record = await updateRecordRow(
+          const { record } = await updateRecordCommand({
             store,
             resolved,
             context,
-            item.recordId,
-            {
+            recordId: item.recordId,
+            input: {
               version: item.version,
               values: input.values,
               ownerMemberId: input.ownerMemberId,
             },
             meta,
-          );
+          });
           items.push({ recordId: item.recordId, status: 'UPDATED', record });
         } catch (error) {
           if (error instanceof ApiException) {
@@ -675,49 +682,19 @@ export class RecordsService {
       context,
       objectCode,
     );
-    const content = input.content.trim();
-    if (content.length === 0) {
-      throw new ApiException('VALIDATION_FAILED', 400, {
-        fieldErrors: { content: ['请填写跟进内容。'] },
-      });
-    }
-    if (content.length > 4000) {
-      throw new ApiException('VALIDATION_FAILED', 400, {
-        fieldErrors: { content: ['跟进内容不能超过 4000 字。'] },
-      });
-    }
-    if (!MEMBER_ACTIVITY_TYPES.includes(input.activityType)) {
-      throw new ApiException('VALIDATION_FAILED', 400, {
-        fieldErrors: { activityType: ['不支持该跟进类型。'] },
-      });
-    }
+    validateRecordActivityInput(input);
     return this.repository.withTenant(context, async (store) => {
-      await requireVisibleRecord(store, resolved, context, recordId, 'UPDATE');
-      const created = await store.createActivity({
-        id: this.idGenerator(),
+      const { activity } = await createRecordActivityCommand({
+        store,
+        resolved,
+        context,
         recordId,
-        activityType: input.activityType,
-        content,
-        nextActionAt: input.nextActionAt ?? null,
-        actorMemberId: context.memberId,
-        createdAt: this.clock().toISOString(),
+        input,
+        meta,
+        clock: this.clock,
+        idGenerator: this.idGenerator,
       });
-      await store.appendAudit({
-        tenantId: context.tenantId,
-        actorType: 'USER',
-        actorId: context.userId,
-        action: 'record.activity_created',
-        resourceType: 'record_activity',
-        resourceId: created.id,
-        after: {
-          recordId,
-          activityType: created.activityType,
-          nextActionAt: created.nextActionAt,
-        },
-        requestId: meta.requestId,
-        ip: meta.ip,
-      });
-      return projectActivity(created);
+      return activity;
     });
   }
 }
@@ -1110,9 +1087,7 @@ function resolveAggregateGroupField(
 
 async function projectAggregateGroups(
   store: RecordsStore,
-  field:
-    | NonNullable<ReturnType<typeof resolveAggregateGroupField>>
-    | undefined,
+  field: NonNullable<ReturnType<typeof resolveAggregateGroupField>> | undefined,
   groups: RecordAggregateResult['groups'],
 ): Promise<RecordAggregateResult['groups']> {
   if (!field) return groups;
@@ -1170,30 +1145,6 @@ async function resolveListOwner(
   return requested;
 }
 
-async function requireVisibleRecord(
-  store: RecordsStore,
-  resolved: ResolvedObjectSchema,
-  context: TenantContext,
-  recordId: string,
-  action: 'READ' | 'UPDATE',
-): Promise<DynamicRecord> {
-  const accessAllowed =
-    action === 'READ' ? resolved.access.canRead : resolved.access.canUpdate;
-  const scope =
-    action === 'READ' ? resolved.access.readScope : resolved.access.updateScope;
-  if (!accessAllowed || scope === 'NONE') {
-    throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
-  }
-  const record = await store.findRecord(resolved.schema.object.id, recordId);
-  if (
-    !record ||
-    (scope === 'OWN' && record.ownerMemberId !== context.memberId)
-  ) {
-    throw new ApiException('RECORD_NOT_FOUND', 404);
-  }
-  return record;
-}
-
 function resolveExportFields(
   resolved: ResolvedObjectSchema,
   requested: string[] | undefined,
@@ -1212,83 +1163,4 @@ function resolveExportFields(
       return field ? [field] : [];
     },
   );
-}
-
-/**
- * HTTP update orchestration: visibility, optimistic version check, then the
- * shared transaction-aware commands. The validation itself lives in
- * `record-command.ts` so plain HTTP and the Action Engine cannot drift apart.
- */
-async function updateRecordRow(
-  store: RecordsStore,
-  resolved: ResolvedObjectSchema,
-  context: TenantContext,
-  recordId: string,
-  input: {
-    version: number;
-    values?: Record<string, unknown>;
-    ownerMemberId?: string | null;
-  },
-  meta: RequestMeta,
-): Promise<RecordResponse> {
-  const current = await requireVisibleRecord(
-    store,
-    resolved,
-    context,
-    recordId,
-    'UPDATE',
-  );
-  if (current.version !== input.version) {
-    throw new ApiException('RECORD_VERSION_CONFLICT', 409);
-  }
-  const patch = await prepareSourceRecordPatch({
-    store,
-    resolved,
-    context,
-    current,
-    values: input.values,
-    ownerMemberId: input.ownerMemberId,
-  });
-  const updated = await applySourceRecordPatch({
-    store,
-    recordId,
-    expectedVersion: input.version,
-    patch,
-  });
-  await store.appendAudit(
-    recordAudit(context, meta, 'record.updated', updated, current),
-  );
-  return projectRecord(updated, resolved);
-}
-
-function projectActivity(activity: RecordActivity): RecordActivityResponse {
-  return {
-    id: activity.id,
-    activityType: activity.activityType,
-    content: activity.content,
-    nextActionAt: activity.nextActionAt,
-    actorMemberId: activity.actorMemberId,
-    actorDisplayName: activity.actorDisplayName,
-    createdAt: activity.createdAt,
-  };
-}
-
-function projectRecord(
-  record: DynamicRecord,
-  resolved: ResolvedObjectSchema,
-): RecordResponse {
-  return {
-    id: record.id,
-    recordNo: record.recordNo.toString(),
-    ownerMemberId: record.ownerMemberId,
-    title: record.title,
-    values: projectVisibleValues(
-      resolved.schema,
-      resolved.access,
-      record.values,
-    ),
-    version: record.version,
-    createdAt: record.createdAt,
-    updatedAt: record.updatedAt,
-  };
 }

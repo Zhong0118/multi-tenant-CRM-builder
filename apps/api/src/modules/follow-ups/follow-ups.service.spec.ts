@@ -2,7 +2,10 @@ import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { PublishedObjectService } from '../objects/published-object.service';
 import type { FollowUpsRepository } from './follow-ups.repository';
-import { FollowUpsService } from './follow-ups.service';
+import {
+  FollowUpsService,
+  validateCreateFollowUpInput,
+} from './follow-ups.service';
 
 const context: TenantContext = {
   tenantId: 'tenant',
@@ -58,6 +61,33 @@ function fixture() {
   );
   return { service, repository, resolved, objects };
 }
+describe('shared follow-up creation validation', () => {
+  it.each(['x'.repeat(201), ' '.repeat(201)])(
+    'rejects titles longer than the HTTP 200-character bound',
+    (title) => {
+      expect(() =>
+        validateCreateFollowUpInput({ title, dueAt: '2026-09-10T08:00:00Z' }),
+      ).toThrow(ApiException);
+    },
+  );
+  it.each(['2026-02-30T08:00:00Z', '2026-09-10T08:00:00', 'not-a-date'])(
+    'rejects invalid or non-strict dueAt %s',
+    (dueAt) => {
+      expect(() =>
+        validateCreateFollowUpInput({ title: 'Call', dueAt }),
+      ).toThrow(ApiException);
+    },
+  );
+  it('returns the trimmed title and original valid timezone-qualified date', () => {
+    expect(
+      validateCreateFollowUpInput({
+        title: '  Call  ',
+        dueAt: '2026-09-10T08:00:00+08:00',
+      }),
+    ).toEqual({ title: 'Call', dueAt: '2026-09-10T08:00:00+08:00' });
+  });
+});
+
 describe('personal record follow-ups', () => {
   it.each([
     { version: 1, status: null },
