@@ -23,7 +23,7 @@
 | Engineering Gate Lite | **COMPLETED**（PR #4，合并提交 `77af603`） | GitHub Actions CI 落地五个 required checks；Database Integration 起仓库自己的 PostgreSQL 18。第六个 check 由随后的 Engineering Gate Hardening 完成。验收见 `docs/audits/2026-09-16/engineering-gate-lite-acceptance.md` | 0.2–0.4× |
 | Sales Workbench Lite | **COMPLETED**（PR #9，合并提交 `a6e08b2`） | 员工首页固定 Personal Follow-up Workbench：全部待办 / 今日 / 已逾期 / 未来 7 个租户日历日；只读 `GET /workspaces/:tenantCode/follow-ups/workbench`（服务端解析 Actor、不接受 member 覆盖）；**overdue = `dueAt < now`**（与完整 Follow-up Domain 对齐）；**不新增 Dashboard widget、不改 publication schema、不加迁移**，完成动作复用既有 `PATCH /follow-ups/:id`。验收 `docs/audits/2026-09-17/sales-workbench-lite-acceptance.md` | 0.3–0.5× |
 | AI Assistant V1A | **COMPLETED**（PR A/B/C MERGED AND VERIFIED；#17 merge `b3bc59a`；browser walkthrough = VERIFIED；post-merge 六门 SUCCESS） | 只读 Ask / Analyze | 0.4–0.7× |
-| AI Assistant V1B | PLANNED | Proposal → Preview → Confirm → Typed Write → Audit | 0.5–0.8× |
+| AI Assistant V1B | **ACTIVE（仅本地 `docs/ai-assistant-v1b-design` worktree；Task 1 基线，未合并）** | Proposal → Preview → Confirm → Typed Write → Audit | 0.5–0.8× |
 | Production Essentials | PLANNED | 安全、日志、备份、监控、对象存储、生产配置 | 0.6–1.0× |
 | Email Adapter | OPTIONAL | 保留统一邮件接口，按需求接 Provider | 0.1–0.2× |
 
@@ -31,7 +31,7 @@
 
 **Engineering Gate Hardening**（**COMPLETED**，PR A #11 `bc6cad2` + PR B #12 `4eac32c`）：
 六个 required checks 含 `Critical API E2E`；`main` post-merge run `35232613694` 6/6。
-**AI Assistant V1A = COMPLETED**（PR A/B/C MERGED AND VERIFIED；#17 merge `b3bc59a`）。browser walkthrough = **VERIFIED**。post-merge main 六门 SUCCESS（run `35696132661`）。**AI Assistant V1B = PLANNED**。完成 V1A 本身不自动 Promote V1B。
+**AI Assistant V1A = COMPLETED**（PR A/B/C MERGED AND VERIFIED；#17 merge `b3bc59a`）。browser walkthrough = **VERIFIED**。post-merge main 六门 SUCCESS（run `35696132661`）。**AI Assistant V1B = ACTIVE（仅本地 `docs/ai-assistant-v1b-design` worktree；未合并）**。Production Essentials = **PLANNED**，不随 V1B 自动 Promote。
 **位置由用户定为已完成的 Sales Workbench Lite 之后、AI Assistant V1A 之前**（理由见 §11）。
 
 ## 4. Sales Workbench Lite
@@ -86,8 +86,8 @@ Engineering Gate Lite          ✅ COMPLETED（PR #4）
 → Sales Workbench Lite         ✅ COMPLETED（PR #9）
 → Engineering Gate Hardening   ✅ COMPLETED（PR #11/#12）
 → AI Assistant V1A             ✅ COMPLETED（PR #14/#16/#17；browser walkthrough VERIFIED；post-merge 六门 SUCCESS）
-→ AI Assistant V1B             PLANNED
-→ Production Essentials
+→ AI Assistant V1B             ACTIVE（仅本地 worktree；未合并）
+→ Production Essentials        PLANNED
 → Optional Email Adapter
 ```
 
@@ -99,7 +99,7 @@ AI Assistant V1A **之前**。理由（用户原话）：「Sales Workbench 主�
 
 （Security Closeout 的 Workflow 侧已随 PR #2 完成，Record 侧随 PR #3 完成；仍开放的 `action-engine.ts` 嵌套 fieldErrors 过滤与 `MEMBER` 默认值存在性校验是随时可插入的独立小任务，不占用上面的主要产品 Task 序列。）
 
-AI V1B 仍建议在 V1A 实际验证之后再开发。
+AI V1B 已在 V1A 实际验证后启动：当前仅本地 worktree 的 Task 1 行为基线，未完成实现、未合并。
 
 ## 12. 目标
 
