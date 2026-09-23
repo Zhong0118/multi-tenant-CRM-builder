@@ -119,6 +119,91 @@
         ],
         "type": "object"
       },
+      "AiProposalChangeDto": {
+        "properties": {
+          "after": {
+            "type": "string"
+          },
+          "before": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": ["label"],
+        "type": "object"
+      },
+      "AiProposalResponseDto": {
+        "properties": {
+          "auditId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/AiProposalChangeDto"
+            },
+            "type": "array"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "failureCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "operation": {
+            "enum": ["UPDATE_RECORD", "CREATE_FOLLOW_UP", "ADD_ACTIVITY_NOTE"],
+            "type": "string"
+          },
+          "proposalId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "result": {
+            "additionalProperties": true,
+            "nullable": true,
+            "type": "object"
+          },
+          "status": {
+            "enum": [
+              "PROPOSED",
+              "REJECTED",
+              "EXPIRED",
+              "CONFLICTED",
+              "FAILED",
+              "EXECUTED"
+            ],
+            "type": "string"
+          },
+          "targetSummary": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "validationWarnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "proposalId",
+          "operation",
+          "status",
+          "title",
+          "targetSummary",
+          "changes",
+          "validationWarnings",
+          "expiresAt"
+        ],
+        "type": "object"
+      },
       "ApiErrorResponseDto": {
         "properties": {
           "code": {
@@ -586,6 +671,16 @@
           }
         },
         "required": ["status"],
+        "type": "object"
+      },
+      "ConfirmAiProposalDto": {
+        "properties": {
+          "idempotencyKey": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["idempotencyKey"],
         "type": "object"
       },
       "CorrectFirstAdminPhoneDto": {
@@ -6801,6 +6896,142 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AiMessagePageDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["ai"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/ai/proposals/{proposalId}": {
+      "get": {
+        "operationId": "AiController_getProposal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposalId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiProposalResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["ai"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/ai/proposals/{proposalId}/confirm": {
+      "post": {
+        "operationId": "AiController_confirmProposal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposalId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmAiProposalDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiProposalResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["ai"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/ai/proposals/{proposalId}/reject": {
+      "post": {
+        "operationId": "AiController_rejectProposal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposalId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiProposalResponseDto"
                 }
               }
             },

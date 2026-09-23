@@ -467,6 +467,9 @@ async function cleanupCriticalData(database: PrismaClient): Promise<void> {
   const userIds = users.map(({ id }) => id);
 
   if (tenantIds.length > 0) {
+    await database.aiOperation.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
     await database.aiMessage.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });
@@ -480,6 +483,9 @@ async function cleanupCriticalData(database: PrismaClient): Promise<void> {
       where: { tenantId: { in: tenantIds } },
     });
     await database.recordFollowUp.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await database.recordActivity.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });
     await database.record.deleteMany({

@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   Param,
   ParseUUIDPipe,
@@ -29,6 +30,11 @@ import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { WorkspaceGuard } from '../../common/tenancy/workspace.guard';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
 import { AiOrchestrator } from './ai-orchestrator';
+import { AiProposalService } from './ai-proposal.service';
+import {
+  AiProposalResponseDto,
+  ConfirmAiProposalDto,
+} from './dto/ai-proposal.dto';
 import { sseFrame } from './ai-stream';
 import { ConversationService } from './conversation.service';
 import {
@@ -50,6 +56,7 @@ export class AiController {
   constructor(
     private readonly conversations: ConversationService,
     private readonly orchestrator: AiOrchestrator,
+    private readonly proposals: AiProposalService,
   ) {}
 
   @Get('conversations')
@@ -133,6 +140,46 @@ export class AiController {
       abort.signal,
     );
     await this.writeSse(response, events);
+  }
+
+  @Get('proposals/:proposalId')
+  @Header('Cache-Control', 'no-store')
+  @ApiParam({ name: 'proposalId', format: 'uuid' })
+  @ApiOkResponse({ type: AiProposalResponseDto })
+  getProposal(
+    @CurrentTenant() context: TenantContext,
+    @Param('proposalId', ParseUUIDPipe) proposalId: string,
+  ) {
+    return this.proposals.get(context, proposalId);
+  }
+
+  @Post('proposals/:proposalId/reject')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  @ApiParam({ name: 'proposalId', format: 'uuid' })
+  @ApiOkResponse({ type: AiProposalResponseDto })
+  rejectProposal(
+    @CurrentTenant() context: TenantContext,
+    @Param('proposalId', ParseUUIDPipe) proposalId: string,
+  ) {
+    return this.proposals.reject(context, proposalId);
+  }
+
+  @Post('proposals/:proposalId/confirm')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  @ApiParam({ name: 'proposalId', format: 'uuid' })
+  @ApiOkResponse({ type: AiProposalResponseDto })
+  confirmProposal(
+    @CurrentTenant() context: TenantContext,
+    @Param('proposalId', ParseUUIDPipe) proposalId: string,
+    @Body() dto: ConfirmAiProposalDto,
+    @Req() request: Request,
+  ) {
+    return this.proposals.confirm(context, proposalId, dto.idempotencyKey, {
+      requestId: request.headers['x-request-id']?.toString() ?? proposalId,
+      ip: request.ip,
+    });
   }
 
   private bindAbort(response: Response): AbortController {
