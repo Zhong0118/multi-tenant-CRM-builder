@@ -29,7 +29,6 @@ import {
   type ProposalCandidate,
 } from './ai-proposal.schema';
 
-const ttlMs = 15 * 60 * 1000;
 type Tx = Prisma.TransactionClient;
 
 function requireReadable(resolved: ResolvedObjectSchema): void {
@@ -74,9 +73,12 @@ function safeText(value: unknown): string {
 }
 function safeValidation(error: unknown): never {
   // Never propagate fieldErrors/fieldKey, provider content, or raw database errors.
-  if (error instanceof RecordValueError || error instanceof ApiException)
+  if (
+    error instanceof RecordValueError ||
+    (error instanceof ApiException && error.getStatus() < 500)
+  )
     throw new ApiException('VALIDATION_FAILED', 400);
-  throw new ApiException('VALIDATION_FAILED', 400);
+  throw new ApiException('INTERNAL_ERROR', 500);
 }
 
 @Injectable()
@@ -136,7 +138,7 @@ export class AiProposalService {
         };
         try {
           if (candidate.operationType === 'UPDATE_RECORD') {
-            await validateRecordMutation({
+            const normalized = await validateRecordMutation({
               mode: 'UPDATE',
               schema: resolved.schema,
               access: resolved.access,
@@ -144,16 +146,14 @@ export class AiProposalService {
               submitted: candidate.values,
               memberExists: (memberId) => store.memberExists(memberId),
             });
-            display.changes = Object.entries(candidate.values).map(
-              ([key, value]) => ({
-                label: safeText(
-                  resolved.schema.fields.find((field) => field.fieldKey === key)
-                    ?.label,
-                ),
-                before: safeText(record.values[key]),
-                after: safeText(value),
-              }),
-            );
+            display.changes = Object.entries(candidate.values).map(([key]) => ({
+              label: safeText(
+                resolved.schema.fields.find((field) => field.fieldKey === key)
+                  ?.label,
+              ),
+              before: safeText(record.values[key]),
+              after: safeText(normalized.values[key]),
+            }));
           } else if (candidate.operationType === 'CREATE_FOLLOW_UP') {
             const normalized = validateCreateFollowUpInput(candidate);
             display.changes = [
@@ -194,7 +194,6 @@ export class AiProposalService {
         expectedPublicationId: snapshot.resolved.schema.publication.id,
       },
       snapshot.display,
-      new Date(Date.now() + ttlMs),
     );
   }
 
@@ -411,10 +410,15 @@ export class AiProposalService {
         throw error;
       // The command transaction has rolled back. Never persist failure in it or
       // expose raw DB/provider exceptions; the conditional transition is separate.
-      const state = error instanceof ApiException && [403, 404, 409].includes(error.getStatus())
-        ? 'CONFLICTED' : 'FAILED';
-      const code = error instanceof ApiException && error.getStatus() < 500
-        ? error.code : 'INTERNAL_ERROR';
+      const state =
+        error instanceof ApiException &&
+        [403, 404, 409].includes(error.getStatus())
+          ? 'CONFLICTED'
+          : 'FAILED';
+      const code =
+        error instanceof ApiException && error.getStatus() < 500
+          ? error.code
+          : 'INTERNAL_ERROR';
       const final = await this.operations.markFailureIfProposed(
         context,
         proposalId,

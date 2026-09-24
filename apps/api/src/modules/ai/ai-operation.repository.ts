@@ -48,7 +48,6 @@ export class AiOperationRepository {
     turnId: string,
     candidate: ValidatedAiOperation,
     display: AiProposalDisplay,
-    expiresAt: Date,
   ): Promise<AiProposalView> {
     return this.runner.withTenant(context, async (tx) => {
       const conversation = await tx.aiConversation.findFirst({
@@ -61,7 +60,11 @@ export class AiOperationRepository {
         turnId, role: 'USER',
       }, select: { id: true } });
       if (!turn) throw new ApiException('AI_TURN_NOT_FOUND', 404);
+      // The same DB clock instant supplies both persisted columns, regardless of caller clock.
+      const [{ created_at: createdAt }] = await tx.$queryRaw<Array<{ created_at: Date }>>`SELECT CURRENT_TIMESTAMP AS created_at`;
+      const expiresAt = new Date(createdAt.getTime() + 15 * 60_000);
       const row = await tx.aiOperation.create({ data: {
+        createdAt,
         tenantId: context.tenantId,
         conversationId: candidate.conversationId,
         turnId,

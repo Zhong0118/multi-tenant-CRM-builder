@@ -126,6 +126,9 @@ describe('isolated AI proposal atomic confirmation', () => {
       });
       expect(stored.status).toBe('EXECUTED');
       expect(stored.auditId).toBe(confirmed.auditId);
+      expect(stored.expiresAt.getTime() - stored.createdAt.getTime()).toBe(
+        15 * 60_000,
+      );
       const audit = await harness.adminDatabase.auditLog.findUniqueOrThrow({
         where: { id: confirmed.auditId! },
       });

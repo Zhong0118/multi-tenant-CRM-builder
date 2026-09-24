@@ -87,6 +87,24 @@ describe('AiOperationRepository', () => {
     }));
   });
 
+  it('uses one database instant for creation and exact 15-minute expiry', async () => {
+    const { repo, tx, queryRaw } = setup();
+    const createdAt = new Date('2026-09-24T12:34:56.789Z');
+    queryRaw.mockResolvedValueOnce([{ created_at: createdAt }]);
+    Object.assign(tx, {
+      aiConversation: { findFirst: jest.fn().mockResolvedValue({ id: conversationId }) },
+      aiMessage: { findFirst: jest.fn().mockResolvedValue({ id: turnId }) },
+    });
+    await repo.createValidated(context, turnId, {
+      conversationId, operationType: 'ADD_ACTIVITY_NOTE', requestText: 'note',
+      proposal: { content: 'note' }, targetRef: { recordId: id },
+      expectedVersion: 1, expectedPublicationId: id,
+    }, { title: 'Note', targetSummary: 'Record', changes: [], validationWarnings: [] });
+    expect(tx.aiOperation.create).toHaveBeenCalledWith({ data: expect.objectContaining({
+      createdAt, expiresAt: new Date('2026-09-24T12:49:56.789Z'),
+    }) });
+  });
+
   it('does not create a proposal for a turn outside its owning conversation', async () => {
     const { repo, tx } = setup();
     Object.assign(tx, {
@@ -97,7 +115,7 @@ describe('AiOperationRepository', () => {
       conversationId, operationType: 'ADD_ACTIVITY_NOTE', requestText: 'note',
       proposal: { content: 'note' }, targetRef: { recordId: id },
       expectedVersion: 1, expectedPublicationId: id,
-    }, { title: 'Note', targetSummary: 'Record', changes: [], validationWarnings: [] }, new Date(Date.now() + 60_000)))
+    }, { title: 'Note', targetSummary: 'Record', changes: [], validationWarnings: [] }))
       .rejects.toMatchObject({ code: 'AI_TURN_NOT_FOUND' });
     expect(tx.aiOperation.create).not.toHaveBeenCalled();
   });

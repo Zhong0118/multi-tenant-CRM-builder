@@ -142,23 +142,21 @@ function setup() {
       findFirst: jest.fn().mockResolvedValue({ conversationId: id }),
     },
     aiOperation: {
-      findFirst: jest
-        .fn()
-        .mockResolvedValue({
-          id,
-          operationType: 'UPDATE_RECORD',
-          status: 'EXECUTED',
-          displayChangesJson: {
-            title: '修改记录',
-            targetSummary: 'record',
-            changes: [],
-            validationWarnings: [],
-          },
-          expiresAt: new Date(),
-          auditId: id,
-          resultJson: {},
-          failureCode: null,
-        }),
+      findFirst: jest.fn().mockResolvedValue({
+        id,
+        operationType: 'UPDATE_RECORD',
+        status: 'EXECUTED',
+        displayChangesJson: {
+          title: '修改记录',
+          targetSummary: 'record',
+          changes: [],
+          validationWarnings: [],
+        },
+        expiresAt: new Date(),
+        auditId: id,
+        resultJson: {},
+        failureCode: null,
+      }),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
   };
@@ -181,12 +179,10 @@ function setup() {
       .mockResolvedValue({ proposalId: id, status: 'PROPOSED' }),
     lockOwned: jest.fn(),
     markExecuted: jest.fn(),
-    markFailureIfProposed: jest
-      .fn()
-      .mockResolvedValue({
-        status: 'CONFLICTED',
-        failureCode: 'RECORD_VERSION_CONFLICT',
-      }),
+    markFailureIfProposed: jest.fn().mockResolvedValue({
+      status: 'CONFLICTED',
+      failureCode: 'RECORD_VERSION_CONFLICT',
+    }),
     getOwned: jest.fn(),
   };
   jest
@@ -230,11 +226,109 @@ describe('safe preview at the transaction seam', () => {
     ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
     expect(operations.createValidated).not.toHaveBeenCalled();
   });
+  it('reports unexpected normalization dependency failures safely as INTERNAL_ERROR', async () => {
+    const { service, store, operations } = setup();
+    const broken = {
+      ...resolved,
+      schema: {
+        ...resolved.schema,
+        fields: [
+          {
+            ...resolved.schema.fields[0],
+            fieldKey: 'member',
+            label: '成员',
+            type: 'MEMBER',
+          },
+        ],
+      },
+      access: { ...resolved.access, fields: { name: 'EDIT', member: 'EDIT' } },
+    };
+    jest
+      .mocked(publication.resolvePublishedObjectInTransaction)
+      .mockResolvedValue(broken as never);
+    store.memberExists.mockRejectedValueOnce(
+      new Error('secret DB connection detail'),
+    );
+    await expect(
+      service.preview(
+        context,
+        id,
+        { ...update, values: { member: id } },
+        'update',
+      ),
+    ).rejects.toMatchObject({ code: 'INTERNAL_ERROR' });
+    expect(operations.createValidated).not.toHaveBeenCalled();
+  });
   it('refuses READ_ONLY fields without persisting a candidate', async () => {
     const { service, operations } = setup();
-    jest.mocked(publication.resolvePublishedObjectInTransaction).mockResolvedValue({ ...resolved, access: { ...resolved.access, fields: { name: 'READ_ONLY', secret: 'HIDDEN' } } } as never);
-    await expect(service.preview(context, id, update, 'update')).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    jest
+      .mocked(publication.resolvePublishedObjectInTransaction)
+      .mockResolvedValue({
+        ...resolved,
+        access: {
+          ...resolved.access,
+          fields: { name: 'READ_ONLY', secret: 'HIDDEN' },
+        },
+      } as never);
+    await expect(
+      service.preview(context, id, update, 'update'),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
     expect(operations.createValidated).not.toHaveBeenCalled();
+  });
+  it('previews normalized EMAIL and MONEY values rather than raw input', async () => {
+    const { service, operations, store } = setup();
+    jest
+      .mocked(publication.resolvePublishedObjectInTransaction)
+      .mockResolvedValue({
+        ...resolved,
+        schema: {
+          ...resolved.schema,
+          object: { ...resolved.schema.object, titleFieldKey: 'email' },
+          fields: [
+            {
+              ...resolved.schema.fields[0],
+              fieldKey: 'email',
+              label: '邮箱',
+              type: 'EMAIL',
+            },
+            {
+              ...resolved.schema.fields[0],
+              fieldKey: 'budget',
+              label: '预算',
+              type: 'MONEY',
+            },
+          ],
+        },
+        access: {
+          ...resolved.access,
+          fields: { email: 'EDIT', budget: 'EDIT' },
+        },
+      } as never);
+    store.lockRecord.mockResolvedValue({
+      ...record,
+      values: { email: 'old@example.com', budget: '1.00' },
+    });
+    await service.preview(
+      context,
+      id,
+      { ...update, values: { email: 'USER@EXAMPLE.COM', budget: '001.2' } },
+      'update',
+    );
+    expect(operations.createValidated).toHaveBeenCalledWith(
+      context,
+      id,
+      expect.anything(),
+      expect.objectContaining({
+        changes: [
+          {
+            label: '邮箱',
+            before: 'old@example.com',
+            after: 'user@example.com',
+          },
+          { label: '预算', before: '1.00', after: '1.20' },
+        ],
+      }),
+    );
   });
   it('stores a bounded sanitized preview with fixed 15-minute lifetime and no business writes', async () => {
     const { service, store, operations } = setup();
@@ -249,7 +343,6 @@ describe('safe preview at the transaction seam', () => {
       expect.objectContaining({
         changes: [{ label: '姓名', before: '旧名称', after: '新名称' }],
       }),
-      expect.any(Date),
     );
     expect(store.applyRecordPatch).not.toHaveBeenCalled();
     expect(store.createActivity).not.toHaveBeenCalled();
@@ -411,11 +504,27 @@ describe('single target atomic confirmation', () => {
   });
   it('records a sanitized FAILED state after an unexpected domain command error', async () => {
     const { service, operations } = setup();
-    operations.lockOwned.mockResolvedValue({ kind: 'PROPOSED', operation: proposed });
-    operations.markFailureIfProposed.mockResolvedValue({ status: 'FAILED', failureCode: 'INTERNAL_ERROR' });
-    jest.mocked(recordCommands.updateRecordCommand).mockRejectedValueOnce(new Error('database detail secret'));
-    expect(await service.confirm(context, id, id, meta)).toMatchObject({ status: 'FAILED', failureCode: 'INTERNAL_ERROR' });
-    expect(operations.markFailureIfProposed).toHaveBeenCalledWith(context, id, 'FAILED', 'INTERNAL_ERROR');
+    operations.lockOwned.mockResolvedValue({
+      kind: 'PROPOSED',
+      operation: proposed,
+    });
+    operations.markFailureIfProposed.mockResolvedValue({
+      status: 'FAILED',
+      failureCode: 'INTERNAL_ERROR',
+    });
+    jest
+      .mocked(recordCommands.updateRecordCommand)
+      .mockRejectedValueOnce(new Error('database detail secret'));
+    expect(await service.confirm(context, id, id, meta)).toMatchObject({
+      status: 'FAILED',
+      failureCode: 'INTERNAL_ERROR',
+    });
+    expect(operations.markFailureIfProposed).toHaveBeenCalledWith(
+      context,
+      id,
+      'FAILED',
+      'INTERNAL_ERROR',
+    );
     expect(operations.markExecuted).not.toHaveBeenCalled();
   });
   it('rejects read OWN / update ALL for a different owner on confirm', async () => {
