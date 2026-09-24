@@ -50,12 +50,14 @@ export function AiProposalCard({
   onConfirm,
   onReject,
   busy = false,
+  mutationError,
 }: {
   tenantCode?: string;
   proposal: AiProposalView;
   onConfirm?: () => void | Promise<void>;
   onReject?: () => void | Promise<void>;
   busy?: boolean;
+  mutationError?: string | null;
 }) {
   const expiresAt = Date.parse(proposal.expiresAt);
   const [expired, setExpired] = useState(() => !Number.isFinite(expiresAt) || expiresAt <= Date.now());
@@ -83,6 +85,8 @@ export function AiProposalCard({
       </div> : null}
       {expired && proposal.status === "PROPOSED" ? <p role="status" className={styles.proposalStatus}>建议已过期，请重新提出请求。</p> : null}
       {proposal.status === "REJECTED" ? <p role="status" className={styles.proposalStatus}>已拒绝，未写入数据。</p> : null}
+      {busy ? <p role="status" className={styles.proposalStatus}>正在执行，请稍候…</p> : null}
+      {mutationError ? <p role="alert" className={styles.proposalFailure}>{mutationError}</p> : null}
       {failure ? <p role="alert" className={styles.proposalFailure}>{failure}</p> : null}
       {proposal.status === "EXECUTED" ? <div className={styles.proposalSuccess}><p>已执行并记录审计{proposal.auditId ? `：${proposal.auditId}` : "。"}</p>{result && tenantCode ? <Link href={result.href}>{result.label} →</Link> : null}</div> : null}
     </section>

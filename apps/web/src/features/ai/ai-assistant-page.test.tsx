@@ -12,6 +12,9 @@ const mocks = vi.hoisted(() => ({
   listMessages: vi.fn(),
   streamTurn: vi.fn(),
   retryTurn: vi.fn(),
+  confirmProposal: vi.fn(),
+  rejectProposal: vi.fn(),
+  getProposal: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -32,6 +35,9 @@ vi.mock("./ai-api", () => ({
     listMessages: (...args: unknown[]) => mocks.listMessages(...args),
     streamTurn: (...args: unknown[]) => mocks.streamTurn(...args),
     retryTurn: (...args: unknown[]) => mocks.retryTurn(...args),
+    confirmProposal: (...args: unknown[]) => mocks.confirmProposal(...args),
+    rejectProposal: (...args: unknown[]) => mocks.rejectProposal(...args),
+    getProposal: (...args: unknown[]) => mocks.getProposal(...args),
     rename: vi.fn(),
     remove: vi.fn(),
   },
@@ -42,6 +48,9 @@ beforeEach(() => {
   mocks.conversation = undefined;
   mocks.listConversations.mockResolvedValue({ items: [] });
   mocks.listMessages.mockResolvedValue({ items: [] });
+  mocks.confirmProposal.mockReset();
+  mocks.rejectProposal.mockReset();
+  mocks.getProposal.mockReset();
   mocks.streamTurn.mockImplementation(async function* () {
     yield {
       event: "conversation.ready",
@@ -72,6 +81,30 @@ function renderPage(client?: QueryClient) {
 }
 
 describe("AiAssistantPage", () => {
+  it("shows mutation recovery feedback and restores the server proposal after confirm timeout", async () => {
+    const proposal = { proposalId:"p1", operation:"UPDATE_RECORD", title:"更新客户", targetSummary:"Acme", changes:[{label:"状态", before:"线索", after:"成交"}], validationWarnings:[], expiresAt:"2999-01-01T00:00:00.000Z", status:"PROPOSED", failureCode:null, auditId:null, result:null };
+    mocks.conversation = "c1";
+    mocks.listMessages.mockResolvedValue({ items: [{ id:"m1", conversationId:"c1", turnId:"t1", role:"ASSISTANT", status:"COMPLETED", content:"", toolSummary:[], sourceSummary:[], proposal, createdAt:"2026-09-23T00:00:00.000Z" }] });
+    mocks.confirmProposal.mockRejectedValue(new Error("timeout"));
+    mocks.getProposal.mockResolvedValue({...proposal, status:"CONFLICTED", failureCode:"RECORD_VERSION_CONFLICT"});
+    renderPage();
+    await waitFor(() => expect(screen.getByRole("button", {name:"确认执行"})).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", {name:"确认执行"}));
+    await waitFor(() => expect(mocks.getProposal).toHaveBeenCalledWith("northwind", "p1"));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("数据已变化"));
+  });
+
+  it("restores rejected history after reject", async () => {
+    const proposal = { proposalId:"p2", operation:"ADD_ACTIVITY_NOTE", title:"添加备注", targetSummary:"Acme", changes:[{label:"NOTE", after:"已联系"}], validationWarnings:[], expiresAt:"2999-01-01T00:00:00.000Z", status:"PROPOSED", failureCode:null, auditId:null, result:null };
+    mocks.conversation = "c1";
+    mocks.listMessages.mockResolvedValue({ items: [{ id:"m2", conversationId:"c1", turnId:"t2", role:"ASSISTANT", status:"COMPLETED", content:"", toolSummary:[], sourceSummary:[], proposal, createdAt:"2026-09-23T00:00:00.000Z" }] });
+    mocks.rejectProposal.mockResolvedValue({...proposal, status:"REJECTED"});
+    renderPage();
+    await waitFor(() => expect(screen.getByRole("button", {name:/拒\s*绝/})).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", {name:/拒\s*绝/}));
+    await waitFor(() => expect(screen.getByText("已拒绝，未写入数据。")).toBeInTheDocument());
+  });
+
   it("shows the read-only header and updates the conversation query on conversation.ready", async () => {
     renderPage();
     expect(screen.getByRole("heading", { name: /AI 助手/ })).toBeInTheDocument();

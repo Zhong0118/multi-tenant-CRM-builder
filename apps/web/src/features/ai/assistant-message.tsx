@@ -16,6 +16,7 @@ export function AssistantMessage({
   onConfirmProposal,
   onRejectProposal,
   proposalBusy,
+  proposalError,
 }: {
   tenantCode: string;
   message: AiMessage;
@@ -23,6 +24,7 @@ export function AssistantMessage({
   onConfirmProposal?: (proposalId: string) => void;
   onRejectProposal?: (proposalId: string) => void;
   proposalBusy?: boolean;
+  proposalError?: string | null;
 }) {
   const retryable =
     (message.status === "FAILED" || message.status === "CANCELLED") && onRetry;
@@ -37,7 +39,7 @@ export function AssistantMessage({
       </div>
       <div className={styles.assistantSurface}>
         <ToolActivity tools={message.toolSummary} />
-        {message.proposal ? <AiProposalCard tenantCode={tenantCode} proposal={message.proposal} busy={proposalBusy} onConfirm={() => onConfirmProposal?.(message.proposal!.proposalId)} onReject={() => onRejectProposal?.(message.proposal!.proposalId)} /> : null}
+        {message.proposal ? <AiProposalCard tenantCode={tenantCode} proposal={message.proposal} busy={proposalBusy} mutationError={proposalError} onConfirm={() => onConfirmProposal?.(message.proposal!.proposalId)} onReject={() => onRejectProposal?.(message.proposal!.proposalId)} /> : null}
         {renderSafeText(message.content).map((paragraph, index) => (
           <p key={`${message.id}-${index}`}>{paragraph}</p>
         ))}

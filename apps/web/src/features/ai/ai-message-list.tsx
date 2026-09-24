@@ -26,6 +26,7 @@ export function AiMessageList({
   onConfirmProposal,
   onRejectProposal,
   proposalBusy,
+  proposalError,
 }: {
   tenantCode: string;
   messages: AiMessage[];
@@ -37,6 +38,7 @@ export function AiMessageList({
   onConfirmProposal?: (proposalId: string) => void;
   onRejectProposal?: (proposalId: string) => void;
   proposalBusy?: boolean;
+  proposalError?: string | null;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const [follow, setFollow] = useState(true);

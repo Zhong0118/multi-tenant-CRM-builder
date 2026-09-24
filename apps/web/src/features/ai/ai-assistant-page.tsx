@@ -41,6 +41,8 @@ export function AiAssistantPage({
   const stateRef = useRef(state);
   stateRef.current = state;
   const [railOpen, setRailOpen] = useState(false);
+  const [proposalUpdates, setProposalUpdates] = useState<Record<string, import("./ai-types").AiProposalView>>({});
+  const [proposalError, setProposalError] = useState<string | null>(null);
   const composerRef = useRef<import("antd/es/input/TextArea").TextAreaRef>(null);
 
   const conversations = useInfiniteQuery({
@@ -113,7 +115,7 @@ export function AiAssistantPage({
           }
         : null;
   const shown = [
-    ...history.filter((item) => {
+    ...history.map((item) => item.proposal && proposalUpdates[item.proposal.proposalId] ? { ...item, proposal: proposalUpdates[item.proposal.proposalId] } : item).filter((item) => {
       if (live && item.turnId === live.turnId && item.role !== "USER") return false;
       if (
         pendingUser &&
@@ -232,9 +234,12 @@ export function AiAssistantPage({
         return current;
       }
     },
-    onSuccess: () => {
+    onSuccess: (view) => {
+      setProposalError(null);
+      setProposalUpdates((current) => ({ ...current, [view.proposalId]: view }));
       if (conversationId) void client.invalidateQueries({ queryKey: aiQueryKeys.messages(tenantCode, conversationId) });
     },
+    onError: (error) => setProposalError(error instanceof Error ? error.message : "提案执行失败，请稍后重试。"),
   });
   const rejectProposal = useMutation({
     mutationFn: async (proposalId: string) => {
@@ -246,9 +251,12 @@ export function AiAssistantPage({
         return current;
       }
     },
-    onSuccess: () => {
+    onSuccess: (view) => {
+      setProposalError(null);
+      setProposalUpdates((current) => ({ ...current, [view.proposalId]: view }));
       if (conversationId) void client.invalidateQueries({ queryKey: aiQueryKeys.messages(tenantCode, conversationId) });
     },
+    onError: (error) => setProposalError(error instanceof Error ? error.message : "提案拒绝失败，请稍后重试。"),
   });
   const remove = useMutation({
     mutationFn: (id: string) => aiApi.remove(tenantCode, id),
@@ -341,6 +349,7 @@ export function AiAssistantPage({
               onConfirmProposal={(id) => confirmProposal.mutate(id)}
               onRejectProposal={(id) => rejectProposal.mutate(id)}
               proposalBusy={confirmProposal.isPending || rejectProposal.isPending}
+              proposalError={proposalError}
             />
           )}
           {state.errorMessage && !live ? (
