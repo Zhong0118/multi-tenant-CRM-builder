@@ -18,6 +18,7 @@ import type { BeginTurnResult } from './ai.types';
 import { AiToolRegistry } from './tool-registry';
 import { wrapAiReadTool, type AiToolCallbacks } from './ai-tool-wrapper';
 import type { AiProposalService } from './ai-proposal.service';
+import { ProposalCollector } from './tools/propose-change.tool';
 
 const context: TenantContext = {
   tenantId: '0198ad18-a74d-7b69-b81a-49a74f9a3e0d',
@@ -135,6 +136,30 @@ function searchTool(
 }
 
 describe('AiOrchestrator proposal candidate lifecycle', () => {
+  it('invalidates duplicate provider calls even when callId is repeated', async () => {
+    const collector = new ProposalCollector();
+    await collector.tool.execute(
+      {
+        operationType: 'ADD_ACTIVITY_NOTE',
+        objectCode: 'leads',
+        recordId: context.tenantId,
+        content: 'one',
+      },
+      'same-call',
+    );
+    await collector.tool.execute(
+      {
+        operationType: 'ADD_ACTIVITY_NOTE',
+        objectCode: 'leads',
+        recordId: context.tenantId,
+        content: 'two',
+      },
+      'same-call',
+    );
+    expect(collector.invalidated).toBe(true);
+    expect(collector.candidate).toBeNull();
+  });
+
   const candidate = {
     operationType: 'ADD_ACTIVITY_NOTE',
     objectCode: 'leads',
@@ -159,6 +184,91 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
       completeWithProposal: jest.fn().mockResolvedValue(proposal),
     } as unknown as jest.Mocked<AiProposalService>;
   }
+  it('does not persist a proposal when client aborts after provider completion', async () => {
+    const conversations = conversationMock();
+    const proposals = proposalMock();
+    const abort = new AbortController();
+    const provider = providerWith(async function* (_signal, tools) {
+      await tools
+        .find((tool) => tool.name === 'propose_change')!
+        .execute(candidate, 'first');
+      yield { type: 'COMPLETED' };
+      abort.abort();
+      await new Promise((resolve) => setImmediate(resolve));
+    });
+    const events = await collect(
+      await new AiOrchestrator(
+        conversations,
+        provider,
+        registryWith([]),
+        proposals,
+      ).streamTurn(context, { content: 'note' }, abort.signal),
+    );
+    expect(proposals.completeWithProposal).not.toHaveBeenCalled();
+    expect(events.map((event) => event.event)).not.toContain('proposal.ready');
+  });
+
+  it('suppresses ready when persistence resolves after client abort', async () => {
+    const conversations = conversationMock();
+    const proposals = proposalMock();
+    const abort = new AbortController();
+    proposals.completeWithProposal.mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      abort.abort();
+      return proposal;
+    });
+    const provider = providerWith(async function* (_signal, tools) {
+      await tools.find((tool) => tool.name === 'propose_change')!.execute(candidate, 'first');
+      yield { type: 'COMPLETED' };
+    });
+    const events = await collect(await new AiOrchestrator(conversations, provider, registryWith([]), proposals).streamTurn(context, { content: 'note' }, abort.signal));
+    expect(events.map((event) => event.event)).not.toContain('proposal.ready');
+    expect(events.map((event) => event.event)).toContain('turn.cancelled');
+    expect(events.map((event) => event.event)).not.toContain('turn.completed');
+  });
+
+  it('fails cleanly when persistence outlives the provider timeout', async () => {
+    const previous = process.env.AI_TIMEOUT_MS;
+    process.env.AI_TIMEOUT_MS = '10';
+    const conversations = conversationMock();
+    const proposals = proposalMock();
+    proposals.completeWithProposal.mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      throw new Error('persistence timeout');
+    });
+    const provider = providerWith(async function* (_signal, tools) {
+      await tools
+        .find((tool) => tool.name === 'propose_change')!
+        .execute(candidate, 'first');
+      yield { type: 'COMPLETED' };
+    });
+    try {
+      const events = await collect(
+        await new AiOrchestrator(
+          conversations,
+          provider,
+          registryWith([]),
+          proposals,
+        ).streamTurn(
+          context,
+          { content: 'note' },
+          new AbortController().signal,
+        ),
+      );
+      expect(events.map((event) => event.event)).not.toContain(
+        'proposal.ready',
+      );
+      expect(conversations.finalizeAssistant).toHaveBeenCalledWith(
+        context,
+        begun.turnId,
+        expect.objectContaining({ status: 'FAILED' }),
+      );
+    } finally {
+      if (previous === undefined) delete process.env.AI_TIMEOUT_MS;
+      else process.env.AI_TIMEOUT_MS = previous;
+    }
+  });
+
   it('publishes a safe ready card only after atomic completion and never calls business commands', async () => {
     const conversations = conversationMock();
     const proposals = proposalMock();

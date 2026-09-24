@@ -164,7 +164,14 @@ export class AiOperationRepository {
         turnId: { in: turnIds },
       },
     });
-    return rows.map((row) => ({ turnId: row.turnId, view: toView(row) }));
+    return rows.map((row) => ({
+      turnId: row.turnId,
+      view: toView(
+        row.expiresAt.getTime() <= Date.now() && row.status === 'PROPOSED'
+          ? { ...row, status: 'EXPIRED' }
+          : row,
+      ),
+    }));
   }
 
   async lockOwned(

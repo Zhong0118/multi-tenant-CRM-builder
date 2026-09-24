@@ -793,6 +793,44 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     ).rejects.toMatchObject({ code: 'AI_CONVERSATION_NOT_FOUND' });
   });
 
+  it('restores an expired proposal as non-actionable EXPIRED', async () => {
+    const fixture = harness();
+    const begun = await fixture.repository.beginTurn(context, {
+      content: 'expired',
+    });
+    await fixture.repository.finalizeAssistant(context, begun.turnId, {
+      status: 'COMPLETED',
+      content: 'response',
+    });
+    fixture.operations.push({
+      id: 'expired-operation',
+      tenantId: context.tenantId,
+      conversationId: begun.conversationId,
+      turnId: begun.turnId,
+      requestedByMemberId: context.memberId,
+      status: 'PROPOSED',
+      operationType: 'ADD_ACTIVITY_NOTE',
+      displayChangesJson: {
+        title: 'Note',
+        targetSummary: 'Record',
+        changes: [],
+        validationWarnings: [],
+      },
+      expiresAt: new Date(Date.now() - 1),
+      failureCode: null,
+      auditId: null,
+      resultJson: null,
+    });
+    const page = await fixture.service.messages(
+      context,
+      begun.conversationId,
+      {},
+    );
+    expect(
+      page.items.find((item) => item.role === 'ASSISTANT')?.proposal,
+    ).toMatchObject({ proposalId: 'expired-operation', status: 'EXPIRED' });
+  });
+
   it('rejects retry on a COMPLETED assistant', async () => {
     const fixture = harness();
     const begun = await fixture.repository.beginTurn(context, {

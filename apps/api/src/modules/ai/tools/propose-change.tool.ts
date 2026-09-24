@@ -13,7 +13,6 @@ export class ProposalCollector {
   private captured: ProposalCandidate | null = null;
 
   requested(callId: string): void {
-    if (this.callIds.has(callId)) return;
     this.callIds.add(callId);
     this.attempts += 1;
     if (this.invalidated) this.captured = null;

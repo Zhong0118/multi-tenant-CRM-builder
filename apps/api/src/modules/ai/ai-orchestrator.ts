@@ -248,6 +248,29 @@ export class AiOrchestrator {
         };
         return;
       }
+      if (clientAbort.aborted || timeout.aborted) {
+        const code = clientAbort.aborted ? 'CANCELLED' : 'AI_PROVIDER_TIMEOUT';
+        await this.finish(context, begun, latencyMs, {
+          status: clientAbort.aborted ? 'CANCELLED' : 'FAILED',
+          content: buffer,
+          usage,
+          toolSummary: toolSummaries,
+          sourceSummary: sources,
+          errorCode: clientAbort.aborted ? null : code,
+          providerKey: this.provider.providerKey,
+          modelKey: this.provider.modelKey,
+        });
+        yield {
+          event: clientAbort.aborted ? 'turn.cancelled' : 'turn.failed',
+          data: {
+            turnId: begun.turnId,
+            ...(clientAbort.aborted
+              ? { messageId: begun.assistant.id }
+              : { code, messageId: begun.assistant.id }),
+          },
+        } as AiPublicStreamEvent;
+        return;
+      }
       const outcome = {
         status: 'COMPLETED' as const,
         content: buffer,
@@ -258,6 +281,10 @@ export class AiOrchestrator {
         modelKey: this.provider.modelKey,
       };
       if (collector.candidate && this.proposals) {
+        if (clientAbort.aborted || timeout.aborted)
+          throw new Error(
+            clientAbort.aborted ? 'AI_TURN_CANCELLED' : 'AI_PROVIDER_TIMEOUT',
+          );
         const proposal = await this.proposals.completeWithProposal(
           context,
           begun.turnId,
@@ -272,6 +299,10 @@ export class AiOrchestrator {
               final,
             ),
         );
+        if (clientAbort.aborted || timeout.aborted)
+          throw new Error(
+            clientAbort.aborted ? 'AI_TURN_CANCELLED' : 'AI_PROVIDER_TIMEOUT',
+          );
         this.logger.log({
           conversationId: begun.conversationId,
           turnId: begun.turnId,
@@ -291,8 +322,9 @@ export class AiOrchestrator {
       };
     } catch {
       const latencyMs = Date.now() - startedAt;
+      const cancelled = clientAbort.aborted;
       await this.finish(context, begun, latencyMs, {
-        status: 'FAILED',
+        status: cancelled ? 'CANCELLED' : 'FAILED',
         content: buffer,
         usage: {
           toolCalls: budget.toolCalls,
