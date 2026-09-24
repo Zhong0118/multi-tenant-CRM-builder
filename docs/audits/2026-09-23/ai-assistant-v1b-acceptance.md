@@ -43,7 +43,9 @@ No 5432/5433 URL was used for these runs. No BYPASSRLS assertion was added in th
 
 `TEST_DATABASE_ADMIN_URL=... TEST_DATABASE_URL=... corepack pnpm --filter @crm/api test:e2e:critical` exited 0: **1 suite, 7 tests passed**.
 
-API typecheck was also attempted with the same isolated URLs and exited 2 due to a pre-existing unrelated fixture typing error in `apps/api/src/modules/ai/ai-orchestrator.spec.ts:215` (`operation: string` is not assignable to `AiOperationKind`). This acceptance work did not edit that file.
+API typecheck initially exposed a V1B fixture typing defect at `apps/api/src/modules/ai/ai-orchestrator.spec.ts:215` (`operation: string` was not assignable to `AiOperationKind`). The fixture is now explicitly typed as `AiProposalView`; `corepack pnpm --filter @crm/api typecheck` exits 0.
+
+The focused isolated E2E was rerun after the fixture fix: **1 suite, 6 tests passed**. The broader critical E2E was also rerun: **1 suite, 7 tests passed**.
 
 ## Gaps / not claimed
 

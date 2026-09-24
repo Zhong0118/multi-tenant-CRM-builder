@@ -18,6 +18,7 @@ import type { BeginTurnResult } from './ai.types';
 import { AiToolRegistry } from './tool-registry';
 import { wrapAiReadTool, type AiToolCallbacks } from './ai-tool-wrapper';
 import type { AiProposalService } from './ai-proposal.service';
+import type { AiProposalView } from './ai-operation.types';
 import { ProposalCollector } from './tools/propose-change.tool';
 
 const context: TenantContext = {
@@ -166,7 +167,7 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
     recordId: context.tenantId,
     content: 'safe note',
   };
-  const proposal = {
+  const proposal: AiProposalView = {
     proposalId: 'proposal-1',
     operation: 'ADD_ACTIVITY_NOTE',
     title: '添加备注',
