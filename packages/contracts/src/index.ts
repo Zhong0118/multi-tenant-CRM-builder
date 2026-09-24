@@ -6,6 +6,7 @@ export type {
 } from "./generated/openapi.js";
 export type {
   AiPublicStreamEvent,
+  AiProposalView,
   AiSourceSummary,
   AiToolStatus,
   AiToolSummary,

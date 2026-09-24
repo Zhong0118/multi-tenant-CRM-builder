@@ -58,6 +58,29 @@ describe("AiStreamParser", () => {
     ).toThrow(AiStreamError);
   });
 
+  it("parses a schema-checked proposal.ready event", () => {
+    const proposal = {
+      proposalId: "p1",
+      operation: "UPDATE_RECORD",
+      title: "更新客户",
+      targetSummary: "客户 Acme",
+      changes: [{ label: "状态", before: "线索", after: "成交" }],
+      validationWarnings: [],
+      expiresAt: "2026-09-23T12:00:00.000Z",
+      status: "PROPOSED",
+      failureCode: null,
+      auditId: null,
+      result: null,
+    };
+    expect(feed([`event: proposal.ready\ndata: ${JSON.stringify({ turnId: "t1", proposal })}\n\n`])).toEqual([
+      { event: "proposal.ready", data: { turnId: "t1", proposal } },
+    ]);
+  });
+
+  it("rejects proposal.ready with executable-looking arbitrary values", () => {
+    expect(() => feed(['event: proposal.ready\ndata: {"turnId":"t1","proposal":{"proposalId":"p1","operation":"UPDATE_RECORD","targetSummary":"x","title":"x","changes":[],"validationWarnings":[],"expiresAt":"x","status":"PROPOSED","extra":{"actorId":"u1"}}}\n\n'])).toThrow(AiStreamError);
+  });
+
   it("rejects a valid event name with an illegal payload", () => {
     const cases = [
       'event: sources.updated\ndata: {}\n\n',

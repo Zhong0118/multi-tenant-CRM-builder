@@ -6,6 +6,7 @@ import { AiErrorState } from "./ai-error-state";
 import { SourceCard } from "./source-card";
 import { ToolActivity } from "./tool-activity";
 import { userErrorMessage } from "./ai-turn-reducer";
+import { AiProposalCard } from "./ai-proposal-card";
 import type { AiMessage } from "./ai-types";
 
 export function AssistantMessage({
@@ -30,6 +31,7 @@ export function AssistantMessage({
       </div>
       <div className={styles.assistantSurface}>
         <ToolActivity tools={message.toolSummary} />
+        {message.proposal ? <AiProposalCard proposal={message.proposal} /> : null}
         {renderSafeText(message.content).map((paragraph, index) => (
           <p key={`${message.id}-${index}`}>{paragraph}</p>
         ))}

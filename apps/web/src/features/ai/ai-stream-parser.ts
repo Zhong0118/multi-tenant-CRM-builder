@@ -1,5 +1,6 @@
 import type {
   AiPublicStreamEvent,
+  AiProposalView,
   AiSourceSummary,
   AiToolSummary,
 } from "@crm/contracts";
@@ -12,6 +13,12 @@ const PUBLIC_EVENTS = new Set<AiPublicStreamEvent["event"]>([
   "tool.failed",
   "assistant.delta",
   "sources.updated",
+  "proposal.ready",
+  "proposal.rejected",
+  "proposal.expired",
+  "proposal.conflicted",
+  "proposal.executed",
+  "proposal.failed",
   "turn.completed",
   "turn.failed",
   "turn.cancelled",
@@ -100,6 +107,23 @@ function parsePublicEvent(
       return { event, data: parseTool(data) };
     case "sources.updated":
       return { event, data: { sources: parseSources(data) } };
+    case "proposal.ready": {
+      if (!isRecord(data)) throw new AiStreamError("AI 数据流无法解析。");
+      return {
+        event,
+        data: {
+          turnId: requiredString(data, "turnId"),
+          proposal: parseProposal(data.proposal),
+        },
+      };
+    }
+    case "proposal.rejected":
+    case "proposal.expired":
+    case "proposal.conflicted":
+    case "proposal.executed":
+    case "proposal.failed":
+      if (!isRecord(data)) throw new AiStreamError("AI 数据流无法解析。");
+      return { event, data: { proposal: parseProposal(data.proposal) } };
     case "turn.completed":
     case "turn.cancelled":
       return {
@@ -133,6 +157,25 @@ function parseTool(data: unknown): AiToolSummary {
     displayName: requiredString(data, "displayName"),
     status,
     ...(detail ? { detail } : {}),
+  };
+}
+
+function parseProposal(value: unknown): AiProposalView {
+  if (!isRecord(value)) throw new AiStreamError("AI 数据流无法解析。");
+  const operation = requiredString(value, "operation");
+  const status = requiredString(value, "status");
+  if (!["UPDATE_RECORD", "CREATE_FOLLOW_UP", "ADD_ACTIVITY_NOTE"].includes(operation)) throw new AiStreamError("AI 数据流无法解析。");
+  if (!["PROPOSED", "REJECTED", "EXPIRED", "CONFLICTED", "FAILED", "EXECUTED"].includes(status)) throw new AiStreamError("AI 数据流无法解析。");
+  if (!("changes" in value) && operation === "UPDATE_RECORD") throw new AiStreamError("AI 数据流无法解析。");
+  if (Object.keys(value).some((key) => !["proposalId", "operation", "title", "targetSummary", "changes", "validationWarnings", "expiresAt", "status", "failureCode", "auditId", "result"].includes(key))) throw new AiStreamError("AI 数据流无法解析。");
+  if (!Array.isArray(value.changes) || !value.changes.every((change) => isRecord(change) && typeof change.label === "string" && (change.before === undefined || typeof change.before === "string") && (change.after === undefined || typeof change.after === "string"))) throw new AiStreamError("AI 数据流无法解析。");
+  if (!Array.isArray(value.validationWarnings) || !value.validationWarnings.every((warning) => typeof warning === "string")) throw new AiStreamError("AI 数据流无法解析。");
+  return {
+    proposalId: requiredString(value, "proposalId"), operation: operation as AiProposalView["operation"], title: requiredString(value, "title"), targetSummary: requiredString(value, "targetSummary"),
+    changes: value.changes as AiProposalView["changes"], validationWarnings: value.validationWarnings as string[], expiresAt: requiredString(value, "expiresAt"), status: status as AiProposalView["status"],
+    failureCode: value.failureCode === null ? null : optionalString(value, "failureCode") ?? null,
+    auditId: value.auditId === null ? null : optionalString(value, "auditId") ?? null,
+    result: value.result ?? null,
   };
 }
 

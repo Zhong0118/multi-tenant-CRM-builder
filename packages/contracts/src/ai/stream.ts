@@ -8,9 +8,9 @@ export interface AiProposalView {
   expiresAt: string;
   status:
     "PROPOSED" | "REJECTED" | "EXPIRED" | "CONFLICTED" | "FAILED" | "EXECUTED";
-  failureCode: string | null;
-  auditId: string | null;
-  result: unknown;
+  failureCode?: string | null;
+  auditId?: string | null;
+  result?: unknown;
 }
 
 export type AiToolStatus = "RUNNING" | "COMPLETED" | "FAILED";

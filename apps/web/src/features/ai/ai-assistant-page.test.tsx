@@ -75,7 +75,7 @@ describe("AiAssistantPage", () => {
   it("shows the read-only header and updates the conversation query on conversation.ready", async () => {
     renderPage();
     expect(screen.getByRole("heading", { name: /AI 助手/ })).toBeInTheDocument();
-    expect(screen.getByText("只读")).toBeInTheDocument();
+    expect(screen.getByText("需确认后执行")).toBeInTheDocument();
     expect(screen.getByTestId("ai-conversation-canvas")).toBeInTheDocument();
     expect(screen.getByText("Enter 发送 · Shift+Enter 换行")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "会话" })).toBeInTheDocument();

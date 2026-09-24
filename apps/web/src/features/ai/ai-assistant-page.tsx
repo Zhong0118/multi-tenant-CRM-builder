@@ -270,7 +270,7 @@ export function AiAssistantPage({
         <header className={styles.header}>
           <div className={styles.headerCopy}>
             <h1 className={styles.headerTitle}>
-              AI 助手 <Tag>只读</Tag>
+              AI 助手 <Tag>需确认后执行</Tag>
             </h1>
             <p className={styles.headerHint}>基于你当前 CRM 权限回答</p>
           </div>

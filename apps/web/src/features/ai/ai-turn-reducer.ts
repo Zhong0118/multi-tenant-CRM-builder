@@ -1,5 +1,6 @@
 import type {
   AiMessage,
+  AiProposalView,
   AiPublicStreamEvent,
   AiSourceSummary,
   AiToolSummary,
@@ -15,6 +16,7 @@ export interface AiTurnState {
   streamingText: string;
   tools: AiToolSummary[];
   sources: AiSourceSummary[];
+  proposal?: AiProposalView | null;
   errorCode?: string | null;
   errorMessage?: string;
   partial: boolean;
@@ -27,6 +29,7 @@ export const initialAiTurnState: AiTurnState = {
   streamingText: "",
   tools: [],
   sources: [],
+  proposal: null,
   partial: false,
 };
 
@@ -143,6 +146,14 @@ function applyEvent(
       };
     case "sources.updated":
       return { ...state, sources: event.data.sources };
+    case "proposal.ready":
+      return { ...state, proposal: event.data.proposal };
+    case "proposal.rejected":
+    case "proposal.expired":
+    case "proposal.conflicted":
+    case "proposal.executed":
+    case "proposal.failed":
+      return { ...state, proposal: event.data.proposal };
     case "turn.completed":
       return {
         ...state,
@@ -220,6 +231,7 @@ export function toAssistantMessage(state: AiTurnState): AiMessage | null {
     content: state.streamingText,
     toolSummary: state.tools,
     sourceSummary: state.sources,
+    proposal: state.proposal,
     errorCode: state.errorCode,
     createdAt: new Date().toISOString(),
   };

@@ -1,11 +1,13 @@
 import type {
   AiPublicStreamEvent,
+  AiProposalView,
   AiSourceSummary,
   AiToolSummary,
 } from "@crm/contracts";
 
 export type {
   AiPublicStreamEvent,
+  AiProposalView,
   AiSourceSummary,
   AiToolSummary,
 };
@@ -40,6 +42,7 @@ export interface AiMessage {
   content: string;
   toolSummary: AiToolSummary[];
   sourceSummary: AiSourceSummary[];
+  proposal?: AiProposalView | null;
   errorCode?: string | null;
   createdAt: string;
   completedAt?: string | null;
