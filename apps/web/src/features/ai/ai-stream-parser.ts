@@ -176,8 +176,9 @@ export function parseProposal(value: unknown): AiProposalView {
   if (!Array.isArray(value.validationWarnings) || value.validationWarnings.length > 20 || !value.validationWarnings.every((warning) => typeof warning === "string" && warning.length <= 500)) throw new AiStreamError("AI 数据流无法解析。");
   let result: unknown = null;
   if (value.result !== undefined && value.result !== null) {
-    if (!isRecord(value.result) || Object.keys(value.result).some((key) => !["objectCode", "recordId", "followUpId", "activityId", "href"].includes(key))) throw new AiStreamError("AI 数据流无法解析。");
-    result = Object.fromEntries(Object.entries(value.result).filter(([, item]) => typeof item === "string" && item.length <= 200));
+    if (!isRecord(value.result) || Object.keys(value.result).some((key) => !["objectCode", "recordId", "followUpId", "activityId"].includes(key))) throw new AiStreamError("AI 数据流无法解析。");
+    if (Object.values(value.result).some((item) => typeof item !== "string" || item.length === 0 || item.length > 200)) throw new AiStreamError("AI 数据流无法解析。");
+    result = { ...value.result };
   }
   return { proposalId: requiredString(value, "proposalId"), operation: operation as AiProposalView["operation"], title: requiredString(value, "title").slice(0, 200), targetSummary: requiredString(value, "targetSummary").slice(0, 300), changes: value.changes as AiProposalView["changes"], validationWarnings: value.validationWarnings as string[], expiresAt, status: status as AiProposalView["status"], failureCode: value.failureCode === null ? null : optionalString(value, "failureCode") ?? null, auditId: value.auditId === null ? null : optionalString(value, "auditId") ?? null, result };
 }

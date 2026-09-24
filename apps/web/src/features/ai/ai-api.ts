@@ -67,15 +67,15 @@ export const aiApi = {
   },
 
   async getProposal(tenantCode: string, proposalId: string): Promise<AiProposalView> {
-    return dataOrThrow(await browserApiClient.GET(PROPOSAL, { params: { path: { tenantCode, proposalId } } }));
+    return parseProposal(await dataOrThrow(await browserApiClient.GET(PROPOSAL, { params: { path: { tenantCode, proposalId } } })));
   },
 
   async confirmProposal(tenantCode: string, proposalId: string, idempotencyKey = crypto.randomUUID()): Promise<AiProposalView> {
-    return dataOrThrow(await browserApiClient.POST(PROPOSAL_CONFIRM, { params: { path: { tenantCode, proposalId } }, body: { idempotencyKey } }));
+    return parseProposal(await dataOrThrow(await browserApiClient.POST(PROPOSAL_CONFIRM, { params: { path: { tenantCode, proposalId } }, body: { idempotencyKey } })));
   },
 
   async rejectProposal(tenantCode: string, proposalId: string): Promise<AiProposalView> {
-    return dataOrThrow(await browserApiClient.POST(PROPOSAL_REJECT, { params: { path: { tenantCode, proposalId } } }));
+    return parseProposal(await dataOrThrow(await browserApiClient.POST(PROPOSAL_REJECT, { params: { path: { tenantCode, proposalId } } })));
   },
 
   async rename(
