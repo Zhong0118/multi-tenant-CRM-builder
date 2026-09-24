@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { Prisma } from '@crm/database';
 
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type {
@@ -60,6 +61,20 @@ export class ConversationService {
 
   retryTurn(context: TenantContext, turnId: string): Promise<BeginTurnResult> {
     return this.repository.retryTurn(context, turnId);
+  }
+
+  finalizeAssistantInTransaction(
+    tx: Prisma.TransactionClient,
+    context: TenantContext,
+    turnId: string,
+    outcome: AssistantFinalizeOutcome,
+  ): Promise<void> {
+    return this.repository.finalizeAssistantInTransaction(
+      tx,
+      context,
+      turnId,
+      outcome,
+    );
   }
 
   finalizeAssistant(

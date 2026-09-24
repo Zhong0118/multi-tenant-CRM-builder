@@ -1521,6 +1521,7 @@ export interface components {
       createdAt: string;
       errorCode?: string | null;
       id: string;
+      proposal?: components["schemas"]["AiProposalResponseDto"] | null;
       role: string;
       sourceSummary: {
         [key: string]: unknown;

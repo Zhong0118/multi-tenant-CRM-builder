@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { AiProposalService } from '../src/modules/ai/ai-proposal.service';
+import { ConversationService } from '../src/modules/ai/conversation.service';
 import type { TenantContext } from '../src/common/tenancy/tenant-context';
 import {
   closeCriticalHarness,
@@ -15,6 +16,7 @@ describe('isolated AI proposal atomic confirmation', () => {
   let harness: CriticalHarness;
   let fixture: CriticalFixture;
   let service: AiProposalService;
+  let conversations: ConversationService;
   let context: TenantContext;
   beforeAll(async () => {
     const adminUrl = new URL(process.env.TEST_DATABASE_ADMIN_URL ?? '');
@@ -31,6 +33,7 @@ describe('isolated AI proposal atomic confirmation', () => {
       throw new Error('Refusing unexpected database roles');
     harness = await createCriticalHarness();
     service = harness.app.get(AiProposalService);
+    conversations = harness.app.get(ConversationService);
   });
   beforeEach(async () => {
     fixture = await provisionCriticalFixture(harness);
@@ -68,6 +71,120 @@ describe('isolated AI proposal atomic confirmation', () => {
     });
     return turnId;
   }
+  it('atomically completes the assistant and restores its own proposal, rolling both back if finalize fails', async () => {
+    const begun = await conversations.beginTurn(context, {
+      content: 'write note',
+    });
+    const candidate = {
+      operationType: 'ADD_ACTIVITY_NOTE',
+      objectCode: 'leads',
+      recordId: fixture.ownedRecord.id,
+      content: 'draft only',
+    };
+    const before = await harness.adminDatabase.recordActivity.count();
+    const outcome = {
+      status: 'COMPLETED' as const,
+      content: 'Proposal awaiting approval',
+    };
+    const rejectFinalize = async () => {
+      throw new Error('simulate finalize rollback');
+    };
+    await expect(
+      service.completeWithProposal(
+        context,
+        begun.turnId,
+        candidate,
+        begun.user.content,
+        outcome,
+        rejectFinalize,
+      ),
+    ).rejects.toThrow('simulate finalize rollback');
+    expect(
+      await harness.adminDatabase.aiOperation.count({
+        where: { turnId: begun.turnId },
+      }),
+    ).toBe(0);
+    expect(
+      (
+        await harness.adminDatabase.aiMessage.findFirstOrThrow({
+          where: { turnId: begun.turnId, role: 'ASSISTANT' },
+        })
+      ).status,
+    ).toBe('GENERATING');
+    const view = await service.completeWithProposal(
+      context,
+      begun.turnId,
+      candidate,
+      begun.user.content,
+      outcome,
+      (tx, actor, id, final) =>
+        conversations.finalizeAssistantInTransaction(tx, actor, id, final),
+    );
+    expect(view.status).toBe('PROPOSED');
+    const assistant = await harness.adminDatabase.aiMessage.findFirstOrThrow({
+      where: { turnId: begun.turnId, role: 'ASSISTANT' },
+    });
+    expect(assistant.status).toBe('COMPLETED');
+    expect(
+      (
+        await conversations.messages(context, begun.conversationId, {})
+      ).items.find((message) => message.id === assistant.id)?.proposal
+        ?.proposalId,
+    ).toBe(view.proposalId);
+    expect(await harness.adminDatabase.recordActivity.count()).toBe(before);
+    const other: TenantContext = {
+      ...context,
+      memberId: fixture.otherEmployee.memberId,
+      userId: fixture.otherEmployee.userId,
+    };
+    await expect(
+      conversations.messages(other, begun.conversationId, {}),
+    ).rejects.toMatchObject({ code: 'AI_CONVERSATION_NOT_FOUND' });
+    await harness.adminDatabase.aiConversation.update({
+      where: { id: begun.conversationId },
+      data: { deletedAt: new Date() },
+    });
+    await expect(
+      conversations.messages(context, begun.conversationId, {}),
+    ).rejects.toMatchObject({ code: 'AI_CONVERSATION_NOT_FOUND' });
+  });
+
+  it.each(['PROPOSED', 'REJECTED', 'EXPIRED', 'FAILED', 'EXECUTED'] as const)(
+    'never retries a turn with an existing %s operation',
+    async (status) => {
+      const begun = await conversations.beginTurn(context, {
+        content: 'keep original answer',
+      });
+      await conversations.finalizeAssistant(context, begun.turnId, {
+        status: 'FAILED',
+        content: 'original answer',
+      });
+      const view = await service.preview(
+        context,
+        begun.turnId,
+        {
+          operationType: 'ADD_ACTIVITY_NOTE',
+          objectCode: 'leads',
+          recordId: fixture.ownedRecord.id,
+          content: 'draft only',
+        },
+        begun.user.content,
+      );
+      await harness.adminDatabase.aiOperation.update({
+        where: { id: view.proposalId },
+        data: { status },
+      });
+      await expect(
+        conversations.retryTurn(context, begun.turnId),
+      ).rejects.toMatchObject({ code: 'AI_TURN_NOT_RETRYABLE' });
+      expect(
+        await harness.adminDatabase.aiMessage.findFirstOrThrow({
+          where: { turnId: begun.turnId, role: 'ASSISTANT' },
+        }),
+      ).toMatchObject({ status: 'FAILED', content: 'original answer' });
+    },
+  );
+
   const meta = { requestId: randomUUID(), ip: '127.0.0.1' };
   it.each(['UPDATE_RECORD', 'CREATE_FOLLOW_UP', 'ADD_ACTIVITY_NOTE'] as const)(
     '%s writes one business row and correlated audit only after confirm; retry does not replay',

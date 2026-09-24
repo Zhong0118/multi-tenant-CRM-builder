@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
 
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
+import { AiOperationRepository } from './ai-operation.repository';
 import type {
   AssistantFinalizeOutcome,
   BeginTurnInput,
@@ -306,7 +307,10 @@ async function requireOwnedConversation(
 
 @Injectable()
 export class ConversationRepository {
-  constructor(private readonly runner: DatabaseContextRunner) {}
+  constructor(
+    private readonly runner: DatabaseContextRunner,
+    @Optional() private readonly operations?: AiOperationRepository,
+  ) {}
 
   list(
     context: TenantContext,
@@ -385,9 +389,7 @@ export class ConversationRepository {
     return this.runner.withTenant(context, async (tx) => {
       await requireOwnedConversation(tx, context, conversationId);
       const limit = pageLimit(query.limit);
-      let olderThan:
-        | { createdAt: Date; id: string }
-        | undefined;
+      let olderThan: { createdAt: Date; id: string } | undefined;
       if (query.before) {
         const pivot = await tx.aiMessage.findFirst({
           where: {
@@ -426,8 +428,27 @@ export class ConversationRepository {
       const hasMore = rows.length > limit;
       const page = hasMore ? rows.slice(0, limit) : rows;
       const chronological = [...page].reverse();
+      const operations =
+        (await this.operations?.listForTurnsInTransaction(
+          tx,
+          context,
+          conversationId,
+          chronological
+            .filter(
+              (row) => row.role === 'ASSISTANT' && row.status === 'COMPLETED',
+            )
+            .map((row) => row.turnId),
+        )) ?? [];
+      const proposals = new Map(
+        operations.map(({ turnId, view }) => [turnId, view]),
+      );
       return {
-        items: chronological.map(toPublicMessage),
+        items: chronological.map((row) => ({
+          ...toPublicMessage(row),
+          ...(row.role === 'ASSISTANT' && proposals.has(row.turnId)
+            ? { proposal: proposals.get(row.turnId) }
+            : {}),
+        })),
         nextBefore: hasMore ? chronological[0]?.id : undefined,
       };
     });
@@ -566,6 +587,16 @@ export class ConversationRepository {
       if (assistant.status !== 'FAILED' && assistant.status !== 'CANCELLED') {
         throw new ApiException('AI_TURN_NOT_RETRYABLE', 409);
       }
+      const operation = await tx.aiOperation.findFirst({
+        where: {
+          tenantId: context.tenantId,
+          conversationId: assistant.conversationId,
+          turnId,
+          requestedByMemberId: context.memberId,
+        },
+        select: { id: true },
+      });
+      if (operation) throw new ApiException('AI_TURN_NOT_RETRYABLE', 409);
       const user = await tx.aiMessage.findFirst({
         where: {
           tenantId: context.tenantId,
@@ -611,44 +642,53 @@ export class ConversationRepository {
     turnId: string,
     outcome: AssistantFinalizeOutcome,
   ): Promise<void> {
-    return this.runner.withTenant(context, async (tx) => {
-      const assistant = await tx.aiMessage.findFirst({
-        where: {
-          tenantId: context.tenantId,
-          turnId,
-          role: 'ASSISTANT',
-          conversation: {
-            ...memberConversationWhere(context),
-            deletedAt: null,
-          },
+    return this.runner.withTenant(context, (tx) =>
+      this.finalizeAssistantInTransaction(tx, context, turnId, outcome),
+    );
+  }
+
+  async finalizeAssistantInTransaction(
+    tx: Tx,
+    context: TenantContext,
+    turnId: string,
+    outcome: AssistantFinalizeOutcome,
+  ): Promise<void> {
+    const assistant = await tx.aiMessage.findFirst({
+      where: {
+        tenantId: context.tenantId,
+        turnId,
+        role: 'ASSISTANT',
+        conversation: {
+          ...memberConversationWhere(context),
+          deletedAt: null,
         },
-      });
-      if (!assistant) {
-        throw new ApiException('AI_TURN_NOT_FOUND', 404);
-      }
-      await tx.aiMessage.update({
-        where: { id: assistant.id },
-        data: {
-          status: outcome.status,
-          content: outcome.content,
-          ...(outcome.toolSummary === undefined
-            ? {}
-            : { toolSummary: outcome.toolSummary as Prisma.InputJsonValue }),
-          ...(outcome.sourceSummary === undefined
-            ? {}
-            : {
-                sourceSummary: outcome.sourceSummary as Prisma.InputJsonValue,
-              }),
-          providerUsage: withProviderAttempts(
-            outcome.usage ?? {},
-            providerAttemptsOf(assistant.providerUsage),
-          ),
-          providerKey: outcome.providerKey ?? assistant.providerKey,
-          modelKey: outcome.modelKey ?? assistant.modelKey,
-          errorCode: outcome.errorCode ?? null,
-          completedAt: new Date(),
-        },
-      });
+      },
+    });
+    if (!assistant) {
+      throw new ApiException('AI_TURN_NOT_FOUND', 404);
+    }
+    await tx.aiMessage.update({
+      where: { id: assistant.id },
+      data: {
+        status: outcome.status,
+        content: outcome.content,
+        ...(outcome.toolSummary === undefined
+          ? {}
+          : { toolSummary: outcome.toolSummary as Prisma.InputJsonValue }),
+        ...(outcome.sourceSummary === undefined
+          ? {}
+          : {
+              sourceSummary: outcome.sourceSummary as Prisma.InputJsonValue,
+            }),
+        providerUsage: withProviderAttempts(
+          outcome.usage ?? {},
+          providerAttemptsOf(assistant.providerUsage),
+        ),
+        providerKey: outcome.providerKey ?? assistant.providerKey,
+        modelKey: outcome.modelKey ?? assistant.modelKey,
+        errorCode: outcome.errorCode ?? null,
+        completedAt: new Date(),
+      },
     });
   }
 

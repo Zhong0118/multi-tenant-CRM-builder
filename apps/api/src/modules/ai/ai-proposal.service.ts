@@ -24,6 +24,7 @@ import type { RecordsRepository } from '../records/records.repository';
 import { RECORDS_REPOSITORY } from '../records/records.service';
 import { AiOperationRepository } from './ai-operation.repository';
 import type { AiProposalDisplay, AiProposalView } from './ai-operation.types';
+import type { AssistantFinalizeOutcome } from './ai.types';
 import {
   validateProposalCandidate,
   type ProposalCandidate,
@@ -105,79 +106,8 @@ export class AiProposalService {
       throw new ApiException('VALIDATION_FAILED', 400);
     const snapshot = await this.records.withTenantTransaction(
       context,
-      async ({ tx, store }) => {
-        await lockActor(tx, context);
-        const resolved = await resolvePublishedObjectInTransaction(
-          tx,
-          context,
-          candidate.objectCode,
-        );
-        requireReadable(resolved);
-        requireUpdatable(resolved);
-        const record = await store.lockRecord({
-          objectId: resolved.schema.object.id,
-          recordId: candidate.recordId,
-          ownerMemberId: ownerFor(resolved, context),
-        });
-        if (
-          !record ||
-          (ownerFor(resolved, context) &&
-            record.ownerMemberId !== context.memberId)
-        )
-          throw new ApiException('RECORD_NOT_FOUND', 404);
-        const display: AiProposalDisplay = {
-          title:
-            candidate.operationType === 'UPDATE_RECORD'
-              ? '修改记录'
-              : candidate.operationType === 'CREATE_FOLLOW_UP'
-                ? '创建跟进'
-                : '添加备注',
-          targetSummary: safeText(record.title),
-          changes: [],
-          validationWarnings: [],
-        };
-        try {
-          if (candidate.operationType === 'UPDATE_RECORD') {
-            const normalized = await validateRecordMutation({
-              mode: 'UPDATE',
-              schema: resolved.schema,
-              access: resolved.access,
-              current: record.values,
-              submitted: candidate.values,
-              memberExists: (memberId) => store.memberExists(memberId),
-            });
-            display.changes = Object.entries(candidate.values).map(([key]) => ({
-              label: safeText(
-                resolved.schema.fields.find((field) => field.fieldKey === key)
-                  ?.label,
-              ),
-              before: safeText(record.values[key]),
-              after: safeText(normalized.values[key]),
-            }));
-          } else if (candidate.operationType === 'CREATE_FOLLOW_UP') {
-            const normalized = validateCreateFollowUpInput(candidate);
-            display.changes = [
-              { label: '标题', after: safeText(normalized.title) },
-              { label: '到期时间', after: normalized.dueAt },
-            ];
-          } else {
-            display.changes = [
-              {
-                label: 'NOTE',
-                after: validateRecordActivityInput({
-                  activityType: 'NOTE',
-                  content: candidate.content,
-                }),
-              },
-            ];
-          }
-        } catch (error) {
-          safeValidation(error);
-        }
-        return { resolved, record, display };
-      },
+      ({ tx, store }) => this.snapshot(tx, store, context, candidate),
     );
-    // Only operation persistence follows; no Record, Activity, Follow-up or Domain Audit write.
     return this.operations.createValidated(
       context,
       turnId,
@@ -195,6 +125,146 @@ export class AiProposalService {
       },
       snapshot.display,
     );
+  }
+
+  async completeWithProposal(
+    context: TenantContext,
+    turnId: string,
+    untrusted: unknown,
+    requestText: string,
+    outcome: AssistantFinalizeOutcome,
+    finalize: (
+      tx: Tx,
+      context: TenantContext,
+      turnId: string,
+      outcome: AssistantFinalizeOutcome,
+    ) => Promise<void>,
+  ): Promise<AiProposalView> {
+    let candidate: ProposalCandidate;
+    try {
+      candidate = validateProposalCandidate(untrusted);
+    } catch {
+      throw new ApiException('VALIDATION_FAILED', 400);
+    }
+    if (typeof requestText !== 'string')
+      throw new ApiException('VALIDATION_FAILED', 400);
+    return this.records.withTenantTransaction(
+      context,
+      async ({ tx, store }) => {
+        const snapshot = await this.snapshot(tx, store, context, candidate);
+        const turn = await tx.aiMessage.findFirst({
+          where: {
+            tenantId: context.tenantId,
+            turnId,
+            role: 'USER',
+            conversation: {
+              createdByMemberId: context.memberId,
+              deletedAt: null,
+            },
+          },
+          select: { conversationId: true },
+        });
+        if (!turn) throw new ApiException('AI_TURN_NOT_FOUND', 404);
+        const view = await this.operations.createValidatedInTransaction(
+          tx,
+          context,
+          turnId,
+          {
+            conversationId: turn.conversationId,
+            operationType: candidate.operationType,
+            requestText: requestText.slice(0, 4000),
+            proposal: candidate as Prisma.InputJsonObject,
+            targetRef: {
+              objectCode: candidate.objectCode,
+              recordId: candidate.recordId,
+            },
+            expectedVersion: snapshot.record.version,
+            expectedPublicationId: snapshot.resolved.schema.publication.id,
+          },
+          snapshot.display,
+        );
+        await finalize(tx, context, turnId, outcome);
+        return view;
+      },
+    );
+  }
+
+  private async snapshot(
+    tx: Tx,
+    store: Parameters<
+      Parameters<RecordsRepository['withTenantTransaction']>[1]
+    >[0]['store'],
+    context: TenantContext,
+    candidate: ProposalCandidate,
+  ) {
+    await lockActor(tx, context);
+    const resolved = await resolvePublishedObjectInTransaction(
+      tx,
+      context,
+      candidate.objectCode,
+    );
+    requireReadable(resolved);
+    requireUpdatable(resolved);
+    const record = await store.lockRecord({
+      objectId: resolved.schema.object.id,
+      recordId: candidate.recordId,
+      ownerMemberId: ownerFor(resolved, context),
+    });
+    if (
+      !record ||
+      (ownerFor(resolved, context) && record.ownerMemberId !== context.memberId)
+    )
+      throw new ApiException('RECORD_NOT_FOUND', 404);
+    const display: AiProposalDisplay = {
+      title:
+        candidate.operationType === 'UPDATE_RECORD'
+          ? '修改记录'
+          : candidate.operationType === 'CREATE_FOLLOW_UP'
+            ? '创建跟进'
+            : '添加备注',
+      targetSummary: safeText(record.title),
+      changes: [],
+      validationWarnings: [],
+    };
+    try {
+      if (candidate.operationType === 'UPDATE_RECORD') {
+        const normalized = await validateRecordMutation({
+          mode: 'UPDATE',
+          schema: resolved.schema,
+          access: resolved.access,
+          current: record.values,
+          submitted: candidate.values,
+          memberExists: (memberId) => store.memberExists(memberId),
+        });
+        display.changes = Object.entries(candidate.values).map(([key]) => ({
+          label: safeText(
+            resolved.schema.fields.find((field) => field.fieldKey === key)
+              ?.label,
+          ),
+          before: safeText(record.values[key]),
+          after: safeText(normalized.values[key]),
+        }));
+      } else if (candidate.operationType === 'CREATE_FOLLOW_UP') {
+        const normalized = validateCreateFollowUpInput(candidate);
+        display.changes = [
+          { label: '标题', after: safeText(normalized.title) },
+          { label: '到期时间', after: normalized.dueAt },
+        ];
+      } else {
+        display.changes = [
+          {
+            label: 'NOTE',
+            after: validateRecordActivityInput({
+              activityType: 'NOTE',
+              content: candidate.content,
+            }),
+          },
+        ];
+      }
+    } catch (error) {
+      safeValidation(error);
+    }
+    return { resolved, record, display };
   }
 
   async get(

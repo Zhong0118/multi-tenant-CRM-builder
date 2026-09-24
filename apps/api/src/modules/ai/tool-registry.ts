@@ -47,6 +47,7 @@ export class AiToolRegistry {
   forActor(
     context: TenantContext,
     callbacks: Partial<AiToolCallbacks> = {},
+    includeProposal = false,
   ): AiProviderTool[] {
     const resolved: AiToolCallbacks = {
       ...defaultAiToolCallbacks(),

@@ -5,7 +5,10 @@ import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
 import type {
-  AiOperationRow, AiProposalDisplay, AiProposalView, LockedAiOperation,
+  AiOperationRow,
+  AiProposalDisplay,
+  AiProposalView,
+  LockedAiOperation,
   ValidatedAiOperation,
 } from './ai-operation.types';
 
@@ -15,8 +18,16 @@ function ownedWhere(context: TenantContext) {
   return {
     tenantId: context.tenantId,
     requestedByMemberId: context.memberId,
-    conversation: { tenantId: context.tenantId, createdByMemberId: context.memberId, deletedAt: null },
-    requester: { tenantId: context.tenantId, userId: context.userId, status: 'ACTIVE' as const },
+    conversation: {
+      tenantId: context.tenantId,
+      createdByMemberId: context.memberId,
+      deletedAt: null,
+    },
+    requester: {
+      tenantId: context.tenantId,
+      userId: context.userId,
+      status: 'ACTIVE' as const,
+    },
   };
 }
 
@@ -49,21 +60,51 @@ export class AiOperationRepository {
     candidate: ValidatedAiOperation,
     display: AiProposalDisplay,
   ): Promise<AiProposalView> {
-    return this.runner.withTenant(context, async (tx) => {
-      const conversation = await tx.aiConversation.findFirst({
-        where: { id: candidate.conversationId, tenantId: context.tenantId, createdByMemberId: context.memberId, deletedAt: null },
-        select: { id: true },
-      });
-      if (!conversation) throw new ApiException('AI_CONVERSATION_NOT_FOUND', 404);
-      const turn = await tx.aiMessage.findFirst({ where: {
-        tenantId: context.tenantId, conversationId: candidate.conversationId,
-        turnId, role: 'USER',
-      }, select: { id: true } });
-      if (!turn) throw new ApiException('AI_TURN_NOT_FOUND', 404);
-      // The same DB clock instant supplies both persisted columns, regardless of caller clock.
-      const [{ created_at: createdAt }] = await tx.$queryRaw<Array<{ created_at: Date }>>`SELECT CURRENT_TIMESTAMP AS created_at`;
-      const expiresAt = new Date(createdAt.getTime() + 15 * 60_000);
-      const row = await tx.aiOperation.create({ data: {
+    return this.runner.withTenant(context, (tx) =>
+      this.createValidatedInTransaction(
+        tx,
+        context,
+        turnId,
+        candidate,
+        display,
+      ),
+    );
+  }
+
+  async createValidatedInTransaction(
+    tx: Tx,
+    context: TenantContext,
+    turnId: string,
+    candidate: ValidatedAiOperation,
+    display: AiProposalDisplay,
+  ): Promise<AiProposalView> {
+    const conversation = await tx.aiConversation.findFirst({
+      where: {
+        id: candidate.conversationId,
+        tenantId: context.tenantId,
+        createdByMemberId: context.memberId,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+    if (!conversation) throw new ApiException('AI_CONVERSATION_NOT_FOUND', 404);
+    const turn = await tx.aiMessage.findFirst({
+      where: {
+        tenantId: context.tenantId,
+        conversationId: candidate.conversationId,
+        turnId,
+        role: 'USER',
+      },
+      select: { id: true },
+    });
+    if (!turn) throw new ApiException('AI_TURN_NOT_FOUND', 404);
+    // The same DB clock instant supplies both persisted columns, regardless of caller clock.
+    const [{ created_at: createdAt }] = await tx.$queryRaw<
+      Array<{ created_at: Date }>
+    >`SELECT CURRENT_TIMESTAMP AS created_at`;
+    const expiresAt = new Date(createdAt.getTime() + 15 * 60_000);
+    const row = await tx.aiOperation.create({
+      data: {
         createdAt,
         tenantId: context.tenantId,
         conversationId: candidate.conversationId,
@@ -77,29 +118,60 @@ export class AiOperationRepository {
         expectedVersion: candidate.expectedVersion,
         expectedPublicationId: candidate.expectedPublicationId,
         expiresAt,
-      } });
-      return toView(row);
+      },
     });
+    return toView(row);
   }
 
   getOwned(context: TenantContext, id: string): Promise<AiProposalView | null> {
     return this.runner.withTenant(context, async (tx) => {
-      const row = await tx.aiOperation.findFirst({ where: { id, ...ownedWhere(context) } });
+      const row = await tx.aiOperation.findFirst({
+        where: { id, ...ownedWhere(context) },
+      });
       return row ? toView(row) : null;
     });
   }
 
-  listForTurns(context: TenantContext, conversationId: string, turnIds: string[]): Promise<AiProposalView[]> {
+  listForTurns(
+    context: TenantContext,
+    conversationId: string,
+    turnIds: string[],
+  ): Promise<AiProposalView[]> {
     if (turnIds.length === 0) return Promise.resolve([]);
-    return this.runner.withTenant(context, async (tx) => {
-      const rows = await tx.aiOperation.findMany({ where: {
-        ...ownedWhere(context), conversationId, turnId: { in: turnIds },
-      } });
-      return rows.map(toView);
-    });
+    return this.runner.withTenant(context, async (tx) =>
+      (
+        await this.listForTurnsInTransaction(
+          tx,
+          context,
+          conversationId,
+          turnIds,
+        )
+      ).map((item) => item.view),
+    );
   }
 
-  async lockOwned(tx: Tx, context: TenantContext, id: string): Promise<LockedAiOperation> {
+  async listForTurnsInTransaction(
+    tx: Tx,
+    context: TenantContext,
+    conversationId: string,
+    turnIds: string[],
+  ): Promise<Array<{ turnId: string; view: AiProposalView }>> {
+    if (turnIds.length === 0) return [];
+    const rows = await tx.aiOperation.findMany({
+      where: {
+        ...ownedWhere(context),
+        conversationId,
+        turnId: { in: turnIds },
+      },
+    });
+    return rows.map((row) => ({ turnId: row.turnId, view: toView(row) }));
+  }
+
+  async lockOwned(
+    tx: Tx,
+    context: TenantContext,
+    id: string,
+  ): Promise<LockedAiOperation> {
     // Lock all authorization dependencies, not just the operation: revocation
     // or soft-delete cannot pass between authorization and domain mutation.
     const locked = await tx.$queryRaw<Array<{ id: string }>>`
@@ -116,14 +188,24 @@ export class AiOperationRepository {
       FOR UPDATE OF o, c, m
     `;
     if (locked.length !== 1) return { kind: 'NOT_FOUND' };
-    const row = await tx.aiOperation.findFirst({ where: { id, ...ownedWhere(context) } });
+    const row = await tx.aiOperation.findFirst({
+      where: { id, ...ownedWhere(context) },
+    });
     if (!row) return { kind: 'NOT_FOUND' };
-    if (row.status === 'EXECUTED') return { kind: 'EXECUTED', result: row.resultJson, view: toView(row) };
-    if (row.status !== 'PROPOSED') return { kind: 'TERMINAL', view: toView(row) };
+    if (row.status === 'EXECUTED')
+      return { kind: 'EXECUTED', result: row.resultJson, view: toView(row) };
+    if (row.status !== 'PROPOSED')
+      return { kind: 'TERMINAL', view: toView(row) };
     if (row.expiresAt.getTime() <= Date.now()) {
-      const updated = await tx.aiOperation.updateMany({ where: {
-        id, tenantId: context.tenantId, requestedByMemberId: context.memberId, status: 'PROPOSED',
-      }, data: { status: 'EXPIRED' } });
+      const updated = await tx.aiOperation.updateMany({
+        where: {
+          id,
+          tenantId: context.tenantId,
+          requestedByMemberId: context.memberId,
+          status: 'PROPOSED',
+        },
+        data: { status: 'EXPIRED' },
+      });
       if (updated.count !== 1) throw new ApiException('AI_TURN_NOT_FOUND', 404);
       return { kind: 'EXPIRED', view: toView({ ...row, status: 'EXPIRED' }) };
     }
@@ -131,28 +213,57 @@ export class AiOperationRepository {
   }
 
   async markExecuted(
-    tx: Tx, context: TenantContext, id: string, auditId: string, result: Prisma.InputJsonValue,
+    tx: Tx,
+    context: TenantContext,
+    id: string,
+    auditId: string,
+    result: Prisma.InputJsonValue,
   ): Promise<void> {
-    const updated = await tx.aiOperation.updateMany({ where: {
-      id, tenantId: context.tenantId, requestedByMemberId: context.memberId, status: 'PROPOSED',
-      conversation: { deletedAt: null, createdByMemberId: context.memberId },
-    }, data: {
-      status: 'EXECUTED', auditId, resultJson: result,
-      confirmedByMemberId: context.memberId, confirmedAt: new Date(), executedAt: new Date(),
-    } });
+    const updated = await tx.aiOperation.updateMany({
+      where: {
+        id,
+        tenantId: context.tenantId,
+        requestedByMemberId: context.memberId,
+        status: 'PROPOSED',
+        conversation: { deletedAt: null, createdByMemberId: context.memberId },
+      },
+      data: {
+        status: 'EXECUTED',
+        auditId,
+        resultJson: result,
+        confirmedByMemberId: context.memberId,
+        confirmedAt: new Date(),
+        executedAt: new Date(),
+      },
+    });
     if (updated.count !== 1) throw new ApiException('AI_TURN_NOT_FOUND', 404);
   }
 
   markFailureIfProposed(
-    context: TenantContext, id: string, state: 'CONFLICTED' | 'FAILED' | 'REJECTED', code: string,
+    context: TenantContext,
+    id: string,
+    state: 'CONFLICTED' | 'FAILED' | 'REJECTED',
+    code: string,
   ): Promise<AiProposalView | null> {
     return this.runner.withTenant(context, async (tx) => {
-      await tx.aiOperation.updateMany({ where: {
-        id, status: 'PROPOSED', ...ownedWhere(context),
-      }, data: { status: state, failureCode: code, confirmedByMemberId: context.memberId, confirmedAt: new Date() } });
+      await tx.aiOperation.updateMany({
+        where: {
+          id,
+          status: 'PROPOSED',
+          ...ownedWhere(context),
+        },
+        data: {
+          status: state,
+          failureCode: code,
+          confirmedByMemberId: context.memberId,
+          confirmedAt: new Date(),
+        },
+      });
       // A competing confirm/reject may have committed first: return its actual
       // terminal status rather than pretending our conditional update won.
-      const row = await tx.aiOperation.findFirst({ where: { id, ...ownedWhere(context) } });
+      const row = await tx.aiOperation.findFirst({
+        where: { id, ...ownedWhere(context) },
+      });
       return row ? toView(row) : null;
     });
   }

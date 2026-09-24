@@ -177,6 +177,9 @@ function setup() {
     createValidated: jest
       .fn()
       .mockResolvedValue({ proposalId: id, status: 'PROPOSED' }),
+    createValidatedInTransaction: jest
+      .fn()
+      .mockResolvedValue({ proposalId: id, status: 'PROPOSED' }),
     lockOwned: jest.fn(),
     markExecuted: jest.fn(),
     markFailureIfProposed: jest.fn().mockResolvedValue({
@@ -196,6 +199,27 @@ function setup() {
   );
   return { service, tx, store, records, operations, audit };
 }
+
+describe('atomic proposal and assistant completion', () => {
+  it('prevalidates and persists in one tenant transaction, without calling standalone create', async () => {
+    const { service, records, operations, store } = setup();
+    const finish = jest.fn().mockResolvedValue(undefined);
+    await service.completeWithProposal(
+      context,
+      id,
+      note,
+      'please note',
+      { status: 'COMPLETED', content: 'suggestion' },
+      finish,
+    );
+    expect(records.withTenantTransaction).toHaveBeenCalledTimes(1);
+    expect(operations.createValidatedInTransaction).toHaveBeenCalledTimes(1);
+    expect(operations.createValidated).not.toHaveBeenCalled();
+    expect(finish).toHaveBeenCalledTimes(1);
+    expect(store.applyRecordPatch).not.toHaveBeenCalled();
+    expect(store.createActivity).not.toHaveBeenCalled();
+  });
+});
 
 describe('safe preview at the transaction seam', () => {
   it('refuses hidden fields without disclosing their names or writing a business row', async () => {

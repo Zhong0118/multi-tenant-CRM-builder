@@ -82,6 +82,15 @@
           "id": {
             "type": "string"
           },
+          "proposal": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AiProposalResponseDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
           "role": {
             "type": "string"
           },

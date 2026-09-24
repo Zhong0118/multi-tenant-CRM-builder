@@ -4,7 +4,19 @@ const target = {
   objectCode: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/),
   recordId: z.uuid(),
 };
-const forbiddenFieldKeys = new Set(['tenantId', 'memberId', 'userId', 'role', 'ownerMemberId', 'runAsAdmin', 'runAsSystem', 'readScope', 'updateScope', 'includeHidden', 'bypassPermission']);
+const forbiddenFieldKeys = new Set([
+  'tenantId',
+  'memberId',
+  'userId',
+  'role',
+  'ownerMemberId',
+  'runAsAdmin',
+  'runAsSystem',
+  'readScope',
+  'updateScope',
+  'includeHidden',
+  'bypassPermission',
+]);
 const scalar = z.union([
   z.string().max(10_000),
   z.number().finite(),
@@ -12,7 +24,7 @@ const scalar = z.union([
   z.null(),
 ]);
 const fieldValue = z.union([scalar, z.array(scalar).max(100)]);
-const candidateSchema = z.discriminatedUnion('operationType', [
+export const candidateSchema = z.discriminatedUnion('operationType', [
   z.strictObject({
     operationType: z.literal('UPDATE_RECORD'),
     ...target,

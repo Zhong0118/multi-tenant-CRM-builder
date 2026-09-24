@@ -1,3 +1,18 @@
+export interface AiProposalView {
+  proposalId: string;
+  operation: "UPDATE_RECORD" | "CREATE_FOLLOW_UP" | "ADD_ACTIVITY_NOTE";
+  title: string;
+  targetSummary: string;
+  changes: Array<{ label: string; before?: string; after?: string }>;
+  validationWarnings: string[];
+  expiresAt: string;
+  status:
+    "PROPOSED" | "REJECTED" | "EXPIRED" | "CONFLICTED" | "FAILED" | "EXECUTED";
+  failureCode: string | null;
+  auditId: string | null;
+  result: unknown;
+}
+
 export type AiToolStatus = "RUNNING" | "COMPLETED" | "FAILED";
 
 export interface AiToolSummary {
@@ -42,6 +57,19 @@ export type AiPublicStreamEvent =
   | { event: "tool.failed"; data: AiToolSummary }
   | { event: "assistant.delta"; data: { text: string } }
   | { event: "sources.updated"; data: { sources: AiSourceSummary[] } }
+  | {
+      event: "proposal.ready";
+      data: { turnId: string; proposal: AiProposalView };
+    }
+  | {
+      event:
+        | "proposal.rejected"
+        | "proposal.expired"
+        | "proposal.conflicted"
+        | "proposal.executed"
+        | "proposal.failed";
+      data: { proposal: AiProposalView };
+    }
   | {
       event: "turn.completed";
       data: { turnId: string; messageId: string };
