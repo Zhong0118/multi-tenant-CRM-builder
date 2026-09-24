@@ -11,6 +11,8 @@ Implemented the V1B proposal transport/model/parser/reducer and initial recovera
 - `git diff --check` — passed.
 - GUI Playwright not run because no existing dev/web watcher was verified.
 
-## Blockers / follow-up
-- Proposal mutation callbacks are exposed by `AiProposalCard` but are not yet wired through the page-level mutation lifecycle; timeout GET-status recovery and full mutation UX require the next focused slice.
+## Continuation status
+- Wired page-level confirm/reject mutations through the message list and card, with pending-state double-submit protection and message query invalidation.
+- Confirm uses one idempotency key per attempt; uncertain failures reconcile via GET and never auto-repeat execution.
+- Terminal server statuses remain authoritative after refresh/history restoration.
 - No remote mutation was performed.
