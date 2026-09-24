@@ -342,6 +342,34 @@
   color: var(--text-tertiary);
 }
 
+.proposalCard {
+  margin: 14px 0 16px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 28%, var(--border-default));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg-surface) 92%, var(--color-primary-soft));
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--shell-ink) 5%, transparent);
+}
+
+.proposalHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.proposalHeader strong { color: var(--text-primary); }
+.proposalOperation { display: block; margin-top: 3px; color: var(--text-tertiary); font-size: 12px; }
+.proposalTarget { margin: 10px 0; color: var(--text-secondary); font-size: 13px; }
+.proposalChanges { margin: 0; padding: 0; }
+.proposalChanges > div { display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 8px; padding: 5px 0; }
+.proposalChanges dt { color: var(--text-tertiary); font-size: 12px; }
+.proposalChanges dd { margin: 0; color: var(--text-primary); font-size: 13px; overflow-wrap: anywhere; }
+.proposalActions { display: flex; gap: 8px; margin-top: 12px; }
+.proposalStatus, .proposalWarning, .proposalFailure, .proposalSuccess { margin: 10px 0 0; font-size: 13px; }
+.proposalWarning { color: var(--text-secondary); }
+.proposalFailure { color: var(--color-danger, #b42318); }
+.proposalSuccess { color: var(--text-secondary); }
+.proposalSuccess p { margin: 0 0 5px; }
+.proposalSuccess a { color: var(--color-primary); font-weight: 600; }
+
+.proposalActions button:focus-visible,
+.proposalCard a:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
 .composerDock {
   flex: 0 0 auto;
   padding: 4px 20px calc(16px + env(safe-area-inset-bottom, 0px));

@@ -12,10 +12,9 @@ Implemented the V1B proposal transport/model/parser/reducer and initial recovera
 - GUI Playwright not run because no existing dev/web watcher was verified.
 
 ## Continuation status
-- Wired page-level confirm/reject mutations through the message list and card, with pending-state double-submit protection and message query invalidation.
-- Confirm uses one idempotency key per attempt; uncertain failures reconcile via GET and never auto-repeat execution.
-- Terminal server statuses remain authoritative after refresh/history restoration.
-- Strict shared proposal validation now covers persisted history and SSE: finite expiry, bounded display strings, allowlisted nested change/result keys, and safe result fields only.
-- Reject uncertain responses reconcile with GET status without blind retry.
-- Proposal card RED/GREEN tests cover safe diff, terminal status, pending disable, and expired non-actionable state.
-- Web production build, typecheck, and focused tests pass. No remote mutation was performed.
+- Replaced the generic card with an operation-aware, accessible proposal card: UPDATE before/after; FOLLOW_UP title, due time, linked record and current actor; NOTE content/type; explicit pending and terminal labels.
+- Expiry is timer-driven from `expiresAt`, re-renders to an expired state and removes actions; action buttons are disabled while page mutation is pending.
+- Executed results link only from validated `tenantCode`, `objectCode`, `recordId`, and `followUpId`; arbitrary server `href` is ignored.
+- Added status-specific permission, conflict, validation, and failure copy plus audit/result presentation.
+- Existing page mutations retain GET reconciliation on uncertain confirm/reject responses and shared pending state prevents duplicate clicks; persisted proposal projections restore through message history.
+- Focused proposal-card tests and web typecheck pass. The page-level timeout/history tests and production build were not run in this continuation; no remote mutation was performed.
