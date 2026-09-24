@@ -15,4 +15,7 @@ Implemented the V1B proposal transport/model/parser/reducer and initial recovera
 - Wired page-level confirm/reject mutations through the message list and card, with pending-state double-submit protection and message query invalidation.
 - Confirm uses one idempotency key per attempt; uncertain failures reconcile via GET and never auto-repeat execution.
 - Terminal server statuses remain authoritative after refresh/history restoration.
-- No remote mutation was performed.
+- Strict shared proposal validation now covers persisted history and SSE: finite expiry, bounded display strings, allowlisted nested change/result keys, and safe result fields only.
+- Reject uncertain responses reconcile with GET status without blind retry.
+- Proposal card RED/GREEN tests cover safe diff, terminal status, pending disable, and expired non-actionable state.
+- Web production build, typecheck, and focused tests pass. No remote mutation was performed.
