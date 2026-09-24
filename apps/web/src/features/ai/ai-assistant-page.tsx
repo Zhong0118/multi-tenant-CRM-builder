@@ -237,7 +237,15 @@ export function AiAssistantPage({
     },
   });
   const rejectProposal = useMutation({
-    mutationFn: (proposalId: string) => aiApi.rejectProposal(tenantCode, proposalId),
+    mutationFn: async (proposalId: string) => {
+      try {
+        return await aiApi.rejectProposal(tenantCode, proposalId);
+      } catch (error) {
+        const current = await aiApi.getProposal(tenantCode, proposalId);
+        if (current.status === "PROPOSED") throw error;
+        return current;
+      }
+    },
     onSuccess: () => {
       if (conversationId) void client.invalidateQueries({ queryKey: aiQueryKeys.messages(tenantCode, conversationId) });
     },

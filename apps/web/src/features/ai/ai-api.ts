@@ -5,7 +5,7 @@ import { toApiError } from "@/lib/api/api-error";
 import { browserApiClient } from "@/lib/api/browser-client";
 import { dataOrThrow } from "@/features/objects/object-api";
 
-import { AiStreamError, AiStreamParser } from "./ai-stream-parser";
+import { AiStreamError, AiStreamParser, parseProposal } from "./ai-stream-parser";
 import type {
   AiConversation,
   AiConversationPage,
@@ -140,7 +140,7 @@ function presentMessage(item: {
     ...item,
     toolSummary: item.toolSummary.filter(isToolSummary),
     sourceSummary: item.sourceSummary.filter(isSourceSummary),
-    proposal: item.proposal ?? null,
+    proposal: item.proposal ? parseProposal(item.proposal) : null,
   };
 }
 
