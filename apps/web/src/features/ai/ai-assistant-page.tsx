@@ -220,6 +220,28 @@ export function AiAssistantPage({
     onSuccess: () =>
       client.invalidateQueries({ queryKey: aiQueryKeys.conversations(tenantCode) }),
   });
+  const confirmProposal = useMutation({
+    mutationFn: async (proposalId: string) => {
+      const key = crypto.randomUUID();
+      try {
+        return await aiApi.confirmProposal(tenantCode, proposalId, key);
+      } catch (error) {
+        // A lost response is uncertain: reconcile first and never auto-repeat execution.
+        const current = await aiApi.getProposal(tenantCode, proposalId);
+        if (current.status === "PROPOSED") throw error;
+        return current;
+      }
+    },
+    onSuccess: () => {
+      if (conversationId) void client.invalidateQueries({ queryKey: aiQueryKeys.messages(tenantCode, conversationId) });
+    },
+  });
+  const rejectProposal = useMutation({
+    mutationFn: (proposalId: string) => aiApi.rejectProposal(tenantCode, proposalId),
+    onSuccess: () => {
+      if (conversationId) void client.invalidateQueries({ queryKey: aiQueryKeys.messages(tenantCode, conversationId) });
+    },
+  });
   const remove = useMutation({
     mutationFn: (id: string) => aiApi.remove(tenantCode, id),
     onSuccess: (_void, id) => {
@@ -308,6 +330,9 @@ export function AiAssistantPage({
                   ? undefined
                   : retry
               }
+              onConfirmProposal={(id) => confirmProposal.mutate(id)}
+              onRejectProposal={(id) => rejectProposal.mutate(id)}
+              proposalBusy={confirmProposal.isPending || rejectProposal.isPending}
             />
           )}
           {state.errorMessage && !live ? (
