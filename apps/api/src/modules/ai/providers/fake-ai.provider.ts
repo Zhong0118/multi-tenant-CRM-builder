@@ -8,7 +8,7 @@ import type {
 export const CRITICAL_SEARCH_OWN_LEADS_MARKER = 'critical:search-own-leads';
 export const CRITICAL_SEARCH_OBJECT_CODE = 'leads';
 const PROPOSE_MARKER =
-  /critical:propose-change:(UPDATE_RECORD|CREATE_FOLLOW_UP|ADD_ACTIVITY_NOTE):([0-9a-f-]{36})/;
+  /critical:propose-change:(UPDATE_RECORD|CREATE_FOLLOW_UP|ADD_ACTIVITY_NOTE):([0-9a-f-]{36})(?::(HIDDEN|READ_ONLY))?/;
 
 let capturedToolResult: unknown;
 
@@ -32,7 +32,8 @@ export class FakeAiProvider implements AiProvider {
     tools: AiProviderTool[];
     abortSignal: AbortSignal;
   }): AsyncIterable<AiProviderEvent> {
-    const prompt = input.messages.map((message) => message.content).join('\n');
+    const last = input.messages.at(-1);
+    const prompt = last?.role === 'user' ? last.content : '';
     if (prompt.includes(CRITICAL_SEARCH_OWN_LEADS_MARKER)) {
       yield* this.searchOwnLeads(input);
       return;
@@ -43,7 +44,7 @@ export class FakeAiProvider implements AiProvider {
     }
     const proposal = prompt.match(PROPOSE_MARKER);
     if (proposal) {
-      const [, operationType, recordId] = proposal;
+      const [, operationType, recordId, fieldAccess] = proposal;
       const callId = 'fake-propose-change';
       const tool = input.tools.find((entry) => entry.name === 'propose_change');
       if (!tool || input.abortSignal.aborted) return;
@@ -53,7 +54,13 @@ export class FakeAiProvider implements AiProvider {
               operationType,
               objectCode: 'leads',
               recordId,
-              values: { name: 'HTTP confirmed' },
+              values: {
+                [fieldAccess === 'HIDDEN'
+                  ? 'secret'
+                  : fieldAccess === 'READ_ONLY'
+                    ? 'ownerMemberId'
+                    : 'name']: 'HTTP confirmed',
+              },
             }
           : operationType === 'CREATE_FOLLOW_UP'
             ? {
@@ -61,7 +68,7 @@ export class FakeAiProvider implements AiProvider {
                 objectCode: 'leads',
                 recordId,
                 title: 'HTTP follow-up',
-                dueAt: '2026-10-01T12:00:00Z',
+                dueAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
               }
             : {
                 operationType,

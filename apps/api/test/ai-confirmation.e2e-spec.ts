@@ -216,6 +216,13 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
       expect(audit).toMatchObject({
         after: expect.objectContaining({ aiOperationId: view.proposalId }),
       });
+      expect(audit?.action).toBe(
+        {
+          UPDATE_RECORD: 'record.updated',
+          CREATE_FOLLOW_UP: 'follow_up.created',
+          ADD_ACTIVITY_NOTE: 'record.activity_created',
+        }[type],
+      );
       if (type === 'UPDATE_RECORD') {
         expect(
           await harness.adminDatabase.record.findUniqueOrThrow({
@@ -226,17 +233,124 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
           data: expect.objectContaining({ name: 'HTTP confirmed' }),
         });
       } else if (type === 'CREATE_FOLLOW_UP') {
-        expect(await harness.adminDatabase.recordFollowUp.count()).toBe(
-          before[1] + 1,
-        );
+        expect(await harness.adminDatabase.recordFollowUp.findMany()).toEqual([
+          expect.objectContaining({
+            tenantId: fixture.tenantA.id,
+            recordId: fixture.ownedRecord.id,
+            assigneeMemberId: fixture.employee.memberId,
+            title: 'HTTP follow-up',
+          }),
+        ]);
       } else {
-        expect(await harness.adminDatabase.recordActivity.count()).toBe(
-          before[2] + 1,
-        );
+        expect(await harness.adminDatabase.recordActivity.findMany()).toEqual([
+          expect.objectContaining({
+            tenantId: fixture.tenantA.id,
+            recordId: fixture.ownedRecord.id,
+            actorMemberId: fixture.employee.memberId,
+            activityType: 'NOTE',
+            content: 'HTTP note',
+          }),
+        ]);
       }
       expect(await harness.adminDatabase.auditLog.count()).toBe(before[3] + 1);
     },
   );
+
+  it('does not replay an earlier proposal on a later ordinary HTTP turn in the same conversation', async () => {
+    const base = `/api/v1/workspaces/${fixture.tenantA.code}/ai`;
+    const first = await request(harness.app.getHttpServer())
+      .post(`${base}/turns`)
+      .set('Cookie', fixture.employee.cookie)
+      .set('Origin', 'http://localhost:3000')
+      .set('Accept', 'text/event-stream')
+      .send({
+        content: `critical:propose-change:ADD_ACTIVITY_NOTE:${fixture.ownedRecord.id}`,
+      })
+      .expect(200);
+    const conversationId = JSON.parse(
+      first.text.match(/event: conversation.ready\ndata: ([^\n]+)/)![1],
+    ).conversationId as string;
+    expect(first.text).toContain('event: proposal.ready');
+    const second = await request(harness.app.getHttpServer())
+      .post(`${base}/turns`)
+      .set('Cookie', fixture.employee.cookie)
+      .set('Origin', 'http://localhost:3000')
+      .set('Accept', 'text/event-stream')
+      .send({ conversationId, content: '谢谢，请解释一下建议。' })
+      .expect(200);
+    expect(second.text).toContain('event: turn.completed');
+    expect(second.text).not.toContain('event: proposal.ready');
+    expect(await harness.adminDatabase.aiOperation.count()).toBe(1);
+    expect(await harness.adminDatabase.recordActivity.count()).toBe(0);
+    expect(await harness.adminDatabase.auditLog.count()).toBe(0);
+  });
+
+  it('rejects an HTTP proposal without writing any business data', async () => {
+    const view = await proposal('ADD_ACTIVITY_NOTE');
+    const base = `/api/v1/workspaces/${fixture.tenantA.code}/ai/proposals/${view.proposalId}`;
+    const before = await Promise.all([
+      harness.adminDatabase.record.findUniqueOrThrow({
+        where: { id: fixture.ownedRecord.id },
+      }),
+      harness.adminDatabase.recordActivity.count(),
+      harness.adminDatabase.auditLog.count(),
+    ]);
+    const rejected = await request(harness.app.getHttpServer())
+      .post(`${base}/reject`)
+      .set('Cookie', fixture.employee.cookie)
+      .set('Origin', 'http://localhost:3000')
+      .expect(200);
+    expect(rejected.body).toMatchObject({ status: 'REJECTED', auditId: null });
+    await request(harness.app.getHttpServer())
+      .post(`${base}/confirm`)
+      .set('Cookie', fixture.employee.cookie)
+      .set('Origin', 'http://localhost:3000')
+      .send({ idempotencyKey: randomUUID() })
+      .expect(200)
+      .expect(({ body }) => expect(body.status).toBe('REJECTED'));
+    expect(
+      await Promise.all([
+        harness.adminDatabase.record.findUniqueOrThrow({
+          where: { id: fixture.ownedRecord.id },
+        }),
+        harness.adminDatabase.recordActivity.count(),
+        harness.adminDatabase.auditLog.count(),
+      ]),
+    ).toEqual(before);
+  });
+
+  it('denies hidden fields, read-only fields, and another owner through HTTP turn before proposal creation', async () => {
+    const base = `/api/v1/workspaces/${fixture.tenantA.code}/ai`;
+    // This fixture's published `name` is EDIT and `secret` is HIDDEN;
+    // a system field such as `ownerMemberId` is READ_ONLY without mutating an immutable publication.
+    const cases = [
+      `critical:propose-change:UPDATE_RECORD:${fixture.ownedRecord.id}:HIDDEN`,
+      `critical:propose-change:UPDATE_RECORD:${fixture.ownedRecord.id}:READ_ONLY`,
+      `critical:propose-change:UPDATE_RECORD:${fixture.otherRecord.id}`,
+    ];
+    for (const content of cases) {
+      const turn = await request(harness.app.getHttpServer())
+        .post(`${base}/turns`)
+        .set('Cookie', fixture.employee.cookie)
+        .set('Origin', 'http://localhost:3000')
+        .set('Accept', 'text/event-stream')
+        .send({ content })
+        .expect(200);
+      expect(turn.text).toMatch(/event: turn\.(failed|completed)/);
+      expect(turn.text).not.toContain('event: proposal.ready');
+      expect(turn.text).not.toContain('hidden-owned');
+      expect(turn.text).not.toContain('hidden-other');
+      expect(turn.text).not.toContain('内部备注');
+      expect(turn.text).not.toContain('"secret"');
+    }
+    expect(await harness.adminDatabase.aiOperation.count()).toBe(0);
+    expect(await harness.adminDatabase.auditLog.count()).toBe(0);
+    expect(
+      await harness.adminDatabase.record.findUniqueOrThrow({
+        where: { id: fixture.ownedRecord.id },
+      }),
+    ).toMatchObject({ version: fixture.ownedRecord.version });
+  });
 
   it('does not publish a provider raw failure code or secrets in the HTTP SSE', async () => {
     const response = await request(harness.app.getHttpServer())
