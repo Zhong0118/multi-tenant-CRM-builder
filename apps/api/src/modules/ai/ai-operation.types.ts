@@ -1,8 +1,12 @@
 import type { Prisma } from '@crm/database';
 
-export type AiOperationRow = Prisma.AiOperationGetPayload<Record<string, never>>;
-export type AiOperationKind = 'UPDATE_RECORD' | 'CREATE_FOLLOW_UP' | 'ADD_ACTIVITY_NOTE';
-export type AiOperationState = 'PROPOSED' | 'REJECTED' | 'EXPIRED' | 'CONFLICTED' | 'FAILED' | 'EXECUTED';
+export type AiOperationRow = Prisma.AiOperationGetPayload<
+  Record<string, never>
+>;
+export type AiOperationKind =
+  'UPDATE_RECORD' | 'CREATE_FOLLOW_UP' | 'ADD_ACTIVITY_NOTE';
+export type AiOperationState =
+  'PROPOSED' | 'REJECTED' | 'EXPIRED' | 'CONFLICTED' | 'FAILED' | 'EXECUTED';
 
 // Only the server's strict proposal validator may construct this input. It
 // contains no actor selectors; the repository derives ownership from context.
@@ -21,6 +25,12 @@ export interface AiProposalDisplay {
   targetSummary: string;
   changes: Array<{ label: string; before?: string; after?: string }>;
   validationWarnings: string[];
+}
+
+// Persisted authorization metadata is never part of the public proposal contract.
+export interface StoredAiProposalDisplay extends AiProposalDisplay {
+  titleFieldKey?: string;
+  changes: Array<AiProposalDisplay['changes'][number] & { fieldKey?: string }>;
 }
 
 export interface AiProposalView extends AiProposalDisplay {

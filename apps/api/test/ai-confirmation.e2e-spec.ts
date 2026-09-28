@@ -545,6 +545,70 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
     ).toMatchObject({ status: 'PROPOSED', auditId: null });
   });
 
+  it('redacts a saved proposal and conversation history when record read access is revoked', async () => {
+    const view = await proposal('UPDATE_RECORD');
+    const operation = await harness.adminDatabase.aiOperation.findUniqueOrThrow(
+      {
+        where: { id: view.proposalId },
+      },
+    );
+    await harness.adminDatabase.aiMessage.create({
+      data: {
+        tenantId: context.tenantId,
+        conversationId: operation.conversationId,
+        turnId: operation.turnId,
+        role: 'ASSISTANT',
+        status: 'COMPLETED',
+        content: '已生成建议',
+      },
+    });
+    await harness.adminDatabase.objectPermission.create({
+      data: {
+        tenantId: context.tenantId,
+        objectId: fixture.object.id,
+        subjectType: 'MEMBER',
+        subjectMemberId: context.memberId,
+        canRead: false,
+        canUpdate: false,
+        readScope: 'NONE',
+        updateScope: 'NONE',
+      },
+    });
+    const stored = await harness.adminDatabase.aiOperation.findUniqueOrThrow({
+      where: { id: view.proposalId },
+    });
+    expect(JSON.stringify(stored.displayChangesJson)).toContain(
+      '员工自己的线索',
+    );
+    expect(stored.displayChangesJson).toMatchObject({ titleFieldKey: 'name' });
+    const route = `/api/v1/workspaces/${fixture.tenantA.code}/ai`;
+    const get = await request(harness.app.getHttpServer())
+      .get(`${route}/proposals/${view.proposalId}`)
+      .set('Cookie', fixture.employee.cookie)
+      .expect(200);
+    expect(get.body).toMatchObject({
+      status: 'PROPOSED',
+      targetSummary: '',
+      changes: [],
+      result: null,
+    });
+    const history = await request(harness.app.getHttpServer())
+      .get(`${route}/conversations/${operation.conversationId}/messages`)
+      .set('Cookie', fixture.employee.cookie)
+      .expect(200);
+    const assistant = history.body.items.find(
+      (item: { role: string }) => item.role === 'ASSISTANT',
+    );
+    expect(assistant?.proposal).toMatchObject({
+      targetSummary: '',
+      changes: [],
+      result: null,
+    });
+    expect(
+      JSON.stringify(get.body) + JSON.stringify(assistant?.proposal),
+    ).not.toContain('员工自己的线索');
+  });
+
   it('rechecks permission, record version, and expiry at HTTP confirm', async () => {
     const permission = await proposal('UPDATE_RECORD');
     await harness.adminDatabase.objectPermission.create({

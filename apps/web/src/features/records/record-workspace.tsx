@@ -24,6 +24,7 @@ export interface RecordWorkspaceProps {
   isAdmin: boolean;
   openRecord?: RecordSummary;
   initialEditing?: boolean;
+  followUpId?: string;
 }
 
 /**
@@ -32,7 +33,7 @@ export interface RecordWorkspaceProps {
  * page the member arrived with.
  */
 export function RecordWorkspace(props: RecordWorkspaceProps) {
-  const key = `${props.tenantCode}:${props.schema.object.code}:${props.openRecord?.id ?? "list"}:${props.openRecord?.version ?? ""}:${props.initialEditing ? "edit" : "view"}`;
+  const key = `${props.tenantCode}:${props.schema.object.code}:${props.openRecord?.id ?? "list"}:${props.openRecord?.version ?? ""}:${props.initialEditing ? "edit" : "view"}:${props.followUpId ?? ""}`;
   return <RecordWorkspaceSession key={key} {...props} />;
 }
 
@@ -46,6 +47,7 @@ function RecordWorkspaceSession({
   isAdmin,
   openRecord,
   initialEditing = false,
+  followUpId,
 }: RecordWorkspaceProps) {
   const router = useRouter();
   const [record, setRecord] = useState(openRecord);
@@ -71,6 +73,7 @@ function RecordWorkspaceSession({
           canChooseOwner={isAdmin}
           canDelete={isAdmin && schema.actions.canDelete}
           initialEditing={initialEditing}
+          followUpId={followUpId}
           onClose={() => {
             setRecord(undefined);
             const search = recordQuerySearch(query);

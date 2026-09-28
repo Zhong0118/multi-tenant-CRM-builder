@@ -30,6 +30,7 @@ export interface RecordDetailDrawerProps {
   canChooseOwner?: boolean;
   canDelete?: boolean;
   initialEditing?: boolean;
+  followUpId?: string;
   api?: RecordApi;
   onClose: () => void;
   onChanged: (record: RecordSummary | null) => void;
@@ -49,6 +50,7 @@ export function RecordDetailDrawer({
   canChooseOwner = false,
   canDelete = false,
   initialEditing = false,
+  followUpId,
   api = defaultRecordApi,
   onClose,
   onChanged,
@@ -161,6 +163,7 @@ export function RecordDetailDrawer({
 
           <FollowUpPanel
             tenantCode={tenantCode}
+            followUpId={followUpId}
             record={{
               id: record.id,
               objectCode: schema.object.code,

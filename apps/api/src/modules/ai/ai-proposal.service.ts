@@ -23,7 +23,10 @@ import {
 import type { RecordsRepository } from '../records/records.repository';
 import { RECORDS_REPOSITORY } from '../records/records.service';
 import { AiOperationRepository } from './ai-operation.repository';
-import type { AiProposalDisplay, AiProposalView } from './ai-operation.types';
+import type {
+  AiProposalView,
+  StoredAiProposalDisplay,
+} from './ai-operation.types';
 import type { AssistantFinalizeOutcome } from './ai.types';
 import {
   validateProposalCandidate,
@@ -65,19 +68,31 @@ async function lockActor(tx: Tx, context: TenantContext): Promise<void> {
 }
 function safeText(value: unknown): string {
   if (value === undefined || value === null) return '';
-  if (typeof value === 'string') return value.slice(0, 200);
+  if (typeof value === 'string') return value;
   if (typeof value === 'number' || typeof value === 'boolean')
     return String(value);
-  return Array.isArray(value)
-    ? value.slice(0, 20).map(safeText).join(', ').slice(0, 200)
-    : '';
+  return Array.isArray(value) ? value.map(safeText).join(', ') : '';
 }
-function safeValidation(error: unknown): never {
-  // Never propagate fieldErrors/fieldKey, provider content, or raw database errors.
-  if (
-    error instanceof RecordValueError ||
-    (error instanceof ApiException && error.getStatus() < 500)
-  )
+function safeValidation(error: unknown, resolved: ResolvedObjectSchema): never {
+  // Only a current, published, visible field can be identified to the actor.
+  if (error instanceof RecordValueError) {
+    const key = error.fieldKey;
+    const visible =
+      key &&
+      resolved.schema.fields.some((field) => field.fieldKey === key) &&
+      Object.hasOwn(resolved.access.fields, key) &&
+      resolved.access.fields[key] !== 'HIDDEN';
+    const safeCode = [
+      'FIELD_REQUIRED',
+      'FIELD_INVALID',
+      'FIELD_OPTION_INACTIVE',
+      'FIELD_READ_ONLY',
+    ].includes(error.code);
+    throw new ApiException('VALIDATION_FAILED', 400, {
+      fieldErrors: visible && safeCode && key ? { [key]: [error.message] } : {},
+    });
+  }
+  if (error instanceof ApiException && error.getStatus() < 500)
     throw new ApiException('VALIDATION_FAILED', 400);
   throw new ApiException('INTERNAL_ERROR', 500);
 }
@@ -215,7 +230,7 @@ export class AiProposalService {
       (ownerFor(resolved, context) && record.ownerMemberId !== context.memberId)
     )
       throw new ApiException('RECORD_NOT_FOUND', 404);
-    const display: AiProposalDisplay = {
+    const display: StoredAiProposalDisplay = {
       title:
         candidate.operationType === 'UPDATE_RECORD'
           ? '修改记录'
@@ -223,6 +238,7 @@ export class AiProposalService {
             ? '创建跟进'
             : '添加备注',
       targetSummary: safeText(record.title),
+      titleFieldKey: resolved.schema.object.titleFieldKey,
       changes: [],
       validationWarnings: [],
     };
@@ -237,6 +253,7 @@ export class AiProposalService {
           memberExists: (memberId) => store.memberExists(memberId),
         });
         display.changes = Object.entries(candidate.values).map(([key]) => ({
+          fieldKey: key,
           label: safeText(
             resolved.schema.fields.find((field) => field.fieldKey === key)
               ?.label,
@@ -262,7 +279,7 @@ export class AiProposalService {
         ];
       }
     } catch (error) {
-      safeValidation(error);
+      safeValidation(error, resolved);
     }
     return { resolved, record, display };
   }
@@ -320,17 +337,7 @@ export class AiProposalService {
       },
     });
     if (!row) throw new ApiException('AI_TURN_NOT_FOUND', 404);
-    const display = row.displayChangesJson as unknown as AiProposalDisplay;
-    return {
-      ...display,
-      proposalId: id,
-      operation: row.operationType,
-      status: row.status,
-      expiresAt: row.expiresAt.toISOString(),
-      failureCode: row.failureCode,
-      auditId: row.auditId,
-      result: row.resultJson,
-    };
+    return this.operations.projectInTransaction(tx, context, row);
   }
 
   async confirm(
@@ -470,7 +477,6 @@ export class AiProposalService {
           return {
             ...(await this.getAfterReject(tx, context, proposalId)),
             status: 'EXECUTED',
-            result: result as Prisma.JsonObject,
             auditId,
           };
         },

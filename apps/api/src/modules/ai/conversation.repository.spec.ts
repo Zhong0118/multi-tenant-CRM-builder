@@ -4,6 +4,11 @@ import { ApiException } from '../../common/errors/api.exception';
 import { ConversationRepository } from './conversation.repository';
 import { AiOperationRepository } from './ai-operation.repository';
 import { ConversationService } from './conversation.service';
+import { resolvePublishedObjectInTransaction } from '../objects/published-object-transaction';
+
+jest.mock('../objects/published-object-transaction', () => ({
+  resolvePublishedObjectInTransaction: jest.fn(),
+}));
 
 const context: TenantContext = {
   tenantId: '0198ad18-a74d-7b69-b81a-49a74f9a3e0d',
@@ -791,6 +796,60 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     await expect(
       fixture.service.messages(context, begun.conversationId, {}),
     ).rejects.toMatchObject({ code: 'AI_CONVERSATION_NOT_FOUND' });
+  });
+
+  it('redacts revoked target summaries and changes when restoring historical chat proposals', async () => {
+    const fixture = harness();
+    const begun = await fixture.repository.beginTurn(context, {
+      content: 'restore',
+    });
+    await fixture.repository.finalizeAssistant(context, begun.turnId, {
+      status: 'COMPLETED',
+      content: 'response',
+    });
+    fixture.operations.push({
+      id: 'operation',
+      tenantId: context.tenantId,
+      conversationId: begun.conversationId,
+      turnId: begun.turnId,
+      requestedByMemberId: context.memberId,
+      status: 'EXECUTED',
+      operationType: 'ADD_ACTIVITY_NOTE',
+      targetRefJson: { objectCode: 'demo', recordId: 'record' },
+      displayChangesJson: {
+        title: 'Note',
+        targetSummary: 'revoked-title',
+        changes: [
+          { label: 'NOTE', after: 'revoked-note', fieldKey: 'private-key' },
+        ],
+        validationWarnings: [],
+      },
+      expiresAt: new Date(Date.now() + 60_000),
+      failureCode: null,
+      auditId: 'audit-id',
+      resultJson: null,
+    } as never);
+    jest.mocked(resolvePublishedObjectInTransaction).mockResolvedValue({
+      schema: { object: { titleFieldKey: 'name' } },
+      access: { canRead: false, readScope: 'NONE', fields: {} },
+    } as never);
+    fixture.withTenant.mockClear();
+    const page = await fixture.service.messages(
+      context,
+      begun.conversationId,
+      {},
+    );
+    expect(fixture.withTenant).toHaveBeenCalledTimes(1);
+    expect(
+      page.items.find((item) => item.role === 'ASSISTANT')?.proposal,
+    ).toMatchObject({
+      proposalId: 'operation',
+      status: 'EXECUTED',
+      auditId: 'audit-id',
+      targetSummary: '',
+      changes: [],
+    });
+    expect(JSON.stringify(page)).not.toMatch(/revoked|fieldKey|private-key/);
   });
 
   it('restores an expired proposal as non-actionable EXPIRED', async () => {

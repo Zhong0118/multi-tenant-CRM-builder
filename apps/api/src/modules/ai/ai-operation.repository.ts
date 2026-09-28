@@ -4,9 +4,14 @@ import type { Prisma } from '@crm/database';
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
+import {
+  isReadable,
+  type ResolvedObjectSchema,
+} from '../objects/published-object.service';
+import { resolvePublishedObjectInTransaction } from '../objects/published-object-transaction';
 import type {
   AiOperationRow,
-  AiProposalDisplay,
+  StoredAiProposalDisplay,
   AiProposalView,
   LockedAiOperation,
   ValidatedAiOperation,
@@ -31,21 +36,49 @@ function ownedWhere(context: TenantContext) {
   };
 }
 
-function toView(row: AiOperationRow): AiProposalView {
-  // Only the server-validated, sanitized display is projected. In particular,
-  // proposalJson and requestText never leave the repository read methods.
-  const display = row.displayChangesJson as unknown as AiProposalDisplay;
+function toView(
+  row: AiOperationRow,
+  resolved: ResolvedObjectSchema | null,
+  recordReadable: boolean,
+  followUpReadable = true,
+): AiProposalView {
+  const display = row.displayChangesJson as unknown as StoredAiProposalDisplay;
+  const titleReadable =
+    recordReadable &&
+    typeof display.titleFieldKey === 'string' &&
+    resolved?.schema.fields.some(
+      (field) => field.fieldKey === display.titleFieldKey,
+    ) &&
+    (resolved.access.fields[display.titleFieldKey] ?? 'HIDDEN') !== 'HIDDEN';
+  const changes = recordReadable
+    ? display.changes
+        .filter(
+          (change) =>
+            row.operationType !== 'UPDATE_RECORD' ||
+            (typeof change.fieldKey === 'string' &&
+              resolved?.schema.fields.some(
+                (field) => field.fieldKey === change.fieldKey,
+              ) &&
+              (resolved.access.fields[change.fieldKey] ?? 'HIDDEN') !==
+                'HIDDEN'),
+        )
+        .map((change) => ({
+          label: change.label,
+          ...(change.before === undefined ? {} : { before: change.before }),
+          ...(change.after === undefined ? {} : { after: change.after }),
+        }))
+    : [];
   return {
     proposalId: row.id,
     operation: row.operationType,
     title: display.title,
-    targetSummary: display.targetSummary,
-    changes: display.changes,
+    targetSummary: titleReadable ? display.targetSummary : '',
+    changes,
     validationWarnings: display.validationWarnings ?? [],
     expiresAt: row.expiresAt.toISOString(),
     status: row.status,
     failureCode: row.failureCode,
-    result: row.resultJson,
+    result: recordReadable && followUpReadable ? row.resultJson : null,
     auditId: row.auditId,
   };
 }
@@ -54,11 +87,131 @@ function toView(row: AiOperationRow): AiProposalView {
 export class AiOperationRepository {
   constructor(private readonly runner: DatabaseContextRunner) {}
 
+  async projectInTransaction(
+    tx: Tx,
+    context: TenantContext,
+    row: AiOperationRow,
+  ): Promise<AiProposalView> {
+    return (await this.projectRowsInTransaction(tx, context, [row]))[0]!;
+  }
+
+  private async projectRowsInTransaction(
+    tx: Tx,
+    context: TenantContext,
+    rows: AiOperationRow[],
+  ): Promise<AiProposalView[]> {
+    const targets = rows.map(
+      (row) =>
+        (row.targetRefJson ?? {}) as {
+          objectCode?: string;
+          recordId?: string;
+        },
+    );
+    const visibility = new Map<
+      string,
+      {
+        resolved: ResolvedObjectSchema;
+        recordIds: Set<string>;
+      }
+    >();
+    for (const objectCode of new Set(
+      targets.map((target) => target.objectCode),
+    )) {
+      if (typeof objectCode !== 'string') continue;
+      let resolved: ResolvedObjectSchema;
+      try {
+        resolved = await resolvePublishedObjectInTransaction(
+          tx,
+          context,
+          objectCode,
+        );
+      } catch (error) {
+        // Revoked/unpublished objects redact history, but infrastructure failures
+        // must not be mistaken for an authorization decision.
+        if (
+          error instanceof ApiException &&
+          [403, 404].includes(error.getStatus())
+        )
+          continue;
+        throw error;
+      }
+      if (!isReadable(resolved.schema, resolved.access)) continue;
+      const ids = targets
+        .filter((target) => target.objectCode === objectCode)
+        .map((target) => target.recordId)
+        .filter((id): id is string => typeof id === 'string');
+      const records = await tx.record.findMany({
+        where: {
+          tenantId: context.tenantId,
+          objectId: resolved.schema.object.id,
+          id: { in: [...new Set(ids)] },
+          deletedAt: null,
+          ...(resolved.access.readScope === 'OWN'
+            ? { ownerMemberId: context.memberId }
+            : {}),
+        },
+        select: { id: true },
+      });
+      visibility.set(objectCode, {
+        resolved,
+        recordIds: new Set(records.map((record) => record.id)),
+      });
+    }
+    const followUpIds = rows.flatMap((row) => {
+      if (row.operationType !== 'CREATE_FOLLOW_UP' || row.status !== 'EXECUTED')
+        return [];
+      const result = row.resultJson;
+      if (!result || typeof result !== 'object' || Array.isArray(result))
+        return [];
+      const followUpId = (result as { followUpId?: unknown }).followUpId;
+      return typeof followUpId === 'string' ? [followUpId] : [];
+    });
+    const accessibleFollowUps = followUpIds.length
+      ? new Set(
+          (
+            await tx.recordFollowUp.findMany({
+              where: {
+                tenantId: context.tenantId,
+                id: { in: [...new Set(followUpIds)] },
+                ...(context.role === 'TENANT_ADMIN'
+                  ? {}
+                  : { assigneeMemberId: context.memberId }),
+              },
+              select: { id: true },
+            })
+          ).map((item) => item.id),
+        )
+      : new Set<string>();
+    return rows.map((row, index) => {
+      const target = targets[index]!;
+      const visible = target.objectCode
+        ? visibility.get(target.objectCode)
+        : undefined;
+      return toView(
+        row,
+        visible?.resolved ?? null,
+        !!visible &&
+          typeof target.recordId === 'string' &&
+          visible.recordIds.has(target.recordId),
+        row.operationType !== 'CREATE_FOLLOW_UP' ||
+          row.status !== 'EXECUTED' ||
+          (!!row.resultJson &&
+            typeof row.resultJson === 'object' &&
+            !Array.isArray(row.resultJson) &&
+            typeof (row.resultJson as { followUpId?: unknown }).followUpId ===
+              'string' &&
+            accessibleFollowUps.has(
+              (row.resultJson as { followUpId: string }).followUpId,
+            )),
+      );
+    });
+  }
+
   createValidated(
     context: TenantContext,
     turnId: string,
     candidate: ValidatedAiOperation,
-    display: AiProposalDisplay,
+    display: StoredAiProposalDisplay,
   ): Promise<AiProposalView> {
     return this.runner.withTenant(context, (tx) =>
       this.createValidatedInTransaction(
@@ -76,7 +229,7 @@ export class AiOperationRepository {
     context: TenantContext,
     turnId: string,
     candidate: ValidatedAiOperation,
-    display: AiProposalDisplay,
+    display: StoredAiProposalDisplay,
   ): Promise<AiProposalView> {
     const conversation = await tx.aiConversation.findFirst({
       where: {
@@ -120,7 +273,7 @@ export class AiOperationRepository {
         expiresAt,
       },
     });
-    return toView(row);
+    return await this.projectInTransaction(tx, context, row);
   }
 
   getOwned(context: TenantContext, id: string): Promise<AiProposalView | null> {
@@ -128,7 +281,7 @@ export class AiOperationRepository {
       const row = await tx.aiOperation.findFirst({
         where: { id, ...ownedWhere(context) },
       });
-      return row ? toView(row) : null;
+      return row ? await this.projectInTransaction(tx, context, row) : null;
     });
   }
 
@@ -164,13 +317,18 @@ export class AiOperationRepository {
         turnId: { in: turnIds },
       },
     });
-    return rows.map((row) => ({
-      turnId: row.turnId,
-      view: toView(
+    const views = await this.projectRowsInTransaction(
+      tx,
+      context,
+      rows.map((row) =>
         row.expiresAt.getTime() <= Date.now() && row.status === 'PROPOSED'
           ? { ...row, status: 'EXPIRED' }
           : row,
       ),
+    );
+    return rows.map((row, index) => ({
+      turnId: row.turnId,
+      view: views[index]!,
     }));
   }
 
@@ -199,10 +357,15 @@ export class AiOperationRepository {
       where: { id, ...ownedWhere(context) },
     });
     if (!row) return { kind: 'NOT_FOUND' };
-    if (row.status === 'EXECUTED')
-      return { kind: 'EXECUTED', result: row.resultJson, view: toView(row) };
+    if (row.status === 'EXECUTED') {
+      const view = await this.projectInTransaction(tx, context, row);
+      return { kind: 'EXECUTED', result: view.result, view };
+    }
     if (row.status !== 'PROPOSED')
-      return { kind: 'TERMINAL', view: toView(row) };
+      return {
+        kind: 'TERMINAL',
+        view: await this.projectInTransaction(tx, context, row),
+      };
     if (row.expiresAt.getTime() <= Date.now()) {
       const updated = await tx.aiOperation.updateMany({
         where: {
@@ -214,7 +377,13 @@ export class AiOperationRepository {
         data: { status: 'EXPIRED' },
       });
       if (updated.count !== 1) throw new ApiException('AI_TURN_NOT_FOUND', 404);
-      return { kind: 'EXPIRED', view: toView({ ...row, status: 'EXPIRED' }) };
+      return {
+        kind: 'EXPIRED',
+        view: await this.projectInTransaction(tx, context, {
+          ...row,
+          status: 'EXPIRED',
+        }),
+      };
     }
     return { kind: 'PROPOSED', operation: row };
   }
@@ -271,7 +440,7 @@ export class AiOperationRepository {
       const row = await tx.aiOperation.findFirst({
         where: { id, ...ownedWhere(context) },
       });
-      return row ? toView(row) : null;
+      return row ? await this.projectInTransaction(tx, context, row) : null;
     });
   }
 }

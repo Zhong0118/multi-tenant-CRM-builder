@@ -2,8 +2,8 @@
 
 > 日期：2026-09-23  
 > 文档类型：Task Design Spec  
-> 状态：DESIGN CONFIRMED — SPEC FOR REVIEW；**未批准开发**  
-> Roadmap：AI Assistant V1B（PLANNED；本 Spec 不 Promote、不改变 Roadmap 状态）  
+> 状态：DESIGN APPROVED — IMPLEMENTED IN PR #22, OPEN；最终安全审查与真实 Provider 验收待完成，未合并/部署，非 COMPLETED
+> Roadmap：AI Assistant V1B（ACTIVE；Production Essentials 仍 PLANNED）
 > 设计基线：`origin/main` @ `cc419ff51df980055229fd43d4a17e8ceafe467e`  
 > 上位方向：`docs/superpowers/specs/2026-09-16-ai-assistant-v1-design.md`  
 > Stage Brief：`docs/superpowers/briefs/2026-09-16-ai-assistant-v1b-stage-brief.md`  
@@ -59,7 +59,7 @@ AI Assistant V1B 是现有多租户 CRM 的**人工确认后写入**阶段。用
 
 ### 1.3 Roadmap rule
 
-V1B 仍保持 `PLANNED`，直到用户另行批准正式实施计划并开始开发。Spec 完成不等于实现批准；V1B 完成后也不自动 Promote Production Essentials。
+历史批准门槛已满足：用户批准正式实施计划并启动开发后，V1B 已 Promote 为 `ACTIVE`，实现已提交至尚未合并的 PR #22。本 Spec 的设计确认本身不构成实现批准；本段保留该先后关系。最终审查和真实 Provider 验收仍待完成，不能标记 `COMPLETED`；V1B 完成后也不自动 Promote Production Essentials。
 
 ---
 
@@ -169,7 +169,7 @@ updatedAt
 - `tenantId + id` 唯一；表启用并强制 RLS；runtime role 不得绕过 RLS；
 - 只允许当前租户、当前成员访问自己的操作历史；
 - `proposalJson` 必须是服务端 schema 校验后的结构化参数；
-- `displayChangesJson` 只存可展示、已脱敏的差异摘要；HIDDEN 字段不得进入；
+- `displayChangesJson` 只存预校验时可展示的差异；HIDDEN 字段不得进入。后续读取旧 Proposal 或会话历史时，若当前字段已 HIDDEN、对象不可读、Record 已删除或 `OWN` 可见性丧失，必须按当前权限遮蔽对应值（或全部目标摘要）；旧目标标题源字段变 HIDDEN 后也须遮蔽旧摘要。已执行跟进若转交后对当前成员不可见，不再展示旧 `followUpId` 跳转；状态和安全的审计关联仍保留；
 - 目标引用使用受控的 object/record/follow-up 引用，不保存完整 Record before/after JSON；
 - Proposal 有效期固定 15 分钟，自持久化创建时计算；到期状态可在读取/确认时按时钟惰性推进；
 - 不提供以删除操作记录来绕过审计的用户路径；retention 属于后续运维设计。

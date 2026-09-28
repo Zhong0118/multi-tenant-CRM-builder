@@ -3,6 +3,7 @@ import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { ApiException } from '../../common/errors/api.exception';
 import type { RecordsRepository } from '../records/records.repository';
 import type { AiOperationRepository } from './ai-operation.repository';
+import type { AiProposalDisplay } from './ai-operation.types';
 import type { AuditService } from '../audit/audit.service';
 import { AiProposalService } from './ai-proposal.service';
 import * as recordCommands from '../records/record-command';
@@ -131,6 +132,17 @@ const resolved = {
     fields: { name: 'EDIT', secret: 'HIDDEN' },
   },
 };
+function publicDisplay(display: AiProposalDisplay): AiProposalDisplay {
+  return {
+    ...display,
+    changes: display.changes.map(({ label, before, after }) => ({
+      label,
+      ...(before === undefined ? {} : { before }),
+      ...(after === undefined ? {} : { after }),
+    })),
+  };
+}
+
 function setup() {
   const tx = {
     $queryRaw: jest
@@ -181,6 +193,9 @@ function setup() {
       .fn()
       .mockResolvedValue({ proposalId: id, status: 'PROPOSED' }),
     lockOwned: jest.fn(),
+    projectInTransaction: jest
+      .fn()
+      .mockResolvedValue({ proposalId: id, status: 'PROPOSED' }),
     markExecuted: jest.fn(),
     markFailureIfProposed: jest.fn().mockResolvedValue({
       status: 'CONFLICTED',
@@ -222,6 +237,156 @@ describe('atomic proposal and assistant completion', () => {
 });
 
 describe('safe preview at the transaction seam', () => {
+  it.each(['preview', 'completeWithProposal'] as const)(
+    '%s exposes complete validated UPDATE text, including impact after character 200',
+    async (method) => {
+      const { service, store, operations } = setup();
+      const before = 'b'.repeat(9990) + 'OLD SUFFIX';
+      const after = 'a'.repeat(9990) + 'NEW SUFFIX';
+      jest
+        .mocked(publication.resolvePublishedObjectInTransaction)
+        .mockResolvedValue({
+          ...resolved,
+          schema: {
+            ...resolved.schema,
+            fields: [
+              ...resolved.schema.fields,
+              {
+                ...resolved.schema.fields[0],
+                fieldKey: 'details',
+                type: 'TEXTAREA',
+              },
+            ],
+          },
+          access: {
+            ...resolved.access,
+            fields: { ...resolved.access.fields, details: 'EDIT' },
+          },
+        } as never);
+      store.lockRecord.mockResolvedValue({
+        ...record,
+        values: { ...record.values, details: before },
+      });
+      const candidate = { ...update, values: { details: after } };
+      const expectedDisplay = {
+        title: '修改记录',
+        targetSummary: '可见记录',
+        changes: [{ label: '姓名', before, after }],
+        validationWarnings: [],
+      };
+      const persist =
+        method === 'preview'
+          ? operations.createValidated
+          : operations.createValidatedInTransaction;
+      persist.mockImplementation(async (...args: unknown[]) => ({
+        ...publicDisplay(args[args.length - 1] as AiProposalDisplay),
+        proposalId: id,
+        status: 'PROPOSED',
+      }));
+      const view =
+        method === 'preview'
+          ? await service.preview(context, id, candidate, 'update')
+          : await service.completeWithProposal(
+              context,
+              id,
+              candidate,
+              'update',
+              { status: 'COMPLETED', content: 'suggestion' },
+              async () => {},
+            );
+      expect(view).toMatchObject(expectedDisplay);
+      const persistedArgs = persist.mock.calls[0] as unknown[];
+      expect(persistedArgs[persistedArgs.length - 1]).toMatchObject({
+        titleFieldKey: 'name',
+        changes: [{ fieldKey: 'details', before, after }],
+      });
+      expect(view.changes[0]).not.toHaveProperty('fieldKey');
+      expect(JSON.stringify(view)).not.toContain('private');
+      expect(store.applyRecordPatch).not.toHaveBeenCalled();
+    },
+  );
+
+  it('exposes the complete validated NOTE content up to 4000 characters', async () => {
+    const { service, operations, store } = setup();
+    const content = 'n'.repeat(3990) + 'NOTE TAIL!';
+    operations.createValidated.mockImplementation(
+      async (_context, _turnId, _input, display) => ({
+        ...publicDisplay(display),
+        proposalId: id,
+        status: 'PROPOSED',
+      }),
+    );
+    const view = await service.preview(
+      context,
+      id,
+      { ...note, content: `  ${content}  ` },
+      'note',
+    );
+    expect(view.changes).toEqual([{ label: 'NOTE', after: content }]);
+    expect(JSON.stringify(view)).not.toContain('private');
+    expect(store.createActivity).not.toHaveBeenCalled();
+  });
+
+  it('previews every validated MULTI_SELECT item beyond item 20 and character 200', async () => {
+    const { service, operations, store } = setup();
+    const selected = Array.from(
+      { length: 25 },
+      (_, index) => `option_${String(index + 1).padStart(2, '0')}`,
+    );
+    jest
+      .mocked(publication.resolvePublishedObjectInTransaction)
+      .mockResolvedValue({
+        ...resolved,
+        schema: {
+          ...resolved.schema,
+          fields: [
+            ...resolved.schema.fields,
+            {
+              ...resolved.schema.fields[0],
+              fieldKey: 'tags',
+              type: 'MULTI_SELECT',
+              config: {
+                options: selected.map((key) => ({
+                  key,
+                  label: key,
+                  status: 'ACTIVE',
+                })),
+              },
+            },
+          ],
+        },
+        access: {
+          ...resolved.access,
+          fields: { ...resolved.access.fields, tags: 'EDIT' },
+        },
+      } as never);
+    store.lockRecord.mockResolvedValue({
+      ...record,
+      values: { ...record.values, tags: selected },
+    });
+    operations.createValidated.mockImplementation(
+      async (_context, _turnId, _input, display) => ({
+        ...publicDisplay(display),
+        proposalId: id,
+        status: 'PROPOSED',
+      }),
+    );
+    const view = await service.preview(
+      context,
+      id,
+      { ...update, values: { tags: [...selected].reverse() } },
+      'update',
+    );
+    expect(view.changes).toEqual([
+      {
+        label: '姓名',
+        before: selected.join(', '),
+        after: selected.join(', '),
+      },
+    ]);
+    expect(JSON.stringify(view)).not.toContain('private');
+  });
+
   it('refuses hidden fields without disclosing their names or writing a business row', async () => {
     const { service, store, operations } = setup();
     await expect(
@@ -281,6 +446,27 @@ describe('safe preview at the transaction seam', () => {
         'update',
       ),
     ).rejects.toMatchObject({ code: 'INTERNAL_ERROR' });
+    expect(operations.createValidated).not.toHaveBeenCalled();
+  });
+  it('reports only a currently visible field validation error without echoing a hidden key', async () => {
+    const { service, operations } = setup();
+    try {
+      await service.preview(
+        context,
+        id,
+        { ...update, values: { name: 123 } },
+        'update',
+      );
+      throw new Error('preview unexpectedly accepted invalid field');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiException);
+      expect((error as ApiException).fieldErrors).toEqual({
+        name: ['字段值格式不正确。'],
+      });
+      expect(JSON.stringify((error as ApiException).fieldErrors)).not.toContain(
+        'secret',
+      );
+    }
     expect(operations.createValidated).not.toHaveBeenCalled();
   });
   it('refuses READ_ONLY fields without persisting a candidate', async () => {
@@ -345,11 +531,12 @@ describe('safe preview at the transaction seam', () => {
       expect.objectContaining({
         changes: [
           {
+            fieldKey: 'email',
             label: '邮箱',
             before: 'old@example.com',
             after: 'user@example.com',
           },
-          { label: '预算', before: '1.00', after: '1.20' },
+          { fieldKey: 'budget', label: '预算', before: '1.00', after: '1.20' },
         ],
       }),
     );
@@ -365,7 +552,14 @@ describe('safe preview at the transaction seam', () => {
         expectedPublicationId: id,
       }),
       expect.objectContaining({
-        changes: [{ label: '姓名', before: '旧名称', after: '新名称' }],
+        changes: [
+          {
+            fieldKey: 'name',
+            label: '姓名',
+            before: '旧名称',
+            after: '新名称',
+          },
+        ],
       }),
     );
     expect(store.applyRecordPatch).not.toHaveBeenCalled();
@@ -434,6 +628,22 @@ describe('single target atomic confirmation', () => {
       );
     },
   );
+  it('projects an owned proposal through current read access, not raw stored display', async () => {
+    const { service, operations } = setup();
+    operations.lockOwned.mockResolvedValue({
+      kind: 'PROPOSED',
+      operation: proposed,
+    });
+    const view = {
+      proposalId: id,
+      status: 'PROPOSED',
+      changes: [],
+      targetSummary: '',
+    };
+    operations.projectInTransaction.mockResolvedValue(view);
+    expect(await service.get(context, id)).toEqual(view);
+    expect(operations.projectInTransaction).toHaveBeenCalledTimes(1);
+  });
   it('replays stored EXECUTED result without touching domain commands', async () => {
     const { service, operations } = setup();
     const stored = {
