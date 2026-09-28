@@ -177,6 +177,7 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
     status: 'PROPOSED',
     expiresAt: '2026-09-24T12:15:00.000Z',
     failureCode: null,
+    fieldErrors: {},
     result: null,
     auditId: null,
   };

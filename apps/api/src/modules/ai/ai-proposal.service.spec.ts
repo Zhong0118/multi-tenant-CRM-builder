@@ -693,6 +693,7 @@ describe('single target atomic confirmation', () => {
       id,
       'CONFLICTED',
       expect.any(String),
+      undefined,
     );
   });
   it('refuses a stale NOTE target before appending an activity', async () => {
@@ -732,10 +733,54 @@ describe('single target atomic confirmation', () => {
       id,
       'FAILED',
       'VALIDATION_FAILED',
+      undefined,
     );
     expect(operations.markExecuted).not.toHaveBeenCalled();
     expect(records.withTenantTransaction).toHaveBeenCalledTimes(1);
   });
+  it('persists only a current editable submitted field code on business validation failure', async () => {
+    const { service, operations } = setup();
+    operations.lockOwned.mockResolvedValue({
+      kind: 'PROPOSED',
+      operation: proposed,
+    });
+    jest.mocked(recordCommands.updateRecordCommand).mockRejectedValueOnce(
+      new ApiException('FIELD_INVALID', 400, {
+        fieldErrors: { name: ['sensitive raw text'] },
+      }),
+    );
+    await service.confirm(context, id, id, meta);
+    expect(operations.markFailureIfProposed).toHaveBeenCalledWith(
+      context,
+      id,
+      'FAILED',
+      'FIELD_INVALID',
+      { name: 'FIELD_INVALID' },
+    );
+  });
+  it.each(['secret', 'absent', '__proto__'])(
+    'never persists unsafe field key %s from domain error',
+    async (key) => {
+      const { service, operations } = setup();
+      operations.lockOwned.mockResolvedValue({
+        kind: 'PROPOSED',
+        operation: proposed,
+      });
+      jest.mocked(recordCommands.updateRecordCommand).mockRejectedValueOnce(
+        new ApiException('FIELD_INVALID', 400, {
+          fieldErrors: { [key]: ['untrusted'] },
+        }),
+      );
+      await service.confirm(context, id, id, meta);
+      expect(operations.markFailureIfProposed).toHaveBeenCalledWith(
+        context,
+        id,
+        'FAILED',
+        'FIELD_INVALID',
+        undefined,
+      );
+    },
+  );
   it('records a sanitized FAILED state after an unexpected domain command error', async () => {
     const { service, operations } = setup();
     operations.lockOwned.mockResolvedValue({
@@ -758,6 +803,7 @@ describe('single target atomic confirmation', () => {
       id,
       'FAILED',
       'INTERNAL_ERROR',
+      undefined,
     );
     expect(operations.markExecuted).not.toHaveBeenCalled();
   });

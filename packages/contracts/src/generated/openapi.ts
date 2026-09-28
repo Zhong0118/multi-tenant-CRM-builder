@@ -1544,6 +1544,9 @@ export interface components {
       /** Format: date-time */
       expiresAt: string;
       failureCode?: string | null;
+      fieldErrors: {
+        [key: string]: string[];
+      };
       /** @enum {string} */
       operation: "UPDATE_RECORD" | "CREATE_FOLLOW_UP" | "ADD_ACTIVITY_NOTE";
       /** Format: uuid */

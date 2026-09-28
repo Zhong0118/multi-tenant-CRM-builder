@@ -28,9 +28,13 @@ export interface AiProposalDisplay {
 }
 
 // Persisted authorization metadata is never part of the public proposal contract.
+export type AiFieldFailureCode =
+  'FIELD_REQUIRED' | 'FIELD_INVALID' | 'FIELD_OPTION_INACTIVE';
+
 export interface StoredAiProposalDisplay extends AiProposalDisplay {
   titleFieldKey?: string;
   changes: Array<AiProposalDisplay['changes'][number] & { fieldKey?: string }>;
+  failureFieldCodes?: Record<string, AiFieldFailureCode>;
 }
 
 export interface AiProposalView extends AiProposalDisplay {
@@ -39,6 +43,7 @@ export interface AiProposalView extends AiProposalDisplay {
   status: AiOperationState;
   expiresAt: string;
   failureCode: string | null;
+  fieldErrors: Record<string, string[]>;
   result: Prisma.JsonValue | null;
   auditId: string | null;
 }

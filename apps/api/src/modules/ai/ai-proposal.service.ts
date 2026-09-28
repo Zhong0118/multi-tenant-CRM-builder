@@ -353,6 +353,12 @@ export class AiProposalService {
       )
     )
       throw new ApiException('VALIDATION_FAILED', 400);
+    let safeFieldCodes:
+      | Record<
+          string,
+          'FIELD_REQUIRED' | 'FIELD_INVALID' | 'FIELD_OPTION_INACTIVE'
+        >
+      | undefined;
     try {
       return await this.records.withTenantTransaction(
         context,
@@ -406,66 +412,104 @@ export class AiProposalService {
           };
           let auditId: string;
           let result: Prisma.InputJsonObject;
-          if (candidate.operationType === 'UPDATE_RECORD') {
-            const executed = await updateRecordCommand({
-              store,
-              resolved,
-              context,
-              recordId: candidate.recordId,
-              input: { version: row.expectedVersion, values: candidate.values },
-              meta,
-            });
-            auditId = executed.auditId;
-            result = {
-              objectCode: candidate.objectCode,
-              recordId: candidate.recordId,
-            };
-          } else if (candidate.operationType === 'ADD_ACTIVITY_NOTE') {
-            const executed = await createRecordActivityCommand({
-              store,
-              resolved,
-              context,
-              recordId: candidate.recordId,
-              input: { activityType: 'NOTE', content: candidate.content },
-              meta,
-              clock: () => new Date(),
-              idGenerator: randomUUID,
-            });
-            auditId = executed.auditId;
-            result = {
-              objectCode: candidate.objectCode,
-              recordId: candidate.recordId,
-              activityId: executed.activity.id,
-            };
-          } else {
-            const validated = validateCreateFollowUpInput(candidate);
-            let generatedAuditId: string | undefined;
-            const item = await createFollowUpCommand(
-              tx,
-              context,
-              { recordId: candidate.recordId, ...validated },
-              meta,
-              {
-                objectId: resolved.schema.object.id,
+          try {
+            if (candidate.operationType === 'UPDATE_RECORD') {
+              const executed = await updateRecordCommand({
+                store,
+                resolved,
+                context,
                 recordId: candidate.recordId,
-                expectedRole: context.role,
-                requiredOwnerMemberId: ownerMemberId ?? undefined,
-              },
-              {
-                audit: this.audit,
-                onAuditId: (id) => {
-                  generatedAuditId = id;
+                input: {
+                  version: row.expectedVersion,
+                  values: candidate.values,
                 },
-              },
-            );
-            if (!generatedAuditId)
-              throw new ApiException('INTERNAL_ERROR', 500);
-            auditId = generatedAuditId;
-            result = {
-              objectCode: candidate.objectCode,
-              recordId: candidate.recordId,
-              followUpId: item.id,
-            };
+                meta,
+              });
+              auditId = executed.auditId;
+              result = {
+                objectCode: candidate.objectCode,
+                recordId: candidate.recordId,
+              };
+            } else if (candidate.operationType === 'ADD_ACTIVITY_NOTE') {
+              const executed = await createRecordActivityCommand({
+                store,
+                resolved,
+                context,
+                recordId: candidate.recordId,
+                input: { activityType: 'NOTE', content: candidate.content },
+                meta,
+                clock: () => new Date(),
+                idGenerator: randomUUID,
+              });
+              auditId = executed.auditId;
+              result = {
+                objectCode: candidate.objectCode,
+                recordId: candidate.recordId,
+                activityId: executed.activity.id,
+              };
+            } else {
+              const validated = validateCreateFollowUpInput(candidate);
+              let generatedAuditId: string | undefined;
+              const item = await createFollowUpCommand(
+                tx,
+                context,
+                { recordId: candidate.recordId, ...validated },
+                meta,
+                {
+                  objectId: resolved.schema.object.id,
+                  recordId: candidate.recordId,
+                  expectedRole: context.role,
+                  requiredOwnerMemberId: ownerMemberId ?? undefined,
+                },
+                {
+                  audit: this.audit,
+                  onAuditId: (id) => {
+                    generatedAuditId = id;
+                  },
+                },
+              );
+              if (!generatedAuditId)
+                throw new ApiException('INTERNAL_ERROR', 500);
+              auditId = generatedAuditId;
+              result = {
+                objectCode: candidate.objectCode,
+                recordId: candidate.recordId,
+                followUpId: item.id,
+              };
+            }
+          } catch (error) {
+            if (
+              candidate.operationType === 'UPDATE_RECORD' &&
+              error instanceof ApiException &&
+              [
+                'FIELD_REQUIRED',
+                'FIELD_INVALID',
+                'FIELD_OPTION_INACTIVE',
+              ].includes(error.code)
+            ) {
+              const keys = Object.keys(error.fieldErrors);
+              if (keys.length === 1) {
+                const key = keys[0];
+                if (
+                  key !== '__proto__' &&
+                  key !== 'constructor' &&
+                  key !== 'prototype' &&
+                  Object.hasOwn(candidate.values, key) &&
+                  resolved.schema.fields.some(
+                    (field) => field.fieldKey === key,
+                  ) &&
+                  Object.hasOwn(resolved.access.fields, key) &&
+                  resolved.access.fields[key] === 'EDIT'
+                )
+                  safeFieldCodes = {
+                    [key]: error.code as
+                      | 'FIELD_REQUIRED'
+                      | 'FIELD_INVALID'
+                      | 'FIELD_OPTION_INACTIVE',
+                  };
+              }
+            }
+            throw error;
           }
           await this.operations.markExecuted(
             tx,
@@ -500,6 +544,7 @@ export class AiProposalService {
         proposalId,
         state,
         code,
+        state === 'FAILED' ? safeFieldCodes : undefined,
       );
       if (!final) throw new ApiException('AI_TURN_NOT_FOUND', 404);
       return final;

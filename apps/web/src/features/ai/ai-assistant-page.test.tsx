@@ -241,6 +241,148 @@ describe("AiAssistantPage", () => {
     expect(screen.getByText("已拒绝，未写入数据。")).toBeInTheDocument();
   });
 
+  it("removes a cached mutation field error after a redacted history refetch", async () => {
+    const proposal = {
+      proposalId: "p-failed",
+      operation: "UPDATE_RECORD",
+      title: "更新客户",
+      targetSummary: "客户",
+      changes: [],
+      validationWarnings: [],
+      expiresAt: "2999-01-01T00:00:00.000Z",
+      status: "PROPOSED",
+      failureCode: null,
+      fieldErrors: {},
+      auditId: null,
+      result: null,
+    };
+    const message = {
+      id: "m-failed",
+      conversationId: "c1",
+      turnId: "t1",
+      role: "ASSISTANT",
+      status: "COMPLETED",
+      content: "",
+      toolSummary: [],
+      sourceSummary: [],
+      createdAt: "2026-09-23T00:00:00.000Z",
+    };
+    mocks.conversation = "c1";
+    mocks.listMessages.mockResolvedValue({ items: [{ ...message, proposal }] });
+    mocks.confirmProposal.mockResolvedValue({
+      ...proposal,
+      status: "FAILED",
+      failureCode: "FIELD_INVALID",
+      fieldErrors: { secret: ["校验失败"] },
+    });
+    const { client } = renderPage();
+    await screen.findByRole("button", { name: "确认执行" });
+    fireEvent.click(screen.getByRole("button", { name: "确认执行" }));
+    await screen.findByText("校验失败");
+    client.setQueryData(["ai", "northwind", "c1"], {
+      pages: [
+        {
+          items: [
+            {
+              ...message,
+              proposal: {
+                ...proposal,
+                status: "FAILED",
+                failureCode: "FIELD_INVALID",
+                fieldErrors: {},
+              },
+            },
+          ],
+        },
+      ],
+      pageParams: [undefined],
+    });
+    await waitFor(() =>
+      expect(screen.queryByText("校验失败")).not.toBeInTheDocument(),
+    );
+  });
+
+  it("replaces a completed live card with fresh server history after field access revocation", async () => {
+    const proposal = {
+      proposalId: "p-live-field",
+      operation: "UPDATE_RECORD",
+      title: "修改记录",
+      targetSummary: "old secret",
+      changes: [{ label: "名称", after: "old secret" }],
+      validationWarnings: [],
+      expiresAt: "2999-01-01T00:00:00.000Z",
+      status: "PROPOSED",
+      fieldErrors: {},
+      failureCode: null,
+      auditId: null,
+      result: null,
+    };
+    mocks.conversation = "c1";
+    mocks.streamTurn.mockImplementation(async function* () {
+      yield {
+        event: "conversation.ready",
+        data: { conversationId: "c1", title: "问", turnId: "t-live-field" },
+      };
+      yield {
+        event: "proposal.ready",
+        data: { turnId: "t-live-field", proposal },
+      };
+      yield {
+        event: "turn.completed",
+        data: { turnId: "t-live-field", messageId: "m-live-field" },
+      };
+    });
+    mocks.confirmProposal.mockResolvedValue({
+      ...proposal,
+      status: "FAILED",
+      failureCode: "FIELD_INVALID",
+      fieldErrors: { secret: ["校验失败"] },
+    });
+    const { client } = renderPage();
+    fireEvent.change(
+      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      { target: { value: "修改记录" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "发送" }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "确认执行" })).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "确认执行" }));
+    await screen.findByText("校验失败");
+    client.setQueryData(["ai", "northwind", "c1"], {
+      pages: [
+        {
+          items: [
+            {
+              id: "m-live-field",
+              conversationId: "c1",
+              turnId: "t-live-field",
+              role: "ASSISTANT",
+              status: "COMPLETED",
+              content: "",
+              toolSummary: [],
+              sourceSummary: [],
+              createdAt: "2026-09-23T00:00:00.000Z",
+              proposal: {
+                ...proposal,
+                status: "FAILED",
+                failureCode: "FIELD_INVALID",
+                targetSummary: "",
+                changes: [],
+                fieldErrors: {},
+              },
+            },
+          ],
+        },
+      ],
+      pageParams: [undefined],
+    });
+    await waitFor(() =>
+      expect(screen.queryByText("校验失败")).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByText("old secret")).not.toBeInTheDocument();
+  });
+
   it("shows a rejected live SSE proposal immediately without reloading history", async () => {
     const proposal = {
       proposalId: "p-live-reject",

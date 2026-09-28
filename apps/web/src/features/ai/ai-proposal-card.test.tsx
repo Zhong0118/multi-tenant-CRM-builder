@@ -31,6 +31,30 @@ describe("AiProposalCard", () => {
     fireEvent.click(screen.getByRole("button", { name: "确认执行" }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
+  it("renders field-level errors only for failed proposals", () => {
+    render(
+      <AiProposalCard
+        proposal={{
+          ...base,
+          status: "FAILED",
+          fieldErrors: { status: ["状态无效。"], owner: ["负责人不能为空。"] },
+        }}
+      />,
+    );
+    expect(screen.getByText("状态")).toBeInTheDocument();
+    expect(screen.getByText("状态无效。")).toBeInTheDocument();
+    expect(screen.getByText("负责人不能为空。")).toBeInTheDocument();
+  });
+
+  it("does not expose field-level errors for non-failed proposals", () => {
+    render(
+      <AiProposalCard
+        proposal={{ ...base, fieldErrors: { status: ["不要显示"] } }}
+      />,
+    );
+    expect(screen.queryByText("不要显示")).not.toBeInTheDocument();
+  });
+
   it("renders terminal status and no actions", () => {
     render(
       <AiProposalCard

@@ -5,6 +5,7 @@ export interface AiProposalView {
   targetSummary: string;
   changes: Array<{ label: string; before?: string; after?: string }>;
   validationWarnings: string[];
+  fieldErrors?: Record<string, string[]>;
   expiresAt: string;
   status:
     "PROPOSED" | "REJECTED" | "EXPIRED" | "CONFLICTED" | "FAILED" | "EXECUTED";

@@ -609,6 +609,78 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
     ).not.toContain('员工自己的线索');
   });
 
+  it('redacts persisted field-level failure feedback on GET and history after permission revocation', async () => {
+    const view = await proposal('UPDATE_RECORD');
+    const operation = await harness.adminDatabase.aiOperation.findUniqueOrThrow(
+      { where: { id: view.proposalId } },
+    );
+    await harness.adminDatabase.aiMessage.create({
+      data: {
+        tenantId: context.tenantId,
+        conversationId: operation.conversationId,
+        turnId: operation.turnId,
+        role: 'ASSISTANT',
+        status: 'COMPLETED',
+        content: '已生成建议',
+      },
+    });
+    await harness.adminDatabase.aiOperation.update({
+      where: { id: view.proposalId },
+      data: {
+        status: 'FAILED',
+        failureCode: 'FIELD_INVALID',
+        displayChangesJson: {
+          ...(operation.displayChangesJson as object),
+          failureFieldCodes: { name: 'FIELD_INVALID' },
+        },
+      },
+    });
+    const base = `/api/v1/workspaces/${fixture.tenantA.code}/ai`;
+    const get = () =>
+      request(harness.app.getHttpServer())
+        .get(`${base}/proposals/${view.proposalId}`)
+        .set('Cookie', fixture.employee.cookie)
+        .expect(200);
+    const history = () =>
+      request(harness.app.getHttpServer())
+        .get(`${base}/conversations/${operation.conversationId}/messages`)
+        .set('Cookie', fixture.employee.cookie)
+        .expect(200);
+    expect((await get()).body.fieldErrors).toEqual({
+      name: ['字段值格式不正确。'],
+    });
+    expect(
+      (await history()).body.items.find(
+        (item: { role: string }) => item.role === 'ASSISTANT',
+      ).proposal.fieldErrors,
+    ).toEqual({ name: ['字段值格式不正确。'] });
+    await harness.adminDatabase.objectPermission.create({
+      data: {
+        tenantId: context.tenantId,
+        objectId: fixture.object.id,
+        subjectType: 'MEMBER',
+        subjectMemberId: context.memberId,
+        canRead: true,
+        canUpdate: false,
+        readScope: 'OWN',
+        updateScope: 'NONE',
+      },
+    });
+    expect((await get()).body.fieldErrors).toEqual({});
+    expect(
+      (await history()).body.items.find(
+        (item: { role: string }) => item.role === 'ASSISTANT',
+      ).proposal.fieldErrors,
+    ).toEqual({});
+    expect(
+      (
+        await harness.adminDatabase.aiOperation.findUniqueOrThrow({
+          where: { id: view.proposalId },
+        })
+      ).status,
+    ).toBe('FAILED');
+  });
+
   it('rechecks permission, record version, and expiry at HTTP confirm', async () => {
     const permission = await proposal('UPDATE_RECORD');
     await harness.adminDatabase.objectPermission.create({

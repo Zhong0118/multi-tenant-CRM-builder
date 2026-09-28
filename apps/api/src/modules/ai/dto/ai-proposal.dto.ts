@@ -38,6 +38,11 @@ export class AiProposalResponseDto {
   @ApiProperty({ format: 'date-time' }) expiresAt!: string;
   @ApiPropertyOptional({ nullable: true, type: String }) failureCode!:
     string | null;
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: { type: 'array', items: { type: 'string' } },
+  })
+  fieldErrors!: Record<string, string[]>;
   @ApiPropertyOptional({ nullable: true, type: String, format: 'uuid' })
   auditId!: string | null;
   @ApiPropertyOptional({

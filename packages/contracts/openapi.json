@@ -164,6 +164,15 @@
             "nullable": true,
             "type": "string"
           },
+          "fieldErrors": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object"
+          },
           "operation": {
             "enum": ["UPDATE_RECORD", "CREATE_FOLLOW_UP", "ADD_ACTIVITY_NOTE"],
             "type": "string"
@@ -209,7 +218,8 @@
           "targetSummary",
           "changes",
           "validationWarnings",
-          "expiresAt"
+          "expiresAt",
+          "fieldErrors"
         ],
         "type": "object"
       },

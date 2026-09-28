@@ -28,7 +28,7 @@ Engineering Gate Hardening **已 COMPLETED**：PR A #11 合并 `bc6cad2`；PR B 
 `Build` / `Critical API E2E`（`strict: true`，`enforcement_level: everyone`）。post-merge `main` run
 `35232613694` 六门 success。验收
 `docs/audits/2026-09-17/engineering-gate-hardening-acceptance.md`。
-**AI Assistant V1A = COMPLETED**。PR A — AI Foundation = **MERGED AND VERIFIED**（#14 merge `64a22cd`）；PR B — Read Runtime = **MERGED AND VERIFIED**（#16 merge `466d9af`）；PR C — AI Workspace UI + Closeout = **MERGED AND VERIFIED**（#17 merge `b3bc59a`）。browser walkthrough = **VERIFIED**。post-merge main 六门 SUCCESS（run `35696132661`）。**AI Assistant V1B = ACTIVE（PR #22 OPEN，尚未合并/部署；Task 1–7 已在独立 55433 数据库及 CRM 浏览器完成 fake Provider 本地验收，六项 Hosted CI 在 PR HEAD `e04295d` 上通过；最终审查修正中；用户选择暂不做真实 Provider smoke，尚未验收）**；验收见 `docs/audits/2026-09-23/ai-assistant-v1b-acceptance.md`。Production Essentials = **PLANNED**，不自动 Promote。
+**AI Assistant V1A = COMPLETED**。PR A — AI Foundation = **MERGED AND VERIFIED**（#14 merge `64a22cd`）；PR B — Read Runtime = **MERGED AND VERIFIED**（#16 merge `466d9af`）；PR C — AI Workspace UI + Closeout = **MERGED AND VERIFIED**（#17 merge `b3bc59a`）。browser walkthrough = **VERIFIED**。post-merge main 六门 SUCCESS（run `35696132661`）。**AI Assistant V1B = ACTIVE（PR #22 OPEN，尚未合并/部署；Task 1–7 已在独立 55433 数据库及 CRM 浏览器完成 fake Provider 本地验收，六项 Hosted CI 在 PR HEAD `0970d6d` 上通过；确认期字段错误有界修复待新 HEAD 的 Hosted CI；用户选择暂不做真实 Provider smoke，尚未验收）**；验收见 `docs/audits/2026-09-23/ai-assistant-v1b-acceptance.md`。Production Essentials = **PLANNED**，不自动 Promote。
 
 Workflow Required Field Visibility Hardening **已通过 PR #2 合并进入 `main`**，合并提交
 `0612d8ad521895c7ca7bd9efe2ef2f942cd28b40`（同样只作历史事实记录）。它修掉了
@@ -56,7 +56,7 @@ AI Assistant 的方向见 `docs/superpowers/specs/2026-09-16-ai-assistant-v1-des
 - **V1A Ask / Analyze**：只读，受当前登录用户权限约束（先裁剪、再交给 AI）；
 - **V1B Confirmed Edit**：AI 只产出 Proposal，用户确认后服务端重新校验权限与版本，再执行 Typed Command 并写审计。
 
-**AI Assistant V1A = COMPLETED**。PR A — AI Foundation 已 MERGED AND VERIFIED（#14 merge `64a22cd`）。PR B — Read Runtime 已 MERGED AND VERIFIED（#16 merge `466d9af`）。PR C — AI Workspace UI + Closeout 已 MERGED AND VERIFIED（#17 merge `b3bc59a`）。browser walkthrough = **VERIFIED**。post-merge main 六门 SUCCESS。批准规格见 `docs/superpowers/specs/2026-09-18-ai-assistant-v1a-design.md`，实现计划见 `docs/superpowers/plans/2026-09-18-ai-assistant-v1a-implementation.md`。**AI Assistant V1B = ACTIVE（PR #22 OPEN，未合并；最终安全审查修正与真实 Provider 验收待完成）**。Automation、Production Essentials 仍为 PLANNED，未随 V1B Promote。Sales Workbench Lite 已完成（PR #9）。
+**AI Assistant V1A = COMPLETED**。PR A — AI Foundation 已 MERGED AND VERIFIED（#14 merge `64a22cd`）。PR B — Read Runtime 已 MERGED AND VERIFIED（#16 merge `466d9af`）。PR C — AI Workspace UI + Closeout 已 MERGED AND VERIFIED（#17 merge `b3bc59a`）。browser walkthrough = **VERIFIED**。post-merge main 六门 SUCCESS。批准规格见 `docs/superpowers/specs/2026-09-18-ai-assistant-v1a-design.md`，实现计划见 `docs/superpowers/plans/2026-09-18-ai-assistant-v1a-implementation.md`。**AI Assistant V1B = ACTIVE（PR #22 OPEN，未合并；确认期字段错误修正待新 HEAD 的 Hosted CI；真实 Provider smoke 依用户选择暂不进行）**。Automation、Production Essentials 仍为 PLANNED，未随 V1B Promote。Sales Workbench Lite 已完成（PR #9）。
 
 本文只记录当前事实。已完成与未完成对照见
 `docs/superpowers/plans/2026-09-01-productization-follow-up.md`。

@@ -600,6 +600,191 @@ describe('AiOperationRepository', () => {
     expect(tx.aiOperation.create).not.toHaveBeenCalled();
   });
 
+  it('persists allowlisted field failure codes without overwriting non-proposed operations', async () => {
+    const { repo, tx, updateMany } = setup();
+    await repo.markFailureIfProposed(context, id, 'FAILED', 'FIELD_INVALID', {
+      name: 'FIELD_INVALID',
+      phone: 'FIELD_REQUIRED',
+    });
+    expect(updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id, status: 'PROPOSED' }),
+        data: expect.objectContaining({
+          status: 'FAILED',
+          displayChangesJson: expect.objectContaining({
+            failureFieldCodes: {
+              name: 'FIELD_INVALID',
+              phone: 'FIELD_REQUIRED',
+            },
+          }),
+        }),
+      }),
+    );
+    expect(tx.aiOperation.findFirst).toHaveBeenCalled();
+  });
+
+  it('ignores unapproved codes and oversized field keys before persistence', async () => {
+    const { repo, updateMany } = setup();
+    await repo.markFailureIfProposed(context, id, 'FAILED', 'FIELD_INVALID', {
+      name: 'FIELD_INVALID',
+      other: 'NOT_ALLOWLISTED',
+      ['x'.repeat(121)]: 'FIELD_REQUIRED',
+    } as never);
+    expect(
+      updateMany.mock.calls[0][0].data.displayChangesJson.failureFieldCodes,
+    ).toEqual({
+      name: 'FIELD_INVALID',
+    });
+  });
+
+  it('projects current editable field failures using fixed messages and own-property checks', async () => {
+    const { repo, tx } = setup();
+    jest.mocked(resolvePublishedObjectInTransaction).mockResolvedValue({
+      ...resolved,
+      access: {
+        ...resolved.access,
+        canUpdate: true,
+        updateScope: 'ALL',
+        fields: { name: 'EDIT', phone: 'HIDDEN' },
+      },
+    } as never);
+    tx.aiOperation.findFirst.mockResolvedValueOnce({
+      ...row,
+      operationType: 'UPDATE_RECORD',
+      status: 'FAILED',
+      displayChangesJson: {
+        ...row.displayChangesJson,
+        failureFieldCodes: Object.assign(
+          Object.create({ inherited: 'FIELD_INVALID' }),
+          {
+            name: 'FIELD_REQUIRED',
+            phone: 'FIELD_INVALID',
+            constructor: 'FIELD_INVALID',
+            unknown: 'FIELD_INVALID',
+          },
+        ),
+      },
+    } as never);
+    const view = await repo.getOwned(context, id);
+    expect(view?.fieldErrors).toEqual({
+      name: ['请填写必填字段。'],
+    });
+    expect(view).not.toHaveProperty('fieldErrors.phone');
+  });
+
+  it('does not expose stored codes for non-failed proposals or revoked update permission', async () => {
+    const { repo, tx } = setup();
+    const failed = {
+      ...row,
+      operationType: 'UPDATE_RECORD',
+      status: 'FAILED',
+      displayChangesJson: {
+        ...row.displayChangesJson,
+        failureFieldCodes: { name: 'FIELD_INVALID' },
+      },
+    };
+    jest.mocked(resolvePublishedObjectInTransaction).mockResolvedValue({
+      ...resolved,
+      access: {
+        ...resolved.access,
+        canUpdate: true,
+        updateScope: 'ALL',
+        fields: { name: 'EDIT' },
+      },
+    } as never);
+    tx.aiOperation.findFirst.mockResolvedValueOnce({
+      ...failed,
+      status: 'PROPOSED',
+    } as never);
+    expect((await repo.getOwned(context, id))?.fieldErrors).toEqual({});
+    tx.aiOperation.findFirst.mockResolvedValueOnce(failed as never);
+    jest.mocked(resolvePublishedObjectInTransaction).mockResolvedValue({
+      ...resolved,
+      access: {
+        ...resolved.access,
+        canUpdate: false,
+        updateScope: 'ALL',
+        fields: { name: 'EDIT' },
+      },
+    } as never);
+    expect((await repo.getOwned(context, id))?.fieldErrors).toEqual({});
+  });
+
+  it('redacts field errors after ownership loss when read scope is ALL but update scope is OWN', async () => {
+    const { repo, tx } = setup();
+    jest.mocked(resolvePublishedObjectInTransaction).mockResolvedValue({
+      ...resolved,
+      access: {
+        ...resolved.access,
+        canUpdate: true,
+        readScope: 'ALL',
+        updateScope: 'OWN',
+        fields: { name: 'EDIT' },
+      },
+    } as never);
+    tx.aiOperation.findFirst.mockResolvedValue({
+      ...row,
+      operationType: 'UPDATE_RECORD',
+      status: 'FAILED',
+      displayChangesJson: {
+        ...row.displayChangesJson,
+        failureFieldCodes: { name: 'FIELD_INVALID' },
+      },
+    } as never);
+    tx.record.findMany
+      .mockResolvedValueOnce([{ id }])
+      .mockResolvedValueOnce([]);
+    const view = await repo.getOwned(context, id);
+    expect(view?.targetSummary).toBe('Record');
+    expect(view?.fieldErrors).toEqual({});
+    expect(tx.record.findMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ ownerMemberId: context.memberId }),
+      select: { id: true },
+    });
+  });
+
+  it('ignores malformed and prototype-key stored field failure codes', async () => {
+    const { repo, tx } = setup();
+    jest.mocked(resolvePublishedObjectInTransaction).mockResolvedValue({
+      ...resolved,
+      schema: {
+        ...resolved.schema,
+        fields: [...resolved.schema.fields, { fieldKey: 'constructor' }],
+      },
+      access: {
+        ...resolved.access,
+        canUpdate: true,
+        updateScope: 'ALL',
+        fields: { name: 'EDIT', constructor: 'EDIT' },
+      },
+    } as never);
+    tx.aiOperation.findFirst.mockResolvedValueOnce({
+      ...row,
+      operationType: 'UPDATE_RECORD',
+      status: 'FAILED',
+      displayChangesJson: {
+        ...row.displayChangesJson,
+        failureFieldCodes: {
+          name: ['untrusted'],
+          constructor: 'FIELD_INVALID',
+        },
+      },
+    } as never);
+    expect((await repo.getOwned(context, id))?.fieldErrors).toEqual({});
+  });
+
+  it('defaults field errors to an empty object for malformed stored maps', async () => {
+    const { repo, tx } = setup();
+    tx.aiOperation.findFirst.mockResolvedValueOnce({
+      ...row,
+      displayChangesJson: {
+        ...row.displayChangesJson,
+        failureFieldCodes: null,
+      },
+    } as never);
+    expect((await repo.getOwned(context, id))?.fieldErrors).toEqual({});
+  });
+
   it('projects a safe display without returning raw candidate or request text', async () => {
     const { repo } = setup();
     const view = await repo.getOwned(context, id);

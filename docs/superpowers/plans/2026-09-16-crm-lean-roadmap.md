@@ -31,7 +31,7 @@
 
 **Engineering Gate Hardening**（**COMPLETED**，PR A #11 `bc6cad2` + PR B #12 `4eac32c`）：
 六个 required checks 含 `Critical API E2E`；`main` post-merge run `35232613694` 6/6。
-**AI Assistant V1A = COMPLETED**（PR A/B/C MERGED AND VERIFIED；#17 merge `b3bc59a`）。browser walkthrough = **VERIFIED**。post-merge main 六门 SUCCESS（run `35696132661`）。**AI Assistant V1B = ACTIVE（PR #22 OPEN，未合并；最终审查修正与真实 Provider 验收待完成）**。Production Essentials = **PLANNED**，不随 V1B 自动 Promote。
+**AI Assistant V1A = COMPLETED**（PR A/B/C MERGED AND VERIFIED；#17 merge `b3bc59a`）。browser walkthrough = **VERIFIED**。post-merge main 六门 SUCCESS（run `35696132661`）。**AI Assistant V1B = ACTIVE（PR #22 OPEN，未合并；确认期字段错误修正待新 HEAD 的 Hosted CI；真实 Provider smoke 依用户选择暂不进行）**。Production Essentials = **PLANNED**，不随 V1B 自动 Promote。
 **位置由用户定为已完成的 Sales Workbench Lite 之后、AI Assistant V1A 之前**（理由见 §11）。
 
 ## 4. Sales Workbench Lite

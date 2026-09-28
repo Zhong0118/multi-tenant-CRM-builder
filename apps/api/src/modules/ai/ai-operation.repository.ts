@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
 
+import { API_ERROR_MESSAGES } from '../../common/errors/api-error-code';
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
@@ -17,6 +18,7 @@ import type {
   AiProposalView,
   LockedAiOperation,
   ValidatedAiOperation,
+  AiFieldFailureCode,
 } from './ai-operation.types';
 
 type Tx = Prisma.TransactionClient;
@@ -42,9 +44,46 @@ function toView(
   row: AiOperationRow,
   resolved: ResolvedObjectSchema | null,
   recordReadable: boolean,
+  recordEditable = false,
   followUpReadable = true,
 ): AiProposalView {
   const display = row.displayChangesJson as unknown as StoredAiProposalDisplay;
+  const fieldErrors: Record<string, string[]> = {};
+  if (
+    row.status === 'FAILED' &&
+    row.operationType === 'UPDATE_RECORD' &&
+    recordReadable &&
+    recordEditable &&
+    resolved?.access.canUpdate &&
+    resolved.access.updateScope !== 'NONE' &&
+    display &&
+    typeof display.failureFieldCodes === 'object' &&
+    display.failureFieldCodes !== null &&
+    !Array.isArray(display.failureFieldCodes)
+  ) {
+    for (const [fieldKey, code] of Object.entries(
+      display.failureFieldCodes,
+    ).slice(0, 50)) {
+      if (
+        !Object.hasOwn(display.failureFieldCodes, fieldKey) ||
+        fieldKey.length > 120 ||
+        ['__proto__', 'constructor', 'prototype'].includes(fieldKey) ||
+        !Object.hasOwn(resolved?.access.fields ?? {}, fieldKey)
+      )
+        continue;
+      if (
+        resolved?.schema.fields.some((field) => field.fieldKey === fieldKey) &&
+        resolved.access.fields[fieldKey] === 'EDIT' &&
+        (code === 'FIELD_REQUIRED' ||
+          code === 'FIELD_INVALID' ||
+          code === 'FIELD_OPTION_INACTIVE')
+      ) {
+        fieldErrors[fieldKey] = [
+          API_ERROR_MESSAGES[code as keyof typeof API_ERROR_MESSAGES],
+        ];
+      }
+    }
+  }
   const titleReadable =
     recordReadable &&
     typeof display.titleFieldKey === 'string' &&
@@ -77,6 +116,7 @@ function toView(
     targetSummary: titleReadable ? display.targetSummary : '',
     changes,
     validationWarnings: display.validationWarnings ?? [],
+    fieldErrors,
     expiresAt: row.expiresAt.toISOString(),
     status: row.status,
     failureCode: row.failureCode,
@@ -117,6 +157,7 @@ export class AiOperationRepository {
       {
         resolved: ResolvedObjectSchema;
         recordIds: Set<string>;
+        editableIds: Set<string>;
       }
     >();
     for (const objectCode of new Set(
@@ -152,9 +193,23 @@ export class AiOperationRepository {
         ids,
         resolved.access.readScope === 'OWN' ? context.memberId : undefined,
       );
+      const editableIds =
+        !resolved.access.canUpdate || resolved.access.updateScope === 'NONE'
+          ? []
+          : resolved.access.updateScope === 'OWN' &&
+              resolved.access.readScope !== 'OWN'
+            ? await visibleRecordIdsInTransaction(
+                tx,
+                context,
+                resolved.schema.object.id,
+                recordIds,
+                context.memberId,
+              )
+            : recordIds;
       visibility.set(objectCode, {
         resolved,
         recordIds: new Set(recordIds),
+        editableIds: new Set(editableIds),
       });
     }
     const followUpIds = rows.flatMap((row) => {
@@ -186,6 +241,9 @@ export class AiOperationRepository {
         !!visible &&
           typeof target.recordId === 'string' &&
           visible.recordIds.has(target.recordId),
+        !!visible &&
+          typeof target.recordId === 'string' &&
+          visible.editableIds.has(target.recordId),
         row.operationType !== 'CREATE_FOLLOW_UP' ||
           row.status !== 'EXECUTED' ||
           (!!row.resultJson &&
@@ -413,8 +471,37 @@ export class AiOperationRepository {
     id: string,
     state: 'CONFLICTED' | 'FAILED' | 'REJECTED',
     code: string,
+    fieldErrors?: Record<string, AiFieldFailureCode>,
   ): Promise<AiProposalView | null> {
     return this.runner.withTenant(context, async (tx) => {
+      const current = fieldErrors
+        ? await tx.aiOperation.findFirst({
+            where: { id, status: 'PROPOSED', ...ownedWhere(context) },
+            select: { displayChangesJson: true },
+          })
+        : null;
+      const safeCodes: Record<string, AiFieldFailureCode> = {};
+      if (
+        fieldErrors &&
+        typeof fieldErrors === 'object' &&
+        !Array.isArray(fieldErrors)
+      ) {
+        for (const [key, value] of Object.entries(fieldErrors)) {
+          if (
+            key.length > 120 ||
+            Object.keys(safeCodes).length >= 50 ||
+            ['__proto__', 'constructor', 'prototype'].includes(key)
+          )
+            continue;
+          if (
+            value === 'FIELD_REQUIRED' ||
+            value === 'FIELD_INVALID' ||
+            value === 'FIELD_OPTION_INACTIVE'
+          )
+            safeCodes[key] = value;
+        }
+      }
+      const display = current?.displayChangesJson;
       await tx.aiOperation.updateMany({
         where: {
           id,
@@ -424,6 +511,21 @@ export class AiOperationRepository {
         data: {
           status: state,
           failureCode: code,
+          ...(display &&
+          typeof display === 'object' &&
+          !Array.isArray(display) &&
+          Object.keys(safeCodes).length
+            ? {
+                displayChangesJson: {
+                  title: display.title,
+                  titleFieldKey: display.titleFieldKey,
+                  targetSummary: display.targetSummary,
+                  changes: display.changes,
+                  validationWarnings: display.validationWarnings,
+                  failureFieldCodes: safeCodes,
+                } as Prisma.InputJsonObject,
+              }
+            : {}),
           confirmedByMemberId: context.memberId,
           confirmedAt: new Date(),
         },

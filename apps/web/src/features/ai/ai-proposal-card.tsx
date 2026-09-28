@@ -160,6 +160,16 @@ export function AiProposalCard({
           {warning}
         </p>
       ))}
+      {proposal.status === "FAILED" && proposal.fieldErrors ? (
+        <dl aria-label="字段错误" className={styles.proposalChanges}>
+          {Object.entries(proposal.fieldErrors).map(([field, messages]) => (
+            <div key={field}>
+              <dt>{field}</dt>
+              <dd>{messages.join("；")}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
       {actionable ? (
         <div className={styles.proposalActions} aria-label="提案操作">
           <Button

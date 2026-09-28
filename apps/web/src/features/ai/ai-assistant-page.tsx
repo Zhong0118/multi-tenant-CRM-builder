@@ -94,7 +94,16 @@ export function AiAssistantPage({
     const pages = messages.data?.pages ?? [];
     return [...pages].reverse().flatMap((page) => page.items) as AiMessage[];
   }, [messages.data]);
-  const live = toAssistantMessage(state);
+  const liveMessage = toAssistantMessage(state);
+  // Once an authoritative server row exists for the completed turn, discard
+  // the SSE snapshot; permission revocation may have redacted its Proposal.
+  const live =
+    liveMessage &&
+    history.some(
+      (item) => item.role === "ASSISTANT" && item.turnId === liveMessage.turnId,
+    )
+      ? null
+      : liveMessage;
   const pendingUser: AiMessage | null =
     state.pendingUserContent && state.conversationId
       ? {
@@ -141,7 +150,7 @@ export function AiAssistantPage({
     const update = item.proposal
       ? proposalUpdates[item.proposal.proposalId]
       : undefined;
-    if (!update) return item;
+    if (!update || item.proposal?.status !== "PROPOSED") return item;
     return {
       ...item,
       proposal: {
@@ -150,6 +159,7 @@ export function AiAssistantPage({
         targetSummary: item.proposal?.targetSummary ?? "",
         changes: item.proposal?.changes ?? [],
         result: item.proposal?.result ?? null,
+        fieldErrors: update.fieldErrors ?? {},
       },
     };
   });
