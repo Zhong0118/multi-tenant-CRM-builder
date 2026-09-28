@@ -7,6 +7,8 @@ import type {
 
 export const CRITICAL_SEARCH_OWN_LEADS_MARKER = 'critical:search-own-leads';
 export const CRITICAL_SEARCH_OBJECT_CODE = 'leads';
+const PROPOSE_MARKER =
+  /critical:propose-change:(UPDATE_RECORD|CREATE_FOLLOW_UP|ADD_ACTIVITY_NOTE):([0-9a-f-]{36})/;
 
 let capturedToolResult: unknown;
 
@@ -33,6 +35,43 @@ export class FakeAiProvider implements AiProvider {
     const prompt = input.messages.map((message) => message.content).join('\n');
     if (prompt.includes(CRITICAL_SEARCH_OWN_LEADS_MARKER)) {
       yield* this.searchOwnLeads(input);
+      return;
+    }
+    if (prompt.includes('critical:provider-secret-failure')) {
+      yield { type: 'FAILED', code: 'provider-raw-secret' };
+      return;
+    }
+    const proposal = prompt.match(PROPOSE_MARKER);
+    if (proposal) {
+      const [, operationType, recordId] = proposal;
+      const callId = 'fake-propose-change';
+      const tool = input.tools.find((entry) => entry.name === 'propose_change');
+      if (!tool || input.abortSignal.aborted) return;
+      const candidate =
+        operationType === 'UPDATE_RECORD'
+          ? {
+              operationType,
+              objectCode: 'leads',
+              recordId,
+              values: { name: 'HTTP confirmed' },
+            }
+          : operationType === 'CREATE_FOLLOW_UP'
+            ? {
+                operationType,
+                objectCode: 'leads',
+                recordId,
+                title: 'HTTP follow-up',
+                dueAt: '2026-10-01T12:00:00Z',
+              }
+            : {
+                operationType,
+                objectCode: 'leads',
+                recordId,
+                content: 'HTTP note',
+              };
+      await tool.execute(candidate, callId);
+      yield { type: 'USAGE', inputTokens: 8, outputTokens: 12 };
+      yield { type: 'COMPLETED' };
       return;
     }
     yield { type: 'TEXT_DELTA', text: '测试回答' };

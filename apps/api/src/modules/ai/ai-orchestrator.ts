@@ -336,14 +336,19 @@ export class AiOrchestrator {
         providerKey: this.provider.providerKey,
         modelKey: this.provider.modelKey,
       });
-      yield {
-        event: 'turn.failed',
-        data: {
-          turnId: begun.turnId,
-          code: 'AI_TURN_FAILED',
-          messageId: begun.assistant.id,
-        },
-      };
+      yield cancelled
+        ? {
+            event: 'turn.cancelled',
+            data: { turnId: begun.turnId, messageId: begun.assistant.id },
+          }
+        : {
+            event: 'turn.failed',
+            data: {
+              turnId: begun.turnId,
+              code: 'AI_TURN_FAILED',
+              messageId: begun.assistant.id,
+            },
+          };
     }
   }
 

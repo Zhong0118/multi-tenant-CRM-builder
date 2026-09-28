@@ -113,6 +113,176 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
   }
 
   it.each(['UPDATE_RECORD', 'CREATE_FOLLOW_UP', 'ADD_ACTIVITY_NOTE'] as const)(
+    'creates %s through an HTTP turn and restores its safe proposal before confirmation',
+    async (type) => {
+      const before = await Promise.all([
+        harness.adminDatabase.record.findUniqueOrThrow({
+          where: { id: fixture.ownedRecord.id },
+        }),
+        harness.adminDatabase.recordFollowUp.count(),
+        harness.adminDatabase.recordActivity.count(),
+        harness.adminDatabase.auditLog.count(),
+      ]);
+      const base = `/api/v1/workspaces/${fixture.tenantA.code}/ai`;
+      const turn = await request(harness.app.getHttpServer())
+        .post(`${base}/turns`)
+        .set('Cookie', fixture.employee.cookie)
+        .set('Origin', 'http://localhost:3000')
+        .set('Accept', 'text/event-stream')
+        .send({
+          content: `critical:propose-change:${type}:${fixture.ownedRecord.id}`,
+        })
+        .expect(200);
+      expect(turn.headers['content-type']).toMatch(/text\/event-stream/);
+      const events = turn.text
+        .split('\n\n')
+        .filter(Boolean)
+        .map((block) => {
+          const name = block
+            .split('\n')
+            .find((line) => line.startsWith('event: '));
+          const data = block
+            .split('\n')
+            .find((line) => line.startsWith('data: '));
+          return {
+            event: name?.slice(7),
+            data: data ? JSON.parse(data.slice(6)) : null,
+          };
+        });
+      const ready = events.find((event) => event.event === 'proposal.ready');
+      expect(ready).toBeDefined();
+      expect(events.map((event) => event.event)).toContain('turn.completed');
+      const view = ready!.data.proposal;
+      expect(view).toMatchObject({ operation: type, status: 'PROPOSED' });
+      const safeStream = JSON.stringify(events);
+      for (const secret of [
+        'hidden-owned',
+        'hidden-other',
+        '"secret"',
+        'provider-raw-secret',
+      ]) {
+        expect(safeStream).not.toContain(secret);
+      }
+      const preview = await request(harness.app.getHttpServer())
+        .get(`${base}/proposals/${view.proposalId}`)
+        .set('Cookie', fixture.employee.cookie)
+        .expect(200);
+      expect(preview.body).toMatchObject(view);
+      const conversationId = events.find(
+        (event) => event.event === 'conversation.ready',
+      )!.data.conversationId;
+      const history = await request(harness.app.getHttpServer())
+        .get(`${base}/conversations/${conversationId}/messages`)
+        .set('Cookie', fixture.employee.cookie)
+        .expect(200);
+      expect(JSON.stringify(history.body)).toContain(view.proposalId);
+      for (const secret of [
+        'hidden-owned',
+        'hidden-other',
+        '"secret"',
+        'provider-raw-secret',
+      ]) {
+        expect(JSON.stringify(preview.body)).not.toContain(secret);
+        expect(JSON.stringify(history.body)).not.toContain(secret);
+      }
+      expect(
+        await Promise.all([
+          harness.adminDatabase.record.findUniqueOrThrow({
+            where: { id: fixture.ownedRecord.id },
+          }),
+          harness.adminDatabase.recordFollowUp.count(),
+          harness.adminDatabase.recordActivity.count(),
+          harness.adminDatabase.auditLog.count(),
+        ]),
+      ).toEqual(before);
+      const confirmed = await request(harness.app.getHttpServer())
+        .post(`${base}/proposals/${view.proposalId}/confirm`)
+        .set('Cookie', fixture.employee.cookie)
+        .set('Origin', 'http://localhost:3000')
+        .send({ idempotencyKey: randomUUID() })
+        .expect(200);
+      expect(confirmed.body).toMatchObject({
+        status: 'EXECUTED',
+        auditId: expect.any(String),
+      });
+      const operation =
+        await harness.adminDatabase.aiOperation.findUniqueOrThrow({
+          where: { id: view.proposalId },
+        });
+      expect(operation.auditId).toBe(confirmed.body.auditId);
+      const audit = await harness.adminDatabase.auditLog.findUnique({
+        where: { id: operation.auditId! },
+      });
+      expect(audit).toMatchObject({
+        after: expect.objectContaining({ aiOperationId: view.proposalId }),
+      });
+      if (type === 'UPDATE_RECORD') {
+        expect(
+          await harness.adminDatabase.record.findUniqueOrThrow({
+            where: { id: fixture.ownedRecord.id },
+          }),
+        ).toMatchObject({
+          version: before[0].version + 1,
+          data: expect.objectContaining({ name: 'HTTP confirmed' }),
+        });
+      } else if (type === 'CREATE_FOLLOW_UP') {
+        expect(await harness.adminDatabase.recordFollowUp.count()).toBe(
+          before[1] + 1,
+        );
+      } else {
+        expect(await harness.adminDatabase.recordActivity.count()).toBe(
+          before[2] + 1,
+        );
+      }
+      expect(await harness.adminDatabase.auditLog.count()).toBe(before[3] + 1);
+    },
+  );
+
+  it('does not publish a provider raw failure code or secrets in the HTTP SSE', async () => {
+    const response = await request(harness.app.getHttpServer())
+      .post(`/api/v1/workspaces/${fixture.tenantA.code}/ai/turns`)
+      .set('Cookie', fixture.employee.cookie)
+      .set('Origin', 'http://localhost:3000')
+      .set('Accept', 'text/event-stream')
+      .send({ content: 'critical:provider-secret-failure' })
+      .expect(200);
+    expect(response.text).toContain('turn.failed');
+    expect(response.text).toContain('AI_TURN_FAILED');
+    expect(response.text).not.toContain('provider-raw-secret');
+    expect(response.text).not.toContain('hidden-owned');
+  });
+
+  it('uses a non-BYPASSRLS runtime role and FORCE RLS on AI persistence tables', async () => {
+    const role = await harness.runtimeDatabase.$queryRaw<
+      Array<{ rolname: string; rolbypassrls: boolean }>
+    >`
+      SELECT rolname, rolbypassrls FROM pg_roles WHERE rolname = current_user`;
+    expect(role).toEqual([{ rolname: 'crm_app', rolbypassrls: false }]);
+    const tables = await harness.runtimeDatabase.$queryRaw<
+      Array<{
+        relname: string;
+        relrowsecurity: boolean;
+        relforcerowsecurity: boolean;
+      }>
+    >`
+      SELECT relname, relrowsecurity, relforcerowsecurity FROM pg_class
+      WHERE relnamespace = 'public'::regnamespace
+        AND relname IN ('ai_conversations', 'ai_messages', 'ai_operations')`;
+    expect(tables).toHaveLength(3);
+    expect(tables.map(({ relname }) => relname).sort()).toEqual([
+      'ai_conversations',
+      'ai_messages',
+      'ai_operations',
+    ]);
+    expect(
+      tables.every(
+        ({ relrowsecurity, relforcerowsecurity }) =>
+          relrowsecurity && relforcerowsecurity,
+      ),
+    ).toBe(true);
+  });
+
+  it.each(['UPDATE_RECORD', 'CREATE_FOLLOW_UP', 'ADD_ACTIVITY_NOTE'] as const)(
     'runs %s through HTTP preview status and confirm, with no write before confirm',
     async (type) => {
       const before = await Promise.all([
@@ -157,12 +327,17 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
         status: 'EXECUTED',
       });
       expect(confirmed.body.auditId).toEqual(expect.any(String));
-      const operation = await harness.adminDatabase.aiOperation.findUniqueOrThrow({
-        where: { id: view.proposalId },
-      });
+      const operation =
+        await harness.adminDatabase.aiOperation.findUniqueOrThrow({
+          where: { id: view.proposalId },
+        });
       expect(operation.status).toBe('EXECUTED');
       expect(operation.auditId).toBe(confirmed.body.auditId);
-      expect(await harness.adminDatabase.auditLog.findUnique({ where: { id: operation.auditId! } })).toMatchObject({
+      expect(
+        await harness.adminDatabase.auditLog.findUnique({
+          where: { id: operation.auditId! },
+        }),
+      ).toMatchObject({
         id: operation.auditId,
         after: expect.objectContaining({ aiOperationId: view.proposalId }),
       });
@@ -173,7 +348,9 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
     const view = await proposal('UPDATE_RECORD');
     const path = `/api/v1/workspaces/${fixture.tenantA.code}/ai/proposals/${view.proposalId}`;
     await request(harness.app.getHttpServer())
-      .get(`/api/v1/workspaces/${fixture.tenantA.code}/ai/proposals/${view.proposalId}`)
+      .get(
+        `/api/v1/workspaces/${fixture.tenantA.code}/ai/proposals/${view.proposalId}`,
+      )
       .set('Cookie', fixture.otherEmployee.cookie)
       .expect(404);
     await request(harness.app.getHttpServer())
@@ -182,7 +359,9 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
       .send({ idempotencyKey: randomUUID() })
       .expect(403);
     await request(harness.app.getHttpServer())
-      .get(`/api/v1/workspaces/${fixture.tenantB.code}/ai/proposals/${view.proposalId}`)
+      .get(
+        `/api/v1/workspaces/${fixture.tenantB.code}/ai/proposals/${view.proposalId}`,
+      )
       .set('Cookie', fixture.tenantBAdmin.cookie)
       .expect(404);
     expect(
@@ -207,14 +386,20 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
       },
     });
     await request(harness.app.getHttpServer())
-      .post(`/api/v1/workspaces/${fixture.tenantA.code}/ai/proposals/${permission.proposalId}/confirm`)
+      .post(
+        `/api/v1/workspaces/${fixture.tenantA.code}/ai/proposals/${permission.proposalId}/confirm`,
+      )
       .set('Cookie', fixture.employee.cookie)
       .set('Origin', 'http://localhost:3000')
       .send({ idempotencyKey: randomUUID() })
       .expect(200)
       .expect(({ body }) => expect(body.status).toBe('CONFLICTED'));
     await harness.adminDatabase.objectPermission.deleteMany({
-      where: { tenantId: context.tenantId, objectId: fixture.object.id, subjectMemberId: context.memberId },
+      where: {
+        tenantId: context.tenantId,
+        objectId: fixture.object.id,
+        subjectMemberId: context.memberId,
+      },
     });
 
     const stale = await proposal('ADD_ACTIVITY_NOTE');
@@ -223,7 +408,9 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
       data: { version: { increment: 1 } },
     });
     await request(harness.app.getHttpServer())
-      .post(`/api/v1/workspaces/${fixture.tenantA.code}/ai/proposals/${stale.proposalId}/confirm`)
+      .post(
+        `/api/v1/workspaces/${fixture.tenantA.code}/ai/proposals/${stale.proposalId}/confirm`,
+      )
       .set('Cookie', fixture.employee.cookie)
       .set('Origin', 'http://localhost:3000')
       .send({ idempotencyKey: randomUUID() })
@@ -236,7 +423,9 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
       data: { expiresAt: new Date(Date.now() - 1000) },
     });
     await request(harness.app.getHttpServer())
-      .post(`/api/v1/workspaces/${fixture.tenantA.code}/ai/proposals/${expired.proposalId}/confirm`)
+      .post(
+        `/api/v1/workspaces/${fixture.tenantA.code}/ai/proposals/${expired.proposalId}/confirm`,
+      )
       .set('Cookie', fixture.employee.cookie)
       .set('Origin', 'http://localhost:3000')
       .send({ idempotencyKey: randomUUID() })
@@ -278,7 +467,9 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
     });
     const before = await harness.adminDatabase.auditLog.count();
     await request(harness.app.getHttpServer())
-      .post(`/api/v1/workspaces/${fixture.tenantA.code}/ai/proposals/${failed.proposalId}/confirm`)
+      .post(
+        `/api/v1/workspaces/${fixture.tenantA.code}/ai/proposals/${failed.proposalId}/confirm`,
+      )
       .set('Cookie', fixture.employee.cookie)
       .set('Origin', 'http://localhost:3000')
       .send({ idempotencyKey: randomUUID() })
@@ -286,7 +477,9 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
       .expect(({ body }) => expect(body.status).toBe('FAILED'));
     expect(await harness.adminDatabase.auditLog.count()).toBe(before);
     expect(
-      await harness.adminDatabase.aiOperation.findUniqueOrThrow({ where: { id: failed.proposalId } }),
+      await harness.adminDatabase.aiOperation.findUniqueOrThrow({
+        where: { id: failed.proposalId },
+      }),
     ).toMatchObject({ status: 'FAILED', auditId: null });
   });
 });

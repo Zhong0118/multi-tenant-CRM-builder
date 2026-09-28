@@ -261,6 +261,9 @@ function createService() {
         return Promise.resolve({ count });
       },
     },
+    aiOperation: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
     aiMessage: {
       create: ({ data }: { data: Partial<MessageRow> }) => {
         const now = new Date();
