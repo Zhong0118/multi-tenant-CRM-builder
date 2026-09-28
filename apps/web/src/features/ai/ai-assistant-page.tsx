@@ -115,7 +115,7 @@ export function AiAssistantPage({
           }
         : null;
   const shown = [
-    ...history.map((item) => item.proposal && proposalUpdates[item.proposal.proposalId] ? { ...item, proposal: proposalUpdates[item.proposal.proposalId] } : item).filter((item) => {
+    ...history.filter((item) => {
       if (live && item.turnId === live.turnId && item.role !== "USER") return false;
       if (
         pendingUser &&
@@ -129,7 +129,9 @@ export function AiAssistantPage({
     }),
     ...(pendingUser ? [pendingUser] : []),
     ...(live ? [live] : []),
-  ];
+  ].map((item) => item.proposal && proposalUpdates[item.proposal.proposalId]
+    ? { ...item, proposal: proposalUpdates[item.proposal.proposalId] }
+    : item);
 
   async function consume(
     iterable: AsyncIterable<import("./ai-types").AiPublicStreamEvent>,

@@ -105,6 +105,45 @@ describe("AiAssistantPage", () => {
     await waitFor(() => expect(screen.getByText("已拒绝，未写入数据。")).toBeInTheDocument());
   });
 
+  it("shows a rejected live SSE proposal immediately without reloading history", async () => {
+    const proposal = { proposalId: "p-live-reject", operation: "ADD_ACTIVITY_NOTE", title: "添加备注", targetSummary: "Acme", changes: [{ label: "备注", after: "已联系" }], validationWarnings: [], expiresAt: "2999-01-01T00:00:00.000Z", status: "PROPOSED", failureCode: null, auditId: null, result: null };
+    mocks.conversation = "c1";
+    mocks.streamTurn.mockImplementation(async function* () {
+      yield { event: "conversation.ready", data: { conversationId: "c1", title: "问", turnId: "t-live" } };
+      yield { event: "proposal.ready", data: { turnId: "t-live", proposal } };
+      yield { event: "turn.completed", data: { turnId: "t-live", messageId: "m-live" } };
+    });
+    mocks.rejectProposal.mockResolvedValue({ ...proposal, status: "REJECTED" });
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"), { target: { value: "添加备注" } });
+    fireEvent.click(screen.getByRole("button", { name: "发送" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /拒\s*绝/ })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: /拒\s*绝/ }));
+    await waitFor(() => expect(screen.getByText("已拒绝，未写入数据。")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "确认执行" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /拒\s*绝/ })).not.toBeInTheDocument();
+  });
+
+  it("shows a conflicted live SSE proposal immediately after confirmation", async () => {
+    const proposal = { proposalId: "p-live-conflict", operation: "UPDATE_RECORD", title: "更新客户", targetSummary: "Acme", changes: [{ label: "状态", before: "线索", after: "成交" }], validationWarnings: [], expiresAt: "2999-01-01T00:00:00.000Z", status: "PROPOSED", failureCode: null, auditId: null, result: null };
+    mocks.conversation = "c1";
+    mocks.streamTurn.mockImplementation(async function* () {
+      yield { event: "conversation.ready", data: { conversationId: "c1", title: "问", turnId: "t-live" } };
+      yield { event: "proposal.ready", data: { turnId: "t-live", proposal } };
+      yield { event: "turn.completed", data: { turnId: "t-live", messageId: "m-live" } };
+    });
+    mocks.confirmProposal.mockResolvedValue({ ...proposal, status: "CONFLICTED", failureCode: "RECORD_VERSION_CONFLICT" });
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"), { target: { value: "更新客户" } });
+    fireEvent.click(screen.getByRole("button", { name: "发送" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "确认执行" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "确认执行" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("数据已变化"));
+    expect(screen.getByText("已冲突")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "确认执行" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /拒\s*绝/ })).not.toBeInTheDocument();
+  });
+
   it("shows the read-only header and updates the conversation query on conversation.ready", async () => {
     renderPage();
     expect(screen.getByRole("heading", { name: /AI 助手/ })).toBeInTheDocument();
