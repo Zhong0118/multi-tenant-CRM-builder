@@ -1,7 +1,11 @@
 "use client";
 
 import { Button, Drawer, Tag } from "antd";
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 
@@ -41,9 +45,12 @@ export function AiAssistantPage({
   const stateRef = useRef(state);
   stateRef.current = state;
   const [railOpen, setRailOpen] = useState(false);
-  const [proposalUpdates, setProposalUpdates] = useState<Record<string, import("./ai-types").AiProposalView>>({});
+  const [proposalUpdates, setProposalUpdates] = useState<
+    Record<string, import("./ai-types").AiProposalView>
+  >({});
   const [proposalError, setProposalError] = useState<string | null>(null);
-  const composerRef = useRef<import("antd/es/input/TextArea").TextAreaRef>(null);
+  const composerRef =
+    useRef<import("antd/es/input/TextArea").TextAreaRef>(null);
 
   const conversations = useInfiniteQuery({
     queryKey: aiQueryKeys.conversations(tenantCode),
@@ -116,7 +123,8 @@ export function AiAssistantPage({
         : null;
   const shown = [
     ...history.filter((item) => {
-      if (live && item.turnId === live.turnId && item.role !== "USER") return false;
+      if (live && item.turnId === live.turnId && item.role !== "USER")
+        return false;
       if (
         pendingUser &&
         state.turnId &&
@@ -129,9 +137,22 @@ export function AiAssistantPage({
     }),
     ...(pendingUser ? [pendingUser] : []),
     ...(live ? [live] : []),
-  ].map((item) => item.proposal && proposalUpdates[item.proposal.proposalId]
-    ? { ...item, proposal: proposalUpdates[item.proposal.proposalId] }
-    : item);
+  ].map((item) => {
+    const update = item.proposal
+      ? proposalUpdates[item.proposal.proposalId]
+      : undefined;
+    if (!update) return item;
+    return {
+      ...item,
+      proposal: {
+        ...update,
+        // The server projection remains authoritative for permission-sensitive data.
+        targetSummary: item.proposal?.targetSummary ?? "",
+        changes: item.proposal?.changes ?? [],
+        result: item.proposal?.result ?? null,
+      },
+    };
+  });
 
   async function consume(
     iterable: AsyncIterable<import("./ai-types").AiPublicStreamEvent>,
@@ -185,7 +206,9 @@ export function AiAssistantPage({
   }
 
   function startTurn(
-    factory: (signal: AbortSignal) => AsyncIterable<import("./ai-types").AiPublicStreamEvent>,
+    factory: (
+      signal: AbortSignal,
+    ) => AsyncIterable<import("./ai-types").AiPublicStreamEvent>,
   ) {
     abortRef.current?.abort();
     generationRef.current += 1;
@@ -222,7 +245,9 @@ export function AiAssistantPage({
     mutationFn: ({ id, title }: { id: string; title: string }) =>
       aiApi.rename(tenantCode, id, title),
     onSuccess: () =>
-      client.invalidateQueries({ queryKey: aiQueryKeys.conversations(tenantCode) }),
+      client.invalidateQueries({
+        queryKey: aiQueryKeys.conversations(tenantCode),
+      }),
   });
   const confirmProposal = useMutation({
     mutationFn: async (proposalId: string) => {
@@ -238,10 +263,19 @@ export function AiAssistantPage({
     },
     onSuccess: (view) => {
       setProposalError(null);
-      setProposalUpdates((current) => ({ ...current, [view.proposalId]: view }));
-      if (conversationId) void client.invalidateQueries({ queryKey: aiQueryKeys.messages(tenantCode, conversationId) });
+      setProposalUpdates((current) => ({
+        ...current,
+        [view.proposalId]: view,
+      }));
+      if (conversationId)
+        void client.invalidateQueries({
+          queryKey: aiQueryKeys.messages(tenantCode, conversationId),
+        });
     },
-    onError: (error) => setProposalError(error instanceof Error ? error.message : "提案执行失败，请稍后重试。"),
+    onError: (error) =>
+      setProposalError(
+        error instanceof Error ? error.message : "提案执行失败，请稍后重试。",
+      ),
   });
   const rejectProposal = useMutation({
     mutationFn: async (proposalId: string) => {
@@ -255,15 +289,26 @@ export function AiAssistantPage({
     },
     onSuccess: (view) => {
       setProposalError(null);
-      setProposalUpdates((current) => ({ ...current, [view.proposalId]: view }));
-      if (conversationId) void client.invalidateQueries({ queryKey: aiQueryKeys.messages(tenantCode, conversationId) });
+      setProposalUpdates((current) => ({
+        ...current,
+        [view.proposalId]: view,
+      }));
+      if (conversationId)
+        void client.invalidateQueries({
+          queryKey: aiQueryKeys.messages(tenantCode, conversationId),
+        });
     },
-    onError: (error) => setProposalError(error instanceof Error ? error.message : "提案拒绝失败，请稍后重试。"),
+    onError: (error) =>
+      setProposalError(
+        error instanceof Error ? error.message : "提案拒绝失败，请稍后重试。",
+      ),
   });
   const remove = useMutation({
     mutationFn: (id: string) => aiApi.remove(tenantCode, id),
     onSuccess: (_void, id) => {
-      client.invalidateQueries({ queryKey: aiQueryKeys.conversations(tenantCode) });
+      client.invalidateQueries({
+        queryKey: aiQueryKeys.conversations(tenantCode),
+      });
       if (id === conversationId) {
         router.replace(pathname);
       }
@@ -272,7 +317,9 @@ export function AiAssistantPage({
 
   const rail = (
     <ConversationRail
-      conversations={conversations.data?.pages.flatMap((page) => page.items) ?? []}
+      conversations={
+        conversations.data?.pages.flatMap((page) => page.items) ?? []
+      }
       selectedId={conversationId}
       loading={conversations.isLoading}
       onNew={() => {
@@ -281,7 +328,8 @@ export function AiAssistantPage({
         setRailOpen(false);
       }}
       onSelect={(id) => {
-        if (id !== (conversationId ?? state.conversationId)) abandonActiveTurn();
+        if (id !== (conversationId ?? state.conversationId))
+          abandonActiveTurn();
         router.replace(`${pathname}?conversation=${encodeURIComponent(id)}`);
         setRailOpen(false);
       }}
@@ -350,7 +398,9 @@ export function AiAssistantPage({
               }
               onConfirmProposal={(id) => confirmProposal.mutate(id)}
               onRejectProposal={(id) => rejectProposal.mutate(id)}
-              proposalBusy={confirmProposal.isPending || rejectProposal.isPending}
+              proposalBusy={
+                confirmProposal.isPending || rejectProposal.isPending
+              }
               proposalError={proposalError}
             />
           )}

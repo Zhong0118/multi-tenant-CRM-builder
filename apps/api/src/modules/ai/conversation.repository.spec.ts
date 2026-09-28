@@ -448,7 +448,9 @@ function harness(options: { lockedMembers?: Array<{ id: string }> } = {}) {
   const runner = { withTenant } as unknown as DatabaseContextRunner;
   const repository = new ConversationRepository(
     runner,
-    new AiOperationRepository(runner),
+    new AiOperationRepository(runner, {
+      visibleFollowUpIdsInTransaction: jest.fn(),
+    } as never),
   );
   const service = new ConversationService(repository);
   return {

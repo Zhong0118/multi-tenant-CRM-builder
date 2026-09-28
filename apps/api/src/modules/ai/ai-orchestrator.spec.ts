@@ -215,9 +215,11 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
     const abort = new AbortController();
     let assistantStatus = 'GENERATING';
     let operationStatus = 'PROPOSED';
-    conversations.finalizeAssistant.mockImplementation(async (_context, _turnId, outcome) => {
-      assistantStatus = outcome.status;
-    });
+    conversations.finalizeAssistant.mockImplementation(
+      async (_context, _turnId, outcome) => {
+        assistantStatus = outcome.status;
+      },
+    );
     proposals.completeWithProposal.mockImplementation(() => {
       assistantStatus = 'COMPLETED';
       operationStatus = 'PROPOSED';
@@ -226,10 +228,19 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
       return committed;
     });
     const provider = providerWith(async function* (_signal, tools) {
-      await tools.find((tool) => tool.name === 'propose_change')!.execute(candidate, 'first');
+      await tools
+        .find((tool) => tool.name === 'propose_change')!
+        .execute(candidate, 'first');
       yield { type: 'COMPLETED' };
     });
-    const events = await collect(await new AiOrchestrator(conversations, provider, registryWith([]), proposals).streamTurn(context, { content: 'note' }, abort.signal));
+    const events = await collect(
+      await new AiOrchestrator(
+        conversations,
+        provider,
+        registryWith([]),
+        proposals,
+      ).streamTurn(context, { content: 'note' }, abort.signal),
+    );
     expect(events.map((event) => event.event)).not.toContain('proposal.ready');
     expect(events.map((event) => event.event)).toContain('turn.completed');
     expect(events.map((event) => event.event)).not.toContain('turn.cancelled');
@@ -526,6 +537,10 @@ describe('AiOrchestrator.streamTurn', () => {
     expect(AI_SYSTEM_PROMPT).toMatch(/provided read tools/);
     expect(AI_SYSTEM_PROMPT).toMatch(/may be incomplete/);
     expect(AI_SYSTEM_PROMPT).toMatch(/hidden or unavailable/);
+    expect(AI_SYSTEM_PROMPT).toMatch(
+      /Assigning or transferring a follow-up.*unsupported/i,
+    );
+    expect(AI_SYSTEM_PROMPT).toMatch(/不能默认为当前执行人/);
     expect(AI_SYSTEM_PROMPT).toMatch(/user's language/);
   });
 

@@ -88,6 +88,21 @@ function setup(
   const runner = { withTenant: jest.fn(async (_context, work) => work(tx)) };
   const repo = new AiOperationRepository(
     runner as unknown as DatabaseContextRunner,
+    {
+      visibleFollowUpIdsInTransaction: jest.fn(
+        async (_tx, _context, ids: string[]) => {
+          const items = await tx.recordFollowUp.findMany({
+            where: {
+              tenantId: context.tenantId,
+              id: { in: ids },
+              assigneeMemberId: context.memberId,
+            },
+            select: { id: true },
+          });
+          return items.map((item: { id: string }) => item.id);
+        },
+      ),
+    } as never,
   );
   return { repo, tx, runner, queryRaw, updateMany, findFirst };
 }

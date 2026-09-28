@@ -9,6 +9,8 @@ import {
   type ResolvedObjectSchema,
 } from '../objects/published-object.service';
 import { resolvePublishedObjectInTransaction } from '../objects/published-object-transaction';
+import { FollowUpsRepository } from '../follow-ups/follow-ups.repository';
+import { visibleRecordIdsInTransaction } from '../records/record-visibility';
 import type {
   AiOperationRow,
   StoredAiProposalDisplay,
@@ -85,7 +87,10 @@ function toView(
 
 @Injectable()
 export class AiOperationRepository {
-  constructor(private readonly runner: DatabaseContextRunner) {}
+  constructor(
+    private readonly runner: DatabaseContextRunner,
+    private readonly followUps: FollowUpsRepository,
+  ) {}
 
   async projectInTransaction(
     tx: Tx,
@@ -140,21 +145,16 @@ export class AiOperationRepository {
         .filter((target) => target.objectCode === objectCode)
         .map((target) => target.recordId)
         .filter((id): id is string => typeof id === 'string');
-      const records = await tx.record.findMany({
-        where: {
-          tenantId: context.tenantId,
-          objectId: resolved.schema.object.id,
-          id: { in: [...new Set(ids)] },
-          deletedAt: null,
-          ...(resolved.access.readScope === 'OWN'
-            ? { ownerMemberId: context.memberId }
-            : {}),
-        },
-        select: { id: true },
-      });
+      const recordIds = await visibleRecordIdsInTransaction(
+        tx,
+        context,
+        resolved.schema.object.id,
+        ids,
+        resolved.access.readScope === 'OWN' ? context.memberId : undefined,
+      );
       visibility.set(objectCode, {
         resolved,
-        recordIds: new Set(records.map((record) => record.id)),
+        recordIds: new Set(recordIds),
       });
     }
     const followUpIds = rows.flatMap((row) => {
@@ -166,22 +166,15 @@ export class AiOperationRepository {
       const followUpId = (result as { followUpId?: unknown }).followUpId;
       return typeof followUpId === 'string' ? [followUpId] : [];
     });
-    const accessibleFollowUps = followUpIds.length
-      ? new Set(
-          (
-            await tx.recordFollowUp.findMany({
-              where: {
-                tenantId: context.tenantId,
-                id: { in: [...new Set(followUpIds)] },
-                ...(context.role === 'TENANT_ADMIN'
-                  ? {}
-                  : { assigneeMemberId: context.memberId }),
-              },
-              select: { id: true },
-            })
-          ).map((item) => item.id),
-        )
-      : new Set<string>();
+    const accessibleFollowUps = new Set(
+      followUpIds.length
+        ? await this.followUps.visibleFollowUpIdsInTransaction(
+            tx,
+            context,
+            followUpIds,
+          )
+        : [],
+    );
     return rows.map((row, index) => {
       const target = targets[index]!;
       const visible = target.objectCode

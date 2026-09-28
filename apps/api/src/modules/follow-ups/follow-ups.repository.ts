@@ -52,6 +52,23 @@ export class FollowUpsRepository {
     private readonly runner: DatabaseContextRunner,
     private readonly audit: AuditService,
   ) {}
+  async visibleFollowUpIdsInTransaction(
+    tx: Prisma.TransactionClient,
+    context: TenantContext,
+    ids: string[],
+  ): Promise<string[]> {
+    const items = await tx.recordFollowUp.findMany({
+      where: {
+        tenantId: context.tenantId,
+        id: { in: [...new Set(ids)] },
+        ...(context.role === 'TENANT_ADMIN'
+          ? {}
+          : { assigneeMemberId: context.memberId }),
+      },
+      select: { id: true },
+    });
+    return items.map((item) => item.id);
+  }
   activeMembers(context: TenantContext) {
     return this.runner.withTenant(context, (tx) =>
       tx.tenantMember.findMany({
@@ -166,7 +183,11 @@ export class FollowUpsRepository {
         items: items.map((item) =>
           presentFollowUp(
             item,
-            canManageRecord(scopes, item.record.objectId, item.record.ownerMemberId),
+            canManageRecord(
+              scopes,
+              item.record.objectId,
+              item.record.ownerMemberId,
+            ),
             now,
           ),
         ),
@@ -263,7 +284,11 @@ export class FollowUpsRepository {
         dueAt: row.dueAt.toISOString(),
         version: row.version,
         overdue: isOverdue,
-        canManage: canManageRecord(scopes, row.record.objectId, row.record.ownerMemberId),
+        canManage: canManageRecord(
+          scopes,
+          row.record.objectId,
+          row.record.ownerMemberId,
+        ),
       });
 
       return {

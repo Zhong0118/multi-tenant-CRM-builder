@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -20,9 +26,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: mocks.replace }),
   usePathname: () => mocks.pathname,
-  useSearchParams: () => new URLSearchParams(
-    mocks.conversation ? `conversation=${mocks.conversation}` : "",
-  ),
+  useSearchParams: () =>
+    new URLSearchParams(
+      mocks.conversation ? `conversation=${mocks.conversation}` : "",
+    ),
 }));
 
 vi.mock("./ai-api", () => ({
@@ -82,74 +89,269 @@ function renderPage(client?: QueryClient) {
 
 describe("AiAssistantPage", () => {
   it("shows mutation recovery feedback and restores the server proposal after confirm timeout", async () => {
-    const proposal = { proposalId:"p1", operation:"UPDATE_RECORD", title:"更新客户", targetSummary:"Acme", changes:[{label:"状态", before:"线索", after:"成交"}], validationWarnings:[], expiresAt:"2999-01-01T00:00:00.000Z", status:"PROPOSED", failureCode:null, auditId:null, result:null };
+    const proposal = {
+      proposalId: "p1",
+      operation: "UPDATE_RECORD",
+      title: "更新客户",
+      targetSummary: "Acme",
+      changes: [{ label: "状态", before: "线索", after: "成交" }],
+      validationWarnings: [],
+      expiresAt: "2999-01-01T00:00:00.000Z",
+      status: "PROPOSED",
+      failureCode: null,
+      auditId: null,
+      result: null,
+    };
     mocks.conversation = "c1";
-    mocks.listMessages.mockResolvedValue({ items: [{ id:"m1", conversationId:"c1", turnId:"t1", role:"ASSISTANT", status:"COMPLETED", content:"", toolSummary:[], sourceSummary:[], proposal, createdAt:"2026-09-23T00:00:00.000Z" }] });
+    mocks.listMessages.mockResolvedValue({
+      items: [
+        {
+          id: "m1",
+          conversationId: "c1",
+          turnId: "t1",
+          role: "ASSISTANT",
+          status: "COMPLETED",
+          content: "",
+          toolSummary: [],
+          sourceSummary: [],
+          proposal,
+          createdAt: "2026-09-23T00:00:00.000Z",
+        },
+      ],
+    });
     mocks.confirmProposal.mockRejectedValue(new Error("timeout"));
-    mocks.getProposal.mockResolvedValue({...proposal, status:"CONFLICTED", failureCode:"RECORD_VERSION_CONFLICT"});
+    mocks.getProposal.mockResolvedValue({
+      ...proposal,
+      status: "CONFLICTED",
+      failureCode: "RECORD_VERSION_CONFLICT",
+    });
     renderPage();
-    await waitFor(() => expect(screen.getByRole("button", {name:"确认执行"})).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", {name:"确认执行"}));
-    await waitFor(() => expect(mocks.getProposal).toHaveBeenCalledWith("northwind", "p1"));
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("数据已变化"));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "确认执行" }),
+      ).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "确认执行" }));
+    await waitFor(() =>
+      expect(mocks.getProposal).toHaveBeenCalledWith("northwind", "p1"),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("数据已变化"),
+    );
   });
 
   it("restores rejected history after reject", async () => {
-    const proposal = { proposalId:"p2", operation:"ADD_ACTIVITY_NOTE", title:"添加备注", targetSummary:"Acme", changes:[{label:"NOTE", after:"已联系"}], validationWarnings:[], expiresAt:"2999-01-01T00:00:00.000Z", status:"PROPOSED", failureCode:null, auditId:null, result:null };
+    const proposal = {
+      proposalId: "p2",
+      operation: "ADD_ACTIVITY_NOTE",
+      title: "添加备注",
+      targetSummary: "Acme",
+      changes: [{ label: "NOTE", after: "已联系" }],
+      validationWarnings: [],
+      expiresAt: "2999-01-01T00:00:00.000Z",
+      status: "PROPOSED",
+      failureCode: null,
+      auditId: null,
+      result: null,
+    };
     mocks.conversation = "c1";
-    mocks.listMessages.mockResolvedValue({ items: [{ id:"m2", conversationId:"c1", turnId:"t2", role:"ASSISTANT", status:"COMPLETED", content:"", toolSummary:[], sourceSummary:[], proposal, createdAt:"2026-09-23T00:00:00.000Z" }] });
-    mocks.rejectProposal.mockResolvedValue({...proposal, status:"REJECTED"});
-    renderPage();
-    await waitFor(() => expect(screen.getByRole("button", {name:/拒\s*绝/})).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", {name:/拒\s*绝/}));
-    await waitFor(() => expect(screen.getByText("已拒绝，未写入数据。")).toBeInTheDocument());
-  });
-
-  it("shows a rejected live SSE proposal immediately without reloading history", async () => {
-    const proposal = { proposalId: "p-live-reject", operation: "ADD_ACTIVITY_NOTE", title: "添加备注", targetSummary: "Acme", changes: [{ label: "备注", after: "已联系" }], validationWarnings: [], expiresAt: "2999-01-01T00:00:00.000Z", status: "PROPOSED", failureCode: null, auditId: null, result: null };
-    mocks.conversation = "c1";
-    mocks.streamTurn.mockImplementation(async function* () {
-      yield { event: "conversation.ready", data: { conversationId: "c1", title: "问", turnId: "t-live" } };
-      yield { event: "proposal.ready", data: { turnId: "t-live", proposal } };
-      yield { event: "turn.completed", data: { turnId: "t-live", messageId: "m-live" } };
+    mocks.listMessages.mockResolvedValue({
+      items: [
+        {
+          id: "m2",
+          conversationId: "c1",
+          turnId: "t2",
+          role: "ASSISTANT",
+          status: "COMPLETED",
+          content: "",
+          toolSummary: [],
+          sourceSummary: [],
+          proposal,
+          createdAt: "2026-09-23T00:00:00.000Z",
+        },
+      ],
     });
     mocks.rejectProposal.mockResolvedValue({ ...proposal, status: "REJECTED" });
     renderPage();
-    fireEvent.change(screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"), { target: { value: "添加备注" } });
-    fireEvent.click(screen.getByRole("button", { name: "发送" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: /拒\s*绝/ })).toBeEnabled());
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /拒\s*绝/ }),
+      ).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByRole("button", { name: /拒\s*绝/ }));
-    await waitFor(() => expect(screen.getByText("已拒绝，未写入数据。")).toBeInTheDocument());
-    expect(screen.queryByRole("button", { name: "确认执行" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /拒\s*绝/ })).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText("已拒绝，未写入数据。")).toBeInTheDocument(),
+    );
+  });
+
+  it("keeps freshly redacted server history authoritative over an earlier mutation response", async () => {
+    const proposal = {
+      proposalId: "p-redact",
+      operation: "UPDATE_RECORD",
+      title: "更新客户",
+      targetSummary: "old secret",
+      changes: [{ label: "姓名", after: "old secret" }],
+      validationWarnings: [],
+      expiresAt: "2999-01-01T00:00:00.000Z",
+      status: "PROPOSED",
+      failureCode: null,
+      auditId: null,
+      result: null,
+    };
+    const message = {
+      id: "m-redact",
+      conversationId: "c1",
+      turnId: "t1",
+      role: "ASSISTANT",
+      status: "COMPLETED",
+      content: "",
+      toolSummary: [],
+      sourceSummary: [],
+      createdAt: "2026-09-23T00:00:00.000Z",
+    };
+    mocks.conversation = "c1";
+    mocks.listMessages.mockResolvedValue({ items: [{ ...message, proposal }] });
+    mocks.rejectProposal.mockResolvedValue({ ...proposal, status: "REJECTED" });
+    const { client } = renderPage();
+    await screen.findByText("old secret", { selector: "p" });
+    fireEvent.click(screen.getByRole("button", { name: /拒\s*绝/ }));
+    await screen.findByText("已拒绝，未写入数据。");
+    client.setQueryData(["ai", "northwind", "c1"], {
+      pages: [
+        {
+          items: [
+            {
+              ...message,
+              proposal: {
+                ...proposal,
+                status: "REJECTED",
+                targetSummary: "",
+                changes: [],
+                result: null,
+              },
+            },
+          ],
+        },
+      ],
+      pageParams: [undefined],
+    });
+    await waitFor(() =>
+      expect(screen.queryByText("old secret")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText("已拒绝，未写入数据。")).toBeInTheDocument();
+  });
+
+  it("shows a rejected live SSE proposal immediately without reloading history", async () => {
+    const proposal = {
+      proposalId: "p-live-reject",
+      operation: "ADD_ACTIVITY_NOTE",
+      title: "添加备注",
+      targetSummary: "Acme",
+      changes: [{ label: "备注", after: "已联系" }],
+      validationWarnings: [],
+      expiresAt: "2999-01-01T00:00:00.000Z",
+      status: "PROPOSED",
+      failureCode: null,
+      auditId: null,
+      result: null,
+    };
+    mocks.conversation = "c1";
+    mocks.streamTurn.mockImplementation(async function* () {
+      yield {
+        event: "conversation.ready",
+        data: { conversationId: "c1", title: "问", turnId: "t-live" },
+      };
+      yield { event: "proposal.ready", data: { turnId: "t-live", proposal } };
+      yield {
+        event: "turn.completed",
+        data: { turnId: "t-live", messageId: "m-live" },
+      };
+    });
+    mocks.rejectProposal.mockResolvedValue({ ...proposal, status: "REJECTED" });
+    renderPage();
+    fireEvent.change(
+      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      { target: { value: "添加备注" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "发送" }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /拒\s*绝/ })).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /拒\s*绝/ }));
+    await waitFor(() =>
+      expect(screen.getByText("已拒绝，未写入数据。")).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByRole("button", { name: "确认执行" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /拒\s*绝/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a conflicted live SSE proposal immediately after confirmation", async () => {
-    const proposal = { proposalId: "p-live-conflict", operation: "UPDATE_RECORD", title: "更新客户", targetSummary: "Acme", changes: [{ label: "状态", before: "线索", after: "成交" }], validationWarnings: [], expiresAt: "2999-01-01T00:00:00.000Z", status: "PROPOSED", failureCode: null, auditId: null, result: null };
+    const proposal = {
+      proposalId: "p-live-conflict",
+      operation: "UPDATE_RECORD",
+      title: "更新客户",
+      targetSummary: "Acme",
+      changes: [{ label: "状态", before: "线索", after: "成交" }],
+      validationWarnings: [],
+      expiresAt: "2999-01-01T00:00:00.000Z",
+      status: "PROPOSED",
+      failureCode: null,
+      auditId: null,
+      result: null,
+    };
     mocks.conversation = "c1";
     mocks.streamTurn.mockImplementation(async function* () {
-      yield { event: "conversation.ready", data: { conversationId: "c1", title: "问", turnId: "t-live" } };
+      yield {
+        event: "conversation.ready",
+        data: { conversationId: "c1", title: "问", turnId: "t-live" },
+      };
       yield { event: "proposal.ready", data: { turnId: "t-live", proposal } };
-      yield { event: "turn.completed", data: { turnId: "t-live", messageId: "m-live" } };
+      yield {
+        event: "turn.completed",
+        data: { turnId: "t-live", messageId: "m-live" },
+      };
     });
-    mocks.confirmProposal.mockResolvedValue({ ...proposal, status: "CONFLICTED", failureCode: "RECORD_VERSION_CONFLICT" });
+    mocks.confirmProposal.mockResolvedValue({
+      ...proposal,
+      status: "CONFLICTED",
+      failureCode: "RECORD_VERSION_CONFLICT",
+    });
     renderPage();
-    fireEvent.change(screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"), { target: { value: "更新客户" } });
+    fireEvent.change(
+      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      { target: { value: "更新客户" } },
+    );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "确认执行" })).toBeEnabled());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "确认执行" })).toBeEnabled(),
+    );
     fireEvent.click(screen.getByRole("button", { name: "确认执行" }));
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("数据已变化"));
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("数据已变化"),
+    );
     expect(screen.getByText("已冲突")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "确认执行" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /拒\s*绝/ })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "确认执行" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /拒\s*绝/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the read-only header and updates the conversation query on conversation.ready", async () => {
     renderPage();
-    expect(screen.getByRole("heading", { name: /AI 助手/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /AI 助手/ }),
+    ).toBeInTheDocument();
     expect(screen.getByText("需确认后执行")).toBeInTheDocument();
     expect(screen.getByTestId("ai-conversation-canvas")).toBeInTheDocument();
-    expect(screen.getByText("Enter 发送 · Shift+Enter 换行")).toBeInTheDocument();
+    expect(
+      screen.getByText("Enter 发送 · Shift+Enter 换行"),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "会话" })).toBeInTheDocument();
     fireEvent.change(
       screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
@@ -250,9 +452,13 @@ describe("AiAssistantPage", () => {
       { target: { value: "第一轮" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "停止" })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "停止" })).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByRole("button", { name: "停止" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "发送" })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "发送" })).toBeInTheDocument(),
+    );
     fireEvent.change(
       screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
       { target: { value: "第二轮提问" } },
@@ -310,9 +516,13 @@ describe("AiAssistantPage", () => {
       };
     });
     renderPage();
-    await waitFor(() => expect(screen.getByText("最近的问题")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText("最近的问题")).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByRole("button", { name: "加载更早消息" }));
-    await waitFor(() => expect(screen.getByText("旧回答失败")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText("旧回答失败")).toBeInTheDocument(),
+    );
     expect(screen.getByText("最近的问题")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "重试" }));
     await waitFor(() =>
@@ -398,8 +608,12 @@ describe("AiAssistantPage", () => {
       { target: { value: "新问题" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "停止" })).toBeInTheDocument());
-    await waitFor(() => expect(screen.getByRole("button", { name: "会话B" })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "停止" })).toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "会话B" })).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByRole("button", { name: "会话B" }));
     mocks.conversation = "c-b";
     view.rerender(
@@ -411,7 +625,9 @@ describe("AiAssistantPage", () => {
       </QueryClientProvider>,
     );
     releaseA();
-    await waitFor(() => expect(screen.getByText("B的历史")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText("B的历史")).toBeInTheDocument(),
+    );
     expect(screen.queryByText("晚到的回答")).not.toBeInTheDocument();
     expect(mocks.replace).toHaveBeenCalledWith(
       "/workspace/northwind/ai?conversation=c-b",
@@ -558,9 +774,13 @@ describe("AiAssistantPage", () => {
       { target: { value: "有 turn 的失败" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "停止" })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "停止" })).toBeInTheDocument(),
+    );
     failReady(new Error("network"));
-    await waitFor(() => expect(screen.getAllByRole("button", { name: "重试" })).toHaveLength(1));
+    await waitFor(() =>
+      expect(screen.getAllByRole("button", { name: "重试" })).toHaveLength(1),
+    );
     fireEvent.click(screen.getByRole("button", { name: "重试" }));
     await waitFor(() =>
       expect(mocks.retryTurn).toHaveBeenCalledWith(
@@ -581,8 +801,12 @@ describe("AiAssistantPage", () => {
       { target: { value: "还没 ready" } },
     );
     fireEvent.click(fresh.container.querySelector('[aria-label="发送"]')!);
-    await waitFor(() => expect(screen.getByText("连接已中断")).toBeInTheDocument());
-    expect(screen.queryByRole("button", { name: "重试" })).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText("连接已中断")).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByRole("button", { name: "重试" }),
+    ).not.toBeInTheDocument();
     expect(mocks.retryTurn).not.toHaveBeenCalled();
   });
 
@@ -611,7 +835,9 @@ describe("AiAssistantPage", () => {
       await new Promise(() => undefined);
     });
     renderPage();
-    await waitFor(() => expect(screen.getByText("帮我总结客户")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText("帮我总结客户")).toBeInTheDocument(),
+    );
     fireEvent.change(
       screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
       { target: { value: "帮我总结客户" } },
@@ -640,9 +866,13 @@ describe("AiAssistantPage", () => {
       ],
     });
     renderPage();
-    await waitFor(() => expect(screen.getByText("回答已停止")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText("回答已停止")).toBeInTheDocument(),
+    );
     expect(screen.getAllByRole("button", { name: "重试" })).toHaveLength(1);
-    expect(screen.queryByText("AI 服务暂时不可用，请稍后重试")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("AI 服务暂时不可用，请稍后重试"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the partial warning once after a tool failure completes the turn", async () => {
@@ -661,7 +891,10 @@ describe("AiAssistantPage", () => {
         },
       };
       yield { event: "assistant.delta", data: { text: "部分结果" } };
-      yield { event: "turn.completed", data: { turnId: "t1", messageId: "m1" } };
+      yield {
+        event: "turn.completed",
+        data: { turnId: "t1", messageId: "m1" },
+      };
     });
     renderPage();
     fireEvent.change(
@@ -674,7 +907,9 @@ describe("AiAssistantPage", () => {
         screen.getAllByText("部分 CRM 数据暂时无法读取，本次回答可能不完整"),
       ).toHaveLength(1),
     );
-    expect(screen.queryByRole("button", { name: "重试" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "重试" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the partial warning once for persisted COMPLETED with a failed tool", async () => {
@@ -707,7 +942,9 @@ describe("AiAssistantPage", () => {
         screen.getAllByText("部分 CRM 数据暂时无法读取，本次回答可能不完整"),
       ).toHaveLength(1),
     );
-    expect(screen.queryByRole("button", { name: "重试" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "重试" }),
+    ).not.toBeInTheDocument();
   });
 
   it("does not run historical Retry while a turn is generating", async () => {
@@ -736,18 +973,26 @@ describe("AiAssistantPage", () => {
       await new Promise(() => undefined);
     });
     renderPage();
-    await waitFor(() => expect(screen.getByText("旧回答失败")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText("旧回答失败")).toBeInTheDocument(),
+    );
     fireEvent.change(
       screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
       { target: { value: "新问题" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "停止" })).toBeInTheDocument());
-    expect(screen.queryByRole("button", { name: "重试" })).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "停止" })).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByRole("button", { name: "重试" }),
+    ).not.toBeInTheDocument();
     expect(mocks.retryTurn).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "停止" }));
     await waitFor(() =>
-      expect(screen.getAllByRole("button", { name: "重试" }).length).toBeGreaterThan(0),
+      expect(
+        screen.getAllByRole("button", { name: "重试" }).length,
+      ).toBeGreaterThan(0),
     );
   });
 

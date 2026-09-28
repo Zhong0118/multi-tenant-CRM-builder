@@ -1,12 +1,12 @@
 # AI Assistant V1B — Confirmed Edit Design
 
-> 日期：2026-09-23  
-> 文档类型：Task Design Spec  
-> 状态：DESIGN APPROVED — IMPLEMENTED IN PR #22, OPEN；最终安全审查与真实 Provider 验收待完成，未合并/部署，非 COMPLETED
+> 日期：2026-09-23
+> 文档类型：Task Design Spec
+> 状态：DESIGN APPROVED — IMPLEMENTED IN PR #22, OPEN；最终审查修正待 Hosted CI；用户选择暂不做真实 Provider smoke，未合并/部署，非 COMPLETED
 > Roadmap：AI Assistant V1B（ACTIVE；Production Essentials 仍 PLANNED）
-> 设计基线：`origin/main` @ `cc419ff51df980055229fd43d4a17e8ceafe467e`  
-> 上位方向：`docs/superpowers/specs/2026-09-16-ai-assistant-v1-design.md`  
-> Stage Brief：`docs/superpowers/briefs/2026-09-16-ai-assistant-v1b-stage-brief.md`  
+> 设计基线：`origin/main` @ `cc419ff51df980055229fd43d4a17e8ceafe467e`
+> 上位方向：`docs/superpowers/specs/2026-09-16-ai-assistant-v1-design.md`
+> Stage Brief：`docs/superpowers/briefs/2026-09-16-ai-assistant-v1b-stage-brief.md`
 > 前置事实：AI Assistant V1A 已完成，PR A/B/C 均已合并并通过浏览器验收；V1B 不自动启动。
 
 ---

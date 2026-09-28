@@ -71,6 +71,7 @@ export function aiTurnReducer(
         errorMessage: undefined,
         partial: false,
         draft: "",
+        proposal: null,
         pendingUserContent: action.content,
       };
     case "beginRetryTurn":
@@ -84,6 +85,7 @@ export function aiTurnReducer(
         errorCode: null,
         errorMessage: undefined,
         partial: false,
+        proposal: null,
         pendingUserContent: undefined,
       };
     case "cancel":
@@ -96,7 +98,10 @@ export function aiTurnReducer(
         errorMessage: "回答已停止",
       };
     case "network":
-      return aiTurnReducer(state, { type: "transportFailure", code: "NETWORK" });
+      return aiTurnReducer(state, {
+        type: "transportFailure",
+        code: "NETWORK",
+      });
     case "transportFailure":
       if (state.phase !== "SENDING" && state.phase !== "STREAMING") {
         return state;
@@ -106,7 +111,9 @@ export function aiTurnReducer(
         phase: "FAILED",
         errorCode: action.code,
         errorMessage: userErrorMessage(action.code),
-        draft: state.turnId ? state.draft : (state.pendingUserContent ?? state.draft),
+        draft: state.turnId
+          ? state.draft
+          : (state.pendingUserContent ?? state.draft),
       };
     case "event":
       return applyEvent(state, action.event);
