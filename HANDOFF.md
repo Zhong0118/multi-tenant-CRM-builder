@@ -467,7 +467,7 @@ Action Engine V1 已完成、验收，并已通过 PR #1 合并进 `main`：
 P0–P5 主干已经落地。P7 表管理主干已齐。Workflow V1 与 Action Engine V1 的代码都已存在，
 不要重新实现它们。**下一个阶段 V2.2 Sales Execution 尚未批准，不要自行开始**（Trigger /
 Automation / Dedup / Notification / Template Upgrade / Agent 同样不要开始）。
-**AI Assistant V1A = COMPLETED。** PR A/B/C MERGED AND VERIFIED（#17 merge `b3bc59a`）。browser walkthrough VERIFIED。post-merge main 六门 SUCCESS。V1B 仅在本地 `docs/ai-assistant-v1b-design` worktree 启动 Task 1，未完成、未合并。
+**AI Assistant V1A = COMPLETED。** PR A/B/C MERGED AND VERIFIED（#17 merge `b3bc59a`）。browser walkthrough VERIFIED。post-merge main 六门 SUCCESS。V1B 在本地 `docs/ai-assistant-v1b-design` worktree 已实现 Task 1–7 并完成隔离数据库/CRM 浏览器验收；仍为 ACTIVE，未合并/部署，真实模型未验。
 批准规格：`docs/superpowers/specs/2026-09-18-ai-assistant-v1a-design.md`；
 实现计划：`docs/superpowers/plans/2026-09-18-ai-assistant-v1a-implementation.md`。
 `docs/superpowers/specs/2026-09-16-ai-assistant-v1-design.md` 仍是上位方向。V1B 仅本地 worktree 为 ACTIVE；Production Essentials 仍为 PLANNED。

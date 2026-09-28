@@ -68,7 +68,8 @@ With explicit clearance after browser checks, the focused test RED failed on abs
 
 ## Gaps / not claimed
 
-- No real provider run or post-merge/deploy evidence. Local isolated validation does not claim production readiness or merge.
+- A real-provider API execution was not performed; the Vercel adapter/tool-call seam is covered by focused unit regression tests. No post-merge/deploy evidence exists. Local isolated validation does not claim production readiness or merge.
+- After the provider-call deduplication and post-commit abort-race fixes, focused API Jest (orchestrator plus proposal collector) passed **32/32** and API typecheck passed. These tests cover both Vercel-style same-call event/execute orderings, distinct-call invalidation, and durable proposal completion when cancellation arrives after the atomic commit.
 
 ## CRM browser acceptance — 2026-09-28
 
