@@ -58,8 +58,9 @@ export class FakeAiProvider implements AiProvider {
                 [fieldAccess === 'HIDDEN'
                   ? 'secret'
                   : fieldAccess === 'READ_ONLY'
-                    ? 'ownerMemberId'
-                    : 'name']: 'HTTP confirmed',
+                    ? 'reviewCode'
+                    : 'name']:
+                  fieldAccess === 'READ_ONLY' ? 'changed' : 'HTTP confirmed',
               },
             }
           : operationType === 'CREATE_FOLLOW_UP'

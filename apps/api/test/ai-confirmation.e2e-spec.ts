@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 
 import { AiProposalService } from '../src/modules/ai/ai-proposal.service';
+import { validateProposalCandidate } from '../src/modules/ai/ai-proposal.schema';
+import { parsePublishedObjectSchema } from '../src/modules/objects/published-object.service';
 import type { TenantContext } from '../src/common/tenancy/tenant-context';
 import {
   closeCriticalHarness,
@@ -301,6 +303,12 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
       .set('Origin', 'http://localhost:3000')
       .expect(200);
     expect(rejected.body).toMatchObject({ status: 'REJECTED', auditId: null });
+    const rejectedAgain = await request(harness.app.getHttpServer())
+      .post(`${base}/reject`)
+      .set('Cookie', fixture.employee.cookie)
+      .set('Origin', 'http://localhost:3000')
+      .expect(200);
+    expect(rejectedAgain.body).toEqual(rejected.body);
     await request(harness.app.getHttpServer())
       .post(`${base}/confirm`)
       .set('Cookie', fixture.employee.cookie)
@@ -319,13 +327,65 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
     ).toEqual(before);
   });
 
-  it('denies hidden fields, read-only fields, and another owner through HTTP turn before proposal creation', async () => {
+  it('denies a published ordinary READ_ONLY field after candidate schema validation, without a proposal or leak', async () => {
+    const publication =
+      await harness.adminDatabase.objectDefinition.findUniqueOrThrow({
+        where: { id: fixture.object.id },
+        include: { activePublication: true },
+      });
+    const published = parsePublishedObjectSchema(
+      publication.activePublication!.configuration,
+    );
+    expect(published.fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldKey: 'reviewCode',
+          type: 'TEXT',
+          required: false,
+          isSystem: false,
+        }),
+      ]),
+    );
+    expect(published.employeeAccess.fields.reviewCode).toBe('READ_ONLY');
+    expect(
+      validateProposalCandidate({
+        operationType: 'UPDATE_RECORD',
+        objectCode: 'leads',
+        recordId: fixture.ownedRecord.id,
+        values: { reviewCode: 'changed' },
+      }),
+    ).toMatchObject({ values: { reviewCode: 'changed' } });
+    const before = await harness.adminDatabase.record.findUniqueOrThrow({
+      where: { id: fixture.ownedRecord.id },
+    });
+    expect(before.data).toMatchObject({ reviewCode: 'initial-review-code' });
+    const turn = await request(harness.app.getHttpServer())
+      .post(`/api/v1/workspaces/${fixture.tenantA.code}/ai/turns`)
+      .set('Cookie', fixture.employee.cookie)
+      .set('Origin', 'http://localhost:3000')
+      .set('Accept', 'text/event-stream')
+      .send({
+        content: `critical:propose-change:UPDATE_RECORD:${fixture.ownedRecord.id}:READ_ONLY`,
+      })
+      .expect(200);
+    expect(turn.text).toMatch(/event: turn\.(failed|completed)/);
+    expect(turn.text).not.toContain('event: proposal.ready');
+    expect(turn.text).not.toContain('initial-review-code');
+    expect(turn.text).not.toContain('hidden-owned');
+    expect(turn.text).not.toContain('"secret"');
+    expect(await harness.adminDatabase.aiOperation.count()).toBe(0);
+    expect(await harness.adminDatabase.auditLog.count()).toBe(0);
+    expect(
+      await harness.adminDatabase.record.findUniqueOrThrow({
+        where: { id: fixture.ownedRecord.id },
+      }),
+    ).toEqual(before);
+  });
+
+  it('denies hidden fields and another owner through HTTP turn before proposal creation', async () => {
     const base = `/api/v1/workspaces/${fixture.tenantA.code}/ai`;
-    // This fixture's published `name` is EDIT and `secret` is HIDDEN;
-    // a system field such as `ownerMemberId` is READ_ONLY without mutating an immutable publication.
     const cases = [
       `critical:propose-change:UPDATE_RECORD:${fixture.ownedRecord.id}:HIDDEN`,
-      `critical:propose-change:UPDATE_RECORD:${fixture.ownedRecord.id}:READ_ONLY`,
       `critical:propose-change:UPDATE_RECORD:${fixture.otherRecord.id}`,
     ];
     for (const content of cases) {
