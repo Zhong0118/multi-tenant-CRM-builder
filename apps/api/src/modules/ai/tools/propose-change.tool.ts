@@ -8,18 +8,16 @@ import {
 // The provider tool only captures untrusted intent; domain validation and persistence
 // happen after the provider finishes, in the orchestrator's tenant transaction.
 export class ProposalCollector {
-  private attempts = 0;
   private readonly callIds = new Set<string>();
   private captured: ProposalCandidate | null = null;
 
   requested(callId: string): void {
     this.callIds.add(callId);
-    this.attempts += 1;
     if (this.invalidated) this.captured = null;
   }
 
   get invalidated(): boolean {
-    return this.attempts > 1;
+    return this.callIds.size > 1;
   }
   get candidate(): ProposalCandidate | null {
     return this.invalidated ? null : this.captured;
