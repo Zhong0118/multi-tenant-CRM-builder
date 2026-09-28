@@ -299,20 +299,20 @@ export class AiOrchestrator {
               final,
             ),
         );
-        if (clientAbort.aborted || timeout.aborted)
-          throw new Error(
-            clientAbort.aborted ? 'AI_TURN_CANCELLED' : 'AI_PROVIDER_TIMEOUT',
-          );
+        // The proposal transaction also completes the assistant atomically. An
+        // abort observed after it resolves cannot safely re-finalize the turn.
         this.logger.log({
           conversationId: begun.conversationId,
           turnId: begun.turnId,
           code: 'COMPLETED',
           latencyMs,
         });
-        yield {
-          event: 'proposal.ready',
-          data: { turnId: begun.turnId, proposal },
-        };
+        if (!clientAbort.aborted && !timeout.aborted) {
+          yield {
+            event: 'proposal.ready',
+            data: { turnId: begun.turnId, proposal },
+          };
+        }
       } else {
         await this.finish(context, begun, latencyMs, outcome);
       }

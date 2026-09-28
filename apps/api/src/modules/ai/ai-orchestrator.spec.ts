@@ -137,7 +137,7 @@ function searchTool(
 }
 
 describe('AiOrchestrator proposal candidate lifecycle', () => {
-  it('invalidates duplicate provider calls even when callId is repeated', async () => {
+  it('keeps distinct provider calls invalidated', async () => {
     const collector = new ProposalCollector();
     await collector.tool.execute(
       {
@@ -155,7 +155,7 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
         recordId: context.tenantId,
         content: 'two',
       },
-      'same-call',
+      'second-call',
     );
     expect(collector.invalidated).toBe(true);
     expect(collector.candidate).toBeNull();
@@ -209,14 +209,21 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
     expect(events.map((event) => event.event)).not.toContain('proposal.ready');
   });
 
-  it('suppresses ready when persistence resolves after client abort', async () => {
+  it('keeps a committed proposal completed when abort arrives before persistence resolves', async () => {
     const conversations = conversationMock();
     const proposals = proposalMock();
     const abort = new AbortController();
-    proposals.completeWithProposal.mockImplementation(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 20));
-      abort.abort();
-      return proposal;
+    let assistantStatus = 'GENERATING';
+    let operationStatus = 'PROPOSED';
+    conversations.finalizeAssistant.mockImplementation(async (_context, _turnId, outcome) => {
+      assistantStatus = outcome.status;
+    });
+    proposals.completeWithProposal.mockImplementation(() => {
+      assistantStatus = 'COMPLETED';
+      operationStatus = 'PROPOSED';
+      const committed = Promise.resolve(proposal);
+      committed.then(() => abort.abort());
+      return committed;
     });
     const provider = providerWith(async function* (_signal, tools) {
       await tools.find((tool) => tool.name === 'propose_change')!.execute(candidate, 'first');
@@ -224,8 +231,12 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
     });
     const events = await collect(await new AiOrchestrator(conversations, provider, registryWith([]), proposals).streamTurn(context, { content: 'note' }, abort.signal));
     expect(events.map((event) => event.event)).not.toContain('proposal.ready');
-    expect(events.map((event) => event.event)).toContain('turn.cancelled');
-    expect(events.map((event) => event.event)).not.toContain('turn.completed');
+    expect(events.map((event) => event.event)).toContain('turn.completed');
+    expect(events.map((event) => event.event)).not.toContain('turn.cancelled');
+    expect(conversations.finalizeAssistant).not.toHaveBeenCalled();
+    expect(proposals.completeWithProposal).toHaveBeenCalledTimes(1);
+    expect(assistantStatus).toBe('COMPLETED');
+    expect(operationStatus).toBe('PROPOSED');
   });
 
   it('fails cleanly when persistence outlives the provider timeout', async () => {
