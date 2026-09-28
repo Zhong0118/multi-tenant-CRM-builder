@@ -1,7 +1,7 @@
 # AI Assistant V1B Task 7 API acceptance
 
 Date: 2026-09-24 (local run)
-Status: **API acceptance and full local gates green on 2026-09-28; not merged; browser NOT VERIFIED by this task.** See [Task 7 follow-up report](../../../.superpowers/sdd/2026-09-23-ai-assistant-v1b-implementation/task-7-report.md) for exact command/result chronology.
+Status: **V1B locally verified on isolated database and browser on 2026-09-28; not merged, deployed, or production-validated.** See [Task 7 follow-up report](../../../.superpowers/sdd/2026-09-23-ai-assistant-v1b-implementation/task-7-report.md) for API command/result chronology.
 
 ## Isolation guard
 
@@ -68,5 +68,16 @@ With explicit clearance after browser checks, the focused test RED failed on abs
 
 ## Gaps / not claimed
 
-- Browser desktop/mobile, refresh UI, keyboard, overflow, console and network are **NOT VERIFIED by this API follow-up**; other ongoing browser work must be reported separately with its own evidence.
-- No real provider run or post-merge/deploy evidence. This local evidence does not promote the roadmap, update `HANDOFF.md`, claim merge, or claim deployment.
+- No real provider run or post-merge/deploy evidence. Local isolated validation does not claim production readiness or merge.
+
+## CRM browser acceptance — 2026-09-28
+
+Launched the existing CRM Next application at `http://127.0.0.1:3100` and Nest API at `http://127.0.0.1:3101` with `NODE_ENV=test`, `AI_PROVIDER=fake`, matching `WEB_ORIGIN`, and both DB roles bound only to the owned `127.0.0.1:55433/crm_v1b_test`. Verified the exact API health URL and web login URL before browser use. The browser used the test-only `critical-employee-token` session and fixture-generated owned lead; no real credentials or production database were used. These services were stopped after testing, and subsequent isolated E2E fixture cleanup removed `critical-a`/`critical-b` data.
+
+- At 1440 px, a real browser user turn generated a follow-up Proposal Card by SSE. It displayed the associated Record, title, due date, current assignee, and confirmation boundary. Hard refresh restored `PROPOSED`; confirming produced `EXECUTED`, an audit ID, and a safe internal follow-up link. An additional NOTE proposal showed its Record/NOTE content; rejecting it returned HTTP 200 `REJECTED`, and refresh restored the terminal card without a confirm button.
+- A record-update proposal showed before → after. Only the isolated owned record version was incremented between preview and confirmation; HTTP confirm returned `CONFLICTED`, and refresh showed the conflict warning without an overwrite or confirm action. A separate NOTE was confirmed by keyboard Enter while its confirm button was focused; HTTP returned `EXECUTED` and refresh displayed its audit/result link.
+- At 390 × 844 px, the conversation drawer opened, a new conversation was created, a NOTE card displayed associated Record/content, and the card/document reported `scrollWidth ≤ clientWidth` (no horizontal overflow). Browser text did not contain the seeded HIDDEN values, raw provider sentinel, or a database URL; browser console reported zero errors/warnings during this check. The test-only marker text itself is visible because it was typed as the user prompt; it is not a production model response.
+- **Browser-discovered bug and recheck:** Before `2c4cabb`, successful HTTP reject/confirm responses left a newly streamed *live* card visually `PROPOSED` until hard refresh. The history path was already correct. A behavioral RED → GREEN page test and a shared live/history status projection fixed it. After the Next dev server incorporated the change, a fresh live NOTE proposal switched immediately to `已拒绝` with no buttons after click; a fresh live UPDATE_RECORD switched immediately to `已执行` with audit ID and safe record link after click, without page reload. Both were rechecked in the real browser.
+- Local gate sequence on the integrated branch before the final API fixture-only correction: isolated-URL `corepack pnpm typecheck` **exit 0**, `corepack pnpm build` **exit 0**, `corepack pnpm test` **exit 0** (including the live-card tests), `corepack pnpm contracts:check` **exit 0**. After the final API fixture correction, focused isolated E2E **15/15**, critical E2E **7/7** and API typecheck exited 0. No claim is made that the entire workspace gate was repeated *after* that last test-fixture commit.
+
+This is **local test-mode acceptance**, not a real-model performance assessment, production deployment, merge, or PR. The branch stays local; `HANDOFF.md` and the Lean Roadmap must not imply V1B has been merged.

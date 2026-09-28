@@ -28,7 +28,7 @@ Engineering Gate Hardening **已 COMPLETED**：PR A #11 合并 `bc6cad2`；PR B 
 `Build` / `Critical API E2E`（`strict: true`，`enforcement_level: everyone`）。post-merge `main` run
 `35232613694` 六门 success。验收
 `docs/audits/2026-09-17/engineering-gate-hardening-acceptance.md`。
-**AI Assistant V1A = COMPLETED**。PR A — AI Foundation = **MERGED AND VERIFIED**（#14 merge `64a22cd`）；PR B — Read Runtime = **MERGED AND VERIFIED**（#16 merge `466d9af`）；PR C — AI Workspace UI + Closeout = **MERGED AND VERIFIED**（#17 merge `b3bc59a`）。browser walkthrough = **VERIFIED**。post-merge main 六门 SUCCESS（run `35696132661`）。**AI Assistant V1B = ACTIVE（仅本地 `docs/ai-assistant-v1b-design` worktree，Task 1 行为基线；尚未合并）**；Production Essentials = **PLANNED**，不自动 Promote。
+**AI Assistant V1A = COMPLETED**。PR A — AI Foundation = **MERGED AND VERIFIED**（#14 merge `64a22cd`）；PR B — Read Runtime = **MERGED AND VERIFIED**（#16 merge `466d9af`）；PR C — AI Workspace UI + Closeout = **MERGED AND VERIFIED**（#17 merge `b3bc59a`）。browser walkthrough = **VERIFIED**。post-merge main 六门 SUCCESS（run `35696132661`）。**AI Assistant V1B = ACTIVE（仅本地 `docs/ai-assistant-v1b-design` worktree；Task 1–7 已实现并在独立 55433 数据库及 CRM 浏览器完成本地验收，尚未合并、未在真实模型/生产环境验证）**；验收见 `docs/audits/2026-09-23/ai-assistant-v1b-acceptance.md`。Production Essentials = **PLANNED**，不自动 Promote。
 
 Workflow Required Field Visibility Hardening **已通过 PR #2 合并进入 `main`**，合并提交
 `0612d8ad521895c7ca7bd9efe2ef2f942cd28b40`（同样只作历史事实记录）。它修掉了
