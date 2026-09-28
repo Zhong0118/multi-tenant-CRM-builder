@@ -76,8 +76,8 @@ export function AiProposalCard({
         <div><strong>{proposal.title}</strong><span className={styles.proposalOperation}>{operationLabels[proposal.operation]}</span></div>
         <Tag>{expired && proposal.status === "PROPOSED" ? "已过期" : statusLabels[proposal.status]}</Tag>
       </header>
-      <p className={styles.proposalTarget}>{proposal.targetSummary}</p>
-      {proposal.changes.length > 0 ? <dl className={styles.proposalChanges}>{proposal.changes.map((change) => <div key={change.label}><dt>{change.label}</dt><dd>{change.before !== undefined ? `${change.before || "—"} → ` : ""}{change.after ?? "—"}</dd></div>)}{proposal.operation === "CREATE_FOLLOW_UP" ? <div><dt>负责人</dt><dd>当前执行人</dd></div> : null}</dl> : null}
+      {proposal.operation === "UPDATE_RECORD" ? <p className={styles.proposalTarget}>{proposal.targetSummary}</p> : null}
+      {proposal.changes.length > 0 || proposal.operation !== "UPDATE_RECORD" ? <dl className={styles.proposalChanges}>{proposal.operation !== "UPDATE_RECORD" ? <div><dt>关联 Record</dt><dd>{proposal.targetSummary}</dd></div> : null}{proposal.changes.map((change) => <div key={change.label}><dt>{change.label}</dt><dd>{change.before !== undefined ? `${change.before || "—"} → ` : ""}{change.after ?? "—"}</dd></div>)}{proposal.operation === "CREATE_FOLLOW_UP" ? <div><dt>负责人</dt><dd>当前执行人</dd></div> : null}</dl> : null}
       {proposal.validationWarnings.map((warning) => <p role="status" className={styles.proposalWarning} key={warning}>{warning}</p>)}
       {actionable ? <div className={styles.proposalActions} aria-label="提案操作">
         <Button type="primary" disabled={busy} onClick={() => void onConfirm?.()}>确认执行</Button>

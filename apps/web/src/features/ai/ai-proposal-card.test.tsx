@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AiProposalCard } from "./ai-proposal-card";
 import type { AiProposalView } from "./ai-types";
@@ -17,6 +17,15 @@ describe("AiProposalCard", () => {
     render(<AiProposalCard proposal={{...base, operation:"ADD_ACTIVITY_NOTE", changes:[{label:"NOTE",after:"客户要求邮件联系"}]}}/>);
     expect(screen.getByText("添加备注")).toBeInTheDocument();
     expect(screen.getByText("客户要求邮件联系")).toBeInTheDocument();
+  });
+  it.each(["CREATE_FOLLOW_UP", "ADD_ACTIVITY_NOTE"] as const)("labels the associated Record on %s proposals", (operation) => {
+    render(<AiProposalCard proposal={{...base, operation, targetSummary: "Acme <script>alert(1)</script>", changes: operation === "CREATE_FOLLOW_UP" ? [{label:"标题",after:"回访 Acme"},{label:"到期时间",after:"2026-10-01"}] : [{label:"NOTE",after:"客户要求邮件联系"}]}}/>);
+    const label = screen.getByText("关联 Record");
+    const row = label.closest("div");
+    expect(row).not.toBeNull();
+    expect(within(row!).getByText("Acme <script>alert(1)</script>")).toBeInTheDocument();
+    expect(row?.querySelector("script")).toBeNull();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
   it("transitions to expired at expiresAt", async () => {
     vi.useFakeTimers();
