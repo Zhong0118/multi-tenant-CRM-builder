@@ -1,6 +1,6 @@
 # Task 7 API isolated acceptance follow-up report
 
-Date: 2026-09-28 (local). Worktree: `.worktrees/ai-assistant-v1b-design`, baseline `d6a3c2c`. Status: **API acceptance verified locally; NOT MERGED; browser acceptance pending; no completion or deployment claim.**
+Date: 2026-09-28 (local). Worktree: `.worktrees/ai-assistant-v1b-design`, baseline `d6a3c2c`. Status: **API and CRM browser acceptance verified locally; NOT MERGED; no real-provider execution, completion, or deployment claim.**
 
 ## Isolation and test seam
 
@@ -16,6 +16,7 @@ New HTTP E2E exercises each of the three kinds through POST turn → `proposal.r
 - Behavioral RED: `TEST_DATABASE_ADMIN_URL=... TEST_DATABASE_URL=... corepack pnpm --filter @crm/api test:e2e -- --runTestsByPath test/ai-confirmation.e2e-spec.ts --runInBand`: exit 1, **3 new HTTP turn cases failed at missing `proposal.ready`, 7 passed**. Minimal fake `propose_change` tool call made these green. A second deliberate RED for raw provider failure sentinel had **1 failed, 10 passed**, because fake lacked failure path; adding fake failure event produced green, no production sanitization change.
 - Final after formatting: `TEST_DATABASE_ADMIN_URL=... TEST_DATABASE_URL=... corepack pnpm --filter @crm/api test:e2e -- --runTestsByPath test/ai-confirmation.e2e-spec.ts --runInBand`: exit 0, **1 suite / 11 tests**.
 - Final: `TEST_DATABASE_ADMIN_URL=... TEST_DATABASE_URL=... corepack pnpm --filter @crm/api test:e2e:critical`: exit 0, **1 suite / 7 tests**. Final DB fixture cleanup finished; no further E2E was run while browser work began.
+- After final review fixes for real-provider tool-call event deduplication and post-commit abort handling, focused API Jest (orchestrator plus proposal collector) passed **32/32** and API typecheck passed. These unit regressions cover both Vercel-style same-call event/execute orderings, distinct-call invalidation, and committed proposal completion when cancellation arrives after the atomic transaction.
 - `corepack pnpm --filter @crm/api typecheck`: exit 0 (also rerun after final E2E). `corepack pnpm contracts:check`: exit 0. `DATABASE_ADMIN_URL=... DATABASE_URL=... corepack pnpm build`: exit 0, all workspace builds including web. Initial `corepack pnpm build` without URLs exited 1 at Prisma config missing `DATABASE_ADMIN_URL`, not a code/build defect.
 - Initial `corepack pnpm test`: exit 1, API **2 failures / 1195 passed**. Investigation found V1B conversation unit fake lacked `tx.aiOperation.findFirst` required by `retryTurn`; added explicit mock returning null. Orchestrator catch persisted `CANCELLED` but emitted `turn.failed` after client abort during proposal persistence; corrected event to `turn.cancelled` with existing unit regression. Focused unit rerun exit 0 (2 suites, 41 tests); full `corepack pnpm test` exit 0, API **92 suites / 1197 tests**, web done.
 - Initial `corepack pnpm typecheck` without URLs exited 1 at Prisma config; `DATABASE_ADMIN_URL=... DATABASE_URL=... corepack pnpm typecheck`: exit 0, all workspace projects. `git diff --check`: exit 0.
@@ -34,4 +35,4 @@ After browser checks finished and the isolated DB was explicitly released, focus
 
 ## Remaining concerns / handoff
 
-Browser desktop/mobile, refresh card UX, keyboard, overflow, console/network and actual deployment are **NOT VERIFIED by this API task**. The six older E2E cases still seed conversation/message and call preview directly; three newly added cases cover actual HTTP/provider turn, but do not replace other authorization matrix tests with provider-generated proposals. The fake follow-up due date is now generated 24 hours into the future, not fixed to a calendar date. Do not mark V1B COMPLETED, update protected HANDOFF/roadmap, or infer merge. Only API, focused test, audit and this report were changed.
+The six older E2E cases still seed conversation/message and call preview directly; three newly added cases cover actual HTTP/provider turn, but do not replace other authorization matrix tests with provider-generated proposals. The fake follow-up due date is now generated 24 hours into the future, not fixed to a calendar date. CRM desktop/mobile browser acceptance is recorded separately in `docs/audits/2026-09-23/ai-assistant-v1b-acceptance.md`. No real-provider execution, production deployment, merge, or completion claim is made.
