@@ -23,7 +23,7 @@
 | Engineering Gate Lite | **COMPLETED**（PR #4，合并提交 `77af603`） | GitHub Actions CI 落地五个 required checks；Database Integration 起仓库自己的 PostgreSQL 18。第六个 check 由随后的 Engineering Gate Hardening 完成。验收见 `docs/audits/2026-09-16/engineering-gate-lite-acceptance.md` | 0.2–0.4× |
 | Sales Workbench Lite | **COMPLETED**（PR #9，合并提交 `a6e08b2`） | 员工首页固定 Personal Follow-up Workbench：全部待办 / 今日 / 已逾期 / 未来 7 个租户日历日；只读 `GET /workspaces/:tenantCode/follow-ups/workbench`（服务端解析 Actor、不接受 member 覆盖）；**overdue = `dueAt < now`**（与完整 Follow-up Domain 对齐）；**不新增 Dashboard widget、不改 publication schema、不加迁移**，完成动作复用既有 `PATCH /follow-ups/:id`。验收 `docs/audits/2026-09-17/sales-workbench-lite-acceptance.md` | 0.3–0.5× |
 | AI Assistant V1A | **COMPLETED**（PR A/B/C MERGED AND VERIFIED；#17 merge `b3bc59a`；browser walkthrough = VERIFIED；post-merge 六门 SUCCESS） | 只读 Ask / Analyze | 0.4–0.7× |
-| AI Assistant V1B | **ACTIVE（PR #22 OPEN；HEAD `c770758` 六项 Hosted CI 均 SUCCESS；Fake Provider 隔离 HTTP/SSE 验收已完成；最新三个 CRM 浏览器回归因缺少可用的持久化测试 fixture 未观察到；用户选择暂不做真实 Provider smoke，未合并/部署）** | Proposal → Preview → Confirm → Typed Write → Audit；验收见 `docs/audits/2026-09-23/ai-assistant-v1b-acceptance.md` | 0.5–0.8× |
+| AI Assistant V1B | **ACTIVE（PR #22 OPEN；产品 HEAD `c770758`；docs/test HEAD 待本轮 CI；六项 Hosted CI 已通过；Fake Provider 隔离 HTTP/SSE 验收已完成；浏览器 A PASS，B NOT OBSERVED，C 初始浏览器链路 PARTIAL；C 的合法转派与历史结果裁剪已有 focused isolated HTTP E2E；用户选择暂不做真实 Provider smoke，未合并/部署）** | Proposal → Preview → Confirm → Typed Write → Audit；验收见 `docs/audits/2026-09-23/ai-assistant-v1b-acceptance.md` | 0.5–0.8× |
 | Production Essentials | PLANNED | 安全、日志、备份、监控、对象存储、生产配置 | 0.6–1.0× |
 | Email Adapter | OPTIONAL | 保留统一邮件接口，按需求接 Provider | 0.1–0.2× |
 

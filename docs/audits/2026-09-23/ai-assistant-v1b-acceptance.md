@@ -1,7 +1,7 @@
 # AI Assistant V1B Task 7 API acceptance
 
 Date: 2026-09-24 (local run)
-Status: **V1B locally verified on the isolated database and documented browser scope; latest PR #22 docs HEAD `71f94bc` remains unmerged, undeployed, and not production-validated.** In the fixture-backed closeout, scenario A passed; scenarios B and C remain NOT OBSERVED at their required final assertions.
+Status: **V1B locally verified on the isolated database and documented browser scope; latest PR #22 docs/test HEAD is unmerged, undeployed, and not production-validated.** In the fixture-backed closeout, scenario A passed; B remains NOT OBSERVED in the real browser; C is now verified by focused isolated HTTP E2E while its real browser execution remains NOT OBSERVED.
 
 ## Isolation guard
 
@@ -99,8 +99,8 @@ The first attempt in this closeout was **NOT OBSERVED** because the running isol
 
 - **A — PASS (1440px and 390px):** an UPDATE_RECORD Proposal showed visible before/after, confirmed to EXECUTED with audit ID and record link. The existing admin object-access path revoked the employee's `leads` read/update access. After hard refresh, the history Proposal retained safe status/audit but cleared target summary, changes and result link; hidden values/field names were not displayed. Both viewport widths reported `scrollWidth === clientWidth`.
 - **B — NOT OBSERVED:** the Fake Provider's available invalid-field marker path produced a generic AI failure/no Proposal Card rather than a FAILED business-validation Proposal. No raw provider/database text or hidden field was shown, but the required persisted field-error refresh/revocation flow could not be exercised and is not claimed.
-- **C — PARTIAL / NOT OBSERVED for reassignment:** browser creation and confirmation passed at 390px; the card showed the associated Record and exact `查看跟进` link with a concrete follow-up ID. Reassignment could not be completed through the existing management path because the fixture's Record was employee-OWN and the API correctly returned `RECORD_NOT_FOUND` for admin/other-member attempts. Therefore post-reassignment link redaction and current-member visibility were not claimed. The initial card had no horizontal overflow. No auth or business code was changed.
+- **C — browser PARTIAL; focused isolated HTTP E2E PASS:** the browser created and confirmed a Follow-up at 390px; the card showed the associated Record and exact `查看跟进` link with a concrete follow-up ID. The browser fixture's employee-OWN Record prevented legal reassignment, so the browser post-reassignment flow remains NOT OBSERVED. A new isolated HTTP E2E now legally grants the admin and new assignee `ALL/ALL` access, reassigns the confirmed Follow-up, verifies the original employee's GET/history retain `EXECUTED` and Audit but return `result: null`, and verifies the new assignee sees the Follow-up through the normal list endpoint. The initial browser card had no horizontal overflow. No auth or business code was changed.
 
-The fixture-backed browser evidence is limited to the assertions above. No new Critical/Important product finding was established; B and C remain evidence gaps, not passes.
+The fixture-backed browser evidence is limited to the assertions above. C's reassignment behavior is now covered by focused isolated HTTP E2E, while B's real-browser field-error path remains an evidence gap rather than a product failure or browser pass.
 
 **Not verified:** a real external Provider call for any of the three Proposal types. No AI_API_KEY/AI_MODEL was present in the checked project environment; when asked about an isolated real-model smoke, the user chose **暂不进行**. No private credential search or external Provider call was made. Do not send credentials in chat or claim real-model acceptance; do not mark V1B COMPLETED, merge PR #22, deploy, or start Production Essentials.

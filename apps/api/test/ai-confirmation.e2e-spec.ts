@@ -258,6 +258,129 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
     },
   );
 
+  it('redacts a reassigned Follow-up result for the original employee while the new assignee can list it', async () => {
+    const base = `/api/v1/workspaces/${fixture.tenantA.code}/ai`;
+    const turn = await request(harness.app.getHttpServer())
+      .post(`${base}/turns`)
+      .set('Cookie', fixture.employee.cookie)
+      .set('Origin', 'http://localhost:3000')
+      .set('Accept', 'text/event-stream')
+      .send({
+        content: `critical:propose-change:CREATE_FOLLOW_UP:${fixture.ownedRecord.id}`,
+      })
+      .expect(200);
+    const proposalReady = turn.text.match(
+      /event: proposal.ready\ndata: ([^\n]+)/,
+    );
+    const conversationReady = turn.text.match(
+      /event: conversation.ready\ndata: ([^\n]+)/,
+    );
+    expect(proposalReady).toBeTruthy();
+    expect(conversationReady).toBeTruthy();
+    const proposalView = JSON.parse(proposalReady![1]).proposal;
+    const conversationId = JSON.parse(conversationReady![1]).conversationId;
+
+    const confirmed = await request(harness.app.getHttpServer())
+      .post(`${base}/proposals/${proposalView.proposalId}/confirm`)
+      .set('Cookie', fixture.employee.cookie)
+      .set('Origin', 'http://localhost:3000')
+      .send({ idempotencyKey: randomUUID() })
+      .expect(200);
+    expect(confirmed.body).toMatchObject({
+      status: 'EXECUTED',
+      auditId: expect.any(String),
+      result: {
+        objectCode: 'leads',
+        recordId: fixture.ownedRecord.id,
+        followUpId: expect.any(String),
+      },
+    });
+    const followUpId = confirmed.body.result.followUpId as string;
+
+    await harness.adminDatabase.objectPermission.createMany({
+      data: [
+        {
+          tenantId: context.tenantId,
+          objectId: fixture.object.id,
+          subjectType: 'MEMBER',
+          subjectMemberId: fixture.admin.memberId,
+          canCreate: true,
+          canRead: true,
+          canUpdate: true,
+          readScope: 'ALL',
+          updateScope: 'ALL',
+        },
+        {
+          tenantId: context.tenantId,
+          objectId: fixture.object.id,
+          subjectType: 'MEMBER',
+          subjectMemberId: fixture.otherEmployee.memberId,
+          canCreate: true,
+          canRead: true,
+          canUpdate: true,
+          readScope: 'ALL',
+          updateScope: 'ALL',
+        },
+      ],
+    });
+
+    await request(harness.app.getHttpServer())
+      .patch(
+        `/api/v1/workspaces/${fixture.tenantA.code}/follow-ups/${followUpId}`,
+      )
+      .set('Cookie', fixture.admin.cookie)
+      .set('Origin', 'http://localhost:3000')
+      .send({
+        assigneeMemberId: fixture.otherEmployee.memberId,
+        version: 1,
+      })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({
+          id: followUpId,
+          assigneeMemberId: fixture.otherEmployee.memberId,
+          version: 2,
+        });
+      });
+
+    const employeeProposal = await request(harness.app.getHttpServer())
+      .get(`${base}/proposals/${proposalView.proposalId}`)
+      .set('Cookie', fixture.employee.cookie)
+      .expect(200);
+    expect(employeeProposal.body).toMatchObject({
+      status: 'EXECUTED',
+      auditId: confirmed.body.auditId,
+      result: null,
+    });
+
+    const history = await request(harness.app.getHttpServer())
+      .get(`${base}/conversations/${conversationId}/messages`)
+      .set('Cookie', fixture.employee.cookie)
+      .expect(200);
+    const assistant = history.body.items.find(
+      (item: { role: string }) => item.role === 'ASSISTANT',
+    );
+    expect(assistant?.proposal).toMatchObject({
+      status: 'EXECUTED',
+      auditId: confirmed.body.auditId,
+      result: null,
+    });
+
+    await request(harness.app.getHttpServer())
+      .get(`/api/v1/workspaces/${fixture.tenantA.code}/follow-ups`)
+      .set('Cookie', fixture.otherEmployee.cookie)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.items).toEqual([
+          expect.objectContaining({
+            id: followUpId,
+            assigneeMemberId: fixture.otherEmployee.memberId,
+            recordId: fixture.ownedRecord.id,
+          }),
+        ]);
+      });
+  });
+
   it('does not replay an earlier proposal on a later ordinary HTTP turn in the same conversation', async () => {
     const base = `/api/v1/workspaces/${fixture.tenantA.code}/ai`;
     const first = await request(harness.app.getHttpServer())
