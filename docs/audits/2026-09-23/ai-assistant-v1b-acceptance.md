@@ -1,7 +1,7 @@
 # AI Assistant V1B Task 7 API acceptance
 
 Date: 2026-09-24 (local run)
-Status: **V1B locally verified on the isolated database and documented browser scope; latest PR #22 HEAD `c770758` remains unmerged, undeployed, and not production-validated.** The three final targeted CRM-browser scenarios in this closeout are **NOT OBSERVED** because the documented persistent test fixture session was unavailable in the running isolated database.
+Status: **V1B locally verified on the isolated database and documented browser scope; latest PR #22 docs HEAD `71f94bc` remains unmerged, undeployed, and not production-validated.** In the fixture-backed closeout, scenario A passed; scenarios B and C remain NOT OBSERVED at their required final assertions.
 
 ## Isolation guard
 
@@ -85,7 +85,7 @@ This was **local test-mode acceptance**, not a real-model performance assessment
 
 ## PR #22 final-review follow-up — 2026-09-28 (historical chronology)
 
-The chronology below records intermediate commits and is not the current status. Current status is HEAD `c770758`: six Hosted CI checks SUCCESS in run `36422723813`, PR OPEN/CLEAN, and no product changes were made in the 2026-09-29 browser closeout. The final targeted browser scenarios are recorded above as NOT OBSERVED because the isolated fixture session was unavailable.
+The chronology below records intermediate commits and is not the current product status. Product HEAD remains `c770758`; docs closeout HEAD is `71f94bc`; six Hosted CI checks for the docs closeout passed in run `36567098648`; PR remains OPEN/CLEAN. The fixture-backed browser closeout below supersedes the earlier missing-fixture attempt without changing product code.
 
 At the fixed PR HEAD `e04295d` (base `cc419ff`), six Hosted CI checks were SUCCESS. Separate read-only standards/spec/security reviewers inspected the 33-commit diff. Standards found no substantiated hard violation; spec review identified truncated previews and a follow-up link that did not select its target. Security review identified an authorization-policy ambiguity: historical Proposal displays were replayed after field/object/OWN read access was revoked. The user chose **redact old Proposal values after revocation**. These are pre-merge findings, not post-merge or production incidents.
 
@@ -95,8 +95,12 @@ TDD evidence: UPDATE long-text, multi-select, redacted-history and permission-me
 
 ## PR #22 final targeted browser closeout — 2026-09-29
 
-Targeted scenarios A (historical Proposal permission revocation), B (FAILED field-error recovery), and C (Follow-up reassignment/result-link redaction) were **NOT OBSERVED** in this closeout. The isolated API started successfully on `127.0.0.1:55433/crm_v1b_test` with `AI_PROVIDER=fake`, and the Web started on `http://127.0.0.1:3100`; however, the documented `critical-employee-token` session returned HTTP 401 because the running database did not contain the corresponding persistent fixture. The browser therefore could not enter the authenticated CRM workspace. No fixture was fabricated and no production or 5432/5433 database was touched. Consequently, this closeout provides no new browser PASS claim for A/B/C, and no new Critical/Important product finding was established.
+The first attempt in this closeout was **NOT OBSERVED** because the running isolated DB lacked the documented persistent `critical-employee-token`. That condition was then resolved without code changes by keeping the existing `provisionCriticalFixture` helper alive for the browser run; its cleanup was invoked after testing.
 
-The browser attempt also confirmed the health endpoint and login route, but the authenticated route was not testable without the missing fixture. The existing earlier browser evidence remains historical scope only; it is not silently reclassified as verification of these three latest scenarios.
+- **A — PASS (1440px and 390px):** an UPDATE_RECORD Proposal showed visible before/after, confirmed to EXECUTED with audit ID and record link. The existing admin object-access path revoked the employee's `leads` read/update access. After hard refresh, the history Proposal retained safe status/audit but cleared target summary, changes and result link; hidden values/field names were not displayed. Both viewport widths reported `scrollWidth === clientWidth`.
+- **B — NOT OBSERVED:** the Fake Provider's available invalid-field marker path produced a generic AI failure/no Proposal Card rather than a FAILED business-validation Proposal. No raw provider/database text or hidden field was shown, but the required persisted field-error refresh/revocation flow could not be exercised and is not claimed.
+- **C — PARTIAL / NOT OBSERVED for reassignment:** browser creation and confirmation passed at 390px; the card showed the associated Record and exact `查看跟进` link with a concrete follow-up ID. Reassignment could not be completed through the existing management path because the fixture's Record was employee-OWN and the API correctly returned `RECORD_NOT_FOUND` for admin/other-member attempts. Therefore post-reassignment link redaction and current-member visibility were not claimed. The initial card had no horizontal overflow. No auth or business code was changed.
+
+The fixture-backed browser evidence is limited to the assertions above. No new Critical/Important product finding was established; B and C remain evidence gaps, not passes.
 
 **Not verified:** a real external Provider call for any of the three Proposal types. No AI_API_KEY/AI_MODEL was present in the checked project environment; when asked about an isolated real-model smoke, the user chose **暂不进行**. No private credential search or external Provider call was made. Do not send credentials in chat or claim real-model acceptance; do not mark V1B COMPLETED, merge PR #22, deploy, or start Production Essentials.
