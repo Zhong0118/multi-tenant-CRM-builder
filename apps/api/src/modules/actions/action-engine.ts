@@ -24,7 +24,6 @@ import {
   createRecordCommand,
   prepareSourceRecordPatch,
   type PreparedSourceRecordPatch,
-  type RecordRequestMeta,
 } from '../records/record-command';
 import type {
   DynamicRecord,
@@ -215,7 +214,7 @@ export async function executeActions(
     outputs,
   });
 
-  const actionMeta = (action: WorkflowActionDraft): RecordRequestMeta => ({
+  const actionMeta = (action: WorkflowActionDraft) => ({
     requestId: input.meta.requestId,
     ip: input.meta.ip,
     // §30: keep the domain action, add the execution correlation.

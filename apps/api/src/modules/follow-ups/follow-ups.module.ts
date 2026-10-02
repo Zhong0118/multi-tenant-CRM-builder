@@ -10,6 +10,6 @@ import { FollowUpsService } from './follow-ups.service';
   imports: [AuthModule, MembershipsModule, ObjectsModule, AuditModule],
   controllers: [FollowUpsController],
   providers: [FollowUpsRepository, FollowUpsService],
-  exports: [FollowUpsService],
+  exports: [FollowUpsService, FollowUpsRepository],
 })
 export class FollowUpsModule {}

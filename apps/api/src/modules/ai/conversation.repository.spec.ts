@@ -2,7 +2,13 @@ import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
 import { ApiException } from '../../common/errors/api.exception';
 import { ConversationRepository } from './conversation.repository';
+import { AiOperationRepository } from './ai-operation.repository';
 import { ConversationService } from './conversation.service';
+import { resolvePublishedObjectInTransaction } from '../objects/published-object-transaction';
+
+jest.mock('../objects/published-object-transaction', () => ({
+  resolvePublishedObjectInTransaction: jest.fn(),
+}));
 
 const context: TenantContext = {
   tenantId: '0198ad18-a74d-7b69-b81a-49a74f9a3e0d',
@@ -49,7 +55,8 @@ interface MessageRow {
 }
 
 function asDate(value: unknown): Date | undefined {
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? undefined : value;
+  if (value instanceof Date)
+    return Number.isNaN(value.getTime()) ? undefined : value;
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? undefined : parsed;
@@ -60,14 +67,19 @@ function asDate(value: unknown): Date | undefined {
 function compareValues(actual: unknown, expected: unknown): number {
   const actualDate = asDate(actual);
   const expectedDate = asDate(expected);
-  if (actualDate && expectedDate) return actualDate.getTime() - expectedDate.getTime();
+  if (actualDate && expectedDate)
+    return actualDate.getTime() - expectedDate.getTime();
   if (typeof actual === 'string' && typeof expected === 'string') {
     return actual < expected ? -1 : actual > expected ? 1 : 0;
   }
   if (typeof actual === 'number' && typeof expected === 'number') {
     return actual - expected;
   }
-  return String(actual) < String(expected) ? -1 : String(actual) > String(expected) ? 1 : 0;
+  return String(actual) < String(expected)
+    ? -1
+    : String(actual) > String(expected)
+      ? 1
+      : 0;
 }
 
 function matchScalar(actual: unknown, expected: unknown): boolean {
@@ -78,7 +90,11 @@ function matchScalar(actual: unknown, expected: unknown): boolean {
   if (actualDate && expectedDate) {
     return actualDate.getTime() === expectedDate.getTime();
   }
-  if (typeof expected === 'object' && expected !== null && !(expected instanceof Date)) {
+  if (
+    typeof expected === 'object' &&
+    expected !== null &&
+    !(expected instanceof Date)
+  ) {
     const filter = expected as Record<string, unknown>;
     if ('in' in filter && Array.isArray(filter.in)) {
       return filter.in.includes(actual);
@@ -165,8 +181,10 @@ function sortRows<T extends Record<string, unknown>>(
       if (a === b) continue;
       const aTime = a instanceof Date ? a.getTime() : a;
       const bTime = b instanceof Date ? b.getTime() : b;
-      if ((aTime as number) < (bTime as number)) return direction === 'asc' ? -1 : 1;
-      if ((aTime as number) > (bTime as number)) return direction === 'asc' ? 1 : -1;
+      if ((aTime as number) < (bTime as number))
+        return direction === 'asc' ? -1 : 1;
+      if ((aTime as number) > (bTime as number))
+        return direction === 'asc' ? 1 : -1;
     }
     return 0;
   });
@@ -175,9 +193,24 @@ function sortRows<T extends Record<string, unknown>>(
 function harness(options: { lockedMembers?: Array<{ id: string }> } = {}) {
   const conversations: ConversationRow[] = [];
   const messages: MessageRow[] = [];
+  const operations: Array<{
+    turnId: string;
+    conversationId: string;
+    status: string;
+    requestedByMemberId: string;
+    tenantId: string;
+    displayChangesJson: unknown;
+    expiresAt: Date;
+    id: string;
+    operationType: 'ADD_ACTIVITY_NOTE';
+    failureCode: null;
+    auditId: null;
+    resultJson: null;
+  }> = [];
   const sqlCalls: string[] = [];
   let ids = 0;
-  const nextId = () => `00000000-0000-7000-8000-${String(++ids).padStart(12, '0')}`;
+  const nextId = () =>
+    `00000000-0000-7000-8000-${String(++ids).padStart(12, '0')}`;
 
   const tx = {
     $queryRaw: jest.fn((strings: TemplateStringsArray) => {
@@ -208,7 +241,11 @@ function harness(options: { lockedMembers?: Array<{ id: string }> } = {}) {
       }),
       findFirst: jest.fn(({ where }: { where: Record<string, unknown> }) => {
         const row = conversations.find((item) =>
-          matchRow(item as unknown as Record<string, unknown>, where, conversations),
+          matchRow(
+            item as unknown as Record<string, unknown>,
+            where,
+            conversations,
+          ),
         );
         return Promise.resolve(row ?? null);
       }),
@@ -260,7 +297,11 @@ function harness(options: { lockedMembers?: Array<{ id: string }> } = {}) {
           let count = 0;
           for (const row of conversations) {
             if (
-              matchRow(row as unknown as Record<string, unknown>, where, conversations)
+              matchRow(
+                row as unknown as Record<string, unknown>,
+                where,
+                conversations,
+              )
             ) {
               Object.assign(row, data, { updatedAt: new Date() });
               count += 1;
@@ -268,6 +309,27 @@ function harness(options: { lockedMembers?: Array<{ id: string }> } = {}) {
           }
           return Promise.resolve({ count });
         },
+      ),
+    },
+    aiOperation: {
+      findFirst: jest.fn(({ where }: { where: { turnId: string } }) =>
+        Promise.resolve(
+          operations.find((item) => item.turnId === where.turnId) ?? null,
+        ),
+      ),
+      findMany: jest.fn(
+        ({
+          where,
+        }: {
+          where: { turnId: { in: string[] }; conversationId: string };
+        }) =>
+          Promise.resolve(
+            operations.filter(
+              (item) =>
+                item.conversationId === where.conversationId &&
+                where.turnId.in.includes(item.turnId),
+            ),
+          ),
       ),
     },
     aiMessage: {
@@ -296,7 +358,11 @@ function harness(options: { lockedMembers?: Array<{ id: string }> } = {}) {
       }),
       findFirst: jest.fn(({ where }: { where: Record<string, unknown> }) => {
         const row = messages.find((item) =>
-          matchRow(item as unknown as Record<string, unknown>, where, conversations),
+          matchRow(
+            item as unknown as Record<string, unknown>,
+            where,
+            conversations,
+          ),
         );
         return Promise.resolve(row ?? null);
       }),
@@ -348,7 +414,11 @@ function harness(options: { lockedMembers?: Array<{ id: string }> } = {}) {
           let count = 0;
           for (const row of messages) {
             if (
-              matchRow(row as unknown as Record<string, unknown>, where, conversations)
+              matchRow(
+                row as unknown as Record<string, unknown>,
+                where,
+                conversations,
+              )
             ) {
               Object.assign(row, data, { updatedAt: new Date() });
               count += 1;
@@ -360,7 +430,11 @@ function harness(options: { lockedMembers?: Array<{ id: string }> } = {}) {
       count: jest.fn(({ where }: { where: Record<string, unknown> }) =>
         Promise.resolve(
           messages.filter((item) =>
-            matchRow(item as unknown as Record<string, unknown>, where, conversations),
+            matchRow(
+              item as unknown as Record<string, unknown>,
+              where,
+              conversations,
+            ),
           ).length,
         ),
       ),
@@ -371,9 +445,13 @@ function harness(options: { lockedMembers?: Array<{ id: string }> } = {}) {
     (_ctx: TenantContext, work: (value: typeof tx) => Promise<unknown>) =>
       work(tx),
   );
-  const repository = new ConversationRepository({
-    withTenant,
-  } as unknown as DatabaseContextRunner);
+  const runner = { withTenant } as unknown as DatabaseContextRunner;
+  const repository = new ConversationRepository(
+    runner,
+    new AiOperationRepository(runner, {
+      visibleFollowUpIdsInTransaction: jest.fn(),
+    } as never),
+  );
   const service = new ConversationService(repository);
   return {
     tx,
@@ -381,6 +459,7 @@ function harness(options: { lockedMembers?: Array<{ id: string }> } = {}) {
     sqlCalls,
     conversations,
     messages,
+    operations,
     repository,
     service,
   };
@@ -464,10 +543,14 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
 
     await fixture.repository.beginTurn(context, { content: '新问题' });
 
-    const stale = fixture.messages.find((row) => row.id === 'msg-stale-assistant');
+    const stale = fixture.messages.find(
+      (row) => row.id === 'msg-stale-assistant',
+    );
     expect(stale?.status).toBe('FAILED');
     expect(stale?.status).not.toBe('CANCELLED');
-    expect(fixture.messages.filter((row) => row.role === 'USER')).toHaveLength(2);
+    expect(fixture.messages.filter((row) => row.role === 'USER')).toHaveLength(
+      2,
+    );
   });
 
   it('rejects a remaining in-progress GENERATING assistant with 409', async () => {
@@ -518,7 +601,9 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     const fixture = harness();
     for (let index = 0; index < 20; index += 1) {
       await fixture.repository.beginTurn(context, { content: `问题${index}` });
-      const assistant = fixture.messages.filter((row) => row.role === 'ASSISTANT').at(-1)!;
+      const assistant = fixture.messages
+        .filter((row) => row.role === 'ASSISTANT')
+        .at(-1)!;
       await fixture.repository.finalizeAssistant(context, assistant.turnId, {
         status: 'FAILED',
         content: '',
@@ -528,7 +613,9 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     await expect(
       fixture.repository.beginTurn(context, { content: '第21问' }),
     ).rejects.toMatchObject({ code: 'AI_RATE_LIMITED', status: 429 });
-    expect(fixture.messages.filter((row) => row.role === 'USER')).toHaveLength(20);
+    expect(fixture.messages.filter((row) => row.role === 'USER')).toHaveLength(
+      20,
+    );
   });
 
   it('counts extra retry attempts toward the same 20-per-5-minutes member budget', async () => {
@@ -544,13 +631,16 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
         content: '',
       });
     }
-    const last = await fixture.repository.beginTurn(context, { content: '第20问' });
+    const last = await fixture.repository.beginTurn(context, {
+      content: '第20问',
+    });
     await fixture.repository.finalizeAssistant(context, last.turnId, {
       status: 'FAILED',
       content: '',
     });
     expect(
-      (last.assistant.providerUsage as { providerAttempts?: number }).providerAttempts,
+      (last.assistant.providerUsage as { providerAttempts?: number })
+        .providerAttempts,
     ).toBe(1);
 
     await expect(
@@ -581,7 +671,8 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     const retried = await fixture.repository.retryTurn(context, turns[0]!);
     expect(retried.assistant.status).toBe('GENERATING');
     expect(
-      (retried.assistant.providerUsage as { providerAttempts: number }).providerAttempts,
+      (retried.assistant.providerUsage as { providerAttempts: number })
+        .providerAttempts,
     ).toBe(2);
     await fixture.repository.finalizeAssistant(context, retried.turnId, {
       status: 'COMPLETED',
@@ -595,7 +686,9 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
 
   it('retry resets the existing assistant and does not duplicate the USER row', async () => {
     const fixture = harness();
-    const begun = await fixture.repository.beginTurn(context, { content: '重试我' });
+    const begun = await fixture.repository.beginTurn(context, {
+      content: '重试我',
+    });
     await fixture.repository.finalizeAssistant(context, begun.turnId, {
       status: 'CANCELLED',
       content: '半段',
@@ -613,12 +706,197 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     expect(retried.assistant.providerUsage).toEqual({ providerAttempts: 2 });
     expect(retried.assistant.errorCode).toBeNull();
     expect(retried.assistant.completedAt).toBeNull();
-    expect(fixture.messages.filter((row) => row.role === 'USER')).toHaveLength(before);
+    expect(fixture.messages.filter((row) => row.role === 'USER')).toHaveLength(
+      before,
+    );
+  });
+
+  it.each(['PROPOSED', 'EXPIRED', 'FAILED', 'REJECTED', 'EXECUTED'])(
+    'does not reset a failed assistant when its operation is %s',
+    async (status) => {
+      const fixture = harness();
+      const begun = await fixture.repository.beginTurn(context, {
+        content: 'retain proposal',
+      });
+      await fixture.repository.finalizeAssistant(context, begun.turnId, {
+        status: 'FAILED',
+        content: 'original answer',
+      });
+      fixture.operations.push({
+        id: 'operation',
+        tenantId: context.tenantId,
+        conversationId: begun.conversationId,
+        turnId: begun.turnId,
+        requestedByMemberId: context.memberId,
+        status,
+        operationType: 'ADD_ACTIVITY_NOTE',
+        displayChangesJson: {
+          title: 'Note',
+          targetSummary: 'Record',
+          changes: [],
+          validationWarnings: [],
+        },
+        expiresAt: new Date(Date.now() + 60_000),
+        failureCode: null,
+        auditId: null,
+        resultJson: null,
+      });
+      await expect(
+        fixture.repository.retryTurn(context, begun.turnId),
+      ).rejects.toMatchObject({ code: 'AI_TURN_NOT_RETRYABLE', status: 409 });
+      expect(
+        fixture.messages.find((row) => row.id === begun.assistant.id),
+      ).toMatchObject({ status: 'FAILED', content: 'original answer' });
+      expect(fixture.tx.aiMessage.update).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('restores only owned assistant proposals from the existing message transaction', async () => {
+    const fixture = harness();
+    const begun = await fixture.repository.beginTurn(context, {
+      content: 'restore',
+    });
+    await fixture.repository.finalizeAssistant(context, begun.turnId, {
+      status: 'COMPLETED',
+      content: 'response',
+    });
+    fixture.operations.push({
+      id: 'operation',
+      tenantId: context.tenantId,
+      conversationId: begun.conversationId,
+      turnId: begun.turnId,
+      requestedByMemberId: context.memberId,
+      status: 'PROPOSED',
+      operationType: 'ADD_ACTIVITY_NOTE',
+      displayChangesJson: {
+        title: 'Note',
+        targetSummary: 'Record',
+        changes: [],
+        validationWarnings: [],
+      },
+      expiresAt: new Date(Date.now() + 60_000),
+      failureCode: null,
+      auditId: null,
+      resultJson: null,
+    });
+    fixture.withTenant.mockClear();
+    const page = await fixture.service.messages(
+      context,
+      begun.conversationId,
+      {},
+    );
+    expect(fixture.withTenant).toHaveBeenCalledTimes(1);
+    expect(
+      page.items.find((item) => item.role === 'ASSISTANT')?.proposal,
+    ).toMatchObject({
+      proposalId: 'operation',
+      status: 'PROPOSED',
+      title: 'Note',
+    });
+    expect(JSON.stringify(page)).not.toContain('proposalJson');
+    fixture.conversations[0]!.deletedAt = new Date();
+    await expect(
+      fixture.service.messages(context, begun.conversationId, {}),
+    ).rejects.toMatchObject({ code: 'AI_CONVERSATION_NOT_FOUND' });
+  });
+
+  it('redacts revoked target summaries and changes when restoring historical chat proposals', async () => {
+    const fixture = harness();
+    const begun = await fixture.repository.beginTurn(context, {
+      content: 'restore',
+    });
+    await fixture.repository.finalizeAssistant(context, begun.turnId, {
+      status: 'COMPLETED',
+      content: 'response',
+    });
+    fixture.operations.push({
+      id: 'operation',
+      tenantId: context.tenantId,
+      conversationId: begun.conversationId,
+      turnId: begun.turnId,
+      requestedByMemberId: context.memberId,
+      status: 'EXECUTED',
+      operationType: 'ADD_ACTIVITY_NOTE',
+      targetRefJson: { objectCode: 'demo', recordId: 'record' },
+      displayChangesJson: {
+        title: 'Note',
+        targetSummary: 'revoked-title',
+        changes: [
+          { label: 'NOTE', after: 'revoked-note', fieldKey: 'private-key' },
+        ],
+        validationWarnings: [],
+      },
+      expiresAt: new Date(Date.now() + 60_000),
+      failureCode: null,
+      auditId: 'audit-id',
+      resultJson: null,
+    } as never);
+    jest.mocked(resolvePublishedObjectInTransaction).mockResolvedValue({
+      schema: { object: { titleFieldKey: 'name' } },
+      access: { canRead: false, readScope: 'NONE', fields: {} },
+    } as never);
+    fixture.withTenant.mockClear();
+    const page = await fixture.service.messages(
+      context,
+      begun.conversationId,
+      {},
+    );
+    expect(fixture.withTenant).toHaveBeenCalledTimes(1);
+    expect(
+      page.items.find((item) => item.role === 'ASSISTANT')?.proposal,
+    ).toMatchObject({
+      proposalId: 'operation',
+      status: 'EXECUTED',
+      auditId: 'audit-id',
+      targetSummary: '',
+      changes: [],
+    });
+    expect(JSON.stringify(page)).not.toMatch(/revoked|fieldKey|private-key/);
+  });
+
+  it('restores an expired proposal as non-actionable EXPIRED', async () => {
+    const fixture = harness();
+    const begun = await fixture.repository.beginTurn(context, {
+      content: 'expired',
+    });
+    await fixture.repository.finalizeAssistant(context, begun.turnId, {
+      status: 'COMPLETED',
+      content: 'response',
+    });
+    fixture.operations.push({
+      id: 'expired-operation',
+      tenantId: context.tenantId,
+      conversationId: begun.conversationId,
+      turnId: begun.turnId,
+      requestedByMemberId: context.memberId,
+      status: 'PROPOSED',
+      operationType: 'ADD_ACTIVITY_NOTE',
+      displayChangesJson: {
+        title: 'Note',
+        targetSummary: 'Record',
+        changes: [],
+        validationWarnings: [],
+      },
+      expiresAt: new Date(Date.now() - 1),
+      failureCode: null,
+      auditId: null,
+      resultJson: null,
+    });
+    const page = await fixture.service.messages(
+      context,
+      begun.conversationId,
+      {},
+    );
+    expect(
+      page.items.find((item) => item.role === 'ASSISTANT')?.proposal,
+    ).toMatchObject({ proposalId: 'expired-operation', status: 'EXPIRED' });
   });
 
   it('rejects retry on a COMPLETED assistant', async () => {
     const fixture = harness();
-    const begun = await fixture.repository.beginTurn(context, { content: '完成' });
+    const begun = await fixture.repository.beginTurn(context, {
+      content: '完成',
+    });
     await fixture.repository.finalizeAssistant(context, begun.turnId, {
       status: 'COMPLETED',
       content: '答好了',
@@ -638,7 +916,11 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
       providerKey: 'openai',
       modelKey: 'gpt-4.1',
     });
-    const page = await fixture.service.messages(context, begun.conversationId, {});
+    const page = await fixture.service.messages(
+      context,
+      begun.conversationId,
+      {},
+    );
     for (const item of page.items) {
       expect(item).not.toHaveProperty('providerUsage');
       expect(item).not.toHaveProperty('providerKey');
@@ -648,7 +930,9 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
 
   it('persists providerKey and modelKey on the assistant row, not only inside usage JSON', async () => {
     const fixture = harness();
-    const begun = await fixture.repository.beginTurn(context, { content: '用量列' });
+    const begun = await fixture.repository.beginTurn(context, {
+      content: '用量列',
+    });
     await fixture.repository.finalizeAssistant(context, begun.turnId, {
       status: 'COMPLETED',
       content: '答案',
@@ -656,7 +940,9 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
       providerKey: 'openai',
       modelKey: 'gpt-4.1',
     });
-    const assistant = fixture.messages.find((row) => row.id === begun.assistant.id);
+    const assistant = fixture.messages.find(
+      (row) => row.id === begun.assistant.id,
+    );
     expect(assistant?.providerKey).toBe('openai');
     expect(assistant?.modelKey).toBe('gpt-4.1');
     expect(assistant?.providerUsage).toEqual({
@@ -671,7 +957,9 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
 
   it('persists openai-compatible providerKey on the assistant row without exposing it on the DTO', async () => {
     const fixture = harness();
-    const begun = await fixture.repository.beginTurn(context, { content: '兼容网关' });
+    const begun = await fixture.repository.beginTurn(context, {
+      content: '兼容网关',
+    });
     await fixture.repository.finalizeAssistant(context, begun.turnId, {
       status: 'COMPLETED',
       content: '答案',
@@ -679,10 +967,16 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
       providerKey: 'openai-compatible',
       modelKey: 'deepseek-flash',
     });
-    const assistant = fixture.messages.find((row) => row.id === begun.assistant.id);
+    const assistant = fixture.messages.find(
+      (row) => row.id === begun.assistant.id,
+    );
     expect(assistant?.providerKey).toBe('openai-compatible');
     expect(assistant?.modelKey).toBe('deepseek-flash');
-    const page = await fixture.service.messages(context, begun.conversationId, {});
+    const page = await fixture.service.messages(
+      context,
+      begun.conversationId,
+      {},
+    );
     for (const item of page.items) {
       expect(item).not.toHaveProperty('providerUsage');
       expect(item).not.toHaveProperty('providerKey');
@@ -692,7 +986,9 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
 
   it('persists providerKey and modelKey on FAILED turns when already known', async () => {
     const fixture = harness();
-    const begun = await fixture.repository.beginTurn(context, { content: '失败也记' });
+    const begun = await fixture.repository.beginTurn(context, {
+      content: '失败也记',
+    });
     await fixture.repository.finalizeAssistant(context, begun.turnId, {
       status: 'FAILED',
       content: '半段',
@@ -700,7 +996,9 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
       providerKey: 'openai',
       modelKey: 'gpt-4.1',
     });
-    const assistant = fixture.messages.find((row) => row.id === begun.assistant.id);
+    const assistant = fixture.messages.find(
+      (row) => row.id === begun.assistant.id,
+    );
     expect(assistant?.providerKey).toBe('openai');
     expect(assistant?.modelKey).toBe('gpt-4.1');
     expect(assistant?.errorCode).toBe('AI_PROVIDER_TIMEOUT');
@@ -708,7 +1006,9 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
 
   it('rejects deleting a conversation that still has a GENERATING assistant', async () => {
     const fixture = harness();
-    const begun = await fixture.repository.beginTurn(context, { content: '别删' });
+    const begun = await fixture.repository.beginTurn(context, {
+      content: '别删',
+    });
     fixture.sqlCalls.length = 0;
     await expect(
       fixture.repository.remove(context, begun.conversationId),
@@ -719,7 +1019,8 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     expect(fixture.sqlCalls[0]).toContain('FROM tenant_members');
     expect(fixture.sqlCalls[0]).toContain('FOR UPDATE');
     expect(
-      fixture.conversations.find((row) => row.id === begun.conversationId)?.deletedAt,
+      fixture.conversations.find((row) => row.id === begun.conversationId)
+        ?.deletedAt,
     ).toBeNull();
     await fixture.repository.finalizeAssistant(context, begun.turnId, {
       status: 'CANCELLED',
@@ -729,7 +1030,8 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
       fixture.repository.remove(context, begun.conversationId),
     ).resolves.toBeUndefined();
     expect(
-      fixture.conversations.find((row) => row.id === begun.conversationId)?.deletedAt,
+      fixture.conversations.find((row) => row.id === begun.conversationId)
+        ?.deletedAt,
     ).toBeInstanceOf(Date);
   });
 
@@ -769,7 +1071,9 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
 
   it('does not let another member lock succeed for this conversation', async () => {
     const fixture = harness();
-    const begun = await fixture.repository.beginTurn(context, { content: '私有' });
+    const begun = await fixture.repository.beginTurn(context, {
+      content: '私有',
+    });
     fixture.tx.$queryRaw.mockImplementation((strings: TemplateStringsArray) => {
       const sql = strings.join('$');
       fixture.sqlCalls.push(sql);

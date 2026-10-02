@@ -9,7 +9,9 @@ import type { ResolvedObjectSchema } from '../objects/published-object.service';
 import {
   applySourceRecordPatch,
   createRecordCommand,
+  createRecordActivityCommand,
   prepareSourceRecordPatch,
+  updateRecordCommand,
 } from './record-command';
 import type { DynamicRecord, RecordsStore } from './records.repository';
 
@@ -215,6 +217,13 @@ class MemoryStore implements RecordsStore {
   records: DynamicRecord[] = [];
   audits: AuditEvent[] = [];
   history: Array<{ recordId: string; transitionKey: string }> = [];
+  activities: Array<{
+    id: string;
+    content: string;
+    activityType: string;
+    nextActionAt: string | null;
+  }> = [];
+  auditIds: string[] = [];
   activeMembers = new Set([admin.memberId, employee.memberId, activeMemberId]);
   nextRecordNo = 7n;
   /**
@@ -307,8 +316,16 @@ class MemoryStore implements RecordsStore {
   listActivities() {
     return Promise.resolve({ items: [], total: 0 });
   }
-  createActivity(): Promise<never> {
-    return Promise.reject(new Error('not used'));
+  createActivity(
+    input: Parameters<RecordsStore['createActivity']>[0],
+  ): ReturnType<RecordsStore['createActivity']> {
+    this.activities.push({
+      id: input.id,
+      content: input.content,
+      activityType: input.activityType,
+      nextActionAt: input.nextActionAt,
+    });
+    return Promise.resolve({ ...input, actorDisplayName: '测试成员' });
   }
   listMemberNames() {
     return Promise.resolve(new Map<string, string>());
@@ -316,9 +333,11 @@ class MemoryStore implements RecordsStore {
   aggregateRecords() {
     return Promise.resolve({ value: '0', groups: [] });
   }
-  appendAudit(event: AuditEvent): Promise<void> {
+  appendAudit(event: AuditEvent): Promise<string> {
     this.audits.push(structuredClone(event));
-    return Promise.resolve();
+    const id = `audit-${this.audits.length}`;
+    this.auditIds.push(id);
+    return Promise.resolve(id);
   }
   /**
    * The ordinary-update intent. The real store takes the ACTIVE-owner lock
@@ -669,6 +688,169 @@ describe('createRecordCommand', () => {
       values: { name: '张三', source: '官网' },
       version: 1,
     });
+  });
+});
+
+describe('HTTP-compatible tenant transaction commands', () => {
+  it('rejects a stale update version without writing', async () => {
+    const store = new MemoryStore();
+    await seed(store);
+    await expect(
+      updateRecordCommand({
+        store,
+        resolved: resolved(),
+        context: admin,
+        recordId: 'record-seed',
+        input: { version: 0, values: { name: 'new' } },
+        meta,
+      }),
+    ).rejects.toMatchObject({ code: 'RECORD_VERSION_CONFLICT' });
+    expect(store.writeCount).toBe(0);
+    expect(store.audits).toEqual([]);
+  });
+
+  it('denies another owner and hidden fields before any mutation or audit', async () => {
+    const store = new MemoryStore();
+    await seed(store);
+    const base = {
+      store,
+      resolved: resolved(),
+      context: employee,
+      recordId: 'record-seed',
+      input: { version: 4, values: { name: 'new' } },
+      meta,
+    };
+    await expect(
+      updateRecordCommand({
+        ...base,
+        resolved: resolved({ access: access({ updateScope: 'OWN' }) }),
+      }),
+    ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+    await expect(
+      updateRecordCommand({
+        ...base,
+        context: admin,
+        input: { version: 4, values: { secret: 'classified' } },
+      }),
+    ).rejects.toMatchObject({ code: 'FIELD_HIDDEN' });
+    expect(store.writeCount).toBe(0);
+    expect(store.audits).toEqual([]);
+  });
+
+  it('applies one ordinary owner-locking update and returns its persisted audit ID', async () => {
+    const store = new MemoryStore();
+    await seed(store);
+    const result = await updateRecordCommand({
+      store,
+      resolved: resolved(),
+      context: admin,
+      recordId: 'record-seed',
+      input: { version: 4, values: { name: 'new' } },
+      meta,
+    });
+    expect(result.record).toMatchObject({
+      id: 'record-seed',
+      title: 'new',
+      version: 5,
+      values: { name: 'new', source: '官网' },
+    });
+    expect(result.record.values).not.toHaveProperty('secret');
+    expect(store.recordPatchCalls).toHaveLength(1);
+    expect(store.transitionCalls).toHaveLength(0);
+    expect(result.auditId).toBe(store.auditIds[0]);
+    expect(store.audits).toMatchObject([
+      {
+        action: 'record.updated',
+        before: { version: 4 },
+        after: { version: 5 },
+      },
+    ]);
+  });
+
+  it('includes AI operation correlation in the NOTE audit, not the activity', async () => {
+    const store = new MemoryStore();
+    await seed(store);
+    const result = await createRecordActivityCommand({
+      store,
+      resolved: resolved(),
+      context: admin,
+      recordId: 'record-seed',
+      input: { activityType: 'NOTE', content: 'Private note' },
+      meta: { ...meta, actionAudit: { aiOperationId: 'ai-op-123' } },
+      clock: () => createdAt,
+      idGenerator: () => 'activity-ai',
+    });
+    expect(store.audits).toMatchObject([
+      { after: { recordId: 'record-seed', aiOperationId: 'ai-op-123' } },
+    ]);
+    expect(result.activity).not.toHaveProperty('aiOperationId');
+  });
+
+  it('trims NOTE content and returns the matching activity audit ID', async () => {
+    const store = new MemoryStore();
+    await seed(store);
+    const result = await createRecordActivityCommand({
+      store,
+      resolved: resolved(),
+      context: admin,
+      recordId: 'record-seed',
+      input: { activityType: 'NOTE', content: '  Hello  ' },
+      meta,
+      clock: () => createdAt,
+      idGenerator: () => 'activity-one',
+    });
+    expect(result.activity).toMatchObject({
+      id: 'activity-one',
+      activityType: 'NOTE',
+      content: 'Hello',
+      nextActionAt: null,
+      actorMemberId: admin.memberId,
+    });
+    expect(store.activities).toHaveLength(1);
+    expect(store.audits).toMatchObject([
+      { action: 'record.activity_created', resourceId: 'activity-one' },
+    ]);
+    expect(result.auditId).toBe(store.auditIds[0]);
+  });
+
+  it.each(['   ', `${'x'.repeat(4001)}`])(
+    'rejects invalid NOTE content without writing',
+    async (content) => {
+      const store = new MemoryStore();
+      await seed(store);
+      await expect(
+        createRecordActivityCommand({
+          store,
+          resolved: resolved(),
+          context: admin,
+          recordId: 'record-seed',
+          input: { activityType: 'NOTE', content },
+          meta,
+          clock: () => createdAt,
+          idGenerator: () => 'unused',
+        }),
+      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+      expect(store.activities).toEqual([]);
+      expect(store.audits).toEqual([]);
+    },
+  );
+
+  it('accepts exactly 4000 characters of NOTE content', async () => {
+    const store = new MemoryStore();
+    await seed(store);
+    const result = await createRecordActivityCommand({
+      store,
+      resolved: resolved(),
+      context: admin,
+      recordId: 'record-seed',
+      input: { activityType: 'NOTE', content: 'x'.repeat(4000) },
+      meta,
+      clock: () => createdAt,
+      idGenerator: () => 'activity-limit',
+    });
+    expect(result.activity.content).toHaveLength(4000);
+    expect(store.activities).toHaveLength(1);
+    expect(result.auditId).toBe(store.auditIds[0]);
   });
 });
 

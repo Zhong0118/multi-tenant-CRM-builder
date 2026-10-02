@@ -5,6 +5,7 @@ import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { AiPublicStreamEvent } from '@crm/contracts';
 import { AiController } from './ai.controller';
 import { AiOrchestrator } from './ai-orchestrator';
+import type { AiProposalService } from './ai-proposal.service';
 import { sseFrame } from './ai-stream';
 import { ConversationService } from './conversation.service';
 
@@ -61,10 +62,35 @@ describe('AiController', () => {
     retryTurn: jest.fn(),
   } as unknown as jest.Mocked<AiOrchestrator>;
 
-  const controller = new AiController(conversations, orchestrator);
+  const proposals = {
+    get: jest.fn(),
+    reject: jest.fn(),
+    confirm: jest.fn(),
+  } as unknown as jest.Mocked<AiProposalService>;
+  const controller = new AiController(conversations, orchestrator, proposals);
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('routes proposal ID from path and only idempotency key from confirm body', async () => {
+    const proposalId = '0198ad18-a74d-7b69-b81a-49a74f9a3e14';
+    controller.getProposal(context, proposalId);
+    controller.rejectProposal(context, proposalId);
+    controller.confirmProposal(
+      context,
+      proposalId,
+      { idempotencyKey: proposalId },
+      { headers: {}, ip: '127.0.0.1' } as never,
+    );
+    expect(proposals.get).toHaveBeenCalledWith(context, proposalId);
+    expect(proposals.reject).toHaveBeenCalledWith(context, proposalId);
+    expect(proposals.confirm).toHaveBeenCalledWith(
+      context,
+      proposalId,
+      proposalId,
+      { requestId: proposalId, ip: '127.0.0.1' },
+    );
   });
 
   it('sets SSE content-type and related headers on POST turns', async () => {

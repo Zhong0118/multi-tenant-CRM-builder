@@ -55,6 +55,66 @@ describe('FakeAiProvider', () => {
     fetchSpy.mockRestore();
   });
 
+  it('does not replay a prior proposal marker when a conversation receives an ordinary user turn', async () => {
+    const execute = jest.fn();
+    const events = await collect(
+      new FakeAiProvider().streamTurn({
+        ...streamInput,
+        messages: [
+          {
+            role: 'user',
+            content:
+              'critical:propose-change:ADD_ACTIVITY_NOTE:00000000-0000-7000-8000-000000000001',
+          },
+          { role: 'assistant', content: 'Here is a proposal.' },
+          { role: 'user', content: 'Thanks, please explain the outcome.' },
+        ],
+        tools: [
+          {
+            name: 'propose_change',
+            description: 'test',
+            inputSchema: { parse: (value: unknown) => value } as never,
+            execute,
+          },
+        ],
+      }),
+    );
+    expect(execute).not.toHaveBeenCalled();
+    expect(events).toEqual([
+      { type: 'TEXT_DELTA', text: '测试回答' },
+      { type: 'COMPLETED' },
+    ]);
+  });
+
+  it('proposes a follow-up with a due date in the future', async () => {
+    const execute = jest.fn().mockResolvedValue({ accepted: true });
+    const startedAt = Date.now();
+    await collect(
+      new FakeAiProvider().streamTurn({
+        ...streamInput,
+        messages: [
+          {
+            role: 'user',
+            content:
+              'critical:propose-change:CREATE_FOLLOW_UP:00000000-0000-7000-8000-000000000001',
+          },
+        ],
+        tools: [
+          {
+            name: 'propose_change',
+            description: 'test',
+            inputSchema: { parse: (value: unknown) => value } as never,
+            execute,
+          },
+        ],
+      }),
+    );
+    expect(execute).toHaveBeenCalledTimes(1);
+    const dueAt = new Date(execute.mock.calls[0][0].dueAt as string).getTime();
+    expect(dueAt).toBeGreaterThan(startedAt + 23 * 60 * 60 * 1000);
+    expect(dueAt).toBeLessThan(Date.now() + 25 * 60 * 60 * 1000);
+  });
+
   it('requests search_records for critical:search-own-leads using the Critical fixture object code', async () => {
     const fetchSpy = jest.spyOn(globalThis, 'fetch');
     const execute = jest.fn().mockResolvedValue({
@@ -65,7 +125,10 @@ describe('FakeAiProvider', () => {
       provider.streamTurn({
         ...streamInput,
         messages: [
-          { role: 'user', content: `请查询 ${CRITICAL_SEARCH_OWN_LEADS_MARKER}` },
+          {
+            role: 'user',
+            content: `请查询 ${CRITICAL_SEARCH_OWN_LEADS_MARKER}`,
+          },
         ],
         tools: [
           {
@@ -98,9 +161,9 @@ describe('FakeAiProvider', () => {
       { type: 'USAGE', inputTokens: 8, outputTokens: 12 },
       { type: 'COMPLETED' },
     ]);
-    expect(events.filter((event) => event.type === 'TOOL_CALL_REQUESTED')).toHaveLength(
-      1,
-    );
+    expect(
+      events.filter((event) => event.type === 'TOOL_CALL_REQUESTED'),
+    ).toHaveLength(1);
     expect(execute).toHaveBeenCalledTimes(1);
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
@@ -129,7 +192,12 @@ describe('createAiProvider factory', () => {
 
   it('does not silently fall back to fake outside test+fake', () => {
     for (const env of [
-      { nodeEnv: 'development', provider: 'fake', model: 'gpt-4.1', apiKey: 'sk' },
+      {
+        nodeEnv: 'development',
+        provider: 'fake',
+        model: 'gpt-4.1',
+        apiKey: 'sk',
+      },
       { nodeEnv: 'production', provider: 'fake' },
       { nodeEnv: 'test', provider: 'openai' },
       { nodeEnv: 'development', provider: 'openai' },
@@ -163,7 +231,10 @@ describe('VercelOpenAiProvider mapping', () => {
     (streamText as jest.Mock).mockReturnValue({
       fullStream: (async function* () {
         yield { type: 'text-delta', text: 'ok' };
-        yield { type: 'finish', totalUsage: { inputTokens: 1, outputTokens: 1 } };
+        yield {
+          type: 'finish',
+          totalUsage: { inputTokens: 1, outputTokens: 1 },
+        };
       })(),
     });
     const provider = new VercelOpenAiProvider({
@@ -189,7 +260,10 @@ describe('VercelOpenAiProvider mapping', () => {
     (streamText as jest.Mock).mockReturnValue({
       fullStream: (async function* () {
         yield { type: 'text-delta', text: 'ok' };
-        yield { type: 'finish', totalUsage: { inputTokens: 1, outputTokens: 1 } };
+        yield {
+          type: 'finish',
+          totalUsage: { inputTokens: 1, outputTokens: 1 },
+        };
       })(),
     });
     const provider = new VercelOpenAiProvider({
@@ -221,9 +295,16 @@ describe('VercelOpenAiProvider mapping', () => {
     (streamText as jest.Mock).mockReturnValue({
       fullStream: (async function* () {
         yield { type: 'reasoning-delta', text: 'hidden-chain-of-thought' };
-        yield { type: 'raw', rawValue: { apiKey: 'sk-live-secret', body: 'dump' } };
+        yield {
+          type: 'raw',
+          rawValue: { apiKey: 'sk-live-secret', body: 'dump' },
+        };
         yield { type: 'file', file: { mediaType: 'image/png' } };
-        yield { type: 'source', sourceType: 'url', url: 'https://internal.example' };
+        yield {
+          type: 'source',
+          sourceType: 'url',
+          url: 'https://internal.example',
+        };
         yield { type: 'text-delta', text: '你好' };
         yield { type: 'text-delta', delta: '世界' };
         yield {

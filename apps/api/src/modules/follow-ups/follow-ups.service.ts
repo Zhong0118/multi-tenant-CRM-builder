@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { isISO8601 } from 'class-validator';
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { PublishedObjectService } from '../objects/published-object.service';
@@ -157,12 +158,7 @@ export class FollowUpsService {
       input.objectCode,
       input.recordId,
     );
-    if (
-      typeof input.title !== 'string' ||
-      !input.title.trim() ||
-      !validDueAt(input.dueAt)
-    )
-      throw new ApiException('VALIDATION_FAILED', 400);
+    const validated = validateCreateFollowUpInput(input);
     /**
      * §24: the HTTP boundary keeps its own tenant transaction (opened by the
      * repository) and runs the shared transaction-aware command inside it, so
@@ -171,7 +167,7 @@ export class FollowUpsService {
      */
     return this.repository.create(
       context,
-      { ...input, title: input.title.trim() },
+      { ...input, ...validated },
       meta,
       scope,
     );
@@ -304,10 +300,25 @@ export class FollowUpsService {
     };
   }
 }
+export function validateCreateFollowUpInput(input: {
+  title: unknown;
+  dueAt: unknown;
+}): { title: string; dueAt: string } {
+  if (
+    typeof input.title !== 'string' ||
+    !input.title.trim() ||
+    input.title.length > 200 ||
+    !validDueAt(input.dueAt)
+  ) {
+    throw new ApiException('VALIDATION_FAILED', 400);
+  }
+  return { title: input.title.trim(), dueAt: input.dueAt };
+}
+
 function validDueAt(value: unknown): value is string {
   return (
     typeof value === 'string' &&
     /(?:Z|[+-]\d{2}:\d{2})$/.test(value) &&
-    Number.isFinite(Date.parse(value))
+    isISO8601(value, { strict: true, strictSeparator: true })
   );
 }

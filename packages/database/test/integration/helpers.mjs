@@ -15,7 +15,7 @@ function requiredEnvironment(name) {
 export function migrateTestDatabase() {
   const adminUrl = requiredEnvironment("TEST_DATABASE_ADMIN_URL");
 
-  execFileSync("pnpm", ["exec", "prisma", "migrate", "deploy"], {
+  execFileSync("corepack", ["pnpm", "exec", "prisma", "migrate", "deploy"], {
     cwd: new URL("../..", import.meta.url),
     env: {
       ...process.env,
@@ -39,6 +39,7 @@ export async function resetTestData(admin) {
   await admin.$transaction([
     admin.auditLog.deleteMany(),
     admin.aiMessage.deleteMany(),
+    admin.aiOperation.deleteMany(),
     admin.aiConversation.deleteMany(),
     admin.recordTransitionHistory.deleteMany(),
     admin.workflowTransitionDefinition.deleteMany(),
@@ -95,6 +96,9 @@ export async function cleanupTestFixtures(
       where: { tenantId: { in: tenantIds } },
     });
     await admin.aiMessage.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await admin.aiOperation.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });
     await admin.aiConversation.deleteMany({

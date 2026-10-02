@@ -1,13 +1,11 @@
 import type { TenantContext } from '../../common/tenancy/tenant-context';
+import type { AiProposalView } from './ai-operation.types';
 
 export type { TenantContext };
 
 export type AiMessageRole = 'USER' | 'ASSISTANT';
 export type AiMessageStatus =
-  | 'GENERATING'
-  | 'COMPLETED'
-  | 'FAILED'
-  | 'CANCELLED';
+  'GENERATING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
 export interface ConversationListQuery {
   cursor?: string;
@@ -59,6 +57,7 @@ export interface PublicAiMessage {
   errorCode: string | null;
   createdAt: string;
   completedAt: string | null;
+  proposal?: AiProposalView | null;
 }
 
 export interface ConversationMessagePage {

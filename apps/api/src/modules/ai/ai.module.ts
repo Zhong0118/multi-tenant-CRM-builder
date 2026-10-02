@@ -8,6 +8,9 @@ import { MembershipsModule } from '../memberships/memberships.module';
 import { ObjectsModule } from '../objects/objects.module';
 import { RecordsModule } from '../records/records.module';
 import { AiController } from './ai.controller';
+import { AiOperationRepository } from './ai-operation.repository';
+import { AiProposalService } from './ai-proposal.service';
+import { AuditModule } from '../audit/audit.module';
 import { AiOrchestrator } from './ai-orchestrator';
 import { AI_PROVIDER, createAiProvider } from './ai-provider';
 import { ConversationRepository } from './conversation.repository';
@@ -19,6 +22,7 @@ import { AiToolRegistry } from './tool-registry';
     AuthModule,
     MembershipsModule,
     DatabaseModule,
+    AuditModule,
     ObjectsModule,
     RecordsModule,
     FollowUpsModule,
@@ -27,6 +31,8 @@ import { AiToolRegistry } from './tool-registry';
   providers: [
     ConversationRepository,
     ConversationService,
+    AiOperationRepository,
+    AiProposalService,
     AiOrchestrator,
     AiToolRegistry,
     {

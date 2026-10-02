@@ -596,6 +596,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/ai/proposals/{proposalId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AiController_getProposal"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/ai/proposals/{proposalId}/confirm": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AiController_confirmProposal"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/ai/proposals/{proposalId}/reject": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AiController_rejectProposal"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/ai/turns": {
     parameters: {
       query?: never;
@@ -1473,6 +1521,7 @@ export interface components {
       createdAt: string;
       errorCode?: string | null;
       id: string;
+      proposal?: components["schemas"]["AiProposalResponseDto"] | null;
       role: string;
       sourceSummary: {
         [key: string]: unknown;
@@ -1482,6 +1531,40 @@ export interface components {
         [key: string]: unknown;
       }[];
       turnId: string;
+    };
+    AiProposalChangeDto: {
+      after?: string;
+      before?: string;
+      label: string;
+    };
+    AiProposalResponseDto: {
+      /** Format: uuid */
+      auditId?: string | null;
+      changes: components["schemas"]["AiProposalChangeDto"][];
+      /** Format: date-time */
+      expiresAt: string;
+      failureCode?: string | null;
+      fieldErrors: {
+        [key: string]: string[];
+      };
+      /** @enum {string} */
+      operation: "UPDATE_RECORD" | "CREATE_FOLLOW_UP" | "ADD_ACTIVITY_NOTE";
+      /** Format: uuid */
+      proposalId: string;
+      result?: {
+        [key: string]: unknown;
+      } | null;
+      /** @enum {string} */
+      status:
+        | "PROPOSED"
+        | "REJECTED"
+        | "EXPIRED"
+        | "CONFLICTED"
+        | "FAILED"
+        | "EXECUTED";
+      targetSummary: string;
+      title: string;
+      validationWarnings: string[];
     };
     ApiErrorResponseDto: {
       code: string;
@@ -1636,6 +1719,10 @@ export interface components {
       reason?: string;
       /** @enum {string} */
       status: "DRAFT" | "ACTIVE" | "SUSPENDED" | "CLOSED";
+    };
+    ConfirmAiProposalDto: {
+      /** Format: uuid */
+      idempotencyKey: string;
     };
     CorrectFirstAdminPhoneDto: {
       /** @example 13900139000 */
@@ -4167,6 +4254,76 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AiMessagePageDto"];
+        };
+      };
+    };
+  };
+  AiController_getProposal: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        proposalId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AiProposalResponseDto"];
+        };
+      };
+    };
+  };
+  AiController_confirmProposal: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        proposalId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ConfirmAiProposalDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AiProposalResponseDto"];
+        };
+      };
+    };
+  };
+  AiController_rejectProposal: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        proposalId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AiProposalResponseDto"];
         };
       };
     };

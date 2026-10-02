@@ -7,6 +7,8 @@ import type {
 
 export const CRITICAL_SEARCH_OWN_LEADS_MARKER = 'critical:search-own-leads';
 export const CRITICAL_SEARCH_OBJECT_CODE = 'leads';
+const PROPOSE_MARKER =
+  /critical:propose-change:(UPDATE_RECORD|CREATE_FOLLOW_UP|ADD_ACTIVITY_NOTE):([0-9a-f-]{36})(?::(HIDDEN|READ_ONLY))?/;
 
 let capturedToolResult: unknown;
 
@@ -30,9 +32,54 @@ export class FakeAiProvider implements AiProvider {
     tools: AiProviderTool[];
     abortSignal: AbortSignal;
   }): AsyncIterable<AiProviderEvent> {
-    const prompt = input.messages.map((message) => message.content).join('\n');
+    const last = input.messages.at(-1);
+    const prompt = last?.role === 'user' ? last.content : '';
     if (prompt.includes(CRITICAL_SEARCH_OWN_LEADS_MARKER)) {
       yield* this.searchOwnLeads(input);
+      return;
+    }
+    if (prompt.includes('critical:provider-secret-failure')) {
+      yield { type: 'FAILED', code: 'provider-raw-secret' };
+      return;
+    }
+    const proposal = prompt.match(PROPOSE_MARKER);
+    if (proposal) {
+      const [, operationType, recordId, fieldAccess] = proposal;
+      const callId = 'fake-propose-change';
+      const tool = input.tools.find((entry) => entry.name === 'propose_change');
+      if (!tool || input.abortSignal.aborted) return;
+      const candidate =
+        operationType === 'UPDATE_RECORD'
+          ? {
+              operationType,
+              objectCode: 'leads',
+              recordId,
+              values: {
+                [fieldAccess === 'HIDDEN'
+                  ? 'secret'
+                  : fieldAccess === 'READ_ONLY'
+                    ? 'reviewCode'
+                    : 'name']:
+                  fieldAccess === 'READ_ONLY' ? 'changed' : 'HTTP confirmed',
+              },
+            }
+          : operationType === 'CREATE_FOLLOW_UP'
+            ? {
+                operationType,
+                objectCode: 'leads',
+                recordId,
+                title: 'HTTP follow-up',
+                dueAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+              }
+            : {
+                operationType,
+                objectCode: 'leads',
+                recordId,
+                content: 'HTTP note',
+              };
+      await tool.execute(candidate, callId);
+      yield { type: 'USAGE', inputTokens: 8, outputTokens: 12 };
+      yield { type: 'COMPLETED' };
       return;
     }
     yield { type: 'TEXT_DELTA', text: '测试回答' };

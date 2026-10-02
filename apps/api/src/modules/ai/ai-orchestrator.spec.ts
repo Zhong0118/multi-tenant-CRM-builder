@@ -6,13 +6,20 @@ import {
   mergeProviderAndPublicEvents,
 } from './ai-orchestrator';
 import { AiPublicEventQueue } from './ai-public-event-queue';
-import type { AiProvider, AiProviderEvent, AiProviderTool } from './ai-provider';
+import type {
+  AiProvider,
+  AiProviderEvent,
+  AiProviderTool,
+} from './ai-provider';
 import type { ConversationService } from './conversation.service';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { AiPublicStreamEvent } from '@crm/contracts';
 import type { BeginTurnResult } from './ai.types';
 import { AiToolRegistry } from './tool-registry';
 import { wrapAiReadTool, type AiToolCallbacks } from './ai-tool-wrapper';
+import type { AiProposalService } from './ai-proposal.service';
+import type { AiProposalView } from './ai-operation.types';
+import { ProposalCollector } from './tools/propose-change.tool';
 
 const context: TenantContext = {
   tenantId: '0198ad18-a74d-7b69-b81a-49a74f9a3e0d',
@@ -129,6 +136,332 @@ function searchTool(
   };
 }
 
+describe('AiOrchestrator proposal candidate lifecycle', () => {
+  it('keeps distinct provider calls invalidated', async () => {
+    const collector = new ProposalCollector();
+    await collector.tool.execute(
+      {
+        operationType: 'ADD_ACTIVITY_NOTE',
+        objectCode: 'leads',
+        recordId: context.tenantId,
+        content: 'one',
+      },
+      'same-call',
+    );
+    await collector.tool.execute(
+      {
+        operationType: 'ADD_ACTIVITY_NOTE',
+        objectCode: 'leads',
+        recordId: context.tenantId,
+        content: 'two',
+      },
+      'second-call',
+    );
+    expect(collector.invalidated).toBe(true);
+    expect(collector.candidate).toBeNull();
+  });
+
+  const candidate = {
+    operationType: 'ADD_ACTIVITY_NOTE',
+    objectCode: 'leads',
+    recordId: context.tenantId,
+    content: 'safe note',
+  };
+  const proposal: AiProposalView = {
+    proposalId: 'proposal-1',
+    operation: 'ADD_ACTIVITY_NOTE',
+    title: '添加备注',
+    targetSummary: 'Lead',
+    changes: [{ label: 'NOTE', after: 'safe note' }],
+    validationWarnings: [],
+    status: 'PROPOSED',
+    expiresAt: '2026-09-24T12:15:00.000Z',
+    failureCode: null,
+    fieldErrors: {},
+    result: null,
+    auditId: null,
+  };
+  function proposalMock() {
+    return {
+      completeWithProposal: jest.fn().mockResolvedValue(proposal),
+    } as unknown as jest.Mocked<AiProposalService>;
+  }
+  it('does not persist a proposal when client aborts after provider completion', async () => {
+    const conversations = conversationMock();
+    const proposals = proposalMock();
+    const abort = new AbortController();
+    const provider = providerWith(async function* (_signal, tools) {
+      await tools
+        .find((tool) => tool.name === 'propose_change')!
+        .execute(candidate, 'first');
+      yield { type: 'COMPLETED' };
+      abort.abort();
+      await new Promise((resolve) => setImmediate(resolve));
+    });
+    const events = await collect(
+      await new AiOrchestrator(
+        conversations,
+        provider,
+        registryWith([]),
+        proposals,
+      ).streamTurn(context, { content: 'note' }, abort.signal),
+    );
+    expect(proposals.completeWithProposal).not.toHaveBeenCalled();
+    expect(events.map((event) => event.event)).not.toContain('proposal.ready');
+  });
+
+  it('keeps a committed proposal completed when abort arrives before persistence resolves', async () => {
+    const conversations = conversationMock();
+    const proposals = proposalMock();
+    const abort = new AbortController();
+    let assistantStatus = 'GENERATING';
+    let operationStatus = 'PROPOSED';
+    conversations.finalizeAssistant.mockImplementation(
+      async (_context, _turnId, outcome) => {
+        assistantStatus = outcome.status;
+      },
+    );
+    proposals.completeWithProposal.mockImplementation(() => {
+      assistantStatus = 'COMPLETED';
+      operationStatus = 'PROPOSED';
+      const committed = Promise.resolve(proposal);
+      committed.then(() => abort.abort());
+      return committed;
+    });
+    const provider = providerWith(async function* (_signal, tools) {
+      await tools
+        .find((tool) => tool.name === 'propose_change')!
+        .execute(candidate, 'first');
+      yield { type: 'COMPLETED' };
+    });
+    const events = await collect(
+      await new AiOrchestrator(
+        conversations,
+        provider,
+        registryWith([]),
+        proposals,
+      ).streamTurn(context, { content: 'note' }, abort.signal),
+    );
+    expect(events.map((event) => event.event)).not.toContain('proposal.ready');
+    expect(events.map((event) => event.event)).toContain('turn.completed');
+    expect(events.map((event) => event.event)).not.toContain('turn.cancelled');
+    expect(conversations.finalizeAssistant).not.toHaveBeenCalled();
+    expect(proposals.completeWithProposal).toHaveBeenCalledTimes(1);
+    expect(assistantStatus).toBe('COMPLETED');
+    expect(operationStatus).toBe('PROPOSED');
+  });
+
+  it('fails cleanly when persistence outlives the provider timeout', async () => {
+    const previous = process.env.AI_TIMEOUT_MS;
+    process.env.AI_TIMEOUT_MS = '10';
+    const conversations = conversationMock();
+    const proposals = proposalMock();
+    proposals.completeWithProposal.mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      throw new Error('persistence timeout');
+    });
+    const provider = providerWith(async function* (_signal, tools) {
+      await tools
+        .find((tool) => tool.name === 'propose_change')!
+        .execute(candidate, 'first');
+      yield { type: 'COMPLETED' };
+    });
+    try {
+      const events = await collect(
+        await new AiOrchestrator(
+          conversations,
+          provider,
+          registryWith([]),
+          proposals,
+        ).streamTurn(
+          context,
+          { content: 'note' },
+          new AbortController().signal,
+        ),
+      );
+      expect(events.map((event) => event.event)).not.toContain(
+        'proposal.ready',
+      );
+      expect(conversations.finalizeAssistant).toHaveBeenCalledWith(
+        context,
+        begun.turnId,
+        expect.objectContaining({ status: 'FAILED' }),
+      );
+    } finally {
+      if (previous === undefined) delete process.env.AI_TIMEOUT_MS;
+      else process.env.AI_TIMEOUT_MS = previous;
+    }
+  });
+
+  it('publishes a safe ready card only after atomic completion and never calls business commands', async () => {
+    const conversations = conversationMock();
+    const proposals = proposalMock();
+    const provider = providerWith(async function* (_signal, tools) {
+      const write = tools.find((tool) => tool.name === 'propose_change');
+      expect(write).toBeDefined();
+      const ack = await write!.execute(candidate, 'proposal-call');
+      expect(JSON.stringify(ack)).not.toContain('safe note');
+      expect(JSON.stringify(ack)).not.toContain('Lead');
+      yield { type: 'COMPLETED' };
+    });
+    const events = await collect(
+      await new AiOrchestrator(
+        conversations,
+        provider,
+        registryWith([]),
+        proposals,
+      ).streamTurn(context, { content: 'note' }, new AbortController().signal),
+    );
+    expect(proposals.completeWithProposal).toHaveBeenCalledWith(
+      context,
+      begun.turnId,
+      candidate,
+      begun.user.content,
+      expect.objectContaining({ status: 'COMPLETED' }),
+      expect.any(Function),
+    );
+    expect(conversations.finalizeAssistant).not.toHaveBeenCalled();
+    expect(events.filter((event) => event.event === 'proposal.ready')).toEqual([
+      { event: 'proposal.ready', data: { turnId: begun.turnId, proposal } },
+    ]);
+    expect(events.at(-1)?.event).toBe('turn.completed');
+  });
+  it('invalidates both candidates after a second call and never publishes ready', async () => {
+    const conversations = conversationMock();
+    const proposals = proposalMock();
+    const provider = providerWith(async function* (_signal, tools) {
+      const write = tools.find((tool) => tool.name === 'propose_change')!;
+      await write.execute(candidate, 'first');
+      const rejected = await write.execute(
+        { ...candidate, content: 'second note' },
+        'second',
+      );
+      expect(JSON.stringify(rejected)).not.toContain('second note');
+      yield { type: 'COMPLETED' };
+    });
+    const events = await collect(
+      await new AiOrchestrator(
+        conversations,
+        provider,
+        registryWith([]),
+        proposals,
+      ).streamTurn(context, { content: 'note' }, new AbortController().signal),
+    );
+    expect(proposals.completeWithProposal).not.toHaveBeenCalled();
+    expect(events.map((event) => event.event)).not.toContain('proposal.ready');
+    expect(events.map((event) => event.event)).toContain('turn.failed');
+    expect(conversations.finalizeAssistant).toHaveBeenCalledWith(
+      context,
+      begun.turnId,
+      expect.objectContaining({ status: 'FAILED' }),
+    );
+  });
+  it('invalidates the first candidate when a second provider call has invalid override arguments', async () => {
+    const conversations = conversationMock();
+    const proposals = proposalMock();
+    const provider = providerWith(async function* (_signal, tools) {
+      const write = tools.find((tool) => tool.name === 'propose_change')!;
+      yield {
+        type: 'TOOL_CALL_REQUESTED',
+        callId: 'first',
+        toolName: 'propose_change',
+      };
+      await write.execute(candidate, 'first');
+      yield {
+        type: 'TOOL_CALL_REQUESTED',
+        callId: 'second',
+        toolName: 'propose_change',
+      };
+      expect(
+        write.inputSchema.safeParse({ ...candidate, tenantId: 'attacker' })
+          .success,
+      ).toBe(false);
+      yield { type: 'COMPLETED' };
+    });
+    const events = await collect(
+      await new AiOrchestrator(
+        conversations,
+        provider,
+        registryWith([]),
+        proposals,
+      ).streamTurn(context, { content: 'note' }, new AbortController().signal),
+    );
+    expect(proposals.completeWithProposal).not.toHaveBeenCalled();
+    expect(events.map((event) => event.event)).not.toContain('proposal.ready');
+  });
+  it('rejects actor overrides at the provider schema without persisting a proposal', async () => {
+    const conversations = conversationMock();
+    const proposals = proposalMock();
+    const provider = providerWith(async function* (_signal, tools) {
+      const write = tools.find((tool) => tool.name === 'propose_change')!;
+      expect(
+        write.inputSchema.safeParse({ ...candidate, tenantId: 'attacker' })
+          .success,
+      ).toBe(false);
+      yield { type: 'COMPLETED' };
+    });
+    const events = await collect(
+      await new AiOrchestrator(
+        conversations,
+        provider,
+        registryWith([]),
+        proposals,
+      ).streamTurn(context, { content: 'note' }, new AbortController().signal),
+    );
+    expect(proposals.completeWithProposal).not.toHaveBeenCalled();
+    expect(events.map((event) => event.event)).not.toContain('proposal.ready');
+  });
+  it('discards a candidate if the provider fails after calling the tool', async () => {
+    const conversations = conversationMock();
+    const proposals = proposalMock();
+    const provider = providerWith(async function* (_signal, tools) {
+      await tools
+        .find((tool) => tool.name === 'propose_change')!
+        .execute(candidate, 'first');
+      yield { type: 'FAILED', code: 'AI_PROVIDER_UNAVAILABLE' };
+    });
+    const events = await collect(
+      await new AiOrchestrator(
+        conversations,
+        provider,
+        registryWith([]),
+        proposals,
+      ).streamTurn(context, { content: 'note' }, new AbortController().signal),
+    );
+    expect(proposals.completeWithProposal).not.toHaveBeenCalled();
+    expect(events.map((event) => event.event)).not.toContain('proposal.ready');
+  });
+  it('fails separately when proposal persistence rejects without emitting ready or completing the turn', async () => {
+    const conversations = conversationMock();
+    const proposals = proposalMock();
+    proposals.completeWithProposal.mockRejectedValue(
+      new Error('raw database details'),
+    );
+    const provider = providerWith(async function* (_signal, tools) {
+      await tools
+        .find((tool) => tool.name === 'propose_change')!
+        .execute(candidate, 'first');
+      yield { type: 'COMPLETED' };
+    });
+    const events = await collect(
+      await new AiOrchestrator(
+        conversations,
+        provider,
+        registryWith([]),
+        proposals,
+      ).streamTurn(context, { content: 'note' }, new AbortController().signal),
+    );
+    expect(conversations.finalizeAssistant).toHaveBeenCalledWith(
+      context,
+      begun.turnId,
+      expect.objectContaining({ status: 'FAILED' }),
+    );
+    expect(events.map((event) => event.event)).not.toContain('proposal.ready');
+    expect(events.map((event) => event.event)).not.toContain('turn.completed');
+    expect(JSON.stringify(events)).not.toContain('raw database details');
+  });
+});
+
 describe('AiOrchestrator.streamTurn', () => {
   it('calls beginTurn first, then streams public events, then finalizes in a separate call', async () => {
     const conversations = conversationMock();
@@ -197,11 +530,18 @@ describe('AiOrchestrator.streamTurn', () => {
         modelKey: 'fake-model',
       }),
     );
-    expect(conversations.contextMessages).toHaveBeenCalledWith(context, 'conv-1');
+    expect(conversations.contextMessages).toHaveBeenCalledWith(
+      context,
+      'conv-1',
+    );
     expect(AI_SYSTEM_PROMPT).toMatch(/untrusted business content/i);
     expect(AI_SYSTEM_PROMPT).toMatch(/provided read tools/);
     expect(AI_SYSTEM_PROMPT).toMatch(/may be incomplete/);
     expect(AI_SYSTEM_PROMPT).toMatch(/hidden or unavailable/);
+    expect(AI_SYSTEM_PROMPT).toMatch(
+      /Assigning or transferring a follow-up.*unsupported/i,
+    );
+    expect(AI_SYSTEM_PROMPT).toMatch(/不能默认为当前执行人/);
     expect(AI_SYSTEM_PROMPT).toMatch(/user's language/);
   });
 
@@ -332,7 +672,11 @@ describe('AiOrchestrator.streamTurn', () => {
     );
     expect(events.find((event) => event.event === 'turn.failed')).toEqual({
       event: 'turn.failed',
-      data: { turnId: 'turn-1', code: 'AI_PROVIDER_TIMEOUT', messageId: 'asst-msg' },
+      data: {
+        turnId: 'turn-1',
+        code: 'AI_PROVIDER_TIMEOUT',
+        messageId: 'asst-msg',
+      },
     });
     expect(JSON.stringify(events)).not.toMatch(/ECONNRESET|sk-|stack/i);
   });
@@ -383,7 +727,9 @@ describe('AiOrchestrator.streamTurn', () => {
           messageId: 'asst-msg',
         },
       });
-      expect(events.map((event) => event.event)).not.toContain('turn.cancelled');
+      expect(events.map((event) => event.event)).not.toContain(
+        'turn.cancelled',
+      );
     } finally {
       if (previous === undefined) delete process.env.AI_TIMEOUT_MS;
       else process.env.AI_TIMEOUT_MS = previous;
@@ -392,7 +738,9 @@ describe('AiOrchestrator.streamTurn', () => {
 
   it('finalizes FAILED AI_TURN_FAILED when contextMessages() throws after beginTurn', async () => {
     const conversations = conversationMock();
-    conversations.contextMessages.mockRejectedValue(new Error('db unavailable'));
+    conversations.contextMessages.mockRejectedValue(
+      new Error('db unavailable'),
+    );
     const provider = providerWith([{ type: 'COMPLETED' }]);
     const orchestrator = new AiOrchestrator(
       conversations,
@@ -470,7 +818,9 @@ describe('AiOrchestrator.streamTurn', () => {
       'tool.completed',
       'turn.completed',
     ]);
-    expect(events.find((event) => event.event === 'tool.started')?.data).toEqual({
+    expect(
+      events.find((event) => event.event === 'tool.started')?.data,
+    ).toEqual({
       callId: 'call-1',
       toolName: 'search_records',
       displayName: '查询leads记录',
@@ -506,7 +856,10 @@ describe('AiOrchestrator.streamTurn', () => {
   it('still answers after a partial tool failure and records the failed summary', async () => {
     const conversations = conversationMock();
     const provider = providerWith(async function* (_signal, tools) {
-      const result = await tools[0]!.execute({ objectCode: 'leads' }, 'call-fail');
+      const result = await tools[0]!.execute(
+        { objectCode: 'leads' },
+        'call-fail',
+      );
       expect(result).toEqual({ unavailable: true, code: 'DATA_UNAVAILABLE' });
       yield { type: 'TEXT_DELTA', text: '部分数据暂不可用。' };
       yield { type: 'COMPLETED' };
@@ -547,7 +900,9 @@ describe('AiOrchestrator.streamTurn', () => {
     const results: unknown[] = [];
     const provider = providerWith(async function* (_signal, tools) {
       for (let index = 0; index < 7; index += 1) {
-        results.push(await tools[0]!.execute({ objectCode: 'leads' }, `seq-${index}`));
+        results.push(
+          await tools[0]!.execute({ objectCode: 'leads' }, `seq-${index}`),
+        );
       }
       yield { type: 'TEXT_DELTA', text: '预算已达上限。' };
       yield { type: 'COMPLETED' };
@@ -556,7 +911,9 @@ describe('AiOrchestrator.streamTurn', () => {
       conversations,
       provider,
       registryWith([
-        searchTool(async () => ({ items: [{ id: '1', values: { secret: 'x' } }] })),
+        searchTool(async () => ({
+          items: [{ id: '1', values: { secret: 'x' } }],
+        })),
       ]),
     );
     const events = await collect(
@@ -570,7 +927,9 @@ describe('AiOrchestrator.streamTurn', () => {
       items: [{ id: '1', values: { secret: 'x' } }],
     });
     expect(results[6]).toEqual({ unavailable: true, code: 'DATA_UNAVAILABLE' });
-    expect(events.filter((event) => event.event === 'tool.completed')).toHaveLength(6);
+    expect(
+      events.filter((event) => event.event === 'tool.completed'),
+    ).toHaveLength(6);
     expect(JSON.stringify(events)).not.toContain('secret');
     expect(events.map((event) => event.event)).toContain('turn.completed');
   });
@@ -584,7 +943,11 @@ describe('AiOrchestrator.streamTurn', () => {
         tools[0]!.execute({ objectCode: 'leads' }, 'p3'),
         tools[0]!.execute({ objectCode: 'leads' }, 'p4'),
       ]);
-      expect(settled.filter((item) => item && typeof item === 'object' && 'unavailable' in item)).toHaveLength(1);
+      expect(
+        settled.filter(
+          (item) => item && typeof item === 'object' && 'unavailable' in item,
+        ),
+      ).toHaveLength(1);
       expect(settled).toContainEqual({
         unavailable: true,
         code: 'DATA_UNAVAILABLE',
@@ -599,7 +962,11 @@ describe('AiOrchestrator.streamTurn', () => {
         searchTool(
           () =>
             new Promise((resolve) => {
-              setTimeout(() => resolve({ items: [{ id: '1', values: { secret: 'x' } }] }), 20);
+              setTimeout(
+                () =>
+                  resolve({ items: [{ id: '1', values: { secret: 'x' } }] }),
+                20,
+              );
             }),
         ),
       ]),
@@ -611,7 +978,9 @@ describe('AiOrchestrator.streamTurn', () => {
         new AbortController().signal,
       ),
     );
-    expect(events.filter((event) => event.event === 'tool.started')).toHaveLength(3);
+    expect(
+      events.filter((event) => event.event === 'tool.started'),
+    ).toHaveLength(3);
     expect(JSON.stringify(events)).not.toContain('secret');
   });
 
@@ -705,7 +1074,9 @@ describe('AiOrchestrator.streamTurn', () => {
       });
       expect(events.map((event) => event.event)).toContain('tool.started');
       expect(events.map((event) => event.event)).toContain('tool.failed');
-      expect(events.map((event) => event.event)).not.toContain('tool.completed');
+      expect(events.map((event) => event.event)).not.toContain(
+        'tool.completed',
+      );
       const after = events.length;
       resolveDomain({ items: [{ id: 'late' }], total: 1 });
       await Promise.resolve();
@@ -765,49 +1136,45 @@ describe('AiOrchestrator.streamTurn', () => {
       });
       void pending;
     });
-    const orchestrator = new AiOrchestrator(
-      conversations,
-      provider,
-      {
-        forActor(_context: TenantContext, callbacks: AiToolCallbacks) {
-          const delayed: AiToolCallbacks = {
-            ...callbacks,
-            emit(event) {
-              if (
-                event.event !== 'tool.failed' ||
-                event.data.callId !== 'valid-call'
-              ) {
-                callbacks.emit(event);
-                return;
+    const orchestrator = new AiOrchestrator(conversations, provider, {
+      forActor(_context: TenantContext, callbacks: AiToolCallbacks) {
+        const delayed: AiToolCallbacks = {
+          ...callbacks,
+          emit(event) {
+            if (
+              event.event !== 'tool.failed' ||
+              event.data.callId !== 'valid-call'
+            ) {
+              callbacks.emit(event);
+              return;
+            }
+            void (async () => {
+              for (let index = 0; index < 5; index += 1) {
+                await Promise.resolve();
               }
-              void (async () => {
-                for (let index = 0; index < 5; index += 1) {
-                  await Promise.resolve();
-                }
-                callbacks.emit(event);
-              })();
+              callbacks.emit(event);
+            })();
+          },
+        };
+        return [
+          wrapAiReadTool(
+            {
+              name: 'search_records',
+              description: 'search',
+              inputSchema: z
+                .object({
+                  objectCode: z.string().min(1).max(64),
+                  limit: z.number().int().min(1).max(20).default(10),
+                })
+                .strict(),
+              execute: () => hanging,
             },
-          };
-          return [
-            wrapAiReadTool(
-              {
-                name: 'search_records',
-                description: 'search',
-                inputSchema: z
-                  .object({
-                    objectCode: z.string().min(1).max(64),
-                    limit: z.number().int().min(1).max(20).default(10),
-                  })
-                  .strict(),
-                execute: () => hanging,
-              },
-              delayed,
-            ),
-          ];
-        },
-        names: () => ['search_records'],
-      } as unknown as AiToolRegistry,
-    );
+            delayed,
+          ),
+        ];
+      },
+      names: () => ['search_records'],
+    } as unknown as AiToolRegistry);
     const events = await collect(
       await orchestrator.streamTurn(
         context,
@@ -853,42 +1220,47 @@ describe('AiOrchestrator.streamTurn', () => {
       });
       void pending;
     });
-    const orchestrator = new AiOrchestrator(
-      conversations,
-      provider,
-      {
-        forActor(_context: TenantContext, callbacks: AiToolCallbacks) {
-          const delayed: AiToolCallbacks = {
-            ...callbacks,
-            emit(event) {
-              if (event.event !== 'tool.failed') {
-                callbacks.emit(event);
-                return;
+    const orchestrator = new AiOrchestrator(conversations, provider, {
+      forActor(_context: TenantContext, callbacks: AiToolCallbacks) {
+        const delayed: AiToolCallbacks = {
+          ...callbacks,
+          emit(event) {
+            if (event.event !== 'tool.failed') {
+              callbacks.emit(event);
+              return;
+            }
+            void (async () => {
+              for (let index = 0; index < 5; index += 1) {
+                await Promise.resolve();
               }
-              void (async () => {
-                for (let index = 0; index < 5; index += 1) {
-                  await Promise.resolve();
-                }
-                callbacks.emit(event);
-              })();
-            },
-          };
-          return [wrapAiReadTool(searchTool(() => hanging), delayed)];
-        },
-        names: () => ['search_records'],
-      } as unknown as AiToolRegistry,
-    );
+              callbacks.emit(event);
+            })();
+          },
+        };
+        return [
+          wrapAiReadTool(
+            searchTool(() => hanging),
+            delayed,
+          ),
+        ];
+      },
+      names: () => ['search_records'],
+    } as unknown as AiToolRegistry);
     const events = await collect(
-      await orchestrator.streamTurn(context, { content: '延迟失败' }, abort.signal),
+      await orchestrator.streamTurn(
+        context,
+        { content: '延迟失败' },
+        abort.signal,
+      ),
     );
     expect(events.map((event) => event.event)).toContain('tool.started');
     expect(events.map((event) => event.event)).toContain('tool.failed');
-    expect(events.filter((event) => event.event === 'tool.started')).toHaveLength(
-      1,
-    );
-    expect(events.filter((event) => event.event === 'tool.failed')).toHaveLength(
-      1,
-    );
+    expect(
+      events.filter((event) => event.event === 'tool.started'),
+    ).toHaveLength(1);
+    expect(
+      events.filter((event) => event.event === 'tool.failed'),
+    ).toHaveLength(1);
     expect(events.map((event) => event.event)).not.toContain('tool.completed');
   });
 
@@ -921,12 +1293,12 @@ describe('AiOrchestrator.streamTurn', () => {
     const events = await collect(
       await orchestrator.streamTurn(context, { content: '三路' }, abort.signal),
     );
-    expect(events.filter((event) => event.event === 'tool.started')).toHaveLength(
-      3,
-    );
-    expect(events.filter((event) => event.event === 'tool.failed')).toHaveLength(
-      3,
-    );
+    expect(
+      events.filter((event) => event.event === 'tool.started'),
+    ).toHaveLength(3);
+    expect(
+      events.filter((event) => event.event === 'tool.failed'),
+    ).toHaveLength(3);
     expect(events.map((event) => event.event)).not.toContain('tool.completed');
     expect(
       events

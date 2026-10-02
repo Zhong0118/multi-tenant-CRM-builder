@@ -1,5 +1,6 @@
 import type {
   AiMessage,
+  AiProposalView,
   AiPublicStreamEvent,
   AiSourceSummary,
   AiToolSummary,
@@ -15,6 +16,7 @@ export interface AiTurnState {
   streamingText: string;
   tools: AiToolSummary[];
   sources: AiSourceSummary[];
+  proposal?: AiProposalView | null;
   errorCode?: string | null;
   errorMessage?: string;
   partial: boolean;
@@ -27,6 +29,7 @@ export const initialAiTurnState: AiTurnState = {
   streamingText: "",
   tools: [],
   sources: [],
+  proposal: null,
   partial: false,
 };
 
@@ -68,6 +71,7 @@ export function aiTurnReducer(
         errorMessage: undefined,
         partial: false,
         draft: "",
+        proposal: null,
         pendingUserContent: action.content,
       };
     case "beginRetryTurn":
@@ -81,6 +85,7 @@ export function aiTurnReducer(
         errorCode: null,
         errorMessage: undefined,
         partial: false,
+        proposal: null,
         pendingUserContent: undefined,
       };
     case "cancel":
@@ -93,7 +98,10 @@ export function aiTurnReducer(
         errorMessage: "回答已停止",
       };
     case "network":
-      return aiTurnReducer(state, { type: "transportFailure", code: "NETWORK" });
+      return aiTurnReducer(state, {
+        type: "transportFailure",
+        code: "NETWORK",
+      });
     case "transportFailure":
       if (state.phase !== "SENDING" && state.phase !== "STREAMING") {
         return state;
@@ -103,7 +111,9 @@ export function aiTurnReducer(
         phase: "FAILED",
         errorCode: action.code,
         errorMessage: userErrorMessage(action.code),
-        draft: state.turnId ? state.draft : (state.pendingUserContent ?? state.draft),
+        draft: state.turnId
+          ? state.draft
+          : (state.pendingUserContent ?? state.draft),
       };
     case "event":
       return applyEvent(state, action.event);
@@ -143,6 +153,14 @@ function applyEvent(
       };
     case "sources.updated":
       return { ...state, sources: event.data.sources };
+    case "proposal.ready":
+      return { ...state, proposal: event.data.proposal };
+    case "proposal.rejected":
+    case "proposal.expired":
+    case "proposal.conflicted":
+    case "proposal.executed":
+    case "proposal.failed":
+      return { ...state, proposal: event.data.proposal };
     case "turn.completed":
       return {
         ...state,
@@ -220,6 +238,7 @@ export function toAssistantMessage(state: AiTurnState): AiMessage | null {
     content: state.streamingText,
     toolSummary: state.tools,
     sourceSummary: state.sources,
+    proposal: state.proposal,
     errorCode: state.errorCode,
     createdAt: new Date().toISOString(),
   };

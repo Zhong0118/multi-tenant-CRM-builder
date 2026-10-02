@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { AiProposalResponseDto } from './ai-proposal.dto';
 import { Type } from 'class-transformer';
 import {
   IsInt,
@@ -66,17 +67,23 @@ export class AiMessageResponseDto {
   @ApiProperty() role!: 'USER' | 'ASSISTANT';
   @ApiProperty() status!: 'GENERATING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
   @ApiProperty() content!: string;
-  @ApiProperty({ type: 'array', items: { type: 'object', additionalProperties: true } })
+  @ApiProperty({
+    type: 'array',
+    items: { type: 'object', additionalProperties: true },
+  })
   toolSummary!: unknown[];
-  @ApiProperty({ type: 'array', items: { type: 'object', additionalProperties: true } })
+  @ApiProperty({
+    type: 'array',
+    items: { type: 'object', additionalProperties: true },
+  })
   sourceSummary!: unknown[];
   @ApiPropertyOptional({ nullable: true, type: String }) errorCode!:
-    | string
-    | null;
+    string | null;
+  @ApiPropertyOptional({ nullable: true, type: AiProposalResponseDto })
+  proposal?: AiProposalResponseDto | null;
   @ApiProperty() createdAt!: string;
   @ApiPropertyOptional({ nullable: true, type: String }) completedAt!:
-    | string
-    | null;
+    string | null;
 }
 
 export class AiConversationPageDto {

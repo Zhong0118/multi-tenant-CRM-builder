@@ -242,7 +242,20 @@ export async function provisionCriticalFixture(
     code: 'leads',
     name: '销售线索',
     fields: [
-      { key: 'name', label: '姓名', type: 'TEXT', required: true, access: 'EDIT' },
+      {
+        key: 'name',
+        label: '姓名',
+        type: 'TEXT',
+        required: true,
+        access: 'EDIT',
+      },
+      {
+        key: 'reviewCode',
+        label: '审核编号',
+        type: 'TEXT',
+        required: false,
+        access: 'READ_ONLY',
+      },
       {
         key: 'secret',
         label: '内部备注',
@@ -268,7 +281,13 @@ export async function provisionCriticalFixture(
     code: 'invoices',
     name: '发票',
     fields: [
-      { key: 'name', label: '名称', type: 'TEXT', required: true, access: 'EDIT' },
+      {
+        key: 'name',
+        label: '名称',
+        type: 'TEXT',
+        required: true,
+        access: 'EDIT',
+      },
     ],
     access: {
       canCreate: false,
@@ -286,7 +305,13 @@ export async function provisionCriticalFixture(
     code: 'deals',
     name: '商机',
     fields: [
-      { key: 'name', label: '名称', type: 'TEXT', required: true, access: 'EDIT' },
+      {
+        key: 'name',
+        label: '名称',
+        type: 'TEXT',
+        required: true,
+        access: 'EDIT',
+      },
     ],
     access: {
       canCreate: true,
@@ -337,7 +362,13 @@ export async function provisionCriticalFixture(
     code: 'leads',
     name: '外部线索',
     fields: [
-      { key: 'name', label: '姓名', type: 'TEXT', required: true, access: 'EDIT' },
+      {
+        key: 'name',
+        label: '姓名',
+        type: 'TEXT',
+        required: true,
+        access: 'EDIT',
+      },
     ],
     access: {
       canCreate: true,
@@ -355,7 +386,11 @@ export async function provisionCriticalFixture(
         objectId: leadObject.id,
         ownerMemberId: employeeMember.id,
         title: '员工自己的线索',
-        values: { name: '员工自己的线索', secret: 'hidden-owned' },
+        values: {
+          name: '员工自己的线索',
+          reviewCode: 'initial-review-code',
+          secret: 'hidden-owned',
+        },
         statusKey: 'new',
         recordNo: 1,
       }),
@@ -467,6 +502,9 @@ async function cleanupCriticalData(database: PrismaClient): Promise<void> {
   const userIds = users.map(({ id }) => id);
 
   if (tenantIds.length > 0) {
+    await database.aiOperation.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
     await database.aiMessage.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });
@@ -480,6 +518,9 @@ async function cleanupCriticalData(database: PrismaClient): Promise<void> {
       where: { tenantId: { in: tenantIds } },
     });
     await database.recordFollowUp.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await database.recordActivity.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });
     await database.record.deleteMany({

@@ -18,6 +18,32 @@ const context: TenantContext = {
   role: 'EMPLOYEE',
 };
 const meta = { requestId: 'req-1' };
+
+describe('proposal history follow-up visibility', () => {
+  it('filters reassigned tasks to the acting member within the caller transaction', async () => {
+    const findMany = jest.fn().mockResolvedValue([{ id: 'task-own' }]);
+    const runner = {
+      withTenant: jest.fn(),
+    } as unknown as DatabaseContextRunner;
+    const repo = new FollowUpsRepository(runner, {} as AuditService);
+    const tx = { recordFollowUp: { findMany } };
+    expect(
+      await repo.visibleFollowUpIdsInTransaction(tx as never, context, [
+        'task-own',
+        'task-other',
+      ]),
+    ).toEqual(['task-own']);
+    expect(findMany).toHaveBeenCalledWith({
+      where: {
+        tenantId: context.tenantId,
+        id: { in: ['task-own', 'task-other'] },
+        assigneeMemberId: context.memberId,
+      },
+      select: { id: true },
+    });
+    expect(runner.withTenant).not.toHaveBeenCalled();
+  });
+});
 const RECORD_ID = '018f47a2-4b5c-7d8e-9f01-00000000000f';
 const SCOPE: FollowUpRecordScope = {
   objectId: 'object-leads',
@@ -228,9 +254,9 @@ describe('FollowUpsRepository tenant timezone', () => {
   it('reads the current tenant timezone through the tenant context runner', async () => {
     const fixture = harness();
 
-    await expect(
-      fixture.repository.getTenantTimezone(context),
-    ).resolves.toBe('Asia/Shanghai');
+    await expect(fixture.repository.getTenantTimezone(context)).resolves.toBe(
+      'Asia/Shanghai',
+    );
 
     expect(fixture.withTenant).toHaveBeenCalledWith(
       context,
@@ -441,7 +467,11 @@ describe('FollowUpsRepository personal workbench', () => {
 
 describe('FollowUpsRepository listForAi', () => {
   const SCOPES = [
-    { objectId: 'object-leads', ownerMemberId: 'member-actor', canUpdate: true },
+    {
+      objectId: 'object-leads',
+      ownerMemberId: 'member-actor',
+      canUpdate: true,
+    },
   ];
   const admin: TenantContext = { ...context, role: 'TENANT_ADMIN' };
 

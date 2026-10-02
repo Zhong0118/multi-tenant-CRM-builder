@@ -1,5 +1,6 @@
 import type { Prisma } from '@crm/database';
 
+import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { AuditEvent } from '../audit/audit-event';
 import type { PublishedObjectSchema } from '../objects/object-schema';
@@ -314,7 +315,8 @@ class MemoryRecordsStore implements RecordsStore {
       (record) =>
         record.objectId === query.objectId &&
         record.deletedAt === null &&
-        (!query.ownerMemberId || record.ownerMemberId === query.ownerMemberId) &&
+        (!query.ownerMemberId ||
+          record.ownerMemberId === query.ownerMemberId) &&
         query.filters.every((filter) => matchesListFilter(record, filter)),
     );
     const numericOf = (record: DynamicRecord): number | null => {
@@ -346,8 +348,7 @@ class MemoryRecordsStore implements RecordsStore {
     if (query.groupByFieldKey) {
       for (const record of filtered) {
         const raw = record.values[query.groupByFieldKey];
-        const key =
-          raw === null || raw === undefined ? null : String(raw);
+        const key = raw === null || raw === undefined ? null : String(raw);
         const current = buckets.get(key) ?? { value: 0, count: 0, numbers: [] };
         current.count += 1;
         const numeric = numericOf(record);
@@ -454,9 +455,9 @@ class MemoryRecordsStore implements RecordsStore {
     return Promise.resolve(true);
   }
 
-  appendAudit(event: AuditEvent): Promise<void> {
+  appendAudit(event: AuditEvent): Promise<string> {
     this.audits.push(structuredClone(event));
-    return Promise.resolve();
+    return Promise.resolve(`audit-${this.audits.length}`);
   }
 
   /**
@@ -877,9 +878,7 @@ describe('RecordsService', () => {
       .configuration as PublishedObjectSchema;
     configuration.workflow = {
       initialStateKey: 'new',
-      states: [
-        { key: 'new', label: '新建', sortOrder: 10, isTerminal: false },
-      ],
+      states: [{ key: 'new', label: '新建', sortOrder: 10, isTerminal: false }],
       transitions: [],
     };
 
@@ -1554,20 +1553,60 @@ describe('RecordsService', () => {
     expect(result.items[0]).toMatchObject({ rowNumber: 2, status: 'CREATED' });
   });
 
-  it('returns RECORD_VERSION_CONFLICT for stale updates', async () => {
-    const { service } = fixture();
+  it('rejects stale updates with 409 without changing the record or auditing a write', async () => {
+    const { service, store } = fixture();
     const record = await create(service, employee, '张三');
 
-    await expect(
-      service.update(
-        employee,
-        'leads',
-        record.id,
-        { version: record.version + 1, values: { name: '过期写入' } },
-        meta,
-      ),
-    ).rejects.toMatchObject({ code: 'RECORD_VERSION_CONFLICT' });
+    const staleUpdate = service.update(
+      employee,
+      'leads',
+      record.id,
+      { version: record.version + 1, values: { name: '过期写入' } },
+      meta,
+    );
+    await expect(staleUpdate).rejects.toMatchObject({
+      code: 'RECORD_VERSION_CONFLICT',
+    });
+    await staleUpdate.catch((error: unknown) => {
+      expect(error).toBeInstanceOf(ApiException);
+      expect((error as ApiException).getStatus()).toBe(409);
+    });
+    expect(await service.detail(employee, 'leads', record.id)).toMatchObject({
+      title: '张三',
+      version: record.version,
+    });
+    expect(
+      store.audits.filter((event) => event.action === 'record.updated'),
+    ).toHaveLength(0);
   });
+
+  it.each(['HIDDEN', 'READ_ONLY'] as const)(
+    'denies updating a %s field without changing the record or auditing a write',
+    async (permission) => {
+      const { service, store, publishedRepository } = fixture();
+      const record = await create(service, admin, '张三', employee.memberId, {
+        secret: '原值',
+      });
+      const configuration = publishedRepository.record
+        .configuration as PublishedObjectSchema;
+      configuration.employeeAccess.fields.secret = permission;
+
+      await expect(
+        service.update(
+          employee,
+          'leads',
+          record.id,
+          { version: record.version, values: { secret: '不应写入' } },
+          meta,
+        ),
+      ).rejects.toMatchObject({ code: `FIELD_${permission}` });
+      expect(store.records[0]?.values.secret).toBe('原值');
+      expect(store.records[0]?.version).toBe(record.version);
+      expect(
+        store.audits.filter((event) => event.action === 'record.updated'),
+      ).toHaveLength(0);
+    },
+  );
 
   it('allows only admins to soft delete and never returns deleted records', async () => {
     const { service } = fixture();
@@ -1710,6 +1749,95 @@ describe('RecordsService', () => {
       'record.activity_created',
     );
   });
+
+  it('trims a NOTE, retains it in activity history and records its audit', async () => {
+    const { service, store } = fixture();
+    const record = await create(service, employee, '张三');
+    const note = await service.createActivity(
+      employee,
+      'leads',
+      record.id,
+      { activityType: 'NOTE', content: '  下周联系  ' },
+      meta,
+    );
+
+    expect(note).toMatchObject({
+      activityType: 'NOTE',
+      content: '下周联系',
+      actorMemberId: employee.memberId,
+    });
+    expect(
+      (
+        await service.listActivities(employee, 'leads', record.id, {
+          page: 1,
+          limit: 20,
+        })
+      ).items,
+    ).toContainEqual(note);
+    expect(
+      store.audits.filter(
+        (event) => event.action === 'record.activity_created',
+      ),
+    ).toEqual([
+      expect.objectContaining({
+        actorId: employee.userId,
+        resourceId: note.id,
+        after: expect.objectContaining({
+          recordId: record.id,
+          activityType: 'NOTE',
+        }),
+      }),
+    ]);
+  });
+
+  it('accepts exactly 4000 NOTE characters in the unchanged HTTP projection', async () => {
+    const { service, store } = fixture();
+    const record = await create(service, employee, '张三');
+    const note = await service.createActivity(
+      employee,
+      'leads',
+      record.id,
+      { activityType: 'NOTE', content: 'x'.repeat(4000) },
+      meta,
+    );
+    expect(note.content).toHaveLength(4000);
+    expect(note).not.toHaveProperty('auditId');
+    expect(
+      store.audits.filter(
+        (event) => event.action === 'record.activity_created',
+      ),
+    ).toHaveLength(1);
+  });
+
+  it.each(['   ', 'x'.repeat(4001)])(
+    'rejects invalid NOTE content without appending history or an audit',
+    async (content) => {
+      const { service, store } = fixture();
+      const record = await create(service, employee, '张三');
+      await expect(
+        service.createActivity(
+          employee,
+          'leads',
+          record.id,
+          { activityType: 'NOTE', content },
+          meta,
+        ),
+      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+      expect(
+        (
+          await service.listActivities(employee, 'leads', record.id, {
+            page: 1,
+            limit: 20,
+          })
+        ).total,
+      ).toBe(0);
+      expect(
+        store.audits.filter(
+          (event) => event.action === 'record.activity_created',
+        ),
+      ).toHaveLength(0);
+    },
+  );
 
   it('hides activities of records the employee cannot read', async () => {
     const { service } = fixture();

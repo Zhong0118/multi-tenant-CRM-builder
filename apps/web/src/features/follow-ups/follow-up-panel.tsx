@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
@@ -28,13 +28,19 @@ import styles from "./follow-ups.module.css";
 export function FollowUpPanel({
   tenantCode,
   record,
+  followUpId,
   api = followUpApi,
 }: {
   tenantCode: string;
   record?: { id: string; objectCode: string; canCreate: boolean };
+  followUpId?: string;
   api?: typeof followUpApi;
 }) {
   const client = useQueryClient();
+  const targetRef = useRef<HTMLLIElement>(null);
+  const focusedRef = useRef(false);
+  const [locating, setLocating] = useState(!!followUpId);
+  const [unavailable, setUnavailable] = useState(false);
   const [status, setStatus] = useState<FollowUpStatus>("OPEN");
   const [page, setPage] = useState(1);
   const [title, setTitle] = useState("");
@@ -61,6 +67,63 @@ export function FollowUpPanel({
       }),
     refetchInterval: 60_000,
   });
+  useEffect(() => {
+    if (!followUpId || !record) return;
+    let active = true;
+    focusedRef.current = false;
+    setLocating(true);
+    setUnavailable(false);
+    void (async () => {
+      try {
+        // The list endpoint applies current actor access; never infer visibility from the URL.
+        for (const candidate of ["OPEN", "DONE", "CANCELLED"] as const) {
+          for (let candidatePage = 1; active; candidatePage++) {
+            const result = await client.fetchQuery({
+              queryKey: [...key, record.id, candidate, candidatePage],
+              queryFn: () =>
+                api.list(tenantCode, {
+                  recordId: record.id,
+                  status: candidate,
+                  page: candidatePage,
+                  limit: 5,
+                }),
+            });
+            if (!active) return;
+            if (result.items.some((item) => item.id === followUpId)) {
+              setStatus(candidate);
+              setPage(candidatePage);
+              setLocating(false);
+              return;
+            }
+            if (candidatePage * result.limit >= result.total) break;
+          }
+        }
+        if (active) {
+          setUnavailable(true);
+          setLocating(false);
+        }
+      } catch {
+        if (active) {
+          setError("无法定位跟进事项，请刷新页面重试。");
+          setLocating(false);
+        }
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [followUpId, record?.id, tenantCode, api, client]);
+  useEffect(() => {
+    if (
+      !focusedRef.current &&
+      !locating &&
+      query.data?.items.some((item) => item.id === followUpId)
+    ) {
+      focusedRef.current = true;
+      targetRef.current?.focus();
+      targetRef.current?.scrollIntoView?.({ block: "nearest" });
+    }
+  }, [locating, query.data, followUpId]);
   const refresh = () => {
     setError(undefined);
     void client.invalidateQueries({ queryKey: key });
@@ -141,6 +204,10 @@ export function FollowUpPanel({
           onClose={() => setError(undefined)}
         />
       )}
+      {locating && <p role="status">正在查找跟进事项…</p>}
+      {unavailable && (
+        <Alert type="warning" title="该跟进事项不存在或当前无权查看。" />
+      )}
       {record?.canCreate && (
         <Form
           layout="vertical"
@@ -212,7 +279,12 @@ export function FollowUpPanel({
       )}
       <ul className={styles.list}>
         {query.data?.items.map((task) => (
-          <li key={task.id} className={styles.task}>
+          <li
+            key={task.id}
+            ref={task.id === followUpId ? targetRef : undefined}
+            tabIndex={task.id === followUpId ? -1 : undefined}
+            className={styles.task}
+          >
             <div className={styles.taskBody}>
               <div className={styles.taskTitle}>
                 <strong>{task.title}</strong>

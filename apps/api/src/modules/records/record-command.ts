@@ -2,9 +2,16 @@ import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type {
   AuditEvent,
-  WorkflowActionAuditMetadata,
+  DomainAuditCorrelation,
 } from '../audit/audit-event';
 import type { ResolvedObjectSchema } from '../objects/published-object.service';
+import { projectVisibleValues } from './record-value-engine';
+import {
+  MEMBER_ACTIVITY_TYPES,
+  type MemberActivityType,
+  type RecordActivity,
+} from './record-activity';
+import type { RecordActivityResponse, RecordResponse } from './records.service';
 import {
   RecordValueError,
   validateRecordMutation,
@@ -35,11 +42,10 @@ export interface RecordRequestMeta {
   requestId: string;
   ip?: string;
   /**
-   * §30: set only when an Action Engine executor calls this command, so the
-   * `record.created` audit row can be correlated with the Transition and the
-   * Action that produced it. The ordinary HTTP path leaves it unset.
+   * Optional correlation for Workflow Actions or a confirmed AI operation.
+   * The ordinary HTTP path leaves it unset.
    */
-  actionAudit?: WorkflowActionAuditMetadata;
+  actionAudit?: DomainAuditCorrelation;
 }
 
 export interface CreateRecordCommandInput {
@@ -93,6 +99,192 @@ export async function createRecordCommand(
     recordAudit(context, input.meta, 'record.created', created, undefined),
   );
   return created;
+}
+
+export interface UpdateRecordCommandInput {
+  store: RecordsStore;
+  resolved: ResolvedObjectSchema;
+  context: TenantContext;
+  recordId: string;
+  input: {
+    version: number;
+    values?: Record<string, unknown>;
+    ownerMemberId?: string | null;
+  };
+  meta: RecordRequestMeta;
+}
+
+/** Runs inside the caller's tenant transaction; ordinary updates retain their ACTIVE-owner lock. */
+export async function updateRecordCommand({
+  store,
+  resolved,
+  context,
+  recordId,
+  input,
+  meta,
+}: UpdateRecordCommandInput): Promise<{
+  record: RecordResponse;
+  auditId: string;
+}> {
+  const current = await requireVisibleRecord(
+    store,
+    resolved,
+    context,
+    recordId,
+    'UPDATE',
+  );
+  if (current.version !== input.version)
+    throw new ApiException('RECORD_VERSION_CONFLICT', 409);
+  const patch = await prepareSourceRecordPatch({
+    store,
+    resolved,
+    context,
+    current,
+    values: input.values,
+    ownerMemberId: input.ownerMemberId,
+  });
+  const updated = await applySourceRecordPatch({
+    store,
+    recordId,
+    expectedVersion: input.version,
+    patch,
+  });
+  const auditId = await store.appendAudit(
+    recordAudit(context, meta, 'record.updated', updated, current),
+  );
+  return { record: projectRecord(updated, resolved), auditId };
+}
+
+export interface CreateRecordActivityCommandInput {
+  store: RecordsStore;
+  resolved: ResolvedObjectSchema;
+  context: TenantContext;
+  recordId: string;
+  input: {
+    activityType: MemberActivityType;
+    content: string;
+    nextActionAt?: string | null;
+  };
+  meta: RecordRequestMeta;
+  clock: () => Date;
+  idGenerator: () => string;
+}
+
+/** Same validation and audit as the HTTP path; AI must supply literal NOTE. */
+export async function createRecordActivityCommand({
+  store,
+  resolved,
+  context,
+  recordId,
+  input,
+  meta,
+  clock,
+  idGenerator,
+}: CreateRecordActivityCommandInput): Promise<{
+  activity: RecordActivityResponse;
+  auditId: string;
+}> {
+  const content = validateRecordActivityInput(input);
+  await requireVisibleRecord(store, resolved, context, recordId, 'UPDATE');
+  const created = await store.createActivity({
+    id: idGenerator(),
+    recordId,
+    activityType: input.activityType,
+    content,
+    nextActionAt: input.nextActionAt ?? null,
+    actorMemberId: context.memberId,
+    createdAt: clock().toISOString(),
+  });
+  const auditId = await store.appendAudit({
+    tenantId: context.tenantId,
+    actorType: 'USER',
+    actorId: context.userId,
+    action: 'record.activity_created',
+    resourceType: 'record_activity',
+    resourceId: created.id,
+    after: {
+      recordId,
+      activityType: created.activityType,
+      nextActionAt: created.nextActionAt,
+      ...(meta.actionAudit ?? {}),
+    },
+    requestId: meta.requestId,
+    ip: meta.ip,
+  });
+  return { activity: projectActivity(created), auditId };
+}
+
+/** HTTP validates before opening a transaction; the command revalidates its callers. */
+export function validateRecordActivityInput(
+  input: CreateRecordActivityCommandInput['input'],
+): string {
+  const content = input.content.trim();
+  if (content.length === 0)
+    throw new ApiException('VALIDATION_FAILED', 400, {
+      fieldErrors: { content: ['请填写跟进内容。'] },
+    });
+  if (content.length > 4000)
+    throw new ApiException('VALIDATION_FAILED', 400, {
+      fieldErrors: { content: ['跟进内容不能超过 4000 字。'] },
+    });
+  if (!MEMBER_ACTIVITY_TYPES.includes(input.activityType))
+    throw new ApiException('VALIDATION_FAILED', 400, {
+      fieldErrors: { activityType: ['不支持该跟进类型。'] },
+    });
+  return content;
+}
+
+export async function requireVisibleRecord(
+  store: RecordsStore,
+  resolved: ResolvedObjectSchema,
+  context: TenantContext,
+  recordId: string,
+  action: 'READ' | 'UPDATE',
+): Promise<DynamicRecord> {
+  const accessAllowed =
+    action === 'READ' ? resolved.access.canRead : resolved.access.canUpdate;
+  const scope =
+    action === 'READ' ? resolved.access.readScope : resolved.access.updateScope;
+  if (!accessAllowed || scope === 'NONE')
+    throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+  const record = await store.findRecord(resolved.schema.object.id, recordId);
+  if (!record || (scope === 'OWN' && record.ownerMemberId !== context.memberId))
+    throw new ApiException('RECORD_NOT_FOUND', 404);
+  return record;
+}
+
+export function projectRecord(
+  record: DynamicRecord,
+  resolved: ResolvedObjectSchema,
+): RecordResponse {
+  return {
+    id: record.id,
+    recordNo: record.recordNo.toString(),
+    ownerMemberId: record.ownerMemberId,
+    title: record.title,
+    values: projectVisibleValues(
+      resolved.schema,
+      resolved.access,
+      record.values,
+    ),
+    version: record.version,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+  };
+}
+
+export function projectActivity(
+  activity: RecordActivity,
+): RecordActivityResponse {
+  return {
+    id: activity.id,
+    activityType: activity.activityType,
+    content: activity.content,
+    nextActionAt: activity.nextActionAt,
+    actorMemberId: activity.actorMemberId,
+    actorDisplayName: activity.actorDisplayName,
+    createdAt: activity.createdAt,
+  };
 }
 
 export interface PreparedSourceRecordPatch {

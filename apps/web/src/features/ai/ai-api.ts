@@ -5,12 +5,13 @@ import { toApiError } from "@/lib/api/api-error";
 import { browserApiClient } from "@/lib/api/browser-client";
 import { dataOrThrow } from "@/features/objects/object-api";
 
-import { AiStreamError, AiStreamParser } from "./ai-stream-parser";
+import { AiStreamError, AiStreamParser, parseProposal } from "./ai-stream-parser";
 import type {
   AiConversation,
   AiConversationPage,
   AiMessage,
   AiMessagePage,
+  AiProposalView,
   AiPublicStreamEvent,
   AiSourceSummary,
   AiStreamTurnInput,
@@ -20,6 +21,9 @@ import type {
 const CONVERSATIONS = "/api/v1/workspaces/{tenantCode}/ai/conversations";
 const CONVERSATION = `${CONVERSATIONS}/{id}` as const;
 const MESSAGES = `${CONVERSATION}/messages` as const;
+const PROPOSAL = "/api/v1/workspaces/{tenantCode}/ai/proposals/{proposalId}" as const;
+const PROPOSAL_CONFIRM = `${PROPOSAL}/confirm` as const;
+const PROPOSAL_REJECT = `${PROPOSAL}/reject` as const;
 
 export const aiQueryKeys = {
   conversations: (tenantCode: string) =>
@@ -60,6 +64,18 @@ export const aiApi = {
       nextBefore: page.nextBefore,
       items: page.items.map(presentMessage),
     };
+  },
+
+  async getProposal(tenantCode: string, proposalId: string): Promise<AiProposalView> {
+    return parseProposal(await dataOrThrow(await browserApiClient.GET(PROPOSAL, { params: { path: { tenantCode, proposalId } } })));
+  },
+
+  async confirmProposal(tenantCode: string, proposalId: string, idempotencyKey = crypto.randomUUID()): Promise<AiProposalView> {
+    return parseProposal(await dataOrThrow(await browserApiClient.POST(PROPOSAL_CONFIRM, { params: { path: { tenantCode, proposalId } }, body: { idempotencyKey } })));
+  },
+
+  async rejectProposal(tenantCode: string, proposalId: string): Promise<AiProposalView> {
+    return parseProposal(await dataOrThrow(await browserApiClient.POST(PROPOSAL_REJECT, { params: { path: { tenantCode, proposalId } } })));
   },
 
   async rename(
@@ -115,6 +131,7 @@ function presentMessage(item: {
   content: string;
   toolSummary: unknown[];
   sourceSummary: unknown[];
+  proposal?: AiProposalView | null;
   errorCode?: string | null;
   createdAt: string;
   completedAt?: string | null;
@@ -123,6 +140,7 @@ function presentMessage(item: {
     ...item,
     toolSummary: item.toolSummary.filter(isToolSummary),
     sourceSummary: item.sourceSummary.filter(isSourceSummary),
+    proposal: item.proposal ? parseProposal(item.proposal) : null,
   };
 }
 

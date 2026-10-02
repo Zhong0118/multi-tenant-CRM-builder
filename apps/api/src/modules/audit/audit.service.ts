@@ -8,10 +8,17 @@ import { AuditRepository } from './audit.repository';
 export class AuditService {
   constructor(private readonly repository: AuditRepository) {}
 
-  append(
+  async append(
     transaction: Prisma.TransactionClient,
     event: AuditEvent,
   ): Promise<void> {
+    await this.appendReturningId(transaction, event);
+  }
+
+  appendReturningId(
+    transaction: Prisma.TransactionClient,
+    event: AuditEvent,
+  ): Promise<string> {
     return this.repository.append(transaction, event);
   }
 }

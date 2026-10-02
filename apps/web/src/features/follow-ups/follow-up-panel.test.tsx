@@ -17,7 +17,12 @@ const task: FollowUp = {
   overdue: true,
   canManage: true,
 };
-function setup(items: FollowUp[] = [], canCreate = true) {
+function setup(
+  items: FollowUp[] = [],
+  canCreate = true,
+  followUpId?: string,
+  list?: typeof followUpApi.list,
+) {
   const page: FollowUpPage = {
     items,
     total: items.length,
@@ -28,7 +33,7 @@ function setup(items: FollowUp[] = [], canCreate = true) {
   };
   const api = {
     recipients: vi.fn().mockResolvedValue([]),
-    list: vi.fn().mockResolvedValue(page),
+    list: vi.fn(list ?? (async () => page)),
     create: vi.fn().mockResolvedValue(task),
     update: vi.fn().mockResolvedValue(task),
     workbench: vi.fn().mockResolvedValue({
@@ -45,6 +50,7 @@ function setup(items: FollowUp[] = [], canCreate = true) {
       <FollowUpPanel
         tenantCode="northwind"
         record={{ id: "record-1", objectCode: "opportunities", canCreate }}
+        followUpId={followUpId}
         api={api as typeof followUpApi}
       />
     </QueryClientProvider>,
@@ -53,6 +59,71 @@ function setup(items: FollowUp[] = [], canCreate = true) {
 }
 
 describe("FollowUpPanel", () => {
+  it("focuses the exact follow-up from a deep link even when it is completed and beyond the first page", async () => {
+    const unrelated = { ...task, id: "other", title: "不是目标跟进" };
+    const target = {
+      ...task,
+      id: "task-1",
+      title: "目标跟进",
+      status: "DONE",
+      overdue: false,
+    };
+    const api = setup([], false, "task-1", async (_tenant, query) => {
+      if (query.status === "DONE") {
+        return {
+          items:
+            query.page === 2
+              ? [target]
+              : Array.from({ length: query.limit ?? 5 }, (_, i) => ({
+                  ...unrelated,
+                  id: `other-${i}`,
+                })),
+          total: (query.limit ?? 5) + 1,
+          page: query.page ?? 1,
+          limit: query.limit ?? 5,
+          openCount: 0,
+          overdueCount: 0,
+        };
+      }
+      return {
+        items: [unrelated],
+        total: 1,
+        page: 1,
+        limit: query.limit ?? 5,
+        openCount: 1,
+        overdueCount: 0,
+      };
+    });
+    expect(await screen.findByText("目标跟进")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText("目标跟进").closest("li")).toHaveFocus(),
+    );
+    expect(screen.getByRole("radio", { name: "已完成" })).toBeChecked();
+    fireEvent.click(screen.getByRole("radio", { name: "待跟进" }));
+    await screen.findByText("不是目标跟进");
+    expect(screen.getByRole("radio", { name: "待跟进" })).toBeChecked();
+  });
+
+  it("reports an inaccessible or removed deep-linked task instead of treating the record as success", async () => {
+    setup([], false, "missing-task");
+    expect(
+      await screen.findByText("该跟进事项不存在或当前无权查看。"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("正在查找跟进事项…")).not.toBeInTheDocument();
+  });
+
+  it("reports lookup errors rather than claiming a task is inaccessible", async () => {
+    setup([], false, "task-1", async () => {
+      throw new Error("network unavailable");
+    });
+    expect(
+      await screen.findByText("无法定位跟进事项，请刷新页面重试。"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("该跟进事项不存在或当前无权查看。"),
+    ).not.toBeInTheDocument();
+  });
+
   it("keeps unsaved input available after a failed creation", async () => {
     const api = setup();
     api.create.mockRejectedValueOnce(new Error("network unavailable"));

@@ -10,17 +10,20 @@ vi.mock("./record-detail-drawer", () => ({
   RecordDetailDrawer: ({
     record,
     initialEditing,
+    followUpId,
     onClose,
     onChanged,
   }: {
     record: RecordSummary;
     initialEditing: boolean;
+    followUpId?: string;
     onClose: () => void;
     onChanged: (record: RecordSummary) => void;
   }) => (
     <div role="dialog">
       <span>{record.title}</span>
       <span>{initialEditing ? "编辑模式" : "查看模式"}</span>
+      {followUpId && <span>定位跟进：{followUpId}</span>}
       <button onClick={onClose}>关闭</button>
       <button
         onClick={() =>
@@ -90,6 +93,12 @@ const props: RecordWorkspaceProps = {
 };
 
 describe("record workspace navigation", () => {
+  it("passes the selected follow-up through the open record session", () => {
+    render(
+      <RecordWorkspace {...props} openRecord={record} followUpId="task-1" />,
+    );
+    expect(screen.getByRole("dialog")).toHaveTextContent("定位跟进：task-1");
+  });
   it("closes to the filtered list and reopens the same record after the list route arrives", () => {
     const { rerender } = render(
       <RecordWorkspace {...props} openRecord={record} />,

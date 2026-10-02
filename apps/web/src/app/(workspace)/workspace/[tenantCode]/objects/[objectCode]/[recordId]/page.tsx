@@ -43,6 +43,11 @@ export default async function RecordDetailPage({
       .map((field) => field.fieldKey),
   );
   const initialEditing = rawSearchParams.mode === "edit";
+  const followUpId =
+    typeof rawSearchParams.followUp === "string" &&
+    /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(rawSearchParams.followUp)
+      ? rawSearchParams.followUp
+      : undefined;
   const [initialPage, record] = await Promise.all([
     loadRecordPage(tenantCode, objectCode, query),
     loadRecord(tenantCode, objectCode, recordId),
@@ -59,6 +64,7 @@ export default async function RecordDetailPage({
       isAdmin={isAdmin}
       openRecord={record}
       initialEditing={initialEditing}
+      followUpId={followUpId}
     />
   );
 }

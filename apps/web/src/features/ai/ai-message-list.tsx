@@ -23,6 +23,10 @@ export function AiMessageList({
   phase,
   onLoadOlder,
   onRetry,
+  onConfirmProposal,
+  onRejectProposal,
+  proposalBusy,
+  proposalError,
 }: {
   tenantCode: string;
   messages: AiMessage[];
@@ -31,6 +35,10 @@ export function AiMessageList({
   phase: AiTurnPhase;
   onLoadOlder?: () => void | Promise<unknown>;
   onRetry?: (turnId: string) => void;
+  onConfirmProposal?: (proposalId: string) => void;
+  onRejectProposal?: (proposalId: string) => void;
+  proposalBusy?: boolean;
+  proposalError?: string | null;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const [follow, setFollow] = useState(true);
@@ -90,6 +98,9 @@ export function AiMessageList({
             tenantCode={tenantCode}
             message={message}
             onRetry={onRetry}
+            onConfirmProposal={onConfirmProposal}
+            onRejectProposal={onRejectProposal}
+            proposalBusy={proposalBusy}
           />
         ),
       )}

@@ -1,8 +1,26 @@
 import { describe, expect, it } from "vitest";
 
-import { aiTurnReducer, initialAiTurnState } from "./ai-turn-reducer";
+import {
+  aiTurnReducer,
+  initialAiTurnState,
+  type AiTurnState,
+} from "./ai-turn-reducer";
 
 describe("aiTurnReducer", () => {
+  it("clears the previous proposal before a new or retried turn receives proposal.ready", () => {
+    const withProposal = {
+      ...initialAiTurnState,
+      proposal: { proposalId: "old" } as AiTurnState["proposal"],
+    };
+    expect(
+      aiTurnReducer(withProposal, { type: "beginNewTurn", content: "new" })
+        .proposal,
+    ).toBeNull();
+    expect(
+      aiTurnReducer(withProposal, { type: "beginRetryTurn", turnId: "retry" })
+        .proposal,
+    ).toBeNull();
+  });
   it("moves IDLE → SENDING → STREAMING → COMPLETED and records conversation.ready immediately", () => {
     let state = aiTurnReducer(initialAiTurnState, {
       type: "beginNewTurn",
@@ -20,7 +38,10 @@ describe("aiTurnReducer", () => {
     expect(state.conversationId).toBe("c1");
     state = aiTurnReducer(state, {
       type: "event",
-      event: { event: "turn.completed", data: { turnId: "t1", messageId: "m1" } },
+      event: {
+        event: "turn.completed",
+        data: { turnId: "t1", messageId: "m1" },
+      },
     });
     expect(state.phase).toBe("COMPLETED");
   });
@@ -39,9 +60,9 @@ describe("aiTurnReducer", () => {
         },
       },
     );
-    expect(
-      aiTurnReducer(streaming, { type: "cancel" }).phase,
-    ).toBe("CANCELLED");
+    expect(aiTurnReducer(streaming, { type: "cancel" }).phase).toBe(
+      "CANCELLED",
+    );
     expect(
       aiTurnReducer(streaming, {
         type: "event",
@@ -66,7 +87,10 @@ describe("aiTurnReducer", () => {
     expect(
       aiTurnReducer(partial, {
         type: "event",
-        event: { event: "turn.completed", data: { turnId: "t1", messageId: "m1" } },
+        event: {
+          event: "turn.completed",
+          data: { turnId: "t1", messageId: "m1" },
+        },
       }).phase,
     ).toBe("PARTIAL_COMPLETED");
   });
