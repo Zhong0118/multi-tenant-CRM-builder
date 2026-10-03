@@ -5,6 +5,12 @@
   width: 100%;
 }
 
+.savedFilterManagement {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .fieldHelp {
   margin-top: 4px;
   color: var(--ink-secondary);
