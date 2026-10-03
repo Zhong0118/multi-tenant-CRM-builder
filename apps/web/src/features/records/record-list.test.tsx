@@ -231,6 +231,58 @@ function renderList(
   );
 }
 
+describe("RecordList query navigation", () => {
+  it("reflects a new URL search without remounting the list", () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const api = { list: vi.fn().mockResolvedValue(page) } as unknown as RecordApi;
+    const view = (search: string) => (
+      <QueryClientProvider client={client}>
+        <RecordList tenantCode="northwind" schema={schema}
+          query={{ ...DEFAULT_RECORD_QUERY, search }} initialPage={page}
+          api={api} navigate={vi.fn()} />
+      </QueryClientProvider>
+    );
+    const { rerender } = render(view("旧关键词"));
+    rerender(view("新关键词"));
+    expect(screen.getByRole("textbox", { name: /搜索/ })).toHaveValue("新关键词");
+  });
+
+  it("cancels pending search navigation on unmount", async () => {
+    const navigate = vi.fn();
+    const { unmount } = renderList(navigate);
+    fireEvent.change(screen.getByRole("textbox", { name: /搜索/ }), {
+      target: { value: "未提交查询" },
+    });
+    unmount();
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("does not navigate again after immediately submitting search", async () => {
+    const navigate = vi.fn();
+    renderList(navigate);
+    const input = screen.getByRole("textbox", { name: /搜索/ });
+    fireEvent.change(input, { target: { value: "立即查询" } });
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not overwrite a sort change with a pending search", async () => {
+    const navigate = vi.fn();
+    renderList(navigate);
+    fireEvent.change(screen.getByRole("textbox", { name: /搜索/ }), {
+      target: { value: "未提交查询" },
+    });
+    fireEvent.click(screen.getByRole("columnheader", { name: /业务编号/ }));
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(navigate).toHaveBeenLastCalledWith(
+      "/workspace/northwind/objects/customers?sort=recordNo&direction=asc",
+    );
+  });
+});
+
 describe("RecordList table sorting", () => {
   it("keeps the stable business number without a redundant row sequence", () => {
     renderList(

@@ -130,6 +130,11 @@ export function RecordList({
     [schema, storedColumnKeys],
   );
   const debounce = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => {
+    clearTimeout(debounce.current);
+    setSearchInput(query.search ?? "");
+  }, [query]);
+  useEffect(() => () => clearTimeout(debounce.current), []);
 
   const records = useQuery({
     queryKey: ["workspace", tenantCode, "records", objectCode, query],
@@ -169,6 +174,7 @@ export function RecordList({
   });
 
   function apply(next: RecordQuery) {
+    clearTimeout(debounce.current);
     const search = recordQuerySearch(next, queryDefaults);
     go(search === "" ? listPath : `${listPath}?${search}`);
   }

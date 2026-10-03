@@ -93,6 +93,19 @@ const props: RecordWorkspaceProps = {
 };
 
 describe("record workspace navigation", () => {
+  it("preserves explicit sort when closing with a different published default", async () => {
+    const { parseRecordQuery } = await import("./record-query-state");
+    const publishedSort = { field: "recordNo", direction: "asc" } as const;
+    render(<RecordWorkspace {...props}
+      schema={{ ...props.schema, defaultView: { ...props.schema.defaultView, sort: publishedSort } }}
+      query={{ ...DEFAULT_RECORD_QUERY }} openRecord={record} />);
+    fireEvent.click(screen.getByRole("button", { name: "关闭" }));
+    const url = new URL(router.replace.mock.calls.at(-1)![0], "http://localhost");
+    const restored = parseRecordQuery(Object.fromEntries(url.searchParams), publishedSort);
+    expect({ sort: restored.sort, direction: restored.direction }).toEqual({
+      sort: "updatedAt", direction: "desc",
+    });
+  });
   it("passes the selected follow-up through the open record session", () => {
     render(
       <RecordWorkspace {...props} openRecord={record} followUpId="task-1" />,
