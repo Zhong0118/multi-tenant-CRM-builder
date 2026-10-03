@@ -144,20 +144,51 @@ export function AppShell({
   const collapsed = viewport !== "mobile" && (collapsedPreference ?? viewport === "compact");
   const closeNavigation = useCallback(() => {
     setMobileOpen(false);
-    navigationTrigger.current?.focus();
   }, []);
 
   useEffect(() => {
     if (!mobileOpen) return;
-    shell.current?.querySelector<HTMLElement>("aside a")?.focus();
+    const sidebar = shell.current?.querySelector<HTMLElement>("aside");
+    const background = shell.current?.querySelector<HTMLElement>(`.${styles.column}`);
+    background?.setAttribute("inert", "");
+    sidebar?.querySelector<HTMLElement>("a")?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
         closeNavigation();
+      } else if (event.key === "Tab") {
+        const controls = Array.from(sidebar?.querySelectorAll<HTMLElement>(
+          'a[href], button:not(:disabled), [tabindex="0"]',
+        ) ?? []).filter((element) => {
+          for (let node: HTMLElement | null = element; node && node !== sidebar; node = node.parentElement) {
+            const style = getComputedStyle(node);
+            if (style.display === "none" || style.visibility === "hidden") return false;
+          }
+          return true;
+        });
+        const first = controls[0];
+        const last = controls.at(-1);
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        }
       }
     };
+    const onResize = () => {
+      if (window.innerWidth >= 768) closeNavigation();
+    };
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", onResize);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("resize", onResize);
+      background?.removeAttribute("inert");
+      if (window.innerWidth < 768) navigationTrigger.current?.focus();
+      else sidebar?.querySelector<HTMLElement>("a")?.focus();
+    };
   }, [mobileOpen, closeNavigation]);
 
   const layoutRef = useRef({ collapsed, width });

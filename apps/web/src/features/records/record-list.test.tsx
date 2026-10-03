@@ -299,6 +299,7 @@ describe("RecordList query navigation", () => {
       target: { value: "未提交查询" },
     });
     fireEvent.click(screen.getByRole("columnheader", { name: /业务编号/ }));
+    expect(screen.getByRole("textbox", { name: /搜索/ })).toHaveValue("");
     await new Promise((resolve) => setTimeout(resolve, 400));
     expect(navigate).toHaveBeenCalledTimes(1);
     expect(navigate).toHaveBeenLastCalledWith(
@@ -308,6 +309,27 @@ describe("RecordList query navigation", () => {
 });
 
 describe("RecordList table sorting", () => {
+  it("offers card sort and pagination using the same URL query", () => {
+    const navigate = vi.fn();
+    renderList(navigate, DEFAULT_RECORD_QUERY, { page: { ...page, total: 45 } });
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "卡片排序字段" }));
+    fireEvent.click(screen.getByText("业务编号", { selector: ".ant-select-item-option-content" }));
+    expect(navigate).toHaveBeenLastCalledWith(
+      "/workspace/northwind/objects/customers?sort=recordNo",
+    );
+    fireEvent.click(screen.getAllByTitle("Next Page")[0]);
+    expect(navigate).toHaveBeenLastCalledWith(
+      "/workspace/northwind/objects/customers?page=2",
+    );
+  });
+
+  it("shares card selection with the existing batch edit action", async () => {
+    renderList(vi.fn());
+    fireEvent.click(screen.getByRole("checkbox", { name: "选择卡片 天际科技" }));
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /批量修改 1/ }));
+    expect(screen.getByText("批量修改 1 条")).toBeInTheDocument();
+  });
   it("recovers filtered empty results without changing sort or page size", () => {
     const navigate = vi.fn();
     renderList(navigate, {

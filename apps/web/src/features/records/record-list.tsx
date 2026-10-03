@@ -5,6 +5,8 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Alert,
   Button,
+  Checkbox,
+  Pagination,
   DatePicker,
   Drawer,
   Dropdown,
@@ -179,6 +181,7 @@ export function RecordList({
 
   function apply(next: RecordQuery) {
     clearTimeout(debounce.current);
+    setSearchInput(next.search ?? "");
     const search = recordQuerySearch(next, queryDefaults);
     go(search === "" ? listPath : `${listPath}?${search}`);
   }
@@ -829,6 +832,26 @@ export function RecordList({
         </div>
       ) : null}
 
+      <div className={styles.cardControls}>
+        <Select
+          aria-label="卡片排序字段"
+          value={query.sort}
+          onChange={(sort) => apply({ ...query, sort, page: 1 })}
+          options={[
+            { value: "recordNo", label: "业务编号" },
+            { value: "createdAt", label: "创建时间" },
+            { value: "updatedAt", label: "更新时间" },
+            ...schema.fields.filter((field) => (SORTABLE_FIELD_TYPES as readonly string[]).includes(field.type))
+              .map((field) => ({ value: field.fieldKey, label: field.label })),
+          ]}
+        />
+        <Select
+          aria-label="卡片排序方向"
+          value={query.direction}
+          onChange={(direction) => apply({ ...query, direction, page: 1 })}
+          options={[{ value: "asc", label: "升序" }, { value: "desc", label: "降序" }]}
+        />
+      </div>
       <DataPanel
         className={styles.registerPanel}
         ariaLabel={`${schema.object.name}记录表`}
@@ -855,6 +878,15 @@ export function RecordList({
               return (
                 <li key={row.id} className={styles.card}>
                   <div className={styles.cardHeader}>
+                    {schema.actions.canUpdate ? (
+                      <Checkbox
+                        aria-label={`选择卡片 ${row.title}`}
+                        checked={selectedRowKeys.includes(row.id)}
+                        onChange={(event) => setSelectedRowKeys((keys) =>
+                          event.target.checked ? [...keys, row.id] : keys.filter((key) => key !== row.id),
+                        )}
+                      />
+                    ) : null}
                     <a
                       className={styles.recordTitle}
                       href={recordPath(row.id)}
@@ -931,6 +963,15 @@ export function RecordList({
             onChange: (nextPage) => apply({ ...query, page: nextPage }),
           }}
         />
+        <div className={styles.cardControls}>
+          <Pagination
+            current={page.page}
+            pageSize={page.limit}
+            total={page.total}
+            showSizeChanger={false}
+            onChange={(nextPage) => apply({ ...query, page: nextPage })}
+          />
+        </div>
       </DataPanel>
 
       <Drawer

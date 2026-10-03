@@ -145,6 +145,19 @@
   overflow-x: auto;
 }
 
+.cardControls {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .cardControls {
+    display: flex;
+    gap: 8px;
+    padding: 12px 0;
+    flex-wrap: wrap;
+  }
+}
+
 .cardList {
   display: none;
 }
