@@ -864,7 +864,7 @@ export function RecordList({
             action={<Button aria-label="重试" loading={records.isFetching} onClick={() => records.refetch()}>重试</Button>}
           />
         ) : page.items.length === 0 ? (
-          emptyState
+          <div className={styles.cardList}>{emptyState}</div>
         ) : (
           <ul
             className={styles.cardList}

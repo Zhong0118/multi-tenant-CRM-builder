@@ -49,6 +49,27 @@ PASS 仅代表该格描述的实际路径；NOT OBSERVED 代表没有完整浏�
 
 新增隔离 fixture `2e6a7a9f-e78e-433a-9d4e-52aeeb956221`（recordNo39，本人所有），note 240字；name 的既有 published maxLength 为100。分页 API 使用 `limit`，非 `pageSize`。
 
+## 后续验收补测（自动续轮1，未改变产品源码）
+
+- 重新实查 PR#24 最新 SHA `fdc7a7d643a2445cf529716d4baf30f1d1430d8c`，Draft=true；六项 required checks 均 SUCCESS，run37115563922。
+- Admin390 实际新建长标题/长备注记录 `254bdf64-4c29-4dbc-95d7-d607ea44b036`（recordNo40）；通过详情编辑备注并保存后可见更新值。
+- 此长记录在1440/900/390详情中备注可见；各宽度列表查看入口可见，页面均无水平溢出。尚不能替代完整视觉截断/焦点矩阵。
+- Admin390实际下载 `leads.csv`，读取流验证业务编号40、长标题、更新备注；取消个人备注列后再次下载，CSV不含备注列；恢复默认列。
+- Admin390上传单行CSV（线索名称/跟进状态/线索备注自动映射），提交后通过搜索 `Slice1导入验收` 验证导入记录可见。只写隔离fixture。
+- HIDDEN进一步诊断：成员对象权限PUT payload `fields:{note:"HIDDEN"}` 返回400 VALIDATION_FAILED，fieldErrors.fields=`property fields should not exist`；前后GET验证仍INHERIT/override null。字段权限只能来自published employeeAccess，未改schema/source或SQL绕过。因此HIDDEN仍NOT OBSERVED，不能把普通字段投影当通过。证据保存在本机 `/tmp/crm-slice1-hidden.json`。
+
+## 后续验收补测（自动续轮2）
+
+- Admin/Employee ×1440/900/390：无结果搜索后清除恢复，保持 `sort=updatedAt&direction=desc`；注入503后移除route并重试，URL相同、真实记录恢复；六格全部PASS且无页面溢出。
+- Employee工作台三宽度标题与跟进/统计内容可见，页面无溢出；AI页面三宽度输入框可见、“需确认后执行”提示保留，无溢出。未调用真实Provider，Proposal确认仍NOT OBSERVED。
+- 实际浏览器发现桌面空结果同时显示卡片与Table的清除按钮；最小修复给卡片空态复用cardList响应式包装。刷新后1440/900/390均只有1个可见清除按钮，无溢出。受影响record-list26 tests、Web typecheck、该文件ESLint和diff-check均exit0。
+
+## 后续验收补测（自动续轮3）
+
+- Admin/Employee ×1440/900/390：保存具名视图（search=V2、updatedAt desc），清除条件后应用恢复；六格均PASS。
+- 使用既有隔离平台管理员18800001999（未提升其他用户权限）登录；平台总览1440/900/390均可达，平台标题/事项内容可见，无水平溢出。Employee直接访问/platform返回自己工作台，未进入平台管理。
+- 本轮不调用真实AI Provider；Proposal确认仍待可审计的Fake Provider浏览fixture。HIDDEN字段权限需要独立published fixture，目前无该场景，保持NOT OBSERVED。
+
 ## 已知限制与合并影响
 
 - HIDDEN 场景、完整浏览器能力矩阵、长内容矩阵及平台/AI确认交互尚缺证据：**验收阻断，保持 Draft，尚不能宣称 Slice1 验收完整完成或开始 Slice2**。
