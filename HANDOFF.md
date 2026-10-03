@@ -2,7 +2,7 @@
 
 更新时间：2026-10-03（项目审计与 Product Experience V2 开发准备）
 
-**当前开发入口：** [项目全局审计](docs/audits/2026-10-03/project-review.md)、[V2 设计](docs/superpowers/specs/2026-10-03-crm-product-experience-v2-design.md)、[V2 第一切片计划](docs/superpowers/plans/2026-10-03-crm-product-experience-v2-implementation.md)。本轮已实现 V2 第一切片 Task 0 与 Tasks 1–2，并补移动焦点、卡片排序/分页/选择及搜索草稿同步；Task 3 验收未完整完成（HIDDEN fixture 与部分完整浏览器矩阵未观察），准备 Draft PR、尚未合并。后续切片仍未启动，Slice 2 尚不具备进入条件。根目录 main 在本次检查中落后 origin/main 112 个提交，必须现场核对，不能把旧工作树当最新基线。
+**当前开发入口：** [项目全局审计](docs/audits/2026-10-03/project-review.md)、[V2 设计](docs/superpowers/specs/2026-10-03-crm-product-experience-v2-design.md)、[V2 第一切片计划](docs/superpowers/plans/2026-10-03-crm-product-experience-v2-implementation.md)。本轮已实现 V2 第一切片 Task 0 与 Tasks 1–2，并补移动焦点、卡片排序/分页/选择及搜索草稿同步；Task 3 已补独立HIDDEN发布fixture、两角色三宽度状态路径、表单/文件操作、桌面批量和键盘证据；视觉截图已核对并保存；仍缺部分逐角色逐宽度动作/键盘及AI拒绝路径，详见验收限制，Draft PR #24 尚未合并。后续切片仍未启动，Slice 2 尚不具备进入条件。根目录 main 在本次检查中落后 origin/main 112 个提交，必须现场核对，不能把旧工作树当最新基线。
 
 `main` 与 `origin/main` 是当前开发基线。**不要把某次 `git log -1` 的输出写死进本文。**
 Workflow V1 与 Action Engine V1 **均已合并进入 `main`**。Action Engine V1 通过 PR #1 合并，合并提交 `e590c23da6aa9c5fe0d0c3cd71250270ea265ebd`（该 SHA 只作为这一次历史事实记录，不是"main 永远等于它"）。Workflow Required Field Visibility Hardening 已通过 PR #2 合并；Record Required Field Visibility Hardening 已通过 PR #3 合并（均详见下方）。

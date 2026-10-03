@@ -36,10 +36,10 @@ PASS 仅代表该格描述的实际路径；NOT OBSERVED 代表没有完整浏�
 | 保存视图→清除→应用恢复 | 两角色PASS（续轮3） | 两角色PASS（续轮3） | 两角色PASS（续轮3） |
 | 真实请求失败→同查询重试 | 两角色PASS（续轮2） | 两角色PASS（续轮2） | 两角色PASS，503移除后retry URL不变 |
 | 移动导航焦点与 resize | 不适用 | 从390切入后解除 inert；桌面 preference 不变 | Employee PASS；Shift+Tab 首项回到末项，25次Tab无背景焦点；Escape回打开按钮；390→900→390保持关闭 |
-| 卡片选择→批量修改 | table 自动化 PASS | table 自动化 PASS | Employee PASS，选择1条可打开“批量修改1条”；未执行批量写入 |
-| 新建/编辑/导入/导出/列设置完整操作 | 自动化覆盖；完整浏览器矩阵 NOT OBSERVED | NOT OBSERVED | 菜单与详情入口可达；完整提交/导入/下载 NOT OBSERVED |
-| 长字段/长标题 | fixture 已有；完整观察 NOT OBSERVED | NOT OBSERVED | 240字 note fixture 创建；完整浏览器观察 NOT OBSERVED |
-| Shared Shell 平台/工作台/AI | 相关全套自动化 PASS；平台/AI 完整浏览器复测 NOT OBSERVED | 同左 | Employee工作台实际可达；AI确认交互浏览器 NOT OBSERVED |
+| 选择→批量修改 | 两角色实际写入并详情核对PASS | 复用桌面路径，未单独写入 | Employee实际卡片批量写入PASS；Admin写入NOT OBSERVED |
+| 新建/编辑/导入/导出/列设置 | 两角色PASS，续轮6/7；桌面批量续轮9 PASS | 两角色表单/文件PASS，批量仅桌面1440抽测 | 两角色新建编辑及CSV PASS；Admin列设置PASS，Employee批量PASS |
+| 长字段/长标题 | Admin长标题及Employee长字段入口/焦点PASS | 固定动作可见、表格自身滚动PASS | 长内容换行、底部动作可滚动到达并聚焦PASS，截图见下 |
+| Shared Shell 平台/工作台/AI | 平台总览、Employee工作台/AI展示PASS | 同左 | 同左；Employee Fake AI确认写入PASS，拒绝执行NOT OBSERVED |
 
 ## 数据权限证据
 
@@ -79,9 +79,28 @@ PASS 仅代表该格描述的实际路径；NOT OBSERVED 代表没有完整浏�
 - 独立published对象 `slice1-hidden-probe` 已通过现有draft/analysis/publish API创建（analysis无阻断/警告），21条employee-owned记录。HIDDEN API投影24/24断言通过：Admin含完整hidden_probe字段元数据及columns/search键，list/detail含标记；Employee schema省略整项元数据，list/detail/page2省略字段键，secret搜索Admin21/Employee0。updatedAt desc默认排序、分页20+1。未修改现有leads。
 - 父agent独立浏览器复核Admin/Employee×1440/900/390列表和详情：Admin标记可见，Employee无标记，六格无溢出。该HIDDEN场景PASS，取代前几轮setup gap；脱敏证据见同目录 `crm-product-experience-v2-hidden-evidence.json`。其他未补齐矩阵不因此标PASS。
 
+## 后续验收补测（自动续轮6）
+
+- Employee1440/900实际新建本人记录、详情编辑保存、搜索导出读取CSV更新值；取消备注列后再次下载确认列省略，恢复默认列；上传映射CSV提交后搜索导入记录可见，全部PASS，无页面溢出。
+- 记录1440 `ae326a99-e953-4fef-bc4a-460d68e493ad`、900 `ebb954ef-e128-42cf-a438-d87c6fb42707`。采用单格多次短调用，避免超时后把未返回的整体矩阵当通过。
+
+## 后续验收补测（自动续轮7）
+
+- Admin1440/900独立核对 `Slice1矩阵-Admin-{width}` 详情编辑值；下载读取流均包含编辑备注。个人列取消备注后再次下载，CSV保留目标记录且省略备注列；恢复默认。两宽度实际CSV映射导入提交后搜索可见，无页面溢出，PASS。
+- 1440第一次详情关闭后立即菜单操作遇元素重挂载超时；拆开调用重试返回上述具体结果，不将首次超时当作内容验证通过。
+
+## 后续验收补测（自动续轮8）
+
+- 对照Task3逐项检查，补加载完成截图与焦点证据：Admin长标题列表1440/900/390查看按钮可聚焦；900截图固定操作列可见、标题在表格滚动区域内，390长标题在卡片换行。截图存同目录slice-1-browser-evidence；初次loading截图不作为稳定视觉验收。
+- Employee本人长字段列表三宽度查看入口可见，无页面水平溢出；截图保存。
+- Employee三宽度键盘Enter打开视图管理，关闭动画结束、dialog hidden后焦点回管理按钮，PASS。初始点击后立即检查false是动画尚未结束，未据此修改源码。
+- Admin视图管理弹层三宽度经键盘打开、关闭按钮关闭并等待dialog hidden后均回焦点。两角色1440桌面批量修改备注后重新打开详情核对更新值，PASS。
+- 两角色×1440/900/390对独立对象 `slice1-hidden-probe?page=2` 打开详情后按Escape，返回URL保留第二页；该对象发布默认排序updatedAt desc，分页20+1。
+
 ## 已知限制与合并影响
 
-- 完整操作/视觉矩阵仍需最终逐格核对：**保持 Draft，尚不能宣称 Slice1 验收完整完成或开始 Slice2**。HIDDEN、平台三宽度、Employee AI确认路径已补证；详见各续轮，早期NOT OBSERVED仅反映当轮历史状态。
+- 本轮完成已观察证据的汇总与视觉核对；稳定截图见 [Admin900](slice-1-browser-evidence/admin-long-900.png)、[Admin390](slice-1-browser-evidence/admin-long-390.png)、[Employee390底部动作](slice-1-browser-evidence/employee-long-390-actions.png)。
+- **保持ACCEPTANCE INCOMPLETE / Draft**：尚未逐角色逐宽度执行所有菜单动作的键盘回焦点、Admin移动批量写入、Employee移动个人列导出、AI拒绝执行和Admin AI确认路径；已有自动化或可见按钮不替代这些浏览器证据。其余已执行路径按当前矩阵PASS。HIDDEN已通过真实独立fixture，不再是setup gap。Slice2未批准。
 - 既有全 Web lint 四项错误：与 baseline 相同，不是本轮新增；不属于六项 required checks，也不修改 CI 绕过它们。
 - 无 published workflow 的 fixture 详情 workflow GET 返回409，属于既有业务状态；Next dev/jsdom getComputedStyle 噪声不作产品失败。
 - 历史 AI E2E hardcode `55433/crm_v1b_test` 属独立 setup 问题；本轮未使用该库，未验证真实 Provider/生产部署。

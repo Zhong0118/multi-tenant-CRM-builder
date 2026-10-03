@@ -221,7 +221,7 @@ DATABASE_ADMIN_URL=postgresql://unused:unused@127.0.0.1:1/unused pnpm contracts:
 ## 2.1 第一切片完成记录
 
 - Task 0 与 Slice 1 Tasks 1–2 主体实现已提交：`e3be29f`、`ac18f15`、`0696956`、`1e1a9f0`；Task 3 验收有未观察项，尚未完整完成。本轮补移动焦点约束、卡片分页/排序/选择及取消搜索草稿同步。
-- 自动化与浏览器证据见 `docs/audits/2026-10-03/crm-product-experience-v2-slice-1-acceptance.md`。
+- 自动化与浏览器证据见 `docs/audits/2026-10-03/crm-product-experience-v2-slice-1-acceptance.md`。续轮已补真实HIDDEN、表单/CSV、长内容截图、默认排序往返和桌面批量；剩余动作/键盘及AI路径在该记录限制中逐项列出，保持ACCEPTANCE INCOMPLETE/Draft。
 - 后续切片仍为 PLANNED；本轮不包含详情重构、员工首页、配置体验、AI runtime、后端 API、权限或数据模型改变。
 
 ## 3. 后续切片的范围合同
