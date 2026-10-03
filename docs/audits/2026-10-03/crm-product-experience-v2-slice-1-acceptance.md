@@ -2,7 +2,7 @@
 
 日期：2026-10-03；分支：`codex/crm-product-experience-v2-slice-1`；fetch 基线 `70884f5`。
 
-状态：**IMPLEMENTATION COMPLETE / ACCEPTANCE INCOMPLETE / DRAFT PR / NOT MERGED**。后续 Slice 2–4 保持 PLANNED，仍需后续明确批准。
+状态：**IMPLEMENTATION COMPLETE / SLICE 1 BROWSER ACCEPTANCE PASS / DRAFT PR / NOT MERGED**。批准范围内浏览器路径已完成，保留以下已分类setup/既有lint限制；最终提交六门另以最新SHA实查。后续 Slice 2–4 保持 PLANNED，仍需后续明确批准。
 
 主体实现提交：`e3be29f`、`ac18f15`、`0696956`、`1e1a9f0`。本轮补移动焦点约束、移动卡片排序/分页/选择与取消搜索草稿同步，修复均先得到正式红测再转绿；独立评审最后未发现新增具体阻断缺陷。
 
@@ -36,10 +36,10 @@ PASS 仅代表该格描述的实际路径；NOT OBSERVED 代表没有完整浏�
 | 保存视图→清除→应用恢复 | 两角色PASS（续轮3） | 两角色PASS（续轮3） | 两角色PASS（续轮3） |
 | 真实请求失败→同查询重试 | 两角色PASS（续轮2） | 两角色PASS（续轮2） | 两角色PASS，503移除后retry URL不变 |
 | 移动导航焦点与 resize | 不适用 | 从390切入后解除 inert；桌面 preference 不变 | Employee PASS；Shift+Tab 首项回到末项，25次Tab无背景焦点；Escape回打开按钮；390→900→390保持关闭 |
-| 选择→批量修改 | 两角色实际写入并详情核对PASS | 复用桌面路径，未单独写入 | Employee实际卡片批量写入PASS；Admin写入NOT OBSERVED |
+| 选择→批量修改 | 两角色实际写入并详情核对PASS | 两角色菜单键盘/回焦点PASS；写入按计划抽测1440 | 两角色实际卡片批量写入PASS，键盘/回焦点PASS |
 | 新建/编辑/导入/导出/列设置 | 两角色PASS，续轮6/7；桌面批量续轮9 PASS | 两角色表单/文件PASS，批量仅桌面1440抽测 | 两角色新建编辑及CSV PASS；Admin列设置PASS，Employee批量PASS |
 | 长字段/长标题 | Admin长标题及Employee长字段入口/焦点PASS | 固定动作可见、表格自身滚动PASS | 长内容换行、底部动作可滚动到达并聚焦PASS，截图见下 |
-| Shared Shell 平台/工作台/AI | 平台总览、Employee工作台/AI展示PASS | 同左 | 同左；Employee Fake AI确认写入PASS，拒绝执行NOT OBSERVED |
+| Shared Shell 平台/工作台/AI | 平台总览、Employee工作台/AI展示PASS | 同左 | 同左；两角色Fake AI确认/拒绝PASS，拒绝前后activities独立核对一致 |
 
 ## 数据权限证据
 
@@ -97,10 +97,22 @@ PASS 仅代表该格描述的实际路径；NOT OBSERVED 代表没有完整浏�
 - Admin视图管理弹层三宽度经键盘打开、关闭按钮关闭并等待dialog hidden后均回焦点。两角色1440桌面批量修改备注后重新打开详情核对更新值，PASS。
 - 两角色×1440/900/390对独立对象 `slice1-hidden-probe?page=2` 打开详情后按Escape，返回URL保留第二页；该对象发布默认排序updatedAt desc，分页20+1。
 
+## 后续验收补测（自动续轮11）
+
+- Employee390取消个人备注列→导出读取CSV，目标记录仍在、备注列省略；恢复默认列，PASS。Admin390卡片选择→批量备注提交，详情核对 `Slice1 Admin390批量确认`，PASS。
+- Admin390 Fake AI ADD_ACTIVITY_NOTE：proposal确认后已执行，审计ID `01a10193-14ba-7d5d-b254-ba9a6ee8b8d0`；再发送proposal并拒绝，显示已拒绝/未写入数据。真实Provider未调用；拒绝数据无变化尚未独立读取核对。
+- PR#24最新f75d194六项required checks全部SUCCESS；本轮后续文档提交仍需核对新SHA。
+
+## 后续验收补测（自动续轮12）
+
+- Admin与Employee390各重新提出ADD_ACTIVITY_NOTE并拒绝；独立读取activities API前后完整JSON一致、各total=1，无新增备注。Admin此前确认备注HTTP note也由该API读到，确认/拒绝数据路径PASS，仅Fake Provider。
+- 两角色×1440/900/390：键盘Enter打开更多操作，列设置/导入CSV菜单项键盘Enter打开，关闭弹层后等待实际焦点条件，全部回到更多操作按钮，12格PASS。立即检查body焦点属于动画尚未结束，未据此改源码。
+- 仍需批量弹层键盘回焦点的逐角色三宽度复核；AI和两项移动缺口已补齐，早期限制为历史状态。
+
 ## 已知限制与合并影响
 
 - 本轮完成已观察证据的汇总与视觉核对；稳定截图见 [Admin900](slice-1-browser-evidence/admin-long-900.png)、[Admin390](slice-1-browser-evidence/admin-long-390.png)、[Employee390底部动作](slice-1-browser-evidence/employee-long-390-actions.png)。
-- **保持ACCEPTANCE INCOMPLETE / Draft**：尚未逐角色逐宽度执行所有菜单动作的键盘回焦点、Admin移动批量写入、Employee移动个人列导出、AI拒绝执行和Admin AI确认路径；已有自动化或可见按钮不替代这些浏览器证据。其余已执行路径按当前矩阵PASS。HIDDEN已通过真实独立fixture，不再是setup gap。Slice2未批准。
+- 续轮13补批量弹层两角色×1440/900/390：选择记录，键盘打开更多操作及批量菜单，关闭后等待焦点返回更多操作，六格PASS。批准的Task3浏览器矩阵完成；早期NOT OBSERVED按各续轮证据取代，900批量按计划抽查复用桌面能力。仍保持Draft/NOT MERGED，Slice2未批准。
 - 既有全 Web lint 四项错误：与 baseline 相同，不是本轮新增；不属于六项 required checks，也不修改 CI 绕过它们。
 - 无 published workflow 的 fixture 详情 workflow GET 返回409，属于既有业务状态；Next dev/jsdom getComputedStyle 噪声不作产品失败。
 - 历史 AI E2E hardcode `55433/crm_v1b_test` 属独立 setup 问题；本轮未使用该库，未验证真实 Provider/生产部署。
