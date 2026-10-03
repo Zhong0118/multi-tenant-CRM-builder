@@ -216,7 +216,13 @@ DATABASE_ADMIN_URL=postgresql://unused:unused@127.0.0.1:1/unused pnpm contracts:
 ```
 
 - [ ] 合并前核对 6 个 required checks；远端状态必须实查，不能引用本轮旧结果。Contracts 生成不得留下非预期 diff。若共享组件影响 AI 页面，验证其展示与原确认交互，不调用真实 Provider 冒充已授权验收。
-- [ ] 记录实现 commit、实测结果、未观察项，再把 Slice 1 状态改为完成；后续切片仍 PLANNED。
+- [x] 记录实现 commit、实测结果、未观察项，Slice 1 状态完成；后续切片仍 PLANNED。
+
+## 2.1 第一切片完成记录
+
+- Task 0 与 Slice 1 Tasks 1–3 已完成并分别提交：`e3be29f`、`ac18f15`、`0696956`、`1e1a9f0`。
+- 自动化与浏览器证据见 `docs/audits/2026-10-03/crm-product-experience-v2-slice-1-acceptance.md`。
+- 后续切片仍为 PLANNED；本轮不包含详情重构、员工首页、配置体验、AI runtime、后端 API、权限或数据模型改变。
 
 ## 3. 后续切片的范围合同
 

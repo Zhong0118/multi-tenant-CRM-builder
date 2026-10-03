@@ -2,7 +2,7 @@
 
 更新时间：2026-10-03（项目审计与 Product Experience V2 开发准备）
 
-**当前开发入口：** [项目全局审计](docs/audits/2026-10-03/project-review.md)、[V2 设计](docs/superpowers/specs/2026-10-03-crm-product-experience-v2-design.md)、[V2 第一切片计划](docs/superpowers/plans/2026-10-03-crm-product-experience-v2-implementation.md)。本轮确认三项记录导航 bug，计划先修状态再做体验整理；尚未启动产品实现。根目录 main 在本次检查中落后 origin/main 112 个提交，必须现场核对，不能把旧工作树当最新基线。
+**当前开发入口：** [项目全局审计](docs/audits/2026-10-03/project-review.md)、[V2 设计](docs/superpowers/specs/2026-10-03-crm-product-experience-v2-design.md)、[V2 第一切片计划](docs/superpowers/plans/2026-10-03-crm-product-experience-v2-implementation.md)。本轮确认三项记录导航 bug，已完成 V2 第一切片 Task 0 与 Slice 1 Tasks 1–3；后续切片仍未启动。根目录 main 在本次检查中落后 origin/main 112 个提交，必须现场核对，不能把旧工作树当最新基线。
 
 `main` 与 `origin/main` 是当前开发基线。**不要把某次 `git log -1` 的输出写死进本文。**
 Workflow V1 与 Action Engine V1 **均已合并进入 `main`**。Action Engine V1 通过 PR #1 合并，合并提交 `e590c23da6aa9c5fe0d0c3cd71250270ea265ebd`（该 SHA 只作为这一次历史事实记录，不是"main 永远等于它"）。Workflow Required Field Visibility Hardening 已通过 PR #2 合并；Record Required Field Visibility Hardening 已通过 PR #3 合并（均详见下方）。
@@ -52,7 +52,7 @@ V1B 的 **COMPLETED** 指已批准范围内的产品实现、安全边界、测�
 |---|---|
 | `docs/superpowers/plans/2026-09-15-crm-process-roadmap.md` | **Full Capability Roadmap**：长期需求池与完整能力地图，标记为 `PLANNED` 的阶段不构成实现批准 |
 | `docs/superpowers/plans/2026-09-16-crm-lean-roadmap.md` | **Lean Execution Roadmap**：近期实际执行路线，同一时间只激活一个主要产品 Task |
-| `docs/superpowers/plans/2026-10-03-crm-product-experience-v2-implementation.md` | **V2 第一切片开发计划**：状态修复、外框/记录列表、逐项验收；尚未开始实现 |
+| `docs/superpowers/plans/2026-10-03-crm-product-experience-v2-implementation.md` | **V2 第一切片开发计划**：Task 0 与 Slice 1 Tasks 1–3 已完成；验收见 `docs/audits/2026-10-03/crm-product-experience-v2-slice-1-acceptance.md` |
 
 对照关系：Full Roadmap 上的长期需求不因 Lean Roadmap 而消失；只有从 Full Roadmap 提升出来的阶段才进入 Lean Roadmap 并成为 `ACTIVE`。两份文档与本文冲突时，以本文的当前事实为准。
 
