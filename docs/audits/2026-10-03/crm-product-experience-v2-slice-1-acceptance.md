@@ -8,7 +8,7 @@
 
 ## 环境与范围
 
-隔离 PostgreSQL `crm-v2-browser-postgres`（`127.0.0.1:55434/crm_v2_browser`）、Redis DB 15、API `3101`、Web `3100`；租户 `nebula-demo`。Admin `18800001001`，Employee `18800001003`。未触碰 5432、5433、55433 或生产服务；未修改 CI、后端、权限、发布 schema、依赖和迁移。
+隔离 PostgreSQL `crm-v2-browser-postgres`（`127.0.0.1:55434/crm_v2_browser`）、Redis DB 15、API `3101`、Web `3100`；租户 `nebula-demo`。Admin `18800001001`，Employee `18800001003`。未触碰 5432、5433、55433 或生产服务；未修改 CI、后端源码、既有业务权限/发布 schema、依赖和迁移；续轮4新增独立验收对象并通过现有API发布，仅写隔离fixture。
 
 浏览器为真实 Playwright Chromium，1440/900/390 CSS px，高度 900。Web 同时设置 `API_ORIGIN` 与 `NEXT_PUBLIC_API_ORIGIN=http://127.0.0.1:3101`。
 
@@ -32,9 +32,9 @@ PASS 仅代表该格描述的实际路径；NOT OBSERVED 代表没有完整浏�
 | 两角色搜索→排序→第二页→详情→关闭返回 | PASS | PASS | PASS，新增卡片排序和分页 |
 | URL 保持 | `page=2&search=V2验收线索&direction=desc` | 同左 | `page=2&search=V2验收线索&sort=updatedAt` |
 | 页面水平溢出 | 无，PASS | 无，PASS | 无，PASS |
-| 筛选空结果清除恢复 | 自动化 PASS；完整浏览器矩阵 NOT OBSERVED | NOT OBSERVED | Employee PASS，保留 updatedAt 排序 |
-| 保存视图→清除→应用恢复 | 自动化 PASS；浏览器 NOT OBSERVED | NOT OBSERVED | Employee PASS，`Slice1 mobile view` 恢复搜索/排序 |
-| 真实请求失败→同查询重试 | 自动化 PASS；浏览器 NOT OBSERVED | NOT OBSERVED | Employee PASS，Playwright 对 records 请求注入 503，移除 route 后 retry URL 不变 |
+| 筛选空结果清除恢复 | 两角色PASS（续轮2） | 两角色PASS（续轮2） | 两角色PASS，保留updatedAt排序 |
+| 保存视图→清除→应用恢复 | 两角色PASS（续轮3） | 两角色PASS（续轮3） | 两角色PASS（续轮3） |
+| 真实请求失败→同查询重试 | 两角色PASS（续轮2） | 两角色PASS（续轮2） | 两角色PASS，503移除后retry URL不变 |
 | 移动导航焦点与 resize | 不适用 | 从390切入后解除 inert；桌面 preference 不变 | Employee PASS；Shift+Tab 首项回到末项，25次Tab无背景焦点；Escape回打开按钮；390→900→390保持关闭 |
 | 卡片选择→批量修改 | table 自动化 PASS | table 自动化 PASS | Employee PASS，选择1条可打开“批量修改1条”；未执行批量写入 |
 | 新建/编辑/导入/导出/列设置完整操作 | 自动化覆盖；完整浏览器矩阵 NOT OBSERVED | NOT OBSERVED | 菜单与详情入口可达；完整提交/导入/下载 NOT OBSERVED |
@@ -45,7 +45,7 @@ PASS 仅代表该格描述的实际路径；NOT OBSERVED 代表没有完整浏�
 
 独立 HTTP 实测（不把侧栏分组或默认列当权限证明）：Employee memberId `7344bfda-ce80-4e7d-89da-45731d3fde97`；Admin leads 39 条，Employee 25 条。Employee runtime `readScope/updateScope=OWN`，create/read/update true、delete false；Admin ALL、delete true。Employee limit=10 第1/2页各10条，返回记录负责人均为该 employee。Admin 可见其他负责人记录；Employee GET 另一负责人记录 `a82b87ad-55de-41d6-a9e2-89df253d7bb2` 返回 `404 RECORD_NOT_FOUND`。**OWN HTTP PASS**，浏览器逐条全记录核对 NOT OBSERVED。
 
-**HIDDEN NOT OBSERVED / FIXTURE SETUP GAP**：当前 runtime leads 的 Admin/Employee 字段均为 name/phone/source/status/note，Employee 无 HIDDEN 字段。未修改现有权限或 publication 来伪造通过。HIDDEN 的已有自动化测试通过，但本轮尚未构造真实隐藏字段的 browser/API 对照场景。
+**HIDDEN PASS（独立published fixture）**：leads本身无HIDDEN字段；续轮4通过独立 `slice1-hidden-probe` 构造真实API与两角色三宽度浏览器对照，Employee schema元数据及记录键均省略，Admin保留。证据见本记录续轮4及同目录JSON。未修改现有业务对象的权限或publication。
 
 新增隔离 fixture `2e6a7a9f-e78e-433a-9d4e-52aeeb956221`（recordNo39，本人所有），note 240字；name 的既有 published maxLength 为100。分页 API 使用 `limit`，非 `pageSize`。
 
@@ -71,9 +71,17 @@ PASS 仅代表该格描述的实际路径；NOT OBSERVED 代表没有完整浏�
 - 使用现有test-only FakeAiProvider（NODE_ENV=test / AI_PROVIDER=fake）重启隔离API；Employee发送 ADD_ACTIVITY_NOTE proposal，出现HTTP note/待确认；1440/900/390确认与拒绝按钮可见、无溢出。390手动确认后显示已执行和审计ID `01a10158-9c66-7361-bfbe-14baa2ed3d62`，目标记录 `2e6a7a9f-e78e-433a-9d4e-52aeeb956221` 详情出现HTTP note。仅写隔离fixture，不调用真实Provider；此确认路径PASS。HIDDEN字段权限需要独立published fixture，目前无该场景，保持NOT OBSERVED。
 - 源码提交 `5edc9c254f86e26c587ab084b369eaeaa336477f` 已push；CI run37117006767六项required checks全部SUCCESS。后续文档提交仍须核对最新SHA。
 
+## 后续验收补测（自动续轮4）
+
+- 最新文档SHA `bf2be503ea57c1c12f0669316f4dfab2ea71679d` run37117174806六项required checks全部SUCCESS；PR#24仍Draft。
+- Employee390实际新建本人记录 `2bfbf880-284d-481a-935a-b4bf650368bd`，编辑备注保存成功；卡片选择→批量修改备注→提交→再次打开详情核对更新值，PASS。
+- Employee390导出CSV并读取流，包含批量修改后的备注；通过CSV映射提交导入，搜索验证本人导入记录可见，PASS。
+- 独立published对象 `slice1-hidden-probe` 已通过现有draft/analysis/publish API创建（analysis无阻断/警告），21条employee-owned记录。HIDDEN API投影24/24断言通过：Admin含完整hidden_probe字段元数据及columns/search键，list/detail含标记；Employee schema省略整项元数据，list/detail/page2省略字段键，secret搜索Admin21/Employee0。updatedAt desc默认排序、分页20+1。未修改现有leads。
+- 父agent独立浏览器复核Admin/Employee×1440/900/390列表和详情：Admin标记可见，Employee无标记，六格无溢出。该HIDDEN场景PASS，取代前几轮setup gap；脱敏证据见同目录 `crm-product-experience-v2-hidden-evidence.json`。其他未补齐矩阵不因此标PASS。
+
 ## 已知限制与合并影响
 
-- HIDDEN 场景、完整浏览器能力矩阵、长内容矩阵及平台/AI确认交互尚缺证据：**验收阻断，保持 Draft，尚不能宣称 Slice1 验收完整完成或开始 Slice2**。
+- 完整操作/视觉矩阵仍需最终逐格核对：**保持 Draft，尚不能宣称 Slice1 验收完整完成或开始 Slice2**。HIDDEN、平台三宽度、Employee AI确认路径已补证；详见各续轮，早期NOT OBSERVED仅反映当轮历史状态。
 - 既有全 Web lint 四项错误：与 baseline 相同，不是本轮新增；不属于六项 required checks，也不修改 CI 绕过它们。
 - 无 published workflow 的 fixture 详情 workflow GET 返回409，属于既有业务状态；Next dev/jsdom getComputedStyle 噪声不作产品失败。
 - 历史 AI E2E hardcode `55433/crm_v1b_test` 属独立 setup 问题；本轮未使用该库，未验证真实 Provider/生产部署。
