@@ -1,7 +1,7 @@
 # AI Assistant V1B Task 7 API acceptance
 
 Date: 2026-09-24 (local run)
-Status: **V1B locally verified on the isolated database and documented browser scope; latest PR #22 docs/test HEAD is unmerged, undeployed, and not production-validated.** In the fixture-backed closeout, scenario A passed; B remains NOT OBSERVED in the real browser; C is now verified by focused isolated HTTP E2E while its real browser execution remains NOT OBSERVED.
+Status: **AI Assistant V1B: COMPLETED — MERGED AND VERIFIED.** PR #22 is MERGED; approved-scope implementation, security boundaries, test gates and merge are complete. This does not claim real-Provider smoke or production deployment verification. See Post-merge status below.
 
 ## Isolation guard
 
@@ -68,7 +68,7 @@ With explicit clearance after browser checks, the focused test RED failed on abs
 
 ## Gaps / not claimed
 
-- A real-provider API execution was not performed; the Vercel adapter/tool-call seam is covered by focused unit regression tests. No post-merge/deploy evidence exists. Local isolated validation does not claim production readiness or merge.
+- A real-provider API execution was not performed; the Vercel adapter/tool-call seam is covered by focused unit regression tests. At that pre-merge stage, no post-merge/deploy evidence existed. Local isolated validation alone did not claim production readiness or merge; the post-merge CI evidence is recorded separately below.
 - After the provider-call deduplication and post-commit abort-race fixes, focused API Jest (orchestrator plus proposal collector) passed **32/32** and API typecheck passed. These tests cover both Vercel-style same-call event/execute orderings, distinct-call invalidation, and durable proposal completion when cancellation arrives after the atomic commit.
 
 ## CRM browser acceptance — 2026-09-28
@@ -81,11 +81,11 @@ Launched the existing CRM Next application at `http://127.0.0.1:3100` and Nest A
 - **Browser-discovered bug and recheck:** Before `2c4cabb`, successful HTTP reject/confirm responses left a newly streamed *live* card visually `PROPOSED` until hard refresh. The history path was already correct. A behavioral RED → GREEN page test and a shared live/history status projection fixed it. After the Next dev server incorporated the change, a fresh live NOTE proposal switched immediately to `已拒绝` with no buttons after click; a fresh live UPDATE_RECORD switched immediately to `已执行` with audit ID and safe record link after click, without page reload. Both were rechecked in the real browser.
 - Local gate sequence on the integrated branch before the final API fixture-only correction: isolated-URL `corepack pnpm typecheck` **exit 0**, `corepack pnpm build` **exit 0**, `corepack pnpm test` **exit 0** (including the live-card tests), `corepack pnpm contracts:check` **exit 0**. After the final API fixture correction, focused isolated E2E **15/15**, critical E2E **7/7** and API typecheck exited 0. No claim is made that the entire workspace gate was repeated *after* that last test-fixture commit.
 
-This was **local test-mode acceptance**, not a real-model performance assessment, production deployment, or merge. Since that browser run, PR #22 has been opened; do not read the historical browser section as a claim about the current PR review. V1B remains ACTIVE, not COMPLETED.
+This was **local test-mode acceptance**, not a real-model performance assessment, production deployment, or merge. Since that browser run, PR #22 has been opened; do not read the historical browser section as a claim about the current PR review. At that historical stage, V1B remained ACTIVE, not COMPLETED; current status is recorded below.
 
 ## PR #22 final-review follow-up — 2026-09-28 (historical chronology)
 
-The chronology below records intermediate commits and is not the current product status. Product HEAD remains `c770758`; docs closeout HEAD is `71f94bc`; six Hosted CI checks for the docs closeout passed in run `36567098648`; PR remains OPEN/CLEAN. The fixture-backed browser closeout below supersedes the earlier missing-fixture attempt without changing product code.
+The chronology below records intermediate commits and is not the current product status. At that stage, product HEAD was `c770758`; docs closeout HEAD was `71f94bc`; six Hosted CI checks passed in run `36567098648`; PR was OPEN/CLEAN. The fixture-backed browser closeout below supersedes the earlier missing-fixture attempt without changing product code.
 
 At the fixed PR HEAD `e04295d` (base `cc419ff`), six Hosted CI checks were SUCCESS. Separate read-only standards/spec/security reviewers inspected the 33-commit diff. Standards found no substantiated hard violation; spec review identified truncated previews and a follow-up link that did not select its target. Security review identified an authorization-policy ambiguity: historical Proposal displays were replayed after field/object/OWN read access was revoked. The user chose **redact old Proposal values after revocation**. These are pre-merge findings, not post-merge or production incidents.
 
@@ -103,4 +103,31 @@ The first attempt in this closeout was **NOT OBSERVED** because the running isol
 
 The fixture-backed browser evidence is limited to the assertions above. C's reassignment behavior is now covered by focused isolated HTTP E2E, while B's real-browser field-error path remains an evidence gap rather than a product failure or browser pass.
 
-**Not verified:** a real external Provider call for any of the three Proposal types. No AI_API_KEY/AI_MODEL was present in the checked project environment; when asked about an isolated real-model smoke, the user chose **暂不进行**. No private credential search or external Provider call was made. Do not send credentials in chat or claim real-model acceptance; do not mark V1B COMPLETED, merge PR #22, deploy, or start Production Essentials.
+**Not verified:** a real external Provider call for any of the three Proposal types. No AI_API_KEY/AI_MODEL was present in the checked project environment; when asked about an isolated real-model smoke, the user chose **暂不进行**. No private credential search or external Provider call was made. Do not send credentials in chat or claim real-model acceptance. The user subsequently approved merge and approved-scope completion; real-Provider verification remains deferred. Do not deploy or start Production Essentials without separate approval.
+
+## Post-merge status
+
+AI Assistant V1A: **COMPLETED**. AI Assistant V1B: **COMPLETED — MERGED AND VERIFIED**. V1B completion means the approved product implementation, security boundaries, test gates and merge are complete; it does not mean real-Provider smoke or production deployment was verified.
+
+- PR #22: **MERGED** via normal merge commit.
+- Merge commit and verified post-merge main SHA: `fd0410fe4548704ee14e1027ac4d09a243195a70`. This is the recorded merge fact, not a permanent assertion about the latest main SHA.
+- Post-merge main CI: run `36979987780`, on that exact merge SHA.
+
+| Required check | Result |
+|---|---|
+| Typecheck | SUCCESS |
+| Contracts | SUCCESS |
+| Unit Tests | SUCCESS |
+| Database Integration | SUCCESS |
+| Build | SUCCESS |
+| Critical API E2E | SUCCESS |
+
+Acceptance boundaries remain unchanged:
+
+- Browser A: **PASS**.
+- Browser B: **NOT OBSERVED — covered by automated API/Web evidence**; not a confirmed product bug and no longer a merge blocker.
+- Browser C: **initial browser path PASS; focused reassignment E2E PASS; browser reassignment NOT OBSERVED**. The focused test verifies legal reassignment, original-employee GET/history preserving EXECUTED and Audit with result redacted, and new-assignee access through the normal Follow-up list endpoint.
+- Real Provider: **NOT VERIFIED — DEFERRED BY USER**.
+- Production Essentials: **PLANNED**. Product Experience V2 and other new work are not started.
+
+This docs-only closeout does not rerun tests, backfill or recalculate historical acceptance evidence (不回填、不重算). The earlier test counts, failures and browser observations remain historical records, not new post-merge claims.

@@ -1,6 +1,6 @@
 # 多租户 CRM Builder 接手说明
 
-更新时间：2026-09-19
+更新时间：2026-10-02（AI Assistant V1B Post-Merge Docs Closeout）
 
 `main` 与 `origin/main` 是当前开发基线。**不要把某次 `git log -1` 的输出写死进本文。**
 Workflow V1 与 Action Engine V1 **均已合并进入 `main`**。Action Engine V1 通过 PR #1 合并，合并提交 `e590c23da6aa9c5fe0d0c3cd71250270ea265ebd`（该 SHA 只作为这一次历史事实记录，不是"main 永远等于它"）。Workflow Required Field Visibility Hardening 已通过 PR #2 合并；Record Required Field Visibility Hardening 已通过 PR #3 合并（均详见下方）。
@@ -28,7 +28,7 @@ Engineering Gate Hardening **已 COMPLETED**：PR A #11 合并 `bc6cad2`；PR B 
 `Build` / `Critical API E2E`（`strict: true`，`enforcement_level: everyone`）。post-merge `main` run
 `35232613694` 六门 success。验收
 `docs/audits/2026-09-17/engineering-gate-hardening-acceptance.md`。
-**AI Assistant V1A = COMPLETED**。PR A — AI Foundation = **MERGED AND VERIFIED**（#14 merge `64a22cd`）；PR B — Read Runtime = **MERGED AND VERIFIED**（#16 merge `466d9af`）；PR C — AI Workspace UI + Closeout = **MERGED AND VERIFIED**（#17 merge `b3bc59a`）。browser walkthrough = **VERIFIED**。post-merge main 六门 SUCCESS（run `35696132661`）。**AI Assistant V1B = ACTIVE（PR #22 OPEN，尚未合并/部署；HEAD `c770758` 的六项 Hosted CI 均 SUCCESS；隔离 HTTP/SSE 与 Fake Provider 验收已完成；本轮三个最新 CRM 浏览器回归因缺少可用的持久化测试 fixture 未观察到；用户选择暂不做真实 Provider smoke）**；验收见 `docs/audits/2026-09-23/ai-assistant-v1b-acceptance.md`。Production Essentials = **PLANNED**，不自动 Promote。
+**AI Assistant V1A = COMPLETED**。PR A — AI Foundation = **MERGED AND VERIFIED**（#14 merge `64a22cd`）；PR B — Read Runtime = **MERGED AND VERIFIED**（#16 merge `466d9af`）；PR C — AI Workspace UI + Closeout = **MERGED AND VERIFIED**（#17 merge `b3bc59a`）。browser walkthrough = **VERIFIED**。post-merge main 六门 SUCCESS（run `35696132661`）。**AI Assistant V1B = COMPLETED — MERGED AND VERIFIED**（PR #22 MERGED；merge `fd0410fe4548704ee14e1027ac4d09a243195a70`；post-merge main CI run `36979987780` 六门 SUCCESS）；验收见 `docs/audits/2026-09-23/ai-assistant-v1b-acceptance.md`。Production Essentials = **PLANNED**，不自动 Promote。
 
 Workflow Required Field Visibility Hardening **已通过 PR #2 合并进入 `main`**，合并提交
 `0612d8ad521895c7ca7bd9efe2ef2f942cd28b40`（同样只作历史事实记录）。它修掉了
@@ -41,6 +41,8 @@ Field Visibility Hardening 修复并通过 PR #3 合并**（合并提交 `df090c
 
 `codex/crm-polish-followups` 已快进合并进入 `main`。
 2026-09-15 完成一轮人工验收并修复（清单见第 7 节）。
+
+V1B 的 **COMPLETED** 指已批准范围内的产品实现、安全边界、测试门禁和合并完成，不代表真实 Provider smoke 或生产部署已验证。验收边界：Browser A PASS；Browser B NOT OBSERVED — covered by automated API/Web evidence；Browser C initial browser path PASS、focused reassignment E2E PASS、browser reassignment NOT OBSERVED；Real Provider NOT VERIFIED — DEFERRED BY USER。Production Essentials = **PLANNED**；不自动启动 Product Experience V2 或其他新功能。
 
 ## 路线图层级（2026-09-16 起）
 
@@ -56,7 +58,7 @@ AI Assistant 的方向见 `docs/superpowers/specs/2026-09-16-ai-assistant-v1-des
 - **V1A Ask / Analyze**：只读，受当前登录用户权限约束（先裁剪、再交给 AI）；
 - **V1B Confirmed Edit**：AI 只产出 Proposal，用户确认后服务端重新校验权限与版本，再执行 Typed Command 并写审计。
 
-**AI Assistant V1A = COMPLETED**。PR A — AI Foundation 已 MERGED AND VERIFIED（#14 merge `64a22cd`）。PR B — Read Runtime 已 MERGED AND VERIFIED（#16 merge `466d9af`）。PR C — AI Workspace UI + Closeout 已 MERGED AND VERIFIED（#17 merge `b3bc59a`）。browser walkthrough = **VERIFIED**。post-merge main 六门 SUCCESS。批准规格见 `docs/superpowers/specs/2026-09-18-ai-assistant-v1a-design.md`，实现计划见 `docs/superpowers/plans/2026-09-18-ai-assistant-v1a-implementation.md`。**AI Assistant V1B = ACTIVE（PR #22 OPEN，未合并；HEAD `c770758` 六项 Hosted CI 均 SUCCESS；最新三个 CRM 浏览器回归因缺少可用的持久化测试 fixture 未观察到；真实 Provider smoke 依用户选择暂不进行）**。Automation、Production Essentials 仍为 PLANNED，未随 V1B Promote。Sales Workbench Lite 已完成（PR #9）。
+**AI Assistant V1A = COMPLETED**。PR A — AI Foundation 已 MERGED AND VERIFIED（#14 merge `64a22cd`）。PR B — Read Runtime 已 MERGED AND VERIFIED（#16 merge `466d9af`）。PR C — AI Workspace UI + Closeout 已 MERGED AND VERIFIED（#17 merge `b3bc59a`）。browser walkthrough = **VERIFIED**。post-merge main 六门 SUCCESS。批准规格见 `docs/superpowers/specs/2026-09-18-ai-assistant-v1a-design.md`，实现计划见 `docs/superpowers/plans/2026-09-18-ai-assistant-v1a-implementation.md`。**AI Assistant V1B = COMPLETED — MERGED AND VERIFIED**（PR #22 MERGED；merge `fd0410fe4548704ee14e1027ac4d09a243195a70`；post-merge main CI run `36979987780` 六门 SUCCESS）。Automation、Production Essentials 仍为 PLANNED，未随 V1B Promote。Sales Workbench Lite 已完成（PR #9）。
 
 本文只记录当前事实。已完成与未完成对照见
 `docs/superpowers/plans/2026-09-01-productization-follow-up.md`。
@@ -373,7 +375,7 @@ Transition 不再只是改状态，还能产生结构化业务动作：
 - 附件目前存在 PostgreSQL `bytea`（单文件 5MB）。上生产前必须换成对象存储。
 - 仓库是公开的，所以口令不写进本文（见第 6 节）；演示口令本身由公开的种子常量决定，只能视为公开信息，不得复用到任何真实环境。
 - 根 `engines` 已从 `>=20.9.0` 提高到 `>=24`：`@crm/database` 是 ESM 包而 `apps/api` 编译为 CJS，需要支持 `require(esm)` 的 Node，而本地只验证过 Node 24.19.0。若确认 22 LTS 可用，可以再放宽下限，但必须实测过再改。
-- **CI 与分支保护已就位（Engineering Gate Lite PR #4 + Hardening PR #11/#12）**：`.github/workflows/ci.yml` 存在；`main` 已受保护，六个 required checks 为 `Typecheck` / `Contracts` / `Unit Tests` / `Database Integration` / `Build` / `Critical API E2E`（读回值：`strict: true`、`allow_force_pushes: false`、`allow_deletions: false`、required approving reviews = 0、`enforcement_level: everyone`）。Database Integration 与 Critical API E2E 各自起仓库自己的 PostgreSQL 18（`compose.yaml`）；Critical job 用 `crm_app` / `NOBYPASSRLS` 跑 `pnpm --filter @crm/api test:e2e:critical`，跑完 `docker compose down -v`。Hardening 验收见 `docs/audits/2026-09-17/engineering-gate-hardening-acceptance.md`。**`enforce_admins` 已打开**：管理员同样不能直推 `main`，必须走 PR + 六项全绿。该子资源只接受 `POST`(启用) / `DELETE`(停用)，**没有 `PATCH`**。repo-wide lint 仍不是 required。**AI Assistant V1A = COMPLETED**（PR A/B/C MERGED AND VERIFIED；#17 merge `b3bc59a`；browser walkthrough VERIFIED；post-merge 六门 SUCCESS）；**AI Assistant V1B = ACTIVE（仅本地 `docs/ai-assistant-v1b-design` worktree；未合并）**。
+- **CI 与分支保护已就位（Engineering Gate Lite PR #4 + Hardening PR #11/#12）**：`.github/workflows/ci.yml` 存在；`main` 已受保护，六个 required checks 为 `Typecheck` / `Contracts` / `Unit Tests` / `Database Integration` / `Build` / `Critical API E2E`（读回值：`strict: true`、`allow_force_pushes: false`、`allow_deletions: false`、required approving reviews = 0、`enforcement_level: everyone`）。Database Integration 与 Critical API E2E 各自起仓库自己的 PostgreSQL 18（`compose.yaml`）；Critical job 用 `crm_app` / `NOBYPASSRLS` 跑 `pnpm --filter @crm/api test:e2e:critical`，跑完 `docker compose down -v`。Hardening 验收见 `docs/audits/2026-09-17/engineering-gate-hardening-acceptance.md`。**`enforce_admins` 已打开**：管理员同样不能直推 `main`，必须走 PR + 六项全绿。该子资源只接受 `POST`(启用) / `DELETE`(停用)，**没有 `PATCH`**。repo-wide lint 仍不是 required。**AI Assistant V1A = COMPLETED**（PR A/B/C MERGED AND VERIFIED；#17 merge `b3bc59a`；browser walkthrough VERIFIED；post-merge 六门 SUCCESS）；**AI Assistant V1B = COMPLETED — MERGED AND VERIFIED**（PR #22 MERGED；merge `fd0410fe4548704ee14e1027ac4d09a243195a70`；post-merge main CI run `36979987780` 六门 SUCCESS）。
 - `origin/backup/v3-design-tokens`：相对 `main` 落后 139 个提交，只独有 1 个提交 `e8812d8`「align design tokens with the V3 palette」，改的是 `globals.css` / `providers.tsx` / `providers.test.ts`，纯配色、无功能。而且 `main` 此后已自行演进到**另一套**配色（`primary: #167568` 青绿，backup 提的是 `#2563EB` 蓝），方向已经不同。结论：**不合并，也不需要「解冲突」**；它属于已经后置的配色议题，保留归档或直接删分支即可，不要长期挂在待决策清单里。
 
 ## 8. 验证边界
@@ -420,7 +422,7 @@ Worker 进程可以连接 Redis，但没有注册业务队列。
 18. `docs/superpowers/plans/2026-09-18-ai-assistant-v1a-implementation.md`（AI Assistant V1A 批准实现计划）
 19. `docs/audits/2026-09-16/workflow-required-field-visibility-hardening.md`
 20. `docs/audits/2026-09-16/record-required-field-visibility-hardening.md`
-21. **`docs/superpowers/briefs/`** —— Lean Roadmap 各阶段的 stage brief（`README.md` 为索引）：`engineering-gate-lite`、`sales-workbench-lite`、`ai-assistant-v1a`、`ai-assistant-v1b`、`production-essentials`、`email-adapter`。**这些是方向/范围说明，不等于批准开发**；V1A 已 COMPLETED，其余阶段仍须各自批准后才动代码。
+21. **`docs/superpowers/briefs/`** —— Lean Roadmap 各阶段的 stage brief（`README.md` 为索引）：`engineering-gate-lite`、`sales-workbench-lite`、`ai-assistant-v1a`、`ai-assistant-v1b`、`production-essentials`、`email-adapter`。**这些是方向/范围说明，不等于批准开发**；V1A 与 V1B 已 COMPLETED，其余阶段仍须各自批准后才动代码。
 
 关键实现入口：
 
@@ -467,10 +469,10 @@ Action Engine V1 已完成、验收，并已通过 PR #1 合并进 `main`：
 P0–P5 主干已经落地。P7 表管理主干已齐。Workflow V1 与 Action Engine V1 的代码都已存在，
 不要重新实现它们。**下一个阶段 V2.2 Sales Execution 尚未批准，不要自行开始**（Trigger /
 Automation / Dedup / Notification / Template Upgrade / Agent 同样不要开始）。
-**AI Assistant V1A = COMPLETED。** PR A/B/C MERGED AND VERIFIED（#17 merge `b3bc59a`）。browser walkthrough VERIFIED。post-merge main 六门 SUCCESS。V1B 在本地 `docs/ai-assistant-v1b-design` worktree 已实现 Task 1–7 并完成隔离数据库/CRM 浏览器验收；仍为 ACTIVE，未合并/部署，真实模型未验。
+**AI Assistant V1A = COMPLETED。** PR A/B/C MERGED AND VERIFIED（#17 merge `b3bc59a`）。browser walkthrough VERIFIED。post-merge main 六门 SUCCESS。**AI Assistant V1B = COMPLETED — MERGED AND VERIFIED**（PR #22 MERGED；merge `fd0410fe4548704ee14e1027ac4d09a243195a70`；post-merge main CI run `36979987780` 六门 SUCCESS）。已批准的 V1B 产品实现与安全边界已在 main 中；未部署或验证生产环境。
 批准规格：`docs/superpowers/specs/2026-09-18-ai-assistant-v1a-design.md`；
 实现计划：`docs/superpowers/plans/2026-09-18-ai-assistant-v1a-implementation.md`。
-`docs/superpowers/specs/2026-09-16-ai-assistant-v1-design.md` 仍是上位方向。V1B 仅本地 worktree 为 ACTIVE；Production Essentials 仍为 PLANNED。
+`docs/superpowers/specs/2026-09-16-ai-assistant-v1-design.md` 仍是上位方向。V1B 已完成并合并进入 main；Production Essentials 仍为 PLANNED。
 近期实际执行路线看 `docs/superpowers/plans/2026-09-16-crm-lean-roadmap.md`；
 `2026-09-15-crm-process-roadmap.md` 只是长期需求池，不要把它标记为 PLANNED 的阶段当成已批准的开发任务。
 短信按用户要求暂缓（腾讯云凭据未提供）。

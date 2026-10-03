@@ -2,8 +2,8 @@
 
 > 日期：2026-09-23
 > 文档类型：Task Design Spec
-> 状态：DESIGN APPROVED — IMPLEMENTED IN PR #22, OPEN；最终审查修正待 Hosted CI；用户选择暂不做真实 Provider smoke，未合并/部署，非 COMPLETED
-> Roadmap：AI Assistant V1B（ACTIVE；Production Essentials 仍 PLANNED）
+> 状态：DESIGN APPROVED — COMPLETED — MERGED AND VERIFIED；PR #22 MERGED，merge `fd0410fe4548704ee14e1027ac4d09a243195a70`；post-merge main CI run `36979987780` 六门 SUCCESS。COMPLETED 指已批准范围的产品实现、安全边界、测试门禁与合并完成；Real Provider NOT VERIFIED — DEFERRED BY USER；未部署生产。
+> Roadmap：AI Assistant V1B（COMPLETED — MERGED AND VERIFIED；Production Essentials 仍 PLANNED）
 > 设计基线：`origin/main` @ `cc419ff51df980055229fd43d4a17e8ceafe467e`
 > 上位方向：`docs/superpowers/specs/2026-09-16-ai-assistant-v1-design.md`
 > Stage Brief：`docs/superpowers/briefs/2026-09-16-ai-assistant-v1b-stage-brief.md`
