@@ -119,6 +119,13 @@
   padding: 10px 8px;
 }
 
+.navGroupLabel {
+  padding: 0 11px 6px;
+  color: rgb(174 186 193 / 68%);
+  font-size: 11px;
+  line-height: 16px;
+}
+
 .nav + .nav {
   padding-top: 0;
 }
