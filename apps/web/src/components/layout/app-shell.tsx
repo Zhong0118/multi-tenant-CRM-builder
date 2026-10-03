@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -63,11 +64,25 @@ function subscribeCollapsed(listener: () => void) {
 }
 
 function getCollapsedSnapshot() {
-  return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
+  const preference = window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+  return preference === "true" ? true : preference === "false" ? false : null;
 }
 
 function getCollapsedServerSnapshot() {
-  return false;
+  return null;
+}
+
+function subscribeViewport(listener: () => void) {
+  window.addEventListener("resize", listener);
+  return () => window.removeEventListener("resize", listener);
+}
+
+function getViewportSnapshot() {
+  return window.innerWidth < 768 ? "mobile" : window.innerWidth < 1200 ? "compact" : "desktop";
+}
+
+function getViewportServerSnapshot() {
+  return "desktop";
 }
 
 function subscribeWidth(listener: () => void) {
@@ -113,7 +128,10 @@ export function AppShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [resizing, setResizing] = useState(false);
   const dragging = useRef(false);
-  const collapsed = useSyncExternalStore(
+  const navigationTrigger = useRef<HTMLElement | null>(null);
+  const shell = useRef<HTMLDivElement>(null);
+  const viewport = useSyncExternalStore(subscribeViewport, getViewportSnapshot, getViewportServerSnapshot);
+  const collapsedPreference = useSyncExternalStore(
     subscribeCollapsed,
     getCollapsedSnapshot,
     getCollapsedServerSnapshot,
@@ -123,8 +141,29 @@ export function AppShell({
     getWidthSnapshot,
     getWidthServerSnapshot,
   );
+  const collapsed = viewport !== "mobile" && (collapsedPreference ?? viewport === "compact");
+  const closeNavigation = useCallback(() => {
+    setMobileOpen(false);
+    navigationTrigger.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    shell.current?.querySelector<HTMLElement>("aside a")?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeNavigation();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [mobileOpen, closeNavigation]);
+
   const layoutRef = useRef({ collapsed, width });
-  layoutRef.current = { collapsed, width };
+  useEffect(() => {
+    layoutRef.current = { collapsed, width };
+  }, [collapsed, width]);
 
   const toggleCollapsed = useCallback(() => {
     persistCollapsed(!collapsed);
@@ -170,13 +209,13 @@ export function AppShell({
   }, []);
 
   return (
-    <div className={styles.shell}>
+    <div className={styles.shell} ref={shell}>
       {mobileOpen ? (
         <button
           type="button"
           className={styles.backdrop}
           aria-label="关闭导航"
-          onClick={() => setMobileOpen(false)}
+          onClick={closeNavigation}
         />
       ) : null}
       <Sidebar
@@ -189,7 +228,7 @@ export function AppShell({
         resizing={resizing}
         onToggle={toggleCollapsed}
         mobileOpen={mobileOpen}
-        onMobileClose={() => setMobileOpen(false)}
+        onMobileClose={() => { if (mobileOpen) closeNavigation(); }}
         onResizePointerDown={onResizePointerDown}
         onResizePointerMove={onResizePointerMove}
         onResizePointerUp={onResizePointerUp}
@@ -201,7 +240,10 @@ export function AppShell({
           user={user}
           roleLabel={roleLabel}
           showWorkspaceSwitch={showWorkspaceSwitch}
-          onOpenNavigation={() => setMobileOpen(true)}
+          onOpenNavigation={() => {
+            navigationTrigger.current = shell.current?.querySelector<HTMLElement>("header button") ?? null;
+            setMobileOpen(true);
+          }}
         />
         <main className={styles.main} data-scroll-region="main">
           {children}

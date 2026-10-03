@@ -24,6 +24,8 @@ const shellUser = {
 
 beforeEach(() => {
   mocks.pathname = "/workspace/northwind";
+  window.localStorage.clear();
+  Object.defineProperty(window, "innerWidth", { configurable: true, value: 1440 });
 });
 
 function businessObject(overrides: Record<string, unknown> = {}) {
@@ -76,6 +78,20 @@ describe("workspaceNavigation", () => {
 });
 
 describe("WorkspaceShell", () => {
+  it("orders work, business data, and management without classifying by translated labels", () => {
+    render(
+      <WorkspaceShell tenantCode="northwind" tenantName="百杰" role="TENANT_ADMIN"
+        user={shellUser} businessObjects={[businessObject({ name: "成员管理" })]}>
+        <p>内容</p>
+      </WorkspaceShell>,
+    );
+    expect(screen.getAllByRole("navigation").map((nav) => nav.getAttribute("aria-label")))
+      .toEqual(["工作", "业务数据", "管理"]);
+    expect(within(screen.getByRole("navigation", { name: "业务数据" }))
+      .getByRole("link", { name: "成员管理" }))
+      .toHaveAttribute("href", "/workspace/northwind/objects/customers");
+  });
+
   it("keeps employee navigation free of administrator destinations", () => {
     render(
       <WorkspaceShell
@@ -92,8 +108,8 @@ describe("WorkspaceShell", () => {
       </WorkspaceShell>,
     );
 
-    const business = screen.getByRole("navigation", { name: "业务对象" });
-    const system = screen.getByRole("navigation", { name: "工作空间" });
+    const business = screen.getByRole("navigation", { name: "业务数据" });
+    const system = screen.getByRole("navigation", { name: "工作" });
 
     expect(
       within(business).getByRole("link", { name: "客户资料" }),
@@ -128,7 +144,7 @@ describe("WorkspaceShell", () => {
       </WorkspaceShell>,
     );
 
-    const system = screen.getByRole("navigation", { name: "工作空间" });
+    const system = screen.getByRole("navigation", { name: "管理" });
     expect(
       within(system).getByRole("link", { name: "成员管理" }),
     ).toHaveAttribute("href", "/workspace/northwind/members");
@@ -155,13 +171,13 @@ describe("WorkspaceShell", () => {
       </WorkspaceShell>,
     );
 
-    const system = screen.getByRole("navigation", { name: "工作空间" });
+    const system = screen.getByRole("navigation", { name: "管理" });
     expect(within(system).getByRole("link", { name: "设置" })).toHaveAttribute(
       "aria-current",
       "page",
     );
     expect(
-      within(system).getByRole("link", { name: "管理工作台" }),
+      within(screen.getByRole("navigation", { name: "工作" })).getByRole("link", { name: "管理工作台" }),
     ).not.toHaveAttribute("aria-current");
   });
 
@@ -205,7 +221,7 @@ describe("WorkspaceShell", () => {
     );
 
     const links = within(
-      screen.getByRole("navigation", { name: "业务对象" }),
+      screen.getByRole("navigation", { name: "业务数据" }),
     ).getAllByRole("link");
 
     expect(links.map((link) => link.textContent?.replace(/\s+/g, ""))).toEqual([
@@ -228,7 +244,7 @@ describe("WorkspaceShell", () => {
     );
 
     expect(
-      screen.queryByRole("navigation", { name: "业务对象" }),
+      screen.queryByRole("navigation", { name: "业务数据" }),
     ).not.toBeInTheDocument();
     expect(screen.getByText("尚无已授权的业务对象")).toBeInTheDocument();
   });

@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 
 import { NavIcon } from "@/components/navigation/nav-icon";
-import { workspaceNavigation } from "@/components/navigation/workspace-navigation";
+import { workspaceNavigationGroups } from "@/components/navigation/workspace-navigation";
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
 import { AppShell, type ShellUser } from "./app-shell";
@@ -31,13 +31,24 @@ export function WorkspaceShell({
     icon: <NavIcon name="object" />,
   }));
 
+  const navigation = workspaceNavigationGroups(tenantCode, role);
+  const systemItems = (items: typeof navigation.work) => items.map((item) => ({
+    href: item.href,
+    label: item.label,
+    icon: <NavIcon name={item.icon} />,
+  }));
+
   return (
     <AppShell
       brand={tenantName}
       brandHref={`/workspace/${tenantCode}`}
       navGroups={[
         {
-          ariaLabel: "业务对象",
+          ariaLabel: "工作",
+          items: systemItems(navigation.work),
+        },
+        {
+          ariaLabel: "业务数据",
           items: objectItems,
           emptyLabel:
             role === "TENANT_ADMIN"
@@ -50,14 +61,10 @@ export function WorkspaceShell({
           emptyActionLabel:
             role === "TENANT_ADMIN" ? "创建第一张业务表" : undefined,
         },
-        {
-          ariaLabel: "工作空间",
-          items: workspaceNavigation(tenantCode, role).map((item) => ({
-            href: item.href,
-            label: item.label,
-            icon: <NavIcon name={item.icon} />,
-          })),
-        },
+        ...(navigation.admin.length ? [{
+          ariaLabel: "管理",
+          items: systemItems(navigation.admin),
+        }] : []),
       ]}
       headerLeft={<span>{tenantName}</span>}
       user={user}

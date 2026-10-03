@@ -408,31 +408,6 @@
   font-size: 12px;
 }
 
-@media (min-width: 768px) and (max-width: 1199px) {
-  .sidebar {
-    width: var(--sidebar-collapsed-width);
-    flex-basis: var(--sidebar-collapsed-width);
-  }
-
-  .brand,
-  .navItem,
-  .toggle {
-    justify-content: center;
-    padding-right: 0;
-    padding-left: 0;
-  }
-
-  .brandName,
-  .navLabel,
-  .emptyLabel {
-    display: none;
-  }
-
-  .main {
-    padding: 20px;
-  }
-}
-
 @media (max-width: 1199px) {
   .resizeHandle {
     display: none;
@@ -450,10 +425,12 @@
     max-width: 280px;
     flex-basis: auto;
     box-shadow: 12px 0 32px rgb(10 20 28 / 24%);
+    visibility: hidden;
     transform: translateX(-105%);
   }
 
   .sidebar[data-mobile-open="true"] {
+    visibility: visible;
     transform: translateX(0);
   }
 
