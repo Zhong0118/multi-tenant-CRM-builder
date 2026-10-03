@@ -70,7 +70,7 @@ export function Sidebar({
     <button
       type="button"
       className={styles.toggle}
-      onClick={onToggle}
+      onClick={mobileOpen ? onMobileClose : onToggle}
       aria-label={toggleLabel}
     >
       {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
@@ -132,6 +132,9 @@ export function Sidebar({
               className={styles.nav}
               data-collapsed={collapsed ? "true" : undefined}
             >
+              {collapsed ? null : (
+                <div className={styles.navGroupLabel}>{group.ariaLabel}</div>
+              )}
               {group.items.map((item) => {
                 const current = item.href === activeHref;
                 const icon = item.icon;

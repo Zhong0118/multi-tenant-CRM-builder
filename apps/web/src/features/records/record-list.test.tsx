@@ -231,7 +231,156 @@ function renderList(
   );
 }
 
+describe("RecordList query navigation", () => {
+  it("reflects a new URL search without remounting the list", () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const api = { list: vi.fn().mockResolvedValue(page) } as unknown as RecordApi;
+    const view = (search: string) => (
+      <QueryClientProvider client={client}>
+        <RecordList tenantCode="northwind" schema={schema}
+          query={{ ...DEFAULT_RECORD_QUERY, search }} initialPage={page}
+          api={api} navigate={vi.fn()} />
+      </QueryClientProvider>
+    );
+    const { rerender } = render(view("旧关键词"));
+    rerender(view("新关键词"));
+    expect(screen.getByRole("textbox", { name: /搜索/ })).toHaveValue("新关键词");
+  });
+
+  it("keeps a pending draft when other URL query props receive a same-value refresh", async () => {
+    const navigate = vi.fn();
+    const result = renderList(navigate);
+    const input = screen.getByRole("textbox", { name: /搜索/ });
+    fireEvent.change(input, { target: { value: "保留草稿" } });
+    result.rerender(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <RecordList
+          tenantCode="northwind"
+          schema={schema}
+          query={{ ...DEFAULT_RECORD_QUERY }}
+          initialPage={page}
+          api={{ list: vi.fn().mockResolvedValue(page) } as unknown as RecordApi}
+          navigate={navigate}
+        />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByRole("textbox", { name: /搜索/ })).toHaveValue("保留草稿");
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(navigate).toHaveBeenCalledWith(
+      "/workspace/northwind/objects/customers?search=%E4%BF%9D%E7%95%99%E8%8D%89%E7%A8%BF",
+    );
+  });
+
+  it("cancels pending search navigation on unmount", async () => {
+    const navigate = vi.fn();
+    const { unmount } = renderList(navigate);
+    fireEvent.change(screen.getByRole("textbox", { name: /搜索/ }), {
+      target: { value: "未提交查询" },
+    });
+    unmount();
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("does not navigate again after immediately submitting search", async () => {
+    const navigate = vi.fn();
+    renderList(navigate);
+    const input = screen.getByRole("textbox", { name: /搜索/ });
+    fireEvent.change(input, { target: { value: "立即查询" } });
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not overwrite a sort change with a pending search", async () => {
+    const navigate = vi.fn();
+    renderList(navigate);
+    fireEvent.change(screen.getByRole("textbox", { name: /搜索/ }), {
+      target: { value: "未提交查询" },
+    });
+    fireEvent.click(screen.getByRole("columnheader", { name: /业务编号/ }));
+    expect(screen.getByRole("textbox", { name: /搜索/ })).toHaveValue("");
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(navigate).toHaveBeenLastCalledWith(
+      "/workspace/northwind/objects/customers?sort=recordNo&direction=asc",
+    );
+  });
+});
+
 describe("RecordList table sorting", () => {
+  it("offers card sort and pagination using the same URL query", () => {
+    const navigate = vi.fn();
+    renderList(navigate, DEFAULT_RECORD_QUERY, { page: { ...page, total: 45 } });
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "卡片排序字段" }));
+    fireEvent.click(screen.getByText("业务编号", { selector: ".ant-select-item-option-content" }));
+    expect(navigate).toHaveBeenLastCalledWith(
+      "/workspace/northwind/objects/customers?sort=recordNo",
+    );
+    fireEvent.click(screen.getAllByTitle("Next Page")[0]);
+    expect(navigate).toHaveBeenLastCalledWith(
+      "/workspace/northwind/objects/customers?page=2",
+    );
+  });
+
+  it("shares card selection with the existing batch edit action", async () => {
+    renderList(vi.fn());
+    fireEvent.click(screen.getByRole("checkbox", { name: "选择卡片 天际科技" }));
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /批量修改 1/ }));
+    expect(screen.getByText("批量修改 1 条")).toBeInTheDocument();
+  });
+  it("recovers filtered empty results without changing sort or page size", () => {
+    const navigate = vi.fn();
+    renderList(navigate, {
+      ...DEFAULT_RECORD_QUERY, search: "不存在", ownerMemberId: "member-1",
+      filters: { lead_status: ["new"] }, page: 3, sort: "recordNo", direction: "asc",
+    }, { page: { ...page, items: [], total: 0, page: 3 } });
+    fireEvent.click(screen.getAllByRole("button", { name: "清除条件" })[0]);
+    expect(navigate).toHaveBeenCalledWith("/workspace/northwind/objects/customers?sort=recordNo&direction=asc");
+  });
+
+  it("does not offer filter recovery for a genuinely empty register", () => {
+    renderList(vi.fn(), DEFAULT_RECORD_QUERY, { page: { ...page, items: [], total: 0 } });
+    expect(screen.getAllByText("还没有记录，新建第一条。").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "清除条件" })).toBeNull();
+  });
+
+  it("shows API failure instead of empty results and retries the same query", async () => {
+    const list = vi.fn().mockRejectedValueOnce(new Error("服务暂不可用"))
+      .mockResolvedValue(page);
+    renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+      api: { list } as unknown as RecordApi,
+      page: { ...page, items: [], total: 0 },
+    });
+    const retry = await screen.findByRole("button", { name: "重试" });
+    expect(screen.queryByText("还没有记录，新建第一条。")).toBeNull();
+    fireEvent.click(retry);
+    await waitFor(() => expect(screen.getAllByText("天际科技").length).toBeGreaterThan(0));
+    expect(list).toHaveBeenLastCalledWith("northwind", "customers", DEFAULT_RECORD_QUERY);
+  });
+
+  it("uses the page header for the owned title, description and create action", () => {
+    const navigate = vi.fn();
+    renderList(navigate, DEFAULT_RECORD_QUERY, {
+      schema: { ...schema, object: { ...schema.object, description: "管理客户关系" },
+        scopes: { ...schema.scopes, read: "OWN" } },
+    });
+    const title = screen.getByRole("heading", { level: 1, name: "我的客户" });
+    const header = title.closest("header")!;
+    expect(within(header).getByText("管理客户关系")).toBeInTheDocument();
+    fireEvent.click(within(header).getByRole("button", { name: "新建客户" }));
+    expect(navigate).toHaveBeenCalledWith("/workspace/northwind/objects/customers/new");
+  });
+
+  it("keeps creation out of the page header when not permitted", () => {
+    renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+      schema: { ...schema, actions: { ...schema.actions, canCreate: false } },
+    });
+    expect(screen.getByRole("heading", { level: 1, name: "客户" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "新建客户" })).toBeNull();
+  });
+
   it("keeps the stable business number without a redundant row sequence", () => {
     renderList(
       vi.fn(),

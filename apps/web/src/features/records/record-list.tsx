@@ -5,6 +5,8 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Alert,
   Button,
+  Checkbox,
+  Pagination,
   DatePicker,
   Drawer,
   Dropdown,
@@ -27,6 +29,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { SavedRecordFilters } from "./saved-record-filters";
 import { FilterBar } from "@/components/workbench/filter-bar";
+import { PageHeader } from "@/components/layout/page-header";
 import { DataPanel } from "@/components/workbench/surface";
 import {
   SORTABLE_FIELD_TYPES,
@@ -122,7 +125,9 @@ export function RecordList({
   // choice after mount. Reading it during render instead made the table and
   // the card list disagree with the server and failed hydration on every load.
   const [storedColumnKeys, setStoredColumnKeys] = useState<string[]>([]);
+  // This is the client-only hydration boundary for a browser preference.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStoredColumnKeys(readStoredRecordColumnKeys(tenantCode, objectCode));
   }, [tenantCode, objectCode]);
   const columnFieldKeys = useMemo(
@@ -130,6 +135,12 @@ export function RecordList({
     [schema, storedColumnKeys],
   );
   const debounce = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => {
+    clearTimeout(debounce.current);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSearchInput(query.search ?? "");
+  }, [query.search]);
+  useEffect(() => () => clearTimeout(debounce.current), []);
 
   const records = useQuery({
     queryKey: ["workspace", tenantCode, "records", objectCode, query],
@@ -169,6 +180,8 @@ export function RecordList({
   });
 
   function apply(next: RecordQuery) {
+    clearTimeout(debounce.current);
+    setSearchInput(next.search ?? "");
     const search = recordQuerySearch(next, queryDefaults);
     go(search === "" ? listPath : `${listPath}?${search}`);
   }
@@ -377,6 +390,22 @@ export function RecordList({
     Object.keys(query.filters).length > 0,
   );
 
+  const emptyState = records.isError ? null : (
+    <Empty
+      description={filtered
+        ? "当前筛选条件没有匹配的记录。"
+        : schema.actions.canCreate ? "还没有记录，新建第一条。" : "还没有记录。"}
+    >
+      {filtered ? (
+        <Button onClick={() => apply(withFilter(query, {
+          search: undefined, ownerMemberId: undefined, filters: {},
+        }))}>
+          清除条件
+        </Button>
+      ) : null}
+    </Empty>
+  );
+
   function saveColumns(next: string[]) {
     const resolved = resolveRecordColumnKeys(schema, next);
     setStoredColumnKeys(resolved);
@@ -451,19 +480,15 @@ export function RecordList({
   return (
     <div className={styles.list}>
       {error ? <Alert type="error" showIcon title={error} /> : null}
-      <header className={styles.listHeader}>
-        <div>
-          <h1>{owned ? `我的${schema.object.name}` : schema.object.name}</h1>
-          {schema.object.description ? (
-            <p>{schema.object.description}</p>
-          ) : null}
-        </div>
-        {schema.actions.canCreate ? (
+      <PageHeader
+        title={owned ? `我的${schema.object.name}` : schema.object.name}
+        description={schema.object.description}
+        extra={schema.actions.canCreate ? (
           <Button type="primary" onClick={() => go(`${listPath}/new`)}>
             新建{schema.object.name}
           </Button>
         ) : null}
-      </header>
+      />
 
       {currentMemberId && (
         <SavedRecordFilters
@@ -807,20 +832,39 @@ export function RecordList({
         </div>
       ) : null}
 
+      <div className={styles.cardControls}>
+        <Select
+          aria-label="卡片排序字段"
+          value={query.sort}
+          onChange={(sort) => apply({ ...query, sort, page: 1 })}
+          options={[
+            { value: "recordNo", label: "业务编号" },
+            { value: "createdAt", label: "创建时间" },
+            { value: "updatedAt", label: "更新时间" },
+            ...schema.fields.filter((field) => (SORTABLE_FIELD_TYPES as readonly string[]).includes(field.type))
+              .map((field) => ({ value: field.fieldKey, label: field.label })),
+          ]}
+        />
+        <Select
+          aria-label="卡片排序方向"
+          value={query.direction}
+          onChange={(direction) => apply({ ...query, direction, page: 1 })}
+          options={[{ value: "asc", label: "升序" }, { value: "desc", label: "降序" }]}
+        />
+      </div>
       <DataPanel
         className={styles.registerPanel}
         ariaLabel={`${schema.object.name}记录表`}
       >
-        {page.items.length === 0 ? (
-          <Empty
-            description={
-              filtered
-                ? "当前筛选条件没有匹配的记录。"
-                : schema.actions.canCreate
-                  ? "还没有记录，新建第一条。"
-                  : "还没有记录。"
-            }
+        {records.isError ? (
+          <Alert
+            type="error"
+            title="记录加载失败"
+            description={toApiError(records.error).message}
+            action={<Button aria-label="重试" loading={records.isFetching} onClick={() => records.refetch()}>重试</Button>}
           />
+        ) : page.items.length === 0 ? (
+          <div className={styles.cardList}>{emptyState}</div>
         ) : (
           <ul
             className={styles.cardList}
@@ -834,6 +878,15 @@ export function RecordList({
               return (
                 <li key={row.id} className={styles.card}>
                   <div className={styles.cardHeader}>
+                    {schema.actions.canUpdate ? (
+                      <Checkbox
+                        aria-label={`选择卡片 ${row.title}`}
+                        checked={selectedRowKeys.includes(row.id)}
+                        onChange={(event) => setSelectedRowKeys((keys) =>
+                          event.target.checked ? [...keys, row.id] : keys.filter((key) => key !== row.id),
+                        )}
+                      />
+                    ) : null}
                     <a
                       className={styles.recordTitle}
                       href={recordPath(row.id)}
@@ -901,19 +954,7 @@ export function RecordList({
               : undefined
           }
           aria-label={`${schema.object.name}记录`}
-          locale={{
-            emptyText: (
-              <Empty
-                description={
-                  filtered
-                    ? "当前筛选条件没有匹配的记录。"
-                    : schema.actions.canCreate
-                      ? "还没有记录，新建第一条。"
-                      : "还没有记录。"
-                }
-              />
-            ),
-          }}
+          locale={{ emptyText: emptyState }}
           pagination={{
             current: page.page,
             pageSize: page.limit,
@@ -922,6 +963,15 @@ export function RecordList({
             onChange: (nextPage) => apply({ ...query, page: nextPage }),
           }}
         />
+        <div className={styles.cardControls}>
+          <Pagination
+            current={page.page}
+            pageSize={page.limit}
+            total={page.total}
+            showSizeChanger={false}
+            onChange={(nextPage) => apply({ ...query, page: nextPage })}
+          />
+        </div>
       </DataPanel>
 
       <Drawer
