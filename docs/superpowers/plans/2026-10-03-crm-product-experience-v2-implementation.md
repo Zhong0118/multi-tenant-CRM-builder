@@ -1,6 +1,6 @@
 # CRM Product Experience V2 — First Slice Implementation Plan
 
-> **For agentic workers:** Use `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. 本文件是开发准备，本轮尚未执行产品实现。
+> **For agentic workers:** Use `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. 本文件记录批准的实现范围；当前实现已提交，浏览器验收仍有明确缺口，PR 未合并。
 
 **Goal:** 先修复记录页面已复现的状态丢失，再统一产品外框与记录列表，让 Admin/Employee 在三档屏宽完成已有操作。
 
@@ -10,7 +10,7 @@
 
 **Spec:** [V2 Stage Design](../specs/2026-10-03-crm-product-experience-v2-design.md)；现状及缺陷证据见 [本轮审计](../../audits/2026-10-03/project-review.md)。
 
-**Status:** PLAN READY FOR DEVELOPMENT REVIEW — IMPLEMENTATION NOT STARTED。`origin/main` 审计快照为 `70884f5`；执行前重新 fetch 并核对差异。
+**Status:** SLICE 1 IMPLEMENTED — ACCEPTANCE INCOMPLETE — DRAFT PR CLOSEOUT。`origin/main` 本次 fetch 基线为 `70884f5`；实现、验收、PR 待合并与已合并必须分别记录。Slice 2–4 未启动。
 
 ## Global Constraints
 
@@ -216,11 +216,11 @@ DATABASE_ADMIN_URL=postgresql://unused:unused@127.0.0.1:1/unused pnpm contracts:
 ```
 
 - [ ] 合并前核对 6 个 required checks；远端状态必须实查，不能引用本轮旧结果。Contracts 生成不得留下非预期 diff。若共享组件影响 AI 页面，验证其展示与原确认交互，不调用真实 Provider 冒充已授权验收。
-- [x] 记录实现 commit、实测结果、未观察项，Slice 1 状态完成；后续切片仍 PLANNED。
+- [x] 记录实现 commit、实测结果、未观察项；实现完成，验收未完整完成；后续切片仍 PLANNED。
 
 ## 2.1 第一切片完成记录
 
-- Task 0 与 Slice 1 Tasks 1–3 已完成并分别提交：`e3be29f`、`ac18f15`、`0696956`、`1e1a9f0`。
+- Task 0 与 Slice 1 Tasks 1–2 主体实现已提交：`e3be29f`、`ac18f15`、`0696956`、`1e1a9f0`；Task 3 验收有未观察项，尚未完整完成。本轮补移动焦点约束、卡片分页/排序/选择及取消搜索草稿同步。
 - 自动化与浏览器证据见 `docs/audits/2026-10-03/crm-product-experience-v2-slice-1-acceptance.md`。
 - 后续切片仍为 PLANNED；本轮不包含详情重构、员工首页、配置体验、AI runtime、后端 API、权限或数据模型改变。
 
@@ -241,4 +241,4 @@ Slice 4 的详细文件与手机编辑策略在其开工设计中确定；不能
 - AI E2E 固定端口问题（审计 T01）是独立测试可靠性任务；不能通过删掉隔离保护或改用业务库完成。AI 增强前应处理它，纯 UI 第一切片不用等待其 CI 推广。
 - Action Engine fieldErrors / MEMBER 默认值为历史待验证事项。若复现出权限泄漏，单独修复并按严重度调整顺序，不混入换肤提交。
 - 需要新 API、跨设备视图、新的字段/权限语义或自动任务时，超出当前范围，回到需求定义；不要用前端伪数据补齐。
-- 本轮只交付审计与计划，没有把任何 Task 勾成已完成，也没有提交、推送、合并或部署。
+- 初始阶段只交付审计与计划；随后已获批准实现第一切片并准备 Draft PR。当前验收不完整、尚未合并或部署，后续切片不因提交或 CI 通过而自动批准。
