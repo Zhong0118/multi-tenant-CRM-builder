@@ -68,7 +68,8 @@ PASS 仅代表该格描述的实际路径；NOT OBSERVED 代表没有完整浏�
 
 - Admin/Employee ×1440/900/390：保存具名视图（search=V2、updatedAt desc），清除条件后应用恢复；六格均PASS。
 - 使用既有隔离平台管理员18800001999（未提升其他用户权限）登录；平台总览1440/900/390均可达，平台标题/事项内容可见，无水平溢出。Employee直接访问/platform返回自己工作台，未进入平台管理。
-- 本轮不调用真实AI Provider；Proposal确认仍待可审计的Fake Provider浏览fixture。HIDDEN字段权限需要独立published fixture，目前无该场景，保持NOT OBSERVED。
+- 使用现有test-only FakeAiProvider（NODE_ENV=test / AI_PROVIDER=fake）重启隔离API；Employee发送 ADD_ACTIVITY_NOTE proposal，出现HTTP note/待确认；1440/900/390确认与拒绝按钮可见、无溢出。390手动确认后显示已执行和审计ID `01a10158-9c66-7361-bfbe-14baa2ed3d62`，目标记录 `2e6a7a9f-e78e-433a-9d4e-52aeeb956221` 详情出现HTTP note。仅写隔离fixture，不调用真实Provider；此确认路径PASS。HIDDEN字段权限需要独立published fixture，目前无该场景，保持NOT OBSERVED。
+- 源码提交 `5edc9c254f86e26c587ab084b369eaeaa336477f` 已push；CI run37117006767六项required checks全部SUCCESS。后续文档提交仍须核对最新SHA。
 
 ## 已知限制与合并影响
 
