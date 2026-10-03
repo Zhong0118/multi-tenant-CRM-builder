@@ -1,0 +1,86 @@
+
+ RUN  v4.1.10 /Users/zhongxu/Desktop/0-Inbox/multi-tenant-CRM-builder/.worktrees/crm-product-experience-v2-design/apps/web
+
+ ❯ src/features/records/record-workspace.audit-repro.test.tsx (1 test | 1 failed) 58ms
+   × AUDIT B03: preserves explicit sort when closing with a different published default 57ms
+Not implemented: Window's getComputedStyle() method: with pseudo-elements
+Not implemented: Window's getComputedStyle() method: with pseudo-elements
+ ❯ src/features/records/record-list.audit-repro.test.tsx (2 tests | 2 failed) 969ms
+   × AUDIT B01: reflects a new URL search after applying a saved view 399ms
+   × AUDIT B02: cancels search navigation when leaving the record list 569ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/features/records/record-list.audit-repro.test.tsx > AUDIT B01: reflects a new URL search after applying a saved view
+Error: expect(element).toHaveValue(新关键词)
+
+Expected the element to have value:
+  新关键词
+Received:
+  旧关键词
+ ❯ src/features/records/record-list.audit-repro.test.tsx:247:55
+    245|   const { rerender } = render(view("旧关键词"));
+    246|   rerender(view("新关键词"));
+    247|   expect(screen.getByRole("textbox", { name: /搜索/ })).toHaveValue("新关键…
+       |                                                       ^
+    248| });
+    249|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/features/records/record-list.audit-repro.test.tsx > AUDIT B02: cancels search navigation when leaving the record list
+AssertionError: expected "vi.fn()" to not be called at all, but actually been called 1 times
+
+Received:
+
+  1st vi.fn() call:
+
+    Array [
+      "/workspace/northwind/objects/customers?search=%E6%9C%AA%E6%8F%90%E4%BA%A4%E6%9F%A5%E8%AF%A2",
+    ]
+
+
+Number of calls: 1
+
+ ❯ src/features/records/record-list.audit-repro.test.tsx:258:24
+    256|   unmount();
+    257|   await new Promise((resolve) => setTimeout(resolve, 400));
+    258|   expect(navigate).not.toHaveBeenCalled();
+       |                        ^
+    259| });
+    260|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/features/records/record-workspace.audit-repro.test.tsx > AUDIT B03: preserves explicit sort when closing with a different published default
+AssertionError: expected { sort: 'recordNo', direction: 'asc' } to deeply equal { Object (sort, direction) }
+
+- Expected
++ Received
+
+  {
+-   "direction": "desc",
+-   "sort": "updatedAt",
++   "direction": "asc",
++   "sort": "recordNo",
+  }
+
+ ❯ src/features/records/record-workspace.audit-repro.test.tsx:105:66
+    103|   const url = new URL(router.replace.mock.calls.at(-1)![0], "http://lo…
+    104|   const restored = parseRecordQuery(Object.fromEntries(url.searchParam…
+    105|   expect({ sort: restored.sort, direction: restored.direction }).toEqu…
+       |                                                                  ^
+    106|     sort: "updatedAt", direction: "desc",
+    107|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  3 failed (3)
+   Start at  14:40:14
+   Duration  2.89s (transform 169ms, setup 246ms, import 1.34s, tests 1.03s, environment 883ms)
+
+undefined
+/Users/zhongxu/Desktop/0-Inbox/multi-tenant-CRM-builder/.worktrees/crm-product-experience-v2-design/apps/web:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/features/records/record-list.audit-repro.test.tsx src/features/records/record-workspace.audit-repro.test.tsx

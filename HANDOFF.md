@@ -1,6 +1,8 @@
 # 多租户 CRM Builder 接手说明
 
-更新时间：2026-10-02（AI Assistant V1B Post-Merge Docs Closeout）
+更新时间：2026-10-03（项目审计与 Product Experience V2 开发准备）
+
+**当前开发入口：** [项目全局审计](docs/audits/2026-10-03/project-review.md)、[V2 设计](docs/superpowers/specs/2026-10-03-crm-product-experience-v2-design.md)、[V2 第一切片计划](docs/superpowers/plans/2026-10-03-crm-product-experience-v2-implementation.md)。本轮确认三项记录导航 bug，计划先修状态再做体验整理；尚未启动产品实现。根目录 main 在本次检查中落后 origin/main 112 个提交，必须现场核对，不能把旧工作树当最新基线。
 
 `main` 与 `origin/main` 是当前开发基线。**不要把某次 `git log -1` 的输出写死进本文。**
 Workflow V1 与 Action Engine V1 **均已合并进入 `main`**。Action Engine V1 通过 PR #1 合并，合并提交 `e590c23da6aa9c5fe0d0c3cd71250270ea265ebd`（该 SHA 只作为这一次历史事实记录，不是"main 永远等于它"）。Workflow Required Field Visibility Hardening 已通过 PR #2 合并；Record Required Field Visibility Hardening 已通过 PR #3 合并（均详见下方）。
@@ -50,6 +52,7 @@ V1B 的 **COMPLETED** 指已批准范围内的产品实现、安全边界、测�
 |---|---|
 | `docs/superpowers/plans/2026-09-15-crm-process-roadmap.md` | **Full Capability Roadmap**：长期需求池与完整能力地图，标记为 `PLANNED` 的阶段不构成实现批准 |
 | `docs/superpowers/plans/2026-09-16-crm-lean-roadmap.md` | **Lean Execution Roadmap**：近期实际执行路线，同一时间只激活一个主要产品 Task |
+| `docs/superpowers/plans/2026-10-03-crm-product-experience-v2-implementation.md` | **V2 第一切片开发计划**：状态修复、外框/记录列表、逐项验收；尚未开始实现 |
 
 对照关系：Full Roadmap 上的长期需求不因 Lean Roadmap 而消失；只有从 Full Roadmap 提升出来的阶段才进入 Lean Roadmap 并成为 `ACTIVE`。两份文档与本文冲突时，以本文的当前事实为准。
 
@@ -70,14 +73,14 @@ AI Assistant 的方向见 `docs/superpowers/specs/2026-09-16-ai-assistant-v1-des
    - `apps/web/src/app/(auth)/register/page.tsx`
    - `chat会话.md`
    - `.superpowers/sdd/2026-08-26-platform-business-template-designer/progress.md`
-3. `main` 与 `origin/main` 已同步，含 Workflow V1 与 Action Engine V1。不要 reset、rebase、强推或部署。推送要等用户明确要求。
+3. 启动时 fetch 并检查 `git rev-list --left-right --count main...origin/main`；不要假定本地 `main` 已同步。最新主线含 Workflow V1 与 Action Engine V1。不要 reset、rebase、强推或部署。推送要等用户明确要求。
    `feat/action-engine-v1` 是**历史开发分支**（已通过 PR #1 合并进 `main`），不再作为当前开发基线。
 4. 仓库存在 `.codegraph/`，理解代码时先运行 `codegraph explore "问题或符号"`。
 5. 用户要求快速实现。每个 Bug 只保留一个能复现用户症状的聚焦验证；不要反复跑全仓测试或多轮审查。
 6. **CI / 门禁基础设施的改动，与产品代码或测试的修复，分 PR 提交。** 2026-09-16 Engineering Gate Lite 的
    PR #4 把 `packages/database` 的 fixture 修复和 `apps/web/vitest.config.ts` 的 timeout 调整一起带了进去
    （两者都是 CI 抓出的**真实**缺陷、各自独立 commit、有实测证据，事后判定**不需要回滚**），但纪律以
-   「CI 基础设施一个 PR，产品/测试修复各自一个 PR」为准；`main` 现已要求 PR + 五项 required checks，
+   「CI 基础设施一个 PR，产品/测试修复各自一个 PR」为准；`main` 现已要求 PR + 六项 required checks，
    照此执行即可。发现 CI 缺陷时应先停下来报告，而不是顺手塞进 CI 的 PR。
 
 接手后先执行：

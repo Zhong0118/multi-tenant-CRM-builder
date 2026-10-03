@@ -2,7 +2,7 @@
 
 Date: 2026-10-03
 
-Status: STAGE DESIGN DRAFT — AWAITING HUMAN REVIEW
+Status: REVISED WITH AUDIT AND FIRST-SLICE PLAN — IMPLEMENTATION NOT STARTED
 
 Base main SHA: `70884f5eff78669e369cd36e6fbd8d9f9ac9d089`
 
@@ -10,7 +10,9 @@ Branch: `docs/crm-product-experience-v2-design`
 
 Scope contract: [Stage Brief](<../briefs/2026-10-03-crm-product-experience-v2-stage-brief.md>)
 
-**DO NOT IMPLEMENT YET.** This is a product direction proposal, not an approved implementation plan.
+本文件保留阶段方向；2026-10-03 后续用户要求检查全局和优化 V2 计划，现补充 [第一切片实施计划](../plans/2026-10-03-crm-product-experience-v2-implementation.md) 与 [项目审计](../../audits/2026-10-03/project-review.md)。本轮未开始产品实现。
+
+**版本说明：** 本阶段是 CRM Product Experience V2；AI Assistant UI V2 已合并，Full Roadmap V2.2 Sales Execution 是另一未批准阶段。后文浏览器证据来自初稿走查，本轮自动化复核不冒充新一轮浏览器验收。
 
 ## 1. Current Product Experience
 
@@ -178,7 +180,7 @@ Object Designer现有步骤和实时预览可保留；改进的是当前编辑�
 
 比较了三条路线：纯Design System换肤、Employee首页优先、公共框架与Record List一起落地。推荐第三条。第一条没有解决控制条负担，第二条进入记录后仍断层，第三条覆盖两角色和所有动态对象的高频入口，同时给后续切片提供经过真实页面应用的公共规则。
 
-FIRST SLICE不是全站重做。它不重构详情/管理员编辑器，不重写AI、不重排用户已发布Dashboard、不引入新后端或巨型组件框架。Human批准此Stage后，还需单独确定第一切片设计/范围与实现计划；此文不授权开始。
+FIRST SLICE不是全站重做。它不重构详情/管理员编辑器，不重写AI、不重排用户已发布Dashboard、不引入新后端或巨型组件框架。第一切片现已有单独实施计划，明确文件、任务、测试与验收；执行时同时阅读两份文档。本轮只完成开发准备，未标记任何切片已实现。
 
 ### Backend constraint
 
@@ -188,6 +190,15 @@ FIRST SLICE不是全站重做。它不重构详情/管理员编辑器，不重�
 
 ### Delivery / review gate
 
-仅两份新Markdown；不修改apps/**、packages/**、API、DB schema、permission semantics、AI runtime、CI。不写所有slice详细计划，不开implementation PR、不merge、不deploy。
+初稿的“两份 Markdown、不写实现计划”只对应当时交付。用户后续要求审计与优化计划，本次增加审计与第一切片实施计划并同步相关入口；apps/**、packages/**、API、DB schema、permission semantics、AI runtime、CI 源码没有改动。未提交、push、PR、merge 或 deploy。
 
-Docs可commit及push到指定branch。此文仍为等待Human Review的Stage Design，未实现、未批准任何slice。**DO NOT IMPLEMENT YET.**
+## 11. Development Contract Added After Audit
+
+1. **Task 0 先修状态正确性**：保存视图后的搜索词同步、搜索防抖卸载取消、详情关闭时保持对象自定义排序。三项有组件级失败复现，不把它们算作已修复。
+2. **第一切片范围冻结**：Shell/Header/Record List；详情只修返回状态，不重排内页；不顺带重做管理员编辑器和 AI 内容页。
+3. **保留完整能力**：搜索、字段筛选、视图管理、分页、排序、批量、导入导出、列设置、手机卡片；仅把低频配置移至可发现的二级入口。
+4. **验收按角色×视口×状态**：Admin/Employee × 1440/900/390；覆盖有数据、空结果、错误恢复、深链返回、键盘与焦点。必须真实浏览器验证，截图/几何数据与组件测试分别记账。
+5. **工程验证分层**：已有单元/typecheck/build/contracts 通过不抹去新增失败复现；AI E2E 固定地址导致的 setup 失败单列，不改隔离保护凑绿。
+6. **后续顺序与边界**：详情/跟进 → 员工工作台 → 管理配置；各自开工时细化实现，Production Essentials/Automation/AI 扩展不混入。
+
+完整任务、文件与命令以 [实施计划](../plans/2026-10-03-crm-product-experience-v2-implementation.md) 为准。状态：**IMPLEMENTATION NOT STARTED**。

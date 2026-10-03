@@ -2,7 +2,7 @@
 
 Date: 2026-10-03
 
-Status: STAGE DESIGN DRAFT — AWAITING HUMAN REVIEW — DO NOT IMPLEMENT YET
+Status: REVISED WITH AUDIT AND FIRST-SLICE PLAN — IMPLEMENTATION NOT STARTED
 
 Repository: Zhong0118/multi-tenant-CRM-builder
 
@@ -14,7 +14,7 @@ Docs branch: `docs/crm-product-experience-v2-design`
 
 把当前 CRM 从“功能已经很多，但部分页面仍像工程后台”，提升为“视觉统一、操作顺畅、信息架构清晰的现代 B2B CRM SaaS”。保留已有功能和 teal / green identity。此次交付是阶段方向，不是全部未来工作的实现合同。
 
-Workflow V1、Action Engine V1、Sales Workbench Lite、AI Assistant V1A 和 V1B 均接受为已完成基线；V1B = COMPLETED — MERGED AND VERIFIED。不重新审查、不重新实现。Production Essentials = PLANNED，本阶段不推进它。
+Workflow V1、Action Engine V1、Sales Workbench Lite、AI Assistant V1A 和 V1B 均接受为已完成基线；V1B = COMPLETED — MERGED AND VERIFIED。本轮接受为既有基线；2026-10-03 后续整体审计按用户新请求核验实现与测试，但不重复实现。Production Essentials = PLANNED，本阶段不推进它。
 
 ## Evidence and inspection boundary
 
@@ -36,7 +36,7 @@ Workflow V1、Action Engine V1、Sales Workbench Lite、AI Assistant V1A 和 V1B
 4. **Employee Workbench 没有充分体现“今天的工作”。** 我的跟进已经存在，但置于时间范围之后；运营组件、12 个新建/打开快捷入口以及业务表入口再次重复。需要让个人行动成为首页的第一层，而非新增另一套工作台。
 5. **Admin 的保存/预览/发布体验碎片化。** Object、Field Drawer、成员权限、Dashboard、Workflow 各自表达边界；Dashboard 的名称/默认/归档与发布按钮占用多行，900 下组件库位于画布之前，390 下首个画布控件在约 y=1252。Object Designer 在390明确转桌面，与 Dashboard 继续长表单的策略不一致。
 
-问题类型与方向详见 [Stage Design](<../specs/2026-10-03-crm-product-experience-v2-design.md>)。不输出优先级 Bug 列表、安全发现或测试缺口清单。
+问题类型与方向详见 [Stage Design](<../specs/2026-10-03-crm-product-experience-v2-design.md>)。初稿仅做体验方向；后续用户已要求整体检查 bug 和优化计划，现补充独立 [项目审计](../../audits/2026-10-03/project-review.md)，不要把初稿的排除项当作禁止本轮审计。
 
 ## Visual direction
 
@@ -59,8 +59,10 @@ Record List 是多种业务对象共同的高频入口，Admin 和 Employee 都�
 
 ## Delivery and stop boundary
 
-本轮仅新建本 Brief 和 Stage Design 两份 Markdown，允许 commit 并 push docs branch。不修改 apps/**、packages/**、API、数据库代码、权限、AI runtime、CI；不开 PR、不 merge、不 deploy、不启动 FIRST SLICE、不写详细 Implementation Plan。
+初稿只交付 Brief 和 Stage Design。后续用户要求整体审计并优化 V2 计划，因此本次增加审计、复现脚本与第一切片实施计划，并同步路线图入口。业务源码保持不变；没有提交、推送、PR、merge 或 deploy，也未启动产品实现。
 
 BACKEND CHANGES REQUIRED: **NO**，限于当前推荐范围。跨设备保存个人视图、统一 Activity 与 Follow-up 领域、新的全局搜索/计数/聚合等需求如果后续提出，标为 **BACKEND CHANGE REQUIRED**，不能伪装为前端体验整理。
 
-最终状态：**DO NOT IMPLEMENT YET — WAIT FOR HUMAN REVIEW**。
+开发入口：[First Slice Implementation Plan](../plans/2026-10-03-crm-product-experience-v2-implementation.md)。顺序：Task 0 修复三项已复现的记录状态 bug → Slice 1 公共框架与记录列表 → Slice 2 详情/跟进 → Slice 3 员工工作台 → Slice 4 管理配置。
+
+最终状态：**PLAN READY FOR DEVELOPMENT REVIEW — IMPLEMENTATION NOT STARTED**。本轮授权是审计与计划完善，未把方向稿或测试结果当作已完成实现。
