@@ -59,6 +59,27 @@ describe("RecordWorkflowPanel", () => {
     unsubscribes.forEach((unsubscribe) => unsubscribe());
     view.unmount(); client.clear();
   });
+  it("refreshes inactive workflow history before it remounts", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    let historyVersion = "before";
+    const key = ["workspace", "northwind", "record-workflow", "leads", "record-1", "history"];
+    await client.fetchQuery({ queryKey: key, queryFn: async () => ({ items: [], page: 1, limit: 20, total: 0, version: historyVersion }) });
+    const api: WorkflowApi = {
+      getDraft: vi.fn(), saveDraft: vi.fn(),
+      getRuntime: vi.fn().mockResolvedValue({ currentState: { key: "new", label: "新建", isTerminal: false }, availableTransitions: [{ key: "convert", label: "转化业务", requiredFieldKeys: [], effects: [] }], recordVersion: 7 }),
+      executeTransition: vi.fn(async () => { historyVersion = "after"; return { currentState: { key: "converted", label: "已转化", isTerminal: true }, availableTransitions: [], recordVersion: 8 }; }),
+      history: vi.fn().mockImplementation(async () => ({ items: [], page: 1, limit: 20, total: 0, version: historyVersion })),
+    };
+    const view = render(<QueryClientProvider client={client}><RecordWorkflowPanel tenantCode="northwind" objectCode="leads" recordId="record-1" recordVersion={7} api={api} /></QueryClientProvider>);
+    fireEvent.click(await screen.findByRole("button", { name: "转化业务" }));
+    await waitFor(() => expect(api.history).toHaveBeenCalled());
+    view.unmount();
+    const returning = new QueryObserver(client, { queryKey: key, queryFn: async () => ({ items: [], page: 1, limit: 20, total: 0, version: historyVersion }), staleTime: Infinity });
+    const unsubscribe = returning.subscribe(() => {});
+    await waitFor(() => expect(client.getQueryData<{ version: string }>(key)?.version).toBe("after"));
+    unsubscribe();
+    client.clear();
+  });
   it("shows employee transitions and executes one", async () => {
     const executeTransition = vi.fn().mockResolvedValue({
       currentState: { key: "won", label: "赢单", isTerminal: true },
