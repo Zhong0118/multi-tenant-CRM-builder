@@ -1,7 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { validatedReturnTo, sourceRecordHref } from "./source-navigation";
+import { validatedReturnTo, sourceRecordHref, markSourceReturnFocus, consumeSourceReturnFocus } from "./source-navigation";
 
 describe("record source navigation", () => {
+  it("consumes a local marker once and only for its exact tenant and source query", () => {
+    sessionStorage.clear();
+    markSourceReturnFocus("northwind", "/workspace/northwind/follow-ups?status=DONE&page=3");
+    expect(consumeSourceReturnFocus("other", "/workspace/other/follow-ups?status=DONE&page=3")).toBe(false);
+    expect(consumeSourceReturnFocus("northwind", "/workspace/northwind/follow-ups?status=DONE&page=2")).toBe(false);
+    expect(consumeSourceReturnFocus("northwind", "/workspace/northwind/follow-ups?status=DONE&page=3")).toBe(true);
+    expect(consumeSourceReturnFocus("northwind", "/workspace/northwind/follow-ups?status=DONE&page=3")).toBe(false);
+  });
+  it.each(["/workspace/other", "/workspace/northwind/settings", "/workspace/northwind?extra=1"])("never stores an invalid return marker %s", (source) => {
+    sessionStorage.clear();
+    markSourceReturnFocus("northwind", source);
+    expect(sessionStorage.getItem("crm:source-return-focus")).toBeNull();
+  });
   it.each([
     "/workspace/northwind?from=2026-10-01&to=2026-10-04",
     "/workspace/northwind/dashboards/sales?from=2026-10-01&to=2026-10-04",

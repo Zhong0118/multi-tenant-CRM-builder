@@ -107,9 +107,11 @@ describe("record workspace navigation", () => {
     await waitFor(() => expect(screen.getByRole("link", { name: "客户 A 链接" })).toHaveFocus());
   });
   it.each(["关闭", "删除"])("%s returns to the exact validated source", async (action) => {
+    sessionStorage.clear();
     render(<RecordWorkspace {...props} openRecord={record} returnTo="/workspace/northwind/follow-ups?status=DONE&page=3" />);
     fireEvent.click(screen.getByRole("button", { name: action }));
     await waitFor(() => expect(router.replace).toHaveBeenLastCalledWith("/workspace/northwind/follow-ups?status=DONE&page=3"));
+    expect(sessionStorage.getItem("crm:source-return-focus")).toBe("/workspace/northwind/follow-ups?status=DONE&page=3");
   });
   it("deletion rejects an unsafe source and preserves the exact current list fallback", async () => {
     render(<RecordWorkspace {...props} openRecord={record} returnTo="/workspace/other" />);

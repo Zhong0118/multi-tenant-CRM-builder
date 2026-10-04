@@ -1,3 +1,26 @@
+const SOURCE_RETURN_FOCUS_KEY = "crm:source-return-focus";
+
+export function markSourceReturnFocus(tenantCode: string, source: unknown): void {
+  const path = validatedReturnTo(tenantCode, source);
+  if (!path) return;
+  try {
+    window.sessionStorage.setItem(SOURCE_RETURN_FOCUS_KEY, path);
+  } catch {
+    // Storage can be blocked; returning to the source must still work.
+  }
+}
+
+export function consumeSourceReturnFocus(tenantCode: string, source: string): boolean {
+  if (!validatedReturnTo(tenantCode, source)) return false;
+  try {
+    if (window.sessionStorage.getItem(SOURCE_RETURN_FOCUS_KEY) !== source) return false;
+    window.sessionStorage.removeItem(SOURCE_RETURN_FOCUS_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Accept only known read surfaces; retain the original query encoding and order.
 export function validatedReturnTo(tenantCode: string, value: unknown): string | undefined {
   if (typeof value !== "string" || /[\\#\s\x00-\x1f]/.test(value)) return undefined;

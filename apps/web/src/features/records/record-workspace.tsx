@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { followUpQueryKeys } from "@/features/follow-ups/follow-up-api";
-import { validatedReturnTo } from "./source-navigation";
+import { markSourceReturnFocus, validatedReturnTo } from "./source-navigation";
 import { useEffect, useRef, useState } from "react";
 
 import type {
@@ -101,6 +101,7 @@ function RecordWorkspaceSession({
           followUpId={followUpId}
           onClose={() => {
             if (!validatedReturnTo(tenantCode, returnTo)) focusRecordId.current = record.id;
+            markSourceReturnFocus(tenantCode, returnTo);
             setRecord(undefined);
             router.replace(returnPath);
           }}
@@ -111,7 +112,10 @@ function RecordWorkspaceSession({
               client.invalidateQueries({ queryKey: followUpQueryKeys.root(tenantCode), refetchType: "all" }),
             ]);
             router.refresh();
-            if (!next) router.replace(returnPath);
+            if (!next) {
+              markSourceReturnFocus(tenantCode, returnTo);
+              router.replace(returnPath);
+            }
           }}
         />
       ) : null}

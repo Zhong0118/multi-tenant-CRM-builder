@@ -23,6 +23,19 @@ beforeEach(() => {
   vi.mocked(followUpApi.list).mockReset().mockImplementation(async (_tenant, query) => ({ items: [task], total: 61, limit: 20, page: query.page ?? 1, openCount: 0, overdueCount: 0 }));
 });
 describe("follow-up list URL state", () => {
+  it("focuses the exact list source heading once even while its request is pending", async () => {
+    vi.mocked(followUpApi.list).mockImplementation(() => new Promise(() => {}));
+    sessionStorage.setItem("crm:source-return-focus", "/workspace/northwind/follow-ups?status=DONE&page=3");
+    const view = mount();
+    const heading = screen.getByRole("heading", { name: "我的跟进待办" });
+    expect(heading).toHaveFocus();
+    expect(heading).toHaveAttribute("tabindex", "-1");
+    expect(sessionStorage.getItem("crm:source-return-focus")).toBeNull();
+    const radio = screen.getByRole("radio", { name: "已完成" });
+    radio.focus();
+    view.rerender(<QueryClientProvider client={new QueryClient()}><FollowUpList tenantCode="northwind" /></QueryClientProvider>);
+    expect(radio).toHaveFocus();
+  });
   it("reads direct URL state and carries it with the exact task to detail", async () => {
     mount();
     const link = await screen.findByRole("link", { name: "订单 A · 订单" });

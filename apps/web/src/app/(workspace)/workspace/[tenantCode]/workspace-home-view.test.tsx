@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
   DashboardRuntime,
@@ -9,9 +9,10 @@ import type {
 import { WorkspaceHomeView } from "./workspace-home-view";
 
 const refresh = vi.hoisted(() => vi.fn());
+const location = vi.hoisted(() => ({ path: "/workspace/northwind", search: "" }));
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/workspace/northwind",
-  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => location.path,
+  useSearchParams: () => new URLSearchParams(location.search),
   useRouter: () => ({ refresh }),
 }));
 
@@ -40,7 +41,51 @@ const objects = [
   },
 ];
 
+beforeEach(() => {
+  location.path = "/workspace/northwind";
+  location.search = "";
+  sessionStorage.clear();
+});
+
 describe("WorkspaceHomeView", () => {
+  it.each(["READY", "UNCONFIGURED", "FAILURE"] as const)("returns DOM focus once to the %s source heading, including a named dashboard", (state) => {
+    location.path = "/workspace/northwind/dashboards/sales";
+    location.search = "from=2026-10-01&to=2026-10-04";
+    sessionStorage.setItem("crm:source-return-focus", "/workspace/northwind/dashboards/sales?from=2026-10-01&to=2026-10-04");
+    const status = state === "FAILURE" ? { overviewFailure: { requestId: "req_focus" } } : { overview: state === "READY" ? readyOverview : emptyOverview("TENANT_ADMIN") };
+    const view = render(<WorkspaceHomeView tenantCode="northwind" tenantName="百杰" userName="张三" role="TENANT_ADMIN" businessObjects={objects} {...status} />);
+    const heading = screen.getByRole("heading", { level: 1 });
+    expect(heading).toHaveFocus();
+    expect(heading).toHaveAttribute("tabindex", "-1");
+    expect(sessionStorage.getItem("crm:source-return-focus")).toBeNull();
+    screen.getByRole("link", { name: /^订单$/ }).focus();
+    view.rerender(<WorkspaceHomeView tenantCode="northwind" tenantName="百杰" userName="张三" role="TENANT_ADMIN" businessObjects={objects} {...status} />);
+    expect(screen.getByRole("link", { name: /^订单$/ })).toHaveFocus();
+    location.path = "/workspace/northwind";
+    location.search = "";
+  });
+  it.each([
+    "/workspace/other", "/workspace/northwind/settings", "/workspace/northwind?from=2026-10-02",
+    "/workspace/northwind?extra=1", "https://evil.example/workspace/northwind",
+  ])("does not steal DOM focus for invalid or nonmatching marker %s", (marker) => {
+    location.path = "/workspace/northwind";
+    location.search = "";
+    sessionStorage.setItem("crm:source-return-focus", marker);
+    const control = document.createElement("button");
+    document.body.append(control);
+    control.focus();
+    render(<WorkspaceHomeView tenantCode="northwind" tenantName="百杰" userName="张三" role="TENANT_ADMIN" businessObjects={objects} overview={readyOverview} />);
+    expect(control).toHaveFocus();
+    control.remove();
+    sessionStorage.clear();
+  });
+
+  it("renders normally when user storage access is blocked", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementationOnce(() => { throw new Error("blocked"); });
+    render(<WorkspaceHomeView tenantCode="northwind" tenantName="百杰" userName="张三" role="TENANT_ADMIN" businessObjects={objects} overview={readyOverview} />);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("八月运营概览");
+  });
+
   it("puts personal tasks before trend dates without changing published widgets or publication", () => {
     const { container } = render(
       <WorkspaceHomeView
