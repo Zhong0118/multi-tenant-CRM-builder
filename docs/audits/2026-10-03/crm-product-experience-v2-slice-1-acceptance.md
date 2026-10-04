@@ -125,3 +125,8 @@ PASS 仅代表该格描述的实际路径；NOT OBSERVED 代表没有完整浏�
 - 无 published workflow 的 fixture 详情 workflow GET 返回409，属于既有业务状态；Next dev/jsdom getComputedStyle 噪声不作产品失败。
 - 历史 AI E2E hardcode `55433/crm_v1b_test` 属独立 setup 问题；本轮未使用该库，未验证真实 Provider/生产部署。
 - 六项远端检查以 Draft PR 最新 SHA 实查为准；本地测试通过不替代 Database Integration / Critical API E2E 的远端状态。
+
+
+## Post-merge status
+
+2026-10-04 PR #24已按仓库保护合并，merge `9cd2523319557d47fd877646716b01698d7e1193`；合并前最新 `4484ed9` 六门SUCCESS，run37198879692，无未解决review thread。此节不回填、不重算历史验收。手机390当前页回归确认第二页选择后菜单与抽屉均1条；两页手机/桌面真实组件请求断言见正式测试。当前用户已批准Slice2＋3联合实现，Slice4与部署未批准。

@@ -24,7 +24,7 @@
 | Sales Workbench Lite | **COMPLETED**（PR #9，合并提交 `a6e08b2`） | 员工首页固定 Personal Follow-up Workbench：全部待办 / 今日 / 已逾期 / 未来 7 个租户日历日；只读 `GET /workspaces/:tenantCode/follow-ups/workbench`（服务端解析 Actor、不接受 member 覆盖）；**overdue = `dueAt < now`**（与完整 Follow-up Domain 对齐）；**不新增 Dashboard widget、不改 publication schema、不加迁移**，完成动作复用既有 `PATCH /follow-ups/:id`。验收 `docs/audits/2026-09-17/sales-workbench-lite-acceptance.md` | 0.3–0.5× |
 | AI Assistant V1A | **COMPLETED**（PR A/B/C MERGED AND VERIFIED；#17 merge `b3bc59a`；browser walkthrough = VERIFIED；post-merge 六门 SUCCESS） | 只读 Ask / Analyze | 0.4–0.7× |
 | AI Assistant V1B | **COMPLETED — MERGED AND VERIFIED**（PR #22 MERGED；merge `fd0410fe4548704ee14e1027ac4d09a243195a70`；post-merge main CI run `36979987780` 六门 SUCCESS） | Proposal → Preview → Confirm → Typed Write → Audit；验收见 `docs/audits/2026-09-23/ai-assistant-v1b-acceptance.md` | 0.5–0.8× |
-| CRM Product Experience V2 | **SLICE 1 IMPLEMENTED — BROWSER ACCEPTANCE PASS — DRAFT PR / NOT MERGED; LATER SLICES PLANNED** | Task 0 与 Tasks 1–2 已实现：记录状态修复、公共 Shell/导航、Record List 控件层与共享 PageHeader；Task 3 已补独立HIDDEN fixture、两角色三宽度状态路径、表单/文件操作和批量/键盘证据，视觉、菜单键盘与两角色Fake AI确认/拒绝均已留证，批准范围浏览器验收PASS；最终SHA六门须实查，保持 Draft，Slice 2 未获进入批准；验收见 [Slice 1 acceptance](../../audits/2026-10-03/crm-product-experience-v2-slice-1-acceptance.md)。详情重构、员工首页与配置体验仍按计划保留 | 第一切片完成后再校准，不沿用旧倍数估计 |
+| CRM Product Experience V2 | **SLICE 1 MERGED (#24, 9cd2523); SLICES 2＋3 AUTHORIZED / ACTIVE; SLICE4 PLANNED** | Slice1当前页批量修复4484ed9六门SUCCESS后合并；当前联合交付详情/跟进活动与员工工作台，保持权限、领域、时区和已发布Dashboard。新PR不自动合并。 | 以实际交付为准 |
 | Production Essentials | PLANNED | 安全、日志、备份、监控、对象存储、生产配置 | 0.6–1.0× |
 | Email Adapter | OPTIONAL | 保留统一邮件接口，按需求接 Provider | 0.1–0.2× |
 
@@ -88,7 +88,7 @@ Engineering Gate Lite          ✅ COMPLETED（PR #4）
 → Engineering Gate Hardening   ✅ COMPLETED（PR #11/#12）
 → AI Assistant V1A             ✅ COMPLETED（PR #14/#16/#17；browser walkthrough VERIFIED；post-merge 六门 SUCCESS）
 → AI Assistant V1B             ✅ COMPLETED — MERGED AND VERIFIED（PR #22；post-merge 六门 SUCCESS）
-→ CRM Product Experience V2    SLICE 1 IMPLEMENTED — DRAFT PR #24，验收收口中；后续PLANNED
+→ CRM Product Experience V2    Slice1 MERGED；Slice2＋3联合ACTIVE；Slice4 PLANNED
 → Production Essentials        PLANNED（不随体验整理自动启动）
 → Optional Email Adapter
 ```
