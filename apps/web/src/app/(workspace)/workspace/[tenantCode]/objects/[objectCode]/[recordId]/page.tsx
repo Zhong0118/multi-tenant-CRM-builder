@@ -1,6 +1,7 @@
 import { SORTABLE_FIELD_TYPES } from "@/features/objects/object-types";
 import { RecordWorkspace } from "@/features/records/record-workspace";
 import { parseRecordQuery } from "@/features/records/record-query-state";
+import { validatedReturnTo } from "@/features/records/source-navigation";
 import {
   loadRecord,
   loadRecordPage,
@@ -65,6 +66,7 @@ export default async function RecordDetailPage({
       openRecord={record}
       initialEditing={initialEditing}
       followUpId={followUpId}
+      returnTo={validatedReturnTo(tenantCode, rawSearchParams.returnTo)}
     />
   );
 }

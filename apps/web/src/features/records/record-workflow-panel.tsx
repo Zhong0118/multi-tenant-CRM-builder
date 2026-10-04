@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { toApiError } from "@/lib/api/api-error";
 import { StatusTag } from "@/components/workbench/status-tag";
+import { followUpQueryKeys } from "@/features/follow-ups/follow-up-api";
 import {
   workflowApi as defaultWorkflowApi,
   type WorkflowApi,
@@ -19,7 +20,7 @@ export interface RecordWorkflowPanelProps {
   objectCode: string;
   recordId: string;
   recordVersion: number;
-  onRecordChanged?: () => void;
+  onRecordChanged?: () => void | Promise<void>;
   api?: WorkflowApi;
 }
 
@@ -65,10 +66,15 @@ export function RecordWorkflowPanel({
         transitionKey,
         runtime.data?.recordVersion ?? recordVersion,
       ),
-    onSuccess: (next) => {
+    onSuccess: async (next) => {
       queryClient.setQueryData(runtimeKey, next);
-      void queryClient.invalidateQueries({ queryKey: historyKey });
-      onRecordChanged?.();
+      // Actions may create records in another object and schedule follow-ups.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: historyKey }),
+        queryClient.invalidateQueries({ queryKey: ["workspace", tenantCode, "records"] }),
+        queryClient.invalidateQueries({ queryKey: followUpQueryKeys.root(tenantCode) }),
+        onRecordChanged?.(),
+      ]);
     },
   });
 

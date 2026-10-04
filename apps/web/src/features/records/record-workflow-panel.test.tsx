@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -23,6 +23,26 @@ function renderPanel(api: WorkflowApi) {
 }
 
 describe("RecordWorkflowPanel", () => {
+  it("refreshes action-created record lists and tasks even without a detail callback", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    let changed = false;
+    const keys = [["workspace", "northwind", "records", "customers"], ["workspace", "northwind", "follow-ups", "workbench"]];
+    const observers = keys.map((queryKey) => new QueryObserver(client, { queryKey, queryFn: async () => changed ? "action-created" : "before" }));
+    const unsubscribes = observers.map((observer) => observer.subscribe(() => {}));
+    await waitFor(() => keys.forEach((key) => expect(client.getQueryData(key)).toBe("before")));
+    const api: WorkflowApi = {
+      getDraft: vi.fn(), saveDraft: vi.fn(),
+      getRuntime: vi.fn().mockResolvedValue({ currentState: { key: "new", label: "新建", isTerminal: false }, availableTransitions: [{ key: "convert", label: "转化业务", requiredFieldKeys: [], effects: [] }], recordVersion: 7 }),
+      executeTransition: vi.fn(async () => { changed = true; return { currentState: { key: "converted", label: "已转化", isTerminal: true }, availableTransitions: [], recordVersion: 8 }; }),
+      history: vi.fn().mockResolvedValue({ items: [], page: 1, limit: 20, total: 0 }),
+    };
+    const view = render(<QueryClientProvider client={client}><RecordWorkflowPanel tenantCode="northwind" objectCode="leads" recordId="record-1" recordVersion={7} api={api} /></QueryClientProvider>);
+    fireEvent.click(await screen.findByRole("button", { name: "转化业务" }));
+    await waitFor(() => keys.forEach((key) => expect(client.getQueryData(key)).toBe("action-created")));
+    expect(api.executeTransition).toHaveBeenCalledWith("northwind", "leads", "record-1", "convert", 7);
+    unsubscribes.forEach((unsubscribe) => unsubscribe());
+    view.unmount(); client.clear();
+  });
   it("shows employee transitions and executes one", async () => {
     const executeTransition = vi.fn().mockResolvedValue({
       currentState: { key: "won", label: "赢单", isTerminal: true },

@@ -34,7 +34,7 @@ export interface RecordDetailDrawerProps {
   followUpId?: string;
   api?: RecordApi;
   onClose: () => void;
-  onChanged: (record: RecordSummary | null) => void;
+  onChanged: (record: RecordSummary | null) => void | Promise<void>;
 }
 
 /**
@@ -86,8 +86,8 @@ export function RecordDetailDrawer({
   const remove = useMutation({
     mutationFn: () =>
       api.remove(tenantCode, schema.object.code, record.id, record.version),
-    onSuccess: () => {
-      onChanged(null);
+    onSuccess: async () => {
+      await onChanged(null);
       onClose();
     },
     onError: (caught) => {
@@ -141,7 +141,7 @@ export function RecordDetailDrawer({
           api={api}
           onSaved={(saved) => {
             setEditing(false);
-            onChanged(saved);
+            return onChanged(saved);
           }}
           onCancel={() => setEditing(false)}
         />
@@ -163,7 +163,7 @@ export function RecordDetailDrawer({
             recordId={record.id}
             recordVersion={record.version}
             onRecordChanged={() =>
-              void api
+              api
                 .detail(tenantCode, schema.object.code, record.id)
                 .then(onChanged)
             }

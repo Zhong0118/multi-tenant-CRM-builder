@@ -1,11 +1,13 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render as rtlRender, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
+import Link from "next/link";
 import { RecordWorkspace, type RecordWorkspaceProps } from "./record-workspace";
 import type { RecordSummary } from "@/features/objects/object-types";
 import { DEFAULT_RECORD_QUERY } from "./record-query-state";
-const router = vi.hoisted(() => ({ replace: vi.fn(), refresh: vi.fn() }));
+const router = vi.hoisted(() => ({ replace: vi.fn(), refresh: vi.fn(), push: vi.fn(), back: vi.fn(), forward: vi.fn(), prefetch: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
-vi.mock("./record-list", () => ({ RecordList: () => <div>列表</div> }));
+vi.mock("./record-list", () => ({ RecordList: () => <div>列表<Link href="/workspace/northwind/objects/customers/record-a?page=2">客户 A 链接</Link></div> }));
 vi.mock("./record-detail-drawer", () => ({
   RecordDetailDrawer: ({
     record,
@@ -18,13 +20,14 @@ vi.mock("./record-detail-drawer", () => ({
     initialEditing: boolean;
     followUpId?: string;
     onClose: () => void;
-    onChanged: (record: RecordSummary) => void;
+    onChanged: (record: RecordSummary | null) => void;
   }) => (
     <div role="dialog">
       <span>{record.title}</span>
       <span>{initialEditing ? "编辑模式" : "查看模式"}</span>
       {followUpId && <span>定位跟进：{followUpId}</span>}
       <button onClick={onClose}>关闭</button>
+      <button onClick={() => onChanged(null)}>删除</button>
       <button
         onClick={() =>
           onChanged({ ...record, title: "已保存", version: record.version + 1 })
@@ -92,7 +95,45 @@ const props: RecordWorkspaceProps = {
   isAdmin: true,
 };
 
+function render(ui: React.ReactNode, client = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
+  return rtlRender(ui, { wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
+}
+
 describe("record workspace navigation", () => {
+  it("restores focus to the retained record link on ordinary list close", async () => {
+    render(<RecordWorkspace {...props} openRecord={record} />);
+    vi.spyOn(screen.getByRole("link", { name: "客户 A 链接" }), "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
+    fireEvent.click(screen.getByRole("button", { name: "关闭" }));
+    await waitFor(() => expect(screen.getByRole("link", { name: "客户 A 链接" })).toHaveFocus());
+  });
+  it.each(["关闭", "删除"])("%s returns to the exact validated source", async (action) => {
+    render(<RecordWorkspace {...props} openRecord={record} returnTo="/workspace/northwind/follow-ups?status=DONE&page=3" />);
+    fireEvent.click(screen.getByRole("button", { name: action }));
+    await waitFor(() => expect(router.replace).toHaveBeenLastCalledWith("/workspace/northwind/follow-ups?status=DONE&page=3"));
+  });
+  it("deletion rejects an unsafe source and preserves the exact current list fallback", async () => {
+    render(<RecordWorkspace {...props} openRecord={record} returnTo="/workspace/other" />);
+    fireEvent.click(screen.getByRole("button", { name: "删除" }));
+    await waitFor(() => expect(router.replace).toHaveBeenLastCalledWith("/workspace/northwind/objects/customers?page=2&search=%E5%AE%A2%E6%88%B7"));
+  });
+  it("record changes refresh all tenant record lists and related task caches", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    let title = "old";
+    const keys = [
+      ["workspace", "northwind", "records", "customers"],
+      ["workspace", "northwind", "records", "action-created-object"],
+      ["workspace", "northwind", "follow-ups", "workbench"],
+    ];
+    const observers = keys.map((queryKey) => new QueryObserver(client, { queryKey, queryFn: async () => title }));
+    const unsubscribes = observers.map((observer) => observer.subscribe(() => {}));
+    await waitFor(() => keys.forEach((key) => expect(client.getQueryData(key)).toBe("old")));
+    render(<RecordWorkspace {...props} openRecord={record} />, client);
+    title = "new";
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    await waitFor(() => keys.forEach((key) => expect(client.getQueryData(key)).toBe("new")));
+    unsubscribes.forEach((unsubscribe) => unsubscribe());
+    client.clear();
+  });
   it("preserves explicit sort when closing with a different published default", async () => {
     const { parseRecordQuery } = await import("./record-query-state");
     const publishedSort = { field: "recordNo", direction: "asc" } as const;
