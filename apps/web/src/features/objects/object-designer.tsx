@@ -14,9 +14,11 @@ import {
   Switch,
   Typography,
 } from "antd";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { StatusTag } from "@/components/workbench/status-tag";
 import { toApiError } from "@/lib/api/api-error";
 
@@ -54,12 +56,7 @@ import { WorkflowDesigner } from "./workflow-designer";
 import styles from "./objects.module.css";
 
 type Section =
-  | "basics"
-  | "fields"
-  | "view"
-  | "permissions"
-  | "workflow"
-  | "publications";
+  "basics" | "fields" | "view" | "permissions" | "workflow" | "publications";
 
 const SECTIONS: Array<{ key: Section; label: string }> = [
   { key: "basics", label: "基本设置" },
@@ -319,7 +316,8 @@ export function ObjectDesigner({
   // A draft that never published has no history to keep, so it is deleted
   // outright; the API refuses this once a publication exists.
   const removeDraft = useMutation({
-    mutationFn: () => api.removeDraft(tenantCode, objectId, draft.object.version),
+    mutationFn: () =>
+      api.removeDraft(tenantCode, objectId, draft.object.version),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ["workspace", tenantCode, "object-definitions"],
@@ -333,69 +331,87 @@ export function ObjectDesigner({
 
   return (
     <>
-      <p className={styles.desktopOnly}>
-        业务表配置需要较宽的编辑区域，请在桌面端完成。
-      </p>
+      <div className={styles.desktopOnly}>
+        <p>
+          {draft.object.name}：业务表配置需要较宽的编辑区域，请在桌面端完成。
+        </p>
+        <Link href={`/workspace/${tenantCode}/settings/objects`}>
+          返回业务表列表
+        </Link>
+      </div>
 
       <div className={styles.designer}>
         <div style={{ gridColumn: "1 / -1" }}>
-          <header className={styles.designerHeader}>
-            <div className={styles.designerIdentity}>
-              <span className={styles.eyebrow}>
-                BUSINESS TABLE CONFIGURATION
-              </span>
-              <h1>{draft.object.name}</h1>
-              <div className={styles.designerMeta}>
+          <PageHeader
+            title={draft.object.name}
+            status={
+              <StatusTag
+                tone={
+                  draft.object.hasUnpublishedChanges ? "warning" : "success"
+                }
+              >
+                {objectStatusLabel(draft.object)}
+              </StatusTag>
+            }
+            description={
+              <>
                 <span className={styles.stableKey}>
                   {objectStableId(tenantCode, draft.object.code)}
-                </span>
-                <StatusTag
-                  tone={
-                    draft.object.hasUnpublishedChanges ? "warning" : "success"
-                  }
+                </span>{" "}
+                · {draft.activeRecordCount} 条业务记录
+              </>
+            }
+            extra={
+              <div className={styles.designerActions}>
+                <Button
+                  className={styles.compactPreviewButton}
+                  aria-label="打开员工端预览"
+                  onClick={() => setPreviewOpen(true)}
                 >
-                  {objectStatusLabel(draft.object)}
-                </StatusTag>
-                <Typography.Text type="secondary">
-                  {draft.activeRecordCount} 条业务记录
-                </Typography.Text>
-              </div>
-            </div>
-            <div className={styles.designerActions}>
-              <Button
-                className={styles.compactPreviewButton}
-                aria-label="打开员工端预览"
-                onClick={() => setPreviewOpen(true)}
-              >
-                员工端预览
-              </Button>
-              <Button
-                type="primary"
-                disabled={archived}
-                loading={analyze.isPending}
-                onClick={() => analyze.mutate()}
-              >
-                发布变更
-              </Button>
-              {draft.object.publicationNumber === null ? (
-                <Popconfirm
-                  title="删除这个业务表草稿？"
-                  description="它从未发布，删除后不会保留配置，也不能恢复。"
-                  okText="确认删除"
-                  cancelText="取消"
-                  onConfirm={() => removeDraft.mutate()}
+                  员工端预览
+                </Button>
+                <Button
+                  type="primary"
+                  disabled={archived}
+                  loading={analyze.isPending}
+                  onClick={() => analyze.mutate()}
                 >
-                  <Button
-                    danger
-                    loading={removeDraft.isPending}
-                    disabled={archived}
+                  发布变更
+                </Button>
+                {draft.object.publicationNumber === null ? (
+                  <Popconfirm
+                    title="删除这个业务表草稿？"
+                    description="它从未发布，删除后不会保留配置，也不能恢复。"
+                    okText="确认删除"
+                    cancelText="取消"
+                    onConfirm={() => removeDraft.mutate()}
                   >
-                    删除草稿
-                  </Button>
-                </Popconfirm>
-              ) : null}
-            </div>
-          </header>
+                    <Button
+                      danger
+                      loading={removeDraft.isPending}
+                      disabled={archived}
+                    >
+                      删除草稿
+                    </Button>
+                  </Popconfirm>
+                ) : null}
+              </div>
+            }
+          />
+          <div className={styles.designerContext}>
+            <strong>
+              正在编辑：{SECTIONS.find((item) => item.key === section)?.label}
+            </strong>
+            <span>草稿修订 {draft.object.version}</span>
+            <span>
+              {draft.object.publicationNumber === null
+                ? "员工端尚未发布"
+                : `员工使用已发布版本 v${draft.object.publicationNumber}`}
+            </span>
+          </div>
+          <p className={styles.saveEffect}>
+            发布前会检查变更；确认发布后才更新员工使用的版本。
+          </p>
 
           {notice ? (
             <Alert
@@ -540,6 +556,12 @@ export function ObjectDesigner({
 
       <FieldEditorDrawer
         field={editingField}
+        objectContext={{
+          name: draft.object.name,
+          saveEffect:
+            "保存字段直接写入对象草稿；字段访问变更随后单独保存，发布后员工端生效。",
+        }}
+        error={error}
         saving={saveField.isPending}
         onClose={() => setEditingField(null)}
         onSubmit={(values) => {
@@ -659,13 +681,18 @@ function BasicsSection({
           />
         </Form.Item>
       </Form>
-      <Button
-        type="primary"
-        loading={saving}
-        onClick={() => onSave({ name, titleFieldKey, description })}
-      >
-        保存基本设置
-      </Button>
+      <div className={styles.sectionActions}>
+        <Button
+          type="primary"
+          loading={saving}
+          onClick={() => onSave({ name, titleFieldKey, description })}
+        >
+          保存基本设置
+        </Button>
+        <Typography.Text type="secondary">
+          仅保存本节到对象草稿；发布后员工端生效。
+        </Typography.Text>
+      </div>
     </section>
   );
 }
@@ -998,23 +1025,28 @@ function DefaultViewSection({
           </Form.Item>
         </div>
       </Form>
-      <Button
-        type="primary"
-        loading={saving}
-        disabled={name.trim() === "" || columnFieldKeys.length === 0}
-        onClick={() =>
-          onSave({
-            name: name.trim(),
-            columnFieldKeys,
-            searchFieldKeys: searchFieldKeys.filter(
-              (fieldKey) => fieldKey !== draft.object.titleFieldKey,
-            ),
-            sort: { field: sortField, direction: sortDirection },
-          })
-        }
-      >
-        保存列表视图
-      </Button>
+      <div className={styles.sectionActions}>
+        <Button
+          type="primary"
+          loading={saving}
+          disabled={name.trim() === "" || columnFieldKeys.length === 0}
+          onClick={() =>
+            onSave({
+              name: name.trim(),
+              columnFieldKeys,
+              searchFieldKeys: searchFieldKeys.filter(
+                (fieldKey) => fieldKey !== draft.object.titleFieldKey,
+              ),
+              sort: { field: sortField, direction: sortDirection },
+            })
+          }
+        >
+          保存列表视图
+        </Button>
+        <Typography.Text type="secondary">
+          仅保存本节到对象草稿；发布后员工端生效。
+        </Typography.Text>
+      </div>
     </section>
   );
 }
@@ -1108,15 +1140,20 @@ function PermissionsSection({
         <Typography.Text type="secondary">
           本切片不授予员工删除权限，软删除仅公司管理员可执行。
         </Typography.Text>
-        <Button
-          type="primary"
-          loading={saving}
-          onClick={() =>
-            onSave({ canCreate, canRead, canUpdate, readScope, updateScope })
-          }
-        >
-          保存员工权限
-        </Button>
+        <div className={styles.sectionActions}>
+          <Button
+            type="primary"
+            loading={saving}
+            onClick={() =>
+              onSave({ canCreate, canRead, canUpdate, readScope, updateScope })
+            }
+          >
+            保存员工权限
+          </Button>
+          <Typography.Text type="secondary">
+            仅保存本节到对象草稿；发布后员工端生效。
+          </Typography.Text>
+        </div>
       </Space>
     </section>
   );

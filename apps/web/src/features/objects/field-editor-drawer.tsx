@@ -50,6 +50,7 @@ export interface FieldDraftValues {
 export interface FieldEditorDrawerProps {
   field: ConfigurableFieldView | null;
   saving?: boolean;
+  objectContext?: { name: string; saveEffect: string };
   error?: string;
   onSubmit: (values: FieldDraftValues) => void;
   onClose: () => void;
@@ -76,6 +77,7 @@ export function FieldEditorDrawer(props: FieldEditorDrawerProps) {
 function FieldEditor({
   field,
   saving = false,
+  objectContext,
   error,
   onSubmit,
   onClose,
@@ -97,7 +99,11 @@ function FieldEditor({
       className={styles.fieldDrawer}
       title={
         <div className={styles.drawerTitle}>
-          <span>FIELD CONFIGURATION</span>
+          <span>
+            {objectContext
+              ? `${objectContext.name} / 字段配置`
+              : "FIELD CONFIGURATION"}
+          </span>
           <div>
             <strong>{field.label}</strong>
             <StatusTag tone={field.status === "ACTIVE" ? "success" : "neutral"}>
@@ -111,7 +117,9 @@ function FieldEditor({
       destroyOnHidden
       footer={
         <div className={styles.fieldDrawerFooter}>
-          <span>保存后仍需保存对象或模板草稿。</span>
+          <span>
+            {objectContext?.saveEffect ?? "保存后仍需保存对象或模板草稿。"}
+          </span>
           <Space>
             <Button onClick={onClose}>取消</Button>
             <Button

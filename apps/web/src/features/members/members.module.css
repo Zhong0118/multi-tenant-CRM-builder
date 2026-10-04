@@ -176,3 +176,12 @@
     text-align: center;
   }
 }
+
+.accessEffective {
+  margin: 16px 0 0;
+  padding-block: 12px;
+  border-block: 1px solid var(--border-default);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 22px;
+}

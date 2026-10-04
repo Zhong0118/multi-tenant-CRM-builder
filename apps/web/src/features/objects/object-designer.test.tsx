@@ -9,6 +9,8 @@ import {
 import { describe, expect, it, vi } from "vitest";
 
 import { ObjectDesigner } from "./object-designer";
+import { FieldEditorDrawer } from "./field-editor-drawer";
+import type { ConfigurableFieldView } from "./configuration-view";
 import type { ObjectApi } from "./object-api";
 import type { ObjectDraft, ObjectDraftField } from "./object-types";
 
@@ -131,12 +133,61 @@ function renderDesigner(initialDraft: ObjectDraft, api: ObjectApi) {
 }
 
 describe("ObjectDesigner configuration ledger", () => {
+  it("identifies the editing section, draft and employee live version with a mobile return path", () => {
+    renderDesigner(draft(), objectApi());
+    expect(screen.getByText("正在编辑：字段")).toBeInTheDocument();
+    expect(screen.getByText("草稿修订 4")).toBeInTheDocument();
+    expect(screen.getByText("员工使用已发布版本 v3")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "返回业务表列表" }),
+    ).toHaveAttribute("href", "/workspace/northwind/settings/objects");
+    expect(
+      screen.getByText("发布前会检查变更；确认发布后才更新员工使用的版本。"),
+    ).toBeInTheDocument();
+    for (const [section, save] of [
+      ["基本设置", "保存基本设置"],
+      ["列表视图", "保存列表视图"],
+      ["员工权限", "保存员工权限"],
+    ]) {
+      fireEvent.click(screen.getByRole("button", { name: section }));
+      expect(screen.getByText(`正在编辑：${section}`)).toBeInTheDocument();
+      const action = screen.getByRole("button", { name: save }).parentElement!;
+      expect(
+        within(action).getByText("仅保存本节到对象草稿；发布后员工端生效。"),
+      ).toBeInTheDocument();
+    }
+  });
   it("shows the stable identity as tenantCode plus objectCode", () => {
     renderDesigner(draft(), objectApi());
     fireEvent.click(screen.getByRole("button", { name: "基本设置" }));
     expect(screen.getByText("northwind + customers")).toBeInTheDocument();
     expect(
       screen.getByText(/稳定标识是 northwind \+ 业务表代码/),
+    ).toBeInTheDocument();
+  });
+
+  it("explains that object field save persists the draft while the shared default still needs parent save", () => {
+    const view = renderDesigner(draft(), objectApi());
+    fireEvent.click(screen.getByRole("button", { name: "配置字段 客户名称" }));
+    expect(screen.getByText("客户资料 / 字段配置")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "保存字段直接写入对象草稿；字段访问变更随后单独保存，发布后员工端生效。",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("保存后仍需保存对象或模板草稿。"),
+    ).not.toBeInTheDocument();
+    view.unmount();
+    render(
+      <FieldEditorDrawer
+        field={field({}) as unknown as ConfigurableFieldView}
+        onSubmit={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText("保存后仍需保存对象或模板草稿。"),
     ).toBeInTheDocument();
   });
 

@@ -67,6 +67,94 @@ function panel(objectName: string) {
 }
 
 describe("MemberObjectAccess", () => {
+  it("keeps saved mode and server effective access distinct from an unsaved override", async () => {
+    const effective = {
+      ...row().effective,
+      canCreate: false,
+      canUpdate: false,
+      readScope: "ALL" as const,
+      updateScope: "NONE" as const,
+    };
+    const api = accessApi({
+      set: vi
+        .fn()
+        .mockResolvedValue(
+          row({ mode: "OVERRIDE", override: row().inherited, effective }),
+        ),
+    });
+    renderAccess(
+      <MemberObjectAccess
+        tenantCode="northwind"
+        memberId="member-lin"
+        memberName="林员工"
+        initialRows={[row({ effective })]}
+        api={api}
+      />,
+    );
+    const scope = panel("客户资料");
+    expect(within(scope).getByText("已生效：跟随员工默认")).toBeInTheDocument();
+    expect(
+      within(scope).getByText(
+        "当前有效权限：查看 · 查看全部记录 · 修改无权访问",
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(within(scope).getByRole("radio", { name: "成员覆盖" }));
+    expect(within(scope).getByText("已生效：跟随员工默认")).toBeInTheDocument();
+    expect(
+      within(scope).getByText("正在编辑成员覆盖；保存后立即生效，无需发布。"),
+    ).toBeInTheDocument();
+    expect(api.set).not.toHaveBeenCalled();
+    fireEvent.click(within(scope).getByRole("button", { name: "保存覆盖" }));
+    expect(
+      await within(scope).findByText("已生效：成员覆盖"),
+    ).toBeInTheDocument();
+    expect(
+      within(scope).getByText(
+        "当前有效权限：查看 · 查看全部记录 · 修改无权访问",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("保存已立即生效，无需重新发布对象。"),
+    ).toBeInTheDocument();
+  });
+
+  it("retains saved override and local input if restoring defaults fails", async () => {
+    const api = accessApi({
+      set: vi
+        .fn()
+        .mockRejectedValue({
+          code: "SERVICE_UNAVAILABLE",
+          message: "保存失败",
+          fieldErrors: {},
+          status: 503,
+          requestId: "req_save",
+        }),
+    });
+    renderAccess(
+      <MemberObjectAccess
+        tenantCode="northwind"
+        memberId="member-lin"
+        memberName="林员工"
+        initialRows={[row({ mode: "OVERRIDE", override: row().inherited })]}
+        api={api}
+      />,
+    );
+    fireEvent.click(within(panel("客户资料")).getByLabelText("可以新建记录"));
+    fireEvent.click(
+      within(panel("客户资料")).getByRole("radio", { name: "使用员工默认" }),
+    );
+    await screen.findByText(/保存失败/);
+    expect(
+      within(panel("客户资料")).getByText("已生效：成员覆盖"),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      within(panel("客户资料")).getByRole("radio", { name: "成员覆盖" }),
+    );
+    expect(
+      within(panel("客户资料")).getByLabelText("可以新建记录"),
+    ).not.toBeChecked();
+  });
+
   it("lists every published object with the employee default it inherits", () => {
     renderAccess(
       <MemberObjectAccess

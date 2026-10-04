@@ -154,6 +154,7 @@ export function MemberObjectAccess({
           showIcon
           closable
           title={notice}
+          description="保存已立即生效，无需重新发布对象。"
           onClose={() => setNotice(undefined)}
         />
       ) : null}
@@ -185,7 +186,7 @@ function ObjectAccessPanel({
   onSave: (input: MemberObjectAccessInput) => void;
 }) {
   const [draft, setDraft] = useState<MemberObjectPolicy>(
-    () => row.override ?? row.inherited,
+    () => row.override ?? row.effective,
   );
   const overriding = row.mode === "OVERRIDE";
 
@@ -194,12 +195,16 @@ function ObjectAccessPanel({
       onSave({ mode: "INHERIT" });
       return;
     }
-    // Seed the override from what the member effectively has today, so turning
-    // it on changes nothing until the administrator decides what to change.
-    setDraft(row.override ?? row.inherited);
+    // Keep the local policy when switching modes, including after a failed save.
   }
 
   const [expanded, setExpanded] = useState(overriding);
+  const [savedRow, setSavedRow] = useState(row);
+  if (savedRow !== row) {
+    setSavedRow(row);
+    setExpanded(row.mode === "OVERRIDE");
+    setDraft(row.override ?? row.effective);
+  }
 
   return (
     <section
@@ -213,10 +218,11 @@ function ObjectAccessPanel({
           <span className={styles.accessCode}>{row.objectCode}</span>
         </div>
         <div className={styles.accessModeControl}>
-          <StatusTag tone={expanded ? "warning" : "info"}>
-            {expanded ? "单独配置" : "跟随默认"}
+          <StatusTag tone={overriding ? "warning" : "info"}>
+            {overriding ? "已生效：成员覆盖" : "已生效：跟随员工默认"}
           </StatusTag>
           <Radio.Group
+            disabled={saving}
             value={expanded ? "OVERRIDE" : "INHERIT"}
             onChange={(event) => {
               const mode = event.target.value as "INHERIT" | "OVERRIDE";
@@ -231,12 +237,18 @@ function ObjectAccessPanel({
         </div>
       </header>
 
+      <p className={styles.accessEffective}>
+        当前有效权限：{describePolicy(row.effective)}
+      </p>
       <p className={styles.accessInherited}>
         员工默认：{describePolicy(row.inherited)}
       </p>
 
       {expanded ? (
         <Form component={false} layout="vertical">
+          <p className={styles.accessInherited}>
+            正在编辑成员覆盖；保存后立即生效，无需发布。
+          </p>
           <div className={styles.accessGrid}>
             <Form.Item label="可以新建记录" htmlFor={`${row.objectId}-create`}>
               <Switch
@@ -304,7 +316,7 @@ function ObjectAccessPanel({
             </Button>
             <Typography.Text type="secondary">
               覆盖会整条替换 {memberName}{" "}
-              在该对象上的员工默认权限。本切片不授予员工删除权限。
+              在该对象上的员工默认权限；保存后立即生效。字段访问仍来自对象发布版本，不授予员工删除权限。
             </Typography.Text>
           </Space>
         </Form>
