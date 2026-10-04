@@ -1,0 +1,163 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-reading);
+  background: var(--paper);
+}
+
+.sectionHeading,
+.saveBar,
+.actionEditorHead,
+.actionStepHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panel h2,
+.panel h3,
+.panel h4,
+.actionEditor h4,
+.actionStep h5 {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.panel h2 {
+  font-size: 20px;
+}
+.panel h3 {
+  font-size: 18px;
+}
+.panel h4,
+.actionEditor h4 {
+  font-size: 16px;
+}
+.actionStep h5 {
+  font-size: 14px;
+}
+
+.configurationSection {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  border-top: 1px solid var(--rule);
+  padding-top: 16px;
+}
+
+.stateRow,
+.transitionFields,
+.actionStepForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  width: 100%;
+}
+
+.control,
+.actionField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 180px;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.transition {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.saveBar {
+  border-top: 1px solid var(--rule);
+  padding-top: 16px;
+}
+.saveBar > :first-child {
+  flex: 1 1 320px;
+  max-width: 70ch;
+}
+
+.actionEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  border-left: 3px solid var(--rule);
+  background: var(--bg-page);
+}
+
+.actionEditorHead > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.actionStepList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.actionStep {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  background: var(--paper);
+}
+.actionMappings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.actionMappingHead,
+.actionMappingRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.actionMappingHead {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.actionMappingHead span {
+  min-width: 160px;
+}
+.actionErrorList {
+  margin: 0;
+  padding-left: 18px;
+}
+.actionErrorList code {
+  margin-right: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}

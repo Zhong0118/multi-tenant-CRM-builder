@@ -28,7 +28,7 @@ import {
   type WorkflowActionType,
 } from "./workflow-types";
 
-import styles from "./objects.module.css";
+import styles from "./workflow-configuration.module.css";
 
 /**
  * The ordered Action step editor of ONE Transition (§33).
@@ -234,6 +234,14 @@ export function dueAtFieldReferenceError(
   return `「${field.label}」不是日期或时间字段，不能作为跟进时间。`;
 }
 
+const ACTION_EFFECTS: Record<WorkflowActionType, string> = {
+  CREATE_RECORD: "创建一条业务记录",
+  UPDATE_RECORD: "更新当前记录字段",
+  CREATE_RELATION: "建立记录关联",
+  CREATE_FOLLOW_UP: "安排下一步跟进",
+  ASSIGN_OWNER: "将当前记录分配给执行人",
+};
+
 export function WorkflowActionEditor({
   transitionIndex,
   actions,
@@ -262,7 +270,7 @@ export function WorkflowActionEditor({
     <section className={styles.actionEditor} aria-label={`执行动作 ${stepNumber}`}>
       <div className={styles.actionEditorHead}>
         <div>
-          <Typography.Text strong>执行动作</Typography.Text>
+          <h4>执行动作</h4>
           <Typography.Text type="secondary">
             {" "}
             按顺序执行；每个流程动作最多 {MAX_ACTIONS_PER_TRANSITION} 个执行动作。
@@ -287,104 +295,107 @@ export function WorkflowActionEditor({
       ) : null}
 
       {actions.length === 0 ? (
-        <Typography.Text type="secondary">尚未配置执行动作。</Typography.Text>
+        <Typography.Text type="secondary">不配置执行动作时，仅变更流程状态。</Typography.Text>
       ) : null}
 
-      {actions.map((action, index) => {
-        const actionErrors = stepErrors.get(index) ?? [];
-        return (
-          <div
-            key={`action-step-${index}`}
-            className={styles.actionStep}
-            data-action-step={index + 1}
-          >
-            <div className={styles.actionStepHead}>
-              <Typography.Text strong>步骤 {index + 1}</Typography.Text>
-              <Space size={4}>
-                <Button
-                  size="small"
-                  aria-label={`上移步骤 ${stepNumber}-${index + 1}`}
-                  disabled={index === 0}
-                  onClick={() => onChange(moveAt(actions, index, index - 1))}
-                >
-                  上移
-                </Button>
-                <Button
-                  size="small"
-                  aria-label={`下移步骤 ${stepNumber}-${index + 1}`}
-                  disabled={index === actions.length - 1}
-                  onClick={() => onChange(moveAt(actions, index, index + 1))}
-                >
-                  下移
-                </Button>
-                <Button
-                  size="small"
-                  danger
-                  aria-label={`删除步骤 ${stepNumber}-${index + 1}`}
-                  onClick={() =>
-                    onChange(actions.filter((_, current) => current !== index))
-                  }
-                >
-                  删除
-                </Button>
-              </Space>
-            </div>
+      <ol className={styles.actionStepList} aria-label={`顺序执行步骤 ${stepNumber}`}>
+        {actions.map((action, index) => {
+          const actionErrors = stepErrors.get(index) ?? [];
+          return (
+            <li
+              key={`action-step-${index}`}
+              className={styles.actionStep}
+              data-action-step={index + 1}
+            >
+              <div className={styles.actionStepHead}>
+                <h5>步骤 {index + 1}</h5>
+                <Space size={4}>
+                  <Button
+                    size="small"
+                    aria-label={`上移步骤 ${stepNumber}-${index + 1}`}
+                    disabled={index === 0}
+                    onClick={() => onChange(moveAt(actions, index, index - 1))}
+                  >
+                    上移
+                  </Button>
+                  <Button
+                    size="small"
+                    aria-label={`下移步骤 ${stepNumber}-${index + 1}`}
+                    disabled={index === actions.length - 1}
+                    onClick={() => onChange(moveAt(actions, index, index + 1))}
+                  >
+                    下移
+                  </Button>
+                  <Button
+                    size="small"
+                    danger
+                    aria-label={`删除步骤 ${stepNumber}-${index + 1}`}
+                    onClick={() =>
+                      onChange(actions.filter((_, current) => current !== index))
+                    }
+                  >
+                    删除
+                  </Button>
+                </Space>
+              </div>
 
-            {actionErrors.length > 0 ? (
-              <Alert type="error" showIcon title={<ActionErrorList errors={actionErrors} />} />
-            ) : null}
+              {actionErrors.length > 0 ? (
+                <Alert type="error" showIcon title={<ActionErrorList errors={actionErrors} />} />
+              ) : null}
 
-            <div className={styles.actionStepForm}>
-              <label className={styles.actionField}>
-                <span>执行动作类型</span>
-                <ActionSelect
-                  name={`执行动作类型 ${stepNumber}-${index + 1}`}
-                  value={action.type}
-                  style={{ minWidth: 180 }}
-                  options={WORKFLOW_ACTION_TYPES.map((type) => ({
-                    value: type,
-                    label: WORKFLOW_ACTION_LABELS[type],
-                  }))}
-                  onChange={(type: WorkflowActionType) =>
-                    // A type change is a different Action: keeping the previous
-                    // type's payload would send keys the API rejects.
-                    onChange(
-                      replaceAt(actions, index, emptyAction(type, action.key)),
-                    )
-                  }
-                />
-              </label>
-              <label className={styles.actionField}>
-                <span>执行动作编码</span>
-                <Input
-                  aria-label={`执行动作编码 ${stepNumber}-${index + 1}`}
-                  value={action.key}
-                  placeholder="例如 create-customer"
-                  style={{ minWidth: 180 }}
-                  onChange={(event) =>
-                    onChange(
-                      replaceAt(actions, index, {
-                        ...action,
-                        key: event.target.value,
-                      }),
-                    )
-                  }
-                />
-              </label>
-            </div>
+              <Typography.Text type="secondary">执行效果：{ACTION_EFFECTS[action.type]}</Typography.Text>
+              <div className={styles.actionStepForm}>
+                <label className={styles.actionField}>
+                  <span>执行动作类型</span>
+                  <ActionSelect
+                    name={`执行动作类型 ${stepNumber}-${index + 1}`}
+                    value={action.type}
+                    style={{ minWidth: 180 }}
+                    options={WORKFLOW_ACTION_TYPES.map((type) => ({
+                      value: type,
+                      label: WORKFLOW_ACTION_LABELS[type],
+                    }))}
+                    onChange={(type: WorkflowActionType) =>
+                      // A type change is a different Action: keeping the previous
+                      // type's payload would send keys the API rejects.
+                      onChange(
+                        replaceAt(actions, index, emptyAction(type, action.key)),
+                      )
+                    }
+                  />
+                </label>
+                <label className={styles.actionField}>
+                  <span>执行动作编码</span>
+                  <Input
+                    aria-label={`执行动作编码 ${stepNumber}-${index + 1}`}
+                    value={action.key}
+                    placeholder="例如 create-customer"
+                    style={{ minWidth: 180 }}
+                    onChange={(event) =>
+                      onChange(
+                        replaceAt(actions, index, {
+                          ...action,
+                          key: event.target.value,
+                        }),
+                      )
+                    }
+                  />
+                </label>
+              </div>
 
-            <ActionStepBody
-              action={action}
-              transitionIndex={transitionIndex}
-              stepIndex={index}
-              actions={actions}
-              sourceFields={sourceFields}
-              targetObjects={targetObjects}
-              onChange={(next) => onChange(replaceAt(actions, index, next))}
-            />
-          </div>
-        );
-      })}
+              <ActionStepBody
+                action={action}
+                transitionIndex={transitionIndex}
+                stepIndex={index}
+                actions={actions}
+                sourceFields={sourceFields}
+                targetObjects={targetObjects}
+                onChange={(next) => onChange(replaceAt(actions, index, next))}
+              />
+            </li>
+          );
+        })}
+      </ol>
     </section>
   );
 }
