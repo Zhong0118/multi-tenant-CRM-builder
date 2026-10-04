@@ -7,19 +7,22 @@ import type { DashboardRuntimeResult } from "@/features/dashboard/dashboard-type
 import { EmployeeWorkbench } from "@/features/dashboard/employee-workbench";
 import { dashboardSettingsPath } from "@/features/dashboard/workbench-period";
 import { BusinessObjectBar } from "@/features/dashboard/workbench-elements";
+import { WorkbenchOverviewFailure } from "@/features/dashboard/workbench-chrome";
 import { PersonalFollowUpWorkbench } from "@/features/follow-ups/follow-up-workbench";
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
 import styles from "./workspace-home.module.css";
 
-export interface WorkspaceHomeViewProps {
+export type WorkspaceHomeViewProps = {
   tenantCode: string;
   tenantName: string;
   userName: string;
   role: "TENANT_ADMIN" | "EMPLOYEE";
   businessObjects: RuntimeObjectNavigation[];
-  overview: DashboardRuntimeResult;
-}
+} & (
+  | { overview: DashboardRuntimeResult; overviewFailure?: never }
+  | { overview?: never; overviewFailure: { requestId: string } }
+);
 
 export function WorkspaceHomeView({
   tenantCode,
@@ -28,7 +31,27 @@ export function WorkspaceHomeView({
   role,
   businessObjects,
   overview,
+  overviewFailure,
 }: WorkspaceHomeViewProps) {
+  if (overviewFailure) {
+    return (
+      <div className={styles.home}>
+        <PageHeader
+          title={role === "EMPLOYEE" ? "我的工作台" : "管理工作台"}
+          description={`${tenantName}的工作台。`}
+        />
+        {role === "EMPLOYEE" ? (
+          <PersonalFollowUpWorkbench tenantCode={tenantCode} />
+        ) : null}
+        <WorkbenchOverviewFailure requestId={overviewFailure.requestId} />
+        <BusinessObjectBar
+          tenantCode={tenantCode}
+          objects={businessObjects}
+          role={role}
+        />
+      </div>
+    );
+  }
   if (overview.state === "UNCONFIGURED") {
     if (role === "TENANT_ADMIN") {
       return (
