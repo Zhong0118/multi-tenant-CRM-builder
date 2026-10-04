@@ -61,6 +61,7 @@ describe("shared follow-up refresh", () => {
     await act(async () => { release(); await gate; });
     await waitFor(() => expect(screen.getByTestId("workbench-count-all")).toHaveTextContent("0"));
     await waitFor(() => expect(within(panel).queryByText("确认反馈")).not.toBeInTheDocument());
+    expect(client.getQueryData<FollowUpPage>(inactiveKey)?.items).toEqual([]);
     const returning = new QueryObserver(client, { queryKey: inactiveKey, queryFn: () => page(20), staleTime: Infinity });
     const unsubscribe = returning.subscribe(() => {});
     await waitFor(() => expect(client.getQueryData<FollowUpPage>(inactiveKey)?.items).toEqual([]));

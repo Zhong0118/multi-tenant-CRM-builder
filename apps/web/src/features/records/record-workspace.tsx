@@ -108,7 +108,7 @@ function RecordWorkspaceSession({
             setRecord(next ?? undefined);
             await Promise.all([
               client.invalidateQueries({ queryKey: ["workspace", tenantCode, "records"] }),
-              client.invalidateQueries({ queryKey: followUpQueryKeys.root(tenantCode) }),
+              client.invalidateQueries({ queryKey: followUpQueryKeys.root(tenantCode), refetchType: "all" }),
             ]);
             router.refresh();
             if (!next) router.replace(returnPath);

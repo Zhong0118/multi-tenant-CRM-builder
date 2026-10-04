@@ -72,7 +72,7 @@ export function RecordWorkflowPanel({
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: historyKey }),
         queryClient.invalidateQueries({ queryKey: ["workspace", tenantCode, "records"] }),
-        queryClient.invalidateQueries({ queryKey: followUpQueryKeys.root(tenantCode) }),
+        queryClient.invalidateQueries({ queryKey: followUpQueryKeys.root(tenantCode), refetchType: "all" }),
         onRecordChanged?.(),
       ]);
     },

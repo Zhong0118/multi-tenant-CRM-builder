@@ -141,7 +141,7 @@ export function FollowUpPanel({
   }, [locating, query.data, followUpId]);
   const refresh = () => {
     setError(undefined);
-    return client.invalidateQueries({ queryKey: key });
+    return client.invalidateQueries({ queryKey: key, refetchType: "all" });
   };
   const fail = (caught: unknown) => setError(toApiError(caught).message);
   const create = useMutation({
@@ -178,7 +178,7 @@ export function FollowUpPanel({
     },
     onError: (caught) => {
       fail(caught);
-      return client.invalidateQueries({ queryKey: key });
+      return client.invalidateQueries({ queryKey: key, refetchType: "all" });
     },
   });
   const validDate = (value: string) =>

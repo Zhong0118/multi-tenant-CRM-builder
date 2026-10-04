@@ -58,12 +58,14 @@ export function PersonalFollowUpWorkbench({
       setError(undefined);
       await client.invalidateQueries({
         queryKey: followUpQueryKeys.root(tenantCode),
+        refetchType: "all",
       });
     },
     onError: async (caught) => {
       setError(toApiError(caught).message);
       await client.invalidateQueries({
         queryKey: followUpQueryKeys.root(tenantCode),
+        refetchType: "all",
       });
     },
   });
