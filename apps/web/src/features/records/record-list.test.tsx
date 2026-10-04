@@ -7,6 +7,7 @@ import {
   within,
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useState } from "react";
 
 import type {
   RecordPage,
@@ -18,7 +19,7 @@ import { RecordList } from "./record-list";
 import { DEFAULT_RECORD_QUERY, type RecordQuery } from "./record-query-state";
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: vi.fn() }),
+  useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }),
 }));
 
 beforeEach(() => {
@@ -529,6 +530,56 @@ describe("RecordList table sorting", () => {
     fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
     fireEvent.click(await screen.findByRole("menuitem", { name: "导入 CSV" }));
     expect(await screen.findByLabelText("选择 CSV 文件")).toBeInTheDocument();
+  });
+
+  it.each(["选择卡片", "选择"])("keeps %s batch count and request on the current page", async (label) => {
+    const second = { ...page.items[0], id: "record-2", title: "第二页客户", version: 4 };
+    const firstPage = { ...page, limit: 1, total: 2 };
+    const secondPage = { ...firstPage, page: 2, items: [second] };
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const api = {
+      list: vi.fn().mockImplementation((_tenant, _object, query: RecordQuery) =>
+        Promise.resolve(query.page === 2 ? secondPage : firstPage)),
+      batchUpdate: vi.fn().mockResolvedValue({ updated: 1, failed: 0, items: [] }),
+    } as unknown as RecordApi;
+    function TwoPages() {
+      const [query, setQuery] = useState(DEFAULT_RECORD_QUERY);
+      return <RecordList tenantCode="northwind" schema={schema} query={query}
+        initialPage={query.page === 2 ? secondPage : firstPage} api={api}
+        navigate={(path) => setQuery({ ...DEFAULT_RECORD_QUERY, page: Number(new URL(path, "http://test").searchParams.get("page") ?? 1) })} />;
+    }
+    render(<QueryClientProvider client={client}><TwoPages /></QueryClientProvider>);
+    fireEvent.click(await screen.findByRole("checkbox", { name: `${label} 天际科技` }));
+    fireEvent.click(screen.getAllByTitle("2")[label === "选择卡片" ? 1 : 0]);
+    fireEvent.click(await screen.findByRole("checkbox", { name: `${label} 第二页客户` }));
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "批量修改 1" }));
+    expect(screen.getByText("批量修改 1 条")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: "批量修改 备注" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "备注" }), { target: { value: "当前页修改" } });
+    fireEvent.click(screen.getByRole("button", { name: "应用到选中记录" }));
+    await waitFor(() => expect(api.batchUpdate).toHaveBeenCalledWith("northwind", "customers", {
+      items: [{ recordId: "record-2", version: 4 }], values: { notes: "当前页修改" },
+    }));
+  });
+
+  it("clears selection when an external filter URL changes even if the same record remains", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const api = { list: vi.fn().mockResolvedValue(page) } as unknown as RecordApi;
+    const view = (query: RecordQuery) => <QueryClientProvider client={client}>
+      <RecordList tenantCode="northwind" schema={schema} query={query} initialPage={page} api={api} navigate={vi.fn()} />
+    </QueryClientProvider>;
+    const { rerender } = render(view(DEFAULT_RECORD_QUERY));
+    fireEvent.click(await screen.findByRole("checkbox", { name: "选择卡片 天际科技" }));
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "批量修改 1" }));
+    expect(screen.getByText("批量修改 1 条")).toBeInTheDocument();
+    rerender(view({ ...DEFAULT_RECORD_QUERY, search: "天际" }));
+    expect(screen.queryByText("批量修改 0 条")).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "选择卡片 天际科技" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "选择 天际科技" })).not.toBeChecked();
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
+    expect(await screen.findByRole("menuitem", { name: "批量修改" })).toHaveAttribute("aria-disabled", "true");
   });
 
   it("opens batch edit for selected rows", async () => {

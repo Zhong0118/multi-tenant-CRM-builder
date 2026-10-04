@@ -118,6 +118,13 @@ export function RecordList({
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [batchOpen, setBatchOpen] = useState(false);
+  const selectionScope = `${tenantCode}:${objectCode}:${recordQuerySearch(query, queryDefaults)}`;
+  const [previousSelectionScope, setPreviousSelectionScope] = useState(selectionScope);
+  if (previousSelectionScope !== selectionScope) {
+    setPreviousSelectionScope(selectionScope);
+    setSelectedRowKeys([]);
+    setBatchOpen(false);
+  }
   const [importOpen, setImportOpen] = useState(false);
   // Personal columns live in localStorage, which does not exist while the
   // server renders this page. Starting from the published default keeps the
@@ -213,6 +220,8 @@ export function RecordList({
   }
 
   const page = records.data ?? initialPage;
+  const selectedRecords = page.items.filter((item) => selectedRowKeys.includes(item.id));
+  const currentSelectedRowKeys = selectedRecords.map((item) => item.id);
   const owned = schema.scopes.read === "OWN";
   const visibleColumns = resolveRecordColumnKeys(schema, columnFieldKeys)
     .map((fieldKey) =>
@@ -530,8 +539,8 @@ export function RecordList({
                     ? [
                         {
                           key: "batch",
-                          label: `批量修改${selectedRowKeys.length ? ` ${selectedRowKeys.length}` : ""}`,
-                          disabled: selectedRowKeys.length === 0,
+                          label: `批量修改${currentSelectedRowKeys.length ? ` ${currentSelectedRowKeys.length}` : ""}`,
+                          disabled: currentSelectedRowKeys.length === 0,
                           onClick: () => setBatchOpen(true),
                         },
                       ]
@@ -881,7 +890,7 @@ export function RecordList({
                     {schema.actions.canUpdate ? (
                       <Checkbox
                         aria-label={`选择卡片 ${row.title}`}
-                        checked={selectedRowKeys.includes(row.id)}
+                        checked={currentSelectedRowKeys.includes(row.id)}
                         onChange={(event) => setSelectedRowKeys((keys) =>
                           event.target.checked ? [...keys, row.id] : keys.filter((key) => key !== row.id),
                         )}
@@ -945,7 +954,7 @@ export function RecordList({
           rowSelection={
             schema.actions.canUpdate
               ? {
-                  selectedRowKeys,
+                  selectedRowKeys: currentSelectedRowKeys,
                   onChange: (keys) => setSelectedRowKeys(keys.map(String)),
                   getCheckboxProps: (row) => ({
                     "aria-label": `选择 ${row.title}`,
@@ -1030,13 +1039,11 @@ export function RecordList({
         />
       ) : null}
 
-      {batchOpen ? (
+      {batchOpen && selectedRecords.length > 0 ? (
         <RecordBatchEditDrawer
           tenantCode={tenantCode}
           schema={schema}
-          records={page.items.filter((item) =>
-            selectedRowKeys.includes(item.id),
-          )}
+          records={selectedRecords}
           members={members}
           canChooseOwner={canFilterByOwner}
           api={api}

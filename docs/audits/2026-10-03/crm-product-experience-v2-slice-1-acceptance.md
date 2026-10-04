@@ -109,6 +109,14 @@ PASS 仅代表该格描述的实际路径；NOT OBSERVED 代表没有完整浏�
 - 两角色×1440/900/390：键盘Enter打开更多操作，列设置/导入CSV菜单项键盘Enter打开，关闭弹层后等待实际焦点条件，全部回到更多操作按钮，12格PASS。立即检查body焦点属于动画尚未结束，未据此改源码。
 - 仍需批量弹层键盘回焦点的逐角色三宽度复核；AI和两项移动缺口已补齐，早期限制为历史状态。
 
+## 当前页批量选择修复（本次合并前）
+
+- 用户补充手机复现：第一页选A、第二页选B，菜单累计2但抽屉与请求仅有B。原先单页验收不覆盖该边界，不能作为跨页一致性的证明。
+- 正式两页交互回归先复现手机菜单数量错误；桌面入口同测，验证菜单、抽屉数量和实际请求只包含第二页B及其observed version。外部筛选URL变化且记录仍存在时，两种选择均清空。
+- 最小修复将选择明确限定当前查询页；查询范围变化清空选择，菜单/表格/卡片/抽屉共用当前页记录投影，不增加跨页批量能力。
+- 本地验证：RecordList29 + BatchEdit1测试、Web typecheck、两受改文件ESLint、diff-check全部exit0；jsdom既有pseudo-element提示保留，无unhandled errors。远端最新SHA门禁与浏览器边界证据另据实际结果记录。
+- 本轮用户明确授权Slice1门禁通过后Ready/合并，并从最新主线联合实现Slice2＋3；Slice4与部署未授权。
+
 ## 已知限制与合并影响
 
 - 本轮完成已观察证据的汇总与视觉核对；稳定截图见 [Admin900](slice-1-browser-evidence/admin-long-900.png)、[Admin390](slice-1-browser-evidence/admin-long-390.png)、[Employee390底部动作](slice-1-browser-evidence/employee-long-390-actions.png)。
