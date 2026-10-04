@@ -79,7 +79,7 @@ export function RecordWorkflowPanel({
       queryClient.setQueryData(runtimeKey, next);
       // Actions may create records in another object and schedule follow-ups.
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: historyKey }),
+        queryClient.invalidateQueries({ queryKey: historyKey, refetchType: "all" }),
         queryClient.invalidateQueries({ queryKey: ["workspace", tenantCode, "records"] }),
         queryClient.invalidateQueries({ queryKey: followUpQueryKeys.root(tenantCode), refetchType: "all" }),
         refreshRecord(),

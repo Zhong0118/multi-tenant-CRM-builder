@@ -107,7 +107,7 @@ function RecordWorkspaceSession({
           onChanged={async (next) => {
             setRecord(next ?? undefined);
             await Promise.all([
-              client.invalidateQueries({ queryKey: ["workspace", tenantCode, "records"] }),
+              client.invalidateQueries({ queryKey: ["workspace", tenantCode, "records"], refetchType: "all" }),
               client.invalidateQueries({ queryKey: followUpQueryKeys.root(tenantCode), refetchType: "all" }),
             ]);
             router.refresh();

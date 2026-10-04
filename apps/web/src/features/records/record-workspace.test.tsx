@@ -116,6 +116,19 @@ describe("record workspace navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "删除" }));
     await waitFor(() => expect(router.replace).toHaveBeenLastCalledWith("/workspace/northwind/objects/customers?page=2&search=%E5%AE%A2%E6%88%B7"));
   });
+  it("record changes refresh inactive record-list caches before return", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    let title = "old";
+    const key = ["workspace", "northwind", "records", "customers"];
+    await client.fetchQuery({ queryKey: key, queryFn: async () => title });
+    const view = render(<RecordWorkspace {...props} openRecord={record} />, client);
+    title = "new";
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    await waitFor(() => expect(client.getQueryData(key)).toBe("new"));
+    view.unmount();
+    expect(client.getQueryData(key)).toBe("new");
+    client.clear();
+  });
   it("record changes refresh all tenant record lists and related task caches", async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
     let title = "old";
