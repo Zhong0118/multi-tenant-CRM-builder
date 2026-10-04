@@ -68,7 +68,7 @@ describe("FollowUpPanel", () => {
       status: "DONE",
       overdue: false,
     };
-    const api = setup([], false, "task-1", async (_tenant, query) => {
+    setup([], false, "task-1", async (_tenant, query) => {
       if (query.status === "DONE") {
         return {
           items:
@@ -127,6 +127,7 @@ describe("FollowUpPanel", () => {
   it("keeps unsaved input available after a failed creation", async () => {
     const api = setup();
     api.create.mockRejectedValueOnce(new Error("network unavailable"));
+    fireEvent.click(screen.getByRole("button", { name: "安排跟进" }));
     fireEvent.change(screen.getByLabelText("跟进事项"), {
       target: { value: "确认方案" },
     });
@@ -158,6 +159,8 @@ describe("FollowUpPanel", () => {
 
   it("accepts a native local datetime change, enables creation and submits its UTC instant", async () => {
     const api = setup();
+    expect(screen.queryByLabelText("跟进事项")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "安排跟进" }));
     const submit = screen.getByRole("button", { name: "安排跟进" });
     expect(submit).toBeDisabled();
     fireEvent.change(screen.getByLabelText("跟进事项"), {
@@ -186,6 +189,7 @@ describe("FollowUpPanel", () => {
     setup([{ ...task, canManage: false }], false);
     await screen.findByText("确认客户反馈");
     expect(screen.queryByLabelText("跟进事项")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "安排跟进" })).not.toBeInTheDocument();
     for (const name of [/完\s*成/, /改\s*期/, /取\s*消/])
       expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
   });

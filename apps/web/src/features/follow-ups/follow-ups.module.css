@@ -187,6 +187,7 @@
   }
   .actions button {
     flex: 1;
+    min-height: 44px;
   }
   .panel :global(.ant-segmented) {
     max-width: 100%;

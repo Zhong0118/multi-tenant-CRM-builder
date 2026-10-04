@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
+import { skipToken, useMutation, useQuery } from "@tanstack/react-query";
 import { Alert, Button, Drawer, Popconfirm, Space, Typography } from "antd";
 import { useState } from "react";
 
@@ -18,6 +18,7 @@ import { RecordActivityTimeline } from "./record-activity-timeline";
 import { RecordWorkflowPanel } from "./record-workflow-panel";
 import { displayValue } from "./record-list";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
+import { defaultRecordColumnKeys } from "./record-columns";
 import { RecordForm } from "./record-form";
 
 import styles from "./records.module.css";
@@ -57,6 +58,30 @@ export function RecordDetailDrawer({
 }: RecordDetailDrawerProps) {
   const [editing, setEditing] = useState(initialEditing);
   const [error, setError] = useState<string>();
+  const fields = schema.fields.filter((field) => field.access !== "HIDDEN");
+  const summaryKeys = new Set([
+    schema.object.titleFieldKey,
+    ...defaultRecordColumnKeys(schema),
+  ]);
+  // Observe the panels' existing list caches; these observers never request counts.
+  const relations = useQuery<unknown[]>({
+    queryKey: ["relations", tenantCode, schema.object.code, record.id],
+    queryFn: skipToken,
+  });
+  const attachments = useQuery<unknown[]>({
+    queryKey: ["attachments", tenantCode, schema.object.code, record.id],
+    queryFn: skipToken,
+  });
+  const renderFields = (selected: typeof fields) => (
+    <dl className={styles.detailFields}>
+      {selected.map((field) => (
+        <div key={field.id} className={styles.detailField}>
+          <dt>{field.label}{field.access === "READ_ONLY" ? <span className={styles.detailLock}>仅管理员可编辑</span> : null}</dt>
+          <dd>{displayValue(field, record.values[field.fieldKey], members)}</dd>
+        </div>
+      ))}
+    </dl>
+  );
 
   const remove = useMutation({
     mutationFn: () =>
@@ -122,32 +147,15 @@ export function RecordDetailDrawer({
         />
       ) : (
         <>
-          <dl className={styles.detailFields}>
-            {schema.fields.map((field) => (
-              <div key={field.id} className={styles.detailField}>
-                <dt>
-                  {field.label}
-                  {field.access === "READ_ONLY" ? (
-                    <span className={styles.detailLock}>仅管理员可编辑</span>
-                  ) : null}
-                </dt>
-                <dd>
-                  {displayValue(field, record.values[field.fieldKey], members)}
-                </dd>
-              </div>
-            ))}
-          </dl>
-
-          <div className={styles.detailMeta}>
-            <Typography.Text type="secondary">
-              负责人：
-              {members.find((member) => member.id === record.ownerMemberId)
-                ?.displayName ?? "未指定"}
-            </Typography.Text>
-            <Typography.Text type="secondary">
-              版本 v{record.version}
-            </Typography.Text>
-          </div>
+          <section aria-label="记录摘要">
+            {renderFields(fields.filter((field) => summaryKeys.has(field.fieldKey)))}
+            <div className={styles.detailMeta}>
+              <Typography.Text type="secondary">
+                负责人：{members.find((member) => member.id === record.ownerMemberId)?.displayName ?? (record.ownerMemberId ? "已指定" : "未指定")}
+              </Typography.Text>
+              <Typography.Text type="secondary">版本 v{record.version}</Typography.Text>
+            </div>
+          </section>
 
           <RecordWorkflowPanel
             tenantCode={tenantCode}
@@ -171,18 +179,6 @@ export function RecordDetailDrawer({
             }}
           />
 
-          <RecordRelationsPanel
-            tenantCode={tenantCode}
-            objectCode={schema.object.code}
-            recordId={record.id}
-            canUpdate={schema.actions.canUpdate}
-          />
-          <RecordAttachmentsPanel
-            tenantCode={tenantCode}
-            objectCode={schema.object.code}
-            recordId={record.id}
-            canUpdate={schema.actions.canUpdate}
-          />
           <RecordActivityTimeline
             tenantCode={tenantCode}
             objectCode={schema.object.code}
@@ -190,6 +186,28 @@ export function RecordDetailDrawer({
             canCreate={schema.actions.canUpdate}
             api={api}
           />
+          <details className={styles.detailDisclosure}>
+            <summary>完整业务字段</summary>
+            {renderFields(fields)}
+          </details>
+          <details className={styles.detailDisclosure}>
+            <summary>关联业务记录{relations.data ? `（${relations.data.length || "暂无关联"}）` : "（展开查看）"}</summary>
+            <RecordRelationsPanel
+              tenantCode={tenantCode}
+              objectCode={schema.object.code}
+              recordId={record.id}
+              canUpdate={schema.actions.canUpdate}
+            />
+          </details>
+          <details className={styles.detailDisclosure}>
+            <summary>附件{attachments.data ? `（${attachments.data.length || "暂无附件"}）` : "（展开查看）"}</summary>
+            <RecordAttachmentsPanel
+              tenantCode={tenantCode}
+              objectCode={schema.object.code}
+              recordId={record.id}
+              canUpdate={schema.actions.canUpdate}
+            />
+          </details>
         </>
       )}
     </Drawer>
