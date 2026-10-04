@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_rethrow } from "next/navigation";
 import { toApiError } from "@/lib/api/api-error";
 import { createServerApiClient } from "@/lib/api/server-client";
 import {
@@ -56,7 +57,33 @@ export async function loadDashboardOverview(
   return parseDashboardOverview(result.data);
 }
 
-function firstQueryValue(value: string | string[] | undefined): string | undefined {
+export async function loadWorkspaceDashboardOverview(
+  tenantCode: string,
+  dashboardCode?: string,
+  period?: { from?: string; to?: string },
+): Promise<
+  | { overview: DashboardRuntimeResult; overviewFailure?: never }
+  | {
+      overview?: never;
+      overviewFailure: { requestId: string };
+    }
+> {
+  try {
+    return {
+      overview: await loadDashboardOverview(tenantCode, dashboardCode, period),
+    };
+  } catch (error) {
+    unstable_rethrow(error);
+    const apiError = toApiError(error);
+    // Access, missing-dashboard and invalid-query responses remain authoritative.
+    if (apiError.status < 500) throw error;
+    return { overviewFailure: { requestId: apiError.requestId } };
+  }
+}
+
+function firstQueryValue(
+  value: string | string[] | undefined,
+): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 

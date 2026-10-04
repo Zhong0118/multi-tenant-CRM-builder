@@ -282,9 +282,28 @@
   gap: 0 24px;
 }
 
+.detailDisclosure {
+  margin-top: 24px;
+  border-top: 1px solid var(--rule);
+}
+
+.detailDisclosure summary {
+  padding: 12px 0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.detailDisclosure summary:focus-visible {
+  outline: 2px solid var(--crm-primary, #167568);
+  outline-offset: 2px;
+}
+
 .detailTitle {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
   align-items: baseline;
 }
 
@@ -307,6 +326,8 @@
 }
 
 .detailField dd {
+  margin: 0;
+  overflow-wrap: anywhere;
   color: var(--ledger-ink);
   font-size: 14px;
   line-height: 22px;
@@ -357,6 +378,7 @@
 }
 
 .timelineItem p {
+  overflow-wrap: anywhere;
   margin: 6px 0 0;
   color: var(--ledger-ink);
   font-size: 14px;
@@ -426,6 +448,15 @@
 
 /* Below the tablet breakpoint a 640px drawer would be wider than the screen. */
 @media (max-width: 767px) {
+  .detailFields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .detailDisclosure summary,
+  .timeline button {
+    min-height: 44px;
+  }
+
   .detailDrawer :global(.ant-drawer-content-wrapper) {
     width: 100vw !important;
   }

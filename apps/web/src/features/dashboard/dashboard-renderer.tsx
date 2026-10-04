@@ -5,6 +5,8 @@ import type { PublishedFieldView } from "@/features/objects/object-types";
 import { Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
+import { sourceRecordHref } from "@/features/records/source-navigation";
 
 import type {
   DashboardRuntime,
@@ -468,6 +470,9 @@ function RecordListWidget({
     { type: "RECORD_LIST"; state: "READY" }
   >["data"];
 }) {
+  const pathname = usePathname();
+  const search = useSearchParams().toString();
+  const source = `${pathname}${search ? `?${search}` : ""}`;
   const columns: ColumnsType<(typeof data.items)[number]> = [
     {
       title: "记录",
@@ -475,7 +480,7 @@ function RecordListWidget({
       render: (_, row) => (
         <Link
           className={styles.recordLink}
-          href={`/workspace/${tenantCode}/objects/${objectCode}/${row.id}`}
+          href={sourceRecordHref(tenantCode, objectCode, row.id, source)}
         >
           {row.title}
         </Link>

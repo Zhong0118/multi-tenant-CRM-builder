@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { toApiError } from "@/lib/api/api-error";
 import { StatusTag } from "@/components/workbench/status-tag";
+import { followUpQueryKeys } from "@/features/follow-ups/follow-up-api";
 import {
   workflowApi as defaultWorkflowApi,
   type WorkflowApi,
@@ -19,7 +20,7 @@ export interface RecordWorkflowPanelProps {
   objectCode: string;
   recordId: string;
   recordVersion: number;
-  onRecordChanged?: () => void;
+  onRecordChanged?: () => void | Promise<void>;
   api?: WorkflowApi;
 }
 
@@ -32,6 +33,15 @@ export function RecordWorkflowPanel({
   api = defaultWorkflowApi,
 }: RecordWorkflowPanelProps) {
   const queryClient = useQueryClient();
+  const [refreshWarning, setRefreshWarning] = useState(false);
+  const refreshRecord = async () => {
+    setRefreshWarning(false);
+    try {
+      await onRecordChanged?.();
+    } catch {
+      setRefreshWarning(true);
+    }
+  };
   /**
    * §31: the Transition awaiting confirmation. It is the transition the employee
    * actually saw, so the modal keeps rendering that static summary even if the
@@ -65,10 +75,18 @@ export function RecordWorkflowPanel({
         transitionKey,
         runtime.data?.recordVersion ?? recordVersion,
       ),
-    onSuccess: (next) => {
+    onSuccess: async (next) => {
       queryClient.setQueryData(runtimeKey, next);
-      void queryClient.invalidateQueries({ queryKey: historyKey });
-      onRecordChanged?.();
+      // Actions may create records in another object and schedule follow-ups.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: historyKey, refetchType: "all" }),
+        queryClient.invalidateQueries({
+          queryKey: ["workspace", tenantCode, "records"],
+          refetchType: "all",
+        }),
+        queryClient.invalidateQueries({ queryKey: followUpQueryKeys.root(tenantCode), refetchType: "all" }),
+        refreshRecord(),
+      ]);
     },
   });
 
@@ -154,6 +172,14 @@ export function RecordWorkflowPanel({
         </ul>
         <p>所有操作将同时成功或全部取消。</p>
       </Modal>
+
+      {refreshWarning ? (
+        <Alert
+          type="warning"
+          showIcon
+          title="流程已执行，但记录详情刷新失败。请刷新页面查看最新记录，无需重复执行。"
+        />
+      ) : null}
 
       {executeError ? (
         <Alert

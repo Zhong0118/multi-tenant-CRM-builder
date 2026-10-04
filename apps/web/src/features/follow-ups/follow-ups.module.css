@@ -188,6 +188,11 @@
   .actions button {
     flex: 1;
   }
+  .actions button,
+  .panel > button,
+  .composer button {
+    min-height: 44px;
+  }
   .panel :global(.ant-segmented) {
     max-width: 100%;
   }

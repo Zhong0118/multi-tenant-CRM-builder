@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -23,6 +23,63 @@ function renderPanel(api: WorkflowApi) {
 }
 
 describe("RecordWorkflowPanel", () => {
+  it("reports a detail refresh failure without misreporting a committed transition", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    const api: WorkflowApi = {
+      getDraft: vi.fn(), saveDraft: vi.fn(),
+      getRuntime: vi.fn().mockResolvedValue({ currentState: { key: "new", label: "新建", isTerminal: false }, availableTransitions: [{ key: "convert", label: "转化业务", requiredFieldKeys: [], effects: [] }], recordVersion: 7 }),
+      executeTransition: vi.fn().mockResolvedValue({ currentState: { key: "converted", label: "已转化", isTerminal: true }, availableTransitions: [], recordVersion: 8 }),
+      history: vi.fn().mockResolvedValue({ items: [], page: 1, limit: 20, total: 0 }),
+    };
+    render(<QueryClientProvider client={client}><RecordWorkflowPanel tenantCode="northwind" objectCode="leads" recordId="record-1" recordVersion={7} api={api} onRecordChanged={async () => { throw new Error("detail GET failed"); }} /></QueryClientProvider>);
+    fireEvent.click(await screen.findByRole("button", { name: "转化业务" }));
+    expect(await screen.findByText("流程已执行，但记录详情刷新失败。请刷新页面查看最新记录，无需重复执行。")) .toBeInTheDocument();
+    expect(screen.getByText("已转化")).toBeInTheDocument();
+    expect(screen.queryByText(/detail GET failed/)).not.toBeInTheDocument();
+    expect(api.executeTransition).toHaveBeenCalledTimes(1);
+    expect(client.getMutationCache().getAll()[0].state.status).toBe("success");
+  });
+  it("refreshes action-created record lists and tasks even without a detail callback", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    let changed = false;
+    const keys = [["workspace", "northwind", "records", "customers"], ["workspace", "northwind", "follow-ups", "workbench"]];
+    const observers = keys.map((queryKey) => new QueryObserver(client, { queryKey, queryFn: async () => changed ? "action-created" : "before" }));
+    const unsubscribes = observers.map((observer) => observer.subscribe(() => {}));
+    await waitFor(() => keys.forEach((key) => expect(client.getQueryData(key)).toBe("before")));
+    const api: WorkflowApi = {
+      getDraft: vi.fn(), saveDraft: vi.fn(),
+      getRuntime: vi.fn().mockResolvedValue({ currentState: { key: "new", label: "新建", isTerminal: false }, availableTransitions: [{ key: "convert", label: "转化业务", requiredFieldKeys: [], effects: [] }], recordVersion: 7 }),
+      executeTransition: vi.fn(async () => { changed = true; return { currentState: { key: "converted", label: "已转化", isTerminal: true }, availableTransitions: [], recordVersion: 8 }; }),
+      history: vi.fn().mockResolvedValue({ items: [], page: 1, limit: 20, total: 0 }),
+    };
+    const view = render(<QueryClientProvider client={client}><RecordWorkflowPanel tenantCode="northwind" objectCode="leads" recordId="record-1" recordVersion={7} api={api} /></QueryClientProvider>);
+    fireEvent.click(await screen.findByRole("button", { name: "转化业务" }));
+    await waitFor(() => keys.forEach((key) => expect(client.getQueryData(key)).toBe("action-created")));
+    expect(api.executeTransition).toHaveBeenCalledWith("northwind", "leads", "record-1", "convert", 7);
+    unsubscribes.forEach((unsubscribe) => unsubscribe());
+    view.unmount(); client.clear();
+  });
+  it("refreshes inactive workflow history before it remounts", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    let historyVersion = "before";
+    const key = ["workspace", "northwind", "record-workflow", "leads", "record-1", "history"];
+    await client.fetchQuery({ queryKey: key, queryFn: async () => ({ items: [], page: 1, limit: 20, total: 0, version: historyVersion }) });
+    const api: WorkflowApi = {
+      getDraft: vi.fn(), saveDraft: vi.fn(),
+      getRuntime: vi.fn().mockResolvedValue({ currentState: { key: "new", label: "新建", isTerminal: false }, availableTransitions: [{ key: "convert", label: "转化业务", requiredFieldKeys: [], effects: [] }], recordVersion: 7 }),
+      executeTransition: vi.fn(async () => { historyVersion = "after"; return { currentState: { key: "converted", label: "已转化", isTerminal: true }, availableTransitions: [], recordVersion: 8 }; }),
+      history: vi.fn().mockImplementation(async () => ({ items: [], page: 1, limit: 20, total: 0, version: historyVersion })),
+    };
+    const view = render(<QueryClientProvider client={client}><RecordWorkflowPanel tenantCode="northwind" objectCode="leads" recordId="record-1" recordVersion={7} api={api} /></QueryClientProvider>);
+    fireEvent.click(await screen.findByRole("button", { name: "转化业务" }));
+    await waitFor(() => expect(api.history).toHaveBeenCalled());
+    view.unmount();
+    const returning = new QueryObserver(client, { queryKey: key, queryFn: async () => ({ items: [], page: 1, limit: 20, total: 0, version: historyVersion }), staleTime: Infinity });
+    const unsubscribe = returning.subscribe(() => {});
+    await waitFor(() => expect(client.getQueryData<{ version: string }>(key)?.version).toBe("after"));
+    unsubscribe();
+    client.clear();
+  });
   it("shows employee transitions and executes one", async () => {
     const executeTransition = vi.fn().mockResolvedValue({
       currentState: { key: "won", label: "赢单", isTerminal: true },

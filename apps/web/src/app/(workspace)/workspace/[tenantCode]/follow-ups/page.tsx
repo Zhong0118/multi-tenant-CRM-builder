@@ -1,4 +1,4 @@
-import { FollowUpPanel } from "@/features/follow-ups/follow-up-panel";
+import { FollowUpList } from "@/features/follow-ups/follow-up-list";
 import { requireWorkspace } from "@/lib/auth/require-workspace";
 export default async function FollowUpsPage({
   params,
@@ -7,5 +7,5 @@ export default async function FollowUpsPage({
 }) {
   const { tenantCode } = await params;
   await requireWorkspace(tenantCode);
-  return <FollowUpPanel tenantCode={tenantCode} />;
+  return <FollowUpList tenantCode={tenantCode} />;
 }

@@ -1,6 +1,6 @@
 # CRM Product Experience V2 — First Slice Implementation Plan
 
-> **For agentic workers:** Use `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. 本文件记录批准的实现范围；当前实现已提交，批准范围浏览器验收PASS，最终SHA门禁须实查，PR 未合并。
+> **For agentic workers:** Use `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. 本文件记录批准的实现范围；当前实现已提交，批准范围浏览器验收PASS，最终SHA门禁须实查，PR #24已合并。
 
 **Goal:** 先修复记录页面已复现的状态丢失，再统一产品外框与记录列表，让 Admin/Employee 在三档屏宽完成已有操作。
 
@@ -10,7 +10,7 @@
 
 **Spec:** [V2 Stage Design](../specs/2026-10-03-crm-product-experience-v2-design.md)；现状及缺陷证据见 [本轮审计](../../audits/2026-10-03/project-review.md)。
 
-**Status:** SLICE 1 IMPLEMENTED — BROWSER ACCEPTANCE PASS — DRAFT PR CLOSEOUT。`origin/main` 本次 fetch 基线为 `70884f5`；实现、验收、PR 待合并与已合并必须分别记录。Slice 2–4 未启动。
+**Status:** SLICE 1 IMPLEMENTED AND MERGED — SLICES 2＋3 AUTHORIZED / ACTIVE。`origin/main` 本次 fetch 基线为 `70884f5`；实现、验收、PR 待合并与已合并必须分别记录。Slice2＋3已明确批准联合执行；Slice4未启动。
 
 ## Global Constraints
 
@@ -216,13 +216,13 @@ DATABASE_ADMIN_URL=postgresql://unused:unused@127.0.0.1:1/unused pnpm contracts:
 ```
 
 - [ ] 合并前核对 6 个 required checks；远端状态必须实查，不能引用本轮旧结果。Contracts 生成不得留下非预期 diff。若共享组件影响 AI 页面，验证其展示与原确认交互，不调用真实 Provider 冒充已授权验收。
-- [x] 记录实现 commit、实测结果、未观察项；实现完成，批准范围浏览器验收PASS，保留setup/既有lint限制；后续切片仍 PLANNED。
+- [x] 记录实现 commit、实测结果、未观察项；实现完成，批准范围浏览器验收PASS，保留setup/既有lint限制；Slice2＋3已批准；Slice4仍PLANNED。
 
 ## 2.1 第一切片完成记录
 
 - Task 0 与 Slice 1 Tasks 1–2 主体实现已提交：`e3be29f`、`ac18f15`、`0696956`、`1e1a9f0`；Task 3 批准范围浏览器验收PASS；最终SHA六门须实查。本轮补移动焦点约束、卡片分页/排序/选择及取消搜索草稿同步。
-- 自动化与浏览器证据见 `docs/audits/2026-10-03/crm-product-experience-v2-slice-1-acceptance.md`。续轮已补真实HIDDEN、表单/CSV、长内容截图、默认排序往返和桌面批量；动作/键盘及两角色Fake AI确认/拒绝已补齐，批准范围浏览器验收PASS；setup/既有lint限制在验收记录中保留。最终SHA六门须实查，保持Draft。
-- 后续切片仍为 PLANNED；本轮不包含详情重构、员工首页、配置体验、AI runtime、后端 API、权限或数据模型改变。
+- 自动化与浏览器证据见 `docs/audits/2026-10-03/crm-product-experience-v2-slice-1-acceptance.md`。续轮已补真实HIDDEN、表单/CSV、长内容截图、默认排序往返和桌面批量；动作/键盘及两角色Fake AI确认/拒绝已补齐，批准范围浏览器验收PASS；setup/既有lint限制在验收记录中保留。最终SHA六门须实查，已合并PR #24。
+- Slice2＋3已批准；Slice4仍为PLANNED；本轮不包含详情重构、员工首页、配置体验、AI runtime、后端 API、权限或数据模型改变。
 
 ## 3. 后续切片的范围合同
 
@@ -241,4 +241,4 @@ Slice 4 的详细文件与手机编辑策略在其开工设计中确定；不能
 - AI E2E 固定端口问题（审计 T01）是独立测试可靠性任务；不能通过删掉隔离保护或改用业务库完成。AI 增强前应处理它，纯 UI 第一切片不用等待其 CI 推广。
 - Action Engine fieldErrors / MEMBER 默认值为历史待验证事项。若复现出权限泄漏，单独修复并按严重度调整顺序，不混入换肤提交。
 - 需要新 API、跨设备视图、新的字段/权限语义或自动任务时，超出当前范围，回到需求定义；不要用前端伪数据补齐。
-- 初始阶段只交付审计与计划；随后已获批准实现第一切片并准备 Draft PR。批准范围浏览器验收PASS，最终SHA六门须实查、尚未合并或部署，后续切片不因提交或 CI 通过而自动批准。
+- 初始文档阶段已结束；Slice1已实现并合并PR #24（9cd2523），合并前4484ed9及postmerge run37199104409均六门SUCCESS。当前用户明确批准Slice2＋3联合执行，新PR不自动合并。Slice4与部署未批准。

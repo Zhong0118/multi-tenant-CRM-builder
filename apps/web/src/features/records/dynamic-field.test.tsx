@@ -1,9 +1,27 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PublishedFieldView } from "@/features/objects/object-types";
 
 import { DynamicField } from "./dynamic-field";
+
+beforeEach(() => {
+  vi.useFakeTimers();
+});
+
+afterEach(async () => {
+  cleanup();
+  try {
+    // Form.Item's error/warning debounce survives unmount. Execute those
+    // updates before jsdom teardown, and verify no callbacks remain.
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    expect(vi.getTimerCount()).toBe(0);
+  } finally {
+    vi.useRealTimers();
+  }
+});
 
 function field(overrides: Partial<PublishedFieldView>): PublishedFieldView {
   return {

@@ -1,7 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { followUpQueryKeys } from "@/features/follow-ups/follow-up-api";
+import { validatedReturnTo } from "./source-navigation";
+import { useEffect, useRef, useState } from "react";
 
 import type {
   RecordPage,
@@ -25,6 +28,7 @@ export interface RecordWorkspaceProps {
   openRecord?: RecordSummary;
   initialEditing?: boolean;
   followUpId?: string;
+  returnTo?: string;
 }
 
 /**
@@ -48,22 +52,43 @@ function RecordWorkspaceSession({
   openRecord,
   initialEditing = false,
   followUpId,
+  returnTo,
 }: RecordWorkspaceProps) {
   const router = useRouter();
+  const client = useQueryClient();
   const [record, setRecord] = useState(openRecord);
+  const listRef = useRef<HTMLDivElement>(null);
+  const focusRecordId = useRef<string | undefined>(undefined);
   const listPath = `/workspace/${tenantCode}/objects/${schema.object.code}`;
+  const search = recordQuerySearch(query, {
+    ...DEFAULT_RECORD_QUERY,
+    sort: schema.defaultView.sort.field,
+    direction: schema.defaultView.sort.direction,
+  });
+  const returnPath = validatedReturnTo(tenantCode, returnTo) ?? `${listPath}${search ? `?${search}` : ""}`;
+
+  useEffect(() => {
+    if (record || !focusRecordId.current) return;
+    const path = `${listPath}/${encodeURIComponent(focusRecordId.current)}`;
+    const link = Array.from(listRef.current?.querySelectorAll<HTMLAnchorElement>("a[href]") ?? [])
+      .find((anchor) => new URL(anchor.href).pathname === path && anchor.getClientRects().length > 0);
+    link?.focus({ preventScroll: true });
+    focusRecordId.current = undefined;
+  }, [record, listPath]);
 
   return (
     <>
-      <RecordList
-        currentMemberId={currentMemberId}
-        tenantCode={tenantCode}
-        schema={schema}
-        query={query}
-        initialPage={initialPage}
-        members={members}
-        canFilterByOwner={isAdmin}
-      />
+      <div ref={listRef}>
+        <RecordList
+          currentMemberId={currentMemberId}
+          tenantCode={tenantCode}
+          schema={schema}
+          query={query}
+          initialPage={initialPage}
+          members={members}
+          canFilterByOwner={isAdmin}
+        />
+      </div>
       {record ? (
         <RecordDetailDrawer
           tenantCode={tenantCode}
@@ -75,18 +100,18 @@ function RecordWorkspaceSession({
           initialEditing={initialEditing}
           followUpId={followUpId}
           onClose={() => {
+            if (!validatedReturnTo(tenantCode, returnTo)) focusRecordId.current = record.id;
             setRecord(undefined);
-            const search = recordQuerySearch(query, {
-              ...DEFAULT_RECORD_QUERY,
-              sort: schema.defaultView.sort.field,
-              direction: schema.defaultView.sort.direction,
-            });
-            router.replace(`${listPath}${search ? `?${search}` : ""}`);
+            router.replace(returnPath);
           }}
-          onChanged={(next) => {
+          onChanged={async (next) => {
             setRecord(next ?? undefined);
+            await Promise.all([
+              client.invalidateQueries({ queryKey: ["workspace", tenantCode, "records"], refetchType: "all" }),
+              client.invalidateQueries({ queryKey: followUpQueryKeys.root(tenantCode), refetchType: "all" }),
+            ]);
             router.refresh();
-            if (!next) router.replace(listPath);
+            if (!next) router.replace(returnPath);
           }}
         />
       ) : null}

@@ -2,7 +2,7 @@
 
 Date: 2026-10-03
 
-Status: REVISED WITH AUDIT AND FIRST-SLICE PLAN — IMPLEMENTATION NOT STARTED
+Status: SLICE 1 IMPLEMENTED AND MERGED (#24, 9cd2523) — SLICES 2＋3 AUTHORIZED / ACTIVE — SLICE 4 PLANNED
 
 Repository: Zhong0118/multi-tenant-CRM-builder
 
@@ -65,4 +65,4 @@ BACKEND CHANGES REQUIRED: **NO**，限于当前推荐范围。跨设备保存个
 
 开发入口：[First Slice Implementation Plan](../plans/2026-10-03-crm-product-experience-v2-implementation.md)。顺序：Task 0 修复三项已复现的记录状态 bug → Slice 1 公共框架与记录列表 → Slice 2 详情/跟进 → Slice 3 员工工作台 → Slice 4 管理配置。
 
-最终状态：**PLAN READY FOR DEVELOPMENT REVIEW — IMPLEMENTATION NOT STARTED**。本轮授权是审计与计划完善，未把方向稿或测试结果当作已完成实现。
+当前状态：Slice1已实现并合并PR #24（9cd2523），postmerge run37199104409六门SUCCESS；用户本轮明确授权Slice2＋3联合交付，详见[联合计划](../plans/2026-10-04-crm-product-experience-v2-slices-2-3.md)。上文初稿过程为历史背景，新PR不自动合并，Slice4与部署仍未批准。

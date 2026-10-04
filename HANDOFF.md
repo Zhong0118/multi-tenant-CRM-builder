@@ -2,7 +2,7 @@
 
 更新时间：2026-10-03（项目审计与 Product Experience V2 开发准备）
 
-**当前开发入口：** [项目全局审计](docs/audits/2026-10-03/project-review.md)、[V2 设计](docs/superpowers/specs/2026-10-03-crm-product-experience-v2-design.md)、[V2 第一切片计划](docs/superpowers/plans/2026-10-03-crm-product-experience-v2-implementation.md)。本轮已实现 V2 第一切片 Task 0 与 Tasks 1–2，并补移动焦点、卡片排序/分页/选择及搜索草稿同步；Task 3 已补独立HIDDEN发布fixture、两角色三宽度状态路径、表单/文件操作、桌面批量和键盘证据；批准范围浏览器矩阵、视觉和菜单回焦点已补齐，Task3浏览器验收PASS；既有lint与workflow fixture限制详见验收记录，Draft PR #24 尚未合并。后续切片仍未启动，Slice 2 尚不具备进入条件。根目录 main 在本次检查中落后 origin/main 112 个提交，必须现场核对，不能把旧工作树当最新基线。
+**当前开发入口：** CRM V2 Slice1已通过PR #24合并进入main，merge `9cd2523319557d47fd877646716b01698d7e1193`（2026-10-04）；合并前最新修复 `4484ed9` 六门SUCCESS（run37198879692），已修当前页批量选择数量/对象一致性。用户明确批准Slice2＋3联合交付，当前为ACTIVE；从最新origin/main独立codex工作树开发，新PR不自动合并。Slice4、部署、AI/Automation与权限/DB/CI扩展未授权。批准范围历史证据见 [Slice1验收](docs/audits/2026-10-03/crm-product-experience-v2-slice-1-acceptance.md)。
 
 `main` 与 `origin/main` 是当前开发基线。**不要把某次 `git log -1` 的输出写死进本文。**
 Workflow V1 与 Action Engine V1 **均已合并进入 `main`**。Action Engine V1 通过 PR #1 合并，合并提交 `e590c23da6aa9c5fe0d0c3cd71250270ea265ebd`（该 SHA 只作为这一次历史事实记录，不是"main 永远等于它"）。Workflow Required Field Visibility Hardening 已通过 PR #2 合并；Record Required Field Visibility Hardening 已通过 PR #3 合并（均详见下方）。
@@ -52,7 +52,7 @@ V1B 的 **COMPLETED** 指已批准范围内的产品实现、安全边界、测�
 |---|---|
 | `docs/superpowers/plans/2026-09-15-crm-process-roadmap.md` | **Full Capability Roadmap**：长期需求池与完整能力地图，标记为 `PLANNED` 的阶段不构成实现批准 |
 | `docs/superpowers/plans/2026-09-16-crm-lean-roadmap.md` | **Lean Execution Roadmap**：近期实际执行路线，同一时间只激活一个主要产品 Task |
-| `docs/superpowers/plans/2026-10-03-crm-product-experience-v2-implementation.md` | **V2 第一切片开发计划**：Task 0 与 Tasks 1–2 已实现；Task 3 浏览器验收PASS、最终SHA六门须实查、Draft PR 未合并；验收见 `docs/audits/2026-10-03/crm-product-experience-v2-slice-1-acceptance.md` |
+| `docs/superpowers/plans/2026-10-03-crm-product-experience-v2-implementation.md` | **V2 第一切片开发计划**：Slice1已实现并合并PR #24；Slice2＋3已批准联合执行；验收见 `docs/audits/2026-10-03/crm-product-experience-v2-slice-1-acceptance.md` |
 
 对照关系：Full Roadmap 上的长期需求不因 Lean Roadmap 而消失；只有从 Full Roadmap 提升出来的阶段才进入 Lean Roadmap 并成为 `ACTIVE`。两份文档与本文冲突时，以本文的当前事实为准。
 

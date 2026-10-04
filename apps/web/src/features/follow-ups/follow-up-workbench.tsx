@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
+import { sourceRecordHref } from "@/features/records/source-navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Skeleton } from "antd";
 import { useState } from "react";
@@ -35,6 +37,9 @@ export function PersonalFollowUpWorkbench({
   api?: typeof followUpApi;
 }) {
   const client = useQueryClient();
+  const pathname = usePathname();
+  const search = useSearchParams().toString();
+  const source = `${pathname}${search ? `?${search}` : ""}`;
   const [error, setError] = useState<string>();
 
   const query = useQuery({
@@ -53,12 +58,14 @@ export function PersonalFollowUpWorkbench({
       setError(undefined);
       await client.invalidateQueries({
         queryKey: followUpQueryKeys.root(tenantCode),
+        refetchType: "all",
       });
     },
     onError: async (caught) => {
       setError(toApiError(caught).message);
       await client.invalidateQueries({
         queryKey: followUpQueryKeys.root(tenantCode),
+        refetchType: "all",
       });
     },
   });
@@ -166,7 +173,7 @@ export function PersonalFollowUpWorkbench({
                         </div>
                         <Link
                           data-testid={`workbench-link-${task.id}`}
-                          href={`/workspace/${tenantCode}/objects/${task.objectCode}/${task.recordId}`}
+                          href={sourceRecordHref(tenantCode, task.objectCode, task.recordId, source, task.id)}
                         >
                           {task.recordTitle}{" "}
                           <span className={styles.muted}>

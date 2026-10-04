@@ -38,6 +38,7 @@ export function RecordActivityTimeline({
   api,
 }: RecordActivityTimelineProps) {
   const queryClient = useQueryClient();
+  const [composing, setComposing] = useState(false);
   const [activityType, setActivityType] = useState<MemberActivityType>("NOTE");
   const [content, setContent] = useState("");
   const [error, setError] = useState<string>();
@@ -74,9 +75,9 @@ export function RecordActivityTimeline({
   });
 
   return (
-    <section className={styles.timeline} aria-label="跟进记录">
+    <section className={styles.timeline} aria-label="活动历史">
       <div className={styles.timelineHeading}>
-        <h2>跟进记录</h2>
+        <h2>活动历史</h2>
         <Typography.Text type="secondary">
           按时间追加，不能修改或覆盖已有记录。
         </Typography.Text>
@@ -84,7 +85,10 @@ export function RecordActivityTimeline({
 
       {error ? <Alert type="error" showIcon title={error} /> : null}
 
-      {canCreate ? (
+      {canCreate && !composing ? (
+        <Button onClick={() => setComposing(true)} aria-expanded={false}>追加活动</Button>
+      ) : null}
+      {canCreate && composing ? (
         <Form component={false} layout="vertical" className={styles.timelineComposer}>
           <div className={styles.timelineComposerRow}>
             <Form.Item label="类型" htmlFor="activity-type">
@@ -101,6 +105,7 @@ export function RecordActivityTimeline({
           </div>
           <Form.Item label="内容" htmlFor="activity-content">
             <Input.TextArea
+              autoFocus
               id="activity-content"
               rows={3}
               maxLength={4000}
@@ -114,14 +119,15 @@ export function RecordActivityTimeline({
             disabled={content.trim() === ""}
             onClick={() => create.mutate()}
           >
-            追加跟进
+            保存活动
           </Button>
+          <Button onClick={() => setComposing(false)} disabled={create.isPending}>收起表单</Button>
         </Form>
-      ) : (
+      ) : !canCreate ? (
         <Typography.Text type="secondary">
-          当前权限只能查看跟进记录，不能追加。
+          当前权限只能查看活动历史，不能追加。
         </Typography.Text>
-      )}
+      ) : null}
 
       {activities.isError ? (
         <Alert
@@ -138,7 +144,7 @@ export function RecordActivityTimeline({
       </ol>
 
       {activities.isSuccess && activities.data.total === 0 ? (
-        <Typography.Text type="secondary">还没有跟进记录。</Typography.Text>
+        <Typography.Text type="secondary">还没有活动记录。</Typography.Text>
       ) : null}
     </section>
   );

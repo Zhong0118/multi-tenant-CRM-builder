@@ -4,6 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 import { PersonalFollowUpWorkbench } from "./follow-up-workbench";
 import type { followUpApi } from "./follow-up-api";
 
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/workspace/northwind/dashboards/sales",
+  useSearchParams: () => new URLSearchParams("from=2026-10-01&to=2026-10-04"),
+}));
+
 const item = {
   id: "task-1",
   recordId: "record-1",
@@ -108,7 +113,7 @@ describe("PersonalFollowUpWorkbench", () => {
     const link = await screen.findByTestId("workbench-link-task-1");
     expect(link).toHaveAttribute(
       "href",
-      "/workspace/northwind/objects/opportunities/record-1",
+      "/workspace/northwind/objects/opportunities/record-1?followUp=task-1&returnTo=%2Fworkspace%2Fnorthwind%2Fdashboards%2Fsales%3Ffrom%3D2026-10-01%26to%3D2026-10-04",
     );
     // 2026-09-17T01:00:00Z is 09:00 on 09/17 in Asia/Shanghai, so a browser- or
     // UTC-rendered time would be caught here.

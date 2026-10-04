@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type {
@@ -7,6 +7,13 @@ import type {
 } from "@/features/dashboard/dashboard-types";
 
 import { WorkspaceHomeView } from "./workspace-home-view";
+
+const refresh = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/workspace/northwind",
+  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ refresh }),
+}));
 
 vi.mock("@ant-design/charts", () => ({
   Bar: () => <div data-testid="distribution-chart" />,
@@ -34,6 +41,80 @@ const objects = [
 ];
 
 describe("WorkspaceHomeView", () => {
+  it("puts personal tasks before trend dates without changing published widgets or publication", () => {
+    const { container } = render(
+      <WorkspaceHomeView
+        tenantCode="northwind"
+        tenantName="百杰"
+        userName="李明"
+        role="EMPLOYEE"
+        businessObjects={objects}
+        overview={{
+          ...readyOverview,
+          role: "EMPLOYEE",
+          publication: {
+            id: "publication-7",
+            sourceDraftVersion: 3,
+            number: 7,
+            publishedAt: "2026-08-01T00:00:00.000Z",
+          },
+        }}
+      />,
+    );
+    const tasks = screen.getByTestId("personal-follow-up-workbench");
+    const dates = screen.getByRole("navigation", { name: "趋势时间范围" });
+    expect(
+      tasks.compareDocumentPosition(dates) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(dates).toHaveTextContent("发布 #7");
+    expect(
+      [...container.querySelectorAll("[data-widget-id]")].map((widget) =>
+        widget.getAttribute("data-widget-id"),
+      ),
+    ).toEqual([
+      "total",
+      "unavailable",
+      "trend",
+      "status",
+      "leaderboard",
+      "records",
+    ]);
+  });
+
+  it("retries only the overview route while personal tasks and authorized business actions remain mounted", () => {
+    const { rerender } = render(
+      <WorkspaceHomeView
+        tenantCode="northwind"
+        tenantName="百杰"
+        userName="李明"
+        role="EMPLOYEE"
+        businessObjects={objects}
+        overviewFailure={{ requestId: "req_dashboard" }}
+      />,
+    );
+    const tasks = screen.getByTestId("personal-follow-up-workbench");
+    fireEvent.click(screen.getByRole("button", { name: "重试工作台概览" }));
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("personal-follow-up-workbench")).toBe(tasks);
+    expect(screen.getByText(/req_dashboard/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "新建订单" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("navigation", { name: "趋势时间范围" }),
+    ).not.toBeInTheDocument();
+    rerender(
+      <WorkspaceHomeView
+        tenantCode="northwind"
+        tenantName="百杰"
+        userName="李明"
+        role="EMPLOYEE"
+        businessObjects={objects}
+        overview={emptyOverview("EMPLOYEE")}
+      />,
+    );
+    expect(screen.getByTestId("personal-follow-up-workbench")).toBe(tasks);
+    expect(screen.getByText("工作台尚未启用")).toBeInTheDocument();
+  });
+
   it("renders published widgets in type bands, ignoring configured widths", () => {
     const { container } = render(
       <WorkspaceHomeView
@@ -63,7 +144,7 @@ describe("WorkspaceHomeView", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "北区订单" })).toHaveAttribute(
       "href",
-      "/workspace/northwind/objects/orders/record-1",
+      "/workspace/northwind/objects/orders/record-1?returnTo=%2Fworkspace%2Fnorthwind",
     );
 
     const widgets = container.querySelectorAll("[data-dashboard-widget]");
@@ -267,9 +348,9 @@ describe("WorkspaceHomeView", () => {
       screen.queryByRole("link", { name: "配置工作台" }),
     ).not.toBeInTheDocument();
     // Personal execution data must not depend on a published dashboard.
-    expect(screen.getByTestId("personal-follow-up-workbench")).toHaveTextContent(
-      "follow-ups:northwind",
-    );
+    expect(
+      screen.getByTestId("personal-follow-up-workbench"),
+    ).toHaveTextContent("follow-ups:northwind");
   });
 
   it("sends an administrator without published tables to create the first business table", () => {
@@ -389,6 +470,11 @@ describe("WorkspaceHomeView", () => {
       "href",
       "/workspace/northwind/objects/orders/new",
     );
+    expect(
+      document.querySelectorAll(
+        'a[href="/workspace/northwind/objects/orders"]',
+      ),
+    ).toHaveLength(1);
     expect(screen.getByRole("link", { name: "打开订单" })).toHaveAttribute(
       "href",
       "/workspace/northwind/objects/orders",

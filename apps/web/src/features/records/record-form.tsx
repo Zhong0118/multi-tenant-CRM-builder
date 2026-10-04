@@ -23,7 +23,7 @@ export interface RecordFormProps {
   members?: DynamicFieldMember[];
   canChooseOwner?: boolean;
   api?: RecordApi;
-  onSaved: (record: RecordSummary) => void;
+  onSaved: (record: RecordSummary) => void | Promise<void>;
   onCancel?: () => void;
 }
 
@@ -74,7 +74,7 @@ export function RecordForm({
     onSuccess: (saved) => {
       setSummary(undefined);
       setConflicted(false);
-      onSaved(saved);
+      return onSaved(saved);
     },
     onError: (caught) => {
       const apiError = toApiError(caught);

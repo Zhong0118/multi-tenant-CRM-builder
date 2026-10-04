@@ -16,6 +16,7 @@ import {
   Tag,
 } from "antd";
 import Link from "next/link";
+import { sourceRecordHref } from "@/features/records/source-navigation";
 import { toApiError } from "@/lib/api/api-error";
 import {
   followUpApi,
@@ -29,20 +30,34 @@ export function FollowUpPanel({
   tenantCode,
   record,
   followUpId,
+  listState,
+  returnTo,
+  onListStateChange,
   api = followUpApi,
 }: {
   tenantCode: string;
   record?: { id: string; objectCode: string; canCreate: boolean };
   followUpId?: string;
+  listState?: { status: FollowUpStatus; page: number };
+  returnTo?: string;
+  onListStateChange?: (state: { status: FollowUpStatus; page: number }) => void;
   api?: typeof followUpApi;
 }) {
   const client = useQueryClient();
+  const recordId = record?.id;
   const targetRef = useRef<HTMLLIElement>(null);
   const focusedRef = useRef(false);
   const [locating, setLocating] = useState(!!followUpId);
   const [unavailable, setUnavailable] = useState(false);
-  const [status, setStatus] = useState<FollowUpStatus>("OPEN");
-  const [page, setPage] = useState(1);
+  const [localStatus, setStatus] = useState<FollowUpStatus>("OPEN");
+  const [localPage, setPage] = useState(1);
+  const status = listState?.status ?? localStatus;
+  const page = listState?.page ?? localPage;
+  const changeListState = (next: { status: FollowUpStatus; page: number }) => {
+    if (onListStateChange) onListStateChange(next);
+    else { setStatus(next.status); setPage(next.page); }
+  };
+  const [composing, setComposing] = useState(false);
   const [title, setTitle] = useState("");
   const [dueAt, setDueAt] = useState("");
   const [rescheduling, setRescheduling] = useState<FollowUp>();
@@ -68,27 +83,27 @@ export function FollowUpPanel({
     refetchInterval: 60_000,
   });
   useEffect(() => {
-    if (!followUpId || !record) return;
+    if (!followUpId || !recordId) return;
+    const targetKey = followUpQueryKeys.root(tenantCode);
     let active = true;
     focusedRef.current = false;
-    setLocating(true);
-    setUnavailable(false);
     void (async () => {
       try {
         // The list endpoint applies current actor access; never infer visibility from the URL.
         for (const candidate of ["OPEN", "DONE", "CANCELLED"] as const) {
           for (let candidatePage = 1; active; candidatePage++) {
             const result = await client.fetchQuery({
-              queryKey: [...key, record.id, candidate, candidatePage],
+              queryKey: [...targetKey, recordId, candidate, candidatePage],
               queryFn: () =>
                 api.list(tenantCode, {
-                  recordId: record.id,
+                  recordId,
                   status: candidate,
                   page: candidatePage,
                   limit: 5,
                 }),
             });
             if (!active) return;
+            setUnavailable(false);
             if (result.items.some((item) => item.id === followUpId)) {
               setStatus(candidate);
               setPage(candidatePage);
@@ -112,7 +127,7 @@ export function FollowUpPanel({
     return () => {
       active = false;
     };
-  }, [followUpId, record?.id, tenantCode, api, client]);
+  }, [followUpId, recordId, tenantCode, api, client]);
   useEffect(() => {
     if (
       !focusedRef.current &&
@@ -126,7 +141,7 @@ export function FollowUpPanel({
   }, [locating, query.data, followUpId]);
   const refresh = () => {
     setError(undefined);
-    void client.invalidateQueries({ queryKey: key });
+    return client.invalidateQueries({ queryKey: key, refetchType: "all" });
   };
   const fail = (caught: unknown) => setError(toApiError(caught).message);
   const create = useMutation({
@@ -142,7 +157,7 @@ export function FollowUpPanel({
       setDueAt("");
       setStatus("OPEN");
       setPage(1);
-      refresh();
+      return refresh();
     },
     onError: fail,
   });
@@ -159,11 +174,11 @@ export function FollowUpPanel({
     onSuccess: () => {
       setRescheduling(undefined);
       setReassigning(undefined);
-      refresh();
+      return refresh();
     },
     onError: (caught) => {
       fail(caught);
-      void client.invalidateQueries({ queryKey: key });
+      return client.invalidateQueries({ queryKey: key, refetchType: "all" });
     },
   });
   const validDate = (value: string) =>
@@ -171,11 +186,11 @@ export function FollowUpPanel({
   return (
     <section
       className={styles.panel}
-      aria-label={record ? "记录跟进事项" : "我的跟进待办"}
+      aria-label={record ? "下一步跟进" : "我的跟进待办"}
     >
       <div className={styles.heading}>
         <div>
-          <h2>{record ? "记录跟进事项" : "我的跟进待办"}</h2>
+          <h2>{record ? "下一步跟进" : "我的跟进待办"}</h2>
           <p>
             {record
               ? "为自己安排下一步，完成后保留记录。管理员可查看和处理此记录的所有跟进事项。"
@@ -208,7 +223,10 @@ export function FollowUpPanel({
       {unavailable && (
         <Alert type="warning" title="该跟进事项不存在或当前无权查看。" />
       )}
-      {record?.canCreate && (
+      {record?.canCreate && !composing && (
+        <Button onClick={() => setComposing(true)} aria-expanded={false}>安排跟进</Button>
+      )}
+      {record?.canCreate && composing && (
         <Form
           layout="vertical"
           className={styles.composer}
@@ -216,6 +234,7 @@ export function FollowUpPanel({
         >
           <Form.Item label="跟进事项" htmlFor="follow-up-title">
             <Input
+              autoFocus
               id="follow-up-title"
               placeholder="例如：确认客户反馈"
               maxLength={200}
@@ -239,6 +258,7 @@ export function FollowUpPanel({
           >
             安排跟进
           </Button>
+          <Button onClick={() => setComposing(false)} disabled={create.isPending}>收起表单</Button>
         </Form>
       )}
       <Segmented
@@ -253,8 +273,7 @@ export function FollowUpPanel({
           { label: "已取消", value: "CANCELLED" },
         ]}
         onChange={(value) => {
-          setStatus(value as FollowUpStatus);
-          setPage(1);
+          changeListState({ status: value as FollowUpStatus, page: 1 });
         }}
       />
       {query.isLoading && <Skeleton active paragraph={{ rows: 2 }} />}
@@ -292,7 +311,7 @@ export function FollowUpPanel({
               </div>
               {!record && (
                 <Link
-                  href={`/workspace/${tenantCode}/objects/${task.objectCode}/${task.recordId}`}
+                  href={sourceRecordHref(tenantCode, task.objectCode, task.recordId, returnTo, task.id)}
                 >
                   {task.recordTitle}{" "}
                   <span className={styles.muted}>· {task.objectName}</span>
@@ -366,7 +385,7 @@ export function FollowUpPanel({
           total={query.data.total}
           pageSize={query.data.limit}
           showSizeChanger={false}
-          onChange={setPage}
+          onChange={(nextPage) => changeListState({ status, page: nextPage })}
         />
       )}
       <Modal

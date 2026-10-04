@@ -40,10 +40,19 @@ export function BusinessObjectBar({
       </div>
       <nav>
         {objects.map((object) => (
-          <Link key={object.code} href={`/workspace/${tenantCode}/objects/${object.code}`}>
-            {object.name}
-            <span aria-hidden>→</span>
-          </Link>
+          <span key={object.code} className={styles.shortcutGroup}>
+            {role === "EMPLOYEE" && object.canCreate ? (
+              <Link
+                href={`/workspace/${tenantCode}/objects/${object.code}/new`}
+              >
+                {`新建${object.name}`}
+              </Link>
+            ) : null}
+            <Link href={`/workspace/${tenantCode}/objects/${object.code}`}>
+              {role === "EMPLOYEE" ? `打开${object.name}` : object.name}
+              <span aria-hidden>→</span>
+            </Link>
+          </span>
         ))}
       </nav>
     </section>

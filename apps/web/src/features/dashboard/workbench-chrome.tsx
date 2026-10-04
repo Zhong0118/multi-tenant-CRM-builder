@@ -1,9 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
+import { ReloadOutlined } from "@ant-design/icons";
+import { Button } from "antd";
+
+import { StatePanel } from "@/components/workbench/state-panel";
 
 import { StatusTag } from "@/components/workbench/status-tag";
-import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
 import type { DashboardListItem, DashboardRuntime } from "./dashboard-types";
 import {
@@ -14,6 +19,27 @@ import {
   workbenchPeriodRange,
 } from "./workbench-period";
 import styles from "./workbench.module.css";
+
+export function WorkbenchOverviewFailure({ requestId }: { requestId: string }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  return (
+    <StatePanel
+      tone="error"
+      title="工作台概览暂时无法加载"
+      description={`请重试加载概览。请求编号：${requestId}`}
+      action={
+        <Button
+          icon={<ReloadOutlined aria-hidden />}
+          loading={pending}
+          onClick={() => startTransition(() => router.refresh())}
+        >
+          重试工作台概览
+        </Button>
+      }
+    />
+  );
+}
 
 export function WorkbenchPeriodNav({
   pathname,
@@ -94,32 +120,6 @@ export function PeriodLabel({
         ? ` · 发布 #${publication.number}（${formatDate(publication.publishedAt)}）`
         : " · 已发布"}
     </StatusTag>
-  );
-}
-
-export function EmployeeShortcuts({
-  tenantCode,
-  objects,
-}: {
-  tenantCode: string;
-  objects: RuntimeObjectNavigation[];
-}) {
-  if (!objects.length) return null;
-  return (
-    <section className={styles.shortcuts} aria-label="快捷操作">
-      {objects.map((object) => (
-        <span key={object.code} className={styles.shortcutGroup}>
-          {object.canCreate ? (
-            <Link href={`/workspace/${tenantCode}/objects/${object.code}/new`}>
-              {`新建${object.name}`}
-            </Link>
-          ) : null}
-          <Link href={`/workspace/${tenantCode}/objects/${object.code}`}>
-            {`打开${object.name}`}
-          </Link>
-        </span>
-      ))}
-    </section>
   );
 }
 

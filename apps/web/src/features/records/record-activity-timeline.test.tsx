@@ -78,10 +78,12 @@ describe("RecordActivityTimeline", () => {
       />,
     );
 
+    expect(screen.queryByLabelText("内容")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "追加活动" }));
     fireEvent.change(await screen.findByLabelText("内容"), {
       target: { value: "已回访确认需求。" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "追加跟进" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存活动" }));
 
     await waitFor(() =>
       expect(api.createActivity).toHaveBeenCalledWith(
@@ -92,6 +94,19 @@ describe("RecordActivityTimeline", () => {
       ),
     );
     expect(screen.queryByRole("button", { name: "编辑跟进" })).not.toBeInTheDocument();
+  });
+
+  it("retains an activity draft after failure and while the form is collapsed", async () => {
+    const api = recordApi({ createActivity: vi.fn().mockRejectedValue(new Error("network unavailable")) });
+    renderTimeline(<RecordActivityTimeline tenantCode="northwind" objectCode="customers" recordId="record-1" canCreate api={api} />);
+    fireEvent.click(screen.getByRole("button", { name: "追加活动" }));
+    fireEvent.change(screen.getByLabelText("内容"), { target: { value: "待保存的拜访记录" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存活动" }));
+    await screen.findByRole("alert");
+    expect(screen.getByLabelText("内容")).toHaveValue("待保存的拜访记录");
+    fireEvent.click(screen.getByRole("button", { name: "收起表单" }));
+    fireEvent.click(screen.getByRole("button", { name: "追加活动" }));
+    expect(screen.getByLabelText("内容")).toHaveValue("待保存的拜访记录");
   });
 
   it("hides the composer when the member cannot update the record", async () => {
@@ -106,9 +121,9 @@ describe("RecordActivityTimeline", () => {
     );
 
     expect(await screen.findByText("第一次电话未接通。")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "追加跟进" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "保存活动" })).not.toBeInTheDocument();
     expect(
-      screen.getByText("当前权限只能查看跟进记录，不能追加。"),
+      screen.getByText("当前权限只能查看活动历史，不能追加。"),
     ).toBeInTheDocument();
   });
 });
