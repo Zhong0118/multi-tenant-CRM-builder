@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { platformNavigation } from "@/components/navigation/platform-navigation";
@@ -46,6 +46,7 @@ function renderShell() {
 describe("AppShell", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1440 });
   });
 
   it("renders company-management navigation and the platform user menu", () => {
@@ -128,6 +129,107 @@ describe("AppShell", () => {
       "data-mobile-open",
       "true",
     );
+  });
+
+  it("defaults to compact navigation at 900 without writing a desktop preference", () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 900 });
+    renderShell();
+    expect(screen.getByRole("navigation", { name: "平台导航" }))
+      .toHaveAttribute("data-collapsed", "true");
+    expect(window.localStorage.getItem("crm.sidebar.collapsed")).toBeNull();
+    act(() => {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: 1440 });
+      window.dispatchEvent(new Event("resize"));
+    });
+    expect(screen.getByRole("navigation", { name: "平台导航" }))
+      .not.toHaveAttribute("data-collapsed");
+  });
+
+  it("honors an explicit expanded preference at 900 and preserves width across resize", () => {
+    window.localStorage.setItem("crm.sidebar.collapsed", "false");
+    window.localStorage.setItem("crm.sidebar.width", "280");
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 900 });
+    renderShell();
+    expect(screen.getByRole("navigation", { name: "平台导航" })).not.toHaveAttribute("data-collapsed");
+    act(() => {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: 1440 });
+      window.dispatchEvent(new Event("resize"));
+    });
+    expect(screen.getByRole("complementary")).toHaveStyle({ "--sidebar-width": "280px" });
+    expect(window.localStorage.getItem("crm.sidebar.collapsed")).toBe("false");
+  });
+
+  it("lets a user manually expand the default compact navigation", () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 900 });
+    renderShell();
+    fireEvent.click(screen.getByRole("button", { name: "展开菜单" }));
+    expect(screen.getByRole("navigation", { name: "平台导航" })).not.toHaveAttribute("data-collapsed");
+    expect(window.localStorage.getItem("crm.sidebar.collapsed")).toBe("false");
+  });
+
+  it.each(["escape", "close", "link"])("restores mobile trigger focus after %s", (method) => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 });
+    renderShell();
+    const trigger = screen.getByRole("button", { name: "打开导航" });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const link = screen.getByRole("link", { name: "公司管理" });
+    link.focus();
+    if (method === "escape") fireEvent.keyDown(link, { key: "Escape" });
+    else if (method === "close") fireEvent.click(screen.getByRole("button", { name: "关闭导航" }));
+    else {
+      link.addEventListener("click", (event) => event.preventDefault(), { once: true });
+      fireEvent.click(link);
+    }
+    expect(screen.getByRole("complementary")).not.toHaveAttribute("data-mobile-open");
+    expect(trigger).toHaveFocus();
+  });
+
+  it("contains mobile Tab and Shift+Tab focus and makes background inert", () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 });
+    renderShell();
+    fireEvent.click(screen.getByRole("button", { name: "打开导航" }));
+    const first = screen.getByRole("link", { name: "平台后台" });
+    const last = screen.getByRole("button", { name: "退出登录" });
+    first.focus();
+    fireEvent.keyDown(first, { key: "Tab", shiftKey: true });
+    expect(last).toHaveFocus();
+    fireEvent.keyDown(last, { key: "Tab" });
+    expect(first).toHaveFocus();
+    expect(screen.getByRole("main").parentElement).toHaveAttribute("inert");
+    fireEvent.keyDown(first, { key: "Escape" });
+    expect(screen.getByRole("main").parentElement).not.toHaveAttribute("inert");
+    expect(screen.getByRole("button", { name: "打开导航" })).toHaveFocus();
+  });
+
+  it("clears mobile navigation on resize without focusing the hidden trigger or changing preferences", () => {
+    window.localStorage.setItem("crm.sidebar.collapsed", "true");
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 });
+    renderShell();
+    fireEvent.click(screen.getByRole("button", { name: "打开导航" }));
+    act(() => {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: 900 });
+      window.dispatchEvent(new Event("resize"));
+    });
+    expect(screen.getByRole("complementary")).not.toHaveAttribute("data-mobile-open");
+    expect(screen.getByRole("main").parentElement).not.toHaveAttribute("inert");
+    expect(screen.getByRole("button", { name: "打开导航" })).not.toHaveFocus();
+    expect(window.localStorage.getItem("crm.sidebar.collapsed")).toBe("true");
+    act(() => {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 });
+      window.dispatchEvent(new Event("resize"));
+    });
+    expect(screen.queryByRole("button", { name: "关闭导航" })).not.toBeInTheDocument();
+  });
+
+  it("mobile collapse closes navigation without changing the desktop preference", () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 });
+    renderShell();
+    fireEvent.click(screen.getByRole("button", { name: "打开导航" }));
+    fireEvent.click(screen.getByRole("button", { name: "收起菜单" }));
+    expect(screen.getByRole("complementary")).not.toHaveAttribute("data-mobile-open");
+    expect(window.localStorage.getItem("crm.sidebar.collapsed")).toBeNull();
+    expect(screen.getByRole("button", { name: "打开导航" })).toHaveFocus();
   });
 
   it("keeps navigation and work content in separate scroll regions", () => {

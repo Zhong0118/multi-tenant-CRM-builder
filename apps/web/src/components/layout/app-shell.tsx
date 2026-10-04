@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -63,11 +64,25 @@ function subscribeCollapsed(listener: () => void) {
 }
 
 function getCollapsedSnapshot() {
-  return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
+  const preference = window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+  return preference === "true" ? true : preference === "false" ? false : null;
 }
 
 function getCollapsedServerSnapshot() {
-  return false;
+  return null;
+}
+
+function subscribeViewport(listener: () => void) {
+  window.addEventListener("resize", listener);
+  return () => window.removeEventListener("resize", listener);
+}
+
+function getViewportSnapshot() {
+  return window.innerWidth < 768 ? "mobile" : window.innerWidth < 1200 ? "compact" : "desktop";
+}
+
+function getViewportServerSnapshot() {
+  return "desktop";
 }
 
 function subscribeWidth(listener: () => void) {
@@ -113,7 +128,10 @@ export function AppShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [resizing, setResizing] = useState(false);
   const dragging = useRef(false);
-  const collapsed = useSyncExternalStore(
+  const navigationTrigger = useRef<HTMLElement | null>(null);
+  const shell = useRef<HTMLDivElement>(null);
+  const viewport = useSyncExternalStore(subscribeViewport, getViewportSnapshot, getViewportServerSnapshot);
+  const collapsedPreference = useSyncExternalStore(
     subscribeCollapsed,
     getCollapsedSnapshot,
     getCollapsedServerSnapshot,
@@ -123,8 +141,60 @@ export function AppShell({
     getWidthSnapshot,
     getWidthServerSnapshot,
   );
+  const collapsed = viewport !== "mobile" && (collapsedPreference ?? viewport === "compact");
+  const closeNavigation = useCallback(() => {
+    setMobileOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const sidebar = shell.current?.querySelector<HTMLElement>("aside");
+    const background = shell.current?.querySelector<HTMLElement>(`.${styles.column}`);
+    background?.setAttribute("inert", "");
+    sidebar?.querySelector<HTMLElement>("a")?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeNavigation();
+      } else if (event.key === "Tab") {
+        const controls = Array.from(sidebar?.querySelectorAll<HTMLElement>(
+          'a[href], button:not(:disabled), [tabindex="0"]',
+        ) ?? []).filter((element) => {
+          for (let node: HTMLElement | null = element; node && node !== sidebar; node = node.parentElement) {
+            const style = getComputedStyle(node);
+            if (style.display === "none" || style.visibility === "hidden") return false;
+          }
+          return true;
+        });
+        const first = controls[0];
+        const last = controls.at(-1);
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        }
+      }
+    };
+    const onResize = () => {
+      if (window.innerWidth >= 768) closeNavigation();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", onResize);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("resize", onResize);
+      background?.removeAttribute("inert");
+      if (window.innerWidth < 768) navigationTrigger.current?.focus();
+      else sidebar?.querySelector<HTMLElement>("a")?.focus();
+    };
+  }, [mobileOpen, closeNavigation]);
+
   const layoutRef = useRef({ collapsed, width });
-  layoutRef.current = { collapsed, width };
+  useEffect(() => {
+    layoutRef.current = { collapsed, width };
+  }, [collapsed, width]);
 
   const toggleCollapsed = useCallback(() => {
     persistCollapsed(!collapsed);
@@ -170,13 +240,13 @@ export function AppShell({
   }, []);
 
   return (
-    <div className={styles.shell}>
+    <div className={styles.shell} ref={shell}>
       {mobileOpen ? (
         <button
           type="button"
           className={styles.backdrop}
           aria-label="关闭导航"
-          onClick={() => setMobileOpen(false)}
+          onClick={closeNavigation}
         />
       ) : null}
       <Sidebar
@@ -189,7 +259,7 @@ export function AppShell({
         resizing={resizing}
         onToggle={toggleCollapsed}
         mobileOpen={mobileOpen}
-        onMobileClose={() => setMobileOpen(false)}
+        onMobileClose={() => { if (mobileOpen) closeNavigation(); }}
         onResizePointerDown={onResizePointerDown}
         onResizePointerMove={onResizePointerMove}
         onResizePointerUp={onResizePointerUp}
@@ -201,7 +271,10 @@ export function AppShell({
           user={user}
           roleLabel={roleLabel}
           showWorkspaceSwitch={showWorkspaceSwitch}
-          onOpenNavigation={() => setMobileOpen(true)}
+          onOpenNavigation={() => {
+            navigationTrigger.current = shell.current?.querySelector<HTMLElement>("header button") ?? null;
+            setMobileOpen(true);
+          }}
         />
         <main className={styles.main} data-scroll-region="main">
           {children}

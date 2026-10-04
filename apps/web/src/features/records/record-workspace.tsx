@@ -12,7 +12,7 @@ import type {
 import type { DynamicFieldMember } from "./dynamic-field";
 import { RecordDetailDrawer } from "./record-detail-drawer";
 import { RecordList } from "./record-list";
-import { recordQuerySearch, type RecordQuery } from "./record-query-state";
+import { DEFAULT_RECORD_QUERY, recordQuerySearch, type RecordQuery } from "./record-query-state";
 
 export interface RecordWorkspaceProps {
   tenantCode: string;
@@ -76,7 +76,11 @@ function RecordWorkspaceSession({
           followUpId={followUpId}
           onClose={() => {
             setRecord(undefined);
-            const search = recordQuerySearch(query);
+            const search = recordQuerySearch(query, {
+              ...DEFAULT_RECORD_QUERY,
+              sort: schema.defaultView.sort.field,
+              direction: schema.defaultView.sort.direction,
+            });
             router.replace(`${listPath}${search ? `?${search}` : ""}`);
           }}
           onChanged={(next) => {

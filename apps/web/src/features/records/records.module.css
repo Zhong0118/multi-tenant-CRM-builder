@@ -5,6 +5,12 @@
   width: 100%;
 }
 
+.savedFilterManagement {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .fieldHelp {
   margin-top: 4px;
   color: var(--ink-secondary);
@@ -137,6 +143,19 @@
 
 .register {
   overflow-x: auto;
+}
+
+.cardControls {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .cardControls {
+    display: flex;
+    gap: 8px;
+    padding: 12px 0;
+    flex-wrap: wrap;
+  }
 }
 
 .cardList {

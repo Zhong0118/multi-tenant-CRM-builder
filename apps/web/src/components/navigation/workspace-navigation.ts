@@ -9,10 +9,10 @@ export interface WorkspaceNavigationItem {
  * request time, so they are never hard-coded here — that keeps the platform
  * free of any one tenant's object names.
  */
-export function workspaceNavigation(
+export function workspaceNavigationGroups(
   tenantCode: string,
   role: "TENANT_ADMIN" | "EMPLOYEE",
-): WorkspaceNavigationItem[] {
+): { work: WorkspaceNavigationItem[]; admin: WorkspaceNavigationItem[] } {
   const root = `/workspace/${tenantCode}`;
 
   const shared: WorkspaceNavigationItem[] = [
@@ -25,12 +25,20 @@ export function workspaceNavigation(
     { href: `${root}/ai`, label: "AI 助手", icon: "ai" },
   ];
 
-  if (role === "EMPLOYEE") return shared;
+  return {
+    work: shared,
+    admin: role === "EMPLOYEE" ? [] : [
+      { href: `${root}/members`, label: "成员管理", icon: "members" },
+      { href: `${root}/audit`, label: "公司审计", icon: "audit" },
+      { href: `${root}/settings`, label: "设置", icon: "settings" },
+    ],
+  };
+}
 
-  return [
-    ...shared,
-    { href: `${root}/members`, label: "成员管理", icon: "members" },
-    { href: `${root}/audit`, label: "公司审计", icon: "audit" },
-    { href: `${root}/settings`, label: "设置", icon: "settings" },
-  ];
+export function workspaceNavigation(
+  tenantCode: string,
+  role: "TENANT_ADMIN" | "EMPLOYEE",
+): WorkspaceNavigationItem[] {
+  const groups = workspaceNavigationGroups(tenantCode, role);
+  return [...groups.work, ...groups.admin];
 }

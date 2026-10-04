@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState, useSyncExternalStore } from "react";
-import { Alert, Button, Input, Select, Space } from "antd";
+import { Alert, Button, Drawer, Input, Select, Space, Typography } from "antd";
+import styles from "./records.module.css";
 import type { RecordQuery } from "./record-query-state";
 type Saved = { name: string; query: RecordQuery };
 export function savedFilterKey(
@@ -73,6 +74,7 @@ function SavedRecordFiltersSession({
   const [name, setName] = useState("");
   const [selected, setSelected] = useState<string>();
   const [error, setError] = useState(false);
+  const [managementOpen, setManagementOpen] = useState(false);
   function persist(next: Saved[]) {
     try {
       localStorage.setItem(key, JSON.stringify(next));
@@ -102,43 +104,59 @@ function SavedRecordFiltersSession({
         >
           应用筛选
         </Button>
-        <Button
-          disabled={!selected}
-          onClick={() => {
-            persist(saved.filter((v) => v.name !== selected));
-            setSelected(undefined);
-          }}
-        >
-          删除筛选
-        </Button>
-        <Input
-          aria-label="筛选名称"
-          placeholder="为当前筛选命名"
-          value={name}
-          maxLength={50}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <Button
-          disabled={
-            !name.trim() ||
-            (saved.length >= 20 && !saved.some((v) => v.name === name.trim()))
-          }
-          onClick={() => {
-            const label = name.trim();
-            persist([
-              ...saved.filter((v) => v.name !== label),
-              { name: label, query: { ...query, page: 1 } },
-            ]);
-            setSelected(label);
-            setName("");
-          }}
-        >
-          保存当前筛选
-        </Button>
+        <Button onClick={() => setManagementOpen(true)}>管理筛选视图</Button>
       </Space>
-      {error && (
-        <Alert type="error" title="浏览器无法保存筛选，请检查存储设置。" />
-      )}
+      <Drawer
+        title="管理筛选视图"
+        open={managementOpen}
+        onClose={() => setManagementOpen(false)}
+        size="min(420px, 100vw)"
+        destroyOnHidden
+      >
+        <div className={styles.savedFilterManagement}>
+          <Typography.Text type="secondary">仅此浏览器</Typography.Text>
+          <Input
+            aria-label="筛选名称"
+            placeholder="为当前筛选命名"
+            value={name}
+            maxLength={50}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <Button
+            disabled={
+              !name.trim() ||
+              (saved.length >= 20 && !saved.some((v) => v.name === name.trim()))
+            }
+            onClick={() => {
+              const label = name.trim();
+              persist([
+                ...saved.filter((v) => v.name !== label),
+                { name: label, query: { ...query, page: 1 } },
+              ]);
+              setSelected(label);
+              setName("");
+            }}
+          >
+            保存当前筛选
+          </Button>
+          <Typography.Text type="secondary">
+            {selected ? `已选择：${selected}` : "在列表选择视图后可删除。"}
+          </Typography.Text>
+          <Button
+            danger
+            disabled={!selected}
+            onClick={() => {
+              persist(saved.filter((v) => v.name !== selected));
+              setSelected(undefined);
+            }}
+          >
+            删除筛选
+          </Button>
+          {error && (
+            <Alert type="error" title="浏览器无法保存筛选，请检查存储设置。" />
+          )}
+        </div>
+      </Drawer>
     </div>
   );
 }

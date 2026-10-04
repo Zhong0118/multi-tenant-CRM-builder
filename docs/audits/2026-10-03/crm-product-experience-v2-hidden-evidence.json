@@ -1,0 +1,1458 @@
+{
+  "createdAt": "2026-10-03T10:48:42.165Z",
+  "apiBase": "http://127.0.0.1:3101/api/v1",
+  "origin": "http://127.0.0.1:3100",
+  "isolatedDatabase": "127.0.0.1:55434/crm_v2_browser",
+  "tenantCode": "nebula-demo",
+  "objectCode": "slice1-hidden-probe",
+  "objectId": "e852842f-682b-4a84-980b-bfb5b520b691",
+  "employeeOwnerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+  "recordId": "b158fe96-1d9a-42ac-a4f5-b4ab006fc0be",
+  "recordIds": [
+    "b158fe96-1d9a-42ac-a4f5-b4ab006fc0be",
+    "30d798aa-be31-4b88-9923-3f04dccc12aa",
+    "8ad552d7-9786-4b0f-991e-c77223d2c71c",
+    "3705b893-d522-49cf-a14d-64f35a826959",
+    "796b3b06-f574-4e58-9b35-bc8b7768316f",
+    "29634857-f066-4c88-b5f4-bb4292b668cc",
+    "834ddc8a-6ac2-48bc-8863-cfc8fccfc6ce",
+    "a874e879-e037-4aa6-ad8f-e86efc0d6847",
+    "e6315bbf-55bc-4748-9aef-47880eed4347",
+    "bbdce531-4a0b-46a8-ad41-e72347828650",
+    "9c4a4ba1-7bae-47e5-871c-3127150b2a63",
+    "70e3c40b-12c2-4bbd-913b-4124ca26098d",
+    "ab26aa5a-d898-47b3-934a-2c72b19c1ce0",
+    "ef501203-f4f6-4c89-9c27-b5afd153a5bb",
+    "bae2e31b-c1a4-4d10-852f-af8d5847845d",
+    "11831080-b5ed-49a1-aee6-fcdc87caf3f3",
+    "124e96a3-ae2e-4492-b18c-ce049127b594",
+    "7a087b36-7acc-4234-9ac2-d15992ac1eb1",
+    "97cacd02-ef3a-486d-a4a2-0e809279cb8c",
+    "13bf8e84-53f7-478e-a0b5-a529993eeda3",
+    "dcffc40b-a770-4227-b8b0-2d750ac0a825"
+  ],
+  "createdRecordCount": 21,
+  "marker": "SLICE1_HIDDEN_SECRET_1791024521820",
+  "namingConstraints": {
+    "objectCode": "Object code must use /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/; slice1_hidden_probe rejected 400",
+    "fieldKeys": "Field keys must use /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/; publicNote -> public_note, hiddenProbe -> hidden_probe"
+  },
+  "defaultSort": {
+    "field": "updatedAt",
+    "direction": "desc"
+  },
+  "analysis": {
+    "blocking": [],
+    "warnings": [],
+    "changes": [
+      {
+        "kind": "ADDED",
+        "fieldKey": "name"
+      },
+      {
+        "kind": "ADDED",
+        "fieldKey": "public_note"
+      },
+      {
+        "kind": "ADDED",
+        "fieldKey": "hidden_probe"
+      }
+    ]
+  },
+  "publication": {
+    "id": "00db5e71-e2b0-4b97-9d15-3fcd1fbae111",
+    "number": 1,
+    "sourceDraftVersion": 6,
+    "publishedAt": "2026-10-03T10:48:41.807Z",
+    "changes": [
+      {
+        "kind": "ADDED",
+        "fieldKey": "name"
+      },
+      {
+        "kind": "ADDED",
+        "fieldKey": "public_note"
+      },
+      {
+        "kind": "ADDED",
+        "fieldKey": "hidden_probe"
+      }
+    ]
+  },
+  "apiStatuses": [
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/object-definitions",
+      "status": 400,
+      "note": "Underscore object code rejected before mutation"
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "role": "employee",
+      "method": "POST",
+      "path": "/auth/login",
+      "status": 200
+    },
+    {
+      "role": "employee",
+      "method": "GET",
+      "path": "/me/workspaces",
+      "status": 200
+    },
+    {
+      "role": "admin",
+      "method": "GET",
+      "path": "/workspaces/nebula-demo/object-definitions",
+      "status": 200
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/object-definitions",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/object-definitions/e852842f-682b-4a84-980b-bfb5b520b691/fields",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/object-definitions/e852842f-682b-4a84-980b-bfb5b520b691/fields",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/object-definitions/e852842f-682b-4a84-980b-bfb5b520b691/fields",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "PUT",
+      "path": "/workspaces/nebula-demo/object-definitions/e852842f-682b-4a84-980b-bfb5b520b691/default-view",
+      "status": 200
+    },
+    {
+      "role": "admin",
+      "method": "PUT",
+      "path": "/workspaces/nebula-demo/object-definitions/e852842f-682b-4a84-980b-bfb5b520b691/permissions",
+      "status": 200
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/object-definitions/e852842f-682b-4a84-980b-bfb5b520b691/publication-analysis",
+      "status": 200
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/object-definitions/e852842f-682b-4a84-980b-bfb5b520b691/publications",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "POST",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 201
+    },
+    {
+      "role": "admin",
+      "method": "GET",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/schema",
+      "status": 200
+    },
+    {
+      "role": "admin",
+      "method": "GET",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 200
+    },
+    {
+      "role": "admin",
+      "method": "GET",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records?page=2",
+      "status": 200
+    },
+    {
+      "role": "admin",
+      "method": "GET",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records/b158fe96-1d9a-42ac-a4f5-b4ab006fc0be",
+      "status": 200
+    },
+    {
+      "role": "admin",
+      "method": "GET",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records?search=SLICE1_HIDDEN_SECRET_1791024521820",
+      "status": 200
+    },
+    {
+      "role": "employee",
+      "method": "GET",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/schema",
+      "status": 200
+    },
+    {
+      "role": "employee",
+      "method": "GET",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records",
+      "status": 200
+    },
+    {
+      "role": "employee",
+      "method": "GET",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records?page=2",
+      "status": 200
+    },
+    {
+      "role": "employee",
+      "method": "GET",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records/b158fe96-1d9a-42ac-a4f5-b4ab006fc0be",
+      "status": 200
+    },
+    {
+      "role": "employee",
+      "method": "GET",
+      "path": "/workspaces/nebula-demo/objects/slice1-hidden-probe/records?search=SLICE1_HIDDEN_SECRET_1791024521820",
+      "status": 200
+    }
+  ],
+  "evidence": {
+    "admin": {
+      "schema": {
+        "publication": {
+          "number": 1,
+          "publishedAt": "2026-10-03T10:48:41.807Z"
+        },
+        "object": {
+          "code": "slice1-hidden-probe",
+          "name": "Slice1 Hidden Acceptance",
+          "description": null,
+          "titleFieldKey": "name",
+          "icon": null,
+          "sortOrder": 70
+        },
+        "fields": [
+          {
+            "id": "509f5e41-4dfc-4c16-8c39-0720242f9ccc",
+            "type": "TEXT",
+            "label": "Name",
+            "config": {},
+            "fieldKey": "name",
+            "isSystem": false,
+            "required": true,
+            "sortOrder": 10,
+            "validation": {},
+            "defaultValue": null,
+            "access": "EDIT"
+          },
+          {
+            "id": "54aa0218-c9df-4c5b-a4d3-453356f7b41d",
+            "type": "TEXT",
+            "label": "Public note",
+            "config": {},
+            "fieldKey": "public_note",
+            "isSystem": false,
+            "required": false,
+            "sortOrder": 20,
+            "validation": {},
+            "defaultValue": null,
+            "access": "EDIT"
+          },
+          {
+            "id": "4ad0548b-e31a-4884-a288-5c3c9262ade7",
+            "type": "TEXT",
+            "label": "Hidden probe",
+            "config": {},
+            "fieldKey": "hidden_probe",
+            "isSystem": false,
+            "required": false,
+            "sortOrder": 30,
+            "validation": {},
+            "defaultValue": null,
+            "access": "EDIT"
+          }
+        ],
+        "defaultView": {
+          "code": "default",
+          "name": "Hidden acceptance default",
+          "sort": {
+            "field": "updatedAt",
+            "direction": "desc"
+          },
+          "columnFieldKeys": [
+            "name",
+            "public_note",
+            "hidden_probe"
+          ],
+          "searchFieldKeys": [
+            "public_note",
+            "hidden_probe"
+          ]
+        },
+        "actions": {
+          "canCreate": true,
+          "canRead": true,
+          "canUpdate": true,
+          "canDelete": true
+        },
+        "scopes": {
+          "read": "ALL",
+          "update": "ALL"
+        }
+      },
+      "list": {
+        "items": [
+          {
+            "id": "dcffc40b-a770-4227-b8b0-2d750ac0a825",
+            "recordNo": "21",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 21",
+            "values": {
+              "name": "Slice1 probe 21",
+              "public_note": "Acceptance public note 21",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:42.059Z",
+            "updatedAt": "2026-10-03T10:48:42.059Z"
+          },
+          {
+            "id": "13bf8e84-53f7-478e-a0b5-a529993eeda3",
+            "recordNo": "20",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 20",
+            "values": {
+              "name": "Slice1 probe 20",
+              "public_note": "Acceptance public note 20",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:42.050Z",
+            "updatedAt": "2026-10-03T10:48:42.050Z"
+          },
+          {
+            "id": "97cacd02-ef3a-486d-a4a2-0e809279cb8c",
+            "recordNo": "19",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 19",
+            "values": {
+              "name": "Slice1 probe 19",
+              "public_note": "Acceptance public note 19",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:42.038Z",
+            "updatedAt": "2026-10-03T10:48:42.038Z"
+          },
+          {
+            "id": "7a087b36-7acc-4234-9ac2-d15992ac1eb1",
+            "recordNo": "18",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 18",
+            "values": {
+              "name": "Slice1 probe 18",
+              "public_note": "Acceptance public note 18",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:42.027Z",
+            "updatedAt": "2026-10-03T10:48:42.027Z"
+          },
+          {
+            "id": "124e96a3-ae2e-4492-b18c-ce049127b594",
+            "recordNo": "17",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 17",
+            "values": {
+              "name": "Slice1 probe 17",
+              "public_note": "Acceptance public note 17",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:42.017Z",
+            "updatedAt": "2026-10-03T10:48:42.017Z"
+          },
+          {
+            "id": "11831080-b5ed-49a1-aee6-fcdc87caf3f3",
+            "recordNo": "16",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 16",
+            "values": {
+              "name": "Slice1 probe 16",
+              "public_note": "Acceptance public note 16",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:42.006Z",
+            "updatedAt": "2026-10-03T10:48:42.006Z"
+          },
+          {
+            "id": "bae2e31b-c1a4-4d10-852f-af8d5847845d",
+            "recordNo": "15",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 15",
+            "values": {
+              "name": "Slice1 probe 15",
+              "public_note": "Acceptance public note 15",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.995Z",
+            "updatedAt": "2026-10-03T10:48:41.995Z"
+          },
+          {
+            "id": "ef501203-f4f6-4c89-9c27-b5afd153a5bb",
+            "recordNo": "14",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 14",
+            "values": {
+              "name": "Slice1 probe 14",
+              "public_note": "Acceptance public note 14",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.983Z",
+            "updatedAt": "2026-10-03T10:48:41.983Z"
+          },
+          {
+            "id": "ab26aa5a-d898-47b3-934a-2c72b19c1ce0",
+            "recordNo": "13",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 13",
+            "values": {
+              "name": "Slice1 probe 13",
+              "public_note": "Acceptance public note 13",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.972Z",
+            "updatedAt": "2026-10-03T10:48:41.972Z"
+          },
+          {
+            "id": "70e3c40b-12c2-4bbd-913b-4124ca26098d",
+            "recordNo": "12",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 12",
+            "values": {
+              "name": "Slice1 probe 12",
+              "public_note": "Acceptance public note 12",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.960Z",
+            "updatedAt": "2026-10-03T10:48:41.960Z"
+          },
+          {
+            "id": "9c4a4ba1-7bae-47e5-871c-3127150b2a63",
+            "recordNo": "11",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 11",
+            "values": {
+              "name": "Slice1 probe 11",
+              "public_note": "Acceptance public note 11",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.949Z",
+            "updatedAt": "2026-10-03T10:48:41.949Z"
+          },
+          {
+            "id": "bbdce531-4a0b-46a8-ad41-e72347828650",
+            "recordNo": "10",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 10",
+            "values": {
+              "name": "Slice1 probe 10",
+              "public_note": "Acceptance public note 10",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.937Z",
+            "updatedAt": "2026-10-03T10:48:41.937Z"
+          },
+          {
+            "id": "e6315bbf-55bc-4748-9aef-47880eed4347",
+            "recordNo": "9",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 09",
+            "values": {
+              "name": "Slice1 probe 09",
+              "public_note": "Acceptance public note 9",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.927Z",
+            "updatedAt": "2026-10-03T10:48:41.927Z"
+          },
+          {
+            "id": "a874e879-e037-4aa6-ad8f-e86efc0d6847",
+            "recordNo": "8",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 08",
+            "values": {
+              "name": "Slice1 probe 08",
+              "public_note": "Acceptance public note 8",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.915Z",
+            "updatedAt": "2026-10-03T10:48:41.915Z"
+          },
+          {
+            "id": "834ddc8a-6ac2-48bc-8863-cfc8fccfc6ce",
+            "recordNo": "7",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 07",
+            "values": {
+              "name": "Slice1 probe 07",
+              "public_note": "Acceptance public note 7",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.903Z",
+            "updatedAt": "2026-10-03T10:48:41.903Z"
+          },
+          {
+            "id": "29634857-f066-4c88-b5f4-bb4292b668cc",
+            "recordNo": "6",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 06",
+            "values": {
+              "name": "Slice1 probe 06",
+              "public_note": "Acceptance public note 6",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.889Z",
+            "updatedAt": "2026-10-03T10:48:41.889Z"
+          },
+          {
+            "id": "796b3b06-f574-4e58-9b35-bc8b7768316f",
+            "recordNo": "5",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 05",
+            "values": {
+              "name": "Slice1 probe 05",
+              "public_note": "Acceptance public note 5",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.877Z",
+            "updatedAt": "2026-10-03T10:48:41.877Z"
+          },
+          {
+            "id": "3705b893-d522-49cf-a14d-64f35a826959",
+            "recordNo": "4",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 04",
+            "values": {
+              "name": "Slice1 probe 04",
+              "public_note": "Acceptance public note 4",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.863Z",
+            "updatedAt": "2026-10-03T10:48:41.863Z"
+          },
+          {
+            "id": "8ad552d7-9786-4b0f-991e-c77223d2c71c",
+            "recordNo": "3",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 03",
+            "values": {
+              "name": "Slice1 probe 03",
+              "public_note": "Acceptance public note 3",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.852Z",
+            "updatedAt": "2026-10-03T10:48:41.852Z"
+          },
+          {
+            "id": "30d798aa-be31-4b88-9923-3f04dccc12aa",
+            "recordNo": "2",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 02",
+            "values": {
+              "name": "Slice1 probe 02",
+              "public_note": "Acceptance public note 2",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.842Z",
+            "updatedAt": "2026-10-03T10:48:41.842Z"
+          }
+        ],
+        "page": 1,
+        "limit": 20,
+        "total": 21
+      },
+      "page2": {
+        "items": [
+          {
+            "id": "b158fe96-1d9a-42ac-a4f5-b4ab006fc0be",
+            "recordNo": "1",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 01",
+            "values": {
+              "name": "Slice1 probe 01",
+              "public_note": "Acceptance public note 1",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.829Z",
+            "updatedAt": "2026-10-03T10:48:41.829Z"
+          }
+        ],
+        "page": 2,
+        "limit": 20,
+        "total": 21
+      },
+      "detail": {
+        "id": "b158fe96-1d9a-42ac-a4f5-b4ab006fc0be",
+        "recordNo": "1",
+        "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+        "title": "Slice1 probe 01",
+        "values": {
+          "name": "Slice1 probe 01",
+          "public_note": "Acceptance public note 1",
+          "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+        },
+        "version": 1,
+        "createdAt": "2026-10-03T10:48:41.829Z",
+        "updatedAt": "2026-10-03T10:48:41.829Z"
+      },
+      "secretSearch": {
+        "items": [
+          {
+            "id": "dcffc40b-a770-4227-b8b0-2d750ac0a825",
+            "recordNo": "21",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 21",
+            "values": {
+              "name": "Slice1 probe 21",
+              "public_note": "Acceptance public note 21",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:42.059Z",
+            "updatedAt": "2026-10-03T10:48:42.059Z"
+          },
+          {
+            "id": "13bf8e84-53f7-478e-a0b5-a529993eeda3",
+            "recordNo": "20",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 20",
+            "values": {
+              "name": "Slice1 probe 20",
+              "public_note": "Acceptance public note 20",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:42.050Z",
+            "updatedAt": "2026-10-03T10:48:42.050Z"
+          },
+          {
+            "id": "97cacd02-ef3a-486d-a4a2-0e809279cb8c",
+            "recordNo": "19",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 19",
+            "values": {
+              "name": "Slice1 probe 19",
+              "public_note": "Acceptance public note 19",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:42.038Z",
+            "updatedAt": "2026-10-03T10:48:42.038Z"
+          },
+          {
+            "id": "7a087b36-7acc-4234-9ac2-d15992ac1eb1",
+            "recordNo": "18",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 18",
+            "values": {
+              "name": "Slice1 probe 18",
+              "public_note": "Acceptance public note 18",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:42.027Z",
+            "updatedAt": "2026-10-03T10:48:42.027Z"
+          },
+          {
+            "id": "124e96a3-ae2e-4492-b18c-ce049127b594",
+            "recordNo": "17",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 17",
+            "values": {
+              "name": "Slice1 probe 17",
+              "public_note": "Acceptance public note 17",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:42.017Z",
+            "updatedAt": "2026-10-03T10:48:42.017Z"
+          },
+          {
+            "id": "11831080-b5ed-49a1-aee6-fcdc87caf3f3",
+            "recordNo": "16",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 16",
+            "values": {
+              "name": "Slice1 probe 16",
+              "public_note": "Acceptance public note 16",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:42.006Z",
+            "updatedAt": "2026-10-03T10:48:42.006Z"
+          },
+          {
+            "id": "bae2e31b-c1a4-4d10-852f-af8d5847845d",
+            "recordNo": "15",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 15",
+            "values": {
+              "name": "Slice1 probe 15",
+              "public_note": "Acceptance public note 15",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.995Z",
+            "updatedAt": "2026-10-03T10:48:41.995Z"
+          },
+          {
+            "id": "ef501203-f4f6-4c89-9c27-b5afd153a5bb",
+            "recordNo": "14",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 14",
+            "values": {
+              "name": "Slice1 probe 14",
+              "public_note": "Acceptance public note 14",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.983Z",
+            "updatedAt": "2026-10-03T10:48:41.983Z"
+          },
+          {
+            "id": "ab26aa5a-d898-47b3-934a-2c72b19c1ce0",
+            "recordNo": "13",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 13",
+            "values": {
+              "name": "Slice1 probe 13",
+              "public_note": "Acceptance public note 13",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.972Z",
+            "updatedAt": "2026-10-03T10:48:41.972Z"
+          },
+          {
+            "id": "70e3c40b-12c2-4bbd-913b-4124ca26098d",
+            "recordNo": "12",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 12",
+            "values": {
+              "name": "Slice1 probe 12",
+              "public_note": "Acceptance public note 12",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.960Z",
+            "updatedAt": "2026-10-03T10:48:41.960Z"
+          },
+          {
+            "id": "9c4a4ba1-7bae-47e5-871c-3127150b2a63",
+            "recordNo": "11",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 11",
+            "values": {
+              "name": "Slice1 probe 11",
+              "public_note": "Acceptance public note 11",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.949Z",
+            "updatedAt": "2026-10-03T10:48:41.949Z"
+          },
+          {
+            "id": "bbdce531-4a0b-46a8-ad41-e72347828650",
+            "recordNo": "10",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 10",
+            "values": {
+              "name": "Slice1 probe 10",
+              "public_note": "Acceptance public note 10",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.937Z",
+            "updatedAt": "2026-10-03T10:48:41.937Z"
+          },
+          {
+            "id": "e6315bbf-55bc-4748-9aef-47880eed4347",
+            "recordNo": "9",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 09",
+            "values": {
+              "name": "Slice1 probe 09",
+              "public_note": "Acceptance public note 9",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.927Z",
+            "updatedAt": "2026-10-03T10:48:41.927Z"
+          },
+          {
+            "id": "a874e879-e037-4aa6-ad8f-e86efc0d6847",
+            "recordNo": "8",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 08",
+            "values": {
+              "name": "Slice1 probe 08",
+              "public_note": "Acceptance public note 8",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.915Z",
+            "updatedAt": "2026-10-03T10:48:41.915Z"
+          },
+          {
+            "id": "834ddc8a-6ac2-48bc-8863-cfc8fccfc6ce",
+            "recordNo": "7",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 07",
+            "values": {
+              "name": "Slice1 probe 07",
+              "public_note": "Acceptance public note 7",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.903Z",
+            "updatedAt": "2026-10-03T10:48:41.903Z"
+          },
+          {
+            "id": "29634857-f066-4c88-b5f4-bb4292b668cc",
+            "recordNo": "6",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 06",
+            "values": {
+              "name": "Slice1 probe 06",
+              "public_note": "Acceptance public note 6",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.889Z",
+            "updatedAt": "2026-10-03T10:48:41.889Z"
+          },
+          {
+            "id": "796b3b06-f574-4e58-9b35-bc8b7768316f",
+            "recordNo": "5",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 05",
+            "values": {
+              "name": "Slice1 probe 05",
+              "public_note": "Acceptance public note 5",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.877Z",
+            "updatedAt": "2026-10-03T10:48:41.877Z"
+          },
+          {
+            "id": "3705b893-d522-49cf-a14d-64f35a826959",
+            "recordNo": "4",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 04",
+            "values": {
+              "name": "Slice1 probe 04",
+              "public_note": "Acceptance public note 4",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.863Z",
+            "updatedAt": "2026-10-03T10:48:41.863Z"
+          },
+          {
+            "id": "8ad552d7-9786-4b0f-991e-c77223d2c71c",
+            "recordNo": "3",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 03",
+            "values": {
+              "name": "Slice1 probe 03",
+              "public_note": "Acceptance public note 3",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.852Z",
+            "updatedAt": "2026-10-03T10:48:41.852Z"
+          },
+          {
+            "id": "30d798aa-be31-4b88-9923-3f04dccc12aa",
+            "recordNo": "2",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 02",
+            "values": {
+              "name": "Slice1 probe 02",
+              "public_note": "Acceptance public note 2",
+              "hidden_probe": "SLICE1_HIDDEN_SECRET_1791024521820"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.842Z",
+            "updatedAt": "2026-10-03T10:48:41.842Z"
+          }
+        ],
+        "page": 1,
+        "limit": 20,
+        "total": 21
+      }
+    },
+    "employee": {
+      "schema": {
+        "publication": {
+          "number": 1,
+          "publishedAt": "2026-10-03T10:48:41.807Z"
+        },
+        "object": {
+          "code": "slice1-hidden-probe",
+          "name": "Slice1 Hidden Acceptance",
+          "description": null,
+          "titleFieldKey": "name",
+          "icon": null,
+          "sortOrder": 70
+        },
+        "fields": [
+          {
+            "id": "509f5e41-4dfc-4c16-8c39-0720242f9ccc",
+            "type": "TEXT",
+            "label": "Name",
+            "config": {},
+            "fieldKey": "name",
+            "isSystem": false,
+            "required": true,
+            "sortOrder": 10,
+            "validation": {},
+            "defaultValue": null,
+            "access": "EDIT"
+          },
+          {
+            "id": "54aa0218-c9df-4c5b-a4d3-453356f7b41d",
+            "type": "TEXT",
+            "label": "Public note",
+            "config": {},
+            "fieldKey": "public_note",
+            "isSystem": false,
+            "required": false,
+            "sortOrder": 20,
+            "validation": {},
+            "defaultValue": null,
+            "access": "EDIT"
+          }
+        ],
+        "defaultView": {
+          "code": "default",
+          "name": "Hidden acceptance default",
+          "sort": {
+            "field": "updatedAt",
+            "direction": "desc"
+          },
+          "columnFieldKeys": [
+            "name",
+            "public_note"
+          ],
+          "searchFieldKeys": [
+            "public_note"
+          ]
+        },
+        "actions": {
+          "canCreate": true,
+          "canRead": true,
+          "canUpdate": true,
+          "canDelete": false
+        },
+        "scopes": {
+          "read": "OWN",
+          "update": "OWN"
+        }
+      },
+      "list": {
+        "items": [
+          {
+            "id": "dcffc40b-a770-4227-b8b0-2d750ac0a825",
+            "recordNo": "21",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 21",
+            "values": {
+              "name": "Slice1 probe 21",
+              "public_note": "Acceptance public note 21"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:42.059Z",
+            "updatedAt": "2026-10-03T10:48:42.059Z"
+          },
+          {
+            "id": "13bf8e84-53f7-478e-a0b5-a529993eeda3",
+            "recordNo": "20",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 20",
+            "values": {
+              "name": "Slice1 probe 20",
+              "public_note": "Acceptance public note 20"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:42.050Z",
+            "updatedAt": "2026-10-03T10:48:42.050Z"
+          },
+          {
+            "id": "97cacd02-ef3a-486d-a4a2-0e809279cb8c",
+            "recordNo": "19",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 19",
+            "values": {
+              "name": "Slice1 probe 19",
+              "public_note": "Acceptance public note 19"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:42.038Z",
+            "updatedAt": "2026-10-03T10:48:42.038Z"
+          },
+          {
+            "id": "7a087b36-7acc-4234-9ac2-d15992ac1eb1",
+            "recordNo": "18",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 18",
+            "values": {
+              "name": "Slice1 probe 18",
+              "public_note": "Acceptance public note 18"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:42.027Z",
+            "updatedAt": "2026-10-03T10:48:42.027Z"
+          },
+          {
+            "id": "124e96a3-ae2e-4492-b18c-ce049127b594",
+            "recordNo": "17",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 17",
+            "values": {
+              "name": "Slice1 probe 17",
+              "public_note": "Acceptance public note 17"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:42.017Z",
+            "updatedAt": "2026-10-03T10:48:42.017Z"
+          },
+          {
+            "id": "11831080-b5ed-49a1-aee6-fcdc87caf3f3",
+            "recordNo": "16",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 16",
+            "values": {
+              "name": "Slice1 probe 16",
+              "public_note": "Acceptance public note 16"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:42.006Z",
+            "updatedAt": "2026-10-03T10:48:42.006Z"
+          },
+          {
+            "id": "bae2e31b-c1a4-4d10-852f-af8d5847845d",
+            "recordNo": "15",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 15",
+            "values": {
+              "name": "Slice1 probe 15",
+              "public_note": "Acceptance public note 15"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.995Z",
+            "updatedAt": "2026-10-03T10:48:41.995Z"
+          },
+          {
+            "id": "ef501203-f4f6-4c89-9c27-b5afd153a5bb",
+            "recordNo": "14",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 14",
+            "values": {
+              "name": "Slice1 probe 14",
+              "public_note": "Acceptance public note 14"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.983Z",
+            "updatedAt": "2026-10-03T10:48:41.983Z"
+          },
+          {
+            "id": "ab26aa5a-d898-47b3-934a-2c72b19c1ce0",
+            "recordNo": "13",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 13",
+            "values": {
+              "name": "Slice1 probe 13",
+              "public_note": "Acceptance public note 13"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.972Z",
+            "updatedAt": "2026-10-03T10:48:41.972Z"
+          },
+          {
+            "id": "70e3c40b-12c2-4bbd-913b-4124ca26098d",
+            "recordNo": "12",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 12",
+            "values": {
+              "name": "Slice1 probe 12",
+              "public_note": "Acceptance public note 12"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.960Z",
+            "updatedAt": "2026-10-03T10:48:41.960Z"
+          },
+          {
+            "id": "9c4a4ba1-7bae-47e5-871c-3127150b2a63",
+            "recordNo": "11",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 11",
+            "values": {
+              "name": "Slice1 probe 11",
+              "public_note": "Acceptance public note 11"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.949Z",
+            "updatedAt": "2026-10-03T10:48:41.949Z"
+          },
+          {
+            "id": "bbdce531-4a0b-46a8-ad41-e72347828650",
+            "recordNo": "10",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 10",
+            "values": {
+              "name": "Slice1 probe 10",
+              "public_note": "Acceptance public note 10"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.937Z",
+            "updatedAt": "2026-10-03T10:48:41.937Z"
+          },
+          {
+            "id": "e6315bbf-55bc-4748-9aef-47880eed4347",
+            "recordNo": "9",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 09",
+            "values": {
+              "name": "Slice1 probe 09",
+              "public_note": "Acceptance public note 9"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.927Z",
+            "updatedAt": "2026-10-03T10:48:41.927Z"
+          },
+          {
+            "id": "a874e879-e037-4aa6-ad8f-e86efc0d6847",
+            "recordNo": "8",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 08",
+            "values": {
+              "name": "Slice1 probe 08",
+              "public_note": "Acceptance public note 8"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.915Z",
+            "updatedAt": "2026-10-03T10:48:41.915Z"
+          },
+          {
+            "id": "834ddc8a-6ac2-48bc-8863-cfc8fccfc6ce",
+            "recordNo": "7",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 07",
+            "values": {
+              "name": "Slice1 probe 07",
+              "public_note": "Acceptance public note 7"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.903Z",
+            "updatedAt": "2026-10-03T10:48:41.903Z"
+          },
+          {
+            "id": "29634857-f066-4c88-b5f4-bb4292b668cc",
+            "recordNo": "6",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 06",
+            "values": {
+              "name": "Slice1 probe 06",
+              "public_note": "Acceptance public note 6"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.889Z",
+            "updatedAt": "2026-10-03T10:48:41.889Z"
+          },
+          {
+            "id": "796b3b06-f574-4e58-9b35-bc8b7768316f",
+            "recordNo": "5",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 05",
+            "values": {
+              "name": "Slice1 probe 05",
+              "public_note": "Acceptance public note 5"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.877Z",
+            "updatedAt": "2026-10-03T10:48:41.877Z"
+          },
+          {
+            "id": "3705b893-d522-49cf-a14d-64f35a826959",
+            "recordNo": "4",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 04",
+            "values": {
+              "name": "Slice1 probe 04",
+              "public_note": "Acceptance public note 4"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.863Z",
+            "updatedAt": "2026-10-03T10:48:41.863Z"
+          },
+          {
+            "id": "8ad552d7-9786-4b0f-991e-c77223d2c71c",
+            "recordNo": "3",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 03",
+            "values": {
+              "name": "Slice1 probe 03",
+              "public_note": "Acceptance public note 3"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.852Z",
+            "updatedAt": "2026-10-03T10:48:41.852Z"
+          },
+          {
+            "id": "30d798aa-be31-4b88-9923-3f04dccc12aa",
+            "recordNo": "2",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 02",
+            "values": {
+              "name": "Slice1 probe 02",
+              "public_note": "Acceptance public note 2"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.842Z",
+            "updatedAt": "2026-10-03T10:48:41.842Z"
+          }
+        ],
+        "page": 1,
+        "limit": 20,
+        "total": 21
+      },
+      "page2": {
+        "items": [
+          {
+            "id": "b158fe96-1d9a-42ac-a4f5-b4ab006fc0be",
+            "recordNo": "1",
+            "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+            "title": "Slice1 probe 01",
+            "values": {
+              "name": "Slice1 probe 01",
+              "public_note": "Acceptance public note 1"
+            },
+            "version": 1,
+            "createdAt": "2026-10-03T10:48:41.829Z",
+            "updatedAt": "2026-10-03T10:48:41.829Z"
+          }
+        ],
+        "page": 2,
+        "limit": 20,
+        "total": 21
+      },
+      "detail": {
+        "id": "b158fe96-1d9a-42ac-a4f5-b4ab006fc0be",
+        "recordNo": "1",
+        "ownerMemberId": "7344bfda-ce80-4e7d-89da-45731d3fde97",
+        "title": "Slice1 probe 01",
+        "values": {
+          "name": "Slice1 probe 01",
+          "public_note": "Acceptance public note 1"
+        },
+        "version": 1,
+        "createdAt": "2026-10-03T10:48:41.829Z",
+        "updatedAt": "2026-10-03T10:48:41.829Z"
+      },
+      "secretSearch": {
+        "items": [],
+        "page": 1,
+        "limit": 20,
+        "total": 0
+      }
+    }
+  },
+  "verification": {
+    "verifiedAt": "2026-10-03T10:49:22.876Z",
+    "checks": {
+      "adminSchemaContainsHiddenMetadata": true,
+      "employeeSchemaOmitsHiddenMetadata": true,
+      "employeeWholeSchemaOmitsHiddenKey": true,
+      "adminColumnsContainHidden": true,
+      "adminSearchKeysContainHidden": true,
+      "employeeColumnsOmitHidden": true,
+      "employeeSearchKeysOmitHidden": true,
+      "adminListContainsMarker": true,
+      "adminDetailContainsMarker": true,
+      "employeeListOmitsWholeKey": true,
+      "employeePage2OmitsWholeKey": true,
+      "employeeDetailOmitsWholeKey": true,
+      "employeeRecordPayloadsOmitMarker": true,
+      "ownershipAllRows": true,
+      "employeeReadUpdateOwn": true,
+      "defaultSortUpdatedAtDesc": true,
+      "twentyOneRows": true,
+      "defaultPageTwentyRows": true,
+      "secondPageOneRow": true,
+      "adminSecretSearch21": true,
+      "employeeSecretSearchZero": true,
+      "publicationNoBlockers": true,
+      "allAuthorizedFixtureCallsSucceeded": true,
+      "sanitizedNoAuthCredentials": true
+    },
+    "passed": 24,
+    "total": 24
+  },
+  "totals": {
+    "admin": 21,
+    "employee": 21,
+    "adminSecretSearch": 21,
+    "employeeSecretSearch": 0,
+    "page1": 20,
+    "page2": 1
+  }
+}
