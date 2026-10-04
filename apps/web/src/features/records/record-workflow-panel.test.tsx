@@ -23,6 +23,22 @@ function renderPanel(api: WorkflowApi) {
 }
 
 describe("RecordWorkflowPanel", () => {
+  it("reports a detail refresh failure without misreporting a committed transition", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    const api: WorkflowApi = {
+      getDraft: vi.fn(), saveDraft: vi.fn(),
+      getRuntime: vi.fn().mockResolvedValue({ currentState: { key: "new", label: "新建", isTerminal: false }, availableTransitions: [{ key: "convert", label: "转化业务", requiredFieldKeys: [], effects: [] }], recordVersion: 7 }),
+      executeTransition: vi.fn().mockResolvedValue({ currentState: { key: "converted", label: "已转化", isTerminal: true }, availableTransitions: [], recordVersion: 8 }),
+      history: vi.fn().mockResolvedValue({ items: [], page: 1, limit: 20, total: 0 }),
+    };
+    render(<QueryClientProvider client={client}><RecordWorkflowPanel tenantCode="northwind" objectCode="leads" recordId="record-1" recordVersion={7} api={api} onRecordChanged={async () => { throw new Error("detail GET failed"); }} /></QueryClientProvider>);
+    fireEvent.click(await screen.findByRole("button", { name: "转化业务" }));
+    expect(await screen.findByText("流程已执行，但记录详情刷新失败。请刷新页面查看最新记录，无需重复执行。")) .toBeInTheDocument();
+    expect(screen.getByText("已转化")).toBeInTheDocument();
+    expect(screen.queryByText(/detail GET failed/)).not.toBeInTheDocument();
+    expect(api.executeTransition).toHaveBeenCalledTimes(1);
+    expect(client.getMutationCache().getAll()[0].state.status).toBe("success");
+  });
   it("refreshes action-created record lists and tasks even without a detail callback", async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
     let changed = false;

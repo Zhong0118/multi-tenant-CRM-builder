@@ -33,6 +33,15 @@ export function RecordWorkflowPanel({
   api = defaultWorkflowApi,
 }: RecordWorkflowPanelProps) {
   const queryClient = useQueryClient();
+  const [refreshWarning, setRefreshWarning] = useState(false);
+  const refreshRecord = async () => {
+    setRefreshWarning(false);
+    try {
+      await onRecordChanged?.();
+    } catch {
+      setRefreshWarning(true);
+    }
+  };
   /**
    * §31: the Transition awaiting confirmation. It is the transition the employee
    * actually saw, so the modal keeps rendering that static summary even if the
@@ -73,7 +82,7 @@ export function RecordWorkflowPanel({
         queryClient.invalidateQueries({ queryKey: historyKey }),
         queryClient.invalidateQueries({ queryKey: ["workspace", tenantCode, "records"] }),
         queryClient.invalidateQueries({ queryKey: followUpQueryKeys.root(tenantCode), refetchType: "all" }),
-        onRecordChanged?.(),
+        refreshRecord(),
       ]);
     },
   });
@@ -160,6 +169,14 @@ export function RecordWorkflowPanel({
         </ul>
         <p>所有操作将同时成功或全部取消。</p>
       </Modal>
+
+      {refreshWarning ? (
+        <Alert
+          type="warning"
+          showIcon
+          title="流程已执行，但记录详情刷新失败。请刷新页面查看最新记录，无需重复执行。"
+        />
+      ) : null}
 
       {executeError ? (
         <Alert
