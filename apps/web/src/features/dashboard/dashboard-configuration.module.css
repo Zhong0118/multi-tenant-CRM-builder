@@ -17,7 +17,7 @@
 }
 .builderHeader h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: 24px;
   letter-spacing: -0.02em;
 }
 .builderHeader p {
@@ -81,12 +81,72 @@
   font-size: 11px;
   border-left: 2px solid #d8e0e5;
 }
+.actionStrip {
+  min-width: 0;
+  max-width: 620px;
+}
+.settings {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #d8e0e5);
+}
+.settings summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+.settings p {
+  margin: 8px 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.settings summary:focus-visible,
+.panelToggle:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.libraryPanel,
+.inspectorPanel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: #fff;
+}
+.panelToggle {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  color: var(--color-primary);
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  background: #fff;
+  border: 0;
+  border-bottom: 1px solid #d8e0e5;
+  cursor: pointer;
+}
+.panelToggle::after {
+  content: "＋";
+  float: right;
+}
+.panelToggle[aria-expanded="true"]::after {
+  content: "−";
+}
+.panelContent {
+  flex: 1;
+  min-height: 0;
+}
+.panelContent[hidden] {
+  display: none;
+}
 .feedback {
   margin-bottom: 10px;
 }
 .builderLayout {
   display: grid;
-  grid-template-columns: 240px minmax(360px, 1fr) 316px;
+  grid-template-columns: minmax(220px, 1fr) 220px 300px;
   height: calc(100vh - 178px);
   max-height: calc(100vh - 178px);
   min-height: 0;
@@ -222,6 +282,7 @@
 }
 .widgetToolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
   min-height: 42px;
@@ -237,6 +298,7 @@
 }
 .widgetToolbar > div {
   display: flex;
+  flex-wrap: wrap;
   gap: 5px;
   margin-left: auto;
 }
@@ -325,6 +387,8 @@
     height: auto;
     max-height: none;
   }
+  .libraryPanel,
+  .inspectorPanel,
   .library,
   .inspector,
   .canvas {
@@ -372,5 +436,14 @@
   .widgetToolbar > div {
     margin-left: 0;
     flex-wrap: wrap;
+  }
+  .widgetToolbar button,
+  .widgetToolbar select,
+  .headerActions :global(.ant-btn),
+  .settings summary {
+    min-height: 44px;
+  }
+  .settings summary {
+    align-content: center;
   }
 }

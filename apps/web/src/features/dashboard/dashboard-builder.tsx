@@ -1,7 +1,7 @@
 "use client";
 
 import { Alert, Button, Form, Input, Modal, Popconfirm, Select } from "antd";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { toApiError, type ApiError } from "@/lib/api/api-error";
 
@@ -77,8 +77,23 @@ export function DashboardBuilder({
   const [copyOpen, setCopyOpen] = useState(false);
   const [copyName, setCopyName] = useState("");
   const [metaBusy, setMetaBusy] = useState<
-    "name" | "audience" | "default-admin" | "default-employee" | "archive" | "copy" | "reorder"
+    | "name"
+    | "audience"
+    | "default-admin"
+    | "default-employee"
+    | "archive"
+    | "copy"
+    | "reorder"
   >();
+  const compact = useSyncExternalStore(
+    subscribeCompact,
+    isCompact,
+    () => false,
+  );
+  const [libraryExpanded, setLibraryExpanded] = useState<boolean>();
+  const [inspectorExpanded, setInspectorExpanded] = useState<boolean>();
+  const libraryOpen = libraryExpanded ?? !compact;
+  const inspectorOpen = inspectorExpanded ?? !compact;
   const dirty = signature(definition) !== savedSignature;
   const selected = definition.widgets.find(
     (widget) => widget.id === selectedId,
@@ -151,6 +166,7 @@ export function DashboardBuilder({
     }));
   }
   function select(id: string, path?: string) {
+    setInspectorExpanded(true);
     setSelectedId(id);
     setFocusPath(path);
   }
@@ -318,7 +334,9 @@ export function DashboardBuilder({
         items.map((item) => ({
           ...item,
           isDefaultAdmin:
-            role === "admin" ? item.code === dashboardCode : item.isDefaultAdmin,
+            role === "admin"
+              ? item.code === dashboardCode
+              : item.isDefaultAdmin,
           isDefaultEmployee:
             role === "employee"
               ? item.code === dashboardCode
@@ -329,15 +347,16 @@ export function DashboardBuilder({
         current
           ? {
               ...current,
-              isDefaultAdmin:
-                role === "admin" ? true : current.isDefaultAdmin,
+              isDefaultAdmin: role === "admin" ? true : current.isDefaultAdmin,
               isDefaultEmployee:
                 role === "employee" ? true : current.isDefaultEmployee,
             }
           : current,
       );
       setFeedback(
-        role === "admin" ? "已设为管理员默认工作台。" : "已设为员工默认工作台。",
+        role === "admin"
+          ? "已设为管理员默认工作台。"
+          : "已设为员工默认工作台。",
       );
     } catch (error) {
       setFeedback(`设置默认工作台失败：${toApiError(error).message}`);
@@ -397,7 +416,10 @@ export function DashboardBuilder({
         tenantCode,
         next.map((item) => item.code),
       );
-      setDashboards([...saved.filter((item) => item.status === "ACTIVE"), ...archived]);
+      setDashboards([
+        ...saved.filter((item) => item.status === "ACTIVE"),
+        ...archived,
+      ]);
     } catch (error) {
       setFeedback(`调整顺序失败：${toApiError(error).message}`);
     } finally {
@@ -421,111 +443,124 @@ export function DashboardBuilder({
       <header className={styles.builderHeader}>
         <div>
           <h1>{currentDashboard?.name ?? "组件化工作台"}</h1>
-          <p>编排已发布业务表的运营组件；保存草稿不会影响线上版本。</p>
-          <WorkbenchCatalog
-            tenantCode={tenantCode}
-            dashboardCode={dashboardCode}
-            dashboards={dashboards}
-            busy={metaBusy === "reorder"}
-            onMove={moveDashboard}
-            onCopy={() => {
-              setCopyName(`${currentDashboard?.name ?? "工作台"} 副本`);
-              setCopyOpen(true);
-            }}
-          />
-          {currentDashboard ? (
-            <div className={styles.metaRow}>
-              <Form.Item label="工作台名称" htmlFor="dashboard-name">
-                <Input
-                  id="dashboard-name"
-                  value={nameDraft}
-                  onChange={(event) => setNameDraft(event.target.value)}
-                />
-              </Form.Item>
-              <Button
-                onClick={() => void saveName()}
-                loading={metaBusy === "name"}
-                disabled={nameDraft.trim() === (currentDashboard.name ?? "")}
-              >
-                保存名称
-              </Button>
-              <Form.Item label="受众" htmlFor="dashboard-audience">
-                <Select
-                  id="dashboard-audience"
-                  value={audienceDraft}
-                  onChange={(value) => void saveAudience(value)}
-                  options={[
-                    { value: "ALL", label: "全部成员" },
-                    { value: "TENANT_ADMIN", label: "仅管理员" },
-                    { value: "EMPLOYEE", label: "仅员工" },
-                  ]}
-                />
-              </Form.Item>
-              <Button
-                onClick={() => void makeDefault("admin")}
-                loading={metaBusy === "default-admin"}
-                disabled={currentDashboard.isDefaultAdmin}
-              >
-                设为管理员默认
-              </Button>
-              <Button
-                onClick={() => void makeDefault("employee")}
-                loading={metaBusy === "default-employee"}
-                disabled={currentDashboard.isDefaultEmployee}
-              >
-                设为员工默认
-              </Button>
-              <Popconfirm
-                title={`归档「${currentDashboard.name}」？`}
-                description="归档后它不再出现在工作台目录里，本页也无法取消归档。"
-                okText="确认归档"
-                cancelText="取消"
-                okButtonProps={{ danger: true }}
-                onConfirm={() => void archiveCurrent()}
-              >
-                <Button
-                  danger
-                  loading={metaBusy === "archive"}
-                  disabled={
-                    dashboards.filter((item) => item.status === "ACTIVE")
-                      .length < 2
-                  }
-                >
-                  归档工作台
-                </Button>
-              </Popconfirm>
-            </div>
-          ) : null}
+          <p>
+            编辑组件草稿 · {tenantCode} / {dashboardCode}
+          </p>
         </div>
-        <div className={styles.headerActions}>
-          <span>
-            {dirty ? "有未保存修改" : `草稿版本 ${version || "未保存"}`}
-          </span>
-          <span>
-            {activePublication
-              ? `线上第 ${activePublication.number} 版`
-              : "尚未发布"}
-          </span>
-          <Button onClick={() => void save()} loading={busy === "save"}>
-            保存草稿
-          </Button>
-          <Button
-            onClick={() => void showPreview()}
-            disabled={dirty || !version}
-            loading={busy === "preview"}
-          >
-            预览草稿
-          </Button>
-          <Button
-            type="primary"
-            onClick={() => void publish()}
-            disabled={dirty || !version}
-            loading={busy === "publish"}
-          >
-            发布工作台
-          </Button>
+        <div className={styles.actionStrip}>
+          <div className={styles.headerActions}>
+            <span>
+              {dirty ? "有未保存修改" : `草稿版本 ${version || "未保存"}`}
+            </span>
+            <span>
+              {activePublication
+                ? `线上第 ${activePublication.number} 版`
+                : "尚未发布"}
+            </span>
+            <Button onClick={() => void save()} loading={busy === "save"}>
+              保存草稿
+            </Button>
+            <Button
+              onClick={() => void showPreview()}
+              disabled={dirty || !version}
+              loading={busy === "preview"}
+            >
+              预览草稿
+            </Button>
+            <Button
+              type="primary"
+              onClick={() => void publish()}
+              disabled={dirty || !version}
+              loading={busy === "publish"}
+            >
+              发布工作台
+            </Button>
+          </div>
+          <p>
+            保存仅更新组件草稿；预览使用已保存草稿；发布后成员使用新的线上版本。
+          </p>
         </div>
       </header>
+      <details className={styles.settings}>
+        <summary>工作台设置与目录</summary>
+        <p>
+          名称、受众、默认、归档与目录顺序单独保存，立即生效，不属于组件草稿。
+        </p>
+        <WorkbenchCatalog
+          tenantCode={tenantCode}
+          dashboardCode={dashboardCode}
+          dashboards={dashboards}
+          busy={metaBusy === "reorder"}
+          onMove={moveDashboard}
+          onCopy={() => {
+            setCopyName(`${currentDashboard?.name ?? "工作台"} 副本`);
+            setCopyOpen(true);
+          }}
+        />
+        {currentDashboard ? (
+          <div className={styles.metaRow}>
+            <Form.Item label="工作台名称" htmlFor="dashboard-name">
+              <Input
+                id="dashboard-name"
+                value={nameDraft}
+                onChange={(event) => setNameDraft(event.target.value)}
+              />
+            </Form.Item>
+            <Button
+              onClick={() => void saveName()}
+              loading={metaBusy === "name"}
+              disabled={nameDraft.trim() === (currentDashboard.name ?? "")}
+            >
+              保存名称
+            </Button>
+            <Form.Item label="受众" htmlFor="dashboard-audience">
+              <Select
+                id="dashboard-audience"
+                value={audienceDraft}
+                onChange={(value) => void saveAudience(value)}
+                options={[
+                  { value: "ALL", label: "全部成员" },
+                  { value: "TENANT_ADMIN", label: "仅管理员" },
+                  { value: "EMPLOYEE", label: "仅员工" },
+                ]}
+              />
+            </Form.Item>
+            <Button
+              onClick={() => void makeDefault("admin")}
+              loading={metaBusy === "default-admin"}
+              disabled={currentDashboard.isDefaultAdmin}
+            >
+              设为管理员默认
+            </Button>
+            <Button
+              onClick={() => void makeDefault("employee")}
+              loading={metaBusy === "default-employee"}
+              disabled={currentDashboard.isDefaultEmployee}
+            >
+              设为员工默认
+            </Button>
+            <Popconfirm
+              title={`归档「${currentDashboard.name}」？`}
+              description="归档后它不再出现在工作台目录里，本页也无法取消归档。"
+              okText="确认归档"
+              cancelText="取消"
+              okButtonProps={{ danger: true }}
+              onConfirm={() => void archiveCurrent()}
+            >
+              <Button
+                danger
+                loading={metaBusy === "archive"}
+                disabled={
+                  dashboards.filter((item) => item.status === "ACTIVE").length <
+                  2
+                }
+              >
+                归档工作台
+              </Button>
+            </Popconfirm>
+          </div>
+        ) : null}
+      </details>
       {feedback ? (
         <Alert
           className={styles.feedback}
@@ -545,7 +580,6 @@ export function DashboardBuilder({
       ) : null}
       {preview ? <PreviewPanel preview={preview} /> : null}
       <div className={styles.builderLayout}>
-        <DashboardWidgetLibrary onAdd={add} widgets={definition.widgets} />
         <DashboardCanvas
           widgets={definition.widgets}
           selectedId={selectedId}
@@ -577,19 +611,57 @@ export function DashboardBuilder({
             updateWidgets(next);
           }}
         />
-        <DashboardWidgetInspector
-          widget={selected}
-          candidates={initial.candidates}
-          tenantTimezone={initial.timezone}
-          focusPath={focusPath}
-          onChange={(next) =>
-            updateWidgets(
-              definition.widgets.map((widget) =>
-                widget.id === next.id ? next : widget,
-              ),
-            )
-          }
-        />
+        <section className={styles.libraryPanel}>
+          <button
+            type="button"
+            className={styles.panelToggle}
+            aria-expanded={libraryOpen}
+            aria-controls="dashboard-library"
+            onClick={() => setLibraryExpanded(!libraryOpen)}
+          >
+            添加组件
+          </button>
+          <div
+            id="dashboard-library"
+            className={styles.panelContent}
+            hidden={!libraryOpen}
+          >
+            <DashboardWidgetLibrary onAdd={add} widgets={definition.widgets} />
+          </div>
+        </section>
+        <section className={styles.inspectorPanel}>
+          <button
+            type="button"
+            className={styles.panelToggle}
+            aria-expanded={inspectorOpen}
+            aria-controls="dashboard-properties"
+            onClick={() => {
+              setInspectorExpanded(!inspectorOpen);
+              setFocusPath(undefined);
+            }}
+          >
+            编辑所选组件属性
+          </button>
+          <div
+            id="dashboard-properties"
+            className={styles.panelContent}
+            hidden={!inspectorOpen}
+          >
+            <DashboardWidgetInspector
+              widget={selected}
+              candidates={initial.candidates}
+              tenantTimezone={initial.timezone}
+              focusPath={focusPath}
+              onChange={(next) =>
+                updateWidgets(
+                  definition.widgets.map((widget) =>
+                    widget.id === next.id ? next : widget,
+                  ),
+                )
+              }
+            />
+          </div>
+        </section>
       </div>
       <Modal
         title="复制为新工作台"
@@ -887,4 +959,13 @@ function label(type: DashboardWidgetType) {
     LEADERBOARD: "员工业绩排行",
     RECORD_LIST: "记录列表",
   }[type];
+}
+
+function isCompact() {
+  return window.matchMedia("(max-width: 1120px)").matches;
+}
+function subscribeCompact(onChange: () => void) {
+  const media = window.matchMedia("(max-width: 1120px)");
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
 }
