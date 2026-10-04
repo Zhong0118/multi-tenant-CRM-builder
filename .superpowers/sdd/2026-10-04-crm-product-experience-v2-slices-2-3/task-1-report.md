@@ -12,7 +12,7 @@ Status: implemented and verified; focused commit follows this report. Task 1 onl
 - Relations and attachments remain mounted inside native disclosure sections, preserving their existing list requests, mutations, error handling, and local state. Summary hints observe those original query caches using `skipToken`; no count request or duplicate API is introduced. Existing data yields counts/empty hints; unavailable cache data yields `展开查看`.
 - Workflow remains outside every disclosure section; all original actions/results/errors and refresh callback remain. RecordForm receives the original record including observed version; edit and delete permissions/confirmation remain.
 - Follow-up target lookup retains current-actor list authorization, status/page scanning, completed-task focus, and unavailable/error distinction. State writes now follow the awaited lookup result instead of synchronous effect initialization. Primitive recordId and a local existing-root query key resolve the dependencies naturally, with no lint suppression. Existing follow-ups root invalidation is retained for Task 2.
-- Styling uses the existing tokens and drawer model: native summary focus outline, long-content wrapping, single-column phone fields, existing full-width phone drawer, and 44px mobile task/disclosure targets. No style assertions were added.
+- Styling uses the existing tokens and drawer model: native summary focus outline, long-content wrapping, single-column phone fields, existing full-width phone drawer, and CSS minimum heights of 44px for mobile task actions, follow-up composer opener/buttons, activity buttons, and disclosure summaries. These are targeted rules rather than a claim of full touch-target acceptance. No style assertions were added.
 
 ## Files
 
@@ -23,7 +23,7 @@ Status: implemented and verified; focused commit follows this report. Task 1 onl
 5. `apps/web/src/features/follow-ups/follow-up-panel.tsx`: explicit follow-up composer, next-step wording, asynchronous lookup state update and correct dependencies.
 6. `apps/web/src/features/follow-ups/follow-up-panel.test.tsx`: adapts creation/failure to opening, asserts default absence and read-only action absence, removes unused binding.
 7. `apps/web/src/features/records/records.module.css`: disclosure/readability/mobile layout rules using existing tokens.
-8. `apps/web/src/features/follow-ups/follow-ups.module.css`: mobile task action target height.
+8. `apps/web/src/features/follow-ups/follow-ups.module.css`: mobile task action and composer opener/control target height.
 9. This report only under `.superpowers`; no handoff/plan edits.
 
 ## RED → GREEN evidence
@@ -45,6 +45,10 @@ All RED failures were observed before the corresponding implementation. Tests ex
 - `git diff --check` — final job bash-71 and subsequent diff review, exit 0.
 - Relations/attachments dedicated component test files do not exist in this checkout; no claim that nonexistent tests ran. Their source was read; detail tests verify disclosure and existing-cache hints while existing panel internals are unchanged.
 - Existing jsdom/Ant Design stderr `Window.getComputedStyle() with pseudo-elements` warnings remain; they do not fail the suites. The temporary missing-queryFn warning from passive cache observers was resolved with installed TanStack `skipToken` and absent in final output.
+
+## Review follow-up — mobile composer targets
+
+Task 1 review reported spec/quality PASS without blockers, then identified the new `安排跟进` opener measured 34px at 390px because the original 44px rule covered task `.actions` only. The focused correction extends the existing max-640px rule to direct panel buttons (including the opener) and composer buttons. It leaves desktop controls unchanged and adds no style tests. The result statement above is corrected to distinguish targeted CSS minimum heights from complete browser acceptance. `pnpm --filter @crm/web exec eslint src/features/follow-ups/follow-up-panel.tsx src/features/follow-ups/follow-up-panel.test.tsx && git diff --check` — job bash-76, exit 0, no warnings/errors. No business logic changed, so the previously recorded behavior/typecheck verification was not repeated. Coordinator owns fresh measured browser acceptance.
 
 ## Browser evidence and boundaries
 
