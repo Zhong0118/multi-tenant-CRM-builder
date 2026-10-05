@@ -52,7 +52,7 @@ V1B 的 **COMPLETED** 指已批准范围内的产品实现、安全边界、测�
 |---|---|
 | `docs/superpowers/plans/2026-09-15-crm-process-roadmap.md` | **Full Capability Roadmap**：长期需求池与完整能力地图，标记为 `PLANNED` 的阶段不构成实现批准 |
 | `docs/superpowers/plans/2026-09-16-crm-lean-roadmap.md` | **Lean Execution Roadmap**：近期实际执行路线，同一时间只激活一个主要产品 Task |
-| `docs/superpowers/plans/2026-10-03-crm-product-experience-v2-implementation.md` | **V2 第一切片开发计划**：Slice1、Slice2＋3已合并；Slice4已授权ACTIVE收尾、未合并；历史验收见 `docs/audits/2026-10-03/crm-product-experience-v2-slice-1-acceptance.md` |
+| `docs/superpowers/plans/2026-10-03-crm-product-experience-v2-implementation.md` | **V2 第一切片开发计划**：Slice1、Slice2＋3已合并；Slice4实现/本地验证完成、等待PR与CI、未合并；历史验收见 `docs/audits/2026-10-03/crm-product-experience-v2-slice-1-acceptance.md` |
 
 对照关系：Full Roadmap 上的长期需求不因 Lean Roadmap 而消失；只有从 Full Roadmap 提升出来的阶段才进入 Lean Roadmap 并成为 `ACTIVE`。两份文档与本文冲突时，以本文的当前事实为准。
 
