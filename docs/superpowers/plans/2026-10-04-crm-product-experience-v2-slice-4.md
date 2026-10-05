@@ -2,6 +2,8 @@
 
 > **For agentic workers:** Use subagent-driven-development, test-first focused tasks and independent reviews. User approved continuous execution; no component approval pauses.
 
+**Status (2026-10-05): AUTHORIZED / ACTIVE CLOSEOUT / NOT MERGED.** Local implementation commits: `206e310`, `8cf9c16`, `7fcaca6`. Regression fixes and verification are in progress; no Slice4 PR or current CI success is claimed. Prior browser gaps remain explicit in the [final acceptance draft](../../audits/2026-10-05/crm-product-experience-v2-final-acceptance.md).
+
 **Goal:** Make administrator configuration context, save effects, publication effects and editing priorities understandable without changing business semantics.
 
 **Architecture:** Retain existing ObjectDesigner, field drawer, MemberObjectAccess, DashboardBuilder and WorkflowDesigner owners and server projections. Improve existing section hierarchy and local state feedback; no new configuration framework or global navigation system.

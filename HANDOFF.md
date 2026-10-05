@@ -1,8 +1,8 @@
 # 多租户 CRM Builder 接手说明
 
-更新时间：2026-10-03（项目审计与 Product Experience V2 开发准备）
+更新时间：2026-10-05（Product Experience V2：Slice4 授权收尾，未合并）
 
-**当前开发入口：** CRM V2 Slice1已通过PR #24合并进入main，merge `9cd2523319557d47fd877646716b01698d7e1193`（2026-10-04）；合并前最新修复 `4484ed9` 六门SUCCESS（run37198879692），已修当前页批量选择数量/对象一致性。用户明确批准Slice2＋3联合交付，当前为ACTIVE；从最新origin/main独立codex工作树开发，新PR不自动合并。Slice4、部署、AI/Automation与权限/DB/CI扩展未授权。批准范围历史证据见 [Slice1验收](docs/audits/2026-10-03/crm-product-experience-v2-slice-1-acceptance.md)。
+**当前开发入口：** CRM V2 Slice1 已通过 PR #24 合并（`9cd2523`）；Slice2＋3 已通过 PR #25 合并（`78f55df`，gh已核实）。Slice4 已获授权，当前为 **IMPLEMENTED / LOCAL VERIFIED / WAITING PR AND CI / NOT MERGED**；独立工作树 `.worktrees/crm-product-experience-v2-slice-4`、分支 `codex/crm-product-experience-v2-slice-4`，实现 `206e310` / `8cf9c16` / `7fcaca6`、回归修复 `ea660ca` / `c248fe5`。最终全量Web603＋architecture3及typecheck/build/contracts均exit0，affected lint0 errors（1既有warning）、107聚焦测试及独立review无阻断。浏览器为risk-based已观察，完整全功能角色矩阵不作PASS声明；尚无Slice4 PR或当前CI成功声明。最新证据和待补项见[最终验收草稿](docs/audits/2026-10-05/crm-product-experience-v2-final-acceptance.md)；新PR不自动合并。部署、AI/Automation、权限/DB/CI扩展仍未授权。历史证据保留在[Slice1验收](docs/audits/2026-10-03/crm-product-experience-v2-slice-1-acceptance.md)和[Slice2＋3验收](docs/audits/2026-10-04/crm-product-experience-v2-slices-2-3-acceptance.md)。
 
 `main` 与 `origin/main` 是当前开发基线。**不要把某次 `git log -1` 的输出写死进本文。**
 Workflow V1 与 Action Engine V1 **均已合并进入 `main`**。Action Engine V1 通过 PR #1 合并，合并提交 `e590c23da6aa9c5fe0d0c3cd71250270ea265ebd`（该 SHA 只作为这一次历史事实记录，不是"main 永远等于它"）。Workflow Required Field Visibility Hardening 已通过 PR #2 合并；Record Required Field Visibility Hardening 已通过 PR #3 合并（均详见下方）。
@@ -52,7 +52,7 @@ V1B 的 **COMPLETED** 指已批准范围内的产品实现、安全边界、测�
 |---|---|
 | `docs/superpowers/plans/2026-09-15-crm-process-roadmap.md` | **Full Capability Roadmap**：长期需求池与完整能力地图，标记为 `PLANNED` 的阶段不构成实现批准 |
 | `docs/superpowers/plans/2026-09-16-crm-lean-roadmap.md` | **Lean Execution Roadmap**：近期实际执行路线，同一时间只激活一个主要产品 Task |
-| `docs/superpowers/plans/2026-10-03-crm-product-experience-v2-implementation.md` | **V2 第一切片开发计划**：Slice1已实现并合并PR #24；Slice2＋3已批准联合执行；验收见 `docs/audits/2026-10-03/crm-product-experience-v2-slice-1-acceptance.md` |
+| `docs/superpowers/plans/2026-10-03-crm-product-experience-v2-implementation.md` | **V2 第一切片开发计划**：Slice1、Slice2＋3已合并；Slice4已授权ACTIVE收尾、未合并；历史验收见 `docs/audits/2026-10-03/crm-product-experience-v2-slice-1-acceptance.md` |
 
 对照关系：Full Roadmap 上的长期需求不因 Lean Roadmap 而消失；只有从 Full Roadmap 提升出来的阶段才进入 Lean Roadmap 并成为 `ACTIVE`。两份文档与本文冲突时，以本文的当前事实为准。
 

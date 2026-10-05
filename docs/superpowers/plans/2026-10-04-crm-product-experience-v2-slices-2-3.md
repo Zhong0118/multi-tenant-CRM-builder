@@ -2,6 +2,8 @@
 
 > **For agentic workers:** 使用 executing-plans 按业务流程执行；本轮用户明确授权直接实施，无需逐组件确认。
 
+**当前状态（2026-10-05）：PR #25 已合并，merge `78f55df`（已由 gh 核实）；不再是 ACTIVE 开发分支。** 历史实现与门禁不等于完整浏览器验收；遗留证据缺口纳入已授权 Slice4 收尾，详见[最终验收草稿](../../audits/2026-10-05/crm-product-experience-v2-final-acceptance.md)。下方任务清单保留原计划，不将未经观察的格子补勾为完成。
+
 **Goal:** 看懂记录、处理下一步、回顾历史，并从员工首页完成任务后返回即时更新的工作台。
 
 **Architecture:** 复用现有RecordWorkspace/DetailDrawer、FollowUpPanel/Workbench、ActivityTimeline与DashboardRenderer。详情采用摘要→工作流→下一步→历史→业务字段与渐进关联/附件；来源URL仅接受同租户工作台/跟进列表，普通深链保留原列表查询。既有follow-ups根缓存统一失效；记录写入显式刷新列表，首页隔离Dashboard加载错误。

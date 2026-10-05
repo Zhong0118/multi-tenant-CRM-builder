@@ -41,3 +41,9 @@ PR #24已于2026-10-04合并，merge `9cd2523319557d47fd877646716b01698d7e1193`�
 - 自动化测试覆盖跨租户/外部/管理路径拒绝、未授权错误不吞、workflow提交后详情刷新失败不误报提交失败、active/inactive跟进缓存刷新；最终浏览器未注入真实503 SSR故障。
 - 独立工作流fixture `slice23-flow-probe` 发布analysis无blocking/warnings；Follow-up POST对连字符objectCode返回400（既有DTO正则），所以任务业务流程使用既有`opportunities`，不扩展API。
 - API/Web运行均使用隔离55434/3100/3101/Redis15；未触碰其他DB，未部署，未调用真实AI Provider。
+
+## Post-merge status
+
+2026-10-05：PR #25 已合并，merge `78f55df`，已由 gh 核实。原实现、工程门禁和浏览器矩阵保留为当时证据，不回填为全格PASS。当前已授权Slice4及遗留验收缺口收尾，本地实现存在但未合并、尚无新PR；当前CI不作成功声明。
+
+新增观察见[最终验收草稿](../2026-10-05/crm-product-experience-v2-final-acceptance.md)：真实Employee `18800001003` 在390完成v3流程记录动作；named首页SSR503隔离及真实retry恢复。上一轮default503/auth401/403证据仅保留其原标签。曾被称为Employee的 `18800001002` 实为第二位Admin，不能充当员工发布前后证据。完整两角色三宽度矩阵和来源焦点仍待补，不以合并替代验收。
