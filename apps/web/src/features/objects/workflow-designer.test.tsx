@@ -297,6 +297,44 @@ describe("WorkflowDesigner", () => {
     expect(screen.getByLabelText("状态名称 1")).toHaveValue("本地草稿");
   });
 
+  it("does not lose input while a deferred save is pending", async () => {
+    let resolveSave!: (saved: WorkflowDraft) => void;
+    const pending = new Promise<WorkflowDraft>((resolve) => {
+      resolveSave = resolve;
+    });
+    const api: WorkflowApi = {
+      getDraft: vi.fn().mockResolvedValue(emptyWorkflow()),
+      saveDraft: vi.fn(() => pending),
+      getRuntime: vi.fn(),
+      executeTransition: vi.fn(),
+      history: vi.fn(),
+    };
+    const onObjectVersion = vi.fn();
+    renderDesigner(api, objectApi(), onObjectVersion);
+    fireEvent.click(await screen.findByRole("button", { name: "添加状态" }));
+    fireEvent.change(screen.getByLabelText("状态名称 1"), {
+      target: { value: "保存的状态" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "添加动作" }));
+    fireEvent.click(screen.getByRole("button", { name: "添加执行动作" }));
+    await pick("目标业务表 1-1", "客户");
+    await pick("添加字段映射 1-1", "客户名称");
+    fireEvent.click(screen.getByRole("button", { name: "保存流程" }));
+    await waitFor(() => expect(api.saveDraft).toHaveBeenCalledTimes(1));
+    const input = screen.getByLabelText("状态名称 1") as HTMLInputElement;
+    expect(input).toBeDisabled();
+    const submitted = vi.mocked(api.saveDraft).mock.calls[0][2];
+    await act(async () => {
+      resolveSave({ ...submitted, objectVersion: 5 });
+    });
+    await screen.findByText("流程配置已保存");
+    expect(screen.getByLabelText("状态名称 1")).toHaveValue("保存的状态");
+    expect(onObjectVersion).toHaveBeenCalledWith({
+      ...objectDraft(),
+      object: { ...objectDraft().object, version: 5 },
+    });
+  });
+
   it("saves added states, an initial state and a transition", async () => {
     const saveDraft = vi.fn(async (_tenant: string, _id: string, input) => ({
       ...input,

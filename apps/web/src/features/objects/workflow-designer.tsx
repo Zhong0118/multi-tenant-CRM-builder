@@ -1,7 +1,16 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Input, Select, Space, Switch, Typography } from "antd";
+import {
+  Alert,
+  Button,
+  Form,
+  Input,
+  Select,
+  Space,
+  Switch,
+  Typography,
+} from "antd";
 import { useState } from "react";
 
 import { toApiError, type FieldErrors } from "@/lib/api/api-error";
@@ -161,8 +170,13 @@ function WorkflowDesignerForm({
       : `无法载入目标业务表列表：${objectsFailure.message}（请求编号：${objectsFailure.requestId}）`;
 
   return (
-    <section className={styles.panel}>
-      <div className={styles.sectionHeading}>
+    <Form component={false} disabled={save.isPending}>
+      <fieldset
+        disabled={save.isPending}
+        style={{ border: 0, margin: 0, padding: 0 }}
+      >
+        <section className={styles.panel}>
+        <div className={styles.sectionHeading}>
         <div>
           <h2>流程</h2>
           <Typography.Text type="secondary">
@@ -475,8 +489,10 @@ function WorkflowDesignerForm({
         >
           保存流程
         </Button>
-      </div>
-    </section>
+        </div>
+        </section>
+      </fieldset>
+    </Form>
   );
 }
 
