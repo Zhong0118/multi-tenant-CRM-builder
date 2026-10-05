@@ -5,6 +5,8 @@ import { FollowUpsModule } from './modules/follow-ups/follow-ups.module';
 import { ConfigModule } from '@nestjs/config';
 import { join } from 'node:path';
 
+import { validateRuntimeConfig } from './config/env.validation';
+
 import { ApiExceptionFilter } from './common/errors/api-exception.filter';
 import { OriginGuard } from './common/security/origin.guard';
 import { RequestIdMiddleware } from './common/security/request-id.middleware';
@@ -33,6 +35,7 @@ import { AiModule } from './modules/ai/ai.module';
     ConfigModule.forRoot({
       envFilePath: join(__dirname, '../../..', '.env'),
       isGlobal: true,
+      validate: validateRuntimeConfig,
     }),
     DatabaseModule,
     AuditModule,

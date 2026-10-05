@@ -38,6 +38,8 @@ import {
   VerificationChallengeDto,
 } from './dto';
 import { SESSION_COOKIE_NAME, SessionAuthGuard } from './session-auth.guard';
+import { assertRegistrationAllowed } from './registration-policy';
+import { normalizeChineseMobile } from './phone-number';
 import type { SessionPrincipal } from './session.service';
 
 function requestIp(request: Request): string {
@@ -90,6 +92,7 @@ export class AuthController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
+    assertRegistrationAllowed(normalizeChineseMobile(dto.phone), process.env);
     return this.auth
       .register({ ...dto, ip: requestIp(request) })
       .then((result) => publicAuthResult(response, result));

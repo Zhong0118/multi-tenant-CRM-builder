@@ -1,0 +1,62 @@
+name: crm-production
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["pnpm", "--filter", "@crm/api", "start:prod"]
+    env_file: [../.env.internal-trial]
+    networks: [edge, private]
+    expose: ["3001"]
+    restart: unless-stopped
+    depends_on: [postgres, redis]
+  web:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["pnpm", "--filter", "@crm/web", "start"]
+    env_file: [../.env.internal-trial]
+    networks: [edge]
+    expose: ["3000"]
+    restart: unless-stopped
+  worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["pnpm", "--filter", "@crm/worker", "start"]
+    env_file: [../.env.internal-trial]
+    networks: [private]
+    restart: unless-stopped
+    depends_on: [redis]
+  postgres:
+    image: postgres:18-alpine
+    env_file: [../.env.internal-trial]
+    networks: [private]
+    volumes: [postgres_data:/var/lib/postgresql]
+    restart: unless-stopped
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    networks: [private]
+    volumes: [redis_data:/data]
+    restart: unless-stopped
+  caddy:
+    image: caddy:2.10-alpine
+    ports: ["80:80", "443:443"]
+    networks: [edge]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+networks:
+  edge:
+  private:
+    internal: true
+volumes:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
