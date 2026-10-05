@@ -72,7 +72,7 @@ Acceptance / Audit
 
 ## 3. 当前产品位置
 
-**2026-10-05 近期执行状态：** CRM Product Experience V2 的 Slice1 已合并（PR #24，`9cd2523`），Slice2＋3 已合并（PR #25，`78f55df`，gh已核实）；Slice4 已授权，处于 **ACTIVE CLOSEOUT / NOT MERGED**，本地实现 `206e310` / `8cf9c16` / `7fcaca6`。回归修复与最终验证、浏览器缺口、PR和当前CI仍待补。此状态不激活下表 V2.2/Automation/Production Essentials，不代表整体V2验收完成。证据见[最终验收草稿](../../audits/2026-10-05/crm-product-experience-v2-final-acceptance.md)。
+**2026-10-05 近期执行状态：** CRM Product Experience V2 的 Slice1 已合并（PR #24，`9cd2523`），Slice2＋3 已合并（PR #25，`78f55df`，gh已核实）；Slice4 已授权，处于 **ACTIVE CLOSEOUT / NOT MERGED**，本地实现 `206e310` / `8cf9c16` / `7fcaca6`。回归修复ea660ca/c248fe5及最终本地验证/review完成；浏览器为risk-based已观察、未宣称全矩阵PASS；等待PR和当前CI。此状态不激活下表 V2.2/Automation/Production Essentials，不代表整体V2验收完成。证据见[最终验收草稿](../../audits/2026-10-05/crm-product-experience-v2-final-acceptance.md)。
 
 当前系统已经不是单纯 CRUD 型 CRM。
 

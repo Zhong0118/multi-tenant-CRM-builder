@@ -2,9 +2,9 @@
 
 Date: 2026-10-03
 
-Status (2026-10-05): SLICE 1 MERGED (#24, `9cd2523`) — SLICES 2＋3 MERGED (#25, `78f55df`) — SLICE4 AUTHORIZED / ACTIVE CLOSEOUT / NOT MERGED
+Status (2026-10-05): SLICE 1 MERGED (#24, `9cd2523`) — SLICES 2＋3 MERGED (#25, `78f55df`) — SLICE4 IMPLEMENTED / LOCAL VERIFIED / PR AND CI PENDING / NOT MERGED
 
-Current evidence: [final acceptance draft](../../audits/2026-10-05/crm-product-experience-v2-final-acceptance.md). Local implementation and partial browser paths are verified; final build/review/PR/latest-SHA CI and remaining browser fields still need closeout. No overall V2 completion claim.
+Current evidence: [final acceptance draft](../../audits/2026-10-05/crm-product-experience-v2-final-acceptance.md). Implementation, final local test/typecheck/build/contracts and independent review are verified; browser paths are risk-based observed, not a full matrix. PR/latest-SHA CI remain pending; no merged/remote-success claim.
 
 Repository: Zhong0118/multi-tenant-CRM-builder
 
@@ -67,4 +67,4 @@ BACKEND CHANGES REQUIRED: **NO**，限于当前推荐范围。跨设备保存个
 
 开发入口：[First Slice Implementation Plan](../plans/2026-10-03-crm-product-experience-v2-implementation.md)。顺序：Task 0 修复三项已复现的记录状态 bug → Slice 1 公共框架与记录列表 → Slice 2 详情/跟进 → Slice 3 员工工作台 → Slice 4 管理配置。
 
-当前状态（2026-10-05）：Slice1已合并PR #24（`9cd2523`），Slice2＋3已合并PR #25（`78f55df`，gh已核实）；Slice4已授权，处于ACTIVE收尾且未合并，详见[Slice4计划](../plans/2026-10-04-crm-product-experience-v2-slice-4.md)。上文初稿过程为历史背景；新PR不自动合并，部署仍未批准。当前证据不构成完整角色矩阵或当前远端CI成功声明。
+当前状态（2026-10-05）：Slice1已合并PR #24（`9cd2523`），Slice2＋3已合并PR #25（`78f55df`，gh已核实）；Slice4已授权，实现与本地验证完成，等待PR/CI且未合并，详见[Slice4计划](../plans/2026-10-04-crm-product-experience-v2-slice-4.md)。上文初稿过程为历史背景；新PR不自动合并，部署仍未批准。当前证据不构成完整角色矩阵或当前远端CI成功声明。

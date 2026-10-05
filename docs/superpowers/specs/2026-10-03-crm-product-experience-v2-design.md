@@ -2,9 +2,9 @@
 
 Date: 2026-10-03
 
-Status (2026-10-05): SLICE 1 MERGED (#24, `9cd2523`) — SLICES 2＋3 MERGED (#25, `78f55df`) — SLICE 4 AUTHORIZED / ACTIVE CLOSEOUT / NOT MERGED
+Status (2026-10-05): SLICE 1 MERGED (#24, `9cd2523`) — SLICES 2＋3 MERGED (#25, `78f55df`) — SLICE 4 IMPLEMENTED / LOCAL VERIFIED / PR AND CI PENDING / NOT MERGED
 
-Current evidence: [final acceptance draft](../../audits/2026-10-05/crm-product-experience-v2-final-acceptance.md). Slice4 local implementation exists; regression fixes, final browser gaps, validation, PR and latest-SHA CI remain pending. No overall V2 completion claim.
+Current evidence: [final acceptance draft](../../audits/2026-10-05/crm-product-experience-v2-final-acceptance.md). Slice4 implementation, regression fixes and local verification/review are complete; browser evidence is risk-based with explicit unobserved combinations. PR and latest-SHA CI remain pending; no merged/remote-success claim.
 
 Base main SHA: `70884f5eff78669e369cd36e6fbd8d9f9ac9d089`
 
@@ -182,7 +182,7 @@ Object Designer现有步骤和实时预览可保留；改进的是当前编辑�
 
 比较了三条路线：纯Design System换肤、Employee首页优先、公共框架与Record List一起落地。推荐第三条。第一条没有解决控制条负担，第二条进入记录后仍断层，第三条覆盖两角色和所有动态对象的高频入口，同时给后续切片提供经过真实页面应用的公共规则。
 
-FIRST SLICE不是全站重做。它不重构详情/管理员编辑器，不重写AI、不重排用户已发布Dashboard、不引入新后端或巨型组件框架。第一切片现已有单独实施计划，明确文件、任务、测试与验收；执行时同时阅读两份文档。Slice1和Slice2＋3已实现并合并；Slice4已获明确授权，处于ACTIVE收尾且未合并。
+FIRST SLICE不是全站重做。它不重构详情/管理员编辑器，不重写AI、不重排用户已发布Dashboard、不引入新后端或巨型组件框架。第一切片现已有单独实施计划，明确文件、任务、测试与验收；执行时同时阅读两份文档。Slice1和Slice2＋3已实现并合并；Slice4已获明确授权，实现与本地验证完成，等待PR/CI且未合并。
 
 ### Backend constraint
 
@@ -203,4 +203,4 @@ FIRST SLICE不是全站重做。它不重构详情/管理员编辑器，不重�
 5. **工程验证分层**：已有单元/typecheck/build/contracts 通过不抹去新增失败复现；AI E2E 固定地址导致的 setup 失败单列，不改隔离保护凑绿。
 6. **后续顺序与边界**：详情/跟进 → 员工工作台 → 管理配置；各自开工时细化实现，Production Essentials/Automation/AI 扩展不混入。
 
-完整任务、文件与命令以 [实施计划](../plans/2026-10-03-crm-product-experience-v2-implementation.md) 为准。状态：**SLICES 1–3 MERGED / SLICE4 AUTHORIZED ACTIVE CLOSEOUT / NOT MERGED**。当前执行详见[Slice4计划](../plans/2026-10-04-crm-product-experience-v2-slice-4.md)，验证缺口见最终验收草稿。
+完整任务、文件与命令以 [实施计划](../plans/2026-10-03-crm-product-experience-v2-implementation.md) 为准。状态：**SLICES 1–3 MERGED / SLICE4 IMPLEMENTED LOCAL VERIFIED / PR AND CI PENDING / NOT MERGED**。当前执行详见[Slice4计划](../plans/2026-10-04-crm-product-experience-v2-slice-4.md)，验证缺口见最终验收草稿。
