@@ -2,7 +2,7 @@
 
 import { skipToken, useMutation, useQuery } from "@tanstack/react-query";
 import { Alert, Button, Drawer, Popconfirm, Space, Typography } from "antd";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type {
   RecordSummary,
@@ -57,6 +57,7 @@ export function RecordDetailDrawer({
   onChanged,
 }: RecordDetailDrawerProps) {
   const [editing, setEditing] = useState(initialEditing);
+  const editSession = useRef(0);
   const [error, setError] = useState<string>();
   const [refreshWarning, setRefreshWarning] = useState<string>();
   const [deleted, setDeleted] = useState(false);
@@ -151,16 +152,20 @@ export function RecordDetailDrawer({
           canChooseOwner={canChooseOwner}
           api={api}
           onSaved={async (saved) => {
+            const session = editSession.current;
             try {
               await onChanged(saved);
             } catch {
               const message = "记录已保存，但刷新暂时失败。请重新载入查看最新记录，不要重复提交。";
               setRefreshWarning(message);
             } finally {
-              setEditing(false);
+              if (editSession.current === session) setEditing(false);
             }
           }}
-          onCancel={() => setEditing(false)}
+          onCancel={() => {
+            editSession.current += 1;
+            setEditing(false);
+          }}
         />
       ) : (
         <>

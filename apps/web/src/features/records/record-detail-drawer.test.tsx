@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { RecordSummary, RuntimeObjectSchema } from "@/features/objects/object-types";
 import { RecordDetailDrawer } from "./record-detail-drawer";
@@ -46,6 +46,55 @@ describe("record detail reading hierarchy", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("记录已保存，但刷新暂时失败。请重新载入查看最新记录，不要重复提交。");
     expect(screen.queryByRole("button", { name: "保存修改" })).not.toBeInTheDocument();
   });
+  it("does not close a new edit session when the previous refresh finishes", async () => {
+    const { recordApi } = await import("./record-api");
+    const api = { ...recordApi, update: vi.fn().mockResolvedValue({ ...record, version: 8 }) };
+    const editableSchema = {
+      ...schema,
+      fields: schema.fields.map((entry) =>
+        entry.fieldKey === "name" ? { ...entry, access: "EDIT" as const } : entry,
+      ),
+      actions: { ...schema.actions, canUpdate: true },
+    };
+    let rejectRefresh!: (error: Error) => void;
+    const refresh = new Promise<void>((_, reject) => {
+      rejectRefresh = reject;
+    });
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <RecordDetailDrawer
+          tenantCode="northwind"
+          schema={editableSchema}
+          record={record}
+          initialEditing
+          api={api}
+          onClose={vi.fn()}
+          onChanged={async () => refresh}
+        />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.change(screen.getByRole("textbox", { name: "客户名称" }), {
+      target: { value: "第一次保存" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存修改" }));
+    await waitFor(() => expect(api.update).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "客户名称" })).toBeDisabled());
+    fireEvent.click(screen.getByRole("button", { name: /^取\s*消$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^编\s*辑$/ }));
+    fireEvent.change(screen.getByRole("textbox", { name: "客户名称" }), {
+      target: { value: "新会话输入" },
+    });
+
+    await act(async () => {
+      rejectRefresh(new Error("refresh unavailable"));
+    });
+
+    expect(screen.getByRole("button", { name: "保存修改" })).toBeVisible();
+    expect(screen.getByRole("textbox", { name: "客户名称" })).toHaveValue("新会话输入");
+    expect(await screen.findByRole("alert")).toHaveTextContent("记录已保存，但刷新暂时失败");
+  });
+
   it("does not claim an assigned owner is unassigned when the roster is unavailable", () => {
     render(<QueryClientProvider client={new QueryClient()}><RecordDetailDrawer tenantCode="northwind" schema={schema} record={record} onClose={vi.fn()} onChanged={vi.fn()} /></QueryClientProvider>);
     expect(screen.getByText("负责人：已指定")).toBeVisible();

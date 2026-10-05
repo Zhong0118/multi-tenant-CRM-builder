@@ -903,7 +903,7 @@ function MappingEditor({
             ? `最多 ${MAX_FIELD_MAPPINGS_PER_ACTION} 个字段映射`
             : "添加字段映射"
         }
-        disabled={atLimit || available.length === 0}
+        disabled={atLimit || available.length === 0 ? true : undefined}
         style={{ minWidth: 200 }}
         options={available.map((field) => ({
           value: field.fieldKey,

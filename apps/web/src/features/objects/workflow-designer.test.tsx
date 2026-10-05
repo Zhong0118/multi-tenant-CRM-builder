@@ -15,6 +15,13 @@ import { WorkflowDesigner } from "./workflow-designer";
 import type { WorkflowApi } from "./workflow-api";
 import type { WorkflowDraft } from "./workflow-types";
 
+function dropdownFor(label: string): Element | null {
+  const combobox = screen.getByLabelText(label);
+  const listId = combobox.getAttribute("aria-controls");
+  const list = listId === null ? null : document.getElementById(listId);
+  return list?.closest(".ant-select-dropdown") ?? null;
+}
+
 function objectDraft(): ObjectDraft {
   return {
     object: {
@@ -333,6 +340,42 @@ describe("WorkflowDesigner", () => {
       ...objectDraft(),
       object: { ...objectDraft().object, version: 5 },
     });
+  });
+
+  it("does not add a mapping from the portal while a deferred save is pending", async () => {
+    let resolveSave!: (saved: WorkflowDraft) => void;
+    const pending = new Promise<WorkflowDraft>((resolve) => {
+      resolveSave = resolve;
+    });
+    const api: WorkflowApi = {
+      getDraft: vi.fn().mockResolvedValue(emptyWorkflow()),
+      saveDraft: vi.fn(() => pending),
+      getRuntime: vi.fn(),
+      executeTransition: vi.fn(),
+      history: vi.fn(),
+    };
+    renderDesigner(api, objectApi(), vi.fn());
+    fireEvent.click(await screen.findByRole("button", { name: "添加状态" }));
+    fireEvent.click(screen.getByRole("button", { name: "添加动作" }));
+    fireEvent.click(screen.getByRole("button", { name: "添加执行动作" }));
+    await pick("目标业务表 1-1", "客户");
+    fireEvent.click(screen.getByRole("button", { name: "保存流程" }));
+    await waitFor(() => expect(api.saveDraft).toHaveBeenCalledTimes(1));
+
+    const mapping = screen.getByLabelText("添加字段映射 1-1");
+    fireEvent.mouseDown(mapping.closest(".ant-select")!);
+    fireEvent.mouseDown(mapping);
+    const dropdown = dropdownFor("添加字段映射 1-1");
+    const customerName = dropdown?.querySelector('[title="客户名称"]');
+    if (customerName) fireEvent.click(customerName);
+    expect(mapping).toBeDisabled();
+    expect(screen.queryByLabelText("映射目标字段 1-1-1")).not.toBeInTheDocument();
+
+    const submitted = vi.mocked(api.saveDraft).mock.calls[0][2];
+    await act(async () => {
+      resolveSave({ ...submitted, objectVersion: 5 });
+    });
+    await screen.findByText("流程配置已保存");
   });
 
   it("saves added states, an initial state and a transition", async () => {
