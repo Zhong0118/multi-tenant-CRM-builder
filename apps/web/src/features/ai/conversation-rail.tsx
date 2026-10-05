@@ -1,5 +1,6 @@
 "use client";
 
+import { MoreOutlined } from "@ant-design/icons";
 import { Button, Dropdown, Input, Modal, Skeleton } from "antd";
 import { useMemo, useState } from "react";
 
@@ -13,19 +14,25 @@ export function ConversationRail({
   conversations,
   selectedId,
   loading,
+  error,
+  onRetry,
   onNew,
   onSelect,
   onRename,
   onDelete,
+  mutationError,
   onLoadMore,
 }: {
   conversations: AiConversation[];
   selectedId?: string;
   loading?: boolean;
+  error?: boolean;
+  onRetry?: () => void;
   onNew: () => void;
   onSelect: (id: string) => void;
-  onRename: (id: string, title: string) => void;
-  onDelete: (id: string) => void;
+  onRename: (id: string, title: string) => void | Promise<unknown>;
+  onDelete: (id: string) => void | Promise<unknown>;
+  mutationError?: string | null;
   onLoadMore?: () => void;
 }) {
   const grouped = useMemo(() => {
@@ -51,8 +58,15 @@ export function ConversationRail({
         </Button>
       </div>
       <div className={styles.railList}>
+        {mutationError ? <div className={styles.railError} role="alert">{mutationError}</div> : null}
         {loading ? <Skeleton active paragraph={{ rows: 6 }} /> : null}
-        {GROUPS.map((group) =>
+        {error ? (
+          <div className={styles.railError} role="alert">
+            <span>会话加载失败</span>
+            {onRetry ? <Button type="link" size="small" onClick={onRetry}>重试</Button> : null}
+          </div>
+        ) : null}
+        {!loading && !error ? GROUPS.map((group) =>
           grouped[group].length === 0 ? null : (
             <section key={group}>
               <div className={styles.groupLabel}>{group}</div>
@@ -93,16 +107,15 @@ export function ConversationRail({
                     <Button
                       type="text"
                       className={styles.rowMenu}
-                      aria-label="会话操作"
-                    >
-                      ···
-                    </Button>
+                      aria-label={`会话操作：${item.title}`}
+                      icon={<MoreOutlined aria-hidden />}
+                    />
                   </Dropdown>
                 </div>
               ))}
             </section>
           ),
-        )}
+        ) : null}
         {onLoadMore ? (
           <Button type="link" onClick={onLoadMore}>
             加载更多

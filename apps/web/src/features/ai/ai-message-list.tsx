@@ -19,6 +19,8 @@ export function AiMessageList({
   tenantCode,
   messages,
   loading,
+  error,
+  onRetryMessages,
   streaming,
   phase,
   onLoadOlder,
@@ -26,11 +28,11 @@ export function AiMessageList({
   onConfirmProposal,
   onRejectProposal,
   proposalBusy,
-  proposalError,
 }: {
   tenantCode: string;
   messages: AiMessage[];
   loading?: boolean;
+  error?: boolean;
   streaming?: boolean;
   phase: AiTurnPhase;
   onLoadOlder?: () => void | Promise<unknown>;
@@ -89,6 +91,12 @@ export function AiMessageList({
         </Button>
       ) : null}
       {loading ? <Skeleton active paragraph={{ rows: 4 }} /> : null}
+      {error ? (
+        <div className={styles.messageError} role="alert">
+          <span>消息加载失败</span>
+          {onRetryMessages ? <Button type="link" onClick={onRetryMessages}>重试</Button> : null}
+        </div>
+      ) : null}
       {messages.map((message) =>
         message.role === "USER" ? (
           <UserMessage key={message.id} message={message} />

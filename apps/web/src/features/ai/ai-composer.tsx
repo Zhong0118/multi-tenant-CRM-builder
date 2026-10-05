@@ -23,9 +23,11 @@ export function AiComposer({
   inputRef?: RefObject<TextAreaRef | null>;
 }) {
   const generating = phase === "SENDING" || phase === "STREAMING";
+  const trimmedLength = value.length;
   return (
     <div className={styles.composerDock}>
-      <div className={styles.composer}>
+      <div className={styles.composer} aria-busy={generating}>
+        {generating ? <span className={styles.composerStatus}>正在生成回答…</span> : null}
         <Input.TextArea
           ref={inputRef}
           value={value}
@@ -41,7 +43,12 @@ export function AiComposer({
           }}
         />
         <div className={styles.composerBar}>
-          <span className={styles.composerHint}>Enter 发送 · Shift+Enter 换行</span>
+          <div className={styles.composerMeta}>
+            <span className={styles.composerHint}>Enter 发送 · Shift+Enter 换行</span>
+            <span className={styles.composerCount} aria-live="polite">
+              {trimmedLength}/{AI_MAX_INPUT}
+            </span>
+          </div>
           <div className={styles.composerActions}>
             {generating ? (
               <Button aria-label="停止" onClick={onStop}>
