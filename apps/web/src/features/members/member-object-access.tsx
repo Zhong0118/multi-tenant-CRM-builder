@@ -166,7 +166,7 @@ export function MemberObjectAccess({
           key={row.objectId}
           row={row}
           memberName={memberName}
-          saving={save.isPending && save.variables?.objectId === row.objectId}
+          saving={save.isPending}
           onSave={(input) => save.mutate({ objectId: row.objectId, input })}
         />
       ))}
@@ -255,6 +255,7 @@ function ObjectAccessPanel({
                 id={`${row.objectId}-create`}
                 aria-label="可以新建记录"
                 checked={draft.canCreate}
+                disabled={saving}
                 onChange={(canCreate) => setDraft({ ...draft, canCreate })}
               />
             </Form.Item>
@@ -263,6 +264,7 @@ function ObjectAccessPanel({
                 id={`${row.objectId}-read`}
                 aria-label="可以查看记录"
                 checked={draft.canRead}
+                disabled={saving}
                 onChange={(canRead) => setDraft({ ...draft, canRead })}
               />
             </Form.Item>
@@ -271,6 +273,7 @@ function ObjectAccessPanel({
                 id={`${row.objectId}-update`}
                 aria-label="可以修改记录"
                 checked={draft.canUpdate}
+                disabled={saving}
                 onChange={(canUpdate) => setDraft({ ...draft, canUpdate })}
               />
             </Form.Item>
@@ -279,6 +282,7 @@ function ObjectAccessPanel({
                 id={`${row.objectId}-read-scope`}
                 aria-label="查看范围"
                 value={draft.readScope}
+                disabled={saving}
                 onChange={(readScope) => setDraft({ ...draft, readScope })}
                 options={scopeOptions()}
               />
@@ -291,6 +295,7 @@ function ObjectAccessPanel({
                 id={`${row.objectId}-update-scope`}
                 aria-label="修改范围"
                 value={draft.updateScope}
+                disabled={saving}
                 onChange={(updateScope) => setDraft({ ...draft, updateScope })}
                 options={scopeOptions()}
               />
@@ -301,6 +306,7 @@ function ObjectAccessPanel({
             <Button
               type="primary"
               loading={saving}
+              disabled={saving}
               onClick={() =>
                 onSave({
                   mode: "OVERRIDE",

@@ -26,6 +26,26 @@ const schema: RuntimeObjectSchema = {
 const record: RecordSummary = { id: "r1", recordNo: "1", title: "客户甲", version: 7, ownerMemberId: "m1", values: { name: "客户甲", phase: "洽谈中", notes: "长业务说明", secret: "不可见" }, createdAt: "2026-10-01", updatedAt: "2026-10-01" };
 
 describe("record detail reading hierarchy", () => {
+  it("reports a committed deletion separately when its refresh callback rejects", async () => {
+    const { recordApi } = await import("./record-api");
+    const api = { ...recordApi, remove: vi.fn().mockResolvedValue(undefined) };
+    render(<QueryClientProvider client={new QueryClient()}><RecordDetailDrawer tenantCode="northwind" schema={schema} record={record} canDelete api={api} onClose={vi.fn()} onChanged={async () => { throw new Error("refresh unavailable"); }} /></QueryClientProvider>);
+    fireEvent.click(screen.getByRole("button", { name: /^删\s*除$/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "删除记录" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("记录已删除，但刷新暂时失败。请返回列表重新载入，不要重复删除。");
+    expect(api.remove).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: /^删\s*除$/ })).toBeDisabled();
+  });
+  it("keeps a saved-record refresh warning visible after leaving edit mode", async () => {
+    const { recordApi } = await import("./record-api");
+    const api = { ...recordApi, update: vi.fn().mockResolvedValue({ ...record, version: 8 }) };
+    const editableSchema = { ...schema, fields: schema.fields.map((entry) => entry.fieldKey === "name" ? { ...entry, access: "EDIT" as const } : entry) };
+    render(<QueryClientProvider client={new QueryClient()}><RecordDetailDrawer tenantCode="northwind" schema={editableSchema} record={record} initialEditing api={api} onClose={vi.fn()} onChanged={async () => { throw new Error("refresh unavailable"); }} /></QueryClientProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "保存修改" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("记录已保存，但刷新暂时失败。请重新载入查看最新记录，不要重复提交。");
+    expect(screen.queryByRole("button", { name: "保存修改" })).not.toBeInTheDocument();
+  });
   it("does not claim an assigned owner is unassigned when the roster is unavailable", () => {
     render(<QueryClientProvider client={new QueryClient()}><RecordDetailDrawer tenantCode="northwind" schema={schema} record={record} onClose={vi.fn()} onChanged={vi.fn()} /></QueryClientProvider>);
     expect(screen.getByText("负责人：已指定")).toBeVisible();

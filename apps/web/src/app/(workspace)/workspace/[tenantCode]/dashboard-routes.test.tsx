@@ -23,6 +23,8 @@ vi.mock("@/lib/auth/require-runtime-objects", () => ({
 vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("next/navigation")>()),
   useRouter: () => ({ refresh: vi.fn() }),
+  usePathname: () => "/workspace/northwind",
+  useSearchParams: () => new URLSearchParams(),
 }));
 vi.mock("@ant-design/charts", () => ({ Bar: () => null, Line: () => null }));
 vi.mock("@/features/follow-ups/follow-up-workbench", () => ({

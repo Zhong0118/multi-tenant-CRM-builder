@@ -106,12 +106,14 @@ function RecordWorkspaceSession({
             router.replace(returnPath);
           }}
           onChanged={async (next) => {
-            setRecord(next ?? undefined);
+            if (next) setRecord(next);
             await Promise.all([
-              client.invalidateQueries({ queryKey: ["workspace", tenantCode, "records"], refetchType: "all" }),
-              client.invalidateQueries({ queryKey: followUpQueryKeys.root(tenantCode), refetchType: "all" }),
+              client.invalidateQueries({ queryKey: ["workspace", tenantCode, "records"], refetchType: "all" }, { throwOnError: true }),
+              client.invalidateQueries({ queryKey: followUpQueryKeys.root(tenantCode), refetchType: "all" }, { throwOnError: true }),
             ]);
+            // Next refresh starts a server render; it does not return its completion.
             router.refresh();
+            if (!next) setRecord(undefined);
             if (!next) {
               markSourceReturnFocus(tenantCode, returnTo);
               router.replace(returnPath);

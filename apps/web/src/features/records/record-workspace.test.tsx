@@ -1,15 +1,30 @@
 import { fireEvent, render as rtlRender, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { recordApi } from "./record-api";
 import Link from "next/link";
 import { RecordWorkspace, type RecordWorkspaceProps } from "./record-workspace";
 import type { RecordSummary } from "@/features/objects/object-types";
 import { DEFAULT_RECORD_QUERY } from "./record-query-state";
 const router = vi.hoisted(() => ({ replace: vi.fn(), refresh: vi.fn(), push: vi.fn(), back: vi.fn(), forward: vi.fn(), prefetch: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
-vi.mock("./record-list", () => ({ RecordList: () => <div>列表<Link href="/workspace/northwind/objects/customers/record-a?page=2">客户 A 链接</Link></div> }));
-vi.mock("./record-detail-drawer", () => ({
-  RecordDetailDrawer: ({
+vi.mock("./record-list", async (importOriginal) => ({
+  ...await importOriginal<typeof import("./record-list")>(),
+  RecordList: () => <div>列表<Link href="/workspace/northwind/objects/customers/record-a?page=2">客户 A 链接</Link></div>,
+}));
+const composition = vi.hoisted(() => ({ real: false }));
+vi.mock("./record-workflow-panel", () => ({ RecordWorkflowPanel: () => null }));
+vi.mock("@/features/follow-ups/follow-up-panel", () => ({ FollowUpPanel: () => null }));
+vi.mock("./record-activity-timeline", () => ({ RecordActivityTimeline: () => null }));
+vi.mock("./record-relations-panel", () => ({ RecordRelationsPanel: () => null }));
+vi.mock("@/features/attachments/record-attachments-panel", () => ({ RecordAttachmentsPanel: () => null }));
+vi.mock("./record-detail-drawer", async (importOriginal) => {
+  const original = await importOriginal<typeof import("./record-detail-drawer")>();
+  return {
+  RecordDetailDrawer: (props: import("./record-detail-drawer").RecordDetailDrawerProps) => composition.real ? <original.RecordDetailDrawer {...props} /> : <MockDrawer {...props} />,
+};
+});
+const MockDrawer = ({
     record,
     initialEditing,
     followUpId,
@@ -17,7 +32,7 @@ vi.mock("./record-detail-drawer", () => ({
     onChanged,
   }: {
     record: RecordSummary;
-    initialEditing: boolean;
+    initialEditing?: boolean;
     followUpId?: string;
     onClose: () => void;
     onChanged: (record: RecordSummary | null) => void;
@@ -36,8 +51,7 @@ vi.mock("./record-detail-drawer", () => ({
         保存
       </button>
     </div>
-  ),
-}));
+  );
 const record: RecordSummary = {
   id: "record-a",
   recordNo: "1",
@@ -99,6 +113,11 @@ function render(ui: React.ReactNode, client = new QueryClient({ defaultOptions: 
   return rtlRender(ui, { wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> });
 }
 
+beforeEach(() => {
+  vi.clearAllMocks();
+  composition.real = false;
+});
+
 describe("record workspace navigation", () => {
   it("restores focus to the retained record link on ordinary list close", async () => {
     render(<RecordWorkspace {...props} openRecord={record} />);
@@ -149,6 +168,53 @@ describe("record workspace navigation", () => {
     unsubscribes.forEach((unsubscribe) => unsubscribe());
     client.clear();
   });
+  it.each(["save", "delete"])("keeps committed %s visible when a real cache refetch fails", async (action) => {
+    composition.real = true;
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    let failed = false;
+    const key = ["workspace", "northwind", "records", "customers"];
+    const observer = new QueryObserver(client, { queryKey: key, queryFn: async () => {
+      if (failed) throw new Error("cache offline");
+      return "seeded";
+    } });
+    const unsubscribe = observer.subscribe(() => {});
+    await waitFor(() => expect(client.getQueryData(key)).toBe("seeded"));
+    const update = vi.spyOn(recordApi, "update").mockResolvedValue({ ...record, title: "已保存", values: { name: "已保存" }, version: 2 });
+    const remove = vi.spyOn(recordApi, "remove").mockResolvedValue({ accepted: true });
+    render(<RecordWorkspace {...props} openRecord={record} initialEditing={action === "save"} returnTo="/workspace/northwind/follow-ups?status=OPEN&page=1" />, client);
+    failed = true;
+    if (action === "save") {
+      fireEvent.change(screen.getByLabelText("客户名称"), { target: { value: "已保存" } });
+      fireEvent.click(screen.getByRole("button", { name: "保存修改" }));
+    } else {
+      fireEvent.click(screen.getByRole("button", { name: /^删\s*除$/ }));
+      fireEvent.click(await screen.findByRole("button", { name: "删除记录" }));
+    }
+    expect(await screen.findByRole("alert")).toHaveTextContent(action === "save" ? "记录已保存，但刷新暂时失败" : "记录已删除，但刷新暂时失败");
+    expect(client.getQueryState(key)?.status).toBe("error");
+    expect(screen.getByRole("dialog")).toBeVisible();
+    expect(router.replace).not.toHaveBeenCalled();
+    expect(router.refresh).not.toHaveBeenCalled();
+    if (action === "save") {
+      expect(update).toHaveBeenCalledTimes(1);
+      expect(screen.getByText("版本 v2")).toBeVisible();
+      expect(screen.queryByRole("button", { name: "保存修改" })).not.toBeInTheDocument();
+    } else {
+      expect(remove).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("button", { name: /^删\s*除$/ })).toBeDisabled();
+      expect(screen.queryByRole("button", { name: /^编\s*辑$/ })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: /^删\s*除$/ }));
+      expect(remove).toHaveBeenCalledTimes(1);
+      fireEvent.click(screen.getByRole("button", { name: "返回列表" }));
+      expect(router.replace).toHaveBeenCalledWith("/workspace/northwind/follow-ups?status=OPEN&page=1");
+      expect(sessionStorage.getItem("crm:source-return-focus")).toBe("/workspace/northwind/follow-ups?status=OPEN&page=1");
+    }
+    unsubscribe();
+    client.clear();
+    update.mockRestore();
+    remove.mockRestore();
+  });
+
   it("preserves explicit sort when closing with a different published default", async () => {
     const { parseRecordQuery } = await import("./record-query-state");
     const publishedSort = { field: "recordNo", direction: "asc" } as const;

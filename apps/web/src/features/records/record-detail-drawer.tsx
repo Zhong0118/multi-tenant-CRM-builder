@@ -58,6 +58,8 @@ export function RecordDetailDrawer({
 }: RecordDetailDrawerProps) {
   const [editing, setEditing] = useState(initialEditing);
   const [error, setError] = useState<string>();
+  const [refreshWarning, setRefreshWarning] = useState<string>();
+  const [deleted, setDeleted] = useState(false);
   const fields = schema.fields.filter((field) => field.access !== "HIDDEN");
   const summaryKeys = new Set([
     schema.object.titleFieldKey,
@@ -87,8 +89,16 @@ export function RecordDetailDrawer({
     mutationFn: () =>
       api.remove(tenantCode, schema.object.code, record.id, record.version),
     onSuccess: async () => {
-      await onChanged(null);
-      onClose();
+      setDeleted(true);
+      setEditing(false);
+      setError(undefined);
+      try {
+        await onChanged(null);
+        onClose();
+      } catch {
+        const message = "记录已删除，但刷新暂时失败。请返回列表重新载入，不要重复删除。";
+        setRefreshWarning(message);
+      }
     },
     onError: (caught) => {
       const apiError = toApiError(caught);
@@ -111,7 +121,7 @@ export function RecordDetailDrawer({
       }
       extra={
         <Space>
-          {schema.actions.canUpdate && !editing ? (
+          {schema.actions.canUpdate && !editing && !deleted ? (
             <Button onClick={() => setEditing(true)}>编辑</Button>
           ) : null}
           {canDelete ? (
@@ -121,7 +131,7 @@ export function RecordDetailDrawer({
               okText="删除记录"
               onConfirm={() => remove.mutate()}
             >
-              <Button danger loading={remove.isPending}>
+              <Button danger loading={remove.isPending} disabled={deleted}>
                 删除
               </Button>
             </Popconfirm>
@@ -129,9 +139,10 @@ export function RecordDetailDrawer({
         </Space>
       }
     >
+      {refreshWarning ? <Alert type="warning" showIcon title={refreshWarning} /> : null}
       {error ? <Alert type="error" showIcon title={error} /> : null}
 
-      {editing ? (
+      {deleted ? <Button onClick={onClose}>返回列表</Button> : editing ? (
         <RecordForm
           tenantCode={tenantCode}
           schema={schema}
@@ -139,9 +150,15 @@ export function RecordDetailDrawer({
           members={members}
           canChooseOwner={canChooseOwner}
           api={api}
-          onSaved={(saved) => {
-            setEditing(false);
-            return onChanged(saved);
+          onSaved={async (saved) => {
+            try {
+              await onChanged(saved);
+            } catch {
+              const message = "记录已保存，但刷新暂时失败。请重新载入查看最新记录，不要重复提交。";
+              setRefreshWarning(message);
+            } finally {
+              setEditing(false);
+            }
           }}
           onCancel={() => setEditing(false)}
         />

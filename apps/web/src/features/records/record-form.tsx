@@ -55,6 +55,8 @@ export function RecordForm({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [summary, setSummary] = useState<string>();
   const [conflicted, setConflicted] = useState(false);
+  const [refreshWarning, setRefreshWarning] = useState(false);
+  const [committed, setCommitted] = useState(false);
 
   const mode = record ? "UPDATE" : "CREATE";
   const objectCode = schema.object.code;
@@ -71,10 +73,15 @@ export function RecordForm({
             values: payload(editable, values),
             ...(canChooseOwner && owner ? { ownerMemberId: owner } : {}),
           }),
-    onSuccess: (saved) => {
+    onSuccess: async (saved) => {
+      setCommitted(true);
       setSummary(undefined);
       setConflicted(false);
-      return onSaved(saved);
+      try {
+        await onSaved(saved);
+      } catch {
+        setRefreshWarning(true);
+      }
     },
     onError: (caught) => {
       const apiError = toApiError(caught);
@@ -94,6 +101,7 @@ export function RecordForm({
   });
 
   function submit() {
+    if (committed || save.isPending) return;
     const missing = editable.filter(
       (field) => field.required && isEmpty(values[field.fieldKey]),
     );
@@ -114,6 +122,7 @@ export function RecordForm({
 
   return (
     <div className={styles.form}>
+      {refreshWarning ? <Alert type="warning" showIcon title="记录已保存，但刷新暂时失败。请重新载入查看最新记录，不要重复提交。" /> : null}
       {summary ? (
         <Alert
           type="error"
@@ -138,6 +147,7 @@ export function RecordForm({
               value={values[field.fieldKey] ?? null}
               members={members}
               error={fieldErrors[field.fieldKey]}
+              disabled={save.isPending || committed}
               onChange={(next) =>
                 setValues((current) => ({ ...current, [field.fieldKey]: next }))
               }
@@ -152,6 +162,7 @@ export function RecordForm({
             >
               <Select
                 id="record-owner"
+                disabled={save.isPending || committed}
                 allowClear
                 showSearch
                 optionFilterProp="label"
@@ -168,7 +179,7 @@ export function RecordForm({
       </Form>
 
       <Space>
-        <Button type="primary" loading={save.isPending} onClick={submit}>
+        <Button type="primary" loading={save.isPending} disabled={committed} onClick={submit}>
           {mode === "CREATE" ? "创建记录" : "保存修改"}
         </Button>
         {onCancel ? <Button onClick={onCancel}>取消</Button> : null}
