@@ -354,16 +354,11 @@ export function AiAssistantPage({
         setRailOpen(false);
       }}
       onRename={(id, title) => rename.mutateAsync({ id, title })}
-      onDelete={(id) => remove.mutate(id)}
+      onDelete={(id) => remove.mutateAsync(id)}
       renamePending={rename.isPending}
       deletePending={remove.isPending}
-      mutationError={
-        rename.error instanceof Error
-          ? rename.error.message
-          : remove.error instanceof Error
-            ? remove.error.message
-            : null
-      }
+      // Rename failures are reported inside the rename dialog.
+      mutationError={remove.error instanceof Error ? remove.error.message : null}
       onLoadMore={
         conversations.hasNextPage
           ? () => void conversations.fetchNextPage()

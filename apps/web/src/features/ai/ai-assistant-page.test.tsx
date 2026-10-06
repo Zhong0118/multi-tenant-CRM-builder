@@ -811,7 +811,7 @@ describe("AiAssistantPage", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
     await waitFor(() => expect(screen.getByText("进行中")).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: "+ 新建会话" }));
+    fireEvent.click(screen.getByRole("button", { name: "新建会话" }));
     mocks.conversation = undefined;
     view.rerender(
       <QueryClientProvider client={view.client}>
