@@ -11,7 +11,9 @@ export function UserMessage({ message }: { message: AiMessage }) {
         {message.content}
         {message.createdAt ? (
           <div className={styles.userMeta}>
-            <time dateTime={message.createdAt}>{messageTime(message.createdAt)}</time>
+            <time dateTime={message.createdAt}>
+              {messageTime(message.createdAt)}
+            </time>
           </div>
         ) : null}
       </div>

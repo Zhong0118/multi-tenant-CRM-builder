@@ -73,7 +73,11 @@ export function parseAnswerBlocks(content: string): Block[] {
     }
     const heading = HEADING.exec(line);
     if (heading) {
-      blocks.push({ kind: "heading", level: heading[1].length, text: heading[2] });
+      blocks.push({
+        kind: "heading",
+        level: heading[1].length,
+        text: heading[2],
+      });
       index += 1;
       continue;
     }
@@ -81,7 +85,11 @@ export function parseAnswerBlocks(content: string): Block[] {
       const header = tableCells(line);
       const rows: string[][] = [];
       index += 2;
-      while (index < lines.length && lines[index].includes("|") && lines[index].trim()) {
+      while (
+        index < lines.length &&
+        lines[index].includes("|") &&
+        lines[index].trim()
+      ) {
         rows.push(tableCells(lines[index]));
         index += 1;
       }
@@ -127,7 +135,11 @@ export function parseAnswerBlocks(content: string): Block[] {
       continue;
     }
     const paragraph: string[] = [];
-    while (index < lines.length && lines[index].trim() && (paragraph.length === 0 || !startsBlock(lines, index))) {
+    while (
+      index < lines.length &&
+      lines[index].trim() &&
+      (paragraph.length === 0 || !startsBlock(lines, index))
+    ) {
       paragraph.push(lines[index].trim());
       index += 1;
     }
@@ -172,7 +184,10 @@ export function AnswerText({ content }: { content: string }) {
             );
           case "list":
             return block.ordered ? (
-              <ol key={index} start={block.start === 1 ? undefined : block.start}>
+              <ol
+                key={index}
+                start={block.start === 1 ? undefined : block.start}
+              >
                 {block.items.map((item, itemIndex) => (
                   <li key={itemIndex}>{renderInline(item)}</li>
                 ))}
@@ -185,7 +200,9 @@ export function AnswerText({ content }: { content: string }) {
               </ul>
             );
           case "quote":
-            return <blockquote key={index}>{withBreaks(block.lines)}</blockquote>;
+            return (
+              <blockquote key={index}>{withBreaks(block.lines)}</blockquote>
+            );
           case "code":
             return (
               <pre key={index} className={styles.codeBlock} tabIndex={0}>
@@ -199,7 +216,9 @@ export function AnswerText({ content }: { content: string }) {
                   <thead>
                     <tr>
                       {block.header.map((cell, cellIndex) => (
-                        <th key={cellIndex} scope="col">{renderInline(cell)}</th>
+                        <th key={cellIndex} scope="col">
+                          {renderInline(cell)}
+                        </th>
                       ))}
                     </tr>
                   </thead>
@@ -207,7 +226,9 @@ export function AnswerText({ content }: { content: string }) {
                     {block.rows.map((row, rowIndex) => (
                       <tr key={rowIndex}>
                         {block.header.map((_, cellIndex) => (
-                          <td key={cellIndex}>{renderInline(row[cellIndex] ?? "")}</td>
+                          <td key={cellIndex}>
+                            {renderInline(row[cellIndex] ?? "")}
+                          </td>
                         ))}
                       </tr>
                     ))}

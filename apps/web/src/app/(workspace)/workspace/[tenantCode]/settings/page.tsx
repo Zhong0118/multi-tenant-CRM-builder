@@ -63,9 +63,7 @@ export default async function WorkspaceSettingsPage({
               邀请管理员或员工，停用离职成员，并按业务表覆盖某位员工的操作和数据范围。
             </p>
           </div>
-          <Link href={`/workspace/${tenantCode}/members`}>
-            进入成员管理
-          </Link>
+          <Link href={`/workspace/${tenantCode}/members`}>进入成员管理</Link>
         </DataPanel>
 
         <DataPanel className={styles.secondarySetting} ariaLabel="工作台与指标">

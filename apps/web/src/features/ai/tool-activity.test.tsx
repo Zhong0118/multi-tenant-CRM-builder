@@ -15,7 +15,9 @@ const tool = (status: AiToolSummary["status"]): AiToolSummary =>
 describe("ToolActivity", () => {
   it("follows the running state until the user toggles it", () => {
     const view = render(<ToolActivity tools={[tool("RUNNING")]} />);
-    expect(screen.getByRole("button", { name: "正在查询 CRM 数据" })).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByRole("button", { name: "正在查询 CRM 数据" }),
+    ).toHaveAttribute("aria-expanded", "true");
 
     view.rerender(<ToolActivity tools={[tool("COMPLETED")]} />);
     const toggle = screen.getByRole("button", { name: "已查询 1 项 CRM 数据" });
