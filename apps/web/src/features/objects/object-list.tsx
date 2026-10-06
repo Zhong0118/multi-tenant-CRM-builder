@@ -65,6 +65,7 @@ export function ObjectList({
     {
       title: "业务表",
       key: "object",
+      width: 160,
       render: (_, row) => (
         <Link
           className={styles.ledgerName}
@@ -185,6 +186,9 @@ export function ObjectList({
         columns={columns}
         dataSource={rows}
         pagination={false}
+        // Narrow screens scroll the ledger sideways instead of stacking names
+        // one character per line.
+        scroll={{ x: "max-content" }}
         loading={drafts.isFetching}
         aria-label="业务表列表"
       />
