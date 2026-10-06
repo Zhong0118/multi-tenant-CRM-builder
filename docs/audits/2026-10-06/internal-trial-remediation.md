@@ -1,11 +1,11 @@
 # 内部试用修复证据账本
 
-日期：2026-10-06。状态：**LOCAL REMEDIATION VERIFIED / LATEST CI PENDING / NOT MERGED / NOT DEPLOYED**。
+日期：2026-10-06。状态：**CODE SHA `58da1ce` / PR #26 OPEN / SIX CI CHECKS SUCCESS / NOT MERGED / NOT DEPLOYED**。本轮文档 follow-up 尚未形成新的 CI SHA；文档改动后的 latest CI 仍待主 agent 核实。
 
 ## 范围与基线
 
 - 工作树：`.worktrees/crm-product-experience-v2-slice-4`；本地分支 `codex/internal-trial-preparation`，基线 `c400b32`。PR #26 远端分支为 `codex/crm-product-experience-v2-slice-4`，根 `main` 落后，禁止用作本轮入口。
-- 旧 run `37417884483` 六项 required checks SUCCESS 仅对应 `c400b32`。当前修复未提交，最新 SHA 与远端 CI PENDING。
+- 代码 SHA `58da1ce` 已推送至 PR #26；GitHub run `37444823699` 六项 required checks 全部 SUCCESS，`gh checks --watch` exit0。该 Build 2m50 包含无缓存 full Docker、offline pnpm 与 internal-network migration 两次门禁 PASS。文档 follow-up 会产生新的文档提交，不能把 `58da1ce` 当作文档后的永久 head；文档 follow-up latest CI 仍待主 agent 核实。旧 run `37417884483` 仅作历史证据。
 - 用户授权 D01-D04、F01-F03、验证码修复验证及 PR 更新/push；仍禁止合并、部署、清理。本文记录当前工作树证据，不代表已合并或已部署。
 - 保留用户的 `internal-trial-independent-review.md` 与 `docs/superpowers/briefs/2026-10-06-frontend-polish-handoff.md`，不修改或清理。本文按主 agent 提供的观察记录，不代表文档 agent 独立重跑浏览器/测试。
 
@@ -13,7 +13,7 @@
 
 | 项目 | 当前改动与已取得证据 | 未完成边界 |
 |---|---|---|
-| D01 根 tsconfig 缺失 | Docker COPY 已加入根 `tsconfig.base.json`；独立 COPY 布局曾复现 TS5083 | 干净 baseline 和 fixed build 都因 npm `fetch failed` 中断，不能记 PASS；完整镜像 PENDING |
+| D01 根 tsconfig 缺失 | Docker COPY 已加入根 `tsconfig.base.json`；独立 COPY 布局曾复现 TS5083；run `37444823699` 的无缓存 full Docker Build PASS | 代码/自动门禁已验证；生产部署仍未执行 |
 | D02 migration 运行时下载 pnpm | tooling 在构建期准备 pnpm 11.19.0，build/runtime 共用，runtime `COREPACK_ENABLE_NETWORK=0` | 空 cache + `--network none` 真实 RED exit1；fixed `docker build --target tooling -t crm-trial-review:tooling .` exit0，`docker run --rm --network none -e COREPACK_ENABLE_NETWORK=0 crm-trial-review:tooling pnpm --version` 输出11.19.0/exit0。仅 tooling 离线 pnpm 已验证；完整应用镜像第二次 retry 仍 fetch failed，migration 容器 PENDING |
 | D03 双域 Cookie/SSR | Compose 统一公开 `WEB_ORIGIN`；Caddy `/api/v1/*` 反代 API，其余到 Web。真实浏览器登录→`/workspace/nebula-demo`→刷新完整 dashboard；Secure/HttpOnly/host-only localhost session cookie；退出清 cookie 后访问 workspace 回 login | 仅真实本地 Caddy `https://localhost:3443`，内部自签证书绕过浏览器信任。公网 DNS/TLS、完整生产 Compose 启动 NOT VERIFIED |
 | D04 代理短信 IP 共额/伪造头 | 固定 edge `172.30.26.0/24`，Caddy `.2`、API `.3`、Web `.4`，API 只信精确 Caddy IP；Caddy 覆盖 XFF。真实 `.10`/`.11` 两客户端同伪造 XFF 得真实各自 IP，Echo upstream remote `.2`；bounded-proxy 8 tests pass，含 untrusted spoof/default deny/safe exactIP；实际 Nest auth-proxy 主复验3 suites/11 tests pass，63次HTTP验证：同客户端20→429、第二客户端独立20→429、untrusted spoof20→429，拒绝时无 challenge/send；repository/sender 边界 fake，实际 controller/service/limiter | Echo 证明代理转发边界，不等于真实短信 provider 验收；公网拓扑和真实 SMS limiter PENDING |
