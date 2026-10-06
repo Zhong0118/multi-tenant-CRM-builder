@@ -45,7 +45,6 @@ export function InviteMemberForm({
   return (
     <ReadingPanel className={styles.invitePanel} ariaLabel="邀请新成员">
       <div className={styles.inviteCopy}>
-        <span className={styles.eyebrow}>CONTROLLED ACCESS</span>
         <h2 id="invite-heading">邀请新成员</h2>
         <p>对方使用自己的手机号账号接受邀请，无需由管理员设置密码。</p>
       </div>

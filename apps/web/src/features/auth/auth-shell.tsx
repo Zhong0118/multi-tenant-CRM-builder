@@ -7,13 +7,13 @@ import type { ReactNode } from "react";
 import styles from "./auth.module.css";
 
 export function AuthShell({
-  eyebrow,
   title,
   description,
   children,
   footer,
 }: {
-  eyebrow: string;
+  /** No longer rendered: the page title already names the step. */
+  eyebrow?: string;
   title: string;
   description: string;
   children: ReactNode;
@@ -22,7 +22,7 @@ export function AuthShell({
   return (
     <main className={styles.authPage}>
       <section className={styles.statement} aria-label="产品说明">
-        <div className={styles.brandMark}>CRM / WORKSPACE</div>
+        <div className={styles.brandMark}>CRM 工作区</div>
         <div className={styles.statementBody}>
           <span className={styles.trackDot} aria-hidden="true" />
           <Typography.Title level={1}>
@@ -40,7 +40,6 @@ export function AuthShell({
       </section>
       <section className={styles.formPanel}>
         <div className={styles.formCard}>
-          <span className={styles.eyebrow}>{eyebrow}</span>
           <Typography.Title level={2}>{title}</Typography.Title>
           <Typography.Paragraph type="secondary">
             {description}

@@ -51,7 +51,6 @@ export default async function MemberAccessPage({
   return (
     <main className={styles.page}>
       <header className={styles.pageHeader}>
-        <span className={styles.eyebrow}>MEMBER ACCESS</span>
         <h1>{memberName}的访问权限</h1>
         <p>
           按业务对象决定这位员工能做什么、能看到哪些记录。字段权限来自对象发布版本，不在这里调整。

@@ -37,7 +37,6 @@ export default async function ObjectSettingsPage({
   return (
     <main className={styles.page}>
       <header className={styles.pageHeader}>
-        <span className={styles.eyebrow}>BUSINESS TABLES</span>
         <h1>业务表</h1>
         <p>
           在这里创建公司自己的业务表、添加字段、设置默认列表和员工权限。所有修改先保存为草稿，发布后才影响员工正在使用的页面。

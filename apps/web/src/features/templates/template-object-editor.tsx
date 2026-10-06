@@ -567,7 +567,6 @@ export function TemplateObjectEditor({
         aria-label="业务表实时预览"
       >
         <div className={styles.previewHeading}>
-          <span className={styles.eyebrow}>LIVE PREVIEW</span>
           <strong>成员看到的页面</strong>
         </div>
         <ObjectPreview

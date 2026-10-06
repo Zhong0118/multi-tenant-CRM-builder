@@ -63,9 +63,6 @@ export function InvitationDetail({
       <div className={styles.statusRail} aria-hidden="true" />
       <header className={styles.detailHeader}>
         <div>
-          <Typography.Text className={styles.eyebrow}>
-            INVITATION RECORD
-          </Typography.Text>
           <Typography.Title level={2}>
             {invitation.tenantName ?? "公司邀请"}
           </Typography.Title>

@@ -47,14 +47,6 @@
   font-weight: 600;
 }
 
-.eyebrow {
-  color: var(--color-primary);
-  font-family: var(--font-label);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-}
-
 .objectCreator {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(210px, 0.7fr);

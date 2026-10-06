@@ -20,7 +20,6 @@ export default async function WaitingPage() {
     <main className={styles.accountPage}>
       <header className={styles.accountHeader}>
         <div>
-          <span className={styles.eyebrow}>ACCOUNT READY</span>
           <h1>你好，{user.displayName}</h1>
           <p>
             个人账号已经准备好。接受邀请后，若公司仍是草稿，需要等待平台启用，才能进入工作空间。这不是权限错误。

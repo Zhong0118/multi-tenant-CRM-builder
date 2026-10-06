@@ -17,7 +17,6 @@ export default async function NewObjectPage({ params }: NewObjectPageProps) {
   return (
     <main className={styles.page}>
       <header className={styles.pageHeader}>
-        <span className={styles.eyebrow}>NEW BUSINESS TABLE</span>
         <h1>新建业务表</h1>
         <p>
           先确定名称和代码，创建后进入设计器配置字段、列表视图和员工权限，再发布。

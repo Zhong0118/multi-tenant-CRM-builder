@@ -23,37 +23,40 @@ export default async function WorkspaceSettingsPage({
       <PageHeader
         title="工作空间设置"
         status={<StatusTag tone="info">管理员专属</StatusTag>}
-        description="在这里创建业务表、配置工作台和成员。模板不是使用业务表的前置条件。"
+        description="管理公司的业务表、工作台，以及成员和权限。"
       />
 
       <div className={styles.settingsGrid}>
         <ReadingPanel className={styles.primarySetting} ariaLabel="业务表配置">
-          <span className={styles.eyebrow}>BUSINESS TABLES</span>
-          <h2>业务表与字段</h2>
-          <p>
-            新建或调整公司自己的业务表，配置字段、默认列表和员工默认权限。没有平台模板时，也可以从这里创建第一张业务表。所有修改先保存为草稿，发布后才影响员工页面。
-          </p>
-          <ol className={styles.settingFlow}>
+          <div>
+            <h2>业务表与字段</h2>
+            <p>
+              新建或调整公司自己的业务表，配置字段、默认列表和员工默认权限。没有平台模板时，也可以从这里创建第一张业务表。
+            </p>
+          </div>
+          <ol className={styles.lifecycleSteps} aria-label="修改如何生效">
             <li>
-              <span>1</span>设计业务表
+              <strong>编辑草稿</strong>
+              <span>修改业务表、字段、视图和默认权限，员工暂时看不到。</span>
             </li>
             <li>
-              <span>2</span>检查员工视角
+              <strong>检查并发布</strong>
+              <span>发布前查看阻断项和变更摘要。</span>
             </li>
             <li>
-              <span>3</span>发布到工作区
+              <strong>员工开始使用</strong>
+              <span>员工页面只读取最新发布的版本。</span>
             </li>
           </ol>
           <Link
             className={styles.primaryAction}
             href={`/workspace/${tenantCode}/settings/objects`}
           >
-            管理业务表，或创建第一张 <span aria-hidden>→</span>
+            管理业务表
           </Link>
         </ReadingPanel>
 
         <DataPanel className={styles.secondarySetting} ariaLabel="成员与权限">
-          <div className={styles.settingIndex}>02</div>
           <div>
             <h2>成员与权限</h2>
             <p>
@@ -61,12 +64,11 @@ export default async function WorkspaceSettingsPage({
             </p>
           </div>
           <Link href={`/workspace/${tenantCode}/members`}>
-            进入成员管理 <span aria-hidden>→</span>
+            进入成员管理
           </Link>
         </DataPanel>
 
         <DataPanel className={styles.secondarySetting} ariaLabel="工作台与指标">
-          <div className={styles.settingIndex}>03</div>
           <div>
             <h2>工作台与指标</h2>
             <p>
@@ -74,36 +76,10 @@ export default async function WorkspaceSettingsPage({
             </p>
           </div>
           <Link href={`/workspace/${tenantCode}/settings/dashboards/home`}>
-            配置工作台 <span aria-hidden>→</span>
+            配置工作台
           </Link>
         </DataPanel>
       </div>
-
-      <ReadingPanel className={styles.lifecyclePanel} ariaLabel="配置生效规则">
-        <div className={styles.lifecycleIntro}>
-          <span className={styles.eyebrow}>HOW IT WORKS</span>
-          <h2>配置不会突然改变员工正在使用的页面</h2>
-          <p>
-            公司设置采用草稿和发布两层，管理员可以先改完并检查，再选择何时生效。
-          </p>
-        </div>
-        <div className={styles.lifecycleSteps}>
-          <div>
-            <strong>编辑草稿</strong>
-            <span>修改业务表、字段、视图和默认权限。</span>
-          </div>
-          <i aria-hidden>→</i>
-          <div>
-            <strong>检查并发布</strong>
-            <span>发布前查看阻断项和变更摘要。</span>
-          </div>
-          <i aria-hidden>→</i>
-          <div>
-            <strong>员工开始使用</strong>
-            <span>运行时只读取最新发布版本。</span>
-          </div>
-        </div>
-      </ReadingPanel>
     </main>
   );
 }

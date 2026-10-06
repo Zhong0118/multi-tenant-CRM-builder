@@ -28,7 +28,6 @@ export default async function InvitationPage({ params }: InvitationPageProps) {
     <main className={styles.accountPage}>
       <header className={styles.accountHeader}>
         <div>
-          <span className={styles.eyebrow}>ACCESS REVIEW</span>
           <h1>确认公司邀请</h1>
           <p>
             接受前请核对公司、角色与有效期。只有与当前账号匹配的邀请才会展示详情。

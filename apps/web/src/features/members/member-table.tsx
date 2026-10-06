@@ -368,7 +368,6 @@ export function MemberTable({
       <DataPanel className={styles.tablePanel} ariaLabel="待处理邀请">
         <div className={styles.tableHeading}>
           <div>
-            <span className={styles.eyebrow}>INVITATION QUEUE</span>
             <h2 id="pending-heading">待处理邀请</h2>
           </div>
           <span>每页 20 条</span>
@@ -400,7 +399,6 @@ export function MemberTable({
       <DataPanel className={styles.tablePanel} ariaLabel="成员名册">
         <div className={styles.tableHeading}>
           <div>
-            <span className={styles.eyebrow}>ACCESS ROSTER</span>
             <h2 id="members-heading">成员名册</h2>
           </div>
           <span>{membersQuery.data?.total ?? 0} 位成员</span>

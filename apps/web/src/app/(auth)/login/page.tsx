@@ -14,7 +14,6 @@ export default async function LoginPage({
     : params.returnTo;
   return (
     <AuthShell
-      eyebrow="ACCOUNT / SIGN IN"
       title="登录"
       description="使用手机号和密码进入你的账号。"
       footer={

@@ -48,7 +48,6 @@ export default async function MembersPage({
   return (
     <main className={styles.page}>
       <header className={styles.pageHeader}>
-        <span className={styles.eyebrow}>PEOPLE & ACCESS</span>
         <h1>成员管理</h1>
         <p>邀请本公司员工，并控制现有成员的工作空间访问权限。</p>
       </header>
