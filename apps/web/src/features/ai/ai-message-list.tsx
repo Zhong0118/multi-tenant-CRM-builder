@@ -28,6 +28,7 @@ export function AiMessageList({
   onConfirmProposal,
   onRejectProposal,
   proposalBusy,
+  proposalError,
 }: {
   tenantCode: string;
   messages: AiMessage[];
@@ -110,6 +111,7 @@ export function AiMessageList({
             onConfirmProposal={onConfirmProposal}
             onRejectProposal={onRejectProposal}
             proposalBusy={proposalBusy}
+            proposalError={proposalError}
           />
         ),
       )}

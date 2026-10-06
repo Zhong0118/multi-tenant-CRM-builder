@@ -2,7 +2,7 @@
 
 import { MoreOutlined } from "@ant-design/icons";
 import { Button, Dropdown, Input, Modal, Skeleton } from "antd";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import styles from "./ai-assistant.module.css";
 import { conversationGroup } from "./ai-copy";
@@ -21,6 +21,8 @@ export function ConversationRail({
   onRename,
   onDelete,
   mutationError,
+  renamePending = false,
+  deletePending = false,
   onLoadMore,
 }: {
   conversations: AiConversation[];
@@ -50,6 +52,9 @@ export function ConversationRail({
   }, [conversations]);
   const [renaming, setRenaming] = useState<AiConversation>();
   const [title, setTitle] = useState("");
+  const [renameSubmitting, setRenameSubmitting] = useState(false);
+  const renameSubmittingRef = useRef(false);
+  const [deleteSubmitting, setDeleteSubmitting] = useState<string>();
 
   return (
     <aside className={styles.railInner}>
@@ -101,7 +106,11 @@ export function ConversationRail({
                           key: "delete",
                           label: "删除",
                           danger: true,
-                          onClick: () => onDelete(item.id),
+                          onClick: () => {
+                             if (deletePending || deleteSubmitting) return;
+                             setDeleteSubmitting(item.id);
+                             Promise.resolve(onDelete(item.id)).catch(() => undefined).finally(() => setDeleteSubmitting(undefined));
+                           },
                         },
                       ],
                     }}
@@ -129,9 +138,19 @@ export function ConversationRail({
         title="重命名会话"
         onCancel={() => setRenaming(undefined)}
         onOk={() => {
-          if (renaming && title.trim()) onRename(renaming.id, title.trim());
-          setRenaming(undefined);
+          if (!renaming || !title.trim() || renamePending || renameSubmittingRef.current) return;
+          renameSubmittingRef.current = true;
+          setRenameSubmitting(true);
+          Promise.resolve(onRename(renaming.id, title.trim()))
+            .catch(() => undefined)
+            .finally(() => {
+              renameSubmittingRef.current = false;
+              setRenameSubmitting(false);
+              setRenaming(undefined);
+            });
         }}
+        confirmLoading={renamePending || renameSubmitting}
+        okButtonProps={{ disabled: !title.trim() || renamePending || renameSubmitting }}
       >
         <Input value={title} onChange={(event) => setTitle(event.target.value)} />
       </Modal>

@@ -348,7 +348,7 @@ export function AiAssistantPage({
         router.replace(`${pathname}?conversation=${encodeURIComponent(id)}`);
         setRailOpen(false);
       }}
-      onRename={(id, title) => rename.mutate({ id, title })}
+      onRename={(id, title) => rename.mutateAsync({ id, title })}
       onDelete={(id) => remove.mutate(id)}
       renamePending={rename.isPending}
       deletePending={remove.isPending}
