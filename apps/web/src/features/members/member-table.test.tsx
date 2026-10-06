@@ -117,6 +117,25 @@ describe("MemberTable", () => {
     expect(screen.queryByText("陈管理员")).not.toBeInTheDocument();
   });
 
+  it("says plainly when nothing is waiting instead of a bare empty table and pager", () => {
+    const api = memberApi();
+    vi.mocked(api.listInvitations).mockResolvedValue({ items: [] });
+    renderWithQuery(
+      <MemberTable
+        tenantCode="northwind"
+        viewerRole="TENANT_ADMIN"
+        initialMemberPage={initialMemberPage}
+        initialInvitationPage={{ items: [] }}
+        api={api}
+      />,
+    );
+
+    const pending = screen.getByRole("region", { name: "待处理邀请" });
+    expect(pending).toHaveTextContent("没有待处理的邀请。");
+    expect(pending.querySelector(".ant-pagination")).toBeNull();
+    expect(screen.queryByText("每页 20 条")).not.toBeInTheDocument();
+  });
+
   it("offers pending invitation and active member actions while protecting the final admin", () => {
     renderWithQuery(
       <MemberTable

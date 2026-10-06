@@ -367,10 +367,7 @@ export function MemberTable({
       {error ? <Alert type="error" showIcon title={error} /> : null}
       <DataPanel className={styles.tablePanel} ariaLabel="待处理邀请">
         <div className={styles.tableHeading}>
-          <div>
-            <h2 id="pending-heading">待处理邀请</h2>
-          </div>
-          <span>每页 20 条</span>
+          <h2 id="pending-heading">待处理邀请</h2>
         </div>
         <Table
           rowKey="id"
@@ -378,9 +375,11 @@ export function MemberTable({
           dataSource={invitationPage?.items ?? []}
           loading={invitationsQuery.isFetching}
           scroll={{ x: 650 }}
+          locale={{ emptyText: "没有待处理的邀请。" }}
           pagination={{
             current: page,
             pageSize: 20,
+            hideOnSinglePage: true,
             showSizeChanger: false,
             total: invitationPage?.nextCursor ? page * 20 + 1 : page * 20,
             onChange: (nextPage) => {
@@ -398,9 +397,7 @@ export function MemberTable({
       </DataPanel>
       <DataPanel className={styles.tablePanel} ariaLabel="成员名册">
         <div className={styles.tableHeading}>
-          <div>
-            <h2 id="members-heading">成员名册</h2>
-          </div>
+          <h2 id="members-heading">成员名册</h2>
           <span>{membersQuery.data?.total ?? 0} 位成员</span>
         </div>
         <Table
