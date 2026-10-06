@@ -176,7 +176,7 @@ export function RecordDetailDrawer({
         />
       ) : (
         <>
-          <section aria-label="记录摘要">
+          <section aria-label="记录摘要" className={styles.detailSummary}>
             {renderFields(fields.filter((field) => summaryKeys.has(field.fieldKey)))}
             <div className={styles.detailMeta}>
               <Typography.Text type="secondary">

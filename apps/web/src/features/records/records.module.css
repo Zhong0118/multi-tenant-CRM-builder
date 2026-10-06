@@ -343,6 +343,16 @@
   font-size: 12px;
 }
 
+/* The drawer header already draws a rule above the summary. */
+.detailSummary {
+  margin-bottom: 24px;
+}
+
+.detailSummary > .detailFields:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
 .detailMeta {
   display: flex;
   flex-wrap: wrap;
