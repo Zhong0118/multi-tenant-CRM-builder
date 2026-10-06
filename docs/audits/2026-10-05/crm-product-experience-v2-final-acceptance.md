@@ -1,16 +1,16 @@
 # CRM Product Experience V2 — Final Acceptance Draft
 
-日期：2026-10-06。**当前权威状态：BASELINE `c400b32` / PR #26 OPEN / REMEDIATION UNCOMMITTED / LATEST CI PENDING / NOT MERGED / NOT DEPLOYED**。工作树 `.worktrees/crm-product-experience-v2-slice-4`，本地分支 `codex/internal-trial-preparation`；根 `main` 落后禁止使用。CI run `37417884483` 六门成功仅对应 `c400b32`，不得覆盖最新未提交修复。旧 SHA/run 与下方矩阵仅保留其历史范围。
+日期：2026-10-06。**当前权威状态：PR #26 OPEN / NOT MERGED / NOT DEPLOYED / CODE CI VERIFIED, DOCUMENT FOLLOW-UP CI PENDING**。工作树 `.worktrees/crm-product-experience-v2-slice-4`，本地分支 `codex/internal-trial-preparation`；根 `main` 落后禁止使用。代码 SHA `58da1ce` 的 run `37444823699` 六门全部 SUCCESS；随后 remediation `3432aa4` 的 run `37445633285` 六门全部 SUCCESS。本次文档 follow-up 不把任何 SHA 写成永久 latest。旧 SHA/run 与下方矩阵仅保留其历史范围。
 
 ## 2026-10-06 内部试用修复权威更新
 
-用户要求验证 D01-D04、F01-F03、验证码事务持久化并核实 PR CI；PR 更新/push 已授权，仍禁止合并、部署、清理。PR 更新/push 已授权；仍禁止合并、部署、清理，保留用户 untracked review/brief。逐项证据见[修复账本](../2026-10-06/internal-trial-remediation.md)，主 agent 后续补最终证据。
+用户要求验证 D01-D04、F01-F03、验证码事务持久化并核实 PR CI；PR 更新/push 已授权，仍禁止合并、部署、清理。代码 `58da1ce` / run `37444823699` 六门成功；remediation follow-up `3432aa4` 已推送。文档 follow-up 后的 CI 仍待核实，不把任一 SHA 写成永久 latest。保留用户 untracked review/brief。逐项证据见[修复账本](../2026-10-06/internal-trial-remediation.md)。
 
-- D01/D02：Docker COPY 根 `tsconfig.base.json`、tooling 预装 pnpm 11.19.0、runtime `COREPACK_ENABLE_NETWORK=0` 已改；baseline/fixed 干净 build 因 npm `fetch failed` 中断，不是 PASS。D02 的 node:24 + 空 Corepack cache + `--network none` 已 RED（`COREPACK_ENABLE_NETWORK=0` 仍试图访问 npm），fixed tooling-stage build + `--network none` pnpm11.19.0 exit0 已验证，但完整应用镜像第二次 retry 仍 fetch failed，无外网 migration 容器 PENDING。
+- D01/D02：Docker COPY 根 `tsconfig.base.json`、tooling 预装 pnpm 11.19.0、runtime `COREPACK_ENABLE_NETWORK=0`。旧本地 npm `fetch failed` 仅保留为历史网络事实；代码 run `37444823699` 的 Build 2m50（日志 `/tmp/crm-review-ci-build.log`）已通过无缓存 full Docker、offline pnpm11.19.0、internal-network migration 两次门禁，23 migrations applied 且 repeat 无 Pending。
 - D03：同源 `WEB_ORIGIN` + Caddy `/api/v1`；真实本地 `https://localhost:3443` 登录→`/workspace/nebula-demo`→刷新完整 dashboard、Secure/HttpOnly/host-only localhost cookie、退出清 cookie后 workspace 回 login 已观察。内部自签证书绕过浏览器信任，Web3100/API3101、DB55435/`crm_browser_review`；不等于生产 DNS/TLS。
 - D04：固定 Caddy `172.30.26.2`、API `.3`、Web `.4`、子网 `.0/24`。真实两客户端 `.10`/`.11` 同伪造 XFF 被覆盖为真实客户端，Echo upstream remote `.2`；bounded-proxy 8 tests pass，含 untrusted spoof/default deny/safe exactIP。实际 Nest auth-proxy 主复验3 suites/11 tests、63 HTTP pass：两客户端各独立20→429，untrusted spoof20→429，reject不创建challenge/send；repo/sender fake，实际controller/service/limiter。公网外部短信 PENDING。
 - F01：真实 delayed PATCH200、cancelled/reopened 新备注保留、saveEnabled=true 已观察。F02：真实本地 Playwright + AntD PATCH500 failure-retention PASS（隔离DB fixture、无AI provider调用，dialog visible，输入 `draft retained browser` 保留，role alert 显示重命名失败请重试）；旧会话 race 仍仅组件测试。F01/F02 agent 11 files/85 focused pass，主复验 2 files/12 pass；Web/API typecheck pass，API auth/config/trustedproxy 36 pass。
-- F03/验证码：真实 AuthService + Prisma 已取得 RED（首错 expected1/actual0、8并发 expected5/actual0），正确码消费与业务写入回滚通过；主复验 Critical API E2E 2 suites/11 pass、DB36 pass、full typecheck/build/contracts exit0，F03 clean23迁移及runtime ACL/RLS/tenant状态边界已验证。但最终reviewer新发现Important：已占transaction pool再取独立错误计数连接，>=10并发可能连接池饥饿；auth agent 正修12+并发；旧版12负载曾pass但未稳定复现RED，不是解决证据。当前 preflight 后内层 transaction 残留导致 catch 计数连接风险，正改统一事务释放后再计数；最终PENDING进一步收口，不得标完成或merge-ready。原自写 SQL 并发36 pass不得作为产品路径证据。`0023` 为未发布合并迁移，probe 受限 `NOBYPASSRLS`。
+- F03/验证码：真实 AuthService + Prisma 主复验 Critical API E2E 2 suites/12 pass、DB36 pass，full pnpm test/build/typecheck/contracts exit0；F03 clean23迁移及runtime ACL/RLS/tenant状态边界已验证。consume mismatch 仅抛 private `ChallengeCodeMismatch`；REGISTER/RESET 在 await transaction catch 后 increment，preflight 外部，12 concurrency green，连接池 Important 已消除。`queryconnection_limit` 无效，默认 pg pool10，不宣称额外配置保护。旧 RED（首错/8并发）和旧版12不稳定过程证据保留；`0023` 为未发布合并迁移，probe 受限 `NOBYPASSRLS`。
 - 全仓已报告 `pnpm test` API99 suites/1281 tests、Web83 files/615 unit + architecture3、worker2，typecheck/contracts exit0；这些是当前本地报告，不等于最新远端 CI。外部短信真实送达、AI provider、生产 server/DNS/TLS/数据库/Redis/备份 NOT VERIFIED。完整浏览器矩阵仍未完成。
 
 
