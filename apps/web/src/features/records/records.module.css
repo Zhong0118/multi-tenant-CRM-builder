@@ -58,6 +58,11 @@
   width: 100%;
 }
 
+/* The column gap already separates the page header from the toolbar. */
+.list > header {
+  margin-bottom: 0;
+}
+
 .listHeader {
   display: flex;
   flex-wrap: wrap;

@@ -23,8 +23,10 @@
   min-width: min(280px, 100%);
 }
 
+/* Filters flow as items of the bar itself, so a narrow bar wraps whole
+   controls onto the next row instead of stacking them in a centred column. */
 .filters {
-  flex: 1;
+  display: contents;
 }
 
 .batchActions {
@@ -34,6 +36,10 @@
 }
 
 @media (max-width: 767px) {
+  .filters {
+    display: flex;
+  }
+
   .search,
   .filters,
   .batchActions {
