@@ -37,6 +37,8 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryProvider>
       <ConfigProvider
         locale={zhCN}
+        // Chinese two-character labels read as "保 存" with AntD's inserted space.
+        button={{ autoInsertSpace: false }}
         theme={{
           token: {
             borderRadius: 8,
@@ -45,6 +47,7 @@ export function Providers({ children }: { children: ReactNode }) {
             colorBorder: TOKENS.border,
             colorBorderSecondary: TOKENS.border,
             colorError: TOKENS.danger,
+            colorLink: TOKENS.primary,
             colorPrimary: TOKENS.primary,
             colorSuccess: TOKENS.success,
             colorText: TOKENS.textPrimary,
