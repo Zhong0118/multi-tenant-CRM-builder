@@ -1,0 +1,15 @@
+.git
+.worktrees
+**/node_modules
+**/dist
+**/.next
+**/coverage
+**/*.tsbuildinfo
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+var
+backups
+**/*.dump
+.DS_Store

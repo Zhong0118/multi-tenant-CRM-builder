@@ -1,48 +1,106 @@
 name: crm-production
 
+x-app: &app
+  image: crm-app:${RELEASE_ID:-internal-trial}
+  build:
+    context: ..
+    dockerfile: Dockerfile
+    args:
+      NEXT_PUBLIC_API_ORIGIN: ${NEXT_PUBLIC_API_ORIGIN:?Set the public API origin before building}
+
 services:
   api:
-    build:
-      context: ..
-      dockerfile: Dockerfile
+    <<: *app
     command: ["pnpm", "--filter", "@crm/api", "start:prod"]
-    env_file: [../.env.internal-trial]
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      WEB_ORIGIN: ${WEB_ORIGIN:?Set WEB_ORIGIN}
+      PUBLIC_REGISTRATION_ENABLED: "false"
+      FIRST_ADMIN_PHONE: ${FIRST_ADMIN_PHONE:-}
+      DATABASE_URL: ${DATABASE_URL:?Set the crm_app runtime URL}
+      REDIS_URL: ${REDIS_URL:?Set the authenticated Redis URL}
+      AI_PROVIDER: ${AI_PROVIDER:-openai}
+      AI_MODEL: ${AI_MODEL:?Set AI_MODEL}
+      AI_API_KEY: ${AI_API_KEY:?Set AI_API_KEY}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-45000}
+      ATTACHMENTS_STORAGE_DIR: /var/lib/crm/attachments
     networks: [edge, private]
     expose: ["3001"]
+    volumes: [attachments_data:/var/lib/crm/attachments]
     restart: unless-stopped
-    depends_on: [postgres, redis]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
   web:
-    build:
-      context: ..
-      dockerfile: Dockerfile
+    <<: *app
     command: ["pnpm", "--filter", "@crm/web", "start"]
-    env_file: [../.env.internal-trial]
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
     networks: [edge]
     expose: ["3000"]
     restart: unless-stopped
-  worker:
-    build:
-      context: ..
-      dockerfile: Dockerfile
-    command: ["pnpm", "--filter", "@crm/worker", "start"]
-    env_file: [../.env.internal-trial]
+  migrate:
+    <<: *app
+    profiles: [maintenance]
+    command: ["pnpm", "--filter", "@crm/database", "prisma:migrate:deploy"]
+    environment:
+      DATABASE_ADMIN_URL: ${DATABASE_ADMIN_URL:?Set the migration owner URL}
     networks: [private]
-    restart: unless-stopped
-    depends_on: [redis]
+    depends_on:
+      postgres: {condition: service_healthy}
+    restart: "no"
+  provision:
+    image: postgres:18-alpine
+    profiles: [maintenance]
+    entrypoint: ["sh", "/provision/provision-runtime-role.sh"]
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:?Set POSTGRES_DB}
+      CRM_APP_PASSWORD: ${CRM_APP_PASSWORD:?Set CRM_APP_PASSWORD}
+    volumes:
+      - ../scripts/deployment/provision-runtime-role.sh:/provision/provision-runtime-role.sh:ro
+      - ../infrastructure/postgres/init/001-create-app-role.sql:/provision/init.sql:ro
+    networks: [private]
+    depends_on:
+      postgres: {condition: service_healthy}
+    restart: "no"
   postgres:
     image: postgres:18-alpine
-    env_file: [../.env.internal-trial]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
     networks: [private]
     volumes: [postgres_data:/var/lib/postgresql]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
     restart: unless-stopped
   redis:
     image: redis:7.4-alpine
-    command: ["redis-server", "--appendonly", "yes"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+    command: ["sh", "-ec", "exec redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
     networks: [private]
     volumes: [redis_data:/data]
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
     restart: unless-stopped
   caddy:
     image: caddy:2.10-alpine
+    environment:
+      WEB_HOST: ${WEB_HOST:?Set WEB_HOST}
+      API_HOST: ${API_HOST:?Set API_HOST}
     ports: ["80:80", "443:443"]
     networks: [edge]
     volumes:
@@ -58,5 +116,6 @@ networks:
 volumes:
   postgres_data:
   redis_data:
+  attachments_data:
   caddy_data:
   caddy_config:

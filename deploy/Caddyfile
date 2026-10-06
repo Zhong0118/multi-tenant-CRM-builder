@@ -1,7 +1,7 @@
-app.example.invalid {
+{$WEB_HOST} {
   reverse_proxy web:3000
 }
 
-api.example.invalid {
+{$API_HOST} {
   reverse_proxy api:3001
 }
