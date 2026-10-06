@@ -115,7 +115,7 @@ export function AiMessageList({
           />
         ),
       )}
-      <div ref={live} aria-live="polite">
+      <div ref={live} className={styles.srOnly} aria-live="polite">
         {phase === "COMPLETED" || phase === "PARTIAL_COMPLETED"
           ? "回答已完成"
           : ""}

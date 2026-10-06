@@ -146,3 +146,34 @@ describe("AiMessageList prepend anchor", () => {
     expect(top).toBe(200);
   });
 });
+
+describe("AiMessageList completion announcement", () => {
+  it("announces completion through a visually hidden live region", () => {
+    render(
+      <AiMessageList
+        tenantCode="northwind"
+        messages={[message("m1", "问题")]}
+        phase="COMPLETED"
+      />,
+    );
+    const status = screen.getByText("回答已完成");
+    expect(status).toHaveAttribute("aria-live", "polite");
+    expect(status.className).toMatch(/srOnly/);
+  });
+});
+
+describe("AiMessageList pending answer", () => {
+  it("shows a waiting line while the assistant row has no content yet", () => {
+    render(
+      <AiMessageList
+        tenantCode="northwind"
+        messages={[
+          message("u1", "问题"),
+          { ...message("a1", ""), role: "ASSISTANT", status: "GENERATING" },
+        ]}
+        phase="STREAMING"
+      />,
+    );
+    expect(screen.getByText("正在整理回答…")).toBeInTheDocument();
+  });
+});

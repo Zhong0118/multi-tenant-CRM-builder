@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -1182,5 +1183,117 @@ describe("AiAssistantPage", () => {
     const signal = mocks.streamTurn.mock.calls.at(-1)?.[2] as AbortSignal;
     view.unmount();
     expect(signal.aborted).toBe(true);
+  });
+
+  function historyRow(overrides: Record<string, unknown>) {
+    return {
+      conversationId: "c1",
+      turnId: "t1",
+      status: "COMPLETED",
+      content: "",
+      toolSummary: [],
+      sourceSummary: [],
+      createdAt: "2026-10-06T00:00:00.000Z",
+      ...overrides,
+    };
+  }
+
+  it("keeps streaming text visible after history returns the GENERATING placeholder", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    mocks.conversation = "c1";
+    mocks.streamTurn.mockImplementation(async function* () {
+      yield {
+        event: "conversation.ready",
+        data: { conversationId: "c1", title: "问", turnId: "t1" },
+      };
+      yield { event: "assistant.delta", data: { text: "正在整理的回答" } };
+      await gate;
+      yield { event: "turn.completed", data: { turnId: "t1", messageId: "a1" } };
+    });
+    const { client } = renderPage();
+    await waitFor(() => expect(mocks.listMessages).toHaveBeenCalledTimes(1));
+    fireEvent.change(
+      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      { target: { value: "本周情况" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "发送" }));
+    await waitFor(() => expect(screen.getByText("正在整理的回答")).toBeInTheDocument());
+
+    // The server persists USER + GENERATING ASSISTANT rows as soon as the turn starts.
+    mocks.listMessages.mockResolvedValue({
+      items: [
+        historyRow({ id: "u1", role: "USER", content: "本周情况" }),
+        historyRow({ id: "a1", role: "ASSISTANT", status: "GENERATING" }),
+      ],
+    });
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ["ai", "northwind", "c1"] });
+      // Let React Query flush its batched observer notification.
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+
+    const answer = screen.getByText("正在整理的回答");
+    const question = screen.getByText("本周情况");
+    expect(screen.getAllByText("本周情况")).toHaveLength(1);
+    expect(
+      question.compareDocumentPosition(answer) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    mocks.listMessages.mockResolvedValue({
+      items: [
+        historyRow({ id: "u1", role: "USER", content: "本周情况" }),
+        historyRow({ id: "a1", role: "ASSISTANT", content: "正在整理的回答" }),
+      ],
+    });
+    await act(async () => {
+      release();
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: "发送" })).toBeInTheDocument());
+    expect(screen.getAllByText("正在整理的回答")).toHaveLength(1);
+  });
+
+  it("orders a failed turn after its question and reports the failure once", async () => {
+    mocks.conversation = "c1";
+    mocks.streamTurn.mockImplementation(async function* () {
+      yield {
+        event: "conversation.ready",
+        data: { conversationId: "c1", title: "问", turnId: "t1" },
+      };
+      yield {
+        event: "turn.failed",
+        data: { turnId: "t1", code: "AI_PROVIDER_UNAVAILABLE" },
+      };
+    });
+    renderPage();
+    await waitFor(() => expect(mocks.listMessages).toHaveBeenCalledTimes(1));
+    mocks.listMessages.mockResolvedValue({
+      items: [
+        historyRow({ id: "u1", role: "USER", content: "这次会失败" }),
+        historyRow({
+          id: "a1",
+          role: "ASSISTANT",
+          status: "FAILED",
+          errorCode: "AI_PROVIDER_UNAVAILABLE",
+        }),
+      ],
+    });
+    fireEvent.change(
+      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      { target: { value: "这次会失败" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "发送" }));
+    await waitFor(() => expect(mocks.listMessages).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.getAllByText("AI 服务暂时不可用，请稍后重试")).toHaveLength(1),
+    );
+    const question = screen.getByText("这次会失败");
+    const failure = screen.getByText("AI 服务暂时不可用，请稍后重试");
+    expect(
+      question.compareDocumentPosition(failure) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "重试" })).toHaveLength(1);
   });
 });

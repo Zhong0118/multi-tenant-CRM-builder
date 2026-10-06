@@ -32,12 +32,18 @@ export function AssistantMessage({
     message.status === "PARTIAL_COMPLETED" ||
     (message.status === "COMPLETED" &&
       message.toolSummary.some((tool) => tool.status === "FAILED"));
+  const waiting =
+    (message.status === "STREAMING" || message.status === "GENERATING") &&
+    !message.content &&
+    message.toolSummary.length === 0 &&
+    !message.proposal;
   return (
     <article className={styles.assistantRow}>
       <div className={styles.avatar} aria-hidden>
         AI
       </div>
       <div className={styles.assistantSurface}>
+        {waiting ? <p className={styles.waiting}>正在整理回答…</p> : null}
         <ToolActivity tools={message.toolSummary} />
         {message.proposal ? <AiProposalCard tenantCode={tenantCode} proposal={message.proposal} busy={proposalBusy} mutationError={proposalError} onConfirm={() => onConfirmProposal?.(message.proposal!.proposalId)} onReject={() => onRejectProposal?.(message.proposal!.proposalId)} /> : null}
         {renderSafeText(message.content).map((paragraph, index) => (

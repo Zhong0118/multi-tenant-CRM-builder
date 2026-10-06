@@ -98,15 +98,22 @@ export function AiAssistantPage({
     return [...pages].reverse().flatMap((page) => page.items) as AiMessage[];
   }, [messages.data]);
   const liveMessage = toAssistantMessage(state);
-  // Once an authoritative server row exists for the completed turn, discard
+  // Once an authoritative server row exists for the finished turn, discard
   // the SSE snapshot; permission revocation may have redacted its Proposal.
+  // A GENERATING row is only a placeholder, so the live stream stays visible.
   const live =
     liveMessage &&
     history.some(
-      (item) => item.role === "ASSISTANT" && item.turnId === liveMessage.turnId,
+      (item) =>
+        item.role === "ASSISTANT" &&
+        item.turnId === liveMessage.turnId &&
+        item.status !== "GENERATING",
     )
       ? null
       : liveMessage;
+  const historyHasPendingUser =
+    !!state.turnId &&
+    history.some((item) => item.role === "USER" && item.turnId === state.turnId);
   const pendingUser: AiMessage | null =
     state.pendingUserContent && state.conversationId
       ? {
@@ -133,21 +140,13 @@ export function AiAssistantPage({
             createdAt: new Date().toISOString(),
           }
         : null;
+  // The persisted question keeps its place in history; the optimistic copy is
+  // only shown until the server row arrives, so the answer always follows it.
   const shown = [
-    ...history.filter((item) => {
-      if (live && item.turnId === live.turnId && item.role !== "USER")
-        return false;
-      if (
-        pendingUser &&
-        state.turnId &&
-        item.role === "USER" &&
-        item.turnId === state.turnId
-      ) {
-        return false;
-      }
-      return true;
-    }),
-    ...(pendingUser ? [pendingUser] : []),
+    ...history.filter(
+      (item) => !(live && item.turnId === live.turnId && item.role !== "USER"),
+    ),
+    ...(pendingUser && !historyHasPendingUser ? [pendingUser] : []),
     ...(live ? [live] : []),
   ].map((item) => {
     const update = item.proposal
@@ -246,6 +245,12 @@ export function AiAssistantPage({
     abortRef.current?.abort();
     abortRef.current = null;
     dispatch({ type: "cancel" });
+    const stopped = state.conversationId ?? conversationId;
+    if (stopped) {
+      void client.invalidateQueries({
+        queryKey: aiQueryKeys.messages(tenantCode, stopped),
+      });
+    }
   }
 
   function retry(turnId = state.turnId) {
@@ -430,7 +435,10 @@ export function AiAssistantPage({
               proposalError={proposalError}
             />
           )}
-          {state.errorMessage && !live ? (
+          {state.errorMessage &&
+          !shown.some(
+            (item) => item.role === "ASSISTANT" && item.turnId === state.turnId,
+          ) ? (
             <AiErrorState
               message={
                 state.phase === "PARTIAL_COMPLETED"
