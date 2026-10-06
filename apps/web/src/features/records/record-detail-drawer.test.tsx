@@ -412,6 +412,22 @@ describe("record detail reading hierarchy", () => {
     );
     expect(screen.getByText("负责人：已指定")).toBeVisible();
   });
+
+  it("tells a member without the roster that they own the record", () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <RecordDetailDrawer
+          tenantCode="northwind"
+          schema={schema}
+          record={record}
+          currentMemberId="m1"
+          onClose={vi.fn()}
+          onChanged={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByText("负责人：我")).toBeVisible();
+  });
   it("prioritizes published summary and tasks while keeping full fields and secondary content discoverable", () => {
     const client = new QueryClient();
     client.setQueryData(

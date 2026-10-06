@@ -29,6 +29,7 @@ export interface RecordDetailDrawerProps {
   schema: RuntimeObjectSchema;
   record: RecordSummary;
   members?: DynamicFieldMember[];
+  currentMemberId?: string;
   canChooseOwner?: boolean;
   canDelete?: boolean;
   initialEditing?: boolean;
@@ -49,6 +50,7 @@ export function RecordDetailDrawer({
   schema,
   record,
   members = [],
+  currentMemberId,
   canChooseOwner = false,
   canDelete = false,
   initialEditing = false,
@@ -190,7 +192,14 @@ export function RecordDetailDrawer({
               <Typography.Text type="secondary">
                 负责人：
                 {members.find((member) => member.id === record.ownerMemberId)
-                  ?.displayName ?? (record.ownerMemberId ? "已指定" : "未指定")}
+                  ?.displayName ??
+                  // Members cannot read the roster, but they do know their own id.
+                  (record.ownerMemberId &&
+                  record.ownerMemberId === currentMemberId
+                    ? "我"
+                    : record.ownerMemberId
+                      ? "已指定"
+                      : "未指定")}
               </Typography.Text>
               <Typography.Text type="secondary">
                 更新于{" "}

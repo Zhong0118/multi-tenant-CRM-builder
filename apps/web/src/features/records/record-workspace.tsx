@@ -100,6 +100,7 @@ function RecordWorkspaceSession({
           schema={schema}
           record={record}
           members={members}
+          currentMemberId={currentMemberId}
           canChooseOwner={isAdmin}
           canDelete={isAdmin && schema.actions.canDelete}
           initialEditing={initialEditing}
