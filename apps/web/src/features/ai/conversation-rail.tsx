@@ -60,6 +60,21 @@ export function ConversationRail({
   const [deleting, setDeleting] = useState<AiConversation>();
   const [deleteSubmitting, setDeleteSubmitting] = useState<string>();
   const empty = !loading && !error && conversations.length === 0;
+  const railRef = useRef<HTMLElement>(null);
+  // The menu item that opened a dialog unmounts with the menu, so focus goes
+  // back to the row's menu button (or to 新建会话 once the row is deleted).
+  const returnFocusId = useRef<string | null>(null);
+
+  function restoreFocus() {
+    const id = returnFocusId.current;
+    returnFocusId.current = null;
+    if (!id) return;
+    const rail = railRef.current;
+    const trigger = Array.from(
+      rail?.querySelectorAll<HTMLElement>("[data-conversation-menu]") ?? [],
+    ).find((element) => element.dataset.conversationMenu === id);
+    (trigger ?? rail?.querySelector<HTMLElement>("[data-rail-new]"))?.focus();
+  }
 
   function closeRename() {
     if (renameSubmittingRef.current) return;
@@ -100,13 +115,14 @@ export function ConversationRail({
   }
 
   return (
-    <aside className={styles.railInner}>
+    <aside ref={railRef} className={styles.railInner}>
       <div className={styles.railHeader}>
         {hideBrand ? null : <p className={styles.railBrand}>AI 会话</p>}
         <Button
           className={styles.railNew}
           type="primary"
           icon={<PlusOutlined aria-hidden />}
+          data-rail-new
           onClick={onNew}
         >
           新建会话
@@ -144,6 +160,7 @@ export function ConversationRail({
                   </button>
                   <Dropdown
                     trigger={["click"]}
+                    autoFocus
                     getPopupContainer={() => document.body}
                     menu={{
                       items: [
@@ -151,6 +168,7 @@ export function ConversationRail({
                           key: "rename",
                           label: "重命名",
                           onClick: () => {
+                            returnFocusId.current = item.id;
                             setRenaming(item);
                             setTitle(item.title);
                             setRenameError(null);
@@ -161,7 +179,10 @@ export function ConversationRail({
                           label: "删除",
                           danger: true,
                           disabled: deletePending || !!deleteSubmitting,
-                          onClick: () => setDeleting(item),
+                          onClick: () => {
+                            returnFocusId.current = item.id;
+                            setDeleting(item);
+                          },
                         },
                       ],
                     }}
@@ -169,6 +190,7 @@ export function ConversationRail({
                     <Button
                       type="text"
                       className={styles.rowMenu}
+                      data-conversation-menu={item.id}
                       aria-label={`会话操作：${item.title}`}
                       icon={<MoreOutlined aria-hidden />}
                     />
@@ -191,6 +213,7 @@ export function ConversationRail({
         cancelText="取消"
         onCancel={closeRename}
         onOk={submitRename}
+        afterClose={restoreFocus}
         confirmLoading={renamePending || renameSubmitting}
         okButtonProps={{ disabled: !title.trim() || renamePending || renameSubmitting }}
         destroyOnHidden
@@ -221,6 +244,7 @@ export function ConversationRail({
         okButtonProps={{ danger: true }}
         confirmLoading={!!deleteSubmitting || deletePending}
         onOk={confirmDelete}
+        afterClose={restoreFocus}
         onCancel={() => {
           if (!deleteSubmitting) setDeleting(undefined);
         }}

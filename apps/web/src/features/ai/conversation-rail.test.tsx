@@ -93,6 +93,33 @@ describe("ConversationRail mutations", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: /^取\s*消$/ }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(onDelete).not.toHaveBeenCalled();
+    // Focus returns to the row's menu button rather than falling to <body>.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "会话操作：原标题" })).toHaveFocus(),
+    );
+  });
+
+  it("moves focus to 新建会话 after the row is deleted", async () => {
+    const view = renderRail({ onDelete: vi.fn().mockResolvedValue(undefined) });
+    fireEvent.click(screen.getByRole("button", { name: "会话操作：原标题" }));
+    fireEvent.click(screen.getByText("删除"));
+    const dialog = await screen.findByRole("dialog");
+    view.rerender(
+      <ConfigProvider theme={{ token: { motion: false } }}>
+        <ConversationRail
+          conversations={[]}
+          onNew={vi.fn()}
+          onSelect={vi.fn()}
+          onRename={vi.fn()}
+          onDelete={vi.fn()}
+        />
+      </ConfigProvider>,
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: /^删\s*除$/ }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /新建会话/ })).toHaveFocus(),
+    );
   });
 
   it("locks delete while pending and does not repeat the mutation", async () => {
