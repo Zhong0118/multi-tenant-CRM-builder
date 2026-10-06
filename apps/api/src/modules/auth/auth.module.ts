@@ -61,6 +61,26 @@ import {
         createVerificationSender(
           config.get<string>('NODE_ENV', 'development'),
           config.get<string>('DEV_VERIFICATION_CODE'),
+          config.get<string>('SMS_PROVIDER') === 'tencent'
+            ? {
+                secretId: config.get<string>('TENCENT_SMS_SECRET_ID', ''),
+                secretKey: config.get<string>('TENCENT_SMS_SECRET_KEY', ''),
+                sdkAppId: config.get<string>('TENCENT_SMS_SDK_APP_ID', ''),
+                signName: config.get<string>('TENCENT_SMS_SIGN_NAME', ''),
+                registerTemplateId: config.get<string>(
+                  'TENCENT_SMS_REGISTER_TEMPLATE_ID',
+                  '',
+                ),
+                resetTemplateId: config.get<string>(
+                  'TENCENT_SMS_RESET_TEMPLATE_ID',
+                  '',
+                ),
+                region: config.get<string>(
+                  'TENCENT_SMS_REGION',
+                  'ap-guangzhou',
+                ),
+              }
+            : undefined,
         ),
     },
     {
