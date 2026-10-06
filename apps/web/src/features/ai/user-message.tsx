@@ -1,6 +1,7 @@
 "use client";
 
 import styles from "./ai-assistant.module.css";
+import { messageTime } from "./ai-copy";
 import type { AiMessage } from "./ai-types";
 
 export function UserMessage({ message }: { message: AiMessage }) {
@@ -10,7 +11,7 @@ export function UserMessage({ message }: { message: AiMessage }) {
         {message.content}
         {message.createdAt ? (
           <div className={styles.userMeta}>
-            <small>{new Date(message.createdAt).toLocaleString()}</small>
+            <time dateTime={message.createdAt}>{messageTime(message.createdAt)}</time>
           </div>
         ) : null}
       </div>

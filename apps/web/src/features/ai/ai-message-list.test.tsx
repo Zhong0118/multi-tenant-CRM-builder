@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { AiMessageList, nextPrependScrollTop } from "./ai-message-list";
 import type { AiMessage } from "./ai-types";

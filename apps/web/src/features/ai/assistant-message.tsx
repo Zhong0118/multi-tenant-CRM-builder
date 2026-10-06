@@ -1,8 +1,8 @@
 "use client";
 
 import styles from "./ai-assistant.module.css";
-import { renderSafeText } from "./ai-copy";
 import { AiErrorState } from "./ai-error-state";
+import { AnswerText } from "./ai-rich-text";
 import { SourceCard } from "./source-card";
 import { ToolActivity } from "./tool-activity";
 import { userErrorMessage } from "./ai-turn-reducer";
@@ -46,9 +46,7 @@ export function AssistantMessage({
         {waiting ? <p className={styles.waiting}>正在整理回答…</p> : null}
         <ToolActivity tools={message.toolSummary} />
         {message.proposal ? <AiProposalCard tenantCode={tenantCode} proposal={message.proposal} busy={proposalBusy} mutationError={proposalError} onConfirm={() => onConfirmProposal?.(message.proposal!.proposalId)} onReject={() => onRejectProposal?.(message.proposal!.proposalId)} /> : null}
-        {renderSafeText(message.content).map((paragraph, index) => (
-          <p key={`${message.id}-${index}`}>{paragraph}</p>
-        ))}
+        {message.content ? <AnswerText content={message.content} /> : null}
         {partial ? (
           <AiErrorState message="部分 CRM 数据暂时无法读取，本次回答可能不完整" />
         ) : null}

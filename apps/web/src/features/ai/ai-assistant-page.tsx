@@ -1,5 +1,6 @@
 "use client";
 
+import { UnorderedListOutlined } from "@ant-design/icons";
 import { Button, Drawer, Tag } from "antd";
 import {
   useInfiniteQuery,
@@ -113,7 +114,9 @@ export function AiAssistantPage({
       : liveMessage;
   const historyHasPendingUser =
     !!state.turnId &&
-    history.some((item) => item.role === "USER" && item.turnId === state.turnId);
+    history.some(
+      (item) => item.role === "USER" && item.turnId === state.turnId,
+    );
   const pendingUser: AiMessage | null =
     state.pendingUserContent && state.conversationId
       ? {
@@ -333,8 +336,9 @@ export function AiAssistantPage({
     },
   });
 
-  const rail = (
+  const renderRail = (hideBrand = false) => (
     <ConversationRail
+      hideBrand={hideBrand}
       conversations={
         conversations.data?.pages.flatMap((page) => page.items) ?? []
       }
@@ -358,7 +362,9 @@ export function AiAssistantPage({
       renamePending={rename.isPending}
       deletePending={remove.isPending}
       // Rename failures are reported inside the rename dialog.
-      mutationError={remove.error instanceof Error ? remove.error.message : null}
+      mutationError={
+        remove.error instanceof Error ? remove.error.message : null
+      }
       onLoadMore={
         conversations.hasNextPage
           ? () => void conversations.fetchNextPage()
@@ -369,14 +375,18 @@ export function AiAssistantPage({
 
   return (
     <div className={styles.page}>
-      <div className={styles.rail}>{rail}</div>
+      <div className={styles.rail}>{renderRail()}</div>
       <Drawer
-        title="会话"
+        title="AI 会话"
+        placement="left"
         open={railOpen}
         onClose={() => setRailOpen(false)}
-        size={280}
+        size={300}
+        styles={{
+          body: { display: "flex", padding: 0, background: "var(--bg-page)" },
+        }}
       >
-        {rail}
+        {renderRail(true)}
       </Drawer>
       <section className={styles.chat}>
         <header className={styles.header}>
@@ -389,13 +399,17 @@ export function AiAssistantPage({
           <Button
             className={styles.mobileRailButton}
             aria-label="会话"
+            icon={<UnorderedListOutlined aria-hidden />}
             onClick={() => setRailOpen(true)}
           >
             会话
           </Button>
         </header>
         <div className={styles.canvas} data-testid="ai-conversation-canvas">
-          {shown.length === 0 && state.phase === "IDLE" && !conversationId && !messages.isError ? (
+          {shown.length === 0 &&
+          state.phase === "IDLE" &&
+          !conversationId &&
+          !messages.isError ? (
             <AiEmptyState
               objects={businessObjects}
               onPrompt={(text) => {
@@ -434,19 +448,21 @@ export function AiAssistantPage({
           !shown.some(
             (item) => item.role === "ASSISTANT" && item.turnId === state.turnId,
           ) ? (
-            <AiErrorState
-              message={
-                state.phase === "PARTIAL_COMPLETED"
-                  ? state.errorMessage
-                  : state.errorMessage || userErrorMessage(state.errorCode)
-              }
-              onRetry={
-                (state.phase === "FAILED" || state.phase === "CANCELLED") &&
-                state.turnId
-                  ? () => retry()
-                  : undefined
-              }
-            />
+            <div className={styles.turnError}>
+              <AiErrorState
+                message={
+                  state.phase === "PARTIAL_COMPLETED"
+                    ? state.errorMessage
+                    : state.errorMessage || userErrorMessage(state.errorCode)
+                }
+                onRetry={
+                  (state.phase === "FAILED" || state.phase === "CANCELLED") &&
+                  state.turnId
+                    ? () => retry()
+                    : undefined
+                }
+              />
+            </div>
           ) : null}
           <AiComposer
             value={state.draft}

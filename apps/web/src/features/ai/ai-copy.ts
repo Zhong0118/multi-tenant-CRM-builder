@@ -11,10 +11,6 @@ export function sourceHref(
   return objectPath;
 }
 
-export function renderSafeText(content: string): string[] {
-  return content.split(/\n+/).filter((line) => line.length > 0);
-}
-
 export function conversationGroup(lastMessageAt: string, now = new Date()): "今天" | "最近 7 天" | "更早" {
   const date = new Date(lastMessageAt);
   const start = new Date(now);
@@ -30,4 +26,16 @@ export function toolPrimaryLine(tool: AiToolSummary): string {
   const prefix =
     tool.status === "FAILED" ? "!" : tool.status === "COMPLETED" ? "✓" : "…";
   return `${prefix} ${tool.displayName}${tool.detail ? `  ${tool.detail}` : ""}`;
+}
+
+const pad = (value: number) => String(value).padStart(2, "0");
+
+export function messageTime(createdAt: string, now = new Date()): string {
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return "";
+  const time = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  if (date.toDateString() === now.toDateString()) return time;
+  const day = `${date.getMonth() + 1}月${date.getDate()}日`;
+  if (date.getFullYear() === now.getFullYear()) return `${day} ${time}`;
+  return `${date.getFullYear()}年${day} ${time}`;
 }

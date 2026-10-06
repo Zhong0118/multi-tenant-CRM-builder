@@ -1,9 +1,12 @@
+/* The assistant fills the shell's content area edge to edge, so it cancels
+   the shell padding and owns its own scroll regions. */
 .page {
   display: flex;
   min-width: 0;
   min-height: 0;
-  height: calc(100dvh - 64px);
-  background: var(--bg-page);
+  height: calc(100dvh - var(--header-height));
+  margin: -20px;
+  background: var(--bg-surface);
 }
 
 .rail {
@@ -13,13 +16,15 @@
   flex: 0 0 280px;
   width: 280px;
   min-width: 0;
-  background: var(--bg-surface);
-  box-shadow: 1px 0 0 color-mix(in srgb, var(--border-default) 70%, transparent);
+  background: var(--bg-page);
+  border-right: 1px solid var(--border-default);
 }
 
 .railInner {
   display: flex;
+  flex: 1;
   flex-direction: column;
+  width: 100%;
   height: 100%;
   min-height: 0;
 }
@@ -28,7 +33,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 18px 16px 12px;
+  padding: 16px 14px 10px;
 }
 
 .railBrand {
@@ -47,13 +52,13 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 4px 10px 20px;
+  padding: 0 8px 20px;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--text-tertiary) 35%, transparent) transparent;
 }
 
 .groupLabel {
-  margin: 14px 8px 6px;
+  margin: 12px 8px 4px;
   color: var(--text-tertiary);
   font-size: 11px;
   font-weight: 500;
@@ -65,9 +70,9 @@
   align-items: center;
   gap: 2px;
   width: 100%;
-  margin-bottom: 2px;
-  padding: 2px 4px 2px 8px;
-  border-radius: 12px;
+  margin-bottom: 1px;
+  padding: 0 2px 0 6px;
+  border-radius: var(--radius-control);
   color: inherit;
   text-align: left;
   transition: background 160ms ease;
@@ -77,9 +82,15 @@
   background: var(--bg-hover);
 }
 
-.rowActive {
-  background: var(--bg-selected);
-  box-shadow: inset 2px 0 0 var(--color-primary);
+.rowActive,
+.rowActive:hover {
+  background: var(--bg-surface);
+  box-shadow: 0 0 0 1px var(--border-default);
+}
+
+.rowActive .rowTitle {
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .rowTitle {
@@ -87,8 +98,8 @@
   min-width: 0;
   padding: 8px 4px;
   overflow: hidden;
-  color: inherit;
-  font-size: 14px;
+  color: var(--text-secondary);
+  font-size: 13.5px;
   line-height: 1.4;
   text-align: left;
   text-overflow: ellipsis;
@@ -99,11 +110,22 @@
 }
 
 .rowMenu {
-  flex: 0 0 32px;
-  width: 32px;
-  height: 32px;
-  opacity: 0.35;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  color: var(--text-tertiary);
+  opacity: 0;
   transition: opacity 160ms ease;
+}
+
+.rowActive .rowMenu {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .rowMenu {
+    opacity: 1;
+  }
 }
 
 .railError,
@@ -126,7 +148,8 @@
 }
 
 .row:hover .rowMenu,
-.row:focus-within .rowMenu {
+.row:focus-within .rowMenu,
+.rowMenu:global(.ant-dropdown-open) {
   opacity: 1;
 }
 
@@ -137,9 +160,7 @@
   flex: 1;
   flex-direction: column;
   min-width: 0;
-  background:
-    radial-gradient(1200px 420px at 50% -80px, color-mix(in srgb, var(--color-primary-soft) 55%, transparent), transparent 70%),
-    var(--bg-page);
+  background: var(--bg-surface);
 }
 
 .header {
@@ -149,6 +170,7 @@
   gap: 12px;
   min-height: 56px;
   padding: 10px 24px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-default) 60%, transparent);
 }
 
 .headerCopy {
@@ -177,7 +199,7 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  width: min(100%, 860px);
+  width: min(100%, 820px);
   min-height: 0;
   margin: 0 auto;
 }
@@ -187,7 +209,7 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 8px 20px 12px;
+  padding: 24px 24px 12px;
 }
 
 .userRow {
@@ -197,29 +219,30 @@
 }
 
 .userBubble {
-  max-width: min(70%, 560px);
-  padding: 10px 14px 8px;
-  border-radius: 18px 18px 6px 18px;
-  background: color-mix(in srgb, var(--bg-surface) 82%, var(--color-primary-soft));
+  max-width: min(78%, 560px);
+  padding: 9px 14px;
+  border-radius: 14px 14px 4px 14px;
+  background: var(--color-primary-soft);
   color: var(--text-primary);
   font-size: 15px;
   line-height: 1.6;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--border-default) 55%, transparent);
 }
 
 .userMeta {
-  margin-top: 6px;
+  margin-top: 2px;
   color: var(--text-tertiary);
   font-size: 11px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .assistantRow {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
   gap: 12px;
-  margin: 0 0 22px;
+  margin: 0 0 28px;
 }
 
 .avatar {
@@ -228,39 +251,148 @@
   width: 28px;
   height: 28px;
   margin-top: 2px;
-  border-radius: 10px;
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
+  border-radius: var(--radius-control);
+  background: var(--color-primary);
+  color: var(--bg-surface);
+  font-family: var(--font-label);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .assistantSurface {
   min-width: 0;
   max-width: 100%;
+  padding-top: 3px;
   color: var(--text-primary);
-  font-size: 15.5px;
-  line-height: 1.75;
+  font-size: 15px;
+  line-height: 1.7;
   overflow-wrap: anywhere;
 }
 
-.assistantSurface p {
-  margin: 0 0 12px;
+.assistantSurface > :last-child {
+  margin-bottom: 0;
 }
 
-.assistantSurface pre,
+.assistantSurface p,
+.assistantSurface ul,
+.assistantSurface ol,
+.assistantSurface blockquote {
+  margin: 0 0 10px;
+}
+
+.assistantSurface h3,
+.assistantSurface h4 {
+  margin: 18px 0 6px;
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.assistantSurface h3 {
+  font-size: 16px;
+}
+
+.assistantSurface h4 {
+  font-size: 15px;
+}
+
+.assistantSurface > h3:first-child,
+.assistantSurface > h4:first-child {
+  margin-top: 0;
+}
+
+.assistantSurface ul,
+.assistantSurface ol {
+  padding-inline-start: 1.4em;
+}
+
+.assistantSurface li {
+  margin: 3px 0;
+  padding-inline-start: 2px;
+}
+
+.assistantSurface li::marker {
+  color: var(--text-tertiary);
+}
+
+.assistantSurface strong {
+  font-weight: 600;
+}
+
+.assistantSurface blockquote {
+  padding: 2px 0 2px 12px;
+  color: var(--text-secondary);
+  border-left: 3px solid var(--border-default);
+}
+
 .assistantSurface code {
-  max-width: 100%;
-  overflow-x: auto;
-  overflow-wrap: normal;
-  white-space: pre;
+  padding: 1px 5px;
+  border-radius: var(--radius-status);
+  background: var(--bg-hover);
   font-family: var(--font-mono);
+  font-size: 0.86em;
+  overflow-wrap: anywhere;
 }
 
-.assistantSurface pre {
-  padding: 12px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--bg-surface) 76%, var(--bg-page));
+.codeBlock {
+  max-width: 100%;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--bg-page);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+.codeBlock code {
+  padding: 0;
+  background: transparent;
+  font-size: inherit;
+  overflow-wrap: normal;
+}
+
+.tableScroll {
+  max-width: 100%;
+  margin: 0 0 12px;
+  overflow-x: auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+}
+
+.tableScroll table {
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+.tableScroll th,
+.tableScroll td {
+  padding: 7px 12px;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: normal;
+}
+
+.tableScroll th {
+  color: var(--text-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--bg-page);
+}
+
+.tableScroll td {
+  border-top: 1px solid var(--border-default);
+}
+
+.codeBlock:focus-visible,
+.tableScroll:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .tools {
@@ -306,12 +438,6 @@
 .toolName {
   color: var(--text-primary);
   font-size: 13px;
-}
-
-.toolCode {
-  color: var(--text-tertiary);
-  font-family: var(--font-mono);
-  font-size: 11px;
 }
 
 .sourceBlock {
@@ -410,18 +536,27 @@
 
 .composerDock {
   flex: 0 0 auto;
-  padding: 4px 20px calc(16px + env(safe-area-inset-bottom, 0px));
+  padding: 4px 24px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+.turnError {
+  padding: 0 24px 8px;
 }
 
 .composer {
   display: grid;
   gap: 8px;
-  padding: 12px 14px 10px;
-  border-radius: 20px;
+  padding: 10px 12px 10px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-reading);
   background: var(--bg-surface);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--border-default) 80%, transparent),
-    0 10px 28px color-mix(in srgb, var(--shell-ink) 6%, transparent);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--shell-ink) 5%, transparent);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.composer:focus-within {
+  border-color: color-mix(in srgb, var(--color-primary) 55%, var(--border-default));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
 .composer :global(textarea.ant-input) {
@@ -487,10 +622,12 @@
   width: 40px;
   height: 40px;
   margin-bottom: 16px;
-  border-radius: 14px;
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
-  font-size: 18px;
+  border-radius: var(--radius-reading);
+  background: var(--color-primary);
+  color: var(--bg-surface);
+  font-family: var(--font-label);
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .empty h2 {
@@ -515,20 +652,23 @@
 }
 
 .promptChip {
-  padding: 10px 12px;
-  border-radius: 12px;
+  padding: 11px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 13px;
+  font: inherit;
+  font-size: 13.5px;
   line-height: 1.45;
   text-align: left;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--border-default) 75%, transparent);
   cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
 }
 
 .promptChip:hover,
 .promptChip:focus-visible {
-  background: var(--bg-hover);
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--border-default));
+  background: var(--color-primary-soft);
 }
 
 .jumpLatest {
@@ -597,7 +737,7 @@
 
 @media (max-width: 767px) {
   .page {
-    height: calc(100dvh - 56px);
+    margin: -14px;
   }
 
   .rail {
@@ -609,8 +749,13 @@
   }
 
   .messages,
-  .composerDock {
+  .composerDock,
+  .turnError {
     padding-inline: 12px;
+  }
+
+  .messages {
+    padding-top: 16px;
   }
 
   .mobileRailButton {
@@ -624,10 +769,6 @@
   .sources,
   .promptGrid {
     grid-template-columns: 1fr;
-  }
-
-  .composer {
-    border-radius: 16px;
   }
 
   .composerHint {
