@@ -1,8 +1,8 @@
 # 多租户 CRM Builder 接手说明
 
-更新时间：2026-10-05（Product Experience V2：Slice4 授权收尾，未合并）
+更新时间：2026-10-06（Product Experience V2：Slice4 + internal-trial preparation，未合并）
 
-**当前开发入口：** CRM V2 Slice1 已通过 PR #24 合并（`9cd2523`）；Slice2＋3 已通过 PR #25 合并（`78f55df`，gh已核实）。Slice4 已获授权，当前为 **IMPLEMENTED / LOCAL VERIFIED / WAITING PR AND CI / NOT MERGED**；独立工作树 `.worktrees/crm-product-experience-v2-slice-4`、分支 `codex/crm-product-experience-v2-slice-4`，实现 `206e310` / `8cf9c16` / `7fcaca6`、回归修复 `ea660ca` / `c248fe5`。最终全量Web603＋architecture3及typecheck/build/contracts均exit0，affected lint0 errors（1既有warning）、107聚焦测试及独立review无阻断。浏览器为risk-based已观察，完整全功能角色矩阵不作PASS声明；尚无Slice4 PR或当前CI成功声明。最新证据和待补项见[最终验收草稿](docs/audits/2026-10-05/crm-product-experience-v2-final-acceptance.md)；新PR不自动合并。部署、AI/Automation、权限/DB/CI扩展仍未授权。历史证据保留在[Slice1验收](docs/audits/2026-10-03/crm-product-experience-v2-slice-1-acceptance.md)和[Slice2＋3验收](docs/audits/2026-10-04/crm-product-experience-v2-slices-2-3-acceptance.md)。
+**当前开发入口：** CRM V2 Slice1 已通过 PR #24 合并（`9cd2523`）；Slice2＋3 已通过 PR #25 合并（`78f55df`，gh已核实）。Slice4 已获授权，当前为 **IMPLEMENTED / LOCAL VERIFIED / PR #26 OPEN / CI PENDING / NOT MERGED**；独立工作树 `.worktrees/crm-product-experience-v2-slice-4`、分支 `codex/crm-product-experience-v2-slice-4`，最新 head `48ae0d1`。Slice4 回归修复、内部试运行生产准备、腾讯短信适配器、私有附件存储迁移和 AI 对话 UI 改进均已分逻辑提交；API typecheck/Jest、Web Vitest、AI affected lint 通过。浏览器为 risk-based 已观察，完整全功能角色矩阵不作 PASS 声明；最新六项 required checks 正在运行。部署与真实短信、AI、HTTPS、外部 DB/Redis 仍未实际验证；新PR不自动合并、不部署。历史证据保留在[Slice1验收](docs/audits/2026-10-03/crm-product-experience-v2-slice-1-acceptance.md)和[Slice2＋3验收](docs/audits/2026-10-04/crm-product-experience-v2-slices-2-3-acceptance.md)。
 
 `main` 与 `origin/main` 是当前开发基线。**不要把某次 `git log -1` 的输出写死进本文。**
 Workflow V1 与 Action Engine V1 **均已合并进入 `main`**。Action Engine V1 通过 PR #1 合并，合并提交 `e590c23da6aa9c5fe0d0c3cd71250270ea265ebd`（该 SHA 只作为这一次历史事实记录，不是"main 永远等于它"）。Workflow Required Field Visibility Hardening 已通过 PR #2 合并；Record Required Field Visibility Hardening 已通过 PR #3 合并（均详见下方）。

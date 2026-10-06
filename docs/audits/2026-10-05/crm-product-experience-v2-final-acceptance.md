@@ -1,6 +1,6 @@
 # CRM Product Experience V2 — Final Acceptance Draft
 
-日期：2026-10-05。状态：**IMPLEMENTED / LOCAL VERIFIED / BROWSER RISK-BASED OBSERVED / PR #26 OPEN / CI SUCCESS / NOT MERGED**。
+日期：2026-10-06。状态：**IMPLEMENTED / LOCAL VERIFIED / BROWSER RISK-BASED OBSERVED / PR #26 OPEN / LATEST CI PENDING / NOT MERGED**。
 
 本文记录收尾时已确认的事实与待补项，不声明整体V2完成、完整浏览器矩阵PASS或当前CI成功。浏览器观察由主agent提供；本文整理不代表另一次独立复测。
 
@@ -10,9 +10,9 @@
 |---|---|---|
 | Slice1 | PR #24 已合并，`9cd2523` | [历史验收](../2026-10-03/crm-product-experience-v2-slice-1-acceptance.md)保留原矩阵和门禁 |
 | Slice2＋3 | PR #25 已合并，`78f55df`，gh已核实 | [历史验收](../2026-10-04/crm-product-experience-v2-slices-2-3-acceptance.md)仍是部分浏览器观察 |
-| Slice4 | 已授权，实现 `206e310` / `8cf9c16` / `7fcaca6`，回归修复 `ea660ca` / `c248fe5`；本地验证、独立review和PR26 required checks完成 | 分支 `codex/crm-product-experience-v2-slice-4`，PR #26 OPEN，head `d26beaf`，未合并 |
+| Slice4 | 已授权，实现与回归修复已交付；新增生产准备和 AI UI 改进已在同一分支分逻辑提交；API typecheck/Jest、Web Vitest、AI affected lint 已本地通过 | 分支 `codex/crm-product-experience-v2-slice-4`，PR #26 OPEN，head `48ae0d1`，最新六项 CI 待完成，未合并 |
 
-范围：Object/Field/Permission/Dashboard/Workflow管理员配置体验与先前证据缺口收尾。保留服务端权限投影、乐观锁、草稿/发布及既有业务语义；不扩展API/schema/CI/依赖。新PR不自动合并，不部署，不启动AI/Automation/Sales Execution/Production Essentials。
+范围：Object/Field/Permission/Dashboard/Workflow管理员配置体验与先前证据缺口收尾；并记录已授权的内部试运行生产准备与 AI 对话 UI 改进。保留服务端权限投影、乐观锁、草稿/发布及既有业务语义；不合并、不部署。生产外部依赖、真实短信/AI/HTTPS/DB/Redis 仍未验证，AI UI 仅有本地测试证据。
 
 浏览器使用既有隔离55434 fixture、Web3100/API3101；named SSR故障使用隔离代理3102，不代表生产故障。Admin `18800001001`；**真实Employee为 `18800001003`（赵晨）**。`18800001002` 为第二位Admin，先前被称为“Employee before/after”的观察不得作为员工证据。
 
@@ -41,12 +41,12 @@
 
 ## 3. 工程验证账本
 
-- 当前源码修复：`ea660ca`（record pending freeze）、`c248fe5`（Workflow pending race）；PR #26 head `d26beaf2344e8b2b1b93c6dddf53e0664db65443`。以下本地与远端证据均按来源区分。
+- 当前分支最新提交：`48ae0d1c1bbfb28d3bf4c8b9df7c7d5e9cf01140`；回归修复为 `9233156`，生产准备为 `d689e70`，AI UI 为 `d4324d2`，短信 wiring 为 `48ae0d1`。以下本地与远端证据均按来源区分。
 - 最终fresh全仓 `pnpm test`：**exit0**，Web82 files / **603 unit tests**＋architecture3；`pnpm typecheck` / `pnpm build` / `pnpm contracts:check`：**全部exit0**，由父agent收集bash404结果。
 - 首轮曾出现4项dashboard-routes失败（useSearchParams mock返回null），已修并重跑；typecheck首次缺失DATABASE_ADMIN_URL的setup失败在安全inert env下纠正。历史失败不抹去，但不是当前失败。
 - 全部changed TS affected ESLint：**0 errors / 1 existing dashboard navigation warning**；`git diff --check`：**exit0**。
 - 独立review `c5b14` 发现的Workflow race已由 `c248fe5` 修复，record pending freeze由 `ea660ca` 修复；最终 **107 focused tests PASS，review无阻断**。更早records26/members15聚焦结果保留为过程证据。
-- Slice4 PR：[PR #26](https://github.com/Zhong0118/multi-tenant-CRM-builder/pull/26)，head `d26beaf2344e8b2b1b93c6dddf53e0664db65443`，状态 OPEN/未合并。
+- Slice4 PR：[PR #26](https://github.com/Zhong0118/multi-tenant-CRM-builder/pull/26)，head `48ae0d1c1bbfb28d3bf4c8b9df7c7d5e9cf01140`，状态 OPEN/未合并；最新 CI run 待完成。
 - 远端六项required checks（run `37285126269`）：**全部 SUCCESS**：Typecheck、Contracts、Unit Tests、Database Integration、Build、Critical API E2E。
 
 ## 4. 剩余浏览器与验收字段
