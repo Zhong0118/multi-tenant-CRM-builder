@@ -14,6 +14,6 @@ describe('HealthController', () => {
 
   it('reports readiness only when dependencies are ready', async () => {
     const controller = new HealthController({ check: async () => ({ database: true, redis: false }) } as never);
-    await expect(controller.readiness()).resolves.toEqual({ status: 'not_ready', service: 'api', dependencies: { database: true, redis: false } });
+    await expect(controller.readiness()).rejects.toMatchObject({ status: 503 });
   });
 });

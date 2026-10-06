@@ -24,7 +24,7 @@ export function validateProductionConfig(env: Record<string, string | undefined>
     const details = result.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('; ');
     throw new Error(`Invalid production configuration: ${details}`);
   }
-  return result.data;
+  return { ...env, ...result.data };
 }
 
 export function validateRuntimeConfig(env: Record<string, string | undefined>) {

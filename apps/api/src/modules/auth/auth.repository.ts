@@ -64,6 +64,7 @@ export interface AuthStore {
   ): Promise<void>;
   consumeChallenge(id: string, consumedAt: Date): Promise<boolean>;
   findUserByPhone(phone: string): Promise<AuthUser | null>;
+  findPendingInvitationByPhone(phone: string, now: Date): Promise<boolean>;
   findUserById(id: string): Promise<AuthUser | null>;
   createUser(input: Omit<AuthUser, 'id'>): Promise<AuthUser>;
   updatePassword(userId: string, passwordHash: string): Promise<void>;
@@ -131,6 +132,10 @@ export class PrismaAuthRepository implements AuthRepository {
 
   findUserByPhone(phone: string): Promise<AuthUser | null> {
     return this.store.findUserByPhone(phone);
+  }
+
+  findPendingInvitationByPhone(phone: string, now: Date): Promise<boolean> {
+    return this.store.findPendingInvitationByPhone(phone, now);
   }
 
   findUserById(id: string): Promise<AuthUser | null> {
@@ -245,6 +250,13 @@ class PrismaAuthStore implements AuthStore {
   async findUserByPhone(phone: string): Promise<AuthUser | null> {
     const user = await this.client.user.findUnique({ where: { phone } });
     return user ? mapUser(user) : null;
+  }
+
+  async findPendingInvitationByPhone(phone: string, now: Date): Promise<boolean> {
+    const rows = await this.client.$queryRaw<Array<{ allowed: boolean }>>`
+      SELECT public.has_pending_registration_invitation(${phone}, ${now}) AS allowed
+    `;
+    return rows[0]?.allowed === true;
   }
 
   async findUserById(id: string): Promise<AuthUser | null> {

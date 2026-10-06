@@ -7,10 +7,16 @@ describe('registration policy', () => {
     })).not.toThrow();
   });
 
-  it('rejects a non-allowlisted phone with generic auth error', () => {
+  it('allows a pending invitation when public registration is disabled', () => {
     expect(() => assertRegistrationAllowed('+8613800138001', {
       NODE_ENV: 'production', PUBLIC_REGISTRATION_ENABLED: 'false', FIRST_ADMIN_PHONE: '+8613800138000',
-    })).toThrow(expect.objectContaining({ code: 'AUTH_REQUIRED', status: 403 }));
+    }, true)).not.toThrow();
+  });
+
+  it('rejects a non-allowlisted phone without an invitation with generic auth error', () => {
+    expect(() => assertRegistrationAllowed('+8613800138001', {
+      NODE_ENV: 'production', PUBLIC_REGISTRATION_ENABLED: 'false', FIRST_ADMIN_PHONE: '+8613800138000',
+    }, false)).toThrow(expect.objectContaining({ code: 'AUTH_REQUIRED', status: 403 }));
   });
 
   it('leaves development registration unchanged', () => {

@@ -5576,6 +5576,18 @@
         "tags": ["health"]
       }
     },
+    "/api/v1/health/ready": {
+      "get": {
+        "operationId": "HealthController_readiness",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": ["health"]
+      }
+    },
     "/api/v1/me": {
       "get": {
         "operationId": "MeController_me",

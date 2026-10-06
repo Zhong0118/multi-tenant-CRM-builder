@@ -15,6 +15,11 @@ describe('validateProductionConfig', () => {
     expect(validateProductionConfig(valid)).toEqual(valid);
   });
 
+  it('preserves validated provider and runtime configuration', () => {
+    const env = { ...valid, SMS_PROVIDER: 'tencent', AI_MODEL: 'trial-model', PORT: '3101' };
+    expect(validateProductionConfig(env)).toEqual(env);
+  });
+
   it.each([
     ['DATABASE_URL', { DATABASE_URL: 'http://db.example.test' }],
     ['DATABASE_URL', { DATABASE_URL: '' }],

@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { createHash, timingSafeEqual } from 'node:crypto';
 
 import { ApiException } from '../../common/errors/api.exception';
+import { assertRegistrationAllowed } from './registration-policy';
 import {
   RATE_LIMITER,
   type RateLimiter,
@@ -135,6 +136,13 @@ export class AuthService {
     input: VerificationInput,
   ): Promise<{ accepted: true }> {
     const phone = normalizeChineseMobile(input.phone);
+    if (input.purpose === 'REGISTER') {
+      assertRegistrationAllowed(
+        phone,
+        process.env,
+        await this.repository.findPendingInvitationByPhone(phone, this.clock()),
+      );
+    }
     await this.pruneAuthArtifacts();
     const phoneKey = sha256(phone);
     await Promise.all([
@@ -176,6 +184,11 @@ export class AuthService {
     const phone = normalizeChineseMobile(input.phone);
 
     return this.repository.transaction(async (store) => {
+      assertRegistrationAllowed(
+        phone,
+        process.env,
+        await store.findPendingInvitationByPhone(phone, this.clock()),
+      );
       await this.consumeValidChallenge(store, phone, 'REGISTER', input.code);
       let user = await store.findUserByPhone(phone);
 

@@ -9,18 +9,26 @@ import {
 
 describe('private attachment storage', () => {
   it('uses tenant-separated UUID keys and prevents path traversal', () => {
-    const key = attachmentStorageKey('tenant-a', 'attachment-b');
-    expect(key).toBe('tenant-a/attachment-b');
+    const tenantId = '0198ad18-a74d-7b69-b81a-49a74f9a3e0d';
+    const attachmentId = '0198ad18-a74d-7b69-b81a-49a74f9a3e0e';
+    const key = attachmentStorageKey(tenantId, attachmentId);
+    expect(key).toBe(`${tenantId}/${attachmentId}`);
     expect(attachmentStoragePath('/srv/attachments', key)).toBe(
-      '/srv/attachments/tenant-a/attachment-b',
+      `/srv/attachments/${tenantId}/${attachmentId}`,
     );
-    expect(() => attachmentStoragePath('/srv/attachments', '../secret')).toThrow();
+    expect(() => attachmentStorageKey('tenant-a', attachmentId)).toThrow();
+    expect(() =>
+      attachmentStoragePath('/srv/attachments', '../secret'),
+    ).toThrow();
   });
 
   it('writes private files atomically with restrictive permissions', async () => {
     const root = await mkdtemp(join(tmpdir(), 'crm-attachments-'));
     try {
-      const key = attachmentStorageKey('tenant-a', 'attachment-b');
+      const key = attachmentStorageKey(
+        '0198ad18-a74d-7b69-b81a-49a74f9a3e0d',
+        '0198ad18-a74d-7b69-b81a-49a74f9a3e0e',
+      );
       await writeAttachmentFile(root, key, Buffer.from('secret'));
       await expect(readFile(attachmentStoragePath(root, key))).resolves.toEqual(
         Buffer.from('secret'),

@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, HttpStatus, Optional } from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { RuntimeHealthService } from '../platform-operations/runtime-health.service';
 
@@ -16,8 +16,10 @@ export class HealthController {
   @Get('ready')
   @HttpCode(HttpStatus.OK)
   async readiness() {
-    const dependencies = this.health ? await this.health.check() : { database: true, redis: true };
-    const ready = dependencies.database && dependencies.redis;
-    return { status: ready ? 'ok' : 'not_ready', service: 'api', dependencies } as const;
+    const dependencies = this.health ? await this.health.check() : { database: false, redis: false };
+    if (!dependencies.database || !dependencies.redis) {
+      throw new ServiceUnavailableException({ status: 'not_ready', service: 'api' });
+    }
+    return { status: 'ok', service: 'api' } as const;
   }
 }
