@@ -4,6 +4,8 @@ import { MoreOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, Dropdown, Input, Modal, Skeleton } from "antd";
 import { useMemo, useRef, useState } from "react";
 
+import { toApiError } from "@/lib/api/api-error";
+
 import styles from "./ai-assistant.module.css";
 import { conversationGroup } from "./ai-copy";
 import type { AiConversation } from "./ai-types";
@@ -55,6 +57,9 @@ export function ConversationRail({
   const [renaming, setRenaming] = useState<AiConversation>();
   const [title, setTitle] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
+  // Each opening or closing of the rename dialog starts a new session, so a
+  // late response from an abandoned rename cannot touch the one now open.
+  const renameSession = useRef(0);
   const [renameSubmitting, setRenameSubmitting] = useState(false);
   const renameSubmittingRef = useRef(false);
   const [deleting, setDeleting] = useState<AiConversation>();
@@ -76,31 +81,47 @@ export function ConversationRail({
     (trigger ?? rail?.querySelector<HTMLElement>("[data-rail-new]"))?.focus();
   }
 
+  function openRename(item: AiConversation) {
+    renameSession.current += 1;
+    returnFocusId.current = item.id;
+    setRenaming(item);
+    setTitle(item.title);
+    setRenameError(null);
+  }
+
   function closeRename() {
-    if (renameSubmittingRef.current) return;
+    renameSession.current += 1;
     setRenaming(undefined);
     setRenameError(null);
   }
 
-  function submitRename() {
-    if (!renaming || !title.trim() || renamePending || renameSubmittingRef.current) return;
+  async function submitRename() {
+    if (
+      !renaming ||
+      !title.trim() ||
+      renamePending ||
+      renameSubmittingRef.current
+    )
+      return;
+    const session = renameSession.current;
     renameSubmittingRef.current = true;
     setRenameSubmitting(true);
     setRenameError(null);
-    Promise.resolve(onRename(renaming.id, title.trim()))
-      .then(() => setRenaming(undefined))
-      .catch((reason: unknown) => {
-        // Keep the dialog and the typed title so the user can retry.
+    try {
+      await onRename(renaming.id, title.trim());
+      if (renameSession.current === session) setRenaming(undefined);
+    } catch (reason) {
+      // Keep the dialog and the typed title so the user can retry.
+      if (renameSession.current === session) {
+        const apiError = toApiError(reason);
         setRenameError(
-          reason instanceof Error && reason.message
-            ? reason.message
-            : "重命名失败，请稍后重试。",
+          `重命名失败：${apiError.message}（请求编号：${apiError.requestId}）输入的标题已保留。`,
         );
-      })
-      .finally(() => {
-        renameSubmittingRef.current = false;
-        setRenameSubmitting(false);
-      });
+      }
+    } finally {
+      renameSubmittingRef.current = false;
+      setRenameSubmitting(false);
+    }
   }
 
   function confirmDelete() {
@@ -129,77 +150,86 @@ export function ConversationRail({
         </Button>
       </div>
       <div className={styles.railList}>
-        {mutationError ? <div className={styles.railError} role="alert">{mutationError}</div> : null}
+        {mutationError ? (
+          <div className={styles.railError} role="alert">
+            {mutationError}
+          </div>
+        ) : null}
         {loading ? <Skeleton active paragraph={{ rows: 6 }} /> : null}
         {error ? (
           <div className={styles.railError} role="alert">
             <span>会话加载失败</span>
-            {onRetry ? <Button type="link" size="small" onClick={onRetry}>重试</Button> : null}
+            {onRetry ? (
+              <Button type="link" size="small" onClick={onRetry}>
+                重试
+              </Button>
+            ) : null}
           </div>
         ) : null}
         {empty ? (
-          <p className={styles.railEmpty}>还没有会话。发送第一个问题后，会话会保存在这里。</p>
+          <p className={styles.railEmpty}>
+            还没有会话。发送第一个问题后，会话会保存在这里。
+          </p>
         ) : null}
-        {!loading && !error ? GROUPS.map((group) =>
-          grouped[group].length === 0 ? null : (
-            <section key={group}>
-              <div className={styles.groupLabel}>{group}</div>
-              {grouped[group].map((item) => (
-                <div
-                  key={item.id}
-                  className={`${styles.row} ${item.id === selectedId ? styles.rowActive : ""}`}
-                >
-                  <button
-                    type="button"
-                    className={styles.rowTitle}
-                    title={item.title}
-                    aria-current={item.id === selectedId ? "true" : undefined}
-                    onClick={() => onSelect(item.id)}
-                  >
-                    {item.title}
-                  </button>
-                  <Dropdown
-                    trigger={["click"]}
-                    autoFocus
-                    getPopupContainer={() => document.body}
-                    menu={{
-                      items: [
-                        {
-                          key: "rename",
-                          label: "重命名",
-                          onClick: () => {
-                            returnFocusId.current = item.id;
-                            setRenaming(item);
-                            setTitle(item.title);
-                            setRenameError(null);
-                          },
-                        },
-                        {
-                          key: "delete",
-                          label: "删除",
-                          danger: true,
-                          disabled: deletePending || !!deleteSubmitting,
-                          onClick: () => {
-                            returnFocusId.current = item.id;
-                            setDeleting(item);
-                          },
-                        },
-                      ],
-                    }}
-                  >
-                    <Button
-                      type="text"
-                      className={styles.rowMenu}
-                      data-conversation-menu={item.id}
-                      aria-label={`会话操作：${item.title}`}
-                      icon={<MoreOutlined aria-hidden />}
-                    />
-                  </Dropdown>
-                </div>
-              ))}
-            </section>
-          ),
-        ) : null}
+        {!loading && !error
+          ? GROUPS.map((group) =>
+              grouped[group].length === 0 ? null : (
+                <section key={group}>
+                  <div className={styles.groupLabel}>{group}</div>
+                  {grouped[group].map((item) => (
+                    <div
+                      key={item.id}
+                      className={`${styles.row} ${item.id === selectedId ? styles.rowActive : ""}`}
+                    >
+                      <button
+                        type="button"
+                        className={styles.rowTitle}
+                        title={item.title}
+                        aria-current={
+                          item.id === selectedId ? "true" : undefined
+                        }
+                        onClick={() => onSelect(item.id)}
+                      >
+                        {item.title}
+                      </button>
+                      <Dropdown
+                        trigger={["click"]}
+                        autoFocus
+                        getPopupContainer={() => document.body}
+                        menu={{
+                          items: [
+                            {
+                              key: "rename",
+                              label: "重命名",
+                              onClick: () => openRename(item),
+                            },
+                            {
+                              key: "delete",
+                              label: "删除",
+                              danger: true,
+                              disabled: deletePending || !!deleteSubmitting,
+                              onClick: () => {
+                                returnFocusId.current = item.id;
+                                setDeleting(item);
+                              },
+                            },
+                          ],
+                        }}
+                      >
+                        <Button
+                          type="text"
+                          className={styles.rowMenu}
+                          data-conversation-menu={item.id}
+                          aria-label={`会话操作：${item.title}`}
+                          icon={<MoreOutlined aria-hidden />}
+                        />
+                      </Dropdown>
+                    </div>
+                  ))}
+                </section>
+              ),
+            )
+          : null}
         {onLoadMore ? (
           <Button type="link" onClick={onLoadMore}>
             加载更多
@@ -212,10 +242,12 @@ export function ConversationRail({
         okText="保存"
         cancelText="取消"
         onCancel={closeRename}
-        onOk={submitRename}
+        onOk={() => void submitRename()}
         afterClose={restoreFocus}
         confirmLoading={renamePending || renameSubmitting}
-        okButtonProps={{ disabled: !title.trim() || renamePending || renameSubmitting }}
+        okButtonProps={{
+          disabled: !title.trim() || renamePending || renameSubmitting,
+        }}
         destroyOnHidden
       >
         <Input
@@ -228,7 +260,7 @@ export function ConversationRail({
             setTitle(event.target.value);
             if (renameError) setRenameError(null);
           }}
-          onPressEnter={submitRename}
+          onPressEnter={() => void submitRename()}
         />
         {renameError ? (
           <div className={styles.renameError} role="alert">
@@ -250,7 +282,8 @@ export function ConversationRail({
         }}
       >
         <p className={styles.deleteCopy}>
-          「{deleting?.title}」及其全部消息删除后无法找回。已确认执行的 CRM 修改不会撤销。
+          「{deleting?.title}」及其全部消息删除后无法找回。已确认执行的 CRM
+          修改不会撤销。
         </p>
       </Modal>
     </aside>

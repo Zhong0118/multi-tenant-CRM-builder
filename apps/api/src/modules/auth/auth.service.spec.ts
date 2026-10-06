@@ -45,6 +45,20 @@ class MemoryAuthRepository implements AuthRepository {
     );
   }
 
+  incrementChallengeFailure(
+    id: string,
+  ): Promise<{ attemptCount: number; status: ChallengeStatus } | null> {
+    const challenge = this.challenges.find((item) => item.id === id);
+    if (!challenge || challenge.status !== 'PENDING')
+      return Promise.resolve(null);
+    challenge.attemptCount += 1;
+    challenge.status = challenge.attemptCount >= 5 ? 'LOCKED' : 'PENDING';
+    return Promise.resolve({
+      attemptCount: challenge.attemptCount,
+      status: challenge.status,
+    });
+  }
+
   updateChallengeFailure(
     id: string,
     attemptCount: number,
@@ -289,7 +303,8 @@ describe('AuthService verification policy', () => {
       expect(fixture.repository.challenges).toHaveLength(0);
     } finally {
       process.env.NODE_ENV = previous.NODE_ENV;
-      process.env.PUBLIC_REGISTRATION_ENABLED = previous.PUBLIC_REGISTRATION_ENABLED;
+      process.env.PUBLIC_REGISTRATION_ENABLED =
+        previous.PUBLIC_REGISTRATION_ENABLED;
       process.env.FIRST_ADMIN_PHONE = previous.FIRST_ADMIN_PHONE;
     }
   });
@@ -316,7 +331,8 @@ describe('AuthService verification policy', () => {
       expect(fixture.sender.sent).toHaveLength(1);
     } finally {
       process.env.NODE_ENV = previous.NODE_ENV;
-      process.env.PUBLIC_REGISTRATION_ENABLED = previous.PUBLIC_REGISTRATION_ENABLED;
+      process.env.PUBLIC_REGISTRATION_ENABLED =
+        previous.PUBLIC_REGISTRATION_ENABLED;
       process.env.FIRST_ADMIN_PHONE = previous.FIRST_ADMIN_PHONE;
     }
   });

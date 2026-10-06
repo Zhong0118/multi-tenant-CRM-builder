@@ -58,16 +58,9 @@ export function RecordDetailDrawer({
   onChanged,
 }: RecordDetailDrawerProps) {
   const [editing, setEditing] = useState(initialEditing);
-  // Each entry to or exit from edit mode starts a new session. A save's
-  // callback keeps the session it was rendered with, so a late response from
-  // a cancelled edit cannot close the edit the user started afterwards.
-  const [editSession, setEditSession] = useState(0);
-  const currentEditSession = useRef(0);
-  const switchEditing = (next: boolean) => {
-    currentEditSession.current += 1;
-    setEditSession(currentEditSession.current);
-    setEditing(next);
-  };
+  const editSession = useRef(0);
+  // Capture ownership while rendering the form, before its HTTP save starts.
+  const session = editSession.current;
   const [error, setError] = useState<string>();
   const [refreshWarning, setRefreshWarning] = useState<string>();
   const [deleted, setDeleted] = useState(false);
@@ -89,7 +82,12 @@ export function RecordDetailDrawer({
     <dl className={styles.detailFields}>
       {selected.map((field) => (
         <div key={field.id} className={styles.detailField}>
-          <dt>{field.label}{field.access === "READ_ONLY" ? <span className={styles.detailLock}>仅管理员可编辑</span> : null}</dt>
+          <dt>
+            {field.label}
+            {field.access === "READ_ONLY" ? (
+              <span className={styles.detailLock}>仅管理员可编辑</span>
+            ) : null}
+          </dt>
           <dd>{displayValue(field, record.values[field.fieldKey], members)}</dd>
         </div>
       ))}
@@ -107,7 +105,8 @@ export function RecordDetailDrawer({
         await onChanged(null);
         onClose();
       } catch {
-        const message = "记录已删除，但刷新暂时失败。请返回列表重新载入，不要重复删除。";
+        const message =
+          "记录已删除，但刷新暂时失败。请返回列表重新载入，不要重复删除。";
         setRefreshWarning(message);
       }
     },
@@ -133,7 +132,7 @@ export function RecordDetailDrawer({
       extra={
         <Space>
           {schema.actions.canUpdate && !editing && !deleted ? (
-            <Button onClick={() => switchEditing(true)}>编辑</Button>
+            <Button onClick={() => setEditing(true)}>编辑</Button>
           ) : null}
           {canDelete ? (
             <Popconfirm
@@ -150,10 +149,14 @@ export function RecordDetailDrawer({
         </Space>
       }
     >
-      {refreshWarning ? <Alert type="warning" showIcon title={refreshWarning} /> : null}
+      {refreshWarning ? (
+        <Alert type="warning" showIcon title={refreshWarning} />
+      ) : null}
       {error ? <Alert type="error" showIcon title={error} /> : null}
 
-      {deleted ? <Button onClick={onClose}>返回列表</Button> : editing ? (
+      {deleted ? (
+        <Button onClick={onClose}>返回列表</Button>
+      ) : editing ? (
         <RecordForm
           tenantCode={tenantCode}
           schema={schema}
@@ -162,28 +165,38 @@ export function RecordDetailDrawer({
           canChooseOwner={canChooseOwner}
           api={api}
           onSaved={async (saved) => {
-            const session = editSession;
             try {
               await onChanged(saved);
             } catch {
-              const message = "记录已保存，但刷新暂时失败。请重新载入查看最新记录，不要重复提交。";
+              const message =
+                "记录已保存，但刷新暂时失败。请重新载入查看最新记录，不要重复提交。";
               setRefreshWarning(message);
             } finally {
-              if (currentEditSession.current === session) switchEditing(false);
+              if (editSession.current === session) setEditing(false);
             }
           }}
-          onCancel={() => switchEditing(false)}
+          onCancel={() => {
+            editSession.current += 1;
+            setEditing(false);
+          }}
         />
       ) : (
         <>
           <section aria-label="记录摘要" className={styles.detailSummary}>
-            {renderFields(fields.filter((field) => summaryKeys.has(field.fieldKey)))}
+            {renderFields(
+              fields.filter((field) => summaryKeys.has(field.fieldKey)),
+            )}
             <div className={styles.detailMeta}>
               <Typography.Text type="secondary">
-                负责人：{members.find((member) => member.id === record.ownerMemberId)?.displayName ?? (record.ownerMemberId ? "已指定" : "未指定")}
+                负责人：
+                {members.find((member) => member.id === record.ownerMemberId)
+                  ?.displayName ?? (record.ownerMemberId ? "已指定" : "未指定")}
               </Typography.Text>
               <Typography.Text type="secondary">
-                更新于 <time dateTime={record.updatedAt}>{formatDateTime(record.updatedAt)}</time>
+                更新于{" "}
+                <time dateTime={record.updatedAt}>
+                  {formatDateTime(record.updatedAt)}
+                </time>
               </Typography.Text>
             </div>
           </section>
@@ -222,7 +235,12 @@ export function RecordDetailDrawer({
             {renderFields(fields)}
           </details>
           <details className={styles.detailDisclosure}>
-            <summary>关联业务记录{relations.data ? `（${relations.data.length || "暂无关联"}）` : "（展开查看）"}</summary>
+            <summary>
+              关联业务记录
+              {relations.data
+                ? `（${relations.data.length || "暂无关联"}）`
+                : "（展开查看）"}
+            </summary>
             <RecordRelationsPanel
               tenantCode={tenantCode}
               objectCode={schema.object.code}
@@ -231,7 +249,12 @@ export function RecordDetailDrawer({
             />
           </details>
           <details className={styles.detailDisclosure}>
-            <summary>附件{attachments.data ? `（${attachments.data.length || "暂无附件"}）` : "（展开查看）"}</summary>
+            <summary>
+              附件
+              {attachments.data
+                ? `（${attachments.data.length || "暂无附件"}）`
+                : "（展开查看）"}
+            </summary>
             <RecordAttachmentsPanel
               tenantCode={tenantCode}
               objectCode={schema.object.code}

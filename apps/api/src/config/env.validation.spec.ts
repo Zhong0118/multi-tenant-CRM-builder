@@ -39,6 +39,8 @@ describe('validateProductionConfig', () => {
   it.each([
     ['DATABASE_URL', { DATABASE_URL: 'http://db.example.test' }],
     ['DATABASE_URL', { DATABASE_URL: '' }],
+    ['TRUSTED_PROXY_IP', { TRUSTED_PROXY_IP: 'true' }],
+    ['TRUSTED_PROXY_IP', { TRUSTED_PROXY_IP: '172.16.0.0/12' }],
     ['AI_API_KEY', { AI_API_KEY: '' }],
     ['AI_PROVIDER', { AI_PROVIDER: 'fake' }],
     ['AI_BASE_URL', { AI_BASE_URL: 'http://ai.example.test' }],

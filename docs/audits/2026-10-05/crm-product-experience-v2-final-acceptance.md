@@ -1,6 +1,18 @@
 # CRM Product Experience V2 — Final Acceptance Draft
 
-日期：2026-10-06。历史草稿状态保留；截至本次文档更新，状态为：**BASE HEAD VERIFIED (`51a6269`) / PR #26 OPEN / RUN `37398947483` SIX REQUIRED CHECKS SUCCESS / LATEST SAFETY FIXES PENDING / NOT MERGED**。
+日期：2026-10-06。**当前权威状态：PR #26 OPEN / NOT MERGED / NOT DEPLOYED / CODE CI VERIFIED, DOCUMENT FOLLOW-UP CI PENDING**。工作树 `.worktrees/crm-product-experience-v2-slice-4`，本地分支 `codex/internal-trial-preparation`；根 `main` 落后禁止使用。代码 SHA `58da1ce` 的 run `37444823699` 六门全部 SUCCESS；随后 remediation `3432aa4` 的 run `37445633285` 六门全部 SUCCESS。本次文档 follow-up 不把任何 SHA 写成永久 latest。旧 SHA/run 与下方矩阵仅保留其历史范围。
+
+## 2026-10-06 内部试用修复权威更新
+
+用户要求验证 D01-D04、F01-F03、验证码事务持久化并核实 PR CI；PR 更新/push 已授权，仍禁止合并、部署、清理。代码 `58da1ce` / run `37444823699` 六门成功；remediation follow-up `3432aa4` 已推送。文档 follow-up 后的 CI 仍待核实，不把任一 SHA 写成永久 latest。保留用户 untracked review/brief。逐项证据见[修复账本](../2026-10-06/internal-trial-remediation.md)。
+
+- D01/D02：Docker COPY 根 `tsconfig.base.json`、tooling 预装 pnpm 11.19.0、runtime `COREPACK_ENABLE_NETWORK=0`。旧本地 npm `fetch failed` 仅保留为历史网络事实；代码 run `37444823699` 的 Build 2m50（日志 `/tmp/crm-review-ci-build.log`）已通过无缓存 full Docker、offline pnpm11.19.0、internal-network migration 两次门禁，23 migrations applied 且 repeat 无 Pending。
+- D03：同源 `WEB_ORIGIN` + Caddy `/api/v1`；真实本地 `https://localhost:3443` 登录→`/workspace/nebula-demo`→刷新完整 dashboard、Secure/HttpOnly/host-only localhost cookie、退出清 cookie后 workspace 回 login 已观察。内部自签证书绕过浏览器信任，Web3100/API3101、DB55435/`crm_browser_review`；不等于生产 DNS/TLS。
+- D04：固定 Caddy `172.30.26.2`、API `.3`、Web `.4`、子网 `.0/24`。真实两客户端 `.10`/`.11` 同伪造 XFF 被覆盖为真实客户端，Echo upstream remote `.2`；bounded-proxy 8 tests pass，含 untrusted spoof/default deny/safe exactIP。实际 Nest auth-proxy 主复验3 suites/11 tests、63 HTTP pass：两客户端各独立20→429，untrusted spoof20→429，reject不创建challenge/send；repo/sender fake，实际controller/service/limiter。公网外部短信 PENDING。
+- F01：真实 delayed PATCH200、cancelled/reopened 新备注保留、saveEnabled=true 已观察。F02：真实本地 Playwright + AntD PATCH500 failure-retention PASS（隔离DB fixture、无AI provider调用，dialog visible，输入 `draft retained browser` 保留，role alert 显示重命名失败请重试）；旧会话 race 仍仅组件测试。F01/F02 agent 11 files/85 focused pass，主复验 2 files/12 pass；Web/API typecheck pass，API auth/config/trustedproxy 36 pass。
+- F03/验证码：真实 AuthService + Prisma 主复验 Critical API E2E 2 suites/12 pass、DB36 pass，full pnpm test/build/typecheck/contracts exit0；F03 clean23迁移及runtime ACL/RLS/tenant状态边界已验证。consume mismatch 仅抛 private `ChallengeCodeMismatch`；REGISTER/RESET 在 await transaction catch 后 increment，preflight 外部，12 concurrency green，连接池 Important 已消除。`queryconnection_limit` 无效，默认 pg pool10，不宣称额外配置保护。旧 RED（首错/8并发）和旧版12不稳定过程证据保留；`0023` 为未发布合并迁移，probe 受限 `NOBYPASSRLS`。
+- 全仓已报告 `pnpm test` API99 suites/1281 tests、Web83 files/615 unit + architecture3、worker2，typecheck/contracts exit0；这些是当前本地报告，不等于最新远端 CI。外部短信真实送达、AI provider、生产 server/DNS/TLS/数据库/Redis/备份 NOT VERIFIED。完整浏览器矩阵仍未完成。
+
 
 本文记录收尾时已确认的事实与待补项，不声明整体V2完成、完整浏览器矩阵PASS或当前CI成功。浏览器观察由主agent提供；本文整理不代表另一次独立复测。
 
@@ -39,14 +51,14 @@
 
 上一轮default overview503/auth401/403已有观察只保留其原角色/路由/视口标签，不在本文扩大为本轮全矩阵PASS。自动化覆盖也不替代浏览器观察。
 
-## 3.1 2026-10-06 dated status update
+## 3.1 历史 dated status update（已被顶部更新取代）
 
 - PR #26 remains OPEN and unmerged. GitHub verified base head `51a6269c3e814a58fb454058917a935e9b49ce23`; run `37398947483` completed with all six required checks SUCCESS: Typecheck, Contracts, Unit Tests, Database Integration, Build, and Critical API E2E.
 - The parent agent is still applying final safety fixes in the worktree. Those uncommitted changes are pending and must receive their own local and remote verification; do not claim the six-check result for any later head.
 - The authorized production scope is a bounded single-host internal trial preparation. AI configuration is mandatory. The Tencent SMS sender is implemented, but delivery is unverified. Private attachments use single-host API-mediated storage; the placeholder worker has no business queues and is omitted from the topology. Invitation probe migrations `0021` and `0022` use `crm_registration_probe` as `NOLOGIN NOBYPASSRLS` with narrowly scoped `SELECT` only; the application role is not a superuser and must not receive membership in the probe role.
 - Focused local evidence: AI65 and API28 passed; additional tests remain pending. No merge or deployment is authorized by this document.
 
-## 3. 工程验证账本
+## 3. 历史工程验证账本（不覆盖本轮修复）
 
 - 历史收尾提交链为 `48ae0d1`（短信 wiring）、`d4324d2`（AI UI）、`d689e70`（生产准备）、`9233156`（回归修复）；本次已核实的远端基线 head 为 `51a6269`。以下本地与远端证据均按来源区分；父 agent 后续安全修复仍待验证。
 - 最终fresh全仓 `pnpm test`：**exit0**，Web82 files / **603 unit tests**＋architecture3；`pnpm typecheck` / `pnpm build` / `pnpm contracts:check`：**全部exit0**，由父agent收集bash404结果。
@@ -68,6 +80,6 @@
 
 ## 5. 收尾判断
 
-**批准范围实现及本地验证已完成，可进入PR交付；PR/最新SHA远端六门仍待核实，尚不作合并就绪或已合并声明。** V2现有交付包括公共框架和记录列表、详情下一步/历史与上下文返回、任务优先员工工作台，以及草稿/发布/即时覆盖语义清楚的管理员配置面。冲突输入、提交后刷新失败、SSR故障隔离和权限错误边界已有代表性真实证据，review阻断已修复并验证。
+**历史 V2 产品体验证据保留；本轮内部试用修复仍在进行，完整镜像、无外网 migration、F03/验证码完整产品路径数据库回归和最新 SHA 六门仍 PENDING，不能声称整体验收完成或合并就绪。** V2现有交付包括公共框架和记录列表、详情下一步/历史与上下文返回、任务优先员工工作台，以及草稿/发布/即时覆盖语义清楚的管理员配置面。冲突输入、提交后刷新失败、SSR故障隔离和权限错误边界已有代表性真实证据，历史体验 review 已有修复证据，本轮 D01-D04/F01-F03 review 阻断状态仅以上述权威更新与修复账本为准。
 
 浏览器采用risk-based观察：本文逐路径角色/视口有效，**不声称所有功能×两角色×三宽度完整PASS**；剩余未观察组合、完整键盘/长内容覆盖为已披露验收限制，不笼统否定已实现能力。复杂Object/Workflow390保留桌面边界；Dashboard即时元配置不改旧发布snapshot含义；真实Provider与生产部署不在范围。历史审计只追加Post-merge status，不重写原始矩阵。

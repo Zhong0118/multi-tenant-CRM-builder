@@ -7,7 +7,7 @@ import {
   SwaggerModule,
 } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
-import type { NextFunction, Request, Response } from 'express';
+import type { Express, NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 
 import { AppModule } from './app.module';
@@ -18,6 +18,7 @@ import { validationFieldErrors } from './common/errors/validation-field-errors';
 import { createHttpLogger } from './common/security/http-logger';
 import { OriginGuard } from './common/security/origin.guard';
 import { RequestIdMiddleware } from './common/security/request-id.middleware';
+import { configureTrustedProxy } from './common/security/trusted-proxy';
 
 export async function createApp(): Promise<INestApplication> {
   const app = await NestFactory.create(AppModule);
@@ -30,6 +31,10 @@ export async function createApp(): Promise<INestApplication> {
     .map((origin) => origin.trim())
     .filter(Boolean);
 
+  configureTrustedProxy(
+    app.getHttpAdapter().getInstance() as Express,
+    config.get<string>('TRUSTED_PROXY_IP'),
+  );
   app.setGlobalPrefix('api/v1');
   app.use((request: Request, response: Response, next: NextFunction) =>
     requestId.use(request, response, next),

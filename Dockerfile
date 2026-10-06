@@ -1,8 +1,11 @@
 # syntax=docker/dockerfile:1
-FROM node:24-bookworm-slim AS build
+FROM node:24-bookworm-slim AS tooling
+ENV COREPACK_HOME=/opt/corepack
+RUN corepack enable && corepack prepare pnpm@11.19.0 --activate
+
+FROM tooling AS build
 WORKDIR /app
-RUN corepack enable
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps ./apps
 COPY packages ./packages
 RUN pnpm install --frozen-lockfile
@@ -13,10 +16,10 @@ ENV NEXT_PUBLIC_API_ORIGIN=$NEXT_PUBLIC_API_ORIGIN
 # Prisma config requires a URL while generating; this dummy URL is never contacted.
 RUN DATABASE_ADMIN_URL=postgresql://build:build@localhost:5432/build pnpm build
 
-FROM node:24-bookworm-slim AS runtime
+FROM tooling AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
-RUN corepack enable
+ENV COREPACK_ENABLE_NETWORK=0
 COPY --from=build /app /app
 EXPOSE 3001
 CMD ["pnpm", "--filter", "@crm/api", "start:prod"]
