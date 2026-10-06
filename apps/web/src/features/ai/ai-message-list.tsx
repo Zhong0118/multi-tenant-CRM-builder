@@ -41,6 +41,7 @@ export function AiMessageList({
   onRejectProposal?: (proposalId: string) => void;
   proposalBusy?: boolean;
   proposalError?: string | null;
+  onRetryMessages?: () => void;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const [follow, setFollow] = useState(true);

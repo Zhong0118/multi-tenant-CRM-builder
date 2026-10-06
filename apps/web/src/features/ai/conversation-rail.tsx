@@ -33,6 +33,8 @@ export function ConversationRail({
   onRename: (id: string, title: string) => void | Promise<unknown>;
   onDelete: (id: string) => void | Promise<unknown>;
   mutationError?: string | null;
+  renamePending?: boolean;
+  deletePending?: boolean;
   onLoadMore?: () => void;
 }) {
   const grouped = useMemo(() => {
