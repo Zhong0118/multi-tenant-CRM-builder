@@ -57,7 +57,16 @@ export function RecordDetailDrawer({
   onChanged,
 }: RecordDetailDrawerProps) {
   const [editing, setEditing] = useState(initialEditing);
-  const editSession = useRef(0);
+  // Each entry to or exit from edit mode starts a new session. A save's
+  // callback keeps the session it was rendered with, so a late response from
+  // a cancelled edit cannot close the edit the user started afterwards.
+  const [editSession, setEditSession] = useState(0);
+  const currentEditSession = useRef(0);
+  const switchEditing = (next: boolean) => {
+    currentEditSession.current += 1;
+    setEditSession(currentEditSession.current);
+    setEditing(next);
+  };
   const [error, setError] = useState<string>();
   const [refreshWarning, setRefreshWarning] = useState<string>();
   const [deleted, setDeleted] = useState(false);
@@ -123,7 +132,7 @@ export function RecordDetailDrawer({
       extra={
         <Space>
           {schema.actions.canUpdate && !editing && !deleted ? (
-            <Button onClick={() => setEditing(true)}>编辑</Button>
+            <Button onClick={() => switchEditing(true)}>编辑</Button>
           ) : null}
           {canDelete ? (
             <Popconfirm
@@ -152,20 +161,17 @@ export function RecordDetailDrawer({
           canChooseOwner={canChooseOwner}
           api={api}
           onSaved={async (saved) => {
-            const session = editSession.current;
+            const session = editSession;
             try {
               await onChanged(saved);
             } catch {
               const message = "记录已保存，但刷新暂时失败。请重新载入查看最新记录，不要重复提交。";
               setRefreshWarning(message);
             } finally {
-              if (editSession.current === session) setEditing(false);
+              if (currentEditSession.current === session) switchEditing(false);
             }
           }}
-          onCancel={() => {
-            editSession.current += 1;
-            setEditing(false);
-          }}
+          onCancel={() => switchEditing(false)}
         />
       ) : (
         <>

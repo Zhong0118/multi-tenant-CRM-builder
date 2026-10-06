@@ -95,6 +95,59 @@ describe("record detail reading hierarchy", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("记录已保存，但刷新暂时失败");
   });
 
+  it("keeps a new edit session open when a save cancelled mid-request resolves later", async () => {
+    const { recordApi } = await import("./record-api");
+    let resolveUpdate!: (saved: RecordSummary) => void;
+    const api = {
+      ...recordApi,
+      update: vi.fn().mockReturnValue(
+        new Promise<RecordSummary>((resolve) => {
+          resolveUpdate = resolve;
+        }),
+      ),
+    };
+    const onChanged = vi.fn().mockResolvedValue(undefined);
+    const editableSchema = {
+      ...schema,
+      fields: schema.fields.map((entry) =>
+        entry.fieldKey === "name" ? { ...entry, access: "EDIT" as const } : entry,
+      ),
+      actions: { ...schema.actions, canUpdate: true },
+    };
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <RecordDetailDrawer
+          tenantCode="northwind"
+          schema={editableSchema}
+          record={record}
+          initialEditing
+          api={api}
+          onClose={vi.fn()}
+          onChanged={onChanged}
+        />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.change(screen.getByRole("textbox", { name: "客户名称" }), {
+      target: { value: "第一次保存" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存修改" }));
+    await waitFor(() => expect(api.update).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole("button", { name: /^取\s*消$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^编\s*辑$/ }));
+    fireEvent.change(screen.getByRole("textbox", { name: "客户名称" }), {
+      target: { value: "第二次输入" },
+    });
+
+    await act(async () => {
+      resolveUpdate({ ...record, version: 8 });
+    });
+
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("button", { name: "保存修改" })).toBeVisible();
+    expect(screen.getByRole("textbox", { name: "客户名称" })).toHaveValue("第二次输入");
+  });
+
   it("does not claim an assigned owner is unassigned when the roster is unavailable", () => {
     render(<QueryClientProvider client={new QueryClient()}><RecordDetailDrawer tenantCode="northwind" schema={schema} record={record} onClose={vi.fn()} onChanged={vi.fn()} /></QueryClientProvider>);
     expect(screen.getByText("负责人：已指定")).toBeVisible();
