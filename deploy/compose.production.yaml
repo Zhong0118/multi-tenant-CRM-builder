@@ -16,8 +16,9 @@ services:
       NODE_ENV: production
       PORT: "3001"
       WEB_ORIGIN: ${WEB_ORIGIN:?Set WEB_ORIGIN}
+      API_ORIGIN: ${API_ORIGIN:?Set API_ORIGIN}
       PUBLIC_REGISTRATION_ENABLED: "false"
-      FIRST_ADMIN_PHONE: ${FIRST_ADMIN_PHONE:-}
+      FIRST_ADMIN_PHONE: ${FIRST_ADMIN_PHONE:?Set the approved bootstrap phone}
       DATABASE_URL: ${DATABASE_URL:?Set the crm_app runtime URL}
       REDIS_URL: ${REDIS_URL:?Set the authenticated Redis URL}
       AI_PROVIDER: ${AI_PROVIDER:-openai}
@@ -25,6 +26,14 @@ services:
       AI_API_KEY: ${AI_API_KEY:?Set AI_API_KEY}
       AI_BASE_URL: ${AI_BASE_URL:-}
       AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-45000}
+      SMS_PROVIDER: ${SMS_PROVIDER:?Set SMS_PROVIDER to tencent}
+      TENCENT_SMS_SECRET_ID: ${TENCENT_SMS_SECRET_ID:?Set TENCENT_SMS_SECRET_ID}
+      TENCENT_SMS_SECRET_KEY: ${TENCENT_SMS_SECRET_KEY:?Set TENCENT_SMS_SECRET_KEY}
+      TENCENT_SMS_SDK_APP_ID: ${TENCENT_SMS_SDK_APP_ID:?Set TENCENT_SMS_SDK_APP_ID}
+      TENCENT_SMS_SIGN_NAME: ${TENCENT_SMS_SIGN_NAME:?Set TENCENT_SMS_SIGN_NAME}
+      TENCENT_SMS_REGISTER_TEMPLATE_ID: ${TENCENT_SMS_REGISTER_TEMPLATE_ID:?Set TENCENT_SMS_REGISTER_TEMPLATE_ID}
+      TENCENT_SMS_RESET_TEMPLATE_ID: ${TENCENT_SMS_RESET_TEMPLATE_ID:?Set TENCENT_SMS_RESET_TEMPLATE_ID}
+      TENCENT_SMS_REGION: ${TENCENT_SMS_REGION:-ap-guangzhou}
       ATTACHMENTS_STORAGE_DIR: /var/lib/crm/attachments
     networks: [edge, private]
     expose: ["3001"]
@@ -39,6 +48,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: "3000"
+      API_ORIGIN: http://api:3001
     networks: [edge]
     expose: ["3000"]
     restart: unless-stopped

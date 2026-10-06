@@ -2,7 +2,7 @@
 
 > **For agentic workers:** Use subagent-driven-development, test-first focused tasks and independent reviews. User approved continuous execution; no component approval pauses.
 
-**Status (2026-10-05): IMPLEMENTED / LOCAL VERIFIED / BROWSER RISK-BASED OBSERVED / PR AND CI PENDING / NOT MERGED.** Implementation: `206e310`, `8cf9c16`, `7fcaca6`; regression fixes: `ea660ca`, `c248fe5`. Final full603 Web tests＋architecture3, typecheck/build/contracts and diffcheck exit0; affected lint0 errors/1 existing warning;107 focused tests and independent review have no blockers. No Slice4 PR or current CI success is claimed. Browser observations and unobserved combinations remain explicit in the [final acceptance draft](../../audits/2026-10-05/crm-product-experience-v2-final-acceptance.md).
+**Status (2026-10-06): BASE HEAD VERIFIED / LATEST SAFETY FIXES PENDING / NOT MERGED.** PR #26 is OPEN. Base head `51a6269` was verified through GitHub run `37398947483`, with all six required checks SUCCESS. Parent-agent safety fixes are currently uncommitted and require separate local/remote verification; do not extend the base CI result to that later head. AI65 and API28 focused tests passed; additional tests remain pending. Browser observations and unobserved combinations remain explicit in the [final acceptance draft](../../audits/2026-10-05/crm-product-experience-v2-final-acceptance.md). Authorized deployment scope is limited to single-host internal-trial preparation; no merge or deployment is authorized.
 
 **Goal:** Make administrator configuration context, save effects, publication effects and editing priorities understandable without changing business semantics.
 

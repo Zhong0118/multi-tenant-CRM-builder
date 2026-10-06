@@ -2,7 +2,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import { createHash, timingSafeEqual } from 'node:crypto';
 
 import { ApiException } from '../../common/errors/api.exception';
-import { assertRegistrationAllowed } from './registration-policy';
+import {
+  assertRegistrationAllowed,
+  registrationNeedsInvitation,
+} from './registration-policy';
 import {
   RATE_LIMITER,
   type RateLimiter,
@@ -140,7 +143,12 @@ export class AuthService {
       assertRegistrationAllowed(
         phone,
         process.env,
-        await this.repository.findPendingInvitationByPhone(phone, this.clock()),
+        registrationNeedsInvitation(phone, process.env)
+          ? await this.repository.findPendingInvitationByPhone(
+              phone,
+              this.clock(),
+            )
+          : false,
       );
     }
     await this.pruneAuthArtifacts();
@@ -187,7 +195,9 @@ export class AuthService {
       assertRegistrationAllowed(
         phone,
         process.env,
-        await store.findPendingInvitationByPhone(phone, this.clock()),
+        registrationNeedsInvitation(phone, process.env)
+          ? await store.findPendingInvitationByPhone(phone, this.clock())
+          : false,
       );
       await this.consumeValidChallenge(store, phone, 'REGISTER', input.code);
       let user = await store.findUserByPhone(phone);

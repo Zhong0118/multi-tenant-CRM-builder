@@ -1,6 +1,6 @@
 # CRM Product Experience V2 — Final Acceptance Draft
 
-日期：2026-10-06。状态：**IMPLEMENTED / LOCAL VERIFIED / BROWSER RISK-BASED OBSERVED / PR #26 OPEN / LATEST CI PENDING / NOT MERGED**。
+日期：2026-10-06。历史草稿状态保留；截至本次文档更新，状态为：**BASE HEAD VERIFIED (`51a6269`) / PR #26 OPEN / RUN `37398947483` SIX REQUIRED CHECKS SUCCESS / LATEST SAFETY FIXES PENDING / NOT MERGED**。
 
 本文记录收尾时已确认的事实与待补项，不声明整体V2完成、完整浏览器矩阵PASS或当前CI成功。浏览器观察由主agent提供；本文整理不代表另一次独立复测。
 
@@ -10,7 +10,7 @@
 |---|---|---|
 | Slice1 | PR #24 已合并，`9cd2523` | [历史验收](../2026-10-03/crm-product-experience-v2-slice-1-acceptance.md)保留原矩阵和门禁 |
 | Slice2＋3 | PR #25 已合并，`78f55df`，gh已核实 | [历史验收](../2026-10-04/crm-product-experience-v2-slices-2-3-acceptance.md)仍是部分浏览器观察 |
-| Slice4 | 已授权，实现与回归修复已交付；新增生产准备和 AI UI 改进已在同一分支分逻辑提交；API typecheck/Jest、Web Vitest、AI affected lint 已本地通过 | 分支 `codex/crm-product-experience-v2-slice-4`，PR #26 OPEN，head `48ae0d1`，最新六项 CI 待完成，未合并 |
+| Slice4 | 已授权，实现与回归修复已交付；新增有限单机内部试运行准备和 AI UI 改进已在同一分支分逻辑提交；API typecheck/Jest、Web Vitest、AI affected lint 已本地通过。API 聚焦 AI65、API28 已通过；追加测试待完成 | 分支 `codex/crm-product-experience-v2-slice-4`，PR #26 OPEN；已核实基线 head `51a6269`，run `37398947483` 六项 required checks 全部 SUCCESS。父 agent 正在加入最终安全修复，未提交改动不继承该 CI 结论；未合并 |
 
 范围：Object/Field/Permission/Dashboard/Workflow管理员配置体验与先前证据缺口收尾；并记录已授权的内部试运行生产准备与 AI 对话 UI 改进。保留服务端权限投影、乐观锁、草稿/发布及既有业务语义；不合并、不部署。生产外部依赖、真实短信/AI/HTTPS/DB/Redis 仍未验证，AI UI 仅有本地测试证据。
 
@@ -39,15 +39,22 @@
 
 上一轮default overview503/auth401/403已有观察只保留其原角色/路由/视口标签，不在本文扩大为本轮全矩阵PASS。自动化覆盖也不替代浏览器观察。
 
+## 3.1 2026-10-06 dated status update
+
+- PR #26 remains OPEN and unmerged. GitHub verified base head `51a6269c3e814a58fb454058917a935e9b49ce23`; run `37398947483` completed with all six required checks SUCCESS: Typecheck, Contracts, Unit Tests, Database Integration, Build, and Critical API E2E.
+- The parent agent is still applying final safety fixes in the worktree. Those uncommitted changes are pending and must receive their own local and remote verification; do not claim the six-check result for any later head.
+- The authorized production scope is a bounded single-host internal trial preparation. AI configuration is mandatory. The Tencent SMS sender is implemented, but delivery is unverified. Private attachments use single-host API-mediated storage; the placeholder worker has no business queues and is omitted from the topology. Invitation probe migrations `0021` and `0022` use `crm_registration_probe` as `NOLOGIN NOBYPASSRLS` with narrowly scoped `SELECT` only; the application role is not a superuser and must not receive membership in the probe role.
+- Focused local evidence: AI65 and API28 passed; additional tests remain pending. No merge or deployment is authorized by this document.
+
 ## 3. 工程验证账本
 
-- 当前分支最新提交：`48ae0d1c1bbfb28d3bf4c8b9df7c7d5e9cf01140`；回归修复为 `9233156`，生产准备为 `d689e70`，AI UI 为 `d4324d2`，短信 wiring 为 `48ae0d1`。以下本地与远端证据均按来源区分。
+- 历史收尾提交链为 `48ae0d1`（短信 wiring）、`d4324d2`（AI UI）、`d689e70`（生产准备）、`9233156`（回归修复）；本次已核实的远端基线 head 为 `51a6269`。以下本地与远端证据均按来源区分；父 agent 后续安全修复仍待验证。
 - 最终fresh全仓 `pnpm test`：**exit0**，Web82 files / **603 unit tests**＋architecture3；`pnpm typecheck` / `pnpm build` / `pnpm contracts:check`：**全部exit0**，由父agent收集bash404结果。
 - 首轮曾出现4项dashboard-routes失败（useSearchParams mock返回null），已修并重跑；typecheck首次缺失DATABASE_ADMIN_URL的setup失败在安全inert env下纠正。历史失败不抹去，但不是当前失败。
 - 全部changed TS affected ESLint：**0 errors / 1 existing dashboard navigation warning**；`git diff --check`：**exit0**。
 - 独立review `c5b14` 发现的Workflow race已由 `c248fe5` 修复，record pending freeze由 `ea660ca` 修复；最终 **107 focused tests PASS，review无阻断**。更早records26/members15聚焦结果保留为过程证据。
-- Slice4 PR：[PR #26](https://github.com/Zhong0118/multi-tenant-CRM-builder/pull/26)，head `48ae0d1c1bbfb28d3bf4c8b9df7c7d5e9cf01140`，状态 OPEN/未合并；最新 CI run 待完成。
-- 远端六项required checks（run `37285126269`）：**全部 SUCCESS**：Typecheck、Contracts、Unit Tests、Database Integration、Build、Critical API E2E。
+- Slice4 PR：[PR #26](https://github.com/Zhong0118/multi-tenant-CRM-builder/pull/26)，已核实基线 head `51a6269c3e814a58fb454058917a935e9b49ce23`，状态 OPEN/未合并；父 agent 后续安全修复尚未形成新的远端 head。
+- 远端六项 required checks（run `37398947483`，对应基线 head `51a6269`）：**全部 SUCCESS**：Typecheck、Contracts、Unit Tests、Database Integration、Build、Critical API E2E。该结论不覆盖后续未提交修复。
 
 ## 4. 剩余浏览器与验收字段
 
