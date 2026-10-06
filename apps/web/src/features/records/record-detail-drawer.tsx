@@ -17,6 +17,7 @@ import { FollowUpPanel } from "@/features/follow-ups/follow-up-panel";
 import { RecordActivityTimeline } from "./record-activity-timeline";
 import { RecordWorkflowPanel } from "./record-workflow-panel";
 import { displayValue } from "./record-list";
+import { formatDateTime } from "./record-display-value";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
 import { defaultRecordColumnKeys } from "./record-columns";
 import { RecordForm } from "./record-form";
@@ -181,7 +182,9 @@ export function RecordDetailDrawer({
               <Typography.Text type="secondary">
                 负责人：{members.find((member) => member.id === record.ownerMemberId)?.displayName ?? (record.ownerMemberId ? "已指定" : "未指定")}
               </Typography.Text>
-              <Typography.Text type="secondary">版本 v{record.version}</Typography.Text>
+              <Typography.Text type="secondary">
+                更新于 <time dateTime={record.updatedAt}>{formatDateTime(record.updatedAt)}</time>
+              </Typography.Text>
             </div>
           </section>
 
