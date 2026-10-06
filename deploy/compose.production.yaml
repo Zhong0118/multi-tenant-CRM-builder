@@ -6,7 +6,7 @@ x-app: &app
     context: ..
     dockerfile: Dockerfile
     args:
-      NEXT_PUBLIC_API_ORIGIN: ${NEXT_PUBLIC_API_ORIGIN:?Set the public API origin before building}
+      NEXT_PUBLIC_API_ORIGIN: ${WEB_ORIGIN:?Set the same-origin public Web entry before building}
 
 services:
   api:
@@ -16,7 +16,8 @@ services:
       NODE_ENV: production
       PORT: "3001"
       WEB_ORIGIN: ${WEB_ORIGIN:?Set WEB_ORIGIN}
-      API_ORIGIN: ${API_ORIGIN:?Set API_ORIGIN}
+      API_ORIGIN: ${WEB_ORIGIN:?Set WEB_ORIGIN}
+      TRUSTED_PROXY_IP: 172.30.26.2
       PUBLIC_REGISTRATION_ENABLED: "false"
       FIRST_ADMIN_PHONE: ${FIRST_ADMIN_PHONE:?Set the approved bootstrap phone}
       DATABASE_URL: ${DATABASE_URL:?Set the crm_app runtime URL}
@@ -35,13 +36,16 @@ services:
       TENCENT_SMS_RESET_TEMPLATE_ID: ${TENCENT_SMS_RESET_TEMPLATE_ID:?Set TENCENT_SMS_RESET_TEMPLATE_ID}
       TENCENT_SMS_REGION: ${TENCENT_SMS_REGION:-ap-guangzhou}
       ATTACHMENTS_STORAGE_DIR: /var/lib/crm/attachments
-    networks: [edge, private]
+    networks:
+      edge:
+        ipv4_address: 172.30.26.3
+      private: {}
     expose: ["3001"]
     volumes: [attachments_data:/var/lib/crm/attachments]
     restart: unless-stopped
     depends_on:
-      postgres: {condition: service_healthy}
-      redis: {condition: service_healthy}
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
   web:
     <<: *app
     command: ["pnpm", "--filter", "@crm/web", "start"]
@@ -49,7 +53,9 @@ services:
       NODE_ENV: production
       PORT: "3000"
       API_ORIGIN: http://api:3001
-    networks: [edge]
+    networks:
+      edge:
+        ipv4_address: 172.30.26.4
     expose: ["3000"]
     restart: unless-stopped
   migrate:
@@ -60,7 +66,7 @@ services:
       DATABASE_ADMIN_URL: ${DATABASE_ADMIN_URL:?Set the migration owner URL}
     networks: [private]
     depends_on:
-      postgres: {condition: service_healthy}
+      postgres: { condition: service_healthy }
     restart: "no"
   provision:
     image: postgres:18-alpine
@@ -77,7 +83,7 @@ services:
       - ../infrastructure/postgres/init/001-create-app-role.sql:/provision/init.sql:ro
     networks: [private]
     depends_on:
-      postgres: {condition: service_healthy}
+      postgres: { condition: service_healthy }
     restart: "no"
   postgres:
     image: postgres:18-alpine
@@ -88,7 +94,7 @@ services:
     networks: [private]
     volumes: [postgres_data:/var/lib/postgresql]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
       interval: 5s
       timeout: 3s
       retries: 20
@@ -97,11 +103,20 @@ services:
     image: redis:7.4-alpine
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
-    command: ["sh", "-ec", "exec redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
+    command:
+      [
+        "sh",
+        "-ec",
+        'exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"',
+      ]
     networks: [private]
     volumes: [redis_data:/data]
     healthcheck:
-      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
+      test:
+        [
+          "CMD-SHELL",
+          'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG',
+        ]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -110,9 +125,10 @@ services:
     image: caddy:2.10-alpine
     environment:
       WEB_HOST: ${WEB_HOST:?Set WEB_HOST}
-      API_HOST: ${API_HOST:?Set API_HOST}
     ports: ["80:80", "443:443"]
-    networks: [edge]
+    networks:
+      edge:
+        ipv4_address: 172.30.26.2
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -121,6 +137,9 @@ services:
 
 networks:
   edge:
+    ipam:
+      config:
+        - subnet: 172.30.26.0/24
   private:
     internal: true
 volumes:

@@ -141,6 +141,52 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Build clean runtime image
+        run: >-
+          docker build --no-cache
+          --build-arg NEXT_PUBLIC_API_ORIGIN=https://app.example.invalid
+          -t crm-ci:trial .
+
+      - name: Verify offline runtime pnpm
+        run: docker run --rm --network none crm-ci:trial pnpm --version
+
+      - name: Start migration database and isolated network
+        env:
+          COMPOSE_PROJECT_NAME: crm-ci-build
+        run: |
+          docker compose up -d --wait postgres
+          docker network create --internal crm-ci-migrations
+          docker network connect --alias postgres crm-ci-migrations "$(docker compose ps -q postgres)"
+
+      - name: Verify migrations without external network access
+        run: |
+          docker run --rm --name crm-ci-migrate --network crm-ci-migrations \
+            -e DATABASE_ADMIN_URL=postgresql://crm:crm@postgres:5432/crm?schema=public \
+            crm-ci:trial pnpm --filter @crm/database prisma:migrate:deploy
+          docker run --rm --name crm-ci-migrate --network crm-ci-migrations \
+            -e DATABASE_ADMIN_URL=postgresql://crm:crm@postgres:5432/crm?schema=public \
+            crm-ci:trial pnpm --filter @crm/database prisma:migrate:deploy | tee /tmp/crm-ci-migrations-repeat.log
+          grep -F "No pending migrations to apply" /tmp/crm-ci-migrations-repeat.log
+
+      - name: Show migration database logs on failure
+        if: failure()
+        env:
+          COMPOSE_PROJECT_NAME: crm-ci-build
+        run: docker compose logs --no-color postgres
+
+      - name: Clean up temporary migration resources
+        if: always()
+        env:
+          COMPOSE_PROJECT_NAME: crm-ci-build
+        run: |
+          if docker container inspect crm-ci-migrate >/dev/null 2>&1; then
+            docker rm -f crm-ci-migrate
+          fi
+          docker compose down -v
+          if docker network inspect crm-ci-migrations >/dev/null 2>&1; then
+            docker network rm crm-ci-migrations
+          fi
+
   database-integration:
     name: Database Integration
     runs-on: ubuntu-24.04

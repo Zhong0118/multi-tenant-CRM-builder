@@ -2,9 +2,13 @@
 
 更新时间：2026-10-06（Product Experience V2：Slice4 + internal-trial preparation，未合并）
 
-**当前开发入口（2026-10-06）：** CRM V2 Slice1 已通过 PR #24 合并（`9cd2523`）；Slice2＋3 已通过 PR #25 合并（`78f55df`，gh已核实）。Slice4 已获授权，PR #26 仍为 OPEN / 未合并；最终 head 为 `ca135b2`，run `37400310350` 的六项 required checks 全部 SUCCESS。内部试运行准备是已授权的有限单机范围：AI 配置为强制项；腾讯短信适配器已实现但真实送达未验证；私有附件使用单机 API 介导存储；占位 worker 无业务队列并从拓扑省略；迁移 `0021`、`0022` 的邀请探针边界为 `crm_registration_probe`、`NOLOGIN NOBYPASSRLS`、仅限窄范围 `SELECT`，不授予应用用户该角色。API 追加回归测试、Web AI测试、配置/部署/契约门禁均已通过；浏览器为 risk-based 已观察，完整全功能角色矩阵不作 PASS 声明。真实 Docker/HTTPS/外部数据库与Redis/短信送达/AI provider/生产备份恢复仍未验证；不合并、不部署。历史证据保留在[Slice1验收](docs/audits/2026-10-03/crm-product-experience-v2-slice-1-acceptance.md)和[Slice2＋3验收](docs/audits/2026-10-04/crm-product-experience-v2-slices-2-3-acceptance.md)。
+**当前权威更新（2026-10-06，修复仍在进行）：** 只在 `.worktrees/crm-product-experience-v2-slice-4` 的 `codex/internal-trial-preparation` 工作；已核实基线 `c400b32`，PR #26 OPEN / 未合并，远端分支为 `codex/crm-product-experience-v2-slice-4`。旧 CI run `37417884483` 六门成功仅覆盖 `c400b32`，不覆盖当前未提交修复。根目录 `main` 落后，禁止作为本轮入口。用户授权 D01-D04、F01-F03、验证码持久化修复验证及 PR CI；禁止合并、部署、清理。PR 更新/push 已授权，仍禁止合并、部署、清理；不改用户 untracked 审计 review 和 brief。最新逐项证据见[内部试用修复账本](docs/audits/2026-10-06/internal-trial-remediation.md)，主 agent 后续补最终证据。
 
-`main` 与 `origin/main` 是当前开发基线。**不要把某次 `git log -1` 的输出写死进本文。**
+Docker 已补 COPY 根 `tsconfig.base.json`，tooling 预装 pnpm 11.19.0，runtime `COREPACK_ENABLE_NETWORK=0`；干净 baseline/fixed build 均因 npm `fetch failed` 中断，fixed tooling-stage build及 `--network none` pnpm11.19.0/exit0 已验证；完整应用镜像第二次重试仍 fetch failed，无外网 migration 容器仍 PENDING。D03 已在真实本地 Caddy `https://localhost:3443` 观察登录→`/workspace/nebula-demo`→刷新完整 dashboard、Secure/HttpOnly/host-only localhost cookie、退出清 cookie和再次访问 workspace 回 login；使用本地内部自签证书并绕过浏览器信任，不代表生产 DNS/TLS。Web3100/API3101、隔离 DB55435/`crm_browser_review`。D04 固定 Caddy `172.30.26.2`、API `.3`、Web `.4`、子网 `.0/24`；真实 `.10`/`.11` 两客户端同伪造 XFF 被 Caddy 覆盖为真实客户端，Echo upstream remote `.2`，bounded-proxy 8 tests pass，实际 Nest controller/service/limiter 主复验3 suites/11 tests、63次HTTP pass（各客户端独立20→429、untrusted spoof20→429、reject不创建challenge/send，repo/sender fake）；公网与外部短信 PENDING。
+
+F01 真实 delayed PATCH200 后 cancelled/reopened 新备注保留、saveEnabled=true 已观察；F02 真实本地 Playwright + AntD PATCH500 failure-retention PASS（隔离DB fixture、无AI provider调用，dialog visible，输入 `draft retained browser` 保留，role alert 重命名失败请重试），旧会话 race 仍仅组件测试。F01/F02 agent 聚焦 11 files/85 tests pass，主复验 2 files/12 tests pass；Web/API typecheck pass，API auth/config/trustedproxy 36 tests pass。F03/验证码真实主复验 Critical API E2E 2 suites/11 pass、DB36 pass、full typecheck/build/contracts exit0；F03 clean23迁移、DRAFT/ACTIVE允许与SUSPENDED/CLOSED拒绝、runtime ACL/RLS已有证据。但最终 reviewer 新发现 Important：已占 transaction pool 后独立错误计数再申请连接，>=10并发可能导致连接池饥饿；auth agent 正修12+并发；旧版12负载曾pass但未稳定复现RED，不是解决证据。当前 preflight 后内层 transaction 残留导致 catch 计数连接风险，正改统一事务释放后再计数；最终状态PENDING进一步收口，不得标完成或merge-ready。原自写 SQL 并发36 pass不是产品路径证据。`0023` 为未发布合并迁移，probe 保持受限 `NOBYPASSRLS`。腾讯短信适配器已实现但真实送达、AI provider、生产 server/DNS/TLS/数据库/Redis/备份 NOT VERIFIED；私有附件为单机 API 介导磁盘卷，占位 worker 无业务队列、未加入拓扑。完整角色/视口浏览器矩阵不作 PASS 声明。Slice1 PR #24 `9cd2523`、Slice2＋3 PR #25 `78f55df` 已合并，历史证据保留在[Slice1验收](docs/audits/2026-10-03/crm-product-experience-v2-slice-1-acceptance.md)和[Slice2＋3验收](docs/audits/2026-10-04/crm-product-experience-v2-slices-2-3-acceptance.md)。
+
+下文 `main` 合并记录为历史项目事实，不是本轮入口；本轮按顶部 worktree/分支工作。**不要把某次 `git log -1` 的输出写死为永久基线。**
 Workflow V1 与 Action Engine V1 **均已合并进入 `main`**。Action Engine V1 通过 PR #1 合并，合并提交 `e590c23da6aa9c5fe0d0c3cd71250270ea265ebd`（该 SHA 只作为这一次历史事实记录，不是"main 永远等于它"）。Workflow Required Field Visibility Hardening 已通过 PR #2 合并；Record Required Field Visibility Hardening 已通过 PR #3 合并（均详见下方）。
 
 验收见 `docs/audits/2026-09-15/workflow-v1-acceptance.md` 与
@@ -155,7 +159,7 @@ git log -10 --oneline
 - 公司管理员创建通用业务对象，配置 12 类运行时字段、默认表格视图和员工权限。
 - 动态字段枚举中保留 `ATTACHMENT`，但该**动态字段类型**尚未与记录附件实体联动，草稿之外不接受。
 - 记录详情已提供**独立附件面板**：真实上传（PDF / PNG / JPEG / TXT / CSV / DOCX / XLSX）、下载、删除，路由走 `SessionAuthGuard + WorkspaceGuard` 并做记录权限检查。
-- 附件字节当前存于 PostgreSQL `bytea`，单文件上限 5 MB；生产环境应迁移到私有对象存储。
+- 附件当前采用单机 API 介导的私有磁盘存储，Compose 持久化 `attachments_data`；PostgreSQL 保留 metadata。不是云对象存储，数据库与附件卷需共同备份；真实恢复尚未验证。
 - 草稿可编辑；发布后生成不可变快照；运行时只读当前发布快照。
 - 动态记录支持新增、查询、查看、编辑和软删除。
 - 记录列表支持标题及可见文本字段关键词搜索；负责人和 `SINGLE_SELECT` / `MULTI_SELECT` / `MEMBER` / `DATE` / `DATETIME` / `NUMBER` / `MONEY` / `BOOLEAN` / 文本包含 / 空值筛选；系统列与可排序业务列的三态排序。
@@ -237,7 +241,7 @@ Transition 不再只是改状态，还能产生结构化业务动作：
 
 ## 6. 当前本地环境与演示账号
 
-最近一次实际验证使用的是用户本机服务，不是 Docker 数据库：
+本轮最新服务与隔离数据库见顶部。以下是历史环境记录，不得默认连接或清理：
 
 - Web：`http://localhost:3000/`
 - API：`http://localhost:3001/`
@@ -364,18 +368,18 @@ Transition 不再只是改状态，还能产生结构化业务动作：
 
 ### 尚未实现
 
-- 真实短信供应商。
+- 真实短信送达：腾讯适配器已实现，批准配置/真实收件人验收仍 NOT VERIFIED。
 - 短信、邮件或飞书主动跟进提醒。个人任务页和逾期筛选已落地；旧活动上的 `nextActionAt` 未自动迁移成待办，避免重复任务和修改历史。
 - 状态机、自动转换动作，以及重复客户识别、合并和去重。显式记录关联已落地。
 - 原生 Excel 工作簿导入。CSV 字段映射、部分失败回执、失败行重试和服务端批次幂等已落地。
 - 个人视图跨设备同步。筛选/排序命名保存当前浏览器已落地。
-- 附件私有对象存储及动态字段联动。独立记录附件面板的真实上传、下载、权限已落地，当前存储于数据库。
+- 附件云私有对象存储及动态字段联动。独立记录附件面板已有上传、下载、权限路径，当前为单机私有磁盘卷，不是云对象存储。
 - 真正的后台任务中心（当前操作页只列成功的模板应用）。
 - 独立统计页与专门导入导出中心仍是占位；公司审计、记录内 CSV 导入导出已实现。
 - 平台管理员受控进入租户协助排错的代管流程。
 - 模板升级同步到已初始化公司。
 - 生产数据库备份恢复、监控告警、日志脱敏与保留、迁移回滚、域名、HTTPS、Cookie 和跨域配置。
-- 附件目前存在 PostgreSQL `bytea`（单文件 5MB）。上生产前必须换成对象存储。
+- 单机附件卷的生产备份/恢复与多实例共享存储尚未验证；内部单机试用边界不等于多实例或云对象存储验收。
 - 仓库是公开的，所以口令不写进本文（见第 6 节）；演示口令本身由公开的种子常量决定，只能视为公开信息，不得复用到任何真实环境。
 - 根 `engines` 已从 `>=20.9.0` 提高到 `>=24`：`@crm/database` 是 ESM 包而 `apps/api` 编译为 CJS，需要支持 `require(esm)` 的 Node，而本地只验证过 Node 24.19.0。若确认 22 LTS 可用，可以再放宽下限，但必须实测过再改。
 - **CI 与分支保护已就位（Engineering Gate Lite PR #4 + Hardening PR #11/#12）**：`.github/workflows/ci.yml` 存在；`main` 已受保护，六个 required checks 为 `Typecheck` / `Contracts` / `Unit Tests` / `Database Integration` / `Build` / `Critical API E2E`（读回值：`strict: true`、`allow_force_pushes: false`、`allow_deletions: false`、required approving reviews = 0、`enforcement_level: everyone`）。Database Integration 与 Critical API E2E 各自起仓库自己的 PostgreSQL 18（`compose.yaml`）；Critical job 用 `crm_app` / `NOBYPASSRLS` 跑 `pnpm --filter @crm/api test:e2e:critical`，跑完 `docker compose down -v`。Hardening 验收见 `docs/audits/2026-09-17/engineering-gate-hardening-acceptance.md`。**`enforce_admins` 已打开**：管理员同样不能直推 `main`，必须走 PR + 六项全绿。该子资源只接受 `POST`(启用) / `DELETE`(停用)，**没有 `PATCH`**。repo-wide lint 仍不是 required。**AI Assistant V1A = COMPLETED**（PR A/B/C MERGED AND VERIFIED；#17 merge `b3bc59a`；browser walkthrough VERIFIED；post-merge 六门 SUCCESS）；**AI Assistant V1B = COMPLETED — MERGED AND VERIFIED**（PR #22 MERGED；merge `fd0410fe4548704ee14e1027ac4d09a243195a70`；post-merge main CI run `36979987780` 六门 SUCCESS）。
@@ -391,7 +395,7 @@ Worker 进程可以连接 Redis，但没有注册业务队列。
 
 验证码的挑战记录、哈希保存、10 分钟过期、最多五次错误、手机号/IP/设备频率限制和一次性消费已经实现。
 
-当前 `VerificationSender` 只有开发环境固定码实现。生产环境会明确报错 `Production verification sender is not configured`，因此尚不能部署为真实短信登录。
+当前已有腾讯短信适配器，生产要求 `SMS_PROVIDER=tencent` 及批准配置，禁止开发固定码。真实短信送达仍 NOT VERIFIED。验证码错误次数在真实 Prisma 事务回滚的问题已取得 RED：首错 expected1/actual0、8并发 expected5/actual0；真实主复验 Critical API E2E 2 suites/11、DB36已通过，但随后 reviewer 发现>=10并发时 transaction pool 占用后再取独立计数连接可能饥饿，12+并发修复/回归正在进行，最终PENDING。内存仓库单测和原自写 SQL 36 pass 不得替代产品路径数据库证据。
 
 接入前需要用户提供：
 
@@ -465,7 +469,7 @@ HANDOFF.md 与 docs/superpowers/plans/2026-09-01-productization-follow-up.md。
 - chat会话.md
 - .superpowers/sdd/2026-08-26-platform-business-template-designer/progress.md
 
-`main` 与 `origin/main` 已同步，含 Workflow V1 与 Action Engine V1。不要 reset、rebase、强推或部署。
+本轮必须使用顶部 worktree 的 codex/internal-trial-preparation，基线 c400b32；根 main 落后禁止使用。旧 CI 只覆盖旧 SHA。不要 reset、rebase、强推、合并、部署或清理；保留用户 untracked review/brief。
 Action Engine V1 已完成、验收，并已通过 PR #1 合并进 `main`：
 验收文档见 `docs/audits/2026-09-16/action-engine-v1-acceptance.md`。
 
@@ -478,7 +482,7 @@ Automation / Dedup / Notification / Template Upgrade / Agent 同样不要开始�
 `docs/superpowers/specs/2026-09-16-ai-assistant-v1-design.md` 仍是上位方向。V1B 已完成并合并进入 main；Production Essentials 仍为 PLANNED。
 近期实际执行路线看 `docs/superpowers/plans/2026-09-16-crm-lean-roadmap.md`；
 `2026-09-15-crm-process-roadmap.md` 只是长期需求池，不要把它标记为 PLANNED 的阶段当成已批准的开发任务。
-短信按用户要求暂缓（腾讯云凭据未提供）。
+腾讯短信适配器已实现，真实送达未验证；本轮验证码修复/验证按顶部账本执行，不将外部短信或 AI 声称为 PASS。
 
 第一轮页面验收已覆盖：业务对象设计器、记录列表与权限边界、成员覆盖、离职交接、
 Dashboard 基础操作（复制 / 归档 / 组件顺序）、平台审计、公司列表、模板列表、

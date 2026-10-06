@@ -1,7 +1,11 @@
 {$WEB_HOST} {
-  reverse_proxy web:3000
-}
-
-{$API_HOST} {
-  reverse_proxy api:3001
+  handle /api/v1/* {
+    reverse_proxy api:3001 {
+      # Only the actual peer reaches the application's IP limiter.
+      header_up X-Forwarded-For {remote_host}
+    }
+  }
+  handle {
+    reverse_proxy web:3000
+  }
 }

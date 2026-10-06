@@ -1,3 +1,4 @@
+import { isIP } from 'node:net';
 import { z } from 'zod';
 
 function protocol(value: string): string | undefined {
@@ -33,6 +34,10 @@ const productionSchema = z.object({
     .string()
     .url()
     .refine((value) => protocol(value) === 'https:'),
+  TRUSTED_PROXY_IP: z
+    .string()
+    .refine((value) => isIP(value) !== 0)
+    .optional(),
   PUBLIC_REGISTRATION_ENABLED: z.literal('false'),
   FIRST_ADMIN_PHONE: z.string().trim().min(1),
   AI_PROVIDER: z.literal('openai'),
