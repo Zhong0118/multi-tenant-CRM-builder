@@ -1,6 +1,6 @@
 import { fireEvent, render as rtlRender, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { recordApi } from "./record-api";
 import Link from "next/link";
 import { RecordWorkspace, type RecordWorkspaceProps } from "./record-workspace";
@@ -125,6 +125,24 @@ describe("record workspace navigation", () => {
     vi.spyOn(screen.getByRole("link", { name: "客户 A 链接" }), "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
     fireEvent.click(screen.getByRole("button", { name: "关闭" }));
     await waitFor(() => expect(screen.getByRole("link", { name: "客户 A 链接" })).toHaveFocus());
+  });
+  it("focuses the record link in the list route's new workspace after close", async () => {
+    // Real lists are laid out; jsdom reports no client rects for any element.
+    const rects = vi.spyOn(HTMLAnchorElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
+    onTestFinished(() => rects.mockRestore());
+    const { rerender, unmount } = render(<RecordWorkspace {...props} openRecord={record} />);
+    const closing = screen.getByRole("link", { name: "客户 A 链接" });
+    fireEvent.click(screen.getByRole("button", { name: "关闭" }));
+    await waitFor(() => expect(closing).toHaveFocus());
+    // The list URL mounts a fresh workspace whose list replaces the old link.
+    rerender(<RecordWorkspace {...props} />);
+    const arrived = screen.getByRole("link", { name: "客户 A 链接" });
+    expect(arrived).not.toBe(closing);
+    await waitFor(() => expect(arrived).toHaveFocus());
+    // The request is settled: a later visit to the list does not steal focus.
+    unmount();
+    render(<RecordWorkspace {...props} />);
+    expect(document.body).toHaveFocus();
   });
   it.each(["关闭", "删除"])("%s returns to the exact validated source", async (action) => {
     sessionStorage.clear();

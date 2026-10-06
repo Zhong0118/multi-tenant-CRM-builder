@@ -31,6 +31,10 @@ export interface RecordWorkspaceProps {
   returnTo?: string;
 }
 
+// Closing a record navigates to the list route, which mounts a new workspace
+// and a new list. The row to focus has to outlive the workspace that closed it.
+let pendingListFocus: { path: string; until: number } | undefined;
+
 /**
  * Holds the list and the deep-linked detail together. A record URL renders the
  * list behind its drawer, so closing the drawer returns to the same filters and
@@ -58,7 +62,6 @@ function RecordWorkspaceSession({
   const client = useQueryClient();
   const [record, setRecord] = useState(openRecord);
   const listRef = useRef<HTMLDivElement>(null);
-  const focusRecordId = useRef<string | undefined>(undefined);
   const listPath = `/workspace/${tenantCode}/objects/${schema.object.code}`;
   const search = recordQuerySearch(query, {
     ...DEFAULT_RECORD_QUERY,
@@ -68,13 +71,15 @@ function RecordWorkspaceSession({
   const returnPath = validatedReturnTo(tenantCode, returnTo) ?? `${listPath}${search ? `?${search}` : ""}`;
 
   useEffect(() => {
-    if (record || !focusRecordId.current) return;
-    const path = `${listPath}/${encodeURIComponent(focusRecordId.current)}`;
+    const pending = pendingListFocus;
+    if (record || !pending || pending.until < Date.now()) return;
     const link = Array.from(listRef.current?.querySelectorAll<HTMLAnchorElement>("a[href]") ?? [])
-      .find((anchor) => new URL(anchor.href).pathname === path && anchor.getClientRects().length > 0);
+      .find((anchor) => new URL(anchor.href).pathname === pending.path && anchor.getClientRects().length > 0);
     link?.focus({ preventScroll: true });
-    focusRecordId.current = undefined;
-  }, [record, listPath]);
+    // The closing workspace focuses its own list too; only the list route's
+    // workspace, which opened without a record, settles the request.
+    if (!openRecord) pendingListFocus = undefined;
+  }, [record, openRecord]);
 
   return (
     <>
@@ -100,7 +105,9 @@ function RecordWorkspaceSession({
           initialEditing={initialEditing}
           followUpId={followUpId}
           onClose={() => {
-            if (!validatedReturnTo(tenantCode, returnTo)) focusRecordId.current = record.id;
+            if (!validatedReturnTo(tenantCode, returnTo)) {
+              pendingListFocus = { path: `${listPath}/${encodeURIComponent(record.id)}`, until: Date.now() + 3000 };
+            }
             markSourceReturnFocus(tenantCode, returnTo);
             setRecord(undefined);
             router.replace(returnPath);
