@@ -101,7 +101,8 @@ describe("WorkspaceHomeView", () => {
             id: "publication-7",
             sourceDraftVersion: 3,
             number: 7,
-            publishedAt: "2026-08-01T00:00:00.000Z",
+            // Noon UTC keeps the formatted day the same across time zones.
+            publishedAt: "2026-08-01T12:00:00.000Z",
           },
         }}
       />,
@@ -111,7 +112,8 @@ describe("WorkspaceHomeView", () => {
     expect(
       tasks.compareDocumentPosition(dates) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    expect(dates).toHaveTextContent("发布 #7");
+    expect(dates).toHaveTextContent("工作台于 8月1日发布");
+    expect(dates).not.toHaveTextContent("#7");
     expect(
       [...container.querySelectorAll("[data-widget-id]")].map((widget) =>
         widget.getAttribute("data-widget-id"),
