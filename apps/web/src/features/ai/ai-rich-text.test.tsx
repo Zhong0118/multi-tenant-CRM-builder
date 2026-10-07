@@ -46,6 +46,71 @@ describe("AnswerText", () => {
     );
   });
 
+  it("keeps an escaped pipe inside its cell", () => {
+    render(
+      <AnswerText
+        content={[
+          "| 客户 | 金额 | 状态 |",
+          "| --- | ---: | --- |",
+          "| 华东物流 | ¥1,200 \\| 含税 | 已回款 |",
+        ].join("\n")}
+      />,
+    );
+    expect(screen.getAllByRole("columnheader")).toHaveLength(3);
+    const cells = screen.getAllByRole("cell").map((cell) => cell.textContent);
+    expect(cells).toEqual(["华东物流", "¥1,200 | 含税", "已回款"]);
+  });
+
+  it("shows a table row wider than its header as written instead of dropping cells", () => {
+    const { container } = render(
+      <AnswerText
+        content={[
+          "| 客户 | 金额 |",
+          "| --- | --- |",
+          "| 华东物流 | ¥1,200 | 含税 |",
+        ].join("\n")}
+      />,
+    );
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(container.textContent).toContain("| 华东物流 | ¥1,200 | 含税 |");
+  });
+
+  it("pads short rows and keeps a mismatched separator as text", () => {
+    render(
+      <AnswerText
+        content={["| 客户 | 金额 |", "| --- | --- |", "| 华东物流 |"].join(
+          "\n",
+        )}
+      />,
+    );
+    expect(screen.getAllByRole("cell")).toHaveLength(2);
+
+    const { container } = render(
+      <AnswerText content={"客户 | 金额 | 备注\n| --- | --- |\n合计"} />,
+    );
+    expect(container.querySelector("table")).toBeNull();
+    expect(container.textContent).toContain("客户 | 金额 | 备注");
+    expect(container.textContent).toContain("合计");
+  });
+
+  it("keeps a trailing # that belongs to the heading text", () => {
+    render(<AnswerText content={"## 接入 C#\n\n### 小结 ##"} />);
+    expect(
+      screen.getByRole("heading", { name: "接入 C#" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "小结" })).toBeInTheDocument();
+  });
+
+  it("keeps the model's list numbers", () => {
+    const { container } = render(
+      <AnswerText content={"1. 华东物流\n3. 南方医疗\n7. 北辰制造"} />,
+    );
+    const values = [...container.querySelectorAll("ol > li")].map(
+      (item) => (item as HTMLLIElement).value,
+    );
+    expect(values).toEqual([1, 3, 7]);
+  });
+
   it("keeps fenced code verbatim, including an unclosed fence while streaming", () => {
     const { container } = render(
       <AnswerText content={'看这个：\n```json\n{\n  "stage": "proposal"'} />,

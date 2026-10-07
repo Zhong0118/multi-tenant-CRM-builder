@@ -8,32 +8,57 @@ import styles from "./ai-assistant.module.css";
 type Block =
   | { kind: "heading"; level: number; text: string }
   | { kind: "paragraph"; lines: string[] }
-  | { kind: "list"; ordered: boolean; start: number; items: string[] }
+  | { kind: "list"; ordered: boolean; numbers: number[]; items: string[] }
   | { kind: "quote"; lines: string[] }
   | { kind: "code"; language: string; text: string }
   | { kind: "table"; header: string[]; rows: string[][] };
 
 const FENCE = /^\s*```\s*([\w+-]*)\s*$/;
-const HEADING = /^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/;
+// A closing `#` run only counts when separated by a space, so "C#" survives.
+const HEADING = /^\s{0,3}(#{1,6})\s+(.+?)(?:\s+#+)?\s*$/;
 const UNORDERED = /^\s{0,3}[-*+]\s+(.*)$/;
 const ORDERED = /^\s{0,3}(\d{1,9})[.)]\s+(.*)$/;
 const QUOTE = /^\s{0,3}>\s?(.*)$/;
 const TABLE_SEPARATOR = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/;
 
-function tableCells(line: string): string[] {
-  const trimmed = line.trim().replace(/^\|/, "").replace(/\|$/, "");
-  return trimmed.split("|").map((cell) => cell.trim());
+// Splits a table row on unescaped pipes; `\|` is a literal pipe inside a
+// cell (e.g. "¥1,200 \| 含税"). Returns null when the line has no delimiter.
+function tableCells(line: string): string[] | null {
+  const text = line.trim();
+  const cells: string[] = [];
+  let cell = "";
+  let delimiters = 0;
+  let endsWithDelimiter = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    endsWithDelimiter = false;
+    if (char === "\\" && text[index + 1] === "|") {
+      cell += "|";
+      index += 1;
+    } else if (char === "|") {
+      cells.push(cell);
+      cell = "";
+      delimiters += 1;
+      endsWithDelimiter = true;
+    } else {
+      cell += char;
+    }
+  }
+  cells.push(cell);
+  if (delimiters === 0) return null;
+  if (text.startsWith("|")) cells.shift();
+  if (endsWithDelimiter && cells.length > 0) cells.pop();
+  return cells.map((item) => item.trim());
 }
 
 function isTableStart(lines: string[], index: number): boolean {
   const head = lines[index];
   const separator = lines[index + 1];
-  return (
-    head !== undefined &&
-    separator !== undefined &&
-    head.includes("|") &&
-    TABLE_SEPARATOR.test(separator)
-  );
+  if (head === undefined || separator === undefined) return false;
+  if (!TABLE_SEPARATOR.test(separator)) return false;
+  const header = tableCells(head);
+  const columns = tableCells(separator)?.length ?? 1;
+  return !!header && header.length > 0 && header.length === columns;
 }
 
 function startsBlock(lines: string[], index: number): boolean {
@@ -82,18 +107,30 @@ export function parseAnswerBlocks(content: string): Block[] {
       continue;
     }
     if (isTableStart(lines, index)) {
-      const header = tableCells(line);
+      const header = tableCells(line)!;
+      const source = [line, lines[index + 1]];
       const rows: string[][] = [];
       index += 2;
+      let row: string[] | null;
       while (
         index < lines.length &&
-        lines[index].includes("|") &&
-        lines[index].trim()
+        lines[index].trim() &&
+        (row = tableCells(lines[index]))
       ) {
-        rows.push(tableCells(lines[index]));
+        rows.push(row);
+        source.push(lines[index]);
         index += 1;
       }
-      blocks.push({ kind: "table", header, rows });
+      // A row wider than the header cannot be placed without dropping cells
+      // or shifting values into the wrong column; show what the model wrote.
+      if (rows.some((cells) => cells.length > header.length)) {
+        blocks.push({
+          kind: "paragraph",
+          lines: source.map((item) => item.trim()),
+        });
+      } else {
+        blocks.push({ kind: "table", header, rows });
+      }
       continue;
     }
     const ordered = ORDERED.exec(line);
@@ -102,10 +139,12 @@ export function parseAnswerBlocks(content: string): Block[] {
       const isOrdered = !!ordered;
       const pattern = isOrdered ? ORDERED : UNORDERED;
       const items: string[] = [];
+      const numbers: number[] = [];
       while (index < lines.length) {
         const match = pattern.exec(lines[index]);
         if (match) {
           items.push(isOrdered ? match[2] : match[1]);
+          numbers.push(isOrdered ? Number(match[1]) : items.length);
           index += 1;
           continue;
         }
@@ -120,7 +159,7 @@ export function parseAnswerBlocks(content: string): Block[] {
       blocks.push({
         kind: "list",
         ordered: isOrdered,
-        start: ordered ? Number(ordered[1]) : 1,
+        numbers,
         items,
       });
       continue;
@@ -184,12 +223,12 @@ export function AnswerText({ content }: { content: string }) {
             );
           case "list":
             return block.ordered ? (
-              <ol
-                key={index}
-                start={block.start === 1 ? undefined : block.start}
-              >
+              <ol key={index}>
                 {block.items.map((item, itemIndex) => (
-                  <li key={itemIndex}>{renderInline(item)}</li>
+                  // Keep the model's numbering even when it is not 1, 2, 3.
+                  <li key={itemIndex} value={block.numbers[itemIndex]}>
+                    {renderInline(item)}
+                  </li>
                 ))}
               </ol>
             ) : (
