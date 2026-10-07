@@ -1447,6 +1447,30 @@ describe("AiAssistantPage", () => {
       ).not.toBeInTheDocument();
     });
 
+    it("reports a retry stream that closes without finishing", async () => {
+      mocks.conversation = "c1";
+      mocks.listMessages.mockResolvedValue(history());
+      mocks.retryTurn.mockImplementation(async function* () {
+        yield {
+          event: "conversation.ready",
+          data: { conversationId: "c1", title: "问", turnId: "t-failed" },
+        };
+        yield { event: "turn.started", data: { turnId: "t-failed" } };
+        yield { event: "assistant.delta", data: { text: "说到一半" } };
+      });
+      renderPage();
+      await screen.findByText("AI 暂时没有响应，请重试");
+      fireEvent.click(screen.getByRole("button", { name: "重试" }));
+
+      expect(await screen.findByText("连接已中断")).toBeVisible();
+      expect(screen.getByText("说到一半")).toBeVisible();
+      expect(
+        screen.queryByText("AI 暂时没有响应，请重试"),
+      ).not.toBeInTheDocument();
+      expect(screen.getAllByRole("button", { name: "重试" })).toHaveLength(1);
+      expect(screen.getByRole("button", { name: "发送" })).toBeInTheDocument();
+    });
+
     it("reports a retry that fails the same way exactly once", async () => {
       mocks.conversation = "c1";
       mocks.listMessages.mockResolvedValue(history());

@@ -222,6 +222,9 @@ export function AiAssistantPage({
           });
         }
       }
+      // A stream that closes without a terminal event was cut off; the
+      // reducer ignores this once the turn has already finished.
+      if (stillCurrent()) dispatch({ type: "network" });
     } catch (error) {
       if (!stillCurrent()) return;
       if (controller.signal.aborted) {
