@@ -5,6 +5,7 @@
 //                   SDK retries 5xx twice by itself, so one turn = 3 calls.
 //   含「长」   → long markdown with code block + table, streamed slowly
 //   含「慢」   → very slow stream (cancel path)
+//   含「表格」 → a table with an escaped pipe, then one with a row wider than its header
 //   otherwise → short markdown reply
 import http from 'node:http';
 
@@ -54,6 +55,19 @@ const LONG = `这里是本周跟进情况的汇总。
 
 另外，行内代码如 \`followUp.dueAt\` 也应清晰可读。整体来看，本周有 **12** 条进行中的商机，比上周多 2 条。`;
 
+const TABLE = `回款明细如下：
+
+| 客户 | 金额 | 状态 |
+| --- | --- | --- |
+| 华东物流 | ¥1,200 \\| 含税 | 已回款 |
+| 南方医疗器械 | ¥3,400 | 待回款 |
+
+下面这张表有一行比表头多一列：
+
+| 客户 | 金额 | 状态 |
+| --- | --- | --- |
+| 星河教育 | ¥800 | 未税 | 待确认 |`;
+
 const SHORT = `可以。根据你当前可见的数据，**今天到期的跟进有 2 条**：
 
 - 华东物流：确认报价单
@@ -92,7 +106,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  const reply = text.includes('长') || text.includes('慢') ? LONG : SHORT;
+  const reply = text.includes('表格') ? TABLE : text.includes('长') || text.includes('慢') ? LONG : SHORT;
   const delay = text.includes('慢') ? 400 : text.includes('长') ? 60 : 30;
   let closed = false;
   req.on('close', () => { closed = true; });
