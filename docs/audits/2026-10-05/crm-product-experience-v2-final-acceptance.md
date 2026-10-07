@@ -1,10 +1,10 @@
 # CRM Product Experience V2 — Final Acceptance Draft
 
-日期：2026-10-06。**当前权威状态：PR #26 OPEN / NOT MERGED / NOT DEPLOYED / CODE CI VERIFIED, DOCUMENT FOLLOW-UP CI PENDING**。工作树 `.worktrees/crm-product-experience-v2-slice-4`，本地分支 `codex/internal-trial-preparation`；根 `main` 落后禁止使用。代码 SHA `58da1ce` 的 run `37444823699` 六门全部 SUCCESS；随后 remediation `3432aa4` 的 run `37445633285` 六门全部 SUCCESS。本次文档 follow-up 不把任何 SHA 写成永久 latest。旧 SHA/run 与下方矩阵仅保留其历史范围。
+日期：2026-10-06。**当前权威状态：PR #26 OPEN / NOT MERGED / NOT DEPLOYED**（2026-10-07 更新）。工作树 `.worktrees/crm-product-experience-v2-slice-4`，本地分支 `codex/internal-trial-preparation`；根 `main` 落后禁止使用。代码 `58da1ce` / run `37444823699`、remediation `3432aa4` / run `37445633285`、文档 follow-up `df90be3` / run `37446164020` 六门全部 SUCCESS。2026-10-07 P2-R（旧保存后服务器刷新丢失新草稿）修复提交在 `df90be3` 之后，其 CI 以 PR #26 当前 HEAD 的检查为准；任何 SHA 都不是永久 latest。旧 SHA/run 与下方矩阵仅保留其历史范围。
 
 ## 2026-10-06 内部试用修复权威更新
 
-用户要求验证 D01-D04、F01-F03、验证码事务持久化并核实 PR CI；PR 更新/push 已授权，仍禁止合并、部署、清理。代码 `58da1ce` / run `37444823699` 六门成功；remediation follow-up `3432aa4` 已推送。文档 follow-up 后的 CI 仍待核实，不把任一 SHA 写成永久 latest。保留用户 untracked review/brief。逐项证据见[修复账本](../2026-10-06/internal-trial-remediation.md)。
+用户要求验证 D01-D04、F01-F03、验证码事务持久化并核实 PR CI；PR 更新/push 已授权，仍禁止合并、部署、清理。代码 `58da1ce` / run `37444823699` 六门成功；remediation `3432aa4` / run `37445633285`、文档 follow-up `df90be3` / run `37446164020` 六门同样成功，不把任一 SHA 写成永久 latest。保留用户 untracked review/brief。逐项证据见[修复账本](../2026-10-06/internal-trial-remediation.md)。
 
 - D01/D02：Docker COPY 根 `tsconfig.base.json`、tooling 预装 pnpm 11.19.0、runtime `COREPACK_ENABLE_NETWORK=0`。旧本地 npm `fetch failed` 仅保留为历史网络事实；代码 run `37444823699` 的 Build 2m50（日志 `/tmp/crm-review-ci-build.log`）已通过无缓存 full Docker、offline pnpm11.19.0、internal-network migration 两次门禁，23 migrations applied 且 repeat 无 Pending。
 - D03：同源 `WEB_ORIGIN` + Caddy `/api/v1`；真实本地 `https://localhost:3443` 登录→`/workspace/nebula-demo`→刷新完整 dashboard、Secure/HttpOnly/host-only localhost cookie、退出清 cookie后 workspace 回 login 已观察。内部自签证书绕过浏览器信任，Web3100/API3101、DB55435/`crm_browser_review`；不等于生产 DNS/TLS。
@@ -80,6 +80,6 @@
 
 ## 5. 收尾判断
 
-**历史 V2 产品体验证据保留；本轮内部试用修复仍在进行，完整镜像、无外网 migration、F03/验证码完整产品路径数据库回归和最新 SHA 六门仍 PENDING，不能声称整体验收完成或合并就绪。** V2现有交付包括公共框架和记录列表、详情下一步/历史与上下文返回、任务优先员工工作台，以及草稿/发布/即时覆盖语义清楚的管理员配置面。冲突输入、提交后刷新失败、SSR故障隔离和权限错误边界已有代表性真实证据，历史体验 review 已有修复证据，本轮 D01-D04/F01-F03 review 阻断状态仅以上述权威更新与修复账本为准。
+**历史 V2 产品体验证据保留；完整镜像、无外网 migration、F03/验证码产品路径数据库回归已有证据，`df90be3` 及之前各 SHA 六门成功（见修复账本）；P2-R 修复提交的 CI 以 PR #26 当前 HEAD 为准。生产部署、真实短信、真实 AI Provider 仍未验证，不能声称整体验收完成；合并与部署由用户决定。** V2现有交付包括公共框架和记录列表、详情下一步/历史与上下文返回、任务优先员工工作台，以及草稿/发布/即时覆盖语义清楚的管理员配置面。冲突输入、提交后刷新失败、SSR故障隔离和权限错误边界已有代表性真实证据，历史体验 review 已有修复证据，本轮 D01-D04/F01-F03 review 阻断状态仅以上述权威更新与修复账本为准。
 
 浏览器采用risk-based观察：本文逐路径角色/视口有效，**不声称所有功能×两角色×三宽度完整PASS**；剩余未观察组合、完整键盘/长内容覆盖为已披露验收限制，不笼统否定已实现能力。复杂Object/Workflow390保留桌面边界；Dashboard即时元配置不改旧发布snapshot含义；真实Provider与生产部署不在范围。历史审计只追加Post-merge status，不重写原始矩阵。

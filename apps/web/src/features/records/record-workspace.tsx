@@ -37,7 +37,7 @@ export interface RecordWorkspaceProps {
  * page the member arrived with.
  */
 export function RecordWorkspace(props: RecordWorkspaceProps) {
-  const key = `${props.tenantCode}:${props.schema.object.code}:${props.openRecord?.id ?? "list"}:${props.openRecord?.version ?? ""}:${props.initialEditing ? "edit" : "view"}:${props.followUpId ?? ""}`;
+  const key = `${props.tenantCode}:${props.schema.object.code}:${props.openRecord?.id ?? "list"}:${props.initialEditing ? "edit" : "view"}:${props.followUpId ?? ""}`;
   return <RecordWorkspaceSession key={key} {...props} />;
 }
 
@@ -57,6 +57,15 @@ function RecordWorkspaceSession({
   const router = useRouter();
   const client = useQueryClient();
   const [record, setRecord] = useState(openRecord);
+  // A refreshed server render carries the same record at a newer version. It
+  // updates the open drawer in place, so an edit started after an earlier save
+  // keeps its draft; a different record changes the session key instead.
+  const [serverRecord, setServerRecord] = useState(openRecord);
+  if (serverRecord !== openRecord) {
+    setServerRecord(openRecord);
+    // A refresh can land after close or delete, before their route change does.
+    if (record) setRecord(openRecord);
+  }
   const listRef = useRef<HTMLDivElement>(null);
   const focusRecordId = useRef<string | undefined>(undefined);
   const listPath = `/workspace/${tenantCode}/objects/${schema.object.code}`;

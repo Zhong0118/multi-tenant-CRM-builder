@@ -1,4 +1,4 @@
-import { fireEvent, render as rtlRender, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render as rtlRender, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { recordApi } from "./record-api";
@@ -251,7 +251,14 @@ describe("record workspace navigation", () => {
     rerender(<RecordWorkspace {...props} openRecord={record} />);
     expect(screen.getByRole("dialog")).toHaveTextContent("客户 A");
   });
-  it("resets record edits when the URL selects another record or a newer server version", () => {
+  it.each(["关闭", "删除"])("keeps the drawer shut when a refresh lands after %s but before the route change", async (action) => {
+    const { rerender } = render(<RecordWorkspace {...props} openRecord={record} />);
+    fireEvent.click(screen.getByRole("button", { name: action }));
+    await waitFor(() => expect(router.replace).toHaveBeenCalled());
+    rerender(<RecordWorkspace {...props} openRecord={{ ...record, version: 2 }} />);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+  it("follows the URL to another record and adopts its newer server version", () => {
     const { rerender } = render(
       <RecordWorkspace {...props} openRecord={record} />,
     );
@@ -279,5 +286,167 @@ describe("record workspace navigation", () => {
       />,
     );
     expect(screen.getByRole("dialog")).toHaveTextContent("服务器更新");
+  });
+
+  it("synchronizes refreshed server values in reading mode", () => {
+    composition.real = true;
+    const view = render(<RecordWorkspace {...props} openRecord={record} />);
+    view.rerender(<RecordWorkspace {...props} openRecord={{ ...record, version: 3, title: "服务器最新", values: { name: "服务器最新" } }} />);
+    expect(screen.getByText("版本 v3")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: /^编\s*辑$/ }));
+    expect(screen.getByRole("textbox", { name: "客户名称" })).toHaveValue("服务器最新");
+  });
+
+  it.each(["initialEditing", "id", "tenant", "object", "followUp"])("resets an active draft on %s route identity change", (identity) => {
+    composition.real = true;
+    const view = render(<RecordWorkspace {...props} openRecord={record} initialEditing />);
+    fireEvent.change(screen.getByRole("textbox", { name: "客户名称" }), { target: { value: "路由前草稿" } });
+    view.rerender(<RecordWorkspace
+      {...props}
+      tenantCode={identity === "tenant" ? "contoso" : props.tenantCode}
+      schema={identity === "object" ? { ...props.schema, object: { ...props.schema.object, code: "contacts" } } : props.schema}
+      openRecord={identity === "id" ? { ...record, id: "record-b", values: { name: "客户 B" } } : record}
+      initialEditing={identity !== "initialEditing"}
+      followUpId={identity === "followUp" ? "task-2" : undefined}
+    />);
+    if (identity === "initialEditing") {
+      expect(screen.queryByRole("textbox", { name: "客户名称" })).not.toBeInTheDocument();
+      expect(screen.getByText("版本 v1")).toBeVisible();
+    } else {
+      expect(screen.getByRole("textbox", { name: "客户名称" })).toHaveValue(identity === "id" ? "客户 B" : "客户 A");
+    }
+  });
+
+  it("uses refreshed field permissions when submitting an active draft", async () => {
+    composition.real = true;
+    const fields = [
+      ...props.schema.fields,
+      { ...props.schema.fields[0], id: "field-secret", fieldKey: "secret", label: "内部备注", required: false },
+      { ...props.schema.fields[0], id: "field-public", fieldKey: "public", label: "公开备注", required: false },
+    ];
+    const schema = { ...props.schema, fields };
+    const update = vi.spyOn(recordApi, "update").mockRejectedValue({ code: "RECORD_VERSION_CONFLICT", message: "版本冲突", status: 409, requestId: "req_fields", fieldErrors: {} });
+    const view = render(<RecordWorkspace {...props} schema={schema} openRecord={record} initialEditing />);
+    fireEvent.change(screen.getByLabelText("客户名称"), { target: { value: "草稿名称" } });
+    fireEvent.change(screen.getByLabelText("内部备注"), { target: { value: "私密草稿" } });
+    fireEvent.change(screen.getByLabelText("公开备注"), { target: { value: "允许发送" } });
+    view.rerender(<RecordWorkspace {...props} schema={{ ...schema, fields: fields.map((field) => ({ ...field, access: field.fieldKey === "name" ? "READ_ONLY" : field.fieldKey === "secret" ? "HIDDEN" : "EDIT" })) }} openRecord={{ ...record, version: 2 }} initialEditing />);
+    expect(screen.queryByLabelText("内部备注")).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "客户名称" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "保存修改" }));
+    await screen.findByRole("button", { name: "重新载入记录" });
+    expect(update).toHaveBeenCalledWith("northwind", "customers", "record-a", expect.objectContaining({ version: 1, values: { public: "允许发送" } }));
+    update.mockRestore();
+  });
+
+  it("keeps a reopened draft through a delayed save and refreshed server version", async () => {
+    composition.real = true;
+    const { browserApiClient } = await import("@/lib/api/browser-client");
+    let resolveUpdate!: (response: Awaited<ReturnType<typeof browserApiClient.PATCH>>) => void;
+    const update = vi.spyOn(browserApiClient, "PATCH").mockImplementation(() => {
+      if (update.mock.calls.length === 1) {
+        return new Promise((resolve) => { resolveUpdate = resolve; });
+      }
+      return Promise.resolve({
+        error: {
+          code: "RECORD_VERSION_CONFLICT",
+          message: "记录已被其他成员更新。",
+          fieldErrors: {},
+          requestId: "req_conflict",
+        },
+        response: new Response(null, { status: 409 }),
+      });
+    });
+    const editableSchema = {
+      ...props.schema,
+      actions: { ...props.schema.actions, canUpdate: true },
+    };
+    const view = render(
+      <RecordWorkspace
+        {...props}
+        schema={editableSchema}
+        openRecord={record}
+        initialEditing
+      />,
+    );
+
+    fireEvent.change(screen.getByRole("textbox", { name: "客户名称" }), {
+      target: { value: "旧保存输入" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存修改" }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith(
+      "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}",
+      expect.objectContaining({ body: expect.objectContaining({ version: 1 }) }),
+    ));
+
+    fireEvent.click(screen.getByRole("button", { name: /^取\s*消$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^编\s*辑$/ }));
+    fireEvent.change(screen.getByRole("textbox", { name: "客户名称" }), {
+      target: { value: "新会话草稿" },
+    });
+
+    await act(async () => {
+      resolveUpdate({
+        data: { ...record, title: "旧保存输入", version: 2, values: { name: "旧保存输入" } },
+        response: new Response(null, { status: 200 }),
+      });
+    });
+    await waitFor(() => expect(router.refresh).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("textbox", { name: "客户名称" })).toHaveValue("新会话草稿");
+    view.rerender(
+      <RecordWorkspace
+        {...props}
+        schema={editableSchema}
+        openRecord={{
+          ...record,
+          title: "旧保存输入",
+          version: 2,
+          values: { name: "旧保存输入" },
+        }}
+        initialEditing
+      />,
+    );
+
+    expect(screen.getByRole("textbox", { name: "客户名称" })).toHaveValue(
+      "新会话草稿",
+    );
+
+    const revokedSchema = {
+      ...editableSchema,
+      actions: { ...editableSchema.actions, canUpdate: false },
+      fields: editableSchema.fields.map((field) => ({
+        ...field,
+        access: "READ_ONLY" as const,
+      })),
+    };
+    view.rerender(
+      <RecordWorkspace
+        {...props}
+        schema={revokedSchema}
+        openRecord={{ ...record, title: "旧保存输入", version: 2, values: { name: "旧保存输入" } }}
+        initialEditing
+      />,
+    );
+    expect(screen.getByRole("button", { name: "保存修改" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "保存修改" }));
+    expect(update).toHaveBeenCalledTimes(1);
+
+    view.rerender(
+      <RecordWorkspace
+        {...props}
+        schema={editableSchema}
+        openRecord={{ ...record, title: "旧保存输入", version: 2, values: { name: "旧保存输入" } }}
+        initialEditing
+      />,
+    );
+    expect(screen.getByRole("textbox", { name: "客户名称" })).toHaveValue("新会话草稿");
+    fireEvent.click(screen.getByRole("button", { name: "保存修改" }));
+    expect(await screen.findByRole("button", { name: "重新载入记录" })).toBeInTheDocument();
+    expect(update).toHaveBeenLastCalledWith(
+      "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}",
+      expect.objectContaining({ body: expect.objectContaining({ version: 1, values: { name: "新会话草稿" } }) }),
+    );
+    expect(screen.getByRole("textbox", { name: "客户名称" })).toHaveValue("新会话草稿");
+    update.mockRestore();
   });
 });

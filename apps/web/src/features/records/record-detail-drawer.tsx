@@ -57,6 +57,9 @@ export function RecordDetailDrawer({
   onChanged,
 }: RecordDetailDrawerProps) {
   const [editing, setEditing] = useState(initialEditing);
+  const [editingRecord, setEditingRecord] = useState<RecordSummary | undefined>(
+    initialEditing ? record : undefined,
+  );
   const editSession = useRef(0);
   // Capture ownership while rendering the form, before its HTTP save starts.
   const session = editSession.current;
@@ -98,6 +101,7 @@ export function RecordDetailDrawer({
       api.remove(tenantCode, schema.object.code, record.id, record.version),
     onSuccess: async () => {
       setDeleted(true);
+      setEditingRecord(undefined);
       setEditing(false);
       setError(undefined);
       try {
@@ -131,7 +135,14 @@ export function RecordDetailDrawer({
       extra={
         <Space>
           {schema.actions.canUpdate && !editing && !deleted ? (
-            <Button onClick={() => setEditing(true)}>编辑</Button>
+            <Button
+              onClick={() => {
+                setEditingRecord(record);
+                setEditing(true);
+              }}
+            >
+              编辑
+            </Button>
           ) : null}
           {canDelete ? (
             <Popconfirm
@@ -159,7 +170,7 @@ export function RecordDetailDrawer({
         <RecordForm
           tenantCode={tenantCode}
           schema={schema}
-          record={record}
+          record={editingRecord ?? record}
           members={members}
           canChooseOwner={canChooseOwner}
           api={api}
@@ -171,11 +182,15 @@ export function RecordDetailDrawer({
                 "记录已保存，但刷新暂时失败。请重新载入查看最新记录，不要重复提交。";
               setRefreshWarning(message);
             } finally {
-              if (editSession.current === session) setEditing(false);
+              if (editSession.current === session) {
+                setEditingRecord(undefined);
+                setEditing(false);
+              }
             }
           }}
           onCancel={() => {
             editSession.current += 1;
+            setEditingRecord(undefined);
             setEditing(false);
           }}
         />
