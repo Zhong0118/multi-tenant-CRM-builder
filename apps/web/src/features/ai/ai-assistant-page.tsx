@@ -49,6 +49,13 @@ export function AiAssistantPage({
     Record<string, import("./ai-types").AiProposalView>
   >({});
   const [proposalError, setProposalError] = useState<string | null>(null);
+  // The persisted row of the attempt being retried. The server rewrites that
+  // row (same turnId) once the retry starts, so until it changes it describes
+  // the old attempt and must not hide this attempt's stream or failure.
+  const [retriedRow, setRetriedRow] = useState<{
+    turnId: string;
+    fingerprint: string;
+  } | null>(null);
   const composerRef =
     useRef<import("antd/es/input/TextArea").TextAreaRef>(null);
 
@@ -82,6 +89,7 @@ export function AiAssistantPage({
     if (conversationId === live.conversationId) return;
     const generating = live.phase === "SENDING" || live.phase === "STREAMING";
     if (generating) abandonActiveTurn();
+    setRetriedRow(null);
     if (conversationId) dispatch({ type: "hydrate", conversationId });
     else dispatch({ type: "reset" });
   }, [conversationId]);
@@ -94,10 +102,20 @@ export function AiAssistantPage({
     };
   }, []);
 
-  const history = useMemo(() => {
+  const fullHistory = useMemo(() => {
     const pages = messages.data?.pages ?? [];
     return [...pages].reverse().flatMap((page) => page.items) as AiMessage[];
   }, [messages.data]);
+  const history = retriedRow
+    ? fullHistory.filter(
+        (item) =>
+          !(
+            item.role === "ASSISTANT" &&
+            item.turnId === retriedRow.turnId &&
+            rowFingerprint(item) === retriedRow.fingerprint
+          ),
+      )
+    : fullHistory;
   const liveMessage = toAssistantMessage(state);
   // Once an authoritative server row exists for the finished turn, discard
   // the SSE snapshot; permission revocation may have redacted its Proposal.
@@ -237,6 +255,7 @@ export function AiAssistantPage({
   function send(content = state.draft) {
     const text = content.trim();
     if (!text) return;
+    setRetriedRow(null);
     dispatch({ type: "beginNewTurn", content: text });
     startTurn((signal) =>
       aiApi.streamTurn(tenantCode, { conversationId, content: text }, signal),
@@ -258,6 +277,12 @@ export function AiAssistantPage({
 
   function retry(turnId = state.turnId) {
     if (!turnId) return;
+    const previous = fullHistory.find(
+      (item) => item.role === "ASSISTANT" && item.turnId === turnId,
+    );
+    setRetriedRow(
+      previous ? { turnId, fingerprint: rowFingerprint(previous) } : null,
+    );
     dispatch({ type: "beginRetryTurn", turnId });
     startTurn((signal) => aiApi.retryTurn(tenantCode, turnId, signal));
   }
@@ -476,4 +501,13 @@ export function AiAssistantPage({
       </section>
     </div>
   );
+}
+
+function rowFingerprint(item: AiMessage) {
+  return [
+    item.status,
+    item.completedAt ?? "",
+    item.errorCode ?? "",
+    item.content,
+  ].join("\u0000");
 }

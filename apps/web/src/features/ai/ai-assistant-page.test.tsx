@@ -1148,17 +1148,23 @@ describe("AiAssistantPage", () => {
   it("offers retry when conversations fail to load", async () => {
     mocks.listConversations.mockRejectedValueOnce(new Error("会话失败"));
     renderPage();
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("会话加载失败"));
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("会话加载失败"),
+    );
     mocks.listConversations.mockResolvedValueOnce({ items: [] });
     fireEvent.click(screen.getByRole("button", { name: "重试" }));
-    await waitFor(() => expect(mocks.listConversations).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(mocks.listConversations).toHaveBeenCalledTimes(2),
+    );
   });
 
   it("offers retry when messages fail to load", async () => {
     mocks.conversation = "c1";
     mocks.listMessages.mockRejectedValueOnce(new Error("消息失败"));
     renderPage();
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("消息加载失败"));
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("消息加载失败"),
+    );
     mocks.listMessages.mockResolvedValueOnce({ items: [] });
     fireEvent.click(screen.getByRole("button", { name: "重试" }));
     await waitFor(() => expect(mocks.listMessages).toHaveBeenCalledTimes(2));
@@ -1210,7 +1216,10 @@ describe("AiAssistantPage", () => {
       };
       yield { event: "assistant.delta", data: { text: "正在整理的回答" } };
       await gate;
-      yield { event: "turn.completed", data: { turnId: "t1", messageId: "a1" } };
+      yield {
+        event: "turn.completed",
+        data: { turnId: "t1", messageId: "a1" },
+      };
     });
     const { client } = renderPage();
     await waitFor(() => expect(mocks.listMessages).toHaveBeenCalledTimes(1));
@@ -1219,7 +1228,9 @@ describe("AiAssistantPage", () => {
       { target: { value: "本周情况" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
-    await waitFor(() => expect(screen.getByText("正在整理的回答")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText("正在整理的回答")).toBeInTheDocument(),
+    );
 
     // The server persists USER + GENERATING ASSISTANT rows as soon as the turn starts.
     mocks.listMessages.mockResolvedValue({
@@ -1238,7 +1249,8 @@ describe("AiAssistantPage", () => {
     const question = screen.getByText("本周情况");
     expect(screen.getAllByText("本周情况")).toHaveLength(1);
     expect(
-      question.compareDocumentPosition(answer) & Node.DOCUMENT_POSITION_FOLLOWING,
+      question.compareDocumentPosition(answer) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
 
     mocks.listMessages.mockResolvedValue({
@@ -1250,7 +1262,9 @@ describe("AiAssistantPage", () => {
     await act(async () => {
       release();
     });
-    await waitFor(() => expect(screen.getByRole("button", { name: "发送" })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "发送" })).toBeInTheDocument(),
+    );
     expect(screen.getAllByText("正在整理的回答")).toHaveLength(1);
   });
 
@@ -1286,13 +1300,151 @@ describe("AiAssistantPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
     await waitFor(() => expect(mocks.listMessages).toHaveBeenCalledTimes(2));
     await waitFor(() =>
-      expect(screen.getAllByText("AI 服务暂时不可用，请稍后重试")).toHaveLength(1),
+      expect(screen.getAllByText("AI 服务暂时不可用，请稍后重试")).toHaveLength(
+        1,
+      ),
     );
     const question = screen.getByText("这次会失败");
     const failure = screen.getByText("AI 服务暂时不可用，请稍后重试");
     expect(
-      question.compareDocumentPosition(failure) & Node.DOCUMENT_POSITION_FOLLOWING,
+      question.compareDocumentPosition(failure) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(screen.getAllByRole("button", { name: "重试" })).toHaveLength(1);
+  });
+
+  describe("retrying a persisted failure", () => {
+    const previousFailure = () =>
+      historyRow({
+        id: "a-failed",
+        role: "ASSISTANT",
+        turnId: "t-failed",
+        status: "FAILED",
+        errorCode: "AI_PROVIDER_TIMEOUT",
+        completedAt: "2026-10-06T00:00:05.000Z",
+      });
+    const history = () => ({
+      items: [
+        historyRow({
+          id: "u-failed",
+          role: "USER",
+          turnId: "t-failed",
+          content: "上周回款",
+        }),
+        previousFailure(),
+      ],
+    });
+
+    it("reports a permission change on retry instead of the previous attempt's error", async () => {
+      mocks.conversation = "c1";
+      // The server refuses the retry before rewriting the row, so every
+      // refetch still returns the previous attempt's FAILED row.
+      mocks.listMessages.mockResolvedValue(history());
+      mocks.retryTurn.mockImplementation(async function* () {
+        throw {
+          status: 403,
+          code: "WORKSPACE_FORBIDDEN",
+          message: "无权访问",
+          requestId: "req-forbidden",
+        };
+      });
+      const { client } = renderPage();
+      await screen.findByText("AI 暂时没有响应，请重试");
+      fireEvent.click(screen.getByRole("button", { name: "重试" }));
+
+      expect(
+        await screen.findByText("你的访问权限发生变化，请重新提问"),
+      ).toBeVisible();
+      expect(
+        screen.queryByText("AI 暂时没有响应，请重试"),
+      ).not.toBeInTheDocument();
+
+      await act(async () => {
+        await client.invalidateQueries({ queryKey: ["ai", "northwind", "c1"] });
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      });
+      expect(
+        screen.getByText("你的访问权限发生变化，请重新提问"),
+      ).toBeVisible();
+      expect(
+        screen.queryByText("AI 暂时没有响应，请重试"),
+      ).not.toBeInTheDocument();
+      expect(screen.getAllByText("上周回款")).toHaveLength(1);
+    });
+
+    it("streams the retry and reports its dropped connection over the cached failure", async () => {
+      let drop!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        drop = resolve;
+      });
+      mocks.conversation = "c1";
+      mocks.listMessages.mockResolvedValue(history());
+      mocks.retryTurn.mockImplementation(async function* () {
+        yield {
+          event: "conversation.ready",
+          data: { conversationId: "c1", title: "问", turnId: "t-failed" },
+        };
+        yield { event: "turn.started", data: { turnId: "t-failed" } };
+        yield { event: "assistant.delta", data: { text: "本次重试的回答" } };
+        await gate;
+        throw new TypeError("Failed to fetch");
+      });
+      renderPage();
+      await screen.findByText("AI 暂时没有响应，请重试");
+      fireEvent.click(screen.getByRole("button", { name: "重试" }));
+
+      expect(await screen.findByText("本次重试的回答")).toBeVisible();
+      expect(
+        screen.queryByText("AI 暂时没有响应，请重试"),
+      ).not.toBeInTheDocument();
+
+      await act(async () => {
+        drop();
+      });
+      expect(await screen.findByText("连接已中断")).toBeVisible();
+      expect(screen.getByText("本次重试的回答")).toBeVisible();
+      expect(
+        screen.queryByText("AI 暂时没有响应，请重试"),
+      ).not.toBeInTheDocument();
+      expect(screen.getAllByRole("button", { name: "重试" })).toHaveLength(1);
+    });
+
+    it("shows the server's row once the retry has rewritten it", async () => {
+      mocks.conversation = "c1";
+      mocks.listMessages.mockResolvedValue(history());
+      mocks.retryTurn.mockImplementation(async function* () {
+        yield {
+          event: "conversation.ready",
+          data: { conversationId: "c1", title: "问", turnId: "t-failed" },
+        };
+        yield {
+          event: "turn.failed",
+          data: { turnId: "t-failed", code: "AI_PROVIDER_UNAVAILABLE" },
+        };
+      });
+      renderPage();
+      await screen.findByText("AI 暂时没有响应，请重试");
+      mocks.listMessages.mockResolvedValue({
+        items: [
+          history().items[0],
+          {
+            ...previousFailure(),
+            errorCode: "AI_PROVIDER_UNAVAILABLE",
+            completedAt: "2026-10-06T00:01:00.000Z",
+          },
+        ],
+      });
+      fireEvent.click(screen.getByRole("button", { name: "重试" }));
+      await waitFor(() => expect(mocks.listMessages).toHaveBeenCalledTimes(2));
+      expect(
+        await screen.findByText("AI 服务暂时不可用，请稍后重试"),
+      ).toBeVisible();
+      expect(screen.getAllByText("AI 服务暂时不可用，请稍后重试")).toHaveLength(
+        1,
+      );
+      expect(
+        screen.queryByText("AI 暂时没有响应，请重试"),
+      ).not.toBeInTheDocument();
+    });
   });
 });
