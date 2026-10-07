@@ -1446,5 +1446,42 @@ describe("AiAssistantPage", () => {
         screen.queryByText("AI 暂时没有响应，请重试"),
       ).not.toBeInTheDocument();
     });
+
+    it("reports a retry that fails the same way exactly once", async () => {
+      mocks.conversation = "c1";
+      mocks.listMessages.mockResolvedValue(history());
+      mocks.retryTurn.mockImplementation(async function* () {
+        yield {
+          event: "conversation.ready",
+          data: { conversationId: "c1", title: "问", turnId: "t-failed" },
+        };
+        yield {
+          event: "turn.failed",
+          data: { turnId: "t-failed", code: "AI_PROVIDER_TIMEOUT" },
+        };
+      });
+      const { client } = renderPage();
+      await screen.findByText("AI 暂时没有响应，请重试");
+      fireEvent.click(screen.getByRole("button", { name: "重试" }));
+      // The refetch after turn.failed still returns the old row: the retry's
+      // own failure is shown in its place, not beside it.
+      await waitFor(() => expect(mocks.listMessages).toHaveBeenCalledTimes(2));
+      expect(screen.getAllByText("AI 暂时没有响应，请重试")).toHaveLength(1);
+      expect(screen.getAllByRole("button", { name: "重试" })).toHaveLength(1);
+
+      mocks.listMessages.mockResolvedValue({
+        items: [
+          history().items[0],
+          { ...previousFailure(), completedAt: "2026-10-06T00:01:00.000Z" },
+        ],
+      });
+      await act(async () => {
+        await client.invalidateQueries({ queryKey: ["ai", "northwind", "c1"] });
+      });
+      await waitFor(() => expect(mocks.listMessages).toHaveBeenCalledTimes(3));
+      expect(screen.getAllByText("AI 暂时没有响应，请重试")).toHaveLength(1);
+      expect(screen.getAllByRole("button", { name: "重试" })).toHaveLength(1);
+      expect(screen.getAllByText("上周回款")).toHaveLength(1);
+    });
   });
 });
