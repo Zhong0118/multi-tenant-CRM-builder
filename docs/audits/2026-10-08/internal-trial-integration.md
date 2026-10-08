@@ -27,6 +27,25 @@
 
 服务器 Docker/Compose 已准备。首次构建的旧镜像没有包含上述真实 Provider 修复，不能作为最终部署版本；需要从修复后的已验收提交重新构建。
 
-内部访问方法见 [内部测试运行手册](../../../deployment/internal-test-runbook.md)。私密配置不进 Git 或镜像。
+内部访问方法见 [内部测试运行手册](../../deployment/internal-test-runbook.md)。私密配置不进 Git 或镜像。
 
-真实短信尚未发送。首个管理员手机号、两个模板的审核/报备状态及验证码回填仍需用户确认；不能把本地演示账号或 mock 验证结果计入真实短信验收。服务器运行结果应在实际部署后追加。
+真实短信尚未发送。首个管理员手机号及验证码回填仍需用户提供；不能把本地演示账号或 mock 验证结果计入真实短信验收。
+
+## 补修与短信配置查询结果
+
+- DeepSeek 补修 PR #28 已合并，合并提交为 `7cc99079afbea61be69b39753a130461e1574989`。源提交 `79de171b23eede4de049cc69b1074dc3a5543995` 与该合并提交的文件树一致。
+- 补修后的六项 required CI 全部通过：[CI run 37736818566](https://github.com/Zhong0118/multi-tenant-CRM-builder/actions/runs/37736818566)。API 为 101 suites / 1290 tests，关键 API E2E 为 12 tests。
+- 最终候选镜像基于 `79de171b23eede4de049cc69b1074dc3a5543995` 构建：[image run 37736819246](https://github.com/Zhong0118/multi-tenant-CRM-builder/actions/runs/37736819246)。镜像不包含密钥。
+- 从北京服务器使用用户已填写的凭据调用腾讯云只读查询接口：两个模板均返回 StatusCode=0，签名 StatusCode=0，资质 QualificationStatusCode=1；模板正文与用户提供内容一致，均标明十分钟有效期。
+- 依据[腾讯云状态定义](https://cloud.tencent.com/document/api/382/52068)，上述模板已生效、签名可用。查询成功验证了这两个查询接口的认证与连通性，不能替代 SendSms 权限、送达和注册/重置流程验收。
+
+## 北京服务器准备结果
+
+- Ubuntu 24.04，4 vCPU / 约 8 GiB 内存；Docker Engine 与 Compose 已安装。
+- 部署目录 `/home/ubuntu/crm-internal-test`。使用已验收提交的部署文件；应用镜像为 Linux amd64，revision label 与源 SHA 相同。
+- Artifact ZIP 与解压后的镜像包均通过 SHA256 校验；应用、PostgreSQL 18、Redis 7.4、Caddy 2.10 镜像已导入服务器，不依赖服务器拉取 Docker Hub。
+- PostgreSQL 和 Redis 已启动且 healthy，未发布数据库端口到宿主机；运行角色 `crm_app` 已创建并设置独立密码；23 项迁移全部成功。
+- Prisma CLI 提示未检测到系统 OpenSSL 版本，但本次迁移退出码为 0，全部迁移成功。此提示作为镜像维护事项保留，不声称已消除。
+- 私密配置暂存为 `.env.internal-trial.pending`，权限 0600；首个管理员手机号仍待用户确认。**API、Web、Caddy 尚未启动，没有发送真实短信，也没有宣称完整部署或真实注册验收通过。**
+
+下一步：用户填写本地 `.env.internal-trial` 的 `FIRST_ADMIN_PHONE` 后，同步服务器配置为 `.env.internal-trial`，启动 API/Web/Caddy，建立 SSH 隧道并核对 health/ready、HTTPS Cookie、真实短信注册/重置与服务器 AI 流程。仅手机号缺失阻塞服务启用；短信送达和业务流程是否通过仍要实测。
