@@ -42,6 +42,77 @@ describe('PlatformOperationsService', () => {
     );
   });
 
+  const tencentConfig = {
+    SMS_PROVIDER: 'tencent',
+    TENCENT_SMS_SECRET_ID: 'private-id',
+    TENCENT_SMS_SECRET_KEY: 'private-key',
+    TENCENT_SMS_SDK_APP_ID: '1400000000',
+    TENCENT_SMS_SIGN_NAME: 'private-sign',
+    TENCENT_SMS_REGISTER_TEMPLATE_ID: '100001',
+    TENCENT_SMS_RESET_TEMPLATE_ID: '100002',
+  };
+
+  async function smsStatus(values: Record<string, string>) {
+    return new PlatformOperationsService(
+      { listAudit: jest.fn(), listOperations: jest.fn() },
+      config(values),
+      {
+        check: () => Promise.resolve({ database: true, redis: true }),
+      } as never,
+    ).runtimeStatus();
+  }
+
+  it('reports configured production Tencent SMS as ready without exposing credentials', async () => {
+    const result = await smsStatus({
+      NODE_ENV: 'production',
+      ...tencentConfig,
+    });
+    expect(result.services.find((item) => item.key === 'sms')).toMatchObject({
+      status: 'READY',
+    });
+    for (const value of Object.values(tencentConfig).filter(
+      (value) => value !== 'tencent',
+    )) {
+      expect(JSON.stringify(result)).not.toContain(value);
+    }
+  });
+
+  it.each(Object.keys(tencentConfig))(
+    'requires the production SMS field %s',
+    async (key) => {
+      const result = await smsStatus({
+        NODE_ENV: 'production',
+        ...tencentConfig,
+        [key]: ' ',
+      });
+      expect(result.services.find((item) => item.key === 'sms')?.status).toBe(
+        'ACTION_REQUIRED',
+      );
+    },
+  );
+
+  it('rejects an explicitly blank region rather than assuming the default', async () => {
+    const result = await smsStatus({
+      NODE_ENV: 'production',
+      ...tencentConfig,
+      TENCENT_SMS_REGION: ' ',
+    });
+    expect(result.services.find((item) => item.key === 'sms')?.status).toBe(
+      'ACTION_REQUIRED',
+    );
+  });
+
+  it('reports the actual fixed-code sender in development even when Tencent credentials exist', async () => {
+    const result = await smsStatus({
+      NODE_ENV: 'development',
+      DEV_VERIFICATION_CODE: '123456',
+      ...tencentConfig,
+    });
+    expect(result.services.find((item) => item.key === 'sms')?.status).toBe(
+      'DEVELOPMENT',
+    );
+  });
+
   it('reports readiness without returning connection strings or secrets', async () => {
     const service = new PlatformOperationsService(
       {

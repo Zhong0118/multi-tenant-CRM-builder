@@ -250,7 +250,7 @@ export function PlatformSettingsView({ status }: { status: RuntimeStatus }) {
     <div className={styles.page}>
       <PageHeader
         title="系统设置"
-        description="检查上线所需服务与安全策略。这里不显示连接串、验证码或密钥。"
+        description="查看运行服务与当前账号策略。"
         status={
           <span className={styles.count}>
             {readyCount}/{status.services.length} 项就绪
@@ -270,7 +270,12 @@ export function PlatformSettingsView({ status }: { status: RuntimeStatus }) {
             </div>
             <div>
               <span>{service.label}</span>
-              <strong>{statusLabel(service.status)}</strong>
+              <strong>
+                {service.status === "READY" &&
+                (service.key === "sms" || service.key === "webOrigin")
+                  ? "已配置"
+                  : statusLabel(service.status)}
+              </strong>
               <p>{service.detail}</p>
             </div>
           </article>
@@ -305,20 +310,19 @@ export function PlatformSettingsView({ status }: { status: RuntimeStatus }) {
             />
           </dl>
         </DataPanel>
-        <ReadingPanel className={styles.deployPanel} ariaLabel="部署检查">
+        <ReadingPanel className={styles.deployPanel} ariaLabel="运行说明">
           <div className={styles.panelTitle}>
             <SettingOutlined />
             <div>
-              <h2>部署前检查</h2>
+              <h2>运行说明</h2>
               <p>当前环境：{status.environment}</p>
             </div>
           </div>
-          <ol>
-            <li>配置生产 PostgreSQL 与 Redis。</li>
-            <li>配置正式域名和 HTTPS 来源限制。</li>
-            <li>接入短信供应商、签名和两个验证码模板。</li>
-            <li>执行数据库迁移后再启动 API。</li>
-          </ol>
+          <ul>
+            <li>数据库与 Redis 显示本次访问时的连接状态。</li>
+            <li>短信显示配置状态，实际送达以发送结果为准。</li>
+            <li>此页为只读视图；服务配置由服务器维护，账号策略随系统版本更新。</li>
+          </ul>
         </ReadingPanel>
       </div>
     </div>

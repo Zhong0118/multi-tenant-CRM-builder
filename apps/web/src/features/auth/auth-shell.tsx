@@ -22,14 +22,13 @@ export function AuthShell({
   return (
     <main className={styles.authPage}>
       <section className={styles.statement} aria-label="产品说明">
-        <div className={styles.brandMark}>CRM 工作区</div>
         <div className={styles.statementBody}>
           <span className={styles.trackDot} aria-hidden="true" />
           <Typography.Title level={1}>
-            把分散的 Excel <br />
+            把分散的表格 <br />
             变成可协作的业务流程
           </Typography.Title>
-          <Typography.Paragraph>
+          <Typography.Paragraph className={styles.statementDescription}>
             从个人账号进入受授权的公司工作区。数据、权限和操作记录始终归属于正确的公司。
           </Typography.Paragraph>
         </div>

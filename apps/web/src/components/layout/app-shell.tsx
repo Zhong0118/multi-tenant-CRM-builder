@@ -44,6 +44,7 @@ export interface ShellNavGroup {
 
 export interface AppShellProps {
   brand: string;
+  brandIcon?: ReactNode;
   brandHref: string;
   navGroups: ShellNavGroup[];
   headerLeft: ReactNode;
@@ -116,6 +117,7 @@ function persistWidth(width: number) {
 
 export function AppShell({
   brand,
+  brandIcon,
   brandHref,
   navGroups,
   headerLeft,
@@ -251,6 +253,7 @@ export function AppShell({
       ) : null}
       <Sidebar
         brand={brand}
+        brandIcon={brandIcon}
         brandHref={brandHref}
         navGroups={navGroups}
         pathname={pathname}
