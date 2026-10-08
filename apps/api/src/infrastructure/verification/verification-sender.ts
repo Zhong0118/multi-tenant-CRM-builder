@@ -83,7 +83,7 @@ class TencentSmsVerificationSender implements VerificationSender {
       'X-TC-Action': 'SendSms',
       'X-TC-Region': this.config.region,
       'X-TC-Timestamp': String(timestamp),
-      'X-TC-Version': '2019-07-11',
+      'X-TC-Version': '2021-01-11',
     };
 
     try {

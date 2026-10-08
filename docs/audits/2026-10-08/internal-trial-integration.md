@@ -49,3 +49,13 @@
 - 私密配置暂存为 `.env.internal-trial.pending`，权限 0600；首个管理员手机号仍待用户确认。**API、Web、Caddy 尚未启动，没有发送真实短信，也没有宣称完整部署或真实注册验收通过。**
 
 下一步：用户填写本地 `.env.internal-trial` 的 `FIRST_ADMIN_PHONE` 后，同步服务器配置为 `.env.internal-trial`，启动 API/Web/Caddy，建立 SSH 隧道并核对 health/ready、HTTPS Cookie、真实短信注册/重置与服务器 AI 流程。仅手机号缺失阻塞服务启用；短信送达和业务流程是否通过仍要实测。
+
+## 首次应用启动与短信版本补修
+
+用户已指定尾号 6465 的首个管理员手机号；生产配置已同步。API、Web、Caddy 已启动，SSH 隧道经本地 CA 校验后访问 `/api/v1/health` 与 `/api/v1/health/ready` 均返回 200 / ok。应用仍只通过服务器回环端口和 SSH 隧道访问。
+
+首次真实注册短信请求返回 500。定位发现 Tencent sender 使用 `SmsSdkAppId`、`SignName`、`TemplateId` 等新版字段，但 `X-TC-Version` 为旧版 `2019-07-11`。腾讯云返回 MissingParameter。
+
+依据[腾讯云版本差异](https://cloud.tencent.cn/document/api/382/63195)，这些字段必须匹配 `2021-01-11`。补修只调整接口版本，保留签名、超时、模板和收件人检查。原测试也错误地断言旧版本；修正测试后先出现预期失败，再修改实现使其通过。
+
+使用空收件人作无送达风险的诊断：旧版本返回 MissingParameter，更新版本后进入号码校验并返回 InvalidParameterValue.IncorrectPhoneNumber，确认版本问题已消除。真实有效号码的发送和注册仍须在补修镜像部署后验收，不能把此诊断当作短信送达成功。
