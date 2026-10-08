@@ -9,6 +9,7 @@ import { dashboardSettingsPath } from "@/features/dashboard/workbench-period";
 import { BusinessObjectBar } from "@/features/dashboard/workbench-elements";
 import { WorkbenchOverviewFailure } from "@/features/dashboard/workbench-chrome";
 import { PersonalFollowUpWorkbench } from "@/features/follow-ups/follow-up-workbench";
+import { SourceReturnFocus } from "@/features/records/source-return-focus";
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
 import styles from "./workspace-home.module.css";
@@ -24,7 +25,13 @@ export type WorkspaceHomeViewProps = {
   | { overview?: never; overviewFailure: { requestId: string } }
 );
 
-export function WorkspaceHomeView({
+export function WorkspaceHomeView(props: WorkspaceHomeViewProps) {
+  return <SourceReturnFocus tenantCode={props.tenantCode} heading="h1">
+    <WorkspaceHomeContent {...props} />
+  </SourceReturnFocus>;
+}
+
+function WorkspaceHomeContent({
   tenantCode,
   tenantName,
   userName,

@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -21,6 +22,8 @@ const mocks = vi.hoisted(() => ({
   confirmProposal: vi.fn(),
   rejectProposal: vi.fn(),
   getProposal: vi.fn(),
+  rename: vi.fn(),
+  remove: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -45,19 +48,23 @@ vi.mock("./ai-api", () => ({
     confirmProposal: (...args: unknown[]) => mocks.confirmProposal(...args),
     rejectProposal: (...args: unknown[]) => mocks.rejectProposal(...args),
     getProposal: (...args: unknown[]) => mocks.getProposal(...args),
-    rename: vi.fn(),
-    remove: vi.fn(),
+    rename: (...args: unknown[]) => mocks.rename(...args),
+    remove: (...args: unknown[]) => mocks.remove(...args),
   },
 }));
 
 beforeEach(() => {
   mocks.replace.mockReset();
+  mocks.listConversations.mockReset();
+  mocks.listMessages.mockReset();
   mocks.conversation = undefined;
   mocks.listConversations.mockResolvedValue({ items: [] });
   mocks.listMessages.mockResolvedValue({ items: [] });
   mocks.confirmProposal.mockReset();
   mocks.rejectProposal.mockReset();
   mocks.getProposal.mockReset();
+  mocks.rename.mockReset();
+  mocks.remove.mockReset();
   mocks.streamTurn.mockImplementation(async function* () {
     yield {
       event: "conversation.ready",
@@ -1136,6 +1143,25 @@ describe("AiAssistantPage", () => {
         screen.getAllByRole("button", { name: "重试" }).length,
       ).toBeGreaterThan(0),
     );
+  });
+
+  it("offers retry when conversations fail to load", async () => {
+    mocks.listConversations.mockRejectedValueOnce(new Error("会话失败"));
+    renderPage();
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("会话加载失败"));
+    mocks.listConversations.mockResolvedValueOnce({ items: [] });
+    fireEvent.click(screen.getByRole("button", { name: "重试" }));
+    await waitFor(() => expect(mocks.listConversations).toHaveBeenCalledTimes(2));
+  });
+
+  it("offers retry when messages fail to load", async () => {
+    mocks.conversation = "c1";
+    mocks.listMessages.mockRejectedValueOnce(new Error("消息失败"));
+    renderPage();
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("消息加载失败"));
+    mocks.listMessages.mockResolvedValueOnce({ items: [] });
+    fireEvent.click(screen.getByRole("button", { name: "重试" }));
+    await waitFor(() => expect(mocks.listMessages).toHaveBeenCalledTimes(2));
   });
 
   it("aborts the in-flight stream when the page unmounts", async () => {

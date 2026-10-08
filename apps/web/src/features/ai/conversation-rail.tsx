@@ -1,7 +1,8 @@
 "use client";
 
+import { MoreOutlined } from "@ant-design/icons";
 import { Button, Dropdown, Input, Modal, Skeleton } from "antd";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import styles from "./ai-assistant.module.css";
 import { conversationGroup } from "./ai-copy";
@@ -13,19 +14,29 @@ export function ConversationRail({
   conversations,
   selectedId,
   loading,
+  error,
+  onRetry,
   onNew,
   onSelect,
   onRename,
   onDelete,
+  mutationError,
+  renamePending = false,
+  deletePending = false,
   onLoadMore,
 }: {
   conversations: AiConversation[];
   selectedId?: string;
   loading?: boolean;
+  error?: boolean;
+  onRetry?: () => void;
   onNew: () => void;
   onSelect: (id: string) => void;
-  onRename: (id: string, title: string) => void;
-  onDelete: (id: string) => void;
+  onRename: (id: string, title: string) => void | Promise<unknown>;
+  onDelete: (id: string) => void | Promise<unknown>;
+  mutationError?: string | null;
+  renamePending?: boolean;
+  deletePending?: boolean;
   onLoadMore?: () => void;
 }) {
   const grouped = useMemo(() => {
@@ -41,6 +52,11 @@ export function ConversationRail({
   }, [conversations]);
   const [renaming, setRenaming] = useState<AiConversation>();
   const [title, setTitle] = useState("");
+  const [renameError, setRenameError] = useState<string>();
+  const renameSession = useRef(0);
+  const [renameSubmitting, setRenameSubmitting] = useState(false);
+  const renameSubmittingRef = useRef(false);
+  const [deleteSubmitting, setDeleteSubmitting] = useState<string>();
 
   return (
     <aside className={styles.railInner}>
@@ -51,58 +67,84 @@ export function ConversationRail({
         </Button>
       </div>
       <div className={styles.railList}>
+        {mutationError ? (
+          <div className={styles.railError} role="alert">
+            {mutationError}
+          </div>
+        ) : null}
         {loading ? <Skeleton active paragraph={{ rows: 6 }} /> : null}
-        {GROUPS.map((group) =>
-          grouped[group].length === 0 ? null : (
-            <section key={group}>
-              <div className={styles.groupLabel}>{group}</div>
-              {grouped[group].map((item) => (
-                <div
-                  key={item.id}
-                  className={`${styles.row} ${item.id === selectedId ? styles.rowActive : ""}`}
-                >
-                  <button
-                    type="button"
-                    className={styles.rowTitle}
-                    onClick={() => onSelect(item.id)}
-                  >
-                    {item.title}
-                  </button>
-                  <Dropdown
-                    trigger={["click"]}
-                    getPopupContainer={() => document.body}
-                    menu={{
-                      items: [
-                        {
-                          key: "rename",
-                          label: "重命名",
-                          onClick: () => {
-                            setRenaming(item);
-                            setTitle(item.title);
-                          },
-                        },
-                        {
-                          key: "delete",
-                          label: "删除",
-                          danger: true,
-                          onClick: () => onDelete(item.id),
-                        },
-                      ],
-                    }}
-                  >
-                    <Button
-                      type="text"
-                      className={styles.rowMenu}
-                      aria-label="会话操作"
+        {error ? (
+          <div className={styles.railError} role="alert">
+            <span>会话加载失败</span>
+            {onRetry ? (
+              <Button type="link" size="small" onClick={onRetry}>
+                重试
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+        {!loading && !error
+          ? GROUPS.map((group) =>
+              grouped[group].length === 0 ? null : (
+                <section key={group}>
+                  <div className={styles.groupLabel}>{group}</div>
+                  {grouped[group].map((item) => (
+                    <div
+                      key={item.id}
+                      className={`${styles.row} ${item.id === selectedId ? styles.rowActive : ""}`}
                     >
-                      ···
-                    </Button>
-                  </Dropdown>
-                </div>
-              ))}
-            </section>
-          ),
-        )}
+                      <button
+                        type="button"
+                        className={styles.rowTitle}
+                        onClick={() => onSelect(item.id)}
+                      >
+                        {item.title}
+                      </button>
+                      <Dropdown
+                        trigger={["click"]}
+                        getPopupContainer={() => document.body}
+                        menu={{
+                          items: [
+                            {
+                              key: "rename",
+                              label: "重命名",
+                              onClick: () => {
+                                renameSession.current += 1;
+                                setRenameError(undefined);
+                                setRenaming(item);
+                                setTitle(item.title);
+                              },
+                            },
+                            {
+                              key: "delete",
+                              label: "删除",
+                              danger: true,
+                              onClick: () => {
+                                if (deletePending || deleteSubmitting) return;
+                                setDeleteSubmitting(item.id);
+                                Promise.resolve(onDelete(item.id))
+                                  .catch(() => undefined)
+                                  .finally(() =>
+                                    setDeleteSubmitting(undefined),
+                                  );
+                              },
+                            },
+                          ],
+                        }}
+                      >
+                        <Button
+                          type="text"
+                          className={styles.rowMenu}
+                          aria-label={`会话操作：${item.title}`}
+                          icon={<MoreOutlined aria-hidden />}
+                        />
+                      </Dropdown>
+                    </div>
+                  ))}
+                </section>
+              ),
+            )
+          : null}
         {onLoadMore ? (
           <Button type="link" onClick={onLoadMore}>
             加载更多
@@ -112,13 +154,47 @@ export function ConversationRail({
       <Modal
         open={!!renaming}
         title="重命名会话"
-        onCancel={() => setRenaming(undefined)}
-        onOk={() => {
-          if (renaming && title.trim()) onRename(renaming.id, title.trim());
+        onCancel={() => {
+          renameSession.current += 1;
           setRenaming(undefined);
         }}
+        onOk={async () => {
+          if (
+            !renaming ||
+            !title.trim() ||
+            renamePending ||
+            renameSubmittingRef.current
+          )
+            return;
+          const session = renameSession.current;
+          renameSubmittingRef.current = true;
+          setRenameSubmitting(true);
+          setRenameError(undefined);
+          try {
+            await onRename(renaming.id, title.trim());
+            if (renameSession.current === session) setRenaming(undefined);
+          } catch {
+            if (renameSession.current === session)
+              setRenameError("重命名失败，请重试。输入的标题已保留。");
+          } finally {
+            renameSubmittingRef.current = false;
+            setRenameSubmitting(false);
+          }
+        }}
+        confirmLoading={renamePending || renameSubmitting}
+        okButtonProps={{
+          disabled: !title.trim() || renamePending || renameSubmitting,
+        }}
       >
-        <Input value={title} onChange={(event) => setTitle(event.target.value)} />
+        {renameError ? (
+          <div className={styles.railError} role="alert">
+            {renameError}
+          </div>
+        ) : null}
+        <Input
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+        />
       </Modal>
     </aside>
   );

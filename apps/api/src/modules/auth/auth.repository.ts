@@ -62,8 +62,12 @@ export interface AuthStore {
     attemptCount: number,
     status: ChallengeStatus,
   ): Promise<void>;
+  incrementChallengeFailure(
+    id: string,
+  ): Promise<{ attemptCount: number; status: ChallengeStatus } | null>;
   consumeChallenge(id: string, consumedAt: Date): Promise<boolean>;
   findUserByPhone(phone: string): Promise<AuthUser | null>;
+  findPendingInvitationByPhone(phone: string, now: Date): Promise<boolean>;
   findUserById(id: string): Promise<AuthUser | null>;
   createUser(input: Omit<AuthUser, 'id'>): Promise<AuthUser>;
   updatePassword(userId: string, passwordHash: string): Promise<void>;
@@ -125,12 +129,22 @@ export class PrismaAuthRepository implements AuthRepository {
     return this.store.updateChallengeFailure(id, attemptCount, status);
   }
 
+  incrementChallengeFailure(
+    id: string,
+  ): Promise<{ attemptCount: number; status: ChallengeStatus } | null> {
+    return this.store.incrementChallengeFailure(id);
+  }
+
   consumeChallenge(id: string, consumedAt: Date): Promise<boolean> {
     return this.store.consumeChallenge(id, consumedAt);
   }
 
   findUserByPhone(phone: string): Promise<AuthUser | null> {
     return this.store.findUserByPhone(phone);
+  }
+
+  findPendingInvitationByPhone(phone: string, now: Date): Promise<boolean> {
+    return this.store.findPendingInvitationByPhone(phone, now);
   }
 
   findUserById(id: string): Promise<AuthUser | null> {
@@ -234,6 +248,23 @@ class PrismaAuthStore implements AuthStore {
     });
   }
 
+  async incrementChallengeFailure(
+    id: string,
+  ): Promise<{ attemptCount: number; status: ChallengeStatus } | null> {
+    const rows = await this.client.$queryRaw<Array<{ attemptCount: number }>>`
+      UPDATE verification_challenges
+      SET attempt_count = attempt_count + 1,
+          status = CASE WHEN attempt_count + 1 >= 5 THEN 'LOCKED'::"ChallengeStatus" ELSE 'PENDING'::"ChallengeStatus" END
+      WHERE id = ${id}::uuid AND status = 'PENDING'::"ChallengeStatus"
+      RETURNING attempt_count AS "attemptCount"
+    `;
+    if (rows.length !== 1) return null;
+    return {
+      attemptCount: rows[0].attemptCount,
+      status: rows[0].attemptCount >= 5 ? 'LOCKED' : 'PENDING',
+    };
+  }
+
   async consumeChallenge(id: string, consumedAt: Date): Promise<boolean> {
     const result = await this.client.verificationChallenge.updateMany({
       where: { id, status: 'PENDING' },
@@ -245,6 +276,16 @@ class PrismaAuthStore implements AuthStore {
   async findUserByPhone(phone: string): Promise<AuthUser | null> {
     const user = await this.client.user.findUnique({ where: { phone } });
     return user ? mapUser(user) : null;
+  }
+
+  async findPendingInvitationByPhone(
+    phone: string,
+    now: Date,
+  ): Promise<boolean> {
+    const rows = await this.client.$queryRaw<Array<{ allowed: boolean }>>`
+      SELECT public.has_pending_registration_invitation(${phone}, ${now}) AS allowed
+    `;
+    return rows[0]?.allowed === true;
   }
 
   async findUserById(id: string): Promise<AuthUser | null> {

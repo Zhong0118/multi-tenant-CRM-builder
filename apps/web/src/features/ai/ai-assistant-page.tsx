@@ -43,7 +43,6 @@ export function AiAssistantPage({
   const abortRef = useRef<AbortController | null>(null);
   const generationRef = useRef(0);
   const stateRef = useRef(state);
-  stateRef.current = state;
   const [railOpen, setRailOpen] = useState(false);
   const [proposalUpdates, setProposalUpdates] = useState<
     Record<string, import("./ai-types").AiProposalView>
@@ -72,6 +71,10 @@ export function AiAssistantPage({
     abortRef.current?.abort();
     abortRef.current = null;
   }
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   useEffect(() => {
     const live = stateRef.current;
@@ -332,6 +335,8 @@ export function AiAssistantPage({
       }
       selectedId={conversationId}
       loading={conversations.isLoading}
+      error={conversations.isError}
+      onRetry={() => void conversations.refetch()}
       onNew={() => {
         abandonActiveTurn();
         router.replace(pathname);
@@ -343,8 +348,17 @@ export function AiAssistantPage({
         router.replace(`${pathname}?conversation=${encodeURIComponent(id)}`);
         setRailOpen(false);
       }}
-      onRename={(id, title) => rename.mutate({ id, title })}
+      onRename={(id, title) => rename.mutateAsync({ id, title })}
       onDelete={(id) => remove.mutate(id)}
+      renamePending={rename.isPending}
+      deletePending={remove.isPending}
+      mutationError={
+        rename.error instanceof Error
+          ? rename.error.message
+          : remove.error instanceof Error
+            ? remove.error.message
+            : null
+      }
       onLoadMore={
         conversations.hasNextPage
           ? () => void conversations.fetchNextPage()
@@ -381,7 +395,7 @@ export function AiAssistantPage({
           </Button>
         </header>
         <div className={styles.canvas} data-testid="ai-conversation-canvas">
-          {shown.length === 0 && state.phase === "IDLE" ? (
+          {shown.length === 0 && state.phase === "IDLE" && !conversationId && !messages.isError ? (
             <AiEmptyState
               objects={businessObjects}
               onPrompt={(text) => {
@@ -394,6 +408,8 @@ export function AiAssistantPage({
               tenantCode={tenantCode}
               messages={shown}
               loading={messages.isLoading}
+              error={messages.isError}
+              onRetryMessages={() => void messages.refetch()}
               streaming={state.phase === "STREAMING"}
               phase={state.phase}
               onLoadOlder={

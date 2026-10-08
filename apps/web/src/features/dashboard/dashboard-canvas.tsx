@@ -94,7 +94,9 @@ export function DashboardCanvas({
           </SortableContext>
         </DndContext>
       ) : (
-        <div className={styles.emptyCanvas}>选择左侧组件，开始编排工作台。</div>
+        <div className={styles.emptyCanvas}>
+          打开「添加组件」，开始编排工作台。
+        </div>
       )}
     </main>
   );
@@ -147,6 +149,16 @@ function WidgetCard({
         </button>
         <span>{String(index + 1).padStart(2, "0")}</span>
         <div>
+          <button
+            type="button"
+            aria-label={`编辑组件 ${widget.title}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onSelect(widget.id);
+            }}
+          >
+            编辑
+          </button>
           <button
             type="button"
             aria-label={`上移组件 ${widget.title}`}

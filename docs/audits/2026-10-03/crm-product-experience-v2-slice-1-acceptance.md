@@ -130,3 +130,5 @@ PASS 仅代表该格描述的实际路径；NOT OBSERVED 代表没有完整浏�
 ## Post-merge status
 
 2026-10-04 PR #24已按仓库保护合并，merge `9cd2523319557d47fd877646716b01698d7e1193`；合并前最新 `4484ed9` 六门SUCCESS，run37198879692，无未解决review thread。此节不回填、不重算历史验收。手机390当前页回归确认第二页选择后菜单与抽屉均1条；两页手机/桌面真实组件请求断言见正式测试。当前用户已批准Slice2＋3联合实现，Slice4与部署未批准。
+
+2026-10-05 状态续记：Slice2＋3 已通过 PR #25 合并（`78f55df`，gh已核实）；Slice4 后续获得授权，现为 ACTIVE CLOSEOUT / NOT MERGED。以上“Slice4未批准”是2026-10-04历史范围，不再是当前授权状态。原始验收矩阵与门禁记录不改写；当前证据缺口和未完成验证见[最终验收草稿](../2026-10-05/crm-product-experience-v2-final-acceptance.md)。部署仍未批准。

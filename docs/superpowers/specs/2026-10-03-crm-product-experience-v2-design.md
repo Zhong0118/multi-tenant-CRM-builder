@@ -2,7 +2,9 @@
 
 Date: 2026-10-03
 
-Status: SLICE 1 IMPLEMENTED AND MERGED — SLICES 2＋3 AUTHORIZED / ACTIVE — SLICE 4 PLANNED
+Status (2026-10-05): SLICE 1 MERGED (#24, `9cd2523`) — SLICES 2＋3 MERGED (#25, `78f55df`) — SLICE 4 IMPLEMENTED / LOCAL VERIFIED / PR AND CI PENDING / NOT MERGED
+
+Current evidence: [final acceptance draft](../../audits/2026-10-05/crm-product-experience-v2-final-acceptance.md). Slice4 implementation, regression fixes and local verification/review are complete; browser evidence is risk-based with explicit unobserved combinations. PR and latest-SHA CI remain pending; no merged/remote-success claim.
 
 Base main SHA: `70884f5eff78669e369cd36e6fbd8d9f9ac9d089`
 
@@ -10,7 +12,7 @@ Branch: `docs/crm-product-experience-v2-design`
 
 Scope contract: [Stage Brief](<../briefs/2026-10-03-crm-product-experience-v2-stage-brief.md>)
 
-本文件保留阶段方向；2026-10-03 后续用户要求检查全局和优化 V2 计划，现补充 [第一切片实施计划](../plans/2026-10-03-crm-product-experience-v2-implementation.md) 与 [项目审计](../../audits/2026-10-03/project-review.md)。Slice1已通过PR #24合并；当前用户批准Slice2＋3联合实现。
+本文件保留阶段方向；2026-10-03 后续用户要求检查全局和优化 V2 计划，现补充 [第一切片实施计划](../plans/2026-10-03-crm-product-experience-v2-implementation.md) 与 [项目审计](../../audits/2026-10-03/project-review.md)。Slice1已通过PR #24合并；Slice2＋3已通过PR #25合并；当前用户批准Slice4及先前验收缺口收尾，未批准自动合并或部署。
 
 **版本说明：** 本阶段是 CRM Product Experience V2；AI Assistant UI V2 已合并，Full Roadmap V2.2 Sales Execution 是另一未批准阶段。后文浏览器证据来自初稿走查，本轮自动化复核不冒充新一轮浏览器验收。
 
@@ -180,7 +182,7 @@ Object Designer现有步骤和实时预览可保留；改进的是当前编辑�
 
 比较了三条路线：纯Design System换肤、Employee首页优先、公共框架与Record List一起落地。推荐第三条。第一条没有解决控制条负担，第二条进入记录后仍断层，第三条覆盖两角色和所有动态对象的高频入口，同时给后续切片提供经过真实页面应用的公共规则。
 
-FIRST SLICE不是全站重做。它不重构详情/管理员编辑器，不重写AI、不重排用户已发布Dashboard、不引入新后端或巨型组件框架。第一切片现已有单独实施计划，明确文件、任务、测试与验收；执行时同时阅读两份文档。Slice1已实现并合并；Slice2＋3已获本轮明确授权。
+FIRST SLICE不是全站重做。它不重构详情/管理员编辑器，不重写AI、不重排用户已发布Dashboard、不引入新后端或巨型组件框架。第一切片现已有单独实施计划，明确文件、任务、测试与验收；执行时同时阅读两份文档。Slice1和Slice2＋3已实现并合并；Slice4已获明确授权，实现与本地验证完成，等待PR/CI且未合并。
 
 ### Backend constraint
 
@@ -201,4 +203,4 @@ FIRST SLICE不是全站重做。它不重构详情/管理员编辑器，不重�
 5. **工程验证分层**：已有单元/typecheck/build/contracts 通过不抹去新增失败复现；AI E2E 固定地址导致的 setup 失败单列，不改隔离保护凑绿。
 6. **后续顺序与边界**：详情/跟进 → 员工工作台 → 管理配置；各自开工时细化实现，Production Essentials/Automation/AI 扩展不混入。
 
-完整任务、文件与命令以 [实施计划](../plans/2026-10-03-crm-product-experience-v2-implementation.md) 为准。状态：**SLICE 1 IMPLEMENTED AND MERGED / SLICES 2＋3 ACTIVE**。
+完整任务、文件与命令以 [实施计划](../plans/2026-10-03-crm-product-experience-v2-implementation.md) 为准。状态：**SLICES 1–3 MERGED / SLICE4 IMPLEMENTED LOCAL VERIFIED / PR AND CI PENDING / NOT MERGED**。当前执行详见[Slice4计划](../plans/2026-10-04-crm-product-experience-v2-slice-4.md)，验证缺口见最终验收草稿。

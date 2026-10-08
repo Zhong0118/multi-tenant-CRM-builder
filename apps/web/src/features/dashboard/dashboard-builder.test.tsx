@@ -158,8 +158,182 @@ beforeEach(() => {
 });
 
 describe("DashboardBuilder", () => {
+  it("keeps immediate settings secondary and explains the separate draft actions", () => {
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="home"
+        initial={initial}
+      />,
+    );
+
+    const entrance = screen.getByText("工作台设置与目录");
+    expect(entrance.closest("details")).not.toHaveAttribute("open");
+    fireEvent.click(entrance);
+    expect(screen.getByLabelText("工作台名称")).toBeVisible();
+    expect(
+      screen.getByText(
+        "名称、受众、默认、归档与目录顺序单独保存，立即生效，不属于组件草稿。",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "保存仅更新组件草稿；预览使用已保存草稿；发布后成员使用新的线上版本。",
+      ),
+    ).toBeVisible();
+    expect(screen.getByText("线上第 3 版")).toBeVisible();
+    expect(screen.getByText("草稿版本 4")).toBeVisible();
+    expect(updateDashboard).not.toHaveBeenCalled();
+    expect(saveDashboardDraft).not.toHaveBeenCalled();
+  });
+
+  it.each([900, 390])(
+    "puts canvas first at %spx with collapsible tools that retain inputs",
+    (width) => {
+      const media = vi
+        .spyOn(window, "matchMedia")
+        .mockImplementation((query) => ({
+          matches: query === "(max-width: 1120px)" && width <= 1120,
+          media: query,
+          onchange: null,
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          dispatchEvent: () => false,
+        }));
+      try {
+        render(
+          <DashboardBuilder
+            tenantCode="northwind"
+            dashboardCode="home"
+            initial={withWidgets(
+              [metricWidget("metric-first", "第一个指标", 1)],
+              [],
+            )}
+          />,
+        );
+        const canvas = screen.getByRole("main", { name: "工作台画布" });
+        const add = screen.getByRole("button", { name: "添加组件" });
+        const properties = screen.getByRole("button", {
+          name: "编辑所选组件属性",
+        });
+        expect(
+          canvas.compareDocumentPosition(add) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(add).toHaveAttribute("aria-expanded", "false");
+        expect(properties).toHaveAttribute("aria-expanded", "false");
+        fireEvent.click(properties);
+        const input = screen.getByLabelText("组件标题");
+        fireEvent.change(input, { target: { value: "保留的输入" } });
+        fireEvent.click(properties);
+        expect(input).toBeInTheDocument();
+        fireEvent.click(properties);
+        expect(screen.getByLabelText("组件标题")).toBe(input);
+        expect(input).toHaveValue("保留的输入");
+        fireEvent.click(add);
+        fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
+        expect(properties).toHaveAttribute("aria-expanded", "true");
+        expect(screen.getAllByRole("article", { name: /组件/ })).toHaveLength(
+          2,
+        );
+      } finally {
+        media.mockRestore();
+      }
+    },
+  );
+
+  it("reveals collapsed properties before focusing a server validation error", async () => {
+    vi.mocked(publishDashboardDraft).mockRejectedValue({
+      code: "VALIDATION_FAILED",
+      message: "请修复配置",
+      status: 400,
+      requestId: "request-collapsed",
+      fieldErrors: { "widgets[0].objectCode": ["请选择业务表。"] },
+    });
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="home"
+        initial={withWidgets(
+          [metricWidget("metric-first", "第一个指标", 1)],
+          [],
+        )}
+      />,
+    );
+    const properties = screen.getByRole("button", { name: "编辑所选组件属性" });
+    fireEvent.click(properties);
+    expect(properties).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(screen.getByRole("button", { name: "发布工作台" }));
+    await waitFor(() => expect(screen.getByLabelText("业务表")).toHaveFocus());
+    expect(properties).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(properties);
+    fireEvent.click(
+      screen.getByRole("button", { name: "查看问题 请选择业务表。" }),
+    );
+    expect(properties).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByLabelText("业务表")).toHaveFocus();
+  });
+
+  it("selects a different widget through an explicit keyboard-reachable edit action", () => {
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="home"
+        initial={withWidgets(
+          [
+            metricWidget("first", "第一个指标", 1),
+            metricWidget("second", "第二个指标", 2),
+          ],
+          [],
+        )}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "编辑组件 第二个指标" }),
+    );
+    expect(screen.getByLabelText("当前组件")).toHaveValue("第二个指标");
+  });
+
+  it("saves metadata immediately without saving or publishing a dirty component draft", async () => {
+    vi.mocked(updateDashboard).mockResolvedValue({
+      ...initial.draft,
+      name: "运营工作台",
+    });
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="home"
+        initial={initial}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
+    fireEvent.click(screen.getByText("工作台设置与目录"));
+    fireEvent.change(screen.getByLabelText("工作台名称"), {
+      target: { value: "运营工作台" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存名称" }));
+    expect(
+      await screen.findByRole("heading", { name: "运营工作台" }),
+    ).toBeInTheDocument();
+    expect(updateDashboard).toHaveBeenCalledWith("northwind", "home", {
+      name: "运营工作台",
+    });
+    expect(screen.getByText("有未保存修改")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "发布工作台" })).toBeDisabled();
+    expect(saveDashboardDraft).not.toHaveBeenCalled();
+    expect(publishDashboardDraft).not.toHaveBeenCalled();
+  });
+
   it("adds each supported component type from the library", () => {
-    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="home"
+        initial={initial}
+      />,
+    );
 
     for (const label of [
       "添加指标卡",
@@ -176,7 +350,13 @@ describe("DashboardBuilder", () => {
   });
 
   it("selects, copies, and deletes a component without discarding the draft", () => {
-    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="home"
+        initial={initial}
+      />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
     fireEvent.click(screen.getByRole("button", { name: "复制组件 指标卡 1" }));
@@ -188,7 +368,13 @@ describe("DashboardBuilder", () => {
   });
 
   it("publishes an existing saved draft after reload and disables publishing only while dirty", async () => {
-    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="home"
+        initial={initial}
+      />,
+    );
 
     expect(screen.getByRole("button", { name: "发布工作台" })).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
@@ -238,6 +424,7 @@ describe("DashboardBuilder", () => {
         />,
       );
 
+      fireEvent.click(screen.getByText("工作台设置与目录"));
       fireEvent.click(screen.getByRole("button", { name: "归档工作台" }));
       expect(updateDashboard).not.toHaveBeenCalled();
 
@@ -261,7 +448,13 @@ describe("DashboardBuilder", () => {
   });
 
   it("never duplicates component IDs after delete-then-add", async () => {
-    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="home"
+        initial={initial}
+      />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
@@ -333,7 +526,13 @@ describe("DashboardBuilder", () => {
   });
 
   it("updates the active publication indicator immediately after publishing", async () => {
-    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="home"
+        initial={initial}
+      />,
+    );
 
     expect(screen.getByText("线上第 3 版")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
@@ -609,7 +808,13 @@ describe("DashboardBuilder", () => {
   });
 
   it("saves a newly added record list before display fields are selected", async () => {
-    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="home"
+        initial={initial}
+      />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "添加记录列表" }));
     fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
@@ -628,7 +833,13 @@ describe("DashboardBuilder", () => {
   });
 
   it("edits the representative V2 controls, filters, width and keyboard reorder", () => {
-    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="home"
+        initial={initial}
+      />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
     expect(screen.getByLabelText("显示格式")).toBeInTheDocument();
@@ -652,7 +863,13 @@ describe("DashboardBuilder", () => {
   });
 
   it("serializes each operator-specific filter value shape", async () => {
-    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="home"
+        initial={initial}
+      />,
+    );
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
     fireEvent.change(screen.getByLabelText("业务表"), {
       target: { value: "deals" },
@@ -822,7 +1039,13 @@ describe("DashboardBuilder", () => {
       status: 409,
       fieldErrors: {},
     });
-    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="home"
+        initial={initial}
+      />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "发布工作台" }));
 
@@ -861,7 +1084,13 @@ describe("DashboardBuilder", () => {
     expect(screen.getByText("服务器草稿版本为 7")).toBeInTheDocument();
     view.unmount();
 
-    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="home"
+        initial={initial}
+      />,
+    );
 
     expect(
       await screen.findByText("已从本标签页恢复未解决冲突的草稿。"),
@@ -895,7 +1124,13 @@ describe("DashboardBuilder", () => {
       status: 422,
       fieldErrors: {},
     });
-    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="home"
+        initial={initial}
+      />,
+    );
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
     fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
 
@@ -906,7 +1141,13 @@ describe("DashboardBuilder", () => {
   });
 
   it("clears a metric value field when its object changes", async () => {
-    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="home"
+        initial={initial}
+      />,
+    );
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
     fireEvent.change(screen.getByLabelText("业务表"), {
       target: { value: "deals" },
@@ -942,7 +1183,13 @@ describe("DashboardBuilder", () => {
     const link = document.createElement("a");
     link.href = "/workspace/northwind";
     document.body.append(link);
-    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="home"
+        initial={initial}
+      />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
     fireEvent.change(screen.getByLabelText("组件标题"), {
@@ -986,7 +1233,13 @@ describe("DashboardBuilder", () => {
       status: 409,
       fieldErrors: { currentVersion: ["7"] },
     });
-    render(<DashboardBuilder tenantCode="northwind" dashboardCode="home" initial={initial} />);
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="home"
+        initial={initial}
+      />,
+    );
     fireEvent.click(screen.getByRole("button", { name: "预览草稿" }));
     expect(await screen.findByText("真实总数")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
@@ -1065,6 +1318,7 @@ describe("DashboardBuilder named workbenches", () => {
       />,
     );
 
+    fireEvent.click(screen.getByText("工作台设置与目录"));
     fireEvent.change(screen.getByLabelText("工作台名称"), {
       target: { value: "运营工作台" },
     });
@@ -1124,6 +1378,7 @@ describe("DashboardBuilder named workbenches", () => {
       />,
     );
 
+    fireEvent.click(screen.getByText("工作台设置与目录"));
     fireEvent.click(screen.getByRole("button", { name: "设为员工默认" }));
     await waitFor(() =>
       expect(setDashboardDefaults).toHaveBeenCalledWith("northwind", {
@@ -1156,6 +1411,7 @@ describe("DashboardBuilder named workbenches", () => {
       />,
     );
 
+    fireEvent.click(screen.getByText("工作台设置与目录"));
     fireEvent.keyDown(screen.getByRole("button", { name: "上移 销售工作台" }), {
       key: "Enter",
     });
@@ -1168,4 +1424,3 @@ describe("DashboardBuilder named workbenches", () => {
     );
   });
 });
-

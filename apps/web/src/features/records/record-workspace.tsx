@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { followUpQueryKeys } from "@/features/follow-ups/follow-up-api";
-import { validatedReturnTo } from "./source-navigation";
+import { markSourceReturnFocus, validatedReturnTo } from "./source-navigation";
 import { useEffect, useRef, useState } from "react";
 
 import type {
@@ -37,7 +37,7 @@ export interface RecordWorkspaceProps {
  * page the member arrived with.
  */
 export function RecordWorkspace(props: RecordWorkspaceProps) {
-  const key = `${props.tenantCode}:${props.schema.object.code}:${props.openRecord?.id ?? "list"}:${props.openRecord?.version ?? ""}:${props.initialEditing ? "edit" : "view"}:${props.followUpId ?? ""}`;
+  const key = `${props.tenantCode}:${props.schema.object.code}:${props.openRecord?.id ?? "list"}:${props.initialEditing ? "edit" : "view"}:${props.followUpId ?? ""}`;
   return <RecordWorkspaceSession key={key} {...props} />;
 }
 
@@ -57,6 +57,15 @@ function RecordWorkspaceSession({
   const router = useRouter();
   const client = useQueryClient();
   const [record, setRecord] = useState(openRecord);
+  // A refreshed server render carries the same record at a newer version. It
+  // updates the open drawer in place, so an edit started after an earlier save
+  // keeps its draft; a different record changes the session key instead.
+  const [serverRecord, setServerRecord] = useState(openRecord);
+  if (serverRecord !== openRecord) {
+    setServerRecord(openRecord);
+    // A refresh can land after close or delete, before their route change does.
+    if (record) setRecord(openRecord);
+  }
   const listRef = useRef<HTMLDivElement>(null);
   const focusRecordId = useRef<string | undefined>(undefined);
   const listPath = `/workspace/${tenantCode}/objects/${schema.object.code}`;
@@ -101,17 +110,23 @@ function RecordWorkspaceSession({
           followUpId={followUpId}
           onClose={() => {
             if (!validatedReturnTo(tenantCode, returnTo)) focusRecordId.current = record.id;
+            markSourceReturnFocus(tenantCode, returnTo);
             setRecord(undefined);
             router.replace(returnPath);
           }}
           onChanged={async (next) => {
-            setRecord(next ?? undefined);
+            if (next) setRecord(next);
             await Promise.all([
-              client.invalidateQueries({ queryKey: ["workspace", tenantCode, "records"], refetchType: "all" }),
-              client.invalidateQueries({ queryKey: followUpQueryKeys.root(tenantCode), refetchType: "all" }),
+              client.invalidateQueries({ queryKey: ["workspace", tenantCode, "records"], refetchType: "all" }, { throwOnError: true }),
+              client.invalidateQueries({ queryKey: followUpQueryKeys.root(tenantCode), refetchType: "all" }, { throwOnError: true }),
             ]);
+            // Next refresh starts a server render; it does not return its completion.
             router.refresh();
-            if (!next) router.replace(returnPath);
+            if (!next) setRecord(undefined);
+            if (!next) {
+              markSourceReturnFocus(tenantCode, returnTo);
+              router.replace(returnPath);
+            }
           }}
         />
       ) : null}

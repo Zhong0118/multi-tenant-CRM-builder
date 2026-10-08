@@ -1,5 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { ObjectApi } from "./object-api";
@@ -7,6 +14,13 @@ import type { ObjectDraft } from "./object-types";
 import { WorkflowDesigner } from "./workflow-designer";
 import type { WorkflowApi } from "./workflow-api";
 import type { WorkflowDraft } from "./workflow-types";
+
+function dropdownFor(label: string): Element | null {
+  const combobox = screen.getByLabelText(label);
+  const listId = combobox.getAttribute("aria-controls");
+  const list = listId === null ? null : document.getElementById(listId);
+  return list?.closest(".ant-select-dropdown") ?? null;
+}
 
 function objectDraft(): ObjectDraft {
   return {
@@ -141,21 +155,26 @@ function emptyWorkflow(): WorkflowDraft {
   };
 }
 
-function renderDesigner(api: WorkflowApi, objects: ObjectApi = objectApi()) {
+function renderDesigner(
+  api: WorkflowApi,
+  objects: ObjectApi = objectApi(),
+  onObjectVersion = vi.fn(),
+) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  return render(
+  const rendered = render(
     <QueryClientProvider client={client}>
       <WorkflowDesigner
         tenantCode="northwind"
         draft={objectDraft()}
-        onObjectVersion={vi.fn()}
+        onObjectVersion={onObjectVersion}
         api={api}
         objectApi={objects}
       />
     </QueryClientProvider>,
   );
+  return { ...rendered, client };
 }
 
 /**
@@ -184,12 +203,181 @@ function openOptions(label: string): string[] {
   const listId = combobox.getAttribute("aria-controls");
   const list = listId === null ? null : document.getElementById(listId);
   return Array.from(
-    list?.closest(".ant-select-dropdown")?.querySelectorAll(".ant-select-item-option") ??
-      [],
+    list
+      ?.closest(".ant-select-dropdown")
+      ?.querySelectorAll(".ant-select-item-option") ?? [],
   ).map((option) => option.getAttribute("title") ?? "");
 }
 
 describe("WorkflowDesigner", () => {
+  it("groups states and executable transitions with visible controls and draft effects", async () => {
+    const api: WorkflowApi = {
+      getDraft: vi.fn().mockResolvedValue(emptyWorkflow()),
+      saveDraft: vi.fn(),
+      getRuntime: vi.fn(),
+      executeTransition: vi.fn(),
+      history: vi.fn(),
+    };
+    renderDesigner(api);
+    const states = await screen.findByRole("region", { name: "状态" });
+    const transitions = screen.getByRole("region", { name: "可执行动作" });
+    fireEvent.click(within(states).getByRole("button", { name: "添加状态" }));
+    fireEvent.click(
+      within(transitions).getByRole("button", { name: "添加动作" }),
+    );
+    expect(screen.getByRole("switch", { name: "启用流程" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    expect(
+      within(states).getByRole("switch", { name: "初始状态 1" }),
+    ).toBeInTheDocument();
+    expect(
+      within(states).getByRole("switch", { name: "终止状态 1" }),
+    ).toBeInTheDocument();
+    for (const label of ["状态名称", "状态编码", "初始状态", "终止状态"]) {
+      expect(within(states).getByText(label)).toBeVisible();
+    }
+    for (const label of [
+      "动作名称",
+      "动作编码",
+      "从状态",
+      "到状态",
+      "允许角色",
+      "必填字段",
+    ]) {
+      expect(within(transitions).getByText(label)).toBeVisible();
+    }
+    expect(
+      within(transitions).getByRole("region", { name: "执行动作 1" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("当前编辑：客户资料 · 流程草稿")).toBeVisible();
+    expect(
+      screen.getByText(
+        "保存仅更新流程草稿；发布业务表后，员工才会使用新的状态、可执行动作和执行步骤。",
+      ),
+    ).toBeVisible();
+  });
+  it("keeps local input after a conflict and a background draft refetch", async () => {
+    const getDraft = vi.fn().mockResolvedValue(emptyWorkflow());
+    const api: WorkflowApi = {
+      getDraft,
+      saveDraft: vi
+        .fn()
+        .mockRejectedValue({
+          code: "VERSION_CONFLICT",
+          message: "草稿版本已更新",
+          requestId: "req-conflict",
+          status: 409,
+          fieldErrors: {},
+        }),
+      getRuntime: vi.fn(),
+      executeTransition: vi.fn(),
+      history: vi.fn(),
+    };
+    const { client } = renderDesigner(api);
+    fireEvent.click(await screen.findByRole("button", { name: "添加状态" }));
+    fireEvent.change(screen.getByLabelText("状态名称 1"), {
+      target: { value: "本地草稿" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存流程" }));
+    await screen.findByText(/草稿版本已更新.*req-conflict/);
+    getDraft.mockResolvedValue({
+      ...emptyWorkflow(),
+      states: [
+        {
+          key: "server",
+          label: "服务器状态",
+          sortOrder: 10,
+          isTerminal: false,
+        },
+      ],
+    });
+    await act(async () => {
+      await client.refetchQueries({
+        queryKey: ["workspace", "northwind", "workflow-draft", "object-1"],
+      });
+      // Query observer notifications are scheduled after the fetch promise.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    await waitFor(() => expect(getDraft).toHaveBeenCalledTimes(2));
+    expect(screen.getByLabelText("状态名称 1")).toHaveValue("本地草稿");
+  });
+
+  it("does not lose input while a deferred save is pending", async () => {
+    let resolveSave!: (saved: WorkflowDraft) => void;
+    const pending = new Promise<WorkflowDraft>((resolve) => {
+      resolveSave = resolve;
+    });
+    const api: WorkflowApi = {
+      getDraft: vi.fn().mockResolvedValue(emptyWorkflow()),
+      saveDraft: vi.fn(() => pending),
+      getRuntime: vi.fn(),
+      executeTransition: vi.fn(),
+      history: vi.fn(),
+    };
+    const onObjectVersion = vi.fn();
+    renderDesigner(api, objectApi(), onObjectVersion);
+    fireEvent.click(await screen.findByRole("button", { name: "添加状态" }));
+    fireEvent.change(screen.getByLabelText("状态名称 1"), {
+      target: { value: "保存的状态" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "添加动作" }));
+    fireEvent.click(screen.getByRole("button", { name: "添加执行动作" }));
+    await pick("目标业务表 1-1", "客户");
+    await pick("添加字段映射 1-1", "客户名称");
+    fireEvent.click(screen.getByRole("button", { name: "保存流程" }));
+    await waitFor(() => expect(api.saveDraft).toHaveBeenCalledTimes(1));
+    const input = screen.getByLabelText("状态名称 1") as HTMLInputElement;
+    expect(input).toBeDisabled();
+    const submitted = vi.mocked(api.saveDraft).mock.calls[0][2];
+    await act(async () => {
+      resolveSave({ ...submitted, objectVersion: 5 });
+    });
+    await screen.findByText("流程配置已保存");
+    expect(screen.getByLabelText("状态名称 1")).toHaveValue("保存的状态");
+    expect(onObjectVersion).toHaveBeenCalledWith({
+      ...objectDraft(),
+      object: { ...objectDraft().object, version: 5 },
+    });
+  });
+
+  it("does not add a mapping from the portal while a deferred save is pending", async () => {
+    let resolveSave!: (saved: WorkflowDraft) => void;
+    const pending = new Promise<WorkflowDraft>((resolve) => {
+      resolveSave = resolve;
+    });
+    const api: WorkflowApi = {
+      getDraft: vi.fn().mockResolvedValue(emptyWorkflow()),
+      saveDraft: vi.fn(() => pending),
+      getRuntime: vi.fn(),
+      executeTransition: vi.fn(),
+      history: vi.fn(),
+    };
+    renderDesigner(api, objectApi(), vi.fn());
+    fireEvent.click(await screen.findByRole("button", { name: "添加状态" }));
+    fireEvent.click(screen.getByRole("button", { name: "添加动作" }));
+    fireEvent.click(screen.getByRole("button", { name: "添加执行动作" }));
+    await pick("目标业务表 1-1", "客户");
+    fireEvent.click(screen.getByRole("button", { name: "保存流程" }));
+    await waitFor(() => expect(api.saveDraft).toHaveBeenCalledTimes(1));
+
+    const mapping = screen.getByLabelText("添加字段映射 1-1");
+    fireEvent.mouseDown(mapping.closest(".ant-select")!);
+    fireEvent.mouseDown(mapping);
+    const dropdown = dropdownFor("添加字段映射 1-1");
+    const customerName = dropdown?.querySelector('[title="客户名称"]');
+    if (customerName) fireEvent.click(customerName);
+    expect(mapping).toBeDisabled();
+    expect(screen.queryByLabelText("映射目标字段 1-1-1")).not.toBeInTheDocument();
+
+    const submitted = vi.mocked(api.saveDraft).mock.calls[0][2];
+    await act(async () => {
+      resolveSave({ ...submitted, objectVersion: 5 });
+    });
+    await screen.findByText("流程配置已保存");
+  });
+
   it("saves added states, an initial state and a transition", async () => {
     const saveDraft = vi.fn(async (_tenant: string, _id: string, input) => ({
       ...input,
@@ -202,7 +390,8 @@ describe("WorkflowDesigner", () => {
       executeTransition: vi.fn(),
       history: vi.fn(),
     };
-    renderDesigner(api);
+    const onObjectVersion = vi.fn();
+    renderDesigner(api, objectApi(), onObjectVersion);
 
     fireEvent.click(await screen.findByRole("button", { name: "添加状态" }));
     fireEvent.click(screen.getByRole("button", { name: "添加状态" }));
@@ -240,6 +429,10 @@ describe("WorkflowDesigner", () => {
       ],
     });
     expect(await screen.findByText("流程配置已保存")).toBeInTheDocument();
+    expect(onObjectVersion).toHaveBeenCalledWith({
+      ...objectDraft(),
+      object: { ...objectDraft().object, version: 5 },
+    });
   });
 
   it("starts a new transition with no actions and saves the configured steps in order", async () => {
@@ -286,7 +479,9 @@ describe("WorkflowDesigner", () => {
               key: "create-customer",
               type: "CREATE_RECORD",
               targetObjectCode: "customer",
-              values: { name: { source: "SOURCE_FIELD", fieldKey: "customer_name" } },
+              values: {
+                name: { source: "SOURCE_FIELD", fieldKey: "customer_name" },
+              },
             },
           ],
         }),
@@ -325,7 +520,9 @@ describe("WorkflowDesigner", () => {
         code: "WORKFLOW_ACTION_INVALID",
         message: "流程执行动作配置不合法。",
         fieldErrors: {
-          "transitions.0.actions.0.targetObjectCode": ["「targetObjectCode」不能为空。"],
+          "transitions.0.actions.0.targetObjectCode": [
+            "「targetObjectCode」不能为空。",
+          ],
         },
         requestId: "req_action_1",
         status: 400,

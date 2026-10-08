@@ -1,0 +1,150 @@
+name: crm-production
+
+x-app: &app
+  image: crm-app:${RELEASE_ID:-internal-trial}
+  build:
+    context: ..
+    dockerfile: Dockerfile
+    args:
+      NEXT_PUBLIC_API_ORIGIN: ${WEB_ORIGIN:?Set the same-origin public Web entry before building}
+
+services:
+  api:
+    <<: *app
+    command: ["pnpm", "--filter", "@crm/api", "start:prod"]
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      WEB_ORIGIN: ${WEB_ORIGIN:?Set WEB_ORIGIN}
+      API_ORIGIN: ${WEB_ORIGIN:?Set WEB_ORIGIN}
+      TRUSTED_PROXY_IP: 172.30.26.2
+      PUBLIC_REGISTRATION_ENABLED: "false"
+      FIRST_ADMIN_PHONE: ${FIRST_ADMIN_PHONE:?Set the approved bootstrap phone}
+      DATABASE_URL: ${DATABASE_URL:?Set the crm_app runtime URL}
+      REDIS_URL: ${REDIS_URL:?Set the authenticated Redis URL}
+      AI_PROVIDER: ${AI_PROVIDER:-openai}
+      AI_MODEL: ${AI_MODEL:?Set AI_MODEL}
+      AI_API_KEY: ${AI_API_KEY:?Set AI_API_KEY}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-45000}
+      SMS_PROVIDER: ${SMS_PROVIDER:?Set SMS_PROVIDER to tencent}
+      TENCENT_SMS_SECRET_ID: ${TENCENT_SMS_SECRET_ID:?Set TENCENT_SMS_SECRET_ID}
+      TENCENT_SMS_SECRET_KEY: ${TENCENT_SMS_SECRET_KEY:?Set TENCENT_SMS_SECRET_KEY}
+      TENCENT_SMS_SDK_APP_ID: ${TENCENT_SMS_SDK_APP_ID:?Set TENCENT_SMS_SDK_APP_ID}
+      TENCENT_SMS_SIGN_NAME: ${TENCENT_SMS_SIGN_NAME:?Set TENCENT_SMS_SIGN_NAME}
+      TENCENT_SMS_REGISTER_TEMPLATE_ID: ${TENCENT_SMS_REGISTER_TEMPLATE_ID:?Set TENCENT_SMS_REGISTER_TEMPLATE_ID}
+      TENCENT_SMS_RESET_TEMPLATE_ID: ${TENCENT_SMS_RESET_TEMPLATE_ID:?Set TENCENT_SMS_RESET_TEMPLATE_ID}
+      TENCENT_SMS_REGION: ${TENCENT_SMS_REGION:-ap-guangzhou}
+      ATTACHMENTS_STORAGE_DIR: /var/lib/crm/attachments
+    networks:
+      edge:
+        ipv4_address: 172.30.26.3
+      private: {}
+    expose: ["3001"]
+    volumes: [attachments_data:/var/lib/crm/attachments]
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+  web:
+    <<: *app
+    command: ["pnpm", "--filter", "@crm/web", "start"]
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      API_ORIGIN: http://api:3001
+    networks:
+      edge:
+        ipv4_address: 172.30.26.4
+    expose: ["3000"]
+    restart: unless-stopped
+  migrate:
+    <<: *app
+    profiles: [maintenance]
+    command: ["pnpm", "--filter", "@crm/database", "prisma:migrate:deploy"]
+    environment:
+      DATABASE_ADMIN_URL: ${DATABASE_ADMIN_URL:?Set the migration owner URL}
+    networks: [private]
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+  provision:
+    image: postgres:18-alpine
+    profiles: [maintenance]
+    entrypoint: ["sh", "/provision/provision-runtime-role.sh"]
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:?Set POSTGRES_DB}
+      CRM_APP_PASSWORD: ${CRM_APP_PASSWORD:?Set CRM_APP_PASSWORD}
+    volumes:
+      - ../scripts/deployment/provision-runtime-role.sh:/provision/provision-runtime-role.sh:ro
+      - ../infrastructure/postgres/init/001-create-app-role.sql:/provision/init.sql:ro
+    networks: [private]
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    networks: [private]
+    volumes: [postgres_data:/var/lib/postgresql]
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  redis:
+    image: redis:7.4-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+    command:
+      [
+        "sh",
+        "-ec",
+        'exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"',
+      ]
+    networks: [private]
+    volumes: [redis_data:/data]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  caddy:
+    image: caddy:2.10-alpine
+    environment:
+      WEB_HOST: ${WEB_HOST:?Set WEB_HOST}
+    ports: ["80:80", "443:443"]
+    networks:
+      edge:
+        ipv4_address: 172.30.26.2
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+networks:
+  edge:
+    ipam:
+      config:
+        - subnet: 172.30.26.0/24
+  private:
+    internal: true
+volumes:
+  postgres_data:
+  redis_data:
+  attachments_data:
+  caddy_data:
+  caddy_config:

@@ -99,8 +99,30 @@
 }
 
 .rowMenu {
-  opacity: 0.28;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  opacity: 0.35;
   transition: opacity 160ms ease;
+}
+
+.railError,
+.messageError {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 12px 8px;
+  padding: 10px 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  background: color-mix(in srgb, var(--color-danger, #b42318) 7%, var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--color-danger, #b42318) 20%, var(--border-default));
+  border-radius: 8px;
+}
+
+.messageError {
+  margin: 8px 0 16px;
 }
 
 .row:hover .rowMenu,
@@ -215,6 +237,7 @@
 
 .assistantSurface {
   min-width: 0;
+  max-width: 100%;
   color: var(--text-primary);
   font-size: 15.5px;
   line-height: 1.75;
@@ -223,6 +246,21 @@
 
 .assistantSurface p {
   margin: 0 0 12px;
+}
+
+.assistantSurface pre,
+.assistantSurface code {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-wrap: normal;
+  white-space: pre;
+  font-family: var(--font-mono);
+}
+
+.assistantSurface pre {
+  padding: 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-surface) 76%, var(--bg-page));
 }
 
 .tools {
@@ -402,9 +440,27 @@
   gap: 12px;
 }
 
-.composerHint {
+.composerMeta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.composerHint,
+.composerCount,
+.composerStatus {
   color: var(--text-tertiary);
   font-size: 12px;
+}
+
+.composerCount {
+  white-space: nowrap;
+}
+
+.composerStatus {
+  color: var(--color-primary);
+  font-weight: 600;
 }
 
 .composerActions {

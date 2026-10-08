@@ -72,6 +72,8 @@ Acceptance / Audit
 
 ## 3. 当前产品位置
 
+**2026-10-06 近期执行状态：** CRM Product Experience V2 的 Slice1 已合并（PR #24，`9cd2523`），Slice2＋3 已合并（PR #25，`78f55df`，gh已核实）；Slice4 已授权，PR #26 仍 OPEN / 未合并。已核实基线 head `51a6269`，run `37398947483` 六项 required checks 全部 SUCCESS；父 agent 正在加入最终安全修复，后续未提交 head 尚待独立验证。当前 active 范围是有限单机内部试运行准备，不等于 Full Roadmap 的 Production Essentials 已整体交付；AI 强制配置、腾讯送达、真实外部依赖和追加测试仍按验收边界记录。浏览器为risk-based已观察，未宣称全矩阵PASS；不激活 V2.2/Automation，不合并、不部署。证据见[最终验收草稿](../../audits/2026-10-05/crm-product-experience-v2-final-acceptance.md)。
+
 当前系统已经不是单纯 CRUD 型 CRM。
 
 （本节描述长期能力地图上的位置。**近期实际执行顺序见 `2026-09-16-crm-lean-roadmap.md`**，本节以下 V2.2 及之后的阶段均为长期需求，未获实现批准。V2.1B Action Engine 之后的 Workflow Required Field Visibility Hardening 已通过 PR #2 合并进 `main`，属补丁而非新阶段。）

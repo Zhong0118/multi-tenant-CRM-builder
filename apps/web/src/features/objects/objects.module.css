@@ -601,11 +601,9 @@
   }
 
   .fieldDrawerFooter {
-    align-items: flex-end;
-  }
-
-  .fieldDrawerFooter > span {
-    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
   }
 }
 
@@ -807,4 +805,35 @@
   .desktopOnly {
     display: block;
   }
+}
+
+.designerContext,
+.sectionActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.designerContext {
+  padding-block: 12px;
+  border-bottom: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.designerContext strong {
+  color: var(--text-primary);
+}
+
+.saveEffect {
+  margin: 8px 0 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.designerNavItem:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }

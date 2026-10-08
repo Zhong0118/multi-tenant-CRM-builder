@@ -258,6 +258,22 @@ describe("actionTargetObjects", () => {
 });
 
 describe("WorkflowActionEditor", () => {
+  it("explains state-only actions and presents ordered steps with their effects", () => {
+    renderEditor();
+    expect(
+      screen.getByText("不配置执行动作时，仅变更流程状态。"),
+    ).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "添加执行动作" }));
+    const list = screen.getByRole("list", { name: "顺序执行步骤 1" });
+    expect(list.querySelectorAll(":scope > li")).toHaveLength(1);
+    expect(
+      screen.getByRole("heading", { name: "步骤 1", level: 5 }),
+    ).toBeVisible();
+    expect(screen.getByText("执行效果：创建一条业务记录")).toBeVisible();
+    pick("执行动作类型 1-1", "将当前记录分配给执行人");
+    expect(screen.getByText("执行效果：将当前记录分配给执行人")).toBeVisible();
+  });
+
   it("adds a numbered step, edits its key and replaces the payload when the type changes", () => {
     const actions = renderEditor();
 

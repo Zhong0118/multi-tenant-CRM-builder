@@ -27,6 +27,37 @@ describe("nextPrependScrollTop", () => {
   });
 });
 
+describe("AiMessageList proposal errors", () => {
+  it("passes proposal errors through to the assistant proposal card", () => {
+    const proposal = {
+      proposalId: "p1",
+      operation: "UPDATE_RECORD",
+      title: "更新客户",
+      targetSummary: "客户",
+      changes: [],
+      validationWarnings: [],
+      expiresAt: "2999-01-01T00:00:00.000Z",
+      status: "PROPOSED",
+      failureCode: null,
+      auditId: null,
+      result: null,
+    } as never;
+    render(
+      <AiMessageList
+        tenantCode="northwind"
+        messages={[{
+          ...message("assistant", ""),
+          role: "ASSISTANT",
+          proposal,
+        }]}
+        phase="IDLE"
+        proposalError="提案执行失败"
+      />,
+    );
+    expect(screen.queryByText("提案执行失败")).toBeInTheDocument();
+  });
+});
+
 describe("AiMessageList prepend anchor", () => {
   it("records scroll geometry before loading older messages and restores it after prepend", () => {
     function Harness({ onGrow }: { onGrow: () => void }) {

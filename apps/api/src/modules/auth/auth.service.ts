@@ -3,6 +3,10 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 
 import { ApiException } from '../../common/errors/api.exception';
 import {
+  assertRegistrationAllowed,
+  registrationNeedsInvitation,
+} from './registration-policy';
+import {
   RATE_LIMITER,
   type RateLimiter,
 } from '../../infrastructure/rate-limit/rate-limiter';
@@ -106,6 +110,12 @@ function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex');
 }
 
+class ChallengeCodeMismatch extends Error {
+  constructor(readonly challengeId: string) {
+    super('Verification code mismatch');
+  }
+}
+
 function codesMatch(actualHash: string, candidate: string): boolean {
   const expected = Buffer.from(actualHash, 'hex');
   const received = Buffer.from(sha256(candidate), 'hex');
@@ -135,6 +145,18 @@ export class AuthService {
     input: VerificationInput,
   ): Promise<{ accepted: true }> {
     const phone = normalizeChineseMobile(input.phone);
+    if (input.purpose === 'REGISTER') {
+      assertRegistrationAllowed(
+        phone,
+        process.env,
+        registrationNeedsInvitation(phone, process.env)
+          ? await this.repository.findPendingInvitationByPhone(
+              phone,
+              this.clock(),
+            )
+          : false,
+      );
+    }
     await this.pruneAuthArtifacts();
     const phoneKey = sha256(phone);
     await Promise.all([
@@ -172,26 +194,42 @@ export class AuthService {
     return { accepted: true };
   }
 
-  register(input: RegisterInput): Promise<AuthenticatedSessionResult> {
+  async register(input: RegisterInput): Promise<AuthenticatedSessionResult> {
     const phone = normalizeChineseMobile(input.phone);
+    await this.preflightInvalidChallenge(phone, 'REGISTER', input.code);
 
-    return this.repository.transaction(async (store) => {
-      await this.consumeValidChallenge(store, phone, 'REGISTER', input.code);
-      let user = await store.findUserByPhone(phone);
-
-      if (!user) {
-        user = await store.createUser({
-          displayName: input.displayName,
+    try {
+      return await this.repository.transaction(async (store) => {
+        assertRegistrationAllowed(
           phone,
-          phoneVerifiedAt: this.clock(),
-          passwordHash: await this.passwordHasher.hash(input.password),
-          isPlatformAdmin: false,
-          status: 'ACTIVE',
-        });
-      }
+          process.env,
+          registrationNeedsInvitation(phone, process.env)
+            ? await store.findPendingInvitationByPhone(phone, this.clock())
+            : false,
+        );
+        await this.consumeValidChallenge(store, phone, 'REGISTER', input.code);
+        let user = await store.findUserByPhone(phone);
 
-      return this.issueSession(store, user, input);
-    });
+        if (!user) {
+          user = await store.createUser({
+            displayName: input.displayName,
+            phone,
+            phoneVerifiedAt: this.clock(),
+            passwordHash: await this.passwordHasher.hash(input.password),
+            isPlatformAdmin: false,
+            status: 'ACTIVE',
+          });
+        }
+
+        return this.issueSession(store, user, input);
+      });
+    } catch (error) {
+      if (error instanceof ChallengeCodeMismatch) {
+        await this.repository.incrementChallengeFailure(error.challengeId);
+        throw new ApiException('VERIFICATION_INVALID', 400);
+      }
+      throw error;
+    }
   }
 
   async login(input: LoginInput): Promise<AuthenticatedSessionResult> {
@@ -228,27 +266,36 @@ export class AuthService {
     });
   }
 
-  resetPassword(input: ResetPasswordInput): Promise<{ accepted: true }> {
+  async resetPassword(input: ResetPasswordInput): Promise<{ accepted: true }> {
     const phone = normalizeChineseMobile(input.phone);
+    await this.preflightInvalidChallenge(phone, 'RESET_PASSWORD', input.code);
 
-    return this.repository.transaction(async (store) => {
-      await this.consumeValidChallenge(
-        store,
-        phone,
-        'RESET_PASSWORD',
-        input.code,
-      );
-      const user = await store.findUserByPhone(phone);
-      if (user) {
-        await store.updatePassword(
-          user.id,
-          await this.passwordHasher.hash(input.newPassword),
+    try {
+      return await this.repository.transaction(async (store) => {
+        await this.consumeValidChallenge(
+          store,
+          phone,
+          'RESET_PASSWORD',
+          input.code,
         );
-        await store.revokeAllSessions(user.id, this.clock());
-      }
+        const user = await store.findUserByPhone(phone);
+        if (user) {
+          await store.updatePassword(
+            user.id,
+            await this.passwordHasher.hash(input.newPassword),
+          );
+          await store.revokeAllSessions(user.id, this.clock());
+        }
 
-      return { accepted: true };
-    });
+        return { accepted: true };
+      });
+    } catch (error) {
+      if (error instanceof ChallengeCodeMismatch) {
+        await this.repository.incrementChallengeFailure(error.challengeId);
+        throw new ApiException('VERIFICATION_INVALID', 400);
+      }
+      throw error;
+    }
   }
 
   changePassword(input: ChangePasswordInput): Promise<{ accepted: true }> {
@@ -336,6 +383,19 @@ export class AuthService {
     });
   }
 
+  private async preflightInvalidChallenge(
+    phone: string,
+    purpose: ChallengePurpose,
+    candidateCode: string,
+  ): Promise<void> {
+    const challenge = await this.repository.findLatestChallenge(phone, purpose);
+    if (!challenge) throw new ApiException('VERIFICATION_INVALID', 400);
+    if (challenge.expiresAt.getTime() <= this.clock().getTime()) return;
+    if (codesMatch(challenge.codeHash, candidateCode)) return;
+    await this.repository.incrementChallengeFailure(challenge.id);
+    throw new ApiException('VERIFICATION_INVALID', 400);
+  }
+
   private async consumeValidChallenge(
     store: AuthStore,
     phone: string,
@@ -356,13 +416,7 @@ export class AuthService {
     }
 
     if (!codesMatch(challenge.codeHash, candidateCode)) {
-      const attemptCount = challenge.attemptCount + 1;
-      await store.updateChallengeFailure(
-        challenge.id,
-        attemptCount,
-        attemptCount >= 5 ? 'LOCKED' : 'PENDING',
-      );
-      throw new ApiException('VERIFICATION_INVALID', 400);
+      throw new ChallengeCodeMismatch(challenge.id);
     }
 
     if (!(await store.consumeChallenge(challenge.id, now))) {

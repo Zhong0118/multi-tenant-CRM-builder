@@ -2,7 +2,7 @@
 
 import { skipToken, useMutation, useQuery } from "@tanstack/react-query";
 import { Alert, Button, Drawer, Popconfirm, Space, Typography } from "antd";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type {
   RecordSummary,
@@ -57,7 +57,15 @@ export function RecordDetailDrawer({
   onChanged,
 }: RecordDetailDrawerProps) {
   const [editing, setEditing] = useState(initialEditing);
+  const [editingRecord, setEditingRecord] = useState<RecordSummary | undefined>(
+    initialEditing ? record : undefined,
+  );
+  const editSession = useRef(0);
+  // Capture ownership while rendering the form, before its HTTP save starts.
+  const session = editSession.current;
   const [error, setError] = useState<string>();
+  const [refreshWarning, setRefreshWarning] = useState<string>();
+  const [deleted, setDeleted] = useState(false);
   const fields = schema.fields.filter((field) => field.access !== "HIDDEN");
   const summaryKeys = new Set([
     schema.object.titleFieldKey,
@@ -76,7 +84,12 @@ export function RecordDetailDrawer({
     <dl className={styles.detailFields}>
       {selected.map((field) => (
         <div key={field.id} className={styles.detailField}>
-          <dt>{field.label}{field.access === "READ_ONLY" ? <span className={styles.detailLock}>仅管理员可编辑</span> : null}</dt>
+          <dt>
+            {field.label}
+            {field.access === "READ_ONLY" ? (
+              <span className={styles.detailLock}>仅管理员可编辑</span>
+            ) : null}
+          </dt>
           <dd>{displayValue(field, record.values[field.fieldKey], members)}</dd>
         </div>
       ))}
@@ -87,8 +100,18 @@ export function RecordDetailDrawer({
     mutationFn: () =>
       api.remove(tenantCode, schema.object.code, record.id, record.version),
     onSuccess: async () => {
-      await onChanged(null);
-      onClose();
+      setDeleted(true);
+      setEditingRecord(undefined);
+      setEditing(false);
+      setError(undefined);
+      try {
+        await onChanged(null);
+        onClose();
+      } catch {
+        const message =
+          "记录已删除，但刷新暂时失败。请返回列表重新载入，不要重复删除。";
+        setRefreshWarning(message);
+      }
     },
     onError: (caught) => {
       const apiError = toApiError(caught);
@@ -111,8 +134,15 @@ export function RecordDetailDrawer({
       }
       extra={
         <Space>
-          {schema.actions.canUpdate && !editing ? (
-            <Button onClick={() => setEditing(true)}>编辑</Button>
+          {schema.actions.canUpdate && !editing && !deleted ? (
+            <Button
+              onClick={() => {
+                setEditingRecord(record);
+                setEditing(true);
+              }}
+            >
+              编辑
+            </Button>
           ) : null}
           {canDelete ? (
             <Popconfirm
@@ -121,7 +151,7 @@ export function RecordDetailDrawer({
               okText="删除记录"
               onConfirm={() => remove.mutate()}
             >
-              <Button danger loading={remove.isPending}>
+              <Button danger loading={remove.isPending} disabled={deleted}>
                 删除
               </Button>
             </Popconfirm>
@@ -129,31 +159,56 @@ export function RecordDetailDrawer({
         </Space>
       }
     >
+      {refreshWarning ? (
+        <Alert type="warning" showIcon title={refreshWarning} />
+      ) : null}
       {error ? <Alert type="error" showIcon title={error} /> : null}
 
-      {editing ? (
+      {deleted ? (
+        <Button onClick={onClose}>返回列表</Button>
+      ) : editing ? (
         <RecordForm
           tenantCode={tenantCode}
           schema={schema}
-          record={record}
+          record={editingRecord ?? record}
           members={members}
           canChooseOwner={canChooseOwner}
           api={api}
-          onSaved={(saved) => {
-            setEditing(false);
-            return onChanged(saved);
+          onSaved={async (saved) => {
+            try {
+              await onChanged(saved);
+            } catch {
+              const message =
+                "记录已保存，但刷新暂时失败。请重新载入查看最新记录，不要重复提交。";
+              setRefreshWarning(message);
+            } finally {
+              if (editSession.current === session) {
+                setEditingRecord(undefined);
+                setEditing(false);
+              }
+            }
           }}
-          onCancel={() => setEditing(false)}
+          onCancel={() => {
+            editSession.current += 1;
+            setEditingRecord(undefined);
+            setEditing(false);
+          }}
         />
       ) : (
         <>
           <section aria-label="记录摘要">
-            {renderFields(fields.filter((field) => summaryKeys.has(field.fieldKey)))}
+            {renderFields(
+              fields.filter((field) => summaryKeys.has(field.fieldKey)),
+            )}
             <div className={styles.detailMeta}>
               <Typography.Text type="secondary">
-                负责人：{members.find((member) => member.id === record.ownerMemberId)?.displayName ?? (record.ownerMemberId ? "已指定" : "未指定")}
+                负责人：
+                {members.find((member) => member.id === record.ownerMemberId)
+                  ?.displayName ?? (record.ownerMemberId ? "已指定" : "未指定")}
               </Typography.Text>
-              <Typography.Text type="secondary">版本 v{record.version}</Typography.Text>
+              <Typography.Text type="secondary">
+                版本 v{record.version}
+              </Typography.Text>
             </div>
           </section>
 
@@ -191,7 +246,12 @@ export function RecordDetailDrawer({
             {renderFields(fields)}
           </details>
           <details className={styles.detailDisclosure}>
-            <summary>关联业务记录{relations.data ? `（${relations.data.length || "暂无关联"}）` : "（展开查看）"}</summary>
+            <summary>
+              关联业务记录
+              {relations.data
+                ? `（${relations.data.length || "暂无关联"}）`
+                : "（展开查看）"}
+            </summary>
             <RecordRelationsPanel
               tenantCode={tenantCode}
               objectCode={schema.object.code}
@@ -200,7 +260,12 @@ export function RecordDetailDrawer({
             />
           </details>
           <details className={styles.detailDisclosure}>
-            <summary>附件{attachments.data ? `（${attachments.data.length || "暂无附件"}）` : "（展开查看）"}</summary>
+            <summary>
+              附件
+              {attachments.data
+                ? `（${attachments.data.length || "暂无附件"}）`
+                : "（展开查看）"}
+            </summary>
             <RecordAttachmentsPanel
               tenantCode={tenantCode}
               objectCode={schema.object.code}

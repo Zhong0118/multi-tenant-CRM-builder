@@ -24,7 +24,7 @@
 | Sales Workbench Lite | **COMPLETED**（PR #9，合并提交 `a6e08b2`） | 员工首页固定 Personal Follow-up Workbench：全部待办 / 今日 / 已逾期 / 未来 7 个租户日历日；只读 `GET /workspaces/:tenantCode/follow-ups/workbench`（服务端解析 Actor、不接受 member 覆盖）；**overdue = `dueAt < now`**（与完整 Follow-up Domain 对齐）；**不新增 Dashboard widget、不改 publication schema、不加迁移**，完成动作复用既有 `PATCH /follow-ups/:id`。验收 `docs/audits/2026-09-17/sales-workbench-lite-acceptance.md` | 0.3–0.5× |
 | AI Assistant V1A | **COMPLETED**（PR A/B/C MERGED AND VERIFIED；#17 merge `b3bc59a`；browser walkthrough = VERIFIED；post-merge 六门 SUCCESS） | 只读 Ask / Analyze | 0.4–0.7× |
 | AI Assistant V1B | **COMPLETED — MERGED AND VERIFIED**（PR #22 MERGED；merge `fd0410fe4548704ee14e1027ac4d09a243195a70`；post-merge main CI run `36979987780` 六门 SUCCESS） | Proposal → Preview → Confirm → Typed Write → Audit；验收见 `docs/audits/2026-09-23/ai-assistant-v1b-acceptance.md` | 0.5–0.8× |
-| CRM Product Experience V2 | **SLICE 1 MERGED (#24, 9cd2523); SLICES 2＋3 AUTHORIZED / ACTIVE; SLICE4 PLANNED** | Slice1当前页批量修复4484ed9六门SUCCESS后合并；当前联合交付详情/跟进活动与员工工作台，保持权限、领域、时区和已发布Dashboard。新PR不自动合并。 | 以实际交付为准 |
+| CRM Product Experience V2 | **SLICES 1–3 MERGED (#24 `9cd2523`; #25 `78f55df`); SLICE4 BASE HEAD VERIFIED (`51a6269`, PR #26 OPEN, run `37398947483` six checks SUCCESS); LATEST SAFETY FIXES PENDING / NOT MERGED** | Slice4本地实现与既有验收证据保留；基线 head 的远端六项门禁已核实。父 agent 正在加入最终安全修复，后续未提交 head 不继承该 CI 结论；AI65/API28 聚焦通过，追加测试待完成。浏览器risk-based已观察，完整矩阵不作PASS声明；不自动合并、不部署。 | 以实际交付为准 |
 | Production Essentials | PLANNED | 安全、日志、备份、监控、对象存储、生产配置 | 0.6–1.0× |
 | Email Adapter | OPTIONAL | 保留统一邮件接口，按需求接 Provider | 0.1–0.2× |
 
@@ -88,7 +88,7 @@ Engineering Gate Lite          ✅ COMPLETED（PR #4）
 → Engineering Gate Hardening   ✅ COMPLETED（PR #11/#12）
 → AI Assistant V1A             ✅ COMPLETED（PR #14/#16/#17；browser walkthrough VERIFIED；post-merge 六门 SUCCESS）
 → AI Assistant V1B             ✅ COMPLETED — MERGED AND VERIFIED（PR #22；post-merge 六门 SUCCESS）
-→ CRM Product Experience V2    Slice1 MERGED；Slice2＋3联合ACTIVE；Slice4 PLANNED
+→ CRM Product Experience V2    Slices1–3 MERGED；Slice4 BASE HEAD VERIFIED (`51a6269`, PR #26 OPEN, run `37398947483` six checks SUCCESS)；LATEST SAFETY FIXES PENDING / NOT MERGED
 → Production Essentials        PLANNED（不随体验整理自动启动）
 → Optional Email Adapter
 ```

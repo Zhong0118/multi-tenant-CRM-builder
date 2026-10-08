@@ -7,6 +7,10 @@ import type { RuntimeObjectSchema } from "@/features/objects/object-types";
 
 import type { RecordApi } from "./record-api";
 import { RecordForm } from "./record-form";
+import { NewRecordPanel } from "./new-record-panel";
+import { recordApi as defaultRecordApi } from "./record-api";
+const router = vi.hoisted(() => ({ replace: vi.fn(), push: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => router }));
 
 function schema(
   overrides: Partial<RuntimeObjectSchema> = {},
@@ -124,6 +128,53 @@ const conflict = {
 };
 
 describe("RecordForm creating a record", () => {
+  it("locks fields and owner while saving and after commit", async () => {
+    let resolve!: (record: typeof savedRecord) => void;
+    const api = recordApi({ create: vi.fn(() => new Promise<typeof savedRecord>((done) => { resolve = done; })) });
+    renderForm(<RecordForm tenantCode="northwind" schema={schema()} api={api} canChooseOwner members={[{ id: "member-lin", displayName: "林员工" }]} onSaved={vi.fn()} />);
+    const name = screen.getByLabelText("客户名称");
+    const amount = screen.getByLabelText("合同金额");
+    const owner = screen.getByLabelText("负责人");
+    fireEvent.change(name, { target: { value: "提交快照" } });
+    const submit = screen.getByRole("button", { name: "创建记录" });
+    fireEvent.click(submit);
+    await waitFor(() => expect(api.create).toHaveBeenCalledTimes(1));
+    expect(name).toBeDisabled();
+    expect(amount).toBeDisabled();
+    expect(owner).toBeDisabled();
+    resolve(savedRecord);
+    await waitFor(() => expect(submit).toBeDisabled());
+    expect(name).toBeDisabled();
+    expect(amount).toBeDisabled();
+    expect(owner).toBeDisabled();
+    expect(name).toHaveValue("提交快照");
+    expect(vi.mocked(api.create).mock.calls[0][2].values).toEqual({ name: "提交快照" });
+  });
+  it("does not create again while the real create panel waits for its non-awaitable route replacement", async () => {
+    router.replace.mockClear();
+    const create = vi.spyOn(defaultRecordApi, "create").mockResolvedValue(savedRecord);
+    renderForm(<NewRecordPanel tenantCode="northwind" schema={schema()} members={[]} canChooseOwner={false} />);
+    fireEvent.change(screen.getByLabelText("客户名称"), { target: { value: "已提交" } });
+    const submit = screen.getByRole("button", { name: "创建记录" });
+    fireEvent.click(submit);
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/workspace/northwind/objects/customers/record-1"));
+    await waitFor(() => expect(submit).toBeDisabled());
+    fireEvent.click(submit);
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    create.mockRestore();
+  });
+  it("reports committed create separately when its refresh callback rejects", async () => {
+    const api = recordApi();
+    renderForm(<RecordForm tenantCode="northwind" schema={schema()} api={api} onSaved={async () => { throw new Error("refresh callback unavailable"); }} />);
+    fireEvent.change(screen.getByLabelText("客户名称"), { target: { value: "已提交" } });
+    fireEvent.click(screen.getByRole("button", { name: "创建记录" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("记录已保存，但刷新暂时失败。请重新载入查看最新记录，不要重复提交。");
+    expect(screen.queryByText(/服务暂时不可用/)).not.toBeInTheDocument();
+    expect(api.create).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText("客户名称")).toHaveValue("已提交");
+  });
   it("submits only the fields the member may edit", async () => {
     const api = recordApi();
     renderForm(

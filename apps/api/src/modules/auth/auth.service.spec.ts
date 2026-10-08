@@ -18,6 +18,7 @@ class MemoryAuthRepository implements AuthRepository {
   challenges: AuthChallenge[] = [];
   sessions: AuthSession[] = [];
   users: AuthUser[] = [];
+  pendingInvitationPhones = new Set<string>();
 
   transaction<T>(work: (store: AuthStore) => Promise<T>): Promise<T> {
     return work(this);
@@ -42,6 +43,20 @@ class MemoryAuthRepository implements AuthRepository {
           challenge.phone === phone && challenge.purpose === purpose,
       ) ?? null,
     );
+  }
+
+  incrementChallengeFailure(
+    id: string,
+  ): Promise<{ attemptCount: number; status: ChallengeStatus } | null> {
+    const challenge = this.challenges.find((item) => item.id === id);
+    if (!challenge || challenge.status !== 'PENDING')
+      return Promise.resolve(null);
+    challenge.attemptCount += 1;
+    challenge.status = challenge.attemptCount >= 5 ? 'LOCKED' : 'PENDING';
+    return Promise.resolve({
+      attemptCount: challenge.attemptCount,
+      status: challenge.status,
+    });
   }
 
   updateChallengeFailure(
@@ -71,6 +86,10 @@ class MemoryAuthRepository implements AuthRepository {
     return Promise.resolve(
       this.users.find((user) => user.phone === phone) ?? null,
     );
+  }
+
+  findPendingInvitationByPhone(phone: string): Promise<boolean> {
+    return Promise.resolve(this.pendingInvitationPhones.has(phone));
   }
 
   findUserById(id: string): Promise<AuthUser | null> {
@@ -259,6 +278,65 @@ async function expectCode(work: Promise<unknown>, code: ApiErrorCode) {
 }
 
 describe('AuthService verification policy', () => {
+  it('does not send a register code for a closed-registration phone without access', async () => {
+    const fixture = createFixture();
+    const previous = {
+      NODE_ENV: process.env.NODE_ENV,
+      PUBLIC_REGISTRATION_ENABLED: process.env.PUBLIC_REGISTRATION_ENABLED,
+      FIRST_ADMIN_PHONE: process.env.FIRST_ADMIN_PHONE,
+    };
+    process.env.NODE_ENV = 'production';
+    process.env.PUBLIC_REGISTRATION_ENABLED = 'false';
+    process.env.FIRST_ADMIN_PHONE = '+8613800138000';
+
+    try {
+      await expectCode(
+        fixture.service.requestVerification({
+          phone: '13800138001',
+          purpose: 'REGISTER',
+          requestIp: '127.0.0.1',
+          deviceKey: 'test-device',
+        }),
+        'AUTH_REQUIRED',
+      );
+      expect(fixture.sender.sent).toHaveLength(0);
+      expect(fixture.repository.challenges).toHaveLength(0);
+    } finally {
+      process.env.NODE_ENV = previous.NODE_ENV;
+      process.env.PUBLIC_REGISTRATION_ENABLED =
+        previous.PUBLIC_REGISTRATION_ENABLED;
+      process.env.FIRST_ADMIN_PHONE = previous.FIRST_ADMIN_PHONE;
+    }
+  });
+
+  it('sends a register code for a pending invitation under closed registration', async () => {
+    const fixture = createFixture();
+    fixture.repository.pendingInvitationPhones.add('+8613800138001');
+    const previous = {
+      NODE_ENV: process.env.NODE_ENV,
+      PUBLIC_REGISTRATION_ENABLED: process.env.PUBLIC_REGISTRATION_ENABLED,
+      FIRST_ADMIN_PHONE: process.env.FIRST_ADMIN_PHONE,
+    };
+    process.env.NODE_ENV = 'production';
+    process.env.PUBLIC_REGISTRATION_ENABLED = 'false';
+    process.env.FIRST_ADMIN_PHONE = '+8613800138000';
+
+    try {
+      await fixture.service.requestVerification({
+        phone: '13800138001',
+        purpose: 'REGISTER',
+        requestIp: '127.0.0.1',
+        deviceKey: 'test-device',
+      });
+      expect(fixture.sender.sent).toHaveLength(1);
+    } finally {
+      process.env.NODE_ENV = previous.NODE_ENV;
+      process.env.PUBLIC_REGISTRATION_ENABLED =
+        previous.PUBLIC_REGISTRATION_ENABLED;
+      process.env.FIRST_ADMIN_PHONE = previous.FIRST_ADMIN_PHONE;
+    }
+  });
+
   it('rejects an expired verification code', async () => {
     const fixture = createFixture();
     await fixture.service.requestVerification({
