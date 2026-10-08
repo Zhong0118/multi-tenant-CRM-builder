@@ -13,6 +13,7 @@ import { DataPanel } from "@/components/workbench/surface";
 import { toApiError } from "@/lib/api/api-error";
 import { browserApiClient } from "@/lib/api/browser-client";
 
+import { BulkMemberActions, MemberNameEditor } from "./member-edit-actions";
 import styles from "./members.module.css";
 import { MemberLifecycleActions } from "./member-lifecycle-actions";
 
@@ -28,7 +29,11 @@ export interface MemberApi {
   listInvitations(tenantCode: string, cursor?: string): Promise<InvitationPage>;
   invite(
     tenantCode: string,
-    input: { phone: string; role: "TENANT_ADMIN" | "EMPLOYEE" },
+    input: {
+      phone: string;
+      displayName?: string;
+      role: "TENANT_ADMIN" | "EMPLOYEE";
+    },
   ): Promise<components["schemas"]["CreatedInvitationResponseDto"]>;
   resend(
     tenantCode: string,
@@ -134,6 +139,7 @@ export function MemberTable({
   const [memberPageNumber, setMemberPageNumber] = useState(
     initialMemberPage.page,
   );
+  const [selectedIds, setSelectedIds] = useState<React.Key[]>([]);
   const [page, setPage] = useState(1);
   const [cursors, setCursors] = useState<Array<string | undefined>>([
     undefined,
@@ -256,6 +262,11 @@ export function MemberTable({
           activeAdminCount <= 1;
         return (
           <Space size={4} wrap className={styles.tableActions}>
+            <MemberNameEditor
+              tenantCode={tenantCode}
+              member={member}
+              onChanged={() => void refresh("members")}
+            />
             <MemberLifecycleActions
               tenantCode={tenantCode}
               member={member}
@@ -307,6 +318,7 @@ export function MemberTable({
     },
   ];
   const invitationColumns: ColumnsType<TenantInvitation> = [
+    { title: "姓名", dataIndex: "displayName", width: 140 },
     { title: "手机号", dataIndex: "targetPhone", width: 180, ellipsis: true },
     {
       title: "角色",
@@ -398,11 +410,32 @@ export function MemberTable({
       <DataPanel className={styles.tablePanel} ariaLabel="成员名册">
         <div className={styles.tableHeading}>
           <h2 id="members-heading">成员名册</h2>
-          <span>{membersQuery.data?.total ?? 0} 位成员</span>
+          <Space wrap>
+            <span>{membersQuery.data?.total ?? 0} 位成员</span>
+            <BulkMemberActions
+              tenantCode={tenantCode}
+              selected={(membersQuery.data?.items ?? []).filter(
+                (member) =>
+                  selectedIds.includes(member.id) &&
+                  member.id !== viewerMemberId,
+              )}
+              onChanged={() => {
+                setSelectedIds([]);
+                void refresh("members");
+              }}
+            />
+          </Space>
         </div>
         <Table
           rowKey="id"
           columns={memberColumns}
+          rowSelection={{
+            selectedRowKeys: selectedIds,
+            onChange: setSelectedIds,
+            getCheckboxProps: (member) => ({
+              disabled: !viewerMemberId || member.id === viewerMemberId,
+            }),
+          }}
           dataSource={membersQuery.data?.items ?? []}
           loading={membersQuery.isFetching}
           scroll={{ x: 710 }}
@@ -412,6 +445,7 @@ export function MemberTable({
             total: membersQuery.data?.total ?? 0,
             showSizeChanger: false,
             onChange: (nextPage) => {
+              setSelectedIds([]);
               setMemberPageNumber(nextPage);
               (navigate ?? router.push)(
                 `/workspace/${tenantCode}/members?page=${nextPage}`,

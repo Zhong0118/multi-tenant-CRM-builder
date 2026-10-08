@@ -44,6 +44,7 @@ class MemoryMembershipStore implements MembershipStore {
   activeAdminCount = 1;
   adminRosterLocked = false;
   invitationCreated = false;
+  invitationName?: string;
   invitationPage?: { cursor?: string; limit: number };
   memberPage?: { page: number; limit: number };
   member: TenantMemberSummary = {
@@ -112,7 +113,8 @@ class MemoryMembershipStore implements MembershipStore {
     this.invitationPage = page;
     return Promise.resolve({ items: [], nextCursor: undefined });
   }
-  createInvitation() {
+  createInvitation(input: { displayName?: string }) {
+    this.invitationName = input.displayName;
     this.invitationCreated = true;
     return Promise.resolve({ id: 'invite-1', status: 'PENDING' as const });
   }
@@ -124,6 +126,11 @@ class MemoryMembershipStore implements MembershipStore {
           ? this.targetMember
           : null,
     );
+  }
+  async updateMemberName(id: string, displayName: string) {
+    const member = (await this.findMember(id))!;
+    member.displayName = displayName;
+    return member;
   }
   countActiveAdmins() {
     return Promise.resolve(this.activeAdminCount);
@@ -414,4 +421,63 @@ it('rejects globally disabled users as admin handoff and offboarding recipients'
   ).rejects.toMatchObject({ code: 'MEMBERSHIP_INACTIVE' });
   expect(store.audits).toEqual([]);
   expect(store.member.status).toBe('ACTIVE');
+});
+
+describe('company employee names', () => {
+  it('passes the supplied company name into the invitation', async () => {
+    const store = new MemoryMembershipStore();
+    const { service } = serviceFor(store);
+    const input = {
+      phone: '13800138000',
+      role: 'EMPLOYEE' as const,
+      displayName: '公司姓名',
+      requestId: 'name-invite',
+    };
+    await service.invite(admin, input);
+    expect(store.invitationName).toBe('公司姓名');
+  });
+});
+
+describe('company name editing', () => {
+  async function change(
+    service: MembershipsService,
+    context: TenantContext,
+    id: string,
+  ) {
+    return service.changeMemberName(context, id, '公司新姓名', {
+      requestId: 'rename',
+    });
+  }
+  it('updates only the chosen company member and appends an audit', async () => {
+    const { service, store } = serviceFor();
+    const changed = await change(service, admin, store.targetMember.id);
+    expect(changed.displayName).toBe('公司新姓名');
+    expect(store.member.displayName).toBeUndefined();
+    expect(store.audits.at(-1)).toMatchObject({
+      action: 'membership.name_changed',
+      resourceId: store.targetMember.id,
+    });
+  });
+  it.each(['employee', 'stale-admin', 'foreign-member'])(
+    'rejects name editing by %s',
+    async (scenario) => {
+      const { service, store } = serviceFor();
+      if (scenario === 'stale-admin') store.member.role = 'EMPLOYEE';
+      await expect(
+        change(
+          service,
+          scenario === 'employee' ? { ...admin, role: 'EMPLOYEE' } : admin,
+          scenario === 'foreign-member'
+            ? 'other-tenant-member'
+            : store.targetMember.id,
+        ),
+      ).rejects.toMatchObject({
+        code:
+          scenario === 'foreign-member'
+            ? 'MEMBERSHIP_INACTIVE'
+            : 'WORKSPACE_FORBIDDEN',
+      });
+      expect(store.targetMember.displayName).toBeUndefined();
+    },
+  );
 });

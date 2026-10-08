@@ -192,7 +192,11 @@ export class FollowUpsService {
         );
         result.push({
           id: member.id,
-          displayName: member.user.displayName ?? member.employeeNo ?? '成员',
+          displayName:
+            member.displayName ??
+            member.user.displayName ??
+            member.employeeNo ??
+            '成员',
         });
       } catch (e) {
         if (!(e instanceof ApiException) || ![403, 404].includes(e.getStatus()))

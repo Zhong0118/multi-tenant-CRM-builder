@@ -85,6 +85,7 @@ export interface InvitationPageQuery {
 }
 
 export interface TenantInvitationSummary {
+  displayName?: string | null;
   id: string;
   targetPhone: string;
   targetUserId: string | null;
@@ -102,6 +103,10 @@ export interface InvitationPage {
 export interface MembershipStore {
   lockMembers(ids: string[]): Promise<void>;
   isUsableMember(id: string): Promise<boolean>;
+  updateMemberName(
+    id: string,
+    displayName: string,
+  ): Promise<TenantMemberSummary>;
   updateMemberRole(id: string, role: MemberRole): Promise<TenantMemberSummary>;
   offboardingCounts(
     id: string,
@@ -115,6 +120,7 @@ export interface MembershipStore {
   lockAdminRoster(): Promise<void>;
   listInvitations(page: InvitationPageQuery): Promise<InvitationPage>;
   createInvitation(input: {
+    displayName?: string;
     tenantId: string;
     targetPhone: string;
     role: MemberRole;
@@ -180,12 +186,21 @@ export class MembershipsService {
 
   async invite(
     context: TenantContext,
-    input: { phone: string; role: MemberRole; requestId: string; ip?: string },
+    input: {
+      phone: string;
+      role: MemberRole;
+      displayName?: string;
+      requestId: string;
+      ip?: string;
+    },
   ) {
     this.assertAdmin(context);
     const targetPhone = normalizeChineseMobile(input.phone);
     return await this.repository.withTenant(context, async (store) => {
+      await store.lockAdminRoster();
+      await this.requireCurrentAdmin(store, context, []);
       const invitation = await store.createInvitation({
+        displayName: input.displayName,
         tenantId: context.tenantId,
         targetPhone,
         role: input.role,
@@ -207,6 +222,34 @@ export class MembershipsService {
         ip: input.ip,
       });
       return invitation;
+    });
+  }
+
+  async changeMemberName(
+    context: TenantContext,
+    memberId: string,
+    displayName: string,
+    meta: { requestId: string; ip?: string },
+  ) {
+    this.assertAdmin(context);
+    return this.repository.withTenant(context, async (store) => {
+      await store.lockAdminRoster();
+      await this.requireCurrentAdmin(store, context, [memberId]);
+      const member = await store.findMember(memberId);
+      if (!member) throw new ApiException('MEMBERSHIP_INACTIVE', 404);
+      const changed = await store.updateMemberName(memberId, displayName);
+      await store.appendAudit({
+        tenantId: context.tenantId,
+        actorType: 'USER',
+        actorId: context.userId,
+        action: 'membership.name_changed',
+        resourceType: 'tenant_member',
+        resourceId: memberId,
+        before: { displayName: member.displayName },
+        after: { displayName },
+        ...meta,
+      });
+      return changed;
     });
   }
 

@@ -723,7 +723,7 @@ async function executeLeaderboard(
     )
     SELECT
       r.dashboard_member_id AS "memberId",
-      COALESCE(u.display_name, r.dashboard_member_id) AS "displayName",
+      COALESCE(tm.display_name, u.display_name, r.dashboard_member_id) AS "displayName",
       ${aggregateExpression(
         plan.widget.aggregation,
         plan.widget.valueFieldKey,
@@ -775,7 +775,7 @@ async function executeRecordList(
       r.record_no::text AS "recordNo",
       ${title} AS title,
       r.owner_member_id::text AS "ownerMemberId",
-      u.display_name AS "ownerName",
+      COALESCE(tm.display_name, u.display_name) AS "ownerName",
       to_char(
         r.updated_at AT TIME ZONE 'UTC',
         'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'

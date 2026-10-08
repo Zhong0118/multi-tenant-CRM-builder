@@ -287,6 +287,7 @@ model TenantDashboardPublication {
 }
 
 model TenantMember {
+  displayName String? @map("display_name") @db.VarChar(100)
   id                        String                       @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId                  String                       @map("tenant_id") @db.Uuid
   userId                    String                       @map("user_id") @db.Uuid
@@ -320,6 +321,7 @@ model TenantMember {
 }
 
 model TenantInvitation {
+  displayName String? @map("display_name") @db.VarChar(100)
   id                  String           @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId            String           @map("tenant_id") @db.Uuid
   targetPhone         String           @map("target_phone") @db.VarChar(32)

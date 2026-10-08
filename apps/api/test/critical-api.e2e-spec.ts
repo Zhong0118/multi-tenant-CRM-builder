@@ -1,4 +1,5 @@
 import request from 'supertest';
+import { ConfigService } from '@nestjs/config';
 
 import {
   CRITICAL_SEARCH_OWN_LEADS_MARKER,
@@ -41,7 +42,9 @@ function capturedRecordIds(captured: unknown): string[] {
   const items = (captured as { items?: unknown }).items;
   if (!Array.isArray(items)) return [];
   return items.flatMap((item) =>
-    item && typeof item === 'object' && typeof (item as { id?: unknown }).id === 'string'
+    item &&
+    typeof item === 'object' &&
+    typeof (item as { id?: unknown }).id === 'string'
       ? [(item as { id: string }).id]
       : [],
   );
@@ -187,7 +190,12 @@ describe('Critical API E2E', () => {
 
     const before = await harness.adminDatabase.record.findUniqueOrThrow({
       where: { id: fixture.rollbackRecord.id },
-      select: { statusKey: true, version: true, data: true, ownerMemberId: true },
+      select: {
+        statusKey: true,
+        version: true,
+        data: true,
+        ownerMemberId: true,
+      },
     });
 
     const response = await request(harness.app.getHttpServer())
@@ -215,7 +223,12 @@ describe('Critical API E2E', () => {
 
     const after = await harness.adminDatabase.record.findUniqueOrThrow({
       where: { id: fixture.rollbackRecord.id },
-      select: { statusKey: true, version: true, data: true, ownerMemberId: true },
+      select: {
+        statusKey: true,
+        version: true,
+        data: true,
+        ownerMemberId: true,
+      },
     });
     expect(after).toEqual(before);
 
@@ -227,6 +240,189 @@ describe('Critical API E2E', () => {
         },
       }),
     ).toBe(auditCountBefore);
+  });
+
+  it('serializes accepting invitations with company roster changes under runtime RLS', async () => {
+    const invitation = await request(harness.app.getHttpServer())
+      .post(`/api/v1/workspaces/${fixture.tenantA.code}/invitations`)
+      .set('Cookie', fixture.admin.cookie)
+      .set('Origin', 'http://localhost:3000')
+      .send({ phone: '13911113004', displayName: '新同事', role: 'EMPLOYEE' })
+      .expect(201);
+    let unlock!: () => void;
+    let ready!: () => void;
+    const held = new Promise<void>((resolve) => {
+      ready = resolve;
+    });
+    const release = new Promise<void>((resolve) => {
+      unlock = resolve;
+    });
+    const lock = harness.adminDatabase.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${fixture.tenantA.id}, 0))::text`;
+      ready();
+      await release;
+    });
+    await held;
+    const accepting = request(harness.app.getHttpServer())
+      .post(
+        `/api/v1/me/invitations/${(invitation.body as { id: string }).id}/accept`,
+      )
+      .set('Cookie', fixture.tenantBAdmin.cookie)
+      .set('Origin', 'http://localhost:3000')
+      .then((response) => response);
+    try {
+      let blocked = false;
+      const deadline = Date.now() + 2000;
+      while (!blocked && Date.now() < deadline) {
+        const waiting = await harness.adminDatabase.$queryRaw<
+          Array<{ count: number }>
+        >`SELECT count(*)::int AS count FROM pg_locks WHERE locktype = 'advisory' AND NOT granted`;
+        blocked = waiting[0].count > 0;
+        if (!blocked) await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      expect(blocked).toBe(true);
+    } finally {
+      unlock();
+      await lock;
+    }
+    expect((await accepting).status).toBe(201);
+  });
+
+  it('onboards an invited employee and keeps company names isolated from their global account', async () => {
+    const config = harness.app.get(ConfigService);
+    const previousRegistration = config.get<string>(
+      'PUBLIC_REGISTRATION_ENABLED',
+    );
+    config.set('PUBLIC_REGISTRATION_ENABLED', 'false');
+    try {
+      const server = harness.app.getHttpServer();
+      const base = `/api/v1/workspaces/${fixture.tenantA.code}`;
+      const phone = '13911113333';
+      const invited = await request(server)
+        .post(`${base}/invitations`)
+        .set('Cookie', fixture.admin.cookie)
+        .set('Origin', 'http://localhost:3000')
+        .send({ phone, displayName: '  公司张三  ', role: 'EMPLOYEE' })
+        .expect(201);
+      await request(server)
+        .post(`${base}/invitations`)
+        .set('Cookie', fixture.admin.cookie)
+        .set('Origin', 'http://localhost:3000')
+        .send({ phone, displayName: '重复', role: 'EMPLOYEE' })
+        .expect(409);
+      const employee = request.agent(server);
+      await employee
+        .post('/api/v1/auth/verification-challenges')
+        .set('Origin', 'http://localhost:3000')
+        .send({ phone, purpose: 'REGISTER', deviceKey: 'onboarding' })
+        .expect(202);
+      await employee
+        .post('/api/v1/auth/register')
+        .set('Origin', 'http://localhost:3000')
+        .send({
+          phone,
+          code: '123456',
+          displayName: '个人姓名',
+          password: 'member-test-password1',
+          deviceSummary: 'Onboarding test',
+        })
+        .expect(201);
+      const accepted = await employee
+        .post(
+          `/api/v1/me/invitations/${(invited.body as { id: string }).id}/accept`,
+        )
+        .set('Origin', 'http://localhost:3000')
+        .expect(201);
+      const member = await harness.adminDatabase.tenantMember.findFirstOrThrow({
+        where: { tenantId: fixture.tenantA.id, user: { phone: '+86' + phone } },
+      });
+      expect(member.displayName).toBe('公司张三');
+      expect(accepted.body).toBeDefined();
+      const second = await request(server)
+        .post(`/api/v1/workspaces/${fixture.tenantB.code}/invitations`)
+        .set('Cookie', fixture.tenantBAdmin.cookie)
+        .set('Origin', 'http://localhost:3000')
+        .send({ phone, displayName: '另一家公司姓名', role: 'EMPLOYEE' })
+        .expect(201);
+      await employee
+        .post(
+          `/api/v1/me/invitations/${(second.body as { id: string }).id}/accept`,
+        )
+        .set('Origin', 'http://localhost:3000')
+        .expect(201);
+      await request(server)
+        .patch(`${base}/members/${member.id}/name`)
+        .set('Cookie', fixture.admin.cookie)
+        .set('Origin', 'http://localhost:3000')
+        .send({ displayName: '  新公司姓名  ' })
+        .expect(200);
+      expect(
+        (
+          await harness.adminDatabase.user.findUniqueOrThrow({
+            where: { id: member.userId },
+          })
+        ).displayName,
+      ).toBe('个人姓名');
+      expect(
+        (
+          await harness.adminDatabase.tenantMember.findFirstOrThrow({
+            where: { tenantId: fixture.tenantB.id, userId: member.userId },
+          })
+        ).displayName,
+      ).toBe('另一家公司姓名');
+      const list = await request(server)
+        .get(`${base}/members`)
+        .set('Cookie', fixture.admin.cookie)
+        .expect(200);
+      expect(
+        (
+          list.body as { items: Array<{ id: string; displayName: string }> }
+        ).items.find((item) => item.id === member.id)?.displayName,
+      ).toBe('新公司姓名');
+      await employee
+        .patch(`${base}/members/${member.id}/name`)
+        .set('Origin', 'http://localhost:3000')
+        .send({ displayName: '自改姓名' })
+        .expect(403);
+      await request(server)
+        .patch(`${base}/members/${fixture.tenantBAdmin.memberId}/name`)
+        .set('Cookie', fixture.admin.cookie)
+        .set('Origin', 'http://localhost:3000')
+        .send({ displayName: '跨公司修改' })
+        .expect(404);
+      await request(server)
+        .patch(`${base}/members/${member.id}/name`)
+        .set('Cookie', fixture.admin.cookie)
+        .set('Origin', 'http://localhost:3000')
+        .send({ displayName: '   ' })
+        .expect(400);
+      await request(server)
+        .post(`${base}/invitations`)
+        .set('Cookie', fixture.admin.cookie)
+        .set('Origin', 'http://localhost:3000')
+        .send({ phone, role: 'EMPLOYEE' })
+        .expect(409);
+      await request(server)
+        .patch(`${base}/members/${member.id}`)
+        .set('Cookie', fixture.admin.cookie)
+        .set('Origin', 'http://localhost:3000')
+        .send({ status: 'DISABLED' })
+        .expect(200);
+      await request(server)
+        .post(`${base}/invitations`)
+        .set('Cookie', fixture.admin.cookie)
+        .set('Origin', 'http://localhost:3000')
+        .send({ phone, role: 'EMPLOYEE' })
+        .expect(409);
+      await request(server)
+        .patch(`${base}/members/${member.id}`)
+        .set('Cookie', fixture.admin.cookie)
+        .set('Origin', 'http://localhost:3000')
+        .send({ status: 'ACTIVE' })
+        .expect(200);
+    } finally {
+      config.set('PUBLIC_REGISTRATION_ENABLED', previousRegistration);
+    }
   });
 
   it('authenticates a session and revokes another active session', async () => {
@@ -311,7 +507,8 @@ describe('Critical API E2E', () => {
     expect(
       events.some(
         (event) =>
-          (event.event === 'tool.started' || event.event === 'tool.completed') &&
+          (event.event === 'tool.started' ||
+            event.event === 'tool.completed') &&
           event.data.toolName === 'search_records',
       ),
     ).toBe(true);

@@ -8,6 +8,7 @@ const now = new Date('2026-08-20T00:00:00Z');
 
 class MemoryInvitationStore implements InvitationStore {
   invitation = {
+    displayName: undefined as string | undefined,
     id: 'invite-1',
     tenantId: 'tenant-1',
     targetPhone: user.phone,
@@ -22,6 +23,7 @@ class MemoryInvitationStore implements InvitationStore {
     userId: string;
     role: 'EMPLOYEE';
     status: 'ACTIVE';
+    displayName?: string;
   } | null = null;
   accepted = 0;
   declined = 0;
@@ -35,8 +37,9 @@ class MemoryInvitationStore implements InvitationStore {
   findMembership() {
     return Promise.resolve(this.membership);
   }
-  createMembership() {
+  createMembership(input: { displayName?: string }) {
     this.membership ??= {
+      displayName: input.displayName,
       id: 'member-1',
       tenantId: 'tenant-1',
       userId: user.id,
@@ -76,6 +79,13 @@ function fixture() {
 }
 
 describe('InvitationsService', () => {
+  it('preserves the company name on acceptance without changing the account', async () => {
+    const { service, store } = fixture();
+    store.invitation.displayName = '研发张三';
+    await service.accept(user, 'invite-1', { requestId: 'name-accept' });
+    expect(store.membership?.displayName).toBe('研发张三');
+  });
+
   it('returns the existing membership when acceptance is repeated', async () => {
     const { service, store } = fixture();
     const first = await service.accept(user, 'invite-1', {

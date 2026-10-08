@@ -13,6 +13,7 @@ export type InvitationStatus =
 export type MemberRole = 'TENANT_ADMIN' | 'EMPLOYEE';
 
 export interface PersonalInvitation {
+  displayName?: string;
   id: string;
   tenantId: string;
   targetPhone: string;
@@ -44,6 +45,7 @@ export interface InvitationStore {
     userId: string,
   ): Promise<InvitationMembership | null>;
   createMembership(input: {
+    displayName?: string;
     tenantId: string;
     userId: string;
     role: MemberRole;
@@ -110,6 +112,7 @@ export class InvitationsService {
       const membership =
         existing ??
         (await store.createMembership({
+          displayName: invitation.displayName,
           tenantId: invitation.tenantId,
           userId: user.id,
           role: invitation.role,

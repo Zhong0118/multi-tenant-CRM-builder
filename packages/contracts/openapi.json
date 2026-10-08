@@ -640,6 +640,17 @@
         ],
         "type": "object"
       },
+      "ChangeMemberNameDto": {
+        "properties": {
+          "displayName": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["displayName"],
+        "type": "object"
+      },
       "ChangeMemberRoleDto": {
         "properties": {
           "role": {
@@ -846,6 +857,11 @@
       },
       "CreateInvitationDto": {
         "properties": {
+          "displayName": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
           "phone": {
             "example": "13800138000",
             "type": "string"
@@ -4800,6 +4816,9 @@
             "format": "date-time",
             "type": "string"
           },
+          "displayName": {
+            "type": "string"
+          },
           "expiresAt": {
             "format": "date-time",
             "type": "string"
@@ -8329,6 +8348,58 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ChangeMemberStatusDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantMemberResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["memberships"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/members/{memberId}/name": {
+      "patch": {
+        "operationId": "MembershipsController_changeName",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeMemberNameDto"
               }
             }
           },
