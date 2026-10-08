@@ -2,7 +2,7 @@
 
 更新时间：2026-10-06（Product Experience V2：Slice4 + internal-trial preparation，未合并）
 
-**当前权威更新（2026-10-06）：** 只在 `.worktrees/crm-product-experience-v2-slice-4` 的 `codex/internal-trial-preparation` 工作；PR #26 OPEN / 未合并，远端分支为 `codex/crm-product-experience-v2-slice-4`。代码 `58da1ce` 的 run `37444823699` 六门全部 SUCCESS；remediation follow-up `3432aa4` 的 run `37445633285` 六门全部 SUCCESS。本次文档 follow-up 不把任一 SHA 写成永久 latest。根目录 `main` 落后，禁止作为本轮入口。用户授权 PR 更新/push；仍禁止合并、部署、清理；不改用户 untracked 审计 review 和 brief。最新逐项证据见[内部试用修复账本](docs/audits/2026-10-06/internal-trial-remediation.md)。
+**当前权威更新（2026-10-06）：** 只在 `.worktrees/crm-product-experience-v2-slice-4` 的 `codex/internal-trial-preparation` 工作；PR #26 OPEN / 未合并，远端分支为 `codex/crm-product-experience-v2-slice-4`。代码 `58da1ce` / run `37444823699`、remediation `3432aa4` / run `37445633285`、文档 follow-up `df90be3` / run `37446164020` 六门全部 SUCCESS。2026-10-07 P2-R（旧保存后服务器刷新丢失新草稿）修复提交在 `df90be3` 之后，其 CI 以 PR #26 当前 HEAD 的检查为准；任何 SHA 都不是永久 latest。根目录 `main` 落后，禁止作为本轮入口。用户授权 PR 更新/push；仍禁止合并、部署、清理；不改用户 untracked 审计 review 和 brief。最新逐项证据见[内部试用修复账本](docs/audits/2026-10-06/internal-trial-remediation.md)。
 
 Docker 已补 COPY 根 `tsconfig.base.json`，tooling 预装 pnpm 11.19.0，runtime `COREPACK_ENABLE_NETWORK=0`；旧本地 npm `fetch failed` 保留为历史网络事实。代码 CI run `37444823699` 的 Build 2m50 已按 `/tmp/crm-review-ci-build.log` 读证：无缓存 full Docker build、offline pnpm 11.19.0、internal-network migration 两次通过，23 migrations applied 且 repeat 无 Pending。D03 已在真实本地 Caddy `https://localhost:3443` 观察登录→`/workspace/nebula-demo`→刷新完整 dashboard、Secure/HttpOnly/host-only localhost cookie、退出清 cookie和再次访问 workspace 回 login；使用本地内部自签证书并绕过浏览器信任，不代表生产 DNS/TLS。Web3100/API3101、隔离 DB55435/`crm_browser_review`。D04 固定 Caddy `172.30.26.2`、API `.3`、Web `.4`、子网 `.0/24`；真实 `.10`/`.11` 两客户端同伪造 XFF 被 Caddy 覆盖为真实客户端，Echo upstream remote `.2`，bounded-proxy 8 tests pass，实际 Nest controller/service/limiter 主复验3 suites/11 tests、63次HTTP pass（各客户端独立20→429、untrusted spoof20→429、reject不创建challenge/send，repo/sender fake）；公网与外部短信 PENDING。
 
@@ -397,7 +397,7 @@ Worker 进程可以连接 Redis，但没有注册业务队列。
 
 验证码的挑战记录、哈希保存、10 分钟过期、最多五次错误、手机号/IP/设备频率限制和一次性消费已经实现。
 
-当前已有腾讯短信适配器，生产要求 `SMS_PROVIDER=tencent` 及批准配置，禁止开发固定码。真实短信送达仍 NOT VERIFIED。验证码错误次数在真实 Prisma 事务回滚的问题已取得 RED：首错 expected1/actual0、8并发 expected5/actual0；真实主复验 Critical API E2E 2 suites/11、DB36已通过，但随后 reviewer 发现>=10并发时 transaction pool 占用后再取独立计数连接可能饥饿，12+并发修复/回归正在进行，最终PENDING。内存仓库单测和原自写 SQL 36 pass 不得替代产品路径数据库证据。
+当前已有腾讯短信适配器，生产要求 `SMS_PROVIDER=tencent` 及批准配置，禁止开发固定码。真实短信送达仍 NOT VERIFIED。验证码错误次数在真实 Prisma 事务回滚的问题已取得 RED：首错 expected1/actual0、8并发 expected5/actual0；真实主复验 Critical API E2E 2 suites/11、DB36已通过；随后 reviewer 发现>=10并发时 transaction pool 占用后再取独立计数连接可能饥饿，已改为业务事务释放连接后再写错误次数，Critical API E2E 2 suites/12 tests（含12并发）与 DB36 通过，`58da1ce` 起六门 CI 成功（见修复账本）。内存仓库单测和原自写 SQL 36 pass 不得替代产品路径数据库证据。
 
 接入前需要用户提供：
 

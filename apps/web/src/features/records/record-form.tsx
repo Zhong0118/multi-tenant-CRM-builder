@@ -60,6 +60,7 @@ export function RecordForm({
 
   const mode = record ? "UPDATE" : "CREATE";
   const objectCode = schema.object.code;
+  const canSave = record ? schema.actions.canUpdate : schema.actions.canCreate;
 
   const save = useMutation({
     mutationFn: () =>
@@ -101,7 +102,7 @@ export function RecordForm({
   });
 
   function submit() {
-    if (committed || save.isPending) return;
+    if (!canSave || committed || save.isPending) return;
     const missing = editable.filter(
       (field) => field.required && isEmpty(values[field.fieldKey]),
     );
@@ -147,7 +148,7 @@ export function RecordForm({
               value={values[field.fieldKey] ?? null}
               members={members}
               error={fieldErrors[field.fieldKey]}
-              disabled={save.isPending || committed}
+              disabled={!canSave || save.isPending || committed}
               onChange={(next) =>
                 setValues((current) => ({ ...current, [field.fieldKey]: next }))
               }
@@ -162,7 +163,7 @@ export function RecordForm({
             >
               <Select
                 id="record-owner"
-                disabled={save.isPending || committed}
+                disabled={!canSave || save.isPending || committed}
                 allowClear
                 showSearch
                 optionFilterProp="label"
@@ -179,7 +180,7 @@ export function RecordForm({
       </Form>
 
       <Space>
-        <Button type="primary" loading={save.isPending} disabled={committed} onClick={submit}>
+        <Button type="primary" loading={save.isPending} disabled={!canSave || committed} onClick={submit}>
           {mode === "CREATE" ? "创建记录" : "保存修改"}
         </Button>
         {onCancel ? <Button onClick={onCancel}>取消</Button> : null}

@@ -134,6 +134,7 @@ describe("record detail reading hierarchy", () => {
           ? { ...entry, access: "EDIT" as const }
           : entry,
       ),
+      actions: { ...schema.actions, canUpdate: true },
     };
     render(
       <QueryClientProvider client={new QueryClient()}>
