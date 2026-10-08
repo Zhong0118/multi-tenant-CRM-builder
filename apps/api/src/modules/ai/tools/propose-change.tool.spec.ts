@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import { ProposalCollector } from './propose-change.tool';
 
 const candidate = {
@@ -8,6 +10,30 @@ const candidate = {
 };
 
 describe('ProposalCollector', () => {
+  it('advertises an object-root function schema accepted by the provider', () => {
+    const schema = z.toJSONSchema(new ProposalCollector().tool.inputSchema, {
+      io: 'input',
+    });
+    expect(schema.type).toBe('object');
+    expect(schema.required).toEqual(
+      expect.arrayContaining(['operationType', 'objectCode', 'recordId']),
+    );
+  });
+
+  it.each([
+    { ...candidate, operationType: 'UPDATE_RECORD' },
+    { ...candidate, operationType: 'CREATE_FOLLOW_UP', title: 'Follow up' },
+    { ...candidate, title: 'Unrelated operation field' },
+    { ...candidate, tenantId: 'another-tenant' },
+  ])('still rejects an invalid or cross-operation candidate', async (input) => {
+    const collector = new ProposalCollector();
+    expect(await collector.tool.execute(input, 'invalid')).toEqual({
+      accepted: false,
+      code: 'INVALID_PROPOSAL',
+    });
+    expect(collector.candidate).toBeNull();
+  });
+
   it.each(['event first', 'execute first'])(
     '%s counts one callId once',
     async (order) => {
