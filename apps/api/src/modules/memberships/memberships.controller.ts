@@ -33,6 +33,7 @@ import { SessionAuthGuard } from '../auth/session-auth.guard';
 import type { SessionPrincipal } from '../auth/session.service';
 import {
   ChangeMemberStatusDto,
+  ChangeMemberNameDto,
   ChangeMemberRoleDto,
   MemberRecipientDto,
   OffboardingCountsResponseDto,
@@ -158,6 +159,25 @@ export class MembershipsController {
       context,
       memberId,
       dto.status,
+      requestMeta(request),
+    );
+  }
+
+  @Patch('workspaces/:tenantCode/members/:memberId/name')
+  @UseGuards(SessionAuthGuard, WorkspaceGuard)
+  @ApiParam({ name: 'tenantCode', type: String })
+  @ApiParam({ name: 'memberId', format: 'uuid' })
+  @ApiOkResponse({ type: TenantMemberResponseDto })
+  changeName(
+    @CurrentTenant() context: TenantContext,
+    @Param('memberId') memberId: string,
+    @Body() dto: ChangeMemberNameDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.memberships.changeMemberName(
+      context,
+      memberId,
+      dto.displayName,
       requestMeta(request),
     );
   }

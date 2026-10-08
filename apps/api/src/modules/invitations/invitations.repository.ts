@@ -68,6 +68,15 @@ class PrismaInvitationStore implements InvitationStore {
   }
 
   async findOwned(id: string): Promise<PersonalInvitation | null> {
+    // Tenant UPDATE locks are invisible to ordinary members under RLS.
+    // Share the roster lock before locking invitation or membership rows.
+    const target = await this.transaction.tenantInvitation.findUnique({
+      where: { id },
+      select: { tenantId: true },
+    });
+    if (!target) return null;
+    await this.transaction
+      .$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${target.tenantId}, 0))::text`;
     await this.transaction.$queryRawUnsafe(
       'SELECT id FROM tenants WHERE id = (SELECT tenant_id FROM tenant_invitations WHERE id = $1::uuid) FOR UPDATE',
       id,
@@ -94,6 +103,7 @@ class PrismaInvitationStore implements InvitationStore {
   }
 
   async createMembership(input: {
+    displayName?: string;
     tenantId: string;
     userId: string;
     role: MemberRole;
@@ -139,6 +149,7 @@ class PrismaInvitationStore implements InvitationStore {
 }
 
 function mapInvitation(input: {
+  displayName?: string | null;
   id: string;
   tenantId: string;
   targetPhone: string;
@@ -153,6 +164,7 @@ function mapInvitation(input: {
     id: input.id,
     tenantId: input.tenantId,
     targetPhone: input.targetPhone,
+    displayName: input.displayName ?? undefined,
     targetUserId: input.targetUserId ?? undefined,
     role: input.role,
     status: input.status,

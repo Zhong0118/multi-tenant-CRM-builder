@@ -996,6 +996,22 @@ export interface paths {
     patch: operations["MembershipsController_changeMember"];
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/members/{memberId}/name": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["MembershipsController_changeName"];
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/members/{memberId}/object-access": {
     parameters: {
       query?: never;
@@ -1717,6 +1733,9 @@ export interface components {
       templateId: string;
       versionNo: number;
     };
+    ChangeMemberNameDto: {
+      displayName: string;
+    };
     ChangeMemberRoleDto: {
       /** @enum {string} */
       role: "TENANT_ADMIN" | "EMPLOYEE";
@@ -1806,6 +1825,7 @@ export interface components {
       title: string;
     };
     CreateInvitationDto: {
+      displayName?: string;
       /** @example 13800138000 */
       phone: string;
       /** @enum {string} */
@@ -3136,6 +3156,7 @@ export interface components {
     TenantInvitationResponseDto: {
       /** Format: date-time */
       createdAt: string;
+      displayName?: string;
       /** Format: date-time */
       expiresAt: string;
       /** Format: uuid */
@@ -4958,6 +4979,32 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["ChangeMemberStatusDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TenantMemberResponseDto"];
+        };
+      };
+    };
+  };
+  MembershipsController_changeName: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        memberId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ChangeMemberNameDto"];
       };
     };
     responses: {

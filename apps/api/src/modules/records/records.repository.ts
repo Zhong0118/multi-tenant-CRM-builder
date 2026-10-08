@@ -737,7 +737,7 @@ class PrismaRecordsStore implements RecordsStore {
         toStateKey: row.toStateKey,
         toStateLabel: row.toStateLabel,
         actorMemberId: row.actorMemberId,
-        actorDisplayName: row.actor.user.displayName,
+        actorDisplayName: row.actor.displayName ?? row.actor.user.displayName,
         createdAt: row.createdAt.toISOString(),
       })),
       page: query.page,
@@ -826,11 +826,15 @@ class PrismaRecordsStore implements RecordsStore {
       },
       select: {
         id: true,
+        displayName: true,
         user: { select: { displayName: true } },
       },
     });
     return new Map(
-      members.map((member) => [member.id, member.user.displayName]),
+      members.map((member) => [
+        member.id,
+        member.displayName ?? member.user.displayName,
+      ]),
     );
   }
 
@@ -847,7 +851,7 @@ function fromPrismaActivity(activity: {
   nextActionAt: Date | null;
   actorMemberId: string | null;
   createdAt: Date;
-  actor?: { user: { displayName: string } } | null;
+  actor?: { displayName?: string | null; user: { displayName: string } } | null;
 }): RecordActivity {
   return {
     id: activity.id,
@@ -856,7 +860,8 @@ function fromPrismaActivity(activity: {
     content: activity.content,
     nextActionAt: activity.nextActionAt?.toISOString() ?? null,
     actorMemberId: activity.actorMemberId,
-    actorDisplayName: activity.actor?.user.displayName ?? null,
+    actorDisplayName:
+      activity.actor?.displayName ?? activity.actor?.user.displayName ?? null,
     createdAt: activity.createdAt.toISOString(),
   };
 }

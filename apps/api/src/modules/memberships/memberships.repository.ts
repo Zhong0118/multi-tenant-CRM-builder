@@ -143,10 +143,11 @@ class PrismaMembershipStore implements MembershipStore {
   }
 
   async updateMemberRole(id: string, role: 'TENANT_ADMIN' | 'EMPLOYEE') {
-    return this.transaction.tenantMember.update({
+    const member = await this.transaction.tenantMember.update({
       where: { id, tenantId: this.tenantId },
       data: { role },
     });
+    return { ...member, displayName: member.displayName ?? undefined };
   }
 
   async offboardingCounts(id: string) {
@@ -173,7 +174,7 @@ class PrismaMembershipStore implements MembershipStore {
     });
     return members.map((member) => ({
       ...member,
-      displayName: member.user.displayName,
+      displayName: member.displayName ?? member.user.displayName,
       phone: member.user.phone,
     }));
   }
@@ -212,7 +213,7 @@ class PrismaMembershipStore implements MembershipStore {
         tenantId: member.tenantId,
         role: member.role,
         status: member.status,
-        displayName: member.user.displayName,
+        displayName: member.displayName ?? member.user.displayName,
         phone: member.user.phone,
       })),
       page: page.page,
@@ -227,6 +228,7 @@ class PrismaMembershipStore implements MembershipStore {
       select: {
         id: true,
         targetPhone: true,
+        displayName: true,
         targetUserId: true,
         role: true,
         status: true,
@@ -241,12 +243,16 @@ class PrismaMembershipStore implements MembershipStore {
     const hasNextPage = invitations.length > page.limit;
     const items = hasNextPage ? invitations.slice(0, page.limit) : invitations;
     return {
-      items,
+      items: items.map((item) => ({
+        ...item,
+        displayName: item.displayName ?? undefined,
+      })),
       nextCursor: hasNextPage ? items.at(-1)?.id : undefined,
     };
   }
 
   async createInvitation(input: {
+    displayName?: string;
     tenantId: string;
     targetPhone: string;
     role: 'TENANT_ADMIN' | 'EMPLOYEE';
@@ -254,6 +260,14 @@ class PrismaMembershipStore implements MembershipStore {
     createdByUserId: string;
     expiresAt: Date;
   }): Promise<{ id: string; status: 'PENDING' }> {
+    const existing = await this.transaction.tenantMember.findFirst({
+      where: { tenantId: this.tenantId, user: { phone: input.targetPhone } },
+      select: { id: true },
+    });
+    if (existing)
+      throw new ApiException('INVITATION_CONFLICT', 409, {
+        message: '该手机号已是公司成员，请在名册中管理或恢复。',
+      });
     const target = await this.transaction.user.findUnique({
       where: { phone: input.targetPhone },
       select: { id: true },
@@ -272,6 +286,17 @@ class PrismaMembershipStore implements MembershipStore {
     }
   }
 
+  async updateMemberName(
+    id: string,
+    displayName: string,
+  ): Promise<TenantMemberSummary> {
+    const member = await this.transaction.tenantMember.update({
+      where: { id, tenantId: this.tenantId },
+      data: { displayName },
+    });
+    return { ...member, displayName: member.displayName ?? undefined };
+  }
+
   async findMember(id: string): Promise<TenantMemberSummary | null> {
     const member = await this.transaction.tenantMember.findUnique({
       where: { id },
@@ -283,6 +308,7 @@ class PrismaMembershipStore implements MembershipStore {
           tenantId: member.tenantId,
           role: member.role,
           status: member.status,
+          displayName: member.displayName ?? undefined,
         }
       : null;
   }

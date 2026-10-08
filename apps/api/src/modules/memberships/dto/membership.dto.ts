@@ -1,7 +1,8 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsIn,
+  Length,
   IsBoolean,
   IsInt,
   IsNotEmpty,
@@ -14,6 +15,15 @@ import {
 } from 'class-validator';
 
 export class CreateInvitationDto {
+  @ApiPropertyOptional({ minLength: 1, maxLength: 100 })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @IsString()
+  @Length(1, 100)
+  displayName?: string;
+
   @ApiProperty({ example: '13800138000' })
   @IsString()
   @IsNotEmpty()
@@ -21,6 +31,16 @@ export class CreateInvitationDto {
   @ApiProperty({ enum: ['TENANT_ADMIN', 'EMPLOYEE'] })
   @IsIn(['TENANT_ADMIN', 'EMPLOYEE'])
   role!: 'TENANT_ADMIN' | 'EMPLOYEE';
+}
+
+export class ChangeMemberNameDto {
+  @ApiProperty({ minLength: 1, maxLength: 100 })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @IsString()
+  @Length(1, 100)
+  displayName!: string;
 }
 
 export class ChangeMemberStatusDto {
@@ -151,6 +171,7 @@ export class MemberObjectAccessResponseDto {
 }
 
 export class TenantInvitationResponseDto {
+  @ApiPropertyOptional() displayName?: string;
   @ApiProperty({ format: 'uuid' }) id!: string;
   @ApiProperty({ example: '+8613800138000' }) targetPhone!: string;
   @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })

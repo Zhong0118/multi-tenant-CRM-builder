@@ -10,6 +10,7 @@ const actionLabels: Record<string, string> = {
   "invitation.revoked": "撤销邀请",
   "invitation.resent": "重新邀请",
   "membership.status_changed": "变更成员状态",
+  "membership.name_changed": "修改成员姓名",
   "membership.role_changed": "变更成员角色",
   "membership.admin_handoff": "管理员交接",
   "membership.offboarded": "离职交接",

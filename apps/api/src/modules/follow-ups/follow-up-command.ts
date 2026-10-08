@@ -4,10 +4,7 @@ import type { Prisma } from '@crm/database';
 
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
-import type {
-  AuditEvent,
-  DomainAuditCorrelation,
-} from '../audit/audit-event';
+import type { AuditEvent, DomainAuditCorrelation } from '../audit/audit-event';
 import type { AuditService } from '../audit/audit.service';
 
 /**
@@ -59,7 +56,10 @@ export function presentFollowUp(
     id: task.id,
     assigneeMemberId: task.assigneeMemberId,
     assigneeName:
-      task.assignee.user.displayName ?? task.assignee.employeeNo ?? '成员',
+      task.assignee.displayName ??
+      task.assignee.user.displayName ??
+      task.assignee.employeeNo ??
+      '成员',
     recordId: task.recordId,
     recordTitle: task.record.title,
     objectCode: task.record.object.code,
