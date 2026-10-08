@@ -87,6 +87,18 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-24.04
+    services:
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      TEST_REDIS_URL: redis://localhost:6379
     # The only job that runs every workspace suite; measured 28s locally, so 45
     # minutes keeps ~100x headroom on slower runners while still bounding a hang.
     timeout-minutes: 45

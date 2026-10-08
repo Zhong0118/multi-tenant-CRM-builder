@@ -23,8 +23,7 @@ describe('RedisRateLimiter', () => {
         await Promise.resolve();
         redis.status = 'ready';
       }),
-      incr: jest.fn().mockResolvedValue(1),
-      expire: jest.fn().mockResolvedValue(1),
+      eval: jest.fn().mockResolvedValue(1),
       quit: jest.fn().mockResolvedValue('OK'),
       disconnect: jest.fn(),
     };
@@ -37,6 +36,6 @@ describe('RedisRateLimiter', () => {
     ]);
 
     expect(redis.connect).toHaveBeenCalledTimes(1);
-    expect(redis.incr).toHaveBeenCalledTimes(3);
+    expect(redis.eval).toHaveBeenCalledTimes(3);
   });
 });
