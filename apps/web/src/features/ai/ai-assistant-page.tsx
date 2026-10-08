@@ -1,5 +1,6 @@
 "use client";
 
+import { UnorderedListOutlined } from "@ant-design/icons";
 import { Button, Drawer, Tag } from "antd";
 import {
   useInfiniteQuery,
@@ -48,6 +49,13 @@ export function AiAssistantPage({
     Record<string, import("./ai-types").AiProposalView>
   >({});
   const [proposalError, setProposalError] = useState<string | null>(null);
+  // The persisted row of the attempt being retried. The server rewrites that
+  // row (same turnId) once the retry starts, so until it changes it describes
+  // the old attempt and must not hide this attempt's stream or failure.
+  const [retriedRow, setRetriedRow] = useState<{
+    turnId: string;
+    fingerprint: string;
+  } | null>(null);
   const composerRef =
     useRef<import("antd/es/input/TextArea").TextAreaRef>(null);
 
@@ -81,6 +89,7 @@ export function AiAssistantPage({
     if (conversationId === live.conversationId) return;
     const generating = live.phase === "SENDING" || live.phase === "STREAMING";
     if (generating) abandonActiveTurn();
+    setRetriedRow(null);
     if (conversationId) dispatch({ type: "hydrate", conversationId });
     else dispatch({ type: "reset" });
   }, [conversationId]);
@@ -93,20 +102,39 @@ export function AiAssistantPage({
     };
   }, []);
 
-  const history = useMemo(() => {
+  const fullHistory = useMemo(() => {
     const pages = messages.data?.pages ?? [];
     return [...pages].reverse().flatMap((page) => page.items) as AiMessage[];
   }, [messages.data]);
+  const history = retriedRow
+    ? fullHistory.filter(
+        (item) =>
+          !(
+            item.role === "ASSISTANT" &&
+            item.turnId === retriedRow.turnId &&
+            rowFingerprint(item) === retriedRow.fingerprint
+          ),
+      )
+    : fullHistory;
   const liveMessage = toAssistantMessage(state);
-  // Once an authoritative server row exists for the completed turn, discard
+  // Once an authoritative server row exists for the finished turn, discard
   // the SSE snapshot; permission revocation may have redacted its Proposal.
+  // A GENERATING row is only a placeholder, so the live stream stays visible.
   const live =
     liveMessage &&
     history.some(
-      (item) => item.role === "ASSISTANT" && item.turnId === liveMessage.turnId,
+      (item) =>
+        item.role === "ASSISTANT" &&
+        item.turnId === liveMessage.turnId &&
+        item.status !== "GENERATING",
     )
       ? null
       : liveMessage;
+  const historyHasPendingUser =
+    !!state.turnId &&
+    history.some(
+      (item) => item.role === "USER" && item.turnId === state.turnId,
+    );
   const pendingUser: AiMessage | null =
     state.pendingUserContent && state.conversationId
       ? {
@@ -133,21 +161,13 @@ export function AiAssistantPage({
             createdAt: new Date().toISOString(),
           }
         : null;
+  // The persisted question keeps its place in history; the optimistic copy is
+  // only shown until the server row arrives, so the answer always follows it.
   const shown = [
-    ...history.filter((item) => {
-      if (live && item.turnId === live.turnId && item.role !== "USER")
-        return false;
-      if (
-        pendingUser &&
-        state.turnId &&
-        item.role === "USER" &&
-        item.turnId === state.turnId
-      ) {
-        return false;
-      }
-      return true;
-    }),
-    ...(pendingUser ? [pendingUser] : []),
+    ...history.filter(
+      (item) => !(live && item.turnId === live.turnId && item.role !== "USER"),
+    ),
+    ...(pendingUser && !historyHasPendingUser ? [pendingUser] : []),
     ...(live ? [live] : []),
   ].map((item) => {
     const update = item.proposal
@@ -202,6 +222,9 @@ export function AiAssistantPage({
           });
         }
       }
+      // A stream that closes without a terminal event was cut off; the
+      // reducer ignores this once the turn has already finished.
+      if (stillCurrent()) dispatch({ type: "network" });
     } catch (error) {
       if (!stillCurrent()) return;
       if (controller.signal.aborted) {
@@ -235,6 +258,7 @@ export function AiAssistantPage({
   function send(content = state.draft) {
     const text = content.trim();
     if (!text) return;
+    setRetriedRow(null);
     dispatch({ type: "beginNewTurn", content: text });
     startTurn((signal) =>
       aiApi.streamTurn(tenantCode, { conversationId, content: text }, signal),
@@ -246,10 +270,22 @@ export function AiAssistantPage({
     abortRef.current?.abort();
     abortRef.current = null;
     dispatch({ type: "cancel" });
+    const stopped = state.conversationId ?? conversationId;
+    if (stopped) {
+      void client.invalidateQueries({
+        queryKey: aiQueryKeys.messages(tenantCode, stopped),
+      });
+    }
   }
 
   function retry(turnId = state.turnId) {
     if (!turnId) return;
+    const previous = fullHistory.find(
+      (item) => item.role === "ASSISTANT" && item.turnId === turnId,
+    );
+    setRetriedRow(
+      previous ? { turnId, fingerprint: rowFingerprint(previous) } : null,
+    );
     dispatch({ type: "beginRetryTurn", turnId });
     startTurn((signal) => aiApi.retryTurn(tenantCode, turnId, signal));
   }
@@ -328,8 +364,9 @@ export function AiAssistantPage({
     },
   });
 
-  const rail = (
+  const renderRail = (hideBrand = false) => (
     <ConversationRail
+      hideBrand={hideBrand}
       conversations={
         conversations.data?.pages.flatMap((page) => page.items) ?? []
       }
@@ -349,15 +386,12 @@ export function AiAssistantPage({
         setRailOpen(false);
       }}
       onRename={(id, title) => rename.mutateAsync({ id, title })}
-      onDelete={(id) => remove.mutate(id)}
+      onDelete={(id) => remove.mutateAsync(id)}
       renamePending={rename.isPending}
       deletePending={remove.isPending}
+      // Rename failures are reported inside the rename dialog.
       mutationError={
-        rename.error instanceof Error
-          ? rename.error.message
-          : remove.error instanceof Error
-            ? remove.error.message
-            : null
+        remove.error instanceof Error ? remove.error.message : null
       }
       onLoadMore={
         conversations.hasNextPage
@@ -369,14 +403,18 @@ export function AiAssistantPage({
 
   return (
     <div className={styles.page}>
-      <div className={styles.rail}>{rail}</div>
+      <div className={styles.rail}>{renderRail()}</div>
       <Drawer
-        title="会话"
+        title="AI 会话"
+        placement="left"
         open={railOpen}
         onClose={() => setRailOpen(false)}
-        size={280}
+        size={300}
+        styles={{
+          body: { display: "flex", padding: 0, background: "var(--bg-page)" },
+        }}
       >
-        {rail}
+        {renderRail(true)}
       </Drawer>
       <section className={styles.chat}>
         <header className={styles.header}>
@@ -389,13 +427,17 @@ export function AiAssistantPage({
           <Button
             className={styles.mobileRailButton}
             aria-label="会话"
+            icon={<UnorderedListOutlined aria-hidden />}
             onClick={() => setRailOpen(true)}
           >
             会话
           </Button>
         </header>
         <div className={styles.canvas} data-testid="ai-conversation-canvas">
-          {shown.length === 0 && state.phase === "IDLE" && !conversationId && !messages.isError ? (
+          {shown.length === 0 &&
+          state.phase === "IDLE" &&
+          !conversationId &&
+          !messages.isError ? (
             <AiEmptyState
               objects={businessObjects}
               onPrompt={(text) => {
@@ -430,20 +472,25 @@ export function AiAssistantPage({
               proposalError={proposalError}
             />
           )}
-          {state.errorMessage && !live ? (
-            <AiErrorState
-              message={
-                state.phase === "PARTIAL_COMPLETED"
-                  ? state.errorMessage
-                  : state.errorMessage || userErrorMessage(state.errorCode)
-              }
-              onRetry={
-                (state.phase === "FAILED" || state.phase === "CANCELLED") &&
-                state.turnId
-                  ? () => retry()
-                  : undefined
-              }
-            />
+          {state.errorMessage &&
+          !shown.some(
+            (item) => item.role === "ASSISTANT" && item.turnId === state.turnId,
+          ) ? (
+            <div className={styles.turnError}>
+              <AiErrorState
+                message={
+                  state.phase === "PARTIAL_COMPLETED"
+                    ? state.errorMessage
+                    : state.errorMessage || userErrorMessage(state.errorCode)
+                }
+                onRetry={
+                  (state.phase === "FAILED" || state.phase === "CANCELLED") &&
+                  state.turnId
+                    ? () => retry()
+                    : undefined
+                }
+              />
+            </div>
           ) : null}
           <AiComposer
             value={state.draft}
@@ -457,4 +504,13 @@ export function AiAssistantPage({
       </section>
     </div>
   );
+}
+
+function rowFingerprint(item: AiMessage) {
+  return [
+    item.status,
+    item.completedAt ?? "",
+    item.errorCode ?? "",
+    item.content,
+  ].join("\u0000");
 }

@@ -29,15 +29,10 @@
     0 58px 0 rgba(15, 118, 110, 0.28);
   transform: rotate(-18deg);
 }
-.brandMark,
-.eyebrow {
-  font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif;
-  font-size: 12px;
-  font-weight: 650;
-  letter-spacing: 0.12em;
-}
 .brandMark {
-  color: #9fb2c1;
+  color: #c4d2dc;
+  font-size: 14px;
+  font-weight: 600;
 }
 .statementBody {
   position: relative;
@@ -88,11 +83,6 @@
 .formCard {
   width: 100%;
   max-width: 480px;
-}
-.eyebrow {
-  display: block;
-  margin-bottom: 10px;
-  color: #0f766e;
 }
 .formCard h2 {
   margin-bottom: 10px !important;

@@ -1,0 +1,7 @@
+# Use after compose.production.yaml for SSH-only testing without a domain.
+# Forward local port 3444 to server 127.0.0.1:8443 and trust the test CA locally.
+services:
+  caddy:
+    ports: !override
+      - "127.0.0.1:8443:443"
+

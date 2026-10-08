@@ -35,7 +35,6 @@ export default async function WorkspacesPage({
     <main className={styles.accountPage}>
       <header className={styles.accountHeader}>
         <div>
-          <span className={styles.eyebrow}>ACCESS REGISTER</span>
           <h1>选择工作空间</h1>
           <p>
             {user.displayName}

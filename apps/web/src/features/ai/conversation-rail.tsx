@@ -1,8 +1,10 @@
 "use client";
 
-import { MoreOutlined } from "@ant-design/icons";
+import { MoreOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, Dropdown, Input, Modal, Skeleton } from "antd";
 import { useMemo, useRef, useState } from "react";
+
+import { toApiError } from "@/lib/api/api-error";
 
 import styles from "./ai-assistant.module.css";
 import { conversationGroup } from "./ai-copy";
@@ -24,6 +26,7 @@ export function ConversationRail({
   renamePending = false,
   deletePending = false,
   onLoadMore,
+  hideBrand = false,
 }: {
   conversations: AiConversation[];
   selectedId?: string;
@@ -38,6 +41,7 @@ export function ConversationRail({
   renamePending?: boolean;
   deletePending?: boolean;
   onLoadMore?: () => void;
+  hideBrand?: boolean;
 }) {
   const grouped = useMemo(() => {
     const buckets: Record<(typeof GROUPS)[number], AiConversation[]> = {
@@ -52,18 +56,97 @@ export function ConversationRail({
   }, [conversations]);
   const [renaming, setRenaming] = useState<AiConversation>();
   const [title, setTitle] = useState("");
-  const [renameError, setRenameError] = useState<string>();
+  const [renameError, setRenameError] = useState<string | null>(null);
+  // Each opening or closing of the rename dialog starts a new session, so a
+  // late response from an abandoned rename cannot touch the one now open.
   const renameSession = useRef(0);
   const [renameSubmitting, setRenameSubmitting] = useState(false);
   const renameSubmittingRef = useRef(false);
+  const [deleting, setDeleting] = useState<AiConversation>();
   const [deleteSubmitting, setDeleteSubmitting] = useState<string>();
+  const empty = !loading && !error && conversations.length === 0;
+  const railRef = useRef<HTMLElement>(null);
+  // The menu item that opened a dialog unmounts with the menu, so focus goes
+  // back to the row's menu button (or to 新建会话 once the row is deleted).
+  const returnFocusId = useRef<string | null>(null);
+
+  function restoreFocus() {
+    const id = returnFocusId.current;
+    returnFocusId.current = null;
+    if (!id) return;
+    const rail = railRef.current;
+    const trigger = Array.from(
+      rail?.querySelectorAll<HTMLElement>("[data-conversation-menu]") ?? [],
+    ).find((element) => element.dataset.conversationMenu === id);
+    (trigger ?? rail?.querySelector<HTMLElement>("[data-rail-new]"))?.focus();
+  }
+
+  function openRename(item: AiConversation) {
+    renameSession.current += 1;
+    returnFocusId.current = item.id;
+    setRenaming(item);
+    setTitle(item.title);
+    setRenameError(null);
+  }
+
+  function closeRename() {
+    renameSession.current += 1;
+    setRenaming(undefined);
+    setRenameError(null);
+  }
+
+  async function submitRename() {
+    if (
+      !renaming ||
+      !title.trim() ||
+      renamePending ||
+      renameSubmittingRef.current
+    )
+      return;
+    const session = renameSession.current;
+    renameSubmittingRef.current = true;
+    setRenameSubmitting(true);
+    setRenameError(null);
+    try {
+      await onRename(renaming.id, title.trim());
+      if (renameSession.current === session) setRenaming(undefined);
+    } catch (reason) {
+      // Keep the dialog and the typed title so the user can retry.
+      if (renameSession.current === session) {
+        const apiError = toApiError(reason);
+        setRenameError(
+          `重命名失败：${apiError.message}（请求编号：${apiError.requestId}）输入的标题已保留。`,
+        );
+      }
+    } finally {
+      renameSubmittingRef.current = false;
+      setRenameSubmitting(false);
+    }
+  }
+
+  function confirmDelete() {
+    if (!deleting || deletePending || deleteSubmitting) return;
+    setDeleteSubmitting(deleting.id);
+    Promise.resolve(onDelete(deleting.id))
+      .catch(() => undefined)
+      .finally(() => {
+        setDeleteSubmitting(undefined);
+        setDeleting(undefined);
+      });
+  }
 
   return (
-    <aside className={styles.railInner}>
+    <aside ref={railRef} className={styles.railInner}>
       <div className={styles.railHeader}>
-        <p className={styles.railBrand}>AI 会话</p>
-        <Button className={styles.railNew} type="primary" onClick={onNew}>
-          + 新建会话
+        {hideBrand ? null : <p className={styles.railBrand}>AI 会话</p>}
+        <Button
+          className={styles.railNew}
+          type="primary"
+          icon={<PlusOutlined aria-hidden />}
+          data-rail-new
+          onClick={onNew}
+        >
+          新建会话
         </Button>
       </div>
       <div className={styles.railList}>
@@ -83,6 +166,11 @@ export function ConversationRail({
             ) : null}
           </div>
         ) : null}
+        {empty ? (
+          <p className={styles.railEmpty}>
+            还没有会话。发送第一个问题后，会话会保存在这里。
+          </p>
+        ) : null}
         {!loading && !error
           ? GROUPS.map((group) =>
               grouped[group].length === 0 ? null : (
@@ -96,37 +184,33 @@ export function ConversationRail({
                       <button
                         type="button"
                         className={styles.rowTitle}
+                        title={item.title}
+                        aria-current={
+                          item.id === selectedId ? "true" : undefined
+                        }
                         onClick={() => onSelect(item.id)}
                       >
                         {item.title}
                       </button>
                       <Dropdown
                         trigger={["click"]}
+                        autoFocus
                         getPopupContainer={() => document.body}
                         menu={{
                           items: [
                             {
                               key: "rename",
                               label: "重命名",
-                              onClick: () => {
-                                renameSession.current += 1;
-                                setRenameError(undefined);
-                                setRenaming(item);
-                                setTitle(item.title);
-                              },
+                              onClick: () => openRename(item),
                             },
                             {
                               key: "delete",
                               label: "删除",
                               danger: true,
+                              disabled: deletePending || !!deleteSubmitting,
                               onClick: () => {
-                                if (deletePending || deleteSubmitting) return;
-                                setDeleteSubmitting(item.id);
-                                Promise.resolve(onDelete(item.id))
-                                  .catch(() => undefined)
-                                  .finally(() =>
-                                    setDeleteSubmitting(undefined),
-                                  );
+                                returnFocusId.current = item.id;
+                                setDeleting(item);
                               },
                             },
                           ],
@@ -135,6 +219,7 @@ export function ConversationRail({
                         <Button
                           type="text"
                           className={styles.rowMenu}
+                          data-conversation-menu={item.id}
                           aria-label={`会话操作：${item.title}`}
                           icon={<MoreOutlined aria-hidden />}
                         />
@@ -154,47 +239,52 @@ export function ConversationRail({
       <Modal
         open={!!renaming}
         title="重命名会话"
-        onCancel={() => {
-          renameSession.current += 1;
-          setRenaming(undefined);
-        }}
-        onOk={async () => {
-          if (
-            !renaming ||
-            !title.trim() ||
-            renamePending ||
-            renameSubmittingRef.current
-          )
-            return;
-          const session = renameSession.current;
-          renameSubmittingRef.current = true;
-          setRenameSubmitting(true);
-          setRenameError(undefined);
-          try {
-            await onRename(renaming.id, title.trim());
-            if (renameSession.current === session) setRenaming(undefined);
-          } catch {
-            if (renameSession.current === session)
-              setRenameError("重命名失败，请重试。输入的标题已保留。");
-          } finally {
-            renameSubmittingRef.current = false;
-            setRenameSubmitting(false);
-          }
-        }}
+        okText="保存"
+        cancelText="取消"
+        onCancel={closeRename}
+        onOk={() => void submitRename()}
+        afterClose={restoreFocus}
         confirmLoading={renamePending || renameSubmitting}
         okButtonProps={{
           disabled: !title.trim() || renamePending || renameSubmitting,
         }}
+        destroyOnHidden
       >
+        <Input
+          aria-label="会话名称"
+          value={title}
+          maxLength={120}
+          autoFocus
+          status={renameError ? "error" : undefined}
+          onChange={(event) => {
+            setTitle(event.target.value);
+            if (renameError) setRenameError(null);
+          }}
+          onPressEnter={() => void submitRename()}
+        />
         {renameError ? (
-          <div className={styles.railError} role="alert">
+          <div className={styles.renameError} role="alert">
             {renameError}
           </div>
         ) : null}
-        <Input
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-        />
+      </Modal>
+      <Modal
+        open={!!deleting}
+        title="删除这个会话？"
+        okText="删除"
+        cancelText="取消"
+        okButtonProps={{ danger: true }}
+        confirmLoading={!!deleteSubmitting || deletePending}
+        onOk={confirmDelete}
+        afterClose={restoreFocus}
+        onCancel={() => {
+          if (!deleteSubmitting) setDeleting(undefined);
+        }}
+      >
+        <p className={styles.deleteCopy}>
+          「{deleting?.title}」及其全部消息删除后无法找回。已确认执行的 CRM
+          修改不会撤销。
+        </p>
       </Modal>
     </aside>
   );

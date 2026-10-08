@@ -23,17 +23,23 @@
   min-width: min(280px, 100%);
 }
 
+/* Filters flow as items of the bar itself, so a narrow bar wraps whole
+   controls onto the next row instead of stacking them in a centred column. */
 .filters {
-  flex: 1;
+  display: contents;
 }
 
+/* Pushed to the end of the bar; no divider, because once the bar wraps the
+   actions start their own row and a left rule would hang in empty space. */
 .batchActions {
-  padding-left: 8px;
   margin-left: auto;
-  border-left: 1px solid var(--border-default);
 }
 
 @media (max-width: 767px) {
+  .filters {
+    display: flex;
+  }
+
   .search,
   .filters,
   .batchActions {
@@ -47,9 +53,7 @@
 
   .batchActions {
     padding-top: 8px;
-    padding-left: 0;
     margin-left: 0;
     border-top: 1px solid var(--border-default);
-    border-left: 0;
   }
 }

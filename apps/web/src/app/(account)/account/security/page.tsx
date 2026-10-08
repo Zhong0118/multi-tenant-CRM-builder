@@ -27,7 +27,6 @@ export default async function AccountSecurityPage() {
   return (
     <main className={styles.securityPage}>
       <header className={styles.securityHeader}>
-        <span className={styles.eyebrow}>ACCOUNT / SECURITY</span>
         <h1>账号安全</h1>
         <p>
           {user.displayName} · {user.phone}　

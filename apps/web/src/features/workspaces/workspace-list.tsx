@@ -45,9 +45,6 @@ export function WorkspaceList({ workspaces, onNavigate }: WorkspaceListProps) {
             <div className={styles.rail} aria-hidden="true" />
             <div className={styles.cardHeader}>
               <div>
-                <Typography.Text className={styles.eyebrow}>
-                  {reason ? "ACCESS PAUSED" : "VERIFIED WORKSPACE"}
-                </Typography.Text>
                 <Typography.Title level={3}>
                   {workspace.tenantName}
                 </Typography.Title>

@@ -1,0 +1,50 @@
+name: Internal Trial Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      web_origin:
+        description: HTTPS origin used by the test browser
+        required: true
+        default: https://localhost:3444
+  pull_request:
+    branches: [main]
+    paths: [.github/workflows/internal-trial-image.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      WEB_ORIGIN: ${{ inputs.web_origin || 'https://localhost:3444' }}
+      RELEASE_ID: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Build Linux amd64 application image
+        run: >-
+          docker build --platform linux/amd64
+          --build-arg NEXT_PUBLIC_API_ORIGIN="$WEB_ORIGIN"
+          --label org.opencontainers.image.revision="$RELEASE_ID"
+          -t "crm-app:$RELEASE_ID" .
+      - name: Package images for a server without Docker Hub access
+        run: |
+          docker pull postgres:18-alpine
+          docker pull redis:7.4-alpine
+          docker pull caddy:2.10-alpine
+          docker save "crm-app:$RELEASE_ID" postgres:18-alpine redis:7.4-alpine caddy:2.10-alpine | zstd -T0 -3 -o crm-images.tar.zst
+          sha256sum crm-images.tar.zst > crm-images.tar.zst.sha256
+          printf '%s\n' "$RELEASE_ID" > release-id.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: crm-internal-trial-images
+          path: |
+            crm-images.tar.zst
+            crm-images.tar.zst.sha256
+            release-id.txt
+          compression-level: 0
+          retention-days: 3

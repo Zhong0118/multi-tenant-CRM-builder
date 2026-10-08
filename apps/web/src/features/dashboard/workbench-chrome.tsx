@@ -117,8 +117,8 @@ export function PeriodLabel({
     <StatusTag tone="neutral">
       {formatDate(period.from)} 至 {formatDate(period.to)}
       {publication
-        ? ` · 发布 #${publication.number}（${formatDate(publication.publishedAt)}）`
-        : " · 已发布"}
+        ? ` · 工作台于 ${formatDate(publication.publishedAt)}发布`
+        : null}
     </StatusTag>
   );
 }

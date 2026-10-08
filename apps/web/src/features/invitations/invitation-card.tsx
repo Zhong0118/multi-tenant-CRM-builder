@@ -15,9 +15,6 @@ export function InvitationCard({
       <div className={styles.cardRail} aria-hidden="true" />
       <div className={styles.cardMain}>
         <div>
-          <Typography.Text className={styles.eyebrow}>
-            PENDING ACCESS
-          </Typography.Text>
           <Typography.Title level={3} className={styles.cardTitle}>
             {invitation.tenantName ?? "公司邀请"}
           </Typography.Title>

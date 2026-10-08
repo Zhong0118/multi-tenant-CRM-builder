@@ -36,7 +36,6 @@ export function NewRecordPanel({
       <header className={styles.listHeader}>
         <div>
           <h1>新建{schema.object.name}</h1>
-          <p>字段与校验来自当前发布版本 v{schema.publication.number}。</p>
           <Link href={listPath}>返回{schema.object.name}列表</Link>
         </div>
       </header>

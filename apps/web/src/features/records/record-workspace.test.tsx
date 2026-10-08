@@ -1,11 +1,12 @@
 import { act, fireEvent, render as rtlRender, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { recordApi } from "./record-api";
 import Link from "next/link";
 import { RecordWorkspace, type RecordWorkspaceProps } from "./record-workspace";
 import type { RecordSummary } from "@/features/objects/object-types";
 import { DEFAULT_RECORD_QUERY } from "./record-query-state";
+import { formatDateTime } from "./record-display-value";
 const router = vi.hoisted(() => ({ replace: vi.fn(), refresh: vi.fn(), push: vi.fn(), back: vi.fn(), forward: vi.fn(), prefetch: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("./record-list", async (importOriginal) => ({
@@ -125,6 +126,24 @@ describe("record workspace navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "关闭" }));
     await waitFor(() => expect(screen.getByRole("link", { name: "客户 A 链接" })).toHaveFocus());
   });
+  it("focuses the record link in the list route's new workspace after close", async () => {
+    // Real lists are laid out; jsdom reports no client rects for any element.
+    const rects = vi.spyOn(HTMLAnchorElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
+    onTestFinished(() => rects.mockRestore());
+    const { rerender, unmount } = render(<RecordWorkspace {...props} openRecord={record} />);
+    const closing = screen.getByRole("link", { name: "客户 A 链接" });
+    fireEvent.click(screen.getByRole("button", { name: "关闭" }));
+    await waitFor(() => expect(closing).toHaveFocus());
+    // The list URL mounts a fresh workspace whose list replaces the old link.
+    rerender(<RecordWorkspace {...props} />);
+    const arrived = screen.getByRole("link", { name: "客户 A 链接" });
+    expect(arrived).not.toBe(closing);
+    await waitFor(() => expect(arrived).toHaveFocus());
+    // The request is settled: a later visit to the list does not steal focus.
+    unmount();
+    render(<RecordWorkspace {...props} />);
+    expect(document.body).toHaveFocus();
+  });
   it.each(["关闭", "删除"])("%s returns to the exact validated source", async (action) => {
     sessionStorage.clear();
     render(<RecordWorkspace {...props} openRecord={record} returnTo="/workspace/northwind/follow-ups?status=DONE&page=3" />);
@@ -179,7 +198,7 @@ describe("record workspace navigation", () => {
     } });
     const unsubscribe = observer.subscribe(() => {});
     await waitFor(() => expect(client.getQueryData(key)).toBe("seeded"));
-    const update = vi.spyOn(recordApi, "update").mockResolvedValue({ ...record, title: "已保存", values: { name: "已保存" }, version: 2 });
+    const update = vi.spyOn(recordApi, "update").mockResolvedValue({ ...record, title: "已保存", values: { name: "已保存" }, version: 2, updatedAt: "2026-09-10T02:30:00.000Z" });
     const remove = vi.spyOn(recordApi, "remove").mockResolvedValue({ accepted: true });
     render(<RecordWorkspace {...props} openRecord={record} initialEditing={action === "save"} returnTo="/workspace/northwind/follow-ups?status=OPEN&page=1" />, client);
     failed = true;
@@ -197,7 +216,8 @@ describe("record workspace navigation", () => {
     expect(router.refresh).not.toHaveBeenCalled();
     if (action === "save") {
       expect(update).toHaveBeenCalledTimes(1);
-      expect(screen.getByText("版本 v2")).toBeVisible();
+      // The drawer shows the saved record, not the stale one.
+      expect(screen.getByText(formatDateTime("2026-09-10T02:30:00.000Z"))).toBeVisible();
       expect(screen.queryByRole("button", { name: "保存修改" })).not.toBeInTheDocument();
     } else {
       expect(remove).toHaveBeenCalledTimes(1);
@@ -288,13 +308,16 @@ describe("record workspace navigation", () => {
     expect(screen.getByRole("dialog")).toHaveTextContent("服务器更新");
   });
 
-  it("synchronizes refreshed server values in reading mode", () => {
+  it("synchronizes refreshed server values in reading mode", async () => {
     composition.real = true;
+    const update = vi.spyOn(recordApi, "update").mockResolvedValue({ ...record, version: 4 });
     const view = render(<RecordWorkspace {...props} openRecord={record} />);
     view.rerender(<RecordWorkspace {...props} openRecord={{ ...record, version: 3, title: "服务器最新", values: { name: "服务器最新" } }} />);
-    expect(screen.getByText("版本 v3")).toBeVisible();
+    expect(screen.getByRole("dialog")).toHaveTextContent("服务器最新");
     fireEvent.click(screen.getByRole("button", { name: /^编\s*辑$/ }));
     expect(screen.getByRole("textbox", { name: "客户名称" })).toHaveValue("服务器最新");
+    fireEvent.click(screen.getByRole("button", { name: "保存修改" }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith("northwind", "customers", "record-a", expect.objectContaining({ version: 3, values: { name: "服务器最新" } })));
   });
 
   it.each(["initialEditing", "id", "tenant", "object", "followUp"])("resets an active draft on %s route identity change", (identity) => {
@@ -311,7 +334,8 @@ describe("record workspace navigation", () => {
     />);
     if (identity === "initialEditing") {
       expect(screen.queryByRole("textbox", { name: "客户名称" })).not.toBeInTheDocument();
-      expect(screen.getByText("版本 v1")).toBeVisible();
+      expect(screen.getByRole("dialog")).toHaveTextContent("客户 A");
+      expect(screen.getByRole("dialog")).not.toHaveTextContent("路由前草稿");
     } else {
       expect(screen.getByRole("textbox", { name: "客户名称" })).toHaveValue(identity === "id" ? "客户 B" : "客户 A");
     }

@@ -23,14 +23,6 @@
   line-height: 22px;
 }
 
-.eyebrow {
-  color: var(--verified-teal);
-  font-family: var(--font-label);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-}
-
 /* Stable identifiers are monospace so a code or field key never reads as prose. */
 .stableKey {
   font-family: var(--font-mono);

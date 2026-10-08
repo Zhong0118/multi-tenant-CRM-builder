@@ -58,6 +58,11 @@
   width: 100%;
 }
 
+/* The column gap already separates the page header from the toolbar. */
+.list > header {
+  margin-bottom: 0;
+}
+
 .listHeader {
   display: flex;
   flex-wrap: wrap;
@@ -336,6 +341,16 @@
 .detailLock {
   color: var(--review-amber);
   font-size: 12px;
+}
+
+/* The drawer header already draws a rule above the summary. */
+.detailSummary {
+  margin-bottom: 24px;
+}
+
+.detailSummary > .detailFields:first-child {
+  padding-top: 0;
+  border-top: 0;
 }
 
 .detailMeta {

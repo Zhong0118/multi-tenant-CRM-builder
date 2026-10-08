@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import styles from "./ai-assistant.module.css";
 import { toolPrimaryLine } from "./ai-copy";
@@ -9,12 +9,9 @@ import type { AiToolSummary } from "./ai-types";
 export function ToolActivity({ tools }: { tools: AiToolSummary[] }) {
   const active = tools.some((tool) => tool.status === "RUNNING");
   const completedCount = tools.filter((tool) => tool.status === "COMPLETED").length;
-  const [open, setOpen] = useState(active);
-  const [manual, setManual] = useState(false);
-  useEffect(() => {
-    if (manual) return;
-    setOpen(active);
-  }, [active, manual]);
+  // Follows the running state until the user toggles it themselves.
+  const [manualOpen, setManualOpen] = useState<boolean | null>(null);
+  const open = manualOpen ?? active;
   if (tools.length === 0) return null;
   return (
     <div className={styles.tools}>
@@ -22,10 +19,7 @@ export function ToolActivity({ tools }: { tools: AiToolSummary[] }) {
         type="button"
         className={styles.toolToggle}
         aria-expanded={open}
-        onClick={() => {
-          setManual(true);
-          setOpen((value) => !value);
-        }}
+        onClick={() => setManualOpen(!open)}
       >
         <span
           className={`${styles.toolDot} ${active ? styles.toolDotRunning : ""}`}
@@ -42,7 +36,6 @@ export function ToolActivity({ tools }: { tools: AiToolSummary[] }) {
           {tools.map((tool) => (
             <li key={tool.callId} className={styles.toolItem}>
               <span className={styles.toolName}>{toolPrimaryLine(tool)}</span>
-              <span className={styles.toolCode}>{tool.toolName}</span>
             </li>
           ))}
         </ul>

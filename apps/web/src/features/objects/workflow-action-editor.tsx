@@ -503,7 +503,7 @@ function ActionStepBody({
       return (
         <>
           <Typography.Text type="secondary">
-            目标固定为当前记录，只能修改本记录自己的字段；V1 不允许更新其它记录。
+            仅作用于当前记录，只能修改本记录的字段。
           </Typography.Text>
           <MappingEditor
             transitionIndex={transitionIndex}
@@ -713,7 +713,7 @@ function ActionStepBody({
         <>
           <Typography.Text>将当前记录分配给执行人。</Typography.Text>
           <Typography.Text type="secondary">
-            V1 只有公司管理员可以执行该步骤，负责人固定为执行人，因此不提供成员选择。
+            仅公司管理员可执行此步骤，负责人固定为执行人。
           </Typography.Text>
         </>
       );

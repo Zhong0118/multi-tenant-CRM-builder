@@ -699,7 +699,8 @@ describe("WorkflowActionEditor", () => {
       },
     ]);
 
-    expect(screen.getByText(/目标固定为当前记录/)).toBeInTheDocument();
+    expect(screen.getByText("仅作用于当前记录，只能修改本记录的字段。")).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/V1/);
     expect(screen.queryByLabelText("目标业务表 1-1")).not.toBeInTheDocument();
     expect(openOptions("添加字段映射 1-1")).toEqual([
       "公司名称",
@@ -723,6 +724,8 @@ describe("WorkflowActionEditor", () => {
     const actions = renderEditor([assignOwner("assign-owner")]);
 
     expect(screen.getByText("将当前记录分配给执行人。")).toBeInTheDocument();
+    expect(screen.getByText("仅公司管理员可执行此步骤，负责人固定为执行人。")).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/V1/);
     expect(screen.queryByLabelText("记录负责人 1-1")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("目标业务表 1-1")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("目标记录 1-1")).not.toBeInTheDocument();

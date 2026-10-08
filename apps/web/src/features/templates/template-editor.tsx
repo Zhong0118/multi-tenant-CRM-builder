@@ -487,7 +487,6 @@ export function TemplateEditor({
             </Form.Item>
           </Form>
           <aside className={styles.creatorGuide} aria-label="创建后配置步骤">
-            <span className={styles.eyebrow}>CREATION FLOW</span>
             <h3>创建后还需要完成</h3>
             <ol>
               <li>添加并设置字段</li>

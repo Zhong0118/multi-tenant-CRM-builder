@@ -21,12 +21,9 @@
   color: var(--text-secondary);
   line-height: 22px;
 }
-.eyebrow {
-  color: var(--verified-teal);
-  font-family: var(--font-label);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+.tableHeading > span {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 .invitePanel {
   display: grid;
@@ -41,7 +38,7 @@
 }
 .invitePanel h2,
 .tableHeading h2 {
-  margin: 4px 0 6px;
+  margin: 0;
   color: var(--text-primary);
   font-size: 20px;
   line-height: 28px;
@@ -78,7 +75,7 @@
   gap: 20px;
   align-items: center;
   justify-content: space-between;
-  min-height: 68px;
+  min-height: 60px;
   padding: 14px 18px;
   border-bottom: 1px solid var(--rule);
 }
