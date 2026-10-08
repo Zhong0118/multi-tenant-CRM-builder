@@ -3,7 +3,7 @@
 import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import { Tooltip } from "antd";
 import Link from "next/link";
-import type { PointerEvent } from "react";
+import type { PointerEvent, ReactNode } from "react";
 
 import { LogoutButton } from "@/features/auth/logout-button";
 
@@ -35,6 +35,7 @@ export function currentNavHref(
 
 export function Sidebar({
   brand,
+  brandIcon,
   brandHref,
   navGroups,
   pathname,
@@ -50,6 +51,7 @@ export function Sidebar({
   onResizeDoubleClick,
 }: {
   brand: string;
+  brandIcon?: ReactNode;
   brandHref: string;
   navGroups: ShellNavGroup[];
   pathname: string;
@@ -98,9 +100,9 @@ export function Sidebar({
         onPointerCancel={onResizePointerUp}
         onDoubleClick={onResizeDoubleClick}
       />
-      <Link href={brandHref} className={styles.brand} onClick={onMobileClose}>
+      <Link href={brandHref} className={styles.brand} aria-label={brand} onClick={onMobileClose}>
         <span className={styles.brandMark} aria-hidden>
-          {brand.slice(0, 1)}
+          {brandIcon ?? brand.slice(0, 1)}
         </span>
         {collapsed ? null : <span className={styles.brandName}>{brand}</span>}
       </Link>

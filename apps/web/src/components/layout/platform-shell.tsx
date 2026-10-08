@@ -1,5 +1,6 @@
 "use client";
 
+import { AppstoreOutlined } from "@ant-design/icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -20,7 +21,8 @@ export function PlatformShell({
   const pathname = usePathname() ?? "";
   return (
     <AppShell
-      brand="平台后台"
+      brand="管理中心"
+      brandIcon={<AppstoreOutlined />}
       brandHref="/platform"
       navGroups={[
         {

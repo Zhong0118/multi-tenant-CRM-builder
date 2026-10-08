@@ -98,6 +98,11 @@
   border-radius: var(--radius-control);
 }
 
+.brandMark svg {
+  width: 17px;
+  height: 17px;
+}
+
 .brandName {
   overflow: hidden;
   font-weight: 650;
@@ -230,16 +235,38 @@
 }
 
 .logout :global(.ant-btn) {
+  display: flex;
   width: 100%;
+  height: 38px;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 0 11px;
   color: #aebac1;
+  font-size: 13px;
   background: transparent;
-  border-color: rgb(255 255 255 / 14%);
+  border: 0;
+  border-radius: var(--radius-control);
+  box-shadow: none;
+}
+
+.logout :global(.ant-btn-icon) {
+  width: 18px;
+  font-size: 16px;
 }
 
 .logout :global(.ant-btn:hover) {
-  color: #fff !important;
-  background: var(--shell-ink-hover) !important;
-  border-color: rgb(255 255 255 / 24%) !important;
+  color: #fecaca !important;
+  background: rgb(239 68 68 / 12%) !important;
+}
+
+.logout :global(.ant-btn:focus-visible) {
+  outline: 2px solid #79c8bc;
+  outline-offset: -2px;
+}
+
+.sidebarCollapsed .logout :global(.ant-btn) {
+  justify-content: center;
+  padding: 0;
 }
 
 .column {

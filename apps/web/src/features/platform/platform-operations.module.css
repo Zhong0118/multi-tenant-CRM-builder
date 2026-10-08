@@ -249,7 +249,7 @@
   font-weight: 650;
   text-align: right;
 }
-.deployPanel ol {
+.deployPanel ul {
   display: grid;
   gap: 12px;
   margin: 0;

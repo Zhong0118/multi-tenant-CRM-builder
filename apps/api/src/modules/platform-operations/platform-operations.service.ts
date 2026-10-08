@@ -50,6 +50,19 @@ export class PlatformOperationsService {
     const fixedCodeConfigured = /^\d{6}$/.test(
       this.config.get<string>('DEV_VERIFICATION_CODE', ''),
     );
+    const tencentConfigured =
+      this.config.get<string>('SMS_PROVIDER') === 'tencent' &&
+      [
+        'TENCENT_SMS_SECRET_ID',
+        'TENCENT_SMS_SECRET_KEY',
+        'TENCENT_SMS_SDK_APP_ID',
+        'TENCENT_SMS_SIGN_NAME',
+        'TENCENT_SMS_REGISTER_TEMPLATE_ID',
+        'TENCENT_SMS_RESET_TEMPLATE_ID',
+      ].every((key) => Boolean(this.config.get<string>(key)?.trim())) &&
+      Boolean(
+        this.config.get<string>('TENCENT_SMS_REGION', 'ap-guangzhou').trim(),
+      );
     return {
       environment,
       services: [
@@ -82,13 +95,17 @@ export class PlatformOperationsService {
           label: '短信验证码',
           status:
             environment === 'production'
-              ? 'ACTION_REQUIRED'
+              ? tencentConfigured
+                ? 'READY'
+                : 'ACTION_REQUIRED'
               : fixedCodeConfigured
                 ? 'DEVELOPMENT'
                 : 'ACTION_REQUIRED',
           detail:
             environment === 'production'
-              ? '尚未接入生产短信供应商。'
+              ? tencentConfigured
+                ? '腾讯云短信配置完整，已启用注册和重置密码模板。'
+                : '腾讯云短信配置不完整，请检查供应商、凭据、签名和模板。'
               : fixedCodeConfigured
                 ? '开发环境使用固定验证码，不会发送真实短信。'
                 : '请配置六位开发验证码。',
