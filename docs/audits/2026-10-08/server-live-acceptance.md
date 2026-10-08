@@ -6,10 +6,10 @@
 - 短信补修 PR #30 已合并。运行镜像源提交：`f0632b7fa67db24f2463f16421d6c55d3807d487`；合并提交：`cf8f18a9bd9cefc364d711c0a6d15e021acea990`。
 - [六项 CI](https://github.com/Zhong0118/multi-tenant-CRM-builder/actions/runs/37739090672) 和 [Linux amd64 镜像构建](https://github.com/Zhong0118/multi-tenant-CRM-builder/actions/runs/37739091010) 均通过；独立代码复核无阻塞问题。
 - 新镜像 ZIP、镜像包均通过 SHA256 校验。API/Web 已替换，Caddy/PostgreSQL/Redis 正常运行；服务就绪检查返回 200 / ok。
-- 内部入口通过 SSH 隧道访问 `https://localhost:3444`；服务器仅绑定 `127.0.0.1:8443`，未开放公网业务端口。curl 使用 Caddy 公共 CA 证书校验成功；普通浏览器信任尚需配置，自动化浏览器忽略内部证书错误不等于已完成系统信任。
+- 内部入口通过 SSH 隧道访问 `https://localhost:3444`；服务器仅绑定 `127.0.0.1:8443`，未开放公网业务端口。curl 显式提供 Caddy 本地 CA 根证书后校验成功；普通浏览器信任尚需配置，自动化浏览器忽略内部证书错误不等于已完成系统信任。
 - 登录页在 1440、390 宽度均返回 200，无横向溢出或 pageerror。未认证 `/api/v1/me` 返回 401；不可信 Origin 的 POST 返回 403。
 - 首次真实短信请求因旧接口版本失败；补修部署后的同一路径返回 HTTP 202 / accepted。用户随后提供收到的验证码并成功完成注册，确认注册短信送达与验证链路通过。
-- 数据库最新 challenge 为 PENDING、尝试次数 0，有效期实际为 600 秒；没有读取或打印验证码及其散列。
+- 注册完成前观察到的数据库最新 challenge 为 PENDING、尝试次数 0，有效期实际为 600 秒；没有读取或打印验证码及其散列。
 - 更新前备份权限 0600；成功恢复到独立测试数据库并核对 23 项迁移后删除测试库，没有覆盖运行库。
 - 已通过正常短信注册、受审计的 `platform-admin:grant` CLI 授权：授权前平台 runtime-status 为 403，授权后为 200，`/me` 返回 isPlatformAdmin=true。
 - 密码采用用户明确指定的值，符合当前十至七十二字符且包含字母、数字的规则；密码和验证码未写入本验收文档。使用该密码在浏览器登录成功并跳转 `/platform`，页面显示平台超级管理员；登录 Cookie 的 Secure、HttpOnly 为 true。
