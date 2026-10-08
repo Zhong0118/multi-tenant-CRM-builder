@@ -308,13 +308,16 @@ describe("record workspace navigation", () => {
     expect(screen.getByRole("dialog")).toHaveTextContent("服务器更新");
   });
 
-  it("synchronizes refreshed server values in reading mode", () => {
+  it("synchronizes refreshed server values in reading mode", async () => {
     composition.real = true;
+    const update = vi.spyOn(recordApi, "update").mockResolvedValue({ ...record, version: 4 });
     const view = render(<RecordWorkspace {...props} openRecord={record} />);
     view.rerender(<RecordWorkspace {...props} openRecord={{ ...record, version: 3, title: "服务器最新", values: { name: "服务器最新" } }} />);
-    expect(screen.getByText("版本 v3")).toBeVisible();
+    expect(screen.getByRole("dialog")).toHaveTextContent("服务器最新");
     fireEvent.click(screen.getByRole("button", { name: /^编\s*辑$/ }));
     expect(screen.getByRole("textbox", { name: "客户名称" })).toHaveValue("服务器最新");
+    fireEvent.click(screen.getByRole("button", { name: "保存修改" }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith("northwind", "customers", "record-a", expect.objectContaining({ version: 3, values: { name: "服务器最新" } })));
   });
 
   it.each(["initialEditing", "id", "tenant", "object", "followUp"])("resets an active draft on %s route identity change", (identity) => {
@@ -331,7 +334,8 @@ describe("record workspace navigation", () => {
     />);
     if (identity === "initialEditing") {
       expect(screen.queryByRole("textbox", { name: "客户名称" })).not.toBeInTheDocument();
-      expect(screen.getByText("版本 v1")).toBeVisible();
+      expect(screen.getByRole("dialog")).toHaveTextContent("客户 A");
+      expect(screen.getByRole("dialog")).not.toHaveTextContent("路由前草稿");
     } else {
       expect(screen.getByRole("textbox", { name: "客户名称" })).toHaveValue(identity === "id" ? "客户 B" : "客户 A");
     }

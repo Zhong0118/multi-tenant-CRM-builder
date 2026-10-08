@@ -58,10 +58,14 @@ await run(`p2r-refresh ${role} ${width}`, browser, async (check) => {
   await drawer.waitFor();
   await page.waitForTimeout(500);
   const recordUrl = page.url();
-  const versionText = async () => (await drawer.getByText(/^版本 v\d+$/).first().textContent())?.trim();
-  const before = await versionText();
-  const startVersion = Number(before?.replace('版本 v', ''));
-  check('detail shows the starting version', Number.isInteger(startVersion), before);
+  const recordId = new URL(recordUrl).pathname.split('/').at(-1);
+  const serverVersion = async () => {
+    const response = await context.request.get(`http://localhost:3201/api/v1/workspaces/nebula-demo/objects/customers/records/${recordId}`);
+    if (!response.ok()) throw new Error(`Record read failed: ${response.status()}`);
+    return (await response.json()).version;
+  };
+  const startVersion = await serverVersion();
+  check('server supplies the starting version', Number.isInteger(startVersion), startVersion);
 
   const edit = () => page.getByRole('button', { name: /^编\s*辑$/ }).click();
   const note = () => page.getByRole('textbox', { name: '客户备注', exact: true });
@@ -120,7 +124,7 @@ await run(`p2r-refresh ${role} ${width}`, browser, async (check) => {
   await page.getByRole('button', { name: /^取\s*消$/ }).click();
   await page.waitForTimeout(500);
   check('reading view shows the committed save', (await drawer.getByText(stale, { exact: true }).count()) > 0);
-  check('reading view shows the newer version', (await versionText()) === `版本 v${startVersion + 1}`, await versionText());
+  check('server keeps the committed version after the rejected stale save', (await serverVersion()) === startVersion + 1);
 
   // Restore the fixture value.
   await edit();
