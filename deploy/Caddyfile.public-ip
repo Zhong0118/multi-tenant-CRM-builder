@@ -1,0 +1,20 @@
+{
+	default_sni {$WEB_HOST}
+}
+
+{$WEB_HOST} {
+	tls {
+		issuer acme {
+			dir https://acme-v02.api.letsencrypt.org/directory
+			profile shortlived
+		}
+	}
+	handle /api/v1/* {
+		reverse_proxy api:3001 {
+			header_up X-Forwarded-For {remote_host}
+		}
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+}

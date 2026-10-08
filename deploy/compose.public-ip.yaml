@@ -1,0 +1,5 @@
+# Use with compose.production.yaml, without the SSH-only internal-test overlay.
+services:
+  caddy:
+    volumes:
+      - ./Caddyfile.public-ip:/etc/caddy/Caddyfile:ro
