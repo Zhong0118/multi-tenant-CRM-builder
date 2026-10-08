@@ -85,13 +85,14 @@ describe('createVerificationSender', () => {
       Host: 'sms.tencentcloudapi.com',
       'X-TC-Action': 'SendSms',
       'X-TC-Region': 'ap-guangzhou',
-      'X-TC-Version': '2019-07-11',
+      'X-TC-Version': '2021-01-11',
       'X-TC-Timestamp': '1700000000',
     });
     expect((request?.headers as Record<string, string>).Authorization).toBe(
       'TC3-HMAC-SHA256 Credential=AKID-test/2023-11-14/sms/tc3_request, SignedHeaders=content-type;host;x-tc-action, Signature=d223c755c7bf31e901d0b564785a08e9386745242bab34a6089fe4d186d73daa',
     );
-    expect(JSON.parse(String(request?.body))).toEqual({
+    expect(typeof request?.body).toBe('string');
+    expect(JSON.parse(request?.body as string)).toEqual({
       SmsSdkAppId: '1400000000',
       SignName: 'CRM',
       TemplateId: '100001',
