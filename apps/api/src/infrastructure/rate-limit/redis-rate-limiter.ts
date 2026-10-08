@@ -7,11 +7,22 @@ import type { RateLimiter } from './rate-limiter';
 interface RedisClient {
   status: string;
   connect(): Promise<unknown>;
-  incr(key: string): Promise<number>;
-  expire(key: string, seconds: number): Promise<unknown>;
+  eval(
+    script: string,
+    keyCount: number,
+    ...args: (string | number)[]
+  ): Promise<unknown>;
   quit(): Promise<unknown>;
   disconnect(): void;
 }
+
+const CONSUME_WINDOW = `
+local count = redis.call('INCR', KEYS[1])
+if redis.call('TTL', KEYS[1]) == -1 then
+  redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+return count
+`;
 
 @Injectable()
 export class RedisRateLimiter implements RateLimiter, OnModuleDestroy {
@@ -35,10 +46,9 @@ export class RedisRateLimiter implements RateLimiter, OnModuleDestroy {
   }): Promise<void> {
     await this.ensureConnected();
     const key = `crm:rate-limit:${input.key}`;
-    const count = await this.redis.incr(key);
-    if (count === 1) {
-      await this.redis.expire(key, input.windowSeconds);
-    }
+    const count = Number(
+      await this.redis.eval(CONSUME_WINDOW, 1, key, input.windowSeconds),
+    );
     if (count > input.limit) {
       throw new ApiException('RATE_LIMITED', 429);
     }
