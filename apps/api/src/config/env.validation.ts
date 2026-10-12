@@ -38,7 +38,7 @@ const productionSchema = z.object({
     .string()
     .refine((value) => isIP(value) !== 0)
     .optional(),
-  PUBLIC_REGISTRATION_ENABLED: z.literal('false'),
+  PUBLIC_REGISTRATION_ENABLED: z.enum(['false', 'true']),
   FIRST_ADMIN_PHONE: z.string().trim().min(1),
   AI_PROVIDER: z.literal('openai'),
   AI_MODEL: z.string().trim().min(1),

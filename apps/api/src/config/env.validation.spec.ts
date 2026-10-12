@@ -50,18 +50,15 @@ describe('validateProductionConfig', () => {
     ['REDIS_URL', { REDIS_URL: 'http://redis.example.test' }],
     ['WEB_ORIGIN', { WEB_ORIGIN: 'http://app.example.test' }],
     ['API_ORIGIN', { API_ORIGIN: 'http://api.example.test' }],
+    ['PUBLIC_REGISTRATION_ENABLED', { PUBLIC_REGISTRATION_ENABLED: 'yes' }],
   ])('rejects unsafe production %s', (_name, override) => {
     expect(() => validateProductionConfig({ ...valid, ...override })).toThrow(
       /Invalid production configuration/,
     );
   });
 
-  it('rejects public registration in production', () => {
-    expect(() =>
-      validateProductionConfig({
-        ...valid,
-        PUBLIC_REGISTRATION_ENABLED: 'true',
-      }),
-    ).toThrow(/PUBLIC_REGISTRATION_ENABLED/);
+  it('accepts explicitly enabled public registration in production', () => {
+    const env = { ...valid, PUBLIC_REGISTRATION_ENABLED: 'true' };
+    expect(validateProductionConfig(env)).toEqual(env);
   });
 });
