@@ -1,6 +1,12 @@
 import { assertRegistrationAllowed } from './registration-policy';
 
 describe('registration policy', () => {
+  it('allows a phone without an invitation when public registration is enabled', () => {
+    expect(() => assertRegistrationAllowed('+8613800138001', {
+      NODE_ENV: 'production', PUBLIC_REGISTRATION_ENABLED: 'true',
+    }, false)).not.toThrow();
+  });
+
   it('allows an allowlisted phone when public registration is disabled', () => {
     expect(() => assertRegistrationAllowed('+8613800138000', {
       NODE_ENV: 'production', PUBLIC_REGISTRATION_ENABLED: 'false', FIRST_ADMIN_PHONE: '+8613800138000',
