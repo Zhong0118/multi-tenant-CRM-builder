@@ -6,7 +6,7 @@ import { AiStep, FollowUpStep } from "./demo-steps";
 import { ProductDemo } from "./product-demo";
 
 describe("LandingPage", () => {
-  it("links only to its own sections and to sign-in or invited registration", () => {
+  it("links only to its own sections and to sign-in or registration", () => {
     const { container } = render(<LandingPage />);
 
     for (const link of container.querySelectorAll("a[href]")) {
@@ -16,10 +16,8 @@ describe("LandingPage", () => {
       } else {
         expect(["/", "/login", "/register"]).toContain(href);
       }
-      // Public sign-up is closed, so every way into registration has to say
-      // it is for people who already have an invitation.
       if (href === "/register") {
-        expect(link.textContent).toMatch(/邀请|受邀/);
+        expect(link.textContent).toContain("创建账号");
       }
     }
   });

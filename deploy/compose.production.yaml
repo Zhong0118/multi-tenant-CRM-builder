@@ -18,7 +18,7 @@ services:
       WEB_ORIGIN: ${WEB_ORIGIN:?Set WEB_ORIGIN}
       API_ORIGIN: ${WEB_ORIGIN:?Set WEB_ORIGIN}
       TRUSTED_PROXY_IP: 172.30.26.2
-      PUBLIC_REGISTRATION_ENABLED: "false"
+      PUBLIC_REGISTRATION_ENABLED: ${PUBLIC_REGISTRATION_ENABLED:-false}
       FIRST_ADMIN_PHONE: ${FIRST_ADMIN_PHONE:?Set the approved bootstrap phone}
       DATABASE_URL: ${DATABASE_URL:?Set the crm_app runtime URL}
       REDIS_URL: ${REDIS_URL:?Set the authenticated Redis URL}

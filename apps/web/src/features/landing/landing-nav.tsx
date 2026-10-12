@@ -84,7 +84,7 @@ export function LandingNav() {
             登录工作区
           </Link>
           <Link href="/register" className={styles.menuInvite}>
-            已收到邀请？用受邀手机号创建账号
+            用手机号创建账号
           </Link>
         </div>
       </div>

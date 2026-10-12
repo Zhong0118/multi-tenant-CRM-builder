@@ -114,7 +114,7 @@ const AI_FLOW = [
 const FAQ = [
   {
     q: "现在可以直接注册吗？",
-    a: "不可以。百杰 CRM 目前只接受邀请：公司管理员用你的手机号发出邀请后，你再用这个手机号创建账号。没有邀请的手机号无法注册。",
+    a: "可以。用手机号接收验证码并设置密码，即可创建个人账号。加入公司工作区仍需接受公司管理员的邀请；注册不会自动获得公司权限。",
   },
   {
     q: "怎样为我的公司开通？",
@@ -173,8 +173,8 @@ export function LandingPage() {
                   </Link>
                 </div>
                 <p className={styles.invite}>
-                  已收到公司邀请？
-                  <Link href="/register">用受邀手机号创建账号</Link>
+                  还没有账号？
+                  <Link href="/register">用手机号创建账号</Link>
                 </p>
               </div>
             </div>
@@ -434,7 +434,7 @@ export function LandingPage() {
                 登录工作区
               </Link>
               <Link href="/register" className={styles.buttonSecondary}>
-                受邀加入团队
+                创建账号
               </Link>
             </div>
           </div>
@@ -465,7 +465,7 @@ export function LandingPage() {
           <nav className={styles.footerNav} aria-label="页脚工作区入口">
             <h3>开始协作</h3>
             <Link href="/login">登录工作区</Link>
-            <Link href="/register">受邀加入团队</Link>
+            <Link href="/register">创建账号</Link>
             <a href="#faq">常见问题</a>
           </nav>
         </div>

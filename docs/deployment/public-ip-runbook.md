@@ -44,6 +44,12 @@ sudo docker compose --env-file .env.internal-trial \
 
 不要同时叠加 `compose.internal-test.yaml`，该文件会把入口重新限制到服务器回环端口。
 
+## 开放注册
+
+在私密 `.env.internal-trial` 中设置 `PUBLIC_REGISTRATION_ENABLED=true`，然后使用上述 Compose 配置重新创建 API 容器。仅修改文件或重启旧容器不会更新容器的环境变量。
+
+开放的是个人账号注册：仍需真实短信验证手机号，加入公司仍需管理员邀请，不会自动授予公司或平台管理员权限。首页已提供创建账号入口。需要恢复邀请制时设置为 `false` 并重新创建 API 容器，同时调整首页注册说明。
+
 ## 验收与回退
 
 确认 HTTP 跳转 HTTPS；公网证书链验证通过且 SAN 包含目标 IP；health/ready 返回 200；浏览器实际登录并进入平台后台；认证 Cookie 保持 Secure/HttpOnly，浏览器请求不再访问 localhost。账号及数据库保持原有内容。
