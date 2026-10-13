@@ -332,7 +332,7 @@ function definition(value: unknown): DashboardDefinitionV2 {
   if (root.schemaVersion !== 2) invalid();
   return {
     schemaVersion: 2,
-    title: text(root.title),
+    title: draftText(root.title),
     widgets: array(root.widgets).map(widget),
   };
 }
@@ -373,9 +373,9 @@ function widget(value: unknown): DashboardWidgetDraft {
   const root = object(value);
   const base = {
     id: text(root.id),
-    title: text(root.title),
+    title: draftText(root.title),
     audience: one(root.audience, ["ALL", "TENANT_ADMIN", "EMPLOYEE"] as const),
-    objectCode: text(root.objectCode),
+    objectCode: draftText(root.objectCode),
     width: one(root.width, ["QUARTER", "HALF", "FULL"] as const),
     sortOrder: num(root.sortOrder),
     filters: array(root.filters).map(parseDashboardFilter),
@@ -406,7 +406,7 @@ function widget(value: unknown): DashboardWidgetDraft {
       return {
         ...base,
         type: "STATUS_DISTRIBUTION",
-        groupByFieldKey: text(root.groupByFieldKey),
+        groupByFieldKey: draftText(root.groupByFieldKey),
         optionKeys: strings(root.optionKeys),
         display: one(root.display, ["FUNNEL", "BAR", "DONUT"] as const),
         aggregation: one(root.aggregation, ["COUNT", "SUM"] as const),
@@ -418,7 +418,7 @@ function widget(value: unknown): DashboardWidgetDraft {
       return {
         ...base,
         type: "TREND",
-        dateFieldKey: text(root.dateFieldKey),
+        dateFieldKey: draftText(root.dateFieldKey),
         granularity: one(root.granularity, [
           "DAY",
           "WEEK",
@@ -454,7 +454,7 @@ function widget(value: unknown): DashboardWidgetDraft {
         type: "RECORD_LIST",
         fieldKeys: strings(root.fieldKeys),
         sort: {
-          field: text(sort.field),
+          field: draftText(sort.field),
           direction: one(sort.direction, ["ASC", "DESC"] as const),
         },
         limit: num(root.limit),
@@ -485,7 +485,10 @@ export function parseDashboardFilter(value: unknown): DashboardFilter {
     "CONTAINS",
     "NOT_EMPTY",
   ] as const);
-  const filter: DashboardFilter = { fieldKey: text(root.fieldKey), operator };
+  const filter: DashboardFilter = {
+    fieldKey: draftText(root.fieldKey),
+    operator,
+  };
   if (root.value !== undefined) filter.value = filterValue(root.value);
   validateFilterValueShape(filter);
   return filter;
@@ -751,6 +754,11 @@ function object(value: unknown): Record<string, unknown> {
 }
 function array(value: unknown): unknown[] {
   if (!Array.isArray(value)) invalid();
+  return value;
+}
+// Draft bindings can be unfinished; publication validation supplies field issues.
+function draftText(value: unknown): string {
+  if (typeof value !== "string") invalid();
   return value;
 }
 function text(value: unknown): string {
