@@ -17,7 +17,7 @@ import { FollowUpPanel } from "@/features/follow-ups/follow-up-panel";
 import { RecordActivityTimeline } from "./record-activity-timeline";
 import { RecordWorkflowPanel } from "./record-workflow-panel";
 import { displayValue } from "./record-list";
-import { formatDateTime } from "./record-display-value";
+import { displayRecordOwner, formatDateTime } from "./record-display-value";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
 import { defaultRecordColumnKeys } from "./record-columns";
 import { RecordForm } from "./record-form";
@@ -206,15 +206,7 @@ export function RecordDetailDrawer({
             <div className={styles.detailMeta}>
               <Typography.Text type="secondary">
                 负责人：
-                {members.find((member) => member.id === record.ownerMemberId)
-                  ?.displayName ??
-                  // Members cannot read the roster, but they do know their own id.
-                  (record.ownerMemberId &&
-                  record.ownerMemberId === currentMemberId
-                    ? "我"
-                    : record.ownerMemberId
-                      ? "已指定"
-                      : "未指定")}
+                {displayRecordOwner(record.ownerMemberId, members, currentMemberId)}
               </Typography.Text>
               <Typography.Text type="secondary">
                 更新于{" "}

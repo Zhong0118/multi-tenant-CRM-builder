@@ -70,7 +70,7 @@ import {
 } from "./record-query-state";
 
 import styles from "./records.module.css";
-import { displayValue, formatDateTime } from "./record-display-value";
+import { displayRecordOwner, displayValue, formatDateTime } from "./record-display-value";
 export { displayValue } from "./record-display-value";
 
 export interface RecordListProps {
@@ -116,6 +116,8 @@ export function RecordList({
   const [error, setError] = useState<string>();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [columnsOpen, setColumnsOpen] = useState(false);
+  const [ownerVisible, setOwnerVisible] = useState(true);
+  const ownerStorageKey = `crm.records.owner.${tenantCode}.${currentMemberId ?? ""}.${objectCode}`;
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [batchOpen, setBatchOpen] = useState(false);
   const selectionScope = `${tenantCode}:${objectCode}:${recordQuerySearch(query, queryDefaults)}`;
@@ -132,6 +134,10 @@ export function RecordList({
   // choice after mount. Reading it during render instead made the table and
   // the card list disagree with the server and failed hydration on every load.
   const [storedColumnKeys, setStoredColumnKeys] = useState<string[]>([]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOwnerVisible(window.localStorage.getItem(ownerStorageKey) !== "hidden");
+  }, [ownerStorageKey]);
   // This is the client-only hydration boundary for a browser preference.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -223,6 +229,7 @@ export function RecordList({
   const selectedRecords = page.items.filter((item) => selectedRowKeys.includes(item.id));
   const currentSelectedRowKeys = selectedRecords.map((item) => item.id);
   const owned = schema.scopes.read === "OWN";
+  const showOwner = !owned && ownerVisible;
   const visibleColumns = resolveRecordColumnKeys(schema, columnFieldKeys)
     .map((fieldKey) =>
       schema.fields.find((field) => field.fieldKey === fieldKey),
@@ -332,6 +339,13 @@ export function RecordList({
           ),
       };
     }),
+    ...(showOwner ? [{
+      title: "负责人",
+      key: "systemOwner",
+      width: 140,
+      render: (_: unknown, row: RecordSummary) =>
+        displayRecordOwner(row.ownerMemberId, members, currentMemberId),
+    }] : []),
     {
       title: "最近更新",
       key: "updatedAt",
@@ -419,6 +433,11 @@ export function RecordList({
     const resolved = resolveRecordColumnKeys(schema, next);
     setStoredColumnKeys(resolved);
     writeStoredRecordColumnKeys(tenantCode, objectCode, resolved);
+  }
+
+  function saveOwnerVisibility(visible: boolean) {
+    setOwnerVisible(visible);
+    window.localStorage.setItem(ownerStorageKey, visible ? "visible" : "hidden");
   }
 
   function recordActions(row: RecordSummary) {
@@ -880,10 +899,7 @@ export function RecordList({
             aria-label={`${schema.object.name}记录卡片`}
           >
             {page.items.map((row) => {
-              const ownerName = row.ownerMemberId
-                ? (members.find((member) => member.id === row.ownerMemberId)
-                    ?.displayName ?? "未设置姓名")
-                : "未指定";
+              const ownerName = displayRecordOwner(row.ownerMemberId, members, currentMemberId);
               return (
                 <li key={row.id} className={styles.card}>
                   <div className={styles.cardHeader}>
@@ -919,10 +935,10 @@ export function RecordList({
                       <dt>业务编号</dt>
                       <dd className={styles.recordNo}>{row.recordNo}</dd>
                     </div>
-                    <div>
+                    {showOwner ? <div>
                       <dt>负责人</dt>
                       <dd>{ownerName}</dd>
-                    </div>
+                    </div> : null}
                     {cardFields.extras.map((field) => (
                       <div key={field.fieldKey}>
                         <dt>{field.label}</dt>
@@ -992,6 +1008,12 @@ export function RecordList({
         <Typography.Paragraph type="secondary">
           只影响你自己看到和导出的列，不会改业务表发布时的默认列表。隐藏字段不会出现在这里。
         </Typography.Paragraph>
+        {!owned ? <Typography.Paragraph>
+          <Checkbox checked={ownerVisible} onChange={(event) => saveOwnerVisibility(event.target.checked)} aria-label="显示系统负责人">
+            显示负责人
+          </Checkbox>
+          <Typography.Text type="secondary">（仅影响列表和卡片显示）</Typography.Text>
+        </Typography.Paragraph> : null}
         <div className={styles.columnChooser}>
           {choosableFields.map((field) => {
             const selected = columnFieldKeys.includes(field.fieldKey);
@@ -1019,7 +1041,10 @@ export function RecordList({
         </div>
         <Button
           className={styles.columnReset}
-          onClick={() => saveColumns(schema.defaultView.columnFieldKeys)}
+          onClick={() => {
+            saveColumns(schema.defaultView.columnFieldKeys);
+            saveOwnerVisibility(true);
+          }}
         >
           恢复默认列
         </Button>
