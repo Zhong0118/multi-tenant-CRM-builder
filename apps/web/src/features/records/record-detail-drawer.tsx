@@ -17,11 +17,13 @@ import { FollowUpPanel } from "@/features/follow-ups/follow-up-panel";
 import { RecordActivityTimeline } from "./record-activity-timeline";
 import { RecordWorkflowPanel } from "./record-workflow-panel";
 import { displayValue } from "./record-list";
-import { formatDateTime } from "./record-display-value";
+import { displayRecordOwner, formatDateTime } from "./record-display-value";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
 import { defaultRecordColumnKeys } from "./record-columns";
 import { RecordForm } from "./record-form";
 
+import { RecordOwnershipActions, RecordPoolStatus } from "./record-pool";
+import type { RecordPoolConfig } from "./record-pool-api";
 import styles from "./records.module.css";
 
 export interface RecordDetailDrawerProps {
@@ -33,6 +35,7 @@ export interface RecordDetailDrawerProps {
   canChooseOwner?: boolean;
   canDelete?: boolean;
   initialEditing?: boolean;
+  poolConfig?: RecordPoolConfig;
   followUpId?: string;
   api?: RecordApi;
   onClose: () => void;
@@ -54,14 +57,17 @@ export function RecordDetailDrawer({
   canChooseOwner = false,
   canDelete = false,
   initialEditing = false,
+  poolConfig,
   followUpId,
   api = defaultRecordApi,
   onClose,
   onChanged,
 }: RecordDetailDrawerProps) {
-  const [editing, setEditing] = useState(initialEditing);
+  const poolPreview = record.inPublicPool && !canChooseOwner;
+  const canEdit = schema.actions.canUpdate && !poolPreview;
+  const [editing, setEditing] = useState(initialEditing && canEdit);
   const [editingRecord, setEditingRecord] = useState<RecordSummary | undefined>(
-    initialEditing ? record : undefined,
+    initialEditing && canEdit ? record : undefined,
   );
   const editSession = useRef(0);
   // Capture ownership while rendering the form, before its HTTP save starts.
@@ -137,7 +143,7 @@ export function RecordDetailDrawer({
       }
       extra={
         <Space>
-          {schema.actions.canUpdate && !editing && !deleted ? (
+          {canEdit && !editing && !deleted ? (
             <Button
               onClick={() => {
                 setEditingRecord(record);
@@ -169,7 +175,7 @@ export function RecordDetailDrawer({
 
       {deleted ? (
         <Button onClick={onClose}>返回列表</Button>
-      ) : editing ? (
+      ) : editing && !poolPreview ? (
         <RecordForm
           tenantCode={tenantCode}
           schema={schema}
@@ -199,6 +205,16 @@ export function RecordDetailDrawer({
         />
       ) : (
         <>
+          <RecordOwnershipActions key={`${record.id}:${record.version}`} tenantCode={tenantCode} objectCode={schema.object.code} record={record} schema={schema} config={poolConfig} currentMemberId={currentMemberId} isAdmin={canChooseOwner} members={members} onChanged={async (action) => {
+            if (action === "RELEASE" || (action === "ASSIGN" && !canChooseOwner)) {
+              onClose();
+              await onChanged(null);
+            } else {
+              await onChanged(await api.detail(tenantCode, schema.object.code, record.id));
+            }
+          }} />
+          {poolConfig?.enabled || record.inPublicPool ? <RecordPoolStatus record={record} /> : null}
+          {poolPreview ? <Alert type="info" showIcon title="公共池记录仅供预览，领取后可编辑和跟进" /> : null}
           <section aria-label="记录摘要" className={styles.detailSummary}>
             {renderFields(
               fields.filter((field) => summaryKeys.has(field.fieldKey)),
@@ -206,15 +222,7 @@ export function RecordDetailDrawer({
             <div className={styles.detailMeta}>
               <Typography.Text type="secondary">
                 负责人：
-                {members.find((member) => member.id === record.ownerMemberId)
-                  ?.displayName ??
-                  // Members cannot read the roster, but they do know their own id.
-                  (record.ownerMemberId &&
-                  record.ownerMemberId === currentMemberId
-                    ? "我"
-                    : record.ownerMemberId
-                      ? "已指定"
-                      : "未指定")}
+                {displayRecordOwner(record.ownerMemberId, members, currentMemberId)}
               </Typography.Text>
               <Typography.Text type="secondary">
                 更新于{" "}
@@ -225,7 +233,7 @@ export function RecordDetailDrawer({
             </div>
           </section>
 
-          <RecordWorkflowPanel
+          {!poolPreview ? <RecordWorkflowPanel
             tenantCode={tenantCode}
             objectCode={schema.object.code}
             recordId={record.id}
@@ -235,30 +243,30 @@ export function RecordDetailDrawer({
                 .detail(tenantCode, schema.object.code, record.id)
                 .then(onChanged)
             }
-          />
+          /> : null}
 
-          <FollowUpPanel
+          {!poolPreview ? <FollowUpPanel
             tenantCode={tenantCode}
             followUpId={followUpId}
             record={{
               id: record.id,
               objectCode: schema.object.code,
-              canCreate: schema.actions.canUpdate,
+              canCreate: canEdit,
             }}
-          />
+          /> : null}
 
-          <RecordActivityTimeline
+          {!poolPreview ? <RecordActivityTimeline
             tenantCode={tenantCode}
             objectCode={schema.object.code}
             recordId={record.id}
-            canCreate={schema.actions.canUpdate}
+            canCreate={canEdit}
             api={api}
-          />
+          /> : null}
           <details className={styles.detailDisclosure}>
             <summary>完整业务字段</summary>
             {renderFields(fields)}
           </details>
-          <details className={styles.detailDisclosure}>
+          {!poolPreview ? <details className={styles.detailDisclosure}>
             <summary>
               关联业务记录
               {relations.data
@@ -269,10 +277,10 @@ export function RecordDetailDrawer({
               tenantCode={tenantCode}
               objectCode={schema.object.code}
               recordId={record.id}
-              canUpdate={schema.actions.canUpdate}
+              canUpdate={canEdit}
             />
-          </details>
-          <details className={styles.detailDisclosure}>
+          </details> : null}
+          {!poolPreview ? <details className={styles.detailDisclosure}>
             <summary>
               附件
               {attachments.data
@@ -283,9 +291,9 @@ export function RecordDetailDrawer({
               tenantCode={tenantCode}
               objectCode={schema.object.code}
               recordId={record.id}
-              canUpdate={schema.actions.canUpdate}
+              canUpdate={canEdit}
             />
-          </details>
+          </details> : null}
         </>
       )}
     </Drawer>

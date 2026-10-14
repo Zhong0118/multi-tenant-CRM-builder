@@ -18,6 +18,7 @@ import {
   Select,
   Space,
   Table,
+  Tabs,
   Tooltip,
   Typography,
 } from "antd";
@@ -69,8 +70,10 @@ import {
   type RecordQuery,
 } from "./record-query-state";
 
+import { RecordOwnershipActions, RecordPoolStatus } from "./record-pool";
+import type { RecordPoolConfig } from "./record-pool-api";
 import styles from "./records.module.css";
-import { displayValue, formatDateTime } from "./record-display-value";
+import { displayRecordOwner, displayValue, formatDateTime } from "./record-display-value";
 export { displayValue } from "./record-display-value";
 
 export interface RecordListProps {
@@ -81,6 +84,8 @@ export interface RecordListProps {
   initialPage: RecordPage;
   members?: DynamicFieldMember[];
   canFilterByOwner?: boolean;
+  poolConfig?: RecordPoolConfig;
+  onPoolSettings?: () => void;
   api?: RecordApi;
   navigate?: (path: string) => void;
 }
@@ -100,6 +105,8 @@ export function RecordList({
   initialPage,
   members = [],
   canFilterByOwner = false,
+  poolConfig,
+  onPoolSettings,
   api = defaultRecordApi,
   navigate,
 }: RecordListProps) {
@@ -116,6 +123,8 @@ export function RecordList({
   const [error, setError] = useState<string>();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [columnsOpen, setColumnsOpen] = useState(false);
+  const [ownerVisible, setOwnerVisible] = useState(true);
+  const ownerStorageKey = `crm.records.owner.${tenantCode}.${currentMemberId ?? ""}.${objectCode}`;
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [batchOpen, setBatchOpen] = useState(false);
   const selectionScope = `${tenantCode}:${objectCode}:${recordQuerySearch(query, queryDefaults)}`;
@@ -132,6 +141,10 @@ export function RecordList({
   // choice after mount. Reading it during render instead made the table and
   // the card list disagree with the server and failed hydration on every load.
   const [storedColumnKeys, setStoredColumnKeys] = useState<string[]>([]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOwnerVisible(window.localStorage.getItem(ownerStorageKey) !== "hidden");
+  }, [ownerStorageKey]);
   // This is the client-only hydration boundary for a browser preference.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -152,6 +165,7 @@ export function RecordList({
   const records = useQuery({
     queryKey: ["workspace", tenantCode, "records", objectCode, query],
     queryFn: () => api.list(tenantCode, objectCode, query),
+    enabled: query.scope !== "pool" || poolConfig?.enabled !== false,
     initialData: initialPage,
     staleTime: 0,
   });
@@ -159,6 +173,7 @@ export function RecordList({
     mutationFn: () =>
       api.export(tenantCode, objectCode, {
         search: query.search,
+        scope: query.scope,
         ownerMemberId: query.ownerMemberId,
         filters: query.filters,
         sort: query.sort,
@@ -220,9 +235,11 @@ export function RecordList({
   }
 
   const page = records.data ?? initialPage;
-  const selectedRecords = page.items.filter((item) => selectedRowKeys.includes(item.id));
+  const editableRecord = (row: RecordSummary) => schema.actions.canUpdate && (canFilterByOwner || !row.inPublicPool);
+  const selectedRecords = page.items.filter((item) => selectedRowKeys.includes(item.id) && editableRecord(item));
   const currentSelectedRowKeys = selectedRecords.map((item) => item.id);
   const owned = schema.scopes.read === "OWN";
+  const showOwner = !owned && ownerVisible;
   const visibleColumns = resolveRecordColumnKeys(schema, columnFieldKeys)
     .map((fieldKey) =>
       schema.fields.find((field) => field.fieldKey === fieldKey),
@@ -332,6 +349,17 @@ export function RecordList({
           ),
       };
     }),
+    ...(showOwner ? [{
+      title: "负责人",
+      key: "systemOwner",
+      width: 140,
+      render: (_: unknown, row: RecordSummary) =>
+        displayRecordOwner(row.ownerMemberId, members, currentMemberId),
+    }] : []),
+    ...(poolConfig?.enabled ? [{
+      title: "归属状态", key: "poolStatus", width: 180,
+      render: (_: unknown, row: RecordSummary) => <RecordPoolStatus record={row} />,
+    }] : []),
     {
       title: "最近更新",
       key: "updatedAt",
@@ -350,7 +378,7 @@ export function RecordList({
     {
       title: "操作",
       key: "actions",
-      width: 124,
+      width: poolConfig?.enabled || canFilterByOwner ? 280 : 124,
       fixed: "right",
       render: (_, row) => recordActions(row),
     },
@@ -403,6 +431,7 @@ export function RecordList({
     <Empty
       description={filtered
         ? "当前筛选条件没有匹配的记录。"
+        : query.scope === "pool" ? "公共池暂无记录，可由负责人释放或管理员移入"
         : schema.actions.canCreate ? "还没有记录，新建第一条。" : "还没有记录。"}
     >
       {filtered ? (
@@ -421,6 +450,11 @@ export function RecordList({
     writeStoredRecordColumnKeys(tenantCode, objectCode, resolved);
   }
 
+  function saveOwnerVisibility(visible: boolean) {
+    setOwnerVisible(visible);
+    window.localStorage.setItem(ownerStorageKey, visible ? "visible" : "hidden");
+  }
+
   function recordActions(row: RecordSummary) {
     return (
       <Space size={2} className={styles.rowActions}>
@@ -434,7 +468,7 @@ export function RecordList({
             onClick={() => go(recordPath(row.id))}
           />
         </Tooltip>
-        <Tooltip title={schema.actions.canUpdate ? "编辑" : "无编辑权限"}>
+        <Tooltip title={editableRecord(row) ? "编辑" : row.inPublicPool ? "领取后可编辑" : "无编辑权限"}>
           <span className={styles.actionSlot}>
             <Button
               type="text"
@@ -442,7 +476,7 @@ export function RecordList({
               className={styles.rowActionButton}
               aria-label={`编辑 ${row.title}`}
               icon={<EditOutlined />}
-              disabled={!schema.actions.canUpdate}
+              disabled={!editableRecord(row)}
               onClick={() => go(recordPath(row.id, "edit"))}
             />
           </span>
@@ -482,6 +516,11 @@ export function RecordList({
             </span>
           </Tooltip>
         )}
+        <RecordOwnershipActions key={`${row.id}:${row.version}`} tenantCode={tenantCode} objectCode={objectCode} record={row} schema={schema} config={poolConfig} currentMemberId={currentMemberId} isAdmin={canFilterByOwner} members={members} onChanged={async () => {
+          const result = await records.refetch();
+          if (result.isError) throw result.error;
+          router.refresh();
+        }} />
       </Space>
     );
   }
@@ -490,15 +529,23 @@ export function RecordList({
     <div className={styles.list}>
       {error ? <Alert type="error" showIcon title={error} /> : null}
       <PageHeader
-        title={owned ? `我的${schema.object.name}` : schema.object.name}
+        title={owned && !poolConfig?.enabled ? `我的${schema.object.name}` : schema.object.name}
         description={schema.object.description}
-        extra={schema.actions.canCreate ? (
+        extra={<Space>
+          {canFilterByOwner && onPoolSettings ? <Button onClick={onPoolSettings}>公共池设置</Button> : null}
+          {schema.actions.canCreate ? (
           <Button type="primary" onClick={() => go(`${listPath}/new`)}>
             新建{schema.object.name}
           </Button>
-        ) : null}
+        ) : null}</Space>}
       />
 
+      {poolConfig?.enabled ? <Tabs
+        className={styles.poolTabs}
+        activeKey={query.scope ?? (owned ? "mine" : "all")}
+        onChange={(scope) => apply({ ...query, scope: scope as "mine" | "pool" | "all", page: 1, ownerMemberId: undefined })}
+        items={[{ key: "mine", label: "我的记录" }, { key: "pool", label: "公共池" }, ...(schema.scopes.read === "ALL" ? [{ key: "all", label: "全部记录" }] : [])]}
+      /> : null}
       {currentMemberId && (
         <SavedRecordFilters
           key={`${tenantCode}:${currentMemberId}:${objectCode}`}
@@ -577,7 +624,7 @@ export function RecordList({
         }
       >
         <div className={styles.primaryFilters} data-expanded={filtersOpen}>
-          {canFilterByOwner ? (
+          {canFilterByOwner && query.scope !== "pool" && query.scope !== "mine" ? (
             <Select
               aria-label="按负责人筛选"
               placeholder="全部负责人"
@@ -880,15 +927,13 @@ export function RecordList({
             aria-label={`${schema.object.name}记录卡片`}
           >
             {page.items.map((row) => {
-              const ownerName = row.ownerMemberId
-                ? (members.find((member) => member.id === row.ownerMemberId)
-                    ?.displayName ?? "未设置姓名")
-                : "未指定";
+              const ownerName = displayRecordOwner(row.ownerMemberId, members, currentMemberId);
               return (
                 <li key={row.id} className={styles.card}>
                   <div className={styles.cardHeader}>
                     {schema.actions.canUpdate ? (
                       <Checkbox
+                        disabled={!editableRecord(row)}
                         aria-label={`选择卡片 ${row.title}`}
                         checked={currentSelectedRowKeys.includes(row.id)}
                         onChange={(event) => setSelectedRowKeys((keys) =>
@@ -919,10 +964,10 @@ export function RecordList({
                       <dt>业务编号</dt>
                       <dd className={styles.recordNo}>{row.recordNo}</dd>
                     </div>
-                    <div>
+                    {showOwner ? <div>
                       <dt>负责人</dt>
                       <dd>{ownerName}</dd>
-                    </div>
+                    </div> : null}
                     {cardFields.extras.map((field) => (
                       <div key={field.fieldKey}>
                         <dt>{field.label}</dt>
@@ -936,6 +981,7 @@ export function RecordList({
                       </div>
                     ))}
                   </dl>
+                  {poolConfig?.enabled ? <RecordPoolStatus record={row} /> : null}
                   {recordActions(row)}
                 </li>
               );
@@ -958,6 +1004,7 @@ export function RecordList({
                   onChange: (keys) => setSelectedRowKeys(keys.map(String)),
                   getCheckboxProps: (row) => ({
                     "aria-label": `选择 ${row.title}`,
+                    disabled: !editableRecord(row),
                   }),
                 }
               : undefined
@@ -992,6 +1039,12 @@ export function RecordList({
         <Typography.Paragraph type="secondary">
           只影响你自己看到和导出的列，不会改业务表发布时的默认列表。隐藏字段不会出现在这里。
         </Typography.Paragraph>
+        {!owned ? <Typography.Paragraph>
+          <Checkbox checked={ownerVisible} onChange={(event) => saveOwnerVisibility(event.target.checked)} aria-label="显示系统负责人">
+            显示负责人
+          </Checkbox>
+          <Typography.Text type="secondary">（仅影响列表和卡片显示）</Typography.Text>
+        </Typography.Paragraph> : null}
         <div className={styles.columnChooser}>
           {choosableFields.map((field) => {
             const selected = columnFieldKeys.includes(field.fieldKey);
@@ -1019,7 +1072,10 @@ export function RecordList({
         </div>
         <Button
           className={styles.columnReset}
-          onClick={() => saveColumns(schema.defaultView.columnFieldKeys)}
+          onClick={() => {
+            saveColumns(schema.defaultView.columnFieldKeys);
+            saveOwnerVisibility(true);
+          }}
         >
           恢复默认列
         </Button>

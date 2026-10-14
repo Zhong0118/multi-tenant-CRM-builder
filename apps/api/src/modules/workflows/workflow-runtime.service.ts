@@ -217,6 +217,9 @@ export class WorkflowRuntimeService {
             resolved.access.updateScope === 'OWN' ? context.memberId : null,
         });
         if (!snapshot) throw new ApiException('RECORD_NOT_FOUND', 404);
+        if (snapshot.inPublicPool && context.role !== 'TENANT_ADMIN') {
+          throw new ApiException('WORKFLOW_TRANSITION_FORBIDDEN', 403);
+        }
 
         // §23 step 8 / §29: the optimistic check runs BEFORE any Action, so a
         // duplicate submit creates nothing downstream.

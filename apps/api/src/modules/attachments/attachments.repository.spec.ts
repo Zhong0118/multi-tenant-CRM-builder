@@ -42,14 +42,19 @@ function transactionFor(options: {
   commitError?: Error;
   auditError?: Error;
   executeCount?: number;
+  pool?: boolean;
 }) {
   const tx = {
     $queryRaw: jest.fn((strings: TemplateStringsArray | readonly string[]) => {
       const sql = sqlText(strings);
       if (sql.includes('FROM tenant_members'))
-        return Promise.resolve([{ role: 'TENANT_ADMIN' }]);
+        return Promise.resolve([
+          { role: options.pool ? 'EMPLOYEE' : 'TENANT_ADMIN' },
+        ]);
       if (sql.includes('FROM records'))
-        return Promise.resolve([{ id: recordId }]);
+        return Promise.resolve([
+          { id: recordId, inPublicPool: options.pool ?? false },
+        ]);
       if (sql.includes('count(*)'))
         return Promise.resolve([{ count: 0, bytes: 0 }]);
       if (sql.includes('INSERT INTO record_attachments'))
@@ -114,6 +119,23 @@ async function withStorage<T>(callback: (root: string) => Promise<T>) {
 }
 
 describe('AttachmentsRepository', () => {
+  it('prevents uploads by employees until the pool record is claimed', async () => {
+    const fake = transactionFor({ pool: true });
+    const repository = new AttachmentsRepository(
+      fake.runner as never,
+      fake.audit as never,
+    );
+    await expect(
+      repository.create(
+        { ...context, role: 'EMPLOYEE' },
+        scope,
+        'note.txt',
+        Buffer.from('note'),
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
+  });
+
   it('removes a staged disk file when the transaction callback rolls back', async () => {
     await withStorage(async (root) => {
       const fake = transactionFor({ auditError: new Error('audit failed') });

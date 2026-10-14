@@ -21,6 +21,7 @@ export interface RecordListQuery {
   limit: number;
   search?: string;
   ownerMemberId?: string;
+  scope?: "mine" | "pool" | "all";
   filters?: RecordFilters;
   sort?: RecordListSortField;
   direction?: RecordSortDirection;

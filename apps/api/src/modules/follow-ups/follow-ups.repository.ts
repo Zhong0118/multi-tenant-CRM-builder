@@ -102,7 +102,7 @@ export class FollowUpsRepository {
           objectId,
           deletedAt: null,
         },
-        select: { id: true, ownerMemberId: true },
+        select: { id: true, ownerMemberId: true, inPublicPool: true },
       }),
     );
   }

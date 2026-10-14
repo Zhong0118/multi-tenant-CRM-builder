@@ -44,17 +44,25 @@ export async function loadRuntimeObject(
   }
 
   const isAdmin = role === "TENANT_ADMIN";
-  let members: DynamicFieldMember[] = [];
+  const members: DynamicFieldMember[] = [];
   if (isAdmin) {
-    const roster = await client.GET("/api/v1/workspaces/{tenantCode}/members", {
-      params: { path: { tenantCode }, query: { page: 1, limit: 100 } },
-    });
-    members = (roster.data?.items ?? [])
-      .filter((member) => member.status === "ACTIVE")
-      .map((member) => ({
-        id: member.id,
-        displayName: member.displayName ?? null,
-      }));
+    let page = 1;
+    let loaded = 0;
+    while (true) {
+      const roster = await client.GET("/api/v1/workspaces/{tenantCode}/members", {
+        params: { path: { tenantCode }, query: { page, limit: 100 } },
+      });
+      if (!roster.data) throw asError(roster.error, roster.response.status);
+      members.push(...roster.data.items
+        .filter((member) => member.status === "ACTIVE")
+        .map((member) => ({
+          id: member.id,
+          displayName: member.displayName ?? null,
+        })));
+      loaded += roster.data.items.length;
+      if (loaded >= roster.data.total || roster.data.items.length === 0) break;
+      page += 1;
+    }
   }
 
   return {
@@ -81,6 +89,7 @@ export async function loadRecordPage(
           sort: query.sort,
           direction: query.direction,
           ...(query.search ? { search: query.search } : {}),
+          ...(query.scope ? { scope: query.scope } : {}),
           ...(query.ownerMemberId
             ? { ownerMemberId: query.ownerMemberId }
             : {}),

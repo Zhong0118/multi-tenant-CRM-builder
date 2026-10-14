@@ -3761,6 +3761,38 @@
         "required": ["rowNumber", "status"],
         "type": "object"
       },
+      "RecordOwnershipDto": {
+        "properties": {
+          "action": {
+            "enum": ["CLAIM", "RELEASE", "ASSIGN"],
+            "type": "string"
+          },
+          "ownerMemberId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": ["action", "version"],
+        "type": "object"
+      },
+      "RecordOwnershipResponseDto": {
+        "properties": {
+          "recordId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": ["recordId", "version"],
+        "type": "object"
+      },
       "RecordPageResponseDto": {
         "properties": {
           "items": {
@@ -3780,6 +3812,25 @@
           }
         },
         "required": ["items", "page", "limit", "total"],
+        "type": "object"
+      },
+      "RecordPoolConfigResponseDto": {
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "ownershipTtlHours": {
+            "maximum": 8760,
+            "minimum": 1,
+            "nullable": true,
+            "type": "number"
+          },
+          "version": {
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": ["enabled", "ownershipTtlHours", "version"],
         "type": "object"
       },
       "RecordRelationDto": {
@@ -3810,8 +3861,16 @@
             "format": "uuid",
             "type": "string"
           },
+          "inPublicPool": {
+            "type": "boolean"
+          },
           "ownerMemberId": {
             "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "ownershipExpiresAt": {
+            "format": "date-time",
             "nullable": true,
             "type": "string"
           },
@@ -3834,6 +3893,8 @@
           }
         },
         "required": [
+          "inPublicPool",
+          "ownershipExpiresAt",
           "id",
           "recordNo",
           "title",
@@ -5240,6 +5301,25 @@
           }
         },
         "required": ["version"],
+        "type": "object"
+      },
+      "UpdateRecordPoolConfigDto": {
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "ownershipTtlHours": {
+            "maximum": 8760,
+            "minimum": 1,
+            "nullable": true,
+            "type": "number"
+          },
+          "version": {
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": ["enabled", "ownershipTtlHours", "version"],
         "type": "object"
       },
       "UserResponseDto": {
@@ -9684,6 +9764,96 @@
         "tags": ["object-definitions"]
       }
     },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/pool-config": {
+      "get": {
+        "operationId": "RecordPoolController_getConfig",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordPoolConfigResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["records"]
+      },
+      "patch": {
+        "operationId": "RecordPoolController_updateConfig",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRecordPoolConfigDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordPoolConfigResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["records"]
+      }
+    },
     "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records": {
       "get": {
         "operationId": "RecordsController_list",
@@ -9693,6 +9863,15 @@
             "name": "objectCode",
             "required": true,
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "enum": ["mine", "pool", "all"],
               "type": "string"
             }
           },
@@ -9916,6 +10095,15 @@
             "name": "objectCode",
             "required": true,
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "enum": ["mine", "pool", "all"],
               "type": "string"
             }
           },
@@ -10593,6 +10781,66 @@
           }
         ],
         "tags": ["attachments"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/ownership": {
+      "post": {
+        "operationId": "RecordPoolController_changeOwnership",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordOwnershipDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordOwnershipResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["records"]
       }
     },
     "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/relations": {

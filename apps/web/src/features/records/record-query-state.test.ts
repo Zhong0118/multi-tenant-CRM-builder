@@ -260,3 +260,15 @@ describe("recordQuerySearch", () => {
     );
   });
 });
+
+ describe("record pool scope", () => {
+  it.each(["mine", "pool", "all"])("preserves %s through list and detail URLs", (scope) => {
+    const query = parseRecordQuery({ scope, search: "客户", page: "3" });
+    expect(query).toHaveProperty("scope", scope);
+    expect(new URLSearchParams(recordQuerySearch(query)).get("scope")).toBe(scope);
+  });
+  it("ignores unsupported scopes and keeps omitted scope omitted", () => {
+    expect(parseRecordQuery({ scope: "other" }).scope).toBeUndefined();
+    expect(recordQuerySearch(parseRecordQuery({}))).not.toContain("scope");
+  });
+});

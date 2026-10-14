@@ -2,6 +2,7 @@ import { act, fireEvent, render as rtlRender, screen, waitFor } from "@testing-l
 import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { recordApi } from "./record-api";
+import { recordPoolApi } from "./record-pool-api";
 import Link from "next/link";
 import { RecordWorkspace, type RecordWorkspaceProps } from "./record-workspace";
 import type { RecordSummary } from "@/features/objects/object-types";
@@ -9,9 +10,10 @@ import { DEFAULT_RECORD_QUERY } from "./record-query-state";
 import { formatDateTime } from "./record-display-value";
 const router = vi.hoisted(() => ({ replace: vi.fn(), refresh: vi.fn(), push: vi.fn(), back: vi.fn(), forward: vi.fn(), prefetch: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
+vi.mock("./record-pool-api", () => ({ recordPoolApi: { getConfig: vi.fn().mockResolvedValue({ enabled: false, ownershipTtlHours: null, version: 1 }), saveConfig: vi.fn() } }));
 vi.mock("./record-list", async (importOriginal) => ({
   ...await importOriginal<typeof import("./record-list")>(),
-  RecordList: () => <div>列表<Link href="/workspace/northwind/objects/customers/record-a?page=2">客户 A 链接</Link></div>,
+  RecordList: ({ onPoolSettings }: { onPoolSettings?: () => void }) => <div>{onPoolSettings ? <button onClick={onPoolSettings}>公共池设置</button> : null}列表<Link href="/workspace/northwind/objects/customers/record-a?page=2">客户 A 链接</Link></div>,
 }));
 const composition = vi.hoisted(() => ({ real: false }));
 vi.mock("./record-workflow-panel", () => ({ RecordWorkflowPanel: () => null }));
@@ -56,6 +58,8 @@ const MockDrawer = ({
 const record: RecordSummary = {
   id: "record-a",
   recordNo: "1",
+  inPublicPool: false,
+  ownershipExpiresAt: null,
   title: "客户 A",
   version: 1,
   values: { name: "客户 A" },
@@ -473,4 +477,46 @@ describe("record workspace navigation", () => {
     expect(screen.getByRole("textbox", { name: "客户名称" })).toHaveValue("新会话草稿");
     update.mockRestore();
   });
+});
+
+it("preserves public pool scope when closing a detail drawer", async () => {
+  render(<RecordWorkspace {...props} query={{ ...props.query, scope: "pool" }} openRecord={record} />);
+  fireEvent.click(screen.getByRole("button", { name: "关闭" }));
+  await waitFor(() => expect(router.replace).toHaveBeenCalled());
+  expect(new URL(router.replace.mock.calls.at(-1)![0], "http://localhost").searchParams.get("scope")).toBe("pool");
+});
+
+it.each(["all", "pool"] as const)("disables the pool from %s without refetching obsolete pool caches", async (scope) => {
+  vi.mocked(recordPoolApi.getConfig).mockResolvedValueOnce({ enabled: true, ownershipTtlHours: null, version: 1 });
+  vi.mocked(recordPoolApi.saveConfig).mockResolvedValueOnce({ enabled: false, ownershipTtlHours: null, version: 2 });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+  const poolKey = ["workspace", "northwind", "records", "customers", { ...DEFAULT_RECORD_QUERY, scope: "pool" }];
+  const allKey = ["workspace", "northwind", "records", "customers", { ...DEFAULT_RECORD_QUERY, scope: "all" }];
+  const otherKey = ["workspace", "northwind", "records", "orders", { ...DEFAULT_RECORD_QUERY, scope: "pool" }];
+  await client.fetchQuery({ queryKey: poolKey, queryFn: async () => props.initialPage });
+  await client.fetchQuery({ queryKey: allKey, queryFn: async () => props.initialPage });
+  await client.fetchQuery({ queryKey: otherKey, queryFn: async () => props.initialPage });
+  const poolRequest = vi.fn().mockRejectedValue(new Error("PUBLIC_POOL_DISABLED"));
+  const permittedPage = { ...props.initialPage, total: 5 };
+  const allRequest = vi.fn().mockResolvedValue(permittedPage);
+  const otherRequest = vi.fn().mockResolvedValue(props.initialPage);
+  const poolObserver = new QueryObserver(client, { queryKey: poolKey, queryFn: poolRequest, initialData: props.initialPage });
+  new QueryObserver(client, { queryKey: allKey, queryFn: allRequest, initialData: props.initialPage });
+  new QueryObserver(client, { queryKey: otherKey, queryFn: otherRequest, initialData: props.initialPage });
+  const unsubscribe = scope === "pool" ? poolObserver.subscribe(() => {}) : () => {};
+  onTestFinished(() => { unsubscribe(); client.clear(); });
+  render(<RecordWorkspace {...props} query={{ ...props.query, scope }} />, client);
+  fireEvent.click(await screen.findByRole("button", { name: "公共池设置" }));
+  fireEvent.click(await screen.findByRole("switch", { name: "启用公共池" }));
+  fireEvent.click(screen.getByRole("button", { name: "保存设置" }));
+  await waitFor(() => expect(router.refresh).toHaveBeenCalled());
+  await waitFor(() => expect(screen.queryByRole("button", { name: "保存设置" })).not.toBeInTheDocument());
+  expect(poolRequest).not.toHaveBeenCalled();
+  expect(client.getQueryData(poolKey)).toBeUndefined();
+  expect(client.getQueryData(allKey)).toEqual(permittedPage);
+  expect(client.getQueryData(otherKey)).toEqual(props.initialPage);
+  expect(otherRequest).not.toHaveBeenCalled();
+  expect(screen.queryByText(/设置已保存，但刷新失败/)).not.toBeInTheDocument();
+  const url = new URL(router.replace.mock.calls.at(-1)![0], "http://localhost");
+  expect(url.searchParams.has("scope")).toBe(false);
 });

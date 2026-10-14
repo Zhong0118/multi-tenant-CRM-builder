@@ -1,9 +1,6 @@
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
-import type {
-  AuditEvent,
-  DomainAuditCorrelation,
-} from '../audit/audit-event';
+import type { AuditEvent, DomainAuditCorrelation } from '../audit/audit-event';
 import type { ResolvedObjectSchema } from '../objects/published-object.service';
 import { projectVisibleValues } from './record-value-engine';
 import {
@@ -185,7 +182,14 @@ export async function createRecordActivityCommand({
   auditId: string;
 }> {
   const content = validateRecordActivityInput(input);
-  await requireVisibleRecord(store, resolved, context, recordId, 'UPDATE');
+  await requireVisibleRecord(
+    store,
+    resolved,
+    context,
+    recordId,
+    'UPDATE',
+    true,
+  );
   const created = await store.createActivity({
     id: idGenerator(),
     recordId,
@@ -240,6 +244,7 @@ export async function requireVisibleRecord(
   context: TenantContext,
   recordId: string,
   action: 'READ' | 'UPDATE',
+  lock = false,
 ): Promise<DynamicRecord> {
   const accessAllowed =
     action === 'READ' ? resolved.access.canRead : resolved.access.canUpdate;
@@ -247,9 +252,28 @@ export async function requireVisibleRecord(
     action === 'READ' ? resolved.access.readScope : resolved.access.updateScope;
   if (!accessAllowed || scope === 'NONE')
     throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
-  const record = await store.findRecord(resolved.schema.object.id, recordId);
-  if (!record || (scope === 'OWN' && record.ownerMemberId !== context.memberId))
+  const record = lock
+    ? await store.lockRecord({
+        objectId: resolved.schema.object.id,
+        recordId,
+        ownerMemberId: scope === 'OWN' ? context.memberId : null,
+      })
+    : await store.findRecord(resolved.schema.object.id, recordId);
+  const poolReadable =
+    action === 'READ' && resolved.poolEnabled && record?.inPublicPool;
+  if (
+    !record ||
+    (!poolReadable &&
+      scope === 'OWN' &&
+      record.ownerMemberId !== context.memberId)
+  )
     throw new ApiException('RECORD_NOT_FOUND', 404);
+  if (
+    action === 'UPDATE' &&
+    record.inPublicPool &&
+    context.role !== 'TENANT_ADMIN'
+  )
+    throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
   return record;
 }
 
@@ -261,6 +285,8 @@ export function projectRecord(
     id: record.id,
     recordNo: record.recordNo.toString(),
     ownerMemberId: record.ownerMemberId,
+    inPublicPool: record.inPublicPool ?? false,
+    ownershipExpiresAt: record.ownershipExpiresAt ?? null,
     title: record.title,
     values: projectVisibleValues(
       resolved.schema,
@@ -412,6 +438,8 @@ export function auditRecord(record: DynamicRecord): Record<string, unknown> {
     objectId: record.objectId,
     recordNo: record.recordNo.toString(),
     ownerMemberId: record.ownerMemberId,
+    inPublicPool: record.inPublicPool ?? false,
+    ownershipExpiresAt: record.ownershipExpiresAt ?? null,
     title: record.title,
     values: record.values,
     version: record.version,

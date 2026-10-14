@@ -7,6 +7,17 @@ import { OptionBadge } from "@/features/objects/option-badge";
 import type { DynamicFieldMember } from "./dynamic-field";
 import styles from "./records.module.css";
 
+export function displayRecordOwner(
+  ownerMemberId: string | null | undefined,
+  members: DynamicFieldMember[],
+  currentMemberId?: string,
+): string {
+  if (!ownerMemberId) return "未指定";
+  const member = members.find((candidate) => candidate.id === ownerMemberId);
+  if (member) return member.displayName?.trim() || "未设置姓名";
+  return ownerMemberId === currentMemberId ? "我" : "已指定";
+}
+
 export function displayValue(
   field: Pick<PublishedFieldView, "type" | "config" | "validation">,
   value: unknown,

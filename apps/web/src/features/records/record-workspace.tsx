@@ -1,7 +1,11 @@
 "use client";
 
+import { Alert, Button } from "antd";
+import { toApiError } from "@/lib/api/api-error";
+import { RecordPoolSettings } from "./record-pool";
+import { recordPoolApi } from "./record-pool-api";
 import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { followUpQueryKeys } from "@/features/follow-ups/follow-up-api";
 import { markSourceReturnFocus, validatedReturnTo } from "./source-navigation";
 import { useEffect, useRef, useState } from "react";
@@ -61,6 +65,9 @@ function RecordWorkspaceSession({
   const router = useRouter();
   const client = useQueryClient();
   const [record, setRecord] = useState(openRecord);
+  const [poolSettingsOpen, setPoolSettingsOpen] = useState(false);
+  const poolKey = ["workspace", tenantCode, "pool-config", schema.object.code];
+  const pool = useQuery({ queryKey: poolKey, queryFn: () => recordPoolApi.getConfig(tenantCode, schema.object.code), staleTime: 0 });
   // A refreshed server render carries the same record at a newer version. It
   // updates the open drawer in place, so an edit started after an earlier save
   // keeps its draft; a different record changes the session key instead.
@@ -92,6 +99,37 @@ function RecordWorkspaceSession({
 
   return (
     <>
+      {pool.isError ? <Alert type="error" title="公共池设置加载失败" description={toApiError(pool.error).message} action={<Button onClick={() => pool.refetch()}>重试设置</Button>} /> : null}
+      {poolSettingsOpen && pool.data && isAdmin ? <RecordPoolSettings
+        tenantCode={tenantCode} objectCode={schema.object.code} config={pool.data}
+        onClose={() => setPoolSettingsOpen(false)}
+        onSaved={async (config) => {
+          client.setQueryData(poolKey, config);
+          const recordsKey = ["workspace", tenantCode, "records", schema.object.code];
+          const poolQueries = {
+            queryKey: recordsKey,
+            predicate: ({ queryKey }: { queryKey: readonly unknown[] }) => {
+              const cachedQuery = queryKey[4];
+              return typeof cachedQuery === "object" && cachedQuery !== null &&
+                "scope" in cachedQuery && cachedQuery.scope === "pool";
+            },
+          };
+          if (!config.enabled) {
+            await client.cancelQueries(poolQueries);
+            client.removeQueries(poolQueries);
+          }
+          if (!config.enabled && query.scope) {
+            const nextSearch = recordQuerySearch({ ...query, scope: undefined, page: 1, ownerMemberId: undefined }, { ...DEFAULT_RECORD_QUERY, sort: schema.defaultView.sort.field, direction: schema.defaultView.sort.direction });
+            router.replace(`${listPath}${nextSearch ? `?${nextSearch}` : ""}`);
+          }
+          await client.invalidateQueries({
+            queryKey: recordsKey,
+            predicate: (cached) => config.enabled || !poolQueries.predicate(cached),
+            refetchType: "all",
+          }, { throwOnError: true });
+          router.refresh();
+        }}
+      /> : null}
       <div ref={listRef}>
         <RecordList
           currentMemberId={currentMemberId}
@@ -101,6 +139,8 @@ function RecordWorkspaceSession({
           initialPage={initialPage}
           members={members}
           canFilterByOwner={isAdmin}
+          poolConfig={pool.data}
+          onPoolSettings={pool.data ? () => setPoolSettingsOpen(true) : undefined}
         />
       </div>
       {record ? (
@@ -111,6 +151,7 @@ function RecordWorkspaceSession({
           members={members}
           currentMemberId={currentMemberId}
           canChooseOwner={isAdmin}
+          poolConfig={pool.data}
           canDelete={isAdmin && schema.actions.canDelete}
           initialEditing={initialEditing}
           followUpId={followUpId}

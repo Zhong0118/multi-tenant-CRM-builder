@@ -311,6 +311,9 @@ class MemoryRecordsStore implements RecordsStore {
           record.deletedAt === null &&
           (!query.ownerMemberId ||
             record.ownerMemberId === query.ownerMemberId) &&
+          (!('inPublicPool' in query) ||
+            query.inPublicPool === undefined ||
+            (record.inPublicPool ?? false) === query.inPublicPool) &&
           matchesSearch(record, query) &&
           query.filters.every((filter) => matchesListFilter(record, filter)),
       )
@@ -773,6 +776,155 @@ async function create(
 }
 
 describe('RecordsService', () => {
+  it('rechecks pool read-only status after waiting for the activity source row lock', async () => {
+    const { service, store, publishedRepository } = fixture();
+    const schema = publishedSchema();
+    schema.employeeAccess.updateScope = 'ALL';
+    publishedRepository.record.configuration = schema;
+    const created = await create(service, employee, 'Mine');
+    let unlock!: () => void;
+    const barrier = new Promise<void>((resolve) => {
+      unlock = resolve;
+    });
+    const lock = store.lockRecord.bind(store);
+    jest.spyOn(store, 'lockRecord').mockImplementation(async (input) => {
+      await barrier;
+      return lock(input);
+    });
+    const pending = service
+      .createActivity(
+        employee,
+        'leads',
+        created.id,
+        { activityType: 'NOTE', content: 'Late note' },
+        meta,
+      )
+      .then(
+        (activity) => ({ activity }),
+        (error: unknown) => ({ error }),
+      );
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    Object.assign(store.records[0], {
+      ownerMemberId: null,
+      inPublicPool: true,
+    });
+    unlock();
+    expect(await pending).toMatchObject({
+      error: { code: 'OBJECT_ACTION_FORBIDDEN' },
+    });
+    expect(store.activities).toHaveLength(0);
+    expect(
+      store.audits.filter(
+        (event) => event.action === 'record.activity_created',
+      ),
+    ).toHaveLength(0);
+  });
+
+  it('separates mine and pool scopes without including historical unassigned rows', async () => {
+    const { service, store, publishedRepository } = fixture();
+    Object.assign(publishedRepository.record, { poolEnabled: true });
+    await create(service, admin, 'Legacy');
+    const pooled = await create(service, admin, 'Pool');
+    Object.assign(store.records[1], { inPublicPool: true });
+    const mine = await create(service, employee, 'Mine');
+    const query = {
+      page: 1,
+      limit: 20,
+      sort: 'updatedAt',
+      direction: 'desc' as const,
+      scope: 'pool' as 'pool' | 'mine' | 'all',
+    };
+    expect(
+      (await service.list(employee, 'leads', query)).items.map(
+        (item) => item.id,
+      ),
+    ).toEqual([pooled.id]);
+    expect(
+      (
+        await service.list(admin, 'leads', {
+          ...query,
+          scope: 'mine',
+        } as typeof query)
+      ).items,
+    ).toEqual([]);
+    expect(
+      (
+        await service.list(employee, 'leads', {
+          ...query,
+          scope: 'mine',
+        } as typeof query)
+      ).items.map((item) => item.id),
+    ).toEqual([mine.id]);
+  });
+
+  it('rejects pool scope when disabled and all scope for OWN readers', async () => {
+    const { service, publishedRepository } = fixture();
+    const query = {
+      page: 1,
+      limit: 20,
+      sort: 'updatedAt',
+      direction: 'desc' as const,
+      scope: 'pool' as 'pool' | 'mine' | 'all',
+    };
+    await expect(service.list(employee, 'leads', query)).rejects.toThrow(
+      ApiException,
+    );
+    Object.assign(publishedRepository.record, { poolEnabled: true });
+    await expect(
+      service.list(employee, 'leads', {
+        ...query,
+        scope: 'all',
+      } as typeof query),
+    ).rejects.toThrow(ApiException);
+  });
+
+  it('lets OWN employees read explicitly pooled records without hidden values', async () => {
+    const { service, store, publishedRepository } = fixture();
+    Object.assign(publishedRepository.record, { poolEnabled: true });
+    const created = await create(service, admin, 'Pool', undefined, {
+      secret: 'hidden',
+    });
+    Object.assign(store.records[0], {
+      inPublicPool: true,
+      ownershipExpiresAt: null,
+    });
+    const result = await service.detail(employee, 'leads', created.id);
+    expect(result).toMatchObject({
+      inPublicPool: true,
+      ownershipExpiresAt: null,
+    });
+    expect(result.values).not.toHaveProperty('secret');
+  });
+
+  it('keeps public pool records read-only even for employees with ALL update access', async () => {
+    const { service, store, publishedRepository } = fixture();
+    const schema = publishedSchema();
+    schema.employeeAccess.updateScope = 'ALL';
+    publishedRepository.record.configuration = schema;
+    Object.assign(publishedRepository.record, { poolEnabled: true });
+    const created = await create(service, admin, 'Pool');
+    Object.assign(store.records[0], { inPublicPool: true });
+    await expect(
+      service.update(
+        employee,
+        'leads',
+        created.id,
+        { version: 1, values: { name: 'Bypass claim' } },
+        meta,
+      ),
+    ).rejects.toThrow();
+    expect(store.records[0].title).toBe('Pool');
+  });
+
+  it('projects legacy unowned records as unassigned rather than public', async () => {
+    const { service } = fixture();
+    const created = await create(service, admin, 'Legacy');
+    expect(created).toMatchObject({
+      inPublicPool: false,
+      ownershipExpiresAt: null,
+    });
+  });
+
   it('reuses successful import rows after a lost response while corrected failures can succeed', async () => {
     const { service, store } = fixture();
     const batchId = '2a7a955c-bf19-4a1d-8cdf-4a94a20bb082';

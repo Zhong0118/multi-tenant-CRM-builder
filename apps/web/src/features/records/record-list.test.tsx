@@ -185,6 +185,8 @@ const page = {
     {
       id: "record-1",
       recordNo: "8",
+      inPublicPool: false,
+      ownershipExpiresAt: null,
       title: "天际科技",
       values: { name: "天际科技", lead_status: "new" },
       ownerMemberId: null,
@@ -206,6 +208,9 @@ function renderList(
     api?: RecordApi;
     page?: RecordPage;
     members?: { id: string; displayName: string }[];
+    currentMemberId?: string;
+    canFilterByOwner?: boolean;
+    poolConfig?: { enabled: boolean; ownershipTtlHours: number | null; version: number };
   } = {},
 ) {
   const client = new QueryClient({
@@ -225,7 +230,10 @@ function renderList(
         query={query}
         initialPage={options.page ?? page}
         members={options.members}
+        currentMemberId={options.currentMemberId}
+        canFilterByOwner={options.canFilterByOwner}
         api={api}
+        poolConfig={options.poolConfig}
         navigate={navigate}
       />
     </QueryClientProvider>,
@@ -233,6 +241,54 @@ function renderList(
 }
 
 describe("RecordList query navigation", () => {
+  it("shows the system owner in the table and cards without requiring a business field", () => {
+    renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+      canFilterByOwner: true,
+      members: [{ id: "member-1", displayName: "林晨" }],
+      page: { ...page, items: [{ ...page.items[0], ownerMemberId: "member-1" }] },
+    });
+    const table = screen.getByRole("table");
+    expect(within(table).getByRole("columnheader", { name: "负责人" })).toBeVisible();
+    expect(within(table).getByText("林晨")).toBeVisible();
+    expect(within(screen.getByRole("list", { name: "客户记录卡片" })).getByText("林晨")).toBeVisible();
+  });
+
+  it.each([[null, "未指定"], ["unknown-member", "已指定"]])("shows owner %s as %s without exposing an identifier", (ownerMemberId, label) => {
+    renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+      canFilterByOwner: true,
+      page: { ...page, items: [{ ...page.items[0], ownerMemberId }] },
+    });
+    expect(within(screen.getByRole("table")).getByText(label!)).toBeVisible();
+    expect(within(screen.getByRole("list", { name: "客户记录卡片" })).getByText(label!)).toBeVisible();
+    expect(screen.queryByText("unknown-member")).not.toBeInTheDocument();
+  });
+
+  it("omits repetitive owner labels from an employee's own-record list", () => {
+    renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+      currentMemberId: "member-1",
+      schema: { ...schema, scopes: { read: "OWN", update: "OWN" } },
+      page: { ...page, items: [{ ...page.items[0], ownerMemberId: "member-1" }] },
+    });
+    expect(screen.queryByRole("columnheader", { name: "负责人" })).not.toBeInTheDocument();
+    expect(within(screen.getByRole("list", { name: "客户记录卡片" })).queryByText("负责人")).not.toBeInTheDocument();
+  });
+
+  it("remembers owner visibility separately from business fields and restores the default", async () => {
+    const options = { canFilterByOwner: true, currentMemberId: "member-1" };
+    const view = renderList(vi.fn(), DEFAULT_RECORD_QUERY, options);
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "列设置" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "显示系统负责人" }));
+    expect(screen.queryByRole("columnheader", { name: "负责人" })).not.toBeInTheDocument();
+    view.unmount();
+    renderList(vi.fn(), DEFAULT_RECORD_QUERY, options);
+    expect(screen.queryByRole("columnheader", { name: "负责人" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "列设置" }));
+    fireEvent.click(screen.getByRole("button", { name: "恢复默认列" }));
+    expect(screen.getByRole("columnheader", { name: "负责人" })).toBeVisible();
+    expect(window.localStorage.getItem("crm.records.columns.northwind.customers")).not.toContain("ownerMemberId");
+  });
   it("reflects a new URL search without remounting the list", () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const api = { list: vi.fn().mockResolvedValue(page) } as unknown as RecordApi;
@@ -737,4 +793,44 @@ describe("RecordList table sorting", () => {
       "/workspace/northwind/objects/customers/record-1",
     );
   });
+});
+
+it("switches to public pool preserving filters and resetting owner and page", () => {
+  const navigate = vi.fn();
+  renderList(navigate, { ...DEFAULT_RECORD_QUERY, page: 3, ownerMemberId: "member-1", search: "测试", filters: { lead_status: ["new"] } }, { poolConfig: { enabled: true, ownershipTtlHours: null, version: 1 } });
+  fireEvent.click(screen.getByRole("tab", { name: "公共池" }));
+  const url = new URL(navigate.mock.calls[0][0], "http://localhost");
+  expect(url.searchParams.get("scope")).toBe("pool");
+  expect(url.searchParams.has("page")).toBe(false);
+  expect(url.searchParams.has("ownerMemberId")).toBe(false);
+  expect(url.searchParams.get("search")).toBe("测试");
+  expect(url.searchParams.get("filters")).toContain("new");
+});
+it("keeps employee public pool rows read-only and omits all tab for OWN readers", () => {
+  renderList(vi.fn(), DEFAULT_RECORD_QUERY, { schema: { ...schema, scopes: { read: "OWN", update: "OWN" } }, poolConfig: { enabled: true, ownershipTtlHours: null, version: 1 }, page: { ...page, items: [{ ...page.items[0], inPublicPool: true, ownershipExpiresAt: null }] } });
+  expect(screen.queryByRole("tab", { name: "全部记录" })).not.toBeInTheDocument();
+  for (const button of screen.getAllByRole("button", { name: "编辑 天际科技" })) expect(button).toBeDisabled();
+  expect(screen.getByRole("checkbox", { name: "选择 天际科技" })).toBeDisabled();
+  expect(screen.getAllByRole("button", { name: "领取 天际科技" }).length).toBeGreaterThan(0);
+});
+
+it("uses the business table title in the public pool for OWN readers", () => {
+  renderList(vi.fn(), { ...DEFAULT_RECORD_QUERY, scope: "pool" }, { schema: { ...schema, scopes: { read: "OWN", update: "OWN" } }, poolConfig: { enabled: true, ownershipTtlHours: null, version: 1 } });
+  expect(screen.getByRole("heading", { name: "客户" })).toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: "我的客户" })).not.toBeInTheDocument();
+});
+
+it("does not refetch the current public pool route after its config is disabled", () => {
+  const api = { list: vi.fn().mockRejectedValue(new Error("PUBLIC_POOL_DISABLED")) } as unknown as RecordApi;
+  renderList(vi.fn(), { ...DEFAULT_RECORD_QUERY, scope: "pool" }, { api, poolConfig: { enabled: false, ownershipTtlHours: null, version: 2 } });
+  expect(api.list).not.toHaveBeenCalled();
+});
+
+it("explains an empty pool without implying the business table has no records", () => {
+  renderList(vi.fn(), { ...DEFAULT_RECORD_QUERY, scope: "pool" }, {
+    poolConfig: { enabled: true, ownershipTtlHours: null, version: 1 },
+    page: { ...page, items: [], total: 0 },
+  });
+  expect(screen.getAllByText("公共池暂无记录，可由负责人释放或管理员移入").length).toBeGreaterThan(0);
+  expect(screen.queryByText("还没有记录，新建第一条。")).not.toBeInTheDocument();
 });

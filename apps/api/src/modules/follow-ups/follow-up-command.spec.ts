@@ -518,3 +518,15 @@ describe('appendFollowUpAudit and presentFollowUp', () => {
     expect(presented.assigneeName).toBe('E-001');
   });
 });
+
+it('locks out an employee when a record entered the public pool after scope resolution', async () => {
+  const tx = {
+    $queryRaw: () => Promise.resolve([{ id: RECORD_ID, inPublicPool: true }]),
+  };
+  await expect(
+    lockFollowUpRecord(tx as never, context, {
+      ...SCOPE,
+      requiredOwnerMemberId: undefined,
+    }),
+  ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
+});

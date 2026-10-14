@@ -98,13 +98,15 @@ export async function lockFollowUpRecord(
   context: TenantContext,
   scope: FollowUpRecordScope,
 ): Promise<void> {
-  const rows = await tx.$queryRaw<Array<{ id: string }>>`
-      SELECT id FROM records WHERE tenant_id = ${context.tenantId}::uuid
+  const rows = await tx.$queryRaw<Array<{ id: string; inPublicPool: boolean }>>`
+      SELECT id, in_public_pool AS "inPublicPool" FROM records WHERE tenant_id = ${context.tenantId}::uuid
         AND object_id = ${scope.objectId}::uuid AND id = ${scope.recordId}::uuid AND deleted_at IS NULL
         AND (${scope.requiredOwnerMemberId ?? null}::uuid IS NULL OR owner_member_id = ${scope.requiredOwnerMemberId ?? null}::uuid)
       FOR UPDATE
     `;
   if (!rows.length) throw new ApiException('RECORD_NOT_FOUND', 404);
+  if (rows[0].inPublicPool && context.role !== 'TENANT_ADMIN')
+    throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
 }
 
 export function appendFollowUpAudit(
