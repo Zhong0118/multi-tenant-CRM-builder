@@ -60,6 +60,15 @@ export interface ObjectDraftResponse {
     readScope: PublishedDataScope;
     updateScope: PublishedDataScope;
   } | null;
+  publishedEmployeeAccess:
+    | (NonNullable<ObjectDraftResponse['employeeAccess']> & {
+        fields: Array<{
+          fieldKey: string;
+          label: string;
+          access: 'EDIT' | 'READ_ONLY' | 'HIDDEN';
+        }>;
+      })
+    | null;
   activeRecordCount: number;
 }
 
@@ -145,6 +154,21 @@ export function toObjectDraftResponse(draft: ObjectDraft): ObjectDraftResponse {
           canDelete: false,
           readScope: draft.employeeAccess.readScope,
           updateScope: draft.employeeAccess.updateScope,
+        }
+      : null,
+    publishedEmployeeAccess: active
+      ? {
+          canCreate: active.employeeAccess.canCreate,
+          canRead: active.employeeAccess.canRead,
+          canUpdate: active.employeeAccess.canUpdate,
+          canDelete: false,
+          readScope: active.employeeAccess.readScope,
+          updateScope: active.employeeAccess.updateScope,
+          fields: active.fields.map((field) => ({
+            fieldKey: field.fieldKey,
+            label: field.label,
+            access: active.employeeAccess.fields[field.fieldKey] ?? 'HIDDEN',
+          })),
         }
       : null,
     activeRecordCount: draft.activeRecordCount,

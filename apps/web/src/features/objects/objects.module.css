@@ -829,3 +829,39 @@
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
+
+.permissionComparison {
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+
+.permissionComparison table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.permissionComparison th,
+.permissionComparison td {
+  padding: 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--rule);
+  overflow-wrap: anywhere;
+}
+
+.permissionComparison thead {
+  background: var(--paper-secondary, #f8fafc);
+}
+
+.permissionComparison tr[data-changed="true"] td:last-child {
+  background: #fffbeb;
+}
+
+.permissionChange {
+  display: inline-block;
+  margin-left: 6px;
+  color: #92400e;
+  font-size: 12px;
+}

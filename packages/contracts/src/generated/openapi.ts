@@ -2476,6 +2476,8 @@ export interface components {
         components["schemas"]["ObjectDraftEmployeeAccessResponseDto"] | null;
       fields: components["schemas"]["ObjectDraftFieldResponseDto"][];
       object: components["schemas"]["ObjectDraftObjectResponseDto"];
+      publishedEmployeeAccess:
+        components["schemas"]["PublishedEmployeeAccessResponseDto"] | null;
     };
     ObjectOrderDto: {
       items: components["schemas"]["ObjectOrderItemDto"][];
@@ -2638,6 +2640,24 @@ export interface components {
     };
     PublishDashboardDto: {
       expectedVersion: number;
+    };
+    PublishedEmployeeAccessResponseDto: {
+      canCreate: boolean;
+      /** @enum {boolean} */
+      canDelete: false;
+      canRead: boolean;
+      canUpdate: boolean;
+      fields: components["schemas"]["PublishedEmployeeFieldAccessResponseDto"][];
+      /** @enum {string} */
+      readScope: "ALL" | "OWN" | "NONE";
+      /** @enum {string} */
+      updateScope: "ALL" | "OWN" | "NONE";
+    };
+    PublishedEmployeeFieldAccessResponseDto: {
+      /** @enum {string} */
+      access: "EDIT" | "READ_ONLY" | "HIDDEN";
+      fieldKey: string;
+      label: string;
     };
     PublishedFieldResponseDto: {
       /** @enum {string} */

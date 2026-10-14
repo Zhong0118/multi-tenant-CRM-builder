@@ -489,6 +489,18 @@ export class ObjectDraftEmployeeAccessResponseDto {
   updateScope!: 'ALL' | 'OWN' | 'NONE';
 }
 
+export class PublishedEmployeeFieldAccessResponseDto {
+  @ApiProperty() fieldKey!: string;
+  @ApiProperty() label!: string;
+  @ApiProperty({ enum: ['EDIT', 'READ_ONLY', 'HIDDEN'] })
+  access!: 'EDIT' | 'READ_ONLY' | 'HIDDEN';
+}
+
+export class PublishedEmployeeAccessResponseDto extends ObjectDraftEmployeeAccessResponseDto {
+  @ApiProperty({ type: PublishedEmployeeFieldAccessResponseDto, isArray: true })
+  fields!: PublishedEmployeeFieldAccessResponseDto[];
+}
+
 export class ObjectDraftResponseDto {
   @ApiProperty({ type: ObjectDraftObjectResponseDto })
   object!: ObjectDraftObjectResponseDto;
@@ -504,6 +516,8 @@ export class ObjectDraftResponseDto {
     nullable: true,
   })
   employeeAccess!: ObjectDraftEmployeeAccessResponseDto | null;
+  @ApiProperty({ type: PublishedEmployeeAccessResponseDto, nullable: true })
+  publishedEmployeeAccess!: PublishedEmployeeAccessResponseDto | null;
   @ApiProperty() activeRecordCount!: number;
 }
 

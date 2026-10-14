@@ -2785,6 +2785,15 @@
           },
           "object": {
             "$ref": "#/components/schemas/ObjectDraftObjectResponseDto"
+          },
+          "publishedEmployeeAccess": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PublishedEmployeeAccessResponseDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
           }
         },
         "required": [
@@ -2792,6 +2801,7 @@
           "fields",
           "defaultView",
           "employeeAccess",
+          "publishedEmployeeAccess",
           "activeRecordCount"
         ],
         "type": "object"
@@ -3303,6 +3313,63 @@
           }
         },
         "required": ["expectedVersion"],
+        "type": "object"
+      },
+      "PublishedEmployeeAccessResponseDto": {
+        "properties": {
+          "canCreate": {
+            "type": "boolean"
+          },
+          "canDelete": {
+            "enum": [false],
+            "type": "boolean"
+          },
+          "canRead": {
+            "type": "boolean"
+          },
+          "canUpdate": {
+            "type": "boolean"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/PublishedEmployeeFieldAccessResponseDto"
+            },
+            "type": "array"
+          },
+          "readScope": {
+            "enum": ["ALL", "OWN", "NONE"],
+            "type": "string"
+          },
+          "updateScope": {
+            "enum": ["ALL", "OWN", "NONE"],
+            "type": "string"
+          }
+        },
+        "required": [
+          "canCreate",
+          "canRead",
+          "canUpdate",
+          "canDelete",
+          "readScope",
+          "updateScope",
+          "fields"
+        ],
+        "type": "object"
+      },
+      "PublishedEmployeeFieldAccessResponseDto": {
+        "properties": {
+          "access": {
+            "enum": ["EDIT", "READ_ONLY", "HIDDEN"],
+            "type": "string"
+          },
+          "fieldKey": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": ["fieldKey", "label", "access"],
         "type": "object"
       },
       "PublishedFieldResponseDto": {

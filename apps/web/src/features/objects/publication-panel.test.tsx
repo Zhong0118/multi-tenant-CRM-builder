@@ -108,7 +108,11 @@ describe("PublicationPanel", () => {
       />,
     );
 
-    expect(screen.getByText("本次发布没有配置变更。")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "本次没有字段结构变更；权限等其他已保存配置仍会随本次发布生效。",
+      ),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("group", { name: "必须先解决" }),
     ).not.toBeInTheDocument();

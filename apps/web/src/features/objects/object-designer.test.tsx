@@ -81,6 +81,17 @@ function draft(overrides: Partial<ObjectDraft> = {}): ObjectDraft {
       readScope: "OWN",
       updateScope: "OWN",
     },
+    publishedEmployeeAccess: {
+      canCreate: true,
+      canRead: false,
+      canUpdate: false,
+      canDelete: false,
+      readScope: "OWN",
+      updateScope: "OWN",
+      fields: [
+        { fieldKey: "customer_name", label: "客户名称", access: "READ_ONLY" },
+      ],
+    },
     activeRecordCount: 12,
     ...overrides,
   } as ObjectDraft;
@@ -618,5 +629,136 @@ describe("ObjectDesigner employee preview", () => {
     expect(
       within(preview).getByRole("button", { name: "新建记录" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("employee permissions publication status", () => {
+  it("compares published defaults with the saved draft and labels unsaved inputs", async () => {
+    const api = objectApi();
+    renderDesigner(draft(), api);
+    fireEvent.click(screen.getByRole("button", { name: "员工权限" }));
+    const comparison = screen.getByRole("table", { name: "员工默认权限对照" });
+    expect(comparison).toHaveTextContent("当前生效 · v3");
+    expect(comparison).toHaveTextContent("已保存草稿");
+    expect(comparison).toHaveTextContent("禁止查看");
+    expect(comparison).toHaveTextContent("仅本人负责");
+    expect(comparison).toHaveTextContent("客户名称");
+    expect(screen.getByText("员工默认权限有待发布修改")).toBeInTheDocument();
+    expect(
+      screen.getByText(/单独授权优先于这里的默认权限/),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("switch", { name: "可以查看记录" }));
+    expect(
+      screen.getByText("有未保存的权限修改，请先保存再发布。"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "发布变更" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "检查并发布" })).toBeDisabled();
+    expect(api.updatePermissions).not.toHaveBeenCalled();
+  });
+
+  it("keeps live defaults on save, explains publication, and refreshes them after publishing", async () => {
+    const saved = draft({
+      object: { ...draft().object, version: 5, hasUnpublishedChanges: true },
+      employeeAccess: { ...draft().employeeAccess!, canCreate: false },
+    });
+    const live = draft({
+      ...saved,
+      object: {
+        ...saved.object,
+        publicationNumber: 4,
+        hasUnpublishedChanges: false,
+      },
+      publishedEmployeeAccess: {
+        ...saved.employeeAccess!,
+        fields: saved.fields.map((f) => ({
+          fieldKey: f.fieldKey,
+          label: f.label,
+          access: f.employeeAccess,
+        })),
+      },
+    });
+    const api = objectApi({
+      updatePermissions: vi.fn().mockResolvedValue(saved),
+      draft: vi.fn().mockResolvedValue(live),
+    });
+    renderDesigner(draft(), api);
+    fireEvent.click(screen.getByRole("button", { name: "员工权限" }));
+    fireEvent.click(screen.getByRole("switch", { name: "可以新建记录" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存员工权限" }));
+    expect(
+      await screen.findByText(
+        "员工权限已保存到草稿，尚未生效。请检查并发布变更。",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("table", { name: "员工默认权限对照" }),
+    ).toHaveTextContent("当前生效 · v3");
+    expect(
+      screen.queryByText("有未保存的权限修改，请先保存再发布。"),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "检查并发布" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      await within(dialog).findByText(
+        "本次发布会应用此业务表全部已保存的配置，包括员工默认权限。",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByText("本次发布没有配置变更。"),
+    ).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole("button", { name: "确认发布" }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "确认发布" }));
+    expect(await screen.findByText("当前生效 · v4")).toBeInTheDocument();
+    expect(
+      screen.getByText("已保存的员工默认权限与当前生效版本一致"),
+    ).toBeInTheDocument();
+  });
+
+  it("does not promote failed saves or failed publications to live permissions", async () => {
+    const api = objectApi({
+      updatePermissions: vi.fn().mockRejectedValue(new Error("保存失败")),
+      publish: vi.fn().mockRejectedValue(new Error("发布失败")),
+    });
+    renderDesigner(draft(), api);
+    fireEvent.click(screen.getByRole("button", { name: "员工权限" }));
+    fireEvent.click(screen.getByRole("switch", { name: "可以新建记录" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存员工权限" }));
+    await waitFor(() => expect(api.updatePermissions).toHaveBeenCalledOnce());
+    expect(screen.getByText("当前生效 · v3")).toBeInTheDocument();
+    expect(
+      screen.getByText("有未保存的权限修改，请先保存再发布。"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("switch", { name: "可以新建记录" }));
+    fireEvent.click(screen.getByRole("button", { name: "检查并发布" }));
+    const dialog = await screen.findByRole("dialog");
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole("button", { name: "确认发布" }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "确认发布" }));
+    await waitFor(() => expect(api.publish).toHaveBeenCalledOnce());
+    expect(await within(dialog).findByRole("alert")).toBeInTheDocument();
+    expect(screen.getByText("当前生效 · v3")).toBeInTheDocument();
+    expect(api.draft).not.toHaveBeenCalled();
+  });
+
+  it("does not call never-published permissions effective", () => {
+    renderDesigner(
+      draft({
+        publishedEmployeeAccess: null,
+        object: { ...draft().object, publicationNumber: null, status: "DRAFT" },
+      }),
+      objectApi(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "员工权限" }));
+    expect(
+      screen.getByText("尚未发布，员工暂不可访问此业务表。"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/当前生效 · v/)).not.toBeInTheDocument();
   });
 });
