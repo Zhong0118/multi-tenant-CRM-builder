@@ -5,6 +5,7 @@ import {
   ArrayMinSize,
   ArrayUnique,
   IsArray,
+  IsBoolean,
   IsDateString,
   IsIn,
   IsInt,
@@ -208,6 +209,19 @@ export class ImportRecordRowDto {
 }
 
 export class ImportRecordsDto {
+  @ApiPropertyOptional({ description: '仅校验和查重，不创建记录。' })
+  @IsOptional()
+  @IsBoolean()
+  dryRun?: boolean;
+
+  @ApiPropertyOptional({ type: String, isArray: true, maxItems: 3 })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(3)
+  @ArrayUnique()
+  @IsString({ each: true })
+  matchFields?: string[];
+
   @ApiPropertyOptional({
     format: 'uuid',
     description: '稳定的文件批次 ID，重试时复用以避免重复创建。',
@@ -238,8 +252,14 @@ export class RecordImportErrorDto {
 
 export class RecordImportResultItemDto {
   @ApiProperty() rowNumber!: number;
-  @ApiProperty({ enum: ['CREATED', 'FAILED'] })
-  status!: 'CREATED' | 'FAILED';
+  @ApiProperty({ enum: ['READY', 'CREATED', 'SKIPPED', 'FAILED'] })
+  status!: 'READY' | 'CREATED' | 'SKIPPED' | 'FAILED';
+  @ApiPropertyOptional() reason?: string;
+  @ApiPropertyOptional({
+    description:
+      '仅预检 READY 行返回的规范化查重元组 SHA-256，用于跨批次文件内查重。',
+  })
+  matchKey?: string;
   @ApiPropertyOptional({ type: RecordResponseDto })
   record?: RecordResponseDto;
   @ApiPropertyOptional({ type: RecordImportErrorDto })
@@ -247,6 +267,7 @@ export class RecordImportResultItemDto {
 }
 
 export class RecordImportResponseDto {
+  @ApiPropertyOptional() skipped?: number;
   @ApiProperty() created!: number;
   @ApiProperty() failed!: number;
   @ApiProperty({ type: RecordImportResultItemDto, isArray: true })

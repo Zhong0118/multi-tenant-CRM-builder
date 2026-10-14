@@ -2295,6 +2295,9 @@ export interface components {
        * @description 稳定的文件批次 ID，重试时复用以避免重复创建。
        */
       batchId?: string;
+      /** @description 仅校验和查重，不创建记录。 */
+      dryRun?: boolean;
+      matchFields?: string[];
       rows: components["schemas"]["ImportRecordRowDto"][];
     };
     InvitationActionResponseDto: {
@@ -2765,13 +2768,17 @@ export interface components {
       created: number;
       failed: number;
       items: components["schemas"]["RecordImportResultItemDto"][];
+      skipped?: number;
     };
     RecordImportResultItemDto: {
       error?: components["schemas"]["RecordImportErrorDto"];
+      /** @description 仅预检 READY 行返回的规范化查重元组 SHA-256，用于跨批次文件内查重。 */
+      matchKey?: string;
+      reason?: string;
       record?: components["schemas"]["RecordResponseDto"];
       rowNumber: number;
       /** @enum {string} */
-      status: "CREATED" | "FAILED";
+      status: "READY" | "CREATED" | "SKIPPED" | "FAILED";
     };
     RecordPageResponseDto: {
       items: components["schemas"]["RecordResponseDto"][];

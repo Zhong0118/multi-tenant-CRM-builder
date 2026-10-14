@@ -153,7 +153,15 @@ export interface ApplySourceRecordPatchStoreInput {
   history?: SourceRecordPatchHistory;
 }
 
+export interface ImportDuplicateQuery {
+  objectId: string;
+  ownerMemberId?: string;
+  values: Record<string, string | number | boolean>;
+}
+
 export interface RecordsStore {
+  lockImportMatching(objectId: string): Promise<void>;
+  findImportDuplicate(query: ImportDuplicateQuery): Promise<string | null>;
   lockImportBatch(objectId: string, batchId: string): Promise<void>;
   findImportedRecordId(
     objectId: string,
@@ -336,6 +344,30 @@ class PrismaRecordsStore implements RecordsStore {
     private readonly audit: AuditService,
     private readonly context: TenantContext,
   ) {}
+
+  async lockImportMatching(objectId: string): Promise<void> {
+    const key = `record-import:${this.context.tenantId}:${objectId}`;
+    await this.transaction
+      .$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))::text`;
+  }
+
+  async findImportDuplicate(
+    query: ImportDuplicateQuery,
+  ): Promise<string | null> {
+    const record = await this.transaction.record.findFirst({
+      where: {
+        tenantId: this.context.tenantId,
+        objectId: query.objectId,
+        deletedAt: null,
+        ownerMemberId: query.ownerMemberId,
+        AND: Object.entries(query.values).map(([key, value]) => ({
+          data: { path: [key], equals: value },
+        })),
+      },
+      select: { id: true },
+    });
+    return record?.id ?? null;
+  }
 
   async lockImportBatch(objectId: string, batchId: string): Promise<void> {
     const key = `${this.context.tenantId}:${objectId}:${this.context.memberId}:${batchId}`;

@@ -528,8 +528,8 @@ describe("RecordList table sorting", () => {
     renderList(navigate, DEFAULT_RECORD_QUERY, { api });
 
     fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "导入 CSV" }));
-    expect(await screen.findByLabelText("选择 CSV 文件")).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("menuitem", { name: "导入 Excel / CSV" }));
+    expect(await screen.findByLabelText("选择 Excel 或 CSV 文件")).toBeInTheDocument();
   });
 
   it.each(["选择卡片", "选择"])("keeps %s batch count and request on the current page", async (label) => {

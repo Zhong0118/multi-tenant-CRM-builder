@@ -58,11 +58,12 @@ describe("decodeRecordCsv", () => {
       });
     }
   });
-  it("requires an explicit encoding for legacy Chinese bytes", () => {
+  it("automatically detects legacy Chinese bytes", () => {
     const bytes = new Uint8Array([
       110, 97, 109, 101, 10, 0xd5, 0xc5, 0xc8, 0xfd,
     ]);
-    expect(() => decodeRecordCsv(bytes, "auto")).toThrow(/无法按 UTF-8 读取/);
+    expect(decodeRecordCsv(bytes, "auto").text).toBe("name\n张三");
+    expect(() => decodeRecordCsv(bytes, "utf-8")).toThrow(/无法按 UTF-8 读取/);
     expect(decodeRecordCsv(bytes, "gb18030")).toEqual({
       text: "name\n张三",
       encoding: "GBK / GB18030",
@@ -120,4 +121,18 @@ it("does not guess between duplicate field labels and gives explicit keys priori
   expect(suggestFieldKey("当前状态", fields)).toBeUndefined();
   expect(suggestFieldKey("n7", fields)).toBe("n7");
   expect(suggestFieldKey("B7", fields)).toBe("b7");
+});
+
+it("imports a date-only Excel value into DATETIME as midnight", () => {
+  expect(coerceImportValue("DATETIME", "2026-06-27", [])).toBe(
+    "2026-06-27T00:00:00.000Z",
+  );
+});
+
+it("tracks source lines through empty lines and quoted multiline cells", () => {
+  const parsed = parseCsv('姓名,备注\n\n张三,"第一行\n第二行"\n李四,备注', {
+    trackRowNumbers: true,
+  });
+  expect(parsed.rowNumbers).toEqual([3, 5]);
+  expect(parsed.rows[0]).toEqual(["张三", "第一行\n第二行"]);
 });

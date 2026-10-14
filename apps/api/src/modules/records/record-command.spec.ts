@@ -238,6 +238,12 @@ class MemoryStore implements RecordsStore {
     return this.recordPatchCalls.length + this.transitionCalls.length;
   }
 
+  lockImportMatching(): Promise<void> {
+    return Promise.resolve();
+  }
+  findImportDuplicate(): Promise<string | null> {
+    return Promise.resolve(null);
+  }
   lockImportBatch(): Promise<void> {
     return Promise.resolve();
   }
