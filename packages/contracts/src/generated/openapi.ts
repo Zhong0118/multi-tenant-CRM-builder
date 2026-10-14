@@ -1835,8 +1835,11 @@ export interface components {
       /** @example leads */
       code: string;
       icon?: string | null;
+      initialFields?: components["schemas"]["InitialFieldDefinitionDto"][];
       /** @example 销售线索 */
       name: string;
+      /** @description Required when initialFields is provided. */
+      titleFieldKey?: string;
     };
     CreatePlatformTenantDto: {
       code: string;
@@ -2299,6 +2302,38 @@ export interface components {
       dryRun?: boolean;
       matchFields?: string[];
       rows: components["schemas"]["ImportRecordRowDto"][];
+    };
+    InitialFieldDefinitionDto: {
+      config?: components["schemas"]["FieldConfigDto"];
+      defaultValue?:
+        | (
+            | string
+            | number
+            | boolean
+            | unknown[]
+            | {
+                [key: string]: unknown;
+              }
+          )
+        | null;
+      /** @example customer_name */
+      fieldKey: string;
+      label: string;
+      required: boolean;
+      /** @enum {string} */
+      type:
+        | "TEXT"
+        | "TEXTAREA"
+        | "PHONE"
+        | "EMAIL"
+        | "NUMBER"
+        | "MONEY"
+        | "DATE"
+        | "DATETIME"
+        | "SINGLE_SELECT"
+        | "MULTI_SELECT"
+        | "BOOLEAN";
+      validation?: components["schemas"]["FieldValidationDto"];
     };
     InvitationActionResponseDto: {
       /** @example true */

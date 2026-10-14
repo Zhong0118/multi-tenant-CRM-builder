@@ -865,3 +865,71 @@
   color: #92400e;
   font-size: 12px;
 }
+
+.fileCreate {
+  margin: 24px 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+  min-width: 0;
+}
+
+.fileCreate h2 {
+  font-size: 17px;
+  margin: 0 0 12px;
+}
+.fileCreateControls {
+  display: flex;
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+.fileCreateControl {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+.fileCreateControl > :last-child {
+  min-width: 200px;
+  max-width: 100%;
+}
+.fileCreateFields {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0;
+}
+.fileCreateField {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-reading);
+  padding: 14px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.fileCreateFieldRow {
+  display: grid;
+  grid-template-columns: 90px minmax(100px, 1fr) 130px 70px;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.fileCreateFieldRow > * {
+  min-width: 0;
+}
+.fileCreateOptions {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+.fileCreate input[type="file"] {
+  max-width: 100%;
+}
+
+@media (max-width: 600px) {
+  .fileCreateFieldRow {
+    grid-template-columns: 1fr 1fr;
+  }
+  .fileCreateFieldRow > :nth-child(2) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}

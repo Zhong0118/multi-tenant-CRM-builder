@@ -13,6 +13,11 @@ import { toApiError } from "@/lib/api/api-error";
 import { objectApi as defaultObjectApi, type ObjectApi } from "./object-api";
 import { OBJECT_CODE_PATTERN, objectStableIdHelp } from "./object-types";
 
+import {
+  ObjectFileFieldsForm,
+  type FileObjectState,
+} from "./object-file-fields-form";
+
 import styles from "./objects.module.css";
 
 const createObjectSchema = z.object({
@@ -44,6 +49,9 @@ export function CreateObjectForm({
   navigate?: (path: string) => void;
 }) {
   const router = useRouter();
+  const [fileState, setFileState] = useState<FileObjectState>({
+    active: false,
+  });
   const [summary, setSummary] = useState<string>();
   const {
     control,
@@ -56,14 +64,19 @@ export function CreateObjectForm({
   });
   const mutation = useMutation({
     mutationFn: (values: CreateObjectValues) =>
-      api.createDraft(tenantCode, values),
+      api.createDraft(tenantCode, { ...values, ...fileState.payload }),
     onSuccess: (draft) =>
       (navigate ?? router.push)(
         `/workspace/${tenantCode}/settings/objects/${draft.object.id}`,
       ),
     onError: (caught) => {
       const apiError = toApiError(caught);
-      setSummary(`${apiError.message}（请求编号：${apiError.requestId}）`);
+      setSummary(
+        `${apiError.message}${Object.entries(apiError.fieldErrors)
+          .filter(([field]) => field !== "name" && field !== "code")
+          .flatMap(([, messages]) => messages)
+          .join("；")}（请求编号：${apiError.requestId}）`,
+      );
       for (const [field, messages] of Object.entries(apiError.fieldErrors)) {
         if (field === "name" || field === "code") {
           setError(field, { message: messages.join("；") });
@@ -74,6 +87,8 @@ export function CreateObjectForm({
 
   function submit(event: FormEvent<HTMLFormElement>) {
     void handleSubmit((values) => {
+      if (mutation.isPending || (fileState.active && !fileState.payload))
+        return;
       setSummary(undefined);
       mutation.mutate(values);
     })(event);
@@ -116,7 +131,16 @@ export function CreateObjectForm({
           )}
         />
       </Form.Item>
-      <Button type="primary" htmlType="submit" loading={mutation.isPending}>
+      <ObjectFileFieldsForm
+        disabled={mutation.isPending}
+        onChange={setFileState}
+      />
+      <Button
+        type="primary"
+        htmlType="submit"
+        loading={mutation.isPending}
+        disabled={fileState.active && !fileState.payload}
+      >
         创建业务表草稿
       </Button>
     </form>

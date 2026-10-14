@@ -885,8 +885,20 @@
             "nullable": true,
             "type": "string"
           },
+          "initialFields": {
+            "items": {
+              "$ref": "#/components/schemas/InitialFieldDefinitionDto"
+            },
+            "maxItems": 40,
+            "minItems": 1,
+            "type": "array"
+          },
           "name": {
             "example": "销售线索",
+            "type": "string"
+          },
+          "titleFieldKey": {
+            "description": "Required when initialFields is provided.",
             "type": "string"
           }
         },
@@ -2311,6 +2323,66 @@
           }
         },
         "required": ["rows"],
+        "type": "object"
+      },
+      "InitialFieldDefinitionDto": {
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/FieldConfigDto"
+          },
+          "defaultValue": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "fieldKey": {
+            "example": "customer_name",
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "type": {
+            "enum": [
+              "TEXT",
+              "TEXTAREA",
+              "PHONE",
+              "EMAIL",
+              "NUMBER",
+              "MONEY",
+              "DATE",
+              "DATETIME",
+              "SINGLE_SELECT",
+              "MULTI_SELECT",
+              "BOOLEAN"
+            ],
+            "type": "string"
+          },
+          "validation": {
+            "$ref": "#/components/schemas/FieldValidationDto"
+          }
+        },
+        "required": ["fieldKey", "label", "required", "type"],
         "type": "object"
       },
       "InvitationActionResponseDto": {
