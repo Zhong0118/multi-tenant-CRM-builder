@@ -42,6 +42,8 @@ export const RECORDS_ID_GENERATOR = Symbol('RECORDS_ID_GENERATOR');
 type RequestMeta = RecordRequestMeta;
 
 export interface RecordResponse {
+  inPublicPool: boolean;
+  ownershipExpiresAt: string | null;
   id: string;
   recordNo: string;
   ownerMemberId: string | null;
@@ -149,6 +151,7 @@ export class RecordsService {
       page: number;
       limit: number;
       search?: string;
+      scope?: 'mine' | 'pool' | 'all';
       ownerMemberId?: string;
       filters?: string;
       sort: string;
@@ -167,6 +170,7 @@ export class RecordsService {
         resolved,
         store,
         input.ownerMemberId,
+        input.scope,
       );
       const query: RecordListQuery = {
         objectId: resolved.schema.object.id,
@@ -174,6 +178,7 @@ export class RecordsService {
         limit,
         search: input.search?.trim() || undefined,
         searchFieldKeys: searchableFieldKeys(resolved),
+        inPublicPool: input.scope === 'pool' ? true : undefined,
         ownerMemberId,
         filters: parseListFilters(input.filters, resolved, this.clock()),
         sort: parseListSort(input.sort, resolved),
@@ -246,6 +251,7 @@ export class RecordsService {
     objectCode: string,
     input: {
       search?: string;
+      scope?: 'mine' | 'pool' | 'all';
       ownerMemberId?: string;
       filters?: string;
       sort: string;
@@ -264,6 +270,7 @@ export class RecordsService {
         resolved,
         store,
         input.ownerMemberId,
+        input.scope,
       );
       const query: RecordListQuery = {
         objectId: resolved.schema.object.id,
@@ -271,6 +278,7 @@ export class RecordsService {
         limit: RECORD_EXPORT_MAX_ROWS + 1,
         search: input.search?.trim() || undefined,
         searchFieldKeys: searchableFieldKeys(resolved),
+        inPublicPool: input.scope === 'pool' ? true : undefined,
         ownerMemberId,
         filters: parseListFilters(input.filters, resolved, this.clock()),
         sort: parseListSort(input.sort, resolved),
@@ -1232,7 +1240,22 @@ async function resolveListOwner(
   resolved: ResolvedObjectSchema,
   store: RecordsStore,
   requested: string | undefined,
+  scope?: 'mine' | 'pool' | 'all',
 ): Promise<string | undefined> {
+  if (scope !== undefined && !['mine', 'pool', 'all'].includes(scope))
+    throw new ApiException('VALIDATION_FAILED', 400);
+  if (scope === 'pool') {
+    if (
+      !resolved.poolEnabled ||
+      !resolved.access.canRead ||
+      resolved.access.readScope === 'NONE'
+    )
+      throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+    return undefined;
+  }
+  if (scope === 'all' && resolved.access.readScope !== 'ALL')
+    throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+  if (scope === 'mine') return context.memberId;
   if (resolved.access.readScope === 'OWN') return context.memberId;
   if (resolved.access.readScope === 'NONE') {
     throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);

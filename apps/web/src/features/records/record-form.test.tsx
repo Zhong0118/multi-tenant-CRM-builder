@@ -86,6 +86,8 @@ function schema(
 const savedRecord = {
   id: "record-1",
   recordNo: "1",
+  inPublicPool: false,
+  ownershipExpiresAt: null,
   title: "百杰",
   ownerMemberId: "member-lin",
   values: { name: "百杰" },

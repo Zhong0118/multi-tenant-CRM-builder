@@ -65,6 +65,8 @@ const records = [
   {
     id: "record-1",
     recordNo: "1",
+    inPublicPool: false,
+    ownershipExpiresAt: null,
     title: "天际科技",
     ownerMemberId: "member-1",
     values: { lead_status: "new" },
@@ -75,6 +77,8 @@ const records = [
   {
     id: "record-2",
     recordNo: "2",
+    inPublicPool: false,
+    ownershipExpiresAt: null,
     title: "星云",
     ownerMemberId: "member-1",
     values: { lead_status: "new" },

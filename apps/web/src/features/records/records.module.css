@@ -618,3 +618,30 @@
     width: 100%;
   }
 }
+
+.poolTabs, .poolStatus, .poolSettings {
+  animation: poolEnter 180ms ease-out;
+}
+.poolActions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.poolActions :global(.ant-btn) {
+  transition: transform 160ms ease, background-color 160ms ease, opacity 160ms ease;
+}
+.poolActions :global(.ant-btn:hover) { transform: scale(1.03); }
+.poolActions :global(.ant-btn:active) { transform: scale(0.97); }
+.poolSettings, .poolSettings :global(.ant-select) { width: 100%; }
+.poolSettingRow { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+@keyframes poolEnter {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .poolTabs, .poolStatus, .poolSettings { animation: none; }
+  .poolActions :global(.ant-btn),
+  .poolActions :global(.ant-btn:hover),
+  .poolActions :global(.ant-btn:active) { transition: none; transform: none; }
+}

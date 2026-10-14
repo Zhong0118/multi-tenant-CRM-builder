@@ -13,6 +13,8 @@ import {
 } from './record-activity';
 
 export interface DynamicRecord {
+  inPublicPool?: boolean;
+  ownershipExpiresAt?: string | null;
   id: string;
   objectId: string;
   recordNo: bigint;
@@ -88,6 +90,7 @@ export type RecordListFieldSort = {
 };
 
 export interface RecordListQuery {
+  inPublicPool?: boolean;
   objectId: string;
   page: number;
   limit: number;
@@ -101,7 +104,12 @@ export interface RecordListQuery {
 
 export type RecordReadPredicate = Pick<
   RecordListQuery,
-  'objectId' | 'ownerMemberId' | 'filters' | 'search' | 'searchFieldKeys'
+  | 'objectId'
+  | 'ownerMemberId'
+  | 'filters'
+  | 'search'
+  | 'searchFieldKeys'
+  | 'inPublicPool'
 >;
 
 export interface RecordAggregateQuery {
@@ -470,6 +478,7 @@ class PrismaRecordsStore implements RecordsStore {
       objectId: query.objectId,
       deletedAt: null,
       ownerMemberId: query.ownerMemberId,
+      inPublicPool: query.inPublicPool,
       AND: [
         ...searchConditions(query.search, query.searchFieldKeys),
         ...query.filters.map(listFilterCondition),
@@ -701,6 +710,7 @@ class PrismaRecordsStore implements RecordsStore {
         id: input.recordId,
         tenantId: this.context.tenantId,
         version: input.expectedVersion,
+        ...(this.context.role === 'EMPLOYEE' ? { inPublicPool: false } : {}),
         deletedAt: null,
       },
       data: {
@@ -899,6 +909,8 @@ function fromPrismaActivity(activity: {
 }
 
 function fromPrismaRecord(record: {
+  inPublicPool?: boolean;
+  ownershipExpiresAt?: Date | null;
   id: string;
   objectId: string;
   recordNo: bigint;
@@ -917,6 +929,8 @@ function fromPrismaRecord(record: {
     objectId: record.objectId,
     recordNo: record.recordNo,
     ownerMemberId: record.ownerMemberId,
+    inPublicPool: record.inPublicPool ?? false,
+    ownershipExpiresAt: record.ownershipExpiresAt?.toISOString() ?? null,
     workflowStateKey: record.statusKey,
     title: record.title,
     values: jsonRecord(record.data),
@@ -1052,6 +1066,11 @@ function listWhereSql(
   if (query.ownerMemberId) {
     parts.push(
       Prisma.sql`${qualified ? Prisma.sql`r.owner_member_id` : Prisma.sql`owner_member_id`} = ${query.ownerMemberId}::uuid`,
+    );
+  }
+  if (query.inPublicPool !== undefined) {
+    parts.push(
+      Prisma.sql`${qualified ? Prisma.sql`r.in_public_pool` : Prisma.sql`in_public_pool`} = ${query.inPublicPool}`,
     );
   }
   if (query.search) {

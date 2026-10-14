@@ -10,6 +10,7 @@ export interface RecordQuery {
   limit: number;
   search?: string;
   ownerMemberId?: string;
+  scope?: "mine" | "pool" | "all";
   filters: RecordFilters;
   sort: RecordListSortField;
   direction: RecordSortDirection;
@@ -107,6 +108,7 @@ export function parseRecordQuery(
     search: search === "" ? undefined : search,
     ownerMemberId: ownerMemberId === "" ? undefined : ownerMemberId,
     filters,
+    scope: member(single(params.scope), ["mine", "pool", "all"] as const),
     sort: member(single(params.sort), allowedSorts) ?? defaults.sort,
     direction:
       member(single(params.direction), DIRECTIONS) ?? defaults.direction,
@@ -125,6 +127,7 @@ export function recordQuerySearch(
   if (query.page !== defaults.page) params.set("page", String(query.page));
   if (query.limit !== defaults.limit) params.set("limit", String(query.limit));
   if (query.search) params.set("search", query.search);
+  if (query.scope) params.set("scope", query.scope);
   if (query.ownerMemberId) params.set("ownerMemberId", query.ownerMemberId);
   const filters = recordFilterParameter(query.filters);
   if (filters) params.set("filters", filters);

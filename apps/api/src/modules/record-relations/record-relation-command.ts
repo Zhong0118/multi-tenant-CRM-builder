@@ -131,6 +131,8 @@ export async function checkRelationRecord(
     include: { object: true },
   });
   if (!record) throw new ApiException('RECORD_NOT_FOUND', 404);
+  if (lock && record.inPublicPool && context.role !== 'TENANT_ADMIN')
+    throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
   return record;
 }
 

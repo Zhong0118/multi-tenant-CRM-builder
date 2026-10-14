@@ -69,6 +69,7 @@ interface MemberRow {
 }
 
 interface RecordRow {
+  inPublicPool?: boolean;
   id: string;
   objectId: string;
   recordNo: bigint;
@@ -148,7 +149,7 @@ function createRepository(members: MemberRow[], record: RecordRow) {
     $queryRaw,
     record: {
       updateMany: (args: {
-        where: { id: string; version: number };
+        where: { id: string; version: number; inPublicPool?: boolean };
         data: {
           data: Record<string, unknown>;
           title: string;
@@ -159,6 +160,8 @@ function createRepository(members: MemberRow[], record: RecordRow) {
         if (
           args.where.id !== record.id ||
           args.where.version !== record.version ||
+          (args.where.inPublicPool !== undefined &&
+            (record.inPublicPool ?? false) !== args.where.inPublicPool) ||
           record.deletedAt !== null
         ) {
           return Promise.resolve({ count: 0 });
@@ -256,6 +259,20 @@ function patchOwnedBy(ownerMemberId: string | null) {
  *   (the update is applied instead of rejecting OWNER_INVALID).
  */
 describe('PrismaRecordsRepository transition vs ordinary-update owner policy', () => {
+  it('guards the final employee transition write against a public pool record', async () => {
+    const { repository, record } = createRepository(
+      [],
+      recordRow({ ownerMemberId: null, inPublicPool: true }),
+    );
+    const result = await repository.withTenant(
+      { ...actor, role: 'EMPLOYEE' },
+      (store) => store.applyTransition(patchOwnedBy(actor.memberId)),
+    );
+    expect(result).toBeNull();
+    expect(record.ownerMemberId).toBeNull();
+    expect(record.version).toBe(3);
+  });
+
   it('applyTransition advances a record whose current owner has been deactivated', async () => {
     const { repository, record, lockedMemberIds, updates, historyWrites } =
       createRepository(

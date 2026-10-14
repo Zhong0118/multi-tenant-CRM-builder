@@ -46,6 +46,7 @@ export class AttachmentsRepository {
     tx: Prisma.TransactionClient,
     c: TenantContext,
     s: AttachmentScope,
+    write = false,
   ) {
     const actors = await tx.$queryRaw<
       Array<{ role: string }>
@@ -53,9 +54,11 @@ export class AttachmentsRepository {
     if (!actors.length || actors[0].role !== c.role)
       throw new ApiException('WORKSPACE_FORBIDDEN', 403);
     const rows = await tx.$queryRaw<
-      Array<{ id: string }>
-    >`SELECT id FROM records WHERE tenant_id=${c.tenantId}::uuid AND object_id=${s.objectId}::uuid AND id=${s.recordId}::uuid AND deleted_at IS NULL AND (${s.ownerId ?? null}::uuid IS NULL OR owner_member_id=${s.ownerId ?? null}::uuid) FOR UPDATE`;
+      Array<{ id: string; inPublicPool: boolean }>
+    >`SELECT id, in_public_pool AS "inPublicPool" FROM records WHERE tenant_id=${c.tenantId}::uuid AND object_id=${s.objectId}::uuid AND id=${s.recordId}::uuid AND deleted_at IS NULL AND (${s.ownerId ?? null}::uuid IS NULL OR owner_member_id=${s.ownerId ?? null}::uuid) FOR UPDATE`;
     if (!rows.length) throw new ApiException('RECORD_NOT_FOUND', 404);
+    if (write && rows[0].inPublicPool && c.role !== 'TENANT_ADMIN')
+      throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
   }
   list(c: TenantContext, s: AttachmentScope) {
     return this.runner.withTenant(c, async (tx) => {
@@ -76,7 +79,7 @@ export class AttachmentsRepository {
     const id = randomUUID();
     const key = root ? attachmentStorageKey(c.tenantId, id) : undefined;
     const work = this.runner.withTenant(c, async (tx) => {
-      await this.lock(tx, c, s);
+      await this.lock(tx, c, s, true);
       const [quota] = await tx.$queryRaw<
         Array<{ count: number; bytes: number }>
       >`SELECT count(*)::int AS count,coalesce(sum(byte_size),0)::int AS bytes FROM record_attachments WHERE tenant_id=${c.tenantId}::uuid AND record_id=${s.recordId}::uuid AND deleted_at IS NULL`;
@@ -140,7 +143,7 @@ export class AttachmentsRepository {
   ) {
     const root = this.storageRoot();
     const storageKey = await this.runner.withTenant(c, async (tx) => {
-      await this.lock(tx, c, s);
+      await this.lock(tx, c, s, true);
       const [existing] = await tx.$queryRaw<
         Array<{ storageKey?: string }>
       >`SELECT storage_key AS "storageKey" FROM record_attachments WHERE id=${id}::uuid AND tenant_id=${c.tenantId}::uuid AND record_id=${s.recordId}::uuid AND deleted_at IS NULL FOR UPDATE`;

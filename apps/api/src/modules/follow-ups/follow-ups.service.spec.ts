@@ -101,6 +101,29 @@ describe('personal record follow-ups', () => {
     expect(repository.update).not.toHaveBeenCalled();
   });
 
+  it('rejects follow-up creation on pool records even with ALL update access', async () => {
+    const { service, repository, resolved } = fixture();
+    resolved.access.readScope = 'ALL';
+    resolved.access.updateScope = 'ALL';
+    repository.findRecord.mockResolvedValue({
+      id: 'record',
+      ownerMemberId: null,
+      inPublicPool: true,
+    });
+    await expect(
+      service.create(
+        context,
+        {
+          objectCode: 'leads',
+          recordId: 'record',
+          title: 'Call',
+          dueAt: '2026-12-01T00:00:00Z',
+        },
+        { requestId: 'test' },
+      ),
+    ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
+  });
+
   it('denies creating a follow-up on a record outside OWN scope', async () => {
     const { service, repository } = fixture();
     repository.findRecord.mockResolvedValue({

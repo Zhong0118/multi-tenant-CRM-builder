@@ -65,6 +65,7 @@ export interface RuntimeObjectSchema {
 }
 
 export interface ResolvedObjectSchema {
+  poolEnabled?: boolean;
   schema: PublishedObjectSchema;
   access: EffectiveObjectAccess;
   visibleSchema: RuntimeObjectSchema;
@@ -179,6 +180,7 @@ export function resolvePublishedObjectRecord(
   return {
     schema,
     access,
+    poolEnabled: record.poolEnabled ?? false,
     visibleSchema: projectRuntimeSchema(schema, access),
   };
 }

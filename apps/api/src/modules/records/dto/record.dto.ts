@@ -22,6 +22,11 @@ import {
 } from 'class-validator';
 
 export class RecordListQueryDto {
+  @ApiPropertyOptional({ enum: ['mine', 'pool', 'all'] })
+  @IsOptional()
+  @IsIn(['mine', 'pool', 'all'])
+  scope?: 'mine' | 'pool' | 'all';
+
   @ApiPropertyOptional({ type: Number, minimum: 1, default: 1 })
   @IsOptional()
   @Type(() => Number)
@@ -156,6 +161,9 @@ export class DeleteRecordDto {
 }
 
 export class RecordResponseDto {
+  @ApiProperty() inPublicPool!: boolean;
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  ownershipExpiresAt!: string | null;
   @ApiProperty({ format: 'uuid' }) id!: string;
   @ApiProperty() recordNo!: string;
   @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })

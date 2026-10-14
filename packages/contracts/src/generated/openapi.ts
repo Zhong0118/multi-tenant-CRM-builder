@@ -1300,6 +1300,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/pool-config": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["RecordPoolController_getConfig"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["RecordPoolController_updateConfig"];
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records": {
     parameters: {
       query?: never;
@@ -1375,6 +1391,22 @@ export interface paths {
     put?: never;
     post?: never;
     delete: operations["AttachmentsController_remove"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/ownership": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["RecordPoolController_changeOwnership"];
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -2815,11 +2847,28 @@ export interface components {
       /** @enum {string} */
       status: "READY" | "CREATED" | "SKIPPED" | "FAILED";
     };
+    RecordOwnershipDto: {
+      /** @enum {string} */
+      action: "CLAIM" | "RELEASE" | "ASSIGN";
+      /** Format: uuid */
+      ownerMemberId?: string;
+      version: number;
+    };
+    RecordOwnershipResponseDto: {
+      /** Format: uuid */
+      recordId: string;
+      version: number;
+    };
     RecordPageResponseDto: {
       items: components["schemas"]["RecordResponseDto"][];
       limit: number;
       page: number;
       total: number;
+    };
+    RecordPoolConfigResponseDto: {
+      enabled: boolean;
+      ownershipTtlHours: number | null;
+      version: number;
     };
     RecordRelationDto: {
       id: string;
@@ -2832,8 +2881,11 @@ export interface components {
       createdAt: string;
       /** Format: uuid */
       id: string;
+      inPublicPool: boolean;
       /** Format: uuid */
       ownerMemberId?: string | null;
+      /** Format: date-time */
+      ownershipExpiresAt: string | null;
       recordNo: string;
       title: string;
       /** Format: date-time */
@@ -3323,6 +3375,11 @@ export interface components {
       values?: {
         [key: string]: unknown;
       };
+      version: number;
+    };
+    UpdateRecordPoolConfigDto: {
+      enabled: boolean;
+      ownershipTtlHours: number | null;
       version: number;
     };
     UserResponseDto: {
@@ -5673,6 +5730,54 @@ export interface operations {
       };
     };
   };
+  RecordPoolController_getConfig: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecordPoolConfigResponseDto"];
+        };
+      };
+    };
+  };
+  RecordPoolController_updateConfig: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateRecordPoolConfigDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecordPoolConfigResponseDto"];
+        };
+      };
+    };
+  };
   RecordsController_list: {
     parameters: {
       query?: {
@@ -5684,6 +5789,7 @@ export interface operations {
         limit?: number;
         ownerMemberId?: string;
         page?: number;
+        scope?: "mine" | "pool" | "all";
         search?: string;
         /** @description updatedAt、createdAt、recordNo，或当前业务表中可排序的已发布字段键。 */
         sort?: string;
@@ -5962,6 +6068,33 @@ export interface operations {
       };
     };
   };
+  RecordPoolController_changeOwnership: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RecordOwnershipDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecordOwnershipResponseDto"];
+        };
+      };
+    };
+  };
   RecordRelationsController_list: {
     parameters: {
       query?: never;
@@ -6150,6 +6283,7 @@ export interface operations {
         limit?: number;
         ownerMemberId?: string;
         page?: number;
+        scope?: "mine" | "pool" | "all";
         search?: string;
         /** @description updatedAt、createdAt、recordNo，或当前业务表中可排序的已发布字段键。 */
         sort?: string;

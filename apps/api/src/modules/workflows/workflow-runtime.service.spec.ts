@@ -495,6 +495,27 @@ function lastRecord(store: MemoryRecordsStore, recordId = 'record-1') {
 }
 
 describe('WorkflowRuntimeService.execute — §23 atomic execution', () => {
+  it('prevents ALL-scope employees from claiming pool records through workflow actions', async () => {
+    const { service, engine, store } = fixture({
+      configure: (schema) => {
+        schema.employeeAccess.updateScope = 'ALL';
+      },
+      record: { ownerMemberId: null, inPublicPool: true },
+    });
+    await expect(
+      service.execute(
+        employee,
+        'leads',
+        'record-1',
+        'mark-won',
+        { expectedVersion: 7 },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'WORKFLOW_TRANSITION_FORBIDDEN' });
+    expect(engine.calls).toEqual([]);
+    expect(lastRecord(store).version).toBe(7);
+  });
+
   it('runs the whole §23 sequence inside ONE tenant transaction', async () => {
     const { service, journal, repository } = fixture({
       actions: [CREATE_CUSTOMER, UPDATE_AMOUNT, ASSIGN_ACTOR],

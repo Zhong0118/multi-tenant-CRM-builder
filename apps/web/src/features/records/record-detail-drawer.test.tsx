@@ -80,6 +80,8 @@ const schema: RuntimeObjectSchema = {
 const record: RecordSummary = {
   id: "r1",
   recordNo: "1",
+  inPublicPool: false,
+  ownershipExpiresAt: null,
   title: "客户甲",
   version: 7,
   ownerMemberId: "m1",
@@ -466,4 +468,12 @@ describe("record detail reading hierarchy", () => {
       screen.queryByRole("button", { name: "编辑" }),
     ).not.toBeInTheDocument();
   });
+});
+
+it("does not expose editing or follow-up workflows in an employee pool preview", () => {
+  render(<QueryClientProvider client={new QueryClient()}><RecordDetailDrawer tenantCode="northwind" schema={{ ...schema, actions: { ...schema.actions, canUpdate: true } }} record={{ ...record, inPublicPool: true, ownershipExpiresAt: null, ownerMemberId: null }} initialEditing onClose={vi.fn()} onChanged={vi.fn()} /></QueryClientProvider>);
+  expect(screen.queryByRole("button", { name: "保存修改" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /^编\s*辑$/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "工作流" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "下一步跟进" })).not.toBeInTheDocument();
 });

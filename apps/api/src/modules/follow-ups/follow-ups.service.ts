@@ -293,6 +293,8 @@ export class FollowUpsService {
     ) {
       throw new ApiException('RECORD_NOT_FOUND', 404);
     }
+    if (record.inPublicPool && context.role !== 'TENANT_ADMIN')
+      throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
     return {
       objectId: resolved.schema.object.id,
       expectedRole: context.role,

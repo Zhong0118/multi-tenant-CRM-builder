@@ -379,6 +379,9 @@ model Session {
 }
 
 model ObjectDefinition {
+  poolEnabled             Boolean                   @default(false) @map("pool_enabled")
+  poolOwnershipTtlHours    Int?                      @map("pool_ownership_ttl_hours")
+  poolConfigVersion        Int                       @default(1) @map("pool_config_version")
   id                      String                    @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId                String                    @map("tenant_id") @db.Uuid
   name                    String                    @db.VarChar(100)
@@ -597,6 +600,8 @@ model RecordCounter {
 }
 
 model Record {
+  inPublicPool           Boolean                   @default(false) @map("in_public_pool")
+  ownershipExpiresAt     DateTime?                 @map("ownership_expires_at") @db.Timestamptz(3)
   id                     String                    @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId               String                    @map("tenant_id") @db.Uuid
   objectId               String                    @map("object_id") @db.Uuid

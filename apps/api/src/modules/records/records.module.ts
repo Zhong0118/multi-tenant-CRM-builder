@@ -5,6 +5,9 @@ import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { MembershipsModule } from '../memberships/memberships.module';
 import { ObjectsModule } from '../objects/objects.module';
+import { RecordPoolController } from './record-pool.controller';
+import { RecordPoolService } from './record-pool.service';
+import { RecordPoolScheduler } from './record-pool-scheduler';
 import { RecordsController } from './records.controller';
 import { PrismaRecordsRepository } from './records.repository';
 import {
@@ -16,9 +19,11 @@ import {
 
 @Module({
   imports: [AuditModule, AuthModule, MembershipsModule, ObjectsModule],
-  controllers: [RecordsController],
+  controllers: [RecordsController, RecordPoolController],
   providers: [
     RecordsService,
+    RecordPoolService,
+    RecordPoolScheduler,
     PrismaRecordsRepository,
     { provide: RECORDS_REPOSITORY, useExisting: PrismaRecordsRepository },
     { provide: RECORDS_CLOCK, useValue: () => new Date() },

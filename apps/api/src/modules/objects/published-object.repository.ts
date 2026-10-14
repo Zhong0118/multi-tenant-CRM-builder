@@ -6,6 +6,7 @@ import { DatabaseContextRunner } from '../../infrastructure/database/context-run
 import type { ObjectAccessPolicy } from './effective-access';
 
 export interface PublishedObjectRecord {
+  poolEnabled?: boolean;
   id: string;
   code: string;
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
@@ -89,6 +90,7 @@ export async function findPublishedObjectInTransaction(
 }
 
 function toPublishedRecord(object: {
+  poolEnabled?: boolean;
   id: string;
   code: string;
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
@@ -105,6 +107,7 @@ function toPublishedRecord(object: {
 }): PublishedObjectRecord {
   const override = object.permissions[0];
   return {
+    poolEnabled: object.poolEnabled ?? false,
     id: object.id,
     code: object.code,
     status: object.status,

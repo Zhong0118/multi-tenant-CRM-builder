@@ -4,6 +4,7 @@ import type { EffectiveObjectAccess } from '../objects/effective-access';
 import type { ResolvedObjectSchema } from '../objects/published-object.service';
 import {
   createRecordRelationCommand,
+  checkRelationRecord,
   recordRelationScope,
   resolveRecordRelationScope,
   type CreateRecordRelationCommandDeps,
@@ -182,6 +183,24 @@ async function rejection(promise: Promise<unknown>): Promise<ApiException> {
 }
 
 describe('createRecordRelationCommand', () => {
+  it('rejects relation writes to pool records for ALL-scope employees', async () => {
+    const tx = {
+      $queryRaw: () => Promise.resolve([{ id: LOW_RECORD }]),
+      record: {
+        findFirst: () =>
+          Promise.resolve({ id: LOW_RECORD, inPublicPool: true }),
+      },
+    };
+    await expect(
+      checkRelationRecord(
+        tx as never,
+        context,
+        { id: LOW_RECORD, objectId: 'object' },
+        true,
+      ),
+    ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
+  });
+
   it('writes the relation in the caller tenant transaction and audits there', async () => {
     const fixture = harness();
 
