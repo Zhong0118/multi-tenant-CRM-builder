@@ -298,6 +298,7 @@ export function ObjectDesigner({
     onSuccess: async () => {
       setPanelOpen(false);
       setAnalysis(undefined);
+      router.refresh();
       accept(await api.draft(tenantCode, objectId), "已发布");
     },
     onError: reject,

@@ -140,11 +140,8 @@ export function parsePublishedObjectRecord(
 ): PublishedObjectSchema {
   try {
     const schema = parsePublishedObjectSchema(record.configuration);
-    if (
-      schema.object.id !== record.id ||
-      schema.object.code !== record.code ||
-      schema.object.sortOrder !== record.sortOrder
-    ) {
+    // Draft ordering can change without republishing the immutable snapshot.
+    if (schema.object.id !== record.id || schema.object.code !== record.code) {
       throw new Error('Published snapshot does not match active object');
     }
     return schema;

@@ -6,7 +6,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ObjectDesigner } from "./object-designer";
 import { FieldEditorDrawer } from "./field-editor-drawer";
@@ -14,9 +14,9 @@ import type { ConfigurableFieldView } from "./configuration-view";
 import type { ObjectApi } from "./object-api";
 import type { ObjectDraft, ObjectDraftField } from "./object-types";
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
-}));
+const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => router }));
+beforeEach(() => vi.clearAllMocks());
 
 function field(overrides: Partial<ObjectDraftField>): ObjectDraftField {
   return {
@@ -518,6 +518,7 @@ describe("ObjectDesigner publication flow", () => {
     await waitFor(() =>
       expect(api.publish).toHaveBeenCalledWith("northwind", "object-1", 4),
     );
+    await waitFor(() => expect(router.refresh).toHaveBeenCalledTimes(1));
   });
 
   it("keeps the draft untouched and offers a reload when the version conflicts", async () => {
@@ -541,6 +542,7 @@ describe("ObjectDesigner publication flow", () => {
     expect(screen.getByRole("table", { name: "字段账本" })).toHaveTextContent(
       "customer_name",
     );
+    expect(router.refresh).not.toHaveBeenCalled();
   });
 });
 

@@ -133,6 +133,51 @@ function fixture() {
 }
 
 describe('PublishedObjectService', () => {
+  it.each([admin, employee])(
+    'keeps published navigation and runtime readable after draft reordering for $role',
+    async (context) => {
+      const { service, repository } = fixture();
+      const published = schema({
+        code: 'customers',
+        name: '客户',
+        sortOrder: 10,
+      });
+      repository.rows = [
+        row(published, { sortOrder: 20 }),
+        row(schema({ code: 'leads', name: '线索', sortOrder: 20 }), {
+          sortOrder: 10,
+        }),
+      ];
+
+      await expect(service.listAccessible(context)).resolves.toMatchObject([
+        { code: 'customers', sortOrder: 10 },
+        { code: 'leads', sortOrder: 20 },
+      ]);
+      await expect(
+        service.resolveRuntimeSchema(context, 'customers'),
+      ).resolves.toMatchObject({
+        visibleSchema: { object: { code: 'customers', sortOrder: 10 } },
+      });
+      expect(repository.rows[0].configuration).toEqual(published);
+    },
+  );
+
+  it.each(['id', 'code'] as const)(
+    'still rejects a publication attached to a different object %s',
+    async (key) => {
+      const { service, repository } = fixture();
+      const published = schema({
+        code: 'customers',
+        name: '客户',
+        sortOrder: 10,
+      });
+      repository.rows = [row(published, { [key]: 'different-object' })];
+      await expect(service.listAccessible(admin)).rejects.toMatchObject({
+        code: 'INTERNAL_ERROR',
+      });
+    },
+  );
+
   it('omits unpublished and archived objects from navigation', async () => {
     const { service, repository } = fixture();
     repository.rows = [
