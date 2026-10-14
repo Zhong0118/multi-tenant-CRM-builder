@@ -490,9 +490,7 @@ describe('PrismaRecordsStore.aggregateRecords', () => {
     expect(sql).toMatch(/r\.object_id = .*::uuid/);
     expect(sql).toMatch(/r\.deleted_at IS NULL/);
     expect(sql).toMatch(/r\.owner_member_id = .*::uuid/);
-    expect(sql).toContain(
-      "WHEN r.data ->> ? ~ '^-?[0-9]+([.][0-9]+)?$'",
-    );
+    expect(sql).toContain("WHEN r.data ->> ? ~ '^-?[0-9]+([.][0-9]+)?$'");
     expect(sql).toContain('THEN (r.data ->> ?)::numeric');
     expect(sql).toMatch(/ORDER BY count DESC/);
     expect(sql).toMatch(/LIMIT \?/);
@@ -526,5 +524,86 @@ describe('PrismaRecordsStore.aggregateRecords', () => {
     expect(queries[0]?.sql).toMatch(/COUNT\(\*\)/);
     expect(queries[0]?.sql).toMatch(/r\.deleted_at IS NULL/);
     expect(queries[0]?.sql).not.toMatch(/GROUP BY/);
+  });
+});
+
+describe('PrismaRecordsRepository import matching', () => {
+  function importRepository() {
+    const findFirst = jest.fn().mockResolvedValue({ id: 'duplicate-id' });
+    const $queryRaw = jest.fn().mockResolvedValue([]);
+    const transaction = {
+      $queryRawUnsafe: () => Promise.resolve([]),
+      $queryRaw,
+      record: { findFirst },
+    };
+    const database = {
+      transaction: (work: (client: unknown) => unknown) => work(transaction),
+    } as unknown as DatabaseService;
+    return {
+      repository: new PrismaRecordsRepository(
+        new DatabaseContextRunner(database),
+        {} as AuditService,
+      ),
+      findFirst,
+      $queryRaw,
+    };
+  }
+
+  it('queries a tenant/object/owner scoped exact JSON tuple without returning record contents', async () => {
+    const { repository, findFirst } = importRepository();
+    const result = await repository.withTenant(actor, (store) =>
+      store.findImportDuplicate({
+        objectId: OBJECT_ID,
+        ownerMemberId: OWNER_MEMBER_ID,
+        values: { email: 'a@example.com', is_vip: false },
+      }),
+    );
+    expect(result).toBe('duplicate-id');
+    expect(findFirst).toHaveBeenCalledWith({
+      where: {
+        tenantId: actor.tenantId,
+        objectId: OBJECT_ID,
+        ownerMemberId: OWNER_MEMBER_ID,
+        deletedAt: null,
+        AND: [
+          { data: { path: ['email'], equals: 'a@example.com' } },
+          { data: { path: ['is_vip'], equals: false } },
+        ],
+      },
+      select: { id: true },
+    });
+    findFirst.mockResolvedValueOnce(null);
+    expect(
+      await repository.withTenant(actor, (store) =>
+        store.findImportDuplicate({
+          objectId: OBJECT_ID,
+          values: { name: 'absent' },
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it('uses the same transaction lock for different importing members and a separate key for each tenant/object', async () => {
+    const { repository, $queryRaw } = importRepository();
+    await repository.withTenant(actor, (store) =>
+      store.lockImportMatching(OBJECT_ID),
+    );
+    await repository.withTenant(
+      { ...actor, memberId: 'another-member' },
+      (store) => store.lockImportMatching(OBJECT_ID),
+    );
+    await repository.withTenant({ ...actor, tenantId: 'tenant-b' }, (store) =>
+      store.lockImportMatching(OBJECT_ID),
+    );
+    await repository.withTenant(actor, (store) =>
+      store.lockImportMatching('other-object'),
+    );
+    const calls = $queryRaw.mock.calls as unknown as Array<
+      [TemplateStringsArray, string]
+    >;
+    expect(calls[0][0].join('?')).toContain('pg_advisory_xact_lock');
+    expect(calls[0][1]).toBe(calls[1][1]);
+    expect(calls[0][1]).not.toBe(calls[2][1]);
+    expect(calls[0][1]).not.toBe(calls[3][1]);
   });
 });

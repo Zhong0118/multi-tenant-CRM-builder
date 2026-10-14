@@ -240,6 +240,25 @@ class MemoryPublishedRepository implements PublishedObjectRepository {
 class MemoryRecordsStore implements RecordsStore {
   imports = new Map<string, string>();
   async lockImportBatch() {}
+  async lockImportMatching() {}
+  findImportDuplicate(query: {
+    objectId: string;
+    ownerMemberId?: string;
+    values: Record<string, unknown>;
+  }) {
+    return Promise.resolve(
+      this.records.find(
+        (record) =>
+          record.objectId === query.objectId &&
+          !record.deletedAt &&
+          (!query.ownerMemberId ||
+            record.ownerMemberId === query.ownerMemberId) &&
+          Object.entries(query.values).every(
+            ([key, value]) => record.values[key] === value,
+          ),
+      )?.id ?? null,
+    );
+  }
   findImportedRecordId(objectId: string, batchId: string, rowNumber: number) {
     return Promise.resolve(
       this.imports.get(`${objectId}:${batchId}:${rowNumber}`) ?? null,
@@ -782,10 +801,428 @@ describe('RecordsService', () => {
       },
       meta,
     );
-    expect(retry.items[0].record?.id).toBe(first.items[0].record?.id);
-    expect(retry.items[0].record?.title).toBe('One');
+    expect(retry.items[0]).toEqual({
+      rowNumber: 2,
+      status: 'SKIPPED',
+      reason: '该行已导入。',
+    });
+    expect(retry.created).toBe(1);
+    expect(retry).toMatchObject({ skipped: 1 });
     expect(store.records).toHaveLength(2);
     expect(retry.failed).toBe(0);
+  });
+
+  it.each([false, true])(
+    'remembers skipped business duplicates when retrying the same file without match fields (existing=%s)',
+    async (existing) => {
+      const { service, store } = fixture();
+      if (existing)
+        await create(service, employee, 'Original', undefined, {
+          email: 'same@example.com',
+        });
+      const rows = [
+        { rowNumber: 2, values: { name: 'One', email: 'same@example.com' } },
+        { rowNumber: 3, values: { name: 'Two', email: 'same@example.com' } },
+      ];
+      const first = await service.importRows(
+        employee,
+        'leads',
+        { batchId: 'same-file', matchFields: ['email'], rows },
+        meta,
+      );
+      expect(first.items.map((item) => item.status)).toEqual([
+        existing ? 'SKIPPED' : 'CREATED',
+        'SKIPPED',
+      ]);
+      store.records[0].deletedAt = '2026-10-14T00:00:00.000Z';
+      const retry = await service.importRows(
+        employee,
+        'leads',
+        { batchId: 'same-file', rows },
+        meta,
+      );
+      expect(retry).toMatchObject({ created: 0, skipped: 2, failed: 0 });
+      expect(retry.items.map((item) => item.status)).toEqual([
+        'SKIPPED',
+        'SKIPPED',
+      ]);
+      expect(store.records).toHaveLength(1);
+      expect(store.audits).toHaveLength(1);
+      expect(store.imports.size).toBe(2);
+      expect(retry.items.every((item) => item.record === undefined)).toBe(true);
+    },
+  );
+
+  it('does not remember preview duplicate rows in the import ledger', async () => {
+    const { service, store } = fixture();
+    await create(service, employee, 'Existing');
+    const result = await service.importRows(
+      employee,
+      'leads',
+      {
+        dryRun: true,
+        batchId: 'preview-duplicates',
+        matchFields: ['name'],
+        rows: [
+          { rowNumber: 2, values: { name: 'Existing' } },
+          { rowNumber: 3, values: { name: 'Ready' } },
+          { rowNumber: 4, values: { name: 'Ready' } },
+        ],
+      },
+      meta,
+    );
+    expect(result.items.map((item) => item.status)).toEqual([
+      'SKIPPED',
+      'READY',
+      'SKIPPED',
+    ]);
+    expect(store.imports.size).toBe(0);
+    expect(store.records).toHaveLength(1);
+    expect(store.audits).toHaveLength(1);
+  });
+
+  it('previews valid and invalid rows without records, audits, counters or import ledger writes', async () => {
+    const { service, store } = fixture();
+    const input = {
+      dryRun: true,
+      batchId: 'preview-batch',
+      rows: [
+        { rowNumber: 2, values: { name: 'Preview' } },
+        { rowNumber: 3, values: { name: 'Invalid', email: 'bad' } },
+      ],
+    };
+    const result = await service.importRows(employee, 'leads', input, meta);
+    expect(result).toMatchObject({
+      created: 0,
+      failed: 1,
+      items: [
+        { rowNumber: 2, status: 'READY' },
+        { rowNumber: 3, status: 'FAILED', error: { fields: ['email'] } },
+      ],
+    });
+    expect(store.records).toHaveLength(0);
+    expect(store.audits).toHaveLength(0);
+    expect(store.nextRecordNo).toBe(1n);
+    expect(store.imports.size).toBe(0);
+  });
+
+  it('skips retry ledger rows without reading a now-invisible record', async () => {
+    const { service, store } = fixture();
+    const input = {
+      batchId: 'retry-batch',
+      rows: [{ rowNumber: 2, values: { name: 'Original' } }],
+    };
+    await service.importRows(employee, 'leads', input, meta);
+    store.records[0].ownerMemberId = otherMemberId;
+    const find = jest.spyOn(store, 'findRecord');
+    const result = await service.importRows(employee, 'leads', input, meta);
+    expect(result).toMatchObject({ created: 0, skipped: 1, failed: 0 });
+    expect(result.items[0]).not.toHaveProperty('record');
+    expect(find).not.toHaveBeenCalled();
+    expect(store.audits).toHaveLength(1);
+  });
+
+  it.each([true, false])(
+    'deduplicates normalized composite keys within a batch (dryRun=%s)',
+    async (dryRun) => {
+      const { service, store } = fixture();
+      const input = {
+        dryRun,
+        matchFields: ['email', 'quote'],
+        rows: [
+          {
+            rowNumber: 2,
+            values: { name: 'First', email: 'SAME@example.com', quote: '01' },
+          },
+          {
+            rowNumber: 3,
+            values: {
+              name: 'Second',
+              email: 'same@example.com',
+              quote: '1.00',
+            },
+          },
+          {
+            rowNumber: 4,
+            values: { name: 'Third', email: 'same@example.com', quote: '2' },
+          },
+        ],
+      };
+      const result = await service.importRows(employee, 'leads', input, meta);
+      expect(result.items.map((item) => item.status)).toEqual([
+        dryRun ? 'READY' : 'CREATED',
+        'SKIPPED',
+        dryRun ? 'READY' : 'CREATED',
+      ]);
+      expect(store.records).toHaveLength(dryRun ? 0 : 2);
+    },
+  );
+
+  it('returns stable opaque matching keys across preview chunks after normalization and field reordering', async () => {
+    const { service, store } = fixture();
+    const first = await service.importRows(
+      employee,
+      'leads',
+      {
+        dryRun: true,
+        matchFields: ['email', 'quote'],
+        rows: [
+          {
+            rowNumber: 2,
+            values: { name: 'First', email: 'SAME@example.com', quote: '01' },
+          },
+        ],
+      },
+      meta,
+    );
+    const second = await service.importRows(
+      employee,
+      'leads',
+      {
+        dryRun: true,
+        matchFields: ['quote', 'email'],
+        rows: [
+          {
+            rowNumber: 502,
+            values: {
+              name: 'Second',
+              email: 'same@example.com',
+              quote: '1.00',
+            },
+          },
+        ],
+      },
+      meta,
+    );
+    const different = await service.importRows(
+      employee,
+      'leads',
+      {
+        dryRun: true,
+        matchFields: ['email', 'quote'],
+        rows: [
+          {
+            rowNumber: 503,
+            values: { name: 'Third', email: 'same@example.com', quote: '2.00' },
+          },
+        ],
+      },
+      meta,
+    );
+    expect(first.items[0]).toHaveProperty('status', 'READY');
+    const key: unknown = Reflect.get(first.items[0], 'matchKey');
+    expect(key).toEqual(expect.stringMatching(/^[a-f0-9]{64}$/));
+    expect(second.items[0]).toHaveProperty('matchKey', key);
+    expect(different.items[0]).not.toHaveProperty('matchKey', key);
+    expect(store.records).toHaveLength(0);
+    expect(first.items[0]).not.toHaveProperty('record');
+  });
+
+  it('emits matching keys only for READY rows with matching enabled', async () => {
+    const { service } = fixture();
+    const rows = [{ rowNumber: 2, values: { name: 'Same' } }];
+    const unmatched = await service.importRows(
+      employee,
+      'leads',
+      { dryRun: true, rows },
+      meta,
+    );
+    expect(unmatched.items[0]).not.toHaveProperty('matchKey');
+    const created = await service.importRows(
+      employee,
+      'leads',
+      { matchFields: ['name'], rows },
+      meta,
+    );
+    expect(created.items[0]).not.toHaveProperty('matchKey');
+    const skipped = await service.importRows(
+      employee,
+      'leads',
+      { dryRun: true, matchFields: ['name'], rows },
+      meta,
+    );
+    expect(skipped.items[0]).toHaveProperty('status', 'SKIPPED');
+    expect(skipped.items[0]).not.toHaveProperty('matchKey');
+    const failed = await service.importRows(
+      employee,
+      'leads',
+      {
+        dryRun: true,
+        matchFields: ['name'],
+        rows: [{ rowNumber: 3, values: { name: null } }],
+      },
+      meta,
+    );
+    expect(failed.items[0]).toHaveProperty('status', 'FAILED');
+    expect(failed.items[0]).not.toHaveProperty('matchKey');
+  });
+
+  it('matches across requests only in readable non-deleted records and checks actual import again', async () => {
+    const { service, store } = fixture();
+    await create(service, admin, 'Hidden', otherMemberId, {
+      email: 'hidden@example.com',
+    });
+    const rows = [
+      {
+        rowNumber: 2,
+        values: { name: 'Incoming', email: 'hidden@example.com' },
+      },
+    ];
+    const input = { rows, matchFields: ['email'], dryRun: true };
+    expect(
+      (await service.importRows(employee, 'leads', input, meta)).items[0]
+        .status,
+    ).toBe('READY');
+    expect(
+      (
+        await service.importRows(
+          employee,
+          'leads',
+          { ...input, dryRun: false, batchId: 'one' },
+          meta,
+        )
+      ).created,
+    ).toBe(1);
+    const duplicate = await service.importRows(
+      employee,
+      'leads',
+      { ...input, dryRun: false, batchId: 'two' },
+      meta,
+    );
+    expect(duplicate).toMatchObject({ created: 0, skipped: 1 });
+    expect(duplicate.items[0]).not.toHaveProperty('record');
+    store.records[1].deletedAt = '2026-10-14T00:00:00.000Z';
+    expect(
+      (await service.importRows(employee, 'leads', input, meta)).items[0]
+        .status,
+    ).toBe('READY');
+  });
+
+  it.each([
+    ['secret'],
+    ['assignee'],
+    ['tags'],
+    ['missing'],
+    ['name', 'name'],
+    ['name', 'email', 'score', 'quote'],
+  ])(
+    'rejects invalid matching fields %j before writing',
+    async (...matchFields) => {
+      const { service, store } = fixture();
+      const input = {
+        matchFields,
+        rows: [{ rowNumber: 2, values: { name: 'Test' } }],
+      };
+      await expect(
+        service.importRows(employee, 'leads', input, meta),
+      ).rejects.toMatchObject({ code: 'RECORD_IMPORT_INVALID' });
+      expect(store.records).toHaveLength(0);
+    },
+  );
+
+  it('requires submitted match fields and rejects empty match values per row', async () => {
+    const { service } = fixture();
+    const unmapped = {
+      matchFields: ['email'],
+      rows: [{ rowNumber: 2, values: { name: 'Missing' } }],
+    };
+    await expect(
+      service.importRows(employee, 'leads', unmapped, meta),
+    ).rejects.toMatchObject({ code: 'RECORD_IMPORT_INVALID' });
+    const empty = {
+      matchFields: ['email'],
+      rows: [{ rowNumber: 2, values: { name: 'Empty', email: null } }],
+    };
+    expect(
+      (await service.importRows(employee, 'leads', empty, meta)).items[0],
+    ).toMatchObject({ status: 'FAILED', error: { fields: ['email'] } });
+  });
+
+  it('revalidates after preview when another import creates the matching record', async () => {
+    const { service } = fixture();
+    const input = {
+      rows: [{ rowNumber: 2, values: { name: 'Same' } }],
+      matchFields: ['name'],
+    };
+    expect(
+      (
+        await service.importRows(
+          employee,
+          'leads',
+          { ...input, dryRun: true },
+          meta,
+        )
+      ).items[0].status,
+    ).toBe('READY');
+    await create(service, employee, 'Same');
+    expect(
+      (await service.importRows(employee, 'leads', input, meta)).items[0]
+        .status,
+    ).toBe('SKIPPED');
+  });
+
+  it('rejects read-only match fields even when submitted', async () => {
+    const { service, publishedRepository } = fixture();
+    (
+      publishedRepository.record.configuration as PublishedObjectSchema
+    ).employeeAccess.fields.email = 'READ_ONLY';
+    await expect(
+      service.importRows(
+        employee,
+        'leads',
+        {
+          matchFields: ['email'],
+          rows: [
+            { rowNumber: 2, values: { name: 'Test', email: 'a@example.com' } },
+          ],
+        },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'RECORD_IMPORT_INVALID' });
+  });
+
+  it('keeps zero and false as match values instead of treating them as empty', async () => {
+    const { service } = fixture();
+    const input = {
+      dryRun: true,
+      matchFields: ['score', 'is_vip'],
+      rows: [
+        { rowNumber: 2, values: { name: 'One', score: 0, is_vip: false } },
+        { rowNumber: 3, values: { name: 'Two', score: 0, is_vip: false } },
+      ],
+    };
+    expect(
+      (await service.importRows(employee, 'leads', input, meta)).items.map(
+        (item) => item.status,
+      ),
+    ).toEqual(['READY', 'SKIPPED']);
+  });
+
+  it('rejects over 500 rows before any writes', async () => {
+    const { service, store } = fixture();
+    const rows = Array.from({ length: 501 }, (_, index) => ({
+      rowNumber: index + 2,
+      values: { name: 'Test' },
+    }));
+    await expect(
+      service.importRows(employee, 'leads', { rows }, meta),
+    ).rejects.toMatchObject({ code: 'RECORD_IMPORT_INVALID' });
+    expect(store.records).toHaveLength(0);
+  });
+
+  it('forbids matching without read access', async () => {
+    const { service, publishedRepository } = fixture();
+    const config = publishedRepository.record
+      .configuration as PublishedObjectSchema;
+    config.employeeAccess.canRead = false;
+    config.employeeAccess.readScope = 'NONE';
+    const input = {
+      matchFields: ['name'],
+      rows: [{ rowNumber: 2, values: { name: 'Test' } }],
+    };
+    await expect(
+      service.importRows(employee, 'leads', input, meta),
+    ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
   });
 
   it('preserves another owner when an employee with UPDATE ALL edits values', async () => {

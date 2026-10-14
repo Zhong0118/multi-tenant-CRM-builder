@@ -69,17 +69,22 @@ export interface RecordImportRow {
 
 export interface RecordImportInput {
   batchId?: string;
+  dryRun?: boolean;
+  matchFields?: string[];
   rows: RecordImportRow[];
 }
 
 export interface RecordImportResultItem {
   rowNumber: number;
-  status: "CREATED" | "FAILED";
+  status: "READY" | "CREATED" | "SKIPPED" | "FAILED";
+  reason?: string;
+  matchKey?: string;
   record?: RecordSummary;
   error?: { code: string; message: string; fields?: string[] };
 }
 
 export interface RecordImportResult {
+  skipped?: number;
   created: number;
   failed: number;
   items: RecordImportResultItem[];

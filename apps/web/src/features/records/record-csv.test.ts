@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { coerceImportValue, parseCsv, suggestFieldKey } from "./record-csv";
+import {
+  coerceImportValue,
+  decodeRecordCsv,
+  parseCsv,
+  suggestFieldKey,
+} from "./record-csv";
 
 describe("parseCsv", () => {
   it("strips a BOM and keeps quoted commas", () => {
@@ -41,4 +46,93 @@ describe("coerceImportValue", () => {
       "2026-08-21T10:30:00.000Z",
     );
   });
+});
+
+// Byte fixtures cover the file boundary; decoding must not silently replace Chinese text.
+describe("decodeRecordCsv", () => {
+  it("reads UTF-8 with or without a BOM", () => {
+    for (const text of ["姓名\n张三", "\uFEFF姓名\n张三"]) {
+      expect(decodeRecordCsv(new TextEncoder().encode(text), "auto")).toEqual({
+        text: "姓名\n张三",
+        encoding: "UTF-8",
+      });
+    }
+  });
+  it("automatically detects legacy Chinese bytes", () => {
+    const bytes = new Uint8Array([
+      110, 97, 109, 101, 10, 0xd5, 0xc5, 0xc8, 0xfd,
+    ]);
+    expect(decodeRecordCsv(bytes, "auto").text).toBe("name\n张三");
+    expect(() => decodeRecordCsv(bytes, "utf-8")).toThrow(/无法按 UTF-8 读取/);
+    expect(decodeRecordCsv(bytes, "gb18030")).toEqual({
+      text: "name\n张三",
+      encoding: "GBK / GB18030",
+    });
+  });
+  it("recognizes UTF-16 BOMs but rejects damaged or already-replaced text", () => {
+    expect(
+      decodeRecordCsv(
+        new Uint8Array([
+          255, 254, 0xd3, 0x59, 0x0d, 0x54, 10, 0, 0x20, 0x5f, 0x09, 0x4e,
+        ]),
+        "auto",
+      ).text,
+    ).toBe("姓名\n张三");
+    expect(
+      decodeRecordCsv(
+        new Uint8Array([
+          254, 255, 0x59, 0xd3, 0x54, 0x0d, 0, 10, 0x5f, 0x20, 0x4e, 0x09,
+        ]),
+        "auto",
+      ).text,
+    ).toBe("姓名\n张三");
+    expect(() =>
+      decodeRecordCsv(new Uint8Array([255, 254, 1]), "auto"),
+    ).toThrow();
+    expect(() =>
+      decodeRecordCsv(new TextEncoder().encode("name\n�"), "auto"),
+    ).toThrow(/替代字符/);
+    expect(() => decodeRecordCsv(new Uint8Array([0, 1, 2]), "auto")).toThrow(
+      /不是有效的 CSV 文本/,
+    );
+  });
+});
+
+it("maps multi-select labels separated by Chinese semicolons to existing keys", () => {
+  expect(
+    coerceImportValue("MULTI_SELECT", "重点；已联系", [
+      { key: "important", label: "重点" },
+      { key: "contacted", label: "已联系" },
+    ]),
+  ).toEqual(["important", "contacted"]);
+  expect(
+    coerceImportValue("SINGLE_SELECT", "未知状态", [
+      { key: "new", label: "待联系" },
+    ]),
+  ).toBe("未知状态");
+});
+
+it("does not guess between duplicate field labels and gives explicit keys priority", () => {
+  const fields = [
+    { fieldKey: "n7", label: "当前状态" },
+    { fieldKey: "b7", label: "当前状态" },
+    { fieldKey: "other", label: "n7" },
+  ];
+  expect(suggestFieldKey("当前状态", fields)).toBeUndefined();
+  expect(suggestFieldKey("n7", fields)).toBe("n7");
+  expect(suggestFieldKey("B7", fields)).toBe("b7");
+});
+
+it("imports a date-only Excel value into DATETIME as midnight", () => {
+  expect(coerceImportValue("DATETIME", "2026-06-27", [])).toBe(
+    "2026-06-27T00:00:00.000Z",
+  );
+});
+
+it("tracks source lines through empty lines and quoted multiline cells", () => {
+  const parsed = parseCsv('姓名,备注\n\n张三,"第一行\n第二行"\n李四,备注', {
+    trackRowNumbers: true,
+  });
+  expect(parsed.rowNumbers).toEqual([3, 5]);
+  expect(parsed.rows[0]).toEqual(["张三", "第一行\n第二行"]);
 });

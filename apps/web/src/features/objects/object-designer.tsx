@@ -16,7 +16,7 @@ import {
 } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { StatusTag } from "@/components/workbench/status-tag";
@@ -50,6 +50,7 @@ import {
   type RecordSortDirection,
   type RecordSortField,
 } from "./object-types";
+import { EmployeePermissionComparison } from "./employee-permission-comparison";
 import { PublicationPanel } from "./publication-panel";
 import { WorkflowDesigner } from "./workflow-designer";
 
@@ -98,6 +99,7 @@ export function ObjectDesigner({
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
   const [conflicted, setConflicted] = useState(false);
+  const [permissionsDirty, setPermissionsDirty] = useState(false);
 
   const objectId = draft.object.id;
   const archived = draft.object.status === "ARCHIVED";
@@ -277,7 +279,8 @@ export function ObjectDesigner({
         ),
         ...input,
       }),
-    onSuccess: (next) => accept(next, "员工权限已保存"),
+    onSuccess: (next) =>
+      accept(next, "员工权限已保存到草稿，尚未生效。请检查并发布变更。"),
     onError: reject,
   });
 
@@ -373,7 +376,9 @@ export function ObjectDesigner({
                 </Button>
                 <Button
                   type="primary"
-                  disabled={archived}
+                  disabled={
+                    archived || permissionsDirty || savePermissions.isPending
+                  }
                   loading={analyze.isPending}
                   onClick={() => analyze.mutate()}
                 >
@@ -512,8 +517,13 @@ export function ObjectDesigner({
 
           {section === "permissions" ? (
             <PermissionsSection
+              key={draft.object.version}
               draft={draft}
+              tenantCode={tenantCode}
               saving={savePermissions.isPending}
+              publishing={analyze.isPending || publish.isPending}
+              onDirtyChange={setPermissionsDirty}
+              onPublish={() => analyze.mutate()}
               onSave={(input) => savePermissions.mutate(input)}
             />
           ) : null}
@@ -584,7 +594,7 @@ export function ObjectDesigner({
         analysis={analysis}
         loading={analyze.isPending}
         publishing={publish.isPending}
-        error={conflicted ? error : undefined}
+        error={error}
         onConfirm={() => publish.mutate()}
         onClose={() => setPanelOpen(false)}
       />
@@ -1054,11 +1064,19 @@ function DefaultViewSection({
 
 function PermissionsSection({
   draft,
+  tenantCode,
   saving,
+  publishing,
+  onDirtyChange,
+  onPublish,
   onSave,
 }: {
   draft: ObjectDraft;
+  tenantCode: string;
   saving: boolean;
+  publishing: boolean;
+  onDirtyChange: (dirty: boolean) => void;
+  onPublish: () => void;
   onSave: (input: {
     canCreate: boolean;
     canRead: boolean;
@@ -1078,6 +1096,17 @@ function PermissionsSection({
     current?.updateScope ?? "NONE",
   );
 
+  const dirty =
+    canCreate !== (current?.canCreate ?? false) ||
+    canRead !== (current?.canRead ?? false) ||
+    canUpdate !== (current?.canUpdate ?? false) ||
+    readScope !== (current?.readScope ?? "NONE") ||
+    updateScope !== (current?.updateScope ?? "NONE");
+  useEffect(() => {
+    onDirtyChange(dirty);
+  }, [dirty, onDirtyChange]);
+  useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
+
   return (
     <section className={styles.panel}>
       <div className={styles.sectionHeading}>
@@ -1087,9 +1116,24 @@ function PermissionsSection({
         </Typography.Text>
       </div>
       <Space orientation="vertical" style={{ width: "100%" }}>
+        <EmployeePermissionComparison draft={draft} />
+        <Typography.Paragraph type="secondary">
+          此处展示员工默认权限。成员单独授权优先于这里的默认权限，可在
+          <Link href={`/workspace/${tenantCode}/members`}>成员管理</Link>
+          中查看。
+        </Typography.Paragraph>
+        <h3>编辑草稿权限</h3>
+        {dirty ? (
+          <Alert
+            type="warning"
+            showIcon
+            title="有未保存的权限修改，请先保存再发布。"
+          />
+        ) : null}
         <Form component={false} layout="vertical">
           <Form.Item label="可以新建记录" htmlFor="employee-can-create">
             <Switch
+              disabled={saving}
               id="employee-can-create"
               aria-label="可以新建记录"
               checked={canCreate}
@@ -1098,6 +1142,7 @@ function PermissionsSection({
           </Form.Item>
           <Form.Item label="可以查看记录" htmlFor="employee-can-read">
             <Switch
+              disabled={saving}
               id="employee-can-read"
               aria-label="可以查看记录"
               checked={canRead}
@@ -1112,6 +1157,7 @@ function PermissionsSection({
           </Form.Item>
           <Form.Item label="可以修改记录" htmlFor="employee-can-update">
             <Switch
+              disabled={saving}
               id="employee-can-update"
               aria-label="可以修改记录"
               checked={canUpdate}
@@ -1123,6 +1169,7 @@ function PermissionsSection({
           </Form.Item>
           <Form.Item label="查看范围" htmlFor="employee-read-scope">
             <Select
+              disabled={saving}
               id="employee-read-scope"
               value={readScope}
               onChange={setReadScope}
@@ -1131,6 +1178,7 @@ function PermissionsSection({
           </Form.Item>
           <Form.Item label="修改范围" htmlFor="employee-update-scope">
             <Select
+              disabled={saving}
               id="employee-update-scope"
               value={updateScope}
               onChange={setUpdateScope}
@@ -1139,7 +1187,7 @@ function PermissionsSection({
           </Form.Item>
         </Form>
         <Typography.Text type="secondary">
-          本切片不授予员工删除权限，软删除仅公司管理员可执行。
+          员工不能删除记录，删除操作由公司管理员执行。
         </Typography.Text>
         <div className={styles.sectionActions}>
           <Button
@@ -1150,6 +1198,13 @@ function PermissionsSection({
             }
           >
             保存员工权限
+          </Button>
+          <Button
+            onClick={onPublish}
+            loading={publishing}
+            disabled={dirty || saving || draft.object.status === "ARCHIVED"}
+          >
+            检查并发布
           </Button>
           <Typography.Text type="secondary">
             仅保存本节到对象草稿；发布后员工端生效。

@@ -1,20 +1,63 @@
-export const RECORD_IMPORT_MAX_ROWS = 500;
+export const RECORD_IMPORT_MAX_ROWS = 10000;
 export const RECORD_IMPORT_MAX_COLUMNS = 40;
 
 export { parseCsv, type ParsedCsv } from "@/lib/csv";
+
+export type CsvEncoding = "auto" | "utf-8" | "gb18030";
+
+export function decodeRecordCsv(bytes: Uint8Array, encoding: CsvEncoding) {
+  let decoder: string = encoding === "auto" ? "utf-8" : encoding;
+  if (encoding === "auto") {
+    if (bytes[0] === 0xff && bytes[1] === 0xfe) decoder = "utf-16le";
+    if (bytes[0] === 0xfe && bytes[1] === 0xff) decoder = "utf-16be";
+  }
+
+  let text: string;
+  try {
+    text = new TextDecoder(decoder, { fatal: true }).decode(bytes);
+  } catch {
+    if (
+      encoding === "auto" &&
+      decoder === "utf-8" &&
+      !(bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf)
+    ) {
+      return decodeRecordCsv(bytes, "gb18030");
+    }
+    const label =
+      decoder === "gb18030" ? "GBK / GB18030" : decoder.toUpperCase();
+    throw new Error(
+      `无法按 ${label} 读取。请尝试 GBK / GB18030，或在 Excel 中另存为 CSV UTF-8 后重选文件。`,
+    );
+  }
+  if (text.includes("\uFFFD")) {
+    throw new Error(
+      "文件含有乱码替代字符（�），请从未损坏的原表重新导出 CSV UTF-8。",
+    );
+  }
+  if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(text)) {
+    throw new Error(
+      "文件不是有效的 CSV 文本。请另存为 CSV UTF-8，不要直接修改 Excel 文件后缀。",
+    );
+  }
+  return {
+    text,
+    encoding: decoder === "gb18030" ? "GBK / GB18030" : decoder.toUpperCase(),
+  };
+}
 
 export function suggestFieldKey(
   header: string,
   fields: Array<{ fieldKey: string; label: string }>,
 ): string | undefined {
   const normalized = header.trim().toLowerCase();
-  return fields.find(
-    (field) =>
-      field.fieldKey === header.trim() ||
-      field.label === header.trim() ||
-      field.fieldKey.toLowerCase() === normalized ||
-      field.label.toLowerCase() === normalized,
-  )?.fieldKey;
+  const byKey = fields.find(
+    (field) => field.fieldKey.toLowerCase() === normalized,
+  );
+  if (byKey) return byKey.fieldKey;
+  const byLabel = fields.filter(
+    (field) => field.label.toLowerCase() === normalized,
+  );
+  return byLabel.length === 1 ? byLabel[0].fieldKey : undefined;
 }
 
 export function coerceImportValue(
@@ -69,6 +112,8 @@ function coerceDate(value: string): string {
 }
 
 function coerceDateTime(value: string): string {
+  const dateOnly = coerceDate(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return `${dateOnly}T00:00:00.000Z`;
   if (/^\d{4}-\d{2}-\d{2}T/.test(value)) return value;
   const match =
     /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/.exec(value);

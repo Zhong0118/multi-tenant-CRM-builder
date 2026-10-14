@@ -4,6 +4,7 @@ import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { collectActionTargetObjectCodes } from '../actions/action-publication.policy';
 import type { AuditEvent } from '../audit/audit-event';
+import { analyzeObjectConfiguration } from './object-configuration.policy';
 import {
   analyzePublication,
   compilePublication,
@@ -51,6 +52,16 @@ interface FieldCreateInput {
   validation: Record<string, JsonValue>;
   config: Record<string, JsonValue>;
   isSystem: boolean;
+}
+
+interface InitialFieldInput {
+  fieldKey: string;
+  label: string;
+  type: DraftFieldType;
+  required: boolean;
+  defaultValue?: JsonValue;
+  validation?: object;
+  config?: object;
 }
 
 interface FieldMutationInput {
@@ -112,7 +123,13 @@ export class ObjectsService {
 
   async create(
     context: TenantContext,
-    input: { name: string; code: string; icon?: string | null },
+    input: {
+      name: string;
+      code: string;
+      icon?: string | null;
+      initialFields?: InitialFieldInput[];
+      titleFieldKey?: string;
+    },
     meta: RequestMeta,
   ): Promise<ObjectDraft> {
     assertTenantAdmin(context);
@@ -144,8 +161,97 @@ export class ObjectsService {
         activeRecordCount: 0,
       };
 
+      if (input.initialFields !== undefined) {
+        if (
+          !Array.isArray(input.initialFields) ||
+          input.initialFields.length < 1 ||
+          input.initialFields.length > 40
+        ) {
+          throw validationError(
+            'initialFields',
+            '初始字段数量必须为 1–40 个。',
+          );
+        }
+        if (!input.titleFieldKey) {
+          throw validationError('titleFieldKey', '请选择标题字段。');
+        }
+        draft.object.titleFieldKey = normalizeFieldKey(input.titleFieldKey);
+        const fieldKeys = new Set<string>();
+        draft.fields = input.initialFields.map((field, index) => {
+          const fieldKey = normalizeFieldKey(field.fieldKey);
+          if (fieldKeys.has(fieldKey)) {
+            throw validationError('initialFields', '字段键必须保持唯一。');
+          }
+          fieldKeys.add(fieldKey);
+          if (!field.label.trim()) {
+            throw validationError('initialFields', '字段名称不能为空。');
+          }
+          if (field.type === 'MEMBER' || field.type === 'ATTACHMENT') {
+            throw validationError(
+              'initialFields',
+              '初始字段不支持成员或附件类型。',
+            );
+          }
+          const config = toJsonRecord(field.config ?? {});
+          if (Array.isArray(config.options) && config.options.length > 100) {
+            throw validationError(
+              'initialFields',
+              '每个字段最多支持 100 个选项。',
+            );
+          }
+          return {
+            id: this.idGenerator(),
+            fieldKey,
+            label: field.label.trim(),
+            type: field.type,
+            required: field.required,
+            defaultValue: field.defaultValue ?? null,
+            validation: toJsonRecord(field.validation ?? {}),
+            config,
+            sortOrder: (index + 1) * 10,
+            isSystem: false,
+            status: 'ACTIVE',
+          };
+        });
+        draft.defaultView = {
+          code: 'default',
+          name: '全部记录',
+          columnFieldKeys: draft.fields.map((field) => field.fieldKey),
+          sort: { field: 'updatedAt', direction: 'desc' },
+        };
+        draft.employeeAccess = {
+          canCreate: false,
+          canRead: false,
+          canUpdate: false,
+          canDelete: false,
+          readScope: 'NONE',
+          updateScope: 'NONE',
+          fields: Object.fromEntries(
+            draft.fields.map((field) => [field.fieldKey, 'HIDDEN']),
+          ),
+        };
+        // A new draft intentionally keeps employees out. Its required hidden
+        // fields are reviewed when configuring permissions before publication.
+        const blocking = analyzeObjectConfiguration(draft).blocking.filter(
+          (issue) => issue.code !== 'REQUIRED_FIELD_HIDDEN',
+        );
+        if (blocking.length > 0) {
+          throw validationError(
+            'initialFields',
+            blocking.map((issue) => issue.message).join('；'),
+          );
+        }
+      }
+
       try {
-        const created = await store.createObject(draft);
+        let created = await store.createObject(draft);
+        if (input.initialFields !== undefined) {
+          const saved = await store.saveObject(draft, draft.object.version, {
+            bumpVersion: false,
+          });
+          if (!saved) throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
+          created = saved;
+        }
         await store.appendAudit(
           auditEvent(context, meta, 'object.created', created.object.id, {
             name: created.object.name,
@@ -656,6 +762,12 @@ function validationError(field: string, message: string): ApiException {
   return new ApiException('VALIDATION_FAILED', 400, {
     fieldErrors: { [field]: [message] },
   });
+}
+
+function toJsonRecord(value: object): Record<string, JsonValue> {
+  // DTO class instances contain omitted properties with undefined values.
+  // Match the JSON shape validated and stored by the existing field endpoints.
+  return JSON.parse(JSON.stringify(value)) as Record<string, JsonValue>;
 }
 
 function assignFieldMutation(

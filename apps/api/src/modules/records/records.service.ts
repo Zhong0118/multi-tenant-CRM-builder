@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
@@ -6,6 +7,7 @@ import { isSearchableFieldType } from '../objects/object-schema';
 import type { ResolvedObjectSchema } from '../objects/published-object.service';
 import { PublishedObjectService } from '../objects/published-object.service';
 import {
+  assertRecordMutation,
   createRecordCommand,
   createRecordActivityCommand,
   projectActivity,
@@ -116,12 +118,15 @@ export interface RecordImportRowInput {
 
 export interface RecordImportResultItem {
   rowNumber: number;
-  status: 'CREATED' | 'FAILED';
+  status: 'READY' | 'CREATED' | 'SKIPPED' | 'FAILED';
+  reason?: string;
+  matchKey?: string;
   record?: RecordResponse;
   error?: { code: string; message: string; fields?: string[] };
 }
 
 export interface RecordImportResponse {
+  skipped?: number;
   created: number;
   failed: number;
   items: RecordImportResultItem[];
@@ -375,7 +380,12 @@ export class RecordsService {
   async importRows(
     context: TenantContext,
     objectCode: string,
-    input: { rows: RecordImportRowInput[]; batchId?: string },
+    input: {
+      rows: RecordImportRowInput[];
+      batchId?: string;
+      dryRun?: boolean;
+      matchFields?: string[];
+    },
     meta: RequestMeta,
   ): Promise<RecordImportResponse> {
     const resolved = await this.publishedObjects.resolveRuntimeSchema(
@@ -392,15 +402,50 @@ export class RecordsService {
         },
       });
     }
+    const matchFields = input.matchFields ?? [];
+    if (
+      matchFields.length > 3 ||
+      new Set(matchFields).size !== matchFields.length ||
+      matchFields.some((key) => {
+        const field = resolved.schema.fields.find(
+          (candidate) => candidate.fieldKey === key,
+        );
+        return (
+          !field ||
+          resolved.access.fields[key] !== 'EDIT' ||
+          field.type === 'MEMBER' ||
+          field.type === 'MULTI_SELECT' ||
+          input.rows.some(
+            (row) => !Object.prototype.hasOwnProperty.call(row.values, key),
+          )
+        );
+      })
+    ) {
+      throw new ApiException('RECORD_IMPORT_INVALID', 400, {
+        fieldErrors: {
+          matchFields: ['请选择最多三个已映射的可编辑标量字段。'],
+        },
+      });
+    }
+    if (matchFields.length && !resolved.access.canRead) {
+      throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+    }
     return this.repository.withTenant(context, async (store) => {
       const objectId = resolved.schema.object.id;
+      const ownerMemberId = matchFields.length
+        ? await resolveListOwner(context, resolved, store, undefined)
+        : undefined;
       if (
         new Set(input.rows.map((row) => row.rowNumber)).size !==
         input.rows.length
       ) {
         throw new ApiException('RECORD_IMPORT_INVALID', 400);
       }
-      if (input.batchId) await store.lockImportBatch(objectId, input.batchId);
+      if (!input.dryRun) {
+        if (matchFields.length) await store.lockImportMatching(objectId);
+        if (input.batchId) await store.lockImportBatch(objectId, input.batchId);
+      }
+      const seen = new Set<string>();
       const items: RecordImportResultItem[] = [];
       for (const row of input.rows) {
         try {
@@ -412,17 +457,70 @@ export class RecordsService {
               )
             : null;
           if (previousId) {
-            const previous = await requireVisibleRecord(
-              store,
-              resolved,
-              context,
-              previousId,
-              'READ',
-            );
             items.push({
               rowNumber: row.rowNumber,
-              status: 'CREATED',
-              record: projectRecord(previous, resolved),
+              status: 'SKIPPED',
+              reason: '该行已导入。',
+            });
+            continue;
+          }
+          const normalized = await assertRecordMutation({
+            mode: 'CREATE',
+            resolved,
+            submitted: row.values,
+            memberExists: (id) => store.memberExists(id),
+          });
+          const matchValues: Record<string, string | number | boolean> = {};
+          for (const key of matchFields) {
+            const value = normalized.values[key];
+            if (value === null || value === undefined || value === '') {
+              throw new ApiException('FIELD_REQUIRED', 400, {
+                fieldErrors: { [key]: ['查重字段不能为空。'] },
+              });
+            }
+            matchValues[key] = value as string | number | boolean;
+          }
+          const matchKey = JSON.stringify(
+            [...matchFields].sort().map((key) => [key, matchValues[key]]),
+          );
+          const duplicateId = matchFields.length
+            ? await store.findImportDuplicate({
+                objectId,
+                ownerMemberId,
+                values: matchValues,
+              })
+            : null;
+          if (
+            duplicateId ||
+            (input.dryRun && matchFields.length && seen.has(matchKey))
+          ) {
+            if (!input.dryRun && input.batchId && duplicateId) {
+              await store.saveImportedRecordId(
+                objectId,
+                input.batchId,
+                row.rowNumber,
+                duplicateId,
+              );
+            }
+            items.push({
+              rowNumber: row.rowNumber,
+              status: 'SKIPPED',
+              reason: '查重字段与已有记录或文件内其他行重复。',
+            });
+            continue;
+          }
+          if (input.dryRun) {
+            seen.add(matchKey);
+            items.push({
+              rowNumber: row.rowNumber,
+              status: 'READY',
+              ...(matchFields.length
+                ? {
+                    matchKey: createHash('sha256')
+                      .update(matchKey)
+                      .digest('hex'),
+                  }
+                : {}),
             });
             continue;
           }
@@ -464,6 +562,7 @@ export class RecordsService {
         }
       }
       return {
+        skipped: items.filter((item) => item.status === 'SKIPPED').length,
         created: items.filter((item) => item.status === 'CREATED').length,
         failed: items.filter((item) => item.status === 'FAILED').length,
         items,

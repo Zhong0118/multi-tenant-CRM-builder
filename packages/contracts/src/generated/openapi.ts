@@ -1835,8 +1835,11 @@ export interface components {
       /** @example leads */
       code: string;
       icon?: string | null;
+      initialFields?: components["schemas"]["InitialFieldDefinitionDto"][];
       /** @example 销售线索 */
       name: string;
+      /** @description Required when initialFields is provided. */
+      titleFieldKey?: string;
     };
     CreatePlatformTenantDto: {
       code: string;
@@ -2295,7 +2298,42 @@ export interface components {
        * @description 稳定的文件批次 ID，重试时复用以避免重复创建。
        */
       batchId?: string;
+      /** @description 仅校验和查重，不创建记录。 */
+      dryRun?: boolean;
+      matchFields?: string[];
       rows: components["schemas"]["ImportRecordRowDto"][];
+    };
+    InitialFieldDefinitionDto: {
+      config?: components["schemas"]["FieldConfigDto"];
+      defaultValue?:
+        | (
+            | string
+            | number
+            | boolean
+            | unknown[]
+            | {
+                [key: string]: unknown;
+              }
+          )
+        | null;
+      /** @example customer_name */
+      fieldKey: string;
+      label: string;
+      required: boolean;
+      /** @enum {string} */
+      type:
+        | "TEXT"
+        | "TEXTAREA"
+        | "PHONE"
+        | "EMAIL"
+        | "NUMBER"
+        | "MONEY"
+        | "DATE"
+        | "DATETIME"
+        | "SINGLE_SELECT"
+        | "MULTI_SELECT"
+        | "BOOLEAN";
+      validation?: components["schemas"]["FieldValidationDto"];
     };
     InvitationActionResponseDto: {
       /** @example true */
@@ -2476,6 +2514,8 @@ export interface components {
         components["schemas"]["ObjectDraftEmployeeAccessResponseDto"] | null;
       fields: components["schemas"]["ObjectDraftFieldResponseDto"][];
       object: components["schemas"]["ObjectDraftObjectResponseDto"];
+      publishedEmployeeAccess:
+        components["schemas"]["PublishedEmployeeAccessResponseDto"] | null;
     };
     ObjectOrderDto: {
       items: components["schemas"]["ObjectOrderItemDto"][];
@@ -2639,6 +2679,24 @@ export interface components {
     PublishDashboardDto: {
       expectedVersion: number;
     };
+    PublishedEmployeeAccessResponseDto: {
+      canCreate: boolean;
+      /** @enum {boolean} */
+      canDelete: false;
+      canRead: boolean;
+      canUpdate: boolean;
+      fields: components["schemas"]["PublishedEmployeeFieldAccessResponseDto"][];
+      /** @enum {string} */
+      readScope: "ALL" | "OWN" | "NONE";
+      /** @enum {string} */
+      updateScope: "ALL" | "OWN" | "NONE";
+    };
+    PublishedEmployeeFieldAccessResponseDto: {
+      /** @enum {string} */
+      access: "EDIT" | "READ_ONLY" | "HIDDEN";
+      fieldKey: string;
+      label: string;
+    };
     PublishedFieldResponseDto: {
       /** @enum {string} */
       access: "EDIT" | "READ_ONLY";
@@ -2745,13 +2803,17 @@ export interface components {
       created: number;
       failed: number;
       items: components["schemas"]["RecordImportResultItemDto"][];
+      skipped?: number;
     };
     RecordImportResultItemDto: {
       error?: components["schemas"]["RecordImportErrorDto"];
+      /** @description 仅预检 READY 行返回的规范化查重元组 SHA-256，用于跨批次文件内查重。 */
+      matchKey?: string;
+      reason?: string;
       record?: components["schemas"]["RecordResponseDto"];
       rowNumber: number;
       /** @enum {string} */
-      status: "CREATED" | "FAILED";
+      status: "READY" | "CREATED" | "SKIPPED" | "FAILED";
     };
     RecordPageResponseDto: {
       items: components["schemas"]["RecordResponseDto"][];

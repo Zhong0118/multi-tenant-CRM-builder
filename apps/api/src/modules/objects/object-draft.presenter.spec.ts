@@ -117,6 +117,45 @@ describe('toObjectDraftResponse', () => {
     expect(response.defaultView).not.toHaveProperty('searchFieldKeys');
   });
 
+  it('keeps published employee defaults separate from saved draft permissions', () => {
+    const base = draft();
+    const response = toObjectDraftResponse(
+      draft({
+        employeeAccess: {
+          ...base.employeeAccess!,
+          canRead: false,
+          readScope: 'NONE',
+        },
+        activeSchema: publishedSchema({
+          employeeAccess: {
+            ...base.activeSchema!.employeeAccess,
+            fields: {},
+          },
+        }),
+      }),
+    );
+
+    expect(response.employeeAccess?.canRead).toBe(false);
+    expect(response.publishedEmployeeAccess).toEqual({
+      canCreate: true,
+      canRead: true,
+      canUpdate: true,
+      canDelete: false,
+      readScope: 'OWN',
+      updateScope: 'OWN',
+      fields: [
+        { fieldKey: 'customer_name', label: '客户名称', access: 'HIDDEN' },
+      ],
+    });
+  });
+
+  it('returns no published permissions before the first publication', () => {
+    expect(
+      toObjectDraftResponse(draft({ activeSchema: null }))
+        .publishedEmployeeAccess,
+    ).toBeNull();
+  });
+
   it('exposes configured searchFieldKeys on the designer default view', () => {
     const response = toObjectDraftResponse(
       draft({

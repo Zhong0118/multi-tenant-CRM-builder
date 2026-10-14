@@ -2,10 +2,13 @@ import { Type } from 'class-transformer';
 import {
   ApiProperty,
   ApiPropertyOptional,
+  OmitType,
   type ApiPropertyOptions,
 } from '@nestjs/swagger';
 import {
   Allow,
+  ArrayMaxSize,
+  ArrayMinSize,
   ArrayUnique,
   Equals,
   IsArray,
@@ -22,6 +25,7 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 
@@ -87,6 +91,31 @@ export class CreateObjectDefinitionDto {
   @IsString()
   @MaxLength(64)
   icon?: string | null;
+
+  @ApiPropertyOptional({
+    type: () => InitialFieldDefinitionDto,
+    isArray: true,
+    minItems: 1,
+    maxItems: 40,
+  })
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(40)
+  @ValidateNested({ each: true })
+  @Type(() => InitialFieldDefinitionDto)
+  initialFields?: InitialFieldDefinitionDto[];
+
+  @ApiPropertyOptional({
+    description: 'Required when initialFields is provided.',
+  })
+  @ValidateIf(
+    (object: CreateObjectDefinitionDto) =>
+      object.initialFields !== undefined || object.titleFieldKey !== undefined,
+  )
+  @Matches(/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/)
+  @MaxLength(64)
+  titleFieldKey?: string;
 }
 
 export class UpdateObjectDefinitionDto extends ExpectedVersionDto {
@@ -254,6 +283,17 @@ export class CreateFieldDefinitionDto extends ExpectedVersionDto {
   @ApiPropertyOptional({ type: Boolean, default: false })
   @IsBoolean()
   isSystem = false;
+}
+
+const INITIAL_FIELD_TYPES = FIELD_TYPES.filter((type) => type !== 'MEMBER');
+
+export class InitialFieldDefinitionDto extends OmitType(
+  CreateFieldDefinitionDto,
+  ['expectedVersion', 'isSystem', 'type'] as const,
+) {
+  @ApiProperty({ enum: INITIAL_FIELD_TYPES })
+  @IsIn(INITIAL_FIELD_TYPES)
+  type!: (typeof INITIAL_FIELD_TYPES)[number];
 }
 
 export class UpdateFieldDefinitionDto extends ExpectedVersionDto {
@@ -489,6 +529,18 @@ export class ObjectDraftEmployeeAccessResponseDto {
   updateScope!: 'ALL' | 'OWN' | 'NONE';
 }
 
+export class PublishedEmployeeFieldAccessResponseDto {
+  @ApiProperty() fieldKey!: string;
+  @ApiProperty() label!: string;
+  @ApiProperty({ enum: ['EDIT', 'READ_ONLY', 'HIDDEN'] })
+  access!: 'EDIT' | 'READ_ONLY' | 'HIDDEN';
+}
+
+export class PublishedEmployeeAccessResponseDto extends ObjectDraftEmployeeAccessResponseDto {
+  @ApiProperty({ type: PublishedEmployeeFieldAccessResponseDto, isArray: true })
+  fields!: PublishedEmployeeFieldAccessResponseDto[];
+}
+
 export class ObjectDraftResponseDto {
   @ApiProperty({ type: ObjectDraftObjectResponseDto })
   object!: ObjectDraftObjectResponseDto;
@@ -504,6 +556,8 @@ export class ObjectDraftResponseDto {
     nullable: true,
   })
   employeeAccess!: ObjectDraftEmployeeAccessResponseDto | null;
+  @ApiProperty({ type: PublishedEmployeeAccessResponseDto, nullable: true })
+  publishedEmployeeAccess!: PublishedEmployeeAccessResponseDto | null;
   @ApiProperty() activeRecordCount!: number;
 }
 

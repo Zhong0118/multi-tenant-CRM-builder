@@ -549,7 +549,7 @@ export function RecordList({
                     ? [
                         {
                           key: "import",
-                          label: "导入 CSV",
+                          label: "导入 Excel / CSV",
                           onClick: () => setImportOpen(true),
                         },
                       ]
@@ -1032,7 +1032,6 @@ export function RecordList({
           api={api}
           onClose={() => setImportOpen(false)}
           onCompleted={async () => {
-            setImportOpen(false);
             await records.refetch();
             router.refresh();
           }}

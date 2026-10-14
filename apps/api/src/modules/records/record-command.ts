@@ -456,7 +456,7 @@ export async function resolveUpdateOwner(
   return requested;
 }
 
-async function assertRecordMutation(input: {
+export async function assertRecordMutation(input: {
   mode: 'CREATE' | 'UPDATE';
   resolved: ResolvedObjectSchema;
   submitted: Record<string, unknown>;

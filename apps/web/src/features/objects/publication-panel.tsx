@@ -52,7 +52,7 @@ export function PublicationPanel({
           key="confirm"
           type="primary"
           loading={publishing}
-          disabled={blocked || loading || Boolean(error)}
+          disabled={!analysis || blocked || loading || Boolean(error)}
           onClick={onConfirm}
         >
           确认发布
@@ -68,6 +68,9 @@ export function PublicationPanel({
 
       {analysis && !loading ? (
         <>
+          <Typography.Paragraph>
+            本次发布会应用此业务表全部已保存的配置，包括员工默认权限。
+          </Typography.Paragraph>
           {analysis.blocking.length > 0 ? (
             <IssueGroup
               label="必须先解决"
@@ -86,7 +89,7 @@ export function PublicationPanel({
             <ChangeGroup changes={analysis.changes} />
           ) : (
             <Typography.Paragraph type="secondary">
-              本次发布没有配置变更。
+              本次没有字段结构变更；权限等其他已保存配置仍会随本次发布生效。
             </Typography.Paragraph>
           )}
         </>

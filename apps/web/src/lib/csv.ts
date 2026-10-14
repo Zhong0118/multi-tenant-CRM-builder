@@ -1,19 +1,28 @@
 export interface ParsedCsv {
   headers: string[];
   rows: string[][];
+  rowNumbers?: number[];
 }
 
 export function parseCsv(
   text: string,
-  options: { delimiter?: "," | "\t"; strictColumnCount?: boolean } = {},
+  options: {
+    delimiter?: "," | "\t";
+    strictColumnCount?: boolean;
+    trackRowNumbers?: boolean;
+  } = {},
 ): ParsedCsv {
   const source = text.replace(/^\uFEFF/, "");
   const rows: string[][] = [];
+  const rowNumbers: number[] = [];
+  let line = 1;
+  let rowLine = 1;
   let row: string[] = [];
   let cell = "";
   let quoted = false;
   for (let index = 0; index < source.length; index += 1) {
     const char = source[index];
+    if (char === "\n") line += 1;
     if (quoted) {
       if (char === '"') {
         if (source[index + 1] === '"') {
@@ -39,7 +48,11 @@ export function parseCsv(
     if (char === "\n") {
       if (cell.endsWith("\r")) cell = cell.slice(0, -1);
       row.push(cell);
-      if (row.some((value) => value.trim() !== "")) rows.push(row);
+      if (row.some((value) => value.trim() !== "")) {
+        rows.push(row);
+        rowNumbers.push(rowLine);
+      }
+      rowLine = line;
       row = [];
       cell = "";
       continue;
@@ -49,12 +62,16 @@ export function parseCsv(
   if (quoted) throw new Error("CSV_UNCLOSED_QUOTE");
   if (cell.length > 0 || row.length > 0) {
     row.push(cell);
-    if (row.some((value) => value.trim() !== "")) rows.push(row);
+    if (row.some((value) => value.trim() !== "")) {
+      rows.push(row);
+      rowNumbers.push(rowLine);
+    }
   }
   if (rows.length === 0) return { headers: [], rows: [] };
   const headers = rows[0].map((header) => header.trim());
   return {
     headers,
+    ...(options.trackRowNumbers ? { rowNumbers: rowNumbers.slice(1) } : {}),
     rows: rows.slice(1).map((values) => {
       if (options.strictColumnCount && values.length > headers.length)
         throw new Error("名单列数与表头不一致");

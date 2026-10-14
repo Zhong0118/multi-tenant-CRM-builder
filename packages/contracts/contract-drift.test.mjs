@@ -185,6 +185,7 @@ test("types every object configuration response the designer consumes", async ()
     "employeeAccess",
     "fields",
     "object",
+    "publishedEmployeeAccess",
   ]);
 
   // The designer reads derived facts, never the raw published snapshot, so the

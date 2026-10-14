@@ -1,7 +1,7 @@
+import { webcrypto } from "node:crypto";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import type { RuntimeObjectSchema } from "@/features/objects/object-types";
 
@@ -76,24 +76,166 @@ const schema = {
   scopes: { read: "ALL", update: "ALL" },
 } as RuntimeObjectSchema;
 
-function recordApi(overrides: Partial<RecordApi> = {}): RecordApi {
+beforeAll(() =>
+  Object.defineProperty(globalThis.crypto, "subtle", {
+    configurable: true,
+    value: webcrypto.subtle,
+  }),
+);
+function recordApi(): RecordApi {
   return {
-    list: vi.fn(),
-    create: vi.fn(),
-    detail: vi.fn(),
-    update: vi.fn(),
-    remove: vi.fn(),
-    listActivities: vi.fn(),
-    createActivity: vi.fn(),
-    export: vi.fn(),
-    batchUpdate: vi.fn(),
-    importRows: vi.fn().mockResolvedValue({
-      created: 1,
+    importRows: vi.fn<RecordApi["importRows"]>(
+      async (_tenant, _object, input) => ({
+        created: input.dryRun ? 0 : input.rows.length,
+        failed: 0,
+        skipped: 0,
+        items: input.rows.map((row) => ({
+          rowNumber: row.rowNumber,
+          status: input.dryRun ? "READY" : "CREATED",
+        })),
+      }),
+    ),
+  } as unknown as RecordApi;
+}
+function setup(api = recordApi(), objectSchema = schema) {
+  const onCompleted = vi.fn();
+  const onClose = vi.fn();
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  render(
+    <QueryClientProvider client={client}>
+      <RecordImportDrawer
+        tenantCode="northwind"
+        schema={objectSchema}
+        api={api}
+        onCompleted={onCompleted}
+        onClose={onClose}
+      />
+    </QueryClientProvider>,
+  );
+  return { api, onCompleted, onClose };
+}
+function chooseFile(content: BlobPart, name = "records.csv") {
+  fireEvent.change(screen.getByLabelText("选择 Excel 或 CSV 文件"), {
+    target: { files: [new File([content], name)] },
+  });
+}
+async function checkAndImport() {
+  fireEvent.click(screen.getByRole("button", { name: "检查数据" }));
+  fireEvent.click(await screen.findByRole("button", { name: /确认导入/ }));
+}
+describe("RecordImportDrawer", () => {
+  it("checks without writing then imports coerced fields and retains the result", async () => {
+    const { api, onCompleted } = setup();
+    chooseFile("姓名,线索状态,备注\n张三,待联系,忽略");
+    await screen.findByText("1 行 · 3 列");
+    await checkAndImport();
+    await screen.findByText(/成功 1 行，跳过 0 行，失败 0 行/);
+    expect(api.importRows).toHaveBeenCalledTimes(2);
+    const calls = vi.mocked(api.importRows).mock.calls;
+    expect(calls[0][2]).toMatchObject({
+      dryRun: true,
+      rows: [{ rowNumber: 2, values: { name: "张三", lead_status: "new" } }],
+    });
+    expect(calls[1][2]).toMatchObject({
+      dryRun: false,
+      batchId: calls[0][2].batchId,
+    });
+    expect(screen.getByLabelText("映射 姓名")).toBeDisabled();
+    expect(onCompleted).toHaveBeenCalled();
+  });
+  it("automatically reads GBK and blocks already damaged text", async () => {
+    const { api } = setup();
+    chooseFile(new Uint8Array([110, 97, 109, 101, 10, 0xd5, 0xc5, 0xc8, 0xfd]));
+    await screen.findByText("张三");
+    expect(screen.getByText(/当前按 GBK/)).toBeInTheDocument();
+    chooseFile("姓名\n����");
+    await screen.findByText(/乱码替代字符/);
+    expect(screen.getByRole("button", { name: "检查数据" })).toBeDisabled();
+    expect(api.importRows).not.toHaveBeenCalled();
+  });
+  it("blocks extra columns, duplicate mappings and missing required fields", async () => {
+    setup();
+    chooseFile("姓名\n张三,不能丢");
+    await screen.findByText(/数据列数超过表头/);
+    chooseFile("姓名,name\n张三,李四");
+    await screen.findByText(/多个文件列映射到了同一字段/);
+    expect(screen.getByRole("button", { name: "检查数据" })).toBeDisabled();
+    chooseFile("名字,备注\n张三,未知");
+    await screen.findByText(/尚未映射必填字段：姓名/);
+    expect(screen.getByRole("button", { name: "检查数据" })).toBeDisabled();
+  });
+  it("rejects fake Excel and explains read failures", async () => {
+    setup();
+    chooseFile("not excel", "test.xlsx");
+    await screen.findByText(/文件格式与后缀不符/);
+    const file = new File([], "broken.csv");
+    Object.defineProperty(file, "arrayBuffer", {
+      value: () =>
+        Promise.reject(new DOMException("unreadable", "NotReadableError")),
+    });
+    fireEvent.change(screen.getByLabelText("选择 Excel 或 CSV 文件"), {
+      target: { files: [file] },
+    });
+    await screen.findByText("文件读取失败，请重新选择文件。");
+  });
+  it("ignores a late read from an old file", async () => {
+    setup();
+    let finish!: (b: ArrayBuffer) => void;
+    const file = new File([], "old.csv");
+    Object.defineProperty(file, "arrayBuffer", {
+      value: () =>
+        new Promise<ArrayBuffer>((resolve) => {
+          finish = resolve;
+        }),
+    });
+    fireEvent.change(screen.getByLabelText("选择 Excel 或 CSV 文件"), {
+      target: { files: [file] },
+    });
+    chooseFile("姓名\n新文件");
+    await screen.findByText("新文件");
+    finish(new TextEncoder().encode("姓名\n旧文件").buffer);
+    await waitFor(() =>
+      expect(screen.queryByText("旧文件")).not.toBeInTheDocument(),
+    );
+  });
+  it("retains successful batches after a network interruption and checks only remaining rows", async () => {
+    const api = recordApi();
+    const original = vi.mocked(api.importRows).getMockImplementation()!;
+    let writes = 0;
+    vi.mocked(api.importRows).mockImplementation(async (...args) => {
+      if (!args[2].dryRun && ++writes === 2) throw new Error("network");
+      return original(...args);
+    });
+    setup(api);
+    chooseFile(
+      "姓名\n" + Array.from({ length: 201 }, (_, i) => `员工${i}`).join("\n"),
+    );
+    await screen.findByText("201 行 · 1 列");
+    await checkAndImport();
+    await screen.findByText(/成功 100 行/);
+    await screen.findByText(/请求中断/);
+    fireEvent.click(await screen.findByRole("button", { name: "检查剩余行" }));
+    await screen.findByRole("button", { name: /确认导入/ });
+    const lastChecks = vi.mocked(api.importRows).mock.calls.slice(5);
+    expect(
+      lastChecks
+        .flatMap(([, , input]) => input.rows)
+        .map((row) => row.rowNumber),
+    ).toEqual(Array.from({ length: 101 }, (_, i) => i + 102));
+    fireEvent.click(screen.getByRole("button", { name: /确认导入/ }));
+    await screen.findByText(/成功 201 行，跳过 0 行，失败 0 行/);
+  });
+  it("keeps server validation failures visible and offers a failure download", async () => {
+    const api = recordApi();
+    vi.mocked(api.importRows).mockResolvedValue({
+      created: 0,
       failed: 1,
+      skipped: 0,
       items: [
-        { rowNumber: 2, status: "CREATED" },
         {
-          rowNumber: 3,
+          rowNumber: 2,
           status: "FAILED",
           error: {
             code: "FIELD_INVALID",
@@ -102,73 +244,40 @@ function recordApi(overrides: Partial<RecordApi> = {}): RecordApi {
           },
         },
       ],
-    }),
-    ...overrides,
-  };
-}
-
-function renderDrawer(ui: ReactNode) {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={client}>{ui}</QueryClientProvider>,
-  );
-}
-
-describe("RecordImportDrawer", () => {
-  it("maps CSV headers to writable fields and imports coerced values", async () => {
-    const api = recordApi();
-    const onCompleted = vi.fn();
-    renderDrawer(
-      <RecordImportDrawer
-        tenantCode="northwind"
-        schema={schema}
-        api={api}
-        onClose={vi.fn()}
-        onCompleted={onCompleted}
-      />,
-    );
-
-    const file = new File(
-      ["姓名,线索状态,备注\n天际,待联系,忽略\n星云,坏状态,忽略\n"],
-      "leads.csv",
-      { type: "text/csv" },
-    );
-    fireEvent.change(screen.getByLabelText("选择 CSV 文件"), {
-      target: { files: [file] },
     });
-
-    expect(await screen.findByText("2 行 · 3 列")).toBeInTheDocument();
-    expect(screen.queryByText("跟进人")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "导入映射后的行" }));
-
-    await waitFor(() =>
-      expect(api.importRows).toHaveBeenCalledWith("northwind", "customers", {
-        batchId: expect.any(String),
-        rows: [
-          {
-            rowNumber: 2,
-            values: { name: "天际", lead_status: "new" },
-          },
-          {
-            rowNumber: 3,
-            values: { name: "星云", lead_status: "坏状态" },
-          },
-        ],
-      }),
-    );
-    expect(screen.getByText(/成功 1 行，失败 1 行/)).toBeInTheDocument();
+    setup(api);
+    chooseFile("姓名,线索状态\n张三,错误");
+    await screen.findByText("1 行 · 2 列");
+    fireEvent.click(screen.getByRole("button", { name: "检查数据" }));
+    await screen.findByText(/第 2 行：线索状态：字段值无效/);
+    expect(screen.getByRole("button", { name: "下载失败明细" })).toBeEnabled();
     expect(
-      screen.getByText(/第 3 行：线索状态：字段值无效。/),
-    ).toBeInTheDocument();
-    expect(onCompleted).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: /重试失败行/ }));
-    await waitFor(() => expect(api.importRows).toHaveBeenCalledTimes(2));
-    const calls = vi.mocked(api.importRows).mock.calls;
-    expect(calls[1][2].batchId).toBe(calls[0][2].batchId);
-    expect(calls[1][2].rows).toEqual([
-      { rowNumber: 3, values: { name: "星云", lead_status: "坏状态" } },
-    ]);
+      screen.queryByRole("button", { name: /确认导入/ }),
+    ).not.toBeInTheDocument();
+    expect(api.importRows).toHaveBeenCalledTimes(1);
   });
+});
+
+it("requires manual mapping for same-name fields and displays their types", async () => {
+  setup(recordApi(), {
+    ...schema,
+    fields: [
+      ...schema.fields,
+      {
+        ...schema.fields[1],
+        id: "f-text-status",
+        fieldKey: "text_status",
+        type: "TEXT",
+      },
+    ],
+  });
+  chooseFile("姓名,线索状态\n张三,待联系");
+  await screen.findByText(/将跳过 1 列：线索状态/);
+  fireEvent.mouseDown(screen.getByLabelText("映射 线索状态"));
+  expect(
+    screen.getByText("线索状态 · 单选（lead_status）"),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText("线索状态 · 文本（text_status）"),
+  ).toBeInTheDocument();
 });

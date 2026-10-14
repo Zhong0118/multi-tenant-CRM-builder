@@ -1,4 +1,8 @@
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+
 import type { TenantContext } from '../../common/tenancy/tenant-context';
+import { CreateObjectDefinitionDto } from './dto/object.dto';
 import type { ActionPublicationTarget } from '../actions/action-publication.policy';
 import type { WorkflowDraft } from '../workflows/workflow.types';
 import type { PublishedObjectSchema } from './object-schema';
@@ -63,8 +67,15 @@ class MemoryObjectsStore implements ObjectsStore {
         Object.assign(new Error('duplicate'), { code: 'P2002' }),
       );
     }
-    this.objects.push(structuredClone(draft));
-    return Promise.resolve(structuredClone(draft));
+    // Match the repository: createObject inserts only object metadata.
+    const created = {
+      ...structuredClone(draft),
+      fields: [],
+      defaultView: null,
+      employeeAccess: null,
+    };
+    this.objects.push(created);
+    return Promise.resolve(structuredClone(created));
   }
 
   deleteObject(objectId: string, expectedVersion: number): Promise<boolean> {
@@ -241,6 +252,248 @@ async function createPublishableDraft(service: ObjectsService) {
 }
 
 describe('ObjectsService', () => {
+  describe('create with initial fields', () => {
+    it('accepts fields transformed by the request DTO, including empty validation objects', async () => {
+      const { service } = fixture();
+      const dto = plainToInstance(CreateObjectDefinitionDto, {
+        name: '客户',
+        code: 'customers',
+        titleFieldKey: 'col_1',
+        initialFields: [
+          'TEXT',
+          'TEXT',
+          'DATE',
+          'NUMBER',
+          'SINGLE_SELECT',
+          'MULTI_SELECT',
+        ].map((type, index) => ({
+          fieldKey: `col_${index + 1}`,
+          label: `列${index + 1}`,
+          type,
+          required: index === 0,
+          validation: {},
+          config: type.endsWith('SELECT')
+            ? { options: [{ key: 'active', label: '有效' }] }
+            : {},
+        })),
+      });
+      expect(
+        await validate(dto, { whitelist: true, forbidNonWhitelisted: true }),
+      ).toEqual([]);
+      const draft = await service.create(admin, dto, meta);
+      expect(draft.fields).toHaveLength(6);
+      expect(draft.fields.map((field) => field.validation)).toEqual([
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+      ]);
+      expect(draft.fields[4].config).toEqual({
+        options: [{ key: 'active', label: '有效' }],
+      });
+    });
+
+    const nameField = {
+      fieldKey: 'col_1',
+      label: '客户名称',
+      type: 'TEXT' as const,
+      required: true,
+    };
+    const input = {
+      name: '客户',
+      code: 'customers',
+      titleFieldKey: 'col_1',
+      initialFields: [
+        nameField,
+        {
+          fieldKey: 'col_2',
+          label: '金额',
+          type: 'NUMBER' as const,
+          required: false,
+          validation: { min: 0 },
+        },
+      ],
+    };
+
+    it('persists a complete version-one draft without publishing and denies employee access', async () => {
+      const { service, store, repository } = fixture();
+      const draft = await service.create(admin, input, meta);
+      expect(draft.object).toMatchObject({
+        titleFieldKey: 'col_1',
+        version: 1,
+        status: 'DRAFT',
+        activePublicationId: null,
+        publishedAt: null,
+      });
+      expect(draft.fields).toMatchObject([
+        {
+          ...nameField,
+          defaultValue: null,
+          validation: {},
+          config: {},
+          isSystem: false,
+          sortOrder: 10,
+          status: 'ACTIVE',
+        },
+        {
+          fieldKey: 'col_2',
+          type: 'NUMBER',
+          validation: { min: 0 },
+          isSystem: false,
+          sortOrder: 20,
+        },
+      ]);
+      expect(draft.defaultView).toMatchObject({
+        columnFieldKeys: ['col_1', 'col_2'],
+      });
+      expect(draft.employeeAccess).toEqual({
+        canCreate: false,
+        canRead: false,
+        canUpdate: false,
+        canDelete: false,
+        readScope: 'NONE',
+        updateScope: 'NONE',
+        fields: { col_1: 'HIDDEN', col_2: 'HIDDEN' },
+      });
+      expect(store.objects[0]).toEqual(draft);
+      expect(draft.activeRecordCount).toBe(0);
+      expect(store.publications.size).toBe(0);
+      expect(store.audits.map((event) => event.action)).toEqual([
+        'object.created',
+      ]);
+      expect(repository.transactions).toBe(1);
+    });
+
+    it.each([
+      ['missing title', { titleFieldKey: undefined }],
+      ['unknown title', { titleFieldKey: 'missing' }],
+      ['unsupported title type', { titleFieldKey: 'col_2' }],
+      [
+        'optional title',
+        { initialFields: [{ ...nameField, required: false }] },
+      ],
+      [
+        'duplicate normalized keys',
+        { initialFields: [nameField, { ...nameField, fieldKey: ' COL_1 ' }] },
+      ],
+      ['empty label', { initialFields: [{ ...nameField, label: '  ' }] }],
+      ['empty fields', { initialFields: [] }],
+      [
+        'too many fields',
+        {
+          initialFields: Array.from({ length: 41 }, (_, index) => ({
+            ...nameField,
+            fieldKey: `col_${index + 1}`,
+          })),
+        },
+      ],
+      [
+        'incompatible validation',
+        { initialFields: [{ ...nameField, validation: { min: 1 } }] },
+      ],
+      [
+        'invalid validation range',
+        {
+          initialFields: [
+            { ...nameField, validation: { minLength: 10, maxLength: 2 } },
+          ],
+        },
+      ],
+      [
+        'invalid config',
+        {
+          initialFields: [
+            { ...nameField, config: { options: [{ key: 'x' }] } },
+          ],
+        },
+      ],
+      [
+        'member field',
+        {
+          initialFields: [
+            nameField,
+            { ...nameField, fieldKey: 'col_2', type: 'MEMBER' as const },
+          ],
+        },
+      ],
+      [
+        'too many options',
+        {
+          initialFields: [
+            {
+              ...nameField,
+              type: 'SINGLE_SELECT' as const,
+              config: {
+                options: Array.from({ length: 101 }, (_, index) => ({
+                  key: `option_${index}`,
+                  label: `选项${index}`,
+                })),
+              },
+            },
+          ],
+        },
+      ],
+    ])('rejects %s before creating anything', async (_reason, changes) => {
+      const { service, store } = fixture();
+      await expect(
+        service.create(admin, { ...input, ...changes }, meta),
+      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+      expect(store.objects).toEqual([]);
+      expect(store.audits).toEqual([]);
+    });
+
+    it('rejects employees with initial fields before entering the transaction', async () => {
+      const { service, repository } = fixture();
+      await expect(service.create(employee, input, meta)).rejects.toMatchObject(
+        { code: 'OBJECT_ACTION_FORBIDDEN' },
+      );
+      expect(repository.transactions).toBe(0);
+    });
+
+    it('accepts forty fields, repeated labels and one hundred valid select options', async () => {
+      const { service } = fixture();
+      const fields = Array.from({ length: 39 }, (_, index) => ({
+        ...nameField,
+        fieldKey: `col_${index + 1}`,
+      }));
+      const draft = await service.create(
+        admin,
+        {
+          ...input,
+          initialFields: [
+            ...fields,
+            {
+              fieldKey: 'col_40',
+              label: '状态',
+              type: 'SINGLE_SELECT',
+              required: false,
+              config: {
+                options: Array.from({ length: 100 }, (_, index) => ({
+                  key: `option_${index}`,
+                  label: `选项${index}`,
+                })),
+              },
+            },
+          ],
+        },
+        meta,
+      );
+      expect(draft.fields).toHaveLength(40);
+      expect(draft.fields[39].config.options).toHaveLength(100);
+    });
+
+    it('preserves the empty manual creation flow', async () => {
+      const { service } = fixture();
+      const draft = await createObject(service);
+      expect(draft.fields).toEqual([]);
+      expect(draft.defaultView).toBeNull();
+      expect(draft.employeeAccess).toBeNull();
+      expect(draft.object.titleFieldKey).toBe('name');
+    });
+  });
+
   it('rejects employee configuration before opening a tenant transaction', async () => {
     const { service, repository } = fixture();
 

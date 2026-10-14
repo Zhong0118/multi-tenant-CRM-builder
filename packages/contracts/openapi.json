@@ -885,8 +885,20 @@
             "nullable": true,
             "type": "string"
           },
+          "initialFields": {
+            "items": {
+              "$ref": "#/components/schemas/InitialFieldDefinitionDto"
+            },
+            "maxItems": 40,
+            "minItems": 1,
+            "type": "array"
+          },
           "name": {
             "example": "销售线索",
+            "type": "string"
+          },
+          "titleFieldKey": {
+            "description": "Required when initialFields is provided.",
             "type": "string"
           }
         },
@@ -2292,6 +2304,17 @@
             "format": "uuid",
             "type": "string"
           },
+          "dryRun": {
+            "description": "仅校验和查重，不创建记录。",
+            "type": "boolean"
+          },
+          "matchFields": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "type": "array"
+          },
           "rows": {
             "items": {
               "$ref": "#/components/schemas/ImportRecordRowDto"
@@ -2300,6 +2323,66 @@
           }
         },
         "required": ["rows"],
+        "type": "object"
+      },
+      "InitialFieldDefinitionDto": {
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/FieldConfigDto"
+          },
+          "defaultValue": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "fieldKey": {
+            "example": "customer_name",
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "type": {
+            "enum": [
+              "TEXT",
+              "TEXTAREA",
+              "PHONE",
+              "EMAIL",
+              "NUMBER",
+              "MONEY",
+              "DATE",
+              "DATETIME",
+              "SINGLE_SELECT",
+              "MULTI_SELECT",
+              "BOOLEAN"
+            ],
+            "type": "string"
+          },
+          "validation": {
+            "$ref": "#/components/schemas/FieldValidationDto"
+          }
+        },
+        "required": ["fieldKey", "label", "required", "type"],
         "type": "object"
       },
       "InvitationActionResponseDto": {
@@ -2785,6 +2868,15 @@
           },
           "object": {
             "$ref": "#/components/schemas/ObjectDraftObjectResponseDto"
+          },
+          "publishedEmployeeAccess": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PublishedEmployeeAccessResponseDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
           }
         },
         "required": [
@@ -2792,6 +2884,7 @@
           "fields",
           "defaultView",
           "employeeAccess",
+          "publishedEmployeeAccess",
           "activeRecordCount"
         ],
         "type": "object"
@@ -3305,6 +3398,63 @@
         "required": ["expectedVersion"],
         "type": "object"
       },
+      "PublishedEmployeeAccessResponseDto": {
+        "properties": {
+          "canCreate": {
+            "type": "boolean"
+          },
+          "canDelete": {
+            "enum": [false],
+            "type": "boolean"
+          },
+          "canRead": {
+            "type": "boolean"
+          },
+          "canUpdate": {
+            "type": "boolean"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/PublishedEmployeeFieldAccessResponseDto"
+            },
+            "type": "array"
+          },
+          "readScope": {
+            "enum": ["ALL", "OWN", "NONE"],
+            "type": "string"
+          },
+          "updateScope": {
+            "enum": ["ALL", "OWN", "NONE"],
+            "type": "string"
+          }
+        },
+        "required": [
+          "canCreate",
+          "canRead",
+          "canUpdate",
+          "canDelete",
+          "readScope",
+          "updateScope",
+          "fields"
+        ],
+        "type": "object"
+      },
+      "PublishedEmployeeFieldAccessResponseDto": {
+        "properties": {
+          "access": {
+            "enum": ["EDIT", "READ_ONLY", "HIDDEN"],
+            "type": "string"
+          },
+          "fieldKey": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": ["fieldKey", "label", "access"],
+        "type": "object"
+      },
       "PublishedFieldResponseDto": {
         "properties": {
           "access": {
@@ -3577,6 +3727,9 @@
               "$ref": "#/components/schemas/RecordImportResultItemDto"
             },
             "type": "array"
+          },
+          "skipped": {
+            "type": "number"
           }
         },
         "required": ["created", "failed", "items"],
@@ -3587,6 +3740,13 @@
           "error": {
             "$ref": "#/components/schemas/RecordImportErrorDto"
           },
+          "matchKey": {
+            "description": "仅预检 READY 行返回的规范化查重元组 SHA-256，用于跨批次文件内查重。",
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
           "record": {
             "$ref": "#/components/schemas/RecordResponseDto"
           },
@@ -3594,7 +3754,7 @@
             "type": "number"
           },
           "status": {
-            "enum": ["CREATED", "FAILED"],
+            "enum": ["READY", "CREATED", "SKIPPED", "FAILED"],
             "type": "string"
           }
         },
