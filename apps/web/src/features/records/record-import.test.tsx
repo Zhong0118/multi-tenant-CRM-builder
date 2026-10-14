@@ -172,3 +172,146 @@ describe("RecordImportDrawer", () => {
     ]);
   });
 });
+
+function setupImport() {
+  const api = recordApi();
+  renderDrawer(
+    <RecordImportDrawer
+      tenantCode="northwind"
+      schema={schema}
+      api={api}
+      onClose={vi.fn()}
+      onCompleted={vi.fn()}
+    />,
+  );
+  return api;
+}
+
+function chooseFile(content: BlobPart, name = "records.csv") {
+  fireEvent.change(screen.getByLabelText("选择 CSV 文件"), {
+    target: { files: [new File([content], name)] },
+  });
+}
+
+it("blocks invalid UTF-8 instead of allowing replacement characters into records", async () => {
+  const api = setupImport();
+  chooseFile(new Uint8Array([110, 97, 109, 101, 10, 0xd5, 0xc5, 0xc8, 0xfd]));
+  expect(await screen.findByText(/无法按 UTF-8 读取/)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "导入映射后的行" })).toBeDisabled();
+  expect(api.importRows).not.toHaveBeenCalled();
+});
+
+it("rejects rows wider than the header instead of silently truncating data", async () => {
+  setupImport();
+  chooseFile("姓名,线索状态\n张三,待联系,不能丢弃的内容\n");
+  expect(await screen.findByText(/数据列数超过表头/)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "导入映射后的行" })).toBeDisabled();
+});
+
+it("blocks duplicate mappings instead of silently overwriting the first column", async () => {
+  setupImport();
+  chooseFile("姓名,name\n张三,李四\n");
+  expect(
+    await screen.findByText(/多个文件列映射到了同一字段/),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "导入映射后的行" })).toBeDisabled();
+});
+
+it("lets the user decode GBK bytes and locks encoding after the batch starts", async () => {
+  const api = setupImport();
+  chooseFile(new Uint8Array([110, 97, 109, 101, 10, 0xd5, 0xc5, 0xc8, 0xfd]));
+  await screen.findByText(/无法按 UTF-8 读取/);
+  fireEvent.mouseDown(screen.getByLabelText("文件编码"));
+  fireEvent.click(screen.getByText("GBK / GB18030（中文 Windows）"));
+  expect(await screen.findByText("张三")).toBeInTheDocument();
+  expect(screen.queryByText(/无法按 UTF-8 读取/)).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "导入映射后的行" }));
+  await waitFor(() =>
+    expect(api.importRows).toHaveBeenCalledWith("northwind", "customers", {
+      batchId: expect.any(String),
+      rows: [{ rowNumber: 2, values: { name: "张三" } }],
+    }),
+  );
+  expect(screen.getByLabelText("文件编码")).toBeDisabled();
+});
+
+it("explains missing required mappings and skipped columns before importing", async () => {
+  setupImport();
+  chooseFile("姓名拼写不同,额外备注\n张三,说明\n");
+  expect(await screen.findByText(/尚未映射必填字段：姓名/)).toBeInTheDocument();
+  expect(screen.getByText(/将跳过 2 列/)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "导入映射后的行" })).toBeDisabled();
+});
+
+it("ignores a late read from a previously selected file", async () => {
+  setupImport();
+  let finish!: (buffer: ArrayBuffer) => void;
+  const file = new File([], "old.csv");
+  Object.defineProperty(file, "arrayBuffer", {
+    value: () =>
+      new Promise<ArrayBuffer>((resolve) => {
+        finish = resolve;
+      }),
+  });
+  fireEvent.change(screen.getByLabelText("选择 CSV 文件"), {
+    target: { files: [file] },
+  });
+  chooseFile("姓名\n新文件\n", "new.csv");
+  await screen.findByText("新文件");
+  finish(new TextEncoder().encode("姓名\n旧文件\n").buffer);
+  await waitFor(() => expect(screen.getByText("新文件")).toBeInTheDocument());
+  expect(screen.queryByText("旧文件")).not.toBeInTheDocument();
+});
+
+it("reports file read failures and rejects native Excel files", async () => {
+  setupImport();
+  chooseFile("not csv", "table.xlsx");
+  expect(
+    await screen.findByText("只接受 CSV。Excel 请另存为 CSV UTF-8 后再导入。"),
+  ).toBeInTheDocument();
+  const file = new File([], "broken.csv");
+  Object.defineProperty(file, "arrayBuffer", {
+    value: () =>
+      Promise.reject(new DOMException("unreadable", "NotReadableError")),
+  });
+  fireEvent.change(screen.getByLabelText("选择 CSV 文件"), {
+    target: { files: [file] },
+  });
+  expect(
+    await screen.findByText("文件读取失败，请重新选择文件。"),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "导入映射后的行" })).toBeDisabled();
+});
+
+it("requires an explicit choice for same-name fields and shows their types", async () => {
+  const sameNameSchema: RuntimeObjectSchema = {
+    ...schema,
+    fields: [
+      ...schema.fields,
+      {
+        ...schema.fields[1],
+        id: "f-text-status",
+        fieldKey: "text_status",
+        type: "TEXT",
+      },
+    ],
+  };
+  renderDrawer(
+    <RecordImportDrawer
+      tenantCode="northwind"
+      schema={sameNameSchema}
+      api={recordApi()}
+      onClose={vi.fn()}
+      onCompleted={vi.fn()}
+    />,
+  );
+  chooseFile("姓名,线索状态\n张三,待联系\n");
+  expect(await screen.findByText(/将跳过 1 列：线索状态/)).toBeInTheDocument();
+  fireEvent.mouseDown(screen.getByLabelText("映射 线索状态"));
+  expect(
+    screen.getByText("线索状态 · 单选（lead_status）"),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText("线索状态 · 文本（text_status）"),
+  ).toBeInTheDocument();
+});

@@ -2,9 +2,10 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { Alert, Button, Drawer, Select, Space, Typography } from "antd";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import {
+  FIELD_TYPE_LABELS,
   selectOptions,
   type PublishedFieldView,
   type RuntimeObjectSchema,
@@ -16,6 +17,8 @@ import {
   RECORD_IMPORT_MAX_COLUMNS,
   RECORD_IMPORT_MAX_ROWS,
   coerceImportValue,
+  decodeRecordCsv,
+  type CsvEncoding,
   parseCsv,
   suggestFieldKey,
   type ParsedCsv,
@@ -44,6 +47,11 @@ export function RecordImportDrawer({
     (field) => field.access === "EDIT" && field.type !== "MEMBER",
   );
   const [batchId, setBatchId] = useState<string>();
+  const [selectedFile, setSelectedFile] = useState<File>();
+  const [encoding, setEncoding] = useState<CsvEncoding>("auto");
+  const [decodedEncoding, setDecodedEncoding] = useState<string>();
+  const [importStarted, setImportStarted] = useState(false);
+  const readRequest = useRef(0);
   const [completedRows, setCompletedRows] = useState<Set<number>>(new Set());
   const [fileName, setFileName] = useState<string>();
   const [parsed, setParsed] = useState<ParsedCsv>();
@@ -66,9 +74,25 @@ export function RecordImportDrawer({
     [importable, mapping],
   );
 
+  const duplicateFields = mappedFields.filter(
+    (item, index) =>
+      mappedFields.findIndex(
+        (other) => other.field.fieldKey === item.field.fieldKey,
+      ) !== index,
+  );
+  const missingRequired = importable.filter(
+    (field) =>
+      field.required &&
+      field.defaultValue == null &&
+      !mappedFields.some((item) => item.field.fieldKey === field.fieldKey),
+  );
+  const skippedColumns =
+    parsed?.headers.filter((_, index) => mapping[index] === SKIP) ?? [];
+
   const save = useMutation({
     mutationFn: () => {
-      if (!parsed) throw new Error("missing csv");
+      if (!parsed || duplicateFields.length || missingRequired.length)
+        throw new Error("invalid csv mapping");
       return api.importRows(tenantCode, schema.object.code, {
         batchId,
         rows: parsed.rows
@@ -119,7 +143,12 @@ export function RecordImportDrawer({
     },
   });
 
-  async function onFile(file: File | undefined) {
+  async function onFile(file: File | undefined, nextEncoding: CsvEncoding) {
+    const request = ++readRequest.current;
+    setSelectedFile(file);
+    setEncoding(nextEncoding);
+    setDecodedEncoding(undefined);
+    setImportStarted(false);
     setBatchId(crypto.randomUUID());
     setCompletedRows(new Set());
     setParseError(undefined);
@@ -132,12 +161,25 @@ export function RecordImportDrawer({
       setParseError("只接受 CSV。Excel 请另存为 CSV UTF-8 后再导入。");
       return;
     }
-    const text = await file.text();
     let next: ParsedCsv;
     try {
-      next = parseCsv(text);
-    } catch {
-      setParseError("CSV 引号未闭合，请检查文件。");
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (request !== readRequest.current) return;
+      const decoded = decodeRecordCsv(bytes, nextEncoding);
+      setDecodedEncoding(decoded.encoding);
+      next = parseCsv(decoded.text, { strictColumnCount: true });
+    } catch (error) {
+      if (request !== readRequest.current) return;
+      const message = error instanceof Error ? error.message : "";
+      setParseError(
+        message === "CSV_UNCLOSED_QUOTE"
+          ? "CSV 引号未闭合，请检查文件。"
+          : message === "名单列数与表头不一致"
+            ? "数据列数超过表头，请检查分隔符；含逗号的单元格需要用双引号包围。"
+            : error instanceof TypeError || error instanceof DOMException
+              ? "文件读取失败，请重新选择文件。"
+              : message || "文件读取失败，请重新选择文件。",
+      );
       return;
     }
     if (next.headers.length === 0 || next.rows.length === 0) {
@@ -178,8 +220,16 @@ export function RecordImportDrawer({
       ) : null}
 
       <Typography.Paragraph type="secondary">
-        先把 Excel 另存为
-        CSV。每一列必须映射到一个可写字段，或明确跳过。成员字段不能导入。成功行立即写入，失败行单独列出。
+        支持 CSV，每次最多 500 行、40 列。Excel（.xlsx / .xls）请另存为 CSV
+        UTF-8，不能直接修改后缀。
+        按当前已发布字段匹配，每列可映射到一个可写字段或跳过。成员字段及负责人不能通过姓名导入。成功行立即写入，失败行单独列出。
+      </Typography.Paragraph>
+      <Typography.Paragraph type="secondary">
+        单选填写已有选项名称，多选用中文分号分隔（如“重点；已联系”）。未知选项不会自动新增。导入会新增记录，不会按姓名自动覆盖已有数据。
+      </Typography.Paragraph>
+      <Typography.Paragraph type="secondary">
+        自动模式识别 UTF-8 或带编码标记的 UTF-16。旧版 Excel 导出的中文 CSV
+        可尝试 GBK / GB18030；请确认预览中文字正常后再导入。
       </Typography.Paragraph>
 
       <input
@@ -187,8 +237,32 @@ export function RecordImportDrawer({
         disabled={save.isPending}
         accept=".csv,text/csv"
         aria-label="选择 CSV 文件"
-        onChange={(event) => void onFile(event.target.files?.[0])}
+        onChange={(event) => void onFile(event.target.files?.[0], "auto")}
       />
+      <label className={styles.columnChooserRow}>
+        <span>文件编码</span>
+        <Select
+          aria-label="文件编码"
+          value={encoding}
+          disabled={save.isPending || importStarted}
+          onChange={(next: CsvEncoding) => void onFile(selectedFile, next)}
+          options={[
+            { value: "auto", label: "自动（UTF-8 / Unicode 标记）" },
+            { value: "utf-8", label: "UTF-8" },
+            { value: "gb18030", label: "GBK / GB18030（中文 Windows）" },
+          ]}
+        />
+      </label>
+      {decodedEncoding ? (
+        <Typography.Paragraph>
+          当前按 {decodedEncoding} 读取
+        </Typography.Paragraph>
+      ) : null}
+      {importStarted ? (
+        <Typography.Paragraph type="secondary">
+          本批次已开始导入，编码已锁定；重试只提交未成功的行。重选文件会建立新批次，可能重复新增已导入的记录。
+        </Typography.Paragraph>
+      ) : null}
       {fileName ? (
         <Typography.Paragraph>{fileName}</Typography.Paragraph>
       ) : null}
@@ -198,6 +272,27 @@ export function RecordImportDrawer({
           <Typography.Paragraph>
             {parsed.rows.length} 行 · {parsed.headers.length} 列
           </Typography.Paragraph>
+          {duplicateFields.length ? (
+            <Alert
+              type="error"
+              showIcon
+              title={`多个文件列映射到了同一字段：${[...new Set(duplicateFields.map((item) => item.field.label))].join("、")}。请保留一列，其余改为跳过。`}
+            />
+          ) : null}
+          {missingRequired.length ? (
+            <Alert
+              type="error"
+              showIcon
+              title={`尚未映射必填字段：${missingRequired.map((field) => field.label).join("、")}。请先选择对应列。`}
+            />
+          ) : null}
+          {skippedColumns.length ? (
+            <Alert
+              type="warning"
+              showIcon
+              title={`将跳过 ${skippedColumns.length} 列：${skippedColumns.map((header) => header || "空表头").join("、")}。未匹配或同名字段不会自动选择，请核对后手动映射需要导入的列。`}
+            />
+          ) : null}
           <div className={styles.columnChooser}>
             {parsed.headers.map((header, index) => (
               <label
@@ -221,9 +316,7 @@ export function RecordImportDrawer({
                     { value: SKIP, label: "跳过此列" },
                     ...importable.map((field) => ({
                       value: field.fieldKey,
-                      label: field.required
-                        ? `${field.label}（必填）`
-                        : field.label,
+                      label: `${field.label} · ${FIELD_TYPE_LABELS[field.type]}${importable.some((other) => other.fieldKey !== field.fieldKey && other.label === field.label) ? `（${field.fieldKey}）` : ""}${field.required ? "（必填）" : ""}`,
                     })),
                   ]}
                 />
@@ -282,9 +375,14 @@ export function RecordImportDrawer({
           disabled={
             !parsed ||
             mappedFields.length === 0 ||
+            duplicateFields.length > 0 ||
+            missingRequired.length > 0 ||
             completedRows.size === parsed.rows.length
           }
-          onClick={() => save.mutate()}
+          onClick={() => {
+            setImportStarted(true);
+            save.mutate();
+          }}
         >
           {completedRows.size > 0 ? "重试失败行" : "导入映射后的行"}
         </Button>
