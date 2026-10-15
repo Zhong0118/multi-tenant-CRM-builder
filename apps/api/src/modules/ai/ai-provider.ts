@@ -20,7 +20,16 @@ export interface AiProviderTool {
 
 export type AiProviderEvent =
   | { type: 'TEXT_DELTA'; text: string }
+  | { type: 'TEXT_RESET' }
   | { type: 'TOOL_CALL_REQUESTED'; callId: string; toolName: string }
+  | {
+      type: 'TOOL_CALL_FAILED';
+      callId: string;
+      toolName: string;
+      code: 'INVALID_TOOL_ARGUMENT' | 'DATA_UNAVAILABLE';
+      startedAt: string;
+      durationMs: number;
+    }
   | {
       type: 'USAGE';
       inputTokens?: number;

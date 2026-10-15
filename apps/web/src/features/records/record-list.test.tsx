@@ -241,16 +241,27 @@ function renderList(
 }
 
 describe("RecordList query navigation", () => {
-  it("lets users show 100 records and resets to the first page while preserving filters", async () => {
-    const navigate = vi.fn();
-    renderList(navigate, { ...DEFAULT_RECORD_QUERY, page: 2, search: "客户" }, { page: { ...page, page: 2, total: 120 } });
-    fireEvent.mouseDown(screen.getAllByRole("combobox", { name: "每页条数" })[0]);
-    fireEvent.click(await screen.findByText("100 条 / 页"));
-    expect(navigate).toHaveBeenCalledWith(expect.stringContaining("limit=100"));
-    const target = navigate.mock.calls.at(-1)![0] as string;
-    expect(target).not.toContain("page=2");
-    expect(target).toContain("search=");
-  });
+  it.each([50, 100, 300, 500, 1000])(
+    "lets users show %i records and resets the page while preserving filters",
+    async (limit) => {
+      const navigate = vi.fn();
+      renderList(
+        navigate,
+        { ...DEFAULT_RECORD_QUERY, page: 2, search: "客户" },
+        { page: { ...page, page: 2, total: 120 } },
+      );
+      fireEvent.mouseDown(
+        screen.getAllByRole("combobox", { name: "每页条数" })[0],
+      );
+      fireEvent.click(await screen.findByText(`${limit} 条 / 页`));
+      expect(navigate).toHaveBeenCalledWith(
+        expect.stringContaining(`limit=${limit}`),
+      );
+      const target = navigate.mock.calls.at(-1)![0] as string;
+      expect(target).not.toContain("page=2");
+      expect(target).toContain("search=");
+    },
+  );
   it("shows the system owner in the table and cards without requiring a business field", () => {
     renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
       canFilterByOwner: true,
@@ -388,6 +399,39 @@ describe("RecordList table sorting", () => {
     expect(navigate).toHaveBeenLastCalledWith(
       "/workspace/northwind/objects/customers?page=2",
     );
+  });
+
+  it("allows owner assignment above 100 while keeping the field edit limit", async () => {
+    const many = {
+      ...page,
+      limit: 300,
+      total: 101,
+      items: Array.from({ length: 101 }, (_, i) => ({
+        ...page.items[0],
+        id: `record-${i}`,
+        title: `客户${i}`,
+      })),
+    };
+    renderList(
+      vi.fn(),
+      { ...DEFAULT_RECORD_QUERY, limit: 300 },
+      { page: many, canFilterByOwner: true },
+    );
+    fireEvent.click(
+      within(screen.getByRole("table")).getAllByRole("checkbox")[0],
+    );
+    expect(
+      screen.getByText(/批量修改每次最多 100 条，负责人分配每次最多 1000 条/),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
+    expect(
+      await screen.findByRole("menuitem", { name: "批量修改 101" }),
+    ).toHaveAttribute("aria-disabled", "true");
+    expect(
+      screen.getByRole("menuitem", { name: "批量分配负责人" }),
+    ).not.toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(screen.getByRole("menuitem", { name: "批量分配负责人" }));
+    expect(await screen.findByText("批量分配 101 条记录")).toBeInTheDocument();
   });
 
   it("shares card selection with the existing batch edit action", async () => {

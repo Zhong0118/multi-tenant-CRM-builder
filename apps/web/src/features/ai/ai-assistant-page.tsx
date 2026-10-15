@@ -238,6 +238,8 @@ export function AiAssistantPage({
           ? "NETWORK"
           : apiError.code;
       dispatch({ type: "transportFailure", code });
+    } finally {
+      if (stillCurrent()) abortRef.current = null;
     }
   }
 
@@ -257,7 +259,7 @@ export function AiAssistantPage({
 
   function send(content = state.draft) {
     const text = content.trim();
-    if (!text) return;
+    if (!text || requestBusy()) return;
     setRetriedRow(null);
     dispatch({ type: "beginNewTurn", content: text });
     startTurn((signal) =>
@@ -278,8 +280,16 @@ export function AiAssistantPage({
     }
   }
 
+  function requestBusy() {
+    return stateRef.current.phase === "SENDING" || stateRef.current.phase === "STREAMING" ||
+      (abortRef.current !== null && !abortRef.current.signal.aborted) ||
+      confirmProposal.isPending || rejectProposal.isPending;
+  }
+
   function retry(turnId = state.turnId) {
-    if (!turnId) return;
+    if (!turnId || requestBusy()) return;
+    const row = shown.find((item) => item.role === "ASSISTANT" && item.turnId === turnId);
+    if (row?.proposal || (row && !(row.status === "FAILED" || row.status === "CANCELLED" || row.status === "PARTIAL_COMPLETED" || (row.status === "COMPLETED" && row.toolSummary.some((tool) => tool.status === "FAILED"))))) return;
     const previous = fullHistory.find(
       (item) => item.role === "ASSISTANT" && item.turnId === turnId,
     );
@@ -447,6 +457,7 @@ export function AiAssistantPage({
             />
           ) : (
             <AiMessageList
+              key={conversationId ?? state.conversationId ?? "new"}
               tenantCode={tenantCode}
               messages={shown}
               loading={messages.isLoading}
@@ -460,7 +471,7 @@ export function AiAssistantPage({
                   : undefined
               }
               onRetry={
-                state.phase === "SENDING" || state.phase === "STREAMING"
+                state.phase === "SENDING" || state.phase === "STREAMING" || confirmProposal.isPending || rejectProposal.isPending
                   ? undefined
                   : retry
               }

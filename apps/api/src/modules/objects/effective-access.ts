@@ -34,6 +34,7 @@ export function resolveEffectiveAccess(input: {
   schema: AccessibleObjectSchema;
   role: 'TENANT_ADMIN' | 'EMPLOYEE';
   memberOverride?: ObjectAccessPolicy;
+  memberFieldOverrides?: Record<string, PublishedFieldAccess>;
 }): EffectiveObjectAccess {
   const fieldKeys = input.schema.fields.map((field) => field.fieldKey);
 
@@ -80,7 +81,9 @@ export function resolveEffectiveAccess(input: {
         field.fieldKey,
         field.isSystem
           ? 'READ_ONLY'
-          : (employeeAccess.fields[field.fieldKey] ?? 'EDIT'),
+          : (input.memberFieldOverrides?.[field.fieldKey] ??
+            employeeAccess.fields[field.fieldKey] ??
+            'EDIT'),
       ]),
     ),
   };

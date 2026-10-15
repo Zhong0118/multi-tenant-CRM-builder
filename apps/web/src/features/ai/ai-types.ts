@@ -46,6 +46,7 @@ export interface AiMessage {
   errorCode?: string | null;
   createdAt: string;
   completedAt?: string | null;
+  durationMs?: number;
 }
 
 export interface AiMessagePage {

@@ -91,6 +91,7 @@ export class PublishedObjectService {
           schema,
           role: context.role,
           memberOverride: record.memberOverride,
+          memberFieldOverrides: record.memberFieldOverrides,
         });
         if (!isReadable(schema, access)) return [];
         return [
@@ -176,6 +177,7 @@ export function resolvePublishedObjectRecord(
     schema,
     role,
     memberOverride: record.memberOverride,
+    memberFieldOverrides: record.memberFieldOverrides,
   });
   return {
     schema,

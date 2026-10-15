@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
+import type { PublishedFieldAccess } from '../objects/object-schema';
 import type { AuditEvent } from '../audit/audit-event';
 import { normalizeChineseMobile } from '../auth/phone-number';
 import type { MemberRole } from '../invitations/invitations.service';
@@ -55,7 +56,23 @@ export interface MemberObjectPolicy {
   updateScope: 'ALL' | 'OWN' | 'NONE';
 }
 
+export interface MemberFieldAccess {
+  fieldId: string;
+  fieldKey: string;
+  label: string;
+  isSystem: boolean;
+  inherited: PublishedFieldAccess;
+  effective: PublishedFieldAccess;
+  override: PublishedFieldAccess | null;
+}
+
+export interface MemberFieldAccessChange {
+  fieldId: string;
+  access: PublishedFieldAccess | 'INHERIT';
+}
+
 export interface MemberObjectAccessSource {
+  fields: MemberFieldAccess[];
   objectId: string;
   objectCode: string;
   objectName: string;
@@ -136,6 +153,7 @@ export interface MembershipStore {
   ): Promise<TenantMemberSummary>;
   listPublishedObjectAccess(
     memberId: string,
+    objectId?: string,
   ): Promise<MemberObjectAccessSource[]>;
   replaceMemberObjectAccess(
     memberId: string,
@@ -143,6 +161,11 @@ export interface MembershipStore {
     policy: MemberObjectPolicy,
   ): Promise<void>;
   deleteMemberObjectAccess(memberId: string, objectId: string): Promise<void>;
+  setMemberFieldAccess(
+    memberId: string,
+    objectId: string,
+    fields: MemberFieldAccessChange[],
+  ): Promise<void>;
   findInvitation(id: string): Promise<{ id: string; status: string } | null>;
   updateInvitation(id: string, input: Record<string, unknown>): Promise<void>;
   appendAudit(event: AuditEvent): Promise<void>;
@@ -445,6 +468,8 @@ export class MembershipsService {
   ): Promise<MemberObjectAccess[]> {
     this.assertAdmin(context);
     return this.repository.withTenant(context, async (store) => {
+      await store.lockAdminRoster();
+      await this.requireCurrentAdmin(store, context, [memberId]);
       await requireActiveEmployee(store, memberId);
       const objects = await store.listPublishedObjectAccess(memberId);
       return objects.map(resolveMemberObjectAccess);
@@ -460,6 +485,8 @@ export class MembershipsService {
   ): Promise<MemberObjectAccess> {
     this.assertAdmin(context);
     return this.repository.withTenant(context, async (store) => {
+      await store.lockAdminRoster();
+      await this.requireCurrentAdmin(store, context, [memberId]);
       await requireActiveEmployee(store, memberId);
       const objects = await store.listPublishedObjectAccess(memberId);
       const object = objects.find(
@@ -498,6 +525,107 @@ export class MembershipsService {
         ip: meta.ip,
       });
       return after;
+    });
+  }
+
+  async bulkMemberAccess(
+    context: TenantContext,
+    objectId: string,
+    input: {
+      memberIds: string[];
+      objectAccess?: MemberObjectAccessInput;
+      fields?: MemberFieldAccessChange[];
+    },
+    meta: { requestId: string; ip?: string },
+  ): Promise<{ updated: number }> {
+    this.assertAdmin(context);
+    if (
+      !input.memberIds.length ||
+      input.memberIds.length > 100 ||
+      new Set(input.memberIds).size !== input.memberIds.length ||
+      (!input.objectAccess && !input.fields?.length) ||
+      new Set(input.fields?.map((field) => field.fieldId)).size !==
+        (input.fields?.length ?? 0)
+    ) {
+      throw new ApiException('VALIDATION_FAILED', 400);
+    }
+    return this.repository.withTenant(context, async (store) => {
+      await store.lockAdminRoster();
+      await this.requireCurrentAdmin(store, context, input.memberIds);
+      // Validate the whole batch before writing, then commit changes and audits together.
+      const targets: Array<{
+        memberId: string;
+        object: MemberObjectAccessSource;
+      }> = [];
+      for (const memberId of [...input.memberIds].sort()) {
+        await requireActiveEmployee(store, memberId);
+        const object = (
+          await store.listPublishedObjectAccess(memberId, objectId)
+        ).find((candidate) => candidate.objectId === objectId);
+        if (!object) throw new ApiException('OBJECT_NOT_FOUND', 404);
+        for (const change of input.fields ?? []) {
+          const field = object.fields.find(
+            (candidate) => candidate.fieldId === change.fieldId,
+          );
+          if (!field || field.isSystem)
+            throw new ApiException('VALIDATION_FAILED', 400, {
+              message: '请选择当前已发布的非系统字段。',
+            });
+        }
+        targets.push({ memberId, object });
+      }
+      for (const { memberId, object } of targets) {
+        const before = accessAuditValue(
+          memberId,
+          resolveMemberObjectAccess(object),
+        );
+        if (input.objectAccess?.mode === 'INHERIT') {
+          await store.deleteMemberObjectAccess(memberId, objectId);
+          object.override = null;
+        } else if (input.objectAccess?.mode === 'OVERRIDE') {
+          const policy = input.objectAccess;
+          object.override = {
+            canCreate: policy.canCreate,
+            canRead: policy.canRead,
+            canUpdate: policy.canUpdate,
+            readScope: policy.readScope,
+            updateScope: policy.updateScope,
+            canDelete: false,
+          };
+          await store.replaceMemberObjectAccess(
+            memberId,
+            objectId,
+            object.override,
+          );
+        }
+        if (input.fields?.length) {
+          await store.setMemberFieldAccess(memberId, objectId, input.fields);
+          object.fields = object.fields.map((field) => {
+            const change = input.fields?.find(
+              (item) => item.fieldId === field.fieldId,
+            );
+            if (!change) return field;
+            const override = change.access === 'INHERIT' ? null : change.access;
+            return {
+              ...field,
+              override,
+              effective: override ?? field.inherited,
+            };
+          });
+        }
+        await store.appendAudit({
+          tenantId: context.tenantId,
+          actorType: 'USER',
+          actorId: context.userId,
+          action: 'membership.object_access_changed',
+          resourceType: 'object_permission',
+          resourceId: objectId,
+          before,
+          after: accessAuditValue(memberId, resolveMemberObjectAccess(object)),
+          ...meta,
+        });
+      }
+      return { updated: targets.length };
     });
   }
 
@@ -574,7 +702,12 @@ async function requireActiveEmployee(
   memberId: string,
 ): Promise<TenantMemberSummary> {
   const member = await store.findMember(memberId);
-  if (!member || member.status !== 'ACTIVE' || member.role !== 'EMPLOYEE') {
+  if (
+    !member ||
+    member.status !== 'ACTIVE' ||
+    member.role !== 'EMPLOYEE' ||
+    !(await store.isUsableMember(memberId))
+  ) {
     throw new ApiException('MEMBERSHIP_INACTIVE', 404);
   }
   return member;
@@ -598,5 +731,13 @@ function accessAuditValue(
     memberId,
     mode: access.mode,
     policy: access.override,
+    fields: access.fields.map(
+      ({ fieldId, inherited, effective, override }) => ({
+        fieldId,
+        inherited,
+        effective,
+        override,
+      }),
+    ),
   };
 }

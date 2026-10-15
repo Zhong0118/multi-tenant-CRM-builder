@@ -198,6 +198,7 @@ model User {
 }
 
 model Tenant {
+  memberFieldPermissions MemberFieldPermission[]
   id                         String                         @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   name                       String                         @db.VarChar(200)
   code                       String                         @unique @db.VarChar(64)
@@ -287,6 +288,7 @@ model TenantDashboardPublication {
 }
 
 model TenantMember {
+  memberFieldPermissions MemberFieldPermission[]
   displayName String? @map("display_name") @db.VarChar(100)
   id                        String                       @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId                  String                       @map("tenant_id") @db.Uuid
@@ -379,6 +381,7 @@ model Session {
 }
 
 model ObjectDefinition {
+  memberFieldPermissions MemberFieldPermission[]
   poolEnabled             Boolean                   @default(false) @map("pool_enabled")
   poolOwnershipTtlHours    Int?                      @map("pool_ownership_ttl_hours")
   poolConfigVersion        Int                       @default(1) @map("pool_config_version")
@@ -479,6 +482,7 @@ model BusinessTemplateApplication {
 }
 
 model FieldDefinition {
+  memberFieldPermissions MemberFieldPermission[]
   id           String            @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId     String            @map("tenant_id") @db.Uuid
   objectId     String            @map("object_id") @db.Uuid
@@ -864,4 +868,23 @@ model AiMessage {
   @@index([tenantId, conversationId, createdAt, id])
   @@index([tenantId, status, createdAt])
   @@map("ai_messages")
+}
+
+model MemberFieldPermission {
+  id        String @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId  String @map("tenant_id") @db.Uuid
+  objectId  String @map("object_id") @db.Uuid
+  fieldId   String @map("field_id") @db.Uuid
+  memberId  String @map("member_id") @db.Uuid
+  access    FieldAccess
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  object ObjectDefinition @relation(fields: [tenantId, objectId], references: [tenantId, id], onDelete: Restrict)
+  field FieldDefinition @relation(fields: [tenantId, objectId, fieldId], references: [tenantId, objectId, id], onDelete: Restrict)
+  member TenantMember @relation(fields: [tenantId, memberId], references: [tenantId, id], onDelete: Cascade)
+
+  @@unique([tenantId, objectId, fieldId, memberId])
+  @@index([tenantId, objectId, memberId])
+  @@map("member_field_permissions")
 }

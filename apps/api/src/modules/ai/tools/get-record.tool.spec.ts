@@ -76,6 +76,39 @@ describe('get_record', () => {
     expect(JSON.stringify(result)).not.toMatch(/仅管理员可见|secret/);
   });
 
+  it('applies live member exceptions and still rejects another owner', async () => {
+    const { records, publishedRepository } = recordToolFixture();
+    publishedRepository.record.memberFieldOverrides = { secret: 'READ_ONLY' };
+    const tool = createGetRecordTool(records, employee);
+    const result = await tool.execute(
+      { objectCode: 'leads', recordId: ownRecordId },
+      'call-exception',
+    );
+    expect(result).toMatchObject({ values: { secret: '仅管理员可见' } });
+    await expect(
+      tool.execute(
+        { objectCode: 'leads', recordId: otherRecordId },
+        'call-other',
+      ),
+    ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+    publishedRepository.record.memberFieldOverrides = { name: 'HIDDEN' };
+    await expect(
+      tool.execute(
+        { objectCode: 'leads', recordId: ownRecordId },
+        'call-hidden-title',
+      ),
+    ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
+    publishedRepository.record.memberFieldOverrides = {};
+    expect(
+      JSON.stringify(
+        await tool.execute(
+          { objectCode: 'leads', recordId: ownRecordId },
+          'call-inherit',
+        ),
+      ),
+    ).not.toContain('仅管理员可见');
+  });
+
   it('preserves RECORD_NOT_FOUND for another owner UUID and a missing UUID', async () => {
     const { records } = recordToolFixture();
     const tool = createGetRecordTool(records, employee);
@@ -84,7 +117,10 @@ describe('get_record', () => {
       tool.execute({ objectCode: 'leads', recordId: otherRecordId }, 'call-1'),
     ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
     await expect(
-      tool.execute({ objectCode: 'leads', recordId: missingRecordId }, 'call-1'),
+      tool.execute(
+        { objectCode: 'leads', recordId: missingRecordId },
+        'call-1',
+      ),
     ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
   });
 

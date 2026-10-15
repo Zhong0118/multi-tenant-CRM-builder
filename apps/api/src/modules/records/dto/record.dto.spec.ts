@@ -35,10 +35,19 @@ describe('record DTOs', () => {
     expect(errors.map((error) => error.property)).toContain('version');
   });
 
-  it('caps record-list page size at 100', async () => {
+  it.each([20, 50, 100, 300, 500, 1000])(
+    'accepts record-list page size %i',
+    async (limit) => {
+      expect(
+        await validate(Object.assign(new RecordListQueryDto(), { limit })),
+      ).toHaveLength(0);
+    },
+  );
+
+  it('caps record-list page size at 1000', async () => {
     const dto = Object.assign(new RecordListQueryDto(), {
       page: 1,
-      limit: 101,
+      limit: 1001,
     });
     const errors = await validate(dto);
     expect(errors.map((error) => error.property)).toContain('limit');

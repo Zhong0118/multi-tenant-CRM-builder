@@ -16,6 +16,8 @@ import type { DynamicFieldMember } from "./dynamic-field";
 import { recordPoolApi, type RecordPoolApi } from "./record-pool-api";
 import styles from "./records.module.css";
 
+export const MAX_OWNER_ASSIGNMENT_RECORDS = 1000;
+
 type AssignmentRow = {
   record: RecordSummary;
   status: "pending" | "success" | "error";
@@ -54,11 +56,12 @@ export function RecordBatchAssignDrawer({
       stopped.current = true;
     };
   }, []);
+  const exceedsLimit = rows.length > MAX_OWNER_ASSIGNMENT_RECORDS;
   const succeeded = rows.filter((row) => row.status === "success").length;
   const failed = rows.filter((row) => row.status === "error").length;
 
   async function assign() {
-    if (!owner || running.current) return;
+    if (!owner || running.current || exceedsLimit) return;
     running.current = true;
     setBusy(true);
     setStarted(true);
@@ -114,6 +117,12 @@ export function RecordBatchAssignDrawer({
         <Typography.Paragraph>
           选中的记录将统一归该成员负责，公共池记录会移出公共池，并从本次分配起按业务表设置重新计算回收期限。公共池关闭时暂停回收
         </Typography.Paragraph>
+        {exceedsLimit ? (
+          <Alert
+            type="warning"
+            title={`批量分配负责人每次最多 ${MAX_OWNER_ASSIGNMENT_RECORDS} 条，请减少勾选`}
+          />
+        ) : null}
         <Select
           aria-label="批量分配负责人"
           placeholder="选择负责人"
@@ -156,7 +165,7 @@ export function RecordBatchAssignDrawer({
             type="primary"
             loading={busy}
             aria-label={started ? "重试失败项" : "确认分配"}
-            disabled={busy || !owner || succeeded === rows.length}
+            disabled={busy || !owner || exceedsLimit || succeeded === rows.length}
             onClick={() => void assign()}
           >
             {started ? "重试失败项" : "确认分配"}

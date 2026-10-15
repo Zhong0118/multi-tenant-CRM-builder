@@ -156,6 +156,7 @@ function transactionOver(rows: ObjectRow[]): Prisma.TransactionClient {
       status: row.status,
       sortOrder: row.sortOrder,
       activePublication: row.activePublication,
+      memberFieldPermissions: [],
       permissions,
     });
   });

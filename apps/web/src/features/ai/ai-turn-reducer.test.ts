@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   aiTurnReducer,
   initialAiTurnState,
+  toAssistantMessage,
   type AiTurnState,
 } from "./ai-turn-reducer";
 
@@ -170,4 +171,51 @@ describe("aiTurnReducer", () => {
     expect(beforeReady.turnId).toBeUndefined();
     expect(beforeReady.phase).toBe("FAILED");
   });
+});
+
+it("replaces earlier narration on answer-step reset without losing tool activity", () => {
+  const state = { ...initialAiTurnState, phase: "STREAMING" as const, streamingText: "Let me query", tools: [{ callId: "c", toolName: "search_records", displayName: "查询", status: "COMPLETED" as const }] };
+  const cleared = aiTurnReducer(state, { type: "event", event: { event: "assistant.reset", data: {} } });
+  expect(cleared.streamingText).toBe("");
+  expect(cleared.tools).toEqual(state.tools);
+  expect(aiTurnReducer(cleared, { type: "event", event: { event: "assistant.delta", data: { text: "总额 255000 元" } } }).streamingText).toBe("总额 255000 元");
+});
+
+it("keeps attempt start stable, prefers server timing and resets timing on retry", () => {
+  const begun = aiTurnReducer(initialAiTurnState, { type: "beginNewTurn", content: "问" });
+  const streaming = { ...begun, conversationId: "c", turnId: "t", phase: "STREAMING" as const };
+  expect(toAssistantMessage(streaming)?.createdAt).toBe(new Date(begun.startedAt!).toISOString());
+  for (const event of [
+    { event: "turn.completed" as const, data: { turnId: "t", messageId: "m", durationMs: 0 } },
+    { event: "turn.failed" as const, data: { turnId: "t", messageId: "m", code: "AI_TURN_FAILED", durationMs: 125 } },
+    { event: "turn.cancelled" as const, data: { turnId: "t", messageId: "m", durationMs: 325 } },
+  ]) {
+    const terminal = aiTurnReducer(streaming, { type: "event", event });
+    expect(toAssistantMessage(terminal)?.durationMs).toBe(event.data.durationMs);
+    expect(aiTurnReducer(terminal, { type: "network" }).durationMs).toBe(event.data.durationMs);
+    expect(aiTurnReducer(terminal, { type: "beginRetryTurn", turnId: "t" }).durationMs).toBeUndefined();
+  }
+  expect(aiTurnReducer(streaming, { type: "cancel" }).durationMs).toBeGreaterThanOrEqual(0);
+  expect(aiTurnReducer(streaming, { type: "network" }).durationMs).toBeGreaterThanOrEqual(0);
+});
+
+it("freezes unfinished tools on every terminal event without replacing real tool timings", () => {
+  const startedAt = new Date(Date.now() - 1500).toISOString();
+  const state = { ...initialAiTurnState, phase: "STREAMING" as const, tools: [
+    { callId: "pending", toolName: "search_records", displayName: "查询", status: "RUNNING" as const, startedAt },
+    { callId: "done", toolName: "search_records", displayName: "查询", status: "COMPLETED" as const, durationMs: 42 },
+    { callId: "old", toolName: "search_records", displayName: "查询", status: "RUNNING" as const },
+  ] };
+  for (const event of [
+    { event: "turn.completed" as const, data: { turnId: "t", messageId: "m" } },
+    { event: "turn.failed" as const, data: { turnId: "t", messageId: "m", code: "AI_TURN_FAILED" } },
+    { event: "turn.cancelled" as const, data: { turnId: "t", messageId: "m" } },
+  ]) {
+    const terminal = aiTurnReducer(state, { type: "event", event });
+    expect(terminal.tools[0]?.durationMs).toBeGreaterThanOrEqual(1500);
+    expect(terminal.tools[0]?.status).toBe("RUNNING");
+    expect(terminal.tools[1]?.durationMs).toBe(42);
+    expect(terminal.tools[2]?.durationMs).toBeUndefined();
+    expect(aiTurnReducer(terminal, { type: "network" }).tools).toEqual(terminal.tools);
+  }
 });

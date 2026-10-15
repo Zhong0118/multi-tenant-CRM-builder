@@ -1,7 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
-import { Button, Skeleton } from "antd";
+import { Button, Skeleton, Tooltip } from "antd";
 
 import styles from "./ai-assistant.module.css";
 import { AssistantMessage } from "./assistant-message";
@@ -45,9 +45,36 @@ export function AiMessageList({
   onRetryMessages?: () => void;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
+  const lastScrollTop = useRef(0);
   const [follow, setFollow] = useState(true);
   const live = useRef<HTMLDivElement>(null);
   const prependAnchor = useRef<{ height: number; top: number } | null>(null);
+  const questionNav = useRef<HTMLElement>(null);
+  const [activeQuestion, setActiveQuestion] = useState<string>();
+  const questions = messages.filter((message) => message.role === "USER");
+  const currentQuestion = follow
+    ? questions.at(-1)?.turnId
+    : activeQuestion ?? questions[0]?.turnId;
+
+  useLayoutEffect(() => {
+    const nav = questionNav.current;
+    const active = nav?.querySelector<HTMLElement>('[aria-current="location"]');
+    if (nav && active) nav.scrollTop = active.offsetTop - nav.clientHeight / 2;
+  }, [currentQuestion, questions.length]);
+
+  function locateQuestion(turnId: string) {
+    const node = scroller.current;
+    const target = Array.from(node?.querySelectorAll<HTMLElement>("[data-ai-question]") ?? [])
+      .find((item) => item.dataset.aiQuestion === turnId);
+    if (!node || !target) return;
+    lastScrollTop.current = node.scrollTop;
+    setFollow(false);
+    setActiveQuestion(turnId);
+    node.scrollTo?.({
+      top: Math.max(0, node.scrollTop + target.getBoundingClientRect().top - node.getBoundingClientRect().top - 16),
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+    });
+  }
 
   useLayoutEffect(() => {
     const node = scroller.current;
@@ -62,15 +89,25 @@ export function AiMessageList({
   }, [follow, messages, streaming]);
 
   return (
+    <div className={styles.messageViewport}>
     <div
       className={styles.messages}
       data-testid="ai-message-scroller"
       ref={scroller}
+      role="region"
+      aria-label="AI 对话内容"
+      tabIndex={0}
       onScroll={() => {
         const node = scroller.current;
         if (!node) return;
         const atBottom = node.scrollHeight - node.scrollTop - node.clientHeight < 48;
-        setFollow(atBottom);
+        const scrollingUp = node.scrollTop < lastScrollTop.current;
+        lastScrollTop.current = node.scrollTop;
+        setFollow(atBottom && !scrollingUp);
+        const anchors = Array.from(node.querySelectorAll<HTMLElement>("[data-ai-question]"));
+        const readingTop = node.getBoundingClientRect().top + 72;
+        const current = anchors.filter((item) => item.getBoundingClientRect().top <= readingTop).at(-1) ?? anchors[0];
+        setActiveQuestion(current?.dataset.aiQuestion);
       }}
     >
       {onLoadOlder ? (
@@ -101,13 +138,15 @@ export function AiMessageList({
       ) : null}
       {messages.map((message) =>
         message.role === "USER" ? (
-          <UserMessage key={message.id} message={message} />
+          <div key={message.id} data-ai-question={message.turnId}>
+            <UserMessage message={message} />
+          </div>
         ) : (
           <AssistantMessage
             key={message.id}
             tenantCode={tenantCode}
             message={message}
-            onRetry={onRetry}
+            onRetry={streaming || phase === "SENDING" || phase === "STREAMING" || proposalBusy ? undefined : onRetry}
             onConfirmProposal={onConfirmProposal}
             onRejectProposal={onRejectProposal}
             proposalBusy={proposalBusy}
@@ -134,6 +173,24 @@ export function AiMessageList({
           </Button>
         </div>
       ) : null}
+    </div>
+    {questions.length > 0 ? (
+      <nav className={styles.questionNav} aria-label="按提问定位" ref={questionNav}>
+        {questions.map((question) => (
+          <Tooltip key={question.turnId} title={question.content.slice(0, 160)} placement="left" trigger={["hover", "focus"]}>
+            <button
+              type="button"
+              className={styles.questionAnchor}
+              aria-label={`定位提问：${question.content.slice(0, 80)}`}
+              aria-current={question.turnId === currentQuestion ? "location" : undefined}
+              onClick={() => locateQuestion(question.turnId)}
+            >
+              <span aria-hidden />
+            </button>
+          </Tooltip>
+        ))}
+      </nav>
+    ) : null}
     </div>
   );
 }

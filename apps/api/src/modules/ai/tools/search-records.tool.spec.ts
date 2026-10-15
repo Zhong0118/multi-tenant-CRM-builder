@@ -12,7 +12,9 @@ import { createSearchRecordsTool } from './search-records.tool';
 describe('search_records', () => {
   it('requires objectCode and rejects actor-override and owner keys', () => {
     const tool = createSearchRecordsTool({} as RecordsService, employee);
-    expect(tool.inputSchema.safeParse({ objectCode: 'leads' }).success).toBe(true);
+    expect(tool.inputSchema.safeParse({ objectCode: 'leads' }).success).toBe(
+      true,
+    );
     expect(tool.inputSchema.safeParse({}).success).toBe(false);
     expect(
       tool.inputSchema.safeParse({
@@ -83,7 +85,9 @@ describe('search_records', () => {
       sort: 'recordNo',
       direction: 'asc',
     });
-    expect(list.mock.calls[0][2]).not.toHaveProperty('ownerMemberId');
+    expect((list.mock.calls[0] as unknown[])[2]).not.toHaveProperty(
+      'ownerMemberId',
+    );
     expect(result).toEqual({
       items: [
         {
@@ -113,26 +117,63 @@ describe('search_records', () => {
       total: 1,
       items: [{ id: ownRecordId, title: '自己的线索' }],
     });
-    expect(JSON.stringify(result)).not.toMatch(/仅管理员可见|别人的线索|secret/);
+    expect(JSON.stringify(result)).not.toMatch(
+      /仅管理员可见|别人的线索|secret/,
+    );
+  });
+
+  it('uses current member field exceptions without widening OWN or forbidden table access', async () => {
+    const { records, publishedRepository } = recordToolFixture();
+    const tool = createSearchRecordsTool(records, employee);
+    publishedRepository.record.memberFieldOverrides = { secret: 'EDIT' };
+    expect(
+      await tool.execute({ objectCode: 'leads' }, 'call-open'),
+    ).toMatchObject({
+      total: 1,
+      items: [{ values: { secret: '仅管理员可见' } }],
+    });
+    publishedRepository.record.memberFieldOverrides = { secret: 'HIDDEN' };
+    expect(
+      JSON.stringify(await tool.execute({ objectCode: 'leads' }, 'call-hide')),
+    ).not.toContain('仅管理员可见');
+    publishedRepository.record.memberFieldOverrides = { name: 'HIDDEN' };
+    await expect(
+      tool.execute({ objectCode: 'leads' }, 'call-title'),
+    ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
+    const forbidden = recordToolFixture({ canRead: false });
+    forbidden.publishedRepository.record.memberFieldOverrides = {
+      secret: 'EDIT',
+    };
+    await expect(
+      createSearchRecordsTool(forbidden.records, employee).execute(
+        { objectCode: 'leads' },
+        'call-denied',
+      ),
+    ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
   });
 
   it('returns ALL visible records for an admin without HIDDEN stripping for admin', async () => {
     const { records } = recordToolFixture();
     const tool = createSearchRecordsTool(records, admin);
 
-    const result = await tool.execute({ objectCode: 'leads', limit: 20 }, 'call-1');
+    const result = await tool.execute(
+      { objectCode: 'leads', limit: 20 },
+      'call-1',
+    );
 
     expect(result).toMatchObject({ total: 2 });
-    expect((result as { items: Array<{ id: string }> }).items.map((item) => item.id)).toEqual(
-      expect.arrayContaining([ownRecordId, otherRecordId]),
-    );
+    expect(
+      (result as { items: Array<{ id: string }> }).items.map((item) => item.id),
+    ).toEqual(expect.arrayContaining([ownRecordId, otherRecordId]));
   });
 
   it('rejects NONE read scope', async () => {
     const { records } = recordToolFixture({ readScope: 'NONE' });
     const tool = createSearchRecordsTool(records, employee);
 
-    await expect(tool.execute({ objectCode: 'leads' }, 'call-1')).rejects.toMatchObject({
+    await expect(
+      tool.execute({ objectCode: 'leads' }, 'call-1'),
+    ).rejects.toMatchObject({
       code: 'OBJECT_ACTION_FORBIDDEN',
     });
   });

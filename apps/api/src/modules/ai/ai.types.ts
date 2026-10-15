@@ -55,6 +55,7 @@ export interface PublicAiMessage {
   toolSummary: unknown;
   sourceSummary: unknown;
   errorCode: string | null;
+  durationMs?: number;
   createdAt: string;
   completedAt: string | null;
   proposal?: AiProposalView | null;

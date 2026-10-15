@@ -43,7 +43,10 @@ import {
 import { OptionBadge } from "@/features/objects/option-badge";
 
 import type { DynamicFieldMember } from "./dynamic-field";
-import { RecordBatchAssignDrawer } from "./record-batch-assign";
+import {
+  MAX_OWNER_ASSIGNMENT_RECORDS,
+  RecordBatchAssignDrawer,
+} from "./record-batch-assign";
 import { RecordBatchEditDrawer } from "./record-batch-edit";
 import { RecordImportDrawer } from "./record-import";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
@@ -530,6 +533,7 @@ export function RecordList({
 
   return (
     <div className={styles.list}>
+      <div className={styles.listControls}>
       {error ? <Alert type="error" showIcon title={error} /> : null}
       <PageHeader
         title={owned && !poolConfig?.enabled ? `我的${schema.object.name}` : schema.object.name}
@@ -580,11 +584,12 @@ export function RecordList({
           <div className={styles.tableTools}>
             <Typography.Text type="secondary" className={styles.resultCount}>
               共 {page.total} 条 · 第 {page.page} 页
+              {currentSelectedRowKeys.length > 100 ? ` · 批量修改每次最多 100 条，负责人分配每次最多 ${MAX_OWNER_ASSIGNMENT_RECORDS} 条` : ""}
             </Typography.Text>
             <Select
               aria-label="每页条数"
               value={page.limit}
-              options={[20, 50, 100].map((value) => ({
+              options={[20, 50, 100, 300, 500, 1000].map((value) => ({
                 value,
                 label: `${value} 条 / 页`,
               }))}
@@ -598,7 +603,7 @@ export function RecordList({
                     ? [{
                         key: "assign",
                         label: "批量分配负责人",
-                        disabled: currentSelectedRowKeys.length === 0,
+                        disabled: currentSelectedRowKeys.length === 0 || currentSelectedRowKeys.length > MAX_OWNER_ASSIGNMENT_RECORDS,
                         onClick: () => setAssignmentRecords([...selectedRecords]),
                       }]
                     : []),
@@ -607,7 +612,7 @@ export function RecordList({
                         {
                           key: "batch",
                           label: `批量修改${currentSelectedRowKeys.length ? ` ${currentSelectedRowKeys.length}` : ""}`,
-                          disabled: currentSelectedRowKeys.length === 0,
+                          disabled: currentSelectedRowKeys.length === 0 || currentSelectedRowKeys.length > 100,
                           onClick: () => setBatchOpen(true),
                         },
                       ]
@@ -927,6 +932,7 @@ export function RecordList({
           onChange={(direction) => apply({ ...query, direction, page: 1 })}
           options={[{ value: "asc", label: "升序" }, { value: "desc", label: "降序" }]}
         />
+      </div>
       </div>
       <DataPanel
         className={styles.registerPanel}

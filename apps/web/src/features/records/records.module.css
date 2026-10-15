@@ -645,3 +645,71 @@
   .poolActions :global(.ant-btn:hover),
   .poolActions :global(.ant-btn:active) { transition: none; transform: none; }
 }
+
+/* Keep the controls and pagination outside the record scrolling region. */
+.list {
+  height: calc(100dvh - var(--header-height) - 40px);
+  min-height: 0;
+  gap: 16px;
+}
+
+.listControls {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 16px;
+  max-height: 55%;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.listControls > * { flex-shrink: 0; }
+.listControls > header { margin-bottom: 0; }
+
+.registerPanel,
+.register,
+.register :global(.ant-spin),
+.register :global(.ant-spin-container),
+.register :global(.ant-table),
+.register :global(.ant-table-container) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.register { overflow: hidden; }
+.register :global(.ant-pagination),
+.registerPanel > .cardControls { flex-shrink: 0; }
+
+.register :global(.ant-table-content) {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  /* Ant Table hides vertical overflow inline when only horizontal scroll is set. */
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+}
+
+.register :global(.ant-table-thead) {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+}
+
+@media (max-height: 600px) {
+  .listControls { max-height: 40%; }
+}
+
+@media (max-width: 767px) {
+  .list { height: calc(100dvh - var(--header-height) - 28px); }
+  .register { display: none; }
+  .registerPanel > .cardList {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  .registerPanel > .cardControls { padding-bottom: 0; }
+  .resultCount { white-space: normal; }
+}

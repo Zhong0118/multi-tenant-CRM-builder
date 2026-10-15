@@ -22,6 +22,9 @@ export interface AiToolSummary {
   displayName: string;
   status: AiToolStatus;
   detail?: string;
+  startedAt?: string;
+  durationMs?: number;
+  errorCode?: string;
 }
 
 export type AiSourceSummary =
@@ -56,6 +59,7 @@ export type AiPublicStreamEvent =
   | { event: "tool.started"; data: AiToolSummary }
   | { event: "tool.completed"; data: AiToolSummary }
   | { event: "tool.failed"; data: AiToolSummary }
+  | { event: "assistant.reset"; data: Record<string, never> }
   | { event: "assistant.delta"; data: { text: string } }
   | { event: "sources.updated"; data: { sources: AiSourceSummary[] } }
   | {
@@ -73,13 +77,13 @@ export type AiPublicStreamEvent =
     }
   | {
       event: "turn.completed";
-      data: { turnId: string; messageId: string };
+      data: { turnId: string; messageId: string; durationMs?: number };
     }
   | {
       event: "turn.failed";
-      data: { turnId: string; code: string; messageId: string };
+      data: { turnId: string; code: string; messageId: string; durationMs?: number };
     }
   | {
       event: "turn.cancelled";
-      data: { turnId: string; messageId: string };
+      data: { turnId: string; messageId: string; durationMs?: number };
     };

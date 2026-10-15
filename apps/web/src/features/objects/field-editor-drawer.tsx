@@ -285,7 +285,7 @@ function FieldEditor({
           <Form.Item
             label="员工访问级别"
             htmlFor="field-access"
-            extra="字段权限来自发布版本，成员覆盖不会改变它。"
+            extra="员工默认列权限发布后生效；可在成员访问权限中为指定员工设置立即生效的例外。"
           >
             <Radio.Group
               id="field-access"

@@ -711,15 +711,23 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     );
   });
 
-  it.each(['PROPOSED', 'EXPIRED', 'FAILED', 'REJECTED', 'EXECUTED'])(
-    'does not reset a failed assistant when its operation is %s',
-    async (status) => {
+  it.each(
+    ['PROPOSED', 'EXPIRED', 'FAILED', 'REJECTED', 'EXECUTED'].flatMap(
+      (status) =>
+        (['FAILED', 'COMPLETED'] as const).map(
+          (assistantStatus) => [status, assistantStatus] as const,
+        ),
+    ),
+  )(
+    'does not reset a %s operation on a %s assistant',
+    async (status, assistantStatus) => {
       const fixture = harness();
       const begun = await fixture.repository.beginTurn(context, {
         content: 'retain proposal',
       });
       await fixture.repository.finalizeAssistant(context, begun.turnId, {
-        status: 'FAILED',
+        status: assistantStatus,
+        toolSummary: [{ callId: 'partial-failure', status: 'FAILED' }],
         content: 'original answer',
       });
       fixture.operations.push({
@@ -746,7 +754,7 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
       ).rejects.toMatchObject({ code: 'AI_TURN_NOT_RETRYABLE', status: 409 });
       expect(
         fixture.messages.find((row) => row.id === begun.assistant.id),
-      ).toMatchObject({ status: 'FAILED', content: 'original answer' });
+      ).toMatchObject({ status: assistantStatus, content: 'original answer' });
       expect(fixture.tx.aiMessage.update).toHaveBeenCalledTimes(1);
     },
   );
@@ -890,6 +898,57 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     expect(
       page.items.find((item) => item.role === 'ASSISTANT')?.proposal,
     ).toMatchObject({ proposalId: 'expired-operation', status: 'EXPIRED' });
+  });
+
+  it.each([0, -1, '123', null])(
+    'only projects valid non-negative attempt latency %s',
+    async (latencyMs) => {
+      const fixture = harness();
+      const begun = await fixture.repository.beginTurn(context, {
+        content: '耗时',
+      });
+      await fixture.repository.finalizeAssistant(context, begun.turnId, {
+        status: 'COMPLETED',
+        content: '答案',
+        usage: { latencyMs },
+      });
+      const page = await fixture.service.messages(
+        context,
+        begun.conversationId,
+        {},
+      );
+      const message = page.items.find((item) => item.role === 'ASSISTANT');
+      if (latencyMs === 0) expect(message).toMatchObject({ durationMs: 0 });
+      else expect(message).not.toHaveProperty('durationMs');
+    },
+  );
+
+  it('retries partial completed queries and projects the attempt duration from saved usage', async () => {
+    const fixture = harness();
+    const begun = await fixture.repository.beginTurn(context, {
+      content: '部分失败',
+    });
+    await fixture.repository.finalizeAssistant(context, begun.turnId, {
+      status: 'COMPLETED',
+      content: '已有答案',
+      toolSummary: [{ callId: 'failed', status: 'FAILED' }],
+      usage: { latencyMs: 1234 },
+    });
+    const page = await fixture.service.messages(
+      context,
+      begun.conversationId,
+      {},
+    );
+    expect(page.items.find((item) => item.role === 'ASSISTANT')).toMatchObject({
+      durationMs: 1234,
+    });
+    const retried = await fixture.repository.retryTurn(context, begun.turnId);
+    expect(retried.assistant).toMatchObject({
+      id: begun.assistant.id,
+      status: 'GENERATING',
+      content: '',
+      toolSummary: [],
+    });
   });
 
   it('rejects retry on a COMPLETED assistant', async () => {

@@ -21,6 +21,8 @@ export interface AiTurnState {
   errorMessage?: string;
   partial: boolean;
   pendingUserContent?: string;
+  startedAt?: number;
+  durationMs?: number;
 }
 
 export const initialAiTurnState: AiTurnState = {
@@ -63,6 +65,8 @@ export function aiTurnReducer(
       return {
         ...state,
         phase: "SENDING",
+        startedAt: Date.now(),
+        durationMs: undefined,
         turnId: undefined,
         streamingText: "",
         tools: [],
@@ -78,6 +82,8 @@ export function aiTurnReducer(
       return {
         ...state,
         phase: "SENDING",
+        startedAt: Date.now(),
+        durationMs: undefined,
         turnId: action.turnId,
         streamingText: "",
         tools: [],
@@ -95,6 +101,8 @@ export function aiTurnReducer(
       return {
         ...state,
         phase: "CANCELLED",
+        durationMs: elapsed(state),
+        tools: freezeRunningTools(state.tools),
         errorMessage: "回答已停止",
       };
     case "network":
@@ -109,6 +117,8 @@ export function aiTurnReducer(
       return {
         ...state,
         phase: "FAILED",
+        durationMs: elapsed(state),
+        tools: freezeRunningTools(state.tools),
         errorCode: action.code,
         errorMessage: userErrorMessage(action.code),
         draft: state.turnId
@@ -137,6 +147,8 @@ function applyEvent(
       };
     case "turn.started":
       return { ...state, phase: "STREAMING", turnId: event.data.turnId };
+    case "assistant.reset":
+      return { ...state, streamingText: "" };
     case "assistant.delta":
       return {
         ...state,
@@ -165,9 +177,11 @@ function applyEvent(
       return {
         ...state,
         phase: state.partial ? "PARTIAL_COMPLETED" : "COMPLETED",
+        durationMs: event.data.durationMs ?? elapsed(state),
+        tools: freezeRunningTools(state.tools),
         pendingUserContent: undefined,
         errorMessage: state.partial
-          ? "部分 CRM 数据暂时无法读取，本次回答可能不完整"
+          ? "部分查询未成功，可展开查看"
           : undefined,
       };
     case "turn.failed":
@@ -175,6 +189,8 @@ function applyEvent(
         ...state,
         phase: "FAILED",
         turnId: event.data.turnId,
+        durationMs: event.data.durationMs ?? elapsed(state),
+        tools: freezeRunningTools(state.tools),
         errorCode: event.data.code,
         errorMessage: userErrorMessage(event.data.code),
       };
@@ -182,6 +198,8 @@ function applyEvent(
       return {
         ...state,
         phase: "CANCELLED",
+        durationMs: event.data.durationMs ?? elapsed(state),
+        tools: freezeRunningTools(state.tools),
         errorMessage: "回答已停止",
       };
     default:
@@ -240,6 +258,20 @@ export function toAssistantMessage(state: AiTurnState): AiMessage | null {
     sourceSummary: state.sources,
     proposal: state.proposal,
     errorCode: state.errorCode,
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(state.startedAt ?? Date.now()).toISOString(),
+    durationMs: state.durationMs,
   };
+}
+
+function elapsed(state: AiTurnState): number | undefined {
+  return state.startedAt === undefined ? undefined : Math.max(0, Date.now() - state.startedAt);
+}
+
+function freezeRunningTools(tools: AiToolSummary[]): AiToolSummary[] {
+  const now = Date.now();
+  return tools.map((tool) => {
+    const start = tool.startedAt ? Date.parse(tool.startedAt) : NaN;
+    if (tool.status !== "RUNNING" || tool.durationMs !== undefined || !Number.isFinite(start)) return tool;
+    return { ...tool, durationMs: Math.max(0, now - start) };
+  });
 }

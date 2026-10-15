@@ -1,3 +1,5 @@
+import type { PublishedObjectSchema } from '../../objects/object-schema';
+import { defaultAiToolCallbacks, wrapAiReadTool } from '../ai-tool-wrapper';
 import type { RecordsService } from '../../records/records.service';
 import {
   ACTOR_OVERRIDE_KEYS,
@@ -8,6 +10,72 @@ import {
 import { createAggregateRecordsTool } from './aggregate-records.tool';
 
 describe('aggregate_records', () => {
+  it('lets a model correct a scalar option filter without weakening actual service validation', async () => {
+    const { records, store, publishedRepository } = recordToolFixture();
+    const schema = publishedRepository.record
+      .configuration as PublishedObjectSchema;
+    schema.fields.push(
+      {
+        ...schema.fields[0]!,
+        id: 'stage',
+        fieldKey: 'stage',
+        label: '阶段',
+        type: 'SINGLE_SELECT',
+        config: { options: [{ key: 'lost', label: '已流失' }] },
+      },
+      {
+        ...schema.fields[0]!,
+        id: 'amount',
+        fieldKey: 'amount',
+        label: '预计金额',
+        type: 'MONEY',
+      },
+    );
+    schema.employeeAccess.fields.stage = 'READ_ONLY';
+    schema.employeeAccess.fields.amount = 'READ_ONLY';
+    store.records[0]!.values = { name: 'A', stage: 'lost', amount: 150000 };
+    store.records[1]!.values = { name: 'B', stage: 'lost', amount: 105000 };
+    const aggregateRecords = jest.fn(async () => ({
+      value: String(
+        store.records.reduce((sum, row) => sum + Number(row.values.amount), 0),
+      ),
+      groups: [],
+    }));
+    Object.assign(store, { aggregateRecords });
+    const cb = defaultAiToolCallbacks();
+    const tool = wrapAiReadTool(createAggregateRecordsTool(records, admin), cb);
+    const query = {
+      objectCode: 'leads',
+      aggregation: 'SUM',
+      valueFieldKey: 'amount',
+    };
+    await expect(
+      tool.execute({ ...query, filters: { stage: 'lost' } }, 'bad'),
+    ).resolves.toMatchObject({ code: 'INVALID_TOOL_ARGUMENT' });
+    expect(aggregateRecords).not.toHaveBeenCalled();
+    await expect(
+      tool.execute({ ...query, filters: { stage: ['lost'] } }, 'fixed'),
+    ).resolves.toEqual({ value: '255000', groups: [] });
+    expect(aggregateRecords).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filters: [{ fieldKey: 'stage', mode: 'EQUALS', values: ['lost'] }],
+        valueFieldKey: 'amount',
+      }),
+    );
+    await expect(
+      tool.execute(
+        { ...query, filters: { stage: ['not-visible-option'] } },
+        'invalid-option',
+      ),
+    ).resolves.toMatchObject({ code: 'INVALID_TOOL_ARGUMENT' });
+    expect(aggregateRecords).toHaveBeenCalledTimes(1);
+    expect(cb.toolSummaries.map((item) => item.status)).toEqual([
+      'FAILED',
+      'COMPLETED',
+      'FAILED',
+    ]);
+  });
+
   it('requires objectCode and aggregation and rejects actor-override keys', () => {
     const tool = createAggregateRecordsTool({} as RecordsService, employee);
     expect(

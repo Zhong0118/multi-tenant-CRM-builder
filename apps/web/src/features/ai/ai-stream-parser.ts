@@ -12,6 +12,7 @@ const PUBLIC_EVENTS = new Set<AiPublicStreamEvent["event"]>([
   "tool.completed",
   "tool.failed",
   "assistant.delta",
+  "assistant.reset",
   "sources.updated",
   "proposal.ready",
   "proposal.rejected",
@@ -99,6 +100,9 @@ function parsePublicEvent(
       };
     case "turn.started":
       return { event, data: { turnId: requiredString(data, "turnId") } };
+    case "assistant.reset":
+      if (!isRecord(data) || Object.keys(data).length > 0) throw new AiStreamError();
+      return { event, data: {} };
     case "assistant.delta":
       return { event, data: { text: requiredString(data, "text") } };
     case "tool.started":
@@ -131,6 +135,7 @@ function parsePublicEvent(
         data: {
           turnId: requiredString(data, "turnId"),
           messageId: requiredString(data, "messageId"),
+          ...optionalDuration(data),
         },
       };
     case "turn.failed":
@@ -140,6 +145,7 @@ function parsePublicEvent(
           turnId: requiredString(data, "turnId"),
           code: requiredString(data, "code"),
           messageId: requiredString(data, "messageId"),
+          ...optionalDuration(data),
         },
       };
   }
@@ -157,6 +163,9 @@ function parseTool(data: unknown): AiToolSummary {
     displayName: requiredString(data, "displayName"),
     status,
     ...(detail ? { detail } : {}),
+    ...optionalDuration(data),
+    ...(optionalString(data, "startedAt") ? { startedAt: optionalString(data, "startedAt") } : {}),
+    ...(optionalString(data, "errorCode") ? { errorCode: optionalString(data, "errorCode") } : {}),
   };
 }
 
@@ -374,4 +383,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isPublicEvent(value: string): value is AiPublicStreamEvent["event"] {
   return PUBLIC_EVENTS.has(value as AiPublicStreamEvent["event"]);
+}
+
+function optionalDuration(data: unknown): { durationMs?: number } {
+  if (!isRecord(data) || data.durationMs === undefined) return {};
+  const durationMs = requiredNumber(data, "durationMs");
+  if (durationMs < 0) throw new AiStreamError();
+  return { durationMs };
 }

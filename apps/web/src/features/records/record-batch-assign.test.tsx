@@ -70,7 +70,7 @@ describe("batch ownership assignment", () => {
     );
   });
 
-  it("processes 100 selected records and never restarts successful assignments", async () => {
+  it("processes 1000 selected records and never restarts successful assignments", async () => {
     const changeOwnership = vi
       .fn<RecordPoolApi["changeOwnership"]>()
       .mockImplementation(async (_tenant, _object, id, input) => ({
@@ -81,7 +81,7 @@ describe("batch ownership assignment", () => {
       <RecordBatchAssignDrawer
         tenantCode="northwind"
         objectCode="customers"
-        records={Array.from({ length: 100 }, (_, i) => ({
+        records={Array.from({ length: 1000 }, (_, i) => ({
           ...record,
           id: `r${i}`,
         }))}
@@ -94,10 +94,38 @@ describe("batch ownership assignment", () => {
     fireEvent.mouseDown(screen.getByLabelText("批量分配负责人"));
     fireEvent.click(await screen.findByText("员工甲"));
     fireEvent.click(screen.getByRole("button", { name: "确认分配" }));
-    await screen.findByText("成功 100 条，失败 0 条，未处理 0 条");
+    await screen.findByText("成功 1000 条，失败 0 条，未处理 0 条");
     expect(
       new Set(changeOwnership.mock.calls.map((call) => call[2])).size,
-    ).toBe(100);
-    expect(changeOwnership).toHaveBeenCalledTimes(100);
+    ).toBe(1000);
+    expect(changeOwnership).toHaveBeenCalledTimes(1000);
+  });
+
+  it("refuses more than 1000 selected records before any ownership request", async () => {
+    const changeOwnership = vi.fn<RecordPoolApi["changeOwnership"]>();
+    const onChanged = vi.fn();
+    render(
+      <RecordBatchAssignDrawer
+        tenantCode="northwind"
+        objectCode="customers"
+        records={Array.from({ length: 1001 }, (_, i) => ({
+          ...record,
+          id: `r${i}`,
+        }))}
+        members={[{ id: "m1", displayName: "员工甲" }]}
+        api={{ changeOwnership, getConfig: vi.fn(), saveConfig: vi.fn() }}
+        onChanged={onChanged}
+        onClose={vi.fn()}
+      />,
+    );
+    fireEvent.mouseDown(screen.getByLabelText("批量分配负责人"));
+    fireEvent.click(await screen.findByText("员工甲"));
+    expect(
+      screen.getByText("批量分配负责人每次最多 1000 条，请减少勾选"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "确认分配" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "确认分配" }));
+    expect(changeOwnership).not.toHaveBeenCalled();
+    expect(onChanged).not.toHaveBeenCalled();
   });
 });

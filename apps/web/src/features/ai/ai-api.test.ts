@@ -92,3 +92,9 @@ describe("aiApi", () => {
     );
   });
 });
+
+it("preserves optional history timings and safe failure diagnostics", async () => {
+  const item = { id: "m", conversationId: "c", turnId: "t", role: "ASSISTANT", status: "COMPLETED", content: "结果", durationMs: 0, createdAt: "2026-10-15T00:00:00Z", toolSummary: [{ callId: "x", toolName: "search_records", displayName: "查询", status: "FAILED", startedAt: "2026-10-15T00:00:00Z", durationMs: 345, errorCode: "INVALID_TOOL_ARGUMENT", detail: "查询条件需要调整" }], sourceSummary: [] };
+  mocks.GET.mockResolvedValue({ data: { items: [item] }, response: new Response(null, { status: 200 }) });
+  expect((await aiApi.listMessages("demo", "c")).items).toEqual([{ ...item, proposal: null }]);
+});

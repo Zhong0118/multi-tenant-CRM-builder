@@ -32,11 +32,18 @@ describe("parseRecordQuery", () => {
     });
   });
 
+  it.each([20, 50, 100, 300, 500, 1000])(
+    "preserves supported page size %i",
+    (limit) => {
+      expect(parseRecordQuery({ limit: String(limit) }).limit).toBe(limit);
+    },
+  );
+
   it("refuses a page or limit the API would reject", () => {
     expect(parseRecordQuery({ page: "0" }).page).toBe(1);
     expect(parseRecordQuery({ page: "-2" }).page).toBe(1);
     expect(parseRecordQuery({ page: "abc" }).page).toBe(1);
-    expect(parseRecordQuery({ limit: "500" }).limit).toBe(100);
+    expect(parseRecordQuery({ limit: "1001" }).limit).toBe(1000);
     expect(parseRecordQuery({ limit: "0" }).limit).toBe(
       DEFAULT_RECORD_QUERY.limit,
     );

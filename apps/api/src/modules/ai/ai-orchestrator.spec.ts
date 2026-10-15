@@ -463,6 +463,100 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
 });
 
 describe('AiOrchestrator.streamTurn', () => {
+  it('streams a text reset and saves only the final answer while keeping prior tool summaries', async () => {
+    const conversations = conversationMock();
+    const provider = providerWith([
+      { type: 'TEXT_DELTA', text: 'Checking records' },
+      {
+        type: 'TOOL_CALL_FAILED',
+        callId: 'earlier-tool',
+        toolName: 'search_records',
+        code: 'INVALID_TOOL_ARGUMENT',
+        startedAt: '2026-10-15T00:00:00.000Z',
+        durationMs: 1,
+      },
+      { type: 'TEXT_RESET' },
+      { type: 'TEXT_DELTA', text: '合计 ' },
+      { type: 'TEXT_DELTA', text: '255000 元' },
+      { type: 'COMPLETED' },
+    ]);
+    const events = await collect(
+      await new AiOrchestrator(
+        conversations,
+        provider,
+        registryWith([]),
+      ).streamTurn(
+        context,
+        { content: begun.user.content },
+        new AbortController().signal,
+      ),
+    );
+    expect(events).toContainEqual({ event: 'assistant.reset', data: {} });
+    expect(
+      events
+        .filter((event) => event.event === 'assistant.delta')
+        .map((event) => event.data),
+    ).toEqual([
+      { text: 'Checking records' },
+      { text: '合计 ' },
+      { text: '255000 元' },
+    ]);
+    expect(conversations.finalizeAssistant).toHaveBeenCalledWith(
+      context,
+      begun.turnId,
+      expect.objectContaining({
+        content: '合计 255000 元',
+        toolSummary: [
+          expect.objectContaining({ callId: 'earlier-tool', status: 'FAILED' }),
+        ],
+      }),
+    );
+  });
+
+  it('emits and persists an SDK input failure even when the domain wrapper never ran', async () => {
+    const conversations = conversationMock();
+    const provider = providerWith([
+      {
+        type: 'TOOL_CALL_FAILED',
+        callId: 'invalid-sdk',
+        toolName: 'search_records',
+        code: 'INVALID_TOOL_ARGUMENT',
+        startedAt: '2026-10-15T00:00:00.000Z',
+        durationMs: 4,
+      },
+      { type: 'TEXT_DELTA', text: '查询条件无效，请重试' },
+      { type: 'COMPLETED' },
+    ]);
+    const events = await collect(
+      await new AiOrchestrator(
+        conversations,
+        provider,
+        registryWith([]),
+      ).streamTurn(
+        context,
+        { content: begun.user.content },
+        new AbortController().signal,
+      ),
+    );
+    expect(events).toContainEqual({
+      event: 'tool.failed',
+      data: expect.objectContaining({
+        callId: 'invalid-sdk',
+        status: 'FAILED',
+        errorCode: 'INVALID_TOOL_ARGUMENT',
+        durationMs: 4,
+      }),
+    });
+    expect(conversations.finalizeAssistant).toHaveBeenCalledWith(
+      context,
+      begun.turnId,
+      expect.objectContaining({
+        status: 'COMPLETED',
+        toolSummary: [expect.objectContaining({ status: 'FAILED' })],
+      }),
+    );
+  });
+
   it('calls beginTurn first, then streams public events, then finalizes in a separate call', async () => {
     const conversations = conversationMock();
     const order: string[] = [];
@@ -509,7 +603,11 @@ describe('AiOrchestrator.streamTurn', () => {
     });
     expect(events.at(-1)).toEqual({
       event: 'turn.completed',
-      data: { turnId: 'turn-1', messageId: 'asst-msg' },
+      data: {
+        turnId: 'turn-1',
+        messageId: 'asst-msg',
+        durationMs: expect.any(Number),
+      },
     });
     expect(JSON.stringify(events)).not.toContain('must-not-leak');
     expect(conversations.finalizeAssistant).toHaveBeenCalledWith(
@@ -641,7 +739,11 @@ describe('AiOrchestrator.streamTurn', () => {
     expect(events.map((event) => event.event)).toContain('turn.cancelled');
     expect(events.find((event) => event.event === 'turn.cancelled')).toEqual({
       event: 'turn.cancelled',
-      data: { turnId: 'turn-1', messageId: 'asst-msg' },
+      data: {
+        turnId: 'turn-1',
+        messageId: 'asst-msg',
+        durationMs: expect.any(Number),
+      },
     });
   });
 
@@ -676,6 +778,7 @@ describe('AiOrchestrator.streamTurn', () => {
         turnId: 'turn-1',
         code: 'AI_PROVIDER_TIMEOUT',
         messageId: 'asst-msg',
+        durationMs: expect.any(Number),
       },
     });
     expect(JSON.stringify(events)).not.toMatch(/ECONNRESET|sk-|stack/i);
@@ -725,6 +828,7 @@ describe('AiOrchestrator.streamTurn', () => {
           turnId: 'turn-1',
           code: 'AI_PROVIDER_TIMEOUT',
           messageId: 'asst-msg',
+          durationMs: expect.any(Number),
         },
       });
       expect(events.map((event) => event.event)).not.toContain(
@@ -768,6 +872,7 @@ describe('AiOrchestrator.streamTurn', () => {
         turnId: 'turn-1',
         code: 'AI_TURN_FAILED',
         messageId: 'asst-msg',
+        durationMs: expect.any(Number),
       },
     });
     expect(JSON.stringify(events)).not.toMatch(/db unavailable|stack/i);
@@ -825,6 +930,7 @@ describe('AiOrchestrator.streamTurn', () => {
       toolName: 'search_records',
       displayName: '查询leads记录',
       status: 'RUNNING',
+      startedAt: expect.any(String),
     });
     expect(JSON.stringify(events)).not.toContain('内部备注');
     expect(JSON.stringify(events)).not.toContain('"values"');
@@ -926,7 +1032,10 @@ describe('AiOrchestrator.streamTurn', () => {
     expect(results[5]).toEqual({
       items: [{ id: '1', values: { secret: 'x' } }],
     });
-    expect(results[6]).toEqual({ unavailable: true, code: 'DATA_UNAVAILABLE' });
+    expect(results[6]).toMatchObject({
+      unavailable: true,
+      code: 'AI_TOOL_BUDGET_EXCEEDED',
+    });
     expect(
       events.filter((event) => event.event === 'tool.completed'),
     ).toHaveLength(6);
@@ -1070,6 +1179,7 @@ describe('AiOrchestrator.streamTurn', () => {
           turnId: 'turn-1',
           code: 'AI_PROVIDER_TIMEOUT',
           messageId: 'asst-msg',
+          durationMs: expect.any(Number),
         },
       });
       expect(events.map((event) => event.event)).toContain('tool.started');

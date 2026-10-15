@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowRightOutlined, BarChartOutlined, HistoryOutlined, TableOutlined } from "@ant-design/icons";
 import Link from "next/link";
 
 import styles from "./ai-assistant.module.css";
@@ -26,18 +27,18 @@ export function SourceCard({
       : source.kind === "RECORDS"
         ? `${source.count} 条记录`
         : `${source.count} 条活动`;
-  const glyph = source.objectName.slice(0, 1);
+  const Glyph = source.kind === "AGGREGATE" ? BarChartOutlined : source.kind === "TIMELINE" ? HistoryOutlined : TableOutlined;
   return (
     <Link className={styles.sourceCard} href={href}>
       <span className={styles.sourceGlyph} aria-hidden>
-        {glyph}
+        <Glyph />
       </span>
       <span>
         <span className={styles.sourceTitle}>{title}</span>
         <span className={styles.sourceDetail}>{detail}</span>
       </span>
       <span className={styles.sourceArrow} aria-hidden>
-        →
+        <ArrowRightOutlined />
       </span>
     </Link>
   );

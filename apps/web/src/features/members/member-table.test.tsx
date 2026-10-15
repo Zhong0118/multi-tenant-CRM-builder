@@ -1,5 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
@@ -181,6 +187,46 @@ describe("MemberTable", () => {
       exact: false,
     });
     expect(onInvitationCreated).toHaveBeenCalledOnce();
+  });
+
+  it("uses current-page selection for access and excludes admins and disabled employees", () => {
+    const pageMembers: TenantMember[] = [
+      ...members,
+      {
+        ...members[1],
+        id: "disabled",
+        status: "DISABLED",
+        displayName: "已停用员工",
+      },
+      { ...members[0], id: "other-admin", displayName: "其他管理员" },
+    ];
+    renderWithQuery(
+      <MemberTable
+        tenantCode="northwind"
+        viewerRole="TENANT_ADMIN"
+        viewerMemberId="member-admin"
+        initialMemberPage={{
+          ...initialMemberPage,
+          items: pageMembers,
+          total: 21,
+        }}
+        initialInvitationPage={{ items: [] }}
+        api={memberApi()}
+        navigate={vi.fn()}
+      />,
+    );
+    expect(buttonByText("批量设置访问权限（0 人）")).toBeDisabled();
+    for (const name of ["林员工", "已停用员工", "其他管理员"]) {
+      const row = screen.getByText(name).closest("tr")!;
+      fireEvent.click(within(row).getByRole("checkbox"));
+    }
+    expect(buttonByText("批量设置访问权限（1 人）")).toBeEnabled();
+    fireEvent.click(
+      screen
+        .getAllByRole("button", { name: "right" })
+        .find((button) => !button.hasAttribute("disabled"))!,
+    );
+    expect(buttonByText("批量设置访问权限（0 人）")).toBeDisabled();
   });
 
   it("writes member pagination to the page URL", () => {
