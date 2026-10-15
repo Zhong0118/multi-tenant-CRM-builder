@@ -158,3 +158,15 @@ describe("AiStreamParser", () => {
     }
   });
 });
+
+it("preserves safe tool diagnostics and terminal duration", () => {
+  const data = { callId: "c", toolName: "search_records", displayName: "查询客户", status: "FAILED", detail: "调整查询条件", startedAt: "2026-10-15T00:00:00Z", durationMs: 0, errorCode: "INVALID_TOOL_ARGUMENT" };
+  expect(feed([`event: tool.failed\ndata: ${JSON.stringify(data)}\n\n`])[0]).toEqual({ event: "tool.failed", data });
+  for (const event of ["turn.completed", "turn.failed", "turn.cancelled"]) {
+    expect(feed([`event: ${event}\ndata: {"turnId":"t","messageId":"m","code":"AI_TURN_FAILED","durationMs":1234}\n\n`])[0]?.data).toMatchObject({ durationMs: 1234 });
+  }
+});
+
+it("parses an answer-step reset", () => {
+  expect(feed(['event: assistant.reset\ndata: {}\n\n'])).toEqual([{ event: "assistant.reset", data: {} }]);
+});

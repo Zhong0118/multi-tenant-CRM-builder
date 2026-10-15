@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { components } from "@crm/contracts";
 import {
   Alert,
   Button,
@@ -17,54 +16,24 @@ import { useState } from "react";
 import { StatusTag } from "@/components/workbench/status-tag";
 import { DATA_SCOPE_LABELS } from "@/features/objects/object-types";
 import { toApiError } from "@/lib/api/api-error";
-import { browserApiClient } from "@/lib/api/browser-client";
 
+import { BulkMemberAccess, FIELD_ACCESS_LABELS } from "./bulk-member-access";
 import styles from "./members.module.css";
 
-type Schemas = components["schemas"];
-export type MemberObjectAccessRow = Schemas["MemberObjectAccessResponseDto"];
-export type MemberObjectPolicy = Schemas["MemberObjectPolicyResponseDto"];
-export type MemberObjectAccessInput = Schemas["MemberObjectAccessDto"];
-
-export interface MemberAccessApi {
-  list(tenantCode: string, memberId: string): Promise<MemberObjectAccessRow[]>;
-  set(
-    tenantCode: string,
-    memberId: string,
-    objectId: string,
-    input: MemberObjectAccessInput,
-  ): Promise<MemberObjectAccessRow>;
-}
-
-const ACCESS_PATH =
-  "/api/v1/workspaces/{tenantCode}/members/{memberId}/object-access" as const;
-
-export const memberAccessApi: MemberAccessApi = {
-  async list(tenantCode, memberId) {
-    return dataOrThrow(
-      await browserApiClient.GET(ACCESS_PATH, {
-        params: { path: { tenantCode, memberId } },
-      }),
-    );
-  },
-  async set(tenantCode, memberId, objectId, input) {
-    return dataOrThrow(
-      await browserApiClient.PUT(`${ACCESS_PATH}/{objectId}`, {
-        params: { path: { tenantCode, memberId, objectId } },
-        body: input,
-      }),
-    );
-  },
-};
-
-async function dataOrThrow<T>(result: {
-  data?: T;
-  error?: unknown;
-  response: Response;
-}): Promise<T> {
-  if (result.data !== undefined) return result.data;
-  throw toApiError(result.error, result.response.status);
-}
+export type {
+  MemberAccessApi,
+  MemberObjectAccessRow,
+  MemberObjectPolicy,
+  MemberObjectAccessInput,
+} from "./member-access-api";
+export { memberAccessApi } from "./member-access-api";
+import {
+  memberAccessApi,
+  type MemberAccessApi,
+  type MemberObjectAccessRow,
+  type MemberObjectPolicy,
+  type MemberObjectAccessInput,
+} from "./member-access-api";
 
 export interface MemberObjectAccessProps {
   tenantCode: string;
@@ -80,8 +49,7 @@ export interface MemberObjectAccessProps {
  * there is no partial override, because a half-applied policy could not be
  * reasoned about.
  *
- * Field access is deliberately absent: it stays role-level in the published
- * snapshot, so a member override can only change actions and data scope.
+ * Field overrides are edited separately through the shared bulk editor.
  */
 export function MemberObjectAccess({
   tenantCode,
@@ -166,6 +134,36 @@ export function MemberObjectAccess({
           key={row.objectId}
           row={row}
           memberName={memberName}
+          accessEditor={
+            <BulkMemberAccess
+              tenantCode={tenantCode}
+              selected={[
+                {
+                  id: memberId,
+                  displayName: memberName,
+                  role: "EMPLOYEE",
+                  status: "ACTIVE",
+                },
+              ]}
+              initialRows={rows}
+              initialObjectId={row.objectId}
+              disabled={save.isPending}
+              buttonLabel="设置表和列权限"
+              onChanged={async () => {
+                setNotice("成员表和列权限已保存并立即生效");
+                try {
+                  setRows(await api.list(tenantCode, memberId));
+                } catch (caught) {
+                  setError(
+                    `权限已保存，刷新失败：${toApiError(caught).message}`,
+                  );
+                }
+                void queryClient.invalidateQueries({
+                  queryKey: ["workspace", tenantCode, "members"],
+                });
+              }}
+            />
+          }
           saving={save.isPending}
           onSave={(input) => save.mutate({ objectId: row.objectId, input })}
         />
@@ -178,11 +176,13 @@ function ObjectAccessPanel({
   row,
   memberName,
   saving,
+  accessEditor,
   onSave,
 }: {
   row: MemberObjectAccessRow;
   memberName: string;
   saving: boolean;
+  accessEditor: React.ReactNode;
   onSave: (input: MemberObjectAccessInput) => void;
 }) {
   const [draft, setDraft] = useState<MemberObjectPolicy>(
@@ -243,6 +243,21 @@ function ObjectAccessPanel({
       <p className={styles.accessInherited}>
         员工默认：{describePolicy(row.inherited)}
       </p>
+
+      <div className={styles.fieldAccessList}>
+        {(row.fields ?? []).map((field) => (
+          <p key={field.fieldId}>
+            {field.label} · 当前：{FIELD_ACCESS_LABELS[field.effective]} ·
+            默认：{FIELD_ACCESS_LABELS[field.inherited]}
+            {field.isSystem
+              ? " · 系统列，不可覆盖"
+              : field.override
+                ? " · 成员覆盖"
+                : " · 跟随默认"}
+          </p>
+        ))}
+        {accessEditor}
+      </div>
 
       {expanded ? (
         <Form component={false} layout="vertical">
@@ -322,7 +337,7 @@ function ObjectAccessPanel({
             </Button>
             <Typography.Text type="secondary">
               覆盖会整条替换 {memberName}{" "}
-              在该对象上的员工默认权限；保存后立即生效。字段访问仍来自对象发布版本，不授予员工删除权限。
+              在该对象上的员工默认权限；保存后立即生效。列权限可通过“设置表和列权限”单独调整，不授予员工删除权限。
             </Typography.Text>
           </Space>
         </Form>

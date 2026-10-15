@@ -45,10 +45,9 @@
 }
 .inviteFields {
   display: grid;
-  grid-template-columns: minmax(140px, 1fr) minmax(180px, 1.2fr) minmax(
-      140px,
-      1fr
-    ) auto;
+  grid-template-columns:
+    minmax(140px, 1fr) minmax(180px, 1.2fr) minmax(140px, 1fr)
+    auto;
   gap: 12px;
   align-items: end;
 }
@@ -185,4 +184,63 @@
   color: var(--text-primary);
   font-size: 14px;
   line-height: 22px;
+}
+
+.fieldAccessList {
+  margin-block: 16px;
+}
+.fieldAccessList p {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.accessEditor {
+  animation: access-appear 180ms ease-out;
+}
+.fieldAccessRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 16px;
+  align-items: center;
+  padding-block: 12px;
+  border-bottom: 1px solid var(--rule);
+  transition: background-color 160ms ease;
+}
+.fieldAccessRow:hover {
+  background: var(--bg-hover);
+}
+.accessDrawer :global(.ant-btn) {
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease;
+}
+.accessDrawer :global(.ant-btn:not(:disabled):hover) {
+  transform: scale(1.02);
+}
+.accessDrawer :global(.ant-btn:not(:disabled):active) {
+  transform: scale(0.98);
+}
+@keyframes access-appear {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (max-width: 480px) {
+  .fieldAccessRow {
+    grid-template-columns: minmax(0, 1fr) 125px;
+    gap: 8px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .accessEditor {
+    animation: none;
+  }
+  .fieldAccessRow,
+  .accessDrawer :global(.ant-btn) {
+    transition: none;
+  }
 }

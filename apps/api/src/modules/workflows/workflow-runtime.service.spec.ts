@@ -178,6 +178,7 @@ function objectRow(schema: PublishedObjectSchema) {
     sortOrder: schema.object.sortOrder,
     activePublication: { configuration: schema },
     permissions: [],
+    memberFieldPermissions: [],
   };
 }
 
@@ -407,6 +408,10 @@ class MemoryActionEngine implements Partial<ActionEngineService> {
 }
 
 interface FixtureOptions {
+  memberFieldPermissions?: Array<{
+    access: 'EDIT' | 'READ_ONLY' | 'HIDDEN';
+    field: { fieldKey: string };
+  }>;
   record?: Partial<DynamicRecord>;
   actions?: WorkflowActionDraft[];
   context?: TenantContext;
@@ -455,7 +460,12 @@ function fixture(options: FixtureOptions = {}) {
       findFirst: () => {
         journal.record('resolve-source-object');
         return Promise.resolve(
-          options.sourceRow === false ? null : objectRow(schema),
+          options.sourceRow === false
+            ? null
+            : {
+                ...objectRow(schema),
+                memberFieldPermissions: options.memberFieldPermissions ?? [],
+              },
         );
       },
     },
@@ -514,6 +524,26 @@ describe('WorkflowRuntimeService.execute — §23 atomic execution', () => {
     ).rejects.toMatchObject({ code: 'WORKFLOW_TRANSITION_FORBIDDEN' });
     expect(engine.calls).toEqual([]);
     expect(lastRecord(store).version).toBe(7);
+  });
+
+  it('passes live member field permissions from the transaction to action commands', async () => {
+    const { service, engine } = fixture({
+      memberFieldPermissions: [
+        { field: { fieldKey: 'amount' }, access: 'READ_ONLY' },
+      ],
+    });
+    await service.execute(
+      employee,
+      'leads',
+      'record-1',
+      'mark-won',
+      { expectedVersion: 7 },
+      meta,
+    );
+    expect(engine.calls[0].source.resolved.access.fields.amount).toBe(
+      'READ_ONLY',
+    );
+    expect(engine.calls[0].source.resolved.access.updateScope).toBe('OWN');
   });
 
   it('runs the whole §23 sequence inside ONE tenant transaction', async () => {

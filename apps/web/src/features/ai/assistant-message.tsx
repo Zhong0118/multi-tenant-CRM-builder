@@ -1,5 +1,8 @@
 "use client";
 
+import { ClockCircleOutlined } from "@ant-design/icons";
+
+import { elapsedSince, formatDuration, useElapsedNow } from "./ai-elapsed";
 import styles from "./ai-assistant.module.css";
 import { AiErrorState } from "./ai-error-state";
 import { AnswerText } from "./ai-rich-text";
@@ -26,12 +29,20 @@ export function AssistantMessage({
   proposalBusy?: boolean;
   proposalError?: string | null;
 }) {
-  const retryable =
-    (message.status === "FAILED" || message.status === "CANCELLED") && onRetry;
+  const active = message.status === "STREAMING" || message.status === "GENERATING";
+  const now = useElapsedNow(active);
+  // Persisted GENERATING rows retain the original creation time on retries.
+  // Only the local STREAMING projection has a current attempt start.
+  const duration = active
+    ? message.status === "STREAMING" ? elapsedSince(message.createdAt, now) : undefined
+    : message.durationMs ?? (message.completedAt ? elapsedSince(message.createdAt, Date.parse(message.completedAt)) : undefined);
   const partial =
     message.status === "PARTIAL_COMPLETED" ||
     (message.status === "COMPLETED" &&
       message.toolSummary.some((tool) => tool.status === "FAILED"));
+  const retryable = !active && !message.proposal && !proposalBusy &&
+    (message.status === "FAILED" || message.status === "CANCELLED" || partial) && onRetry;
+  const failedTools = message.toolSummary.filter((tool) => tool.status === "FAILED");
   const waiting =
     (message.status === "STREAMING" || message.status === "GENERATING") &&
     !message.content &&
@@ -43,21 +54,25 @@ export function AssistantMessage({
         AI
       </div>
       <div className={styles.assistantSurface}>
+        <div className={styles.answerMeta}>
+          <span>{active ? "正在回答" : message.status === "FAILED" ? "回答未完成" : message.status === "CANCELLED" ? "已停止" : partial ? "回答含未成功的查询" : "AI 回答"}</span>
+          {duration !== undefined ? <span className={styles.turnDuration}><ClockCircleOutlined aria-hidden />{active ? "已用时" : "本轮用时"} {formatDuration(duration)}</span> : null}
+        </div>
         {waiting ? <p className={styles.waiting}>正在整理回答…</p> : null}
-        <ToolActivity tools={message.toolSummary} />
+        <ToolActivity tools={message.toolSummary} running={active} now={active ? now : message.completedAt ? Date.parse(message.completedAt) : undefined} />
         {message.proposal ? <AiProposalCard tenantCode={tenantCode} proposal={message.proposal} busy={proposalBusy} mutationError={proposalError} onConfirm={() => onConfirmProposal?.(message.proposal!.proposalId)} onReject={() => onRejectProposal?.(message.proposal!.proposalId)} /> : null}
-        {message.content ? <AnswerText content={message.content} /> : null}
+        {message.content ? <div className={styles.answerContent}><AnswerText content={message.content} /></div> : null}
         {partial ? (
-          <AiErrorState message="部分 CRM 数据暂时无法读取，本次回答可能不完整" />
+          <AiErrorState message={failedTools.some((tool) => tool.detail || tool.errorCode) ? "查询未全部成功，请展开查看原因" : "部分查询未成功，可展开查看"} onRetry={retryable ? () => onRetry(message.turnId) : undefined} />
         ) : null}
-        {retryable ? (
+        {!partial && (message.status === "FAILED" || message.status === "CANCELLED") ? (
           <AiErrorState
             message={
               message.status === "CANCELLED"
                 ? "回答已停止"
                 : userErrorMessage(message.errorCode)
             }
-            onRetry={() => onRetry(message.turnId)}
+            onRetry={retryable ? () => onRetry(message.turnId) : undefined}
           />
         ) : null}
         {message.sourceSummary.length > 0 ? (

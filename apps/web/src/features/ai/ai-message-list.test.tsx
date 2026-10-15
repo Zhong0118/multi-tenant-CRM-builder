@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { AiMessageList, nextPrependScrollTop } from "./ai-message-list";
 import type { AiMessage } from "./ai-types";
@@ -175,5 +175,62 @@ describe("AiMessageList pending answer", () => {
       />,
     );
     expect(screen.getByText("正在整理回答…")).toBeInTheDocument();
+  });
+});
+
+
+describe("AiMessageList question navigation", () => {
+  it("does not resume following during the first upward frames of a smooth anchor scroll", () => {
+    render(<AiMessageList tenantCode="northwind" messages={[message("u1", "第一条问题"), message("u2", "第二条问题")]} phase="IDLE" />);
+    const scroller = screen.getByTestId("ai-message-scroller");
+    Object.defineProperties(scroller, {
+      scrollHeight: { value: 1600 },
+      clientHeight: { value: 400 },
+      scrollTop: { value: 1200, writable: true },
+    });
+    const scroll = vi.fn();
+    scroller.scrollTo = scroll;
+    fireEvent.scroll(scroller);
+    fireEvent.click(screen.getByRole("button", { name: "定位提问：第一条问题" }));
+    scroll.mockClear();
+    scroller.scrollTop = 1198;
+    fireEvent.scroll(scroller);
+    expect(scroll).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "回到最新" })).toBeInTheDocument();
+  });
+
+  it("creates one accessible anchor per question and does not jump back down while reading", () => {
+    const items = [message("u1", "第一条问题"), { ...message("a1", "回答一"), role: "ASSISTANT" }, message("u2", "第二条问题")];
+    const { rerender } = render(<AiMessageList tenantCode="northwind" messages={items} phase="STREAMING" streaming />);
+    const navigation = screen.getByRole("navigation", { name: "按提问定位" });
+    expect(navigation.querySelectorAll("button")).toHaveLength(2);
+    const scroller = screen.getByTestId("ai-message-scroller");
+    const scroll = vi.fn();
+    scroller.scrollTo = scroll;
+    Object.defineProperty(scroller, "scrollTop", { configurable: true, value: 300, writable: true });
+    scroller.getBoundingClientRect = () => ({ top: 100 } as DOMRect);
+    const first = scroller.querySelector('[data-ai-question="u1"]') as HTMLElement;
+    first.getBoundingClientRect = () => ({ top: 220 } as DOMRect);
+    fireEvent.click(screen.getByRole("button", { name: "定位提问：第一条问题" }));
+    expect(scroll).toHaveBeenLastCalledWith({ top: 404, behavior: "smooth" });
+    scroll.mockClear();
+    rerender(<AiMessageList tenantCode="northwind" messages={[...items, { ...message("a2", "新内容"), role: "ASSISTANT" }]} phase="STREAMING" streaming />);
+    expect(scroll).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "定位提问：第一条问题" })).toHaveAttribute("aria-current", "location");
+  });
+
+  it("updates the active question from the actual viewport while scrolling", () => {
+    render(<AiMessageList tenantCode="northwind" messages={[message("u1", "第一条问题"), message("u2", "第二条问题")]} phase="IDLE" />);
+    const scroller = screen.getByTestId("ai-message-scroller");
+    Object.defineProperties(scroller, { scrollHeight: { value: 1600 }, clientHeight: { value: 400 }, scrollTop: { value: 400 } });
+    scroller.getBoundingClientRect = () => ({ top: 100 } as DOMRect);
+    const questions = scroller.querySelectorAll<HTMLElement>("[data-ai-question]");
+    questions[0].getBoundingClientRect = () => ({ top: -200 } as DOMRect);
+    questions[1].getBoundingClientRect = () => ({ top: 400 } as DOMRect);
+    fireEvent.scroll(scroller);
+    expect(screen.getByRole("button", { name: "定位提问：第一条问题" })).toHaveAttribute("aria-current", "location");
+    questions[1].getBoundingClientRect = () => ({ top: 120 } as DOMRect);
+    fireEvent.scroll(scroller);
+    expect(screen.getByRole("button", { name: "定位提问：第二条问题" })).toHaveAttribute("aria-current", "location");
   });
 });

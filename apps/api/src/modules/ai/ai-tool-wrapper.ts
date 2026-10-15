@@ -1,4 +1,5 @@
 import { ZodError } from 'zod';
+import { ApiException } from '../../common/errors/api.exception';
 
 import type {
   AiPublicStreamEvent,
@@ -17,6 +18,7 @@ export interface AiToolCallbacks {
   abortSignal: AbortSignal;
   toolSummaries: AiToolSummary[];
   sources: AiSourceSummary[];
+  objectNames?: Map<string, string>;
 }
 
 export function defaultAiToolCallbacks(): AiToolCallbacks {
@@ -46,29 +48,46 @@ export function wrapAiReadTool(
     async execute(input, callId) {
       if (callbacks.abortSignal.aborted) return UNAVAILABLE;
 
+      const startedAt = new Date().toISOString();
       let parsed: unknown;
       try {
         parsed = tool.inputSchema.parse(input);
       } catch (error) {
         if (error instanceof ZodError) {
-          markFailed(callbacks, {
-            callId,
-            toolName: tool.name,
-            displayName: genericToolDisplayName(tool.name),
-            status: 'RUNNING',
-          });
+          markFailed(
+            callbacks,
+            {
+              callId,
+              toolName: tool.name,
+              displayName: genericToolDisplayName(tool.name),
+              status: 'RUNNING',
+              startedAt,
+            },
+            INVALID_ARGUMENT.code,
+            '查询参数格式无效，请按工具输入格式修正后重试。',
+          );
           return INVALID_ARGUMENT;
         }
         throw error;
       }
 
       let begun = false;
-      const displayName = toolDisplayName(tool.name, parsed);
+      const objectNames = (callbacks.objectNames ??= new Map<string, string>());
+      const objectCode =
+        isRecord(parsed) && typeof parsed.objectCode === 'string'
+          ? parsed.objectCode
+          : undefined;
+      const displayName = toolDisplayName(
+        tool.name,
+        parsed,
+        objectCode ? objectNames.get(objectCode) : undefined,
+      );
       const started: AiToolSummary = {
         callId,
         toolName: tool.name,
         displayName,
         status: 'RUNNING',
+        startedAt,
       };
       try {
         callbacks.budget.beginTool();
@@ -87,12 +106,33 @@ export function wrapAiReadTool(
 
         const sanitized = AiSanitizer.sanitizeToolResult(raw);
         callbacks.budget.addPayload(AiSanitizer.serializedBytes(sanitized));
+        // Learn names only from successful, sanitized, permission-filtered metadata.
+        const metadata =
+          tool.name === 'list_objects' && Array.isArray(sanitized)
+            ? sanitized
+            : tool.name === 'describe_object' &&
+                isRecord(sanitized) &&
+                isRecord(sanitized.object)
+              ? [sanitized.object]
+              : [];
+        for (const item of metadata) {
+          if (
+            isRecord(item) &&
+            typeof item.code === 'string' &&
+            typeof item.name === 'string'
+          )
+            objectNames.set(item.code, item.name);
+        }
         const source = AiSourceBuilder.fromTool({
           toolName: tool.name,
           input: parsed,
           result: sanitized,
         });
         if (source) {
+          if (source.objectName === source.objectCode) {
+            source.objectName =
+              objectNames.get(source.objectCode) ?? source.objectName;
+          }
           callbacks.sources.push(source);
           callbacks.emit({
             event: 'sources.updated',
@@ -102,14 +142,28 @@ export function wrapAiReadTool(
         const completed: AiToolSummary = {
           ...started,
           status: 'COMPLETED',
+          displayName: toolDisplayName(
+            tool.name,
+            parsed,
+            objectCode ? objectNames.get(objectCode) : undefined,
+          ),
+          durationMs: elapsed(startedAt),
           detail: sourceDetail(source),
         };
         upsertSummary(callbacks.toolSummaries, completed);
         callbacks.emit({ event: 'tool.completed', data: completed });
         return sanitized;
       } catch (error) {
-        if (begun) markFailed(callbacks, started);
-        return error instanceof ZodError ? INVALID_ARGUMENT : UNAVAILABLE;
+        const failure = safeToolFailure(error);
+        markFailed(
+          callbacks,
+          started,
+          failure.code,
+          failure.code === 'INVALID_TOOL_ARGUMENT'
+            ? '查询条件格式不正确，请重新查询。'
+            : failure.detail,
+        );
+        return failure;
       } finally {
         if (begun) callbacks.budget.endTool();
       }
@@ -137,25 +191,30 @@ export function genericToolDisplayName(toolName: string): string {
   }
 }
 
-export function toolDisplayName(toolName: string, input: unknown): string {
+export function toolDisplayName(
+  toolName: string,
+  input: unknown,
+  objectName?: string,
+): string {
   const objectCode =
     isRecord(input) && typeof input.objectCode === 'string' && input.objectCode
       ? input.objectCode
       : undefined;
   if (!objectCode) return genericToolDisplayName(toolName);
+  const label = objectName ?? objectCode;
   switch (toolName) {
     case 'describe_object':
-      return `查询${objectCode}结构`;
+      return `查询${label}结构`;
     case 'search_records':
-      return `查询${objectCode}记录`;
+      return `查询${label}记录`;
     case 'get_record':
-      return `查询${objectCode}详情`;
+      return `查询${label}详情`;
     case 'aggregate_records':
-      return `统计${objectCode}`;
+      return `统计${label}`;
     case 'list_activities':
-      return `查询${objectCode}活动`;
+      return `查询${label}活动`;
     case 'list_followups':
-      return `查询${objectCode}跟进`;
+      return `查询${label}跟进`;
     default:
       return genericToolDisplayName(toolName);
   }
@@ -204,11 +263,18 @@ function sourceDetail(source: AiSourceSummary | null): string | undefined {
   return source.value;
 }
 
-function markFailed(callbacks: AiToolCallbacks, started: AiToolSummary): void {
+function markFailed(
+  callbacks: AiToolCallbacks,
+  started: AiToolSummary,
+  errorCode = 'DATA_UNAVAILABLE',
+  detail = '数据暂时不可用，请稍后重新查询。',
+): void {
   const failed: AiToolSummary = {
     ...started,
     status: 'FAILED',
-    detail: undefined,
+    detail,
+    errorCode,
+    durationMs: elapsed(started.startedAt),
   };
   upsertSummary(callbacks.toolSummaries, failed);
   callbacks.emit({ event: 'tool.failed', data: failed });
@@ -222,4 +288,49 @@ function upsertSummary(list: AiToolSummary[], summary: AiToolSummary): void {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function elapsed(startedAt?: string): number {
+  return startedAt ? Math.max(0, Date.now() - Date.parse(startedAt)) : 0;
+}
+
+function safeToolFailure(error: unknown): {
+  unavailable: true;
+  code: string;
+  detail?: string;
+} {
+  if (error instanceof ZodError) return INVALID_ARGUMENT;
+  if (error instanceof ApiException) {
+    if (
+      error.code === 'RECORD_FILTER_INVALID' ||
+      error.code === 'VALIDATION_FAILED'
+    ) {
+      return {
+        ...INVALID_ARGUMENT,
+        detail:
+          '查询参数无效或字段不可用。请仅使用 describe_object 返回的可见字段和选项；单选和多选筛选必须为选项 key 数组，例如 {"stage":["lost"]}，不能传字符串或 eq 对象。其他类型请按工具的 filters 格式重试。',
+      };
+    }
+    if (error.getStatus() === 403) {
+      return {
+        unavailable: true,
+        code: 'ACCESS_RESTRICTED',
+        detail: '当前成员无权执行此查询，请勿尝试绕过权限。',
+      };
+    }
+    if (
+      [
+        'AI_TOOL_BUDGET_EXCEEDED',
+        'AI_TOOL_PARALLEL_LIMIT',
+        'AI_TOOL_PAYLOAD_LIMIT',
+      ].includes(error.code)
+    ) {
+      return {
+        unavailable: true,
+        code: error.code,
+        detail: '查询预算已达到限制，请根据已有结果总结，并说明未完成的部分。',
+      };
+    }
+  }
+  return UNAVAILABLE;
 }

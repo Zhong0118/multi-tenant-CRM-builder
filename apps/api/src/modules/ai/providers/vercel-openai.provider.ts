@@ -1,4 +1,4 @@
-import { streamText, tool, stepCountIs } from 'ai';
+import { streamText, tool, stepCountIs, InvalidToolInputError } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 
 import type {
@@ -47,7 +47,10 @@ export class VercelOpenAiProvider implements AiProvider {
             }),
           ]),
         ),
-        stopWhen: stepCountIs(4),
+        // The fifth step is reserved for a final answer after up to four tool steps.
+        stopWhen: stepCountIs(5),
+        prepareStep: ({ stepNumber }) =>
+          stepNumber >= 4 ? { toolChoice: 'none' as const } : undefined,
         maxOutputTokens: 2000,
         abortSignal: input.abortSignal,
         providerOptions: {
@@ -55,19 +58,48 @@ export class VercelOpenAiProvider implements AiProvider {
         },
       });
 
+      const toolStartedAt = new Map<string, number>();
+      let stepStarted = false;
+      let finalStepHasText = false;
       for await (const part of result.fullStream) {
         if (input.abortSignal.aborted) return;
         switch (part.type) {
+          case 'start-step':
+            if (stepStarted) yield { type: 'TEXT_RESET' };
+            stepStarted = true;
+            finalStepHasText = false;
+            break;
           case 'text-delta': {
             const text = textFromDelta(part);
+            if (text.trim()) finalStepHasText = true;
             if (text) yield { type: 'TEXT_DELTA', text };
             break;
           }
           case 'tool-call': {
+            finalStepHasText = false;
+            toolStartedAt.set(part.toolCallId, Date.now());
             yield {
               type: 'TOOL_CALL_REQUESTED',
               callId: part.toolCallId,
               toolName: String(part.toolName),
+            };
+            break;
+          }
+          case 'tool-error': {
+            const startedAt = toolStartedAt.get(part.toolCallId) ?? Date.now();
+            yield {
+              type: 'TOOL_CALL_FAILED',
+              callId: part.toolCallId,
+              toolName: input.tools.some(
+                (entry) => entry.name === part.toolName,
+              )
+                ? String(part.toolName)
+                : 'unknown_tool',
+              code: InvalidToolInputError.isInstance(part.error)
+                ? 'INVALID_TOOL_ARGUMENT'
+                : 'DATA_UNAVAILABLE',
+              startedAt: new Date(startedAt).toISOString(),
+              durationMs: Math.max(0, Date.now() - startedAt),
             };
             break;
           }
@@ -87,8 +119,17 @@ export class VercelOpenAiProvider implements AiProvider {
               inputTokens: usage?.inputTokens,
               outputTokens: usage?.outputTokens,
             };
-            yield { type: 'COMPLETED' };
-            break;
+            if (
+              !finalStepHasText ||
+              ['tool-calls', 'length', 'error', 'content-filter'].includes(
+                part.finishReason,
+              )
+            ) {
+              yield { type: 'FAILED', code: 'AI_TURN_FAILED' };
+            } else {
+              yield { type: 'COMPLETED' };
+            }
+            return;
           }
           case 'error': {
             yield {
@@ -110,7 +151,8 @@ export class VercelOpenAiProvider implements AiProvider {
 
 function textFromDelta(part: { text?: unknown; delta?: unknown }): string {
   if (typeof part.text === 'string' && part.text.length > 0) return part.text;
-  if (typeof part.delta === 'string' && part.delta.length > 0) return part.delta;
+  if (typeof part.delta === 'string' && part.delta.length > 0)
+    return part.delta;
   return '';
 }
 

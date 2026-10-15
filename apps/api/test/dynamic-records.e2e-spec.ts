@@ -15,6 +15,10 @@ const tenantCode = 'e2e-records-company';
 const foreignTenantCode = 'e2e-records-foreign';
 const objectCode = 'leads';
 const phones = ['+8613988811001', '+8613988811002', '+8613988811003'];
+const bulkPhones = Array.from(
+  { length: 98 },
+  (_, index) => `+861398882${String(index).padStart(4, '0')}`,
+);
 
 interface Fixture {
   tenantId: string;
@@ -24,6 +28,7 @@ interface Fixture {
   adminMemberId: string;
   employeeMemberId: string;
   otherMemberId: string;
+  fieldIds: { name: string; email: string; secret: string; system: string };
 }
 
 interface RecordApiResponse {
@@ -60,6 +65,289 @@ describe('Dynamic records API (e2e)', () => {
   beforeEach(async () => {
     await cleanup(adminDatabase);
     fixture = await provision(adminDatabase);
+  });
+
+  it('applies atomic employee field exceptions to list/detail/export and restores inheritance', async () => {
+    const base = `/api/v1/workspaces/${tenantCode}/objects/${objectCode}/records`;
+    const accessPath = `/api/v1/workspaces/${tenantCode}/objects/${fixture.objectId}/member-access`;
+    const patch = (body: unknown, expected = 200) =>
+      request(app.getHttpServer())
+        .patch(accessPath)
+        .set('Cookie', fixture.adminCookie)
+        .set('Origin', origin)
+        .send(body as object)
+        .expect(expected);
+    const owned = await createRecord(fixture.adminCookie, {
+      values: {
+        name: '例外自己的记录',
+        email: 'hidden@example.com',
+        secret: 'opened-secret',
+      },
+      ownerMemberId: fixture.employeeMemberId,
+    });
+    const other = await createRecord(fixture.adminCookie, {
+      values: { name: '别人的记录', secret: 'other-secret' },
+      ownerMemberId: fixture.otherMemberId,
+    });
+    await patch({
+      memberIds: [fixture.employeeMemberId, fixture.otherMemberId],
+      fields: [
+        { fieldId: fixture.fieldIds.secret, access: 'READ_ONLY' },
+        { fieldId: fixture.fieldIds.email, access: 'HIDDEN' },
+      ],
+    }).expect({ updated: 2 });
+    expect(
+      await adminDatabase.memberFieldPermission.count({
+        where: { tenantId: fixture.tenantId },
+      }),
+    ).toBe(4);
+    const page = await request(app.getHttpServer())
+      .get(base)
+      .set('Cookie', fixture.employeeCookie)
+      .expect(200);
+    expect(page.body).toMatchObject({
+      total: 1,
+      items: [{ values: { secret: 'opened-secret' } }],
+    });
+    expect(JSON.stringify(page.body)).not.toMatch(
+      /hidden@example|other-secret/,
+    );
+    const detail = await request(app.getHttpServer())
+      .get(`${base}/${owned.id}`)
+      .set('Cookie', fixture.employeeCookie)
+      .expect(200);
+    expect(JSON.stringify(detail.body)).not.toContain('hidden@example.com');
+    await request(app.getHttpServer())
+      .get(`${base}/${other.id}`)
+      .set('Cookie', fixture.employeeCookie)
+      .expect(404);
+    const exported = await request(app.getHttpServer())
+      .get(`${base}/export`)
+      .query({ columns: ['name', 'secret', 'email'] })
+      .set('Cookie', fixture.employeeCookie)
+      .expect(200);
+    expect(exported.text).toContain('opened-secret');
+    expect(exported.text).not.toMatch(/hidden@example|other-secret|邮箱/);
+    await request(app.getHttpServer())
+      .get(base)
+      .query({ filters: JSON.stringify({ email: ['hidden@example.com'] }) })
+      .set('Cookie', fixture.employeeCookie)
+      .expect(400);
+    await request(app.getHttpServer())
+      .get(base)
+      .query({ sort: 'email' })
+      .set('Cookie', fixture.employeeCookie)
+      .expect(400);
+    await request(app.getHttpServer())
+      .patch(`${base}/${owned.id}`)
+      .set('Cookie', fixture.employeeCookie)
+      .set('Origin', origin)
+      .send({ version: 1, values: { secret: 'forbidden' } })
+      .expect(403);
+    // Only the submitted employee/column changes; the second employee keeps both exceptions.
+    await patch({
+      memberIds: [fixture.employeeMemberId],
+      fields: [{ fieldId: fixture.fieldIds.secret, access: 'INHERIT' }],
+    });
+    expect(
+      await adminDatabase.memberFieldPermission.count({
+        where: { tenantId: fixture.tenantId },
+      }),
+    ).toBe(3);
+    const inherited = await request(app.getHttpServer())
+      .get(`${base}/${owned.id}`)
+      .set('Cookie', fixture.employeeCookie)
+      .expect(200);
+    expect(JSON.stringify(inherited.body)).not.toMatch(
+      /opened-secret|hidden@example/,
+    );
+    const access = await request(app.getHttpServer())
+      .get(
+        `/api/v1/workspaces/${tenantCode}/members/${fixture.employeeMemberId}/object-access`,
+      )
+      .set('Cookie', fixture.adminCookie)
+      .expect(200);
+    expect((access.body as Array<{ fields: unknown[] }>)[0].fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          fieldId: fixture.fieldIds.secret,
+          inherited: 'HIDDEN',
+          effective: 'HIDDEN',
+          override: null,
+        }),
+        expect.objectContaining({
+          fieldId: fixture.fieldIds.email,
+          inherited: 'READ_ONLY',
+          effective: 'HIDDEN',
+          override: 'HIDDEN',
+        }),
+      ]),
+    );
+    const audit = await adminDatabase.auditLog.findFirstOrThrow({
+      where: {
+        tenantId: fixture.tenantId,
+        action: 'membership.object_access_changed',
+      },
+    });
+    expect(audit.before).toHaveProperty('fields');
+    expect(audit.after).toHaveProperty('fields');
+    await patch({
+      memberIds: [fixture.employeeMemberId],
+      objectAccess: {
+        mode: 'OVERRIDE',
+        canCreate: false,
+        canRead: false,
+        canUpdate: false,
+        readScope: 'NONE',
+        updateScope: 'NONE',
+      },
+      fields: [{ fieldId: fixture.fieldIds.secret, access: 'EDIT' }],
+    });
+    await request(app.getHttpServer())
+      .get(base)
+      .set('Cookie', fixture.employeeCookie)
+      .expect(403);
+  });
+
+  it('applies the maximum 100-member batch within one transaction', async () => {
+    const users = bulkPhones.map((phone) => ({
+      id: randomUUID(),
+      phone,
+      displayName: 'Batch employee',
+      passwordHash: 'unused',
+      phoneVerifiedAt: new Date(),
+    }));
+    await adminDatabase.user.createMany({ data: users });
+    const members = users.map((user) => ({
+      id: randomUUID(),
+      tenantId: fixture.tenantId,
+      userId: user.id,
+      role: 'EMPLOYEE' as const,
+    }));
+    await adminDatabase.tenantMember.createMany({ data: members });
+    const memberIds = [
+      fixture.employeeMemberId,
+      fixture.otherMemberId,
+      ...members.map((member) => member.id),
+    ];
+    const path = `/api/v1/workspaces/${tenantCode}/objects/${fixture.objectId}/member-access`;
+    await request(app.getHttpServer())
+      .patch(path)
+      .set('Cookie', fixture.adminCookie)
+      .set('Origin', origin)
+      .send({
+        memberIds,
+        fields: [
+          { fieldId: fixture.fieldIds.secret, access: 'EDIT' },
+          { fieldId: fixture.fieldIds.email, access: 'HIDDEN' },
+        ],
+      })
+      .expect(200)
+      .expect({ updated: 100 });
+    expect(
+      await adminDatabase.memberFieldPermission.count({
+        where: { tenantId: fixture.tenantId },
+      }),
+    ).toBe(200);
+    expect(
+      await adminDatabase.auditLog.count({
+        where: {
+          tenantId: fixture.tenantId,
+          action: 'membership.object_access_changed',
+        },
+      }),
+    ).toBe(100);
+  });
+
+  it('rejects invalid targets/fields and unauthorized callers without partial writes', async () => {
+    const path = `/api/v1/workspaces/${tenantCode}/objects/${fixture.objectId}/member-access`;
+    const body = {
+      memberIds: [fixture.employeeMemberId],
+      fields: [{ fieldId: fixture.fieldIds.secret, access: 'EDIT' }],
+    };
+    const patch = (value: object, status: number) =>
+      request(app.getHttpServer())
+        .patch(path)
+        .set('Cookie', fixture.adminCookie)
+        .set('Origin', origin)
+        .send(value)
+        .expect(status);
+    await request(app.getHttpServer())
+      .patch(path)
+      .set('Cookie', fixture.employeeCookie)
+      .set('Origin', origin)
+      .send(body)
+      .expect(403);
+    await patch(
+      { ...body, memberIds: [fixture.employeeMemberId, randomUUID()] },
+      404,
+    );
+    await patch(
+      { ...body, memberIds: [fixture.employeeMemberId, fixture.adminMemberId] },
+      404,
+    );
+    await patch(
+      {
+        ...body,
+        memberIds: [fixture.employeeMemberId, fixture.employeeMemberId],
+      },
+      400,
+    );
+    await patch({ memberIds: [fixture.employeeMemberId], fields: [] }, 400);
+    await patch(
+      { memberIds: [fixture.employeeMemberId], objectAccess: null },
+      400,
+    );
+    await patch(
+      { ...body, fields: [{ fieldId: randomUUID(), access: 'EDIT' }] },
+      400,
+    );
+    await patch(
+      {
+        ...body,
+        fields: [{ fieldId: fixture.fieldIds.system, access: 'EDIT' }],
+      },
+      400,
+    );
+    await patch(
+      {
+        ...body,
+        fields: [
+          { fieldId: fixture.fieldIds.secret, access: 'EDIT' },
+          { fieldId: fixture.fieldIds.secret, access: 'HIDDEN' },
+        ],
+      },
+      400,
+    );
+    await adminDatabase.tenantMember.update({
+      where: { id: fixture.otherMemberId },
+      data: { status: 'DISABLED' },
+    });
+    await patch(
+      { ...body, memberIds: [fixture.employeeMemberId, fixture.otherMemberId] },
+      404,
+    );
+    const employee = await adminDatabase.tenantMember.findUniqueOrThrow({
+      where: { id: fixture.employeeMemberId },
+    });
+    await adminDatabase.user.update({
+      where: { id: employee.userId },
+      data: { status: 'DISABLED' },
+    });
+    await patch(body, 404);
+    expect(
+      await adminDatabase.memberFieldPermission.count({
+        where: { tenantId: fixture.tenantId },
+      }),
+    ).toBe(0);
+    expect(
+      await adminDatabase.auditLog.count({
+        where: {
+          tenantId: fixture.tenantId,
+          action: 'membership.object_access_changed',
+        },
+      }),
+    ).toBe(0);
   });
 
   it('enforces tenant, ownership, field access, counters, and versions', async () => {
@@ -270,8 +558,13 @@ describe('Dynamic records API (e2e)', () => {
     const [first, replay] = results.map(
       (response) => response.body as RecordImportResponse,
     );
-    expect(first).toMatchObject({ created: 1, failed: 1 });
-    expect(first.items[0].record?.id).toBe(replay.items[0].record?.id);
+    expect([first.created, replay.created].sort()).toEqual([0, 1]);
+    expect(first.failed).toBe(1);
+    expect(replay.failed).toBe(1);
+    expect([first.items[0].status, replay.items[0].status].sort()).toEqual([
+      'CREATED',
+      'SKIPPED',
+    ]);
     expect(
       await adminDatabase.record.count({
         where: { tenantId: fixture.tenantId },
@@ -283,7 +576,12 @@ describe('Dynamic records API (e2e)', () => {
     ]);
     const correctedResult = corrected.body as RecordImportResponse;
     expect(correctedResult.failed).toBe(0);
-    expect(correctedResult.items[0].record?.title).toBe('CSV success');
+    expect(correctedResult.items[0].status).toBe('SKIPPED');
+    expect(
+      await adminDatabase.record.count({
+        where: { tenantId: fixture.tenantId, title: 'CSV success' },
+      }),
+    ).toBe(1);
     expect(
       await adminDatabase.record.count({
         where: { tenantId: fixture.tenantId },
@@ -729,7 +1027,45 @@ async function provision(database: PrismaClient): Promise<Fixture> {
     name: crypto.randomUUID(),
     email: crypto.randomUUID(),
     secret: crypto.randomUUID(),
+    system: crypto.randomUUID(),
   };
+  await database.fieldDefinition.createMany({
+    data: [
+      {
+        id: fieldIds.system,
+        tenantId: tenant.id,
+        objectId: object.id,
+        fieldKey: 'system_label',
+        label: '系统列',
+        type: 'TEXT',
+        isSystem: true,
+      },
+      {
+        id: fieldIds.name,
+        tenantId: tenant.id,
+        objectId: object.id,
+        fieldKey: 'name',
+        label: '姓名',
+        type: 'TEXT',
+      },
+      {
+        id: fieldIds.email,
+        tenantId: tenant.id,
+        objectId: object.id,
+        fieldKey: 'email',
+        label: '邮箱',
+        type: 'EMAIL',
+      },
+      {
+        id: fieldIds.secret,
+        tenantId: tenant.id,
+        objectId: object.id,
+        fieldKey: 'secret',
+        label: '内部备注',
+        type: 'TEXTAREA',
+      },
+    ],
+  });
   const publicationId = crypto.randomUUID();
   const configuration = {
     publication: {
@@ -748,6 +1084,17 @@ async function provision(database: PrismaClient): Promise<Fixture> {
       sortOrder: 0,
     },
     fields: [
+      {
+        ...publishedField(
+          fieldIds.system,
+          'system_label',
+          '系统列',
+          'TEXT',
+          false,
+          40,
+        ),
+        isSystem: true,
+      },
       publishedField(fieldIds.name, 'name', '姓名', 'TEXT', true, 10),
       publishedField(fieldIds.email, 'email', '邮箱', 'EMAIL', false, 20),
       publishedField(
@@ -800,6 +1147,7 @@ async function provision(database: PrismaClient): Promise<Fixture> {
   return {
     tenantId: tenant.id,
     objectId: object.id,
+    fieldIds,
     adminCookie: `crm_session=${adminToken}`,
     employeeCookie: `crm_session=${employeeToken}`,
     adminMemberId: adminMember.id,
@@ -837,7 +1185,7 @@ async function cleanup(database: PrismaClient): Promise<void> {
   });
   const tenantIds = tenants.map(({ id }) => id);
   const users = await database.user.findMany({
-    where: { phone: { in: phones } },
+    where: { phone: { in: [...phones, ...bulkPhones] } },
     select: { id: true },
   });
   const userIds = users.map(({ id }) => id);
@@ -864,6 +1212,9 @@ async function cleanup(database: PrismaClient): Promise<void> {
       data: { activePublicationId: null },
     });
     await database.objectPublication.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await database.memberFieldPermission.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });
     await database.fieldPermission.deleteMany({

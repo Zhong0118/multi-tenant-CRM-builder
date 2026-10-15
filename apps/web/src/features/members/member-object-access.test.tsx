@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { memberBatchAccessApi } from "./bulk-member-access";
 
 import {
   MemberObjectAccess,
@@ -32,6 +33,7 @@ function row(
       readScope: "OWN",
       updateScope: "OWN",
     },
+    fields: [],
     override: null,
     effective: {
       canCreate: true,
@@ -69,24 +71,149 @@ function panel(objectName: string) {
 function deferredSave() {
   let resolve!: (value: MemberObjectAccessRow) => void;
   let reject!: (reason: unknown) => void;
-  const promise = new Promise<MemberObjectAccessRow>((resolvePromise, rejectPromise) => {
-    resolve = resolvePromise;
-    reject = rejectPromise;
-  });
+  const promise = new Promise<MemberObjectAccessRow>(
+    (resolvePromise, rejectPromise) => {
+      resolve = resolvePromise;
+      reject = rejectPromise;
+    },
+  );
   return { promise, resolve, reject };
 }
 
 function expectEditorsLocked(scope: HTMLElement) {
-  for (const label of ["可以新建记录", "可以查看记录", "可以修改记录", "查看范围", "修改范围"]) {
+  for (const label of [
+    "可以新建记录",
+    "可以查看记录",
+    "可以修改记录",
+    "查看范围",
+    "修改范围",
+  ]) {
     expect(within(scope).getByLabelText(label)).toBeDisabled();
   }
   for (const radio of within(scope).getAllByRole("radio")) {
     expect(radio).toBeDisabled();
   }
-  expect(within(scope).getByRole("button", { name: /保存覆盖/ })).toBeDisabled();
+  expect(
+    within(scope).getByRole("button", { name: /保存覆盖/ }),
+  ).toBeDisabled();
 }
 
 describe("MemberObjectAccess", () => {
+  it("shows effective member field access and opens the shared editor for one employee", async () => {
+    renderAccess(
+      <MemberObjectAccess
+        tenantCode="northwind"
+        memberId="member-lin"
+        memberName="林员工"
+        initialRows={[
+          row({
+            fields: [
+              {
+                fieldId: "amount",
+                fieldKey: "amount",
+                label: "金额",
+                isSystem: false,
+                inherited: "HIDDEN",
+                effective: "EDIT",
+                override: "EDIT",
+              },
+              {
+                fieldId: "created",
+                fieldKey: "createdAt",
+                label: "创建时间",
+                isSystem: true,
+                inherited: "READ_ONLY",
+                effective: "READ_ONLY",
+                override: null,
+              },
+            ],
+          }),
+        ]}
+        api={accessApi()}
+      />,
+    );
+    expect(
+      within(panel("客户资料")).getByText(/金额.*当前：可编辑.*默认：隐藏/),
+    ).toBeInTheDocument();
+    expect(
+      within(panel("客户资料")).getByText(/创建时间.*系统列/),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      within(panel("客户资料")).getByRole("button", { name: "设置表和列权限" }),
+    );
+    expect(
+      await screen.findByText(/将应用到 1 位有效员工/),
+    ).toBeInTheDocument();
+  });
+
+  it("saves one employee through the shared editor and refreshes effective columns", async () => {
+    const fields: MemberObjectAccessRow["fields"] = [
+      {
+        fieldId: "amount",
+        fieldKey: "amount",
+        label: "金额",
+        isSystem: false,
+        inherited: "HIDDEN",
+        effective: "HIDDEN",
+        override: null,
+      },
+    ];
+    const api = accessApi({
+      list: vi
+        .fn()
+        .mockResolvedValue([
+          row({
+            fields: [{ ...fields[0], effective: "EDIT", override: "EDIT" }],
+          }),
+        ]),
+    });
+    const batchSave = vi
+      .spyOn(memberBatchAccessApi, "set")
+      .mockResolvedValue({ updated: 1 });
+    try {
+      renderAccess(
+        <MemberObjectAccess
+          tenantCode="northwind"
+          memberId="member-lin"
+          memberName="林员工"
+          initialRows={[row({ fields })]}
+          api={api}
+        />,
+      );
+      fireEvent.click(
+        within(panel("客户资料")).getByRole("button", {
+          name: "设置表和列权限",
+        }),
+      );
+      fireEvent.mouseDown(await screen.findByLabelText("金额权限"));
+      fireEvent.click(
+        await screen.findByText("可编辑", {
+          selector: ".ant-select-item-option-content",
+        }),
+      );
+      fireEvent.click(
+        screen.getByRole("button", { name: /保存并应用到 1 人/ }),
+      );
+      await waitFor(() =>
+        expect(batchSave).toHaveBeenCalledWith(
+          "northwind",
+          "object-customers",
+          {
+            memberIds: ["member-lin"],
+            fields: [{ fieldId: "amount", access: "EDIT" }],
+          },
+        ),
+      );
+      await waitFor(() =>
+        expect(
+          within(panel("客户资料")).getByText(/金额.*当前：可编辑.*默认：隐藏/),
+        ).toBeInTheDocument(),
+      );
+    } finally {
+      batchSave.mockRestore();
+    }
+  });
+
   it("keeps saved mode and server effective access distinct from an unsaved override", async () => {
     const effective = {
       ...row().effective,

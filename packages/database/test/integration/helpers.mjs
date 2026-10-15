@@ -47,6 +47,7 @@ export async function resetTestData(admin) {
     admin.objectWorkflowDefinition.deleteMany(),
     admin.record.deleteMany(),
     admin.recordCounter.deleteMany(),
+    admin.memberFieldPermission.deleteMany(),
     admin.fieldPermission.deleteMany(),
     admin.objectPermission.deleteMany(),
     admin.viewDefinition.deleteMany(),
@@ -128,6 +129,9 @@ export async function cleanupTestFixtures(
     await admin.objectDefinition.updateMany({
       where: { tenantId: { in: tenantIds } },
       data: { activePublicationId: null },
+    });
+    await admin.memberFieldPermission.deleteMany({
+      where: { tenantId: { in: tenantIds } },
     });
     await admin.fieldPermission.deleteMany({
       where: { tenantId: { in: tenantIds } },

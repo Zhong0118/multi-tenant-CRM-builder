@@ -14,6 +14,10 @@ jest.mock('ai', () => ({
   streamText: jest.fn(),
   tool: jest.fn((definition: unknown) => definition),
   stepCountIs: jest.fn((count: number) => count),
+  InvalidToolInputError: {
+    isInstance: (error: unknown) =>
+      error instanceof Error && error.name === 'AI_InvalidToolInputError',
+  },
 }));
 
 jest.mock('@ai-sdk/openai', () => ({
@@ -223,6 +227,165 @@ describe('createAiProvider factory', () => {
 });
 
 describe('VercelOpenAiProvider mapping', () => {
+  it('resets previous-step narration before streaming the next step without losing final deltas', async () => {
+    (streamText as jest.Mock).mockReturnValue({
+      fullStream: (async function* () {
+        yield { type: 'start-step' };
+        yield { type: 'text-delta', text: 'Let me inspect the objects' };
+        yield { type: 'start-step' };
+        yield { type: 'text-delta', text: '合计 ' };
+        yield { type: 'text-delta', text: '255000 元' };
+        yield { type: 'finish', finishReason: 'stop' };
+      })(),
+    });
+    const events = await collect(
+      new VercelOpenAiProvider({ apiKey: 'test', modelKey: 'test' }).streamTurn(
+        streamInput,
+      ),
+    );
+    expect(events).toEqual([
+      { type: 'TEXT_DELTA', text: 'Let me inspect the objects' },
+      { type: 'TEXT_RESET' },
+      { type: 'TEXT_DELTA', text: '合计 ' },
+      { type: 'TEXT_DELTA', text: '255000 元' },
+      { type: 'USAGE', inputTokens: undefined, outputTokens: undefined },
+      { type: 'COMPLETED' },
+    ]);
+  });
+
+  it('surfaces SDK input errors as safe observable failures without raw arguments', async () => {
+    const error = new Error('hidden field and private invalid args');
+    error.name = 'AI_InvalidToolInputError';
+    (streamText as jest.Mock).mockReturnValue({
+      fullStream: (async function* () {
+        yield {
+          type: 'tool-call',
+          toolCallId: 'invalid-sdk',
+          toolName: 'search_records',
+        };
+        yield {
+          type: 'tool-error',
+          toolCallId: 'invalid-sdk',
+          toolName: 'search_records',
+          error,
+        };
+        yield { type: 'start-step' };
+        yield { type: 'text-delta', text: '查询失败，请重试' };
+        yield { type: 'finish', finishReason: 'stop' };
+      })(),
+    });
+    const events = await collect(
+      new VercelOpenAiProvider({ apiKey: 'test', modelKey: 'test' }).streamTurn(
+        streamInput,
+      ),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'TOOL_CALL_FAILED',
+        callId: 'invalid-sdk',
+        code: 'INVALID_TOOL_ARGUMENT',
+        startedAt: expect.any(String),
+        durationMs: expect.any(Number),
+      }),
+    );
+    expect(JSON.stringify(events)).not.toMatch(
+      /hidden field|private invalid args/,
+    );
+  });
+
+  it('rejects an empty final step even after earlier process narration', async () => {
+    (streamText as jest.Mock).mockReturnValue({
+      fullStream: (async function* () {
+        yield { type: 'start-step' };
+        yield { type: 'text-delta', text: '正在查询' };
+        yield { type: 'start-step' };
+        yield { type: 'text-delta', text: '  ' };
+        yield { type: 'finish', finishReason: 'stop' };
+      })(),
+    });
+    const events = await collect(
+      new VercelOpenAiProvider({ apiKey: 'test', modelKey: 'test' }).streamTurn(
+        streamInput,
+      ),
+    );
+    expect(events.at(-1)).toEqual({ type: 'FAILED', code: 'AI_TURN_FAILED' });
+  });
+
+  it.each(['length', 'content-filter', 'error'])(
+    'does not complete a %s answer',
+    async (finishReason) => {
+      (streamText as jest.Mock).mockReturnValue({
+        fullStream: (async function* () {
+          yield { type: 'text-delta', text: '部分答复' };
+          yield { type: 'finish', finishReason };
+        })(),
+      });
+      const events = await collect(
+        new VercelOpenAiProvider({
+          apiKey: 'test',
+          modelKey: 'test',
+        }).streamTurn(streamInput),
+      );
+      expect(events.at(-1)).toEqual({ type: 'FAILED', code: 'AI_TURN_FAILED' });
+    },
+  );
+
+  it('keeps actual aggregate values in the final text after tool steps', async () => {
+    (streamText as jest.Mock).mockReturnValue({
+      fullStream: (async function* () {
+        yield {
+          type: 'tool-call',
+          toolCallId: 'sum',
+          toolName: 'aggregate_records',
+        };
+        yield { type: 'tool-result', output: { value: '255000', groups: [] } };
+        yield { type: 'start-step' };
+        yield {
+          type: 'text-delta',
+          text: '已流失商机的预计金额合计 255000 元',
+        };
+        yield { type: 'finish', finishReason: 'stop' };
+      })(),
+    });
+    const events = await collect(
+      new VercelOpenAiProvider({ apiKey: 'test', modelKey: 'test' }).streamTurn(
+        streamInput,
+      ),
+    );
+    expect(events).toContainEqual({
+      type: 'TEXT_DELTA',
+      text: '已流失商机的预计金额合计 255000 元',
+    });
+    expect(events.at(-1)).toEqual({ type: 'COMPLETED' });
+  });
+
+  it('reserves a fifth tool-free synthesis step and rejects a final tool-call-only response', async () => {
+    (streamText as jest.Mock).mockReturnValue({
+      fullStream: (async function* () {
+        yield { type: 'text-delta', text: '我改用记录检索' };
+        yield {
+          type: 'tool-call',
+          toolCallId: 'last',
+          toolName: 'search_records',
+        };
+        yield { type: 'finish', finishReason: 'tool-calls' };
+      })(),
+    });
+    const events = await collect(
+      new VercelOpenAiProvider({ apiKey: 'test', modelKey: 'test' }).streamTurn(
+        streamInput,
+      ),
+    );
+    const options = (streamText as jest.Mock).mock.calls[0][0];
+    expect(options.stopWhen).toBe(5);
+    expect(options.prepareStep({ stepNumber: 4 })).toMatchObject({
+      toolChoice: 'none',
+    });
+    expect(options.prepareStep({ stepNumber: 3 })).toBeUndefined();
+    expect(events.at(-1)).toEqual({ type: 'FAILED', code: 'AI_TURN_FAILED' });
+    expect(events).not.toContainEqual({ type: 'COMPLETED' });
+  });
+
   beforeEach(() => {
     (streamText as jest.Mock).mockReset();
   });
@@ -313,6 +476,8 @@ describe('VercelOpenAiProvider mapping', () => {
           toolName: 'search_records',
           input: { q: 'secret-filter' },
         };
+        yield { type: 'start-step' };
+        yield { type: 'text-delta', text: '最终答案' };
         yield {
           type: 'finish',
           totalUsage: { inputTokens: 11, outputTokens: 7 },
@@ -333,6 +498,7 @@ describe('VercelOpenAiProvider mapping', () => {
         callId: 'call_1',
         toolName: 'search_records',
       },
+      { type: 'TEXT_DELTA', text: '最终答案' },
       { type: 'USAGE', inputTokens: 11, outputTokens: 7 },
       { type: 'COMPLETED' },
     ]);
@@ -344,7 +510,7 @@ describe('VercelOpenAiProvider mapping', () => {
     expect(events.every((event) => !('rawValue' in event))).toBe(true);
     expect(streamText).toHaveBeenCalledWith(
       expect.objectContaining({
-        stopWhen: 4,
+        stopWhen: 5,
         maxOutputTokens: 2000,
       }),
     );

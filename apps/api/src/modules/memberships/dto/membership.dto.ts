@@ -1,6 +1,11 @@
 import { Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  ArrayUnique,
+  IsArray,
+  ValidateNested,
   IsIn,
   Length,
   IsBoolean,
@@ -80,6 +85,64 @@ export class MemberObjectAccessDto {
   updateScope?: 'ALL' | 'OWN' | 'NONE';
 }
 
+export class MemberFieldAccessChangeDto {
+  @ApiProperty({ format: 'uuid' })
+  @IsUUID()
+  fieldId!: string;
+
+  @ApiProperty({ enum: ['EDIT', 'READ_ONLY', 'HIDDEN', 'INHERIT'] })
+  @IsIn(['EDIT', 'READ_ONLY', 'HIDDEN', 'INHERIT'])
+  access!: 'EDIT' | 'READ_ONLY' | 'HIDDEN' | 'INHERIT';
+}
+
+export class BulkMemberAccessDto {
+  @ApiProperty({
+    type: String,
+    isArray: true,
+    format: 'uuid',
+    minItems: 1,
+    maxItems: 100,
+    uniqueItems: true,
+  })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(100)
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
+  memberIds!: string[];
+
+  @ApiPropertyOptional({ type: MemberObjectAccessDto })
+  @ValidateIf((_object, value: unknown) => value !== undefined)
+  @ValidateNested()
+  @Type(() => MemberObjectAccessDto)
+  objectAccess?: MemberObjectAccessDto;
+
+  @ApiPropertyOptional({ type: MemberFieldAccessChangeDto, isArray: true })
+  @ValidateIf((_object, value: unknown) => value !== undefined)
+  @IsArray()
+  @ArrayUnique((field: MemberFieldAccessChangeDto) => field?.fieldId)
+  @ValidateNested({ each: true })
+  @Type(() => MemberFieldAccessChangeDto)
+  fields?: MemberFieldAccessChangeDto[];
+}
+
+export class BulkMemberAccessResponseDto {
+  @ApiProperty({ minimum: 1, maximum: 100 }) updated!: number;
+}
+
+export class MemberFieldAccessResponseDto {
+  @ApiProperty({ format: 'uuid' }) fieldId!: string;
+  @ApiProperty() fieldKey!: string;
+  @ApiProperty() label!: string;
+  @ApiProperty() isSystem!: boolean;
+  @ApiProperty({ enum: ['EDIT', 'READ_ONLY', 'HIDDEN'] }) inherited!:
+    'EDIT' | 'READ_ONLY' | 'HIDDEN';
+  @ApiProperty({ enum: ['EDIT', 'READ_ONLY', 'HIDDEN'] }) effective!:
+    'EDIT' | 'READ_ONLY' | 'HIDDEN';
+  @ApiProperty({ enum: ['EDIT', 'READ_ONLY', 'HIDDEN'], nullable: true })
+  override!: 'EDIT' | 'READ_ONLY' | 'HIDDEN' | null;
+}
+
 export class InvitationPageQueryDto {
   @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
@@ -157,6 +220,8 @@ export class MemberObjectPolicyResponseDto {
 }
 
 export class MemberObjectAccessResponseDto {
+  @ApiProperty({ type: MemberFieldAccessResponseDto, isArray: true })
+  fields!: MemberFieldAccessResponseDto[];
   @ApiProperty({ format: 'uuid' }) objectId!: string;
   @ApiProperty() objectCode!: string;
   @ApiProperty() objectName!: string;

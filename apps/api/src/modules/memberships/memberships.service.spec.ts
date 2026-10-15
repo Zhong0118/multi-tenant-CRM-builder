@@ -3,6 +3,7 @@ import type { AuditEvent } from '../audit/audit-event';
 import {
   MembershipsService,
   type MemberObjectAccessSource,
+  type MemberFieldAccessChange,
   type MembershipStore,
   type TenantMemberSummary,
 } from './memberships.service';
@@ -63,6 +64,17 @@ class MemoryMembershipStore implements MembershipStore {
   };
   objectAccess: MemberObjectAccessSource[] = [
     {
+      fields: [
+        {
+          fieldId: 'field-secret',
+          fieldKey: 'secret',
+          label: 'Secret',
+          isSystem: false,
+          inherited: 'HIDDEN',
+          effective: 'HIDDEN',
+          override: null,
+        },
+      ],
       objectId: 'object-leads',
       objectCode: 'leads',
       objectName: '销售线索',
@@ -77,6 +89,7 @@ class MemoryMembershipStore implements MembershipStore {
       override: null,
     },
     {
+      fields: [],
       objectId: 'object-customers',
       objectCode: 'customers',
       objectName: '客户',
@@ -165,6 +178,23 @@ class MemoryMembershipStore implements MembershipStore {
   deleteMemberObjectAccess(_memberId: string, objectId: string) {
     const object = this.objectAccess.find((item) => item.objectId === objectId);
     if (object) object.override = null;
+    return Promise.resolve();
+  }
+  setMemberFieldAccess(
+    _memberId: string,
+    objectId: string,
+    changes: MemberFieldAccessChange[],
+  ) {
+    const object = this.objectAccess.find(
+      (item) => item.objectId === objectId,
+    )!;
+    for (const change of changes) {
+      const field = object.fields.find(
+        (item) => item.fieldId === change.fieldId,
+      )!;
+      field.override = change.access === 'INHERIT' ? null : change.access;
+      field.effective = field.override ?? field.inherited;
+    }
     return Promise.resolve();
   }
   appendAudit(event: AuditEvent) {
@@ -480,4 +510,79 @@ describe('company name editing', () => {
       expect(store.targetMember.displayName).toBeUndefined();
     },
   );
+});
+
+describe('bulk member field access', () => {
+  it('changes only selected fields, preserves object access, and audits before/after', async () => {
+    const { service, store } = serviceFor();
+    const apply = (access: MemberFieldAccessChange['access']) =>
+      service.bulkMemberAccess(
+        admin,
+        'object-leads',
+        {
+          memberIds: [store.targetMember.id],
+          fields: [{ fieldId: 'field-secret', access }],
+        },
+        { requestId: 'bulk' },
+      );
+    expect(await apply('EDIT')).toEqual({ updated: 1 });
+    expect(store.objectAccess[0].override).toBeNull();
+    expect(store.objectAccess[0].fields[0]).toMatchObject({
+      inherited: 'HIDDEN',
+      override: 'EDIT',
+      effective: 'EDIT',
+    });
+    expect(store.audits[0]).toMatchObject({
+      before: { fields: [{ override: null, effective: 'HIDDEN' }] },
+      after: { fields: [{ override: 'EDIT', effective: 'EDIT' }] },
+    });
+    await apply('INHERIT');
+    expect(store.objectAccess[0].fields[0]).toMatchObject({
+      override: null,
+      effective: 'HIDDEN',
+    });
+    expect(store.adminRosterLocked).toBe(true);
+  });
+
+  it.each([
+    'unknown-member',
+    'disabled-user',
+    'system-field',
+    'unknown-field',
+    'stale-admin',
+    'no-changes',
+    'duplicate-member',
+  ])('rejects %s before any write or audit', async (scenario) => {
+    const { service, store } = serviceFor();
+    if (scenario === 'disabled-user')
+      store.disabledUsers.add(store.targetMember.id);
+    if (scenario === 'system-field')
+      store.objectAccess[0].fields[0].isSystem = true;
+    if (scenario === 'stale-admin') store.member.role = 'EMPLOYEE';
+    const memberIds = [store.targetMember.id];
+    if (scenario === 'unknown-member') memberIds.push('zz-foreign-member');
+    if (scenario === 'duplicate-member') memberIds.push(store.targetMember.id);
+    await expect(
+      service.bulkMemberAccess(
+        admin,
+        'object-leads',
+        {
+          memberIds,
+          fields:
+            scenario === 'no-changes'
+              ? []
+              : [
+                  {
+                    fieldId:
+                      scenario === 'unknown-field' ? 'unknown' : 'field-secret',
+                    access: 'EDIT',
+                  },
+                ],
+        },
+        { requestId: 'invalid' },
+      ),
+    ).rejects.toBeDefined();
+    expect(store.objectAccess[0].fields[0].override).toBeNull();
+    expect(store.audits).toEqual([]);
+  });
 });

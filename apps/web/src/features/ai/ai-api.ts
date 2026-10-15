@@ -135,6 +135,7 @@ function presentMessage(item: {
   errorCode?: string | null;
   createdAt: string;
   completedAt?: string | null;
+  durationMs?: number;
 }): AiMessage {
   return {
     ...item,

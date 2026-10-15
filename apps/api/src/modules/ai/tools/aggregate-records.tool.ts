@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { FILTER_FORMAT } from './search-records.tool';
 
 import type { TenantContext } from '../../../common/tenancy/tenant-context';
 import type { RecordsService } from '../../records/records.service';
@@ -7,7 +8,10 @@ import type { AiProviderTool } from '../ai-provider';
 export const aggregateRecordsInput = z
   .object({
     objectCode: z.string().min(1).max(64),
-    filters: z.record(z.string().max(64), z.unknown()).optional(),
+    filters: z
+      .record(z.string().max(64), z.unknown())
+      .describe(FILTER_FORMAT)
+      .optional(),
     aggregation: z.enum(['COUNT', 'SUM', 'AVG']),
     valueFieldKey: z.string().min(1).max(64).optional(),
     groupByFieldKey: z.string().min(1).max(64).optional(),
@@ -22,7 +26,8 @@ export function createAggregateRecordsTool(
   return {
     name: 'aggregate_records',
     description:
-      'Aggregate records the current actor can read. COUNT/SUM/AVG only; group limit is 1-20.',
+      'Aggregate records the current actor can read. COUNT/SUM/AVG only; group limit is 1-20. Use ungrouped SUM/COUNT for complete totals. ' +
+      FILTER_FORMAT,
     inputSchema: aggregateRecordsInput,
     async execute(input) {
       const parsed = aggregateRecordsInput.parse(input);

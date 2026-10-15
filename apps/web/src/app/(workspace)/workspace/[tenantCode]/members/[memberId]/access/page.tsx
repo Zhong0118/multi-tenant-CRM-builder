@@ -53,7 +53,7 @@ export default async function MemberAccessPage({
       <header className={styles.pageHeader}>
         <h1>{memberName}的访问权限</h1>
         <p>
-          按业务对象决定这位员工能做什么、能看到哪些记录。字段权限来自对象发布版本，不在这里调整。
+          按业务表设置这位员工能做什么、能看到哪些记录，以及各列可编辑、只读或隐藏的权限。
         </p>
         <Link href={`/workspace/${tenantCode}/members`}>返回成员管理</Link>
       </header>

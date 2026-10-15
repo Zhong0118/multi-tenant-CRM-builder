@@ -3,6 +3,7 @@ import type { Prisma } from '@crm/database';
 
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
+import type { PublishedFieldAccess } from './object-schema';
 import type { ObjectAccessPolicy } from './effective-access';
 
 export interface PublishedObjectRecord {
@@ -13,6 +14,7 @@ export interface PublishedObjectRecord {
   sortOrder: number;
   configuration: unknown;
   memberOverride?: ObjectAccessPolicy;
+  memberFieldOverrides?: Record<string, PublishedFieldAccess>;
 }
 
 export interface PublishedObjectRepository {
@@ -37,6 +39,10 @@ export class PrismaPublishedObjectRepository implements PublishedObjectRepositor
         },
         include: {
           activePublication: { select: { configuration: true } },
+          memberFieldPermissions: {
+            where: { memberId: context.memberId },
+            select: { access: true, field: { select: { fieldKey: true } } },
+          },
           permissions: {
             where: {
               subjectType: 'MEMBER',
@@ -77,6 +83,10 @@ export async function findPublishedObjectInTransaction(
     where: { tenantId: context.tenantId, code },
     include: {
       activePublication: { select: { configuration: true } },
+      memberFieldPermissions: {
+        where: { memberId: context.memberId },
+        select: { access: true, field: { select: { fieldKey: true } } },
+      },
       permissions: {
         where: {
           subjectType: 'MEMBER',
@@ -96,6 +106,10 @@ function toPublishedRecord(object: {
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
   sortOrder: number;
   activePublication: { configuration: unknown } | null;
+  memberFieldPermissions: Array<{
+    access: PublishedFieldAccess;
+    field: { fieldKey: string };
+  }>;
   permissions: Array<{
     canCreate: boolean;
     canRead: boolean;
@@ -113,6 +127,12 @@ function toPublishedRecord(object: {
     status: object.status,
     sortOrder: object.sortOrder,
     configuration: object.activePublication?.configuration ?? null,
+    memberFieldOverrides: Object.fromEntries(
+      object.memberFieldPermissions.map((permission) => [
+        permission.field.fieldKey,
+        permission.access,
+      ]),
+    ),
     memberOverride: override
       ? {
           canCreate: override.canCreate,

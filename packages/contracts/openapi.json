@@ -75,6 +75,10 @@
           "createdAt": {
             "type": "string"
           },
+          "durationMs": {
+            "minimum": 0,
+            "type": "number"
+          },
           "errorCode": {
             "nullable": true,
             "type": "string"
@@ -330,6 +334,42 @@
           }
         },
         "required": ["items"],
+        "type": "object"
+      },
+      "BulkMemberAccessDto": {
+        "properties": {
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/MemberFieldAccessChangeDto"
+            },
+            "type": "array"
+          },
+          "memberIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "objectAccess": {
+            "$ref": "#/components/schemas/MemberObjectAccessDto"
+          }
+        },
+        "required": ["memberIds"],
+        "type": "object"
+      },
+      "BulkMemberAccessResponseDto": {
+        "properties": {
+          "updated": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": ["updated"],
         "type": "object"
       },
       "BusinessTemplateActiveVersionResponseDto": {
@@ -2481,6 +2521,60 @@
         "required": ["phone", "password", "deviceKey", "deviceSummary"],
         "type": "object"
       },
+      "MemberFieldAccessChangeDto": {
+        "properties": {
+          "access": {
+            "enum": ["EDIT", "READ_ONLY", "HIDDEN", "INHERIT"],
+            "type": "string"
+          },
+          "fieldId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["fieldId", "access"],
+        "type": "object"
+      },
+      "MemberFieldAccessResponseDto": {
+        "properties": {
+          "effective": {
+            "enum": ["EDIT", "READ_ONLY", "HIDDEN"],
+            "type": "string"
+          },
+          "fieldId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "fieldKey": {
+            "type": "string"
+          },
+          "inherited": {
+            "enum": ["EDIT", "READ_ONLY", "HIDDEN"],
+            "type": "string"
+          },
+          "isSystem": {
+            "type": "boolean"
+          },
+          "label": {
+            "type": "string"
+          },
+          "override": {
+            "enum": ["EDIT", "READ_ONLY", "HIDDEN"],
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "fieldId",
+          "fieldKey",
+          "label",
+          "isSystem",
+          "inherited",
+          "effective",
+          "override"
+        ],
+        "type": "object"
+      },
       "MemberObjectAccessDto": {
         "properties": {
           "canCreate": {
@@ -2513,6 +2607,12 @@
           "effective": {
             "$ref": "#/components/schemas/MemberObjectPolicyResponseDto"
           },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/MemberFieldAccessResponseDto"
+            },
+            "type": "array"
+          },
           "inherited": {
             "$ref": "#/components/schemas/MemberObjectPolicyResponseDto"
           },
@@ -2541,6 +2641,7 @@
           }
         },
         "required": [
+          "fields",
           "objectId",
           "objectCode",
           "objectName",
@@ -9897,7 +9998,7 @@
             "required": false,
             "schema": {
               "default": 20,
-              "maximum": 100,
+              "maximum": 1000,
               "minimum": 1,
               "type": "number"
             }
@@ -10129,7 +10230,7 @@
             "required": false,
             "schema": {
               "default": 20,
-              "maximum": 100,
+              "maximum": 1000,
               "minimum": 1,
               "type": "number"
             }
@@ -11246,6 +11347,58 @@
           }
         ],
         "tags": ["object-definitions"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectId}/member-access": {
+      "patch": {
+        "operationId": "MembershipsController_bulkMemberAccess",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkMemberAccessDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkMemberAccessResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["memberships"]
       }
     }
   },

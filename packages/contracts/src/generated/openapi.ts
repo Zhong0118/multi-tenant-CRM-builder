@@ -1556,6 +1556,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectId}/member-access": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["MembershipsController_bulkMemberAccess"];
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1583,6 +1599,7 @@ export interface components {
       content: string;
       conversationId: string;
       createdAt: string;
+      durationMs?: number;
       errorCode?: string | null;
       id: string;
       proposal?: components["schemas"]["AiProposalResponseDto"] | null;
@@ -1670,6 +1687,14 @@ export interface components {
       values?: {
         [key: string]: unknown;
       };
+    };
+    BulkMemberAccessDto: {
+      fields?: components["schemas"]["MemberFieldAccessChangeDto"][];
+      memberIds: string[];
+      objectAccess?: components["schemas"]["MemberObjectAccessDto"];
+    };
+    BulkMemberAccessResponseDto: {
+      updated: number;
     };
     BusinessTemplateActiveVersionResponseDto: {
       /** Format: uuid */
@@ -2407,6 +2432,25 @@ export interface components {
       /** @example 13800138000 */
       phone: string;
     };
+    MemberFieldAccessChangeDto: {
+      /** @enum {string} */
+      access: "EDIT" | "READ_ONLY" | "HIDDEN" | "INHERIT";
+      /** Format: uuid */
+      fieldId: string;
+    };
+    MemberFieldAccessResponseDto: {
+      /** @enum {string} */
+      effective: "EDIT" | "READ_ONLY" | "HIDDEN";
+      /** Format: uuid */
+      fieldId: string;
+      fieldKey: string;
+      /** @enum {string} */
+      inherited: "EDIT" | "READ_ONLY" | "HIDDEN";
+      isSystem: boolean;
+      label: string;
+      /** @enum {string|null} */
+      override: "EDIT" | "READ_ONLY" | "HIDDEN" | null;
+    };
     MemberObjectAccessDto: {
       canCreate?: boolean;
       canRead?: boolean;
@@ -2420,6 +2464,7 @@ export interface components {
     };
     MemberObjectAccessResponseDto: {
       effective: components["schemas"]["MemberObjectPolicyResponseDto"];
+      fields: components["schemas"]["MemberFieldAccessResponseDto"][];
       inherited: components["schemas"]["MemberObjectPolicyResponseDto"];
       /** @enum {string} */
       mode: "INHERIT" | "OVERRIDE";
@@ -6355,6 +6400,32 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["PublishedObjectSchemaResponseDto"];
+        };
+      };
+    };
+  };
+  MembershipsController_bulkMemberAccess: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["BulkMemberAccessDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BulkMemberAccessResponseDto"];
         };
       };
     };

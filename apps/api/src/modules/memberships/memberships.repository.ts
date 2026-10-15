@@ -17,6 +17,7 @@ import type {
   MembershipsRepository,
   MembershipStore,
   MemberObjectAccessSource,
+  MemberFieldAccessChange,
   MemberObjectPolicy,
   TenantMemberSummary,
   WorkspaceSummary,
@@ -338,9 +339,11 @@ class PrismaMembershipStore implements MembershipStore {
 
   async listPublishedObjectAccess(
     memberId: string,
+    objectId?: string,
   ): Promise<MemberObjectAccessSource[]> {
     const objects = await this.transaction.objectDefinition.findMany({
       where: {
+        id: objectId,
         tenantId: this.tenantId,
         status: 'ACTIVE',
         activePublicationId: { not: null },
@@ -348,6 +351,7 @@ class PrismaMembershipStore implements MembershipStore {
       },
       include: {
         activePublication: { select: { configuration: true } },
+        memberFieldPermissions: { where: { memberId } },
         permissions: {
           where: {
             subjectType: 'MEMBER',
@@ -364,6 +368,25 @@ class PrismaMembershipStore implements MembershipStore {
       );
       const override = object.permissions[0];
       return {
+        fields: schema.fields.map((field) => {
+          const inherited = field.isSystem
+            ? ('READ_ONLY' as const)
+            : (schema.employeeAccess.fields[field.fieldKey] ?? 'EDIT');
+          const override = field.isSystem
+            ? null
+            : (object.memberFieldPermissions.find(
+                (permission) => permission.fieldId === field.id,
+              )?.access ?? null);
+          return {
+            fieldId: field.id,
+            fieldKey: field.fieldKey,
+            label: field.label,
+            isSystem: field.isSystem,
+            inherited,
+            override,
+            effective: override ?? inherited,
+          };
+        }),
         objectId: object.id,
         objectCode: object.code,
         objectName: object.name,
@@ -431,6 +454,28 @@ class PrismaMembershipStore implements MembershipStore {
         subjectMemberId: memberId,
       },
     });
+  }
+
+  async setMemberFieldAccess(
+    memberId: string,
+    objectId: string,
+    fields: MemberFieldAccessChange[],
+  ): Promise<void> {
+    await this.transaction.memberFieldPermission.deleteMany({
+      where: {
+        tenantId: this.tenantId,
+        objectId,
+        memberId,
+        fieldId: { in: fields.map((field) => field.fieldId) },
+      },
+    });
+    const data = fields.flatMap(({ fieldId, access }) =>
+      access === 'INHERIT'
+        ? []
+        : [{ tenantId: this.tenantId, objectId, memberId, fieldId, access }],
+    );
+    if (data.length)
+      await this.transaction.memberFieldPermission.createMany({ data });
   }
 
   findInvitation(id: string): Promise<{ id: string; status: string } | null> {

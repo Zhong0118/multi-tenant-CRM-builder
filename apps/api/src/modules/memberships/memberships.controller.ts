@@ -32,6 +32,8 @@ import {
 import { SessionAuthGuard } from '../auth/session-auth.guard';
 import type { SessionPrincipal } from '../auth/session.service';
 import {
+  BulkMemberAccessDto,
+  BulkMemberAccessResponseDto,
   ChangeMemberStatusDto,
   ChangeMemberNameDto,
   ChangeMemberRoleDto,
@@ -258,6 +260,31 @@ export class MembershipsController {
     @Param('memberId') memberId: string,
   ) {
     return this.memberships.listMemberObjectAccess(context, memberId);
+  }
+
+  @Patch('workspaces/:tenantCode/objects/:objectId/member-access')
+  @UseGuards(SessionAuthGuard, WorkspaceGuard)
+  @ApiParam({ name: 'tenantCode', type: String })
+  @ApiParam({ name: 'objectId', format: 'uuid' })
+  @ApiOkResponse({ type: BulkMemberAccessResponseDto })
+  bulkMemberAccess(
+    @CurrentTenant() context: TenantContext,
+    @Param('objectId') objectId: string,
+    @Body() dto: BulkMemberAccessDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.memberships.bulkMemberAccess(
+      context,
+      objectId,
+      {
+        memberIds: dto.memberIds,
+        objectAccess: dto.objectAccess
+          ? toMemberObjectAccessInput(dto.objectAccess)
+          : undefined,
+        fields: dto.fields,
+      },
+      requestMeta(request),
+    );
   }
 
   @Put('workspaces/:tenantCode/members/:memberId/object-access/:objectId')

@@ -67,7 +67,7 @@ export const DEFAULT_RECORD_QUERY: RecordQuery = {
 };
 
 const DIRECTIONS: RecordSortDirection[] = ["asc", "desc"];
-const MAX_LIMIT = 100;
+const MAX_LIMIT = 1000;
 
 type RawParams = Record<string, string | string[] | undefined>;
 

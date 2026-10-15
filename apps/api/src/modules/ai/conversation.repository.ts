@@ -97,6 +97,7 @@ function toPublicMessage(row: {
   errorCode: string | null;
   createdAt: Date;
   completedAt: Date | null;
+  providerUsage?: unknown;
 }): PublicAiMessage {
   return {
     id: row.id,
@@ -110,6 +111,12 @@ function toPublicMessage(row: {
     errorCode: row.errorCode,
     createdAt: row.createdAt.toISOString(),
     completedAt: row.completedAt?.toISOString() ?? null,
+    ...(isPlainObject(row.providerUsage) &&
+    typeof row.providerUsage.latencyMs === 'number' &&
+    Number.isFinite(row.providerUsage.latencyMs) &&
+    row.providerUsage.latencyMs >= 0
+      ? { durationMs: row.providerUsage.latencyMs }
+      : {}),
   };
 }
 
@@ -584,7 +591,17 @@ export class ConversationRepository {
       if (!assistant) {
         throw new ApiException('AI_TURN_NOT_FOUND', 404);
       }
-      if (assistant.status !== 'FAILED' && assistant.status !== 'CANCELLED') {
+      const partialFailure =
+        assistant.status === 'COMPLETED' &&
+        Array.isArray(assistant.toolSummary) &&
+        assistant.toolSummary.some(
+          (summary) => isPlainObject(summary) && summary.status === 'FAILED',
+        );
+      if (
+        assistant.status !== 'FAILED' &&
+        assistant.status !== 'CANCELLED' &&
+        !partialFailure
+      ) {
         throw new ApiException('AI_TURN_NOT_RETRYABLE', 409);
       }
       const operation = await tx.aiOperation.findFirst({
@@ -717,4 +734,8 @@ export class ConversationRepository {
       return [...rows].reverse().map(toPublicMessage);
     });
   }
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }

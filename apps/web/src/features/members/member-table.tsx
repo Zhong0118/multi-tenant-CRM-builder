@@ -13,6 +13,7 @@ import { DataPanel } from "@/components/workbench/surface";
 import { toApiError } from "@/lib/api/api-error";
 import { browserApiClient } from "@/lib/api/browser-client";
 
+import { BulkMemberAccess } from "./bulk-member-access";
 import { BulkMemberActions, MemberNameEditor } from "./member-edit-actions";
 import styles from "./members.module.css";
 import { MemberLifecycleActions } from "./member-lifecycle-actions";
@@ -412,6 +413,16 @@ export function MemberTable({
           <h2 id="members-heading">成员名册</h2>
           <Space wrap>
             <span>{membersQuery.data?.total ?? 0} 位成员</span>
+            <BulkMemberAccess
+              tenantCode={tenantCode}
+              selected={(membersQuery.data?.items ?? []).filter((member) =>
+                selectedIds.includes(member.id),
+              )}
+              onChanged={() => {
+                setSelectedIds([]);
+                void refresh("members");
+              }}
+            />
             <BulkMemberActions
               tenantCode={tenantCode}
               selected={(membersQuery.data?.items ?? []).filter(

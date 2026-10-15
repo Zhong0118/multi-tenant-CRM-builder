@@ -81,6 +81,7 @@ export class AiMessageResponseDto {
     string | null;
   @ApiPropertyOptional({ nullable: true, type: AiProposalResponseDto })
   proposal?: AiProposalResponseDto | null;
+  @ApiPropertyOptional({ minimum: 0 }) durationMs?: number;
   @ApiProperty() createdAt!: string;
   @ApiPropertyOptional({ nullable: true, type: String }) completedAt!:
     string | null;

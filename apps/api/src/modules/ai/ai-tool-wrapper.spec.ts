@@ -4,7 +4,11 @@ import type { AiPublicStreamEvent } from '@crm/contracts';
 import { ApiException } from '../../common/errors/api.exception';
 import type { AiProviderTool } from './ai-provider';
 import { AiTurnBudget } from './ai-turn-budget';
-import { wrapAiReadTool, type AiToolCallbacks } from './ai-tool-wrapper';
+import {
+  defaultAiToolCallbacks,
+  wrapAiReadTool,
+  type AiToolCallbacks,
+} from './ai-tool-wrapper';
 
 function callbacks(overrides: Partial<AiToolCallbacks> = {}) {
   const events: AiPublicStreamEvent[] = [];
@@ -42,6 +46,112 @@ function searchTool(execute: AiProviderTool['execute']): AiProviderTool {
 }
 
 describe('wrapAiReadTool', () => {
+  it("uses only this turn's authorized object metadata for tool and source labels", async () => {
+    const cb = defaultAiToolCallbacks();
+    const list = wrapAiReadTool(
+      {
+        name: 'list_objects',
+        description: '',
+        inputSchema: z.object({}),
+        execute: () =>
+          Promise.resolve([{ code: 'opportunities', name: '跟单商机' }]),
+      },
+      cb,
+    );
+    await list.execute({}, 'objects');
+    const query = wrapAiReadTool(
+      searchTool(() => Promise.resolve({ items: [], total: 0 })),
+      cb,
+    );
+    await query.execute({ objectCode: 'opportunities' }, 'query');
+    expect(cb.toolSummaries.at(-1)?.displayName).toBe('查询跟单商机记录');
+    expect(cb.sources[0]?.objectName).toBe('跟单商机');
+    const otherTurn = defaultAiToolCallbacks();
+    await wrapAiReadTool(
+      searchTool(() => Promise.resolve({ items: [], total: 0 })),
+      otherTurn,
+    ).execute({ objectCode: 'opportunities' }, 'isolated');
+    expect(otherTurn.sources[0]?.objectName).toBe('opportunities');
+  });
+
+  it('distinguishes access restrictions from unavailable services without forwarding exception details', async () => {
+    for (const [error, code] of [
+      [
+        new ApiException('OBJECT_ACTION_FORBIDDEN', 403, {
+          message: 'hidden-field',
+        }),
+        'ACCESS_RESTRICTED',
+      ],
+      [new Error('database password hidden-field'), 'DATA_UNAVAILABLE'],
+    ] as const) {
+      const { callbacks: cb, toolSummaries } = callbacks();
+      const result = await wrapAiReadTool(
+        searchTool(async () => {
+          throw error;
+        }),
+        cb,
+      ).execute({ objectCode: 'leads' }, code);
+      expect(result).toMatchObject({ code });
+      expect(toolSummaries[0]).toMatchObject({
+        errorCode: code,
+        durationMs: expect.any(Number),
+      });
+      expect(JSON.stringify([result, toolSummaries])).not.toMatch(
+        /hidden-field|password/,
+      );
+    }
+  });
+
+  it('returns recoverable safe filter guidance and timings instead of a service outage', async () => {
+    const { callbacks: cb, toolSummaries } = callbacks();
+    const wrapped = wrapAiReadTool(
+      searchTool(async () => {
+        throw new ApiException('RECORD_FILTER_INVALID', 400, {
+          message: 'secret-field stack trace',
+          fieldErrors: { secret: ['hidden option'] },
+        });
+      }),
+      cb,
+    );
+    const result = await wrapped.execute({ objectCode: 'leads' }, 'bad-filter');
+    expect(result).toMatchObject({
+      code: 'INVALID_TOOL_ARGUMENT',
+      detail: expect.stringContaining('数组'),
+    });
+    expect(toolSummaries[0]).toMatchObject({
+      errorCode: 'INVALID_TOOL_ARGUMENT',
+      startedAt: expect.any(String),
+      durationMs: expect.any(Number),
+    });
+    expect(JSON.stringify([result, toolSummaries])).not.toMatch(
+      /secret-field|hidden option|stack trace/,
+    );
+    expect(toolSummaries[0]?.detail).not.toMatch(
+      /describe_object|stage|lost|key/,
+    );
+  });
+
+  it('records safe budget rejections including timing without executing the domain tool', async () => {
+    const budget = new AiTurnBudget();
+    for (let i = 0; i < 6; i++) {
+      budget.beginTool();
+      budget.endTool();
+    }
+    const { callbacks: cb, toolSummaries } = callbacks({ budget });
+    const execute = jest.fn();
+    const result = await wrapAiReadTool(searchTool(execute), cb).execute(
+      { objectCode: 'leads' },
+      'over-budget',
+    );
+    expect(result).toMatchObject({ code: 'AI_TOOL_BUDGET_EXCEEDED' });
+    expect(toolSummaries[0]).toMatchObject({
+      status: 'FAILED',
+      errorCode: 'AI_TOOL_BUDGET_EXCEEDED',
+      durationMs: expect.any(Number),
+    });
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it('emits business-Chinese tool.started, sources.updated, and tool.completed without raw values', async () => {
     const { events, callbacks: cb, toolSummaries, sources } = callbacks();
     const wrapped = wrapAiReadTool(
@@ -68,7 +178,7 @@ describe('wrapAiReadTool', () => {
       'sources.updated',
       'tool.completed',
     ]);
-    expect(events[0]).toEqual({
+    expect(events[0]).toMatchObject({
       event: 'tool.started',
       data: {
         callId: 'call-1',
@@ -178,7 +288,10 @@ describe('wrapAiReadTool', () => {
     );
     await expect(
       wrapped.execute({ objectCode: 'leads' }, 'call-huge'),
-    ).resolves.toEqual({ unavailable: true, code: 'DATA_UNAVAILABLE' });
+    ).resolves.toMatchObject({
+      unavailable: true,
+      code: 'AI_TOOL_PAYLOAD_LIMIT',
+    });
     expect(events.map((event) => event.event)).toEqual([
       'tool.started',
       'tool.failed',
@@ -223,7 +336,7 @@ describe('wrapAiReadTool', () => {
     ).resolves.toEqual({ unavailable: true, code: 'INVALID_TOOL_ARGUMENT' });
     expect(execute).not.toHaveBeenCalled();
     expect(events.map((event) => event.event)).toEqual(['tool.failed']);
-    expect(events[0]).toEqual({
+    expect(events[0]).toMatchObject({
       event: 'tool.failed',
       data: {
         callId: 'call-raw',
@@ -248,11 +361,18 @@ describe('wrapAiReadTool', () => {
       rejectDomain = reject;
     });
     const execute = jest.fn(() => domain);
-    const { events, callbacks: cb, toolSummaries } = callbacks({
+    const {
+      events,
+      callbacks: cb,
+      toolSummaries,
+    } = callbacks({
       abortSignal: abort.signal,
     });
     const wrapped = wrapAiReadTool(searchTool(execute), cb);
-    const pending = wrapped.execute({ objectCode: 'leads', limit: 5 }, 'call-hang');
+    const pending = wrapped.execute(
+      { objectCode: 'leads', limit: 5 },
+      'call-hang',
+    );
     await Promise.resolve();
     expect(events.map((event) => event.event)).toEqual(['tool.started']);
     abort.abort();
@@ -344,7 +464,11 @@ describe('wrapAiReadTool', () => {
 
   it('emits tool.failed when abort fires after tool.started so the summary is not left RUNNING', async () => {
     const abort = new AbortController();
-    const { events, callbacks: cb, toolSummaries } = callbacks({
+    const {
+      events,
+      callbacks: cb,
+      toolSummaries,
+    } = callbacks({
       abortSignal: abort.signal,
     });
     const wrapped = wrapAiReadTool(
@@ -362,7 +486,7 @@ describe('wrapAiReadTool', () => {
       'tool.started',
       'tool.failed',
     ]);
-    expect(events[1]).toEqual({
+    expect(events[1]).toMatchObject({
       event: 'tool.failed',
       data: {
         callId: 'call-inflight',

@@ -55,6 +55,7 @@ vi.mock("./ai-api", () => ({
 
 beforeEach(() => {
   mocks.replace.mockReset();
+  mocks.retryTurn.mockReset();
   mocks.listConversations.mockReset();
   mocks.listMessages.mockReset();
   mocks.conversation = undefined;
@@ -1053,12 +1054,12 @@ describe("AiAssistantPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
     await waitFor(() =>
       expect(
-        screen.getAllByText("部分 CRM 数据暂时无法读取，本次回答可能不完整"),
+        screen.getAllByText("部分查询未成功，可展开查看"),
       ).toHaveLength(1),
     );
     expect(
       screen.queryByRole("button", { name: "重试" }),
-    ).not.toBeInTheDocument();
+    ).toBeInTheDocument();
   });
 
   it("shows the partial warning once for persisted COMPLETED with a failed tool", async () => {
@@ -1088,12 +1089,23 @@ describe("AiAssistantPage", () => {
     renderPage();
     await waitFor(() =>
       expect(
-        screen.getAllByText("部分 CRM 数据暂时无法读取，本次回答可能不完整"),
+        screen.getAllByText("部分查询未成功，可展开查看"),
       ).toHaveLength(1),
     );
     expect(
       screen.queryByRole("button", { name: "重试" }),
-    ).not.toBeInTheDocument();
+    ).toBeInTheDocument();
+    mocks.retryTurn.mockClear();
+    mocks.retryTurn.mockImplementation(async function* () {
+      yield { event: "turn.started", data: { turnId: "t-partial" } };
+      await new Promise(() => undefined);
+    });
+    const retryButton = screen.getByRole("button", { name: "重试" });
+    fireEvent.click(retryButton);
+    fireEvent.click(retryButton);
+    expect(mocks.retryTurn).toHaveBeenCalledTimes(1);
+    expect(mocks.retryTurn).toHaveBeenCalledWith("northwind", "t-partial", expect.any(AbortSignal));
+    expect(mocks.confirmProposal).not.toHaveBeenCalled();
   });
 
   it("does not run historical Retry while a turn is generating", async () => {

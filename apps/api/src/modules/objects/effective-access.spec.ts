@@ -165,3 +165,34 @@ describe('effective object access', () => {
     ).toEqual({ name: 'EDIT', phone: 'EDIT' });
   });
 });
+
+describe('member field exceptions', () => {
+  it('opens default-hidden fields and tightens others without widening object scopes', () => {
+    const published = schema();
+    published.employeeAccess.fields.phone = 'HIDDEN';
+    const input = {
+      schema: published,
+      role: 'EMPLOYEE' as const,
+      memberFieldOverrides: { phone: 'EDIT' as const, name: 'HIDDEN' as const },
+    };
+    const access = resolveEffectiveAccess(input);
+    expect(access.fields).toEqual({ name: 'HIDDEN', phone: 'EDIT' });
+    expect(access.readScope).toBe('OWN');
+    expect(access.canUpdate).toBe(false);
+    expect(access.updateScope).toBe('NONE');
+  });
+
+  it('cannot override system fields or administrator access', () => {
+    const published = schema();
+    published.fields[1].isSystem = true;
+    const input = {
+      schema: published,
+      role: 'EMPLOYEE' as const,
+      memberFieldOverrides: { phone: 'EDIT' as const, name: 'HIDDEN' as const },
+    };
+    expect(resolveEffectiveAccess(input).fields.phone).toBe('READ_ONLY');
+    expect(
+      resolveEffectiveAccess({ ...input, role: 'TENANT_ADMIN' }).fields,
+    ).toEqual({ name: 'EDIT', phone: 'EDIT' });
+  });
+});

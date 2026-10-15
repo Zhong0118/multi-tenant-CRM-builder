@@ -185,12 +185,14 @@ export function ConversationRail({
                         type="button"
                         className={styles.rowTitle}
                         title={item.title}
+                        aria-label={item.title}
                         aria-current={
                           item.id === selectedId ? "true" : undefined
                         }
                         onClick={() => onSelect(item.id)}
                       >
-                        {item.title}
+                        <span className={styles.sessionTitle}>{item.title}</span>
+                        {item.latestUserPreview && item.latestUserPreview !== item.title ? <span className={styles.sessionPreview}>{item.latestUserPreview}</span> : null}
                       </button>
                       <Dropdown
                         trigger={["click"]}
