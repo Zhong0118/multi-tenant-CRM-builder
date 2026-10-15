@@ -97,7 +97,7 @@ function recordApi(): RecordApi {
     ),
   } as unknown as RecordApi;
 }
-function setup(api = recordApi(), objectSchema = schema) {
+function setup(api = recordApi(), objectSchema = schema, admin = false) {
   const onCompleted = vi.fn();
   const onClose = vi.fn();
   const client = new QueryClient({
@@ -108,6 +108,11 @@ function setup(api = recordApi(), objectSchema = schema) {
       <RecordImportDrawer
         tenantCode="northwind"
         schema={objectSchema}
+        canChooseOwner={admin}
+        members={[
+          { id: "m1", displayName: "员工甲" },
+          { id: "m2", displayName: "员工乙" },
+        ]}
         api={api}
         onCompleted={onCompleted}
         onClose={onClose}
@@ -126,6 +131,30 @@ async function checkAndImport() {
   fireEvent.click(await screen.findByRole("button", { name: /确认导入/ }));
 }
 describe("RecordImportDrawer", () => {
+  it("checks and imports with the selected owner, invalidates preview on change and locks ownership once started", async () => {
+    const { api } = setup(recordApi(), schema, true);
+    chooseFile("姓名\n新客户");
+    await screen.findByText("1 行 · 1 列");
+    fireEvent.mouseDown(screen.getByLabelText("导入负责人"));
+    fireEvent.click(await screen.findByText("员工甲"));
+    fireEvent.click(screen.getByRole("button", { name: "检查数据" }));
+    await screen.findByRole("button", { name: /确认导入/ });
+    fireEvent.mouseDown(screen.getByLabelText("导入负责人"));
+    fireEvent.click(await screen.findByText("员工乙"));
+    expect(
+      screen.queryByRole("button", { name: /确认导入/ }),
+    ).not.toBeInTheDocument();
+    await checkAndImport();
+    await screen.findByText(/成功 1 行/);
+    expect(
+      vi.mocked(api.importRows).mock.calls.map((call) => call[2].ownerMemberId),
+    ).toEqual(["m1", "m2", "m2"]);
+    expect(screen.getByLabelText("导入负责人")).toBeDisabled();
+  });
+  it("does not offer employees an owner override", () => {
+    setup();
+    expect(screen.queryByLabelText("导入负责人")).not.toBeInTheDocument();
+  });
   it("checks without writing then imports coerced fields and retains the result", async () => {
     const { api, onCompleted } = setup();
     chooseFile("姓名,线索状态,备注\n张三,待联系,忽略");

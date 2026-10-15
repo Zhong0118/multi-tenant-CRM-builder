@@ -69,6 +69,7 @@ export interface RecordImportRow {
 }
 
 export interface RecordImportInput {
+  ownerMemberId?: string | null;
   batchId?: string;
   dryRun?: boolean;
   matchFields?: string[];

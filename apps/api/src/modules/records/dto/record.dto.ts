@@ -136,7 +136,7 @@ export class BatchUpdateRecordsDto {
   @ApiProperty({ type: BatchUpdateRecordItemDto, isArray: true })
   @IsArray()
   @ArrayMinSize(1)
-  @ArrayMaxSize(50)
+  @ArrayMaxSize(100)
   @ArrayUnique((item: BatchUpdateRecordItemDto) => item.recordId)
   @ValidateNested({ each: true })
   @Type(() => BatchUpdateRecordItemDto)
@@ -217,6 +217,16 @@ export class ImportRecordRowDto {
 }
 
 export class ImportRecordsDto {
+  @ApiPropertyOptional({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    description: '管理员为本批新增记录指定的负责人；留空则未分配。',
+  })
+  @IsOptional()
+  @IsUUID()
+  ownerMemberId?: string | null;
+
   @ApiPropertyOptional({ description: '仅校验和查重，不创建记录。' })
   @IsOptional()
   @IsBoolean()

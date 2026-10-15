@@ -1,4 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import request from 'supertest';
+import { lockObject } from '../src/modules/records/record-ownership-locks';
 import type { components } from '@crm/contracts';
 type PoolConfig = components['schemas']['RecordPoolConfigResponseDto'];
 type OwnershipResult = components['schemas']['RecordOwnershipResponseDto'];
@@ -68,12 +70,195 @@ describe('Record pool HTTP and database integration', () => {
 
   beforeAll(async () => {
     harness = await createCriticalHarness();
+    // Keep concurrent requests on one server instead of Supertest closing it per request.
+    await harness.app.listen(0, '127.0.0.1');
   });
   beforeEach(async () => {
     fixture = await provisionCriticalFixture(harness);
   });
   afterAll(async () => {
     if (harness) await closeCriticalHarness(harness);
+  });
+
+  it('imports to a selected active owner with the table deadline and never reassigns skipped rows', async () => {
+    await configure(true, 24);
+    const batchId = '1b6a863a-44d6-41da-87d1-5db079e8a3ae';
+    const input = {
+      batchId,
+      ownerMemberId: fixture.employee.memberId,
+      rows: [{ rowNumber: 2, values: { name: 'Assigned import' } }],
+    };
+    const send = (payload: object, actor = fixture.admin) =>
+      request(harness.app.getHttpServer())
+        .post(`${path()}/records/import`)
+        .set('Cookie', actor.cookie)
+        .set('Origin', origin)
+        .send(payload);
+    const before = await harness.adminDatabase.record.count();
+    const preview = await send({ ...input, dryRun: true }).expect(201);
+    expect(
+      body<components['schemas']['RecordImportResponseDto']>(preview).items[0]
+        .status,
+    ).toBe('READY');
+    expect(await harness.adminDatabase.record.count()).toBe(before);
+    const response = await send(input).expect(201);
+    const imported =
+      body<components['schemas']['RecordImportResponseDto']>(response).items[0]
+        .record!;
+    expect(imported).toMatchObject({
+      ownerMemberId: fixture.employee.memberId,
+      inPublicPool: false,
+    });
+    expect(
+      Date.parse(imported.ownershipExpiresAt!) - Date.now(),
+    ).toBeGreaterThan(23 * 3600_000);
+    const persisted = await harness.adminDatabase.record.findUniqueOrThrow({
+      where: { id: imported.id },
+    });
+    expect(persisted.ownershipExpiresAt?.toISOString()).toBe(
+      imported.ownershipExpiresAt,
+    );
+    const retry = await send({
+      ...input,
+      ownerMemberId: fixture.otherEmployee.memberId,
+    }).expect(201);
+    expect(
+      body<components['schemas']['RecordImportResponseDto']>(retry).items[0]
+        .status,
+    ).toBe('SKIPPED');
+    expect(
+      await harness.adminDatabase.record.findUnique({
+        where: { id: imported.id },
+      }),
+    ).toEqual(persisted);
+    await get(`${path()}/records/${imported.id}`, fixture.employee).expect(200);
+    await get(`${path()}/records/${imported.id}`, fixture.otherEmployee).expect(
+      404,
+    );
+  });
+
+  it('rejects employee assignment overrides and inactive or foreign owners before import writes', async () => {
+    const input = {
+      ownerMemberId: fixture.otherEmployee.memberId,
+      rows: [{ rowNumber: 2, values: { name: 'Forbidden assignment' } }],
+    };
+    const send = (payload: object, actor = fixture.admin) =>
+      request(harness.app.getHttpServer())
+        .post(`${path()}/records/import`)
+        .set('Cookie', actor.cookie)
+        .set('Origin', origin)
+        .send(payload);
+    const before = await harness.adminDatabase.record.count();
+    await send(input, fixture.employee).expect(403);
+    await send({
+      ...input,
+      ownerMemberId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+      dryRun: true,
+    }).expect(400);
+    await harness.adminDatabase.tenantMember.update({
+      where: { id: fixture.otherEmployee.memberId },
+      data: { status: 'DISABLED' },
+    });
+    await send({ ...input, dryRun: true }).expect(400);
+    await send(input).expect(400);
+    expect(await harness.adminDatabase.record.count()).toBe(before);
+  });
+
+  it('updates 100 selected records but rejects 101 before any writes', async () => {
+    const source = await harness.adminDatabase.record.findUniqueOrThrow({
+      where: { id: fixture.ownedRecord.id },
+    });
+    const records = Array.from({ length: 101 }, (_, i) => ({
+      ...source,
+      id: randomUUID(),
+      recordNo: BigInt(1000 + i),
+      data: { name: `Bulk ${i}` },
+    }));
+    await harness.adminDatabase.record.createMany({ data: records });
+    const send = (count: number) =>
+      request(harness.app.getHttpServer())
+        .post(`${path()}/records/batch`)
+        .set('Cookie', fixture.admin.cookie)
+        .set('Origin', origin)
+        .send({
+          items: records
+            .slice(0, count)
+            .map((r) => ({ recordId: r.id, version: r.version })),
+          values: { name: 'Bulk updated' },
+        });
+    await send(101).expect(400);
+    expect(
+      await harness.adminDatabase.record.count({
+        where: { tenantId: fixture.tenantA.id, title: 'Bulk updated' },
+      }),
+    ).toBe(0);
+    const response = await send(100).expect(201);
+    expect(
+      body<components['schemas']['RecordBatchUpdateResponseDto']>(response),
+    ).toMatchObject({ updated: 100, failed: 0 });
+    expect(
+      await harness.adminDatabase.record.count({
+        where: { tenantId: fixture.tenantA.id, title: 'Bulk updated' },
+      }),
+    ).toBe(100);
+  });
+
+  it('allows assigned imports, unassigned imports and ordinary creation concurrently', async () => {
+    await configure(true, 24);
+    const before = await harness.adminDatabase.record.count({
+      where: { tenantId: fixture.tenantA.id },
+    });
+    const responses = await Promise.all(
+      Array.from({ length: 9 }, (_, i) => {
+        const values = { name: `Concurrent ${i}` };
+        return request(harness.app.getHttpServer())
+          .post(`${path()}/records${i % 3 === 2 ? '' : '/import'}`)
+          .set(
+            'Cookie',
+            i % 3 === 0 ? fixture.admin.cookie : fixture.otherEmployee.cookie,
+          )
+          .set('Origin', origin)
+          .send(
+            i % 3 === 2
+              ? { values }
+              : {
+                  matchFields: ['name'],
+                  rows: [{ rowNumber: 2, values }],
+                  ...(i % 3 === 0
+                    ? { ownerMemberId: fixture.employee.memberId }
+                    : {}),
+                },
+          );
+      }),
+    );
+    expect(responses.map((response) => response.status)).toEqual(
+      Array(9).fill(201),
+    );
+    expect(
+      await harness.adminDatabase.record.count({
+        where: { tenantId: fixture.tenantA.id },
+      }),
+    ).toBe(before + 9);
+  });
+
+  it('allows record foreign-key checks while ownership configuration is locked', async () => {
+    await harness.adminDatabase.$transaction(async (tx) => {
+      await lockObject(
+        tx,
+        {
+          tenantId: fixture.tenantA.id,
+          tenantCode: fixture.tenantA.code,
+          userId: fixture.admin.userId,
+          memberId: fixture.admin.memberId,
+          role: 'TENANT_ADMIN',
+        },
+        fixture.object.code,
+      );
+      await harness.adminDatabase.$transaction(async (other) => {
+        await other.$executeRawUnsafe("SET LOCAL lock_timeout = '500ms'");
+        await other.$queryRaw`SELECT id FROM object_definitions WHERE id = ${fixture.object.id}::uuid FOR KEY SHARE`;
+      });
+    });
   });
 
   it('defaults off and enabling one table does not change existing records or other tables', async () => {

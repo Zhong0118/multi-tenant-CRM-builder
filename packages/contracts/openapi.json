@@ -2315,6 +2315,12 @@
             "maxItems": 3,
             "type": "array"
           },
+          "ownerMemberId": {
+            "description": "管理员为本批新增记录指定的负责人；留空则未分配。",
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
           "rows": {
             "items": {
               "$ref": "#/components/schemas/ImportRecordRowDto"

@@ -43,6 +43,7 @@ import {
 import { OptionBadge } from "@/features/objects/option-badge";
 
 import type { DynamicFieldMember } from "./dynamic-field";
+import { RecordBatchAssignDrawer } from "./record-batch-assign";
 import { RecordBatchEditDrawer } from "./record-batch-edit";
 import { RecordImportDrawer } from "./record-import";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
@@ -126,6 +127,7 @@ export function RecordList({
   const [ownerVisible, setOwnerVisible] = useState(true);
   const ownerStorageKey = `crm.records.owner.${tenantCode}.${currentMemberId ?? ""}.${objectCode}`;
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
+  const [assignmentRecords, setAssignmentRecords] = useState<RecordSummary[]>();
   const [batchOpen, setBatchOpen] = useState(false);
   const selectionScope = `${tenantCode}:${objectCode}:${recordQuerySearch(query, queryDefaults)}`;
   const [previousSelectionScope, setPreviousSelectionScope] = useState(selectionScope);
@@ -133,6 +135,7 @@ export function RecordList({
     setPreviousSelectionScope(selectionScope);
     setSelectedRowKeys([]);
     setBatchOpen(false);
+    setAssignmentRecords(undefined);
   }
   const [importOpen, setImportOpen] = useState(false);
   // Personal columns live in localStorage, which does not exist while the
@@ -578,10 +581,27 @@ export function RecordList({
             <Typography.Text type="secondary" className={styles.resultCount}>
               共 {page.total} 条 · 第 {page.page} 页
             </Typography.Text>
+            <Select
+              aria-label="每页条数"
+              value={page.limit}
+              options={[20, 50, 100].map((value) => ({
+                value,
+                label: `${value} 条 / 页`,
+              }))}
+              onChange={(limit) => apply({ ...query, limit, page: 1 })}
+            />
             <Dropdown
               trigger={["click"]}
               menu={{
                 items: [
+                  ...(canFilterByOwner && schema.actions.canUpdate
+                    ? [{
+                        key: "assign",
+                        label: "批量分配负责人",
+                        disabled: currentSelectedRowKeys.length === 0,
+                        onClick: () => setAssignmentRecords([...selectedRecords]),
+                      }]
+                    : []),
                   ...(schema.actions.canUpdate
                     ? [
                         {
@@ -1086,6 +1106,8 @@ export function RecordList({
           tenantCode={tenantCode}
           schema={schema}
           api={api}
+          canChooseOwner={canFilterByOwner}
+          members={members}
           onClose={() => setImportOpen(false)}
           onCompleted={async () => {
             await records.refetch();
@@ -1094,13 +1116,28 @@ export function RecordList({
         />
       ) : null}
 
+      {assignmentRecords ? (
+        <RecordBatchAssignDrawer
+          tenantCode={tenantCode}
+          objectCode={objectCode}
+          records={assignmentRecords}
+          members={members}
+          onClose={() => {
+            setAssignmentRecords(undefined);
+            setSelectedRowKeys([]);
+          }}
+          onChanged={async () => {
+            await records.refetch();
+            router.refresh();
+          }}
+        />
+      ) : null}
       {batchOpen && selectedRecords.length > 0 ? (
         <RecordBatchEditDrawer
           tenantCode={tenantCode}
           schema={schema}
           records={selectedRecords}
           members={members}
-          canChooseOwner={canFilterByOwner}
           api={api}
           onClose={() => setBatchOpen(false)}
           onCompleted={async () => {
