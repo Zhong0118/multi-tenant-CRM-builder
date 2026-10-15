@@ -51,6 +51,7 @@ export interface CreateRecordCommandInput {
   context: TenantContext;
   values: Record<string, unknown>;
   ownerMemberId?: string | null;
+  ownershipExpiresAt?: string | null;
   meta: RecordRequestMeta;
   clock: () => Date;
   idGenerator: () => string;
@@ -77,12 +78,14 @@ export async function createRecordCommand(
     submitted: input.values,
     memberExists: (memberId) => store.memberExists(memberId),
   });
+  await store.lockActiveOwners(ownerMemberId);
   const now = input.clock().toISOString();
   const created = await store.createRecord({
     id: input.idGenerator(),
     objectId: resolved.schema.object.id,
     recordNo: await store.allocateRecordNo(resolved.schema.object.id),
     ownerMemberId,
+    ownershipExpiresAt: input.ownershipExpiresAt ?? null,
     workflowStateKey: resolved.schema.workflow?.initialStateKey ?? null,
     title: normalized.title,
     values: normalized.values,

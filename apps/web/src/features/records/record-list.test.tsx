@@ -241,6 +241,16 @@ function renderList(
 }
 
 describe("RecordList query navigation", () => {
+  it("lets users show 100 records and resets to the first page while preserving filters", async () => {
+    const navigate = vi.fn();
+    renderList(navigate, { ...DEFAULT_RECORD_QUERY, page: 2, search: "客户" }, { page: { ...page, page: 2, total: 120 } });
+    fireEvent.mouseDown(screen.getAllByRole("combobox", { name: "每页条数" })[0]);
+    fireEvent.click(await screen.findByText("100 条 / 页"));
+    expect(navigate).toHaveBeenCalledWith(expect.stringContaining("limit=100"));
+    const target = navigate.mock.calls.at(-1)![0] as string;
+    expect(target).not.toContain("page=2");
+    expect(target).toContain("search=");
+  });
   it("shows the system owner in the table and cards without requiring a business field", () => {
     renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
       canFilterByOwner: true,

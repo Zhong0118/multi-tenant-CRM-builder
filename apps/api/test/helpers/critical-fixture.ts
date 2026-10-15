@@ -523,6 +523,9 @@ async function cleanupCriticalData(database: PrismaClient): Promise<void> {
     await database.recordActivity.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });
+    for (const tenantId of tenantIds) {
+      await database.$executeRaw`DELETE FROM record_import_rows WHERE tenant_id = ${tenantId}::uuid`;
+    }
     await database.record.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });
@@ -666,7 +669,7 @@ async function publishObject(
       objectId: object.id,
       publicationNo: 1,
       sourceDraftVersion: 1,
-      configuration: configuration as Prisma.InputJsonValue,
+      configuration,
       changeSummary: {},
       publishedByMemberId: input.publisherMemberId,
       publishedAt: input.now,

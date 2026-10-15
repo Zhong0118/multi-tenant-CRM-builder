@@ -1,4 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { lockMembers, lockObject } from './record-ownership-locks';
+import { ownershipDeadline } from './record-ownership';
 import { createHash } from 'node:crypto';
 
 import { ApiException } from '../../common/errors/api.exception';
@@ -92,7 +94,7 @@ export interface RecordExportFile {
   rowCount: number;
 }
 
-export const RECORD_BATCH_MAX_ITEMS = 50;
+export const RECORD_BATCH_MAX_ITEMS = 100;
 export const RECORD_IMPORT_MAX_ROWS = 500;
 
 export interface RecordBatchUpdateItemInput {
@@ -390,12 +392,16 @@ export class RecordsService {
     objectCode: string,
     input: {
       rows: RecordImportRowInput[];
+      ownerMemberId?: string | null;
       batchId?: string;
       dryRun?: boolean;
       matchFields?: string[];
     },
     meta: RequestMeta,
   ): Promise<RecordImportResponse> {
+    if (context.role !== 'TENANT_ADMIN' && input.ownerMemberId !== undefined) {
+      throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+    }
     const resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
@@ -438,144 +444,181 @@ export class RecordsService {
     if (matchFields.length && !resolved.access.canRead) {
       throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
     }
-    return this.repository.withTenant(context, async (store) => {
-      const objectId = resolved.schema.object.id;
-      const ownerMemberId = matchFields.length
-        ? await resolveListOwner(context, resolved, store, undefined)
-        : undefined;
-      if (
-        new Set(input.rows.map((row) => row.rowNumber)).size !==
-        input.rows.length
-      ) {
-        throw new ApiException('RECORD_IMPORT_INVALID', 400);
-      }
-      if (!input.dryRun) {
-        if (matchFields.length) await store.lockImportMatching(objectId);
-        if (input.batchId) await store.lockImportBatch(objectId, input.batchId);
-      }
-      const seen = new Set<string>();
-      const items: RecordImportResultItem[] = [];
-      for (const row of input.rows) {
-        try {
-          const previousId = input.batchId
-            ? await store.findImportedRecordId(
-                objectId,
-                input.batchId,
-                row.rowNumber,
-              )
-            : null;
-          if (previousId) {
-            items.push({
-              rowNumber: row.rowNumber,
-              status: 'SKIPPED',
-              reason: '该行已导入。',
-            });
-            continue;
-          }
-          const normalized = await assertRecordMutation({
-            mode: 'CREATE',
-            resolved,
-            submitted: row.values,
-            memberExists: (id) => store.memberExists(id),
-          });
-          const matchValues: Record<string, string | number | boolean> = {};
-          for (const key of matchFields) {
-            const value = normalized.values[key];
-            if (value === null || value === undefined || value === '') {
-              throw new ApiException('FIELD_REQUIRED', 400, {
-                fieldErrors: { [key]: ['查重字段不能为空。'] },
-              });
-            }
-            matchValues[key] = value as string | number | boolean;
-          }
-          const matchKey = JSON.stringify(
-            [...matchFields].sort().map((key) => [key, matchValues[key]]),
+    return this.repository.withTenantTransaction(
+      context,
+      async ({ store, tx }) => {
+        const objectId = resolved.schema.object.id;
+        // Acquire member locks before import advisory locks and record counters,
+        // matching ordinary creates and ownership assignment.
+        if (!input.dryRun) {
+          await store.lockActiveOwners(
+            context.role === 'EMPLOYEE'
+              ? context.memberId
+              : (input.ownerMemberId ?? null),
           );
-          const duplicateId = matchFields.length
-            ? await store.findImportDuplicate({
-                objectId,
-                ownerMemberId,
-                values: matchValues,
-              })
-            : null;
-          if (
-            duplicateId ||
-            (input.dryRun && matchFields.length && seen.has(matchKey))
-          ) {
-            if (!input.dryRun && input.batchId && duplicateId) {
+        }
+        let ownershipExpiresAt: string | null = null;
+        if (input.ownerMemberId) {
+          if (input.dryRun) {
+            const member = await tx.tenantMember.findFirst({
+              where: {
+                id: input.ownerMemberId,
+                tenantId: context.tenantId,
+                status: 'ACTIVE',
+                user: { status: 'ACTIVE' },
+              },
+            });
+            if (!member) throw new ApiException('OWNER_INVALID', 400);
+          } else {
+            await lockMembers(tx, context, input.ownerMemberId);
+            const object = await lockObject(tx, context, objectCode);
+            ownershipExpiresAt =
+              ownershipDeadline(
+                object.poolOwnershipTtlHours,
+                this.clock(),
+              )?.toISOString() ?? null;
+          }
+        }
+        const ownerMemberId = matchFields.length
+          ? await resolveListOwner(context, resolved, store, undefined)
+          : undefined;
+        if (
+          new Set(input.rows.map((row) => row.rowNumber)).size !==
+          input.rows.length
+        ) {
+          throw new ApiException('RECORD_IMPORT_INVALID', 400);
+        }
+        if (!input.dryRun) {
+          if (matchFields.length) await store.lockImportMatching(objectId);
+          if (input.batchId)
+            await store.lockImportBatch(objectId, input.batchId);
+        }
+        const seen = new Set<string>();
+        const items: RecordImportResultItem[] = [];
+        for (const row of input.rows) {
+          try {
+            const previousId = input.batchId
+              ? await store.findImportedRecordId(
+                  objectId,
+                  input.batchId,
+                  row.rowNumber,
+                )
+              : null;
+            if (previousId) {
+              items.push({
+                rowNumber: row.rowNumber,
+                status: 'SKIPPED',
+                reason: '该行已导入。',
+              });
+              continue;
+            }
+            const normalized = await assertRecordMutation({
+              mode: 'CREATE',
+              resolved,
+              submitted: row.values,
+              memberExists: (id) => store.memberExists(id),
+            });
+            const matchValues: Record<string, string | number | boolean> = {};
+            for (const key of matchFields) {
+              const value = normalized.values[key];
+              if (value === null || value === undefined || value === '') {
+                throw new ApiException('FIELD_REQUIRED', 400, {
+                  fieldErrors: { [key]: ['查重字段不能为空。'] },
+                });
+              }
+              matchValues[key] = value as string | number | boolean;
+            }
+            const matchKey = JSON.stringify(
+              [...matchFields].sort().map((key) => [key, matchValues[key]]),
+            );
+            const duplicateId = matchFields.length
+              ? await store.findImportDuplicate({
+                  objectId,
+                  ownerMemberId,
+                  values: matchValues,
+                })
+              : null;
+            if (
+              duplicateId ||
+              (input.dryRun && matchFields.length && seen.has(matchKey))
+            ) {
+              if (!input.dryRun && input.batchId && duplicateId) {
+                await store.saveImportedRecordId(
+                  objectId,
+                  input.batchId,
+                  row.rowNumber,
+                  duplicateId,
+                );
+              }
+              items.push({
+                rowNumber: row.rowNumber,
+                status: 'SKIPPED',
+                reason: '查重字段与已有记录或文件内其他行重复。',
+              });
+              continue;
+            }
+            if (input.dryRun) {
+              seen.add(matchKey);
+              items.push({
+                rowNumber: row.rowNumber,
+                status: 'READY',
+                ...(matchFields.length
+                  ? {
+                      matchKey: createHash('sha256')
+                        .update(matchKey)
+                        .digest('hex'),
+                    }
+                  : {}),
+              });
+              continue;
+            }
+            const record = await createRecordCommand({
+              store,
+              resolved,
+              context,
+              values: row.values,
+              ownerMemberId: input.ownerMemberId,
+              ownershipExpiresAt,
+              meta,
+              clock: this.clock,
+              idGenerator: this.idGenerator,
+            });
+            if (input.batchId)
               await store.saveImportedRecordId(
                 objectId,
                 input.batchId,
                 row.rowNumber,
-                duplicateId,
+                record.id,
               );
+            items.push({
+              rowNumber: row.rowNumber,
+              status: 'CREATED',
+              record: projectRecord(record, resolved),
+            });
+          } catch (error) {
+            if (error instanceof ApiException) {
+              items.push({
+                rowNumber: row.rowNumber,
+                status: 'FAILED',
+                error: {
+                  code: error.code,
+                  message: error.message,
+                  fields: Object.keys(error.fieldErrors),
+                },
+              });
+              continue;
             }
-            items.push({
-              rowNumber: row.rowNumber,
-              status: 'SKIPPED',
-              reason: '查重字段与已有记录或文件内其他行重复。',
-            });
-            continue;
+            throw error;
           }
-          if (input.dryRun) {
-            seen.add(matchKey);
-            items.push({
-              rowNumber: row.rowNumber,
-              status: 'READY',
-              ...(matchFields.length
-                ? {
-                    matchKey: createHash('sha256')
-                      .update(matchKey)
-                      .digest('hex'),
-                  }
-                : {}),
-            });
-            continue;
-          }
-          const record = await createRecordCommand({
-            store,
-            resolved,
-            context,
-            values: row.values,
-            meta,
-            clock: this.clock,
-            idGenerator: this.idGenerator,
-          });
-          if (input.batchId)
-            await store.saveImportedRecordId(
-              objectId,
-              input.batchId,
-              row.rowNumber,
-              record.id,
-            );
-          items.push({
-            rowNumber: row.rowNumber,
-            status: 'CREATED',
-            record: projectRecord(record, resolved),
-          });
-        } catch (error) {
-          if (error instanceof ApiException) {
-            items.push({
-              rowNumber: row.rowNumber,
-              status: 'FAILED',
-              error: {
-                code: error.code,
-                message: error.message,
-                fields: Object.keys(error.fieldErrors),
-              },
-            });
-            continue;
-          }
-          throw error;
         }
-      }
-      return {
-        skipped: items.filter((item) => item.status === 'SKIPPED').length,
-        created: items.filter((item) => item.status === 'CREATED').length,
-        failed: items.filter((item) => item.status === 'FAILED').length,
-        items,
-      };
-    });
+        return {
+          skipped: items.filter((item) => item.status === 'SKIPPED').length,
+          created: items.filter((item) => item.status === 'CREATED').length,
+          failed: items.filter((item) => item.status === 'FAILED').length,
+          items,
+        };
+      },
+    );
   }
 
   async detail(

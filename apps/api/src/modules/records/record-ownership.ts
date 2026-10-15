@@ -87,9 +87,13 @@ export function ownershipChange(
     ownerMemberId:
       input.action === 'CLAIM' ? context.memberId : input.ownerMemberId!,
     inPublicPool: false,
-    ownershipExpiresAt:
-      config.ownershipTtlHours === null
-        ? null
-        : new Date(now.getTime() + config.ownershipTtlHours * 3_600_000),
+    ownershipExpiresAt: ownershipDeadline(config.ownershipTtlHours, now),
   };
+}
+
+export function ownershipDeadline(
+  hours: number | null,
+  now: Date,
+): Date | null {
+  return hours === null ? null : new Date(now.getTime() + hours * 3_600_000);
 }

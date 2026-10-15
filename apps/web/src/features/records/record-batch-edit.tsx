@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { Alert, Button, Drawer, Form, Select, Space, Typography } from "antd";
+import { Alert, Button, Drawer, Form, Space, Typography } from "antd";
 import { useMemo, useState } from "react";
 
 import type {
@@ -21,7 +21,6 @@ export interface RecordBatchEditDrawerProps {
   schema: RuntimeObjectSchema;
   records: RecordSummary[];
   members?: DynamicFieldMember[];
-  canChooseOwner?: boolean;
   api: RecordApi;
   onClose: () => void;
   onCompleted: (result: RecordBatchUpdateResult) => void;
@@ -32,7 +31,6 @@ export function RecordBatchEditDrawer({
   schema,
   records,
   members = [],
-  canChooseOwner = false,
   api,
   onClose,
   onCompleted,
@@ -40,14 +38,11 @@ export function RecordBatchEditDrawer({
   const editable = schema.fields.filter((field) => field.access === "EDIT");
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [values, setValues] = useState<Record<string, unknown>>({});
-  const [owner, setOwner] = useState<string | undefined>();
-  const [changeOwner, setChangeOwner] = useState(false);
   const [summary, setSummary] = useState<string>();
   const [result, setResult] = useState<RecordBatchUpdateResult>();
 
   const selectedFields = useMemo(
-    () =>
-      editable.filter((field) => selectedKeys.includes(field.fieldKey)),
+    () => editable.filter((field) => selectedKeys.includes(field.fieldKey)),
     [editable, selectedKeys],
   );
 
@@ -59,9 +54,6 @@ export function RecordBatchEditDrawer({
           version: record.version,
         })),
         values: payload(selectedFields, values),
-        ...(canChooseOwner && changeOwner
-          ? { ownerMemberId: owner ?? null }
-          : {}),
       }),
     onSuccess: (next) => {
       setResult(next);
@@ -74,8 +66,7 @@ export function RecordBatchEditDrawer({
     },
   });
 
-  const canSubmit =
-    selectedFields.length > 0 || (canChooseOwner && changeOwner);
+  const canSubmit = selectedFields.length > 0;
 
   return (
     <Drawer
@@ -135,34 +126,6 @@ export function RecordBatchEditDrawer({
             />
           ))}
         </div>
-
-        {canChooseOwner ? (
-          <Form.Item>
-            <label className={styles.columnChooserRow}>
-              <input
-                type="checkbox"
-                aria-label="同时修改负责人"
-                checked={changeOwner}
-                onChange={(event) => setChangeOwner(event.target.checked)}
-              />
-              <span>同时修改负责人</span>
-            </label>
-            {changeOwner ? (
-              <Select
-                allowClear
-                showSearch
-                optionFilterProp="label"
-                placeholder="不指定负责人"
-                value={owner}
-                onChange={(next?: string) => setOwner(next)}
-                options={members.map((member) => ({
-                  value: member.id,
-                  label: member.displayName ?? "未设置姓名",
-                }))}
-              />
-            ) : null}
-          </Form.Item>
-        ) : null}
       </Form>
 
       {result && result.failed > 0 ? (

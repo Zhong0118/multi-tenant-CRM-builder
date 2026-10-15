@@ -183,6 +183,7 @@ export interface RecordsStore {
     recordId: string,
   ): Promise<void>;
   memberExists(memberId: string): Promise<boolean>;
+  lockActiveOwners(ownerId: string | null): Promise<void>;
   allocateRecordNo(objectId: string): Promise<bigint>;
   createRecord(record: DynamicRecord): Promise<DynamicRecord>;
   listRecords(query: RecordListQuery): Promise<{
@@ -434,7 +435,7 @@ class PrismaRecordsStore implements RecordsStore {
     return recordNo;
   }
 
-  private async lockActiveOwners(ownerId: string | null) {
+  async lockActiveOwners(ownerId: string | null) {
     for (const id of [
       ...new Set([this.context.memberId, ...(ownerId ? [ownerId] : [])]),
     ].sort()) {
@@ -456,6 +457,9 @@ class PrismaRecordsStore implements RecordsStore {
         objectId: record.objectId,
         recordNo: record.recordNo,
         ownerMemberId: record.ownerMemberId,
+        ownershipExpiresAt: record.ownershipExpiresAt
+          ? new Date(record.ownershipExpiresAt)
+          : null,
         statusKey: record.workflowStateKey,
         title: record.title,
         data: toPrismaJson(record.values),

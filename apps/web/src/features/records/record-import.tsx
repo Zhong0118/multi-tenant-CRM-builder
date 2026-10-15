@@ -19,6 +19,7 @@ import {
 } from "@/features/objects/object-types";
 import { toApiError } from "@/lib/api/api-error";
 
+import type { DynamicFieldMember } from "./dynamic-field";
 import type { RecordApi, RecordImportResult } from "./record-api";
 import {
   coerceImportValue,
@@ -43,6 +44,8 @@ export interface RecordImportDrawerProps {
   tenantCode: string;
   schema: RuntimeObjectSchema;
   api: RecordApi;
+  canChooseOwner?: boolean;
+  members?: DynamicFieldMember[];
   onClose: () => void;
   onCompleted: (result: RecordImportResult) => void;
 }
@@ -51,12 +54,15 @@ export function RecordImportDrawer({
   tenantCode,
   schema,
   api,
+  canChooseOwner = false,
+  members = [],
   onClose,
   onCompleted,
 }: RecordImportDrawerProps) {
   const importable = schema.fields.filter(
     (field) => field.access === "EDIT" && field.type !== "MEMBER",
   );
+  const [ownerMemberId, setOwnerMemberId] = useState<string>();
   const [batchId, setBatchId] = useState<string>();
   const [selectedFile, setSelectedFile] = useState<File>();
   const [encoding, setEncoding] = useState<CsvEncoding>("auto");
@@ -169,7 +175,13 @@ export function RecordImportDrawer({
     let done = 0;
     try {
       await runImportBatches({
-        input: { batchId, dryRun, matchFields, rows },
+        input: {
+          batchId,
+          dryRun,
+          matchFields,
+          rows,
+          ...(canChooseOwner ? { ownerMemberId: ownerMemberId ?? null } : {}),
+        },
         request: (input) =>
           api.importRows(tenantCode, schema.object.code, input),
         shouldStop: () => stopped.current,
@@ -319,11 +331,38 @@ export function RecordImportDrawer({
         列，文件最大 10 MB。系统自动分批，无需手动拆成 500 行。
       </Typography.Paragraph>
       <Typography.Paragraph type="secondary">
-        按已发布字段导入，成员和负责人不能通过姓名绑定。单选填写已有选项名称，多选用分号分隔（如“重点；已联系”）。导入只新增，不覆盖现有记录。
+        按已发布字段导入，文件中的成员和负责人姓名不会自动绑定账号。单选填写已有选项名称，多选用分号分隔（如“重点；已联系”）。导入只新增，不覆盖现有记录。
       </Typography.Paragraph>
       <Typography.Paragraph type="secondary">
         CSV 自动尝试 UTF-8、UTF-16 编码标记和 GBK /
         GB18030。编码无法保证完全识别，请核对预览，必要时手动切换。
+      </Typography.Paragraph>
+      {canChooseOwner ? (
+        <label className={styles.columnChooserRow}>
+          <span>导入负责人</span>
+          <Select
+            aria-label="导入负责人"
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            placeholder="未分配"
+            value={ownerMemberId}
+            disabled={!!busy || loadingFile || importStarted}
+            options={members.map((member) => ({
+              value: member.id,
+              label: member.displayName ?? "未设置姓名",
+            }))}
+            onChange={(next?: string) => {
+              setOwnerMemberId(next);
+              resetResult();
+            }}
+          />
+        </label>
+      ) : null}
+      <Typography.Paragraph type="secondary">
+        {canChooseOwner
+          ? "仅为本次新增记录分配负责人，并按业务表的回收期限计时；未选择则保持未分配。公共池关闭时暂停回收，跳过的重复记录保持原归属。"
+          : "本次新增记录归你负责"}
       </Typography.Paragraph>
       <input
         type="file"
@@ -362,7 +401,7 @@ export function RecordImportDrawer({
       ) : null}
       {importStarted ? (
         <Typography.Paragraph type="secondary">
-          本批次已开始导入，编码、工作表和映射已锁定。同一账号重选原文件和工作表可继续，已成功的行会跳过。修改文件后请使用查重字段避免重复。
+          本批次已开始导入，负责人、编码、工作表和映射已锁定。同一账号重选原文件和工作表可继续，已成功的行会跳过。修改文件后请使用查重字段避免重复。
         </Typography.Paragraph>
       ) : null}
       {source?.sheetNames.length ? (

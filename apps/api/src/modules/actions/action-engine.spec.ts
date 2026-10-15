@@ -247,6 +247,8 @@ class MemoryStore implements RecordsStore {
   memberExists(memberId: string): Promise<boolean> {
     return Promise.resolve(this.activeMembers.has(memberId));
   }
+  lockActiveOwners(): Promise<void> { return Promise.resolve(); }
+
   allocateRecordNo(): Promise<bigint> {
     const allocated = this.nextRecordNo;
     this.nextRecordNo += 1n;

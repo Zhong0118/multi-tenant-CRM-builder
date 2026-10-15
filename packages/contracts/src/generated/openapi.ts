@@ -2333,6 +2333,11 @@ export interface components {
       /** @description 仅校验和查重，不创建记录。 */
       dryRun?: boolean;
       matchFields?: string[];
+      /**
+       * Format: uuid
+       * @description 管理员为本批新增记录指定的负责人；留空则未分配。
+       */
+      ownerMemberId?: string | null;
       rows: components["schemas"]["ImportRecordRowDto"][];
     };
     InitialFieldDefinitionDto: {
