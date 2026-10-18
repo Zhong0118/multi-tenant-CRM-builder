@@ -243,7 +243,7 @@ class MemoryRecordsStore implements RecordsStore {
   async lockImportMatching() {}
   findImportDuplicate(query: {
     objectId: string;
-    ownerMemberId?: string;
+    ownerMemberId?: string | null;
     values: Record<string, unknown>;
   }) {
     return Promise.resolve(
@@ -251,7 +251,7 @@ class MemoryRecordsStore implements RecordsStore {
         (record) =>
           record.objectId === query.objectId &&
           !record.deletedAt &&
-          (!query.ownerMemberId ||
+          (query.ownerMemberId === undefined ||
             record.ownerMemberId === query.ownerMemberId) &&
           Object.entries(query.values).every(
             ([key, value]) => record.values[key] === value,
@@ -311,7 +311,7 @@ class MemoryRecordsStore implements RecordsStore {
         (record) =>
           record.objectId === query.objectId &&
           record.deletedAt === null &&
-          (!query.ownerMemberId ||
+          (query.ownerMemberId === undefined ||
             record.ownerMemberId === query.ownerMemberId) &&
           (!('inPublicPool' in query) ||
             query.inPublicPool === undefined ||
@@ -339,7 +339,7 @@ class MemoryRecordsStore implements RecordsStore {
       (record) =>
         record.objectId === query.objectId &&
         record.deletedAt === null &&
-        (!query.ownerMemberId ||
+        (query.ownerMemberId === undefined ||
           record.ownerMemberId === query.ownerMemberId) &&
         query.filters.every((filter) => matchesListFilter(record, filter)),
     );
@@ -778,6 +778,60 @@ async function create(
 }
 
 describe('RecordsService', () => {
+  it('filters and exports unassigned records without including assigned rows or changing pool membership', async () => {
+    const { service, store, publishedRepository } = fixture();
+    Object.assign(publishedRepository.record, { poolEnabled: true });
+    const legacy = await create(service, admin, '待分配');
+    const pooled = await create(service, admin, '待领取');
+    store.records[1].inPublicPool = true;
+    await create(service, admin, '已分配', employee.memberId);
+    const query = {
+      page: 1,
+      limit: 20,
+      sort: 'recordNo',
+      direction: 'asc' as const,
+      ownerMemberId: 'unassigned',
+    };
+    const result = await service.list(admin, 'leads', query);
+    expect(result.total).toBe(2);
+    expect(result.items.map((item) => item.id)).toEqual([legacy.id, pooled.id]);
+    expect(store.records[0].inPublicPool ?? false).toBe(false);
+    const file = await service.exportCsv(admin, 'leads', query, meta);
+    expect(file.rowCount).toBe(2);
+    expect(file.csv).toContain('待分配');
+    expect(file.csv).toContain('待领取');
+    expect(file.csv).not.toContain('已分配');
+    expect(
+      (
+        await service.list(admin, 'leads', {
+          ...query,
+          ownerMemberId: undefined,
+        })
+      ).total,
+    ).toBe(3);
+  });
+
+  it('does not let the unassigned filter widen an employee OWN scope or override mine', async () => {
+    const { service } = fixture();
+    await create(service, admin, '未分配');
+    const mine = await create(service, employee, '本人');
+    const query = {
+      page: 1,
+      limit: 20,
+      sort: 'recordNo',
+      direction: 'asc' as const,
+      ownerMemberId: 'unassigned',
+    };
+    const result = await service.list(employee, 'leads', query);
+    expect(result.items.map((item) => item.id)).toEqual([mine.id]);
+    expect(
+      (await service.list(admin, 'leads', { ...query, scope: 'mine' })).items,
+    ).toEqual([]);
+    await expect(
+      service.list(employee, 'leads', { ...query, scope: 'all' }),
+    ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
+  });
+
   it('rechecks pool read-only status after waiting for the activity source row lock', async () => {
     const { service, store, publishedRepository } = fixture();
     const schema = publishedSchema();

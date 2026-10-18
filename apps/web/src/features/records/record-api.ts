@@ -17,6 +17,8 @@ import {
 } from "./record-query-state";
 
 export interface RecordListQuery {
+  poolStage?: import("./record-pool-api").PoolStageFilter;
+  poolQuality?: import("./record-pool-types").PoolQuality;
   page: number;
   limit: number;
   search?: string;
@@ -69,6 +71,7 @@ export interface RecordImportRow {
 }
 
 export interface RecordImportInput {
+  importToPool?: boolean;
   ownerMemberId?: string | null;
   batchId?: string;
   dryRun?: boolean;

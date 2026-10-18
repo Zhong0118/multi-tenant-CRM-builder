@@ -382,6 +382,11 @@ model Session {
 
 model ObjectDefinition {
   memberFieldPermissions MemberFieldPermission[]
+  poolLifecycleEnabled Boolean @default(false) @map("pool_lifecycle_enabled")
+  poolContactTtlHours Int @default(24) @map("pool_contact_ttl_hours")
+  poolFollowUpTtlHours Int @default(720) @map("pool_follow_up_ttl_hours")
+  poolLabels Json @default("{}") @map("pool_labels") @db.JsonB
+  poolProtectionRules Json @default("[]") @map("pool_protection_rules") @db.JsonB
   poolEnabled             Boolean                   @default(false) @map("pool_enabled")
   poolOwnershipTtlHours    Int?                      @map("pool_ownership_ttl_hours")
   poolConfigVersion        Int                       @default(1) @map("pool_config_version")
@@ -604,6 +609,14 @@ model RecordCounter {
 }
 
 model Record {
+  poolStage String? @map("pool_stage") @db.VarChar(32)
+  poolOrigin String? @map("pool_origin") @db.VarChar(32)
+  poolClaimedAt DateTime? @map("pool_claimed_at") @db.Timestamptz(3)
+  poolLastFollowUpAt DateTime? @map("pool_last_follow_up_at") @db.Timestamptz(3)
+  poolProtectedAt DateTime? @map("pool_protected_at") @db.Timestamptz(3)
+  poolReason String? @map("pool_reason")
+  poolQuality String? @map("pool_quality") @db.VarChar(16)
+  protectionNeedsReview Boolean @default(false) @map("protection_needs_review")
   inPublicPool           Boolean                   @default(false) @map("in_public_pool")
   ownershipExpiresAt     DateTime?                 @map("ownership_expires_at") @db.Timestamptz(3)
   id                     String                    @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid

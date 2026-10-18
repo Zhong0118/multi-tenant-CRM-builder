@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { RecordOwnershipActions, RecordPoolSettings } from "./record-pool";
+import { RecordOwnershipActions, RecordPoolSettings, RecordPoolStatus } from "./record-pool";
 import type { RecordPoolApi } from "./record-pool-api";
 import type {
   RecordSummary,
@@ -115,14 +115,12 @@ describe("pool ownership", () => {
         config={config}
         isAdmin={false}
         api={api({
-          changeOwnership: vi
-            .fn()
-            .mockRejectedValue({
-              status: 409,
-              code: "RECORD_VERSION_CONFLICT",
-              message: "记录已变化",
-              requestId: "req-1",
-            }),
+          changeOwnership: vi.fn().mockRejectedValue({
+            status: 409,
+            code: "RECORD_VERSION_CONFLICT",
+            message: "记录已变化",
+            requestId: "req-1",
+          }),
         })}
         onChanged={changed}
       />,
@@ -165,8 +163,8 @@ describe("pool settings", () => {
       />,
     );
     expect(screen.getByText(/无需发布/)).toBeInTheDocument();
-    expect(screen.getByText(/暂停.*回收/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("switch", { name: "启用公共池" }));
+    expect(screen.getByText(/暂停.*回收/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "保存设置" }));
     await waitFor(() => expect(saved).toHaveBeenCalled());
     expect(backend.saveConfig).toHaveBeenCalledWith("northwind", "customers", {
@@ -236,14 +234,12 @@ it("requires an active member selection before assignment", async () => {
 });
 it("blocks an empty automatic expiry and reports configuration conflicts", async () => {
   const backend = api({
-    saveConfig: vi
-      .fn()
-      .mockRejectedValue({
-        status: 409,
-        code: "VERSION_CONFLICT",
-        message: "设置已变化",
-        requestId: "req-2",
-      }),
+    saveConfig: vi.fn().mockRejectedValue({
+      status: 409,
+      code: "VERSION_CONFLICT",
+      message: "设置已变化",
+      requestId: "req-2",
+    }),
   });
   const saved = vi.fn();
   wrap(
@@ -296,11 +292,271 @@ it("does not invite duplicate ownership submissions when refresh fails", async (
 
 it("keeps the version of the opened settings when a background refresh arrives", async () => {
   const backend = api();
-  const props = { tenantCode: "northwind", objectCode: "customers", api: backend, onSaved: vi.fn(), onClose: vi.fn() };
+  const props = {
+    tenantCode: "northwind",
+    objectCode: "customers",
+    api: backend,
+    onSaved: vi.fn(),
+    onClose: vi.fn(),
+  };
   const client = new QueryClient();
-  const view = render(<QueryClientProvider client={client}><RecordPoolSettings {...props} config={config} /></QueryClientProvider>);
+  const view = render(
+    <QueryClientProvider client={client}>
+      <RecordPoolSettings {...props} config={config} />
+    </QueryClientProvider>,
+  );
   fireEvent.click(screen.getByRole("switch", { name: "启用公共池" }));
-  view.rerender(<QueryClientProvider client={client}><RecordPoolSettings {...props} config={{ ...config, version: 3, ownershipTtlHours: 48 }} /></QueryClientProvider>);
+  view.rerender(
+    <QueryClientProvider client={client}>
+      <RecordPoolSettings
+        {...props}
+        config={{ ...config, version: 3, ownershipTtlHours: 48 }}
+      />
+    </QueryClientProvider>,
+  );
   fireEvent.click(screen.getByRole("button", { name: "保存设置" }));
-  await waitFor(() => expect(backend.saveConfig).toHaveBeenCalledWith("northwind", "customers", { ...config, enabled: false }));
+  await waitFor(() =>
+    expect(backend.saveConfig).toHaveBeenCalledWith("northwind", "customers", {
+      ...config,
+      enabled: false,
+    }),
+  );
+});
+
+it("confirms contact for the current owner and hides it from a read-only member", async () => {
+  const backend = api();
+  wrap(
+    <RecordOwnershipActions
+      tenantCode="northwind"
+      objectCode="customers"
+      schema={schema}
+      record={{
+        ...record,
+        inPublicPool: false,
+        ownerMemberId: "me",
+        poolStage: "PENDING_CONTACT",
+      }}
+      currentMemberId="me"
+      config={{ ...config, lifecycleEnabled: true }}
+      isAdmin={false}
+      api={backend}
+      onChanged={vi.fn()}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "确认已联系 客户甲" }));
+  fireEvent.click(await screen.findByRole("button", { name: "确认建立联系" }));
+  await waitFor(() =>
+    expect(backend.changeOwnership).toHaveBeenCalledWith(
+      "northwind",
+      "customers",
+      "r1",
+      { action: "CONFIRM_CONTACT", version: 7 },
+    ),
+  );
+});
+
+it("requires a release reason and submits quality with the record version", async () => {
+  const backend = api();
+  wrap(
+    <RecordOwnershipActions
+      tenantCode="northwind"
+      objectCode="customers"
+      schema={schema}
+      record={{
+        ...record,
+        inPublicPool: false,
+        ownerMemberId: "me",
+        poolStage: "FOLLOWING",
+      }}
+      currentMemberId="me"
+      config={{ ...config, lifecycleEnabled: true }}
+      isAdmin={false}
+      api={backend}
+      onChanged={vi.fn()}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "释放 客户甲" }));
+  expect(
+    await screen.findByRole("button", { name: "确认释放" }),
+  ).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("释放原因"), {
+    target: { value: "号码无效" },
+  });
+  fireEvent.mouseDown(screen.getByLabelText("资源质量"));
+  fireEvent.click(await screen.findByText("空号 / 无效"));
+  fireEvent.click(screen.getByRole("button", { name: "确认释放" }));
+  await waitFor(() =>
+    expect(backend.changeOwnership).toHaveBeenCalledWith(
+      "northwind",
+      "customers",
+      "r1",
+      { action: "RELEASE", version: 7, reason: "号码无效", quality: "INVALID" },
+    ),
+  );
+});
+
+it("saves explicitly enabled lifecycle with editable defaults and previews old data", async () => {
+  const backend = api();
+  wrap(
+    <RecordPoolSettings
+      tenantCode="northwind"
+      objectCode="customers"
+      config={{
+        ...config,
+        preview: {
+          legacyUnassigned: 3,
+          legacyPool: 2,
+          legacyOwned: 1,
+          expiredCount: 4,
+        },
+      }}
+      api={backend}
+      onSaved={vi.fn()}
+      onClose={vi.fn()}
+    />,
+  );
+  fireEvent.click(screen.getByRole("switch", { name: "启用分阶段流转" }));
+  expect(
+    screen.getByRole("spinbutton", { name: "联系期限（小时）" }),
+  ).toHaveValue("24");
+  expect(
+    screen.getByRole("spinbutton", { name: "跟进期限（小时）" }),
+  ).toHaveValue("720");
+  fireEvent.change(
+    screen.getByRole("spinbutton", { name: "跟进期限（小时）" }),
+    { target: { value: "480" } },
+  );
+  fireEvent.click(screen.getByRole("button", { name: "保存设置" }));
+  await waitFor(() =>
+    expect(backend.saveConfig).toHaveBeenCalledWith(
+      "northwind",
+      "customers",
+      expect.objectContaining({
+        lifecycleEnabled: true,
+        contactTtlHours: 24,
+        followUpTtlHours: 480,
+        protectionRules: [],
+      }),
+    ),
+  );
+});
+
+it("hides lifecycle mutations from read-only members and only lets admins unprotect", () => {
+  wrap(
+    <RecordOwnershipActions
+      tenantCode="northwind"
+      objectCode="customers"
+      schema={{ ...schema, actions: { ...schema.actions, canUpdate: false } }}
+      record={{
+        ...record,
+        inPublicPool: false,
+        ownerMemberId: "me",
+        poolStage: "PENDING_CONTACT",
+      }}
+      currentMemberId="me"
+      config={{ ...config, lifecycleEnabled: true }}
+      isAdmin={false}
+      api={api()}
+      onChanged={vi.fn()}
+    />,
+  );
+  expect(
+    screen.queryByRole("button", { name: /确认已联系|释放/ }),
+  ).not.toBeInTheDocument();
+});
+
+it("never offers ordinary release on protected records to employees", () => {
+  wrap(
+    <RecordOwnershipActions
+      tenantCode="northwind"
+      objectCode="customers"
+      schema={schema}
+      record={{
+        ...record,
+        inPublicPool: false,
+        ownerMemberId: "me",
+        poolStage: "PROTECTED",
+      }}
+      currentMemberId="me"
+      config={{ ...config, lifecycleEnabled: true }}
+      isAdmin={false}
+      api={api()}
+      onChanged={vi.fn()}
+    />,
+  );
+  expect(
+    screen.queryByRole("button", { name: /释放/ }),
+  ).not.toBeInTheDocument();
+});
+
+it("uses configured published source states without guessing by table name", async () => {
+  const backend = api();
+  wrap(
+    <RecordPoolSettings
+      tenantCode="northwind"
+      objectCode="channels"
+      config={{
+        ...config,
+        lifecycleEnabled: true,
+        protectionSources: [
+          {
+            objectCode: "agreements",
+            objectName: "合作协议",
+            states: [{ key: "signed", label: "已签署" }],
+          },
+        ],
+      }}
+      api={backend}
+      onSaved={vi.fn()}
+      onClose={vi.fn()}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "添加保护依据" }));
+  expect(screen.getByRole("button", { name: "保存设置" })).toBeDisabled();
+  fireEvent.mouseDown(screen.getByLabelText("保护来源表 1"));
+  fireEvent.click(await screen.findByText("合作协议"));
+  fireEvent.mouseDown(screen.getByLabelText("保护状态 1"));
+  fireEvent.click(await screen.findByText("已签署"));
+  fireEvent.click(screen.getByRole("button", { name: "保存设置" }));
+  await waitFor(() =>
+    expect(backend.saveConfig).toHaveBeenCalledWith(
+      "northwind",
+      "channels",
+      expect.objectContaining({
+        protectionRules: [
+          { sourceObjectCode: "agreements", statusKeys: ["signed"] },
+        ],
+      }),
+    ),
+  );
+});
+
+
+it("calculates remaining time from the server clock", () => {
+  wrap(<RecordPoolStatus record={{ ...record, ownershipExpiresAt: "2026-10-18T12:00:00Z", poolStage: "PENDING_CONTACT" }} config={{ ...config, serverTime: "2026-10-18T10:00:00Z" }} />);
+  expect(screen.getByText("剩余 2 小时 0 分钟")).toBeInTheDocument();
+});
+
+it("requires administrator reason to unprotect and release", async () => {
+  const backend = api();
+  wrap(<RecordOwnershipActions tenantCode="northwind" objectCode="customers" schema={schema} record={{ ...record, inPublicPool: false, ownerMemberId: "other", poolStage: "PROTECTED", protectionNeedsReview: true }} config={{ ...config, lifecycleEnabled: true }} isAdmin api={backend} onChanged={vi.fn()} />);
+  fireEvent.click(screen.getByRole("button", { name: "解除保护并释放 客户甲" }));
+  expect(await screen.findByRole("button", { name: "确认释放" })).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("释放原因"), { target: { value: "已复核全部关联依据失效" } });
+  fireEvent.click(screen.getByRole("button", { name: "确认释放" }));
+  await waitFor(() => expect(backend.changeOwnership).toHaveBeenCalledWith("northwind", "customers", "r1", { action: "UNPROTECT_RELEASE", version: 7, reason: "已复核全部关联依据失效" }));
+});
+
+it("classifies a legacy public record only after administrator explicitly releases it", async () => {
+  const backend = api();
+  wrap(<RecordOwnershipActions tenantCode="northwind" objectCode="customers" schema={schema} record={record} config={{ ...config, lifecycleEnabled: true }} isAdmin api={backend} onChanged={vi.fn()} />);
+  fireEvent.click(screen.getByRole("button", { name: "释放 客户甲" }));
+  fireEvent.change(await screen.findByLabelText("释放原因"), { target: { value: "核对历史导入资源后明确开放领取" } });
+  fireEvent.click(screen.getByRole("button", { name: "确认释放" }));
+  await waitFor(() => expect(backend.changeOwnership).toHaveBeenCalledWith("northwind", "customers", "r1", { action: "RELEASE", version: 7, reason: "核对历史导入资源后明确开放领取", poolStage: "LEAD_POOL" }));
+});
+
+it("requires administrator classification before employees can claim a legacy public record", () => {
+  wrap(<RecordOwnershipActions tenantCode="northwind" objectCode="customers" schema={schema} record={record} config={{ ...config, lifecycleEnabled: true }} isAdmin={false} api={api()} onChanged={vi.fn()} />);
+  expect(screen.queryByRole("button", { name: "领取 客户甲" })).not.toBeInTheDocument();
 });

@@ -127,3 +127,15 @@ describe("RecordActivityTimeline", () => {
     ).toBeInTheDocument();
   });
 });
+
+it("refreshes lifecycle metadata after an activity commits and warns if refresh fails", async () => {
+  const committed = vi.fn().mockRejectedValue(new Error("offline"));
+  const api = recordApi();
+  renderTimeline(<RecordActivityTimeline tenantCode="northwind" objectCode="customers" recordId="record-1" canCreate api={api} onCreated={committed} />);
+  fireEvent.click(screen.getByRole("button", { name: "追加活动" }));
+  fireEvent.change(await screen.findByLabelText("内容"), { target: { value: "电话确认合作事项" } });
+  fireEvent.click(screen.getByRole("button", { name: "保存活动" }));
+  await waitFor(() => expect(committed).toHaveBeenCalledOnce());
+  expect(await screen.findByRole("alert")).toHaveTextContent("活动已保存");
+  expect(screen.getByLabelText("内容")).toHaveValue("");
+});

@@ -90,6 +90,8 @@ export async function loadRecordPage(
           direction: query.direction,
           ...(query.search ? { search: query.search } : {}),
           ...(query.scope ? { scope: query.scope } : {}),
+          ...(query.poolStage ? { poolStage: query.poolStage } : {}),
+          ...(query.poolQuality ? { poolQuality: query.poolQuality } : {}),
           ...(query.ownerMemberId
             ? { ownerMemberId: query.ownerMemberId }
             : {}),

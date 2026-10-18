@@ -97,7 +97,12 @@ function recordApi(): RecordApi {
     ),
   } as unknown as RecordApi;
 }
-function setup(api = recordApi(), objectSchema = schema, admin = false) {
+function setup(
+  api = recordApi(),
+  objectSchema = schema,
+  admin = false,
+  poolConfig?: import("./record-pool-api").RecordPoolConfig,
+) {
   const onCompleted = vi.fn();
   const onClose = vi.fn();
   const client = new QueryClient({
@@ -109,6 +114,7 @@ function setup(api = recordApi(), objectSchema = schema, admin = false) {
         tenantCode="northwind"
         schema={objectSchema}
         canChooseOwner={admin}
+        poolConfig={poolConfig}
         members={[
           { id: "m1", displayName: "员工甲" },
           { id: "m2", displayName: "员工乙" },
@@ -309,4 +315,28 @@ it("requires manual mapping for same-name fields and displays their types", asyn
   expect(
     screen.getByText("线索状态 · 文本（text_status）"),
   ).toBeInTheDocument();
+});
+
+it("imports into the initial pool only after explicit selection and excludes owner override", async () => {
+  const { api } = setup(recordApi(), schema, true, {
+    enabled: true,
+    lifecycleEnabled: true,
+    ownershipTtlHours: null,
+    version: 1,
+  });
+  expect(screen.getByRole("checkbox", { name: "确认导入到初始公共池" })).toBeChecked();
+  fireEvent.mouseDown(screen.getByLabelText("导入负责人"));
+  fireEvent.click(await screen.findByText("员工甲"));
+  expect(screen.getByRole("checkbox", { name: "确认导入到初始公共池" })).not.toBeChecked();
+  fireEvent.click(
+    screen.getByRole("checkbox", { name: "确认导入到初始公共池" }),
+  );
+  expect(screen.getByLabelText("导入负责人")).toBeEnabled();
+  chooseFile("姓名\n新客户");
+  await screen.findByText("1 行 · 1 列");
+  await checkAndImport();
+  await screen.findByText(/成功 1 行/);
+  const input = vi.mocked(api.importRows).mock.calls.at(-1)![2];
+  expect(input.importToPool).toBe(true);
+  expect(input).not.toHaveProperty("ownerMemberId");
 });

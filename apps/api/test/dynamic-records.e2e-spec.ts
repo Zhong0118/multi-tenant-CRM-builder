@@ -67,6 +67,54 @@ describe('Dynamic records API (e2e)', () => {
     fixture = await provision(adminDatabase);
   });
 
+  it('filters unassigned owners through both sort paths and export without widening employee access', async () => {
+    const base = `/api/v1/workspaces/${tenantCode}/objects/${objectCode}/records`;
+    const unassigned = await createRecord(fixture.adminCookie, {
+      values: { name: '待分配客户' },
+    });
+    const mine = await createRecord(fixture.adminCookie, {
+      values: { name: '员工客户' },
+      ownerMemberId: fixture.employeeMemberId,
+    });
+    for (const sort of ['recordNo', 'name']) {
+      const result = await request(app.getHttpServer())
+        .get(base)
+        .set('Cookie', fixture.adminCookie)
+        .query({
+          ownerMemberId: 'unassigned',
+          sort,
+          direction: 'asc',
+          limit: 20,
+        })
+        .expect(200);
+      expect(result.body).toMatchObject({
+        total: 1,
+        items: [{ id: unassigned.id, ownerMemberId: null }],
+      });
+      expect(
+        (result.body as { items: RecordApiResponse[] }).items,
+      ).toHaveLength(1);
+    }
+    const file = await request(app.getHttpServer())
+      .get(`${base}/export`)
+      .set('Cookie', fixture.adminCookie)
+      .query({ ownerMemberId: 'unassigned', sort: 'name' })
+      .expect(200);
+    expect(file.text).toContain('待分配客户');
+    expect(file.text).not.toContain('员工客户');
+    const employee = await request(app.getHttpServer())
+      .get(base)
+      .set('Cookie', fixture.employeeCookie)
+      .query({ ownerMemberId: 'unassigned' })
+      .expect(200);
+    expect(employee.body).toMatchObject({ total: 1, items: [{ id: mine.id }] });
+    const all = await request(app.getHttpServer())
+      .get(base)
+      .set('Cookie', fixture.adminCookie)
+      .expect(200);
+    expect(all.body).toMatchObject({ total: 2 });
+  });
+
   it('applies atomic employee field exceptions to list/detail/export and restores inheritance', async () => {
     const base = `/api/v1/workspaces/${tenantCode}/objects/${objectCode}/records`;
     const accessPath = `/api/v1/workspaces/${tenantCode}/objects/${fixture.objectId}/member-access`;

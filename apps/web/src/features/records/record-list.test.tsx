@@ -210,7 +210,7 @@ function renderList(
     members?: { id: string; displayName: string }[];
     currentMemberId?: string;
     canFilterByOwner?: boolean;
-    poolConfig?: { enabled: boolean; ownershipTtlHours: number | null; version: number };
+    poolConfig?: import("./record-pool-types").RecordPoolConfig;
   } = {},
 ) {
   const client = new QueryClient({
@@ -241,6 +241,32 @@ function renderList(
 }
 
 describe("RecordList query navigation", () => {
+  it("filters unassigned owners and resets pagination while preserving the other query conditions", async () => {
+    const navigate = vi.fn();
+    renderList(
+      navigate,
+      {
+        ...DEFAULT_RECORD_QUERY,
+        page: 3,
+        limit: 100,
+        search: "客户",
+        sort: "recordNo",
+        direction: "asc",
+        filters: { lead_status: ["new"] },
+      },
+      { canFilterByOwner: true },
+    );
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "按负责人筛选" }));
+    fireEvent.click(await screen.findByText("未指定负责人"));
+    const target = new URL(navigate.mock.calls.at(-1)![0], "http://localhost");
+    expect(target.searchParams.get("ownerMemberId")).toBe("unassigned");
+    expect(target.searchParams.get("page")).toBeNull();
+    expect(target.searchParams.get("limit")).toBe("100");
+    expect(target.searchParams.get("search")).toBe("客户");
+    expect(target.searchParams.get("sort")).toBe("recordNo");
+    expect(target.searchParams.get("filters")).toBe('{"lead_status":["new"]}');
+  });
+
   it.each([50, 100, 300, 500, 1000])(
     "lets users show %i records and resets the page while preserving filters",
     async (limit) => {
@@ -887,4 +913,72 @@ it("explains an empty pool without implying the business table has no records", 
   });
   expect(screen.getAllByText("公共池暂无记录，可由负责人释放或管理员移入").length).toBeGreaterThan(0);
   expect(screen.queryByText("还没有记录，新建第一条。")).not.toBeInTheDocument();
+});
+
+it("navigates staged views with visible counts and preserves legacy and all access", () => {
+  const navigate = vi.fn();
+  renderList(
+    navigate,
+    { ...DEFAULT_RECORD_QUERY, page: 3, ownerMemberId: "unassigned" },
+    {
+      canFilterByOwner: true,
+      poolConfig: {
+        enabled: true,
+        lifecycleEnabled: true,
+        ownershipTtlHours: null,
+        version: 1,
+      },
+      page: {
+        ...page,
+        poolCounts: {
+          LEAD_POOL: 2,
+          CUSTOMER_POOL: 1,
+          PENDING_CONTACT: 3,
+          FOLLOWING: 4,
+          PROTECTED: 5,
+          LEGACY: 9,
+        },
+      },
+    },
+  );
+  fireEvent.click(screen.getByRole("tab", { name: "初始公共池 2" }));
+  const publicQuery = new URL(navigate.mock.calls.at(-1)![0], "http://test")
+    .searchParams;
+  expect(publicQuery.get("poolStage")).toBe("LEAD_POOL");
+  expect(publicQuery.has("scope")).toBe(false);
+  expect(publicQuery.has("ownerMemberId")).toBe(false);
+  fireEvent.click(screen.getByRole("tab", { name: "跟进中 4" }));
+  expect(
+    new URL(navigate.mock.calls.at(-1)![0], "http://test").searchParams.get(
+      "poolStage",
+    ),
+  ).toBe("FOLLOWING");
+  fireEvent.click(screen.getByRole("tab", { name: "旧记录 9" }));
+  expect(
+    new URL(navigate.mock.calls.at(-1)![0], "http://test").searchParams.get(
+      "poolStage",
+    ),
+  ).toBe("LEGACY");
+  expect(screen.getByRole("tab", { name: "全部记录" })).toBeInTheDocument();
+});
+
+it("does not refetch a staged public view after the pool is closed", () => {
+  const api = { list: vi.fn().mockRejectedValue(new Error("PUBLIC_POOL_DISABLED")) } as unknown as RecordApi;
+  renderList(vi.fn(), { ...DEFAULT_RECORD_QUERY, poolStage: "LEAD_POOL" }, { api, poolConfig: { enabled: false, lifecycleEnabled: true, ownershipTtlHours: null, version: 2 } });
+  expect(api.list).not.toHaveBeenCalled();
+});
+
+it("defaults an employee's private stage to their own records even with ALL read access", () => {
+  const navigate = vi.fn();
+  renderList(navigate, DEFAULT_RECORD_QUERY, { poolConfig: { enabled: true, lifecycleEnabled: true, ownershipTtlHours: null, version: 1 } });
+  fireEvent.click(screen.getByRole("tab", { name: "跟进中" }));
+  expect(new URL(navigate.mock.calls.at(-1)![0], "http://test").searchParams.get("scope")).toBe("mine");
+});
+
+it("never includes system owner unassigned sentinel in a business MEMBER filter", async () => {
+  renderList(vi.fn(), DEFAULT_RECORD_QUERY, { canFilterByOwner: true, members: [{ id: "member-1", displayName: "林晨" }], schema: { ...schema, fields: [...schema.fields, { ...schema.fields[0], id: "collaborator", fieldKey: "collaborator", label: "协作人", type: "MEMBER" }] } });
+  fireEvent.click(screen.getByRole("button", { name: "更多筛选" }));
+  fireEvent.mouseDown(screen.getByRole("combobox", { name: "按协作人筛选" }));
+  expect(await screen.findByText("林晨")).toBeInTheDocument();
+  expect(screen.queryByText("未指定负责人")).not.toBeInTheDocument();
 });

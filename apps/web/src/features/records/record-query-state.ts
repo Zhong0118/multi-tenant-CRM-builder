@@ -5,7 +5,11 @@ import type {
 } from "@/features/objects/object-types";
 import { SYSTEM_RECORD_SORT_FIELDS } from "@/features/objects/object-types";
 
+import { POOL_STAGES, type PoolStageFilter, type PoolQuality } from "./record-pool-types";
+
 export interface RecordQuery {
+  poolStage?: PoolStageFilter;
+  poolQuality?: PoolQuality;
   page: number;
   limit: number;
   search?: string;
@@ -108,6 +112,8 @@ export function parseRecordQuery(
     search: search === "" ? undefined : search,
     ownerMemberId: ownerMemberId === "" ? undefined : ownerMemberId,
     filters,
+    poolStage: member(single(params.poolStage), [...POOL_STAGES, "LEGACY"] as PoolStageFilter[]),
+    poolQuality: member(single(params.poolQuality), ["INVALID", "DUPLICATE", "LOST"] as const),
     scope: member(single(params.scope), ["mine", "pool", "all"] as const),
     sort: member(single(params.sort), allowedSorts) ?? defaults.sort,
     direction:
@@ -128,6 +134,8 @@ export function recordQuerySearch(
   if (query.limit !== defaults.limit) params.set("limit", String(query.limit));
   if (query.search) params.set("search", query.search);
   if (query.scope) params.set("scope", query.scope);
+  if (query.poolStage) params.set("poolStage", query.poolStage);
+  if (query.poolQuality) params.set("poolQuality", query.poolQuality);
   if (query.ownerMemberId) params.set("ownerMemberId", query.ownerMemberId);
   const filters = recordFilterParameter(query.filters);
   if (filters) params.set("filters", filters);

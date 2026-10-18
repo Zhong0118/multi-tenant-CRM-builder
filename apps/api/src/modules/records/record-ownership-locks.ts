@@ -1,3 +1,5 @@
+import { isReadable } from '../objects/published-object.service';
+import { resolvePublishedObjectInTransaction } from '../objects/published-object-transaction';
 import type { Prisma } from '@crm/database';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { ApiException } from '../../common/errors/api.exception';
@@ -38,4 +40,40 @@ export async function lockMembers(
     )
       throw new ApiException('WORKSPACE_FORBIDDEN', 403);
   }
+}
+
+export async function assertAssignableOwner(
+  tx: Prisma.TransactionClient,
+  context: TenantContext,
+  code: string,
+  memberId: string,
+) {
+  const target = await tx.tenantMember.findFirst({
+    where: {
+      tenantId: context.tenantId,
+      id: memberId,
+      status: 'ACTIVE',
+      user: { status: 'ACTIVE' },
+    },
+  });
+  if (!target) throw new ApiException('OWNER_INVALID', 400);
+  const resolved = await resolvePublishedObjectInTransaction(
+    tx,
+    {
+      ...context,
+      memberId: target.id,
+      userId: target.userId,
+      role: target.role,
+    },
+    code,
+  );
+  if (
+    !isReadable(resolved.schema, resolved.access) ||
+    !resolved.access.canUpdate ||
+    resolved.access.readScope === 'NONE' ||
+    resolved.access.updateScope === 'NONE'
+  )
+    throw new ApiException('OWNER_INVALID', 400, {
+      message: '目标成员需具有该业务表的读取和处理权限。',
+    });
 }

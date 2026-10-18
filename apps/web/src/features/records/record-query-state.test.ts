@@ -279,3 +279,31 @@ describe("recordQuerySearch", () => {
     expect(recordQuerySearch(parseRecordQuery({}))).not.toContain("scope");
   });
 });
+
+it("round trips lifecycle and legacy views without losing unassigned ownership", () => {
+  for (const poolStage of [
+    "LEAD_POOL",
+    "CUSTOMER_POOL",
+    "PENDING_CONTACT",
+    "FOLLOWING",
+    "PROTECTED",
+    "LEGACY",
+  ]) {
+    const parsed = parseRecordQuery({ poolStage, ownerMemberId: "unassigned" });
+    expect(parsed).toMatchObject({ poolStage, ownerMemberId: "unassigned" });
+    expect(
+      new URLSearchParams(recordQuerySearch(parsed)).get("poolStage"),
+    ).toBe(poolStage);
+  }
+  expect(parseRecordQuery({ poolStage: "invented" })).not.toHaveProperty(
+    "poolStage",
+    "invented",
+  );
+});
+
+it("round trips resource quality filters and drops invalid quality", () => {
+  const query = parseRecordQuery({ poolQuality: "INVALID" });
+  expect(query).toMatchObject({ poolQuality: "INVALID" });
+  expect(new URLSearchParams(recordQuerySearch(query)).get("poolQuality")).toBe("INVALID");
+  expect(parseRecordQuery({ poolQuality: "unknown" })).not.toHaveProperty("poolQuality", "unknown");
+});

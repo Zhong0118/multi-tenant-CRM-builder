@@ -206,14 +206,49 @@ export function RecordDetailDrawer({
       ) : (
         <>
           <RecordOwnershipActions key={`${record.id}:${record.version}`} tenantCode={tenantCode} objectCode={schema.object.code} record={record} schema={schema} config={poolConfig} currentMemberId={currentMemberId} isAdmin={canChooseOwner} members={members} onChanged={async (action) => {
-            if (action === "RELEASE" || (action === "ASSIGN" && !canChooseOwner)) {
+            if (action === "RELEASE" || action === "UNPROTECT_RELEASE" || (action === "ASSIGN" && !canChooseOwner)) {
               onClose();
               await onChanged(null);
             } else {
               await onChanged(await api.detail(tenantCode, schema.object.code, record.id));
             }
           }} />
-          {poolConfig?.enabled || record.inPublicPool ? <RecordPoolStatus record={record} /> : null}
+          {poolConfig?.enabled || record.inPublicPool ? <RecordPoolStatus record={record} config={poolConfig} /> : null}
+          {record.poolStage ? (
+            <section aria-label="流转信息" className={styles.poolConfigPreview}>
+              {record.poolClaimedAt ? (
+                <p>领取 / 分配于 {formatDateTime(record.poolClaimedAt)}</p>
+              ) : null}
+              {record.poolLastFollowUpAt ? (
+                <p>最近有效跟进 {formatDateTime(record.poolLastFollowUpAt)}</p>
+              ) : null}
+              {record.poolProtectedAt ? (
+                <p>保护开始于 {formatDateTime(record.poolProtectedAt)}</p>
+              ) : null}
+              {record.poolOrigin ? (
+                <p>
+                  领取来源{" "}
+                  {record.poolOrigin === "LEAD_POOL"
+                    ? (poolConfig?.labels?.leadPool ?? "初始公共池")
+                    : (poolConfig?.labels?.customerPool ?? "已联系公共池")}
+                </p>
+              ) : null}
+              {record.poolReason ? (
+                <p>最近流转原因 {record.poolReason}</p>
+              ) : null}
+              {record.poolStage === "FOLLOWING" ? (
+                <p>
+                  成功新增有内容的跟进活动会续期，普通编辑和未来待办不会续期
+                </p>
+              ) : null}
+              {record.protectionNeedsReview ? (
+                <Alert
+                  type="warning"
+                  title="有效保护依据已发生变化，暂保留保护，请管理员复核关联业务记录后处理"
+                />
+              ) : null}
+            </section>
+          ) : null}
           {poolPreview ? <Alert type="info" showIcon title="公共池记录仅供预览，领取后可编辑和跟进" /> : null}
           <section aria-label="记录摘要" className={styles.detailSummary}>
             {renderFields(
@@ -256,6 +291,7 @@ export function RecordDetailDrawer({
           /> : null}
 
           {!poolPreview ? <RecordActivityTimeline
+            onCreated={poolConfig?.lifecycleEnabled ? async () => { await onChanged(await api.detail(tenantCode, schema.object.code, record.id)); } : undefined}
             tenantCode={tenantCode}
             objectCode={schema.object.code}
             recordId={record.id}

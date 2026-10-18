@@ -5,8 +5,11 @@ import type { components } from "@crm/contracts";
 import { dataOrThrow } from "@/features/objects/object-api";
 import { browserApiClient } from "@/lib/api/browser-client";
 
-export type RecordPoolConfig = components["schemas"]["RecordPoolConfigResponseDto"];
-export type OwnershipAction = components["schemas"]["RecordOwnershipDto"]["action"];
+export * from "./record-pool-types";
+import type {
+  RecordPoolConfig,
+  RecordOwnershipInput,
+} from "./record-pool-types";
 export interface RecordPoolApi {
   getConfig(tenantCode: string, objectCode: string): Promise<RecordPoolConfig>;
   saveConfig(
@@ -18,7 +21,7 @@ export interface RecordPoolApi {
     tenantCode: string,
     objectCode: string,
     recordId: string,
-    input: components["schemas"]["RecordOwnershipDto"],
+    input: RecordOwnershipInput,
   ): Promise<components["schemas"]["RecordOwnershipResponseDto"]>;
 }
 const CONFIG_PATH =
@@ -27,19 +30,21 @@ const OWNERSHIP_PATH =
   "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/ownership" as const;
 export const recordPoolApi: RecordPoolApi = {
   async getConfig(tenantCode, objectCode) {
-    return dataOrThrow(
+    const config = await dataOrThrow(
       await browserApiClient.GET(CONFIG_PATH, {
         params: { path: { tenantCode, objectCode } },
       }),
     );
+    return { ...config, ...(config.serverTime ? { serverTimeReceivedAt: Date.now() } : {}) };
   },
   async saveConfig(tenantCode, objectCode, input) {
-    return dataOrThrow(
+    const config = await dataOrThrow(
       await browserApiClient.PATCH(CONFIG_PATH, {
         params: { path: { tenantCode, objectCode } },
         body: input,
       }),
     );
+    return { ...config, ...(config.serverTime ? { serverTimeReceivedAt: Date.now() } : {}) };
   },
   async changeOwnership(tenantCode, objectCode, recordId, input) {
     return dataOrThrow(

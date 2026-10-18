@@ -2348,6 +2348,9 @@
             "description": "仅校验和查重，不创建记录。",
             "type": "boolean"
           },
+          "importToPool": {
+            "type": "boolean"
+          },
           "matchFields": {
             "items": {
               "type": "string"
@@ -3424,6 +3427,114 @@
         "required": ["total", "draft", "active", "suspended", "closed"],
         "type": "object"
       },
+      "PoolLabelsDto": {
+        "properties": {
+          "customerPool": {
+            "type": "string"
+          },
+          "following": {
+            "type": "string"
+          },
+          "leadPool": {
+            "type": "string"
+          },
+          "pending": {
+            "type": "string"
+          },
+          "protected": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "PoolPermissionsDto": {
+        "properties": {
+          "canRead": {
+            "type": "boolean"
+          },
+          "canUpdate": {
+            "type": "boolean"
+          },
+          "readScope": {
+            "enum": ["ALL", "OWN", "NONE"],
+            "type": "string"
+          },
+          "updateScope": {
+            "enum": ["ALL", "OWN", "NONE"],
+            "type": "string"
+          }
+        },
+        "required": ["canRead", "canUpdate", "readScope", "updateScope"],
+        "type": "object"
+      },
+      "PoolPreviewDto": {
+        "properties": {
+          "expiredCount": {
+            "type": "number"
+          },
+          "legacyOwned": {
+            "type": "number"
+          },
+          "legacyPool": {
+            "type": "number"
+          },
+          "legacyUnassigned": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "legacyUnassigned",
+          "legacyPool",
+          "legacyOwned",
+          "expiredCount"
+        ],
+        "type": "object"
+      },
+      "PoolProtectionRuleDto": {
+        "properties": {
+          "sourceObjectCode": {
+            "type": "string"
+          },
+          "statusKeys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["sourceObjectCode", "statusKeys"],
+        "type": "object"
+      },
+      "PoolProtectionSourceDto": {
+        "properties": {
+          "objectCode": {
+            "type": "string"
+          },
+          "objectName": {
+            "type": "string"
+          },
+          "states": {
+            "items": {
+              "$ref": "#/components/schemas/PoolProtectionStateDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["objectCode", "objectName", "states"],
+        "type": "object"
+      },
+      "PoolProtectionStateDto": {
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": ["key", "label"],
+        "type": "object"
+      },
       "PreviewDashboardDto": {
         "properties": {
           "expectedVersion": {
@@ -3871,11 +3982,29 @@
       "RecordOwnershipDto": {
         "properties": {
           "action": {
-            "enum": ["CLAIM", "RELEASE", "ASSIGN"],
+            "enum": [
+              "CLAIM",
+              "RELEASE",
+              "ASSIGN",
+              "CONFIRM_CONTACT",
+              "UNPROTECT_RELEASE"
+            ],
             "type": "string"
           },
           "ownerMemberId": {
             "format": "uuid",
+            "type": "string"
+          },
+          "poolStage": {
+            "enum": ["LEAD_POOL", "CUSTOMER_POOL"],
+            "type": "string"
+          },
+          "quality": {
+            "enum": ["INVALID", "DUPLICATE", "LOST"],
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 1000,
             "type": "string"
           },
           "version": {
@@ -3914,6 +4043,12 @@
           "page": {
             "type": "number"
           },
+          "poolCounts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
           "total": {
             "type": "number"
           }
@@ -3923,7 +4058,25 @@
       },
       "RecordPoolConfigResponseDto": {
         "properties": {
+          "contactTtlHours": {
+            "default": 24,
+            "maximum": 8760,
+            "minimum": 1,
+            "type": "number"
+          },
           "enabled": {
+            "type": "boolean"
+          },
+          "followUpTtlHours": {
+            "default": 720,
+            "maximum": 8760,
+            "minimum": 1,
+            "type": "number"
+          },
+          "labels": {
+            "$ref": "#/components/schemas/PoolLabelsDto"
+          },
+          "lifecycleEnabled": {
             "type": "boolean"
           },
           "ownershipTtlHours": {
@@ -3931,6 +4084,28 @@
             "minimum": 1,
             "nullable": true,
             "type": "number"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/PoolPermissionsDto"
+          },
+          "preview": {
+            "$ref": "#/components/schemas/PoolPreviewDto"
+          },
+          "protectionRules": {
+            "items": {
+              "$ref": "#/components/schemas/PoolProtectionRuleDto"
+            },
+            "type": "array"
+          },
+          "protectionSources": {
+            "items": {
+              "$ref": "#/components/schemas/PoolProtectionSourceDto"
+            },
+            "type": "array"
+          },
+          "serverTime": {
+            "format": "date-time",
+            "type": "string"
           },
           "version": {
             "minimum": 1,
@@ -3980,6 +4155,49 @@
             "format": "date-time",
             "nullable": true,
             "type": "string"
+          },
+          "poolClaimedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "poolLastFollowUpAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "poolOrigin": {
+            "enum": ["LEAD_POOL", "CUSTOMER_POOL"],
+            "nullable": true,
+            "type": "string"
+          },
+          "poolProtectedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "poolQuality": {
+            "enum": ["INVALID", "DUPLICATE", "LOST"],
+            "nullable": true,
+            "type": "string"
+          },
+          "poolReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "poolStage": {
+            "enum": [
+              "LEAD_POOL",
+              "CUSTOMER_POOL",
+              "PENDING_CONTACT",
+              "FOLLOWING",
+              "PROTECTED"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "protectionNeedsReview": {
+            "type": "boolean"
           },
           "recordNo": {
             "type": "string"
@@ -5412,7 +5630,23 @@
       },
       "UpdateRecordPoolConfigDto": {
         "properties": {
+          "contactTtlHours": {
+            "maximum": 8760,
+            "minimum": 1,
+            "type": "number"
+          },
           "enabled": {
+            "type": "boolean"
+          },
+          "followUpTtlHours": {
+            "maximum": 8760,
+            "minimum": 1,
+            "type": "number"
+          },
+          "labels": {
+            "$ref": "#/components/schemas/PoolLabelsDto"
+          },
+          "lifecycleEnabled": {
             "type": "boolean"
           },
           "ownershipTtlHours": {
@@ -5420,6 +5654,12 @@
             "minimum": 1,
             "nullable": true,
             "type": "number"
+          },
+          "protectionRules": {
+            "items": {
+              "$ref": "#/components/schemas/PoolProtectionRuleDto"
+            },
+            "type": "array"
           },
           "version": {
             "minimum": 1,
@@ -9975,6 +10215,31 @@
           },
           {
             "in": "query",
+            "name": "poolStage",
+            "required": false,
+            "schema": {
+              "enum": [
+                "LEAD_POOL",
+                "CUSTOMER_POOL",
+                "PENDING_CONTACT",
+                "FOLLOWING",
+                "PROTECTED",
+                "LEGACY"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "poolQuality",
+            "required": false,
+            "schema": {
+              "enum": ["INVALID", "DUPLICATE", "LOST"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "scope",
             "required": false,
             "schema": {
@@ -10013,11 +10278,21 @@
             }
           },
           {
+            "description": "按负责人筛选；unassigned 表示未指定负责人，仅管理员可筛选。",
             "in": "query",
             "name": "ownerMemberId",
             "required": false,
             "schema": {
-              "format": "uuid",
+              "oneOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "enum": ["unassigned"],
+                  "type": "string"
+                }
+              ],
               "type": "string"
             }
           },
@@ -10207,6 +10482,31 @@
           },
           {
             "in": "query",
+            "name": "poolStage",
+            "required": false,
+            "schema": {
+              "enum": [
+                "LEAD_POOL",
+                "CUSTOMER_POOL",
+                "PENDING_CONTACT",
+                "FOLLOWING",
+                "PROTECTED",
+                "LEGACY"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "poolQuality",
+            "required": false,
+            "schema": {
+              "enum": ["INVALID", "DUPLICATE", "LOST"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "scope",
             "required": false,
             "schema": {
@@ -10245,11 +10545,21 @@
             }
           },
           {
+            "description": "按负责人筛选；unassigned 表示未指定负责人，仅管理员可筛选。",
             "in": "query",
             "name": "ownerMemberId",
             "required": false,
             "schema": {
-              "format": "uuid",
+              "oneOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "enum": ["unassigned"],
+                  "type": "string"
+                }
+              ],
               "type": "string"
             }
           },
