@@ -9,12 +9,14 @@ import styles from "./app-shell.module.css";
 
 export function TopHeader({
   headerLeft,
+  headerActions,
   user,
   roleLabel,
   showWorkspaceSwitch,
   onOpenNavigation,
 }: {
   headerLeft: ReactNode;
+  headerActions?: ReactNode;
   user: ShellUser;
   roleLabel: string;
   showWorkspaceSwitch?: boolean;
@@ -33,11 +35,14 @@ export function TopHeader({
         </button>
         <div>{headerLeft}</div>
       </div>
-      <UserMenu
-        user={user}
-        roleLabel={roleLabel}
-        showWorkspaceSwitch={showWorkspaceSwitch}
-      />
+      <div className={styles.headerActions}>
+        {headerActions}
+        <UserMenu
+          user={user}
+          roleLabel={roleLabel}
+          showWorkspaceSwitch={showWorkspaceSwitch}
+        />
+      </div>
     </header>
   );
 }

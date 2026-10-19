@@ -1092,6 +1092,70 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/notifications": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["NotificationsController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/notifications/{id}/read": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["NotificationsController_read"];
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/notifications/{id}/target": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["NotificationsController_target"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/notifications/read-all": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["NotificationsController_readAll"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/object-definitions": {
     parameters: {
       query?: never;
@@ -2494,6 +2558,43 @@ export interface components {
       /** @example true */
       accepted: boolean;
     };
+    NotificationItemDto: {
+      canOpen: boolean;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      dueAt: string | null;
+      /** Format: uuid */
+      id: string;
+      /** @enum {string} */
+      kind:
+        | "CONTACT_DUE"
+        | "FOLLOW_UP_DUE"
+        | "TASK_OVERDUE"
+        | "POOL_RECLAIMED"
+        | "PROTECTION_REVIEW";
+      message: string;
+      /** Format: date-time */
+      readAt: string | null;
+      title: string;
+    };
+    NotificationOkDto: {
+      /** @enum {boolean} */
+      ok: true;
+    };
+    NotificationPageDto: {
+      items: components["schemas"]["NotificationItemDto"][];
+      limit: number;
+      page: number;
+      /** Format: date-time */
+      serverTime: string;
+      snapshot: string;
+      total: number;
+      unreadCount: number;
+    };
+    NotificationTargetDto: {
+      href: string | null;
+    };
     ObjectDraftDefaultViewResponseDto: {
       columnFieldKeys: string[];
       name: string;
@@ -2872,6 +2973,11 @@ export interface components {
       scopes: {
         [key: string]: unknown;
       };
+    };
+    ReadAllNotificationsDto: {
+      /** Format: date-time */
+      before: string;
+      snapshot: string;
     };
     RecordActivityPageResponseDto: {
       items: components["schemas"]["RecordActivityResponseDto"][];
@@ -5416,6 +5522,100 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["MembershipActionResponseDto"];
+        };
+      };
+    };
+  };
+  NotificationsController_list: {
+    parameters: {
+      query?: {
+        limit?: number;
+        page?: number;
+        unreadOnly?: boolean;
+      };
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NotificationPageDto"];
+        };
+      };
+    };
+  };
+  NotificationsController_read: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NotificationOkDto"];
+        };
+      };
+    };
+  };
+  NotificationsController_target: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NotificationTargetDto"];
+        };
+      };
+    };
+  };
+  NotificationsController_readAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ReadAllNotificationsDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NotificationOkDto"];
         };
       };
     };

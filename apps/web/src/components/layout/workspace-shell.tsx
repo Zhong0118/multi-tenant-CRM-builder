@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 
+import { NotificationBell } from "@/features/notifications/notification-bell";
 import { NavIcon } from "@/components/navigation/nav-icon";
 import { workspaceNavigationGroups } from "@/components/navigation/workspace-navigation";
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
@@ -67,6 +68,7 @@ export function WorkspaceShell({
         }] : []),
       ]}
       headerLeft={<span>{tenantName}</span>}
+      headerActions={<NotificationBell tenantCode={tenantCode} />}
       user={user}
       roleLabel={role === "TENANT_ADMIN" ? "公司管理员" : "员工"}
       showWorkspaceSwitch

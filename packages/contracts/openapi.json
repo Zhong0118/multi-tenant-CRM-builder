@@ -2709,6 +2709,117 @@
         "required": ["accepted"],
         "type": "object"
       },
+      "NotificationItemDto": {
+        "properties": {
+          "canOpen": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "dueAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "CONTACT_DUE",
+              "FOLLOW_UP_DUE",
+              "TASK_OVERDUE",
+              "POOL_RECLAIMED",
+              "PROTECTION_REVIEW"
+            ],
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "readAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "message",
+          "createdAt",
+          "dueAt",
+          "readAt",
+          "canOpen"
+        ],
+        "type": "object"
+      },
+      "NotificationOkDto": {
+        "properties": {
+          "ok": {
+            "enum": [true],
+            "type": "boolean"
+          }
+        },
+        "required": ["ok"],
+        "type": "object"
+      },
+      "NotificationPageDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationItemDto"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "serverTime": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "snapshot": {
+            "type": "string"
+          },
+          "total": {
+            "type": "number"
+          },
+          "unreadCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "snapshot",
+          "items",
+          "total",
+          "unreadCount",
+          "page",
+          "limit",
+          "serverTime"
+        ],
+        "type": "object"
+      },
+      "NotificationTargetDto": {
+        "properties": {
+          "href": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": ["href"],
+        "type": "object"
+      },
       "ObjectDraftDefaultViewResponseDto": {
         "properties": {
           "columnFieldKeys": {
@@ -3797,6 +3908,19 @@
           "actions",
           "scopes"
         ],
+        "type": "object"
+      },
+      "ReadAllNotificationsDto": {
+        "properties": {
+          "before": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "snapshot": {
+            "type": "string"
+          }
+        },
+        "required": ["snapshot", "before"],
         "type": "object"
       },
       "RecordActivityPageResponseDto": {
@@ -9260,6 +9384,194 @@
           }
         ],
         "tags": ["memberships"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/notifications": {
+      "get": {
+        "operationId": "NotificationsController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "unreadOnly",
+            "required": false,
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPageDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["notifications"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/notifications/read-all": {
+      "post": {
+        "operationId": "NotificationsController_readAll",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadAllNotificationsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationOkDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["notifications"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/notifications/{id}/read": {
+      "patch": {
+        "operationId": "NotificationsController_read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationOkDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["notifications"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/notifications/{id}/target": {
+      "get": {
+        "operationId": "NotificationsController_target",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationTargetDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["notifications"]
       }
     },
     "/api/v1/workspaces/{tenantCode}/object-definitions": {

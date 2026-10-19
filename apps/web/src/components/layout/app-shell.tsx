@@ -48,6 +48,7 @@ export interface AppShellProps {
   brandHref: string;
   navGroups: ShellNavGroup[];
   headerLeft: ReactNode;
+  headerActions?: ReactNode;
   user: ShellUser;
   roleLabel: string;
   showWorkspaceSwitch?: boolean;
@@ -121,6 +122,7 @@ export function AppShell({
   brandHref,
   navGroups,
   headerLeft,
+  headerActions,
   user,
   roleLabel,
   showWorkspaceSwitch = false,
@@ -271,6 +273,7 @@ export function AppShell({
       <div className={styles.column}>
         <TopHeader
           headerLeft={headerLeft}
+          headerActions={headerActions}
           user={user}
           roleLabel={roleLabel}
           showWorkspaceSwitch={showWorkspaceSwitch}

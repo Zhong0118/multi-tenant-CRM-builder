@@ -1,3 +1,4 @@
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AttachmentsModule } from './modules/attachments/attachments.module';
 import { RecordRelationsModule } from './modules/record-relations/record-relations.module';
 import { Module } from '@nestjs/common';
@@ -49,6 +50,7 @@ import { AiModule } from './modules/ai/ai.module';
     ObjectsModule,
     RecordsModule,
     FollowUpsModule,
+    NotificationsModule,
     AiModule,
     TenantsModule,
     UsersModule,
