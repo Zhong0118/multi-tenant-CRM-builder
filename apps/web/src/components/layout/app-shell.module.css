@@ -5,7 +5,15 @@
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  background: var(--bg-page);
+  background: var(--bg-surface);
+}
+
+/* Without a desktop header the page area starts at the top of the window, so
+   layouts that size themselves against the header get its height back. */
+@media (min-width: 768px) {
+  .shellHeaderless {
+    --header-height: 0px;
+  }
 }
 
 .sidebar {
@@ -18,8 +26,9 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  color: #dce4e8;
-  background: #10283a;
+  color: var(--text-primary);
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-hairline);
   transition:
     width 160ms ease,
     flex-basis 160ms ease,
@@ -62,50 +71,57 @@
 
 .resizeHandle:hover::after,
 .sidebarResizing .resizeHandle::after {
-  background: #49aa9b;
+  background: var(--color-primary);
 }
 
 .sidebarCollapsed .brand,
 .sidebarCollapsed .navItem,
-.sidebarCollapsed .toggle {
+.sidebarCollapsed .toggle,
+.sidebarCollapsed .userButton {
   justify-content: center;
   padding-right: 0;
   padding-left: 0;
 }
 
+/* Workspace block: same height and anatomy as the account block below. */
 .brand {
   display: flex;
-  flex: 0 0 var(--header-height);
-  height: var(--header-height);
+  flex: 0 0 auto;
+  height: 48px;
   gap: 10px;
   align-items: center;
-  padding: 0 14px;
-  color: #fff;
-  border-bottom: 1px solid rgb(255 255 255 / 8%);
+  margin: 8px 8px 0;
+  padding: 0 8px;
+  color: var(--text-primary);
+  border-radius: var(--radius-control);
+}
+
+.brand:hover {
+  background: var(--bg-sidebar-active);
 }
 
 .brandMark {
   display: inline-flex;
-  flex: 0 0 28px;
-  width: 28px;
-  height: 28px;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   background: var(--color-primary);
   border-radius: var(--radius-control);
 }
 
 .brandMark svg {
-  width: 17px;
-  height: 17px;
+  width: 18px;
+  height: 18px;
 }
 
 .brandName {
   overflow: hidden;
-  font-weight: 650;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -116,19 +132,19 @@
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  scrollbar-color: rgb(255 255 255 / 22%) transparent;
+  scrollbar-color: var(--border-strong) transparent;
   scrollbar-width: thin;
 }
 
 .nav {
-  padding: 10px 8px;
+  padding: 4px 8px;
 }
 
 .navGroupLabel {
-  padding: 0 11px 6px;
-  color: rgb(174 186 193 / 68%);
-  font-size: 11px;
-  line-height: 16px;
+  padding: 12px 8px 6px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
 }
 
 .nav + .nav {
@@ -140,16 +156,16 @@
   position: relative;
   display: flex;
   width: 100%;
-  height: 38px;
-  gap: 10px;
+  height: 32px;
+  gap: 8px;
   align-items: center;
-  padding: 0 11px;
-  margin-bottom: 3px;
-  color: #aebac1;
-  font-size: 13px;
+  padding: 0 8px;
+  margin-bottom: 2px;
+  color: #4b5560;
+  font-size: 14px;
   background: transparent;
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: 6px;
   cursor: pointer;
   transition:
     color 120ms ease,
@@ -158,44 +174,38 @@
 
 .navIcon {
   display: inline-flex;
-  flex: 0 0 18px;
-  width: 18px;
-  height: 18px;
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
   align-items: center;
   justify-content: center;
-  color: #87969f;
+  color: var(--text-secondary);
   font-size: 16px;
 }
 
 .navItem:hover,
 .toggle:hover {
-  color: #fff;
-  background: var(--shell-ink-hover);
+  color: var(--text-primary);
+  background: var(--bg-hover);
 }
 
-.navItem:hover .navIcon {
-  color: #fff;
-}
-
-.navItemCurrent {
-  color: #fff;
-  font-weight: 600;
-  background: rgb(22 117 104 / 34%);
-}
-
-.navItemCurrent::before {
-  position: absolute;
-  top: 8px;
-  bottom: 8px;
-  left: 0;
-  width: 3px;
-  background: #49aa9b;
-  border-radius: 0 2px 2px 0;
-  content: "";
+.navItemCurrent,
+.navItemCurrent:hover {
+  color: var(--text-primary);
+  font-weight: 500;
+  background: var(--bg-sidebar-active);
 }
 
 .navItemCurrent .navIcon {
-  color: #79c8bc;
+  color: var(--color-primary);
+}
+
+.navItem:focus-visible,
+.toggle:focus-visible,
+.userButton:focus-visible,
+.brand:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
 }
 
 .navLabel {
@@ -208,65 +218,29 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 10px 12px 12px;
+  padding: 10px 16px 12px;
 }
 
 .emptyLabel {
   margin: 0;
-  color: #87969f;
-  font-size: 12px;
-  line-height: 18px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
 }
 
 .emptyAction {
-  color: #79c8bc;
-  font-size: 12px;
-  font-weight: 650;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .emptyAction:hover {
-  color: #fff;
+  color: var(--color-primary-hover);
 }
 
 .bottom {
   flex: 0 0 auto;
   padding: 8px;
-  border-top: 1px solid rgb(255 255 255 / 8%);
-}
-
-.logout :global(.ant-btn) {
-  display: flex;
-  width: 100%;
-  height: 38px;
-  justify-content: flex-start;
-  gap: 10px;
-  padding: 0 11px;
-  color: #aebac1;
-  font-size: 13px;
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-control);
-  box-shadow: none;
-}
-
-.logout :global(.ant-btn-icon) {
-  width: 18px;
-  font-size: 16px;
-}
-
-.logout :global(.ant-btn:hover) {
-  color: #fecaca !important;
-  background: rgb(239 68 68 / 12%) !important;
-}
-
-.logout :global(.ant-btn:focus-visible) {
-  outline: 2px solid #79c8bc;
-  outline-offset: -2px;
-}
-
-.sidebarCollapsed .logout :global(.ant-btn) {
-  justify-content: center;
-  padding: 0;
 }
 
 .column {
@@ -287,8 +261,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
-  background: rgb(255 255 255 / 96%);
-  border-bottom: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+@media (min-width: 768px) {
+  .headerCompactOnly {
+    display: none;
+  }
 }
 
 .headerLeading {
@@ -321,7 +301,7 @@
   min-height: 0;
   padding: 20px;
   overflow: auto;
-  background: var(--bg-page);
+  background: var(--bg-surface);
   overscroll-behavior: contain;
 }
 
@@ -356,7 +336,7 @@
   gap: 16px;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .pageHeaderCopy {
@@ -380,20 +360,22 @@
 
 .pageHeader h1 {
   color: var(--text-primary);
-  font-size: 24px;
-  font-weight: 650;
-  line-height: 32px;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
 }
 
 .pageHeader p {
-  margin-top: 4px;
+  margin-top: 2px;
   color: var(--text-secondary);
+  font-size: 14px;
 }
 
 .userButton {
   display: flex;
-  height: 40px;
-  gap: 8px;
+  width: 100%;
+  height: 52px;
+  gap: 10px;
   align-items: center;
   padding: 0 8px;
   color: var(--text-primary);
@@ -404,25 +386,35 @@
 }
 
 .userButton:hover {
-  background: var(--bg-hover);
+  background: var(--bg-sidebar-active);
 }
 
 .userTrigger {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   align-items: flex-start;
-  line-height: 1.25;
+  line-height: 1.3;
   text-align: left;
+}
+
+.userTrigger .userName,
+.userTrigger .userRole {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .avatar {
   display: inline-flex;
+  flex: 0 0 32px;
   width: 32px;
   height: 32px;
   align-items: center;
   justify-content: center;
   color: var(--color-primary);
-  font-weight: 650;
+  font-weight: 600;
   background: var(--color-primary-soft);
   border-radius: 50%;
 }
@@ -433,13 +425,13 @@
 
 .userName {
   color: var(--text-primary);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .userPhone,
 .userRole {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 @media (max-width: 1199px) {
@@ -458,7 +450,7 @@
     width: min(82vw, 280px);
     max-width: 280px;
     flex-basis: auto;
-    box-shadow: 12px 0 32px rgb(10 20 28 / 24%);
+    box-shadow: 12px 0 32px rgb(10 20 28 / 16%);
     visibility: hidden;
     transform: translateX(-105%);
   }
@@ -488,10 +480,6 @@
 
   .main {
     padding: 14px;
-  }
-
-  .userTrigger {
-    display: none;
   }
 
   .pageHeader {

@@ -5,10 +5,9 @@ import { Tooltip } from "antd";
 import Link from "next/link";
 import type { PointerEvent, ReactNode } from "react";
 
-import { LogoutButton } from "@/features/auth/logout-button";
-
 import styles from "./app-shell.module.css";
-import type { ShellNavGroup } from "./app-shell";
+import type { ShellNavGroup, ShellUser } from "./app-shell";
+import { UserMenu } from "./user-menu";
 import {
   SIDEBAR_COLLAPSED_WIDTH,
   SIDEBAR_MAX_WIDTH,
@@ -37,6 +36,9 @@ export function Sidebar({
   brand,
   brandIcon,
   brandHref,
+  user,
+  roleLabel,
+  showWorkspaceSwitch,
   navGroups,
   pathname,
   collapsed,
@@ -53,6 +55,9 @@ export function Sidebar({
   brand: string;
   brandIcon?: ReactNode;
   brandHref: string;
+  user: ShellUser;
+  roleLabel: string;
+  showWorkspaceSwitch?: boolean;
   navGroups: ShellNavGroup[];
   pathname: string;
   collapsed: boolean;
@@ -179,17 +184,12 @@ export function Sidebar({
         ) : (
           toggleButton
         )}
-        <div className={styles.logout}>
-          {collapsed ? (
-            <Tooltip title="退出登录" placement="right">
-              <span>
-                <LogoutButton iconOnly />
-              </span>
-            </Tooltip>
-          ) : (
-            <LogoutButton />
-          )}
-        </div>
+        <UserMenu
+          user={user}
+          roleLabel={roleLabel}
+          showWorkspaceSwitch={showWorkspaceSwitch}
+          collapsed={collapsed}
+        />
       </div>
     </aside>
   );

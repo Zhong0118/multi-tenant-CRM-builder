@@ -87,7 +87,67 @@
 }
 
 .searchInput {
-  width: min(320px, 100%);
+  width: min(280px, 100%);
+}
+
+/* Record scope on the left, the member's saved views on the right. */
+.viewBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.savedFilters {
+  min-width: 0;
+}
+
+/* A borderless select keeps its inner padding; pull the first one back so its
+   label lines up with the page edge. */
+.viewBar > .savedFilters:first-child {
+  margin-left: -11px;
+}
+
+/* Filters read as quiet chips: no box until hovered, tinted once they hold a
+   value, so the row of controls stays a row of labels. */
+.ghostSelect,
+.chip {
+  border-radius: 8px;
+  transition: background-color 120ms ease;
+}
+
+.ghostSelect:not(:global(.ant-select-disabled)):hover,
+.chip:not(:global(.ant-select-disabled)):hover {
+  background: var(--bg-hover);
+}
+
+.chip :global(.ant-select-placeholder),
+.chip :global(.ant-select-selection-placeholder),
+.ghostSelect :global(.ant-select-placeholder),
+.ghostSelect :global(.ant-select-selection-placeholder) {
+  color: var(--text-secondary);
+}
+
+.chip:has(:global(.ant-select-selection-item)) {
+  background: var(--color-primary-soft);
+}
+
+.ownerFilter.chip {
+  width: 168px;
+}
+
+.optionFilter.chip {
+  min-width: 168px;
+  max-width: 360px;
+}
+
+.moreFilters:global(.ant-btn) {
+  color: var(--text-secondary);
+}
+
+.moreFilters:global(.ant-btn[aria-expanded="true"]) {
+  color: var(--color-primary);
 }
 
 .ownerFilter {
@@ -250,11 +310,11 @@
 }
 
 .register :global(.ant-table-thead > tr > th) {
-  border-bottom: 1px solid var(--border-strong) !important;
+  border-bottom: 1px solid var(--border-hairline) !important;
 }
 
 .register :global(.ant-table-tbody > tr > td) {
-  border-bottom: 1px solid var(--rule) !important;
+  border-bottom: 1px solid var(--border-hairline) !important;
 }
 
 /* Record numbers are compared down the column, so they stay monospace. */
@@ -265,8 +325,14 @@
 }
 
 .recordTitle {
-  color: var(--working-blue);
-  font-weight: 550;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.recordTitle:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .form {
@@ -514,12 +580,11 @@
 .tableTools {
   display: flex;
   align-items: center;
-  gap: 12px;
-  width: 100%;
+  gap: 8px;
 }
 .resultCount {
+  font-size: 13px;
   white-space: nowrap;
-  margin-right: auto;
 }
 .primaryFilters {
   display: flex;
@@ -543,22 +608,39 @@
   gap: 6px;
   margin-top: -12px;
 }
-.registerPanel {
-  box-shadow: 0 3px 14px #17232d06;
+/* The register is the page itself, not a card placed on it: no frame, rows
+   divided by hairlines, header set in the quiet secondary text colour. */
+.list .registerPanel {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
-.register :global(.ant-table-thead > tr > th) {
-  background: #f5f8fa;
+.list .register :global(.ant-table-thead > tr > th) {
+  padding: 9px 12px;
+  /* Opaque so the pinned actions column never shows text through it. */
+  background: var(--bg-surface);
   color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 600;
-  padding: 13px 16px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  border-top: 1px solid var(--border-hairline);
+}
+/* Ant Table rounds the first and last header cell; with hairlines only the
+   header rule should run straight to both edges. */
+.list .register :global(.ant-table-thead > tr > th) {
+  border-radius: 0 !important;
 }
 .register :global(.ant-table-tbody > tr > td) {
-  padding: 14px 16px;
+  padding: 10px 12px;
   font-variant-numeric: tabular-nums;
 }
 .register :global(.ant-table-tbody > tr:hover > td) {
-  background: #f1f8f6 !important;
+  background: #f3f5f6 !important;
+}
+.list .registerPanel :global(.ant-pagination) {
+  margin: 12px 0 0 !important;
 }
 .card {
   background: var(--bg-surface);
@@ -577,6 +659,26 @@
   .list {
     gap: 16px;
     min-width: 0;
+  }
+  /* The saved-view select takes the spare width so the two actions stay on its row. */
+  .savedFilters {
+    width: 100%;
+  }
+  .savedFilters :global(.ant-space) {
+    width: 100%;
+    flex-wrap: nowrap !important;
+  }
+  .savedFilters :global(.ant-space-item:first-child) {
+    flex: 1;
+    min-width: 0;
+  }
+  .savedFilters .ghostSelect {
+    width: 100%;
+    min-width: 0 !important;
+  }
+  .viewBar > .savedFilters:first-child {
+    margin-left: -11px;
+    width: calc(100% + 11px);
   }
   .primaryFilters {
     display: none;

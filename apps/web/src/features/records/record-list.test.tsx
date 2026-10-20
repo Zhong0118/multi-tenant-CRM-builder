@@ -852,7 +852,9 @@ describe("RecordList table sorting", () => {
 it("switches to public pool preserving filters and resetting owner and page", () => {
   const navigate = vi.fn();
   renderList(navigate, { ...DEFAULT_RECORD_QUERY, page: 3, ownerMemberId: "member-1", search: "测试", filters: { lead_status: ["new"] } }, { poolConfig: { enabled: true, ownershipTtlHours: null, version: 1 } });
-  fireEvent.click(screen.getByRole("tab", { name: "公共池" }));
+  // The record scope is a single-choice control, so it is a radio group rather than tabs.
+  expect(screen.getByRole("radiogroup", { name: "记录范围" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("radio", { name: "公共池" }));
   const url = new URL(navigate.mock.calls[0][0], "http://localhost");
   expect(url.searchParams.get("scope")).toBe("pool");
   expect(url.searchParams.has("page")).toBe(false);

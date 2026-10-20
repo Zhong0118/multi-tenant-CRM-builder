@@ -1,6 +1,12 @@
 "use client";
 
-import { DeleteOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  FilterOutlined,
+  SearchOutlined,
+} from "@ant-design/icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Alert,
@@ -15,10 +21,10 @@ import {
   Input,
   InputNumber,
   Popconfirm,
+  Segmented,
   Select,
   Space,
   Table,
-  Tabs,
   Tooltip,
   Typography,
 } from "antd";
@@ -547,22 +553,27 @@ export function RecordList({
         ) : null}</Space>}
       />
 
-      {poolConfig?.enabled ? <Tabs
-        className={styles.poolTabs}
-        activeKey={query.scope ?? (owned ? "mine" : "all")}
-        onChange={(scope) => apply({ ...query, scope: scope as "mine" | "pool" | "all", page: 1, ownerMemberId: undefined })}
-        items={[{ key: "mine", label: "我的记录" }, { key: "pool", label: "公共池" }, ...(schema.scopes.read === "ALL" ? [{ key: "all", label: "全部记录" }] : [])]}
-      /> : null}
-      {currentMemberId && (
-        <SavedRecordFilters
-          key={`${tenantCode}:${currentMemberId}:${objectCode}`}
-          tenantCode={tenantCode}
-          memberId={currentMemberId}
-          objectCode={objectCode}
-          query={query}
-          onApply={apply}
-        />
-      )}
+      {poolConfig?.enabled || currentMemberId ? (
+        <div className={styles.viewBar}>
+          {poolConfig?.enabled ? <Segmented
+            className={styles.poolTabs}
+            aria-label="记录范围"
+            value={query.scope ?? (owned ? "mine" : "all")}
+            onChange={(scope) => apply({ ...query, scope: scope as "mine" | "pool" | "all", page: 1, ownerMemberId: undefined })}
+            options={[{ value: "mine", label: "我的记录" }, { value: "pool", label: "公共池" }, ...(schema.scopes.read === "ALL" ? [{ value: "all", label: "全部记录" }] : [])]}
+          /> : null}
+          {currentMemberId && (
+            <SavedRecordFilters
+              key={`${tenantCode}:${currentMemberId}:${objectCode}`}
+              tenantCode={tenantCode}
+              memberId={currentMemberId}
+              objectCode={objectCode}
+              query={query}
+              onApply={apply}
+            />
+          )}
+        </div>
+      ) : null}
       <FilterBar
         ariaLabel={`${schema.object.name}筛选与排序`}
         search={
@@ -570,6 +581,7 @@ export function RecordList({
             aria-label={searchLabel}
             placeholder={searchLabel}
             allowClear
+            prefix={<SearchOutlined aria-hidden />}
             value={searchInput}
             className={styles.searchInput}
             onChange={(event) => onSearchChange(event.target.value)}
@@ -588,6 +600,8 @@ export function RecordList({
             </Typography.Text>
             <Select
               aria-label="每页条数"
+              variant="borderless"
+              className={styles.ghostSelect}
               value={page.limit}
               options={[20, 50, 100, 300, 500, 1000].map((value) => ({
                 value,
@@ -653,10 +667,11 @@ export function RecordList({
             <Select
               aria-label="按负责人筛选"
               placeholder="全部负责人"
+              variant="borderless"
               allowClear
               showSearch
               optionFilterProp="label"
-              className={styles.ownerFilter}
+              className={`${styles.ownerFilter} ${styles.chip}`}
               value={query.ownerMemberId}
               onChange={(next?: string) =>
                 apply(withFilter(query, { ownerMemberId: next }))
@@ -675,8 +690,9 @@ export function RecordList({
                 mode="multiple"
                 aria-label={`按${field.label}筛选`}
                 placeholder={`全部${field.label}`}
+                variant="borderless"
                 allowClear
-                className={styles.optionFilter}
+                className={`${styles.optionFilter} ${styles.chip}`}
                 value={optionFilterValues(query.filters, field.fieldKey)}
                 onChange={(values: string[]) =>
                   applyFieldFilter(
@@ -693,6 +709,9 @@ export function RecordList({
           })}
         </div>
         <Button
+          type="text"
+          icon={<FilterOutlined aria-hidden />}
+          className={styles.moreFilters}
           aria-expanded={filtersOpen}
           onClick={() => setFiltersOpen(!filtersOpen)}
         >

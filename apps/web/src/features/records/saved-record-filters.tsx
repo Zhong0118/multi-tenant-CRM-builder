@@ -85,17 +85,20 @@ function SavedRecordFiltersSession({
     }
   }
   return (
-    <div aria-label="我的筛选视图">
-      <Space wrap>
+    <div aria-label="我的筛选视图" className={styles.savedFilters}>
+      <Space wrap size={4}>
         <Select
           aria-label="已保存的筛选"
           placeholder="我的筛选（仅此浏览器）"
+          variant="borderless"
+          className={styles.ghostSelect}
           style={{ minWidth: 220 }}
           value={selected}
           onChange={setSelected}
           options={saved.map((v) => ({ label: v.name, value: v.name }))}
         />
         <Button
+          type="text"
           disabled={!selected}
           onClick={() => {
             const item = saved.find((v) => v.name === selected);
@@ -104,7 +107,9 @@ function SavedRecordFiltersSession({
         >
           应用筛选
         </Button>
-        <Button onClick={() => setManagementOpen(true)}>管理筛选视图</Button>
+        <Button type="text" onClick={() => setManagementOpen(true)}>
+          管理筛选视图
+        </Button>
       </Space>
       <Drawer
         title="管理筛选视图"

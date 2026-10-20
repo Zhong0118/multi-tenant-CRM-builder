@@ -1,13 +1,10 @@
+/* A row of controls on the page surface; the table below is divided by its own
+   hairlines, so the bar needs no frame of its own. */
 .bar {
   display: flex;
-  min-height: 52px;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 4px 8px;
   align-items: center;
-  padding: 8px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-data);
 }
 
 .search,

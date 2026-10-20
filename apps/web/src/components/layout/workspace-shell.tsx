@@ -66,7 +66,6 @@ export function WorkspaceShell({
           items: systemItems(navigation.admin),
         }] : []),
       ]}
-      headerLeft={<span>{tenantName}</span>}
       user={user}
       roleLabel={role === "TENANT_ADMIN" ? "公司管理员" : "员工"}
       showWorkspaceSwitch
