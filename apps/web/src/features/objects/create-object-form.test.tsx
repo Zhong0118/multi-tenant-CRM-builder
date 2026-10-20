@@ -41,6 +41,8 @@ function objectApi(): ObjectApi {
     analyzePublication: vi.fn(),
     publish: vi.fn(),
     listPublications: vi.fn(),
+    lifecycle: vi.fn(),
+    restore: vi.fn(),
     archive: vi.fn(),
     removeDraft: vi.fn().mockResolvedValue({ deleted: true }),
   };

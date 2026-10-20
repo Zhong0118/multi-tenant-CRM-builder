@@ -628,6 +628,7 @@ function unavailableReason(
   reason?:
     | "AUDIENCE_EXCLUDED"
     | "OBJECT_UNAVAILABLE"
+    | "OBJECT_ARCHIVED"
     | "OBJECT_ACCESS_DENIED"
     | "FIELD_HIDDEN"
     | "QUERY_FAILED",
@@ -637,6 +638,7 @@ function unavailableReason(
     QUERY_FAILED: "查询暂时不可用，请稍后重试。",
     FIELD_HIDDEN: "当前权限不允许读取此组件所需的数据。",
     OBJECT_ACCESS_DENIED: "当前权限不允许读取此组件的数据。",
+    OBJECT_ARCHIVED: "引用的业务表已停用，恢复后可继续查看。",
     OBJECT_UNAVAILABLE: "此组件关联的业务表当前不可用。",
     AUDIENCE_EXCLUDED: "此组件不适用于当前角色。",
   }[reason];

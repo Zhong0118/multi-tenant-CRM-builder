@@ -39,7 +39,7 @@ export default async function ObjectSettingsPage({
       <header className={styles.pageHeader}>
         <h1>业务表</h1>
         <p>
-          在这里创建公司自己的业务表、添加字段、设置默认列表和员工权限。所有修改先保存为草稿，发布后才影响员工正在使用的页面。
+          在这里创建公司自己的业务表、添加字段、设置默认列表和员工权限。字段、列表和权限配置先保存为草稿，发布后影响员工页面；停用与恢复业务表立即生效。
         </p>
       </header>
       <ObjectList

@@ -944,3 +944,55 @@
     grid-row: 2;
   }
 }
+
+.lifecycleControl {
+  display: grid;
+  gap: 12px;
+  margin-block: 12px;
+  animation: lifecycleEnter 180ms ease both;
+}
+
+.lifecycleSummary {
+  display: grid;
+  gap: 14px;
+  overflow-wrap: anywhere;
+}
+
+.lifecycleSummary p {
+  margin: 0;
+}
+
+.lifecycleControl button {
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    opacity 160ms ease;
+}
+
+.lifecycleControl button:not(:disabled):hover {
+  transform: scale(1.02);
+}
+
+.lifecycleControl button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+@keyframes lifecycleEnter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lifecycleControl,
+  .lifecycleControl button {
+    animation: none;
+    transition: none;
+    transform: none;
+  }
+}

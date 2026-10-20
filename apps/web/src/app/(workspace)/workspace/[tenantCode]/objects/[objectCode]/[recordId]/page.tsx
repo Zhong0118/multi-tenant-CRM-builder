@@ -1,3 +1,4 @@
+import { renderRuntimeObjectPage } from "@/features/objects/runtime-object-state";
 import { SORTABLE_FIELD_TYPES } from "@/features/objects/object-types";
 import { RecordWorkspace } from "@/features/records/record-workspace";
 import { parseRecordQuery } from "@/features/records/record-query-state";
@@ -28,45 +29,47 @@ export default async function RecordDetailPage({
 }: RecordDetailPageProps) {
   const { tenantCode, objectCode, recordId } = await params;
   const workspace = await requireWorkspace(tenantCode);
-  const { schema, members, isAdmin } = await loadRuntimeObject(
-    tenantCode,
-    objectCode,
-    workspace.role,
-  );
-  const rawSearchParams = await searchParams;
-  const query = parseRecordQuery(
-    rawSearchParams,
-    schema.defaultView.sort,
-    schema.fields
-      .filter((field) =>
-        (SORTABLE_FIELD_TYPES as readonly string[]).includes(field.type),
-      )
-      .map((field) => field.fieldKey),
-  );
-  const initialEditing = rawSearchParams.mode === "edit";
-  const followUpId =
-    typeof rawSearchParams.followUp === "string" &&
-    /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(rawSearchParams.followUp)
-      ? rawSearchParams.followUp
-      : undefined;
-  const [initialPage, record] = await Promise.all([
-    loadRecordPage(tenantCode, objectCode, query),
-    loadRecord(tenantCode, objectCode, recordId),
-  ]);
+  return renderRuntimeObjectPage(tenantCode, async () => {
+    const { schema, members, isAdmin } = await loadRuntimeObject(
+      tenantCode,
+      objectCode,
+      workspace.role,
+    );
+    const rawSearchParams = await searchParams;
+    const query = parseRecordQuery(
+      rawSearchParams,
+      schema.defaultView.sort,
+      schema.fields
+        .filter((field) =>
+          (SORTABLE_FIELD_TYPES as readonly string[]).includes(field.type),
+        )
+        .map((field) => field.fieldKey),
+    );
+    const initialEditing = rawSearchParams.mode === "edit";
+    const followUpId =
+      typeof rawSearchParams.followUp === "string" &&
+      /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(rawSearchParams.followUp)
+        ? rawSearchParams.followUp
+        : undefined;
+    const [initialPage, record] = await Promise.all([
+      loadRecordPage(tenantCode, objectCode, query),
+      loadRecord(tenantCode, objectCode, recordId),
+    ]);
 
-  return (
-    <RecordWorkspace
-      currentMemberId={workspace.memberId}
-      tenantCode={tenantCode}
-      schema={schema}
-      query={query}
-      initialPage={initialPage}
-      members={members}
-      isAdmin={isAdmin}
-      openRecord={record}
-      initialEditing={initialEditing}
-      followUpId={followUpId}
-      returnTo={validatedReturnTo(tenantCode, rawSearchParams.returnTo)}
-    />
-  );
+    return (
+      <RecordWorkspace
+        currentMemberId={workspace.memberId}
+        tenantCode={tenantCode}
+        schema={schema}
+        query={query}
+        initialPage={initialPage}
+        members={members}
+        isAdmin={isAdmin}
+        openRecord={record}
+        initialEditing={initialEditing}
+        followUpId={followUpId}
+        returnTo={validatedReturnTo(tenantCode, rawSearchParams.returnTo)}
+      />
+    );
+  });
 }

@@ -1,13 +1,23 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Empty, Space, Table, Tag, Typography } from "antd";
+import {
+  Alert,
+  Button,
+  Empty,
+  Radio,
+  Space,
+  Table,
+  Tag,
+  Typography,
+} from "antd";
 import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
 import { useState } from "react";
 
 import { toApiError } from "@/lib/api/api-error";
 
+import { ObjectLifecycleControl } from "./object-lifecycle-control";
 import { objectApi as defaultObjectApi, type ObjectApi } from "./object-api";
 import { objectStatusLabel, type ObjectDraft } from "./object-types";
 
@@ -25,6 +35,7 @@ export function ObjectList({
   api = defaultObjectApi,
 }: ObjectListProps) {
   const queryClient = useQueryClient();
+  const [filter, setFilter] = useState("ALL");
   const [error, setError] = useState<string>();
   const queryKey = ["workspace", tenantCode, "object-definitions"] as const;
   const drafts = useQuery({
@@ -47,8 +58,18 @@ export function ObjectList({
 
   const rows = drafts.data ?? [];
 
+  const editable = rows.filter((row) => row.object.status !== "ARCHIVED");
+  const visible = rows.filter(
+    (row) =>
+      filter === "ALL" ||
+      (filter === "DRAFT"
+        ? row.object.publicationNumber === null &&
+          row.object.status !== "ARCHIVED"
+        : row.object.status === filter),
+  );
+
   function move(objectId: string, direction: -1 | 1) {
-    const ordered = [...rows];
+    const ordered = [...editable];
     const from = ordered.findIndex((row) => row.object.id === objectId);
     const to = from + direction;
     if (from < 0 || to < 0 || to >= ordered.length) return;
@@ -124,13 +145,18 @@ export function ObjectList({
       title: "导航顺序",
       key: "order",
       width: 132,
-      render: (_, row, index) => (
+      render: (_, row) => (
         <div className={styles.ledgerOrder}>
           <Button
             size="small"
             type="text"
             aria-label={`上移 ${row.object.name}`}
-            disabled={index === 0 || reorder.isPending}
+            disabled={
+              row.object.status === "ARCHIVED" ||
+              editable.findIndex((item) => item.object.id === row.object.id) ===
+                0 ||
+              reorder.isPending
+            }
             onClick={() => move(row.object.id, -1)}
           >
             上移
@@ -139,7 +165,12 @@ export function ObjectList({
             size="small"
             type="text"
             aria-label={`下移 ${row.object.name}`}
-            disabled={index === rows.length - 1 || reorder.isPending}
+            disabled={
+              row.object.status === "ARCHIVED" ||
+              editable.findIndex((item) => item.object.id === row.object.id) ===
+                editable.length - 1 ||
+              reorder.isPending
+            }
             onClick={() => move(row.object.id, 1)}
           >
             下移
@@ -147,7 +178,28 @@ export function ObjectList({
         </div>
       ),
     },
+    {
+      title: "停用与恢复",
+      key: "lifecycle",
+      fixed: "right",
+      width: 140,
+      render: (_, row) => (
+        <ObjectLifecycleControl
+          tenantCode={tenantCode}
+          draft={row}
+          api={api}
+          labelled
+          onChanged={(next) => clientAccept(next)}
+        />
+      ),
+    },
   ];
+
+  function clientAccept(next: ObjectDraft) {
+    queryClient.setQueryData<ObjectDraft[]>(queryKey, (current) =>
+      current?.map((row) => (row.object.id === next.object.id ? next : row)),
+    );
+  }
 
   if (rows.length === 0) {
     return (
@@ -179,12 +231,24 @@ export function ObjectList({
           <Button type="primary">新建业务表</Button>
         </Link>
       </div>
+      <Radio.Group
+        aria-label="业务表状态筛选"
+        value={filter}
+        onChange={(event) => setFilter(event.target.value as string)}
+        optionType="button"
+        options={[
+          { label: "全部", value: "ALL" },
+          { label: "使用中", value: "ACTIVE" },
+          { label: "已停用", value: "ARCHIVED" },
+          { label: "未发布", value: "DRAFT" },
+        ]}
+      />
       <Table
         className={styles.ledger}
         rowKey={(row) => row.object.id}
         size="small"
         columns={columns}
-        dataSource={rows}
+        dataSource={visible}
         pagination={false}
         // Narrow screens scroll the ledger sideways instead of stacking names
         // one character per line.

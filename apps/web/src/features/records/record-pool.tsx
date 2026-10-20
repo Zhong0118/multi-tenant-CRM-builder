@@ -443,6 +443,7 @@ export function RecordPoolSettings({
       }
     },
   });
+  const archived = save.isError && toApiError(save.error).code === "OBJECT_ARCHIVED";
   const validHours = (value: number | null) =>
     value !== null && Number.isInteger(value) && value >= 1 && value <= 8760;
   const invalid = lifecycle
@@ -454,7 +455,7 @@ export function RecordPoolSettings({
   return (
     <Drawer open title="公共池设置" size={600} onClose={onClose} destroyOnHidden
       classNames={{ body: styles.poolSettingsBody, footer: styles.poolSettingsFooter }}
-      footer={<div className={styles.poolFooterContent}><span>保存即生效，无需发布</span><Space><Button onClick={onClose}>取消</Button><Button type="primary" loading={save.isPending} disabled={invalid || saved} onClick={() => save.mutate()}>保存设置</Button></Space></div>}
+      footer={<div className={styles.poolFooterContent}><span>保存即生效，无需发布</span><Space><Button onClick={onClose}>取消</Button><Button type="primary" loading={save.isPending} disabled={invalid || saved || archived} onClick={() => { if (!archived) save.mutate(); }}>保存设置</Button></Space></div>}
     >
       <Space
         orientation="vertical"
@@ -471,7 +472,7 @@ export function RecordPoolSettings({
             aria-label="启用公共池"
             checked={enabled}
             onChange={setEnabled}
-            disabled={save.isPending || saved}
+            disabled={save.isPending || saved || archived}
           />
         </label>
         {!enabled ? <Alert type="warning" showIcon title="关闭后暂停领取、释放和回收" description="原有期限保留，重新开启会处理已到期记录。管理员仍可分配记录" /> : null}
@@ -504,7 +505,7 @@ export function RecordPoolSettings({
           <Switch
             aria-label="启用分阶段流转"
             checked={lifecycle}
-            disabled={save.isPending || saved}
+            disabled={save.isPending || saved || archived}
             onChange={setLifecycle}
           />
         </label>
@@ -525,7 +526,7 @@ export function RecordPoolSettings({
                 precision={0}
                 value={contactHours}
                 onChange={setContactHours}
-                disabled={save.isPending || saved}
+                disabled={save.isPending || saved || archived}
               />
             </label>
             <label>
@@ -537,7 +538,7 @@ export function RecordPoolSettings({
                 precision={0}
                 value={followUpHours}
                 onChange={setFollowUpHours}
-                disabled={save.isPending || saved}
+                disabled={save.isPending || saved || archived}
               />
             </label>
             </div>
@@ -548,13 +549,13 @@ export function RecordPoolSettings({
             <Space wrap className={styles.poolPresetButtons}>
               <Button
                 onClick={() => setLabels(DEFAULT_POOL_LABELS)}
-                disabled={save.isPending || saved}
+                disabled={save.isPending || saved || archived}
               >
                 使用通用名称
               </Button>
               <Button
                 onClick={() => setLabels(CUSTOMER_POOL_LABELS)}
-                disabled={save.isPending || saved}
+                disabled={save.isPending || saved || archived}
               >
                 使用客户预设
               </Button>
@@ -570,7 +571,7 @@ export function RecordPoolSettings({
                     onChange={(event) =>
                       setLabels({ ...labels, [key]: event.target.value })
                     }
-                    disabled={save.isPending || saved}
+                    disabled={save.isPending || saved || archived}
                   />
                 </label>
               ),
@@ -592,7 +593,7 @@ export function RecordPoolSettings({
                     <Select
                       aria-label={`保护来源表 ${index + 1}`}
                       value={rule.sourceObjectCode || undefined}
-                      disabled={save.isPending || saved}
+                      disabled={save.isPending || saved || archived}
                       placeholder="选择业务表"
                       options={config.protectionSources?.map((item) => ({
                         value: item.objectCode,
@@ -615,7 +616,7 @@ export function RecordPoolSettings({
                       aria-label={`保护状态 ${index + 1}`}
                       mode="multiple"
                       value={rule.statusKeys}
-                      disabled={!source || save.isPending || saved}
+                      disabled={!source || save.isPending || saved || archived}
                       options={source?.states.map((item) => ({
                         value: item.key,
                         label: item.label,
@@ -640,7 +641,7 @@ export function RecordPoolSettings({
                     />
                   ) : null}
                   <Button
-                    disabled={save.isPending || saved}
+                    disabled={save.isPending || saved || archived}
                     onClick={() =>
                       setRules(rules.filter((_, i) => i !== index))
                     }
@@ -652,7 +653,7 @@ export function RecordPoolSettings({
             })}
             <Button
               disabled={
-                save.isPending || saved || !config.protectionSources?.length
+                save.isPending || saved || archived || !config.protectionSources?.length
               }
               onClick={() =>
                 setRules([...rules, { sourceObjectCode: "", statusKeys: [] }])
@@ -680,7 +681,7 @@ export function RecordPoolSettings({
               <Switch
                 aria-label="到期自动回收"
                 checked={automatic}
-                disabled={save.isPending || saved}
+                disabled={save.isPending || saved || archived}
                 onChange={(value) => {
                   setAutomatic(value);
                   if (value && hours === null) setHours(24);
@@ -697,7 +698,7 @@ export function RecordPoolSettings({
                   precision={0}
                   value={hours}
                   onChange={setHours}
-                  disabled={save.isPending || saved}
+                  disabled={save.isPending || saved || archived}
                 />
               </label>
             ) : null}

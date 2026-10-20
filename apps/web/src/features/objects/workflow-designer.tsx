@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   Button,
+  ConfigProvider,
   Form,
   Input,
   Select,
@@ -70,11 +71,15 @@ function WorkflowDesignerForm({
   api = defaultWorkflowApi,
   objectApi = defaultObjectApi,
 }: WorkflowDesignerProps) {
+  const readOnly = draft.object.status === "ARCHIVED";
   const queryClient = useQueryClient();
   const [error, setError] = useState<string>();
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [notice, setNotice] = useState<string>();
-  const [localForm, setForm] = useState<WorkflowDraft>();
+  const [localForm, setLocalForm] = useState<WorkflowDraft>();
+  const setForm = (next: WorkflowDraft) => {
+    if (!readOnly) setLocalForm(next);
+  };
   const queryKey = ["workspace", tenantCode, "workflow-draft", draft.object.id];
   const query = useQuery({
     queryKey,
@@ -170,9 +175,10 @@ function WorkflowDesignerForm({
       : `无法载入目标业务表列表：${objectsFailure.message}（请求编号：${objectsFailure.requestId}）`;
 
   return (
-    <Form component={false} disabled={save.isPending}>
+    <ConfigProvider componentDisabled={readOnly || save.isPending}>
+    <Form component={false} disabled={readOnly || save.isPending}>
       <fieldset
-        disabled={save.isPending}
+        disabled={readOnly || save.isPending}
         style={{ border: 0, margin: 0, padding: 0 }}
       >
         <section className={styles.panel}>
@@ -485,7 +491,9 @@ function WorkflowDesignerForm({
         <Button
           type="primary"
           loading={save.isPending}
-          onClick={() => save.mutate(form)}
+          onClick={() => {
+            if (!readOnly) save.mutate(form);
+          }}
         >
           保存流程
         </Button>
@@ -493,6 +501,7 @@ function WorkflowDesignerForm({
         </section>
       </fieldset>
     </Form>
+    </ConfigProvider>
   );
 }
 

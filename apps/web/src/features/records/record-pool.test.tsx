@@ -560,3 +560,12 @@ it("requires administrator classification before employees can claim a legacy pu
   wrap(<RecordOwnershipActions tenantCode="northwind" objectCode="customers" schema={schema} record={record} config={{ ...config, lifecycleEnabled: true }} isAdmin={false} api={api()} onChanged={vi.fn()} />);
   expect(screen.queryByRole("button", { name: "领取 客户甲" })).not.toBeInTheDocument();
 });
+
+it("makes a stale pool settings drawer read-only when the table was stopped", async () => {
+  const backend = api({ saveConfig: vi.fn().mockRejectedValue({ code: "OBJECT_ARCHIVED", message: "业务表已停用", status: 409, requestId: "pool-archived" }) });
+  wrap(<RecordPoolSettings tenantCode="northwind" objectCode="customers" config={config} api={backend} onSaved={vi.fn()} onClose={vi.fn()} />);
+  fireEvent.click(screen.getByRole("button", { name: "保存设置" }));
+  await screen.findByText(/业务表已停用/);
+  expect(screen.getByRole("button", { name: "保存设置" })).toBeDisabled();
+  expect(screen.getByRole("switch", { name: "启用公共池" })).toBeDisabled();
+});

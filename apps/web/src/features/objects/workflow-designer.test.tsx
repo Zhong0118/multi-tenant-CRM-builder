@@ -139,6 +139,8 @@ function objectApi(overrides: Partial<ObjectApi> = {}): ObjectApi {
     analyzePublication: vi.fn(),
     publish: vi.fn(),
     listPublications: vi.fn(),
+    lifecycle: vi.fn(),
+    restore: vi.fn(),
     archive: vi.fn(),
     removeDraft: vi.fn(),
     ...overrides,
@@ -588,4 +590,47 @@ describe("WorkflowDesigner", () => {
       ),
     ).toBeInTheDocument();
   });
+});
+
+it("keeps archived workflow controls and custom action buttons read-only", async () => {
+  const initial = objectDraft();
+  const backend: WorkflowApi = {
+    getRuntime: vi.fn(),
+    executeTransition: vi.fn(),
+    history: vi.fn(),
+    getDraft: vi
+      .fn()
+      .mockResolvedValue({
+        ...emptyWorkflow(),
+        states: [
+          { key: "new", label: "新建", isTerminal: false, sortOrder: 0 },
+        ],
+        transitions: [],
+      }),
+    saveDraft: vi.fn(),
+  };
+  render(
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      <WorkflowDesigner
+        tenantCode="northwind"
+        draft={{
+          ...initial,
+          object: { ...initial.object, status: "ARCHIVED" },
+        }}
+        api={backend}
+        objectApi={objectApi()}
+        onObjectVersion={vi.fn()}
+      />
+    </QueryClientProvider>,
+  );
+  expect(
+    await screen.findByRole("switch", { name: "启用流程" }),
+  ).toBeDisabled();
+  expect(screen.getByRole("textbox", { name: "状态名称 1" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "添加状态" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "保存流程" })).toBeDisabled();
 });
