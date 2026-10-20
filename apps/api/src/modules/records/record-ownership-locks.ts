@@ -12,7 +12,11 @@ export async function lockObject(
   const rows = await tx.$queryRaw<
     Array<{ id: string }>
   >`SELECT id FROM object_definitions WHERE tenant_id = ${context.tenantId}::uuid AND code = ${code} AND status = 'ACTIVE' AND deleted_at IS NULL AND active_publication_id IS NOT NULL FOR NO KEY UPDATE`;
-  if (!rows.length) throw new ApiException('OBJECT_NOT_FOUND', 404);
+  if (!rows.length) {
+    // Preserve the common resolver's authorization-aware archived explanation.
+    await resolvePublishedObjectInTransaction(tx, context, code);
+    throw new ApiException('OBJECT_NOT_FOUND', 404);
+  }
   return tx.objectDefinition.findFirstOrThrow({
     where: { id: rows[0].id, tenantId: context.tenantId },
   });

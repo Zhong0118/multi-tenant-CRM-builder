@@ -39,6 +39,7 @@ export interface ObjectDraftResponse {
     status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
     publicationNumber: number | null;
     publishedAt: string | null;
+    archivedAt?: string | null;
     hasUnpublishedChanges: boolean;
     updatedAt: string | null;
   };
@@ -110,9 +111,11 @@ export function toObjectDraftResponse(draft: ObjectDraft): ObjectDraftResponse {
       status: draft.object.status,
       publicationNumber: active?.publication.number ?? null,
       publishedAt: draft.object.publishedAt,
+      archivedAt: draft.object.archivedAt ?? null,
       hasUnpublishedChanges:
         active === null ||
-        active.publication.sourceDraftVersion < draft.object.version,
+        active.publication.sourceDraftVersion <
+          draft.object.version - (draft.object.lifecycleVersionOffset ?? 0),
       updatedAt: draft.object.updatedAt ?? null,
     },
     fields: [...draft.fields]

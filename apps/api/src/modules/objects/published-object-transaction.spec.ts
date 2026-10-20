@@ -241,18 +241,14 @@ describe('resolvePublishedObjectInTransaction', () => {
     });
   });
 
-  it('reports OBJECT_NOT_FOUND for an inactive or unpublished target', async () => {
+  it('reports OBJECT_NOT_FOUND for a draft or unpublished target', async () => {
     const tx = transactionOver([
       objectRow(snapshot({ code: 'draft-object' }), { status: 'DRAFT' }),
       objectRow(snapshot({ code: 'archived-object' }), { status: 'ARCHIVED' }),
       objectRow(null, { code: 'unpublished-object' }),
     ]);
 
-    for (const code of [
-      'draft-object',
-      'archived-object',
-      'unpublished-object',
-    ]) {
+    for (const code of ['draft-object', 'unpublished-object']) {
       await expect(
         resolvePublishedObjectInTransaction(tx, employee, code),
       ).rejects.toMatchObject({ code: 'OBJECT_NOT_FOUND' });

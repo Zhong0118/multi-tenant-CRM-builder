@@ -53,6 +53,37 @@ export class ExpectedVersionDto {
   expectedVersion!: number;
 }
 
+export class RestoreObjectDto extends ExpectedVersionDto {
+  @ApiPropertyOptional({ type: Boolean })
+  @IsOptional()
+  @IsBoolean()
+  acknowledgeLegacyTimers?: boolean;
+}
+
+export class ObjectLifecycleBlockerDto {
+  @ApiProperty({ enum: ['WORKFLOW', 'POOL_PROTECTION'] }) kind!:
+    'WORKFLOW' | 'POOL_PROTECTION';
+  @ApiProperty() objectCode!: string;
+  @ApiProperty() objectName!: string;
+  @ApiProperty() description!: string;
+}
+
+export class ObjectLifecycleResponseDto {
+  @ApiProperty({ enum: ['DRAFT', 'ACTIVE', 'ARCHIVED'] }) status!:
+    'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  @ApiProperty() version!: number;
+  @ApiProperty() recordCount!: number;
+  @ApiProperty({ type: Number, nullable: true }) activePublicationVersion!:
+    number | null;
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  archivedAt!: string | null;
+  @ApiProperty() hasUnpublishedChanges!: boolean;
+  @ApiProperty({ type: ObjectLifecycleBlockerDto, isArray: true })
+  blockers!: ObjectLifecycleBlockerDto[];
+  @ApiProperty() requiresLegacyTimerAcknowledgement!: boolean;
+  @ApiProperty() expiredRecordCount!: number;
+}
+
 export class DeleteObjectDraftResponseDto {
   @ApiProperty({ enum: [true] }) deleted!: true;
 }
@@ -485,6 +516,8 @@ export class ObjectDraftObjectResponseDto {
   publicationNumber!: number | null;
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   publishedAt!: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true, format: 'date-time' })
+  archivedAt?: string | null;
   @ApiProperty() hasUnpublishedChanges!: boolean;
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   updatedAt!: string | null;

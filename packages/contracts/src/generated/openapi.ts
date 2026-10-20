@@ -1268,6 +1268,22 @@ export interface paths {
     patch: operations["ObjectsController_updateField"];
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/lifecycle": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ObjectsController_lifecycle"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/permissions": {
     parameters: {
       query?: never;
@@ -1310,6 +1326,22 @@ export interface paths {
     get: operations["ObjectsController_publications"];
     put?: never;
     post: operations["ObjectsController_publish"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/restore": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ObjectsController_restore"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2248,6 +2280,7 @@ export interface components {
       reason?:
         | "AUDIENCE_EXCLUDED"
         | "OBJECT_UNAVAILABLE"
+        | "OBJECT_ARCHIVED"
         | "OBJECT_ACCESS_DENIED"
         | "FIELD_HIDDEN"
         | "QUERY_FAILED";
@@ -2672,6 +2705,8 @@ export interface components {
       };
     };
     ObjectDraftObjectResponseDto: {
+      /** Format: date-time */
+      archivedAt?: string | null;
       code: string;
       description: string | null;
       hasUnpublishedChanges: boolean;
@@ -2700,6 +2735,26 @@ export interface components {
       object: components["schemas"]["ObjectDraftObjectResponseDto"];
       publishedEmployeeAccess:
         components["schemas"]["PublishedEmployeeAccessResponseDto"] | null;
+    };
+    ObjectLifecycleBlockerDto: {
+      description: string;
+      /** @enum {string} */
+      kind: "WORKFLOW" | "POOL_PROTECTION";
+      objectCode: string;
+      objectName: string;
+    };
+    ObjectLifecycleResponseDto: {
+      activePublicationVersion: number | null;
+      /** Format: date-time */
+      archivedAt: string | null;
+      blockers: components["schemas"]["ObjectLifecycleBlockerDto"][];
+      expiredRecordCount: number;
+      hasUnpublishedChanges: boolean;
+      recordCount: number;
+      requiresLegacyTimerAcknowledgement: boolean;
+      /** @enum {string} */
+      status: "DRAFT" | "ACTIVE" | "ARCHIVED";
+      version: number;
     };
     ObjectOrderDto: {
       items: components["schemas"]["ObjectOrderItemDto"][];
@@ -3154,6 +3209,10 @@ export interface components {
       newPassword: string;
       /** @example 13800138000 */
       phone: string;
+    };
+    RestoreObjectDto: {
+      acknowledgeLegacyTimers?: boolean;
+      expectedVersion: number;
     };
     RuntimeAvailableTransitionDto: {
       /** @description 静态 Effect Summary：该 Transition 将执行的动作类型，按执行顺序；没有 Action 时为空数组。不含字段映射细节。 */
@@ -5871,6 +5930,28 @@ export interface operations {
       };
     };
   };
+  ObjectsController_lifecycle: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ObjectLifecycleResponseDto"];
+        };
+      };
+    };
+  };
   ObjectsController_updatePermissions: {
     parameters: {
       query?: never;
@@ -5967,6 +6048,32 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ObjectPublicationResponseDto"];
+        };
+      };
+    };
+  };
+  ObjectsController_restore: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RestoreObjectDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"];
         };
       };
     };

@@ -52,6 +52,8 @@ export class WorkflowAdminService {
     assertTenantAdmin(context);
     return this.repository.withTenant(context, async (store) => {
       const object = await requireObject(store, objectId);
+      if (object.status === 'ARCHIVED')
+        throw new ApiException('OBJECT_ARCHIVED', 409);
       if (object.version !== input.expectedDraftRevision) {
         throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
       }

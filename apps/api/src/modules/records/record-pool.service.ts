@@ -1,3 +1,4 @@
+import { lockObjectConfiguration } from '../objects/object-configuration-lock';
 import { configOf, validatePoolConfig } from './record-pool-config';
 import { Inject, Injectable } from '@nestjs/common';
 import { ApiException } from '../../common/errors/api.exception';
@@ -131,6 +132,7 @@ export class RecordPoolService {
       throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
     validatePoolConfig(input);
     return this.runner.withTenant(context, async (tx) => {
+      await lockObjectConfiguration(tx, context.tenantId);
       await lockMembers(tx, context);
       const object = await lockObject(tx, context, objectCode);
       if (object.poolConfigVersion !== input.version)

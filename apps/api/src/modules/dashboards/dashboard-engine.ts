@@ -1,3 +1,4 @@
+import { ApiException } from '../../common/errors/api.exception';
 import { Inject, Injectable } from '@nestjs/common';
 
 import type { TenantContext } from '../../common/tenancy/tenant-context';
@@ -88,6 +89,10 @@ export class DashboardEngine {
         continue;
       }
       const resolved = accessByCode.get(widget.objectCode);
+      if (resolved === 'OBJECT_ARCHIVED') {
+        omissions.set(widget.id, 'OBJECT_ARCHIVED');
+        continue;
+      }
       if (!resolved) {
         omissions.set(widget.id, 'OBJECT_UNAVAILABLE');
         continue;
@@ -134,7 +139,9 @@ export class DashboardEngine {
     const widgets = publication.widgets.flatMap((widget) => {
       const omission = omissions.get(widget.id);
       if (omission) {
-        return diagnostics ? [unavailable(widget, omission, true)] : [];
+        return diagnostics || omission === 'OBJECT_ARCHIVED'
+          ? [unavailable(widget, omission, true)]
+          : [];
       }
       if (!planned.has(widget.id)) return [];
       const result = executed.get(widget.id);
@@ -230,12 +237,19 @@ async function resolveAccessOnce(
           objectCode,
           await resolver.resolveRuntimeSchema(context, objectCode),
         ] as const;
-      } catch {
-        return [objectCode, null] as const;
+      } catch (error) {
+        return [
+          objectCode,
+          error instanceof ApiException && error.code === 'OBJECT_ARCHIVED'
+            ? 'OBJECT_ARCHIVED'
+            : null,
+        ] as const;
       }
     }),
   );
-  return new Map(entries);
+  return new Map<string, ResolvedObjectSchema | 'OBJECT_ARCHIVED' | null>(
+    entries,
+  );
 }
 
 function matchesAudience(

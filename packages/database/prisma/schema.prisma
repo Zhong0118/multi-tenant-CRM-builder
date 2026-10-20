@@ -406,6 +406,8 @@ model ObjectDefinition {
   sourceTemplateVersionId String?                   @map("source_template_version_id") @db.Uuid
   activePublicationId     String?                   @map("active_publication_id") @db.Uuid
   publishedAt             DateTime?                 @map("published_at") @db.Timestamptz(3)
+  archivedAt              DateTime?                 @map("archived_at") @db.Timestamptz(3)
+  lifecycleVersionOffset  Int                       @default(0) @map("lifecycle_version_offset")
   version                 Int                       @default(1)
   createdAt               DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt               DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(3)

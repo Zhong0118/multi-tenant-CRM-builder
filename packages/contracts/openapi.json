@@ -1813,6 +1813,7 @@
             "enum": [
               "AUDIENCE_EXCLUDED",
               "OBJECT_UNAVAILABLE",
+              "OBJECT_ARCHIVED",
               "OBJECT_ACCESS_DENIED",
               "FIELD_HIDDEN",
               "QUERY_FAILED"
@@ -2992,6 +2993,11 @@
       },
       "ObjectDraftObjectResponseDto": {
         "properties": {
+          "archivedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
           "code": {
             "type": "string"
           },
@@ -3107,6 +3113,75 @@
           "employeeAccess",
           "publishedEmployeeAccess",
           "activeRecordCount"
+        ],
+        "type": "object"
+      },
+      "ObjectLifecycleBlockerDto": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": ["WORKFLOW", "POOL_PROTECTION"],
+            "type": "string"
+          },
+          "objectCode": {
+            "type": "string"
+          },
+          "objectName": {
+            "type": "string"
+          }
+        },
+        "required": ["kind", "objectCode", "objectName", "description"],
+        "type": "object"
+      },
+      "ObjectLifecycleResponseDto": {
+        "properties": {
+          "activePublicationVersion": {
+            "nullable": true,
+            "type": "number"
+          },
+          "archivedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "blockers": {
+            "items": {
+              "$ref": "#/components/schemas/ObjectLifecycleBlockerDto"
+            },
+            "type": "array"
+          },
+          "expiredRecordCount": {
+            "type": "number"
+          },
+          "hasUnpublishedChanges": {
+            "type": "boolean"
+          },
+          "recordCount": {
+            "type": "number"
+          },
+          "requiresLegacyTimerAcknowledgement": {
+            "type": "boolean"
+          },
+          "status": {
+            "enum": ["DRAFT", "ACTIVE", "ARCHIVED"],
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "status",
+          "version",
+          "recordCount",
+          "activePublicationVersion",
+          "archivedAt",
+          "hasUnpublishedChanges",
+          "blockers",
+          "requiresLegacyTimerAcknowledgement",
+          "expiredRecordCount"
         ],
         "type": "object"
       },
@@ -4433,6 +4508,19 @@
           }
         },
         "required": ["phone", "code", "newPassword"],
+        "type": "object"
+      },
+      "RestoreObjectDto": {
+        "properties": {
+          "acknowledgeLegacyTimers": {
+            "type": "boolean"
+          },
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": ["expectedVersion"],
         "type": "object"
       },
       "RuntimeAvailableTransitionDto": {
@@ -10100,6 +10188,47 @@
         "tags": ["object-definitions"]
       }
     },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/lifecycle": {
+      "get": {
+        "operationId": "ObjectsController_lifecycle",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectLifecycleResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      }
+    },
     "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/permissions": {
       "put": {
         "operationId": "ObjectsController_updatePermissions",
@@ -10281,6 +10410,57 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ObjectPublicationResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/restore": {
+      "post": {
+        "operationId": "ObjectsController_restore",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreObjectDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectDraftResponseDto"
                 }
               }
             },

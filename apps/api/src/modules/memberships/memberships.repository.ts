@@ -412,11 +412,27 @@ class PrismaMembershipStore implements MembershipStore {
     });
   }
 
+  private async lockObjectForPermissionMutation(
+    objectId: string,
+  ): Promise<void> {
+    const rows = await this.transaction.$queryRaw<Array<{ status: string }>>`
+      SELECT status FROM object_definitions
+      WHERE tenant_id = ${this.tenantId}::uuid AND id = ${objectId}::uuid
+        AND deleted_at IS NULL AND active_publication_id IS NOT NULL
+      FOR NO KEY UPDATE
+    `;
+    if (!rows.length || rows[0].status === 'DRAFT')
+      throw new ApiException('OBJECT_NOT_FOUND', 404);
+    if (rows[0].status === 'ARCHIVED')
+      throw new ApiException('OBJECT_ARCHIVED', 409);
+  }
+
   async replaceMemberObjectAccess(
     memberId: string,
     objectId: string,
     policy: MemberObjectPolicy,
   ): Promise<void> {
+    await this.lockObjectForPermissionMutation(objectId);
     await this.transaction.objectPermission.deleteMany({
       where: {
         tenantId: this.tenantId,
@@ -446,6 +462,7 @@ class PrismaMembershipStore implements MembershipStore {
     memberId: string,
     objectId: string,
   ): Promise<void> {
+    await this.lockObjectForPermissionMutation(objectId);
     await this.transaction.objectPermission.deleteMany({
       where: {
         tenantId: this.tenantId,
@@ -461,6 +478,7 @@ class PrismaMembershipStore implements MembershipStore {
     objectId: string,
     fields: MemberFieldAccessChange[],
   ): Promise<void> {
+    await this.lockObjectForPermissionMutation(objectId);
     await this.transaction.memberFieldPermission.deleteMany({
       where: {
         tenantId: this.tenantId,

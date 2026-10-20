@@ -170,7 +170,7 @@ export function resolvePublishedObjectRecord(
   record: PublishedObjectRecord | null,
   role: TenantContext['role'],
 ): ResolvedObjectSchema {
-  if (!record || record.status !== 'ACTIVE' || record.configuration === null) {
+  if (!record || record.status === 'DRAFT' || record.configuration === null) {
     throw new ApiException('OBJECT_NOT_FOUND', 404);
   }
   const schema = parsePublishedObjectRecord(record);
@@ -180,6 +180,11 @@ export function resolvePublishedObjectRecord(
     memberOverride: record.memberOverride,
     memberFieldOverrides: record.memberFieldOverrides,
   });
+  if (record.status === 'ARCHIVED') {
+    if (!isReadable(schema, access))
+      throw new ApiException('OBJECT_NOT_FOUND', 404);
+    throw new ApiException('OBJECT_ARCHIVED', 409);
+  }
   return {
     schema,
     access,
