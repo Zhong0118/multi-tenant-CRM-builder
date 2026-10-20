@@ -1,4 +1,7 @@
-import { lockObjectConfiguration } from '../objects/object-configuration-lock';
+import {
+  lockObjectConfiguration,
+  lockRuntimeObjectConfiguration,
+} from '../objects/object-configuration-lock';
 import { configOf, validatePoolConfig } from './record-pool-config';
 import { Inject, Injectable } from '@nestjs/common';
 import { ApiException } from '../../common/errors/api.exception';
@@ -153,7 +156,16 @@ export class RecordPoolService {
           message:
             '已有记录进入新版流转，不能切回旧模式。如需暂停，请关闭公共池并保留新版流转设置。',
         });
-      for (const rule of input.protectionRules ?? []) {
+      const stored = configOf(object);
+      const effective = {
+        ...stored,
+        enabled: input.enabled,
+        lifecycleEnabled: input.lifecycleEnabled ?? stored.lifecycleEnabled,
+        protectionRules: input.protectionRules ?? stored.protectionRules,
+      };
+      for (const rule of effective.enabled && effective.lifecycleEnabled
+        ? (effective.protectionRules ?? [])
+        : []) {
         const source = await resolvePublishedObjectInTransaction(
           tx,
           context,
@@ -220,6 +232,7 @@ export class RecordPoolService {
     meta: RecordRequestMeta,
   ) {
     return this.runner.withTenant(context, async (tx) => {
+      await lockRuntimeObjectConfiguration(tx, context.tenantId);
       await lockMembers(
         tx,
         context,

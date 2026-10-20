@@ -214,6 +214,12 @@ interface PatchIntentInput {
  * workflow state and `version + 1` for the final source patch.
  */
 class MemoryStore implements RecordsStore {
+  resolveCurrentObject(
+    previous: import('../objects/published-object.service').ResolvedObjectSchema,
+  ) {
+    return Promise.resolve(previous);
+  }
+
   records: DynamicRecord[] = [];
   audits: AuditEvent[] = [];
   history: Array<{ recordId: string; transitionKey: string }> = [];
@@ -256,7 +262,9 @@ class MemoryStore implements RecordsStore {
   memberExists(memberId: string): Promise<boolean> {
     return Promise.resolve(this.activeMembers.has(memberId));
   }
-  lockActiveOwners(): Promise<void> { return Promise.resolve(); }
+  lockActiveOwners(): Promise<void> {
+    return Promise.resolve();
+  }
 
   allocateRecordNo(): Promise<bigint> {
     const allocated = this.nextRecordNo;

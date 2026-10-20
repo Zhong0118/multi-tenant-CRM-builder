@@ -1,3 +1,5 @@
+import { lockRuntimeObjectConfiguration } from '../objects/object-configuration-lock';
+import { resolveReadableObjectByIdInTransaction } from '../objects/published-object-transaction';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
 import { ApiException } from '../../common/errors/api.exception';
@@ -154,6 +156,7 @@ export class FollowUpsRepository {
         record: {
           tenantId: context.tenantId,
           deletedAt: null,
+          object: { status: 'ACTIVE', deletedAt: null },
           OR: scopes.map((scope) => ({
             objectId: scope.objectId,
             ownerMemberId: scope.ownerMemberId,
@@ -230,6 +233,7 @@ export class FollowUpsRepository {
         record: {
           tenantId: context.tenantId,
           deletedAt: null,
+          object: { status: 'ACTIVE', deletedAt: null },
           OR: scopes.map((scope) => ({
             objectId: scope.objectId,
             ownerMemberId: scope.ownerMemberId,
@@ -327,6 +331,7 @@ export class FollowUpsRepository {
         record: {
           tenantId: context.tenantId,
           deletedAt: null,
+          object: { status: 'ACTIVE', deletedAt: null },
           OR: scopes.map((scope) => ({
             objectId: scope.objectId,
             ownerMemberId: scope.ownerMemberId,
@@ -362,11 +367,25 @@ export class FollowUpsRepository {
     meta: FollowUpMeta,
     scope: FollowUpRecordScope,
   ) {
-    return this.runner.withTenant(context, (tx) =>
-      createFollowUpCommand(tx, context, input, meta, scope, {
+    return this.runner.withTenant(context, async (tx) => {
+      await lockRuntimeObjectConfiguration(tx, context.tenantId);
+      const { access } = await resolveReadableObjectByIdInTransaction(
+        tx,
+        context,
+        scope.objectId,
+        true,
+      );
+      const currentScope = {
+        ...scope,
+        requiredOwnerMemberId:
+          access.readScope === 'OWN' || access.updateScope === 'OWN'
+            ? context.memberId
+            : undefined,
+      };
+      return createFollowUpCommand(tx, context, input, meta, currentScope, {
         audit: this.audit,
-      }),
-    );
+      });
+    });
   }
   update(
     context: TenantContext,
@@ -377,6 +396,20 @@ export class FollowUpsRepository {
     recipientScope?: FollowUpRecordScope,
   ) {
     return this.runner.withTenant(context, async (tx) => {
+      await lockRuntimeObjectConfiguration(tx, context.tenantId);
+      const { access } = await resolveReadableObjectByIdInTransaction(
+        tx,
+        context,
+        scope.objectId,
+        true,
+      );
+      scope = {
+        ...scope,
+        requiredOwnerMemberId:
+          access.readScope === 'OWN' || access.updateScope === 'OWN'
+            ? context.memberId
+            : undefined,
+      };
       for (const memberId of [
         ...new Set(
           [context.memberId, input.assigneeMemberId].filter(

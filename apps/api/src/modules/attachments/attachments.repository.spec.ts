@@ -1,3 +1,11 @@
+jest.mock('../objects/published-object-transaction', () => ({
+  resolveReadableObjectByIdInTransaction: jest
+    .fn()
+    .mockResolvedValue({ access: { readScope: 'ALL', updateScope: 'ALL' } }),
+}));
+jest.mock('../objects/object-configuration-lock', () => ({
+  lockRuntimeObjectConfiguration: jest.fn().mockResolvedValue(undefined),
+}));
 import {
   mkdtemp,
   mkdir,

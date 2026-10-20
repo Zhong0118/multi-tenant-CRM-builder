@@ -1,3 +1,5 @@
+import { lockRuntimeObjectConfiguration } from '../objects/object-configuration-lock';
+import { resolveReadableObjectByIdInTransaction } from '../objects/published-object-transaction';
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { readFile, unlink } from 'node:fs/promises';
@@ -48,6 +50,17 @@ export class AttachmentsRepository {
     s: AttachmentScope,
     write = false,
   ) {
+    await lockRuntimeObjectConfiguration(tx, c.tenantId);
+    const { access } = await resolveReadableObjectByIdInTransaction(
+      tx,
+      c,
+      s.objectId,
+      write,
+    );
+    const ownerId =
+      access.readScope === 'OWN' || (write && access.updateScope === 'OWN')
+        ? c.memberId
+        : undefined;
     const actors = await tx.$queryRaw<
       Array<{ role: string }>
     >`SELECT m.role FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=${c.tenantId}::uuid AND m.id=${c.memberId}::uuid AND m.status='ACTIVE' AND u.status='ACTIVE' FOR UPDATE OF m`;
@@ -55,7 +68,7 @@ export class AttachmentsRepository {
       throw new ApiException('WORKSPACE_FORBIDDEN', 403);
     const rows = await tx.$queryRaw<
       Array<{ id: string; inPublicPool: boolean }>
-    >`SELECT id, in_public_pool AS "inPublicPool" FROM records WHERE tenant_id=${c.tenantId}::uuid AND object_id=${s.objectId}::uuid AND id=${s.recordId}::uuid AND deleted_at IS NULL AND (${s.ownerId ?? null}::uuid IS NULL OR owner_member_id=${s.ownerId ?? null}::uuid) FOR UPDATE`;
+    >`SELECT id, in_public_pool AS "inPublicPool" FROM records WHERE tenant_id=${c.tenantId}::uuid AND object_id=${s.objectId}::uuid AND id=${s.recordId}::uuid AND deleted_at IS NULL AND (${ownerId ?? null}::uuid IS NULL OR owner_member_id=${ownerId ?? null}::uuid) FOR UPDATE`;
     if (!rows.length) throw new ApiException('RECORD_NOT_FOUND', 404);
     if (write && rows[0].inPublicPool && c.role !== 'TENANT_ADMIN')
       throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);

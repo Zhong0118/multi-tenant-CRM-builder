@@ -78,11 +78,12 @@ export class WorkflowRuntimeService {
     objectCode: string,
     recordId: string,
   ): Promise<RuntimeWorkflowView> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
     return this.records.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
       const record = await requireReadableRecord(
         store,
         resolved.schema.object.id,
@@ -373,11 +374,12 @@ export class WorkflowRuntimeService {
     limit: number;
     total: number;
   }> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
     return this.records.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
       await requireReadableRecord(
         store,
         resolved.schema.object.id,

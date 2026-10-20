@@ -1,3 +1,10 @@
+import { resolveReadablePublishedObjectInTransaction } from '../objects/published-object-transaction';
+jest.mock('../objects/published-object-transaction', () => ({
+  resolveReadablePublishedObjectInTransaction: jest.fn(),
+}));
+jest.mock('../objects/object-configuration-lock', () => ({
+  lockRuntimeObjectConfiguration: jest.fn().mockResolvedValue(undefined),
+}));
 import { RecordRelationsService } from './record-relations.service';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 const context: TenantContext = {
@@ -33,6 +40,9 @@ function fixture() {
       access: { canUpdate: true, readScope: 'ALL', updateScope: 'ALL' },
     }),
   };
+  jest
+    .mocked(resolveReadablePublishedObjectInTransaction)
+    .mockImplementation(() => objects.resolveRuntimeSchema() as never);
   const audit = { append: jest.fn() };
   return {
     tx,

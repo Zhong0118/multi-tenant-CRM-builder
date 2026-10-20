@@ -1,5 +1,9 @@
 import { assertAssignableOwner } from './record-ownership-locks';
-import { isReadable } from '../objects/published-object.service';
+import { lockRuntimeObjectConfiguration } from '../objects/object-configuration-lock';
+import {
+  isReadable,
+  type ResolvedObjectSchema,
+} from '../objects/published-object.service';
 import { resolvePublishedObjectInTransaction } from '../objects/published-object-transaction';
 import type { PoolStage, PoolOrigin, PoolQuality } from './record-ownership';
 import { ApiException } from '../../common/errors/api.exception';
@@ -184,6 +188,9 @@ export interface ImportDuplicateQuery {
 }
 
 export interface RecordsStore {
+  resolveCurrentObject(
+    previous: ResolvedObjectSchema,
+  ): Promise<ResolvedObjectSchema>;
   lockImportMatching(objectId: string): Promise<void>;
   findImportDuplicate(query: ImportDuplicateQuery): Promise<string | null>;
   lockImportBatch(objectId: string, batchId: string): Promise<void>;
@@ -354,12 +361,13 @@ export class PrismaRecordsRepository implements RecordsRepository {
     context: TenantContext,
     work: (session: RecordsTransaction) => Promise<T>,
   ): Promise<T> {
-    return this.runner.withTenant(context, (transaction) =>
-      work({
+    return this.runner.withTenant(context, async (transaction) => {
+      await lockRuntimeObjectConfiguration(transaction, context.tenantId);
+      return work({
         tx: transaction,
         store: new PrismaRecordsStore(transaction, this.audit, context),
-      }),
-    );
+      });
+    });
   }
 }
 
@@ -369,6 +377,19 @@ class PrismaRecordsStore implements RecordsStore {
     private readonly audit: AuditService,
     private readonly context: TenantContext,
   ) {}
+
+  async resolveCurrentObject(
+    previous: ResolvedObjectSchema,
+  ): Promise<ResolvedObjectSchema> {
+    const resolved = await resolvePublishedObjectInTransaction(
+      this.transaction,
+      this.context,
+      previous.schema.object.code,
+    );
+    if (!isReadable(resolved.schema, resolved.access))
+      throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+    return resolved;
+  }
 
   async lockImportMatching(objectId: string): Promise<void> {
     const key = `record-import:${this.context.tenantId}:${objectId}`;

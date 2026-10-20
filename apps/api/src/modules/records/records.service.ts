@@ -181,13 +181,14 @@ export class RecordsService {
       direction: 'asc' | 'desc';
     },
   ): Promise<RecordPageResponse> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
     const page = Math.max(1, Math.trunc(input.page));
     const limit = Math.min(1000, Math.max(1, Math.trunc(input.limit)));
     return this.repository.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
       const ownerMemberId = await resolveListOwner(
         context,
         resolved,
@@ -262,23 +263,25 @@ export class RecordsService {
     objectCode: string,
     input: RecordAggregateInput,
   ): Promise<RecordAggregateResult> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
     if (!Number.isInteger(input.limit) || input.limit < 1 || input.limit > 20) {
       throw invalidAggregate();
     }
-    const valueFieldKey = resolveAggregateValueField(
-      resolved,
-      input.aggregation,
-      input.valueFieldKey,
-    );
-    const groupByField = resolveAggregateGroupField(
-      resolved,
-      input.groupByFieldKey,
-    );
     return this.repository.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
+      const valueFieldKey = resolveAggregateValueField(
+        resolved,
+        input.aggregation,
+        input.valueFieldKey,
+      );
+      const groupByField = resolveAggregateGroupField(
+        resolved,
+        input.groupByFieldKey,
+      );
+
       const ownerMemberId = await resolveListOwner(
         context,
         resolved,
@@ -325,11 +328,12 @@ export class RecordsService {
     },
     meta: RequestMeta,
   ): Promise<RecordExportFile> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
     return this.repository.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
       const ownerMemberId = await resolveListOwner(
         context,
         resolved,
@@ -434,12 +438,13 @@ export class RecordsService {
     },
     meta: RequestMeta,
   ): Promise<RecordResponse> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
-    return this.repository.withTenant(context, async (store) =>
-      projectRecord(
+    return this.repository.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
+      return projectRecord(
         await createRecordCommand({
           store,
           resolved,
@@ -451,8 +456,8 @@ export class RecordsService {
           idGenerator: this.idGenerator,
         }),
         resolved,
-      ),
-    );
+      );
+    });
   }
 
   async importRows(
@@ -483,7 +488,7 @@ export class RecordsService {
     ) {
       throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
     }
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
@@ -528,6 +533,7 @@ export class RecordsService {
     return this.repository.withTenantTransaction(
       context,
       async ({ store, tx }) => {
+        resolved = await store.resolveCurrentObject(resolved);
         const objectId = resolved.schema.object.id;
         // Acquire member locks before import advisory locks and record counters,
         // matching ordinary creates and ownership assignment.
@@ -741,11 +747,12 @@ export class RecordsService {
     objectCode: string,
     recordId: string,
   ): Promise<RecordResponse> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
     return this.repository.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
       const record = await requireVisibleRecord(
         store,
         resolved,
@@ -768,11 +775,12 @@ export class RecordsService {
     },
     meta: RequestMeta,
   ): Promise<RecordResponse> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
     return this.repository.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
       const { record } = await updateRecordCommand({
         store,
         resolved,
@@ -795,7 +803,7 @@ export class RecordsService {
     },
     meta: RequestMeta,
   ): Promise<RecordBatchUpdateResponse> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
@@ -827,6 +835,7 @@ export class RecordsService {
       });
     }
     return this.repository.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
       const items: RecordBatchUpdateResultItem[] = [];
       for (const item of input.items) {
         try {
@@ -870,7 +879,7 @@ export class RecordsService {
     input: { version: number },
     meta: RequestMeta,
   ): Promise<{ accepted: true }> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
@@ -878,6 +887,7 @@ export class RecordsService {
       throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
     }
     return this.repository.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
       const current = await requireVisibleRecord(
         store,
         resolved,
@@ -914,13 +924,14 @@ export class RecordsService {
     recordId: string,
     input: { page: number; limit: number },
   ): Promise<RecordActivityPageResponse> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
     const page = Math.max(1, Math.trunc(input.page));
     const limit = Math.min(100, Math.max(1, Math.trunc(input.limit)));
     return this.repository.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
       await requireVisibleRecord(store, resolved, context, recordId, 'READ');
       const result = await store.listActivities(recordId, { page, limit });
       return {
@@ -943,12 +954,13 @@ export class RecordsService {
     },
     meta: RequestMeta,
   ): Promise<RecordActivityResponse> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
     validateRecordActivityInput(input);
     return this.repository.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
       const { activity } = await createRecordActivityCommand({
         store,
         resolved,

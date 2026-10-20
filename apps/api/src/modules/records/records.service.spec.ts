@@ -238,6 +238,12 @@ class MemoryPublishedRepository implements PublishedObjectRepository {
 }
 
 class MemoryRecordsStore implements RecordsStore {
+  resolveCurrentObject(
+    previous: import('../objects/published-object.service').ResolvedObjectSchema,
+  ) {
+    return Promise.resolve(previous);
+  }
+
   imports = new Map<string, string>();
   async lockImportBatch() {}
   async lockImportMatching() {}
@@ -292,7 +298,9 @@ class MemoryRecordsStore implements RecordsStore {
     return Promise.resolve(this.members.has(memberId));
   }
 
-  lockActiveOwners(): Promise<void> { return Promise.resolve(); }
+  lockActiveOwners(): Promise<void> {
+    return Promise.resolve();
+  }
 
   allocateRecordNo(): Promise<bigint> {
     const allocated = this.nextRecordNo;
@@ -2689,4 +2697,37 @@ describe('RecordsService', () => {
       ]),
     });
   });
+});
+
+describe('aggregate transaction permission refresh', () => {
+  it.each(['quote', 'is_vip'])(
+    'rejects field %s revoked between preflight and actual transaction',
+    async (fieldKey) => {
+      const { service, store } = fixture();
+      jest.spyOn(store, 'resolveCurrentObject').mockImplementation((previous) =>
+        Promise.resolve({
+          ...previous,
+          access: {
+            ...previous.access,
+            fields: { ...previous.access.fields, [fieldKey]: 'HIDDEN' },
+          },
+          visibleSchema: {
+            ...previous.visibleSchema,
+            fields: previous.visibleSchema.fields.filter(
+              (field) => field.fieldKey !== fieldKey,
+            ),
+          },
+        }),
+      );
+      await expect(
+        service.aggregate(employee, 'leads', {
+          aggregation: fieldKey === 'quote' ? 'SUM' : 'COUNT',
+          ...(fieldKey === 'quote'
+            ? { valueFieldKey: fieldKey }
+            : { groupByFieldKey: fieldKey }),
+          limit: 20,
+        }),
+      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    },
+  );
 });

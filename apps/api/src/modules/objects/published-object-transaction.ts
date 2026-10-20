@@ -1,9 +1,11 @@
+import { ApiException } from '../../common/errors/api.exception';
 import type { Prisma } from '@crm/database';
 
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { findPublishedObjectInTransaction } from './published-object.repository';
 import {
   resolvePublishedObjectRecord,
+  isReadable,
   type ResolvedObjectSchema,
 } from './published-object.service';
 
@@ -30,4 +32,44 @@ export async function resolvePublishedObjectInTransaction(
     objectCode,
   );
   return resolvePublishedObjectRecord(record, context.role);
+}
+
+/** Caller holds the shared runtime gate before any actor/record lock. */
+export async function resolveReadableObjectByIdInTransaction(
+  tx: Prisma.TransactionClient,
+  context: TenantContext,
+  objectId: string,
+  write = false,
+): Promise<ResolvedObjectSchema> {
+  const object = await tx.objectDefinition.findFirst({
+    where: { tenantId: context.tenantId, id: objectId, deletedAt: null },
+    select: { code: true },
+  });
+  if (!object) throw new ApiException('OBJECT_NOT_FOUND', 404);
+  const resolved = await resolveReadablePublishedObjectInTransaction(
+    tx,
+    context,
+    object.code,
+  );
+  if (
+    write &&
+    (!resolved.access.canUpdate || resolved.access.updateScope === 'NONE')
+  )
+    throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+  return resolved;
+}
+
+export async function resolveReadablePublishedObjectInTransaction(
+  tx: Prisma.TransactionClient,
+  context: TenantContext,
+  objectCode: string,
+): Promise<ResolvedObjectSchema> {
+  const resolved = await resolvePublishedObjectInTransaction(
+    tx,
+    context,
+    objectCode,
+  );
+  if (!isReadable(resolved.schema, resolved.access))
+    throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+  return resolved;
 }
