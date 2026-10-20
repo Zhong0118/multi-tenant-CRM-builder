@@ -153,6 +153,25 @@ class PrismaObjectsStore implements ObjectsStore {
     });
     if (!object) return null;
 
+    const activeSchema = object.activePublication
+      ? (object.activePublication
+          .configuration as unknown as PublishedObjectSchema)
+      : null;
+    const publishedTypes = new Map(
+      (activeSchema?.fields ?? []).map((field) => [field.id, field.type]),
+    );
+    if (
+      activeSchema &&
+      object.fields.some((field) => !publishedTypes.has(field.id))
+    ) {
+      for (const publication of await this.listPublications(objectId)) {
+        for (const field of publication.configuration.fields) {
+          if (!publishedTypes.has(field.id))
+            publishedTypes.set(field.id, field.type);
+        }
+      }
+    }
+
     const activeRecordCount = await this.countActiveRecords(objectId);
     const settings = jsonObject(object.settings);
     const view = object.views[0];
@@ -194,6 +213,7 @@ class PrismaObjectsStore implements ObjectsStore {
         sortOrder: field.sortOrder,
         isSystem: field.isSystem,
         status: field.status,
+        publishedType: publishedTypes.get(field.id) ?? null,
         updatedAt: field.updatedAt.toISOString(),
       })),
       defaultView: view
@@ -221,10 +241,7 @@ class PrismaObjectsStore implements ObjectsStore {
             ),
           }
         : null,
-      activeSchema: object.activePublication
-        ? (object.activePublication
-            .configuration as unknown as PublishedObjectSchema)
-        : null,
+      activeSchema,
       activeRecordCount,
     };
   }

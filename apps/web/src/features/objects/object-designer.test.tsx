@@ -144,9 +144,83 @@ function renderDesigner(initialDraft: ObjectDraft, api: ObjectApi) {
 }
 
 describe("ObjectDesigner configuration ledger", () => {
+  it("confirms field retirement and restoration as draft changes without publishing", async () => {
+    const initial = draft();
+    const retired = draft({
+      object: { ...initial.object, version: 5, hasUnpublishedChanges: true },
+      fields: initial.fields.map((item) =>
+        item.id === "field-rating" ? { ...item, status: "INACTIVE" } : item,
+      ),
+    });
+    const api = objectApi({
+      updateField: vi
+        .fn()
+        .mockResolvedValueOnce(retired)
+        .mockResolvedValueOnce(initial),
+    });
+    renderDesigner(initial, api);
+    fireEvent.click(screen.getByRole("button", { name: "停用字段 最终评级" }));
+    expect(api.updateField).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toHaveTextContent("历史数据保留");
+    fireEvent.click(screen.getByRole("button", { name: "确认停用" }));
+    await waitFor(() =>
+      expect(api.updateField).toHaveBeenCalledWith(
+        "northwind",
+        "object-1",
+        "field-rating",
+        { expectedVersion: 4, status: "INACTIVE" },
+      ),
+    );
+    expect(
+      await screen.findByText("字段已停用并保存到草稿，发布后生效"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "恢复字段 最终评级" }));
+    fireEvent.click(screen.getByRole("button", { name: "确认恢复" }));
+    await waitFor(() =>
+      expect(api.updateField).toHaveBeenLastCalledWith(
+        "northwind",
+        "object-1",
+        "field-rating",
+        { expectedVersion: 5, status: "ACTIVE" },
+      ),
+    );
+    expect(api.publish).not.toHaveBeenCalled();
+  });
+
+  it("explains why the record title cannot be retired", () => {
+    renderDesigner(draft(), objectApi());
+    fireEvent.click(screen.getByRole("button", { name: "停用字段 客户名称" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "请先在基本设置中更换记录名称字段",
+    );
+    expect(screen.getByRole("button", { name: "确认停用" })).toBeDisabled();
+  });
+
+  it("keeps the field active and reports a version conflict when retirement fails", async () => {
+    const api = objectApi({
+      updateField: vi
+        .fn()
+        .mockRejectedValue({
+          code: "CONFIG_VERSION_CONFLICT",
+          message: "配置已更新，请重新载入",
+          status: 409,
+          requestId: "status-conflict",
+        }),
+    });
+    renderDesigner(draft(), api);
+    fireEvent.click(screen.getByRole("button", { name: "停用字段 最终评级" }));
+    fireEvent.click(screen.getByRole("button", { name: "确认停用" }));
+    await waitFor(() =>
+      expect(screen.getByRole("dialog")).toHaveTextContent("配置已更新"),
+    );
+    expect(
+      screen.getByRole("button", { name: "停用字段 最终评级" }),
+    ).toBeInTheDocument();
+  });
+
   it("identifies the editing section, draft and employee live version with a mobile return path", () => {
     renderDesigner(draft(), objectApi());
-    expect(screen.getByText("正在编辑：字段")).toBeInTheDocument();
+    expect(screen.getByText("正在编辑：字段与表单")).toBeInTheDocument();
     expect(screen.getByText("草稿修订 4")).toBeInTheDocument();
     expect(screen.getByText("员工使用已发布版本 v3")).toBeInTheDocument();
     expect(
@@ -157,7 +231,7 @@ describe("ObjectDesigner configuration ledger", () => {
     ).toBeInTheDocument();
     for (const [section, save] of [
       ["基本设置", "保存基本设置"],
-      ["列表视图", "保存列表视图"],
+      ["列表展示与搜索", "保存列表设置"],
       ["员工权限", "保存员工权限"],
     ]) {
       fireEvent.click(screen.getByRole("button", { name: section }));
@@ -254,11 +328,11 @@ describe("ObjectDesigner configuration ledger", () => {
     const api = objectApi();
     renderDesigner(draft(), api);
 
-    fireEvent.click(screen.getByRole("button", { name: "列表视图" }));
+    fireEvent.click(screen.getByRole("button", { name: "列表展示与搜索" }));
     fireEvent.change(screen.getByLabelText("视图名称"), {
       target: { value: "客户总览" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "保存列表视图" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存列表设置" }));
 
     await waitFor(() =>
       expect(api.updateDefaultView).toHaveBeenCalledWith(
@@ -273,7 +347,7 @@ describe("ObjectDesigner configuration ledger", () => {
         },
       ),
     );
-    expect(await screen.findByText("列表视图已保存")).toBeInTheDocument();
+    expect(await screen.findByText("列表设置已保存")).toBeInTheDocument();
   });
 
   it("widens the read scope when employee reading is granted", async () => {
@@ -325,11 +399,11 @@ describe("ObjectDesigner configuration ledger", () => {
       api,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "列表视图" }));
+    fireEvent.click(screen.getByRole("button", { name: "列表展示与搜索" }));
     fireEvent.click(
       screen.getByRole("checkbox", { name: "将联系电话纳入关键词搜索" }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "保存列表视图" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存列表设置" }));
 
     await waitFor(() =>
       expect(api.updateDefaultView).toHaveBeenCalledWith(
@@ -371,7 +445,7 @@ describe("ObjectDesigner configuration ledger", () => {
       api,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "列表视图" }));
+    fireEvent.click(screen.getByRole("button", { name: "列表展示与搜索" }));
 
     const keys = [...document.querySelectorAll('input[type="checkbox"]')]
       .slice(0, 2)

@@ -18,7 +18,7 @@ export interface ObjectDraftFieldResponse {
   isSystem: boolean;
   status: 'ACTIVE' | 'INACTIVE';
   /**
-   * The type this field carries in the live publication, or null when it has
+   * The type this field carries in publication history, or null when it has
    * never been published. A published type can no longer change, so the
    * designer reads the lock from here instead of guessing.
    */
@@ -133,7 +133,8 @@ export function toObjectDraftResponse(draft: ObjectDraft): ObjectDraftResponse {
         sortOrder: field.sortOrder,
         isSystem: field.isSystem,
         status: field.status,
-        publishedType: publishedTypes.get(field.fieldKey) ?? null,
+        publishedType:
+          field.publishedType ?? publishedTypes.get(field.fieldKey) ?? null,
         employeeAccess: fieldAccess[field.fieldKey] ?? 'EDIT',
       })),
     defaultView: draft.defaultView

@@ -30,6 +30,65 @@ function repository(transaction: object) {
 }
 
 describe('PrismaObjectsRepository target lookup', () => {
+  it('keeps the published type lock for a retired field using publication history', async () => {
+    const updatedAt = new Date('2026-10-20T00:00:00Z');
+    const historicalField = { id: 'old-field', fieldKey: 'note', type: 'TEXT' };
+    const historyQuery = jest.fn().mockResolvedValue([
+      {
+        configuration: { fields: [historicalField] },
+        publishedAt: updatedAt,
+        publicationNo: 1,
+        changeSummary: [],
+      },
+    ]);
+    const store = repository({
+      objectDefinition: {
+        findFirst: () =>
+          Promise.resolve({
+            id: 'object-1',
+            settings: {},
+            views: [],
+            permissions: [],
+            fieldPermissions: [],
+            updatedAt,
+            fields: [
+              {
+                ...historicalField,
+                status: 'INACTIVE',
+                updatedAt,
+                config: {},
+                validation: {},
+                defaultValue: null,
+              },
+              {
+                id: 'new-field',
+                fieldKey: 'new',
+                type: 'NUMBER',
+                status: 'ACTIVE',
+                updatedAt,
+                config: {},
+                validation: {},
+                defaultValue: null,
+              },
+            ],
+            activePublication: { configuration: { fields: [] } },
+          }),
+      },
+      record: { count: () => Promise.resolve(4) },
+      objectPublication: { findMany: historyQuery },
+    });
+    const result = await store.withTenant(admin, (objects) =>
+      objects.findObject('object-1'),
+    );
+    expect(result!.fields[0]).toMatchObject({ publishedType: 'TEXT' });
+    expect(result!.fields[1]).toMatchObject({ publishedType: null });
+    expect(historyQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tenantId: 'tenant-1', objectId: 'object-1' },
+      }),
+    );
+  });
+
   it('resolves target objects by tenant and reads the current active publication', async () => {
     const queries: unknown[] = [];
     const store = repository({

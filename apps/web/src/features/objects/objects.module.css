@@ -305,6 +305,17 @@
   color: var(--ink-secondary);
 }
 
+.fieldStatusSummary {
+  display: grid;
+  gap: 14px;
+  padding-block: 8px;
+  line-height: 1.7;
+}
+
+.fieldStatusSummary p {
+  margin: 0;
+}
+
 .ledgerRowDragging :global(.ant-table-cell) {
   background: var(--color-primary-soft) !important;
   box-shadow: 0 8px 22px rgb(23 35 45 / 12%);

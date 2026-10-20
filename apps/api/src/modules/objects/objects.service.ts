@@ -355,19 +355,31 @@ export class ObjectsService {
           (candidate) => candidate.id === fieldId,
         );
         if (!field) throw new ApiException('FIELD_UNKNOWN', 404);
+        if (input.status === 'INACTIVE') {
+          if (field.fieldKey === draft.object.titleFieldKey) {
+            throw validationError(
+              'status',
+              '请先在基本设置中更换记录名称字段，再停用此字段。',
+            );
+          }
+          if (field.isSystem) {
+            throw validationError('status', '系统字段不能停用。');
+          }
+        }
         const publishedField = draft.activeSchema?.fields.find(
           (candidate) => candidate.fieldKey === field.fieldKey,
         );
+        const publishedType = field.publishedType ?? publishedField?.type;
         if (
           input.type !== undefined &&
-          publishedField &&
-          input.type !== field.type
+          publishedType &&
+          input.type !== publishedType
         ) {
           throw validationError('type', '字段发布后不能修改类型。');
         }
         if (input.fieldKey !== undefined) {
           const fieldKey = normalizeFieldKey(input.fieldKey);
-          if (publishedField && fieldKey !== field.fieldKey) {
+          if (publishedType && fieldKey !== field.fieldKey) {
             throw validationError('fieldKey', '字段发布后不能修改字段键。');
           }
           if (
@@ -381,6 +393,18 @@ export class ObjectsService {
           field.fieldKey = fieldKey;
         }
         assignFieldMutation(field, input);
+        if (input.status === 'INACTIVE' && draft.defaultView) {
+          draft.defaultView.columnFieldKeys =
+            draft.defaultView.columnFieldKeys.filter(
+              (key) => key !== field.fieldKey,
+            );
+          if (draft.defaultView.searchFieldKeys !== undefined) {
+            draft.defaultView.searchFieldKeys =
+              draft.defaultView.searchFieldKeys.filter(
+                (key) => key !== field.fieldKey,
+              );
+          }
+        }
       },
     );
   }

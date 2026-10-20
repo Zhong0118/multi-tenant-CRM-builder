@@ -61,8 +61,8 @@ type Section =
 
 const SECTIONS: Array<{ key: Section; label: string }> = [
   { key: "basics", label: "基本设置" },
-  { key: "fields", label: "字段" },
-  { key: "view", label: "列表视图" },
+  { key: "fields", label: "字段与表单" },
+  { key: "view", label: "列表展示与搜索" },
   { key: "permissions", label: "员工权限" },
   { key: "workflow", label: "流程" },
   { key: "publications", label: "发布记录" },
@@ -94,6 +94,9 @@ export function ObjectDesigner({
   const [editingField, setEditingField] =
     useState<ConfigurableFieldView | null>(null);
   const [fieldCreatorOpen, setFieldCreatorOpen] = useState(false);
+  const [statusField, setStatusField] = useState<ConfigurableFieldView | null>(
+    null,
+  );
   const [analysis, setAnalysis] = useState<PublicationAnalysis>();
   const [panelOpen, setPanelOpen] = useState(false);
   const [error, setError] = useState<string>();
@@ -104,6 +107,14 @@ export function ObjectDesigner({
   const objectId = draft.object.id;
   const archived = draft.object.status === "ARCHIVED";
   const configurableDraft = draft as unknown as ConfigurableObjectView;
+  const statusBlockReason =
+    statusField?.status === "ACTIVE"
+      ? statusField.fieldKey === draft.object.titleFieldKey
+        ? "请先在基本设置中更换记录名称字段，再停用此字段"
+        : statusField.isSystem
+          ? "系统字段不能停用"
+          : undefined
+      : undefined;
 
   function accept(next: ObjectDraft, saved?: string) {
     setDraft(next);
@@ -232,6 +243,23 @@ export function ObjectDesigner({
     onError: reject,
   });
 
+  const changeFieldStatus = useMutation({
+    mutationFn: (field: ConfigurableFieldView) =>
+      api.updateField(tenantCode, objectId, field.id, {
+        expectedVersion: draft.object.version,
+        status: field.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
+      }),
+    onSuccess: (next, field) => {
+      accept(
+        next,
+        `字段已${field.status === "ACTIVE" ? "停用" : "恢复"}并保存到草稿，发布后生效`,
+      );
+      setStatusField(null);
+      setAnalysis(undefined);
+    },
+    onError: reject,
+  });
+
   const saveBasics = useMutation({
     mutationFn: (input: {
       name: string;
@@ -259,7 +287,7 @@ export function ObjectDesigner({
         expectedVersion: draft.object.version,
         ...input,
       }),
-    onSuccess: (next) => accept(next, "列表视图已保存"),
+    onSuccess: (next) => accept(next, "列表设置已保存"),
     onError: reject,
   });
 
@@ -484,9 +512,9 @@ export function ObjectDesigner({
             <section>
               <div className={styles.sectionHeading}>
                 <div>
-                  <h2>字段 {draft.fields.length}</h2>
+                  <h2>字段与表单 · {draft.fields.length} 个字段</h2>
                   <Typography.Text type="secondary">
-                    字段决定这张业务表收集哪些信息；点击配置可继续设置校验、选项和员工权限。
+                    定义收集哪些信息，以及新建、编辑表单的排列顺序。字段配置可设置类型、必填、选项和员工访问权限；表格展示哪些列请到“列表展示与搜索”设置。
                   </Typography.Text>
                 </div>
                 <Button
@@ -503,6 +531,14 @@ export function ObjectDesigner({
                 reordering={reorder.isPending}
                 onSelect={setEditingField}
                 onReorder={(fieldIds) => reorder.mutate(fieldIds)}
+                onToggleStatus={
+                  archived
+                    ? undefined
+                    : (field) => {
+                        setError(undefined);
+                        setStatusField(field);
+                      }
+                }
               />
             </section>
           ) : null}
@@ -564,6 +600,50 @@ export function ObjectDesigner({
           onRoleChange={setPreviewRole}
         />
       </Drawer>
+
+      <Modal
+        title={`${statusField?.status === "ACTIVE" ? "停用" : "恢复"}字段「${statusField?.label ?? ""}」`}
+        open={statusField !== null}
+        okText={statusField?.status === "ACTIVE" ? "确认停用" : "确认恢复"}
+        cancelText="取消"
+        confirmLoading={changeFieldStatus.isPending}
+        okButtonProps={{
+          disabled: !!statusBlockReason || archived || conflicted,
+          danger: statusField?.status === "ACTIVE" && !statusBlockReason,
+        }}
+        cancelButtonProps={{ disabled: changeFieldStatus.isPending }}
+        closable={!changeFieldStatus.isPending}
+        mask={{ closable: !changeFieldStatus.isPending }}
+        keyboard={!changeFieldStatus.isPending}
+        onCancel={() => setStatusField(null)}
+        onOk={() => {
+          if (statusField && !statusBlockReason && !archived && !conflicted)
+            changeFieldStatus.mutate(statusField);
+        }}
+      >
+        <div className={styles.fieldStatusSummary}>
+          {statusBlockReason ? (
+            <Alert type="warning" showIcon title={statusBlockReason} />
+          ) : null}
+          <p>
+            {statusField?.status === "ACTIVE"
+              ? "发布后，管理员和员工的表单、详情及列表不再使用此字段。历史数据保留，不会删除。"
+              : "发布后，字段重新用于表单和详情，原有历史数据和员工权限保留。"}
+          </p>
+          <p>
+            {statusField?.status === "ACTIVE"
+              ? "默认列表列和关键词搜索会同步移除此字段。若流程仍引用它，发布检查会提示需要修改的配置。"
+              : "如需在列表展示或用于关键词搜索，请到“列表展示与搜索”重新勾选。"}
+          </p>
+          <Alert
+            type="info"
+            showIcon
+            title="先保存到草稿，发布后才生效"
+            description="字段停用对所有角色生效；只限制员工查看时，请使用员工访问权限。"
+          />
+          {error ? <Alert type="error" showIcon title={error} /> : null}
+        </div>
+      </Modal>
 
       <FieldEditorDrawer
         field={editingField}
@@ -906,9 +986,9 @@ function DefaultViewSection({
     <section className={styles.panel}>
       <div className={styles.sectionHeading}>
         <div>
-          <h2>默认列表视图</h2>
+          <h2>列表展示与搜索</h2>
           <Typography.Text type="secondary">
-            决定员工打开这张业务表时先看到哪些列、关键词搜索哪些字段，以及记录的默认顺序。
+            设置管理员和员工打开表格时默认展示的列、从左到右的顺序、搜索范围及记录排序。取消展示不会限制详情或表单访问；员工不可见的字段始终不会显示。个人列设置可覆盖默认展示。
           </Typography.Text>
         </div>
       </div>
@@ -920,7 +1000,7 @@ function DefaultViewSection({
             onChange={(event) => setName(event.target.value)}
           />
         </Form.Item>
-        <Form.Item label="显示列及顺序">
+        <Form.Item label="默认在列表展示的列与顺序">
           <div className={styles.columnChooser}>
             {orderedFields.map((field) => {
               const selectedIndex = columnFieldKeys.indexOf(field.fieldKey);
@@ -1052,7 +1132,7 @@ function DefaultViewSection({
             })
           }
         >
-          保存列表视图
+          保存列表设置
         </Button>
         <Typography.Text type="secondary">
           仅保存本节到对象草稿；发布后员工端生效。

@@ -280,7 +280,7 @@ function FieldEditor({
           <DrawerSectionHeading
             number="04"
             title="员工访问"
-            description="平台管理员和公司管理员始终可见；这里控制普通员工。"
+            description="控制普通员工能否读取或修改此字段，不影响管理员；列表列设置不能绕过此权限。停用字段则对所有角色生效。"
           />
           <Form.Item
             label="员工访问级别"
