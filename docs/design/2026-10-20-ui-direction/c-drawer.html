@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>客户详情 · C</title>
+<meta name="viewport" content="width=1440">
+<link rel="stylesheet" href="c.css">
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="team"><span class="tile">星</span><div><b>星云科技</b><span>nebula-demo</span></div><svg class="ic mute push" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="m7 15l5 5l5-5M7 9l5-5l5 5"/></svg></div>
+    <nav>
+      
+      <div class="grp">工作</div>
+      <a class="item"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></g></svg><span>管理工作台</span></a><a class="item"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M8 2v3m8-3v3"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 15l2 2l4-4"/></g></svg><span>跟进待办</span><em>3</em></a><a class="item"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594zM20 2v4m2-2h-4"/><circle cx="4" cy="20" r="2"/></g></svg><span>AI 助手</span></a>
+      <div class="grp">业务数据</div>
+      <a class="item"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></g></svg><span>销售线索</span></a><a class="item on"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M10 12h4m-4-4h4m0 13v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></g></svg><span>客户</span></a><a class="item"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="m11 17l2 2a1 1 0 1 0 3-3"/><path d="m14 14l2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4"/><path d="m21 3l1 11h-2M3 3L2 14l6.5 6.5a1 1 0 1 0 3-3M3 4h8"/></g></svg><span>跟单商机</span></a><a class="item"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2zM7 11h10M7 15h6M7 7h8"/></svg><span>跟进活动</span></a><a class="item"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10 9H8m8 4H8m8 4H8"/></g></svg><span>合同</span></a><a class="item"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M12 17V7m4 1h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8"/><path d="M4 3a1 1 0 0 1 1-1a1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1a1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2a1 1 0 0 1-1-1z"/></g></svg><span>回款</span></a>
+      <div class="grp">管理</div>
+      <a class="item"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M16 3.128a4 4 0 0 1 0 7.744M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></g></svg><span>成员管理</span></a><a class="item"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2m4 7h4m-4 5h4m-8-5h.01M8 16h.01"/></g></svg><span>公司审计</span></a><a class="item"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0a2.34 2.34 0 0 0 3.319 1.915a2.34 2.34 0 0 1 2.33 4.033a2.34 2.34 0 0 0 0 3.831a2.34 2.34 0 0 1-2.33 4.033a2.34 2.34 0 0 0-3.319 1.915a2.34 2.34 0 0 1-4.659 0a2.34 2.34 0 0 0-3.32-1.915a2.34 2.34 0 0 1-2.33-4.033a2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></g></svg><span>设置</span></a>
+    </nav>
+    <div class="me"><span class="av" style="--s:32px">静</span><div><b>陈静</b><span>公司管理员</span></div><svg class="ic mute push" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="m7 15l5 5l5-5M7 9l5-5l5 5"/></svg></div>
+  </aside><div class="inset"><header class="top"><a class="ib"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></g></svg></a><i class="vsep"></i><span class="crumb">业务数据<svg class="ic " width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="m9 18l6-6l-6-6"/></svg> <b>客户</b></span></header>
+    <div class="content">
+      <div class="title"><h1>客户</h1>
+        <div class="sp"><a class="btn"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11"/></g></svg>公共池<span class="count">3</span></a><a class="btn primary"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M5 12h14m-7-7v14"/></svg>新建客户</a></div>
+      </div>
+      <div class="tools">
+        <div class="find"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><path d="m21 21l-4.34-4.34"/><circle cx="11" cy="11" r="8"/></g></svg><span>搜索客户名称、电话、行业…</span></div>
+        <a class="facet"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><circle cx="12" cy="12" r="10"/><path d="M8 12h8m-4-4v8"/></g></svg>负责人</a>
+        <a class="facet"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><circle cx="12" cy="12" r="10"/><path d="M8 12h8m-4-4v8"/></g></svg>客户等级</a>
+        <a class="facet"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><circle cx="12" cy="12" r="10"/><path d="M8 12h8m-4-4v8"/></g></svg>所属行业</a>
+        <a class="facet"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><circle cx="12" cy="12" r="10"/><path d="M8 12h8m-4-4v8"/></g></svg>归属状态</a>
+        <div class="sp"><a class="btn"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M10 5H3m9 14H3M14 3v4m2 10v4m5-9h-9m9 7h-5m5-14h-7m-6 5v4m0-2H3"/></svg>视图</a><a class="btn icon"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></g></svg></a></div>
+      </div>
+      <div class="frame">
+        <table>
+          <thead><tr>
+            <th class="ck"><i class="box"></i></th>
+            <th>编号</th><th><span class="sortable">客户名称<svg class="ic " width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="m7 15l5 5l5-5M7 9l5-5l5 5"/></svg></span></th><th>联系电话</th><th><span class="sortable">客户等级<svg class="ic " width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="m7 15l5 5l5-5M7 9l5-5l5 5"/></svg></span></th><th>所属行业</th><th>负责人</th><th><span class="sortable">最近更新<svg class="ic " width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="m7 15l5 5l5-5M7 9l5-5l5 5"/></svg></span></th><th></th>
+          </tr></thead>
+          <tbody>
+      <tr>
+        <td class="ck"><i class="box"></i></td>
+        <td class="mut">1</td>
+        <td><b>澜庭智能科技（杭州）</b></td>
+        <td class="num">138 1742 0396</td>
+        <td><span class="stat"><svg class="gdot" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="currentColor"/></svg>A 级</span></td>
+        <td><span class="badge">企业服务</span></td>
+        <td><span class="who"><span class="av" style="--s:24px">晨</span>赵晨</span></td>
+        <td class="mut">今天 10:20</td>
+        <td class="end"><svg class="ic mute" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></g></svg></td>
+      </tr>
+      <tr>
+        <td class="ck"><i class="box"></i></td>
+        <td class="mut">13</td>
+        <td><b>鹿鸣生物科技</b></td>
+        <td class="num">150 9185 3402</td>
+        <td><span class="stat"><svg class="gdot" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>C 级</span></td>
+        <td><span class="badge">医疗健康</span></td>
+        <td><span class="who"><span class="av" style="--s:24px">悦</span>孙悦</span></td>
+        <td class="mut">今天 09:05</td>
+        <td class="end"><svg class="ic mute" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></g></svg></td>
+      </tr>
+      <tr>
+        <td class="ck"><i class="box"></i></td>
+        <td class="mut">2</td>
+        <td><b>江南纸业集团</b></td>
+        <td class="num">139 2210 4417</td>
+        <td><span class="stat"><svg class="gdot" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 3.5a4.5 4.5 0 0 1 0 9z" fill="currentColor"/></svg>B 级</span></td>
+        <td><span class="badge">制造业</span></td>
+        <td><span class="who"><span class="av" style="--s:24px">悦</span>孙悦</span></td>
+        <td class="mut">昨天 16:12</td>
+        <td class="end"><svg class="ic mute" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></g></svg></td>
+      </tr>
+      <tr>
+        <td class="ck"><i class="box"></i></td>
+        <td class="mut">7</td>
+        <td><b>北辰物流</b></td>
+        <td class="num">177 3419 5582</td>
+        <td><span class="stat"><svg class="gdot" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 3.5a4.5 4.5 0 0 1 0 9z" fill="currentColor"/></svg>B 级</span></td>
+        <td><span class="badge">物流</span></td>
+        <td><span class="who"><span class="av" style="--s:24px">岚</span>周岚</span></td>
+        <td class="mut">10月19日</td>
+        <td class="end"><svg class="ic mute" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></g></svg></td>
+      </tr>
+      <tr>
+        <td class="ck"><i class="box"></i></td>
+        <td class="mut">11</td>
+        <td><b>衡远能源设备</b></td>
+        <td class="num">182 7716 0035</td>
+        <td><span class="stat"><svg class="gdot" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>C 级</span></td>
+        <td><span class="badge">制造业</span></td>
+        <td><span class="who"><span class="av" style="--s:24px">宁</span>王宁</span></td>
+        <td class="mut">10月19日</td>
+        <td class="end"><svg class="ic mute" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></g></svg></td>
+      </tr>
+      <tr>
+        <td class="ck"><i class="box"></i></td>
+        <td class="mut">3</td>
+        <td><b>启明教育科技</b></td>
+        <td class="num">137 5538 9026</td>
+        <td><span class="stat"><svg class="gdot" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="currentColor"/></svg>A 级</span></td>
+        <td><span class="badge">教育</span></td>
+        <td><span class="who"><span class="av" style="--s:24px">宇</span>钱宇</span></td>
+        <td class="mut">10月18日</td>
+        <td class="end"><svg class="ic mute" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></g></svg></td>
+      </tr>
+      <tr>
+        <td class="ck"><i class="box"></i></td>
+        <td class="mut">4</td>
+        <td><b>海岸线跨境电商</b></td>
+        <td class="num">186 0071 3358</td>
+        <td><span class="stat"><svg class="gdot" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="currentColor"/></svg>A 级</span></td>
+        <td><span class="badge">零售</span></td>
+        <td><span class="who"><span class="av" style="--s:24px">凯</span>郑凯</span></td>
+        <td class="mut">10月17日</td>
+        <td class="end"><svg class="ic mute" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></g></svg></td>
+      </tr>
+      <tr>
+        <td class="ck"><i class="box"></i></td>
+        <td class="mut">8</td>
+        <td><b>拾光家居</b></td>
+        <td class="num">188 1063 7794</td>
+        <td><span class="stat"><svg class="gdot" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 3.5a4.5 4.5 0 0 1 0 9z" fill="currentColor"/></svg>B 级</span></td>
+        <td><span class="badge">零售</span></td>
+        <td><span class="who"><span class="av" style="--s:24px">昂</span>李昂</span></td>
+        <td class="mut">10月16日</td>
+        <td class="end"><svg class="ic mute" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></g></svg></td>
+      </tr>
+      <tr>
+        <td class="ck"><i class="box"></i></td>
+        <td class="mut">5</td>
+        <td><b>远山医疗器械</b></td>
+        <td class="num">135 8820 6149</td>
+        <td><span class="stat"><svg class="gdot" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="currentColor"/></svg>A 级</span></td>
+        <td><span class="badge">医疗健康</span></td>
+        <td><span class="who"><span class="av" style="--s:24px">宇</span>钱宇</span></td>
+        <td class="mut">10月15日</td>
+        <td class="end"><svg class="ic mute" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></g></svg></td>
+      </tr>
+      <tr>
+        <td class="ck"><i class="box"></i></td>
+        <td class="mut">12</td>
+        <td><b>听潮餐饮管理</b></td>
+        <td class="num">133 6240 8873</td>
+        <td><span class="stat"><svg class="gdot" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 3.5a4.5 4.5 0 0 1 0 9z" fill="currentColor"/></svg>B 级</span></td>
+        <td><span class="badge">餐饮</span></td>
+        <td><span class="who"><span class="av" style="--s:24px">岚</span>周岚</span></td>
+        <td class="mut">10月14日</td>
+        <td class="end"><svg class="ic mute" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></g></svg></td>
+      </tr></tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <span class="mut">已选择 0 / 16 行</span>
+        <div class="sp"><span>每页行数</span><a class="btn sm">10<svg class="ic " width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="m6 9l6 6l6-6"/></svg></a><span class="pageof">第 1 / 2 页</span>
+          <a class="btn icon sm off"><svg class="ic flip" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="m9 18l6-6l-6-6"/></svg></a><a class="btn icon sm"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="m9 18l6-6l-6-6"/></svg></a></div>
+      </div>
+    </div></div>
+  <div class="scrim"></div>
+  <aside class="sheet">
+    <a class="x"><svg class="ic " width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M18 6L6 18M6 6l12 12"/></svg></a>
+    <header>
+      <h2>澜庭智能科技（杭州）</h2>
+      <p>客户 · #1 · 更新于 今天 10:20</p>
+    </header>
+    <div class="tabsx"><a class="on">详情</a><a>跟进<span>2</span></a><a>活动</a><a>关联<span>1</span></a></div>
+    <div class="sbody">
+      <dl class="grid2">
+        <div><dt>联系电话</dt><dd class="num">138 1742 0396</dd></div>
+        <div><dt>客户等级</dt><dd><span class="stat"><svg class="gdot" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="currentColor"/></svg>A 级</span></dd></div>
+        <div><dt>所属行业</dt><dd><span class="badge">企业服务</span></dd></div>
+        <div><dt>负责人</dt><dd><span class="who"><span class="av" style="--s:22px">晨</span>赵晨</span></dd></div>
+        <div class="wide"><dt>客户备注</dt><dd class="body">对接人周明远，年度续约预算约 40 万，10 月底前需要看到报价方案。</dd></div>
+      </dl>
+      <div class="sech"><h3>下一步跟进</h3><span>2 项 · 1 项已逾期</span></div>
+      <ul class="fucard">
+      <li>
+        <button class="check" aria-label="完成"></button>
+        <div><b>确认报价单并约下次拜访</b><span>赵晨 · 10月18日 16:00</span></div>
+        <span class="badge bad">已逾期</span>
+      </li>
+      <li>
+        <button class="check" aria-label="完成"></button>
+        <div><b>发送续约方案</b><span>赵晨 · 明天 10:00</span></div>
+        <span class="badge ">明天</span>
+      </li></ul>
+      <div class="sech"><h3>最近活动</h3><span>共 3 条</span></div>
+      <ul class="recent"><li><span><b>赵晨</b> 追加了活动「电话沟通：确认预算范围」</span><time>今天 10:20</time></li><li><span><b>赵晨</b> 把客户等级由 B 级改为 A 级</span><time>昨天 16:12</time></li><li><span><b>陈静</b> 创建了这条记录</span><time>10月9日</time></li></ul>
+    </div>
+    <footer><a class="btn danger"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M10 11v6m4-6v6m5-11v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>删除</a><a class="btn primary"><svg class="ic " width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497zM15 5l4 4"/></svg>编辑</a></footer>
+  </aside></div>
+</body>
+</html>
