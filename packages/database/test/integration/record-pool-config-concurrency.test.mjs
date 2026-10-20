@@ -227,7 +227,7 @@ test("archiving a source concurrently with confirmation does not use stale publi
 });
 
 for (const change of ["rules", "source"]) {
-  test(`confirmation committed before ${change} change retains protection and requests review`, async () => {
+  test(`confirmation before ${change} change retains protection and ${change === "rules" ? "requests review" : "preserves review state on stop"}`, async () => {
     const f = await fixture();
     await f.link();
     let ready, release;
@@ -267,7 +267,7 @@ for (const change of ["rules", "source"]) {
     await changing;
     const state = await f.state();
     assert.equal(state.pool_stage, "PROTECTED");
-    assert.equal(state.protection_needs_review, true);
+    assert.equal(state.protection_needs_review, change === "rules");
     assert.equal(state.ownership_expires_at, null);
   });
 }

@@ -307,19 +307,33 @@ test("confirmed protection wins while a concurrent sweep skips the locked target
   assert.equal((await f.state()).owner_member_id, f.member.id);
 });
 
-test("publication replacement invalidates protection and config save never enrolls old records", async () => {
+test("withdrawing a source publication requests review and config save never enrolls old records", async () => {
   const f = await fixture();
   await f.link();
   await f.confirm();
   await f.run(
     (tx) =>
-      tx.$executeRaw`UPDATE object_definitions SET status='ARCHIVED' WHERE id=${f.source.id}::uuid`,
+      tx.$executeRaw`UPDATE object_definitions SET active_publication_id=NULL WHERE id=${f.source.id}::uuid`,
   );
   assert.equal((await f.state()).protection_needs_review, true);
   const legacy = await fixture();
   await legacy.confirm();
   await admin.$executeRaw`UPDATE object_definitions SET pool_protection_rules=pool_protection_rules WHERE id=${legacy.target.id}::uuid`;
   assert.equal((await legacy.state()).pool_stage, "FOLLOWING");
+});
+
+test("pure source stop and restore preserve existing protection and review metadata", async () => {
+  const f = await fixture();
+  await f.link();
+  await f.confirm();
+  const before = await f.state();
+  for (const status of ["ARCHIVED", "ACTIVE"]) {
+    await f.run(
+      (tx) =>
+        tx.$executeRaw`UPDATE object_definitions SET status=${status}::"ObjectStatus" WHERE id=${f.source.id}::uuid`,
+    );
+    assert.deepEqual(await f.state(), before);
+  }
 });
 
 test("target OWN scope, hidden title and member override remain authoritative", async () => {
