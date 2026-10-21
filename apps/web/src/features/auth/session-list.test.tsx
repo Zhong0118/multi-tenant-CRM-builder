@@ -60,10 +60,10 @@ describe("SessionList", () => {
     };
     renderSecurity(api);
 
-    expect(screen.getByRole("tab", { name: /活跃设备/ })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /活跃设备/ })).toBeChecked();
     expect(screen.queryByText("Edge · Windows")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("tab", { name: /登录历史/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /登录历史/ }));
 
     expect(screen.getByText("Edge · Windows")).toBeInTheDocument();
     expect(screen.getByText("已撤销")).toBeInTheDocument();

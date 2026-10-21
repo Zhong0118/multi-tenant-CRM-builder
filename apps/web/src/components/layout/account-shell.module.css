@@ -1,0 +1,97 @@
+.shell {
+  min-height: 100vh;
+  background: var(--bg-page);
+}
+
+.bar {
+  position: sticky;
+  z-index: 5;
+  top: 0;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border-hairline);
+  background: var(--bg-surface);
+}
+
+.brand {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mark {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: var(--radius-control);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 14px;
+}
+
+.nav {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.nav > a {
+  padding: 6px 10px;
+  border-radius: var(--radius-control);
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.nav > a:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.nav > a[aria-current="page"] {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.nav > :global(.ant-btn) {
+  margin-left: 6px;
+}
+
+/* The content sits on a white sheet so its hairline rows read as in the app. */
+.main {
+  width: min(760px, calc(100% - 32px));
+  margin: 32px auto 64px;
+  padding: 24px 28px 32px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-reading);
+  background: var(--bg-surface);
+}
+
+@media (max-width: 640px) {
+  .bar {
+    padding: 0 12px;
+  }
+
+  .brand > span:last-child {
+    display: none;
+  }
+
+  .main {
+    width: 100%;
+    margin: 0;
+    padding: 18px 16px 32px;
+    border: 0;
+    border-radius: 0;
+  }
+}
+
+.main > header {
+  margin-bottom: 24px;
+}

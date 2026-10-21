@@ -1,8 +1,9 @@
-import { Alert, Button } from "antd";
+import { Alert } from "antd";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { LogoutButton } from "@/features/auth/logout-button";
+import { AccountShell } from "@/components/layout/account-shell";
+import { PageHeader } from "@/components/layout/page-header";
 import { isActiveWorkspace } from "@/features/workspaces/workspace-access";
 import { WorkspaceList } from "@/features/workspaces/workspace-list";
 import { createServerApiClient } from "@/lib/api/server-client";
@@ -32,23 +33,12 @@ export default async function WorkspacesPage({
   }
 
   return (
-    <main className={styles.accountPage}>
-      <header className={styles.accountHeader}>
-        <div>
-          <h1>选择工作空间</h1>
-          <p>
-            {user.displayName}
-            ，请选择你已获授权的公司。草稿公司会显示为等待平台启用，这不是权限错误。
-          </p>
-        </div>
-        <div className={styles.accountActions}>
-          <Button>
-            <Link href="/account/security">账号安全</Link>
-          </Button>
-          <LogoutButton />
-        </div>
-      </header>
-      <div className={styles.accountContent}>
+    <AccountShell current="workspaces">
+      <PageHeader
+        title="选择工作空间"
+        description={`${user.displayName}，选择要进入的公司。开通中的公司会显示为等待平台启用。`}
+      />
+      <div>
         {unavailable ? (
           <Alert
             className={styles.notice}
@@ -69,6 +59,6 @@ export default async function WorkspacesPage({
           <WorkspaceList workspaces={workspaces ?? []} />
         )}
       </div>
-    </main>
+    </AccountShell>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowRightOutlined, LockOutlined } from "@ant-design/icons";
-import { Button, Tag, Typography } from "antd";
+import { Typography } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
@@ -40,37 +40,32 @@ export function WorkspaceList({ workspaces, onNavigate }: WorkspaceListProps) {
         return (
           <article
             key={workspace.memberId}
-            className={`${styles.workspaceCard} ${reason ? styles.inactive : ""}`}
+            className={`${styles.workspaceRow} ${reason ? styles.inactive : ""}`}
           >
-            <div className={styles.rail} aria-hidden="true" />
-            <div className={styles.cardHeader}>
-              <div>
-                <Typography.Title level={3}>
-                  {workspace.tenantName}
-                </Typography.Title>
-              </div>
-              <Tag color={reason ? "default" : "cyan"}>
+            <span className={styles.initial} aria-hidden>
+              {workspace.tenantName.slice(0, 1)}
+            </span>
+            <div className={styles.rowText}>
+              <Typography.Title level={3} className={styles.rowTitle}>
+                {workspace.tenantName}
+              </Typography.Title>
+              <span className={styles.rowMeta}>
                 {workspace.role === "TENANT_ADMIN" ? "公司管理员" : "员工"}
-              </Tag>
+                {workspace.lastAccessedAt ? ` · 最近访问 ${formatDate(workspace.lastAccessedAt)}` : ""}
+              </span>
             </div>
-            {workspace.lastAccessedAt ? (
-              <Typography.Paragraph type="secondary">
-                最近访问：{formatDate(workspace.lastAccessedAt)}
-              </Typography.Paragraph>
-            ) : null}
             {reason ? (
-              <div className={styles.reason}>
-                <LockOutlined /> {reason}
-              </div>
+              <span className={styles.reason}>
+                <LockOutlined aria-hidden /> {reason}
+              </span>
             ) : (
-              <Button type="primary">
-                <Link
-                  aria-label={`进入${workspace.tenantName}`}
-                  href={`/workspace/${encodeURIComponent(workspace.tenantCode)}`}
-                >
-                  进入工作区 <ArrowRightOutlined />
-                </Link>
-              </Button>
+              <Link
+                className={styles.enter}
+                aria-label={`进入${workspace.tenantName}`}
+                href={`/workspace/${encodeURIComponent(workspace.tenantCode)}`}
+              >
+                进入 <ArrowRightOutlined aria-hidden />
+              </Link>
             )}
           </article>
         );

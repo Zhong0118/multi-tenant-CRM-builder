@@ -1,20 +1,40 @@
-.detail,
-.invitationCard {
-  position: relative;
-  overflow: hidden;
-  border: 1px solid #d8e0e6;
-  background: #fff;
-  box-shadow: 0 12px 32px rgba(22, 37, 50, 0.05);
-}
 .detail {
-  padding: 30px;
+  position: relative;
 }
 .statusRail,
 .cardRail {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: #0f766e;
+  display: none;
+}
+/* One row per pending invitation, the same grammar as the workspace list. */
+.cardGrid {
+  display: flex !important;
+  flex-direction: column;
+  border-top: 1px solid var(--border-hairline);
+}
+.invitationRow {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--border-hairline);
+}
+.invitationInitial {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: var(--radius-control);
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  font-weight: 600;
+}
+.invitationText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
 }
 .detailHeader,
 .cardMain {
@@ -28,8 +48,10 @@
 }
 .detailHeader h2,
 .cardTitle {
-  margin: 5px 0 0 !important;
-  color: #162532 !important;
+  margin: 0 !important;
+  color: var(--text-primary) !important;
+  font-size: 15px !important;
+  line-height: 22px !important;
 }
 .actionArea {
   margin-top: 24px;
@@ -56,7 +78,11 @@
   gap: 20px;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 18px;
+  margin-bottom: 8px;
+}
+.listHeader h2 {
+  font-size: 15px;
+  font-weight: 600;
 }
 .listHeader h2 {
   color: #162532;
