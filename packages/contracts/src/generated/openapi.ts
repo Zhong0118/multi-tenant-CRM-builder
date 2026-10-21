@@ -1204,6 +1204,38 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/automations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AutomationAdminController_get"];
+    put: operations["AutomationAdminController_save"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/automations/preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AutomationAdminController_preview"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/default-view": {
     parameters: {
       query?: never;
@@ -1492,6 +1524,70 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/automations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AutomationRuntimeController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/automations/{ruleKey}/execute": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AutomationRuntimeController_execute"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/automations/{ruleKey}/preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AutomationRuntimeController_preview"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/automations/history": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AutomationRuntimeController_history"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/ownership": {
     parameters: {
       query?: never;
@@ -1770,6 +1866,92 @@ export interface components {
       /** @example true */
       accepted: boolean;
       user: components["schemas"]["UserResponseDto"];
+    };
+    AutomationConfigurationDto: {
+      objectId: string;
+      publishedRules: components["schemas"]["AutomationRuleDto"][];
+      rules: components["schemas"]["AutomationRuleDto"][];
+      version: number;
+    };
+    AutomationExecutionDto: {
+      actorMemberId: string;
+      executedAt: string;
+      id: string;
+      publicationId: string;
+      ruleKey: string;
+      ruleLabel: string;
+      sourceRecordId: string;
+      targetObjectCode: string;
+      targetRecordId: string;
+      targetRecordNo: string;
+      /** @enum {string} */
+      triggerType: "MANUAL" | "FIELD_CHANGED";
+    };
+    AutomationHistoryDto: {
+      items: components["schemas"]["AutomationExecutionDto"][];
+    };
+    AutomationInputFieldDto: {
+      config: {
+        [key: string]: unknown;
+      };
+      defaultValue: (string | number | boolean | string[]) | null;
+      fieldKey: string;
+      label: string;
+      required: boolean;
+      type: string;
+      validation: {
+        [key: string]: unknown;
+      };
+    };
+    AutomationPreviewDto: {
+      fieldLabels: {
+        [key: string]: string;
+      };
+      ownerMemberId: string;
+      ruleKey: string;
+      sourceRecordId: string;
+      targetObjectCode: string;
+      targetObjectName: string;
+      values: {
+        [key: string]: unknown;
+      };
+    };
+    AutomationRuleDto: {
+      allowedRoles: ("TENANT_ADMIN" | "EMPLOYEE")[];
+      enabled: boolean;
+      key: string;
+      label: string;
+      mappings: {
+        [key: string]:
+          | {
+              fieldKey: string;
+              /** @enum {string} */
+              source: "SOURCE_FIELD";
+            }
+          | {
+              /** @enum {string} */
+              source: "LITERAL";
+              value: (string | number | boolean | string[]) | null;
+            }
+          | {
+              /** @enum {string} */
+              source: "NOW" | "INPUT";
+            };
+      };
+      /** @enum {string} */
+      owner: "ACTOR" | "SOURCE_OWNER";
+      targetObjectCode: string;
+      trigger:
+        | {
+            /** @enum {string} */
+            type: "MANUAL";
+          }
+        | {
+            equals: (string | number | boolean | string[]) | null;
+            fieldKey: string;
+            /** @enum {string} */
+            type: "FIELD_CHANGED";
+          };
     };
     BatchUpdateRecordItemDto: {
       /** Format: uuid */
@@ -2338,6 +2520,13 @@ export interface components {
       /** @enum {string} */
       updateScope: "ALL" | "OWN" | "NONE";
     };
+    ExecuteAutomationDto: {
+      expectedVersion: number;
+      inputs: {
+        [key: string]: (string | number | boolean | string[]) | null;
+      };
+      requestId: string;
+    };
     ExecuteWorkflowTransitionDto: {
       expectedVersion: number;
     };
@@ -2739,7 +2928,7 @@ export interface components {
     ObjectLifecycleBlockerDto: {
       description: string;
       /** @enum {string} */
-      kind: "WORKFLOW" | "POOL_PROTECTION";
+      kind: "WORKFLOW" | "POOL_PROTECTION" | "AUTOMATION";
       objectCode: string;
       objectName: string;
     };
@@ -2928,9 +3117,21 @@ export interface components {
       key: string;
       label: string;
     };
+    PreviewAutomationDto: {
+      inputs: {
+        [key: string]: (string | number | boolean | string[]) | null;
+      };
+    };
     PreviewDashboardDto: {
       expectedVersion: number;
       period: components["schemas"]["DashboardPeriodInputDto"];
+    };
+    PreviewDraftAutomationDto: {
+      inputs: {
+        [key: string]: (string | number | boolean | string[]) | null;
+      };
+      rule: components["schemas"]["AutomationRuleDto"];
+      sourceRecordId: string;
     };
     PublicationAnalysisResponseDto: {
       blocking: components["schemas"]["PublicationIssueResponseDto"][];
@@ -3214,6 +3415,16 @@ export interface components {
       acknowledgeLegacyTimers?: boolean;
       expectedVersion: number;
     };
+    RuntimeAutomationDto: {
+      inputFields: components["schemas"]["AutomationInputFieldDto"][];
+      key: string;
+      label: string;
+      targetObjectCode: string;
+      targetObjectName: string;
+    };
+    RuntimeAutomationsDto: {
+      items: components["schemas"]["RuntimeAutomationDto"][];
+    };
     RuntimeAvailableTransitionDto: {
       /** @description 静态 Effect Summary：该 Transition 将执行的动作类型，按执行顺序；没有 Action 时为空数组。不含字段映射细节。 */
       effects: components["schemas"]["RuntimeTransitionEffectDto"][];
@@ -3283,6 +3494,10 @@ export interface components {
       isTerminal: boolean;
       key: string;
       label: string;
+    };
+    SaveAutomationsDto: {
+      expectedVersion: number;
+      rules: components["schemas"]["AutomationRuleDto"][];
     };
     SaveBusinessTemplateDraftDto: {
       configuration: components["schemas"]["BusinessTemplateConfigurationDto"];
@@ -5825,6 +6040,80 @@ export interface operations {
       };
     };
   };
+  AutomationAdminController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: unknown;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationConfigurationDto"];
+        };
+      };
+    };
+  };
+  AutomationAdminController_save: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: unknown;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SaveAutomationsDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationConfigurationDto"];
+        };
+      };
+    };
+  };
+  AutomationAdminController_preview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: unknown;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PreviewDraftAutomationDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationPreviewDto"];
+        };
+      };
+    };
+  };
   ObjectsController_updateDefaultView: {
     parameters: {
       query?: never;
@@ -6516,6 +6805,108 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  AutomationRuntimeController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+        tenantCode: unknown;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RuntimeAutomationsDto"];
+        };
+      };
+    };
+  };
+  AutomationRuntimeController_execute: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+        ruleKey: string;
+        tenantCode: unknown;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ExecuteAutomationDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationExecutionDto"];
+        };
+      };
+    };
+  };
+  AutomationRuntimeController_preview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+        ruleKey: string;
+        tenantCode: unknown;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PreviewAutomationDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationPreviewDto"];
+        };
+      };
+    };
+  };
+  AutomationRuntimeController_history: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+        tenantCode: unknown;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationHistoryDto"];
+        };
       };
     };
   };

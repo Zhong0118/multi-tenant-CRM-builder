@@ -8,6 +8,7 @@ import type {
   RecordSummary,
   RuntimeObjectSchema,
 } from "@/features/objects/object-types";
+import { relationRequest } from "@/lib/api/relation-request";
 import { toApiError } from "@/lib/api/api-error";
 
 import type { DynamicFieldMember } from "./dynamic-field";
@@ -15,6 +16,7 @@ import { RecordAttachmentsPanel } from "@/features/attachments/record-attachment
 import { RecordRelationsPanel } from "./record-relations-panel";
 import { FollowUpPanel } from "@/features/follow-ups/follow-up-panel";
 import { RecordActivityTimeline } from "./record-activity-timeline";
+import { RecordAutomationPanel } from "@/features/automations/record-automation-panel";
 import { RecordWorkflowPanel } from "./record-workflow-panel";
 import { displayValue } from "./record-list";
 import { displayRecordOwner, formatDateTime } from "./record-display-value";
@@ -83,7 +85,8 @@ export function RecordDetailDrawer({
   // Observe the panels' existing list caches; these observers never request counts.
   const relations = useQuery<unknown[]>({
     queryKey: ["relations", tenantCode, schema.object.code, record.id],
-    queryFn: skipToken,
+    queryFn: () => relationRequest<unknown[]>(`/api/v1/workspaces/${encodeURIComponent(tenantCode)}/objects/${encodeURIComponent(schema.object.code)}/records/${encodeURIComponent(record.id)}/relations`),
+    enabled: false,
   });
   const attachments = useQuery<unknown[]>({
     queryKey: ["attachments", tenantCode, schema.object.code, record.id],
@@ -278,6 +281,13 @@ export function RecordDetailDrawer({
                 .detail(tenantCode, schema.object.code, record.id)
                 .then(onChanged)
             }
+          /> : null}
+
+          {!poolPreview ? <RecordAutomationPanel
+            key={`${record.id}:${schema.object.code}`}
+            tenantCode={tenantCode} objectCode={schema.object.code} recordId={record.id}
+            recordVersion={record.version} members={members}
+            onRecordChanged={() => api.detail(tenantCode, schema.object.code, record.id).then(onChanged)}
           /> : null}
 
           {!poolPreview ? <FollowUpPanel

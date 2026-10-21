@@ -1,0 +1,383 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  color: var(--text-primary);
+  animation: enter 180ms ease-out;
+  min-width: 0;
+}
+.heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+.heading h2,
+.heading h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+.caption {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+  margin: 0;
+}
+.map {
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-surface);
+}
+.mapToolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-default);
+}
+.mapToolbar > :last-child {
+  max-width: 260px;
+}
+.legend {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.mapCanvas {
+  padding: 28px 24px;
+  background-image: radial-gradient(
+    var(--border-default) 0.7px,
+    transparent 0.7px
+  );
+  background-size: 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.mapRow {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) minmax(140px, 1.2fr) minmax(
+      100px,
+      1fr
+    );
+  align-items: center;
+  animation: enter 180ms ease-out;
+}
+.node {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  min-width: 0;
+}
+.node > :first-child {
+  color: var(--color-primary);
+  font-size: 21px;
+}
+.node div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.node span:not(:first-child),
+.node div > span {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.node strong {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  font-weight: 600;
+}
+.edge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-width: 0;
+  padding: 0 10px;
+}
+.edge::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  border-top: 1px solid var(--color-primary);
+}
+.edgeButton {
+  position: relative;
+  z-index: 1;
+  font: inherit;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  padding: 8px 12px;
+  cursor: pointer;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: center;
+  transition:
+    background 160ms,
+    border-color 160ms,
+    transform 160ms;
+}
+.edgeButton small {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.edgeButton strong {
+  color: var(--text-primary);
+  font-weight: 500;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.edgeButton:hover,
+.edgeSelected {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+}
+.edgeButton:active {
+  transform: scale(0.98);
+}
+.edgeButton:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+}
+.edgeArrow {
+  position: absolute;
+  right: -1px;
+  color: var(--color-primary);
+}
+.disabledRow .edge::before {
+  border-top-style: dashed;
+  border-color: var(--text-secondary);
+}
+.disabledRow .edgeArrow {
+  color: var(--text-secondary);
+}
+.map > .caption {
+  padding: 0 16px 14px;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.ruleList {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border-default);
+}
+.ruleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--border-default);
+  animation: enter 180ms ease-out;
+}
+.ruleRow strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+.editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(240px, 1fr);
+  gap: 24px;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+.form :global(.ant-form-item) {
+  margin-bottom: 0;
+}
+.fieldGroup {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.mapping {
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.mappingRow {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.5fr) 20px minmax(100px, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-default);
+}
+.mappingRow:last-child {
+  border-bottom: 0;
+}
+.mappingTarget {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 14px;
+}
+.mappingTarget small {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.mappingControls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.preview {
+  border-radius: 10px;
+  background: var(--bg-page);
+  padding: 20px;
+  align-self: start;
+  position: sticky;
+  top: 12px;
+}
+.preview h3 {
+  font-size: 15px;
+  margin: 0 0 16px;
+}
+.previewValues {
+  display: grid;
+  grid-template-columns: minmax(80px, 1fr) minmax(0, 1.5fr);
+  gap: 12px;
+  font-size: 13px;
+}
+.previewValues dt {
+  color: var(--text-secondary);
+}
+.previewValues dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-default);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.steps strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  padding-top: 16px;
+}
+.history {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.history li {
+  border-top: 1px solid var(--border-default);
+  padding: 12px 0;
+  font-size: 13px;
+}
+.history time {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-top: 6px;
+}
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (max-width: 760px) {
+  .editor {
+    grid-template-columns: 1fr;
+  }
+  .preview {
+    position: static;
+  }
+  .mapCanvas {
+    padding: 20px 14px;
+  }
+  .mapRow {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .edge {
+    min-height: 80px;
+  }
+  .edge::before {
+    inset-inline: auto;
+    height: 100%;
+    top: 0;
+    border-top: 0;
+    border-left: 1px solid var(--color-primary);
+  }
+  .edgeArrow {
+    right: auto;
+    bottom: -1px;
+    transform: rotate(90deg);
+  }
+  .mapToolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .mapToolbar > :last-child {
+    max-width: none;
+  }
+  .fieldGroup {
+    grid-template-columns: 1fr;
+  }
+  .mappingRow {
+    grid-template-columns: minmax(0, 1.5fr) 20px minmax(0, 1fr);
+    padding: 12px;
+    gap: 6px;
+  }
+  .heading {
+    flex-wrap: wrap;
+  }
+  .ruleRow {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .mapRow,
+  .ruleRow {
+    animation: none;
+  }
+  .edgeButton {
+    transition: none;
+  }
+}

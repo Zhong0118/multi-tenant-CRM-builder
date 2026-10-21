@@ -10,12 +10,15 @@ import { requireWorkspace } from "@/lib/auth/require-workspace";
 
 export interface ObjectDesignerPageProps {
   params: Promise<{ tenantCode: string; objectId: string }>;
+  searchParams?: Promise<{section?: string}>;
 }
 
 export default async function ObjectDesignerPage({
   params,
+  searchParams,
 }: ObjectDesignerPageProps) {
   const { tenantCode, objectId } = await params;
+  const section = (await searchParams)?.section;
   const workspace = await requireWorkspace(tenantCode);
   if (workspace.role !== "TENANT_ADMIN") notFound();
 
@@ -40,6 +43,7 @@ export default async function ObjectDesignerPage({
       <ObjectDesigner
         tenantCode={tenantCode}
         initialDraft={result.data as ObjectDraft}
+        initialSection={section === "automations" ? "automations" : undefined}
       />
     </main>
   );

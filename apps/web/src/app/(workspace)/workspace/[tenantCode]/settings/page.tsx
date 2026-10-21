@@ -56,6 +56,11 @@ export default async function WorkspaceSettingsPage({
           </Link>
         </ReadingPanel>
 
+        <DataPanel className={styles.secondarySetting} ariaLabel="业务表关系">
+          <div><h2>业务表关系与自动化</h2><p>查看业务表之间的联系，配置创建记录和字段映射</p></div>
+          <Link href={`/workspace/${tenantCode}/settings/relationships`}>查看关系图</Link>
+        </DataPanel>
+
         <DataPanel className={styles.secondarySetting} ariaLabel="成员与权限">
           <div>
             <h2>成员与权限</h2>

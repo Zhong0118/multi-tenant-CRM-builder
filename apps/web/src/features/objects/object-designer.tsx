@@ -53,12 +53,13 @@ import {
 } from "./object-types";
 import { EmployeePermissionComparison } from "./employee-permission-comparison";
 import { PublicationPanel } from "./publication-panel";
+import { AutomationDesigner } from "@/features/automations/automation-designer";
 import { WorkflowDesigner } from "./workflow-designer";
 
 import styles from "./objects.module.css";
 
 type Section =
-  "basics" | "fields" | "view" | "permissions" | "workflow" | "publications";
+  "basics" | "fields" | "view" | "permissions" | "workflow" | "automations" | "publications";
 
 const SECTIONS: Array<{ key: Section; label: string }> = [
   { key: "basics", label: "基本设置" },
@@ -66,12 +67,14 @@ const SECTIONS: Array<{ key: Section; label: string }> = [
   { key: "view", label: "列表展示与搜索" },
   { key: "permissions", label: "员工权限" },
   { key: "workflow", label: "流程" },
+  { key: "automations", label: "跨表自动化" },
   { key: "publications", label: "发布记录" },
 ];
 
 export interface ObjectDesignerProps {
   tenantCode: string;
   initialDraft: ObjectDraft;
+  initialSection?: "automations";
   api?: ObjectApi;
 }
 
@@ -84,12 +87,13 @@ export interface ObjectDesignerProps {
 export function ObjectDesigner({
   tenantCode,
   initialDraft,
+  initialSection,
   api = defaultObjectApi,
 }: ObjectDesignerProps) {
   const queryClient = useQueryClient();
   const router = useRouter();
   const [draft, setDraft] = useState(initialDraft);
-  const [section, setSection] = useState<Section>("fields");
+  const [section, setSection] = useState<Section>(initialSection ?? "fields");
   const [previewRole, setPreviewRole] = useState<PreviewRole>("TENANT_ADMIN");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [editingField, setEditingField] =
@@ -614,6 +618,10 @@ export function ObjectDesigner({
               onObjectVersion={setDraft}
               objectApi={api}
             />
+          ) : null}
+
+          {section === "automations" ? (
+            <AutomationDesigner tenantCode={tenantCode} draft={draft} onObjectVersion={setDraft} objects={api} />
           ) : null}
 
           {section === "publications" ? (
