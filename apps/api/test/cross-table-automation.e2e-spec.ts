@@ -248,6 +248,11 @@ describe('cross-table automation (real PostgreSQL)', () => {
         )
       ).status,
     ).toBe(403);
+    expect(
+      (await api('patch', path(), { version: 1, values: { name: 'won' } }))
+        .status,
+    ).toBe(200);
+    expect(await executions()).toBe(1);
     const rows = await h.runtimeDatabase.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT set_config('app.tenant_id', ${f.tenantB.id}, true)`;
       return tx.$queryRaw`SELECT * FROM record_automation_executions WHERE tenant_id = ${f.tenantA.id}::uuid`;
