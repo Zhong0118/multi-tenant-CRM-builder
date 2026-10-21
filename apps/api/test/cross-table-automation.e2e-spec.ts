@@ -668,19 +668,17 @@ describe('cross-table automation (real PostgreSQL)', () => {
         content: '确认开单',
       },
     });
-    const view = await h.app
-      .get(AiProposalService)
-      .preview(
-        context,
-        turnId,
-        {
-          operationType: 'UPDATE_RECORD',
-          objectCode: 'leads',
-          recordId: f.ownedRecord.id,
-          values: { name: 'won' },
-        },
-        '确认开单',
-      );
+    const view = await h.app.get(AiProposalService).preview(
+      context,
+      turnId,
+      {
+        operationType: 'UPDATE_RECORD',
+        objectCode: 'leads',
+        recordId: f.ownedRecord.id,
+        values: { name: 'won' },
+      },
+      '确认开单',
+    );
     expect(await targets()).toBe(0);
     const url = `/api/v1/workspaces/critical-a/ai/proposals/${view.proposalId}/confirm`;
     const body = { idempotencyKey: randomUUID() };
