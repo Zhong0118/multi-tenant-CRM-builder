@@ -21,10 +21,10 @@ vi.mock("@/features/follow-ups/follow-up-panel", () => ({ FollowUpPanel: () => n
 vi.mock("./record-activity-timeline", () => ({ RecordActivityTimeline: () => null }));
 vi.mock("./record-relations-panel", () => ({ RecordRelationsPanel: () => null }));
 vi.mock("@/features/attachments/record-attachments-panel", () => ({ RecordAttachmentsPanel: () => null }));
-vi.mock("./record-detail-drawer", async (importOriginal) => {
-  const original = await importOriginal<typeof import("./record-detail-drawer")>();
+vi.mock("./record-detail-page", async (importOriginal) => {
+  const original = await importOriginal<typeof import("./record-detail-page")>();
   return {
-  RecordDetailDrawer: (props: import("./record-detail-drawer").RecordDetailDrawerProps) => composition.real ? <original.RecordDetailDrawer {...props} /> : <MockDrawer {...props} />,
+  RecordDetailPage: (props: import("./record-detail-page").RecordDetailPageProps) => composition.real ? <original.RecordDetailPage {...props} /> : <MockDrawer {...props} />,
 };
 });
 const MockDrawer = ({
@@ -215,7 +215,7 @@ describe("record workspace navigation", () => {
     }
     expect(await screen.findByRole("alert")).toHaveTextContent(action === "save" ? "记录已保存，但刷新暂时失败" : "记录已删除，但刷新暂时失败");
     expect(client.getQueryState(key)?.status).toBe("error");
-    expect(screen.getByRole("dialog")).toBeVisible();
+    expect(screen.getByRole("article")).toBeVisible();
     expect(router.replace).not.toHaveBeenCalled();
     expect(router.refresh).not.toHaveBeenCalled();
     if (action === "save") {
@@ -317,7 +317,7 @@ describe("record workspace navigation", () => {
     const update = vi.spyOn(recordApi, "update").mockResolvedValue({ ...record, version: 4 });
     const view = render(<RecordWorkspace {...props} openRecord={record} />);
     view.rerender(<RecordWorkspace {...props} openRecord={{ ...record, version: 3, title: "服务器最新", values: { name: "服务器最新" } }} />);
-    expect(screen.getByRole("dialog")).toHaveTextContent("服务器最新");
+    expect(screen.getByRole("article")).toHaveTextContent("服务器最新");
     fireEvent.click(screen.getByRole("button", { name: /^编\s*辑$/ }));
     expect(screen.getByRole("textbox", { name: "客户名称" })).toHaveValue("服务器最新");
     fireEvent.click(screen.getByRole("button", { name: "保存修改" }));
@@ -338,8 +338,8 @@ describe("record workspace navigation", () => {
     />);
     if (identity === "initialEditing") {
       expect(screen.queryByRole("textbox", { name: "客户名称" })).not.toBeInTheDocument();
-      expect(screen.getByRole("dialog")).toHaveTextContent("客户 A");
-      expect(screen.getByRole("dialog")).not.toHaveTextContent("路由前草稿");
+      expect(screen.getByRole("article")).toHaveTextContent("客户 A");
+      expect(screen.getByRole("article")).not.toHaveTextContent("路由前草稿");
     } else {
       expect(screen.getByRole("textbox", { name: "客户名称" })).toHaveValue(identity === "id" ? "客户 B" : "客户 A");
     }

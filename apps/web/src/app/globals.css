@@ -18,13 +18,12 @@
   --bg-surface: #ffffff;
   --bg-hover: #eef2f4;
   --bg-selected: #e7f3f0;
-  /* Quiet chrome: the sidebar and the segmented-control track are a step
-     darker than the white work surface, and rows are divided by a hairline
-     lighter than a control's border. */
-  --bg-sidebar: #f6f7f8;
-  --bg-sidebar-active: #e8ebed;
-  --bg-track: #eef1f2;
-  --border-hairline: #e8ebee;
+  /* Chrome is meaningfully darker than the white work surface so the content
+     area advances and the sidebar retreats — the Attio/Linear trick. */
+  --bg-sidebar: #eceef1;
+  --bg-sidebar-active: #e0e3e8;
+  --bg-track: #e4e8eb;
+  --border-hairline: #e2e5e9;
   --color-success: #167568;
   --color-warning: #c66c18;
   --color-warning-soft: #fff3e5;

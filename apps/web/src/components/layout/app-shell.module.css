@@ -316,10 +316,15 @@
   width: 100%;
   min-width: 0;
   min-height: 0;
-  padding: 20px;
+  padding: 0;
   overflow: auto;
   background: var(--bg-surface);
   overscroll-behavior: contain;
+}
+
+/* Pages that need padding can add their own container class */
+.contentPadded {
+  padding: 20px;
 }
 
 .backdrop {

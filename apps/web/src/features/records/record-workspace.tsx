@@ -17,7 +17,7 @@ import type {
 } from "@/features/objects/object-types";
 
 import type { DynamicFieldMember } from "./dynamic-field";
-import { RecordDetailDrawer } from "./record-detail-drawer";
+import { RecordDetailPage } from "./record-detail-page";
 import { RecordList } from "./record-list";
 import { DEFAULT_RECORD_QUERY, recordQuerySearch, type RecordQuery } from "./record-query-state";
 
@@ -131,55 +131,60 @@ function RecordWorkspaceSession({
           router.refresh();
         }}
       /> : null}
-      <div ref={listRef}>
-        <RecordList
-          currentMemberId={currentMemberId}
-          tenantCode={tenantCode}
-          schema={schema}
-          query={query}
-          initialPage={initialPage}
-          members={members}
-          canFilterByOwner={isAdmin}
-          poolConfig={pool.data}
-          onPoolSettings={pool.data ? () => setPoolSettingsOpen(true) : undefined}
-        />
+      <div style={{ display: "flex", gap: 0, height: "100%", overflow: "hidden" }}>
+        <div ref={listRef} style={{ flex: record ? "0 0 40%" : "1 1 100%", transition: "flex 0.3s ease", overflow: "auto" }}>
+          <RecordList
+            currentMemberId={currentMemberId}
+            tenantCode={tenantCode}
+            schema={schema}
+            query={query}
+            initialPage={initialPage}
+            members={members}
+            canFilterByOwner={isAdmin}
+            poolConfig={pool.data}
+            onPoolSettings={pool.data ? () => setPoolSettingsOpen(true) : undefined}
+          />
+        </div>
+        {record ? (
+          <div style={{ flex: "0 0 60%", borderLeft: "1px solid #e8ebee", background: "#fafbfc", overflow: "auto" }}>
+            <RecordDetailPage
+              tenantCode={tenantCode}
+              schema={schema}
+              record={record}
+              members={members}
+              currentMemberId={currentMemberId}
+              canChooseOwner={isAdmin}
+              poolConfig={pool.data}
+              canDelete={isAdmin && schema.actions.canDelete}
+              initialEditing={initialEditing}
+              followUpId={followUpId}
+              returnTo={returnTo}
+              onClose={() => {
+                if (!validatedReturnTo(tenantCode, returnTo)) {
+                  pendingListFocus = { path: `${listPath}/${encodeURIComponent(record.id)}`, until: Date.now() + 3000 };
+                }
+                markSourceReturnFocus(tenantCode, returnTo);
+                setRecord(undefined);
+                router.replace(returnPath);
+              }}
+              onChanged={async (next) => {
+                if (next) setRecord(next);
+                await Promise.all([
+                  client.invalidateQueries({ queryKey: ["workspace", tenantCode, "records"], refetchType: "all" }, { throwOnError: true }),
+                  client.invalidateQueries({ queryKey: followUpQueryKeys.root(tenantCode), refetchType: "all" }, { throwOnError: true }),
+                ]);
+                // Next refresh starts a server render; it does not return its completion.
+                router.refresh();
+                if (!next) setRecord(undefined);
+                if (!next) {
+                  markSourceReturnFocus(tenantCode, returnTo);
+                  router.replace(returnPath);
+                }
+              }}
+            />
+          </div>
+        ) : null}
       </div>
-      {record ? (
-        <RecordDetailDrawer
-          tenantCode={tenantCode}
-          schema={schema}
-          record={record}
-          members={members}
-          currentMemberId={currentMemberId}
-          canChooseOwner={isAdmin}
-          poolConfig={pool.data}
-          canDelete={isAdmin && schema.actions.canDelete}
-          initialEditing={initialEditing}
-          followUpId={followUpId}
-          onClose={() => {
-            if (!validatedReturnTo(tenantCode, returnTo)) {
-              pendingListFocus = { path: `${listPath}/${encodeURIComponent(record.id)}`, until: Date.now() + 3000 };
-            }
-            markSourceReturnFocus(tenantCode, returnTo);
-            setRecord(undefined);
-            router.replace(returnPath);
-          }}
-          onChanged={async (next) => {
-            if (next) setRecord(next);
-            await Promise.all([
-              client.invalidateQueries({ queryKey: ["workspace", tenantCode, "records"], refetchType: "all" }, { throwOnError: true }),
-              client.invalidateQueries({ queryKey: followUpQueryKeys.root(tenantCode), refetchType: "all" }, { throwOnError: true }),
-            ]);
-            // Next refresh starts a server render; it does not return its completion.
-            router.refresh();
-            if (!next) setRecord(undefined);
-            if (!next) {
-              markSourceReturnFocus(tenantCode, returnTo);
-              router.replace(returnPath);
-            }
-          }}
-        />
-      ) : null}
     </>
   );
 }

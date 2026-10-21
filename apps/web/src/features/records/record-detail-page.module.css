@@ -1,0 +1,253 @@
+/* Full-page record detail: two columns on desktop, stacked on mobile.
+   Left column holds the property sheet and record actions; right column
+   holds the sticky panel with follow-up / activity / relations / file tabs. */
+
+.page {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: calc(100dvh - var(--header-height));
+  background: var(--bg-page);
+}
+
+/* ── page header ────────────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 24px;
+  height: 48px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.back:hover {
+  color: var(--color-primary);
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.no {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── body ───────────────────────────────────────────────────────────────── */
+
+.body {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── left column (property sheet + actions) ─────────────────────────────── */
+
+.main {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.section {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.section:first-child {
+  padding-top: 0;
+}
+
+.section:last-child {
+  border-bottom: none;
+}
+
+.sectionHeading {
+  margin: 0 0 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Ownership row: pool status badge + action buttons side-by-side */
+.ownerRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+/* Pool metadata lines */
+.poolMeta {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.poolMeta p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 20px;
+}
+
+/* Property sheet: label left, value right */
+.fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.field {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.field:last-child {
+  border-bottom: none;
+}
+
+.field dt {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 22px;
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.field dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.fieldLock {
+  font-size: 11px;
+  color: var(--color-warning);
+}
+
+@media (max-width: 480px) {
+  .field {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}
+
+/* Meta line under the field list: owner + updated time */
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* ── right aside (sticky tab panel) ────────────────────────────────────── */
+
+.aside {
+  position: sticky;
+  top: var(--header-height, 52px);
+  height: calc(100dvh - var(--header-height, 52px));
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border-hairline);
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+
+@media (max-width: 1024px) {
+  .aside {
+    position: static;
+    height: auto;
+    border-left: none;
+    border-top: 1px solid var(--border-hairline);
+  }
+}
+
+/* Ant Design Tabs inside the aside: tab bar is fixed at top, content scrolls */
+.aside :global(.ant-tabs) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.aside :global(.ant-tabs-nav) {
+  margin: 0;
+  padding: 0 16px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-hairline);
+  flex-shrink: 0;
+}
+
+.aside :global(.ant-tabs-content-holder) {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.aside :global(.ant-tabs-tabpane) {
+  padding: 16px;
+}
+
+/* Pool-preview info banner */
+.poolAlert {
+  margin-bottom: 16px;
+}
