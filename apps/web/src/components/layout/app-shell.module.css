@@ -148,14 +148,19 @@
 }
 
 .navGroupLabel {
-  padding: 12px 8px 6px;
-  color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 20px;
+  padding: 16px 12px 8px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  line-height: 16px;
 }
 
 .nav + .nav {
   padding-top: 0;
+  margin-top: 12px;
+  border-top: 1px solid var(--border-hairline);
 }
 
 .navItem,
@@ -163,16 +168,16 @@
   position: relative;
   display: flex;
   width: 100%;
-  height: 32px;
+  height: 30px;
   gap: 8px;
   align-items: center;
-  padding: 0 8px;
-  margin-bottom: 2px;
-  color: #4b5560;
-  font-size: 14px;
+  padding: 0 12px;
+  margin-bottom: 1px;
+  color: var(--text-secondary);
+  font-size: 13.5px;
   background: transparent;
   border: 0;
-  border-radius: 6px;
+  border-radius: 0;
   cursor: pointer;
   transition:
     color 120ms ease,
@@ -186,7 +191,7 @@
   height: 16px;
   align-items: center;
   justify-content: center;
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
   font-size: 16px;
 }
 
@@ -200,11 +205,21 @@
 .navItemCurrent:hover {
   color: var(--text-primary);
   font-weight: 500;
-  background: var(--bg-sidebar-active);
+  background: transparent;
+}
+
+.navItemCurrent::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: var(--color-primary);
+  content: "";
 }
 
 .navItemCurrent .navIcon {
-  color: var(--color-primary);
+  color: var(--text-primary);
 }
 
 .navItem:focus-visible,
@@ -247,7 +262,8 @@
 
 .bottom {
   flex: 0 0 auto;
-  padding: 8px;
+  padding: 8px 0 0 0;
+  border-top: 1px solid var(--border-hairline);
 }
 
 .column {
