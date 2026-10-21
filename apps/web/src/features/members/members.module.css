@@ -3,6 +3,7 @@
   flex-direction: column;
   gap: 24px;
   width: 100%;
+  padding: 20px;
 }
 .pageHeader {
   margin-bottom: 0;

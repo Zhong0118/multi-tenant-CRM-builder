@@ -89,45 +89,46 @@
   padding-left: 0;
 }
 
-/* Workspace block: same height and anatomy as the account block below. */
+/* Workspace block: tighter, refined brand area with bottom border separator */
 .brand {
   display: flex;
   flex: 0 0 auto;
-  height: 48px;
+  height: 52px;
   gap: 10px;
   align-items: center;
-  margin: 8px 8px 0;
-  padding: 0 8px;
+  margin: 0;
+  padding: 0 12px;
   color: var(--text-primary);
-  border-radius: var(--radius-control);
+  border-bottom: 1px solid var(--border-hairline);
 }
 
 .brand:hover {
-  background: var(--bg-sidebar-active);
+  background: var(--bg-hover);
 }
 
 .brandMark {
   display: inline-flex;
-  flex: 0 0 32px;
-  width: 32px;
-  height: 32px;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
   background: var(--color-primary);
-  border-radius: var(--radius-control);
+  border-radius: 6px;
 }
 
 .brandMark svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .brandName {
   overflow: hidden;
   font-weight: 600;
+  font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
