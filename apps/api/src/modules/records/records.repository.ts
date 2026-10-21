@@ -1,3 +1,8 @@
+import {
+  runFieldAutomations,
+  automationFailureAudit,
+} from '../automations/automation-runner';
+import type { RecordRequestMeta } from './record-command';
 import { assertAssignableOwner } from './record-ownership-locks';
 import { lockRuntimeObjectConfiguration } from '../objects/object-configuration-lock';
 import {
@@ -188,6 +193,13 @@ export interface ImportDuplicateQuery {
 }
 
 export interface RecordsStore {
+  runFieldAutomations?(
+    resolved: ResolvedObjectSchema,
+    before: DynamicRecord,
+    after: DynamicRecord,
+    meta: RecordRequestMeta,
+  ): Promise<void>;
+  withSavepoint?<T>(work: () => Promise<T>): Promise<T>;
   resolveCurrentObject(
     previous: ResolvedObjectSchema,
   ): Promise<ResolvedObjectSchema>;
@@ -361,13 +373,22 @@ export class PrismaRecordsRepository implements RecordsRepository {
     context: TenantContext,
     work: (session: RecordsTransaction) => Promise<T>,
   ): Promise<T> {
-    return this.runner.withTenant(context, async (transaction) => {
-      await lockRuntimeObjectConfiguration(transaction, context.tenantId);
-      return work({
-        tx: transaction,
-        store: new PrismaRecordsStore(transaction, this.audit, context),
+    return this.runner
+      .withTenant(context, async (transaction) => {
+        await lockRuntimeObjectConfiguration(transaction, context.tenantId);
+        return work({
+          tx: transaction,
+          store: new PrismaRecordsStore(transaction, this.audit, context),
+        });
+      })
+      .catch(async (error: unknown) => {
+        const failure = automationFailureAudit(error);
+        if (failure)
+          await this.runner
+            .withTenant(context, (tx) => this.audit.append(tx, failure))
+            .catch(() => undefined);
+        throw error;
       });
-    });
   }
 }
 
@@ -377,6 +398,47 @@ class PrismaRecordsStore implements RecordsStore {
     private readonly audit: AuditService,
     private readonly context: TenantContext,
   ) {}
+
+  async runFieldAutomations(
+    resolved: ResolvedObjectSchema,
+    before: DynamicRecord,
+    after: DynamicRecord,
+    meta: RecordRequestMeta,
+  ): Promise<void> {
+    await runFieldAutomations(
+      {
+        tx: this.transaction,
+        store: this,
+        context: this.context,
+        audit: this.audit,
+        resolved,
+        source: after,
+      },
+      before,
+      meta,
+    );
+  }
+
+  async withSavepoint<T>(work: () => Promise<T>): Promise<T> {
+    await this.transaction.$executeRawUnsafe('SAVEPOINT record_batch_item');
+    try {
+      const result = await work();
+      await this.transaction.$executeRawUnsafe(
+        'RELEASE SAVEPOINT record_batch_item',
+      );
+      return result;
+    } catch (error) {
+      await this.transaction.$executeRawUnsafe(
+        'ROLLBACK TO SAVEPOINT record_batch_item',
+      );
+      await this.transaction.$executeRawUnsafe(
+        'RELEASE SAVEPOINT record_batch_item',
+      );
+      const failure = automationFailureAudit(error);
+      if (failure) await this.audit.append(this.transaction, failure);
+      throw error;
+    }
+  }
 
   async resolveCurrentObject(
     previous: ResolvedObjectSchema,

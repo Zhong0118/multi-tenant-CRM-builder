@@ -375,6 +375,9 @@ class PrismaObjectsStore implements ObjectsStore {
           }
         : null,
       activeSchema,
+      automations: (settings.automations ?? []) as unknown as NonNullable<
+        ObjectDraft['automations']
+      >,
       activeRecordCount,
     };
   }
@@ -391,7 +394,10 @@ class PrismaObjectsStore implements ObjectsStore {
         status: draft.object.status,
         lifecycleVersionOffset: draft.object.lifecycleVersionOffset ?? 0,
         sortOrder: draft.object.sortOrder,
-        settings: toPrismaJson({ description: draft.object.description }),
+        settings: toPrismaJson({
+          description: draft.object.description,
+          automations: draft.automations ?? [],
+        }),
         version: draft.object.version,
       },
     });
@@ -423,7 +429,10 @@ class PrismaObjectsStore implements ObjectsStore {
         status: draft.object.status,
         lifecycleVersionOffset: draft.object.lifecycleVersionOffset ?? 0,
         sortOrder: draft.object.sortOrder,
-        settings: toPrismaJson({ description: draft.object.description }),
+        settings: toPrismaJson({
+          description: draft.object.description,
+          automations: draft.automations ?? [],
+        }),
         activePublicationId: draft.object.activePublicationId,
         publishedAt: draft.object.publishedAt
           ? new Date(draft.object.publishedAt)

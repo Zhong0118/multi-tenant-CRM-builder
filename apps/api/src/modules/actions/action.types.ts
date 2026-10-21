@@ -122,7 +122,7 @@ export type ActionRecordRef =
   | { source: 'ACTION_OUTPUT'; actionKey: string; property: 'recordId' };
 
 /** §15: literal values are validated by the target field validator later. */
-export type ActionLiteralValue = string | number | boolean;
+export type ActionLiteralValue = string | number | boolean | string[] | null;
 
 /** §15: date/datetime mappings additionally support NOW / NOW_PLUS_DAYS / LITERAL_DATETIME. */
 export type ActionDateTimeValueSource =

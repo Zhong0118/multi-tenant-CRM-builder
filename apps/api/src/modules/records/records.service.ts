@@ -839,18 +839,22 @@ export class RecordsService {
       const items: RecordBatchUpdateResultItem[] = [];
       for (const item of input.items) {
         try {
-          const { record } = await updateRecordCommand({
-            store,
-            resolved,
-            context,
-            recordId: item.recordId,
-            input: {
-              version: item.version,
-              values: input.values,
-              ownerMemberId: input.ownerMemberId,
-            },
-            meta,
-          });
+          const update = () =>
+            updateRecordCommand({
+              store,
+              resolved,
+              context,
+              recordId: item.recordId,
+              input: {
+                version: item.version,
+                values: input.values,
+                ownerMemberId: input.ownerMemberId,
+              },
+              meta,
+            });
+          const { record } = await (store.withSavepoint
+            ? store.withSavepoint(update)
+            : update());
           items.push({ recordId: item.recordId, status: 'UPDATED', record });
         } catch (error) {
           if (error instanceof ApiException) {

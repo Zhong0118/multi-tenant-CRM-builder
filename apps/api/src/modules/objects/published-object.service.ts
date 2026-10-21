@@ -1,3 +1,4 @@
+import { validateAutomationRules } from '../automations/automation.policy';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { ApiException } from '../../common/errors/api.exception';
@@ -262,7 +263,7 @@ export function parsePublishedObjectSchema(
   const root = keyedObject(
     value,
     ['publication', 'object', 'fields', 'defaultView', 'employeeAccess'],
-    ['workflow'],
+    ['workflow', 'automations'],
   );
   const publication = strictObject(root.publication, [
     'id',
@@ -353,6 +354,12 @@ export function parsePublishedObjectSchema(
   // Snapshots published before Action Engine V1 carry no `actions` key at all
   // and come back with `actions: []` instead of `undefined`.
   if (workflow !== undefined) schema.workflow = workflow;
+  if (root.automations !== undefined)
+    schema.automations = validateAutomationRules(
+      root.automations,
+      object.code,
+      [...fieldKeys],
+    );
   return schema;
 }
 

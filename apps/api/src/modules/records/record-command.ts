@@ -162,6 +162,7 @@ export async function updateRecordCommand({
     expectedVersion: input.version,
     patch,
   });
+  await store.runFieldAutomations?.(resolved, current, updated, meta);
   const auditId = await store.appendAudit(
     recordAudit(context, meta, 'record.updated', updated, current),
   );

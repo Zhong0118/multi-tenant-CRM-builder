@@ -514,7 +514,7 @@ function isSelectFieldType(type: PublishedFieldType): boolean {
  * not deactivated. Deactivated options stay in records, so they are not treated
  * as "copyable" keys the Target must accept.
  */
-function selectableOptionKeys(field: ActionPublicationField): string[] {
+export function selectableOptionKeys(field: ActionPublicationField): string[] {
   const options = field.config.options;
   if (!Array.isArray(options)) return [];
   return options.flatMap((option) => {

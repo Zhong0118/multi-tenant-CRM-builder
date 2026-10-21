@@ -1,3 +1,4 @@
+import { AutomationsModule } from './modules/automations/automations.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AttachmentsModule } from './modules/attachments/attachments.module';
 import { RecordRelationsModule } from './modules/record-relations/record-relations.module';
@@ -57,6 +58,7 @@ import { AiModule } from './modules/ai/ai.module';
     HealthModule,
     PlatformOperationsModule,
     WorkflowsModule,
+    AutomationsModule,
   ],
   providers: [ApiExceptionFilter, OriginGuard, RequestIdMiddleware],
 })

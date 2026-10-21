@@ -127,3 +127,44 @@ describe('lifecycle dependencies', () => {
     ).toEqual([]);
   });
 });
+
+describe('published automation dependencies', () => {
+  it('blocks archiving an automatic create target', () => {
+    const source = {
+      id: 'source',
+      code: 'customers',
+      name: '客户',
+      status: 'ACTIVE',
+      schema: {
+        automations: [
+          {
+            key: 'order',
+            label: '确认开单',
+            enabled: true,
+            targetObjectCode: 'orders',
+          },
+        ],
+      },
+      poolEnabled: false,
+      poolLifecycleEnabled: false,
+      protectionRules: [],
+    };
+    const target = {
+      ...source,
+      id: 'target',
+      code: 'orders',
+      name: '订单',
+      schema: null,
+    };
+    expect(
+      lifecycleBlockers([source, target] as never, 'target', 'archive'),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'AUTOMATION',
+          objectCode: 'customers',
+        }),
+      ]),
+    );
+  });
+});

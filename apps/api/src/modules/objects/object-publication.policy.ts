@@ -1,3 +1,5 @@
+import type { AutomationRule } from '../automations/automation.types';
+import { analyzeAutomationPublication } from '../automations/automation-publication';
 import {
   isPublishedFieldType,
   type JsonValue,
@@ -81,6 +83,7 @@ export interface PublicationDraft {
   activeRecordCount: number;
   missingRequiredValueCounts?: Record<string, number>;
   workflow?: WorkflowDraft | null;
+  automations?: AutomationRule[];
   workflowStateRecordCounts?: Record<string, number>;
   /**
    * §25/§26: the CURRENT Active Publications of the Workflow Actions' Target
@@ -139,6 +142,7 @@ export function analyzePublication(
     });
   }
   blocking.push(...analyzeWorkflowPublication(input));
+  blocking.push(...analyzeAutomationPublication(input));
   const previousFields = new Map(
     (input.activeSchema?.fields ?? []).map((field) => [field.fieldKey, field]),
   );
@@ -190,6 +194,9 @@ export function compilePublication(
     publication: { ...input.publication },
     ...configuration,
     ...(workflow ? { workflow } : {}),
+    ...(input.automations?.length
+      ? { automations: structuredClone(input.automations) }
+      : {}),
   };
 }
 
