@@ -20,8 +20,8 @@ describe("design tokens", () => {
     expect(TOKENS.surface).toBe("#FFFFFF");
     expect(TOKENS.border).toBe("#D8E0E5");
     expect(TOKENS.borderStrong).toBe("#C8D2D9");
-    expect(TOKENS.hairline).toBe("#E8EBEE");
-    expect(TOKENS.track).toBe("#EEF1F2");
+    expect(TOKENS.hairline).toBe("#E2E5E9");
+    expect(TOKENS.track).toBe("#E4E8EB");
     expect(TOKENS.textSecondary).toBe("#687681");
     expect(TOKENS.success).toBe("#167568");
     expect(TOKENS.warning).toBe("#C66C18");
