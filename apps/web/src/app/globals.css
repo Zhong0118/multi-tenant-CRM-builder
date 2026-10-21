@@ -105,3 +105,38 @@ table,
 [data-numeric] {
   font-variant-numeric: tabular-nums;
 }
+
+/* Dialogs and drawers share one grammar: a 16px title, the consequence in one
+   secondary paragraph, actions bottom-right with the primary last. */
+.ant-drawer .ant-drawer-header {
+  padding: 14px 20px;
+}
+
+.ant-drawer .ant-drawer-title,
+.ant-modal .ant-modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.ant-drawer .ant-drawer-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 12px 20px;
+}
+
+.ant-modal .ant-modal-body > p,
+.ant-drawer .ant-drawer-body > p:first-child {
+  margin-bottom: 12px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.ant-modal .ant-modal-body > .ant-alert,
+.ant-drawer .ant-drawer-body > .ant-alert {
+  margin-bottom: 12px;
+}

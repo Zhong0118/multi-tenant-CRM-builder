@@ -1,0 +1,142 @@
+.page {
+  min-height: 100%;
+  padding: 20px 24px 40px;
+}
+
+.page[data-width="bleed"] {
+  padding: 0;
+}
+
+.inner {
+  width: 100%;
+  margin: 0 auto;
+}
+
+.page[data-width="settings"] .inner {
+  max-width: 1040px;
+}
+
+.page[data-width="form"] .inner {
+  max-width: 720px;
+}
+
+.page[data-width="bleed"] .inner {
+  height: 100%;
+}
+
+.toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 36px;
+  margin-bottom: 12px;
+}
+
+.toolbarStart,
+.toolbarEnd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.toolbarEnd {
+  flex: none;
+}
+
+.section + .section {
+  margin-top: 28px;
+}
+
+/* A settings row: label and one line of help on the left, the control on the
+   right. Rows share one hairline list so a form reads as an index of settings. */
+.rows {
+  border-top: 1px solid var(--border-hairline);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 8px 32px;
+  align-items: start;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.rowLabel {
+  padding-top: 5px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.rowLabel p {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+.rowControl {
+  min-width: 0;
+}
+
+.sectionFooter {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  padding-top: 14px;
+}
+
+.sectionHead {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.sectionHead h2 {
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.sectionHead p {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.sectionExtra {
+  display: flex;
+  flex: none;
+  gap: 8px;
+  align-items: center;
+}
+
+@media (max-width: 767px) {
+  .page {
+    padding: 14px 14px 32px;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rowLabel {
+    padding-top: 0;
+  }
+}
