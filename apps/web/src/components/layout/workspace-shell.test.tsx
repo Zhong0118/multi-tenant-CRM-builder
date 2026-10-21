@@ -204,6 +204,30 @@ describe("WorkspaceShell", () => {
     );
   });
 
+  it("draws each business table with its chosen icon and the default when none or an unknown one is stored", () => {
+    const { container } = render(
+      <WorkspaceShell
+        tenantCode="northwind"
+        tenantName="百杰"
+        role="TENANT_ADMIN"
+        user={shellUser}
+        businessObjects={[
+          businessObject({ code: "customers", name: "客户", icon: "team", sortOrder: 1 }),
+          businessObject({ code: "orders", name: "订单", icon: null, sortOrder: 2 }),
+          businessObject({ code: "legacy", name: "旧表", icon: "contacts", sortOrder: 3 }),
+        ]}
+      >
+        <p>内容</p>
+      </WorkspaceShell>,
+    );
+    const iconOf = (name: string) =>
+      screen.getByRole("link", { name }).querySelector("[data-icon]")?.getAttribute("data-icon");
+    expect(iconOf("客户")).toBe("team");
+    expect(iconOf("订单")).toBe("table");
+    expect(iconOf("旧表")).toBe("table");
+    expect(container.querySelectorAll('nav[aria-label="业务数据"] [data-icon]')).toHaveLength(3);
+  });
+
   it("renders business object links in the order supplied by the server", () => {
     render(
       <WorkspaceShell

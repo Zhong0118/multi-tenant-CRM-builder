@@ -168,6 +168,37 @@ describe("ObjectDesigner configuration ledger", () => {
       ).toBeInTheDocument();
     }
   });
+  it("saves the chosen icon with the basics, and clears it back to the default", async () => {
+    const api = objectApi();
+    const view = renderDesigner(draft(), api);
+    fireEvent.click(screen.getByRole("button", { name: "基本设置" }));
+    expect(screen.getByRole("radio", { name: "默认" })).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(screen.getByRole("radio", { name: "团队" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存基本设置" }));
+    await waitFor(() =>
+      expect(api.updateDraft).toHaveBeenCalledWith(
+        "northwind",
+        "object-1",
+        expect.objectContaining({ expectedVersion: 4, icon: "team" }),
+      ),
+    );
+    view.unmount();
+
+    const stored = objectApi();
+    renderDesigner(draft({ object: { ...draft().object, icon: "team" } }), stored);
+    fireEvent.click(screen.getByRole("button", { name: "基本设置" }));
+    expect(screen.getByRole("radio", { name: "团队" })).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(screen.getByRole("radio", { name: "默认" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存基本设置" }));
+    await waitFor(() =>
+      expect(stored.updateDraft).toHaveBeenCalledWith(
+        "northwind",
+        "object-1",
+        expect.objectContaining({ icon: null }),
+      ),
+    );
+  });
+
   it("shows the stable identity as tenantCode plus objectCode", () => {
     renderDesigner(draft(), objectApi());
     fireEvent.click(screen.getByRole("button", { name: "基本设置" }));

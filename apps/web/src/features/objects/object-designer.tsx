@@ -31,6 +31,7 @@ import type {
   ConfigurableObjectView,
 } from "./configuration-view";
 import { FieldLedger } from "./field-ledger";
+import { ObjectIconPicker } from "./object-icon-picker";
 import { objectApi as defaultObjectApi, type ObjectApi } from "./object-api";
 import { ObjectPreview, type PreviewRole } from "./object-preview";
 import {
@@ -237,12 +238,14 @@ export function ObjectDesigner({
       name: string;
       titleFieldKey: string;
       description: string;
+      icon: string | null;
     }) =>
       api.updateDraft(tenantCode, objectId, {
         expectedVersion: draft.object.version,
         name: input.name,
         titleFieldKey: input.titleFieldKey,
         description: input.description === "" ? null : input.description,
+        icon: input.icon,
       }),
     onSuccess: (next) => accept(next, "基本设置已保存"),
     onError: reject,
@@ -615,9 +618,11 @@ function BasicsSection({
     name: string;
     titleFieldKey: string;
     description: string;
+    icon: string | null;
   }) => void;
 }) {
   const [name, setName] = useState(draft.object.name);
+  const [icon, setIcon] = useState<string | null>(draft.object.icon);
   const [titleFieldKey, setTitleFieldKey] = useState(
     draft.object.titleFieldKey,
   );
@@ -683,6 +688,12 @@ function BasicsSection({
             }))}
           />
         </Form.Item>
+        <Form.Item
+          label="图标"
+          extra="显示在侧边栏该业务表名称的前面；保存后需发布，员工端才会更新。"
+        >
+          <ObjectIconPicker value={icon} onChange={setIcon} disabled={saving} />
+        </Form.Item>
         <Form.Item label="说明" htmlFor="object-description">
           <Input.TextArea
             id="object-description"
@@ -696,7 +707,7 @@ function BasicsSection({
         <Button
           type="primary"
           loading={saving}
-          onClick={() => onSave({ name, titleFieldKey, description })}
+          onClick={() => onSave({ name, titleFieldKey, description, icon })}
         >
           保存基本设置
         </Button>

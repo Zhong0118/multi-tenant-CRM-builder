@@ -6,6 +6,7 @@ import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
 import { useState } from "react";
 
+import { ObjectIcon } from "@/components/navigation/object-icon";
 import { toApiError } from "@/lib/api/api-error";
 
 import { objectApi as defaultObjectApi, type ObjectApi } from "./object-api";
@@ -71,6 +72,9 @@ export function ObjectList({
           className={styles.ledgerName}
           href={`/workspace/${tenantCode}/settings/objects/${row.object.id}`}
         >
+          <span className={styles.ledgerIcon}>
+            <ObjectIcon name={row.object.icon} />
+          </span>
           {row.object.name}
         </Link>
       ),

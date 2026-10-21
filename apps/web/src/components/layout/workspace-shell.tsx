@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 
 import { NavIcon } from "@/components/navigation/nav-icon";
+import { ObjectIcon } from "@/components/navigation/object-icon";
 import { workspaceNavigationGroups } from "@/components/navigation/workspace-navigation";
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
@@ -28,7 +29,7 @@ export function WorkspaceShell({
   const objectItems = businessObjects.map((object) => ({
     href: `/workspace/${tenantCode}/objects/${object.code}`,
     label: object.name,
-    icon: <NavIcon name="object" />,
+    icon: <ObjectIcon name={object.icon} />,
   }));
 
   const navigation = workspaceNavigationGroups(tenantCode, role);
