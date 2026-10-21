@@ -1,12 +1,10 @@
+/* A section of the designer sits on the page surface, like its siblings. */
 .panel {
   display: flex;
   flex-direction: column;
   gap: 16px;
   min-width: 0;
-  padding: 20px;
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-reading);
-  background: var(--paper);
+  max-width: 920px;
 }
 
 .sectionHeading,
