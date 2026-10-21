@@ -557,19 +557,22 @@ describe("RecordList table sorting", () => {
     );
   });
 
-  it("keeps all three compact actions discoverable when delete is not permitted", () => {
+  it("keeps view, edit and delete discoverable behind one row menu when delete is not permitted", async () => {
     renderList(vi.fn());
     const table = screen.getByRole("table", { name: "客户记录" });
 
+    // One compact trigger per row; the actions themselves are not pinned columns.
     expect(
-      within(table).getByRole("button", { name: "查看 天际科技" }),
-    ).not.toHaveTextContent("查看");
+      within(table).queryByRole("button", { name: "查看 天际科技" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      within(table).getByRole("button", { name: "更多操作 天际科技" }),
+    );
+    expect(await screen.findByRole("menuitem", { name: "查看" })).toBeEnabled();
+    expect(screen.getByRole("menuitem", { name: "编辑" })).toBeEnabled();
     expect(
-      within(table).getByRole("button", { name: "编辑 天际科技" }),
-    ).not.toHaveTextContent("编辑");
-    expect(
-      within(table).getByRole("button", { name: "删除 天际科技" }),
-    ).toBeDisabled();
+      screen.getByRole("menuitem", { name: "删除（无删除权限）" }),
+    ).toHaveAttribute("aria-disabled", "true");
   });
 
   it("exposes direct edit and delete actions when the effective policy allows them", async () => {
@@ -589,19 +592,36 @@ describe("RecordList table sorting", () => {
     fireEvent.click(
       within(screen.getByRole("table", { name: "客户记录" })).getByRole(
         "button",
-        { name: "编辑 天际科技" },
+        { name: "更多操作 天际科技" },
       ),
     );
+    fireEvent.click(await screen.findByRole("menuitem", { name: "编辑" }));
     expect(navigate).toHaveBeenCalledWith(
       "/workspace/northwind/objects/customers/record-1?mode=edit",
     );
+  });
+
+  it("deletes from the row menu only after an explicit confirmation", async () => {
+    const api = {
+      list: vi.fn().mockResolvedValue(page),
+      remove: vi.fn().mockResolvedValue({ accepted: true }),
+    } as unknown as RecordApi;
+    renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+      api,
+      schema: { ...schema, actions: { ...schema.actions, canDelete: true } },
+    });
 
     fireEvent.click(
       within(screen.getByRole("table", { name: "客户记录" })).getByRole(
         "button",
-        { name: "删除 天际科技" },
+        { name: "更多操作 天际科技" },
       ),
     );
+    fireEvent.click(await screen.findByRole("menuitem", { name: "删除" }));
+    expect(
+      await screen.findByText("删除后业务列表不再显示，审计历史仍会保留。"),
+    ).toBeInTheDocument();
+    expect(api.remove).not.toHaveBeenCalled();
     fireEvent.click(await screen.findByRole("button", { name: "确认删除" }));
     await waitFor(() =>
       expect(api.remove).toHaveBeenCalledWith(
@@ -864,8 +884,12 @@ it("switches to public pool preserving filters and resetting owner and page", ()
 });
 it("keeps employee public pool rows read-only and omits all tab for OWN readers", () => {
   renderList(vi.fn(), DEFAULT_RECORD_QUERY, { schema: { ...schema, scopes: { read: "OWN", update: "OWN" } }, poolConfig: { enabled: true, ownershipTtlHours: null, version: 1 }, page: { ...page, items: [{ ...page.items[0], inPublicPool: true, ownershipExpiresAt: null }] } });
-  expect(screen.queryByRole("tab", { name: "全部记录" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("radio", { name: "全部记录" })).not.toBeInTheDocument();
+  expect(screen.getByRole("radio", { name: "公共池" })).toBeInTheDocument();
+  // Cards keep inline buttons; the table row's menu explains why editing is unavailable.
   for (const button of screen.getAllByRole("button", { name: "编辑 天际科技" })) expect(button).toBeDisabled();
+  fireEvent.click(within(screen.getByRole("table", { name: "客户记录" })).getByRole("button", { name: "更多操作 天际科技" }));
+  expect(screen.getByRole("menuitem", { name: "编辑（领取后可编辑）" })).toHaveAttribute("aria-disabled", "true");
   expect(screen.getByRole("checkbox", { name: "选择 天际科技" })).toBeDisabled();
   expect(screen.getAllByRole("button", { name: "领取 天际科技" }).length).toBeGreaterThan(0);
 });

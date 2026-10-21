@@ -5,12 +5,19 @@
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-  background: var(--bg-surface);
+  /* The sidebar and the gutter around the page area share one grey. */
+  background: var(--bg-sidebar);
 }
 
-/* Without a desktop header the page area starts at the top of the window, so
-   layouts that size themselves against the header get its height back. */
+/* On a desktop the page area is a white rounded panel inset into the grey
+   shell. Layouts that size themselves to the window subtract the panel's
+   margins and borders through --shell-inset-y, and the header height when
+   there is one; without a desktop header the page area starts at the top. */
 @media (min-width: 768px) {
+  .shell {
+    --shell-inset-y: 18px;
+  }
+
   .shellHeaderless {
     --header-height: 0px;
   }
@@ -28,7 +35,6 @@
   overflow: hidden;
   color: var(--text-primary);
   background: var(--bg-sidebar);
-  border-right: 1px solid var(--border-hairline);
   transition:
     width 160ms ease,
     flex-basis 160ms ease,
@@ -251,6 +257,17 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
+  background: var(--bg-surface);
+}
+
+@media (min-width: 768px) {
+  .column {
+    height: auto;
+    margin: 8px 8px 8px 0;
+    border: 1px solid var(--border-hairline);
+    border-radius: var(--radius-reading);
+    box-shadow: 0 1px 2px rgb(23 35 45 / 4%);
+  }
 }
 
 .header {
@@ -450,6 +467,7 @@
     width: min(82vw, 280px);
     max-width: 280px;
     flex-basis: auto;
+    border-right: 1px solid var(--border-hairline);
     box-shadow: 12px 0 32px rgb(10 20 28 / 16%);
     visibility: hidden;
     transform: translateX(-105%);

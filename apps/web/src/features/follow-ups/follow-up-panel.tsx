@@ -185,7 +185,7 @@ export function FollowUpPanel({
     !!value && Number.isFinite(new Date(value).getTime());
   return (
     <section
-      className={styles.panel}
+      className={record ? `${styles.panel} ${styles.embedded}` : styles.panel}
       aria-label={record ? "下一步跟进" : "我的跟进待办"}
     >
       <div className={styles.heading}>

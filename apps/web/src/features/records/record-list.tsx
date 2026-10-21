@@ -34,6 +34,7 @@ import dayjs, { type Dayjs } from "dayjs";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { RecordRowActions } from "./record-row-actions";
 import { SavedRecordFilters } from "./saved-record-filters";
 import { FilterBar } from "@/components/workbench/filter-bar";
 import { PageHeader } from "@/components/layout/page-header";
@@ -388,11 +389,13 @@ export function RecordList({
       render: (updatedAt: string) => formatDateTime(updatedAt),
     },
     {
-      title: "操作",
+      // The header is read by assistive technology only; the menu button is self-explanatory.
+      title: <span className={styles.visuallyHidden}>操作</span>,
       key: "actions",
-      width: poolConfig?.enabled || canFilterByOwner ? 280 : 124,
+      width: 56,
       fixed: "right",
-      render: (_, row) => recordActions(row),
+      align: "center",
+      render: (_, row) => rowMenu(row),
     },
   ];
 
@@ -465,6 +468,34 @@ export function RecordList({
   function saveOwnerVisibility(visible: boolean) {
     setOwnerVisible(visible);
     window.localStorage.setItem(ownerStorageKey, visible ? "visible" : "hidden");
+  }
+
+  function rowMenu(row: RecordSummary) {
+    return (
+      <RecordRowActions
+        key={`${row.id}:${row.version}`}
+        record={row}
+        editable={editableRecord(row)}
+        editBlockedReason={row.inPublicPool ? "领取后可编辑" : "无编辑权限"}
+        canDelete={schema.actions.canDelete}
+        deleting={remove.isPending && remove.variables?.id === row.id}
+        onView={() => go(recordPath(row.id))}
+        onEdit={() => go(recordPath(row.id, "edit"))}
+        onDelete={() => remove.mutate(row)}
+        tenantCode={tenantCode}
+        objectCode={objectCode}
+        schema={schema}
+        config={poolConfig}
+        currentMemberId={currentMemberId}
+        isAdmin={canFilterByOwner}
+        members={members}
+        onChanged={async () => {
+          const result = await records.refetch();
+          if (result.isError) throw result.error;
+          router.refresh();
+        }}
+      />
+    );
   }
 
   function recordActions(row: RecordSummary) {

@@ -6,6 +6,7 @@ import {
   Button,
   Drawer,
   InputNumber,
+  message as message_,
   Popconfirm,
   Select,
   Space,
@@ -58,18 +59,7 @@ function poolError(caught: unknown) {
     : `${error.message}（请求编号：${error.requestId}）`;
 }
 
-export function RecordOwnershipActions({
-  tenantCode,
-  objectCode,
-  record,
-  schema,
-  config,
-  currentMemberId,
-  isAdmin,
-  members = [],
-  api = recordPoolApi,
-  onChanged,
-}: {
+type OwnershipControllerProps = {
   tenantCode: string;
   objectCode: string;
   record: RecordSummary;
@@ -80,7 +70,28 @@ export function RecordOwnershipActions({
   members?: DynamicFieldMember[];
   api?: RecordPoolApi;
   onChanged: (action: OwnershipAction) => void | Promise<void>;
-}) {
+  /** Report failures as toasts instead of inline alerts, for compact hosts such as a row menu. */
+  toast?: boolean;
+};
+
+/**
+ * Claim, release and assign for one record. The inline buttons and the row menu
+ * both drive this, so the permission rules and the commit/refresh handling stay
+ * in one place.
+ */
+export function useRecordOwnership({
+  tenantCode,
+  objectCode,
+  record,
+  schema,
+  config,
+  currentMemberId,
+  isAdmin,
+  members = [],
+  api = recordPoolApi,
+  onChanged,
+  toast = false,
+}: OwnershipControllerProps) {
   const [assigning, setAssigning] = useState(false);
   const [ownerMemberId, setOwnerMemberId] = useState<string>();
   const [warning, setWarning] = useState<string>();
@@ -98,102 +109,130 @@ export function RecordOwnershipActions({
       try {
         await onChanged(action);
       } catch {
-        setWarning("操作已完成，但刷新失败，请重新载入，不要重复提交");
+        const message = "操作已完成，但刷新失败，请重新载入，不要重复提交";
+        setWarning(message);
+        if (toast) void message_.warning(message);
       }
     },
+    onError: (caught) => {
+      if (toast) void message_.error(poolError(caught));
+    },
   });
-  const canClaim =
+  const canClaim = Boolean(
     config?.enabled &&
-    record.inPublicPool &&
-    schema.actions.canRead &&
-    schema.actions.canUpdate &&
-    schema.scopes.update !== "NONE";
-  const canRelease =
+      record.inPublicPool &&
+      schema.actions.canRead &&
+      schema.actions.canUpdate &&
+      schema.scopes.update !== "NONE",
+  );
+  const canRelease = Boolean(
     config?.enabled &&
-    !record.inPublicPool &&
-    (isAdmin ||
-      (Boolean(currentMemberId) &&
-        record.ownerMemberId === currentMemberId &&
-        schema.actions.canUpdate &&
-        schema.scopes.update !== "NONE"));
+      !record.inPublicPool &&
+      (isAdmin ||
+        (Boolean(currentMemberId) &&
+          record.ownerMemberId === currentMemberId &&
+          schema.actions.canUpdate &&
+          schema.scopes.update !== "NONE")),
+  );
   const disabled = ownership.isPending || committed;
+
+  const assignDrawer = (
+    <Drawer
+      open={assigning}
+      title={`分配 ${record.title}`}
+      onClose={() => setAssigning(false)}
+      destroyOnHidden
+    >
+      <Space orientation="vertical" className={styles.poolSettings}>
+        <Typography.Text>选择负责人</Typography.Text>
+        <Select
+          aria-label="分配负责人"
+          placeholder="选择活动成员"
+          showSearch
+          optionFilterProp="label"
+          value={ownerMemberId}
+          onChange={setOwnerMemberId}
+          options={members.map((member) => ({
+            value: member.id,
+            label: member.displayName ?? "未设置姓名",
+          }))}
+        />
+        <Button
+          type="primary"
+          disabled={!ownerMemberId || disabled}
+          loading={ownership.isPending}
+          onClick={() => ownership.mutate("ASSIGN")}
+        >
+          确认分配
+        </Button>
+        {ownership.isError ? (
+          <Alert type="error" title={poolError(ownership.error)} />
+        ) : null}
+      </Space>
+    </Drawer>
+  );
+
+  return {
+    canClaim,
+    canRelease,
+    canAssign: isAdmin,
+    disabled,
+    pendingAction: ownership.isPending ? ownership.variables : undefined,
+    claim: () => ownership.mutate("CLAIM"),
+    release: () => ownership.mutate("RELEASE"),
+    startAssign: () => setAssigning(true),
+    error: ownership.isError ? poolError(ownership.error) : undefined,
+    warning,
+    assignDrawer,
+  };
+}
+
+export function RecordOwnershipActions(props: OwnershipControllerProps) {
+  const { record } = props;
+  const owner = useRecordOwnership(props);
   return (
     <span className={styles.poolActions}>
-      {canClaim ? (
+      {owner.canClaim ? (
         <Button
           size="small"
           aria-label={`领取 ${record.title}`}
-          disabled={disabled}
-          loading={ownership.isPending && ownership.variables === "CLAIM"}
-          onClick={() => ownership.mutate("CLAIM")}
+          disabled={owner.disabled}
+          loading={owner.pendingAction === "CLAIM"}
+          onClick={owner.claim}
         >
           领取
         </Button>
       ) : null}
-      {canRelease ? (
+      {owner.canRelease ? (
         <Popconfirm
           title="释放到公共池？"
           description="释放后负责人和回收时间将清空，其他成员可以领取"
           okText="确认释放"
           cancelText="取消"
-          onConfirm={() => ownership.mutate("RELEASE")}
+          onConfirm={owner.release}
         >
           <Button
             size="small"
             aria-label={`释放 ${record.title}`}
-            disabled={disabled}
+            disabled={owner.disabled}
           >
             释放
           </Button>
         </Popconfirm>
       ) : null}
-      {isAdmin ? (
+      {owner.canAssign ? (
         <Button
           size="small"
           aria-label={`分配 ${record.title}`}
-          disabled={disabled}
-          onClick={() => setAssigning(true)}
+          disabled={owner.disabled}
+          onClick={owner.startAssign}
         >
           分配
         </Button>
       ) : null}
-      {ownership.isError ? (
-        <Alert type="error" showIcon title={poolError(ownership.error)} />
-      ) : null}
-      {warning ? <Alert type="warning" showIcon title={warning} /> : null}
-      <Drawer
-        open={assigning}
-        title={`分配 ${record.title}`}
-        onClose={() => setAssigning(false)}
-        destroyOnHidden
-      >
-        <Space orientation="vertical" className={styles.poolSettings}>
-          <Typography.Text>选择负责人</Typography.Text>
-          <Select
-            aria-label="分配负责人"
-            placeholder="选择活动成员"
-            showSearch
-            optionFilterProp="label"
-            value={ownerMemberId}
-            onChange={setOwnerMemberId}
-            options={members.map((member) => ({
-              value: member.id,
-              label: member.displayName ?? "未设置姓名",
-            }))}
-          />
-          <Button
-            type="primary"
-            disabled={!ownerMemberId || disabled}
-            loading={ownership.isPending}
-            onClick={() => ownership.mutate("ASSIGN")}
-          >
-            确认分配
-          </Button>
-          {ownership.isError ? (
-            <Alert type="error" title={poolError(ownership.error)} />
-          ) : null}
-        </Space>
-      </Drawer>
+      {owner.error ? <Alert type="error" showIcon title={owner.error} /> : null}
+      {owner.warning ? <Alert type="warning" showIcon title={owner.warning} /> : null}
+      {owner.assignDrawer}
     </span>
   );
 }

@@ -42,6 +42,49 @@
 .overdue strong {
   color: #b44239;
 }
+/* Inside a record the panel is a section like the others, not a card. */
+.embedded {
+  gap: 12px;
+  padding: 0;
+  margin-top: 20px;
+  padding-top: 16px;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--border-hairline);
+  border-radius: 0;
+}
+.embedded > button {
+  justify-self: start;
+}
+.embedded .heading {
+  align-items: baseline;
+}
+.embedded .heading h2 {
+  margin: 0 0 2px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+.embedded .heading p {
+  max-width: 46ch;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.embedded .counts {
+  gap: 14px;
+}
+.embedded .counts strong {
+  margin-left: 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.embedded .composer {
+  padding: 12px;
+}
+.embedded .task {
+  padding: 12px 0;
+}
 .composer {
   display: grid;
   gap: 0 12px;
