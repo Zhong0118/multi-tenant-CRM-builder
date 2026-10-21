@@ -3,6 +3,7 @@
 import {
   ApartmentOutlined,
   AuditOutlined,
+  BranchesOutlined,
   BankOutlined,
   BarChartOutlined,
   DashboardOutlined,
@@ -32,6 +33,7 @@ const ICONS: Record<string, ReactNode> = {
   import: <SwapOutlined />,
   audit: <AuditOutlined />,
   object: <TableOutlined />,
+  relation: <BranchesOutlined />,
 };
 
 export function NavIcon({ name }: { name: string }) {

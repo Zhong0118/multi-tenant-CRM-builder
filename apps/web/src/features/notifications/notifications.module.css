@@ -60,11 +60,11 @@
   animation: appear 160ms ease;
   transition: background 180ms ease;
 }
-.unread { background: #f5f9ff; }
+.unread { background: var(--color-primary-soft); }
 .itemHeading { justify-content: space-between; gap: 12px; }
 .item h4 { margin: 0; font-size: 14px; font-weight: 600; }
 .item p { margin: 6px 0 10px; color: #475467; line-height: 1.65; font-size: 13px; }
-.unreadDot { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; background: #1677ff; }
+.unreadDot { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; background: var(--color-primary); }
 .itemMeta { gap: 8px 14px; flex-wrap: wrap; color: #667085; font-size: 12px; }
 .itemActions { justify-content: flex-end; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
 .unavailable { color: #667085; font-size: 12px; }
@@ -73,4 +73,52 @@
 @keyframes appear { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   .item, .bell, .badge :global(*), .drawer :global(*) { animation: none !important; transition: none !important; }
+}
+.navOpen {
+  color: var(--text-primary);
+  background: var(--bg-sidebar-active);
+}
+
+/* The inbox opens beside its sidebar row, like Linear's and Notion's inbox
+   popovers, instead of a drawer pinned to the window edge. */
+.popover :global(.ant-popover-inner) {
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--radius-reading);
+}
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: min(400px, calc(100vw - 32px));
+  max-height: min(600px, calc(100vh - 32px));
+}
+.panelHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 0;
+}
+.panelHeader h2 {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+.panelHeader span {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.panelScroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.panel .toolbar {
+  padding: 10px 16px;
+}
+.panelFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border-hairline);
 }

@@ -82,28 +82,45 @@
 
 .sidebarCollapsed .brand,
 .sidebarCollapsed .navItem,
-.sidebarCollapsed .toggle,
 .sidebarCollapsed .userButton {
   justify-content: center;
   padding-right: 0;
   padding-left: 0;
 }
 
-/* Workspace block: tighter, refined brand area with bottom border separator */
-.brand {
+/* Workspace row: the company on the left, the collapse control at the end. */
+.brandRow {
   display: flex;
   flex: 0 0 auto;
-  height: 52px;
+  gap: 2px;
+  align-items: center;
+  padding: 10px 8px 6px;
+}
+
+.sidebarCollapsed .brandRow {
+  flex-direction: column;
+  gap: 6px;
+}
+
+.brand {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  height: 40px;
   gap: 10px;
   align-items: center;
-  margin: 0;
-  padding: 0 12px;
+  padding: 0 8px;
   color: var(--text-primary);
-  border-bottom: 1px solid var(--border-hairline);
+  border-radius: var(--radius-control);
+}
+
+.sidebarCollapsed .brand {
+  flex: 0 0 auto;
+  width: 40px;
 }
 
 .brand:hover {
-  background: var(--bg-hover);
+  background: var(--bg-sidebar-active);
 }
 
 .brandMark {
@@ -114,10 +131,10 @@
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   background: var(--color-primary);
-  border-radius: 6px;
+  border-radius: 7px;
 }
 
 .brandMark svg {
@@ -127,10 +144,30 @@
 
 .brandName {
   overflow: hidden;
-  font-weight: 600;
   font-size: 14px;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.toggle {
+  display: inline-flex;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-size: 15px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+
+.toggle:hover {
+  color: var(--text-primary);
+  background: var(--bg-sidebar-active);
 }
 
 .navScroll {
@@ -144,40 +181,32 @@
 }
 
 .nav {
-  padding: 4px 8px;
+  padding: 2px 8px;
 }
 
 .navGroupLabel {
-  padding: 16px 12px 8px;
+  padding: 14px 8px 4px;
   color: var(--text-tertiary);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  line-height: 16px;
+  font-size: 13px;
+  line-height: 20px;
 }
 
-.nav + .nav {
-  padding-top: 0;
-  margin-top: 12px;
-  border-top: 1px solid var(--border-hairline);
-}
-
-.navItem,
-.toggle {
+.navItem {
   position: relative;
   display: flex;
   width: 100%;
-  height: 30px;
+  height: 32px;
   gap: 8px;
   align-items: center;
-  padding: 0 12px;
+  padding: 0 8px;
   margin-bottom: 1px;
-  color: var(--text-secondary);
-  font-size: 13.5px;
+  color: #43505b;
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
   background: transparent;
   border: 0;
-  border-radius: 0;
+  border-radius: 6px;
   cursor: pointer;
   transition:
     color 120ms ease,
@@ -195,31 +224,53 @@
   font-size: 16px;
 }
 
-.navItem:hover,
-.toggle:hover {
+.navItem:hover {
   color: var(--text-primary);
-  background: var(--bg-hover);
+  background: var(--bg-sidebar-active);
 }
 
 .navItemCurrent,
 .navItemCurrent:hover {
   color: var(--text-primary);
   font-weight: 500;
-  background: transparent;
-}
-
-.navItemCurrent::before {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 3px;
-  background: var(--color-primary);
-  content: "";
+  background: var(--bg-sidebar-active);
 }
 
 .navItemCurrent .navIcon {
-  color: var(--text-primary);
+  color: var(--color-primary);
+}
+
+.navItemSubtle {
+  color: var(--text-secondary);
+}
+
+/* Unread messages and similar counts: plain figures, not a coloured pill. */
+.navCount {
+  flex: none;
+  min-width: 18px;
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.navCount[data-tone="attention"] {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.sidebarCollapsed .navCount {
+  position: absolute;
+  top: 3px;
+  right: 9px;
+  min-width: 7px;
+  width: 7px;
+  height: 7px;
+  overflow: hidden;
+  color: transparent;
+  background: var(--color-primary);
+  border-radius: 50%;
 }
 
 .navItem:focus-visible,
@@ -261,9 +312,17 @@
 }
 
 .bottom {
+  display: flex;
   flex: 0 0 auto;
-  padding: 8px 0 0 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px 8px;
   border-top: 1px solid var(--border-hairline);
+}
+
+.footerNav {
+  display: flex;
+  flex-direction: column;
 }
 
 .column {
@@ -337,11 +396,17 @@
   overflow: auto;
   background: var(--bg-surface);
   overscroll-behavior: contain;
+  /* Short and long pages keep the same content width, so headers do not jump. */
+  scrollbar-gutter: stable;
+  /* A thin thumb on a clear track: an opaque square track would paint over
+     the panel's rounded corners. */
+  scrollbar-width: thin;
+  scrollbar-color: rgb(23 35 45 / 18%) transparent;
 }
 
-/* Pages that need padding can add their own container class */
-.contentPadded {
-  padding: 20px;
+/* Platform pages keep the shell's own margins; workspace pages bring a Page. */
+.mainPadded {
+  padding: 20px 28px 40px;
 }
 
 .backdrop {
@@ -375,18 +440,44 @@
   gap: 16px;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .pageHeaderCopy {
   min-width: 0;
 }
 
+.pageBreadcrumb {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 4px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.pageBreadcrumb a {
+  color: var(--text-secondary);
+}
+
+.pageBreadcrumb a:hover {
+  color: var(--color-primary);
+}
+
 .pageTitleRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
+  min-height: 32px;
+}
+
+.pageCount {
+  color: var(--text-tertiary);
+  font-size: 16px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
 
 .pageHeaderActions {
@@ -395,6 +486,7 @@
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  min-height: 32px;
 }
 
 .pageHeader h1 {
@@ -408,12 +500,13 @@
   margin-top: 2px;
   color: var(--text-secondary);
   font-size: 14px;
+  line-height: 22px;
 }
 
 .userButton {
   display: flex;
   width: 100%;
-  height: 52px;
+  height: 44px;
   gap: 10px;
   align-items: center;
   padding: 0 8px;
@@ -534,17 +627,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .sidebar,
-  .navItem,
-  .toggle {
+  .navItem {
     transition: none;
   }
-}
-
-.headerActions {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  gap: 8px;
 }
 
 .headerLeading > div {
@@ -553,34 +638,10 @@
   white-space: nowrap;
 }
 
-/* The account and the notification bell share the foot of the sidebar. */
-.accountRow {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.accountRow > :first-child {
-  flex: 1;
-  min-width: 0;
-}
-
-.sidebarActions {
-  display: flex;
-  flex: none;
-  align-items: center;
-}
-
 .headerActions {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 4px;
   margin-left: auto;
-}
-
-/* On a phone the bell lives in the compact header; the drawer copy would repeat it. */
-@media (max-width: 767px) {
-  .sidebarActions {
-    display: none;
-  }
 }

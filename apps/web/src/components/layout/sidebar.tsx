@@ -6,7 +6,7 @@ import Link from "next/link";
 import type { PointerEvent, ReactNode } from "react";
 
 import styles from "./app-shell.module.css";
-import type { ShellNavGroup, ShellUser } from "./app-shell";
+import type { ShellNavGroup, ShellNavItem, ShellUser } from "./app-shell";
 import { UserMenu } from "./user-menu";
 import {
   SIDEBAR_COLLAPSED_WIDTH,
@@ -28,8 +28,21 @@ export function currentNavHref(
 ): string | undefined {
   return groups
     .flatMap((group) => group.items)
-    .filter((item) => isNavItemCurrent(pathname, item.href))
-    .sort((left, right) => right.href.length - left.href.length)[0]?.href;
+    .filter((item) => item.href && isNavItemCurrent(pathname, item.href))
+    .sort((left, right) => (right.href?.length ?? 0) - (left.href?.length ?? 0))[0]?.href;
+}
+
+/** What a custom nav item (such as the message inbox) needs to look like a link. */
+export interface NavItemRenderState {
+  collapsed: boolean;
+  className: string;
+  iconClassName: string;
+  labelClassName: string;
+  countClassName: string;
+  /** Left edge for a panel that slides out beside the sidebar. */
+  panelOffset: number;
+  /** Closes the phone navigation drawer before a panel opens. */
+  onNavigate: () => void;
 }
 
 export function Sidebar({
@@ -39,8 +52,8 @@ export function Sidebar({
   user,
   roleLabel,
   showWorkspaceSwitch,
-  headerActions,
   navGroups,
+  footerItems = [],
   pathname,
   collapsed,
   width,
@@ -59,9 +72,9 @@ export function Sidebar({
   user: ShellUser;
   roleLabel: string;
   showWorkspaceSwitch?: boolean;
-  /** Workspace controls (notifications) kept beside the account on a desktop. */
-  headerActions?: ReactNode;
   navGroups: ShellNavGroup[];
+  /** Destinations pinned above the account, such as settings. */
+  footerItems?: ShellNavItem[];
   pathname: string;
   collapsed: boolean;
   width: number;
@@ -75,7 +88,17 @@ export function Sidebar({
   onResizeDoubleClick: () => void;
 }) {
   const toggleLabel = collapsed ? "展开菜单" : "收起菜单";
-  const activeHref = currentNavHref(pathname, navGroups);
+  const activeHref = currentNavHref(pathname, [...navGroups, { ariaLabel: "", items: footerItems }]);
+  const renderState: NavItemRenderState = {
+    collapsed,
+    className: styles.navItem,
+    iconClassName: styles.navIcon,
+    labelClassName: styles.navLabel,
+    countClassName: styles.navCount,
+    panelOffset: mobileOpen ? 0 : collapsed ? SIDEBAR_COLLAPSED_WIDTH : width,
+    onNavigate: onMobileClose,
+  };
+
   const toggleButton = (
     <button
       type="button"
@@ -84,9 +107,43 @@ export function Sidebar({
       aria-label={toggleLabel}
     >
       {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-      {collapsed ? null : <span className={styles.navLabel}>收起菜单</span>}
     </button>
   );
+
+  function navItem(item: ShellNavItem) {
+    if (item.render) {
+      return <div key={item.key ?? item.label}>{item.render(renderState)}</div>;
+    }
+    const href = item.href ?? "";
+    const current = href === activeHref;
+    const link = (
+      <Link
+        href={href}
+        onClick={onMobileClose}
+        aria-current={current ? "page" : undefined}
+        aria-label={collapsed ? item.label : undefined}
+        className={`${styles.navItem} ${current ? styles.navItemCurrent : ""} ${item.subtle ? styles.navItemSubtle : ""}`}
+      >
+        {item.icon ? (
+          <span className={styles.navIcon} aria-hidden>
+            {item.icon}
+          </span>
+        ) : null}
+        {collapsed ? null : <span className={styles.navLabel}>{item.label}</span>}
+        {!collapsed && item.count !== undefined ? (
+          <span className={styles.navCount}>{item.count}</span>
+        ) : null}
+      </Link>
+    );
+
+    return collapsed ? (
+      <Tooltip key={href} title={item.label} placement="right">
+        {link}
+      </Tooltip>
+    ) : (
+      <div key={href}>{link}</div>
+    );
+  }
 
   return (
     <aside
@@ -108,18 +165,27 @@ export function Sidebar({
         onPointerCancel={onResizePointerUp}
         onDoubleClick={onResizeDoubleClick}
       />
-      <Link href={brandHref} className={styles.brand} aria-label={brand} onClick={onMobileClose}>
-        <span className={styles.brandMark} aria-hidden>
-          {brandIcon ?? brand.slice(0, 1)}
-        </span>
-        {collapsed ? null : <span className={styles.brandName}>{brand}</span>}
-      </Link>
+      <div className={styles.brandRow}>
+        <Link href={brandHref} className={styles.brand} aria-label={brand} onClick={onMobileClose}>
+          <span className={styles.brandMark} aria-hidden>
+            {brandIcon ?? brand.slice(0, 1)}
+          </span>
+          {collapsed ? null : <span className={styles.brandName}>{brand}</span>}
+        </Link>
+        {collapsed ? (
+          <Tooltip title={toggleLabel} placement="right">
+            {toggleButton}
+          </Tooltip>
+        ) : (
+          toggleButton
+        )}
+      </div>
       <div
         className={styles.navScroll}
         data-testid="sidebar-navigation-scroll"
         data-scroll-region="navigation"
       >
-        {navGroups.map((group) =>
+        {navGroups.map((group, index) =>
           group.items.length === 0 ? (
             group.emptyLabel ? (
               <div key={group.ariaLabel} className={styles.emptyNav}>
@@ -137,67 +203,31 @@ export function Sidebar({
             ) : null
           ) : (
             <nav
-              key={group.ariaLabel}
+              key={group.ariaLabel || index}
               aria-label={group.ariaLabel}
               className={styles.nav}
               data-collapsed={collapsed ? "true" : undefined}
             >
-              {collapsed ? null : (
+              {collapsed || group.hideLabel ? null : (
                 <div className={styles.navGroupLabel}>{group.ariaLabel}</div>
               )}
-              {group.items.map((item) => {
-                const current = item.href === activeHref;
-                const icon = item.icon;
-                const link = (
-                  <Link
-                    href={item.href}
-                    onClick={onMobileClose}
-                    aria-current={current ? "page" : undefined}
-                    aria-label={collapsed ? item.label : undefined}
-                    className={`${styles.navItem} ${current ? styles.navItemCurrent : ""}`}
-                  >
-                    {icon ? (
-                      <span className={styles.navIcon} aria-hidden>
-                        {icon}
-                      </span>
-                    ) : null}
-                    {collapsed ? null : (
-                      <span className={styles.navLabel}>{item.label}</span>
-                    )}
-                  </Link>
-                );
-
-                return collapsed ? (
-                  <Tooltip key={item.href} title={item.label} placement="right">
-                    {link}
-                  </Tooltip>
-                ) : (
-                  <div key={item.href}>{link}</div>
-                );
-              })}
+              {group.items.map(navItem)}
             </nav>
           ),
         )}
       </div>
       <div className={styles.bottom}>
-        {collapsed ? (
-          <Tooltip title={toggleLabel} placement="right">
-            {toggleButton}
-          </Tooltip>
-        ) : (
-          toggleButton
-        )}
-        <div className={styles.accountRow}>
-          <UserMenu
-            user={user}
-            roleLabel={roleLabel}
-            showWorkspaceSwitch={showWorkspaceSwitch}
-            collapsed={collapsed}
-          />
-          {headerActions && !collapsed ? (
-            <div className={styles.sidebarActions}>{headerActions}</div>
-          ) : null}
-        </div>
+        {footerItems.length ? (
+          <nav aria-label="设置" className={styles.footerNav}>
+            {footerItems.map(navItem)}
+          </nav>
+        ) : null}
+        <UserMenu
+          user={user}
+          roleLabel={roleLabel}
+          showWorkspaceSwitch={showWorkspaceSwitch}
+          collapsed={collapsed}
+        />
       </div>
     </aside>
   );

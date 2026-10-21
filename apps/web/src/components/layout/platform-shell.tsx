@@ -37,6 +37,7 @@ export function PlatformShell({
       headerLeft={<PlatformBreadcrumb pathname={pathname} />}
       user={user}
       roleLabel="平台超级管理员"
+      contentPadding
     >
       {children}
     </AppShell>
