@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { CreateObjectForm } from "./create-object-form";
@@ -123,6 +123,24 @@ it("uploads a file, lets admins confirm select options and creates structure in 
   expect(navigate).toHaveBeenCalledWith(
     "/workspace/northwind/settings/objects/new-object",
   );
+});
+
+it("creates with the chosen icon, and without one when the default is kept", async () => {
+  const first = setupFileCreate();
+  fireEvent.click(screen.getByRole("radio", { name: "订单" }));
+  fireEvent.click(screen.getByRole("button", { name: "创建业务表草稿" }));
+  await waitFor(() => expect(first.api.createDraft).toHaveBeenCalledTimes(1));
+  expect(first.api.createDraft).toHaveBeenCalledWith(
+    "northwind",
+    expect.objectContaining({ code: "customers", icon: "cart" }),
+  );
+  cleanup();
+
+  const second = setupFileCreate();
+  expect(screen.getByRole("radio", { name: "默认" })).toHaveAttribute("aria-checked", "true");
+  fireEvent.click(screen.getByRole("button", { name: "创建业务表草稿" }));
+  await waitFor(() => expect(second.api.createDraft).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(second.api.createDraft).mock.calls[0][1]).not.toHaveProperty("icon");
 });
 
 it("blocks creation while reading and after errors until file mode is explicitly removed", async () => {

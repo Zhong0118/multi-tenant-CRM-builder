@@ -1,6 +1,12 @@
 "use client";
 
-import { DeleteOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  FilterOutlined,
+  SearchOutlined,
+} from "@ant-design/icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Alert,
@@ -15,10 +21,10 @@ import {
   Input,
   InputNumber,
   Popconfirm,
+  Segmented,
   Select,
   Space,
   Table,
-  Tabs,
   Tooltip,
   Typography,
 } from "antd";
@@ -28,6 +34,7 @@ import dayjs, { type Dayjs } from "dayjs";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { RecordRowActions } from "./record-row-actions";
 import { SavedRecordFilters } from "./saved-record-filters";
 import { FilterBar } from "@/components/workbench/filter-bar";
 import { PageHeader } from "@/components/layout/page-header";
@@ -384,11 +391,13 @@ export function RecordList({
       render: (updatedAt: string) => formatDateTime(updatedAt),
     },
     {
-      title: "操作",
+      // The header is read by assistive technology only; the menu button is self-explanatory.
+      title: <span className={styles.visuallyHidden}>操作</span>,
       key: "actions",
-      width: poolConfig?.enabled || canFilterByOwner ? 280 : 124,
+      width: 56,
       fixed: "right",
-      render: (_, row) => recordActions(row),
+      align: "center",
+      render: (_, row) => rowMenu(row),
     },
   ];
 
@@ -460,6 +469,34 @@ export function RecordList({
   function saveOwnerVisibility(visible: boolean) {
     setOwnerVisible(visible);
     window.localStorage.setItem(ownerStorageKey, visible ? "visible" : "hidden");
+  }
+
+  function rowMenu(row: RecordSummary) {
+    return (
+      <RecordRowActions
+        key={`${row.id}:${row.version}`}
+        record={row}
+        editable={editableRecord(row)}
+        editBlockedReason={row.inPublicPool ? "领取后可编辑" : "无编辑权限"}
+        canDelete={schema.actions.canDelete}
+        deleting={remove.isPending && remove.variables?.id === row.id}
+        onView={() => go(recordPath(row.id))}
+        onEdit={() => go(recordPath(row.id, "edit"))}
+        onDelete={() => remove.mutate(row)}
+        tenantCode={tenantCode}
+        objectCode={objectCode}
+        schema={schema}
+        config={poolConfig}
+        currentMemberId={currentMemberId}
+        isAdmin={canFilterByOwner}
+        members={members}
+        onChanged={async () => {
+          const result = await records.refetch();
+          if (result.isError) throw result.error;
+          router.refresh();
+        }}
+      />
+    );
   }
 
   function recordActions(row: RecordSummary) {
@@ -548,72 +585,78 @@ export function RecordList({
         ) : null}</Space>}
       />
 
-        {poolConfig?.enabled ? (
-          <Tabs
-            className={styles.poolTabs}
-            activeKey={
-              poolConfig.lifecycleEnabled
-                ? (query.poolStage ?? "all")
-                : (query.scope ?? (owned ? "mine" : "all"))
-            }
-            onChange={(view) => {
-              if (!poolConfig.lifecycleEnabled)
-                return apply({
+      {poolConfig?.enabled || currentMemberId ? (
+        <div className={styles.viewBar}>
+          {poolConfig?.enabled ? (
+            <Segmented
+              className={styles.poolTabs}
+              aria-label="记录范围"
+              value={
+                poolConfig.lifecycleEnabled
+                  ? (query.poolStage ?? "all")
+                  : (query.scope ?? (owned ? "mine" : "all"))
+              }
+              onChange={(value) => {
+                const view = String(value);
+                if (!poolConfig.lifecycleEnabled)
+                  return apply({
+                    ...query,
+                    scope: view as "mine" | "pool" | "all",
+                    poolStage: undefined,
+                    page: 1,
+                    ownerMemberId: undefined,
+                  });
+                const privateStage = ["PENDING_CONTACT", "FOLLOWING", "PROTECTED"].includes(view);
+                apply({
                   ...query,
-                  scope: view as "mine" | "pool" | "all",
-                  poolStage: undefined,
+                  poolStage:
+                    view === "all" ? undefined : (view as PoolStageFilter),
+                  scope: privateStage && !canFilterByOwner ? "mine" : undefined,
                   page: 1,
                   ownerMemberId: undefined,
                 });
-              const privateStage = ["PENDING_CONTACT", "FOLLOWING", "PROTECTED"].includes(view);
-              apply({
-                ...query,
-                poolStage:
-                  view === "all" ? undefined : (view as PoolStageFilter),
-                scope: privateStage && !canFilterByOwner ? "mine" : undefined,
-                page: 1,
-                ownerMemberId: undefined,
-              });
-            }}
-            items={
-              poolConfig.lifecycleEnabled
-                ? [
-                    ...POOL_STAGES.map((stage) => ({
-                      key: stage,
-                      label: <span className={styles.poolTabLabel}><span>{{ ...DEFAULT_POOL_LABELS, ...poolConfig.labels }[POOL_LABEL_KEYS[stage]]}</span>{" "}{records.data?.poolCounts?.[stage] !== undefined ? <span className={styles.poolTabCount}>{records.data.poolCounts[stage]}</span> : null}</span>,
-                    })),
-                    {
-                      key: "LEGACY",
-                      label: <span className={styles.poolTabLabel}><span>旧记录</span>{" "}{records.data?.poolCounts?.LEGACY !== undefined ? <span className={styles.poolTabCount}>{records.data.poolCounts.LEGACY}</span> : null}</span>,
-                    },
-                    {
-                      key: "all",
-                      label:
-                        canFilterByOwner || schema.scopes.read === "ALL"
-                          ? "全部记录"
-                          : "全部可见记录",
-                    },
-                  ]
-                : [
-                    { key: "mine", label: "我的记录" },
-                    { key: "pool", label: "公共池" },
-                    ...(schema.scopes.read === "ALL"
-                      ? [{ key: "all", label: "全部记录" }]
-                      : []),
-                  ]
-            }
-          />
-        ) : null}
-      {currentMemberId && (
-        <SavedRecordFilters
-          key={`${tenantCode}:${currentMemberId}:${objectCode}`}
-          tenantCode={tenantCode}
-          memberId={currentMemberId}
-          objectCode={objectCode}
-          query={query}
-          onApply={apply}
-        />
-      )}
+              }}
+              options={
+                poolConfig.lifecycleEnabled
+                  ? [
+                      ...POOL_STAGES.map((stage) => ({
+                        value: stage,
+                        label: <span className={styles.poolTabLabel}><span>{{ ...DEFAULT_POOL_LABELS, ...poolConfig.labels }[POOL_LABEL_KEYS[stage]]}</span>{" "}{records.data?.poolCounts?.[stage] !== undefined ? <span className={styles.poolTabCount}>{records.data.poolCounts[stage]}</span> : null}</span>,
+                      })),
+                      {
+                        value: "LEGACY",
+                        label: <span className={styles.poolTabLabel}><span>旧记录</span>{" "}{records.data?.poolCounts?.LEGACY !== undefined ? <span className={styles.poolTabCount}>{records.data.poolCounts.LEGACY}</span> : null}</span>,
+                      },
+                      {
+                        value: "all",
+                        label:
+                          canFilterByOwner || schema.scopes.read === "ALL"
+                            ? "全部记录"
+                            : "全部可见记录",
+                      },
+                    ]
+                  : [
+                      { value: "mine", label: "我的记录" },
+                      { value: "pool", label: "公共池" },
+                      ...(schema.scopes.read === "ALL"
+                        ? [{ value: "all", label: "全部记录" }]
+                        : []),
+                    ]
+              }
+            />
+          ) : null}
+          {currentMemberId && (
+            <SavedRecordFilters
+              key={`${tenantCode}:${currentMemberId}:${objectCode}`}
+              tenantCode={tenantCode}
+              memberId={currentMemberId}
+              objectCode={objectCode}
+              query={query}
+              onApply={apply}
+            />
+          )}
+        </div>
+      ) : null}
       <FilterBar
         ariaLabel={`${schema.object.name}筛选与排序`}
         search={
@@ -621,6 +664,7 @@ export function RecordList({
             aria-label={searchLabel}
             placeholder={searchLabel}
             allowClear
+            prefix={<SearchOutlined aria-hidden />}
             value={searchInput}
             className={styles.searchInput}
             onChange={(event) => onSearchChange(event.target.value)}
@@ -639,6 +683,8 @@ export function RecordList({
             </Typography.Text>
             <Select
               aria-label="每页条数"
+              variant="borderless"
+              className={styles.ghostSelect}
               value={page.limit}
               options={[20, 50, 100, 300, 500, 1000].map((value) => ({
                 value,
@@ -705,10 +751,11 @@ export function RecordList({
             <Select
               aria-label="按负责人筛选"
               placeholder="全部负责人"
+              variant="borderless"
               allowClear
               showSearch
               optionFilterProp="label"
-              className={styles.ownerFilter}
+              className={`${styles.ownerFilter} ${styles.chip}`}
               value={query.ownerMemberId}
               onChange={(next?: string) =>
                 apply(withFilter(query, { ownerMemberId: next }))
@@ -730,8 +777,9 @@ export function RecordList({
                 mode="multiple"
                 aria-label={`按${field.label}筛选`}
                 placeholder={`全部${field.label}`}
+                variant="borderless"
                 allowClear
-                className={styles.optionFilter}
+                className={`${styles.optionFilter} ${styles.chip}`}
                 value={optionFilterValues(query.filters, field.fieldKey)}
                 onChange={(values: string[]) =>
                   applyFieldFilter(
@@ -748,6 +796,9 @@ export function RecordList({
           })}
         </div>
         <Button
+          type="text"
+          icon={<FilterOutlined aria-hidden />}
+          className={styles.moreFilters}
           aria-expanded={filtersOpen}
           onClick={() => setFiltersOpen(!filtersOpen)}
         >

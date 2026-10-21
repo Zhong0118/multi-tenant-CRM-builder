@@ -37,11 +37,18 @@
   background: var(--paper);
 }
 
+/* Inside the designer a section sits on the page surface instead of in a card. */
+.designerWorkspace .panel {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
 .designer {
-  display: grid;
-  grid-template-columns: 168px minmax(0, 1fr) minmax(280px, 340px);
+  display: flex;
+  flex-direction: column;
   gap: 16px;
-  align-items: start;
 }
 
 .designerHeader {
@@ -170,63 +177,59 @@
   font-size: 12px;
 }
 
-/* Left rail encodes the real configuration steps, not decorative numbering. */
-.designerNav {
-  position: sticky;
-  top: 16px;
+/* The configuration steps are real stages, not decoration: a track of buttons,
+   the current one raised, the live version at the end of the row. */
+.designerNavRow {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.designerNav {
+  display: inline-flex;
+  flex-wrap: wrap;
   gap: 2px;
-  padding-right: 16px;
-  border-right: 1px solid var(--rule);
+  padding: 3px;
+  background: var(--bg-track);
+  border-radius: 9px;
 }
 
 .designerNavItem {
-  padding: 8px 10px;
+  height: 30px;
+  padding: 0 14px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 7px;
   background: transparent;
-  color: var(--ledger-ink);
+  color: #4b5560;
   font: inherit;
   font-size: 14px;
-  text-align: left;
+  font-weight: 500;
   cursor: pointer;
 }
 
 .designerNavItem:hover {
-  background: var(--canvas);
+  color: var(--text-primary);
 }
 
-.designerNavItemActive {
-  background: var(--color-primary-soft);
-  color: var(--working-blue);
-  font-weight: 600;
+.designerNavItemActive,
+.designerNavItemActive:hover {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow:
+    0 0 0 1px rgb(20 28 36 / 5%),
+    0 1px 2px rgb(20 28 36 / 10%);
 }
 
 .designerNavVersion {
-  margin-top: 12px;
-  padding: 8px 10px;
-  color: var(--ink-secondary);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .designerWorkspace {
   min-width: 0;
-}
-
-.designerPreview {
-  position: sticky;
-  top: 16px;
-  min-width: 0;
-  padding: 16px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-reading);
-}
-
-.compactPreviewButton {
-  display: none;
 }
 
 .sectionHeading {
@@ -787,16 +790,16 @@
 }
 
 @media (min-width: 768px) and (max-width: 1199px) {
-  .designer {
-    grid-template-columns: 160px minmax(0, 1fr);
+  .fieldsLayout {
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
   }
 
-  .designerPreview {
-    display: none;
+  .fieldListColumn {
+    padding-right: 20px;
   }
 
-  .compactPreviewButton {
-    display: inline-flex;
+  .fieldEditorColumn {
+    padding-left: 20px;
   }
 }
 
@@ -819,8 +822,7 @@
 }
 
 .designerContext {
-  padding-block: 12px;
-  border-bottom: 1px solid var(--border-default);
+  gap: 4px 16px;
   color: var(--text-secondary);
   font-size: 13px;
 }
@@ -830,7 +832,7 @@
 }
 
 .saveEffect {
-  margin: 8px 0 16px;
+  margin: 0;
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 20px;
@@ -995,4 +997,374 @@
     transition: none;
     transform: none;
   }
+}
+
+/* Icon choices for a business table. */
+.iconGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 36px);
+  gap: 6px;
+  /* Twelve across: the 36 icons fill three rows on a desktop. */
+  max-width: 498px;
+}
+
+.iconTile {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  color: var(--text-secondary);
+  font-size: 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.iconTile:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.iconTile[aria-checked="true"] {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+}
+
+.iconTile:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.iconTile:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.ledgerIcon {
+  display: inline-flex;
+  margin-right: 8px;
+  color: var(--text-secondary);
+  vertical-align: -2px;
+}
+
+/* ── Fields: the list on the left, the selected field's editor on the right ── */
+.fieldsLayout {
+  display: grid;
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  align-items: start;
+}
+
+.fieldListColumn {
+  min-width: 0;
+  padding-right: 32px;
+}
+
+.fieldEditorColumn {
+  min-width: 0;
+  min-height: 320px;
+  padding-left: 32px;
+  border-left: 1px solid var(--border-hairline);
+}
+
+.fieldListHeading {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.fieldListHeading h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.fieldListHeading :global(.ant-typography) {
+  display: block;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.fieldList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border-hairline);
+}
+
+.fieldListItem {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  padding-left: 4px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.fieldListItem:hover {
+  background: var(--bg-hover);
+}
+
+.fieldListItemSelected,
+.fieldListItemSelected:hover {
+  background: var(--color-primary-soft);
+}
+
+.fieldListItemInactive .fieldListText {
+  color: var(--text-secondary);
+}
+
+.fieldListItemDragging {
+  background: var(--bg-surface);
+  box-shadow: 0 4px 14px rgb(23 35 45 / 14%);
+}
+
+.fieldListSelect {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px 10px 2px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fieldListSelect:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.fieldTypeBadge {
+  display: grid;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+  background: var(--bg-hover);
+  border-radius: 8px;
+}
+
+.fieldListItemSelected .fieldTypeBadge {
+  color: var(--color-primary);
+  background: var(--bg-surface);
+}
+
+.fieldListText {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  line-height: 1.45;
+}
+
+.fieldListName {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fieldListMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.fieldListMeta > span + span::before {
+  margin-right: 8px;
+  color: var(--border-strong);
+  content: "·";
+}
+
+.fieldListMeta .stableKey {
+  font-size: 13px;
+}
+
+.fieldListHead {
+  display: flex;
+  min-width: 0;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fieldListFlags {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+
+.fieldFlag {
+  display: inline-flex;
+  height: 22px;
+  align-items: center;
+  padding: 0 7px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--bg-hover);
+  border-radius: 6px;
+}
+
+.fieldListItemSelected .fieldFlag {
+  background: var(--bg-surface);
+}
+
+.fieldFlagRequired {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.fieldFlagDraft {
+  color: #94500f;
+  background: var(--color-warning-soft);
+}
+
+.fieldListEmpty {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.fieldPanel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.fieldPanelHeader {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding-bottom: 16px;
+}
+
+.fieldPanelHeader .fieldTypeBadge {
+  width: 40px;
+  height: 40px;
+  color: var(--color-primary);
+  font-size: 18px;
+  background: var(--color-primary-soft);
+  border-radius: 10px;
+}
+
+.fieldPanelTitle {
+  min-width: 0;
+}
+
+.fieldPanelTitle h2 {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fieldPanelTitle p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.fieldPanelTitle .stableKey {
+  font-size: 13px;
+}
+
+/* The shared sections were drawn as cards for the drawer; here they are flat. */
+.fieldPanel .drawerSection {
+  padding: 18px 0;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--border-hairline);
+  border-radius: 0;
+}
+
+.fieldPanel .drawerSection + .drawerSection {
+  margin-top: 0;
+}
+
+.drawerSectionHeadingPlain {
+  grid-template-columns: minmax(0, 1fr);
+  margin-bottom: 12px;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+/* The page area has 20px of padding that a sticky element does not reach into,
+   so the bar offsets it to sit flush with the bottom edge. */
+.fieldPanelFooter {
+  position: sticky;
+  bottom: -20px;
+  z-index: 2;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+  margin-bottom: -20px;
+  padding: 12px 0 32px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-hairline);
+}
+
+.fieldPanelNote {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.fieldPanelDirty {
+  color: #94500f;
+  font-weight: 500;
+}
+
+.fieldPanelSaved {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+/* Single-column forms keep a readable measure instead of spanning the page. */
+.formColumn {
+  max-width: 760px;
+}
+
+/* Tighter rhythm inside the field editor: the section rules already separate. */
+.fieldPanel :global(.ant-form-item) {
+  margin-bottom: 14px;
+}
+
+.fieldPanel .drawerSection > :global(.ant-form-item:last-child),
+.fieldPanel .drawerSection > :last-child {
+  margin-bottom: 0;
+}
+
+.unpublishedNote {
+  color: #94500f;
+  font-weight: 500;
 }

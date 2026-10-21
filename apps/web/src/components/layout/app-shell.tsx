@@ -47,7 +47,9 @@ export interface AppShellProps {
   brandIcon?: ReactNode;
   brandHref: string;
   navGroups: ShellNavGroup[];
-  headerLeft: ReactNode;
+  /** Breadcrumb or title for a desktop header; omit for no desktop header. */
+  headerLeft?: ReactNode;
+  /** Workspace-level controls such as notifications, shown in the sidebar and the compact header. */
   headerActions?: ReactNode;
   user: ShellUser;
   roleLabel: string;
@@ -244,7 +246,10 @@ export function AppShell({
   }, []);
 
   return (
-    <div className={styles.shell} ref={shell}>
+    <div
+      className={`${styles.shell} ${headerLeft ? "" : styles.shellHeaderless}`}
+      ref={shell}
+    >
       {mobileOpen ? (
         <button
           type="button"
@@ -257,6 +262,10 @@ export function AppShell({
         brand={brand}
         brandIcon={brandIcon}
         brandHref={brandHref}
+        user={user}
+        roleLabel={roleLabel}
+        showWorkspaceSwitch={showWorkspaceSwitch}
+        headerActions={headerActions}
         navGroups={navGroups}
         pathname={pathname}
         collapsed={mobileOpen ? false : collapsed}
@@ -272,11 +281,9 @@ export function AppShell({
       />
       <div className={styles.column}>
         <TopHeader
+          brand={brand}
           headerLeft={headerLeft}
           headerActions={headerActions}
-          user={user}
-          roleLabel={roleLabel}
-          showWorkspaceSwitch={showWorkspaceSwitch}
           onOpenNavigation={() => {
             navigationTrigger.current = shell.current?.querySelector<HTMLElement>("header button") ?? null;
             setMobileOpen(true);

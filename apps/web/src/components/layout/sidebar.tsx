@@ -5,10 +5,9 @@ import { Tooltip } from "antd";
 import Link from "next/link";
 import type { PointerEvent, ReactNode } from "react";
 
-import { LogoutButton } from "@/features/auth/logout-button";
-
 import styles from "./app-shell.module.css";
-import type { ShellNavGroup } from "./app-shell";
+import type { ShellNavGroup, ShellUser } from "./app-shell";
+import { UserMenu } from "./user-menu";
 import {
   SIDEBAR_COLLAPSED_WIDTH,
   SIDEBAR_MAX_WIDTH,
@@ -37,6 +36,10 @@ export function Sidebar({
   brand,
   brandIcon,
   brandHref,
+  user,
+  roleLabel,
+  showWorkspaceSwitch,
+  headerActions,
   navGroups,
   pathname,
   collapsed,
@@ -53,6 +56,11 @@ export function Sidebar({
   brand: string;
   brandIcon?: ReactNode;
   brandHref: string;
+  user: ShellUser;
+  roleLabel: string;
+  showWorkspaceSwitch?: boolean;
+  /** Workspace controls (notifications) kept beside the account on a desktop. */
+  headerActions?: ReactNode;
   navGroups: ShellNavGroup[];
   pathname: string;
   collapsed: boolean;
@@ -179,16 +187,16 @@ export function Sidebar({
         ) : (
           toggleButton
         )}
-        <div className={styles.logout}>
-          {collapsed ? (
-            <Tooltip title="退出登录" placement="right">
-              <span>
-                <LogoutButton iconOnly />
-              </span>
-            </Tooltip>
-          ) : (
-            <LogoutButton />
-          )}
+        <div className={styles.accountRow}>
+          <UserMenu
+            user={user}
+            roleLabel={roleLabel}
+            showWorkspaceSwitch={showWorkspaceSwitch}
+            collapsed={collapsed}
+          />
+          {headerActions && !collapsed ? (
+            <div className={styles.sidebarActions}>{headerActions}</div>
+          ) : null}
         </div>
       </div>
     </aside>

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { NotificationBell } from "@/features/notifications/notification-bell";
 import { NavIcon } from "@/components/navigation/nav-icon";
+import { ObjectIcon } from "@/components/navigation/object-icon";
 import { workspaceNavigationGroups } from "@/components/navigation/workspace-navigation";
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
@@ -29,7 +30,7 @@ export function WorkspaceShell({
   const objectItems = businessObjects.map((object) => ({
     href: `/workspace/${tenantCode}/objects/${object.code}`,
     label: object.name,
-    icon: <NavIcon name="object" />,
+    icon: <ObjectIcon name={object.icon} />,
   }));
 
   const navigation = workspaceNavigationGroups(tenantCode, role);
@@ -67,7 +68,6 @@ export function WorkspaceShell({
           items: systemItems(navigation.admin),
         }] : []),
       ]}
-      headerLeft={<span>{tenantName}</span>}
       headerActions={<NotificationBell tenantCode={tenantCode} />}
       user={user}
       roleLabel={role === "TENANT_ADMIN" ? "公司管理员" : "员工"}

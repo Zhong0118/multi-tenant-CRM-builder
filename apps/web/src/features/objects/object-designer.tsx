@@ -22,16 +22,15 @@ import { PageHeader } from "@/components/layout/page-header";
 import { StatusTag } from "@/components/workbench/status-tag";
 import { toApiError } from "@/lib/api/api-error";
 
-import {
-  FieldEditorDrawer,
-  type FieldDraftValues,
-} from "./field-editor-drawer";
+import { FieldEditorPanel } from "./field-editor-panel";
+import type { FieldDraftValues } from "./field-editor-form";
 import type {
   ConfigurableFieldView,
   ConfigurableObjectView,
 } from "./configuration-view";
 import { ObjectLifecycleControl } from "./object-lifecycle-control";
-import { FieldLedger } from "./field-ledger";
+import { FieldList } from "./field-list";
+import { ObjectIconPicker } from "./object-icon-picker";
 import { objectApi as defaultObjectApi, type ObjectApi } from "./object-api";
 import { ObjectPreview, type PreviewRole } from "./object-preview";
 import {
@@ -60,6 +59,8 @@ import styles from "./objects.module.css";
 
 type Section =
   "basics" | "fields" | "view" | "permissions" | "workflow" | "automations" | "publications";
+
+const FIELD_SAVED = "字段已保存";
 
 const SECTIONS: Array<{ key: Section; label: string }> = [
   { key: "basics", label: "基本设置" },
@@ -96,8 +97,17 @@ export function ObjectDesigner({
   const [section, setSection] = useState<Section>(initialSection ?? "fields");
   const [previewRole, setPreviewRole] = useState<PreviewRole>("TENANT_ADMIN");
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [editingField, setEditingField] =
-    useState<ConfigurableFieldView | null>(null);
+  // Chosen once, up front: if the first row were only a fallback, a reorder
+  // would move the editor onto whichever field becomes first.
+  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(
+    initialDraft.fields[0]?.id ?? null,
+  );
+  // Bumped by each successful field save so the editor restarts from what was
+  // saved; unrelated draft changes (a reorder) leave the member's edits alone.
+  const [editorRevision, setEditorRevision] = useState(0);
+  const [fieldDirty, setFieldDirty] = useState(false);
+  const [fieldError, setFieldError] = useState<string>();
+  const [discardAction, setDiscardAction] = useState<(() => void) | null>(null);
   const [fieldCreatorOpen, setFieldCreatorOpen] = useState(false);
   const [statusField, setStatusField] = useState<ConfigurableFieldView | null>(
     null,
@@ -120,10 +130,22 @@ export function ObjectDesigner({
           ? "系统字段不能停用"
           : undefined
       : undefined;
+  // Derived from the draft, so the editor always shows the latest saved field.
+  const selectedField =
+    configurableDraft.fields.find((field) => field.id === selectedFieldId) ??
+    configurableDraft.fields[0] ??
+    null;
+
+  /** Runs `action`, first asking before it throws away unsaved field edits. */
+  function guardUnsavedField(action: () => void) {
+    if (!fieldDirty) action();
+    else setDiscardAction(() => action);
+  }
 
   function accept(next: ObjectDraft, saved?: string) {
     setDraft(next);
     setError(undefined);
+    setFieldError(undefined);
     setNotice(saved);
     setConflicted(false);
     void queryClient.invalidateQueries({
@@ -132,11 +154,15 @@ export function ObjectDesigner({
     });
   }
 
-  function reject(caught: unknown) {
+  function reject(caught: unknown): string {
     const apiError = toApiError(caught);
-    setError(`${apiError.message}（请求编号：${apiError.requestId}）`);
+    const message = `${apiError.message}（请求编号：${apiError.requestId}）`;
+    setError(message);
     setNotice(undefined);
-    setConflicted(apiError.code === "CONFIG_VERSION_CONFLICT");
+    setConflicted(
+      apiError.code === "CONFIG_VERSION_CONFLICT" || apiError.status === 409,
+    );
+    return message;
   }
 
   const reorder = useMutation({
@@ -173,7 +199,7 @@ export function ObjectDesigner({
       const created = next.fields.find(
         (field) => field.fieldKey === input.fieldKey,
       );
-      if (created) setEditingField(created as ConfigurableFieldView);
+      if (created) setSelectedFieldId(created.id);
     },
     onError: reject,
   });
@@ -240,10 +266,10 @@ export function ObjectDesigner({
       return updateField();
     },
     onSuccess: (next) => {
-      accept(next, "字段已保存");
-      setEditingField(null);
+      accept(next, FIELD_SAVED);
+      setEditorRevision((revision) => revision + 1);
     },
-    onError: reject,
+    onError: (caught) => setFieldError(reject(caught)),
   });
 
   const changeFieldStatus = useMutation({
@@ -268,12 +294,14 @@ export function ObjectDesigner({
       name: string;
       titleFieldKey: string;
       description: string;
+      icon: string | null;
     }) =>
       api.updateDraft(tenantCode, objectId, {
         expectedVersion: draft.object.version,
         name: input.name,
         titleFieldKey: input.titleFieldKey,
         description: input.description === "" ? null : input.description,
+        icon: input.icon,
       }),
     onSuccess: (next) => accept(next, "基本设置已保存"),
     onError: reject,
@@ -376,7 +404,7 @@ export function ObjectDesigner({
       </div>
 
       <div className={styles.designer}>
-        <div style={{ gridColumn: "1 / -1" }}>
+        <div>
           <PageHeader
             title={draft.object.name}
             status={
@@ -399,7 +427,6 @@ export function ObjectDesigner({
             extra={
               <div className={styles.designerActions}>
                 <Button
-                  className={styles.compactPreviewButton}
                   aria-label="打开员工端预览"
                   onClick={() => setPreviewOpen(true)}
                 >
@@ -408,7 +435,10 @@ export function ObjectDesigner({
                 <Button
                   type="primary"
                   disabled={
-                    archived || permissionsDirty || savePermissions.isPending
+                    archived ||
+                    permissionsDirty ||
+                    fieldDirty ||
+                    savePermissions.isPending
                   }
                   loading={analyze.isPending}
                   onClick={() => analyze.mutate()}
@@ -447,10 +477,13 @@ export function ObjectDesigner({
                   ? `停用前发布版本 v${draft.object.publicationNumber}`
                   : `员工使用已发布版本 v${draft.object.publicationNumber}`}
             </span>
+            {draft.object.hasUnpublishedChanges ? (
+              <strong className={styles.unpublishedNote}>有未发布变更</strong>
+            ) : null}
+            <span className={styles.saveEffect}>
+              发布前会检查变更；确认发布后才更新员工使用的版本。
+            </span>
           </div>
-          <p className={styles.saveEffect}>
-            发布前会检查变更；确认发布后才更新员工使用的版本。
-          </p>
 
           {archived ? (
             <Alert
@@ -459,8 +492,9 @@ export function ObjectDesigner({
               title="业务表已停用，配置只读，历史数据保留"
             />
           ) : null}
-          {draft.object.hasUnpublishedChanges ? <p>有未发布变更</p> : null}
-          {notice ? (
+          {/* A saved field is confirmed beside the editor's own buttons; a second
+              banner above would also push the whole editor down. */}
+          {notice && notice !== FIELD_SAVED ? (
             <Alert
               type="success"
               showIcon
@@ -490,26 +524,31 @@ export function ObjectDesigner({
           ) : null}
         </div>
 
-        <nav className={styles.designerNav} aria-label="业务表配置步骤">
-          {SECTIONS.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              className={`${styles.designerNavItem} ${
-                section === item.key ? styles.designerNavItemActive : ""
-              }`}
-              aria-current={section === item.key ? "page" : undefined}
-              onClick={() => setSection(item.key)}
-            >
-              {item.label}
-            </button>
-          ))}
+        <div className={styles.designerNavRow}>
+          <nav className={styles.designerNav} aria-label="业务表配置步骤">
+            {SECTIONS.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className={`${styles.designerNavItem} ${
+                  section === item.key ? styles.designerNavItemActive : ""
+                }`}
+                aria-current={section === item.key ? "page" : undefined}
+                onClick={() => {
+                  if (item.key !== section)
+                    guardUnsavedField(() => setSection(item.key));
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
           <span className={styles.designerNavVersion}>
             {draft.object.publicationNumber === null
               ? "尚未发布"
               : `v${draft.object.publicationNumber} 当前版本`}
           </span>
-        </nav>
+        </div>
 
         <div className={styles.designerWorkspace}>
           {section === "basics" ? (
@@ -537,7 +576,8 @@ export function ObjectDesigner({
                   api={api}
                   onChanged={(next) => {
                     accept(next);
-                    setEditingField(null);
+                    setFieldDirty(false);
+                    setEditorRevision((revision) => revision + 1);
                     setStatusField(null);
                     setAnalysis(undefined);
                     setPanelOpen(false);
@@ -548,39 +588,71 @@ export function ObjectDesigner({
           ) : null}
 
           {section === "fields" ? (
-            <section>
-              <div className={styles.sectionHeading}>
-                <div>
-                  <h2>字段与表单 · {draft.fields.length} 个字段</h2>
-                  <Typography.Text type="secondary">
-                    定义收集哪些信息，以及新建、编辑表单的排列顺序。字段配置可设置类型、必填、选项和员工访问权限；表格展示哪些列请到“列表展示与搜索”设置。
-                  </Typography.Text>
+            <section className={styles.fieldsLayout}>
+              <div className={styles.fieldListColumn}>
+                <div className={styles.fieldListHeading}>
+                  <div>
+                    <h2>字段 {draft.fields.length}</h2>
+                    <Typography.Text type="secondary">
+                      选择字段来配置校验、选项和员工权限；拖动调整顺序。
+                    </Typography.Text>
+                  </div>
+                  <Button
+                    type="primary"
+                    disabled={archived}
+                    onClick={() =>
+                      guardUnsavedField(() => setFieldCreatorOpen(true))
+                    }
+                  >
+                    新增字段
+                  </Button>
                 </div>
-                <Button
-                  type="primary"
-                  disabled={archived}
-                  onClick={() => setFieldCreatorOpen(true)}
-                >
-                  新增字段
-                </Button>
+                <FieldList
+                  fields={configurableDraft.fields}
+                  titleFieldKey={draft.object.titleFieldKey}
+                  selectedId={selectedField?.id ?? null}
+                  reordering={archived || reorder.isPending}
+                  onSelect={(field) => {
+                    if (field.id !== selectedField?.id)
+                      guardUnsavedField(() => setSelectedFieldId(field.id));
+                  }}
+                  onReorder={(fieldIds) => {
+                    if (!archived) reorder.mutate(fieldIds);
+                  }}
+                />
               </div>
-              <FieldLedger
-                fields={configurableDraft.fields}
-                titleFieldKey={draft.object.titleFieldKey}
-                reordering={archived || reorder.isPending}
-                onSelect={setEditingField}
-                onReorder={(fieldIds) => {
-                  if (!archived) reorder.mutate(fieldIds);
-                }}
-                onToggleStatus={
-                  archived
-                    ? undefined
-                    : (field) => {
-                        setError(undefined);
-                        setStatusField(field);
-                      }
-                }
-              />
+              <div className={styles.fieldEditorColumn}>
+                {selectedField ? (
+                  <FieldEditorPanel
+                    key={`${selectedField.id}:${editorRevision}`}
+                    field={selectedField}
+                    titleFieldKey={draft.object.titleFieldKey}
+                    saving={saveField.isPending}
+                    readOnly={archived}
+                    onToggleStatus={
+                      archived
+                        ? undefined
+                        : () =>
+                            guardUnsavedField(() => {
+                              setError(undefined);
+                              setStatusField(selectedField);
+                            })
+                    }
+                    saveEffect="保存字段直接写入对象草稿；字段访问变更随后单独保存，发布后员工端生效。"
+                    savedNote={notice === FIELD_SAVED ? notice : undefined}
+                    error={fieldError}
+                    onDirtyChange={setFieldDirty}
+                    onSubmit={(values) => {
+                      if (!archived)
+                        saveField.mutate({ field: selectedField, values });
+                    }}
+                  />
+                ) : (
+                  <p className={styles.fieldListEmpty}>
+                    添加字段后，在这里设置它的类型、校验和员工权限。
+                  </p>
+                )}
+              </div>
             </section>
           ) : null}
 
@@ -629,13 +701,6 @@ export function ObjectDesigner({
           ) : null}
         </div>
 
-        <aside className={styles.designerPreview} aria-label="员工端实时预览">
-          <ObjectPreview
-            draft={configurableDraft}
-            role={previewRole}
-            onRoleChange={setPreviewRole}
-          />
-        </aside>
       </div>
 
       <Drawer
@@ -696,22 +761,22 @@ export function ObjectDesigner({
         </div>
       </Modal>
 
-      <FieldEditorDrawer
-        readOnly={archived}
-        field={editingField}
-        objectContext={{
-          name: draft.object.name,
-          saveEffect:
-            "保存字段直接写入对象草稿；字段访问变更随后单独保存，发布后员工端生效。",
+      <Modal
+        open={discardAction !== null}
+        title="放弃未保存的修改？"
+        okText="放弃修改"
+        cancelText="继续编辑"
+        okButtonProps={{ danger: true }}
+        onCancel={() => setDiscardAction(null)}
+        onOk={() => {
+          const proceed = discardAction;
+          setDiscardAction(null);
+          setFieldDirty(false);
+          proceed?.();
         }}
-        error={error}
-        saving={saveField.isPending}
-        onClose={() => setEditingField(null)}
-        onSubmit={(values) => {
-          if (editingField && !archived)
-            saveField.mutate({ field: editingField, values });
-        }}
-      />
+      >
+        <p>当前字段的修改还没有保存，离开后会丢失。</p>
+      </Modal>
 
       {fieldCreatorOpen ? (
         <FieldCreatorModal
@@ -752,9 +817,11 @@ function BasicsSection({
     name: string;
     titleFieldKey: string;
     description: string;
+    icon: string | null;
   }) => void;
 }) {
   const [name, setName] = useState(draft.object.name);
+  const [icon, setIcon] = useState<string | null>(draft.object.icon);
   const [titleFieldKey, setTitleFieldKey] = useState(
     draft.object.titleFieldKey,
   );
@@ -771,7 +838,7 @@ function BasicsSection({
   );
 
   return (
-    <section className={styles.panel}>
+    <section className={`${styles.panel} ${styles.formColumn}`}>
       <div className={styles.sectionHeading}>
         <h2>基本设置</h2>
       </div>
@@ -824,6 +891,12 @@ function BasicsSection({
             }))}
           />
         </Form.Item>
+        <Form.Item
+          label="图标"
+          extra="显示在侧边栏该业务表名称的前面；保存后需发布，员工端才会更新。"
+        >
+          <ObjectIconPicker value={icon} onChange={setIcon} disabled={saving} />
+        </Form.Item>
         <Form.Item label="说明" htmlFor="object-description">
           <Input.TextArea
             id="object-description"
@@ -838,7 +911,7 @@ function BasicsSection({
           type="primary"
           loading={saving}
           disabled={draft.object.status === "ARCHIVED"}
-          onClick={() => onSave({ name, titleFieldKey, description })}
+          onClick={() => onSave({ name, titleFieldKey, description, icon })}
         >
           保存基本设置
         </Button>
@@ -1045,7 +1118,7 @@ function DefaultViewSection({
   ];
 
   return (
-    <section className={styles.panel}>
+    <section className={`${styles.panel} ${styles.formColumn}`}>
       <div className={styles.sectionHeading}>
         <div>
           <h2>列表展示与搜索</h2>

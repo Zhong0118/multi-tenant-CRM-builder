@@ -11,6 +11,7 @@ import { z } from "zod";
 import { toApiError } from "@/lib/api/api-error";
 
 import { objectApi as defaultObjectApi, type ObjectApi } from "./object-api";
+import { ObjectIconPicker } from "./object-icon-picker";
 import { OBJECT_CODE_PATTERN, objectStableIdHelp } from "./object-types";
 
 import {
@@ -53,6 +54,7 @@ export function CreateObjectForm({
     active: false,
   });
   const [summary, setSummary] = useState<string>();
+  const [icon, setIcon] = useState<string | null>(null);
   const {
     control,
     handleSubmit,
@@ -64,7 +66,11 @@ export function CreateObjectForm({
   });
   const mutation = useMutation({
     mutationFn: (values: CreateObjectValues) =>
-      api.createDraft(tenantCode, { ...values, ...fileState.payload }),
+      api.createDraft(tenantCode, {
+        ...values,
+        ...fileState.payload,
+        ...(icon ? { icon } : {}),
+      }),
     onSuccess: (draft) =>
       (navigate ?? router.push)(
         `/workspace/${tenantCode}/settings/objects/${draft.object.id}`,
@@ -129,6 +135,16 @@ export function CreateObjectForm({
               }
             />
           )}
+        />
+      </Form.Item>
+      <Form.Item
+        label="图标"
+        extra="显示在侧边栏该业务表名称的前面，之后可以在基本设置里修改。"
+      >
+        <ObjectIconPicker
+          value={icon}
+          onChange={setIcon}
+          disabled={mutation.isPending}
         />
       </Form.Item>
       <ObjectFileFieldsForm

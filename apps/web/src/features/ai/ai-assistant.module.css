@@ -4,7 +4,7 @@
   display: flex;
   min-width: 0;
   min-height: 0;
-  height: calc(100dvh - var(--header-height));
+  height: calc(100dvh - var(--header-height) - var(--shell-inset-y, 0px));
   margin: -20px;
   background: var(--bg-surface);
 }

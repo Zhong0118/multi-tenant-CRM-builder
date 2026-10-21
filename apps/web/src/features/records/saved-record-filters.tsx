@@ -1,9 +1,11 @@
 "use client";
 import { useMemo, useState, useSyncExternalStore } from "react";
-import { Alert, Button, Drawer, Input, Select, Space, Typography } from "antd";
+import { DeleteOutlined, PlusOutlined, DownOutlined } from "@ant-design/icons";
+import { Alert, Button, Input, Popover, Space, Typography } from "antd";
 import styles from "./records.module.css";
 import type { RecordQuery } from "./record-query-state";
 type Saved = { name: string; query: RecordQuery };
+const MAX_SAVED = 20;
 export function savedFilterKey(
   tenantCode: string,
   memberId: string,
@@ -65,7 +67,7 @@ function SavedRecordFiltersSession({
                 v.query &&
                 typeof v.query.filters === "object",
             )
-            .slice(0, 20)
+            .slice(0, MAX_SAVED)
         : [];
     } catch {
       return [];
@@ -74,89 +76,121 @@ function SavedRecordFiltersSession({
   const [name, setName] = useState("");
   const [selected, setSelected] = useState<string>();
   const [error, setError] = useState(false);
-  const [managementOpen, setManagementOpen] = useState(false);
-  function persist(next: Saved[]) {
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
+  function persist(next: Saved[]): boolean {
     try {
       localStorage.setItem(key, JSON.stringify(next));
       window.dispatchEvent(new Event(STORAGE_CHANGED));
       setError(false);
+      return true;
     } catch {
       setError(true);
+      return false;
     }
   }
+  const label = name.trim();
+  const atLimit = saved.length >= MAX_SAVED && !saved.some((v) => v.name === label);
+  function save() {
+    if (!label || atLimit) return;
+    // Keep the form open and the name typed when the browser refuses to store it.
+    const stored = persist([
+      ...saved.filter((v) => v.name !== label),
+      { name: label, query: { ...query, page: 1 } },
+    ]);
+    if (!stored) return;
+    setSelected(label);
+    setName("");
+    setSaveOpen(false);
+  }
   return (
-    <div aria-label="我的筛选视图">
-      <Space wrap>
-        <Select
-          aria-label="已保存的筛选"
-          placeholder="我的筛选（仅此浏览器）"
-          style={{ minWidth: 220 }}
-          value={selected}
-          onChange={setSelected}
-          options={saved.map((v) => ({ label: v.name, value: v.name }))}
-        />
-        <Button
-          disabled={!selected}
-          onClick={() => {
-            const item = saved.find((v) => v.name === selected);
-            if (item) onApply({ ...item.query, page: 1 });
-          }}
-        >
-          应用筛选
-        </Button>
-        <Button onClick={() => setManagementOpen(true)}>管理筛选视图</Button>
-      </Space>
-      <Drawer
-        title="管理筛选视图"
-        open={managementOpen}
-        onClose={() => setManagementOpen(false)}
-        size="min(420px, 100vw)"
-        destroyOnHidden
-      >
-        <div className={styles.savedFilterManagement}>
-          <Typography.Text type="secondary">仅此浏览器</Typography.Text>
-          <Input
-            aria-label="筛选名称"
-            placeholder="为当前筛选命名"
-            value={name}
-            maxLength={50}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <Button
-            disabled={
-              !name.trim() ||
-              (saved.length >= 20 && !saved.some((v) => v.name === name.trim()))
+    <div aria-label="我的筛选视图" className={styles.savedFilters}>
+      <Space size={2}>
+        {saved.length > 0 ? (
+          <Popover
+            trigger="click"
+            placement="bottomRight"
+            open={listOpen}
+            onOpenChange={setListOpen}
+            title="我的视图"
+            content={
+              <ul className={styles.savedViewList} aria-label="已保存的视图">
+                {saved.map((view) => (
+                  <li key={view.name}>
+                    <Button
+                      type="text"
+                      className={styles.savedViewName}
+                      aria-current={view.name === selected ? "true" : undefined}
+                      onClick={() => {
+                        setSelected(view.name);
+                        setListOpen(false);
+                        onApply({ ...view.query, page: 1 });
+                      }}
+                    >
+                      {view.name}
+                    </Button>
+                    <Button
+                      type="text"
+                      size="small"
+                      aria-label={`删除视图 ${view.name}`}
+                      icon={<DeleteOutlined aria-hidden />}
+                      onClick={() => {
+                        persist(saved.filter((v) => v.name !== view.name));
+                        if (selected === view.name) setSelected(undefined);
+                      }}
+                    />
+                  </li>
+                ))}
+              </ul>
             }
-            onClick={() => {
-              const label = name.trim();
-              persist([
-                ...saved.filter((v) => v.name !== label),
-                { name: label, query: { ...query, page: 1 } },
-              ]);
-              setSelected(label);
-              setName("");
-            }}
           >
-            保存当前筛选
-          </Button>
-          <Typography.Text type="secondary">
-            {selected ? `已选择：${selected}` : "在列表选择视图后可删除。"}
-          </Typography.Text>
+            <Button type="text" className={styles.savedViewTrigger}>
+              我的视图 <DownOutlined aria-hidden />
+            </Button>
+          </Popover>
+        ) : null}
+        <Popover
+          trigger="click"
+          placement="bottomRight"
+          open={saveOpen}
+          onOpenChange={setSaveOpen}
+          title="保存为视图"
+          content={
+            <div className={styles.savedViewForm}>
+              <Typography.Text type="secondary">
+                把当前搜索、筛选和排序存成视图，仅保存在此浏览器。
+              </Typography.Text>
+              <Input
+                aria-label="视图名称"
+                placeholder="为当前筛选命名"
+                maxLength={50}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onPressEnter={save}
+              />
+              {atLimit ? (
+                <Typography.Text type="danger">
+                  最多保存 {MAX_SAVED} 个视图，请先删除不用的。
+                </Typography.Text>
+              ) : null}
+              {error ? (
+                <Alert type="error" title="浏览器无法保存筛选，请检查存储设置。" />
+              ) : null}
+              <Button type="primary" disabled={!label || atLimit} onClick={save}>
+                保存视图
+              </Button>
+            </div>
+          }
+        >
           <Button
-            danger
-            disabled={!selected}
-            onClick={() => {
-              persist(saved.filter((v) => v.name !== selected));
-              setSelected(undefined);
-            }}
+            type="text"
+            className={styles.savedViewTrigger}
+            icon={<PlusOutlined aria-hidden />}
           >
-            删除筛选
+            保存为视图
           </Button>
-          {error && (
-            <Alert type="error" title="浏览器无法保存筛选，请检查存储设置。" />
-          )}
-        </div>
-      </Drawer>
+        </Popover>
+      </Space>
     </div>
   );
 }

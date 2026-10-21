@@ -125,9 +125,9 @@ export function RecordWorkflowPanel({
   }
 
   return (
-    <section className={styles.detailMeta}>
-      <Typography.Text strong>流程状态</Typography.Text>
-      <div>
+    <section className={styles.detailSection}>
+      <h3 className={styles.detailSectionTitle}>流程状态</h3>
+      <div className={styles.workflowState}>
         {view.currentState ? (
           <StatusTag tone={view.currentState.isTerminal ? "success" : "warning"}>
             {view.currentState.label}
@@ -138,7 +138,7 @@ export function RecordWorkflowPanel({
       </div>
 
       {view.availableTransitions.length > 0 ? (
-        <Space wrap>
+        <Space wrap size={8}>
           {view.availableTransitions.map((transition) => (
             <Button
               key={transition.key}
@@ -202,7 +202,7 @@ export function RecordWorkflowPanel({
         />
       ) : null}
 
-      <Typography.Text strong>流程历史</Typography.Text>
+      <h3 className={styles.detailSectionTitle}>流程历史</h3>
       {history.data?.items.length ? (
         <ol className={styles.detailFields}>
           {history.data.items.map((item) => (

@@ -1,8 +1,5 @@
 .panel {
-  border: 1px solid var(--border, #e8eaed);
-  border-radius: 12px;
-  padding: 18px;
-  background: var(--surface, #fff);
+  padding: 0 0 12px;
 }
 .panel h2 {
   margin: 0 0 14px;

@@ -20,6 +20,8 @@ describe("design tokens", () => {
     expect(TOKENS.surface).toBe("#FFFFFF");
     expect(TOKENS.border).toBe("#D8E0E5");
     expect(TOKENS.borderStrong).toBe("#C8D2D9");
+    expect(TOKENS.hairline).toBe("#E8EBEE");
+    expect(TOKENS.track).toBe("#EEF1F2");
     expect(TOKENS.textSecondary).toBe("#687681");
     expect(TOKENS.success).toBe("#167568");
     expect(TOKENS.warning).toBe("#C66C18");
@@ -37,11 +39,15 @@ describe("design tokens", () => {
     expect(css).toContain(
       `--border-strong: ${TOKENS.borderStrong.toLowerCase()}`,
     );
+    expect(css).toContain(
+      `--border-hairline: ${TOKENS.hairline.toLowerCase()}`,
+    );
+    expect(css).toContain(`--bg-track: ${TOKENS.track.toLowerCase()}`);
     expect(css).toContain("--radius-reading: 12px");
     expect(css).toContain("--radius-control: 8px");
     expect(css).toContain("--radius-status: 4px");
     expect(css).toContain("--radius-data: 12px");
     expect(css).toContain("--sidebar-width: 224px");
-    expect(css).toContain("--header-height: 56px");
+    expect(css).toContain("--header-height: 52px");
   });
 });

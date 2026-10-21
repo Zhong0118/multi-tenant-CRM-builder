@@ -8,6 +8,7 @@ import {
   Drawer,
   Input,
   InputNumber,
+  message,
   Popconfirm,
   Select,
   Space,
@@ -98,7 +99,7 @@ function poolError(caught: unknown) {
     : `${error.message}（请求编号：${error.requestId}）`;
 }
 
-export function RecordOwnershipActions({
+export function useRecordOwnership({
   tenantCode,
   objectCode,
   record,
@@ -109,6 +110,7 @@ export function RecordOwnershipActions({
   members = [],
   api = recordPoolApi,
   onChanged,
+  toast = false,
 }: {
   tenantCode: string;
   objectCode: string;
@@ -120,6 +122,8 @@ export function RecordOwnershipActions({
   members?: DynamicFieldMember[];
   api?: RecordPoolApi;
   onChanged: (action: OwnershipAction) => void | Promise<void>;
+  /** Report failures as toasts, for compact hosts such as a row menu. */
+  toast?: boolean;
 }) {
   const [assigning, setAssigning] = useState(false);
   const [releasing, setReleasing] = useState(false);
@@ -151,6 +155,9 @@ export function RecordOwnershipActions({
             }
           : {}),
       }),
+    onError: (caught) => {
+      if (toast) void message.error(poolError(caught));
+    },
     onSuccess: async (_result, action) => {
       setCommitted(true);
       setAssigning(false);
@@ -179,6 +186,184 @@ export function RecordOwnershipActions({
         schema.actions.canUpdate &&
         schema.scopes.update !== "NONE"));
   const disabled = ownership.isPending || committed;
+  const canConfirmContact = Boolean(
+    lifecycle && config?.enabled && record.poolStage === "PENDING_CONTACT" && canRelease,
+  );
+  const releaseLabel = protectedRecord
+    ? "解除保护并释放"
+    : lifecycle && !record.poolStage
+      ? "归类到公共池"
+      : "释放";
+  const drawers = (
+    <>
+    <Drawer
+      open={releasing}
+      title={
+        protectedRecord
+          ? "解除保护并释放"
+          : !record.poolStage
+            ? "旧记录显式归类"
+            : "释放到公共池"
+      }
+      onClose={() => setReleasing(false)}
+      destroyOnHidden
+    >
+      <Space orientation="vertical" className={styles.poolSettings}>
+        <Alert
+          type="warning"
+          showIcon
+          title={
+            protectedRecord
+              ? "管理员确认后解除保护并进入已联系公共池，其他成员可领取"
+              : "释放后清空当前负责人和期限，保留内容、关联与跟进历史"
+          }
+        />
+        {!record.poolStage && isAdmin ? (
+          <label>
+            目标公共池
+            <Select
+              aria-label="目标公共池"
+              value={releaseStage}
+              onChange={setReleaseStage}
+              options={[
+                { value: "LEAD_POOL", label: labels.leadPool },
+                { value: "CUSTOMER_POOL", label: labels.customerPool },
+              ]}
+            />
+          </label>
+        ) : null}
+        <label>
+          释放原因（必填）
+          <Input.TextArea
+            aria-label="释放原因"
+            maxLength={1000}
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+          />
+        </label>
+        <label>
+          资源质量
+          <Select
+            aria-label="资源质量"
+            allowClear
+            value={quality}
+            onChange={setQuality}
+            options={[
+              { value: "INVALID", label: "空号 / 无效" },
+              { value: "DUPLICATE", label: "重复" },
+              { value: "LOST", label: "丢单" },
+            ]}
+          />
+        </label>
+        {ownership.isError ? (
+          <Alert type="error" title={poolError(ownership.error)} />
+        ) : null}
+        <Button
+          type="primary"
+          danger
+          disabled={!reason.trim() || disabled}
+          loading={ownership.isPending}
+          onClick={() =>
+            ownership.mutate(
+              protectedRecord ? "UNPROTECT_RELEASE" : "RELEASE",
+            )
+          }
+        >
+          确认释放
+        </Button>
+      </Space>
+    </Drawer>
+    <Drawer
+      open={assigning}
+      title={`分配 ${record.title}`}
+      onClose={() => setAssigning(false)}
+      destroyOnHidden
+    >
+      <Space orientation="vertical" className={styles.poolSettings}>
+        <Typography.Text>选择有该表处理权限的活动成员</Typography.Text>
+        {lifecycle ? (
+          <Alert
+            type="info"
+            showIcon
+            title={
+              protectedRecord
+                ? "转交后继续保留保护，不启动回收计时"
+                : `分配后进入待联系，${config?.contactTtlHours ?? 24} 小时内须确认联系；超时回原池，旧未指定记录默认回初始公共池`
+            }
+          />
+        ) : null}
+        <Select
+          aria-label="分配负责人"
+          placeholder="选择活动成员"
+          showSearch
+          optionFilterProp="label"
+          value={ownerMemberId}
+          onChange={setOwnerMemberId}
+          options={members.map((member) => ({
+            value: member.id,
+            label: member.displayName ?? "未设置姓名",
+          }))}
+        />
+        <Button
+          type="primary"
+          disabled={!ownerMemberId || disabled}
+          loading={ownership.isPending}
+          onClick={() => ownership.mutate("ASSIGN")}
+        >
+          确认分配
+        </Button>
+        {ownership.isError ? (
+          <Alert type="error" title={poolError(ownership.error)} />
+        ) : null}
+      </Space>
+    </Drawer>
+    </>
+  );
+
+  return {
+    lifecycle,
+    protectedRecord,
+    awaitingClassification: lifecycle && record.inPublicPool && !record.poolStage && !isAdmin,
+    canClaim: Boolean(canClaim),
+    canRelease: Boolean(canRelease),
+    canConfirmContact,
+    canAssign: isAdmin,
+    releaseLabel,
+    /** Lifecycle releases need a reason, so they open a form instead of a yes/no. */
+    releaseNeedsForm: lifecycle,
+    assignLabel: record.ownerMemberId ? "转交" : "分配",
+    disabled,
+    pendingAction: ownership.isPending ? ownership.variables : undefined,
+    claim: () => ownership.mutate("CLAIM"),
+    confirmContact: () => ownership.mutate("CONFIRM_CONTACT"),
+    release: () => ownership.mutate("RELEASE"),
+    startRelease: () => setReleasing(true),
+    startAssign: () => setAssigning(true),
+    error: ownership.isError ? poolError(ownership.error) : undefined,
+    warning,
+    drawers,
+    // kept for the inline presentation below
+    ownership,
+    contactHours: config?.followUpTtlHours ?? 720,
+    setReleasing,
+    setAssigning,
+  };
+}
+
+export function RecordOwnershipActions(props: Parameters<typeof useRecordOwnership>[0]) {
+  const { record, config, isAdmin } = props;
+  const {
+    canClaim,
+    canRelease,
+    lifecycle,
+    protectedRecord,
+    disabled,
+    warning,
+    ownership,
+    setReleasing,
+    setAssigning,
+    drawers,
+  } = useRecordOwnership(props);
   return (
     <span className={styles.poolActions}>
       {lifecycle && record.inPublicPool && !record.poolStage && !isAdmin ? <Typography.Text type="secondary">等待管理员归类后领取</Typography.Text> : null}
@@ -258,130 +443,11 @@ export function RecordOwnershipActions({
         <Alert type="error" showIcon title={poolError(ownership.error)} />
       ) : null}
       {warning ? <Alert type="warning" showIcon title={warning} /> : null}
-      <Drawer
-        open={releasing}
-        title={
-          protectedRecord
-            ? "解除保护并释放"
-            : !record.poolStage
-              ? "旧记录显式归类"
-              : "释放到公共池"
-        }
-        onClose={() => setReleasing(false)}
-        destroyOnHidden
-      >
-        <Space orientation="vertical" className={styles.poolSettings}>
-          <Alert
-            type="warning"
-            showIcon
-            title={
-              protectedRecord
-                ? "管理员确认后解除保护并进入已联系公共池，其他成员可领取"
-                : "释放后清空当前负责人和期限，保留内容、关联与跟进历史"
-            }
-          />
-          {!record.poolStage && isAdmin ? (
-            <label>
-              目标公共池
-              <Select
-                aria-label="目标公共池"
-                value={releaseStage}
-                onChange={setReleaseStage}
-                options={[
-                  { value: "LEAD_POOL", label: labels.leadPool },
-                  { value: "CUSTOMER_POOL", label: labels.customerPool },
-                ]}
-              />
-            </label>
-          ) : null}
-          <label>
-            释放原因（必填）
-            <Input.TextArea
-              aria-label="释放原因"
-              maxLength={1000}
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-            />
-          </label>
-          <label>
-            资源质量
-            <Select
-              aria-label="资源质量"
-              allowClear
-              value={quality}
-              onChange={setQuality}
-              options={[
-                { value: "INVALID", label: "空号 / 无效" },
-                { value: "DUPLICATE", label: "重复" },
-                { value: "LOST", label: "丢单" },
-              ]}
-            />
-          </label>
-          {ownership.isError ? (
-            <Alert type="error" title={poolError(ownership.error)} />
-          ) : null}
-          <Button
-            type="primary"
-            danger
-            disabled={!reason.trim() || disabled}
-            loading={ownership.isPending}
-            onClick={() =>
-              ownership.mutate(
-                protectedRecord ? "UNPROTECT_RELEASE" : "RELEASE",
-              )
-            }
-          >
-            确认释放
-          </Button>
-        </Space>
-      </Drawer>
-      <Drawer
-        open={assigning}
-        title={`分配 ${record.title}`}
-        onClose={() => setAssigning(false)}
-        destroyOnHidden
-      >
-        <Space orientation="vertical" className={styles.poolSettings}>
-          <Typography.Text>选择有该表处理权限的活动成员</Typography.Text>
-          {lifecycle ? (
-            <Alert
-              type="info"
-              showIcon
-              title={
-                protectedRecord
-                  ? "转交后继续保留保护，不启动回收计时"
-                  : `分配后进入待联系，${config?.contactTtlHours ?? 24} 小时内须确认联系；超时回原池，旧未指定记录默认回初始公共池`
-              }
-            />
-          ) : null}
-          <Select
-            aria-label="分配负责人"
-            placeholder="选择活动成员"
-            showSearch
-            optionFilterProp="label"
-            value={ownerMemberId}
-            onChange={setOwnerMemberId}
-            options={members.map((member) => ({
-              value: member.id,
-              label: member.displayName ?? "未设置姓名",
-            }))}
-          />
-          <Button
-            type="primary"
-            disabled={!ownerMemberId || disabled}
-            loading={ownership.isPending}
-            onClick={() => ownership.mutate("ASSIGN")}
-          >
-            确认分配
-          </Button>
-          {ownership.isError ? (
-            <Alert type="error" title={poolError(ownership.error)} />
-          ) : null}
-        </Space>
-      </Drawer>
+      {drawers}
     </span>
   );
 }
+
 
 export function RecordPoolSettings({
   tenantCode,

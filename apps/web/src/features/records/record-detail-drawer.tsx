@@ -135,7 +135,11 @@ export function RecordDetailDrawer({
     <Drawer
       open
       size={640}
-      className={styles.detailDrawer}
+      classNames={{
+        mask: styles.detailMask,
+        header: styles.detailHeader,
+        body: styles.detailBody,
+      }}
       onClose={onClose}
       destroyOnHidden
       title={
@@ -145,7 +149,7 @@ export function RecordDetailDrawer({
         </div>
       }
       extra={
-        <Space>
+        <Space size={4}>
           {canEdit && !editing && !deleted ? (
             <Button
               onClick={() => {
@@ -163,7 +167,12 @@ export function RecordDetailDrawer({
               okText="删除记录"
               onConfirm={() => remove.mutate()}
             >
-              <Button danger loading={remove.isPending} disabled={deleted}>
+              <Button
+                danger
+                type="text"
+                loading={remove.isPending}
+                disabled={deleted}
+              >
                 删除
               </Button>
             </Popconfirm>
@@ -208,15 +217,19 @@ export function RecordDetailDrawer({
         />
       ) : (
         <>
-          <RecordOwnershipActions key={`${record.id}:${record.version}`} tenantCode={tenantCode} objectCode={schema.object.code} record={record} schema={schema} config={poolConfig} currentMemberId={currentMemberId} isAdmin={canChooseOwner} members={members} onChanged={async (action) => {
-            if (action === "RELEASE" || action === "UNPROTECT_RELEASE" || (action === "ASSIGN" && !canChooseOwner)) {
-              onClose();
-              await onChanged(null);
-            } else {
-              await onChanged(await api.detail(tenantCode, schema.object.code, record.id));
-            }
-          }} />
-          {poolConfig?.enabled || record.inPublicPool ? <RecordPoolStatus record={record} config={poolConfig} /> : null}
+          {poolConfig?.enabled || canChooseOwner || record.inPublicPool ? (
+            <div className={styles.detailOwnership}>
+              {poolConfig?.enabled || record.inPublicPool ? <RecordPoolStatus record={record} config={poolConfig} /> : null}
+              <RecordOwnershipActions key={`${record.id}:${record.version}`} tenantCode={tenantCode} objectCode={schema.object.code} record={record} schema={schema} config={poolConfig} currentMemberId={currentMemberId} isAdmin={canChooseOwner} members={members} onChanged={async (action) => {
+                if (action === "RELEASE" || action === "UNPROTECT_RELEASE" || (action === "ASSIGN" && !canChooseOwner)) {
+                  onClose();
+                  await onChanged(null);
+                } else {
+                  await onChanged(await api.detail(tenantCode, schema.object.code, record.id));
+                }
+              }} />
+            </div>
+          ) : null}
           {record.poolStage ? (
             <section aria-label="流转信息" className={styles.poolConfigPreview}>
               {record.poolClaimedAt ? (

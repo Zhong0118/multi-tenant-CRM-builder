@@ -131,6 +131,11 @@ function objectApi(overrides: Partial<ObjectApi> = {}): ObjectApi {
   };
 }
 
+/** The list row that selects a field for editing. */
+function fieldRow(label: string) {
+  return screen.getByRole("button", { name: new RegExp(`^${label}`) });
+}
+
 function renderDesigner(initialDraft: ObjectDraft, api: ObjectApi) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -162,6 +167,7 @@ describe("ObjectDesigner configuration ledger", () => {
         .mockResolvedValueOnce(initial),
     });
     renderDesigner(initial, api);
+    fireEvent.click(fieldRow("最终评级"));
     fireEvent.click(screen.getByRole("button", { name: "停用字段 最终评级" }));
     expect(api.updateField).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toHaveTextContent("历史数据保留");
@@ -192,6 +198,7 @@ describe("ObjectDesigner configuration ledger", () => {
 
   it("explains why the record title cannot be retired", () => {
     renderDesigner(draft(), objectApi());
+    // The first field opens by default.
     fireEvent.click(screen.getByRole("button", { name: "停用字段 客户名称" }));
     expect(screen.getByRole("dialog")).toHaveTextContent(
       "请先在基本设置中更换记录名称字段",
@@ -211,6 +218,7 @@ describe("ObjectDesigner configuration ledger", () => {
         }),
     });
     renderDesigner(draft(), api);
+    fireEvent.click(fieldRow("最终评级"));
     fireEvent.click(screen.getByRole("button", { name: "停用字段 最终评级" }));
     fireEvent.click(screen.getByRole("button", { name: "确认停用" }));
     await waitFor(() =>
@@ -245,6 +253,37 @@ describe("ObjectDesigner configuration ledger", () => {
       ).toBeInTheDocument();
     }
   });
+  it("saves the chosen icon with the basics, and clears it back to the default", async () => {
+    const api = objectApi();
+    const view = renderDesigner(draft(), api);
+    fireEvent.click(screen.getByRole("button", { name: "基本设置" }));
+    expect(screen.getByRole("radio", { name: "默认" })).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(screen.getByRole("radio", { name: "团队" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存基本设置" }));
+    await waitFor(() =>
+      expect(api.updateDraft).toHaveBeenCalledWith(
+        "northwind",
+        "object-1",
+        expect.objectContaining({ expectedVersion: 4, icon: "team" }),
+      ),
+    );
+    view.unmount();
+
+    const stored = objectApi();
+    renderDesigner(draft({ object: { ...draft().object, icon: "team" } }), stored);
+    fireEvent.click(screen.getByRole("button", { name: "基本设置" }));
+    expect(screen.getByRole("radio", { name: "团队" })).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(screen.getByRole("radio", { name: "默认" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存基本设置" }));
+    await waitFor(() =>
+      expect(stored.updateDraft).toHaveBeenCalledWith(
+        "northwind",
+        "object-1",
+        expect.objectContaining({ icon: null }),
+      ),
+    );
+  });
+
   it("shows the stable identity as tenantCode plus objectCode", () => {
     renderDesigner(draft(), objectApi());
     fireEvent.click(screen.getByRole("button", { name: "基本设置" }));
@@ -256,8 +295,10 @@ describe("ObjectDesigner configuration ledger", () => {
 
   it("explains that object field save persists the draft while the shared default still needs parent save", () => {
     const view = renderDesigner(draft(), objectApi());
-    fireEvent.click(screen.getByRole("button", { name: "配置字段 客户名称" }));
-    expect(screen.getByText("客户资料 / 字段配置")).toBeInTheDocument();
+    // The first field is open in the editor beside the list without any click.
+    expect(
+      screen.getByRole("region", { name: "配置字段：客户名称" }),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(
         "保存字段直接写入对象草稿；字段访问变更随后单独保存，发布后员工端生效。",
@@ -301,13 +342,14 @@ describe("ObjectDesigner configuration ledger", () => {
     renderDesigner(draft(), api);
 
     fireEvent.click(screen.getByRole("button", { name: "新增字段" }));
-    fireEvent.change(screen.getByLabelText("字段名称"), {
+    const creator = await screen.findByRole("dialog");
+    fireEvent.change(within(creator).getByLabelText("字段名称"), {
       target: { value: "联系电话" },
     });
-    fireEvent.change(screen.getByLabelText("字段键"), {
+    fireEvent.change(within(creator).getByLabelText("字段键"), {
       target: { value: "contact_phone" },
     });
-    fireEvent.mouseDown(screen.getByLabelText("字段类型"));
+    fireEvent.mouseDown(within(creator).getByLabelText("字段类型"));
     fireEvent.click(screen.getByTitle("电话"));
     fireEvent.click(screen.getByRole("button", { name: "创建并继续配置" }));
 
@@ -324,7 +366,10 @@ describe("ObjectDesigner configuration ledger", () => {
         isSystem: false,
       }),
     );
-    expect((await screen.findAllByText("联系电话")).length).toBeGreaterThan(0);
+    // The new field is selected, so the editor now shows it.
+    expect(
+      await screen.findByRole("region", { name: "配置字段：联系电话" }),
+    ).toBeInTheDocument();
   });
 
   it("edits and saves the default list view", async () => {
@@ -509,25 +554,29 @@ describe("ObjectDesigner configuration ledger", () => {
   it("lists each field with its stable key, type, requirement and employee access", () => {
     renderDesigner(draft(), objectApi());
 
-    const ledger = screen.getByRole("table", { name: "字段账本" });
-    const rows = within(ledger).getAllByRole("row").slice(1);
+    const list = screen.getByRole("list", { name: "字段清单" });
+    const rows = within(list).getAllByRole("listitem");
 
+    expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent("客户名称");
     expect(rows[0]).toHaveTextContent("customer_name");
     expect(rows[0]).toHaveTextContent("文本");
     expect(rows[0]).toHaveTextContent("必填");
-    expect(rows[0]).toHaveTextContent("可编辑");
+    expect(rows[0]).toHaveTextContent("员工可编辑");
+    expect(rows[0]).toHaveTextContent("记录名称");
     expect(rows[1]).toHaveTextContent("final_rating");
     expect(rows[1]).toHaveTextContent("单选");
-    expect(rows[1]).toHaveTextContent("可选");
-    expect(rows[1]).toHaveTextContent("只读");
+    expect(rows[1]).toHaveTextContent("员工只读");
+    // Optional is the default, so only a required field carries a flag.
+    expect(rows[1]).not.toHaveTextContent("必填");
+    expect(rows[1]).toHaveTextContent("未发布");
   });
 
-  it("keeps the shared field ledger visible and locks a published field type", () => {
+  it("keeps the field list visible and locks a published field type", () => {
     renderDesigner(draft(), objectApi());
 
-    expect(screen.getByRole("table", { name: "字段账本" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "配置字段 客户名称" }));
+    expect(screen.getByRole("list", { name: "字段清单" })).toBeInTheDocument();
+    fireEvent.click(fieldRow("客户名称"));
 
     expect(screen.getByLabelText("数据类型")).toBeDisabled();
     expect(
@@ -538,7 +587,7 @@ describe("ObjectDesigner configuration ledger", () => {
   it("still allows choosing the data type of a field that was never published", () => {
     renderDesigner(draft(), objectApi());
 
-    fireEvent.click(screen.getByRole("button", { name: "配置字段 最终评级" }));
+    fireEvent.click(fieldRow("最终评级"));
 
     expect(screen.getByLabelText("数据类型")).toBeEnabled();
     expect(
@@ -549,7 +598,7 @@ describe("ObjectDesigner configuration ledger", () => {
   it("lets an administrator replace generated option keys and choose colors", () => {
     renderDesigner(draft(), objectApi());
 
-    fireEvent.click(screen.getByRole("button", { name: "配置字段 最终评级" }));
+    fireEvent.click(fieldRow("最终评级"));
 
     expect(screen.getByLabelText("选项键 gold")).toHaveValue("gold");
     expect(screen.getByLabelText("选项颜色 gold")).toBeInTheDocument();
@@ -627,7 +676,7 @@ describe("ObjectDesigner publication flow", () => {
     expect(
       await screen.findByRole("button", { name: "重新载入配置" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("table", { name: "字段账本" })).toHaveTextContent(
+    expect(screen.getByRole("list", { name: "字段清单" })).toHaveTextContent(
       "customer_name",
     );
     expect(router.refresh).not.toHaveBeenCalled();
@@ -635,8 +684,9 @@ describe("ObjectDesigner publication flow", () => {
 });
 
 describe("ObjectDesigner employee preview", () => {
-  it("opens an explicit preview drawer for the narrow workbench", async () => {
+  it("keeps the employee preview out of the page until it is asked for", async () => {
     renderDesigner(draft(), objectApi());
+    expect(screen.queryByRole("region", { name: "权限预览" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "打开员工端预览" }));
 
@@ -645,7 +695,7 @@ describe("ObjectDesigner employee preview", () => {
     ).toBeInTheDocument();
   });
 
-  it("hides a hidden field and drops the create action from the employee view", () => {
+  it("hides a hidden field and drops the create action from the employee view", async () => {
     renderDesigner(
       draft({
         fields: [
@@ -671,7 +721,8 @@ describe("ObjectDesigner employee preview", () => {
       objectApi(),
     );
 
-    fireEvent.click(screen.getByRole("radio", { name: "员工视角" }));
+    fireEvent.click(screen.getByRole("button", { name: "打开员工端预览" }));
+    fireEvent.click(await screen.findByRole("radio", { name: "员工视角" }));
     const preview = screen.getByRole("region", { name: "权限预览" });
 
     expect(within(preview).getByText("客户名称")).toBeInTheDocument();
@@ -682,7 +733,7 @@ describe("ObjectDesigner employee preview", () => {
     expect(within(preview).getByText("我的客户资料")).toBeInTheDocument();
   });
 
-  it("shows the administrator every field and the create action", () => {
+  it("shows the administrator every field and the create action", async () => {
     renderDesigner(
       draft({
         fields: [
@@ -700,7 +751,8 @@ describe("ObjectDesigner employee preview", () => {
       objectApi(),
     );
 
-    const preview = screen.getByRole("region", { name: "权限预览" });
+    fireEvent.click(screen.getByRole("button", { name: "打开员工端预览" }));
+    const preview = await screen.findByRole("region", { name: "权限预览" });
 
     expect(within(preview).getByText("内部评分")).toBeInTheDocument();
     expect(
@@ -1061,8 +1113,8 @@ describe("whole-table lifecycle", () => {
     expect(
       screen.getByRole("button", { name: "拖动调整 客户名称" }),
     ).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "配置字段 最终评级" }));
-    const dialog = screen.getByRole("dialog");
+    fireEvent.click(fieldRow("最终评级"));
+    const dialog = screen.getByRole("region", { name: "配置字段：最终评级" });
     expect(within(dialog).getByLabelText("字段名称")).toBeDisabled();
     expect(
       within(dialog).getByRole("button", { name: "添加选项" }),

@@ -190,7 +190,7 @@ describe("AppShell", () => {
     renderShell();
     fireEvent.click(screen.getByRole("button", { name: "打开导航" }));
     const first = screen.getByRole("link", { name: "平台后台" });
-    const last = screen.getByRole("button", { name: "退出登录" });
+    const last = screen.getByRole("button", { name: /王明/ });
     first.focus();
     fireEvent.keyDown(first, { key: "Tab", shiftKey: true });
     expect(last).toHaveFocus();
