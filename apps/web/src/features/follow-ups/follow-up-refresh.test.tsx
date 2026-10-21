@@ -44,12 +44,17 @@ describe("shared follow-up refresh", () => {
       fireEvent.click(within(panel).getByRole("button", { name: "安排跟进" }));
       await waitFor(() => expect(api.create).toHaveBeenCalledWith("northwind", { objectCode: "orders", recordId: "record-1", title: "新事项", dueAt: new Date("2026-10-05T10:30").toISOString() }));
     } else if (operation === "reschedule") {
-      fireEvent.click(within(panel).getByRole("button", { name: /改\s*期/ }));
+      fireEvent.click(within(panel).getByRole("button", { name: /更多操作/ }));
+      fireEvent.click(await screen.findByRole("menuitem", { name: "改期" }));
       fireEvent.change(await screen.findByLabelText("新的跟进时间（本地时间）"), { target: { value: "2026-10-05T10:30" } });
       fireEvent.click(screen.getByRole("button", { name: "保存时间" }));
       await waitFor(() => expect(api.update).toHaveBeenCalledWith("northwind", "task-1", { version: 7, dueAt: new Date("2026-10-05T10:30").toISOString() }));
     } else {
-      fireEvent.click(within(panel).getByRole("button", { name: operation === "complete" ? /完\s*成/ : "取消" }));
+      if (operation === "complete") fireEvent.click(within(panel).getByRole("button", { name: /完\s*成/ }));
+      else {
+        fireEvent.click(within(panel).getByRole("button", { name: /更多操作/ }));
+        fireEvent.click(await screen.findByRole("menuitem", { name: "取消跟进" }));
+      }
       if (operation === "cancel") fireEvent.click(await screen.findByRole("button", { name: "确认取消" }));
       await waitFor(() => expect(api.update).toHaveBeenCalledWith("northwind", "task-1", { version: 7, status: operation === "complete" ? "DONE" : "CANCELLED" }));
     }

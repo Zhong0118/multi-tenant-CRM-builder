@@ -27,7 +27,7 @@ describe("follow-up list URL state", () => {
     vi.mocked(followUpApi.list).mockImplementation(() => new Promise(() => {}));
     sessionStorage.setItem("crm:source-return-focus", "/workspace/northwind/follow-ups?status=DONE&page=3");
     const view = mount();
-    const heading = screen.getByRole("heading", { name: "我的跟进待办" });
+    const heading = screen.getByRole("heading", { name: "跟进待办" });
     expect(heading).toHaveFocus();
     expect(heading).toHaveAttribute("tabindex", "-1");
     expect(sessionStorage.getItem("crm:source-return-focus")).toBeNull();

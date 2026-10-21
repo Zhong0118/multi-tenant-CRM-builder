@@ -1,5 +1,6 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Page } from "@/components/layout/page";
 import { SourceReturnFocus } from "@/features/records/source-return-focus";
 import { FollowUpPanel } from "./follow-up-panel";
 import type { FollowUpStatus } from "./follow-up-api";
@@ -14,7 +15,7 @@ export function FollowUpList({ tenantCode }: { tenantCode: string }) {
   const page = /^[1-9]\d*$/.test(rawPage) && Number.isSafeInteger(Number(rawPage)) ? Number(rawPage) : 1;
   const path = `/workspace/${encodeURIComponent(tenantCode)}/follow-ups`;
   const search = params.toString();
-  return <SourceReturnFocus tenantCode={tenantCode} heading="h2"><FollowUpPanel tenantCode={tenantCode} listState={{ status, page }}
+  return <Page><SourceReturnFocus tenantCode={tenantCode} heading="h1"><FollowUpPanel tenantCode={tenantCode} listState={{ status, page }}
     returnTo={`${path}${search ? `?${search}` : ""}`}
-    onListStateChange={(next) => router.replace(`${path}?${new URLSearchParams({ status: next.status, page: String(next.page) })}`, { scroll: false })} /></SourceReturnFocus>;
+    onListStateChange={(next) => router.replace(`${path}?${new URLSearchParams({ status: next.status, page: String(next.page) })}`, { scroll: false })} /></SourceReturnFocus></Page>;
 }

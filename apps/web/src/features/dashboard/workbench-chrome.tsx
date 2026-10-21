@@ -56,8 +56,8 @@ export function WorkbenchPeriodNav({
   const anchor = new Date(period.to);
   const current = workbenchPeriodPreset(period, period.timezone);
   return (
-    <nav className={styles.periodNav} aria-label="趋势时间范围">
-      <span>趋势时间范围</span>
+    <nav className={styles.periodNav} aria-label="趋势时间范围" title="仅影响趋势图，其余指标按各组件筛选条件统计。">
+      <span>趋势</span>
       <PeriodLabel period={period} publication={publication} />
       {WORKBENCH_PERIOD_PRESETS.map((preset) => (
         <Link
@@ -71,9 +71,6 @@ export function WorkbenchPeriodNav({
           {preset.label}
         </Link>
       ))}
-      <small className={styles.periodHint}>
-        仅影响趋势图，其余指标按各组件筛选条件统计。
-      </small>
     </nav>
   );
 }

@@ -1,11 +1,49 @@
 .panel {
   display: grid;
-  gap: 18px;
+  gap: 12px;
   min-width: 0;
-  padding: 24px;
-  background: var(--crm-surface, #fff);
-  border: 1px solid var(--crm-border, #e3e9ec);
-  border-radius: 12px;
+}
+
+/* On the 跟进待办 page the panel is the page itself: no card around it. */
+.page > header {
+  margin-bottom: 0;
+}
+
+.toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.statusCount {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.count,
+.countWarn {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.count {
+  color: var(--text-tertiary);
+}
+
+.countWarn {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 .heading {
   display: flex;
@@ -45,13 +83,6 @@
 /* Inside a record the panel is a section like the others, not a card. */
 .embedded {
   gap: 12px;
-  padding: 0;
-  margin-top: 20px;
-  padding-top: 16px;
-  background: transparent;
-  border: 0;
-  border-top: 1px solid var(--border-hairline);
-  border-radius: 0;
 }
 .embedded > button {
   justify-self: start;
@@ -101,20 +132,20 @@
   padding: 0;
   margin: 0;
 }
+.list:not(:empty) {
+  border-top: 1px solid var(--border-hairline);
+}
 .task {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px 0;
-  border-bottom: 1px solid #edf0f2;
-}
-.task:last-child {
-  border-bottom: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-hairline);
 }
 .taskBody {
   display: grid;
-  gap: 6px;
+  gap: 2px;
   min-width: 0;
 }
 .taskTitle {
@@ -125,12 +156,12 @@
   overflow-wrap: anywhere;
 }
 .taskBody a {
-  color: #326e65;
+  color: var(--color-primary);
   font-size: 13px;
   overflow-wrap: anywhere;
 }
 .taskBody time {
-  color: #62717d;
+  color: var(--text-secondary);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
@@ -142,24 +173,21 @@
   gap: 6px;
   flex-shrink: 0;
 }
+/* A header shortcut on the workbench: one quiet pill, not a full-width banner. */
 .summary {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 14px;
-  padding: 16px 20px;
-  background: #f0f7f5;
-  border: 1px solid #d3e5df;
-  border-radius: 12px;
-  color: #275d55;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  background: var(--color-primary-soft);
+  border-radius: var(--radius-control);
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 500;
 }
-.summary span:nth-child(2) {
-  display: grid;
-  gap: 3px;
-  flex: 1;
-}
-.summary small {
-  color: #527269;
-  font-size: 12px;
+.summary:hover {
+  background: #dceee9;
 }
 .workbench {
   display: grid;
@@ -239,9 +267,6 @@
   .panel :global(.ant-segmented) {
     max-width: 100%;
   }
-  .summary {
-    padding: 14px;
-  }
   .workbench {
     padding: 16px;
   }
@@ -249,4 +274,13 @@
   .workbenchCounts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+/* Folded inside a record section, an empty list is one quiet line. */
+.embedded :global(.ant-empty) {
+  margin: 4px 0;
+  text-align: left;
+}
+.embedded :global(.ant-empty-image) {
+  display: none;
 }

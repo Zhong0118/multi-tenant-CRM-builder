@@ -99,9 +99,9 @@ describe("FollowUpPanel", () => {
       expect(screen.getByText("目标跟进").closest("li")).toHaveFocus(),
     );
     expect(screen.getByRole("radio", { name: "已完成" })).toBeChecked();
-    fireEvent.click(screen.getByRole("radio", { name: "待跟进" }));
+    fireEvent.click(screen.getByRole("radio", { name: /^待跟进/ }));
     await screen.findByText("不是目标跟进");
-    expect(screen.getByRole("radio", { name: "待跟进" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /^待跟进/ })).toBeChecked();
   });
 
   it("reports an inaccessible or removed deep-linked task instead of treating the record as success", async () => {
@@ -190,7 +190,7 @@ describe("FollowUpPanel", () => {
     await screen.findByText("确认客户反馈");
     expect(screen.queryByLabelText("跟进事项")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "安排跟进" })).not.toBeInTheDocument();
-    for (const name of [/完\s*成/, /改\s*期/, /取\s*消/])
+    for (const name of [/完\s*成/, /更多操作/])
       expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
   });
 
@@ -208,7 +208,8 @@ describe("FollowUpPanel", () => {
 
   it("reschedules with the current version and disables saving an empty date", async () => {
     const api = setup([task]);
-    fireEvent.click(await screen.findByRole("button", { name: /改\s*期/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /更多操作/ }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "改期" }));
     const date = await screen.findByLabelText("新的跟进时间（本地时间）");
     fireEvent.change(date, { target: { value: "" } });
     expect(screen.getByRole("button", { name: "保存时间" })).toBeDisabled();
@@ -224,7 +225,8 @@ describe("FollowUpPanel", () => {
 
   it("requires explicit confirmation to cancel a task", async () => {
     const api = setup([task]);
-    fireEvent.click(await screen.findByRole("button", { name: "取消" }));
+    fireEvent.click(await screen.findByRole("button", { name: /更多操作/ }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "取消跟进" }));
     expect(api.update).not.toHaveBeenCalled();
     fireEvent.click(await screen.findByRole("button", { name: "确认取消" }));
     await waitFor(() =>

@@ -1,21 +1,23 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { EllipsisOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   Alert,
   Button,
+  Dropdown,
   Empty,
   Form,
   Input,
   Modal,
   Pagination,
-  Popconfirm,
   Segmented,
   Select,
   Skeleton,
   Tag,
 } from "antd";
 import Link from "next/link";
+import { PageHeader } from "@/components/layout/page-header";
 import { sourceRecordHref } from "@/features/records/source-navigation";
 import { toApiError } from "@/lib/api/api-error";
 import {
@@ -25,6 +27,7 @@ import {
   type FollowUpStatus,
 } from "./follow-up-api";
 import styles from "./follow-ups.module.css";
+import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
 
 export function FollowUpPanel({
   tenantCode,
@@ -60,6 +63,7 @@ export function FollowUpPanel({
   const [composing, setComposing] = useState(false);
   const [title, setTitle] = useState("");
   const [dueAt, setDueAt] = useState("");
+  const [cancelling, setCancelling] = useState<FollowUp>();
   const [rescheduling, setRescheduling] = useState<FollowUp>();
   const [reassigning, setReassigning] = useState<FollowUp>();
   const [assignee, setAssignee] = useState<string>();
@@ -185,31 +189,18 @@ export function FollowUpPanel({
     !!value && Number.isFinite(new Date(value).getTime());
   return (
     <section
-      className={record ? `${styles.panel} ${styles.embedded}` : styles.panel}
+      className={record ? `${styles.panel} ${styles.embedded}` : `${styles.panel} ${styles.page}`}
       aria-label={record ? "下一步跟进" : "我的跟进待办"}
     >
-      <div className={styles.heading}>
-        <div>
-          <h2>{record ? "下一步跟进" : "我的跟进待办"}</h2>
-          <p>
-            {record
-              ? "为自己安排下一步，完成后保留记录。管理员可查看和处理此记录的所有跟进事项。"
-              : "只显示分配给你、且你当前有权查看的记录事项。到期未完成即为逾期。"}
-          </p>
-        </div>
-        {query.data && (
-          <div className={styles.counts}>
-            <span>
-              待跟进 <strong>{query.data.openCount}</strong>
-            </span>
-            <span
-              className={query.data.overdueCount ? styles.overdue : undefined}
-            >
-              已逾期 <strong>{query.data.overdueCount}</strong>
-            </span>
-          </div>
-        )}
-      </div>
+      {record ? (
+        <h2 className={styles.srOnly}>下一步跟进</h2>
+      ) : (
+        <PageHeader
+          title="跟进待办"
+          count={query.data?.openCount}
+          description="分配给你、且你有权查看的记录事项；到期未完成即为逾期。"
+        />
+      )}
       {error && (
         <Alert
           type="error"
@@ -223,9 +214,27 @@ export function FollowUpPanel({
       {unavailable && (
         <Alert type="warning" title="该跟进事项不存在或当前无权查看。" />
       )}
-      {record?.canCreate && !composing && (
-        <Button onClick={() => setComposing(true)} aria-expanded={false}>安排跟进</Button>
-      )}
+      <div className={styles.toolbar}>
+      <Segmented
+          size={record ? "small" : "middle"}
+          aria-label="跟进状态"
+          value={status}
+          options={[
+            { label: <StatusCount label="待跟进" count={query.data?.openCount} />, value: "OPEN" },
+            { label: <StatusCount label="已逾期" count={query.data?.overdueCount} warn />, value: "OVERDUE" },
+            { label: "已完成", value: "DONE" },
+            { label: "已取消", value: "CANCELLED" },
+          ]}
+          onChange={(value) => {
+            changeListState({ status: value as FollowUpStatus, page: 1 });
+          }}
+        />
+        {record?.canCreate && !composing ? (
+          <Button size="small" icon={<PlusOutlined aria-hidden />} onClick={() => setComposing(true)} aria-expanded={false}>
+            安排跟进
+          </Button>
+        ) : null}
+      </div>
       {record?.canCreate && composing && (
         <Form
           layout="vertical"
@@ -261,21 +270,6 @@ export function FollowUpPanel({
           <Button onClick={() => setComposing(false)} disabled={create.isPending}>收起表单</Button>
         </Form>
       )}
-      <Segmented
-        block={!record}
-        size="small"
-        aria-label="跟进状态"
-        value={status}
-        options={[
-          { label: "待跟进", value: "OPEN" },
-          { label: "已逾期", value: "OVERDUE" },
-          { label: "已完成", value: "DONE" },
-          { label: "已取消", value: "CANCELLED" },
-        ]}
-        onChange={(value) => {
-          changeListState({ status: value as FollowUpStatus, page: 1 });
-        }}
-      />
       {query.isLoading && <Skeleton active paragraph={{ rows: 2 }} />}
       {query.isError && (
         <Alert
@@ -343,36 +337,41 @@ export function FollowUpPanel({
                 >
                   完成
                 </Button>
-                <Button
-                  size="small"
-                  disabled={update.isPending}
-                  onClick={() => {
-                    setRescheduling(task);
-                    setNewDate(toLocalInput(task.dueAt));
+                <Dropdown
+                  trigger={["click"]}
+                  placement="bottomRight"
+                  menu={{
+                    items: [
+                      {
+                        key: "reschedule",
+                        label: "改期",
+                        disabled: update.isPending,
+                        onClick: () => {
+                          setRescheduling(task);
+                          setNewDate(toLocalInput(task.dueAt));
+                        },
+                      },
+                      {
+                        key: "reassign",
+                        label: "转交",
+                        onClick: () => {
+                          setReassigning(task);
+                          setAssignee(undefined);
+                        },
+                      },
+                      { type: "divider" },
+                      {
+                        key: "cancel",
+                        label: "取消跟进",
+                        danger: true,
+                        disabled: update.isPending,
+                        onClick: () => setCancelling(task),
+                      },
+                    ],
                   }}
                 >
-                  改期
-                </Button>
-                <Button
-                  size="small"
-                  onClick={() => {
-                    setReassigning(task);
-                    setAssignee(undefined);
-                  }}
-                >
-                  转交
-                </Button>
-                <Popconfirm
-                  title="取消这项跟进？"
-                  description="取消后仍保留在已取消记录中。"
-                  okText="确认取消"
-                  cancelText="保留"
-                  onConfirm={() => update.mutate({ task, status: "CANCELLED" })}
-                >
-                  <Button size="small" type="text" disabled={update.isPending}>
-                    取消
-                  </Button>
-                </Popconfirm>
+                  <Button size="small" type="text" aria-label={`更多操作 ${task.title}`} icon={<EllipsisOutlined aria-hidden />} />
+                </Dropdown>
               </div>
             )}
           </li>
@@ -388,6 +387,21 @@ export function FollowUpPanel({
           onChange={(nextPage) => changeListState({ status, page: nextPage })}
         />
       )}
+      <Modal
+        open={Boolean(cancelling)}
+        title="取消这项跟进？"
+        okText="确认取消"
+        cancelText="保留"
+        okButtonProps={{ danger: true }}
+        width={OVERLAY_SIZE.confirm}
+        onCancel={() => setCancelling(undefined)}
+        onOk={() => {
+          if (cancelling) update.mutate({ task: cancelling, status: "CANCELLED" });
+          setCancelling(undefined);
+        }}
+      >
+        取消后仍保留在已取消记录中。
+      </Modal>
       <Modal
         title="转交跟进事项"
         open={!!reassigning}
@@ -452,4 +466,13 @@ function toLocalInput(value: string) {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
     .toISOString()
     .slice(0, 16);
+}
+
+function StatusCount({ label, count, warn = false }: { label: string; count?: number; warn?: boolean }) {
+  return (
+    <span className={styles.statusCount}>
+      {label}
+      {count ? <span className={warn ? styles.countWarn : styles.count}>{count}</span> : null}
+    </span>
+  );
 }

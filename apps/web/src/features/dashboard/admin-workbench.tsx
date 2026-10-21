@@ -30,13 +30,16 @@ export function AdminWorkbench({
     <div className={styles.workbench}>
       <PageHeader
         title={overview.title}
-        description={`${tenantName}的已发布工作台。数据会按当前权限更新。`}
+        description={`${tenantName} · 按当前权限实时统计`}
         extra={
-          <Link
-            href={dashboardSettingsPath(tenantCode, overview.dashboardCode)}
-          >
-            <Button>配置工作台</Button>
-          </Link>
+          <>
+            <FollowUpSummary tenantCode={tenantCode} />
+            <Link
+              href={dashboardSettingsPath(tenantCode, overview.dashboardCode)}
+            >
+              <Button>配置工作台</Button>
+            </Link>
+          </>
         }
       />
       <div className={styles.workbenchChrome}>
@@ -51,7 +54,6 @@ export function AdminWorkbench({
           publication={overview.publication}
         />
       </div>
-      <FollowUpSummary tenantCode={tenantCode} />
       <DashboardRenderer tenantCode={tenantCode} runtime={overview} />
       <BusinessObjectBar
         tenantCode={tenantCode}
