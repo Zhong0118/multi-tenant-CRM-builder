@@ -2090,6 +2090,77 @@ export interface components {
       /** @enum {string} */
       status: "DRAFT" | "ACTIVE" | "SUSPENDED" | "CLOSED";
     };
+    CompanyAuditChangeDto: {
+      after:
+        | (
+            | string
+            | number
+            | boolean
+            | unknown[]
+            | {
+                [key: string]: unknown;
+              }
+          )
+        | null;
+      before:
+        | (
+            | string
+            | number
+            | boolean
+            | unknown[]
+            | {
+                [key: string]: unknown;
+              }
+          )
+        | null;
+      /** @description Field key or top-level payload key. */
+      key: string;
+      /** @description The business field label when the key is a record field. */
+      label?: string | null;
+    };
+    CompanyAuditItemDto: {
+      action: string;
+      /** Format: uuid */
+      actorId?: string | null;
+      actorName?: string | null;
+      /** @enum {string} */
+      actorType: "USER" | "SYSTEM" | "INTEGRATION";
+      after?: {
+        [key: string]: unknown;
+      } | null;
+      before?: {
+        [key: string]: unknown;
+      } | null;
+      /** @description Changed keys when both before and after are objects. */
+      changes?: components["schemas"]["CompanyAuditChangeDto"][] | null;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: uuid */
+      id: string;
+      ip?: string | null;
+      /** @description The business table the resource belongs to. */
+      objectName?: string | null;
+      reason?: string | null;
+      /** @description Title of the record a follow-up, attachment or activity belongs to. */
+      recordTitle?: string | null;
+      requestId: string;
+      /** Format: uuid */
+      resourceId?: string | null;
+      /** @description Human name of the resource: record title, business table, member, … */
+      resourceName?: string | null;
+      resourceType: string;
+      /** Format: uuid */
+      tenantId?: string | null;
+      tenantName?: string | null;
+    };
+    CompanyAuditPageDto: {
+      items: components["schemas"]["CompanyAuditItemDto"][];
+      limit: number;
+      page: number;
+      /** @example Asia/Shanghai */
+      timezone: string;
+      total: number;
+    };
     ConfirmAiProposalDto: {
       /** Format: uuid */
       idempotencyKey: string;
@@ -5065,10 +5136,16 @@ export interface operations {
     parameters: {
       query?: {
         action?: string;
+        /** @description The acting user (a member’s userId). */
+        actorId?: string;
+        /** @description First calendar day, inclusive, in the company’s timezone. */
+        from?: string;
         limit?: number;
         page?: number;
         resourceType?: string;
         tenantId?: string;
+        /** @description Last calendar day, inclusive, in the company’s timezone. */
+        to?: string;
       };
       header?: never;
       path: {
@@ -5083,7 +5160,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PlatformAuditPageDto"];
+          "application/json": components["schemas"]["CompanyAuditPageDto"];
         };
       };
     };

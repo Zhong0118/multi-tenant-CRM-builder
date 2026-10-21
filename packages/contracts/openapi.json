@@ -1069,6 +1069,192 @@
         "required": ["status"],
         "type": "object"
       },
+      "CompanyAuditChangeDto": {
+        "properties": {
+          "after": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "before": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "key": {
+            "description": "Field key or top-level payload key.",
+            "type": "string"
+          },
+          "label": {
+            "description": "The business field label when the key is a record field.",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": ["key", "before", "after"],
+        "type": "object"
+      },
+      "CompanyAuditItemDto": {
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "actorId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "actorName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "actorType": {
+            "enum": ["USER", "SYSTEM", "INTEGRATION"],
+            "type": "string"
+          },
+          "after": {
+            "additionalProperties": true,
+            "nullable": true,
+            "type": "object"
+          },
+          "before": {
+            "additionalProperties": true,
+            "nullable": true,
+            "type": "object"
+          },
+          "changes": {
+            "description": "Changed keys when both before and after are objects.",
+            "items": {
+              "$ref": "#/components/schemas/CompanyAuditChangeDto"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "ip": {
+            "nullable": true,
+            "type": "string"
+          },
+          "objectName": {
+            "description": "The business table the resource belongs to.",
+            "nullable": true,
+            "type": "string"
+          },
+          "reason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "recordTitle": {
+            "description": "Title of the record a follow-up, attachment or activity belongs to.",
+            "nullable": true,
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "resourceId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "resourceName": {
+            "description": "Human name of the resource: record title, business table, member, …",
+            "nullable": true,
+            "type": "string"
+          },
+          "resourceType": {
+            "type": "string"
+          },
+          "tenantId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "tenantName": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "actorType",
+          "action",
+          "resourceType",
+          "requestId",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "CompanyAuditPageDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyAuditItemDto"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "number"
+          },
+          "page": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "timezone": {
+            "example": "Asia/Shanghai",
+            "type": "string"
+          },
+          "total": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": ["items", "page", "limit", "total", "timezone"],
+        "type": "object"
+      },
       "ConfirmAiProposalDto": {
         "properties": {
           "idempotencyKey": {
@@ -8501,6 +8687,36 @@
             }
           },
           {
+            "description": "The acting user (a member’s userId).",
+            "in": "query",
+            "name": "actorId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "First calendar day, inclusive, in the company’s timezone.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "example": "2026-10-14",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Last calendar day, inclusive, in the company’s timezone.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "example": "2026-10-20",
+              "type": "string"
+            }
+          },
+          {
             "in": "path",
             "name": "tenantCode",
             "required": true,
@@ -8514,7 +8730,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PlatformAuditPageDto"
+                  "$ref": "#/components/schemas/CompanyAuditPageDto"
                 }
               }
             },
