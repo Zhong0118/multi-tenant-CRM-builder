@@ -578,9 +578,6 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border-hairline);
 }
 
 .timeline > button {
@@ -1044,4 +1041,12 @@
   .poolSettingsSection { animation: none; }
   .poolTabs:global(.ant-tabs) :global(.ant-tabs-tab), .poolFooterContent :global(.ant-btn) { transition: none; }
   .poolTabs:global(.ant-tabs) :global(.ant-tabs-tab:active), .poolFooterContent :global(.ant-btn:active) { transform: none; }
+}
+
+/* Inside the record page's 动态 section: hint on the left, the add button on the right. */
+.timelineHeading {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
 }

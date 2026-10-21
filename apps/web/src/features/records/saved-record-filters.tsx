@@ -19,6 +19,8 @@ type SavedRecordFilterProps = {
   objectCode: string;
   query: RecordQuery;
   onApply: (query: RecordQuery) => void;
+  /** Render only the saved views menu or only the save button; both by default. */
+  part?: "views" | "save";
 };
 const STORAGE_CHANGED = "crm:saved-filters-changed";
 function subscribe(listener: () => void) {
@@ -43,6 +45,7 @@ function SavedRecordFiltersSession({
   objectCode,
   query,
   onApply,
+  part,
 }: SavedRecordFilterProps) {
   const key = savedFilterKey(tenantCode, memberId, objectCode);
   const snapshot = useSyncExternalStore(
@@ -90,6 +93,9 @@ function SavedRecordFiltersSession({
     }
   }
   const label = name.trim();
+  // The view the list is showing right now, so the menu can say which one is open.
+  const current = JSON.stringify({ ...query, page: 1 });
+  const active = saved.find((view) => JSON.stringify({ ...view.query, page: 1 }) === current)?.name ?? selected;
   const atLimit = saved.length >= MAX_SAVED && !saved.some((v) => v.name === label);
   function save() {
     if (!label || atLimit) return;
@@ -106,7 +112,7 @@ function SavedRecordFiltersSession({
   return (
     <div aria-label="我的筛选视图" className={styles.savedFilters}>
       <Space size={2}>
-        {saved.length > 0 ? (
+        {saved.length > 0 && part !== "save" ? (
           <Popover
             trigger="click"
             placement="bottomRight"
@@ -120,7 +126,7 @@ function SavedRecordFiltersSession({
                     <Button
                       type="text"
                       className={styles.savedViewName}
-                      aria-current={view.name === selected ? "true" : undefined}
+                      aria-current={view.name === active ? "true" : undefined}
                       onClick={() => {
                         setSelected(view.name);
                         setListOpen(false);
@@ -144,11 +150,16 @@ function SavedRecordFiltersSession({
               </ul>
             }
           >
-            <Button type="text" className={styles.savedViewTrigger}>
-              我的视图 <DownOutlined aria-hidden />
+            <Button
+              type="text"
+              className={styles.savedViewTrigger}
+              aria-label={active ? `我的视图：${active}` : "我的视图"}
+            >
+              {active ?? "我的视图"} <DownOutlined aria-hidden />
             </Button>
           </Popover>
         ) : null}
+        {part !== "views" ? (
         <Popover
           trigger="click"
           placement="bottomRight"
@@ -190,6 +201,7 @@ function SavedRecordFiltersSession({
             保存为视图
           </Button>
         </Popover>
+        ) : null}
       </Space>
     </div>
   );

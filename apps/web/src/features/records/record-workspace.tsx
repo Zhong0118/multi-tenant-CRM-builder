@@ -19,6 +19,7 @@ import type {
 import type { DynamicFieldMember } from "./dynamic-field";
 import { RecordDetailPage } from "./record-detail-page";
 import { RecordList } from "./record-list";
+import styles from "./record-list.module.css";
 import { DEFAULT_RECORD_QUERY, recordQuerySearch, type RecordQuery } from "./record-query-state";
 
 export interface RecordWorkspaceProps {
@@ -85,6 +86,18 @@ function RecordWorkspaceSession({
     direction: schema.defaultView.sort.direction,
   });
   const returnPath = validatedReturnTo(tenantCode, returnTo) ?? `${listPath}${search ? `?${search}` : ""}`;
+  // Paging through the list page the record was opened from keeps its filters.
+  const index = record ? initialPage.items.findIndex((item) => item.id === record.id) : -1;
+  const siblingHref = (id: string | undefined) =>
+    id ? `${listPath}/${encodeURIComponent(id)}${search ? `?${search}` : ""}` : undefined;
+  const position = index >= 0 && !validatedReturnTo(tenantCode, returnTo)
+    ? {
+        index: (initialPage.page - 1) * initialPage.limit + index,
+        total: initialPage.total,
+        previousHref: siblingHref(initialPage.items[index - 1]?.id),
+        nextHref: siblingHref(initialPage.items[index + 1]?.id),
+      }
+    : undefined;
 
   useEffect(() => {
     const pending = pendingListFocus;
@@ -131,8 +144,8 @@ function RecordWorkspaceSession({
           router.refresh();
         }}
       /> : null}
-      <div style={{ display: "flex", gap: 0, height: "100%", overflow: "hidden" }}>
-        <div ref={listRef} style={{ flex: record ? "0 0 40%" : "1 1 100%", transition: "flex 0.3s ease", overflow: "auto" }}>
+      {record ? null : (
+        <div ref={listRef} className={styles.workspace}>
           <RecordList
             currentMemberId={currentMemberId}
             tenantCode={tenantCode}
@@ -145,8 +158,8 @@ function RecordWorkspaceSession({
             onPoolSettings={pool.data ? () => setPoolSettingsOpen(true) : undefined}
           />
         </div>
-        {record ? (
-          <div style={{ flex: "0 0 60%", borderLeft: "1px solid #e8ebee", background: "#fafbfc", overflow: "auto" }}>
+      )}
+      {record ? (
             <RecordDetailPage
               tenantCode={tenantCode}
               schema={schema}
@@ -159,6 +172,7 @@ function RecordWorkspaceSession({
               initialEditing={initialEditing}
               followUpId={followUpId}
               returnTo={returnTo}
+              position={position}
               onClose={() => {
                 if (!validatedReturnTo(tenantCode, returnTo)) {
                   pendingListFocus = { path: `${listPath}/${encodeURIComponent(record.id)}`, until: Date.now() + 3000 };
@@ -182,9 +196,7 @@ function RecordWorkspaceSession({
                 }
               }}
             />
-          </div>
-        ) : null}
-      </div>
+      ) : null}
     </>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { PlusOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Form, Input, Select, Typography } from "antd";
 import { useState } from "react";
@@ -83,18 +84,15 @@ export function RecordActivityTimeline({
 
   return (
     <section className={styles.timeline} aria-label="活动历史">
+      <h2 className={styles.visuallyHidden}>活动历史</h2>
       <div className={styles.timelineHeading}>
-        <h2>活动历史</h2>
-        <Typography.Text type="secondary">
-          按时间追加，不能修改或覆盖已有记录。
-        </Typography.Text>
+        <Typography.Text type="secondary">按时间追加，已有记录不能修改。</Typography.Text>
+        {canCreate && !composing ? (
+          <Button size="small" icon={<PlusOutlined aria-hidden />} onClick={() => setComposing(true)} aria-expanded={false}>追加活动</Button>
+        ) : null}
       </div>
 
       {error ? <Alert type="error" showIcon title={error} /> : null}
-
-      {canCreate && !composing ? (
-        <Button onClick={() => setComposing(true)} aria-expanded={false}>追加活动</Button>
-      ) : null}
       {canCreate && composing ? (
         <Form component={false} layout="vertical" className={styles.timelineComposer}>
           <div className={styles.timelineComposerRow}>

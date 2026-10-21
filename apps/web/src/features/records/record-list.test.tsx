@@ -323,15 +323,13 @@ describe("RecordList query navigation", () => {
   it("remembers owner visibility separately from business fields and restores the default", async () => {
     const options = { canFilterByOwner: true, currentMemberId: "member-1" };
     const view = renderList(vi.fn(), DEFAULT_RECORD_QUERY, options);
-    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "列设置" }));
+    fireEvent.click(screen.getByRole("button", { name: /^列$|列$/ }));
     fireEvent.click(screen.getByRole("checkbox", { name: "显示系统负责人" }));
     expect(screen.queryByRole("columnheader", { name: "负责人" })).not.toBeInTheDocument();
     view.unmount();
     renderList(vi.fn(), DEFAULT_RECORD_QUERY, options);
     expect(screen.queryByRole("columnheader", { name: "负责人" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "列设置" }));
+    fireEvent.click(screen.getByRole("button", { name: /^列$|列$/ }));
     fireEvent.click(screen.getByRole("button", { name: "恢复默认列" }));
     expect(screen.getByRole("columnheader", { name: "负责人" })).toBeVisible();
     expect(window.localStorage.getItem("crm.records.columns.northwind.customers")).not.toContain("ownerMemberId");
@@ -449,22 +447,19 @@ describe("RecordList table sorting", () => {
     expect(
       screen.getByText(/批量修改每次最多 100 条，负责人分配每次最多 1000 条/),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
-    expect(
-      await screen.findByRole("menuitem", { name: "批量修改 101" }),
-    ).toHaveAttribute("aria-disabled", "true");
-    expect(
-      screen.getByRole("menuitem", { name: "批量分配负责人" }),
-    ).not.toHaveAttribute("aria-disabled", "true");
-    fireEvent.click(screen.getByRole("menuitem", { name: "批量分配负责人" }));
+    // Selection actions live in the footer's selection bar.
+    const bulk = screen.getByRole("toolbar", { name: "批量操作" });
+    expect(within(bulk).getByText("已选 101 条")).toBeInTheDocument();
+    expect(within(bulk).getByRole("button", { name: /批量修改/ })).toBeDisabled();
+    expect(within(bulk).getByRole("button", { name: /分配负责人/ })).toBeEnabled();
+    fireEvent.click(within(bulk).getByRole("button", { name: /分配负责人/ }));
     expect(await screen.findByText("批量分配 101 条记录")).toBeInTheDocument();
   });
 
   it("shares card selection with the existing batch edit action", async () => {
     renderList(vi.fn());
     fireEvent.click(screen.getByRole("checkbox", { name: "选择卡片 天际科技" }));
-    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: /批量修改 1/ }));
+    fireEvent.click(screen.getByRole("button", { name: /批量修改/ }));
     expect(screen.getByText("批量修改 1 条")).toBeInTheDocument();
   });
   it("recovers filtered empty results without changing sort or page size", () => {
@@ -706,10 +701,11 @@ describe("RecordList table sorting", () => {
     }
     render(<QueryClientProvider client={client}><TwoPages /></QueryClientProvider>);
     fireEvent.click(await screen.findByRole("checkbox", { name: `${label} 天际科技` }));
-    fireEvent.click(screen.getAllByTitle("2")[label === "选择卡片" ? 1 : 0]);
+    // One pager in the footer serves the table and the cards.
+    fireEvent.click(screen.getAllByTitle("2")[0]);
     fireEvent.click(await screen.findByRole("checkbox", { name: `${label} 第二页客户` }));
-    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "批量修改 1" }));
+    expect(screen.getByText("已选 1 条")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /批量修改/ }));
     expect(screen.getByText("批量修改 1 条")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("checkbox", { name: "批量修改 备注" }));
     fireEvent.change(screen.getByRole("textbox", { name: "备注" }), { target: { value: "当前页修改" } });
@@ -727,15 +723,14 @@ describe("RecordList table sorting", () => {
     </QueryClientProvider>;
     const { rerender } = render(view(DEFAULT_RECORD_QUERY));
     fireEvent.click(await screen.findByRole("checkbox", { name: "选择卡片 天际科技" }));
-    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "批量修改 1" }));
+    fireEvent.click(screen.getByRole("button", { name: /批量修改/ }));
     expect(screen.getByText("批量修改 1 条")).toBeInTheDocument();
     rerender(view({ ...DEFAULT_RECORD_QUERY, search: "天际" }));
     expect(screen.queryByText("批量修改 0 条")).not.toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "选择卡片 天际科技" })).not.toBeChecked();
     expect(screen.getByRole("checkbox", { name: "选择 天际科技" })).not.toBeChecked();
-    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
-    expect(await screen.findByRole("menuitem", { name: "批量修改" })).toHaveAttribute("aria-disabled", "true");
+    // With nothing selected the selection bar, and its batch actions, are gone.
+    expect(screen.queryByRole("toolbar", { name: "批量操作" })).toBeNull();
   });
 
   it("opens batch edit for selected rows", async () => {
@@ -749,10 +744,7 @@ describe("RecordList table sorting", () => {
     fireEvent.click(
       await screen.findByRole("checkbox", { name: "选择 天际科技" }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
-    fireEvent.click(
-      await screen.findByRole("menuitem", { name: "批量修改 1" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: /批量修改/ }));
 
     expect(screen.getByText("批量修改 1 条")).toBeInTheDocument();
   });
@@ -765,10 +757,8 @@ describe("RecordList table sorting", () => {
     } as unknown as RecordApi;
     renderList(navigate, DEFAULT_RECORD_QUERY, { api });
 
-    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "列设置" }));
+    fireEvent.click(screen.getByRole("button", { name: /^列$|列$/ }));
     fireEvent.click(screen.getByRole("checkbox", { name: "显示列 手机号" }));
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
     fireEvent.click(
       await screen.findByRole("menuitem", { name: "导出当前结果" }),
@@ -817,27 +807,20 @@ describe("RecordList table sorting", () => {
     const navigate = vi.fn();
     renderList(navigate);
 
-    fireEvent.click(screen.getByRole("button", { name: "更多筛选" }));
     expect(screen.getByLabelText("搜索客户名称、手机号")).toBeInTheDocument();
-    expect(
-      screen.getByRole("group", { name: "按签约日筛选" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("combobox", { name: "按签约日快捷筛选" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("group", { name: "按评分筛选" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("combobox", { name: "按已启用筛选" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("combobox", { name: "按跟进人筛选" }),
-    ).toBeInTheDocument();
+    // Every other filterable field is one condition away in the 筛选 popover.
+    await addCondition("签约日");
+    expect(screen.getByRole("group", { name: "按签约日筛选" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "按签约日快捷筛选" })).toBeInTheDocument();
+    await addCondition("评分");
+    expect(screen.getByRole("group", { name: "按评分筛选" })).toBeInTheDocument();
+    await addCondition("已启用");
+    expect(screen.getByRole("combobox", { name: "按已启用筛选" })).toBeInTheDocument();
+    await addCondition("跟进人");
+    expect(screen.getByRole("combobox", { name: "按跟进人筛选" })).toBeInTheDocument();
+    await addCondition("备注");
     expect(screen.getByLabelText("按备注筛选")).toBeInTheDocument();
-    expect(
-      screen.getByRole("combobox", { name: "按备注填充筛选" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "按备注填充筛选" })).toBeInTheDocument();
     fireEvent.mouseDown(
       screen.getByRole("combobox", { name: "按客户标签筛选" }),
     );
@@ -886,9 +869,9 @@ describe("RecordList table sorting", () => {
     expect(within(cards).getByText("8")).toBeInTheDocument();
     expect(within(cards).getByText("待联系")).toBeInTheDocument();
     expect(within(cards).getByText("李明")).toBeInTheDocument();
-    fireEvent.click(
-      within(cards).getByRole("button", { name: "查看 天际科技" }),
-    );
+    // A card carries the same ⋯ menu as its table row.
+    fireEvent.click(within(cards).getByRole("button", { name: "更多操作 天际科技" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "查看" }));
     expect(navigate).toHaveBeenCalledWith(
       "/workspace/northwind/objects/customers/record-1",
     );
@@ -912,8 +895,7 @@ it("keeps employee public pool rows read-only and omits all tab for OWN readers"
   renderList(vi.fn(), DEFAULT_RECORD_QUERY, { schema: { ...schema, scopes: { read: "OWN", update: "OWN" } }, poolConfig: { enabled: true, ownershipTtlHours: null, version: 1 }, page: { ...page, items: [{ ...page.items[0], inPublicPool: true, ownershipExpiresAt: null }] } });
   expect(screen.queryByRole("radio", { name: "全部记录" })).not.toBeInTheDocument();
   expect(screen.getByRole("radio", { name: "公共池" })).toBeInTheDocument();
-  // Cards keep inline buttons; the table row's menu explains why editing is unavailable.
-  for (const button of screen.getAllByRole("button", { name: "编辑 天际科技" })) expect(button).toBeDisabled();
+  // The row menu explains why editing is unavailable.
   fireEvent.click(within(screen.getByRole("table", { name: "客户记录" })).getByRole("button", { name: "更多操作 天际科技" }));
   expect(screen.getByRole("menuitem", { name: "编辑（领取后可编辑）" })).toHaveAttribute("aria-disabled", "true");
   expect(screen.getByRole("checkbox", { name: "选择 天际科技" })).toBeDisabled();
@@ -1003,8 +985,18 @@ it("defaults an employee's private stage to their own records even with ALL read
 
 it("never includes system owner unassigned sentinel in a business MEMBER filter", async () => {
   renderList(vi.fn(), DEFAULT_RECORD_QUERY, { canFilterByOwner: true, members: [{ id: "member-1", displayName: "林晨" }], schema: { ...schema, fields: [...schema.fields, { ...schema.fields[0], id: "collaborator", fieldKey: "collaborator", label: "协作人", type: "MEMBER" }] } });
-  fireEvent.click(screen.getByRole("button", { name: "更多筛选" }));
+  await addCondition("协作人");
   fireEvent.mouseDown(screen.getByRole("combobox", { name: "按协作人筛选" }));
   expect(await screen.findByText("林晨")).toBeInTheDocument();
   expect(screen.queryByText("未指定负责人")).not.toBeInTheDocument();
 });
+
+/** Opens the 筛选 popover (once) and adds a condition row for one field. */
+async function addCondition(label: string) {
+  if (!screen.queryByRole("group", { name: "筛选条件" })) {
+    fireEvent.click(screen.getByRole("button", { name: /^筛选/ }));
+  }
+  fireEvent.mouseDown(await screen.findByRole("combobox", { name: "添加条件" }));
+  const options = await screen.findAllByText(label, { selector: ".ant-select-item-option-content" });
+  fireEvent.click(options.at(-1)!);
+}

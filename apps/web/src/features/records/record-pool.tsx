@@ -36,6 +36,7 @@ import {
 } from "./record-pool-types";
 import { recordPoolApi, type RecordPoolApi } from "./record-pool-api";
 import styles from "./records.module.css";
+import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
 
 function PoolDeadline({ expiresAt, serverTime, receivedAt }: { expiresAt: string; serverTime: string; receivedAt?: number }) {
   const [clock] = useState(() => ({ server: Date.parse(serverTime), received: receivedAt ?? Date.now() }));
@@ -198,6 +199,7 @@ export function useRecordOwnership({
     <>
     <Drawer
       open={releasing}
+      size={OVERLAY_SIZE.narrow}
       title={
         protectedRecord
           ? "解除保护并释放"
@@ -275,6 +277,7 @@ export function useRecordOwnership({
     </Drawer>
     <Drawer
       open={assigning}
+      size={OVERLAY_SIZE.narrow}
       title={`分配 ${record.title}`}
       onClose={() => setAssigning(false)}
       destroyOnHidden
@@ -519,7 +522,7 @@ export function RecordPoolSettings({
       rules.some((rule) => !rule.sourceObjectCode || !rule.statusKeys.length)
     : automatic && !validHours(hours);
   return (
-    <Drawer open title="公共池设置" size={600} onClose={onClose} destroyOnHidden
+    <Drawer open title="公共池设置" size={OVERLAY_SIZE.drawer} onClose={onClose} destroyOnHidden
       classNames={{ body: styles.poolSettingsBody, footer: styles.poolSettingsFooter }}
       footer={<div className={styles.poolFooterContent}><span>保存即生效，无需发布</span><Space><Button onClick={onClose}>取消</Button><Button type="primary" loading={save.isPending} disabled={invalid || saved || archived} onClick={() => { if (!archived) save.mutate(); }}>保存设置</Button></Space></div>}
     >

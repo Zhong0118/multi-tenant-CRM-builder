@@ -124,9 +124,12 @@ beforeEach(() => {
 });
 
 describe("record workspace navigation", () => {
-  it("restores focus to the retained record link on ordinary list close", async () => {
+  it("shows the record as a page of its own and returns focus to its list link on close", async () => {
+    const rects = vi.spyOn(HTMLAnchorElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
+    onTestFinished(() => rects.mockRestore());
     render(<RecordWorkspace {...props} openRecord={record} />);
-    vi.spyOn(screen.getByRole("link", { name: "客户 A 链接" }), "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
+    // The record replaces the list instead of squeezing it into a side column.
+    expect(screen.queryByRole("link", { name: "客户 A 链接" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "关闭" }));
     await waitFor(() => expect(screen.getByRole("link", { name: "客户 A 链接" })).toHaveFocus());
   });
@@ -135,8 +138,8 @@ describe("record workspace navigation", () => {
     const rects = vi.spyOn(HTMLAnchorElement.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
     onTestFinished(() => rects.mockRestore());
     const { rerender, unmount } = render(<RecordWorkspace {...props} openRecord={record} />);
-    const closing = screen.getByRole("link", { name: "客户 A 链接" });
     fireEvent.click(screen.getByRole("button", { name: "关闭" }));
+    const closing = await screen.findByRole("link", { name: "客户 A 链接" });
     await waitFor(() => expect(closing).toHaveFocus());
     // The list URL mounts a fresh workspace whose list replaces the old link.
     rerender(<RecordWorkspace {...props} />);
@@ -210,7 +213,8 @@ describe("record workspace navigation", () => {
       fireEvent.change(screen.getByLabelText("客户名称"), { target: { value: "已保存" } });
       fireEvent.click(screen.getByRole("button", { name: "保存修改" }));
     } else {
-      fireEvent.click(screen.getByRole("button", { name: /^删\s*除$/ }));
+      fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
+      fireEvent.click(await screen.findByRole("menuitem", { name: "删除记录" }));
       fireEvent.click(await screen.findByRole("button", { name: "删除记录" }));
     }
     expect(await screen.findByRole("alert")).toHaveTextContent(action === "save" ? "记录已保存，但刷新暂时失败" : "记录已删除，但刷新暂时失败");
@@ -221,13 +225,13 @@ describe("record workspace navigation", () => {
     if (action === "save") {
       expect(update).toHaveBeenCalledTimes(1);
       // The drawer shows the saved record, not the stale one.
-      expect(screen.getByText(formatDateTime("2026-09-10T02:30:00.000Z"))).toBeVisible();
+      expect(screen.getAllByText(formatDateTime("2026-09-10T02:30:00.000Z"))[0]).toBeVisible();
       expect(screen.queryByRole("button", { name: "保存修改" })).not.toBeInTheDocument();
     } else {
       expect(remove).toHaveBeenCalledTimes(1);
-      expect(screen.getByRole("button", { name: /^删\s*除$/ })).toBeDisabled();
+      // Once deleted, the record cannot be edited or deleted again.
+      expect(screen.getByRole("button", { name: "更多操作" })).toBeDisabled();
       expect(screen.queryByRole("button", { name: /^编\s*辑$/ })).not.toBeInTheDocument();
-      fireEvent.click(screen.getByRole("button", { name: /^删\s*除$/ }));
       expect(remove).toHaveBeenCalledTimes(1);
       fireEvent.click(screen.getByRole("button", { name: "返回列表" }));
       expect(router.replace).toHaveBeenCalledWith("/workspace/northwind/follow-ups?status=OPEN&page=1");

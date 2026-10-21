@@ -7,7 +7,6 @@ import {
   Drawer,
   Progress,
   Select,
-  Space,
   Typography,
 } from "antd";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -38,6 +37,7 @@ import {
 import { runImportBatches, summarizeImport } from "./record-import-batches";
 
 import styles from "./records.module.css";
+import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
 
 const SKIP = "__skip__";
 
@@ -311,8 +311,32 @@ export function RecordImportDrawer({
 
   return (
     <Drawer
+      footer={
+        <>
+          <Button onClick={close}>关闭</Button>
+          <Button
+            type={eligible > 0 ? "default" : "primary"}
+            aria-label={importStarted ? "检查剩余行" : "检查数据"}
+            loading={busy === "check"}
+            disabled={!canCheck || !!busy || loadingFile}
+            onClick={() => void run(true)}
+          >
+            {importStarted ? "检查剩余行" : "检查数据"}
+          </Button>
+          {eligible > 0 ? (
+            <Button
+              type="primary"
+              loading={busy === "import"}
+              disabled={!!busy}
+              onClick={() => void run(false)}
+            >
+              确认导入（{eligible} 行，含重复检查）
+            </Button>
+          ) : null}
+        </>
+      }
       open
-      size={560}
+      size={OVERLAY_SIZE.drawer}
       title="导入 Excel / CSV"
       aria-label="导入 Excel / CSV"
       onClose={close}
@@ -625,27 +649,7 @@ export function RecordImportDrawer({
           这里只展示前 50 个错误，完整结果请下载失败明细。
         </Typography.Paragraph>
       ) : null}
-      <Space wrap>
-        <Button
-          aria-label={importStarted ? "检查剩余行" : "检查数据"}
-          loading={busy === "check"}
-          disabled={!canCheck || !!busy || loadingFile}
-          onClick={() => void run(true)}
-        >
-          {importStarted ? "检查剩余行" : "检查数据"}
-        </Button>
-        {eligible > 0 ? (
-          <Button
-            type="primary"
-            loading={busy === "import"}
-            disabled={!!busy}
-            onClick={() => void run(false)}
-          >
-            确认导入（{eligible} 行，含重复检查）
-          </Button>
-        ) : null}
-        <Button onClick={close}>关闭</Button>
-      </Space>
+
     </Drawer>
   );
 }
