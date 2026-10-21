@@ -13,6 +13,7 @@ import {
 import type { ConfigurableFieldView } from "./configuration-view";
 
 import styles from "./objects.module.css";
+import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
 
 export type { FieldDraftValues } from "./field-editor-form";
 
@@ -60,7 +61,7 @@ function FieldEditor({
   return (
     <Drawer
       open
-      size={600}
+      size={OVERLAY_SIZE.drawer}
       className={styles.fieldDrawer}
       title={
         <div className={styles.drawerTitle}>

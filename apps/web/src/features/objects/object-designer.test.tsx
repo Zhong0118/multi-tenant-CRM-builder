@@ -231,22 +231,20 @@ describe("ObjectDesigner configuration ledger", () => {
 
   it("identifies the editing section, draft and employee live version with a mobile return path", () => {
     renderDesigner(draft(), objectApi());
-    expect(screen.getByText("正在编辑：字段与表单")).toBeInTheDocument();
+    // The active tab names the section; the header carries draft and live version.
+    expect(screen.getByRole("button", { name: /^字段与表单/ })).toHaveAttribute("aria-current", "page");
     expect(screen.getByText("草稿修订 4")).toBeInTheDocument();
-    expect(screen.getByText("员工使用已发布版本 v3")).toBeInTheDocument();
+    expect(screen.getByText("员工使用 v3")).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "返回业务表列表" }),
+      screen.getByRole("link", { name: "业务表" }),
     ).toHaveAttribute("href", "/workspace/northwind/settings/objects");
-    expect(
-      screen.getByText("发布前会检查变更；确认发布后才更新员工使用的版本。"),
-    ).toBeInTheDocument();
     for (const [section, save] of [
       ["基本设置", "保存基本设置"],
       ["列表展示与搜索", "保存列表设置"],
       ["员工权限", "保存员工权限"],
     ]) {
       fireEvent.click(screen.getByRole("button", { name: section }));
-      expect(screen.getByText(`正在编辑：${section}`)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: section })).toHaveAttribute("aria-current", "page");
       const action = screen.getByRole("button", { name: save }).parentElement!;
       expect(
         within(action).getByText("仅保存本节到对象草稿；发布后员工端生效。"),
@@ -536,7 +534,7 @@ describe("ObjectDesigner configuration ledger", () => {
       screen.getByRole("heading", { name: "客户资料" }),
     ).toBeInTheDocument();
     expect(screen.getByText("northwind + customers")).toBeInTheDocument();
-    expect(screen.getByText("v3 当前版本")).toBeInTheDocument();
+    expect(screen.getByText("员工使用 v3")).toBeInTheDocument();
     expect(screen.queryByText(/项未发布变更/)).not.toBeInTheDocument();
   });
 
@@ -548,7 +546,7 @@ describe("ObjectDesigner configuration ledger", () => {
       objectApi(),
     );
 
-    expect(screen.getByText("有未发布变更")).toBeInTheDocument();
+    expect(screen.getByText("有待发布改动")).toBeInTheDocument();
   });
 
   it("lists each field with its stable key, type, requirement and employee access", () => {
@@ -1179,21 +1177,21 @@ describe("object management lifecycle filters and ordering", () => {
         />
       </QueryClientProvider>,
     );
-    fireEvent.click(screen.getByRole("radio", { name: "已停用" }));
+    fireEvent.click(screen.getByRole("radio", { name: /^已停用/ }));
     expect(
-      screen.queryByRole("link", { name: "客户资料" }),
+      screen.queryByRole("link", { name: /^客户资料/ }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "停用客户" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^停用客户/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "更多操作 停用客户" }));
+    expect(await screen.findByRole("menuitem", { name: "恢复业务表" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: /^未发布/ }));
+    expect(screen.getByRole("link", { name: /^新表/ })).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "恢复业务表 停用客户" }),
-    ).toBeEnabled();
-    fireEvent.click(screen.getByRole("radio", { name: "未发布" }));
-    expect(screen.getByRole("link", { name: "新表" })).toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "停用客户" }),
+      screen.queryByRole("link", { name: /^停用客户/ }),
     ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("radio", { name: "全部" }));
-    fireEvent.click(screen.getByRole("button", { name: "下移 客户资料" }));
+    fireEvent.click(screen.getByRole("radio", { name: /^全部/ }));
+    fireEvent.click(screen.getByRole("button", { name: "更多操作 客户资料" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /在导航中下移/ }));
     await waitFor(() =>
       expect(api.reorderObjects).toHaveBeenCalledExactlyOnceWith("northwind", [
         { objectId: "new", expectedVersion: 4 },

@@ -1,141 +1,78 @@
-.page {
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 20px;
+/* Settings home: one list of rows per group. */
+
+.rows {
+  list-style: none;
+  border-top: 1px solid var(--border-hairline);
 }
 
-.settingsGrid {
+.rows li {
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.row {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
-  gap: 18px;
+  grid-template-columns: 32px minmax(0, 1fr) auto 12px;
+  gap: 14px;
+  align-items: center;
+  min-height: 60px;
+  padding: 10px 8px 10px 4px;
+  color: var(--text-primary);
 }
 
-.primarySetting,
-.secondarySetting {
+.row:hover {
+  background: var(--bg-hover);
+}
+
+.rowIcon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: var(--radius-control);
+  background: var(--bg-page);
+  color: var(--text-secondary);
+  font-size: 16px;
+}
+
+.rowCopy {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
 }
 
-.primarySetting {
-  display: flex;
-  grid-row: span 2;
-  flex-direction: column;
-  gap: 18px;
-  padding: 26px 28px;
-}
-
-.primarySetting h2,
-.secondarySetting h2 {
-  margin: 0 0 8px;
-  color: var(--text-primary);
-  font-size: 20px;
-  line-height: 28px;
-}
-
-.primarySetting p,
-.secondarySetting p,
-.lifecycleSteps span {
-  color: var(--text-secondary);
+.rowCopy strong {
+  font-size: 14px;
+  font-weight: 500;
   line-height: 22px;
 }
 
-.primarySetting p {
-  max-width: 66ch;
+.rowCopy span {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
 }
 
-.primarySetting p,
-.secondarySetting p {
-  margin: 0;
-}
-
-.primaryAction,
-.secondarySetting > a {
-  display: inline-flex;
-  gap: 12px;
-  align-items: center;
-  width: fit-content;
-  font-weight: 600;
-}
-
-.primaryAction {
-  min-height: 36px;
-  margin-top: auto;
-  padding: 0 16px;
-  color: #fff;
-  background: var(--color-primary);
-  border-radius: var(--radius-control);
-}
-
-.primaryAction:hover {
-  color: #fff;
-  background: var(--color-primary-hover);
-}
-
-.secondarySetting {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 22px;
-}
-
-.secondarySetting > a {
-  margin-top: auto;
-  color: var(--color-primary);
-}
-
-.lifecycleSteps {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  counter-reset: step;
-}
-
-.lifecycleSteps li {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 14px;
-  background: var(--bg-page);
-  border-radius: var(--radius-control);
-  counter-increment: step;
-}
-
-.lifecycleSteps strong {
-  color: var(--text-primary);
-}
-
-.lifecycleSteps strong::before {
-  margin-right: 6px;
-  color: var(--color-primary);
-  content: counter(step) ".";
+.rowValue {
+  color: var(--text-secondary);
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.lifecycleSteps span {
-  font-size: 12px;
-  line-height: 19px;
+.rowChevron {
+  width: 7px;
+  height: 7px;
+  border-top: 1.5px solid var(--text-disabled);
+  border-right: 1.5px solid var(--text-disabled);
+  transform: rotate(45deg);
 }
 
-@media (max-width: 900px) {
-  .settingsGrid {
-    grid-template-columns: 1fr;
+@media (max-width: 767px) {
+  .row {
+    grid-template-columns: 32px minmax(0, 1fr) 12px;
   }
 
-  .primarySetting {
-    grid-row: auto;
-  }
-}
-
-@media (max-width: 640px) {
-  .primarySetting,
-  .secondarySetting {
-    padding: 20px;
-  }
-
-  .lifecycleSteps {
-    grid-template-columns: 1fr;
+  .rowValue {
+    display: none;
   }
 }

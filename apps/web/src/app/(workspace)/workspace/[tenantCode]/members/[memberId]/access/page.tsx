@@ -5,7 +5,8 @@ import {
   MemberObjectAccess,
   type MemberObjectAccessRow,
 } from "@/features/members/member-object-access";
-import styles from "@/features/members/members.module.css";
+import { Page } from "@/components/layout/page";
+import { PageHeader } from "@/components/layout/page-header";
 import { toApiError } from "@/lib/api/api-error";
 import { createServerApiClient } from "@/lib/api/server-client";
 import { requireWorkspace } from "@/lib/auth/require-workspace";
@@ -49,20 +50,18 @@ export default async function MemberAccessPage({
   const memberName = member?.displayName ?? "该成员";
 
   return (
-    <main className={styles.page}>
-      <header className={styles.pageHeader}>
-        <h1>{memberName}的访问权限</h1>
-        <p>
-          按业务表设置这位员工能做什么、能看到哪些记录，以及各列可编辑、只读或隐藏的权限。
-        </p>
-        <Link href={`/workspace/${tenantCode}/members`}>返回成员管理</Link>
-      </header>
+    <Page width="settings">
+      <PageHeader
+        breadcrumb={<Link href={`/workspace/${tenantCode}/members`}>成员</Link>}
+        title={`${memberName}的访问权限`}
+        description="按业务表设置这位员工能做什么、能看到哪些记录，以及每个字段可编辑、只读还是隐藏。"
+      />
       <MemberObjectAccess
         tenantCode={tenantCode}
         memberId={memberId}
         memberName={memberName}
         initialRows={accessResult.data as MemberObjectAccessRow[]}
       />
-    </main>
+    </Page>
   );
 }

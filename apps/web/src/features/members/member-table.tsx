@@ -1,22 +1,23 @@
 "use client";
 
 import type { components } from "@crm/contracts";
+import { EllipsisOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Popconfirm, Result, Space, Table } from "antd";
+import { Alert, Button, Dropdown, Empty, Modal, Result, Segmented, Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { StatusTag } from "@/components/workbench/status-tag";
-import { DataPanel } from "@/components/workbench/surface";
 import { toApiError } from "@/lib/api/api-error";
 import { browserApiClient } from "@/lib/api/browser-client";
 
 import { BulkMemberAccess } from "./bulk-member-access";
-import { BulkMemberActions, MemberNameEditor } from "./member-edit-actions";
+import { BulkMemberActions } from "./member-edit-actions";
+import { MemberRowMenu } from "./member-row-menu";
 import styles from "./members.module.css";
-import { MemberLifecycleActions } from "./member-lifecycle-actions";
+import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
 
 export type TenantMember = components["schemas"]["TenantMemberResponseDto"];
 export type TenantMemberPage =
@@ -124,6 +125,7 @@ export function MemberTable({
   viewerMemberId,
   initialMemberPage,
   initialInvitationPage,
+  headerActions,
   api = memberApi,
   navigate,
 }: {
@@ -132,6 +134,8 @@ export function MemberTable({
   viewerMemberId?: string;
   initialMemberPage: TenantMemberPage;
   initialInvitationPage: InvitationPage;
+  /** 邀请成员 and 批量邀请, rendered in the page header beside the count. */
+  headerActions?: ReactNode;
   api?: MemberApi;
   navigate?: (path: string) => void;
 }) {
@@ -146,6 +150,8 @@ export function MemberTable({
     undefined,
   ]);
   const [error, setError] = useState<string>();
+  const [tab, setTab] = useState<"members" | "invitations">("members");
+  const [revoking, setRevoking] = useState<TenantInvitation>();
   const cursor = cursors[page - 1];
   const membersQueryKey = ["workspace", tenantCode, "members"] as const;
   const invitationsQueryKey = ["workspace", tenantCode, "invitations"] as const;
@@ -225,12 +231,14 @@ export function MemberTable({
     {
       title: "成员",
       key: "member",
-      width: 240,
       render: (_, member) => (
-        <div>
-          <strong>{member.displayName ?? "未设置姓名"}</strong>
-          <span className={styles.secondary}>
-            {member.phone ?? "未提供手机号"}
+        <div className={styles.person}>
+          <span className={styles.avatar} aria-hidden>
+            {(member.displayName ?? member.phone ?? "?").slice(0, 1)}
+          </span>
+          <span className={styles.personText}>
+            <strong>{member.displayName ?? "未设置姓名"}</strong>
+            <span className={styles.secondary}>{member.phone ?? "未提供手机号"}</span>
           </span>
         </div>
       ),
@@ -238,14 +246,15 @@ export function MemberTable({
     {
       title: "角色",
       dataIndex: "role",
-      width: 140,
-      render: (role: TenantMember["role"]) =>
-        role === "TENANT_ADMIN" ? "公司管理员" : "员工",
+      width: 160,
+      responsive: ["md"],
+      render: (role: TenantMember["role"]) => (role === "TENANT_ADMIN" ? "公司管理员" : "员工"),
     },
     {
       title: "状态",
       dataIndex: "status",
-      width: 110,
+      width: 120,
+      responsive: ["sm"],
       render: (status: TenantMember["status"]) => (
         <StatusTag tone={status === "ACTIVE" ? "success" : "neutral"}>
           {status === "ACTIVE" ? "在职" : "已停用"}
@@ -253,142 +262,182 @@ export function MemberTable({
       ),
     },
     {
-      title: "操作",
+      title: <span className={styles.visuallyHidden}>操作</span>,
       key: "actions",
-      width: 220,
-      render: (_, member) => {
-        const protectsFinalAdmin =
-          member.status === "ACTIVE" &&
-          member.role === "TENANT_ADMIN" &&
-          activeAdminCount <= 1;
-        return (
-          <Space size={4} wrap className={styles.tableActions}>
-            <MemberNameEditor
-              tenantCode={tenantCode}
-              member={member}
-              onChanged={() => void refresh("members")}
-            />
-            <MemberLifecycleActions
-              tenantCode={tenantCode}
-              member={member}
-              isSelf={member.id === viewerMemberId}
-              protectsFinalAdmin={protectsFinalAdmin}
-              onChanged={() => void refresh("members")}
-            />
-            {/* Only an employee's access can be restricted: an administrator
-                holds fixed full access on every published object. */}
-            {member.role === "EMPLOYEE" && member.status === "ACTIVE" ? (
-              <Link
-                href={`/workspace/${tenantCode}/members/${member.id}/access`}
-                aria-label={`访问权限 ${member.displayName ?? "该成员"}`}
-              >
-                访问权限
-              </Link>
-            ) : null}
-            {member.status === "ACTIVE" ? (
-              <Popconfirm
-                title={`确认停用 ${member.displayName ?? "该成员"}？`}
-                description="该成员现有会话将在下一次工作空间请求时失效。"
-                disabled={protectsFinalAdmin}
-                onConfirm={() =>
-                  memberMutation.mutate({ id: member.id, status: "DISABLED" })
-                }
-              >
-                <Button
-                  danger
-                  type="link"
-                  disabled={protectsFinalAdmin}
-                  aria-label={`停用 ${member.displayName ?? "该成员"}`}
-                >
-                  停用
-                </Button>
-              </Popconfirm>
-            ) : (
-              <Button
-                type="link"
-                onClick={() =>
-                  memberMutation.mutate({ id: member.id, status: "ACTIVE" })
-                }
-              >
-                恢复
-              </Button>
-            )}
-          </Space>
-        );
-      },
+      width: 56,
+      align: "center",
+      render: (_, member) => (
+        <MemberRowMenu
+          tenantCode={tenantCode}
+          member={member}
+          isSelf={member.id === viewerMemberId}
+          protectsFinalAdmin={
+            member.status === "ACTIVE" && member.role === "TENANT_ADMIN" && activeAdminCount <= 1
+          }
+          onStatusChange={(status) => memberMutation.mutate({ id: member.id, status })}
+          onChanged={() => void refresh("members")}
+        />
+      ),
     },
   ];
   const invitationColumns: ColumnsType<TenantInvitation> = [
-    { title: "姓名", dataIndex: "displayName", width: 140 },
-    { title: "手机号", dataIndex: "targetPhone", width: 180, ellipsis: true },
+    {
+      title: "受邀人",
+      key: "person",
+      render: (_, invitation) => (
+        <div className={styles.person}>
+          <span className={styles.avatar} data-pending aria-hidden>
+            {(invitation.displayName ?? invitation.targetPhone ?? "?").slice(0, 1)}
+          </span>
+          <span className={styles.personText}>
+            <strong>{invitation.displayName ?? "未填写姓名"}</strong>
+            <span className={styles.secondary}>{invitation.targetPhone}</span>
+          </span>
+        </div>
+      ),
+    },
     {
       title: "角色",
       dataIndex: "role",
-      width: 140,
-      render: (role: TenantInvitation["role"]) =>
-        role === "TENANT_ADMIN" ? "公司管理员" : "员工",
+      width: 160,
+      render: (role: TenantInvitation["role"]) => (role === "TENANT_ADMIN" ? "公司管理员" : "员工"),
     },
     {
       title: "状态",
       dataIndex: "status",
       width: 120,
       render: (status: TenantInvitation["status"]) => (
-        <StatusTag tone={invitationTone(status)}>
-          {invitationStatusText[status]}
-        </StatusTag>
+        <StatusTag tone={invitationTone(status)}>{invitationStatusText[status]}</StatusTag>
       ),
     },
     {
-      title: "操作",
+      title: <span className={styles.visuallyHidden}>操作</span>,
       key: "actions",
-      width: 210,
+      width: 56,
+      align: "center",
       render: (_, invitation) =>
         invitation.status === "PENDING" ? (
-          <Space size={4} wrap className={styles.tableActions}>
+          <Dropdown
+            trigger={["click"]}
+            placement="bottomRight"
+            menu={{
+              items: [
+                {
+                  key: "resend",
+                  label: "重新发送",
+                  onClick: () => invitationMutation.mutate({ action: "resend", id: invitation.id }),
+                },
+                {
+                  key: "revoke",
+                  label: "撤销邀请",
+                  danger: true,
+                  onClick: () => setRevoking(invitation),
+                },
+              ],
+            }}
+          >
             <Button
-              type="link"
-              onClick={() =>
-                invitationMutation.mutate({
-                  action: "resend",
-                  id: invitation.id,
-                })
-              }
-            >
-              重新发送
-            </Button>
-            <Popconfirm
-              title="确认撤销邀请？"
-              onConfirm={() =>
-                invitationMutation.mutate({
-                  action: "revoke",
-                  id: invitation.id,
-                })
-              }
-            >
-              <Button danger type="link">
-                撤销邀请
-              </Button>
-            </Popconfirm>
-          </Space>
+              type="text"
+              size="small"
+              aria-label={`更多操作 ${invitation.displayName ?? invitation.targetPhone ?? "邀请"}`}
+              icon={<EllipsisOutlined aria-hidden />}
+            />
+          </Dropdown>
         ) : null,
     },
   ];
   const invitationPage = invitationsQuery.data;
+  const pendingCount = (invitationPage?.items ?? []).filter((item) => item.status === "PENDING").length;
+  const memberItems = membersQuery.data?.items ?? [];
+  const selectedMembers = memberItems.filter((member) => selectedIds.includes(member.id));
 
   return (
-    <div className={styles.tables}>
-      {error ? <Alert type="error" showIcon title={error} /> : null}
-      <DataPanel className={styles.tablePanel} ariaLabel="待处理邀请">
-        <div className={styles.tableHeading}>
-          <h2 id="pending-heading">待处理邀请</h2>
-        </div>
+    <>
+      <PageHeader title="成员" count={membersQuery.data?.total ?? 0} extra={headerActions} />
+      <div className={styles.toolbar}>
+        <Segmented
+          aria-label="成员与邀请"
+          value={tab}
+          onChange={(value) => setTab(value as "members" | "invitations")}
+          options={[
+            { value: "members", label: "成员" },
+            {
+              value: "invitations",
+              label: (
+                <span className={styles.tabLabel}>
+                  邀请{pendingCount ? <span className={styles.tabCount}>{pendingCount}</span> : null}
+                </span>
+              ),
+            },
+          ]}
+        />
+        {tab === "members" && selectedIds.length > 0 ? (
+          <div className={styles.selection} role="toolbar" aria-label="批量操作">
+            <span>已选 {selectedIds.length} 人</span>
+            <BulkMemberAccess
+              tenantCode={tenantCode}
+              selected={selectedMembers}
+              buttonLabel="设置访问权限"
+              onChanged={() => {
+                setSelectedIds([]);
+                void refresh("members");
+              }}
+            />
+            <BulkMemberActions
+              tenantCode={tenantCode}
+              selected={selectedMembers.filter((member) => member.id !== viewerMemberId)}
+              buttonLabel="批量管理"
+              onChanged={() => {
+                setSelectedIds([]);
+                void refresh("members");
+              }}
+            />
+            <Button type="text" onClick={() => setSelectedIds([])}>
+              取消选择
+            </Button>
+          </div>
+        ) : null}
+      </div>
+      {error ? <Alert type="error" showIcon title={error} className={styles.alert} /> : null}
+      {tab === "members" ? (
         <Table
+          className={styles.table}
           rowKey="id"
+          aria-label="成员名册"
+          columns={memberColumns}
+          rowSelection={{
+            columnWidth: 40,
+            selectedRowKeys: selectedIds,
+            onChange: setSelectedIds,
+            getCheckboxProps: (member) => ({
+              disabled: !viewerMemberId || member.id === viewerMemberId,
+            }),
+          }}
+          dataSource={memberItems}
+          loading={membersQuery.isFetching}
+          pagination={{
+            current: memberPageNumber,
+            pageSize: 20,
+            total: membersQuery.data?.total ?? 0,
+            hideOnSinglePage: true,
+            showSizeChanger: false,
+            onChange: (nextPage) => {
+              setSelectedIds([]);
+              setMemberPageNumber(nextPage);
+              (navigate ?? router.push)(`/workspace/${tenantCode}/members?page=${nextPage}`);
+            },
+          }}
+        />
+      ) : (
+        <Table
+          className={styles.table}
+          rowKey="id"
+          aria-label="待处理邀请"
           columns={invitationColumns}
           dataSource={invitationPage?.items ?? []}
           loading={invitationsQuery.isFetching}
-          scroll={{ x: 650 }}
-          locale={{ emptyText: "没有待处理的邀请。" }}
+          scroll={{ x: 600 }}
+          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有待处理的邀请。" /> }}
           pagination={{
             current: page,
             pageSize: 20,
@@ -407,65 +456,23 @@ export function MemberTable({
             },
           }}
         />
-      </DataPanel>
-      <DataPanel className={styles.tablePanel} ariaLabel="成员名册">
-        <div className={styles.tableHeading}>
-          <h2 id="members-heading">成员名册</h2>
-          <Space wrap>
-            <span>{membersQuery.data?.total ?? 0} 位成员</span>
-            <BulkMemberAccess
-              tenantCode={tenantCode}
-              selected={(membersQuery.data?.items ?? []).filter((member) =>
-                selectedIds.includes(member.id),
-              )}
-              onChanged={() => {
-                setSelectedIds([]);
-                void refresh("members");
-              }}
-            />
-            <BulkMemberActions
-              tenantCode={tenantCode}
-              selected={(membersQuery.data?.items ?? []).filter(
-                (member) =>
-                  selectedIds.includes(member.id) &&
-                  member.id !== viewerMemberId,
-              )}
-              onChanged={() => {
-                setSelectedIds([]);
-                void refresh("members");
-              }}
-            />
-          </Space>
-        </div>
-        <Table
-          rowKey="id"
-          columns={memberColumns}
-          rowSelection={{
-            selectedRowKeys: selectedIds,
-            onChange: setSelectedIds,
-            getCheckboxProps: (member) => ({
-              disabled: !viewerMemberId || member.id === viewerMemberId,
-            }),
-          }}
-          dataSource={membersQuery.data?.items ?? []}
-          loading={membersQuery.isFetching}
-          scroll={{ x: 710 }}
-          pagination={{
-            current: memberPageNumber,
-            pageSize: 20,
-            total: membersQuery.data?.total ?? 0,
-            showSizeChanger: false,
-            onChange: (nextPage) => {
-              setSelectedIds([]);
-              setMemberPageNumber(nextPage);
-              (navigate ?? router.push)(
-                `/workspace/${tenantCode}/members?page=${nextPage}`,
-              );
-            },
-          }}
-        />
-      </DataPanel>
-    </div>
+      )}
+      <Modal
+        open={Boolean(revoking)}
+        title="撤销这条邀请？"
+        okText="撤销邀请"
+        okButtonProps={{ danger: true }}
+        cancelText="取消"
+        width={OVERLAY_SIZE.confirm}
+        onCancel={() => setRevoking(undefined)}
+        onOk={() => {
+          if (revoking) invitationMutation.mutate({ action: "revoke", id: revoking.id });
+          setRevoking(undefined);
+        }}
+      >
+        撤销后对方无法再用这条邀请加入公司，需要时可以重新邀请。
+      </Modal>
+    </>
   );
 }
 

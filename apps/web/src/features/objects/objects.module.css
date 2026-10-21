@@ -51,6 +51,16 @@
   gap: 16px;
 }
 
+.designer > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.designer > div:first-child > header {
+  margin-bottom: 0;
+}
+
 .designerHeader {
   display: flex;
   flex-wrap: wrap;
@@ -177,35 +187,32 @@
   font-size: 12px;
 }
 
-/* The configuration steps are real stages, not decoration: a track of buttons,
-   the current one raised, the live version at the end of the row. */
-.designerNavRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
-}
-
+/* The designer's sections are tabs under the header, the same underline tabs
+   as the record page; the field count rides on its tab. */
 .designerNav {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  padding: 3px;
-  background: var(--bg-track);
-  border-radius: 9px;
+  display: flex;
+  gap: 4px;
+  margin-top: -4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--border-hairline);
 }
 
 .designerNavItem {
-  height: 30px;
-  padding: 0 14px;
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  gap: 6px;
+  align-items: baseline;
+  height: 40px;
+  padding: 0 10px;
   border: 0;
-  border-radius: 7px;
   background: transparent;
-  color: #4b5560;
+  color: var(--text-secondary);
   font: inherit;
   font-size: 14px;
-  font-weight: 500;
+  line-height: 40px;
   cursor: pointer;
 }
 
@@ -215,17 +222,74 @@
 
 .designerNavItemActive,
 .designerNavItemActive:hover {
-  background: var(--bg-surface);
   color: var(--text-primary);
-  box-shadow:
-    0 0 0 1px rgb(20 28 36 / 5%),
-    0 1px 2px rgb(20 28 36 / 10%);
+  font-weight: 500;
 }
 
-.designerNavVersion {
+.designerNavItemActive::after {
+  position: absolute;
+  right: 10px;
+  bottom: -1px;
+  left: 10px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-primary);
+  content: "";
+}
+
+.designerNavCount {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.designerTitle {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.designerIcon {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: var(--radius-control);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 16px;
+}
+
+.designerMeta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
   color: var(--text-secondary);
-  font-family: var(--font-mono);
   font-size: 13px;
+}
+
+/* Archive and restore: the last row of 基本设置, set apart like a danger zone. */
+.dangerZone {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0 0;
+  margin-top: 28px;
+  border-top: 1px solid var(--border-hairline);
+}
+
+.dangerZone h2 {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.dangerZone p {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
 }
 
 .designerWorkspace {
@@ -249,41 +313,76 @@
   font-weight: 600;
 }
 
+/* Tables in the designer and the business-table list use the shared hairline
+   table: no box, no grey header band, secondary header text. */
 .ledger {
-  overflow: hidden;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-data);
-  background: var(--bg-surface);
-}
-
-.ledger :global(.ant-table) {
-  background: var(--bg-surface);
+  border-top: 1px solid var(--border-hairline);
 }
 
 .ledger :global(.ant-table-thead > tr > th) {
-  padding-top: 10px !important;
-  padding-bottom: 10px !important;
-  border-bottom: 1px solid var(--border-strong) !important;
-  color: #44515c;
-  font-family: var(--font-label);
-  font-size: 12px;
-  font-weight: 650;
-  letter-spacing: 0.02em;
-  background: #f2f5f7 !important;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
 }
 
-.ledger :global(.ant-table-tbody > tr > td) {
-  border-bottom: 1px solid var(--border-default) !important;
-  background: var(--bg-surface);
-  transition: background-color 140ms ease;
+.tableName {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  color: var(--text-primary);
 }
 
-.ledger :global(.ant-table-tbody > tr:hover > td) {
-  background: #f3f8f7 !important;
+.tableName .ledgerIcon {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  place-items: center;
+  border-radius: var(--radius-control);
+  background: var(--bg-page);
+  vertical-align: middle;
 }
 
-.ledger :global(.ant-table-tbody > tr:last-child > td) {
-  border-bottom: 0 !important;
+.tableNameText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 20px;
+}
+
+.tableNameText strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.tableName:hover strong {
+  color: var(--color-primary);
+}
+
+.archivedRow td {
+  color: var(--text-tertiary);
+}
+
+.archivedRow .ledgerIcon {
+  opacity: 0.5;
+}
+
+.listAlert {
+  margin-bottom: 12px;
+}
+
+.listEmpty {
+  padding: 48px 0;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .ledgerName {
@@ -363,7 +462,6 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 0 20px;
-  max-width: 720px;
 }
 
 .statusExplanation {
@@ -1056,19 +1154,19 @@
 /* ── Fields: the list on the left, the selected field's editor on the right ── */
 .fieldsLayout {
   display: grid;
-  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  grid-template-columns: 320px minmax(0, 1fr);
   align-items: start;
 }
 
 .fieldListColumn {
   min-width: 0;
-  padding-right: 32px;
+  padding-right: 24px;
 }
 
 .fieldEditorColumn {
   min-width: 0;
   min-height: 320px;
-  padding-left: 32px;
+  padding-left: 28px;
   border-left: 1px solid var(--border-hairline);
 }
 
@@ -1349,9 +1447,9 @@
   font-weight: 500;
 }
 
-/* Single-column forms keep a readable measure instead of spanning the page. */
+/* Forms share the settings column with every other section of the designer. */
 .formColumn {
-  max-width: 760px;
+  max-width: none;
 }
 
 /* Tighter rhythm inside the field editor: the section rules already separate. */
@@ -1367,4 +1465,98 @@
 .unpublishedNote {
   color: #94500f;
   font-weight: 500;
+}
+
+/* A designer section opens with one line on where the draft stands, not a
+   repeated heading: the tab above already names the section. */
+.sectionLead {
+  margin-bottom: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.settingInput {
+  width: 100%;
+  max-width: 420px;
+}
+
+/* Inside the designer the active tab names the section, so the section's own
+   h2 is kept for assistive technology only and its side notes stay visible. */
+.designerWorkspace .sectionHeading h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.designerWorkspace .sectionHeading {
+  justify-content: flex-end;
+  min-height: 0;
+}
+
+.designerWorkspace .sectionHeading:not(:has(> :not(h2))) {
+  margin-bottom: 0;
+}
+
+.designerWorkspace .statusExplanation {
+  border-left: 0;
+  padding-left: 0;
+  background: transparent;
+}
+
+/* Designer forms read as settings rows: the label and its help on the left,
+   the control on the right, a hairline between rows (the same grammar as
+   SettingRow in components/layout/page). */
+.designerWorkspace .formColumn :global(.ant-form-item) {
+  margin-bottom: 0;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.designerWorkspace .formColumn :global(.ant-form-item-row) {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 8px 32px;
+}
+
+.designerWorkspace .formColumn :global(.ant-form-item-label) {
+  padding: 5px 0 0;
+  text-align: left;
+}
+
+.designerWorkspace .formColumn :global(.ant-form-item-label > label) {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.designerWorkspace .formColumn :global(.ant-form-item-control) {
+  min-width: 0;
+}
+
+.designerWorkspace .formColumn :global(.ant-input:not(textarea)),
+.designerWorkspace .formColumn :global(.ant-select) {
+  max-width: 420px;
+}
+
+.designerWorkspace .formColumn .formGrid {
+  display: block;
+}
+
+.designerWorkspace .formColumn :global(.ant-form-item:first-of-type) {
+  border-top: 1px solid var(--border-hairline);
+}
+
+.designerWorkspace .formColumn .sectionActions {
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+  padding-top: 14px;
+}
+
+@media (max-width: 767px) {
+  .designerWorkspace .formColumn :global(.ant-form-item-row) {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

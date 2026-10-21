@@ -13,6 +13,7 @@ import {
 } from "./member-access-api";
 import type { TenantMember } from "./member-table";
 import styles from "./members.module.css";
+import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
 
 export const FIELD_ACCESS_LABELS = {
   EDIT: "可编辑",
@@ -181,7 +182,7 @@ export function BulkMemberAccess({
       <Drawer
         title="设置访问权限"
         open={open}
-        size={640}
+        size={OVERLAY_SIZE.wide}
         destroyOnHidden
         className={styles.accessDrawer}
         closable={!saving && !loading}

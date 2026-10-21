@@ -9,6 +9,7 @@ import {
   type MemberImportRow,
 } from "./member-import";
 import type { MemberApi } from "./member-table";
+import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
 
 export function BulkInviteMembers({
   tenantCode,
@@ -75,7 +76,7 @@ export function BulkInviteMembers({
       <Drawer
         title="批量邀请成员"
         open={open}
-        size={760}
+        size={OVERLAY_SIZE.wide}
         onClose={() => {
           if (!running.current) setOpen(false);
         }}

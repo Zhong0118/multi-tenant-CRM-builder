@@ -288,7 +288,7 @@ describe("unsaved field edits", () => {
     edit();
     fireEvent.click(screen.getByRole("button", { name: "列表展示与搜索" }));
     expect(await screen.findByRole("dialog", { name: "放弃未保存的修改？" })).toBeInTheDocument();
-    expect(screen.getByText("正在编辑：字段与表单")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^字段与表单/ })).toHaveAttribute("aria-current", "page");
   });
 
   it("asks before adding a field, which would open a different editor", async () => {
@@ -308,7 +308,9 @@ describe("unsaved field edits", () => {
         name: "放弃修改",
       }),
     );
-    expect(await screen.findByText("正在编辑：列表展示与搜索")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "列表展示与搜索" })).toHaveAttribute("aria-current", "page"),
+    );
     expect(screen.getByRole("button", { name: "发布变更" })).toBeEnabled();
   });
 });

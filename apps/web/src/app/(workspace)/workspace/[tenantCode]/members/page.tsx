@@ -3,7 +3,6 @@ import {
   type InvitationPage,
   type TenantMemberPage,
 } from "@/features/members/member-table";
-import styles from "@/features/members/members.module.css";
 import { toApiError } from "@/lib/api/api-error";
 import { createServerApiClient } from "@/lib/api/server-client";
 import { requireWorkspace } from "@/lib/auth/require-workspace";
@@ -46,12 +45,7 @@ export default async function MembersPage({
   }
 
   return (
-    <main className={styles.page}>
-      <header className={styles.pageHeader}>
-        <h1>成员管理</h1>
-        <p>邀请本公司员工，并控制现有成员的工作空间访问权限。</p>
-      </header>
-      <MemberAdministration
+    <MemberAdministration
         key={page}
         tenantCode={tenantCode}
         viewerRole={workspace.role}
@@ -59,7 +53,6 @@ export default async function MembersPage({
         initialMemberPage={memberPage}
         initialInvitationPage={invitationPage}
       />
-    </main>
   );
 }
 

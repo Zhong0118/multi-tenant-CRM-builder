@@ -1,6 +1,9 @@
-import { PlatformAuditView } from "@/features/platform/platform-operations";
+import { CompanyAuditView } from "@/features/audit/company-audit";
 import { createServerApiClient } from "@/lib/api/server-client";
 import { toApiError } from "@/lib/api/api-error";
+
+const CALENDAR_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function WorkspaceAuditPage({
   params,
@@ -15,25 +18,38 @@ export default async function WorkspaceAuditPage({
     Array.isArray(value) ? value[0] : value;
   const pageValue = Number(first(search.page));
   const page = Number.isInteger(pageValue) && pageValue > 0 ? pageValue : 1;
+  const date = (value: string | undefined) =>
+    value && CALENDAR_DATE.test(value) ? value : undefined;
+  const actorId = first(search.actorId);
   const filters = {
-    action: first(search.action),
-    resourceType: first(search.resourceType),
+    action: first(search.action) || undefined,
+    resourceType: first(search.resourceType) || undefined,
+    actorId: actorId && UUID.test(actorId) ? actorId : undefined,
+    from: date(first(search.from)),
+    to: date(first(search.to)),
   };
   const client = await createServerApiClient();
-  const result = await client.GET("/api/v1/workspaces/{tenantCode}/audit", {
-    params: { path: { tenantCode }, query: { page, limit: 20, ...filters } },
-  });
+  const [result, members] = await Promise.all([
+    client.GET("/api/v1/workspaces/{tenantCode}/audit", {
+      params: { path: { tenantCode }, query: { page, limit: 50, ...filters } },
+    }),
+    client.GET("/api/v1/workspaces/{tenantCode}/members", {
+      params: { path: { tenantCode }, query: { page: 1, limit: 100 } },
+    }),
+  ]);
   if (!result.data) {
     const error = toApiError(result.error, result.response.status);
     throw Object.assign(new Error(error.message), error);
   }
   return (
-    <PlatformAuditView
+    <CompanyAuditView
       data={result.data}
-      tenants={[]}
       filters={filters}
       basePath={`/workspace/${tenantCode}/audit`}
-      company
+      members={(members.data?.items ?? []).map((member) => ({
+        userId: member.userId,
+        name: member.displayName ?? member.phone ?? "未设置姓名",
+      }))}
     />
   );
 }

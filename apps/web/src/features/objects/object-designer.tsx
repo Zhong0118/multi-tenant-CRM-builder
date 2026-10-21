@@ -1,5 +1,6 @@
 "use client";
 
+import { EyeOutlined, PlusOutlined } from "@ant-design/icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
@@ -18,7 +19,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { SettingRow, SettingRows } from "@/components/layout/page";
 import { PageHeader } from "@/components/layout/page-header";
+import { ObjectIcon } from "@/components/navigation/object-icon";
 import { StatusTag } from "@/components/workbench/status-tag";
 import { toApiError } from "@/lib/api/api-error";
 
@@ -56,6 +59,7 @@ import { AutomationDesigner } from "@/features/automations/automation-designer";
 import { WorkflowDesigner } from "./workflow-designer";
 
 import styles from "./objects.module.css";
+import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
 
 type Section =
   "basics" | "fields" | "view" | "permissions" | "workflow" | "automations" | "publications";
@@ -406,28 +410,71 @@ export function ObjectDesigner({
       <div className={styles.designer}>
         <div>
           <PageHeader
-            title={draft.object.name}
+            breadcrumb={
+              <Link href={`/workspace/${tenantCode}/settings/objects`}>业务表</Link>
+            }
+            title={
+              <span className={styles.designerTitle}>
+                <span className={styles.designerIcon}>
+                  <ObjectIcon name={draft.object.icon} />
+                </span>
+                {draft.object.name}
+              </span>
+            }
             status={
               <StatusTag
                 tone={
-                  draft.object.hasUnpublishedChanges ? "warning" : "success"
+                  archived
+                    ? "neutral"
+                    : draft.object.publicationNumber === null
+                      ? "info"
+                      : draft.object.hasUnpublishedChanges
+                        ? "warning"
+                        : "success"
                 }
               >
-                {objectStatusLabel(draft.object)}
+                {!archived && draft.object.publicationNumber !== null && draft.object.hasUnpublishedChanges
+                  ? "有待发布改动"
+                  : objectStatusLabel(draft.object)}
               </StatusTag>
             }
             description={
-              <>
+              <span className={styles.designerMeta}>
                 <span className={styles.stableKey}>
                   {objectStableId(tenantCode, draft.object.code)}
-                </span>{" "}
-                · {draft.activeRecordCount} 条业务记录
-              </>
+                </span>
+                <span>{draft.activeRecordCount} 条记录</span>
+                <span>
+                  {draft.object.publicationNumber === null
+                    ? "员工端尚未发布"
+                    : `${archived ? "停用前" : "员工使用"} v${draft.object.publicationNumber}`}
+                </span>
+                <span>草稿修订 {draft.object.version}</span>
+              </span>
             }
             extra={
-              <div className={styles.designerActions}>
+              <>
+                {draft.object.publicationNumber === null ? (
+                  <Popconfirm
+                    title="删除这个业务表草稿？"
+                    description="它从未发布，删除后不会保留配置，也不能恢复。"
+                    okText="确认删除"
+                    cancelText="取消"
+                    onConfirm={() => removeDraft.mutate()}
+                  >
+                    <Button
+                      danger
+                      type="text"
+                      loading={removeDraft.isPending}
+                      disabled={archived}
+                    >
+                      删除草稿
+                    </Button>
+                  </Popconfirm>
+                ) : null}
                 <Button
                   aria-label="打开员工端预览"
+                  icon={<EyeOutlined aria-hidden />}
                   onClick={() => setPreviewOpen(true)}
                 >
                   员工端预览
@@ -445,45 +492,9 @@ export function ObjectDesigner({
                 >
                   发布变更
                 </Button>
-                {draft.object.publicationNumber === null ? (
-                  <Popconfirm
-                    title="删除这个业务表草稿？"
-                    description="它从未发布，删除后不会保留配置，也不能恢复。"
-                    okText="确认删除"
-                    cancelText="取消"
-                    onConfirm={() => removeDraft.mutate()}
-                  >
-                    <Button
-                      danger
-                      loading={removeDraft.isPending}
-                      disabled={archived}
-                    >
-                      删除草稿
-                    </Button>
-                  </Popconfirm>
-                ) : null}
-              </div>
+              </>
             }
           />
-          <div className={styles.designerContext}>
-            <strong>
-              正在编辑：{SECTIONS.find((item) => item.key === section)?.label}
-            </strong>
-            <span>草稿修订 {draft.object.version}</span>
-            <span>
-              {draft.object.publicationNumber === null
-                ? "员工端尚未发布"
-                : archived
-                  ? `停用前发布版本 v${draft.object.publicationNumber}`
-                  : `员工使用已发布版本 v${draft.object.publicationNumber}`}
-            </span>
-            {draft.object.hasUnpublishedChanges ? (
-              <strong className={styles.unpublishedNote}>有未发布变更</strong>
-            ) : null}
-            <span className={styles.saveEffect}>
-              发布前会检查变更；确认发布后才更新员工使用的版本。
-            </span>
-          </div>
 
           {archived ? (
             <Alert
@@ -524,31 +535,27 @@ export function ObjectDesigner({
           ) : null}
         </div>
 
-        <div className={styles.designerNavRow}>
-          <nav className={styles.designerNav} aria-label="业务表配置步骤">
-            {SECTIONS.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                className={`${styles.designerNavItem} ${
-                  section === item.key ? styles.designerNavItemActive : ""
-                }`}
-                aria-current={section === item.key ? "page" : undefined}
-                onClick={() => {
-                  if (item.key !== section)
-                    guardUnsavedField(() => setSection(item.key));
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
-          <span className={styles.designerNavVersion}>
-            {draft.object.publicationNumber === null
-              ? "尚未发布"
-              : `v${draft.object.publicationNumber} 当前版本`}
-          </span>
-        </div>
+        <nav className={styles.designerNav} aria-label="业务表配置步骤">
+          {SECTIONS.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={`${styles.designerNavItem} ${
+                section === item.key ? styles.designerNavItemActive : ""
+              }`}
+              aria-current={section === item.key ? "page" : undefined}
+              onClick={() => {
+                if (item.key !== section)
+                  guardUnsavedField(() => setSection(item.key));
+              }}
+            >
+              {item.label}
+              {item.key === "fields" ? (
+                <span className={styles.designerNavCount}>{draft.fields.length}</span>
+              ) : null}
+            </button>
+          ))}
+        </nav>
 
         <div className={styles.designerWorkspace}>
           {section === "basics" ? (
@@ -561,15 +568,17 @@ export function ObjectDesigner({
                   if (!archived) saveBasics.mutate(input);
                 }}
               />
-              <section className={styles.panel} aria-label="停用与恢复">
-                <h2>停用与恢复</h2>
-                <p>
+              <section className={styles.dangerZone} aria-label="停用与恢复">
+                <div>
+                  <h2>停用与恢复</h2>
+                  <p>
                   {archived
                     ? `已停用 · 上次发布版本 v${draft.object.publicationNumber} · ${draft.object.archivedAt ? new Date(draft.object.archivedAt).toLocaleString("zh-CN") : "缺少历史停用时间"}`
                     : draft.object.publicationNumber === null
                       ? "尚未发布的业务表可使用删除草稿"
                       : "停用立即生效，保留配置和历史数据"}
-                </p>
+                  </p>
+                </div>
                 <ObjectLifecycleControl
                   tenantCode={tenantCode}
                   draft={draft}
@@ -591,14 +600,11 @@ export function ObjectDesigner({
             <section className={styles.fieldsLayout}>
               <div className={styles.fieldListColumn}>
                 <div className={styles.fieldListHeading}>
-                  <div>
-                    <h2>字段 {draft.fields.length}</h2>
-                    <Typography.Text type="secondary">
-                      选择字段来配置校验、选项和员工权限；拖动调整顺序。
-                    </Typography.Text>
-                  </div>
+                  <Typography.Text type="secondary">
+                    拖动调整顺序，选中后在右侧编辑。
+                  </Typography.Text>
                   <Button
-                    type="primary"
+                    icon={<PlusOutlined aria-hidden />}
                     disabled={archived}
                     onClick={() =>
                       guardUnsavedField(() => setFieldCreatorOpen(true))
@@ -706,7 +712,7 @@ export function ObjectDesigner({
       <Drawer
         title="员工端预览"
         open={previewOpen}
-        size={480}
+        size={OVERLAY_SIZE.narrow}
         destroyOnHidden
         onClose={() => setPreviewOpen(false)}
       >
@@ -837,88 +843,67 @@ function BasicsSection({
       ),
   );
 
+  const disabled = draft.object.status === "ARCHIVED";
   return (
-    <section className={`${styles.panel} ${styles.formColumn}`}>
-      <div className={styles.sectionHeading}>
-        <h2>基本设置</h2>
-      </div>
-      <div className={styles.statusExplanation}>
-        <StatusTag
-          tone={
-            draft.object.status === "ARCHIVED" ||
-            draft.object.publicationNumber === null
-              ? "neutral"
-              : draft.object.hasUnpublishedChanges
-                ? "warning"
-                : "success"
-          }
-        >
-          {objectStatusLabel(draft.object)}
-        </StatusTag>
-        <span>{objectStatusDescription(draft)}</span>
-      </div>
-      <Form
-        disabled={draft.object.status === "ARCHIVED"}
-        component={false}
-        layout="vertical"
+    <section className={styles.panel} aria-label="基本设置">
+      <p className={styles.sectionLead}>{objectStatusDescription(draft)}</p>
+      <SettingRows
+        footer={
+          <>
+            <Typography.Text type="secondary">仅保存本节到对象草稿；发布后员工端生效。</Typography.Text>
+            <Button
+              type="primary"
+              loading={saving}
+              disabled={disabled}
+              onClick={() => onSave({ name, titleFieldKey, description, icon })}
+            >
+              保存基本设置
+            </Button>
+          </>
+        }
       >
-        <Form.Item label="业务表名称" htmlFor="object-name">
+        <SettingRow label="业务表名称" htmlFor="object-name">
           <Input
             id="object-name"
             value={name}
+            disabled={disabled}
+            className={styles.settingInput}
             onChange={(event) => setName(event.target.value)}
           />
-        </Form.Item>
-        <Form.Item
-          label="业务表代码"
-          htmlFor="object-code"
-          extra={objectStableIdHelp(tenantCode)}
-        >
-          <Input id="object-code" value={draft.object.code} disabled />
-        </Form.Item>
-        <Form.Item
+        </SettingRow>
+        <SettingRow label="业务表代码" htmlFor="object-code" help={objectStableIdHelp(tenantCode)}>
+          <Input id="object-code" value={draft.object.code} disabled className={styles.settingInput} />
+        </SettingRow>
+        <SettingRow
           label="记录名称字段"
           htmlFor="object-title-field"
-          extra="它代表每条记录最容易识别的名称，会显示在列表链接、搜索结果和引用位置；必须是必填的文本、电话、邮箱或单选字段。"
+          help="列表链接、搜索结果和引用里代表一条记录的名称；须为必填的文本、电话、邮箱或单选字段。"
         >
           <Select
             id="object-title-field"
             value={titleFieldKey}
+            disabled={disabled}
+            className={styles.settingInput}
             onChange={setTitleFieldKey}
             options={titleCandidates.map((field) => ({
               value: field.fieldKey,
               label: `${field.label}（${field.fieldKey}）`,
             }))}
           />
-        </Form.Item>
-        <Form.Item
-          label="图标"
-          extra="显示在侧边栏该业务表名称的前面；保存后需发布，员工端才会更新。"
-        >
-          <ObjectIconPicker value={icon} onChange={setIcon} disabled={saving} />
-        </Form.Item>
-        <Form.Item label="说明" htmlFor="object-description">
+        </SettingRow>
+        <SettingRow label="图标" help="显示在侧栏的业务表名称前，发布后员工端更新。">
+          <ObjectIconPicker value={icon} onChange={setIcon} disabled={saving || disabled} />
+        </SettingRow>
+        <SettingRow label="说明" htmlFor="object-description" help="显示在员工端的业务表标题下。">
           <Input.TextArea
             id="object-description"
             rows={3}
             value={description}
+            disabled={disabled}
             onChange={(event) => setDescription(event.target.value)}
           />
-        </Form.Item>
-      </Form>
-      <div className={styles.sectionActions}>
-        <Button
-          type="primary"
-          loading={saving}
-          disabled={draft.object.status === "ARCHIVED"}
-          onClick={() => onSave({ name, titleFieldKey, description, icon })}
-        >
-          保存基本设置
-        </Button>
-        <Typography.Text type="secondary">
-          仅保存本节到对象草稿；发布后员工端生效。
-        </Typography.Text>
-      </div>
+        </SettingRow>
+      </SettingRows>
     </section>
   );
 }
@@ -963,7 +948,7 @@ function FieldCreatorModal({
     <Modal
       open
       title="新增字段"
-      width={560}
+      width={OVERLAY_SIZE.form}
       okText="创建并继续配置"
       cancelText="取消"
       confirmLoading={saving}
@@ -1120,13 +1105,11 @@ function DefaultViewSection({
   return (
     <section className={`${styles.panel} ${styles.formColumn}`}>
       <div className={styles.sectionHeading}>
-        <div>
-          <h2>列表展示与搜索</h2>
-          <Typography.Text type="secondary">
-            设置管理员和员工打开表格时默认展示的列、从左到右的顺序、搜索范围及记录排序。取消展示不会限制详情或表单访问；员工不可见的字段始终不会显示。个人列设置可覆盖默认展示。
-          </Typography.Text>
-        </div>
+        <h2>列表展示与搜索</h2>
       </div>
+      <p className={styles.sectionLead}>
+        打开表格时默认展示的列、顺序、搜索范围和排序。只影响列表，不限制详情和表单；每个人还可以调整自己的列。
+      </p>
       <Form
         disabled={draft.object.status === "ARCHIVED"}
         component={false}
