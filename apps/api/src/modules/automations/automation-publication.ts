@@ -1,6 +1,5 @@
 import {
   analyzeActionPublication,
-  selectableOptionKeys,
   type ActionPublicationSchema,
 } from '../actions/action-publication.policy';
 import type { WorkflowActionDraft } from '../actions/action.types';
@@ -10,6 +9,10 @@ import type {
   PublicationIssue,
 } from '../objects/object-publication.policy';
 import { isPublishedFieldType } from '../objects/object-schema';
+import {
+  normalizeStaticFieldValue,
+  RecordValueError,
+} from '../records/record-value-engine';
 import { validateAutomationRules } from './automation.policy';
 import type { AutomationRule, AutomationValue } from './automation.types';
 
@@ -83,6 +86,26 @@ export function analyzeAutomationPublication(
     targets: input.actionTargets ?? new Map(),
   });
   for (const rule of input.automations.filter((rule) => rule.enabled)) {
+    if (rule.trigger.type === 'FIELD_CHANGED') {
+      const fieldKey = rule.trigger.fieldKey;
+      const field = input.fields.find((field) => field.fieldKey === fieldKey);
+      if (field && isPublishedFieldType(field.type)) {
+        try {
+          normalizeStaticFieldValue(
+            { ...field, type: field.type, validation: field.validation ?? {} },
+            rule.trigger.equals,
+          );
+        } catch (error) {
+          if (!(error instanceof RecordValueError)) throw error;
+          issues.push({
+            code: 'VALIDATION_FAILED',
+            fieldKey,
+            transitionKey: rule.key,
+            message: `自动化「${rule.label}」的触发值不符合来源字段「${fieldKey}」的类型、校验或有效选项。`,
+          });
+        }
+      }
+    }
     const target = input.actionTargets?.get(rule.targetObjectCode)?.schema;
     if (target) issues.push(...analyzeFixedMappings(rule, target));
     if (rule.allowedRoles.includes('EMPLOYEE')) {
@@ -191,6 +214,18 @@ function analyzeFixedMappings(
     const field = target.fields.find((field) => field.fieldKey === fieldKey);
     if (!field) continue;
     if (
+      rule.allowedRoles.includes('EMPLOYEE') &&
+      mapping.source === 'INPUT' &&
+      field.type === 'MEMBER'
+    ) {
+      issues.push({
+        code: 'WORKFLOW_ACTION_PERMISSION_INCOMPATIBLE',
+        fieldKey,
+        transitionKey: rule.key,
+        message: `自动化「${rule.label}」的成员字段「${fieldKey}」不支持员工手动输入，请使用来源字段，或由管理员设置固定成员。`,
+      });
+    }
+    if (
       mapping.source === 'NOW' &&
       field.type !== 'DATE' &&
       field.type !== 'DATETIME'
@@ -202,25 +237,20 @@ function analyzeFixedMappings(
         message: `自动化「${rule.label}」的当前时间只能写入日期字段「${fieldKey}」。`,
       });
     }
-    if (
-      mapping.source !== 'LITERAL' ||
-      (mapping.value === null && !field.required)
-    )
-      continue;
-    if (field.type === 'SINGLE_SELECT' || field.type === 'MULTI_SELECT') {
-      const accepted = new Set(selectableOptionKeys(field));
-      const valid =
-        field.type === 'SINGLE_SELECT'
-          ? typeof mapping.value === 'string' && accepted.has(mapping.value)
-          : Array.isArray(mapping.value) &&
-            mapping.value.every((key) => accepted.has(key));
-      if (!valid)
-        issues.push({
-          code: 'WORKFLOW_ACTION_TARGET_FIELD_INVALID',
-          fieldKey,
-          transitionKey: rule.key,
-          message: `自动化「${rule.label}」的固定值包含目标字段「${fieldKey}」不接受的选项。`,
-        });
+    if (mapping.source !== 'LITERAL') continue;
+    try {
+      normalizeStaticFieldValue(
+        { ...field, validation: field.validation ?? {} },
+        mapping.value,
+      );
+    } catch (error) {
+      if (!(error instanceof RecordValueError)) throw error;
+      issues.push({
+        code: 'WORKFLOW_ACTION_TARGET_FIELD_INVALID',
+        fieldKey,
+        transitionKey: rule.key,
+        message: `自动化「${rule.label}」的固定值不符合目标字段「${fieldKey}」的必填、类型、校验或有效选项。`,
+      });
     }
   }
   return issues;

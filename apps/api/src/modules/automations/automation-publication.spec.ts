@@ -134,3 +134,148 @@ describe('fixed mapping compatibility', () => {
     );
   });
 });
+
+describe('automation static field validation', () => {
+  const access = {
+    canRead: true,
+    canCreate: true,
+    canUpdate: true,
+    readScope: 'ALL',
+    updateScope: 'ALL',
+    fields: { name: 'EDIT', assignee: 'EDIT' },
+  };
+  const analyze = (
+    rule: AutomationRule,
+    targetFields = [field],
+    sourceFields = source.fields,
+  ) =>
+    analyzeAutomationPublication({
+      ...source,
+      fields: sourceFields,
+      employeeAccess: access,
+      automations: [rule],
+      actionTargets: new Map([
+        [
+          'orders',
+          {
+            code: 'orders',
+            status: 'ACTIVE',
+            schema: { fields: targetFields, employeeAccess: access },
+          },
+        ],
+      ]),
+    } as never);
+  it('rejects employee MEMBER input while allowing administrator input', () => {
+    const targetFields = [
+      field,
+      { ...field, fieldKey: 'assignee', type: 'MEMBER', required: false },
+    ] as (typeof field)[];
+    const rule: AutomationRule = {
+      ...rules[0],
+      mappings: { ...rules[0].mappings, assignee: { source: 'INPUT' } },
+    };
+    expect(analyze(rule, targetFields)).toEqual([]);
+    expect(
+      analyze({ ...rule, allowedRoles: ['EMPLOYEE'] }, targetFields),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'WORKFLOW_ACTION_PERMISSION_INCOMPATIBLE',
+          fieldKey: 'assignee',
+          message: expect.stringContaining('来源字段') as unknown,
+        }),
+      ]),
+    );
+  });
+  it.each(['retired', 'missing', 42])(
+    'rejects unavailable or mistyped trigger value %s',
+    (equals) => {
+      const sourceFields = [
+        {
+          ...field,
+          status: 'ACTIVE',
+          type: 'SINGLE_SELECT',
+          config: {
+            options: [
+              { key: 'open', label: '进行中', status: 'ACTIVE' },
+              { key: 'retired', label: '停用', status: 'INACTIVE' },
+            ],
+          },
+        },
+      ] as unknown as typeof source.fields;
+      const rule: AutomationRule = {
+        ...rules[0],
+        trigger: { type: 'FIELD_CHANGED', fieldKey: 'name', equals },
+        mappings: { name: { source: 'LITERAL', value: 'Order' } },
+      };
+      expect(analyze(rule, [field], sourceFields)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            code: 'VALIDATION_FAILED',
+            fieldKey: 'name',
+          }),
+        ]),
+      );
+      expect(
+        analyze(
+          {
+            ...rule,
+            trigger: {
+              type: 'FIELD_CHANGED',
+              fieldKey: 'name',
+              equals: 'open',
+            },
+          },
+          [field],
+          sourceFields,
+        ),
+      ).toEqual([]);
+    },
+  );
+  it.each([null, 7, ''])('rejects invalid required literal %s', (value) => {
+    expect(
+      analyze({
+        ...rules[0],
+        mappings: { name: { source: 'LITERAL', value } },
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'WORKFLOW_ACTION_TARGET_FIELD_INVALID',
+          fieldKey: 'name',
+        }),
+      ]),
+    );
+  });
+  it('blocks target validation tightening that invalidates a published literal', () => {
+    const issues = analyzeAutomationDependencies(
+      {
+        object: { code: 'orders' },
+        fields: [{ ...field, status: 'ACTIVE', validation: { maxLength: 3 } }],
+        employeeAccess: null,
+      } as never,
+      [
+        {
+          object: { code: 'customers', status: 'ACTIVE' },
+          activeSchema: {
+            ...source,
+            automations: [
+              {
+                ...rules[0],
+                mappings: { name: { source: 'LITERAL', value: 'Order title' } },
+              },
+            ],
+          },
+        },
+      ] as never,
+    );
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'WORKFLOW_ACTION_TARGET_FIELD_INVALID',
+          fieldKey: 'name',
+        }),
+      ]),
+    );
+  });
+});

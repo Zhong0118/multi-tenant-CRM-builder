@@ -138,52 +138,71 @@ export class AutomationsService {
     );
   }
   list(context: TenantContext, code: string, recordId: string) {
-    return this.session(context, code, recordId, false, async (session) => {
-      const items: RuntimeAutomationDto[] = [];
-      for (const rule of session.resolved.schema.automations ?? []) {
-        if (
-          !rule.enabled ||
-          rule.trigger.type !== 'MANUAL' ||
-          !rule.allowedRoles.includes(context.role)
-        )
-          continue;
+    return this.session(
+      context,
+      code,
+      recordId,
+      false,
+      async (session) => {
+        const items: RuntimeAutomationDto[] = [];
         try {
-          const target = await automationTarget(session, rule);
-          items.push({
-            key: rule.key,
-            label: rule.label,
-            targetObjectCode: rule.targetObjectCode,
-            targetObjectName: target.schema.object.name,
-            inputFields: target.schema.fields
-              .filter(
-                (field) => rule.mappings[field.fieldKey]?.source === 'INPUT',
-              )
-              .map(
-                ({
-                  fieldKey,
-                  label,
-                  type,
-                  required,
-                  config,
-                  defaultValue,
-                  validation,
-                }) => ({
-                  fieldKey,
-                  label,
-                  type,
-                  required,
-                  config,
-                  defaultValue,
-                  validation,
-                }),
-              ),
-          });
+          await requireVisibleRecord(
+            session.store,
+            session.resolved,
+            context,
+            recordId,
+            'UPDATE',
+          );
         } catch (error) {
           if (!(error instanceof ApiException)) throw error;
+          return { items };
         }
-      }
-      return { items };
-    });
+        for (const rule of session.resolved.schema.automations ?? []) {
+          if (
+            !rule.enabled ||
+            rule.trigger.type !== 'MANUAL' ||
+            !rule.allowedRoles.includes(context.role)
+          )
+            continue;
+          try {
+            const target = await automationTarget(session, rule);
+            items.push({
+              key: rule.key,
+              label: rule.label,
+              targetObjectCode: rule.targetObjectCode,
+              targetObjectName: target.schema.object.name,
+              inputFields: target.schema.fields
+                .filter(
+                  (field) => rule.mappings[field.fieldKey]?.source === 'INPUT',
+                )
+                .map(
+                  ({
+                    fieldKey,
+                    label,
+                    type,
+                    required,
+                    config,
+                    defaultValue,
+                    validation,
+                  }) => ({
+                    fieldKey,
+                    label,
+                    type,
+                    required,
+                    config,
+                    defaultValue,
+                    validation,
+                  }),
+                ),
+            });
+          } catch (error) {
+            if (!(error instanceof ApiException)) throw error;
+          }
+        }
+        return { items };
+      },
+      'READ',
+    );
   }
   preview(
     context: TenantContext,

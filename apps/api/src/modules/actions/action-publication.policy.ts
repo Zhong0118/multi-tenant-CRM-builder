@@ -32,6 +32,7 @@ export interface ActionPublicationField {
   required: boolean;
   defaultValue: JsonValue;
   config: Record<string, JsonValue>;
+  validation?: Record<string, JsonValue>;
   isSystem: boolean;
 }
 

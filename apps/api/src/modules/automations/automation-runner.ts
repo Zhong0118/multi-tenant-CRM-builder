@@ -155,14 +155,20 @@ export async function previewAutomation(
     submitted: values,
     memberExists: (id) => store.memberExists(id),
   });
+  const visibleValues = projectVisibleValues(
+    target.schema,
+    target.access,
+    normalized.values,
+  );
   return {
     ruleKey: rule.key,
     targetObjectCode: target.schema.object.code,
     targetObjectName: target.schema.object.name,
-    values: projectVisibleValues(
-      target.schema,
-      target.access,
-      normalized.values,
+    values: visibleValues,
+    fieldLabels: Object.fromEntries(
+      target.schema.fields
+        .filter((field) => Object.hasOwn(visibleValues, field.fieldKey))
+        .map((field) => [field.fieldKey, field.label]),
     ),
     ownerMemberId,
     sourceRecordId: source.id,

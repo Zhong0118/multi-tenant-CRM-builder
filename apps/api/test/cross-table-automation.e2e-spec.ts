@@ -65,6 +65,7 @@ describe('cross-table automation (real PostgreSQL)', () => {
         body: response.body as {
           items?: unknown[];
           values?: Record<string, unknown>;
+          fieldLabels?: Record<string, string>;
           id?: string;
           targetRecordId?: string;
           publishedRules?: unknown[];
@@ -573,6 +574,7 @@ describe('cross-table automation (real PostgreSQL)', () => {
     );
     expect(preview.status).toBe(201);
     expect(preview.body.values).not.toHaveProperty('private');
+    expect(preview.body.fieldLabels).toEqual({ name: '名称' });
     const result = await api(
       'post',
       `${path()}/automations/create-order/execute`,
@@ -619,6 +621,62 @@ describe('cross-table automation (real PostgreSQL)', () => {
     expect(denied.status).toBe(403);
     expect(JSON.stringify(denied.body)).not.toContain('private-default');
   });
+  it.each([false, true])(
+    'lists no actions but preserves history for read-only scope (canUpdate=%s)',
+    async (canUpdate) => {
+      await republish(f.rollbackTargetObject.id, (schema) => {
+        schema.employeeAccess.canRead = true;
+        schema.employeeAccess.readScope = 'ALL';
+      });
+      await rules([{ ...baseRule, trigger: { type: 'MANUAL' } }]);
+      const result = await api(
+        'post',
+        `${path()}/automations/create-order/execute`,
+        { expectedVersion: 1, requestId: randomUUID(), inputs: {} },
+      );
+      expect(result.status).toBe(201);
+      await republish(f.object.id, (schema) => {
+        schema.employeeAccess.canRead = true;
+        schema.employeeAccess.readScope = 'ALL';
+        schema.employeeAccess.canUpdate = canUpdate;
+        schema.employeeAccess.updateScope = 'OWN';
+      });
+      await h.adminDatabase.record.update({
+        where: { id: f.ownedRecord.id },
+        data: { ownerMemberId: f.otherEmployee.memberId },
+      });
+      const actions = await api(
+        'get',
+        `${path()}/automations`,
+        undefined,
+        f.employee.cookie,
+      );
+      expect(actions.status).toBe(200);
+      expect(actions.body.items).toEqual([]);
+      const history = await api(
+        'get',
+        `${path()}/automations/history`,
+        undefined,
+        f.employee.cookie,
+      );
+      expect(history.status).toBe(200);
+      expect(history.body.items).toHaveLength(1);
+      const preview = await api(
+        'post',
+        `${path()}/automations/create-order/preview`,
+        { inputs: {} },
+        f.employee.cookie,
+      );
+      expect(preview.status).toBe(canUpdate ? 404 : 403);
+      const execute = await api(
+        'post',
+        `${path()}/automations/create-order/execute`,
+        { expectedVersion: 2, requestId: randomUUID(), inputs: {} },
+        f.employee.cookie,
+      );
+      expect(execute.status).toBe(canUpdate ? 404 : 403);
+    },
+  );
   it('rolls target creation, numbering and source edit back when relation insertion fails', async () => {
     await rules();
     const before = await source();
