@@ -41,10 +41,12 @@ export class WorkTasksService {
       scope?: 'mine' | 'team';
       status?: WorkTaskStatus;
       assigneeMemberId?: string;
-      page: number;
-      limit: number;
+      page?: number;
+      limit?: number;
     },
   ) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 50;
     const team = query.scope === 'team';
     if (team && context.role !== 'TENANT_ADMIN')
       throw new ApiException('WORKSPACE_FORBIDDEN', 403);
@@ -60,16 +62,16 @@ export class WorkTasksService {
           include,
           // Open work first, soonest due first; finished work newest first.
           orderBy: [{ status: 'desc' }, { dueAt: 'asc' }, { id: 'asc' }],
-          skip: (query.page - 1) * query.limit,
-          take: query.limit,
+          skip: (page - 1) * limit,
+          take: limit,
         }),
         tx.workTask.count({ where }),
       ]);
       const now = new Date();
       return {
         items: items.map((task) => present(task, context, now)),
-        page: query.page,
-        limit: query.limit,
+        page,
+        limit,
         total,
       };
     });

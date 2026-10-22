@@ -12,7 +12,9 @@ describe("business table icons", () => {
   it("offers unique, labelled keys that fit the API's 64-character limit", () => {
     const keys = OBJECT_ICON_OPTIONS.map((option) => option.key);
     expect(new Set(keys).size).toBe(keys.length);
-    expect(new Set(OBJECT_ICON_OPTIONS.map((option) => option.label)).size).toBe(keys.length);
+    expect(
+      new Set(OBJECT_ICON_OPTIONS.map((option) => option.label)).size,
+    ).toBe(keys.length);
     for (const option of OBJECT_ICON_OPTIONS) {
       expect(option.key).toMatch(/^[a-z][a-z0-9-]*$/);
       expect(option.key.length).toBeLessThanOrEqual(64);
@@ -31,13 +33,18 @@ describe("business table icons", () => {
     "falls back to the default table icon for %j",
     (name) => {
       const { container } = render(<ObjectIcon name={name} />);
-      expect(container.querySelector('[data-icon="table"]')).toBeInTheDocument();
+      expect(
+        container.querySelector('[data-icon="table"]'),
+      ).toBeInTheDocument();
     },
   );
 
   it("hides the glyph from assistive technology", () => {
     const { container } = render(<ObjectIcon name="user" />);
-    expect(container.querySelector('[role="img"]')).toHaveAttribute("aria-hidden", "true");
+    expect(container.querySelector('[role="img"]')).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
   });
 
   it("knows which stored keys it can draw", () => {

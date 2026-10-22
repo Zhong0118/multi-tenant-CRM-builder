@@ -38,7 +38,12 @@ export class DailyReportsController {
 
   /** Who reported for a work date (administrators). */
   @Get(':workDate')
-  @ApiParam({ name: 'workDate', type: String, example: '2026-10-22' })
+  @ApiParam({
+    name: 'workDate',
+    type: String,
+    example: '2026-10-22',
+    description: 'A company calendar day, or `today` in the company timezone.',
+  })
   @ApiOkResponse({ type: DailyReportListDto })
   list(
     @CurrentTenant() context: TenantContext,
@@ -49,7 +54,12 @@ export class DailyReportsController {
 
   /** The acting member's own report for a work date, with that day's reference. */
   @Get(':workDate/mine')
-  @ApiParam({ name: 'workDate', type: String, example: '2026-10-22' })
+  @ApiParam({
+    name: 'workDate',
+    type: String,
+    example: '2026-10-22',
+    description: 'A company calendar day, or `today` in the company timezone.',
+  })
   @ApiOkResponse({ type: DailyReportViewDto })
   mine(
     @CurrentTenant() context: TenantContext,
@@ -59,7 +69,12 @@ export class DailyReportsController {
   }
 
   @Put(':workDate/mine')
-  @ApiParam({ name: 'workDate', type: String, example: '2026-10-22' })
+  @ApiParam({
+    name: 'workDate',
+    type: String,
+    example: '2026-10-22',
+    description: 'A company calendar day, or `today` in the company timezone.',
+  })
   @ApiOkResponse({ type: DailyReportDto })
   save(
     @CurrentTenant() context: TenantContext,
@@ -75,7 +90,12 @@ export class DailyReportsController {
 
   /** A member's report (administrators, or the member themself). */
   @Get(':workDate/members/:memberId')
-  @ApiParam({ name: 'workDate', type: String, example: '2026-10-22' })
+  @ApiParam({
+    name: 'workDate',
+    type: String,
+    example: '2026-10-22',
+    description: 'A company calendar day, or `today` in the company timezone.',
+  })
   @ApiParam({ name: 'memberId', format: 'uuid' })
   @ApiOkResponse({ type: DailyReportViewDto })
   member(

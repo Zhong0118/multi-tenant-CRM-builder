@@ -43,7 +43,7 @@ export class DailyReportsService {
           tenantId_memberId_workDate: {
             tenantId: context.tenantId,
             memberId,
-            workDate: new Date(`${workDate}T00:00:00Z`),
+            workDate: new Date(`${day.fromDay}T00:00:00Z`),
           },
         },
       });
@@ -160,12 +160,17 @@ export class DailyReportsService {
   }
 }
 
-/** A single company day that is not in the future. */
+/**
+ * A single company day that is not in the future. `today` is resolved in the
+ * company's timezone, so a browser in another timezone opens the right day.
+ */
 async function workDay(
   tx: Prisma.TransactionClient,
   tenantId: string,
   workDate: string,
 ): Promise<CompanyPeriod> {
+  if (workDate === 'today')
+    return resolveCompanyPeriod(tx, tenantId, { preset: 'today' });
   if (
     !/^\d{4}-\d{2}-\d{2}$/.test(workDate) ||
     !Number.isFinite(Date.parse(workDate))

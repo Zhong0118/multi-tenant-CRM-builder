@@ -3051,7 +3051,6 @@ export interface components {
     NotificationTargetDto: {
       href: string | null;
     };
-    Object: Record<string, never>;
     ObjectDraftDefaultViewResponseDto: {
       columnFieldKeys: string[];
       name: string;
@@ -7760,8 +7759,8 @@ export interface operations {
     parameters: {
       query?: {
         assigneeMemberId?: string;
-        limit?: components["schemas"]["Object"];
-        page?: components["schemas"]["Object"];
+        limit?: number;
+        page?: number;
         /** @description team: every member’s tasks (administrators only). */
         scope?: "mine" | "team";
         status?: "OPEN" | "DONE" | "CANCELLED";

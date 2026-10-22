@@ -40,7 +40,7 @@ export class WorkTaskQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  page = 1;
+  page?: number;
 
   @ApiPropertyOptional({ default: 50 })
   @IsOptional()
@@ -48,7 +48,7 @@ export class WorkTaskQueryDto {
   @IsInt()
   @Min(1)
   @Max(100)
-  limit = 50;
+  limit?: number;
 }
 
 export class CreateWorkTaskDto {

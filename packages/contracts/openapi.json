@@ -3568,10 +3568,6 @@
         "required": ["href"],
         "type": "object"
       },
-      "Object": {
-        "properties": {},
-        "type": "object"
-      },
       "ObjectDraftDefaultViewResponseDto": {
         "properties": {
           "columnFieldKeys": {
@@ -14266,12 +14262,8 @@
             "name": "page",
             "required": false,
             "schema": {
-              "allOf": [
-                {
-                  "$ref": "#/components/schemas/Object"
-                }
-              ],
-              "default": 1
+              "default": 1,
+              "type": "number"
             }
           },
           {
@@ -14279,12 +14271,8 @@
             "name": "limit",
             "required": false,
             "schema": {
-              "allOf": [
-                {
-                  "$ref": "#/components/schemas/Object"
-                }
-              ],
-              "default": 50
+              "default": 50,
+              "type": "number"
             }
           },
           {

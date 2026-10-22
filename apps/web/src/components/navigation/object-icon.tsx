@@ -99,15 +99,21 @@ export const OBJECT_ICON_OPTIONS: readonly ObjectIconOption[] = [
   { key: "customer-service", label: "客服", Icon: CustomerServiceOutlined },
 ];
 
-const BY_KEY = new Map(OBJECT_ICON_OPTIONS.map((option) => [option.key, option]));
+const BY_KEY = new Map(
+  OBJECT_ICON_OPTIONS.map((option) => [option.key, option]),
+);
 
 /** Whether the key names an icon this version can draw. */
-export function isKnownObjectIcon(key: string | null | undefined): key is string {
+export function isKnownObjectIcon(
+  key: string | null | undefined,
+): key is string {
   return typeof key === "string" && BY_KEY.has(key);
 }
 
 /** The glyph for a business table, falling back to the default table icon. */
 export function ObjectIcon({ name }: { name?: string | null }) {
-  const Icon = (isKnownObjectIcon(name) ? BY_KEY.get(name) : undefined)?.Icon ?? DEFAULT_OBJECT_ICON.Icon;
+  const Icon =
+    (isKnownObjectIcon(name) ? BY_KEY.get(name) : undefined)?.Icon ??
+    DEFAULT_OBJECT_ICON.Icon;
   return <Icon aria-hidden />;
 }

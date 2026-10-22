@@ -53,3 +53,51 @@
   color: var(--text-secondary);
   font-size: 13px;
 }
+
+.rowActions {
+  display: inline-flex;
+  gap: 0;
+}
+
+.rowActions :global(.ant-btn) {
+  padding-inline: 4px;
+}
+
+.taskFilters {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.taskList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border-hairline);
+}
+
+.memberReport {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 20px;
+  align-items: start;
+}
+
+.reportText {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+}
+
+.reportText dt {
+  margin-bottom: 4px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.reportText dd {
+  margin: 0;
+  white-space: pre-wrap;
+}
