@@ -172,8 +172,7 @@ export function hydrateTenantConfiguration(
           dashboard: {
             tenantId,
             code: 'home',
-            name:
-              configuration.dashboard.title.trim() || '工作台',
+            name: configuration.dashboard.title.trim() || '工作台',
             draftVersion: 1,
             draftConfiguration: structuredClone(configuration.dashboard),
             activePublicationId: null,

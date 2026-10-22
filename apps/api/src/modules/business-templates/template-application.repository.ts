@@ -459,17 +459,20 @@ class PrismaTemplateApplicationStore implements TemplateApplicationStore {
       }
     }
     if (hydrated.dashboard) {
-      const created = await this.transaction.tenantDashboardConfiguration.create({
-        data: {
-          tenantId: hydrated.dashboard.tenantId,
-          code: hydrated.dashboard.code,
-          name: hydrated.dashboard.name,
-          draftVersion: hydrated.dashboard.draftVersion,
-          draftConfiguration: jsonInput(hydrated.dashboard.draftConfiguration),
-          activePublicationId: hydrated.dashboard.activePublicationId,
-          sourceTemplateVersionId: hydrated.dashboard.sourceTemplateVersionId,
-        },
-      });
+      const created =
+        await this.transaction.tenantDashboardConfiguration.create({
+          data: {
+            tenantId: hydrated.dashboard.tenantId,
+            code: hydrated.dashboard.code,
+            name: hydrated.dashboard.name,
+            draftVersion: hydrated.dashboard.draftVersion,
+            draftConfiguration: jsonInput(
+              hydrated.dashboard.draftConfiguration,
+            ),
+            activePublicationId: hydrated.dashboard.activePublicationId,
+            sourceTemplateVersionId: hydrated.dashboard.sourceTemplateVersionId,
+          },
+        });
       await this.transaction.tenant.update({
         where: { id: hydrated.dashboard.tenantId },
         data: {

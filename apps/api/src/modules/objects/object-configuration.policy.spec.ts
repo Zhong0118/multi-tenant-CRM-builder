@@ -86,10 +86,14 @@ describe('object configuration policy', () => {
     input.employeeAccess!.fields.status = 'EDIT';
 
     expect(analyzeObjectConfiguration(input).blocking).toContainEqual(
-      expect.objectContaining({ code: 'FIELD_OPTIONS_REQUIRED', fieldKey: 'status' }),
+      expect.objectContaining({
+        code: 'FIELD_OPTIONS_REQUIRED',
+        fieldKey: 'status',
+      }),
     );
 
-    (input.fields[2].config.options as Array<{ status: string }>)[1].status = 'ACTIVE';
+    (input.fields[2].config.options as Array<{ status: string }>)[1].status =
+      'ACTIVE';
     expect(
       analyzeObjectConfiguration(input).blocking.map((issue) => issue.code),
     ).not.toContain('FIELD_OPTIONS_REQUIRED');
@@ -113,7 +117,10 @@ describe('object configuration policy', () => {
     input.employeeAccess!.fields.level = 'EDIT';
 
     expect(analyzeObjectConfiguration(input).blocking).toContainEqual(
-      expect.objectContaining({ code: 'FIELD_OPTIONS_REQUIRED', fieldKey: 'level' }),
+      expect.objectContaining({
+        code: 'FIELD_OPTIONS_REQUIRED',
+        fieldKey: 'level',
+      }),
     );
   });
 

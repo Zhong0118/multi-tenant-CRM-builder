@@ -455,20 +455,38 @@ describe('Business template HTTP workflow (e2e)', () => {
       .set('Origin', origin)
       .send({ status: 'ACTIVE' })
       .expect(200);
-    await platform
-      .post(`/api/v1/platform/business-templates/${templateId}/applications`)
-      .set('Origin', origin)
-      .send({ tenantId: activeTenantId, templateVersionId })
+    // A suspended or closed company cannot be initialized; an active one that
+    // has not configured any business table yet still can.
+    const setStatus = (status: string) =>
+      platform
+        .patch(`/api/v1/platform/tenants/${activeTenantId}/status`)
+        .set('Origin', origin)
+        .send({ status })
+        .expect(200);
+    const applyToActive = () =>
+      platform
+        .post(`/api/v1/platform/business-templates/${templateId}/applications`)
+        .set('Origin', origin)
+        .send({ tenantId: activeTenantId, templateVersionId });
+    await setStatus('SUSPENDED');
+    await applyToActive()
       .expect(409)
       .expect((response) => {
         expect(response.body).toMatchObject({
           code: 'TEMPLATE_APPLICATION_NOT_ALLOWED',
-          message: '目标公司必须处于草稿状态。',
+          message: '已暂停或关闭的公司不能应用模板。',
           fieldErrors: {
-            application: ['目标公司必须处于草稿状态。'],
+            application: ['已暂停或关闭的公司不能应用模板。'],
           },
         });
       });
+    await setStatus('ACTIVE');
+    await applyToActive().expect(201);
+    await expect(
+      adminDatabase.objectDefinition.count({
+        where: { tenantId: activeTenantId, status: 'DRAFT' },
+      }),
+    ).resolves.toBeGreaterThan(0);
   });
 
   async function register(phone: string, displayName: string): Promise<Agent> {

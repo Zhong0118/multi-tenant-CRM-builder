@@ -1528,7 +1528,8 @@ describe('RecordsService', () => {
   it('starts single records in the staged pool instead of leaving them as 旧记录', async () => {
     const { service, store } = fixture();
     Object.assign(store, {
-      findPoolLifecycle: () => Promise.resolve({ contactTtlHours: 24, followUpTtlHours: 720 }),
+      findPoolLifecycle: () =>
+        Promise.resolve({ contactTtlHours: 24, followUpTtlHours: 720 }),
     });
 
     // An administrator who names no owner puts the customer in the lead pool.
@@ -1565,7 +1566,10 @@ describe('RecordsService', () => {
     const { service, store } = fixture();
     Object.assign(store, { findPoolLifecycle: () => Promise.resolve(null) });
     await create(service, admin, '普通客户');
-    expect(store.records[0]).toMatchObject({ ownerMemberId: null, ownershipExpiresAt: null });
+    expect(store.records[0]).toMatchObject({
+      ownerMemberId: null,
+      ownershipExpiresAt: null,
+    });
     expect(store.records[0].poolStage ?? null).toBeNull();
   });
 

@@ -36,17 +36,32 @@ describe('TemplateApplicationService', () => {
   it('applies a template to an active company that has no business table yet', async () => {
     const { service, state } = applicationFixture({ tenantStatus: 'ACTIVE' });
     await service.apply(platformAdmin, applicationInput(), meta);
-    expect(state.objects).toEqual([expect.objectContaining({ status: 'DRAFT', activePublicationId: null })]);
+    expect(state.objects).toEqual([
+      expect.objectContaining({ status: 'DRAFT', activePublicationId: null }),
+    ]);
     expect(state.applications).toHaveLength(1);
   });
 
   it('keeps the template default view keyword search fields', () => {
     const source = configuration();
     source.objects[0].defaultView!.searchFieldKeys = ['phone'];
-    const hydrated = hydrateTenantConfiguration(source, 'tenant-1', 'version-1', () => crypto.randomUUID());
-    expect(hydrated.views[0]).toMatchObject({ columnFieldKeys: ['name', 'phone'], searchFieldKeys: ['phone'] });
+    const hydrated = hydrateTenantConfiguration(
+      source,
+      'tenant-1',
+      'version-1',
+      () => crypto.randomUUID(),
+    );
+    expect(hydrated.views[0]).toMatchObject({
+      columnFieldKeys: ['name', 'phone'],
+      searchFieldKeys: ['phone'],
+    });
 
-    const withoutSearch = hydrateTenantConfiguration(configuration(), 'tenant-1', 'version-1', () => crypto.randomUUID());
+    const withoutSearch = hydrateTenantConfiguration(
+      configuration(),
+      'tenant-1',
+      'version-1',
+      () => crypto.randomUUID(),
+    );
     expect(withoutSearch.views[0]).not.toHaveProperty('searchFieldKeys');
   });
 
@@ -544,8 +559,8 @@ class MemoryApplicationStore implements TemplateApplicationStore {
       !template.version ||
       template.version.id !== input.templateVersionId ||
       template.version.templateId !== input.templateId ||
-      this.state.tenant.status !== 'DRAFT' &&
-      this.state.tenant.status !== 'ACTIVE'
+      (this.state.tenant.status !== 'DRAFT' &&
+        this.state.tenant.status !== 'ACTIVE')
     ) {
       return { kind: 'NOT_ALLOWED' };
     }

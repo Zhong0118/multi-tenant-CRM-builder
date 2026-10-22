@@ -197,10 +197,20 @@ describe('personal record follow-ups', () => {
     const { service, repository, objects, resolved } = fixture();
     resolved.access.readScope = 'ALL';
     resolved.access.updateScope = 'ALL';
-    const admin = { ...context, memberId: 'admin', role: 'TENANT_ADMIN' as const };
+    const admin = {
+      ...context,
+      memberId: 'admin',
+      role: 'TENANT_ADMIN' as const,
+    };
     await service.create(
       admin,
-      { objectCode: 'leads', recordId: 'record', title: '回访', dueAt: '2026-09-10T08:00:00Z', assigneeMemberId: 'other' },
+      {
+        objectCode: 'leads',
+        recordId: 'record',
+        title: '回访',
+        dueAt: '2026-09-10T08:00:00Z',
+        assigneeMemberId: 'other',
+      },
       { requestId: 'req' },
     );
     expect(repository.activeMember).toHaveBeenCalledWith(admin, 'other');
@@ -209,7 +219,10 @@ describe('personal record follow-ups', () => {
       expect.objectContaining({ memberId: 'other', role: 'EMPLOYEE' }),
       'leads',
     );
-    expect(repository.create.mock.calls[0][1]).toMatchObject({ assigneeMemberId: 'other' });
+    const [, created] = repository.create.mock.calls[0] as unknown[];
+    expect(created).toMatchObject({
+      assigneeMemberId: 'other',
+    });
   });
 
   it('keeps employees scheduling for themselves and refuses inactive assignees', async () => {
@@ -217,7 +230,13 @@ describe('personal record follow-ups', () => {
     await expect(
       service.create(
         context,
-        { objectCode: 'leads', recordId: 'record', title: '回访', dueAt: '2026-09-10T08:00:00Z', assigneeMemberId: 'other' },
+        {
+          objectCode: 'leads',
+          recordId: 'record',
+          title: '回访',
+          dueAt: '2026-09-10T08:00:00Z',
+          assigneeMemberId: 'other',
+        },
         { requestId: 'req' },
       ),
     ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
@@ -226,7 +245,13 @@ describe('personal record follow-ups', () => {
     await expect(
       service.create(
         { ...context, role: 'TENANT_ADMIN' },
-        { objectCode: 'leads', recordId: 'record', title: '回访', dueAt: '2026-09-10T08:00:00Z', assigneeMemberId: 'gone' },
+        {
+          objectCode: 'leads',
+          recordId: 'record',
+          title: '回访',
+          dueAt: '2026-09-10T08:00:00Z',
+          assigneeMemberId: 'gone',
+        },
         { requestId: 'req' },
       ),
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });

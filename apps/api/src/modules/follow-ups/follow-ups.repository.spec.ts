@@ -129,8 +129,10 @@ function harness(options: HarnessOptions = {}) {
       ),
     },
     record: {
-      count: jest.fn((_args: unknown) => Promise.resolve(options.pendingRows?.length ?? 0)),
-      findMany: jest.fn((_args: unknown) => Promise.resolve(options.pendingRows ?? [])),
+      count: jest.fn(() => Promise.resolve(options.pendingRows?.length ?? 0)),
+      findMany: jest.fn<Promise<unknown[]>, [unknown]>(() =>
+        Promise.resolve(options.pendingRows ?? []),
+      ),
     },
     tenant: {
       findUnique: jest.fn(() =>
@@ -406,19 +408,28 @@ describe('FollowUpsRepository personal workbench', () => {
     });
   });
 
-  it('lists the actor\'s own leads waiting for contact, with the table\'s stage name', async () => {
+  it("lists the actor's own leads waiting for contact, with the table's stage name", async () => {
     const fixture = harness({
       pendingRows: [
         {
           id: 'record-lead',
           title: '王老师',
           ownershipExpiresAt: new Date('2026-09-18T02:00:00.000Z'),
-          object: { code: 'customers', name: '客户', poolLabels: { pending: '已加微信' } },
+          object: {
+            code: 'customers',
+            name: '客户',
+            poolLabels: { pending: '已加微信' },
+          },
         },
       ],
     });
 
-    const result = await fixture.repository.workbench(context, SCOPES, RANGE, 'Asia/Shanghai');
+    const result = await fixture.repository.workbench(
+      context,
+      SCOPES,
+      RANGE,
+      'Asia/Shanghai',
+    );
 
     expect(result.pendingContacts).toEqual({
       count: 1,
@@ -433,7 +444,11 @@ describe('FollowUpsRepository personal workbench', () => {
         },
       ],
     });
-    const where = (fixture.tx.record.findMany.mock.calls[0][0] as { where: Record<string, unknown> }).where;
+    const where = (
+      fixture.tx.record.findMany.mock.calls[0][0] as {
+        where: Record<string, unknown>;
+      }
+    ).where;
     expect(where).toMatchObject({
       tenantId: context.tenantId,
       ownerMemberId: context.memberId,
