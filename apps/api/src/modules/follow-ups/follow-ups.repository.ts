@@ -223,6 +223,7 @@ export class FollowUpsRepository {
           timezone,
           counts: { allOpen: 0, overdue: 0, today: 0, upcoming: 0 },
           preview: { overdue: [], today: [], upcoming: [] },
+          pendingContacts: { count: 0, items: [] },
         };
       }
 
@@ -295,6 +296,36 @@ export class FollowUpsRepository {
         ),
       });
 
+      // Leads the actor claimed or was assigned and has not confirmed as
+      // contacted, on readable tables running the staged pool.
+      const pendingWhere: Prisma.RecordWhereInput = {
+        tenantId: context.tenantId,
+        ownerMemberId: context.memberId,
+        poolStage: 'PENDING_CONTACT',
+        deletedAt: null,
+        objectId: { in: scopes.map((scope) => scope.objectId) },
+        object: {
+          status: 'ACTIVE',
+          deletedAt: null,
+          poolEnabled: true,
+          poolLifecycleEnabled: true,
+        },
+      };
+      const [pendingCount, pendingRows] = await Promise.all([
+        tx.record.count({ where: pendingWhere }),
+        tx.record.findMany({
+          where: pendingWhere,
+          select: {
+            id: true,
+            title: true,
+            ownershipExpiresAt: true,
+            object: { select: { code: true, name: true, poolLabels: true } },
+          },
+          orderBy: [{ ownershipExpiresAt: 'asc' }, { id: 'asc' }],
+          take: WORKBENCH_PREVIEW_LIMIT,
+        }),
+      ]);
+
       return {
         timezone,
         counts: { allOpen, overdue, today, upcoming },
@@ -302,6 +333,23 @@ export class FollowUpsRepository {
           overdue: overdueRows.map((row) => project(row, true)),
           today: todayRows.map((row) => project(row, false)),
           upcoming: upcomingRows.map((row) => project(row, false)),
+        },
+        pendingContacts: {
+          count: pendingCount,
+          items: pendingRows.flatMap((row) =>
+            row.ownershipExpiresAt
+              ? [
+                  {
+                    recordId: row.id,
+                    recordTitle: row.title,
+                    objectCode: row.object.code,
+                    objectName: row.object.name,
+                    stageLabel: pendingStageLabel(row.object.poolLabels),
+                    expiresAt: row.ownershipExpiresAt.toISOString(),
+                  },
+                ]
+              : [],
+          ),
         },
       };
     });
@@ -499,4 +547,12 @@ export class FollowUpsRepository {
       return presentFollowUp(item);
     });
   }
+}
+
+function pendingStageLabel(labels: Prisma.JsonValue): string {
+  const pending =
+    labels && typeof labels === 'object' && !Array.isArray(labels)
+      ? (labels as Record<string, unknown>).pending
+      : undefined;
+  return typeof pending === 'string' && pending.trim() ? pending : '待联系';
 }

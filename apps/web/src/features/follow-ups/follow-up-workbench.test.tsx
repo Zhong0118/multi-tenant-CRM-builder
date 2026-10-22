@@ -25,6 +25,19 @@ const item = {
 const workbench = {
   timezone: "Asia/Shanghai",
   counts: { allOpen: 9, overdue: 2, today: 1, upcoming: 4 },
+  pendingContacts: {
+    count: 1,
+    items: [
+      {
+        recordId: "lead-1",
+        recordTitle: "王老师",
+        objectCode: "customers",
+        objectName: "客户",
+        stageLabel: "已加微信",
+        expiresAt: "2099-01-01T00:00:00.000Z",
+      },
+    ],
+  },
   preview: {
     overdue: [
       { ...item, id: "overdue-1", title: "逾期跟进", overdue: true },
@@ -135,6 +148,16 @@ describe("PersonalFollowUpWorkbench", () => {
     await screen.findByTestId("workbench-bucket-today");
     expect(screen.queryByTestId("workbench-complete-task-1")).toBeNull();
     expect(screen.queryAllByRole("button")).toHaveLength(0);
+  });
+
+  it("lists claimed leads still waiting for contact, linked to the record", async () => {
+    setup();
+    const section = await screen.findByRole("region", { name: "待联系客户" });
+    expect(section).toHaveTextContent("客户 · 已加微信");
+    expect(screen.getByRole("link", { name: "王老师" })).toHaveAttribute(
+      "href",
+      "/workspace/northwind/objects/customers/lead-1",
+    );
   });
 
   it("completes through the existing versioned PATCH and refetches", async () => {

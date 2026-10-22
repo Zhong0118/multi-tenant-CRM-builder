@@ -140,10 +140,34 @@ export class FollowUpWorkbenchPreviewDto {
   upcoming!: FollowUpWorkbenchItemDto[];
 }
 
+/**
+ * A record the actor owns in the staged pool's contact stage: claimed or
+ * assigned, not yet confirmed as contacted. Read from the record itself, so it
+ * appears the moment a lead is claimed and leaves when contact is confirmed,
+ * released or reclaimed — there is no second task row to keep in step.
+ */
+export class PendingContactItemDto {
+  @ApiProperty() recordId!: string;
+  @ApiProperty() recordTitle!: string;
+  @ApiProperty() objectCode!: string;
+  @ApiProperty() objectName!: string;
+  /** The table's own name for the contact stage, such as 待联系 or 已加微信. */
+  @ApiProperty() stageLabel!: string;
+  @ApiProperty({ format: 'date-time' }) expiresAt!: string;
+}
+
+export class PendingContactsDto {
+  @ApiProperty() count!: number;
+  @ApiProperty({ type: PendingContactItemDto, isArray: true })
+  items!: PendingContactItemDto[];
+}
+
 export class FollowUpWorkbenchResponseDto {
   @ApiProperty() timezone!: string;
   @ApiProperty({ type: FollowUpWorkbenchCountsDto })
   counts!: FollowUpWorkbenchCountsDto;
   @ApiProperty({ type: FollowUpWorkbenchPreviewDto })
   preview!: FollowUpWorkbenchPreviewDto;
+  @ApiProperty({ type: PendingContactsDto })
+  pendingContacts!: PendingContactsDto;
 }

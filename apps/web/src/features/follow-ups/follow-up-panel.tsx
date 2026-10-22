@@ -36,6 +36,7 @@ export function FollowUpPanel({
   listState,
   returnTo,
   onListStateChange,
+  beforeList,
   api = followUpApi,
 }: {
   tenantCode: string;
@@ -44,6 +45,8 @@ export function FollowUpPanel({
   listState?: { status: FollowUpStatus; page: number };
   returnTo?: string;
   onListStateChange?: (state: { status: FollowUpStatus; page: number }) => void;
+  /** Shown between the page header and the task list, such as 待联系客户. */
+  beforeList?: React.ReactNode;
   api?: typeof followUpApi;
 }) {
   const client = useQueryClient();
@@ -201,6 +204,7 @@ export function FollowUpPanel({
           description="分配给你、且你有权查看的记录事项；到期未完成即为逾期。"
         />
       )}
+      {beforeList}
       {error && (
         <Alert
           type="error"

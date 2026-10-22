@@ -2845,6 +2845,9 @@
           "counts": {
             "$ref": "#/components/schemas/FollowUpWorkbenchCountsDto"
           },
+          "pendingContacts": {
+            "$ref": "#/components/schemas/PendingContactsDto"
+          },
           "preview": {
             "$ref": "#/components/schemas/FollowUpWorkbenchPreviewDto"
           },
@@ -2852,7 +2855,7 @@
             "type": "string"
           }
         },
-        "required": ["timezone", "counts", "preview"],
+        "required": ["timezone", "counts", "preview", "pendingContacts"],
         "type": "object"
       },
       "ForgotPasswordDto": {
@@ -3818,6 +3821,53 @@
           }
         },
         "required": ["records", "openTasks", "recipients"],
+        "type": "object"
+      },
+      "PendingContactItemDto": {
+        "properties": {
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "objectCode": {
+            "type": "string"
+          },
+          "objectName": {
+            "type": "string"
+          },
+          "recordId": {
+            "type": "string"
+          },
+          "recordTitle": {
+            "type": "string"
+          },
+          "stageLabel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recordId",
+          "recordTitle",
+          "objectCode",
+          "objectName",
+          "stageLabel",
+          "expiresAt"
+        ],
+        "type": "object"
+      },
+      "PendingContactsDto": {
+        "properties": {
+          "count": {
+            "type": "number"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PendingContactItemDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["count", "items"],
         "type": "object"
       },
       "PersonalInvitationResponseDto": {

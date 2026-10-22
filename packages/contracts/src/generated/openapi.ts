@@ -2691,6 +2691,7 @@ export interface components {
     };
     FollowUpWorkbenchResponseDto: {
       counts: components["schemas"]["FollowUpWorkbenchCountsDto"];
+      pendingContacts: components["schemas"]["PendingContactsDto"];
       preview: components["schemas"]["FollowUpWorkbenchPreviewDto"];
       timezone: string;
     };
@@ -3041,6 +3042,19 @@ export interface components {
       openTasks: number;
       recipients: components["schemas"]["TenantMemberResponseDto"][];
       records: number;
+    };
+    PendingContactItemDto: {
+      /** Format: date-time */
+      expiresAt: string;
+      objectCode: string;
+      objectName: string;
+      recordId: string;
+      recordTitle: string;
+      stageLabel: string;
+    };
+    PendingContactsDto: {
+      count: number;
+      items: components["schemas"]["PendingContactItemDto"][];
     };
     PersonalInvitationResponseDto: {
       /** Format: uuid */
