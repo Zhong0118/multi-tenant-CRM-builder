@@ -306,7 +306,7 @@ describe('createFollowUpCommand', () => {
     expect(fixture.sqlCalls).toHaveLength(3);
     const assigneeLock = fixture.sqlCalls[1];
     expect(assigneeLock.sql).toContain('FROM tenant_members m JOIN users u');
-    expect(assigneeLock.sql).toContain('FOR UPDATE OF m');
+    expect(assigneeLock.sql).toContain('FOR NO KEY UPDATE OF m');
     expect(assigneeLock.values).toEqual(['tenant-a', ASSIGNEE]);
   });
 

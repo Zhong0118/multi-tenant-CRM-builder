@@ -467,7 +467,7 @@ export class FollowUpsRepository {
       ].sort()) {
         const members = await tx.$queryRaw<
           Array<{ id: string; role: string }>
-        >`SELECT m.id, m.role FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=${context.tenantId}::uuid AND m.id=${memberId}::uuid AND m.status='ACTIVE' AND u.status='ACTIVE' FOR UPDATE OF m`;
+        >`SELECT m.id, m.role FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=${context.tenantId}::uuid AND m.id=${memberId}::uuid AND m.status='ACTIVE' AND u.status='ACTIVE' FOR NO KEY UPDATE OF m`;
         if (
           !members.length ||
           members[0].role !==

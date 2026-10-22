@@ -99,6 +99,11 @@ describe('generic record pool lifecycle HTTP', () => {
   });
   it('enables without enrolling legacy data, previews only for admin and explicitly classifies legacy records', async () => {
     const old = await state(f.ownedRecord.id);
+    const legacy = json<Row>(
+      await post('/records', { values: { name: 'Legacy unassigned' } }).expect(
+        201,
+      ),
+    );
     await configure();
     const after = await state(old.id);
     const adminSettings = json<Config>(await get('/pool-config').expect(200));
@@ -111,18 +116,37 @@ describe('generic record pool lifecycle HTTP', () => {
     expect(employee.preview).toBeUndefined();
     expect(employee.protectionSources).toBeUndefined();
     expect(employee.permissions?.readScope).toBe('OWN');
-    const created = json<Row>(
-      await post('/records', { values: { name: 'Legacy unassigned' } }).expect(
-        201,
-      ),
-    );
-    expect(created.poolStage).toBeNull();
-    await ownership(created, 'RELEASE', { reason: '分类' }).expect(400);
-    await ownership(created, 'RELEASE', {
+    expect((await state(legacy.id)).poolStage).toBeNull();
+    await ownership(legacy, 'RELEASE', { reason: '分类' }).expect(400);
+    await ownership(legacy, 'RELEASE', {
       reason: '确认资源进入线索池',
       poolStage: 'LEAD_POOL',
     }).expect(201);
-    expect((await state(created.id)).poolStage).toBe('LEAD_POOL');
+    expect((await state(legacy.id)).poolStage).toBe('LEAD_POOL');
+    // Records created once the lifecycle is on are placed, not left unclassified.
+    const created = json<Row>(
+      await post('/records', { values: { name: 'New unassigned' } }).expect(
+        201,
+      ),
+    );
+    expect(created.poolStage).toBe('LEAD_POOL');
+    expect(created.ownerMemberId).toBeNull();
+  });
+  it('resolves a claim racing the lead creator as a conflict, never a deadlock', async () => {
+    // The winner's second write re-checks every foreign key on its own fresh
+    // row version, including created_by → the creator's member row, which the
+    // creator's request locks first. Member locks must not block those checks.
+    await configure();
+    for (let round = 0; round < 6; round += 1) {
+      const row = await pool();
+      const attempts = await Promise.all([
+        ownership(row, 'CLAIM', {}, f.employee),
+        ownership(row, 'CLAIM', {}, f.admin),
+      ]);
+      for (const attempt of attempts)
+        expect([201, 404, 409]).toContain(attempt.status);
+      expect(attempts.filter((r) => r.status === 201)).toHaveLength(1);
+    }
   });
   it('claims once under contention, confirms contact, renews only by activity and releases with quality', async () => {
     await configure();

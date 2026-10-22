@@ -545,7 +545,7 @@ class PrismaRecordsStore implements RecordsStore {
     ].sort()) {
       const rows = await this.transaction.$queryRaw<
         Array<{ id: string; role: string }>
-      >`SELECT m.id,m.role FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id = ${this.context.tenantId}::uuid AND m.id = ${id}::uuid AND m.status = 'ACTIVE' AND u.status='ACTIVE' FOR UPDATE OF m`;
+      >`SELECT m.id,m.role FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id = ${this.context.tenantId}::uuid AND m.id = ${id}::uuid AND m.status = 'ACTIVE' AND u.status='ACTIVE' FOR NO KEY UPDATE OF m`;
       if (!rows.length) throw new ApiException('OWNER_INVALID', 400);
       if (id === this.context.memberId && rows[0].role !== this.context.role)
         throw new ApiException('WORKSPACE_FORBIDDEN', 403);

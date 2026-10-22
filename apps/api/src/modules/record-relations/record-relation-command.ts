@@ -98,7 +98,7 @@ export async function lockRelationActor(
 ): Promise<void> {
   const actors = await tx.$queryRaw<
     Array<{ role: string }>
-  >`SELECT m.role FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=${context.tenantId}::uuid AND m.id=${context.memberId}::uuid AND m.user_id=${context.userId}::uuid AND m.status='ACTIVE' AND u.status='ACTIVE' FOR UPDATE OF m`;
+  >`SELECT m.role FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=${context.tenantId}::uuid AND m.id=${context.memberId}::uuid AND m.user_id=${context.userId}::uuid AND m.status='ACTIVE' AND u.status='ACTIVE' FOR NO KEY UPDATE OF m`;
   if (actors.length !== 1 || actors[0].role !== context.role)
     throw new ApiException('WORKSPACE_FORBIDDEN', 403);
 }

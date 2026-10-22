@@ -118,7 +118,7 @@ function recordRow(overrides: Partial<RecordRow> = {}): RecordRow {
 /**
  * The real `PrismaRecordsStore` over a fake transaction client. The member
  * lookup mirrors the ACTIVE-member rule of `lockActiveOwners`' SQL
- * (`m.status = 'ACTIVE' AND u.status = 'ACTIVE' FOR UPDATE OF m`), so a skipped
+ * (`m.status = 'ACTIVE' AND u.status = 'ACTIVE' FOR NO KEY UPDATE OF m`), so a skipped
  * lock is observable as a write that should not have happened.
  */
 function createRepository(members: MemberRow[], record: RecordRow) {
@@ -128,7 +128,7 @@ function createRepository(members: MemberRow[], record: RecordRow) {
 
   const $queryRaw = (strings: TemplateStringsArray, ...values: unknown[]) => {
     const sql = strings.join('?');
-    if (!sql.includes('FOR UPDATE OF m')) {
+    if (!sql.includes('FOR NO KEY UPDATE OF m')) {
       throw new Error(
         `Unexpected raw query in records.repository.spec: ${sql}`,
       );

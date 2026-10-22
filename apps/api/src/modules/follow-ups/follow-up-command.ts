@@ -180,7 +180,7 @@ export async function lockFollowUpAssignee(
   if (assigneeMemberId === context.memberId) return;
   const rows = await tx.$queryRaw<
     Array<{ id: string }>
-  >`SELECT m.id FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=${context.tenantId}::uuid AND m.id=${assigneeMemberId}::uuid AND m.status='ACTIVE' AND u.status='ACTIVE' FOR UPDATE OF m`;
+  >`SELECT m.id FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=${context.tenantId}::uuid AND m.id=${assigneeMemberId}::uuid AND m.status='ACTIVE' AND u.status='ACTIVE' FOR NO KEY UPDATE OF m`;
   if (!rows.length) {
     throw new ApiException('VALIDATION_FAILED', 400, {
       message: '请选择在职成员。',
