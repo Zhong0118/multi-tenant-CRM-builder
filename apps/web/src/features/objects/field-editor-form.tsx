@@ -1,6 +1,15 @@
 "use client";
 
-import { Alert, Button, Form, Input, Radio, Select, Switch, Typography } from "antd";
+import {
+  Alert,
+  Button,
+  Form,
+  Input,
+  Radio,
+  Select,
+  Switch,
+  Typography,
+} from "antd";
 
 import { OptionBadge } from "./option-badge";
 import {
@@ -40,7 +49,9 @@ const SELECT_TYPES: PublishedFieldType[] = ["SINGLE_SELECT", "MULTI_SELECT"];
 const TEXT_TYPES: PublishedFieldType[] = ["TEXT", "TEXTAREA", "PHONE"];
 const NUMERIC_TYPES: PublishedFieldType[] = ["NUMBER", "MONEY"];
 
-const VALIDATION_KEYS_BY_TYPE: Partial<Record<PublishedFieldType, readonly string[]>> = {
+const VALIDATION_KEYS_BY_TYPE: Partial<
+  Record<PublishedFieldType, readonly string[]>
+> = {
   TEXT: ["minLength", "maxLength"],
   TEXTAREA: ["minLength", "maxLength"],
   PHONE: ["minLength", "maxLength", "country"],
@@ -63,15 +74,23 @@ export function fieldSavePayload(
   values: FieldDraftValues,
   current: { validation: unknown; config: unknown },
 ): { validation: Record<string, unknown>; config: Record<string, unknown> } {
-  const currentValidation = (current.validation ?? {}) as Record<string, unknown>;
+  const currentValidation = (current.validation ?? {}) as Record<
+    string,
+    unknown
+  >;
   const validation: Record<string, unknown> = {};
   for (const key of VALIDATION_KEYS_BY_TYPE[values.type] ?? []) {
     const managed =
-      key === "minLength" ? values.minLength
-        : key === "maxLength" ? values.maxLength
-          : key === "min" ? values.min
-            : key === "max" ? values.max
-              : key === "scale" ? values.scale
+      key === "minLength"
+        ? values.minLength
+        : key === "maxLength"
+          ? values.maxLength
+          : key === "min"
+            ? values.min
+            : key === "max"
+              ? values.max
+              : key === "scale"
+                ? values.scale
                 : undefined;
     if (managed !== undefined) validation[key] = managed;
     else if (key === "country" && currentValidation[key] !== undefined) {
@@ -87,16 +106,26 @@ export function fieldSavePayload(
 }
 
 /** Why a select field cannot be saved as it is, or undefined when it can. */
-export function selectOptionsProblem(values: FieldDraftValues): string | undefined {
+export function selectOptionsProblem(
+  values: FieldDraftValues,
+): string | undefined {
   if (!isSelectType(values.type)) return undefined;
-  if (values.options.length === 0) return "请至少添加一个选项，否则这个字段无法填写。";
+  if (values.options.length === 0)
+    return "请至少添加一个选项，否则这个字段无法填写。";
   if (!values.options.some((option) => option.status === "ACTIVE")) {
     return "所有选项都已停用，这个字段将无法填写。请至少启用一个选项。";
   }
-  if (values.options.some((option) => option.label.trim() === "" || option.key.trim() === "")) {
+  if (
+    values.options.some(
+      (option) => option.label.trim() === "" || option.key.trim() === "",
+    )
+  ) {
     return "选项名称和选项键不能为空。";
   }
-  if (new Set(values.options.map((option) => option.key)).size !== values.options.length) {
+  if (
+    new Set(values.options.map((option) => option.key)).size !==
+    values.options.length
+  ) {
     return "选项键不能重复。";
   }
   return undefined;
@@ -261,6 +290,7 @@ export function FieldEditorSections({
           <>
             <OptionEditor
               disabled={readOnly}
+              lockedKeys={typeLocked ? savedOptionKeys(field) : undefined}
               options={values.options}
               onChange={(options) => patch({ options })}
             />
@@ -393,10 +423,13 @@ function NumberField({
  */
 function OptionEditor({
   disabled = false,
+  lockedKeys,
   options,
   onChange,
 }: {
   disabled?: boolean;
+  /** Keys a published field already offered: records may hold them. */
+  lockedKeys?: ReadonlySet<string>;
   options: SelectOptionView[];
   onChange: (options: SelectOptionView[]) => void;
 }) {
@@ -423,6 +456,12 @@ function OptionEditor({
             aria-label={`选项键 ${option.key}`}
             className={styles.optionKeyInput}
             value={option.key}
+            readOnly={lockedKeys?.has(option.key)}
+            title={
+              lockedKeys?.has(option.key)
+                ? "已发布字段的选项键不能修改；不再使用时请停用。"
+                : undefined
+            }
             onChange={(event) => {
               const next = [...options];
               next[index] = {
@@ -464,7 +503,10 @@ function OptionEditor({
             aria-label={`${option.status === "ACTIVE" ? "停用" : "恢复"}选项 ${option.key}`}
             onChange={(active) => {
               const next = [...options];
-              next[index] = { ...option, status: active ? "ACTIVE" : "INACTIVE" };
+              next[index] = {
+                ...option,
+                status: active ? "ACTIVE" : "INACTIVE",
+              };
               onChange(next);
             }}
           />
@@ -483,10 +525,22 @@ function OptionEditor({
   );
 }
 
+function savedOptionKeys(field: ConfigurableFieldView): ReadonlySet<string> {
+  return new Set(
+    selectOptions({ config: field.config as never }).map(
+      (option) => option.key,
+    ),
+  );
+}
+
 /** A new active option whose key does not collide with the existing ones. */
-function newOption(index: number, existing: SelectOptionView[] = []): SelectOptionView {
+function newOption(
+  index: number,
+  existing: SelectOptionView[] = [],
+): SelectOptionView {
   let number = index + 1;
-  while (existing.some((option) => option.key === `option_${number}`)) number += 1;
+  while (existing.some((option) => option.key === `option_${number}`))
+    number += 1;
   return {
     key: `option_${number}`,
     label: `选项 ${number}`,

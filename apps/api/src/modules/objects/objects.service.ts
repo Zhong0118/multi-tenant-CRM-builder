@@ -8,7 +8,10 @@ import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { collectActionTargetObjectCodes } from '../actions/action-publication.policy';
 import type { AuditEvent } from '../audit/audit-event';
-import { analyzeObjectConfiguration } from './object-configuration.policy';
+import {
+  analyzeObjectConfiguration,
+  dropIncompatibleSettings,
+} from './object-configuration.policy';
 import {
   analyzePublication,
   compilePublication,
@@ -913,6 +916,7 @@ function assignFieldMutation(
   field: PublicationDraftField,
   input: FieldMutationInput,
 ): void {
+  const previousType = field.type;
   if (input.label !== undefined) field.label = input.label.trim();
   if (input.type !== undefined) field.type = input.type;
   if (input.required !== undefined) field.required = input.required;
@@ -921,6 +925,7 @@ function assignFieldMutation(
     field.validation = { ...input.validation };
   if (input.config !== undefined) field.config = { ...input.config };
   if (input.status !== undefined) field.status = input.status;
+  if (field.type !== previousType) dropIncompatibleSettings(field);
 }
 
 function auditEvent(
