@@ -499,6 +499,19 @@ export class TemplateApplicationResponseDto {
   @ApiProperty({ type: String, format: 'date-time' }) appliedAt!: Date;
 }
 
+export class TenantObjectSummaryResponseDto {
+  @ApiProperty() code!: string;
+  @ApiProperty() name!: string;
+  @ApiProperty({ enum: ['DRAFT', 'ACTIVE', 'ARCHIVED'] })
+  status!: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  @ApiProperty() published!: boolean;
+  @ApiProperty({ minimum: 0 }) fieldCount!: number;
+  @ApiProperty({ minimum: 0 }) recordCount!: number;
+  @ApiProperty() fromTemplate!: boolean;
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  archivedAt!: string | null;
+}
+
 export class TenantBusinessConfigurationSummaryResponseDto {
   @ApiProperty({ type: Number, minimum: 0 }) objectCount!: number;
   @ApiProperty({ type: Boolean }) canApplyTemplate!: boolean;
@@ -510,4 +523,6 @@ export class TenantBusinessConfigurationSummaryResponseDto {
   blockingReason!: 'TENANT_NOT_DRAFT' | 'TARGET_NOT_EMPTY' | null;
   @ApiProperty({ type: TemplateApplicationResponseDto, nullable: true })
   application!: TemplateApplicationResponseDto | null;
+  @ApiProperty({ type: TenantObjectSummaryResponseDto, isArray: true })
+  objects!: TenantObjectSummaryResponseDto[];
 }

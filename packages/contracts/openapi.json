@@ -6417,13 +6417,20 @@
           "objectCount": {
             "minimum": 0,
             "type": "number"
+          },
+          "objects": {
+            "items": {
+              "$ref": "#/components/schemas/TenantObjectSummaryResponseDto"
+            },
+            "type": "array"
           }
         },
         "required": [
           "objectCount",
           "canApplyTemplate",
           "blockingReason",
-          "application"
+          "application",
+          "objects"
         ],
         "type": "object"
       },
@@ -6545,6 +6552,50 @@
           }
         },
         "required": ["name", "count"],
+        "type": "object"
+      },
+      "TenantObjectSummaryResponseDto": {
+        "properties": {
+          "archivedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "fieldCount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "fromTemplate": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "recordCount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "status": {
+            "enum": ["DRAFT", "ACTIVE", "ARCHIVED"],
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "status",
+          "published",
+          "fieldCount",
+          "recordCount",
+          "fromTemplate",
+          "archivedAt"
+        ],
         "type": "object"
       },
       "UpdateDashboardDto": {

@@ -14,6 +14,7 @@ import type {
   TemplateApplicationInput,
   TemplateApplicationRepository,
   TemplateApplicationResult,
+  TenantObjectSummary,
 } from './template-application.repository';
 import type { RequestMeta } from './business-templates.service';
 
@@ -32,6 +33,8 @@ export interface TenantBusinessConfigurationSummary {
   canApplyTemplate: boolean;
   blockingReason: TemplateApplicationBlockingReason | null;
   application: TemplateApplicationResult | null;
+  /** The company's tables, so the platform sees what exists without entering the workspace. */
+  objects: TenantObjectSummary[];
 }
 
 type IdGenerator = () => string;
@@ -55,6 +58,7 @@ export class TemplateApplicationService {
       const application = await store.findLatestApplication(tenantId);
       await store.enterTenant(tenantId);
       const objectCount = await store.countTenantObjects(tenantId);
+      const objects = (await store.listTenantObjects?.(tenantId)) ?? [];
       const blockingReason =
         target.status !== 'DRAFT' && target.status !== 'ACTIVE'
           ? 'TENANT_NOT_DRAFT'
@@ -66,6 +70,7 @@ export class TemplateApplicationService {
         canApplyTemplate: blockingReason === null,
         blockingReason,
         application,
+        objects,
       };
     });
   }

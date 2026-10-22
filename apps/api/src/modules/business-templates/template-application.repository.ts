@@ -182,6 +182,8 @@ export interface TemplateApplicationStore {
   ): Promise<TemplateApplicationEligibility>;
   enterTenant(tenantId: string): Promise<void>;
   countTenantObjects(tenantId: string): Promise<number>;
+  /** The company's business tables, read-only, for the platform overview. */
+  listTenantObjects?(tenantId: string): Promise<TenantObjectSummary[]>;
   assertTenantEmpty(tenantId: string): Promise<boolean>;
   insertTenantConfiguration(
     hydrated: HydratedTenantConfiguration,
@@ -190,6 +192,17 @@ export interface TemplateApplicationStore {
     application: CreateTemplateApplication,
   ): Promise<TemplateApplicationResult>;
   appendAudit(event: AuditEvent): Promise<void>;
+}
+
+export interface TenantObjectSummary {
+  code: string;
+  name: string;
+  status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  published: boolean;
+  fieldCount: number;
+  recordCount: number;
+  fromTemplate: boolean;
+  archivedAt: string | null;
 }
 
 export interface TemplateApplicationRepository {
@@ -334,6 +347,37 @@ class PrismaTemplateApplicationStore implements TemplateApplicationStore {
 
   countTenantObjects(tenantId: string): Promise<number> {
     return this.transaction.objectDefinition.count({ where: { tenantId } });
+  }
+
+  async listTenantObjects(tenantId: string): Promise<TenantObjectSummary[]> {
+    const objects = await this.transaction.objectDefinition.findMany({
+      where: { tenantId, deletedAt: null },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+      select: {
+        code: true,
+        name: true,
+        status: true,
+        activePublicationId: true,
+        sourceTemplateVersionId: true,
+        archivedAt: true,
+        _count: {
+          select: {
+            fields: { where: { status: 'ACTIVE' } },
+            records: { where: { deletedAt: null } },
+          },
+        },
+      },
+    });
+    return objects.map((object) => ({
+      code: object.code,
+      name: object.name,
+      status: object.status,
+      published: object.activePublicationId !== null,
+      fieldCount: object._count.fields,
+      recordCount: object._count.records,
+      fromTemplate: object.sourceTemplateVersionId !== null,
+      archivedAt: object.archivedAt?.toISOString() ?? null,
+    }));
   }
 
   async assertTenantEmpty(tenantId: string): Promise<boolean> {

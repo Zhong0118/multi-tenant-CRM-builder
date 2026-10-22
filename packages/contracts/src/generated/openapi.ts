@@ -3917,6 +3917,7 @@ export interface components {
       blockingReason: "TENANT_NOT_DRAFT" | "TARGET_NOT_EMPTY" | null;
       canApplyTemplate: boolean;
       objectCount: number;
+      objects: components["schemas"]["TenantObjectSummaryResponseDto"][];
     };
     TenantInvitationResponseDto: {
       /** Format: date-time */
@@ -3960,6 +3961,18 @@ export interface components {
     TenantNameConflictResponseDto: {
       count: number;
       name: string;
+    };
+    TenantObjectSummaryResponseDto: {
+      /** Format: date-time */
+      archivedAt: string | null;
+      code: string;
+      fieldCount: number;
+      fromTemplate: boolean;
+      name: string;
+      published: boolean;
+      recordCount: number;
+      /** @enum {string} */
+      status: "DRAFT" | "ACTIVE" | "ARCHIVED";
     };
     UpdateDashboardDto: {
       /** @enum {string} */

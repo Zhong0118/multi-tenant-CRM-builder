@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { templateApi } from "./template-api";
@@ -191,6 +191,7 @@ describe("TenantBusinessConfiguration", () => {
           canApplyTemplate: true,
           blockingReason: null,
           application: null,
+          objects: [],
         }}
         api={api}
       />,
@@ -243,6 +244,7 @@ describe("TenantBusinessConfiguration", () => {
           canApplyTemplate: true,
           blockingReason: null,
           application: null,
+          objects: [],
         }}
         api={api}
       />,
@@ -310,6 +312,7 @@ describe("TenantBusinessConfiguration", () => {
           canApplyTemplate: true,
           blockingReason: null,
           application: null,
+          objects: [],
         }}
         api={api}
       />,
@@ -346,6 +349,7 @@ describe("TenantBusinessConfiguration", () => {
           canApplyTemplate: true,
           blockingReason: null,
           application: null,
+          objects: [],
         }}
         api={api}
       />,
@@ -410,6 +414,7 @@ describe("TenantBusinessConfiguration", () => {
           canApplyTemplate: true,
           blockingReason: null,
           application: null,
+          objects: [],
         }}
         api={api}
       />,
@@ -445,6 +450,7 @@ describe("TenantBusinessConfiguration", () => {
           canApplyTemplate: false,
           blockingReason: "TARGET_NOT_EMPTY",
           application: null,
+          objects: [],
         }}
         api={templateApi()}
       />,
@@ -458,6 +464,29 @@ describe("TenantBusinessConfiguration", () => {
     ).toBeInTheDocument();
   });
 
+  it("lists the company's tables read-only, with deactivated ones marked", () => {
+    renderWithQuery(
+      <TenantBusinessConfiguration
+        tenant={{ ...tenant, status: "ACTIVE" }}
+        initialSummary={{
+          objectCount: 2,
+          canApplyTemplate: false,
+          blockingReason: "TARGET_NOT_EMPTY",
+          application: null,
+          objects: [
+            { code: "customers", name: "客户", status: "ACTIVE", published: true, fieldCount: 14, recordCount: 21, fromTemplate: true, archivedAt: null },
+            { code: "orders", name: "开单表", status: "ARCHIVED", published: true, fieldCount: 13, recordCount: 0, fromTemplate: false, archivedAt: "2026-10-20T00:00:00.000Z" },
+          ],
+        }}
+        api={templateApi()}
+      />,
+    );
+    const table = screen.getByRole("table", { name: "公司业务表" });
+    expect(within(table).getByText("customers · 来自模板")).toBeInTheDocument();
+    expect(within(table.querySelector('tr[data-archived="true"]') as HTMLElement).getByText("已停用")).toBeInTheDocument();
+    expect(screen.getByText(/由公司管理员在工作空间/)).toBeInTheDocument();
+  });
+
   it("explains that a suspended company cannot apply a template", () => {
     renderWithQuery(
       <TenantBusinessConfiguration
@@ -467,6 +496,7 @@ describe("TenantBusinessConfiguration", () => {
           canApplyTemplate: false,
           blockingReason: "TENANT_NOT_DRAFT",
           application: null,
+          objects: [],
         }}
         api={templateApi()}
       />,

@@ -344,6 +344,7 @@ describe('TemplateApplicationService', () => {
       canApplyTemplate: true,
       blockingReason: null,
       application: null,
+      objects: [],
     });
 
     // An active company with no business table yet may still start from a template.
