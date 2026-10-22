@@ -39,8 +39,8 @@ function meta(request: RequestWithId) {
 @Controller('workspaces/:tenantCode/object-definitions/:objectId/automations')
 @ApiTags('automations')
 @ApiCookieAuth('crm_session')
-@ApiParam({ name: 'tenantCode' })
-@ApiParam({ name: 'objectId', format: 'uuid' })
+@ApiParam({ name: 'tenantCode', type: String })
+@ApiParam({ name: 'objectId', type: String, format: 'uuid' })
 @UseGuards(SessionAuthGuard, WorkspaceGuard)
 export class AutomationAdminController {
   constructor(private readonly service: AutomationsService) {}
@@ -74,9 +74,9 @@ export class AutomationAdminController {
 )
 @ApiTags('automations')
 @ApiCookieAuth('crm_session')
-@ApiParam({ name: 'tenantCode' })
-@ApiParam({ name: 'objectCode' })
-@ApiParam({ name: 'recordId', format: 'uuid' })
+@ApiParam({ name: 'tenantCode', type: String })
+@ApiParam({ name: 'objectCode', type: String })
+@ApiParam({ name: 'recordId', type: String, format: 'uuid' })
 @UseGuards(SessionAuthGuard, WorkspaceGuard)
 export class AutomationRuntimeController {
   constructor(private readonly service: AutomationsService) {}
@@ -99,7 +99,7 @@ export class AutomationRuntimeController {
     return this.service.history(context, code, id);
   }
   @Post(':ruleKey/preview')
-  @ApiParam({ name: 'ruleKey' })
+  @ApiParam({ name: 'ruleKey', type: String })
   @ApiOkResponse({ type: AutomationPreviewDto })
   preview(
     @CurrentTenant() context: TenantContext,
@@ -111,7 +111,7 @@ export class AutomationRuntimeController {
     return this.service.preview(context, code, id, key, body.inputs);
   }
   @Post(':ruleKey/execute')
-  @ApiParam({ name: 'ruleKey' })
+  @ApiParam({ name: 'ruleKey', type: String })
   @ApiOkResponse({ type: AutomationExecutionDto })
   execute(
     @CurrentTenant() context: TenantContext,

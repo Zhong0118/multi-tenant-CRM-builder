@@ -6123,7 +6123,7 @@ export interface operations {
       header?: never;
       path: {
         objectId: string;
-        tenantCode: unknown;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -6145,7 +6145,7 @@ export interface operations {
       header?: never;
       path: {
         objectId: string;
-        tenantCode: unknown;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -6171,7 +6171,7 @@ export interface operations {
       header?: never;
       path: {
         objectId: string;
-        tenantCode: unknown;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -6892,7 +6892,7 @@ export interface operations {
       path: {
         objectCode: string;
         recordId: string;
-        tenantCode: unknown;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -6916,7 +6916,7 @@ export interface operations {
         objectCode: string;
         recordId: string;
         ruleKey: string;
-        tenantCode: unknown;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -6944,7 +6944,7 @@ export interface operations {
         objectCode: string;
         recordId: string;
         ruleKey: string;
-        tenantCode: unknown;
+        tenantCode: string;
       };
       cookie?: never;
     };
@@ -6971,7 +6971,7 @@ export interface operations {
       path: {
         objectCode: string;
         recordId: string;
-        tenantCode: unknown;
+        tenantCode: string;
       };
       cookie?: never;
     };
