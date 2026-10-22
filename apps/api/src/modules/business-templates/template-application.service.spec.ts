@@ -448,6 +448,18 @@ class MemoryApplicationRepository implements TemplateApplicationRepository {
     private readonly winnerOnCreateConflict?: TemplateApplicationResult,
   ) {}
 
+  /** The caller's transaction: writes land directly, rollback is the caller's. */
+  storeFor(): TemplateApplicationStore {
+    return new MemoryApplicationStore(
+      this.state,
+      'outer-transaction',
+      this.transactionEvents,
+      this.failAfterObject,
+      this.applicationAfterLocks,
+      Boolean(this.winnerOnCreateConflict),
+    );
+  }
+
   async transaction<T>(
     actorId: string,
     work: (store: TemplateApplicationStore) => Promise<T>,

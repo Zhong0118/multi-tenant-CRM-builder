@@ -210,6 +210,8 @@ export interface TemplateApplicationRepository {
     actorId: string,
     work: (store: TemplateApplicationStore) => Promise<T>,
   ): Promise<T>;
+  /** A store over a transaction the caller already opened (actor already set). */
+  storeFor(tx: Prisma.TransactionClient): TemplateApplicationStore;
 }
 
 @Injectable()
@@ -227,6 +229,10 @@ export class PrismaTemplateApplicationRepository implements TemplateApplicationR
       await transaction.$queryRawUnsafe(SET_USER, actorId);
       return work(new PrismaTemplateApplicationStore(transaction, this.audit));
     });
+  }
+
+  storeFor(tx: Prisma.TransactionClient): TemplateApplicationStore {
+    return new PrismaTemplateApplicationStore(tx, this.audit);
   }
 }
 

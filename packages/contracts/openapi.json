@@ -1471,9 +1471,24 @@
             "example": "13800138000",
             "type": "string"
           },
+          "initialization": {
+            "default": "BLANK",
+            "description": "BLANK: the company admin builds tables from scratch. TEMPLATE: the chosen published template is copied in the same transaction as unpublished drafts.",
+            "enum": ["BLANK", "TEMPLATE"],
+            "type": "string"
+          },
           "name": {
             "maxLength": 200,
             "minLength": 1,
+            "type": "string"
+          },
+          "templateId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "templateVersionId": {
+            "description": "The template version shown when choosing; must still be current.",
+            "format": "uuid",
             "type": "string"
           }
         },
@@ -4360,6 +4375,9 @@
             "format": "uuid",
             "type": "string"
           },
+          "initialization": {
+            "$ref": "#/components/schemas/TenantInitializationResponseDto"
+          },
           "locale": {
             "type": "string"
           },
@@ -6741,6 +6759,22 @@
           "application",
           "objects"
         ],
+        "type": "object"
+      },
+      "TenantInitializationResponseDto": {
+        "properties": {
+          "objectCount": {
+            "description": "Business tables copied as unpublished drafts.",
+            "type": "number"
+          },
+          "templateName": {
+            "type": "string"
+          },
+          "templateVersionNo": {
+            "type": "number"
+          }
+        },
+        "required": ["templateName", "templateVersionNo", "objectCount"],
         "type": "object"
       },
       "TenantInvitationResponseDto": {
@@ -9446,6 +9480,7 @@
         "operationId": "DailyReportsController_list",
         "parameters": [
           {
+            "description": "A company calendar day, or `today` in the company timezone.",
             "in": "path",
             "name": "workDate",
             "required": true,
@@ -9488,6 +9523,7 @@
         "operationId": "DailyReportsController_member",
         "parameters": [
           {
+            "description": "A company calendar day, or `today` in the company timezone.",
             "in": "path",
             "name": "workDate",
             "required": true,
@@ -9539,6 +9575,7 @@
         "operationId": "DailyReportsController_mine",
         "parameters": [
           {
+            "description": "A company calendar day, or `today` in the company timezone.",
             "in": "path",
             "name": "workDate",
             "required": true,
@@ -9579,6 +9616,7 @@
         "operationId": "DailyReportsController_save",
         "parameters": [
           {
+            "description": "A company calendar day, or `today` in the company timezone.",
             "in": "path",
             "name": "workDate",
             "required": true,

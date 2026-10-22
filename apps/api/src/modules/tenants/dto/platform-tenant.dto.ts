@@ -1,14 +1,16 @@
 import {
   IsIn,
+  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
   Length,
   Matches,
-  MaxLength,
-  IsInt,
   Max,
+  MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -26,6 +28,41 @@ export class CreatePlatformTenantDto {
   @IsString()
   @IsNotEmpty()
   firstAdminPhone!: string;
+
+  @ApiPropertyOptional({
+    enum: ['BLANK', 'TEMPLATE'],
+    default: 'BLANK',
+    description:
+      'BLANK: the company admin builds tables from scratch. TEMPLATE: the chosen published template is copied in the same transaction as unpublished drafts.',
+  })
+  @IsOptional()
+  @IsIn(['BLANK', 'TEMPLATE'])
+  initialization?: 'BLANK' | 'TEMPLATE';
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @ValidateIf(
+    (dto: CreatePlatformTenantDto) => dto.initialization === 'TEMPLATE',
+  )
+  @IsUUID()
+  templateId?: string;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'The template version shown when choosing; must still be current.',
+  })
+  @ValidateIf(
+    (dto: CreatePlatformTenantDto) => dto.initialization === 'TEMPLATE',
+  )
+  @IsUUID()
+  templateVersionId?: string;
+}
+
+export class TenantInitializationResponseDto {
+  @ApiProperty() templateName!: string;
+  @ApiProperty() templateVersionNo!: number;
+  @ApiProperty({ description: 'Business tables copied as unpublished drafts.' })
+  objectCount!: number;
 }
 
 export class ChangeTenantStatusDto {
@@ -108,6 +145,8 @@ export class PlatformTenantResponseDto {
   activeAdminCount!: number;
   @ApiPropertyOptional({ type: FirstAdminInvitationResponseDto })
   firstAdminInvitation?: FirstAdminInvitationResponseDto;
+  @ApiPropertyOptional({ type: TenantInitializationResponseDto })
+  initialization?: TenantInitializationResponseDto;
 }
 
 export class PlatformTenantPageResponseDto {

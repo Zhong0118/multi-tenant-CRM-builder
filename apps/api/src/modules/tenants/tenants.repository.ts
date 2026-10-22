@@ -26,11 +26,17 @@ export class PrismaPlatformTenantRepository implements PlatformTenantRepository 
 
   transaction<T>(
     actorId: string,
-    work: (store: PlatformTenantStore) => Promise<T>,
+    work: (
+      store: PlatformTenantStore,
+      tx: Prisma.TransactionClient,
+    ) => Promise<T>,
   ): Promise<T> {
     return this.database.transaction(async (transaction) => {
       await transaction.$queryRawUnsafe(SET_USER, actorId);
-      return work(new PrismaPlatformTenantStore(transaction, this.audit));
+      return work(
+        new PrismaPlatformTenantStore(transaction, this.audit),
+        transaction,
+      );
     });
   }
 

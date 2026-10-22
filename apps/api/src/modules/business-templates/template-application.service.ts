@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type { Prisma } from '@crm/database';
 
 import { ApiException } from '../../common/errors/api.exception';
 import type { AuthenticatedUser } from '../../common/tenancy/tenant-context';
@@ -14,6 +15,7 @@ import type {
   TemplateApplicationInput,
   TemplateApplicationRepository,
   TemplateApplicationResult,
+  TemplateApplicationStore,
   TenantObjectSummary,
 } from './template-application.repository';
 import type { RequestMeta } from './business-templates.service';
@@ -81,69 +83,9 @@ export class TemplateApplicationService {
     meta: RequestMeta,
   ): Promise<TemplateApplicationResult> {
     try {
-      return await this.repository.transaction(actor.id, async (store) => {
-        const repeated = await store.findApplication(
-          input.tenantId,
-          input.templateVersionId,
-          input.templateId,
-        );
-        if (repeated) return repeated;
-
-        await store.lockTemplate(input.templateId);
-        await store.lockTenant(input.tenantId);
-        const concurrent = await store.findApplication(
-          input.tenantId,
-          input.templateVersionId,
-          input.templateId,
-        );
-        if (concurrent) return concurrent;
-
-        const eligibility = await store.requireApplicableVersion(input);
-        const { source, target } = requireApplicable(eligibility);
-
-        if (
-          checksumTemplateConfiguration(source.configuration) !==
-          source.configurationChecksum
-        ) {
-          throw applicationNotAllowed('模板发布版本校验失败，不能应用。');
-        }
-        if (findTemplateIdentityBlockers(source.configuration).length > 0) {
-          throw applicationNotAllowed(
-            '模板发布版本包含重复的对象或字段身份，不能应用。',
-          );
-        }
-
-        await store.enterTenant(input.tenantId);
-        if (!(await store.assertTenantEmpty(input.tenantId))) {
-          throw applicationNotAllowed(
-            '目标公司已经存在业务对象，不能使用初始化模板覆盖。',
-          );
-        }
-
-        const hydrated = hydrateTenantConfiguration(
-          source.configuration,
-          target.id,
-          source.id,
-          this.idGenerator,
-        );
-        await store.insertTenantConfiguration(hydrated);
-        const application = await store.createApplication({
-          id: this.idGenerator(),
-          templateId: source.templateId,
-          templateCode: source.templateCode,
-          templateName: source.templateName,
-          templateVersionId: source.id,
-          templateVersionNo: source.versionNo,
-          tenantId: target.id,
-          tenantCode: target.code,
-          tenantName: target.name,
-          appliedByUserId: actor.id,
-          configurationChecksum: source.configurationChecksum,
-          objects: hydrated.objectsResult,
-        });
-        await store.appendAudit(applicationAudit(application, actor.id, meta));
-        return application;
-      });
+      return await this.repository.transaction(actor.id, (store) =>
+        this.applyIn(store, actor, input, meta),
+      );
     } catch (error) {
       if (!hasErrorCode(error, 'P2002')) throw error;
       return this.repository.transaction(actor.id, async (store) => {
@@ -156,6 +98,93 @@ export class TemplateApplicationService {
         throw error;
       });
     }
+  }
+
+  /**
+   * Applies inside a transaction the caller already holds, so creating a
+   * company and initializing it from a template commit or roll back together.
+   */
+  applyWithin(
+    tx: Prisma.TransactionClient,
+    actor: AuthenticatedUser,
+    input: TemplateApplicationInput,
+    meta: RequestMeta,
+  ): Promise<TemplateApplicationResult> {
+    return this.applyIn(this.repository.storeFor(tx), actor, input, meta);
+  }
+
+  /**
+   * One template application: locks the template and the company, returns an
+   * existing application of the same version instead of copying twice, and
+   * copies only into an eligible, empty company — as unpublished drafts.
+   */
+  private async applyIn(
+    store: TemplateApplicationStore,
+    actor: AuthenticatedUser,
+    input: TemplateApplicationInput,
+    meta: RequestMeta,
+  ): Promise<TemplateApplicationResult> {
+    const repeated = await store.findApplication(
+      input.tenantId,
+      input.templateVersionId,
+      input.templateId,
+    );
+    if (repeated) return repeated;
+
+    await store.lockTemplate(input.templateId);
+    await store.lockTenant(input.tenantId);
+    const concurrent = await store.findApplication(
+      input.tenantId,
+      input.templateVersionId,
+      input.templateId,
+    );
+    if (concurrent) return concurrent;
+
+    const eligibility = await store.requireApplicableVersion(input);
+    const { source, target } = requireApplicable(eligibility);
+
+    if (
+      checksumTemplateConfiguration(source.configuration) !==
+      source.configurationChecksum
+    ) {
+      throw applicationNotAllowed('模板发布版本校验失败，不能应用。');
+    }
+    if (findTemplateIdentityBlockers(source.configuration).length > 0) {
+      throw applicationNotAllowed(
+        '模板发布版本包含重复的对象或字段身份，不能应用。',
+      );
+    }
+
+    await store.enterTenant(input.tenantId);
+    if (!(await store.assertTenantEmpty(input.tenantId))) {
+      throw applicationNotAllowed(
+        '目标公司已经存在业务对象，不能使用初始化模板覆盖。',
+      );
+    }
+
+    const hydrated = hydrateTenantConfiguration(
+      source.configuration,
+      target.id,
+      source.id,
+      this.idGenerator,
+    );
+    await store.insertTenantConfiguration(hydrated);
+    const application = await store.createApplication({
+      id: this.idGenerator(),
+      templateId: source.templateId,
+      templateCode: source.templateCode,
+      templateName: source.templateName,
+      templateVersionId: source.id,
+      templateVersionNo: source.versionNo,
+      tenantId: target.id,
+      tenantCode: target.code,
+      tenantName: target.name,
+      appliedByUserId: actor.id,
+      configurationChecksum: source.configurationChecksum,
+      objects: hydrated.objectsResult,
+    });
+    await store.appendAudit(applicationAudit(application, actor.id, meta));
+    return application;
   }
 }
 

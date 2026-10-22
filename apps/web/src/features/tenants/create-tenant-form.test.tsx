@@ -55,6 +55,13 @@ describe("CreateTenantForm", () => {
     fireEvent.change(screen.getByLabelText("首位管理员手机号"), {
       target: { value: "13800138000" },
     });
+    // The initialization is an explicit choice: nothing is submitted without it.
+    fireEvent.click(screen.getByRole("button", { name: "创建公司" }));
+    expect(
+      await screen.findByText("请选择从模板开始还是空白开始。"),
+    ).toBeInTheDocument();
+    expect(api.create).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("radio", { name: "空白开始" }));
     fireEvent.click(screen.getByRole("button", { name: "创建公司" }));
 
     await waitFor(() =>
@@ -62,8 +69,10 @@ describe("CreateTenantForm", () => {
         name: "北辰客户服务",
         code: "northwind",
         firstAdminPhone: "13800138000",
+        initialization: "BLANK",
       }),
     );
+    expect(screen.getByText(/是空白公司/)).toBeInTheDocument();
     expect(await screen.findByText("公司草稿已创建")).toBeInTheDocument();
     expect(screen.getByText("等待管理员接受邀请")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "查看开通详情" })).toHaveAttribute(
@@ -118,6 +127,7 @@ describe("CreateTenantForm", () => {
     fireEvent.change(screen.getByLabelText("首位管理员手机号"), {
       target: { value: "13800138000" },
     });
+    fireEvent.click(screen.getByRole("radio", { name: "空白开始" }));
     fireEvent.click(screen.getByRole("button", { name: "创建公司" }));
 
     await waitFor(() =>
@@ -125,8 +135,69 @@ describe("CreateTenantForm", () => {
         name: "北辰客户服务",
         code: "northwind-west",
         firstAdminPhone: "13800138000",
+        initialization: "BLANK",
       }),
     );
+  });
+
+  it("initializes from the current version of a chosen published template", async () => {
+    const api = tenantApi();
+    vi.mocked(api.create).mockResolvedValue({
+      id: "tenant-b",
+      name: "南星贸易",
+      code: "nanxing",
+      status: "DRAFT",
+      activeAdminCount: 0,
+      initialization: {
+        templateName: "标准 CRM",
+        templateVersionNo: 3,
+        objectCount: 4,
+      },
+    });
+    const templates = {
+      list: vi.fn().mockResolvedValue({
+        items: [
+          {
+            id: "template-1",
+            name: "标准 CRM",
+            activeVersion: { id: "version-3", versionNo: 3 },
+          },
+        ],
+        page: 1,
+        limit: 100,
+        total: 1,
+      }),
+    };
+    renderWithQuery(
+      <CreateTenantForm api={api} templates={templates as never} />,
+    );
+    fireEvent.change(screen.getByLabelText("公司名称"), {
+      target: { value: "南星贸易" },
+    });
+    fireEvent.change(screen.getByLabelText("工作空间代码"), {
+      target: { value: "nanxing" },
+    });
+    fireEvent.change(screen.getByLabelText("首位管理员手机号"), {
+      target: { value: "13800138001" },
+    });
+    fireEvent.click(screen.getByRole("radio", { name: "从模板开始" }));
+    fireEvent.mouseDown(await screen.findByLabelText("模板"));
+    fireEvent.click(await screen.findByTitle("标准 CRM · v3"));
+    fireEvent.click(screen.getByRole("button", { name: "创建公司" }));
+
+    await waitFor(() =>
+      expect(api.create).toHaveBeenCalledWith({
+        name: "南星贸易",
+        code: "nanxing",
+        firstAdminPhone: "13800138001",
+        initialization: "TEMPLATE",
+        templateId: "template-1",
+        templateVersionId: "version-3",
+      }),
+    );
+    expect(
+      await screen.findByText(/复制 4 张业务表，全部是未发布的草稿/),
+    ).toBeInTheDocument();
   });
 });
 

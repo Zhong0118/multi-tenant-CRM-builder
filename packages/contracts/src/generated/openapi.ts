@@ -2349,7 +2349,20 @@ export interface components {
       code: string;
       /** @example 13800138000 */
       firstAdminPhone: string;
+      /**
+       * @description BLANK: the company admin builds tables from scratch. TEMPLATE: the chosen published template is copied in the same transaction as unpublished drafts.
+       * @default BLANK
+       * @enum {string}
+       */
+      initialization: "BLANK" | "TEMPLATE";
       name: string;
+      /** Format: uuid */
+      templateId?: string;
+      /**
+       * Format: uuid
+       * @description The template version shown when choosing; must still be current.
+       */
+      templateVersionId?: string;
     };
     CreateRecordActivityDto: {
       /** @enum {string} */
@@ -3315,6 +3328,7 @@ export interface components {
       firstAdminInvitation?: components["schemas"]["FirstAdminInvitationResponseDto"];
       /** Format: uuid */
       id: string;
+      initialization?: components["schemas"]["TenantInitializationResponseDto"];
       locale?: string;
       name: string;
       /** @enum {string} */
@@ -4112,6 +4126,12 @@ export interface components {
       canApplyTemplate: boolean;
       objectCount: number;
       objects: components["schemas"]["TenantObjectSummaryResponseDto"][];
+    };
+    TenantInitializationResponseDto: {
+      /** @description Business tables copied as unpublished drafts. */
+      objectCount: number;
+      templateName: string;
+      templateVersionNo: number;
     };
     TenantInvitationResponseDto: {
       /** Format: date-time */
@@ -5497,6 +5517,7 @@ export interface operations {
       header?: never;
       path: {
         tenantCode: string;
+        /** @description A company calendar day, or `today` in the company timezone. */
         workDate: string;
       };
       cookie?: never;
@@ -5520,6 +5541,7 @@ export interface operations {
       path: {
         memberId: string;
         tenantCode: string;
+        /** @description A company calendar day, or `today` in the company timezone. */
         workDate: string;
       };
       cookie?: never;
@@ -5542,6 +5564,7 @@ export interface operations {
       header?: never;
       path: {
         tenantCode: string;
+        /** @description A company calendar day, or `today` in the company timezone. */
         workDate: string;
       };
       cookie?: never;
@@ -5564,6 +5587,7 @@ export interface operations {
       header?: never;
       path: {
         tenantCode: string;
+        /** @description A company calendar day, or `today` in the company timezone. */
         workDate: string;
       };
       cookie?: never;

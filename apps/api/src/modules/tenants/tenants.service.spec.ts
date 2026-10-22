@@ -1,3 +1,4 @@
+import type { Prisma } from '@crm/database';
 import { TenantsService, type PlatformTenantStore } from './tenants.service';
 
 const platformAdmin = {
@@ -143,8 +144,11 @@ function fixture() {
   const repository = {
     transaction: <T>(
       _actorId: string,
-      work: (tx: PlatformTenantStore) => Promise<T>,
-    ) => work(store),
+      work: (
+        tx: PlatformTenantStore,
+        prisma: Prisma.TransactionClient,
+      ) => Promise<T>,
+    ) => work(store, {} as Prisma.TransactionClient),
     list: (_actorId: string, page: { page: number; limit: number }) =>
       store.listTenants(page),
     find: (_actorId: string, id: string) => store.findTenant(id),
