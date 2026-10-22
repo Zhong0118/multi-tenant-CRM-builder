@@ -708,6 +708,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/daily-reports/{workDate}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["DailyReportsController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/daily-reports/{workDate}/members/{memberId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["DailyReportsController_member"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/daily-reports/{workDate}/mine": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["DailyReportsController_mine"];
+    put: operations["DailyReportsController_save"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/dashboards": {
     parameters: {
       query?: never;
@@ -1780,6 +1828,38 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/work-tasks": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorkTasksController_list"];
+    put?: never;
+    post: operations["WorkTasksController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/work-tasks/{taskId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["WorkTasksController_update"];
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2294,6 +2374,65 @@ export interface components {
       objectCode: string;
       /** Format: uuid */
       recordId: string;
+    };
+    CreateWorkTaskDto: {
+      /**
+       * Format: uuid
+       * @description Defaults to the acting member; others only for administrators.
+       */
+      assigneeMemberId?: string;
+      /** Format: date-time */
+      dueAt: string;
+      notes?: string;
+      title: string;
+    };
+    DailyReportDto: {
+      completed: string;
+      /** Format: uuid */
+      id: string;
+      nextSteps: string;
+      plans: string;
+      problems: string;
+      /** Format: date-time */
+      updatedAt: string;
+      version: number;
+      workDate: string;
+    };
+    DailyReportListDto: {
+      items: components["schemas"]["DailyReportListItemDto"][];
+      workDate: string;
+    };
+    DailyReportListItemDto: {
+      /** Format: uuid */
+      memberId: string;
+      memberName: string;
+      report: components["schemas"]["DailyReportDto"] | null;
+    };
+    DailyReportReferenceDto: {
+      counts: components["schemas"]["TeamActivityCountsDto"];
+      tasks: components["schemas"]["DailyReportTaskDto"][];
+    };
+    DailyReportTaskDto: {
+      /** Format: date-time */
+      completedAt: string | null;
+      /** Format: date-time */
+      dueAt: string;
+      /** Format: uuid */
+      id: string;
+      result: string;
+      /** @enum {string} */
+      status: "OPEN" | "DONE" | "CANCELLED";
+      title: string;
+    };
+    DailyReportViewDto: {
+      canEdit: boolean;
+      /** Format: uuid */
+      memberId: string;
+      memberName: string;
+      reference: components["schemas"]["DailyReportReferenceDto"];
+      report: components["schemas"]["DailyReportDto"] | null;
+      today: string;
+      workDate: string;
     };
     DashboardConfigurationEnvelopeDto: {
       activePublication?:
@@ -2912,6 +3051,7 @@ export interface components {
     NotificationTargetDto: {
       href: string | null;
     };
+    Object: Record<string, never>;
     ObjectDraftDefaultViewResponseDto: {
       columnFieldKeys: string[];
       name: string;
@@ -3615,6 +3755,14 @@ export interface components {
       expectedVersion: number;
       name: string;
     };
+    SaveDailyReportDto: {
+      completed: string;
+      nextSteps: string;
+      plans: string;
+      problems: string;
+      /** @description 0 creates the report; otherwise the version being edited. */
+      version: number;
+    };
     SaveDashboardConfigurationDto: {
       configuration: {
         [key: string]: unknown;
@@ -3677,41 +3825,81 @@ export interface components {
       conversationId?: string;
     };
     TeamActivityCountsDto: {
+      /** @description Calls logged (电话 activities). */
       calls: number;
+      /** @description Calls logged with the outcome 已接通. */
+      connectedCalls: number;
       contactsConfirmed: number;
+      /** @description Distinct records on customer-pool tables with a call, message or visit. */
       customersFollowed: number;
+      followUpsDone: number;
+      /** @description Open customer follow-ups past due right now. */
+      followUpsOverdue: number;
+      /** @description Customer follow-ups due in the period and not completed by their due time. */
+      followUpsOverdueInPeriod: number;
       leadsClaimed: number;
+      /** @description Messages logged (微信/消息 activities). */
       messages: number;
+      /** @description Notes logged (备注 activities). */
       notes: number;
       recordsCreated: number;
+      /** @description Daily reports saved for work dates in the period. */
+      reportsWritten: number;
       tasksDone: number;
+      /** @description Open work tasks past due right now. */
       tasksOverdue: number;
+      /** @description Work tasks due in the period and not completed by their due time. */
+      tasksOverdueInPeriod: number;
+      /** @description Visits logged (拜访 activities). */
       visits: number;
+      /** @description Customers explicitly logged as newly added on WeChat; each member–customer pair once, in the period of its first entry. */
+      wechatAdded: number;
     };
     TeamActivityMemberDto: {
+      /** @description Calls logged (电话 activities). */
       calls: number;
+      /** @description Calls logged with the outcome 已接通. */
+      connectedCalls: number;
       contactsConfirmed: number;
+      /** @description Distinct records on customer-pool tables with a call, message or visit. */
       customersFollowed: number;
+      followUpsDone: number;
+      /** @description Open customer follow-ups past due right now. */
+      followUpsOverdue: number;
+      /** @description Customer follow-ups due in the period and not completed by their due time. */
+      followUpsOverdueInPeriod: number;
       leadsClaimed: number;
       /** Format: uuid */
       memberId: string;
+      /** @description Messages logged (微信/消息 activities). */
       messages: number;
       name: string;
+      /** @description Notes logged (备注 activities). */
       notes: number;
       recordsCreated: number;
+      /** @description Daily reports saved for work dates in the period. */
+      reportsWritten: number;
       /** @enum {string} */
       role: "TENANT_ADMIN" | "EMPLOYEE";
       /** @enum {string} */
       status: "ACTIVE" | "DISABLED";
       tasksDone: number;
+      /** @description Open work tasks past due right now. */
       tasksOverdue: number;
+      /** @description Work tasks due in the period and not completed by their due time. */
+      tasksOverdueInPeriod: number;
+      /** @description Visits logged (拜访 activities). */
       visits: number;
+      /** @description Customers explicitly logged as newly added on WeChat; each member–customer pair once, in the period of its first entry. */
+      wechatAdded: number;
     };
     TeamActivityResponseDto: {
       from: string;
       members: components["schemas"]["TeamActivityMemberDto"][];
       timezone: string;
       to: string;
+      /** @description Today in the company calendar. */
+      today: string;
       totals: components["schemas"]["TeamActivityCountsDto"];
     };
     TemplateApplicationObjectResponseDto: {
@@ -4058,6 +4246,18 @@ export interface components {
       protectionRules?: components["schemas"]["PoolProtectionRuleDto"][];
       version: number;
     };
+    UpdateWorkTaskDto: {
+      /** Format: uuid */
+      assigneeMemberId?: string;
+      /** Format: date-time */
+      dueAt?: string;
+      notes?: string;
+      result?: string;
+      /** @enum {string} */
+      status?: "OPEN" | "DONE" | "CANCELLED";
+      title?: string;
+      version: number;
+    };
     UserResponseDto: {
       displayName: string;
       /** Format: uuid */
@@ -4170,6 +4370,43 @@ export interface components {
       tenantName: string;
       /** @enum {string} */
       tenantStatus: "DRAFT" | "ACTIVE" | "SUSPENDED" | "CLOSED";
+    };
+    WorkTaskDto: {
+      /** Format: uuid */
+      assigneeMemberId: string;
+      assigneeName: string;
+      /** @description May complete, reopen and record the result. */
+      canComplete: boolean;
+      /** @description May change the plan or cancel. */
+      canManage: boolean;
+      /** @description May hand the task to another member. */
+      canReassign: boolean;
+      /** Format: date-time */
+      completedAt: string | null;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: uuid */
+      createdByMemberId: string;
+      createdByName: string;
+      /** Format: date-time */
+      dueAt: string;
+      /** Format: uuid */
+      id: string;
+      notes: string;
+      overdue: boolean;
+      result: string;
+      /** @enum {string} */
+      status: "OPEN" | "DONE" | "CANCELLED";
+      title: string;
+      /** Format: date-time */
+      updatedAt: string;
+      version: number;
+    };
+    WorkTaskPageDto: {
+      items: components["schemas"]["WorkTaskDto"][];
+      limit: number;
+      page: number;
+      total: number;
     };
   };
   responses: never;
@@ -5251,6 +5488,99 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["CompanyAuditPageDto"];
+        };
+      };
+    };
+  };
+  DailyReportsController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+        workDate: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DailyReportListDto"];
+        };
+      };
+    };
+  };
+  DailyReportsController_member: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        memberId: string;
+        tenantCode: string;
+        workDate: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DailyReportViewDto"];
+        };
+      };
+    };
+  };
+  DailyReportsController_mine: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+        workDate: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DailyReportViewDto"];
+        };
+      };
+    };
+  };
+  DailyReportsController_save: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+        workDate: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SaveDailyReportDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DailyReportDto"];
         };
       };
     };
@@ -7403,6 +7733,8 @@ export interface operations {
       query?: {
         /** @description First day, inclusive, in the company timezone. Default: today. */
         from?: string;
+        /** @description A period resolved in the company timezone (weeks start on Monday). Wins over from/to. */
+        preset?: "today" | "yesterday" | "week" | "month";
         /** @description Last day, inclusive, in the company timezone. Default: the first day. */
         to?: string;
       };
@@ -7420,6 +7752,85 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["TeamActivityResponseDto"];
+        };
+      };
+    };
+  };
+  WorkTasksController_list: {
+    parameters: {
+      query?: {
+        assigneeMemberId?: string;
+        limit?: components["schemas"]["Object"];
+        page?: components["schemas"]["Object"];
+        /** @description team: every member’s tasks (administrators only). */
+        scope?: "mine" | "team";
+        status?: "OPEN" | "DONE" | "CANCELLED";
+      };
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkTaskPageDto"];
+        };
+      };
+    };
+  };
+  WorkTasksController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateWorkTaskDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkTaskDto"];
+        };
+      };
+    };
+  };
+  WorkTasksController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        taskId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateWorkTaskDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkTaskDto"];
         };
       };
     };

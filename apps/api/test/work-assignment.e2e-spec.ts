@@ -113,4 +113,334 @@ describe('assigning work to members (HTTP + PostgreSQL)', () => {
       f.employee.memberId,
     );
   });
+
+  const get = (path: string, actor: CriticalActor = f.admin) =>
+    request(h.app.getHttpServer())
+      .get(base() + path)
+      .set('Cookie', actor.cookie);
+  interface Task {
+    id: string;
+    version: number;
+    status: string;
+    result: string;
+    assigneeMemberId: string;
+    overdue: boolean;
+  }
+  const due = (hours: number) =>
+    new Date(Date.now() + hours * 3600_000).toISOString();
+
+  it('closes the task loop: assign, see, complete with a result, review', async () => {
+    const assigned = json<Task>(
+      await send('post', '/work-tasks', {
+        title: '整理本周报价单',
+        notes: '按客户分组',
+        dueAt: due(8),
+        assigneeMemberId: f.employee.memberId,
+      }).expect(201),
+    );
+
+    const mine = json<{ items: Task[] }>(
+      await get('/work-tasks', f.employee).expect(200),
+    );
+    expect(mine.items.map((task) => task.id)).toEqual([assigned.id]);
+    // Nobody else sees it, and the employee cannot browse the team's tasks.
+    expect(
+      json<{ items: Task[] }>(await get('/work-tasks', f.otherEmployee)).items,
+    ).toEqual([]);
+    await get('/work-tasks?scope=team', f.employee).expect(403);
+
+    // The assignee completes it; the plan stays the assigner's.
+    await send(
+      'patch',
+      `/work-tasks/${assigned.id}`,
+      { version: assigned.version, title: '改个标题' },
+      f.employee,
+    ).expect(403);
+    await send(
+      'patch',
+      `/work-tasks/${assigned.id}`,
+      { version: assigned.version, status: 'DONE', result: '已发给 3 家客户' },
+      f.otherEmployee,
+    ).expect(404);
+    const done = json<Task>(
+      await send(
+        'patch',
+        `/work-tasks/${assigned.id}`,
+        {
+          version: assigned.version,
+          status: 'DONE',
+          result: '已发给 3 家客户',
+        },
+        f.employee,
+      ).expect(200),
+    );
+    expect(done).toMatchObject({ status: 'DONE', result: '已发给 3 家客户' });
+    await send(
+      'patch',
+      `/work-tasks/${assigned.id}`,
+      { version: assigned.version, status: 'OPEN' },
+      f.employee,
+    ).expect(409);
+
+    // The administrator reviews it with the team's tasks and in 团队动态.
+    const team = json<{ items: Task[] }>(
+      await get(
+        `/work-tasks?scope=team&assigneeMemberId=${f.employee.memberId}`,
+      ).expect(200),
+    );
+    expect(team.items[0]).toMatchObject({ id: assigned.id, status: 'DONE' });
+    const activity = json<{
+      members: Array<{ memberId: string; tasksDone: number }>;
+    }>(await get('/team-activity?preset=today').expect(200));
+    expect(
+      activity.members.find((m) => m.memberId === f.employee.memberId)
+        ?.tasksDone,
+    ).toBe(1);
+
+    // Employees plan their own work but cannot hand work to others.
+    await send(
+      'post',
+      '/work-tasks',
+      { title: '越权安排', dueAt: due(2), assigneeMemberId: f.admin.memberId },
+      f.employee,
+    ).expect(403);
+    const own = json<Task>(
+      await send(
+        'post',
+        '/work-tasks',
+        { title: '自己的计划', dueAt: due(2) },
+        f.employee,
+      ).expect(201),
+    );
+    await send(
+      'patch',
+      `/work-tasks/${own.id}`,
+      { version: own.version, title: '自己的计划（改）' },
+      f.employee,
+    ).expect(200);
+    await send(
+      'patch',
+      `/work-tasks/${own.id}`,
+      {
+        version: own.version + 1,
+        assigneeMemberId: f.otherEmployee.memberId,
+      },
+      f.employee,
+    ).expect(403);
+
+    // Another company cannot reach these tasks at all.
+    await request(h.app.getHttpServer())
+      .get(`${base()}/work-tasks?scope=team`)
+      .set('Cookie', f.tenantBAdmin.cookie)
+      .expect(403);
+  });
+
+  it('rechecks the recipient and the actor where the task commits', async () => {
+    const disabled = await parkedBehind(
+      f.otherEmployee.memberId,
+      () =>
+        send('post', '/work-tasks', {
+          title: '交给离职成员',
+          dueAt: due(4),
+          assigneeMemberId: f.otherEmployee.memberId,
+        }),
+      (tx) =>
+        tx.tenantMember.update({
+          where: { id: f.otherEmployee.memberId },
+          data: { status: 'DISABLED' },
+        }),
+    );
+    expect(disabled.status).toBe(400);
+
+    const demoted = await parkedBehind(
+      f.admin.memberId,
+      () =>
+        send('post', '/work-tasks', {
+          title: '降级后安排',
+          dueAt: due(4),
+          assigneeMemberId: f.employee.memberId,
+        }),
+      (tx) =>
+        tx.tenantMember.update({
+          where: { id: f.admin.memberId },
+          data: { role: 'EMPLOYEE' },
+        }),
+    );
+    expect(demoted.status).toBe(403);
+    expect(
+      await h.adminDatabase.workTask.count({
+        where: { tenantId: f.tenantA.id },
+      }),
+    ).toBe(0);
+  });
+
+  it('keeps one editable report per member and day, never in the future', async () => {
+    const view = json<{ today: string; report: null; canEdit: boolean }>(
+      await get(`/daily-reports/${todayInCompany()}/mine`, f.employee).expect(
+        200,
+      ),
+    );
+    expect(view).toMatchObject({ report: null, canEdit: true });
+    const today = view.today;
+    const sections = {
+      plans: '跟进 5 家',
+      completed: '完成 3 家回访',
+      problems: '报价审批慢',
+      nextSteps: '周五前出合同',
+    };
+    // Two first saves at once: one report, the other told to reload.
+    const firsts = await Promise.all([
+      send(
+        'put',
+        `/daily-reports/${today}/mine`,
+        { version: 0, ...sections },
+        f.employee,
+      ),
+      send(
+        'put',
+        `/daily-reports/${today}/mine`,
+        { version: 0, ...sections },
+        f.employee,
+      ),
+    ]);
+    expect(firsts.map((r) => r.status).sort()).toEqual([200, 409]);
+    const saved = json<{ version: number }>(
+      firsts.find((r) => r.status === 200)!,
+    );
+    const edited = json<{ version: number; problems: string }>(
+      await send(
+        'put',
+        `/daily-reports/${today}/mine`,
+        { version: saved.version, ...sections, problems: '' },
+        f.employee,
+      ).expect(200),
+    );
+    expect(edited).toMatchObject({ version: 2, problems: '' });
+    await send(
+      'put',
+      `/daily-reports/${today}/mine`,
+      { version: saved.version, ...sections },
+      f.employee,
+    ).expect(409);
+
+    const tomorrow = new Date(`${today}T00:00:00Z`);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    await send(
+      'put',
+      `/daily-reports/${tomorrow.toISOString().slice(0, 10)}/mine`,
+      { version: 0, ...sections },
+      f.employee,
+    ).expect(400);
+
+    // Administrators read everyone's; employees only their own.
+    const list = json<{
+      items: Array<{ memberId: string; report: { completed: string } | null }>;
+    }>(await get(`/daily-reports/${today}`).expect(200));
+    expect(
+      list.items.find((item) => item.memberId === f.employee.memberId)?.report
+        ?.completed,
+    ).toBe('完成 3 家回访');
+    await get(`/daily-reports/${today}`, f.employee).expect(403);
+    await get(
+      `/daily-reports/${today}/members/${f.employee.memberId}`,
+      f.otherEmployee,
+    ).expect(403);
+    await get(`/daily-reports/${today}/members/${f.employee.memberId}`).expect(
+      200,
+    );
+    await h.adminDatabase.dailyReport.deleteMany({
+      where: { tenantId: f.tenantA.id },
+    });
+  });
+
+  it('counts by company calendar days, once per WeChat contact, and only customer tables as customers', async () => {
+    await h.adminDatabase.tenant.update({
+      where: { id: f.tenantA.id },
+      data: { timezone: 'Asia/Shanghai' },
+    });
+    const poolConfig = json<{ version: number }>(
+      await get(`/objects/${f.object.code}/pool-config`).expect(200),
+    );
+    await send('patch', `/objects/${f.object.code}/pool-config`, {
+      enabled: true,
+      lifecycleEnabled: false,
+      ownershipTtlHours: null,
+      version: poolConfig.version,
+    }).expect(200);
+    const log = (
+      recordId: string,
+      at: string,
+      activityType: 'CALL' | 'MESSAGE' | 'NOTE',
+      resultKey: string | null = null,
+    ) =>
+      h.adminDatabase.recordActivity.create({
+        data: {
+          tenantId: f.tenantA.id,
+          recordId,
+          activityType,
+          content: 'e2e',
+          resultKey,
+          actorMemberId: f.employee.memberId,
+          createdAt: new Date(at),
+        },
+      });
+    // 2026-10-22 in Shanghai is 2026-10-21T16:00Z .. 2026-10-22T16:00Z.
+    await log(f.ownedRecord.id, '2026-10-21T15:59:00Z', 'CALL', 'CONNECTED'); // 21st
+    await log(f.ownedRecord.id, '2026-10-21T16:01:00Z', 'CALL', 'NOT_REACHED');
+    await log(f.ownedRecord.id, '2026-10-22T03:00:00Z', 'CALL', 'CONNECTED');
+    await log(f.ownedRecord.id, '2026-10-22T04:00:00Z', 'NOTE');
+    // First WeChat add for this customer is on the 21st; later ones are not new.
+    await log(
+      f.ownedRecord.id,
+      '2026-10-21T10:00:00Z',
+      'MESSAGE',
+      'WECHAT_ADDED',
+    );
+    await log(
+      f.ownedRecord.id,
+      '2026-10-22T05:00:00Z',
+      'MESSAGE',
+      'WECHAT_ADDED',
+    );
+    await log(
+      f.workflowRecord.id,
+      '2026-10-22T06:00:00Z',
+      'MESSAGE',
+      'WECHAT_ADDED',
+    );
+    await log(
+      f.workflowRecord.id,
+      '2026-10-22T07:00:00Z',
+      'MESSAGE',
+      'WECHAT_ADDED',
+    );
+    // A record of a table without the customer pool is not a customer.
+    await log(f.rollbackRecord.id, '2026-10-22T08:00:00Z', 'CALL', 'CONNECTED');
+
+    const day = json<{
+      from: string;
+      members: Array<Record<string, number | string>>;
+    }>(await get('/team-activity?from=2026-10-22&to=2026-10-22').expect(200));
+    expect(day.from).toBe('2026-10-22');
+    const employee = day.members.find(
+      (m) => m.memberId === f.employee.memberId,
+    )!;
+    expect(employee).toMatchObject({
+      calls: 3,
+      connectedCalls: 2,
+      messages: 3,
+      wechatAdded: 1,
+      notes: 1,
+      customersFollowed: 2,
+    });
+    const previous = json<{ members: Array<Record<string, number | string>> }>(
+      await get('/team-activity?from=2026-10-21&to=2026-10-21').expect(200),
+    ).members.find((m) => m.memberId === f.employee.memberId)!;
+    expect(previous).toMatchObject({ calls: 1, wechatAdded: 1, messages: 1 });
+  });
 });
+
+function todayInCompany() {
+  // Asia/Shanghai is UTC+8 with no daylight saving.
+  return new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10);
+}
