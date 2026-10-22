@@ -218,6 +218,8 @@ model Tenant {
   records                    Record[]
   recordActivities           RecordActivity[]
   followUps                  RecordFollowUp[]
+  workTasks                  WorkTask[]
+  dailyReports               DailyReport[]
   objectPublications         ObjectPublication[]
   views                      ViewDefinition[]
   objectPermissions          ObjectPermission[]
@@ -309,6 +311,9 @@ model TenantMember {
   createdRecords            Record[]                     @relation("RecordCreator")
   recordActivities          RecordActivity[]             @relation("RecordActivityActor")
   followUps                 RecordFollowUp[]
+  assignedWorkTasks         WorkTask[]               @relation("WorkTaskAssignee")
+  createdWorkTasks          WorkTask[]               @relation("WorkTaskCreator")
+  dailyReports              DailyReport[]
   publishedObjects          ObjectPublication[]          @relation("ObjectPublicationPublisher")
   publishedDashboards       TenantDashboardPublication[] @relation("TenantDashboardPublicationPublisher")
   objectPermissionOverrides ObjectPermission[]           @relation("ObjectPermissionMember")
@@ -679,6 +684,7 @@ model RecordActivity {
   actor              TenantMember?      @relation("RecordActivityActor", fields: [tenantId, actorMemberId], references: [tenantId, id], onDelete: Restrict)
 
   @@index([tenantId, recordId, createdAt(sort: Desc)])
+  @@index([tenantId, actorMemberId, createdAt], map: "record_activities_tenant_actor_created_idx")
   @@map("record_activities")
 }
 
@@ -722,6 +728,50 @@ model RecordFollowUp {
   @@unique([tenantId, recordId, id], map: "record_follow_ups_tenant_record_id_key")
   @@index([tenantId, assigneeMemberId, status, dueAt])
   @@map("record_follow_ups")
+}
+
+/// A general work task, not tied to a business record (see record_follow_ups).
+model WorkTask {
+  id                String       @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId          String       @map("tenant_id") @db.Uuid
+  assigneeMemberId  String       @map("assignee_member_id") @db.Uuid
+  createdByMemberId String       @map("created_by_member_id") @db.Uuid
+  title             String       @db.VarChar(200)
+  notes             String       @default("")
+  dueAt             DateTime     @map("due_at") @db.Timestamptz(3)
+  status            String       @default("OPEN") @db.VarChar(16)
+  result            String       @default("")
+  completedAt       DateTime?    @map("completed_at") @db.Timestamptz(3)
+  version           Int          @default(1)
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant            Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  assignee          TenantMember @relation("WorkTaskAssignee", fields: [tenantId, assigneeMemberId], references: [tenantId, id], onDelete: Restrict)
+  createdBy         TenantMember @relation("WorkTaskCreator", fields: [tenantId, createdByMemberId], references: [tenantId, id], onDelete: Restrict)
+
+  @@index([tenantId, assigneeMemberId, status, dueAt], map: "work_tasks_tenant_assignee_status_due_idx")
+  @@map("work_tasks")
+}
+
+/// One report per member and company work date; narrative only.
+model DailyReport {
+  id        String       @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId  String       @map("tenant_id") @db.Uuid
+  memberId  String       @map("member_id") @db.Uuid
+  workDate  DateTime     @map("work_date") @db.Date
+  plans     String       @default("")
+  completed String       @default("")
+  problems  String       @default("")
+  nextSteps String       @default("") @map("next_steps")
+  version   Int          @default(1)
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  member    TenantMember @relation(fields: [tenantId, memberId], references: [tenantId, id], onDelete: Restrict)
+
+  @@unique([tenantId, memberId, workDate], map: "daily_reports_tenant_id_member_id_work_date_key")
+  @@index([tenantId, workDate], map: "daily_reports_tenant_date_idx")
+  @@map("daily_reports")
 }
 
 model ObjectWorkflowDefinition {

@@ -37,6 +37,8 @@ export async function resetTestData(admin) {
     data: { activePublicationId: null, publishedAt: null },
   });
   await admin.$transaction([
+    admin.workTask.deleteMany(),
+    admin.dailyReport.deleteMany(),
     admin.auditLog.deleteMany(),
     admin.aiMessage.deleteMany(),
     admin.aiOperation.deleteMany(),
@@ -93,6 +95,12 @@ export async function cleanupTestFixtures(
   const templateIds = templates.map(({ id }) => id);
 
   if (tenantIds.length > 0) {
+    await admin.workTask.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await admin.dailyReport.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
     await admin.auditLog.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });
