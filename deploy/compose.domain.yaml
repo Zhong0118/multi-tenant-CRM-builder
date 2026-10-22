@@ -1,0 +1,9 @@
+# Official-domain entry: use with compose.production.yaml instead of
+# compose.public-ip.yaml. WEB_HOST is the domain (crm.baijiehub.com) and
+# LEGACY_IP the previous public IP, which now redirects to it.
+services:
+  caddy:
+    environment:
+      LEGACY_IP: ${LEGACY_IP:?Set the previous public IP that redirects to WEB_HOST}
+    volumes:
+      - ./Caddyfile.domain:/etc/caddy/Caddyfile:ro
