@@ -29,6 +29,11 @@ export class CreateFollowUpDto {
   @IsDateString({ strict: true })
   @Matches(/(?:Z|[+-]\d{2}:\d{2})$/)
   dueAt!: string;
+  /** Company administrators may give the task to another member who can work on the record. */
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  assigneeMemberId?: string;
 }
 export class UpdateFollowUpDto {
   @ApiPropertyOptional({ format: 'uuid' })

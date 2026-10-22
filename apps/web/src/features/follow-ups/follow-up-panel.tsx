@@ -37,6 +37,7 @@ export function FollowUpPanel({
   returnTo,
   onListStateChange,
   beforeList,
+  assignees,
   api = followUpApi,
 }: {
   tenantCode: string;
@@ -47,6 +48,8 @@ export function FollowUpPanel({
   onListStateChange?: (state: { status: FollowUpStatus; page: number }) => void;
   /** Shown between the page header and the task list, such as 待联系客户. */
   beforeList?: React.ReactNode;
+  /** Company administrators may hand a new task to one of these members. */
+  assignees?: Array<{ id: string; displayName?: string | null }>;
   api?: typeof followUpApi;
 }) {
   const client = useQueryClient();
@@ -66,6 +69,7 @@ export function FollowUpPanel({
   const [composing, setComposing] = useState(false);
   const [title, setTitle] = useState("");
   const [dueAt, setDueAt] = useState("");
+  const [newAssignee, setNewAssignee] = useState<string>();
   const [cancelling, setCancelling] = useState<FollowUp>();
   const [rescheduling, setRescheduling] = useState<FollowUp>();
   const [reassigning, setReassigning] = useState<FollowUp>();
@@ -158,10 +162,12 @@ export function FollowUpPanel({
         recordId: record!.id,
         title: title.trim(),
         dueAt: new Date(dueAt).toISOString(),
+        ...(newAssignee ? { assigneeMemberId: newAssignee } : {}),
       }),
     onSuccess: () => {
       setTitle("");
       setDueAt("");
+      setNewAssignee(undefined);
       setStatus("OPEN");
       setPage(1);
       return refresh();
@@ -263,6 +269,24 @@ export function FollowUpPanel({
               onChange={(e) => setDueAt(e.target.value)}
             />
           </Form.Item>
+          {assignees?.length ? (
+            <Form.Item label="交给" htmlFor="follow-up-assignee">
+              <Select
+                id="follow-up-assignee"
+                aria-label="交给"
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                placeholder="我自己"
+                value={newAssignee}
+                onChange={(next?: string) => setNewAssignee(next)}
+                options={assignees.map((member) => ({
+                  value: member.id,
+                  label: member.displayName ?? "未设置姓名",
+                }))}
+              />
+            </Form.Item>
+          ) : null}
           <Button
             type="primary"
             htmlType="submit"

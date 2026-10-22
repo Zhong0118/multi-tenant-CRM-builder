@@ -27,6 +27,10 @@ export function workspaceNavigationGroups(
       icon: "home",
     },
     { href: `${root}/follow-ups`, label: "跟进待办", icon: "calendar" },
+    // What each member did, from the work the system records; administrators only.
+    ...(role === "TENANT_ADMIN"
+      ? [{ href: `${root}/team`, label: "团队动态", icon: "team" }]
+      : []),
     { href: `${root}/ai`, label: "AI 助手", icon: "ai" },
   ];
 

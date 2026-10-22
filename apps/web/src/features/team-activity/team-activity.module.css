@@ -1,0 +1,55 @@
+.period {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.table {
+  border-top: 1px solid var(--border-hairline);
+}
+
+.table :global(.ant-table-thead > tr > th) {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.member {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.avatar {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.muted,
+.zero {
+  color: var(--text-tertiary);
+}
+
+.warn {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.totals :global(td) {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.source {
+  margin-top: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}

@@ -18,7 +18,7 @@ import styles from "./records.module.css";
 
 const ACTIVITY_TYPE_LABELS: Record<MemberActivityType, string> = {
   CALL: "电话",
-  MESSAGE: "消息",
+  MESSAGE: "微信/消息",
   MEETING: "拜访",
   NOTE: "备注",
 };

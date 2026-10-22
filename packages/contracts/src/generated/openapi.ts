@@ -1764,6 +1764,22 @@ export interface paths {
     patch: operations["MembershipsController_bulkMemberAccess"];
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/team-activity": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["TeamActivityController_summarize"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2223,6 +2239,8 @@ export interface components {
       validation?: components["schemas"]["FieldValidationDto"];
     };
     CreateFollowUpDto: {
+      /** Format: uuid */
+      assigneeMemberId?: string;
       /** Format: date-time */
       dueAt: string;
       objectCode: string;
@@ -3650,6 +3668,44 @@ export interface components {
       content: string;
       /** Format: uuid */
       conversationId?: string;
+    };
+    TeamActivityCountsDto: {
+      calls: number;
+      contactsConfirmed: number;
+      customersFollowed: number;
+      leadsClaimed: number;
+      messages: number;
+      notes: number;
+      recordsCreated: number;
+      tasksDone: number;
+      tasksOverdue: number;
+      visits: number;
+    };
+    TeamActivityMemberDto: {
+      calls: number;
+      contactsConfirmed: number;
+      customersFollowed: number;
+      leadsClaimed: number;
+      /** Format: uuid */
+      memberId: string;
+      messages: number;
+      name: string;
+      notes: number;
+      recordsCreated: number;
+      /** @enum {string} */
+      role: "TENANT_ADMIN" | "EMPLOYEE";
+      /** @enum {string} */
+      status: "ACTIVE" | "DISABLED";
+      tasksDone: number;
+      tasksOverdue: number;
+      visits: number;
+    };
+    TeamActivityResponseDto: {
+      from: string;
+      members: components["schemas"]["TeamActivityMemberDto"][];
+      timezone: string;
+      to: string;
+      totals: components["schemas"]["TeamActivityCountsDto"];
     };
     TemplateApplicationObjectResponseDto: {
       code: string;
@@ -7318,6 +7374,32 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["BulkMemberAccessResponseDto"];
+        };
+      };
+    };
+  };
+  TeamActivityController_summarize: {
+    parameters: {
+      query?: {
+        /** @description First day, inclusive, in the company timezone. Default: today. */
+        from?: string;
+        /** @description Last day, inclusive, in the company timezone. Default: the first day. */
+        to?: string;
+      };
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TeamActivityResponseDto"];
         };
       };
     };

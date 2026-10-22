@@ -48,6 +48,7 @@ describe("workspaceNavigation", () => {
     expect(items.map((item) => item.href)).toEqual([
       "/workspace/northwind",
       "/workspace/northwind/follow-ups",
+      "/workspace/northwind/team",
       "/workspace/northwind/ai",
       // Administration is one 设置 entry whose pages the settings sidebar lists.
       "/workspace/northwind/settings",

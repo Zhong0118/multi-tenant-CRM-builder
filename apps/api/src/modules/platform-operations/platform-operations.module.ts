@@ -1,3 +1,5 @@
+import { TeamActivityController } from './team-activity.controller';
+import { TeamActivityService } from './team-activity.service';
 import { CompanyAuditController } from './company-audit.controller';
 import { CompanyAuditService } from './company-audit.service';
 import { MembershipsModule } from '../memberships/memberships.module';
@@ -15,8 +17,13 @@ import {
 
 @Module({
   imports: [AuthModule, MembershipsModule],
-  controllers: [PlatformOperationsController, CompanyAuditController],
+  controllers: [
+    PlatformOperationsController,
+    CompanyAuditController,
+    TeamActivityController,
+  ],
   providers: [
+    TeamActivityService,
     CompanyAuditService,
     RuntimeHealthService,
     PlatformAdminGuard,

@@ -193,6 +193,46 @@ describe('personal record follow-ups', () => {
     );
   });
 
+  it('lets a company administrator assign a new task to a member who can work on the record', async () => {
+    const { service, repository, objects, resolved } = fixture();
+    resolved.access.readScope = 'ALL';
+    resolved.access.updateScope = 'ALL';
+    const admin = { ...context, memberId: 'admin', role: 'TENANT_ADMIN' as const };
+    await service.create(
+      admin,
+      { objectCode: 'leads', recordId: 'record', title: '回访', dueAt: '2026-09-10T08:00:00Z', assigneeMemberId: 'other' },
+      { requestId: 'req' },
+    );
+    expect(repository.activeMember).toHaveBeenCalledWith(admin, 'other');
+    // The record is checked again as the assignee would see it.
+    expect(objects.resolveRuntimeSchema).toHaveBeenLastCalledWith(
+      expect.objectContaining({ memberId: 'other', role: 'EMPLOYEE' }),
+      'leads',
+    );
+    expect(repository.create.mock.calls[0][1]).toMatchObject({ assigneeMemberId: 'other' });
+  });
+
+  it('keeps employees scheduling for themselves and refuses inactive assignees', async () => {
+    const { service, repository } = fixture();
+    await expect(
+      service.create(
+        context,
+        { objectCode: 'leads', recordId: 'record', title: '回访', dueAt: '2026-09-10T08:00:00Z', assigneeMemberId: 'other' },
+        { requestId: 'req' },
+      ),
+    ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
+
+    repository.activeMember.mockResolvedValue(null);
+    await expect(
+      service.create(
+        { ...context, role: 'TENANT_ADMIN' },
+        { objectCode: 'leads', recordId: 'record', title: '回访', dueAt: '2026-09-10T08:00:00Z', assigneeMemberId: 'gone' },
+        { requestId: 'req' },
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    expect(repository.create).not.toHaveBeenCalled();
+  });
+
   it('rechecks UPDATE permission when completing an existing task', async () => {
     const { service, repository, resolved } = fixture();
     resolved.access.canUpdate = false;
