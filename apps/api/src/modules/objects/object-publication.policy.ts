@@ -33,6 +33,8 @@ export interface PublicationDraftField {
   sortOrder: number;
   isSystem: boolean;
   status: 'ACTIVE' | 'INACTIVE';
+  /** Derived from publication history; retirement must not unlock stored values' type. */
+  publishedType?: DraftFieldType | null;
   updatedAt?: string;
 }
 

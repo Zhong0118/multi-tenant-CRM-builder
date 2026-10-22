@@ -1,3 +1,4 @@
+import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { EffectiveObjectAccess } from '../objects/effective-access';
 import type { PublishedObjectSchema } from '../objects/object-schema';
@@ -23,6 +24,27 @@ const period: DashboardPeriod = {
 };
 
 describe('DashboardEngine', () => {
+  it('retains an unavailable archived-table widget without failing other widgets', async () => {
+    const fixture = setup([metric('stopped', 'ALL')]);
+    fixture.resolver.resolveRuntimeSchema.mockRejectedValue(
+      new ApiException('OBJECT_ARCHIVED', 409),
+    );
+    const result = await fixture.engine.evaluate({
+      publication: fixture.publication,
+      catalog: fixture.catalog,
+      context: employeeContext(),
+      period,
+    });
+    expect(result.widgets).toEqual([
+      expect.objectContaining({
+        id: 'stopped',
+        state: 'UNAVAILABLE',
+        reason: 'OBJECT_ARCHIVED',
+      }),
+    ]);
+    expect(fixture.executor.plans).toHaveLength(0);
+  });
+
   it('omits widgets outside the employee audience before executing queries', async () => {
     const fixture = setup([
       metric('all-metric', 'ALL'),

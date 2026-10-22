@@ -292,7 +292,7 @@ describe('PublishedObjectService', () => {
     expect(resolved.visibleSchema).not.toHaveProperty('memberOverride');
   });
 
-  it('maps missing, cross-tenant, unpublished, and archived codes to OBJECT_NOT_FOUND', async () => {
+  it('maps missing, cross-tenant and unpublished codes to OBJECT_NOT_FOUND', async () => {
     const { service, repository } = fixture();
     repository.rows = [
       row(null, { code: 'draft', status: 'DRAFT' }),
@@ -301,7 +301,7 @@ describe('PublishedObjectService', () => {
       }),
     ];
 
-    for (const code of ['missing', 'draft', 'archived']) {
+    for (const code of ['missing', 'draft']) {
       await expect(
         service.resolveRuntimeSchema(employee, code),
       ).rejects.toMatchObject({ code: 'OBJECT_NOT_FOUND' });
@@ -490,4 +490,47 @@ describe('published snapshot workflow actions', () => {
       parsePublishedObjectSchema(workflowSnapshot(workflow)),
     ).toThrow('Invalid published object snapshot');
   });
+});
+
+describe('archived runtime access', () => {
+  it.each([admin, employee])(
+    'explains archived access for authorized $role readers',
+    async (context) => {
+      const { service, repository } = fixture();
+      repository.rows = [
+        row(schema({ code: 'customers', name: '客户', sortOrder: 10 }), {
+          status: 'ARCHIVED',
+        }),
+      ];
+      await expect(
+        service.resolveRuntimeSchema(context, 'customers'),
+      ).rejects.toMatchObject({ code: 'OBJECT_ARCHIVED', status: 409 });
+    },
+  );
+  it.each(['member', 'field'] as const)(
+    'does not disclose archived metadata when %s access denies reading',
+    async (denial) => {
+      const { service, repository } = fixture();
+      repository.rows = [
+        row(schema({ code: 'customers', name: '客户', sortOrder: 10 }), {
+          status: 'ARCHIVED',
+          ...(denial === 'member'
+            ? {
+                memberOverride: {
+                  canRead: false,
+                  canCreate: false,
+                  canUpdate: false,
+                  canDelete: false,
+                  readScope: 'NONE',
+                  updateScope: 'NONE',
+                },
+              }
+            : { memberFieldOverrides: { name: 'HIDDEN' } }),
+        }),
+      ];
+      await expect(
+        service.resolveRuntimeSchema(employee, 'customers'),
+      ).rejects.toMatchObject({ code: 'OBJECT_NOT_FOUND', status: 404 });
+    },
+  );
 });

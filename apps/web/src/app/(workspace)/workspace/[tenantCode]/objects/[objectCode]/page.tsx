@@ -1,3 +1,4 @@
+import { renderRuntimeObjectPage } from "@/features/objects/runtime-object-state";
 import { SORTABLE_FIELD_TYPES } from "@/features/objects/object-types";
 import { RecordWorkspace } from "@/features/records/record-workspace";
 import { parseRecordQuery } from "@/features/records/record-query-state";
@@ -18,31 +19,33 @@ export default async function ObjectRecordsPage({
 }: ObjectRecordsPageProps) {
   const { tenantCode, objectCode } = await params;
   const workspace = await requireWorkspace(tenantCode);
-  const { schema, members, isAdmin } = await loadRuntimeObject(
-    tenantCode,
-    objectCode,
-    workspace.role,
-  );
-  const query = parseRecordQuery(
-    await searchParams,
-    schema.defaultView.sort,
-    schema.fields
-      .filter((field) =>
-        (SORTABLE_FIELD_TYPES as readonly string[]).includes(field.type),
-      )
-      .map((field) => field.fieldKey),
-  );
-  const initialPage = await loadRecordPage(tenantCode, objectCode, query);
+  return renderRuntimeObjectPage(tenantCode, async () => {
+    const { schema, members, isAdmin } = await loadRuntimeObject(
+      tenantCode,
+      objectCode,
+      workspace.role,
+    );
+    const query = parseRecordQuery(
+      await searchParams,
+      schema.defaultView.sort,
+      schema.fields
+        .filter((field) =>
+          (SORTABLE_FIELD_TYPES as readonly string[]).includes(field.type),
+        )
+        .map((field) => field.fieldKey),
+    );
+    const initialPage = await loadRecordPage(tenantCode, objectCode, query);
 
-  return (
-    <RecordWorkspace
-      currentMemberId={workspace.memberId}
-      tenantCode={tenantCode}
-      schema={schema}
-      query={query}
-      initialPage={initialPage}
-      members={members}
-      isAdmin={isAdmin}
-    />
-  );
+    return (
+      <RecordWorkspace
+        currentMemberId={workspace.memberId}
+        tenantCode={tenantCode}
+        schema={schema}
+        query={query}
+        initialPage={initialPage}
+        members={members}
+        isAdmin={isAdmin}
+      />
+    );
+  });
 }

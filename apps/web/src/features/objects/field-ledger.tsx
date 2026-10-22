@@ -164,9 +164,9 @@ export function FieldLedger({
 
   const columns: ColumnsType<ConfigurableFieldView> = [
     {
-      title: "顺序",
+      title: "表单顺序",
       key: "order",
-      width: 60,
+      width: 88,
       align: "center",
       render: (_, fieldRow, index) => (
         <DragHandle
@@ -180,6 +180,7 @@ export function FieldLedger({
     {
       title: "字段",
       key: "label",
+      width: 160,
       render: (_, fieldRow) => (
         <span className={styles.ledgerName}>{fieldRow.label}</span>
       ),
@@ -241,6 +242,7 @@ export function FieldLedger({
     {
       title: "操作",
       key: "actions",
+      fixed: "right",
       width: onToggleStatus ? 132 : 72,
       align: "right",
       render: (_, fieldRow) => (
@@ -280,6 +282,7 @@ export function FieldLedger({
           rowKey="id"
           size="small"
           pagination={false}
+          scroll={{ x: 980 }}
           columns={columns}
           dataSource={fields}
           components={{ body: { row: SortableRow } }}

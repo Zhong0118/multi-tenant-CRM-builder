@@ -520,3 +520,21 @@ it.each(["all", "pool"] as const)("disables the pool from %s without refetching 
   const url = new URL(router.replace.mock.calls.at(-1)![0], "http://localhost");
   expect(url.searchParams.has("scope")).toBe(false);
 });
+
+it("reloads enriched pool config after saving so reopening retains published protection choices", async () => {
+  const first = { enabled: true, lifecycleEnabled: true, ownershipTtlHours: null, version: 1, contactTtlHours: 24, followUpTtlHours: 720, serverTime: "2026-10-18T12:00:00Z", preview: { legacyUnassigned: 2, legacyPool: 0, legacyOwned: 0, expiredCount: 0 }, protectionSources: [{ objectCode: "agreements", objectName: "合作协议", states: [{ key: "signed", label: "已签署" }] }] };
+  const next = { ...first, version: 2, serverTime: "2026-10-18T12:01:00Z" };
+  vi.mocked(recordPoolApi.getConfig).mockResolvedValueOnce(first).mockResolvedValueOnce(next);
+  vi.mocked(recordPoolApi.saveConfig).mockResolvedValueOnce({ enabled: true, lifecycleEnabled: true, ownershipTtlHours: null, version: 2 });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  onTestFinished(() => client.clear());
+  render(<RecordWorkspace {...props} />, client);
+  fireEvent.click(await screen.findByRole("button", { name: "公共池设置" }));
+  fireEvent.click(await screen.findByRole("button", { name: "保存设置" }));
+  await waitFor(() => expect(router.refresh).toHaveBeenCalled());
+  expect(client.getQueryData(["workspace", "northwind", "pool-config", "customers"])).toMatchObject(next);
+  await waitFor(() => expect(screen.queryByRole("button", { name: "保存设置" })).not.toBeInTheDocument());
+  fireEvent.click(screen.getByRole("button", { name: "公共池设置" }));
+  expect(await screen.findByRole("button", { name: "添加保护依据" })).toBeEnabled();
+  expect(screen.getByText(/旧未指定 2 条/)).toBeInTheDocument();
+});

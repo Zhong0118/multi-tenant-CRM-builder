@@ -4,7 +4,10 @@ import type {
   PublishedObjectRecord,
   PublishedObjectRepository,
 } from '../../objects/published-object.repository';
-import { PublishedObjectService } from '../../objects/published-object.service';
+import {
+  PublishedObjectService,
+  type ResolvedObjectSchema,
+} from '../../objects/published-object.service';
 import type { RecordActivity } from '../../records/record-activity';
 import type {
   DynamicRecord,
@@ -129,6 +132,12 @@ class MemoryPublishedRepository implements PublishedObjectRepository {
 class MemoryRecordsStore {
   records: DynamicRecord[] = [];
   activities: RecordActivity[] = [];
+
+  resolveCurrentObject(
+    previous: ResolvedObjectSchema,
+  ): Promise<ResolvedObjectSchema> {
+    return Promise.resolve(previous);
+  }
 
   memberExists(): Promise<boolean> {
     return Promise.resolve(true);

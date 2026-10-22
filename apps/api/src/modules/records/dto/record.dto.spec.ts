@@ -9,6 +9,32 @@ import {
 } from './record.dto';
 
 describe('record DTOs', () => {
+  it('accepts unassigned only as a read filter, not as a record owner', async () => {
+    expect(
+      await validate(
+        Object.assign(new RecordListQueryDto(), {
+          ownerMemberId: 'unassigned',
+        }),
+      ),
+    ).toHaveLength(0);
+    for (const dto of [
+      Object.assign(new RecordListQueryDto(), { ownerMemberId: 'invalid' }),
+      Object.assign(new CreateRecordDto(), {
+        values: {},
+        ownerMemberId: 'unassigned',
+      }),
+      Object.assign(new UpdateRecordDto(), {
+        version: 1,
+        values: {},
+        ownerMemberId: 'unassigned',
+      }),
+    ]) {
+      expect((await validate(dto)).map((error) => error.property)).toContain(
+        'ownerMemberId',
+      );
+    }
+  });
+
   it('rejects non-object dynamic values', async () => {
     const dto = Object.assign(new CreateRecordDto(), {
       values: ['not', 'object'],

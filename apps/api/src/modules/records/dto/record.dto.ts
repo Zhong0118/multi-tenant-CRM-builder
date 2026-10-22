@@ -1,3 +1,9 @@
+import {
+  POOL_STAGES,
+  type PoolStage,
+  type PoolOrigin,
+  type PoolQuality,
+} from '../record-ownership';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
@@ -22,6 +28,14 @@ import {
 } from 'class-validator';
 
 export class RecordListQueryDto {
+  @ApiPropertyOptional({ enum: [...POOL_STAGES, 'LEGACY'] })
+  @IsOptional()
+  @IsIn([...POOL_STAGES, 'LEGACY'])
+  poolStage?: PoolStage | 'LEGACY';
+  @ApiPropertyOptional({ enum: ['INVALID', 'DUPLICATE', 'LOST'] })
+  @IsOptional()
+  @IsIn(['INVALID', 'DUPLICATE', 'LOST'])
+  poolQuality?: PoolQuality;
   @ApiPropertyOptional({ enum: ['mine', 'pool', 'all'] })
   @IsOptional()
   @IsIn(['mine', 'pool', 'all'])
@@ -48,8 +62,15 @@ export class RecordListQueryDto {
   @MaxLength(300)
   search?: string;
 
-  @ApiPropertyOptional({ format: 'uuid' })
+  @ApiPropertyOptional({
+    oneOf: [
+      { type: 'string', format: 'uuid' },
+      { type: 'string', enum: ['unassigned'] },
+    ],
+    description: '按负责人筛选；unassigned 表示未指定负责人，仅管理员可筛选。',
+  })
   @IsOptional()
+  @ValidateIf((_object, value: unknown) => value !== 'unassigned')
   @IsUUID()
   ownerMemberId?: string;
 
@@ -161,6 +182,24 @@ export class DeleteRecordDto {
 }
 
 export class RecordResponseDto {
+  @ApiPropertyOptional({ enum: POOL_STAGES, nullable: true })
+  poolStage?: PoolStage | null;
+  @ApiPropertyOptional({ enum: ['LEAD_POOL', 'CUSTOMER_POOL'], nullable: true })
+  poolOrigin?: PoolOrigin | null;
+  @ApiPropertyOptional({ type: String, format: 'date-time', nullable: true })
+  poolClaimedAt?: string | null;
+  @ApiPropertyOptional({ type: String, format: 'date-time', nullable: true })
+  poolLastFollowUpAt?: string | null;
+  @ApiPropertyOptional({ type: String, format: 'date-time', nullable: true })
+  poolProtectedAt?: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) poolReason?:
+    string | null;
+  @ApiPropertyOptional({
+    enum: ['INVALID', 'DUPLICATE', 'LOST'],
+    nullable: true,
+  })
+  poolQuality?: PoolQuality | null;
+  @ApiPropertyOptional() protectionNeedsReview?: boolean;
   @ApiProperty() inPublicPool!: boolean;
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   ownershipExpiresAt!: string | null;
@@ -176,6 +215,11 @@ export class RecordResponseDto {
 }
 
 export class RecordPageResponseDto {
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: { type: 'integer' },
+  })
+  poolCounts?: Record<string, number>;
   @ApiProperty({ type: RecordResponseDto, isArray: true })
   items!: RecordResponseDto[];
   @ApiProperty() page!: number;
@@ -217,6 +261,7 @@ export class ImportRecordRowDto {
 }
 
 export class ImportRecordsDto {
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() importToPool?: boolean;
   @ApiPropertyOptional({
     type: String,
     format: 'uuid',

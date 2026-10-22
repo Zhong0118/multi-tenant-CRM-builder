@@ -228,6 +228,22 @@ describe('toObjectDraftResponse', () => {
    * published configuration is the API's job, so the response carries derived
    * facts only.
    */
+  it('retains a historical type lock when the active publication omits a field', () => {
+    const base = draft();
+    const response = toObjectDraftResponse({
+      ...base,
+      activeSchema: publishedSchema({ fields: [] }),
+      fields: [
+        {
+          ...base.fields[0],
+          ...{ publishedType: 'TEXT' as const },
+          status: 'INACTIVE',
+        },
+      ],
+    });
+    expect(response.fields[0].publishedType).toBe('TEXT');
+  });
+
   it('does not ship the raw published snapshot to the client', () => {
     const response = toObjectDraftResponse(draft());
 

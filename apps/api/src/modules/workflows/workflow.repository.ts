@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ApiException } from '../../common/errors/api.exception';
 import type { Prisma } from '@crm/database';
 
 import { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
@@ -12,9 +13,12 @@ import {
 } from './workflow.types';
 
 export interface WorkflowStore {
-  findObjectVersion(
-    objectId: string,
-  ): Promise<{ id: string; version: number; fieldKeys: string[] } | null>;
+  findObjectVersion(objectId: string): Promise<{
+    id: string;
+    version: number;
+    fieldKeys: string[];
+    status?: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  } | null>;
   findDraft(objectId: string): Promise<WorkflowDraft | null>;
   replaceDraft(input: {
     objectId: string;
@@ -62,6 +66,7 @@ class PrismaWorkflowStore implements WorkflowStore {
       select: {
         id: true,
         version: true,
+        status: true,
         fields: { select: { fieldKey: true, status: true } },
       },
     });
@@ -69,6 +74,7 @@ class PrismaWorkflowStore implements WorkflowStore {
     return {
       id: object.id,
       version: object.version,
+      status: object.status,
       fieldKeys: object.fields
         .filter((field) => field.status === 'ACTIVE')
         .map((field) => field.fieldKey),
@@ -102,7 +108,8 @@ class PrismaWorkflowStore implements WorkflowStore {
         label: transition.label,
         fromStateKey: transition.fromStateKey,
         toStateKey: transition.toStateKey,
-        allowedRoles: transition.allowedRoles as WorkflowDraft['transitions'][number]['allowedRoles'],
+        allowedRoles:
+          transition.allowedRoles as WorkflowDraft['transitions'][number]['allowedRoles'],
         requiredFieldKeys: transition.requiredFieldKeys,
         actions: toWorkflowActions(transition.actions),
         sortOrder: transition.sortOrder,
@@ -116,14 +123,18 @@ class PrismaWorkflowStore implements WorkflowStore {
     draft: WorkflowDraft;
     actorMemberId: string;
   }): Promise<WorkflowDraftResponse | null> {
-    const locked = await this.transaction.$queryRaw<Array<{ version: number }>>`
-      SELECT version
+    const locked = await this.transaction.$queryRaw<
+      Array<{ version: number; status: string }>
+    >`
+      SELECT version, status
       FROM object_definitions
       WHERE tenant_id = ${this.context.tenantId}::uuid
         AND id = ${input.objectId}::uuid
       FOR UPDATE
     `;
     if (locked[0]?.version !== input.expectedVersion) return null;
+    if (locked[0].status === 'ARCHIVED')
+      throw new ApiException('OBJECT_ARCHIVED', 409);
 
     const existing = await this.transaction.objectWorkflowDefinition.findFirst({
       where: {
@@ -134,10 +145,16 @@ class PrismaWorkflowStore implements WorkflowStore {
     });
     if (existing) {
       await this.transaction.workflowTransitionDefinition.deleteMany({
-        where: { tenantId: this.context.tenantId, workflowDefinitionId: existing.id },
+        where: {
+          tenantId: this.context.tenantId,
+          workflowDefinitionId: existing.id,
+        },
       });
       await this.transaction.workflowStateDefinition.deleteMany({
-        where: { tenantId: this.context.tenantId, workflowDefinitionId: existing.id },
+        where: {
+          tenantId: this.context.tenantId,
+          workflowDefinitionId: existing.id,
+        },
       });
       await this.transaction.objectWorkflowDefinition.delete({
         where: { id: existing.id },

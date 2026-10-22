@@ -1,3 +1,6 @@
+jest.mock('../objects/object-configuration-lock', () => ({
+  lockRuntimeObjectConfiguration: jest.fn().mockResolvedValue(undefined),
+}));
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
 import type { DatabaseService } from '../../infrastructure/database/database.service';

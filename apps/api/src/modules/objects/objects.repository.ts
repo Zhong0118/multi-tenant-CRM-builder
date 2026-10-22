@@ -11,6 +11,12 @@ import type {
   PublicationDraft,
 } from './object-publication.policy';
 import type { PublishedObjectSchema } from './object-schema';
+import { lockObjectConfiguration } from './object-configuration-lock';
+import {
+  lifecycleBlockers,
+  type LifecycleBlocker,
+} from './object-lifecycle.policy';
+import type { PoolProtectionRule } from '../records/record-ownership';
 import {
   toWorkflowActions,
   type WorkflowDraft,
@@ -21,6 +27,8 @@ export interface ObjectDraft extends PublicationDraft {
     status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
     activePublicationId: string | null;
     publishedAt: string | null;
+    archivedAt?: string | null;
+    lifecycleVersionOffset?: number;
   };
 }
 
@@ -30,6 +38,17 @@ export type ObjectPublicationSummary = PublishedObjectSchema['publication'] & {
 };
 
 export interface ObjectsStore {
+  lockLifecycleConfiguration(): Promise<void>;
+  findLifecycleBlockers(
+    objectId: string,
+    operation: 'archive' | 'restore',
+  ): Promise<LifecycleBlocker[]>;
+  countExpiredRecords(objectId: string, now: Date): Promise<number>;
+  changeLifecycle(
+    draft: ObjectDraft,
+    expectedVersion: number,
+    now: Date,
+  ): Promise<ObjectDraft | null>;
   lockObject(objectId: string): Promise<void>;
   listObjects(): Promise<ObjectDraft[]>;
   findObject(objectId: string): Promise<ObjectDraft | null>;
@@ -106,6 +125,118 @@ class PrismaObjectsStore implements ObjectsStore {
     private readonly context: TenantContext,
   ) {}
 
+  lockLifecycleConfiguration(): Promise<void> {
+    return lockObjectConfiguration(this.transaction, this.context.tenantId);
+  }
+
+  async findLifecycleBlockers(
+    objectId: string,
+    operation: 'archive' | 'restore',
+  ): Promise<LifecycleBlocker[]> {
+    const objects = await this.transaction.objectDefinition.findMany({
+      where: { tenantId: this.context.tenantId, deletedAt: null },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        status: true,
+        poolEnabled: true,
+        poolLifecycleEnabled: true,
+        poolProtectionRules: true,
+        activePublication: { select: { configuration: true } },
+      },
+      orderBy: { code: 'asc' },
+    });
+    return lifecycleBlockers(
+      objects.map((object) => ({
+        ...object,
+        schema:
+          (object.activePublication
+            ?.configuration as unknown as PublishedObjectSchema | null) ?? null,
+        protectionRules:
+          object.poolProtectionRules as unknown as PoolProtectionRule[],
+      })),
+      objectId,
+      operation,
+    );
+  }
+
+  countExpiredRecords(objectId: string, now: Date): Promise<number> {
+    return this.transaction.record.count({
+      where: {
+        tenantId: this.context.tenantId,
+        objectId,
+        deletedAt: null,
+        ownerMemberId: { not: null },
+        inPublicPool: false,
+        OR: [
+          { poolStage: null },
+          { poolStage: { in: ['PENDING_CONTACT', 'FOLLOWING'] } },
+        ],
+        ownershipExpiresAt: { lte: now },
+      },
+    });
+  }
+
+  async changeLifecycle(
+    draft: ObjectDraft,
+    expectedVersion: number,
+    now: Date,
+  ): Promise<ObjectDraft | null> {
+    const restoring = draft.object.status === 'ACTIVE';
+    const stoppedAt = draft.object.archivedAt
+      ? new Date(draft.object.archivedAt)
+      : null;
+    const result = await this.transaction.objectDefinition.updateMany({
+      where: {
+        id: draft.object.id,
+        tenantId: this.context.tenantId,
+        version: expectedVersion,
+      },
+      data: {
+        status: draft.object.status,
+        archivedAt: restoring ? null : now,
+        version: { increment: 1 },
+        lifecycleVersionOffset: { increment: 1 },
+      },
+    });
+    if (!result.count) return null;
+    if (restoring && stoppedAt) {
+      const pausedMilliseconds = Math.max(
+        0,
+        now.getTime() - stoppedAt.getTime(),
+      );
+      await this.transaction.$executeRaw`
+        UPDATE records SET ownership_expires_at = ownership_expires_at + ${pausedMilliseconds} * interval '1 millisecond',
+          version = version + 1, updated_at = ${now}
+        WHERE tenant_id = ${this.context.tenantId}::uuid AND object_id = ${draft.object.id}::uuid
+          AND deleted_at IS NULL AND owner_member_id IS NOT NULL AND NOT in_public_pool
+          AND (pool_stage IS NULL OR pool_stage IN ('PENDING_CONTACT', 'FOLLOWING'))
+          AND ownership_expires_at > ${stoppedAt}
+      `;
+    }
+    if (restoring) {
+      // Evidence can be cancelled in another active table while this table is
+      // stopped. Review it once after resume; never remove protection or add a timer.
+      // Unconfigured permanent protection retains its original review state.
+      const protectedRecords = await this.transaction.$queryRaw<
+        Array<{ id: string }>
+      >`
+        SELECT r.id FROM records r
+        JOIN object_definitions o ON o.tenant_id = r.tenant_id AND o.id = r.object_id
+        WHERE r.tenant_id = ${this.context.tenantId}::uuid AND r.object_id = ${draft.object.id}::uuid
+          AND r.deleted_at IS NULL AND r.pool_stage = 'PROTECTED'
+          AND o.pool_enabled AND o.pool_lifecycle_enabled AND jsonb_array_length(o.pool_protection_rules) > 0
+        ORDER BY r.id
+      `;
+      for (const record of protectedRecords) {
+        await this.transaction
+          .$queryRaw`SELECT public.refresh_record_pool_protection(${this.context.tenantId}::uuid, ${record.id}::uuid, false)::text`;
+      }
+    }
+    return this.findObject(draft.object.id);
+  }
+
   async lockObject(objectId: string): Promise<void> {
     await this.transaction.$queryRaw`
       SELECT id
@@ -153,6 +284,25 @@ class PrismaObjectsStore implements ObjectsStore {
     });
     if (!object) return null;
 
+    const activeSchema = object.activePublication
+      ? (object.activePublication
+          .configuration as unknown as PublishedObjectSchema)
+      : null;
+    const publishedTypes = new Map(
+      (activeSchema?.fields ?? []).map((field) => [field.id, field.type]),
+    );
+    if (
+      activeSchema &&
+      object.fields.some((field) => !publishedTypes.has(field.id))
+    ) {
+      for (const publication of await this.listPublications(objectId)) {
+        for (const field of publication.configuration.fields) {
+          if (!publishedTypes.has(field.id))
+            publishedTypes.set(field.id, field.type);
+        }
+      }
+    }
+
     const activeRecordCount = await this.countActiveRecords(objectId);
     const settings = jsonObject(object.settings);
     const view = object.views[0];
@@ -180,6 +330,8 @@ class PrismaObjectsStore implements ObjectsStore {
         status: object.status,
         activePublicationId: object.activePublicationId,
         publishedAt: object.publishedAt?.toISOString() ?? null,
+        archivedAt: object.archivedAt?.toISOString() ?? null,
+        lifecycleVersionOffset: object.lifecycleVersionOffset ?? 0,
         updatedAt: object.updatedAt.toISOString(),
       },
       fields: object.fields.map((field) => ({
@@ -194,6 +346,7 @@ class PrismaObjectsStore implements ObjectsStore {
         sortOrder: field.sortOrder,
         isSystem: field.isSystem,
         status: field.status,
+        publishedType: publishedTypes.get(field.id) ?? null,
         updatedAt: field.updatedAt.toISOString(),
       })),
       defaultView: view
@@ -221,10 +374,7 @@ class PrismaObjectsStore implements ObjectsStore {
             ),
           }
         : null,
-      activeSchema: object.activePublication
-        ? (object.activePublication
-            .configuration as unknown as PublishedObjectSchema)
-        : null,
+      activeSchema,
       activeRecordCount,
     };
   }
@@ -239,6 +389,7 @@ class PrismaObjectsStore implements ObjectsStore {
         titleFieldKey: draft.object.titleFieldKey,
         icon: draft.object.icon,
         status: draft.object.status,
+        lifecycleVersionOffset: draft.object.lifecycleVersionOffset ?? 0,
         sortOrder: draft.object.sortOrder,
         settings: toPrismaJson({ description: draft.object.description }),
         version: draft.object.version,
@@ -270,6 +421,7 @@ class PrismaObjectsStore implements ObjectsStore {
         titleFieldKey: draft.object.titleFieldKey,
         icon: draft.object.icon,
         status: draft.object.status,
+        lifecycleVersionOffset: draft.object.lifecycleVersionOffset ?? 0,
         sortOrder: draft.object.sortOrder,
         settings: toPrismaJson({ description: draft.object.description }),
         activePublicationId: draft.object.activePublicationId,

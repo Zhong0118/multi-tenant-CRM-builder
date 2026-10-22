@@ -151,6 +151,7 @@ export type StoredDashboardPublicationConfiguration =
 export type DashboardWidgetUnavailableReason =
   | 'AUDIENCE_EXCLUDED'
   | 'OBJECT_UNAVAILABLE'
+  | 'OBJECT_ARCHIVED'
   | 'OBJECT_ACCESS_DENIED'
   | 'FIELD_HIDDEN'
   | 'QUERY_FAILED';

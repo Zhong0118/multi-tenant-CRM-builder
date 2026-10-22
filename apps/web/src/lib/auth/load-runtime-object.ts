@@ -21,9 +21,8 @@ export interface RuntimeObjectContext {
 }
 
 /**
- * Loads the published schema a member may actually use. A forbidden, archived,
- * unpublished or cross-tenant object is a not-found here: the page must not
- * reveal that it exists somewhere.
+ * Loads the authorized published schema. Inaccessible/unpublished tables stay
+ * private; only an explicit authorized OBJECT_ARCHIVED response is explained.
  *
  * Member names are only fetched for administrators, since the member roster is
  * an administrator capability.
@@ -39,6 +38,11 @@ export async function loadRuntimeObject(
     { params: { path: { tenantCode, objectCode } } },
   );
   if (!result.data) {
+    if (
+      toApiError(result.error, result.response.status).code ===
+      "OBJECT_ARCHIVED"
+    )
+      throw new ArchivedObjectError();
     if (result.response.status < 500) notFound();
     throw asError(result.error, result.response.status);
   }
@@ -90,6 +94,8 @@ export async function loadRecordPage(
           direction: query.direction,
           ...(query.search ? { search: query.search } : {}),
           ...(query.scope ? { scope: query.scope } : {}),
+          ...(query.poolStage ? { poolStage: query.poolStage } : {}),
+          ...(query.poolQuality ? { poolQuality: query.poolQuality } : {}),
           ...(query.ownerMemberId
             ? { ownerMemberId: query.ownerMemberId }
             : {}),
@@ -101,6 +107,11 @@ export async function loadRecordPage(
     },
   );
   if (!result.data) {
+    if (
+      toApiError(result.error, result.response.status).code ===
+      "OBJECT_ARCHIVED"
+    )
+      throw new ArchivedObjectError();
     if (result.response.status < 500) notFound();
     throw asError(result.error, result.response.status);
   }
@@ -118,6 +129,11 @@ export async function loadRecord(
     { params: { path: { tenantCode, objectCode, recordId } } },
   );
   if (!result.data) {
+    if (
+      toApiError(result.error, result.response.status).code ===
+      "OBJECT_ARCHIVED"
+    )
+      throw new ArchivedObjectError();
     if (result.response.status < 500) notFound();
     throw asError(result.error, result.response.status);
   }
@@ -127,4 +143,11 @@ export async function loadRecord(
 function asError(body: unknown, status: number): Error {
   const apiError = toApiError(body, status);
   return Object.assign(new Error(apiError.message), apiError);
+}
+
+export class ArchivedObjectError extends Error {
+  readonly code = "OBJECT_ARCHIVED";
+  constructor() {
+    super("业务表已停用");
+  }
 }

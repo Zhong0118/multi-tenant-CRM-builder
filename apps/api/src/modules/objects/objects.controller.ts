@@ -31,6 +31,8 @@ import {
   DeleteObjectDraftResponseDto,
   EmployeePermissionsDto,
   ExpectedVersionDto,
+  RestoreObjectDto,
+  ObjectLifecycleResponseDto,
   FieldOrderDto,
   ObjectDraftResponseDto,
   ObjectOrderDto,
@@ -275,7 +277,31 @@ export class ObjectsController {
     return publications.map(toObjectPublicationResponse);
   }
 
+  @Get('object-definitions/:objectId/lifecycle')
+  @ApiOkResponse({ type: ObjectLifecycleResponseDto })
+  lifecycle(
+    @CurrentTenant() context: TenantContext,
+    @Param('objectId') objectId: string,
+  ) {
+    return this.objects.lifecycle(context, objectId);
+  }
+
+  @Post('object-definitions/:objectId/restore')
+  @HttpCode(200)
+  @ApiOkResponse({ type: ObjectDraftResponseDto })
+  async restore(
+    @CurrentTenant() context: TenantContext,
+    @Param('objectId') objectId: string,
+    @Body() dto: RestoreObjectDto,
+    @Req() request: RequestWithId,
+  ) {
+    return toObjectDraftResponse(
+      await this.objects.restore(context, objectId, dto, requestMeta(request)),
+    );
+  }
+
   @Post('object-definitions/:objectId/archive')
+  @HttpCode(200)
   @ApiOkResponse({ type: ObjectDraftResponseDto })
   async archive(
     @CurrentTenant() context: TenantContext,

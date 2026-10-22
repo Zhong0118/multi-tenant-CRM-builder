@@ -1,3 +1,5 @@
+import { lockRuntimeObjectConfiguration } from '../objects/object-configuration-lock';
+import { resolveReadablePublishedObjectInTransaction } from '../objects/published-object-transaction';
 import { Injectable } from '@nestjs/common';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { ApiException } from '../../common/errors/api.exception';
@@ -6,6 +8,7 @@ import { PublishedObjectService } from '../objects/published-object.service';
 import { AuditService } from '../audit/audit.service';
 import {
   checkRelationRecord,
+  recordRelationScope,
   createRecordRelationCommand,
   lockRelationActor,
   resolveRecordRelationScope,
@@ -29,8 +32,15 @@ export class RecordRelationsService {
   }
   async list(context: TenantContext, code: string, id: string) {
     id = id.toLowerCase();
-    const source = await this.scope(context, code, id, false);
+    let source = await this.scope(context, code, id, false);
     const links = await this.runner.withTenant(context, async (tx) => {
+      await lockRuntimeObjectConfiguration(tx, context.tenantId);
+      source = recordRelationScope(
+        await resolveReadablePublishedObjectInTransaction(tx, context, code),
+        context,
+        id,
+        false,
+      );
       await checkRelationRecord(tx, context, source);
       return tx.$queryRaw<
         Array<{ id: string; targetId: string; objectCode: string }>
@@ -39,15 +49,20 @@ export class RecordRelationsService {
     const visible = [];
     for (const link of links) {
       try {
-        const target = await this.scope(
-          context,
-          link.objectCode,
-          link.targetId,
-          false,
-        );
-        const record = await this.runner.withTenant(context, (tx) =>
-          checkRelationRecord(tx, context, target),
-        );
+        const record = await this.runner.withTenant(context, async (tx) => {
+          await lockRuntimeObjectConfiguration(tx, context.tenantId);
+          const currentTarget = recordRelationScope(
+            await resolveReadablePublishedObjectInTransaction(
+              tx,
+              context,
+              link.objectCode,
+            ),
+            context,
+            link.targetId,
+            false,
+          );
+          return checkRelationRecord(tx, context, currentTarget);
+        });
         visible.push({
           id: link.id,
           recordId: record.id,
@@ -74,6 +89,7 @@ export class RecordRelationsService {
      * later run the same command inside the Transition's transaction.
      */
     return this.runner.withTenant(context, async (tx) => {
+      await lockRuntimeObjectConfiguration(tx, context.tenantId);
       const { success } = await createRecordRelationCommand(
         tx,
         context,
@@ -86,7 +102,13 @@ export class RecordRelationsService {
         meta,
         {
           resolveScope: (ctx, objectCode, recordId, write) =>
-            this.scope(ctx, objectCode, recordId, write),
+            resolveReadablePublishedObjectInTransaction(
+              tx,
+              ctx,
+              objectCode,
+            ).then((resolved) =>
+              recordRelationScope(resolved, ctx, recordId, write),
+            ),
           audit: this.audit,
         },
       );
@@ -108,14 +130,31 @@ export class RecordRelationsService {
     const links = await this.list(context, code, id);
     const link = links.find((item) => item.id === relationId);
     if (!link) throw new ApiException('RECORD_NOT_FOUND', 404);
-    const source = await this.scope(context, code, id, true);
-    const target = await this.scope(
+    let source = await this.scope(context, code, id, true);
+    let target = await this.scope(
       context,
       link.objectCode,
       link.recordId,
       false,
     );
     return this.runner.withTenant(context, async (tx) => {
+      await lockRuntimeObjectConfiguration(tx, context.tenantId);
+      source = recordRelationScope(
+        await resolveReadablePublishedObjectInTransaction(tx, context, code),
+        context,
+        id,
+        true,
+      );
+      target = recordRelationScope(
+        await resolveReadablePublishedObjectInTransaction(
+          tx,
+          context,
+          link.objectCode,
+        ),
+        context,
+        link.recordId,
+        false,
+      );
       await lockRelationActor(tx, context);
       for (const scope of [source, target].sort((a, b) =>
         a.id.localeCompare(b.id),

@@ -104,24 +104,25 @@ function RecordWorkspaceSession({
         tenantCode={tenantCode} objectCode={schema.object.code} config={pool.data}
         onClose={() => setPoolSettingsOpen(false)}
         onSaved={async (config) => {
-          client.setQueryData(poolKey, config);
+          client.setQueryData(poolKey, (previous: typeof config | undefined) => ({ ...previous, ...config }));
           const recordsKey = ["workspace", tenantCode, "records", schema.object.code];
           const poolQueries = {
             queryKey: recordsKey,
             predicate: ({ queryKey }: { queryKey: readonly unknown[] }) => {
               const cachedQuery = queryKey[4];
               return typeof cachedQuery === "object" && cachedQuery !== null &&
-                "scope" in cachedQuery && cachedQuery.scope === "pool";
+                (("scope" in cachedQuery && cachedQuery.scope === "pool") || ("poolStage" in cachedQuery && (cachedQuery.poolStage === "LEAD_POOL" || cachedQuery.poolStage === "CUSTOMER_POOL")));
             },
           };
           if (!config.enabled) {
             await client.cancelQueries(poolQueries);
             client.removeQueries(poolQueries);
           }
-          if (!config.enabled && query.scope) {
-            const nextSearch = recordQuerySearch({ ...query, scope: undefined, page: 1, ownerMemberId: undefined }, { ...DEFAULT_RECORD_QUERY, sort: schema.defaultView.sort.field, direction: schema.defaultView.sort.direction });
+          if (!config.enabled && (query.scope || query.poolStage)) {
+            const nextSearch = recordQuerySearch({ ...query, scope: undefined, poolStage: undefined, page: 1, ownerMemberId: undefined }, { ...DEFAULT_RECORD_QUERY, sort: schema.defaultView.sort.field, direction: schema.defaultView.sort.direction });
             router.replace(`${listPath}${nextSearch ? `?${nextSearch}` : ""}`);
           }
+          await client.invalidateQueries({ queryKey: poolKey, exact: true }, { throwOnError: true });
           await client.invalidateQueries({
             queryKey: recordsKey,
             predicate: (cached) => config.enabled || !poolQueries.predicate(cached),

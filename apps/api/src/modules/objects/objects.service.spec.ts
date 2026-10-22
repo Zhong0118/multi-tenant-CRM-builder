@@ -13,6 +13,8 @@ import type {
   ObjectsStore,
 } from './objects.repository';
 import { ObjectsService } from './objects.service';
+import type { LifecycleBlocker } from './object-lifecycle.policy';
+import { toObjectDraftResponse } from './object-draft.presenter';
 
 const admin: TenantContext = {
   userId: 'user-admin',
@@ -36,6 +38,34 @@ class MemoryObjectsStore implements ObjectsStore {
   publications = new Map<string, ObjectPublicationSummary[]>();
   audits: Array<{ action: string; after?: Record<string, unknown> }> = [];
   onLock?: (objectId: string) => void;
+  lifecycleBlockers: LifecycleBlocker[] = [];
+  expiredCount = 0;
+
+  lockLifecycleConfiguration(): Promise<void> {
+    return Promise.resolve();
+  }
+  findLifecycleBlockers(): Promise<typeof this.lifecycleBlockers> {
+    return Promise.resolve(this.lifecycleBlockers);
+  }
+  countExpiredRecords(): Promise<number> {
+    return Promise.resolve(this.expiredCount);
+  }
+  async changeLifecycle(
+    draft: ObjectDraft,
+    expectedVersion: number,
+    now: Date,
+  ): Promise<ObjectDraft | null> {
+    const changed = structuredClone(draft);
+    changed.object.archivedAt =
+      changed.object.status === 'ARCHIVED' ? now.toISOString() : null;
+    Object.assign(changed.object, {
+      lifecycleVersionOffset:
+        ((changed.object as { lifecycleVersionOffset?: number })
+          .lifecycleVersionOffset ?? 0) + 1,
+    });
+    return this.saveObject(changed, expectedVersion);
+  }
+
   workflow: WorkflowDraft | null = null;
   actionTargets = new Map<string, ActionPublicationTarget>();
   actionTargetLookups: string[][] = [];
@@ -56,9 +86,19 @@ class MemoryObjectsStore implements ObjectsStore {
   }
 
   findObject(objectId: string): Promise<ObjectDraft | null> {
-    return Promise.resolve(
-      this.objects.find((draft) => draft.object.id === objectId) ?? null,
+    const draft = this.objects.find((item) => item.object.id === objectId);
+    if (!draft) return Promise.resolve(null);
+    const historical = (this.publications.get(objectId) ?? []).flatMap(
+      (item) => item.configuration.fields,
     );
+    return Promise.resolve({
+      ...structuredClone(draft),
+      fields: draft.fields.map((field) => ({
+        ...structuredClone(field),
+        publishedType:
+          historical.find((item) => item.id === field.id)?.type ?? null,
+      })),
+    });
   }
 
   createObject(draft: ObjectDraft): Promise<ObjectDraft> {
@@ -193,12 +233,13 @@ function fixture() {
   const store = new MemoryObjectsStore();
   const repository = new MemoryObjectsRepository(store);
   let id = 0;
+  const clock = jest.fn(() => new Date('2026-08-21T10:00:00.000Z'));
   const service = new ObjectsService(
     repository,
-    () => new Date('2026-08-21T10:00:00.000Z'),
+    clock,
     () => `generated-${++id}`,
   );
-  return { service, store, repository };
+  return { service, store, repository, clock };
 }
 
 async function createObject(service: ObjectsService) {
@@ -569,16 +610,126 @@ describe('ObjectsService', () => {
       ),
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
 
-    const inactivated = await service.updateField(
+    await expect(
+      service.updateField(
+        admin,
+        draft.object.id,
+        titleField.id,
+        { expectedVersion: draft.object.version, status: 'INACTIVE' },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
+
+  it('retires fields atomically with list/search cleanup and restores their original permission', async () => {
+    const { service } = fixture();
+    let draft = await createPublishableDraft(service);
+    draft = await service.createField(
       admin,
       draft.object.id,
-      titleField.id,
+      {
+        expectedVersion: draft.object.version,
+        fieldKey: 'note',
+        label: '备注',
+        type: 'TEXT',
+        required: false,
+        defaultValue: null,
+        validation: {},
+        config: {},
+        isSystem: false,
+      },
+      meta,
+    );
+    draft = await service.updatePermissions(
+      admin,
+      draft.object.id,
+      {
+        ...draft.employeeAccess!,
+        expectedVersion: draft.object.version,
+        fields: { name: 'EDIT', note: 'READ_ONLY' },
+      },
+      meta,
+    );
+    draft = await service.updateDefaultView(
+      admin,
+      draft.object.id,
+      {
+        expectedVersion: draft.object.version,
+        name: '列表',
+        columnFieldKeys: ['name', 'note'],
+        searchFieldKeys: ['name', 'note'],
+        sort: { field: 'updatedAt', direction: 'desc' },
+      },
+      meta,
+    );
+    await service.publish(
+      admin,
+      draft.object.id,
+      { expectedVersion: draft.object.version },
+      meta,
+    );
+    const note = draft.fields.find((field) => field.fieldKey === 'note')!;
+    draft = await service.updateField(
+      admin,
+      draft.object.id,
+      note.id,
       { expectedVersion: draft.object.version, status: 'INACTIVE' },
       meta,
     );
-    expect(inactivated.fields).toContainEqual(
-      expect.objectContaining({ id: titleField.id, status: 'INACTIVE' }),
+    expect(draft.defaultView).toMatchObject({
+      columnFieldKeys: ['name'],
+      searchFieldKeys: ['name'],
+    });
+    expect(
+      draft.activeSchema!.fields.some((field) => field.id === note.id),
+    ).toBe(true);
+    await service.publish(
+      admin,
+      draft.object.id,
+      { expectedVersion: draft.object.version },
+      meta,
     );
+    draft = await service.detail(admin, draft.object.id);
+    expect(
+      draft.activeSchema!.fields.some((field) => field.id === note.id),
+    ).toBe(false);
+    expect(draft.fields.find((field) => field.id === note.id)?.status).toBe(
+      'INACTIVE',
+    );
+    for (const patch of [
+      { type: 'NUMBER' as const },
+      { fieldKey: 'renamed_note' },
+    ]) {
+      await expect(
+        service.updateField(
+          admin,
+          draft.object.id,
+          note.id,
+          { expectedVersion: draft.object.version, ...patch },
+          meta,
+        ),
+      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    }
+    draft = await service.updateField(
+      admin,
+      draft.object.id,
+      note.id,
+      { expectedVersion: draft.object.version, status: 'ACTIVE' },
+      meta,
+    );
+    expect(draft.employeeAccess!.fields.note).toBe('READ_ONLY');
+    expect(draft.defaultView!.columnFieldKeys).toEqual(['name']);
+    await service.publish(
+      admin,
+      draft.object.id,
+      { expectedVersion: draft.object.version },
+      meta,
+    );
+    expect(
+      (await service.detail(admin, draft.object.id)).activeSchema!.fields.some(
+        (field) => field.id === note.id,
+      ),
+    ).toBe(true);
   });
 
   it('persists deterministic object and field order', async () => {
@@ -1075,5 +1226,300 @@ describe('ObjectsService workflow action publication', () => {
       ),
     ).resolves.toMatchObject({ number: 1 });
     expect(store.actionTargetLookups).toEqual([[]]);
+  });
+});
+
+describe('whole table lifecycle', () => {
+  async function published(dirty = false) {
+    const result = fixture();
+    let draft = await createPublishableDraft(result.service);
+    await result.service.publish(
+      admin,
+      draft.object.id,
+      { expectedVersion: draft.object.version },
+      meta,
+    );
+    draft = await result.service.detail(admin, draft.object.id);
+    if (dirty)
+      draft = await result.service.update(
+        admin,
+        draft.object.id,
+        {
+          expectedVersion: draft.object.version,
+          description: 'unpublished description',
+        },
+        meta,
+      );
+    return { ...result, draft };
+  }
+
+  it.each([false, true])(
+    'restores the original publication and retains dirty state %s',
+    async (dirty) => {
+      const { service, store, draft } = await published(dirty);
+      const before = structuredClone(draft);
+      const archived = await service.archive(
+        admin,
+        draft.object.id,
+        { expectedVersion: draft.object.version },
+        meta,
+      );
+      expect(archived.object).toMatchObject({
+        status: 'ARCHIVED',
+        archivedAt: '2026-08-21T10:00:00.000Z',
+      });
+      const restored = await service.restore(
+        admin,
+        draft.object.id,
+        { expectedVersion: archived.object.version },
+        meta,
+      );
+      expect(restored.object).toMatchObject({
+        status: 'ACTIVE',
+        archivedAt: null,
+        version: before.object.version + 2,
+      });
+      expect(restored.activeSchema).toEqual(before.activeSchema);
+      expect(restored.fields).toEqual(before.fields);
+      expect(restored.employeeAccess).toEqual(before.employeeAccess);
+      expect(toObjectDraftResponse(restored).object.hasUnpublishedChanges).toBe(
+        dirty,
+      );
+      expect(store.publications.get(draft.object.id)).toHaveLength(1);
+      expect(store.audits.slice(-2).map((event) => event.action)).toEqual([
+        'object.archived',
+        'object.restored',
+      ]);
+    },
+  );
+
+  it('rejects stale and repeated lifecycle changes', async () => {
+    const { service, draft } = await published();
+    const archived = await service.archive(
+      admin,
+      draft.object.id,
+      { expectedVersion: draft.object.version },
+      meta,
+    );
+    await expect(
+      service.archive(
+        admin,
+        draft.object.id,
+        { expectedVersion: archived.object.version },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'OBJECT_ARCHIVED', status: 409 });
+    await expect(
+      service.restore(
+        admin,
+        draft.object.id,
+        { expectedVersion: draft.object.version },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'CONFIG_VERSION_CONFLICT', status: 409 });
+    const restored = await service.restore(
+      admin,
+      draft.object.id,
+      { expectedVersion: archived.object.version },
+      meta,
+    );
+    await expect(
+      service.restore(
+        admin,
+        draft.object.id,
+        { expectedVersion: restored.object.version },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'OBJECT_LIFECYCLE_CONFLICT', status: 409 });
+  });
+
+  it('makes archived drafts and publication read only', async () => {
+    const { service, draft } = await published();
+    const archived = await service.archive(
+      admin,
+      draft.object.id,
+      { expectedVersion: draft.object.version },
+      meta,
+    );
+    for (const operation of [
+      () =>
+        service.update(
+          admin,
+          draft.object.id,
+          { expectedVersion: archived.object.version, name: 'bypass' },
+          meta,
+        ),
+      () =>
+        service.publish(
+          admin,
+          draft.object.id,
+          { expectedVersion: archived.object.version },
+          meta,
+        ),
+      () =>
+        service.reorderObjects(
+          admin,
+          {
+            items: [
+              {
+                objectId: draft.object.id,
+                expectedVersion: archived.object.version,
+              },
+            ],
+          },
+          meta,
+        ),
+    ])
+      await expect(operation()).rejects.toMatchObject({
+        code: 'OBJECT_ARCHIVED',
+        status: 409,
+      });
+  });
+
+  it('previews dependency blockers without mutation and rechecks them on archive', async () => {
+    const { service, store, draft } = await published();
+    const before = structuredClone(store.objects);
+    await expect(
+      service.lifecycle(admin, draft.object.id),
+    ).resolves.toMatchObject({ blockers: [] });
+    expect(store.objects).toEqual(before);
+    store.lifecycleBlockers = [
+      {
+        kind: 'WORKFLOW',
+        objectCode: 'orders',
+        objectName: '订单',
+        description: '订单流程需要创建线索',
+      },
+    ];
+    await expect(
+      service.archive(
+        admin,
+        draft.object.id,
+        { expectedVersion: draft.object.version },
+        meta,
+      ),
+    ).rejects.toMatchObject({
+      code: 'OBJECT_LIFECYCLE_BLOCKED',
+      status: 409,
+      fieldErrors: { blockers: ['订单流程需要创建线索'] },
+    });
+    expect(store.objects).toEqual(before);
+  });
+
+  it('revalidates outgoing dependencies before restore', async () => {
+    const { service, store, draft } = await published();
+    const archived = await service.archive(
+      admin,
+      draft.object.id,
+      { expectedVersion: draft.object.version },
+      meta,
+    );
+    store.lifecycleBlockers = [
+      {
+        kind: 'WORKFLOW',
+        objectCode: 'customers',
+        objectName: '客户',
+        description: '依赖的客户表已停用',
+      },
+    ];
+    await expect(
+      service.restore(
+        admin,
+        draft.object.id,
+        { expectedVersion: archived.object.version },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'OBJECT_LIFECYCLE_BLOCKED', status: 409 });
+    expect(store.objects[0].object.status).toBe('ARCHIVED');
+  });
+
+  it('requires explicit acknowledgement when legacy archive time is missing', async () => {
+    const { service, store, draft } = await published();
+    store.objects[0].object.status = 'ARCHIVED';
+    store.expiredCount = 3;
+    await expect(
+      service.lifecycle(admin, draft.object.id),
+    ).resolves.toMatchObject({
+      requiresLegacyTimerAcknowledgement: true,
+      expiredRecordCount: 3,
+    });
+    await expect(
+      service.restore(
+        admin,
+        draft.object.id,
+        { expectedVersion: draft.object.version },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'OBJECT_LIFECYCLE_CONFLICT', status: 409 });
+    await expect(
+      service.restore(
+        admin,
+        draft.object.id,
+        {
+          expectedVersion: draft.object.version,
+          acknowledgeLegacyTimers: true,
+        },
+        meta,
+      ),
+    ).resolves.toMatchObject({ object: { status: 'ACTIVE' } });
+  });
+
+  it('rejects employee access and unknown objects', async () => {
+    const { service, repository } = fixture();
+    await expect(
+      service.restore(employee, 'missing', { expectedVersion: 1 }, meta),
+    ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN', status: 403 });
+    await expect(service.lifecycle(employee, 'missing')).rejects.toMatchObject({
+      code: 'OBJECT_ACTION_FORBIDDEN',
+      status: 403,
+    });
+    expect(repository.transactions).toBe(0);
+    await expect(
+      service.restore(admin, 'foreign-id', { expectedVersion: 1 }, meta),
+    ).rejects.toMatchObject({ code: 'OBJECT_NOT_FOUND', status: 404 });
+  });
+
+  it('resets lifecycle dirty offset when publishing after restore', async () => {
+    const { service, draft } = await published();
+    const archived = await service.archive(
+      admin,
+      draft.object.id,
+      { expectedVersion: draft.object.version },
+      meta,
+    );
+    let restored = await service.restore(
+      admin,
+      draft.object.id,
+      { expectedVersion: archived.object.version },
+      meta,
+    );
+    restored = await service.update(
+      admin,
+      draft.object.id,
+      { expectedVersion: restored.object.version, description: 'new config' },
+      meta,
+    );
+    expect(toObjectDraftResponse(restored).object.hasUnpublishedChanges).toBe(
+      true,
+    );
+    await service.publish(
+      admin,
+      draft.object.id,
+      { expectedVersion: restored.object.version },
+      meta,
+    );
+    restored = await service.detail(admin, draft.object.id);
+    expect(toObjectDraftResponse(restored).object.hasUnpublishedChanges).toBe(
+      false,
+    );
+    restored = await service.update(
+      admin,
+      draft.object.id,
+      { expectedVersion: restored.object.version, description: 'next config' },
+      meta,
+    );
+    expect(toObjectDraftResponse(restored).object.hasUnpublishedChanges).toBe(
+      true,
+    );
   });
 });

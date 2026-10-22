@@ -2,10 +2,7 @@ import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { WorkflowActionDraft } from '../actions/action.types';
 import { WorkflowAdminService } from './workflow-admin.service';
-import type {
-  WorkflowRepository,
-  WorkflowStore,
-} from './workflow.repository';
+import type { WorkflowRepository, WorkflowStore } from './workflow.repository';
 import type { WorkflowDraft, WorkflowDraftResponse } from './workflow.types';
 
 const admin: TenantContext = {
@@ -72,6 +69,7 @@ const actionsDraft: WorkflowDraft = {
 class MemoryWorkflowStore implements WorkflowStore {
   object = {
     id: 'object-1',
+    status: 'ACTIVE' as 'ACTIVE' | 'ARCHIVED',
     version: 12,
     fieldKeys: ['amount', 'name'],
   };
@@ -91,7 +89,8 @@ class MemoryWorkflowStore implements WorkflowStore {
     expectedVersion: number;
     draft: WorkflowDraft;
   }): Promise<WorkflowDraftResponse | null> {
-    if (input.expectedVersion !== this.object.version) return Promise.resolve(null);
+    if (input.expectedVersion !== this.object.version)
+      return Promise.resolve(null);
     this.draft = this.snapshot(input.draft);
     this.object.version += 1;
     return Promise.resolve({
@@ -271,5 +270,21 @@ describe('WorkflowAdminService', () => {
 
     expect(saved.transitions[0]?.actions).toEqual([]);
     expect(loaded.transitions[0]?.actions).toEqual([]);
+  });
+});
+
+describe('archived workflow draft', () => {
+  it('rejects editing a stopped table without replacing its workflow', async () => {
+    const { service, store } = fixture();
+    store.object.status = 'ARCHIVED';
+    await expect(
+      service.save(
+        admin,
+        store.object.id,
+        { ...validDraft, expectedDraftRevision: store.object.version },
+        { requestId: 'archived' },
+      ),
+    ).rejects.toMatchObject({ code: 'OBJECT_ARCHIVED', status: 409 });
+    expect(store.draft).toBeNull();
   });
 });

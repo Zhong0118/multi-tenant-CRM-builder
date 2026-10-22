@@ -1813,6 +1813,7 @@
             "enum": [
               "AUDIENCE_EXCLUDED",
               "OBJECT_UNAVAILABLE",
+              "OBJECT_ARCHIVED",
               "OBJECT_ACCESS_DENIED",
               "FIELD_HIDDEN",
               "QUERY_FAILED"
@@ -2348,6 +2349,9 @@
             "description": "仅校验和查重，不创建记录。",
             "type": "boolean"
           },
+          "importToPool": {
+            "type": "boolean"
+          },
           "matchFields": {
             "items": {
               "type": "string"
@@ -2706,6 +2710,117 @@
         "required": ["accepted"],
         "type": "object"
       },
+      "NotificationItemDto": {
+        "properties": {
+          "canOpen": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "dueAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "CONTACT_DUE",
+              "FOLLOW_UP_DUE",
+              "TASK_OVERDUE",
+              "POOL_RECLAIMED",
+              "PROTECTION_REVIEW"
+            ],
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "readAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "message",
+          "createdAt",
+          "dueAt",
+          "readAt",
+          "canOpen"
+        ],
+        "type": "object"
+      },
+      "NotificationOkDto": {
+        "properties": {
+          "ok": {
+            "enum": [true],
+            "type": "boolean"
+          }
+        },
+        "required": ["ok"],
+        "type": "object"
+      },
+      "NotificationPageDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationItemDto"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "serverTime": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "snapshot": {
+            "type": "string"
+          },
+          "total": {
+            "type": "number"
+          },
+          "unreadCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "snapshot",
+          "items",
+          "total",
+          "unreadCount",
+          "page",
+          "limit",
+          "serverTime"
+        ],
+        "type": "object"
+      },
+      "NotificationTargetDto": {
+        "properties": {
+          "href": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": ["href"],
+        "type": "object"
+      },
       "ObjectDraftDefaultViewResponseDto": {
         "properties": {
           "columnFieldKeys": {
@@ -2878,6 +2993,11 @@
       },
       "ObjectDraftObjectResponseDto": {
         "properties": {
+          "archivedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
           "code": {
             "type": "string"
           },
@@ -2993,6 +3113,75 @@
           "employeeAccess",
           "publishedEmployeeAccess",
           "activeRecordCount"
+        ],
+        "type": "object"
+      },
+      "ObjectLifecycleBlockerDto": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": ["WORKFLOW", "POOL_PROTECTION"],
+            "type": "string"
+          },
+          "objectCode": {
+            "type": "string"
+          },
+          "objectName": {
+            "type": "string"
+          }
+        },
+        "required": ["kind", "objectCode", "objectName", "description"],
+        "type": "object"
+      },
+      "ObjectLifecycleResponseDto": {
+        "properties": {
+          "activePublicationVersion": {
+            "nullable": true,
+            "type": "number"
+          },
+          "archivedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "blockers": {
+            "items": {
+              "$ref": "#/components/schemas/ObjectLifecycleBlockerDto"
+            },
+            "type": "array"
+          },
+          "expiredRecordCount": {
+            "type": "number"
+          },
+          "hasUnpublishedChanges": {
+            "type": "boolean"
+          },
+          "recordCount": {
+            "type": "number"
+          },
+          "requiresLegacyTimerAcknowledgement": {
+            "type": "boolean"
+          },
+          "status": {
+            "enum": ["DRAFT", "ACTIVE", "ARCHIVED"],
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "status",
+          "version",
+          "recordCount",
+          "activePublicationVersion",
+          "archivedAt",
+          "hasUnpublishedChanges",
+          "blockers",
+          "requiresLegacyTimerAcknowledgement",
+          "expiredRecordCount"
         ],
         "type": "object"
       },
@@ -3424,6 +3613,114 @@
         "required": ["total", "draft", "active", "suspended", "closed"],
         "type": "object"
       },
+      "PoolLabelsDto": {
+        "properties": {
+          "customerPool": {
+            "type": "string"
+          },
+          "following": {
+            "type": "string"
+          },
+          "leadPool": {
+            "type": "string"
+          },
+          "pending": {
+            "type": "string"
+          },
+          "protected": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "PoolPermissionsDto": {
+        "properties": {
+          "canRead": {
+            "type": "boolean"
+          },
+          "canUpdate": {
+            "type": "boolean"
+          },
+          "readScope": {
+            "enum": ["ALL", "OWN", "NONE"],
+            "type": "string"
+          },
+          "updateScope": {
+            "enum": ["ALL", "OWN", "NONE"],
+            "type": "string"
+          }
+        },
+        "required": ["canRead", "canUpdate", "readScope", "updateScope"],
+        "type": "object"
+      },
+      "PoolPreviewDto": {
+        "properties": {
+          "expiredCount": {
+            "type": "number"
+          },
+          "legacyOwned": {
+            "type": "number"
+          },
+          "legacyPool": {
+            "type": "number"
+          },
+          "legacyUnassigned": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "legacyUnassigned",
+          "legacyPool",
+          "legacyOwned",
+          "expiredCount"
+        ],
+        "type": "object"
+      },
+      "PoolProtectionRuleDto": {
+        "properties": {
+          "sourceObjectCode": {
+            "type": "string"
+          },
+          "statusKeys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["sourceObjectCode", "statusKeys"],
+        "type": "object"
+      },
+      "PoolProtectionSourceDto": {
+        "properties": {
+          "objectCode": {
+            "type": "string"
+          },
+          "objectName": {
+            "type": "string"
+          },
+          "states": {
+            "items": {
+              "$ref": "#/components/schemas/PoolProtectionStateDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["objectCode", "objectName", "states"],
+        "type": "object"
+      },
+      "PoolProtectionStateDto": {
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": ["key", "label"],
+        "type": "object"
+      },
       "PreviewDashboardDto": {
         "properties": {
           "expectedVersion": {
@@ -3688,6 +3985,19 @@
         ],
         "type": "object"
       },
+      "ReadAllNotificationsDto": {
+        "properties": {
+          "before": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "snapshot": {
+            "type": "string"
+          }
+        },
+        "required": ["snapshot", "before"],
+        "type": "object"
+      },
       "RecordActivityPageResponseDto": {
         "properties": {
           "items": {
@@ -3871,11 +4181,29 @@
       "RecordOwnershipDto": {
         "properties": {
           "action": {
-            "enum": ["CLAIM", "RELEASE", "ASSIGN"],
+            "enum": [
+              "CLAIM",
+              "RELEASE",
+              "ASSIGN",
+              "CONFIRM_CONTACT",
+              "UNPROTECT_RELEASE"
+            ],
             "type": "string"
           },
           "ownerMemberId": {
             "format": "uuid",
+            "type": "string"
+          },
+          "poolStage": {
+            "enum": ["LEAD_POOL", "CUSTOMER_POOL"],
+            "type": "string"
+          },
+          "quality": {
+            "enum": ["INVALID", "DUPLICATE", "LOST"],
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 1000,
             "type": "string"
           },
           "version": {
@@ -3914,6 +4242,12 @@
           "page": {
             "type": "number"
           },
+          "poolCounts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
           "total": {
             "type": "number"
           }
@@ -3923,7 +4257,25 @@
       },
       "RecordPoolConfigResponseDto": {
         "properties": {
+          "contactTtlHours": {
+            "default": 24,
+            "maximum": 8760,
+            "minimum": 1,
+            "type": "number"
+          },
           "enabled": {
+            "type": "boolean"
+          },
+          "followUpTtlHours": {
+            "default": 720,
+            "maximum": 8760,
+            "minimum": 1,
+            "type": "number"
+          },
+          "labels": {
+            "$ref": "#/components/schemas/PoolLabelsDto"
+          },
+          "lifecycleEnabled": {
             "type": "boolean"
           },
           "ownershipTtlHours": {
@@ -3931,6 +4283,28 @@
             "minimum": 1,
             "nullable": true,
             "type": "number"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/PoolPermissionsDto"
+          },
+          "preview": {
+            "$ref": "#/components/schemas/PoolPreviewDto"
+          },
+          "protectionRules": {
+            "items": {
+              "$ref": "#/components/schemas/PoolProtectionRuleDto"
+            },
+            "type": "array"
+          },
+          "protectionSources": {
+            "items": {
+              "$ref": "#/components/schemas/PoolProtectionSourceDto"
+            },
+            "type": "array"
+          },
+          "serverTime": {
+            "format": "date-time",
+            "type": "string"
           },
           "version": {
             "minimum": 1,
@@ -3980,6 +4354,49 @@
             "format": "date-time",
             "nullable": true,
             "type": "string"
+          },
+          "poolClaimedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "poolLastFollowUpAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "poolOrigin": {
+            "enum": ["LEAD_POOL", "CUSTOMER_POOL"],
+            "nullable": true,
+            "type": "string"
+          },
+          "poolProtectedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "poolQuality": {
+            "enum": ["INVALID", "DUPLICATE", "LOST"],
+            "nullable": true,
+            "type": "string"
+          },
+          "poolReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "poolStage": {
+            "enum": [
+              "LEAD_POOL",
+              "CUSTOMER_POOL",
+              "PENDING_CONTACT",
+              "FOLLOWING",
+              "PROTECTED"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "protectionNeedsReview": {
+            "type": "boolean"
           },
           "recordNo": {
             "type": "string"
@@ -4091,6 +4508,19 @@
           }
         },
         "required": ["phone", "code", "newPassword"],
+        "type": "object"
+      },
+      "RestoreObjectDto": {
+        "properties": {
+          "acknowledgeLegacyTimers": {
+            "type": "boolean"
+          },
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": ["expectedVersion"],
         "type": "object"
       },
       "RuntimeAvailableTransitionDto": {
@@ -5412,7 +5842,23 @@
       },
       "UpdateRecordPoolConfigDto": {
         "properties": {
+          "contactTtlHours": {
+            "maximum": 8760,
+            "minimum": 1,
+            "type": "number"
+          },
           "enabled": {
+            "type": "boolean"
+          },
+          "followUpTtlHours": {
+            "maximum": 8760,
+            "minimum": 1,
+            "type": "number"
+          },
+          "labels": {
+            "$ref": "#/components/schemas/PoolLabelsDto"
+          },
+          "lifecycleEnabled": {
             "type": "boolean"
           },
           "ownershipTtlHours": {
@@ -5420,6 +5866,12 @@
             "minimum": 1,
             "nullable": true,
             "type": "number"
+          },
+          "protectionRules": {
+            "items": {
+              "$ref": "#/components/schemas/PoolProtectionRuleDto"
+            },
+            "type": "array"
           },
           "version": {
             "minimum": 1,
@@ -9022,6 +9474,194 @@
         "tags": ["memberships"]
       }
     },
+    "/api/v1/workspaces/{tenantCode}/notifications": {
+      "get": {
+        "operationId": "NotificationsController_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "unreadOnly",
+            "required": false,
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPageDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["notifications"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/notifications/read-all": {
+      "post": {
+        "operationId": "NotificationsController_readAll",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadAllNotificationsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationOkDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["notifications"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/notifications/{id}/read": {
+      "patch": {
+        "operationId": "NotificationsController_read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationOkDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["notifications"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/notifications/{id}/target": {
+      "get": {
+        "operationId": "NotificationsController_target",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationTargetDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["notifications"]
+      }
+    },
     "/api/v1/workspaces/{tenantCode}/object-definitions": {
       "get": {
         "operationId": "ObjectsController_list",
@@ -9548,6 +10188,47 @@
         "tags": ["object-definitions"]
       }
     },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/lifecycle": {
+      "get": {
+        "operationId": "ObjectsController_lifecycle",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectLifecycleResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      }
+    },
     "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/permissions": {
       "put": {
         "operationId": "ObjectsController_updatePermissions",
@@ -9729,6 +10410,57 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ObjectPublicationResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/restore": {
+      "post": {
+        "operationId": "ObjectsController_restore",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreObjectDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectDraftResponseDto"
                 }
               }
             },
@@ -9975,6 +10707,31 @@
           },
           {
             "in": "query",
+            "name": "poolStage",
+            "required": false,
+            "schema": {
+              "enum": [
+                "LEAD_POOL",
+                "CUSTOMER_POOL",
+                "PENDING_CONTACT",
+                "FOLLOWING",
+                "PROTECTED",
+                "LEGACY"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "poolQuality",
+            "required": false,
+            "schema": {
+              "enum": ["INVALID", "DUPLICATE", "LOST"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "scope",
             "required": false,
             "schema": {
@@ -10013,11 +10770,21 @@
             }
           },
           {
+            "description": "按负责人筛选；unassigned 表示未指定负责人，仅管理员可筛选。",
             "in": "query",
             "name": "ownerMemberId",
             "required": false,
             "schema": {
-              "format": "uuid",
+              "oneOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "enum": ["unassigned"],
+                  "type": "string"
+                }
+              ],
               "type": "string"
             }
           },
@@ -10207,6 +10974,31 @@
           },
           {
             "in": "query",
+            "name": "poolStage",
+            "required": false,
+            "schema": {
+              "enum": [
+                "LEAD_POOL",
+                "CUSTOMER_POOL",
+                "PENDING_CONTACT",
+                "FOLLOWING",
+                "PROTECTED",
+                "LEGACY"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "poolQuality",
+            "required": false,
+            "schema": {
+              "enum": ["INVALID", "DUPLICATE", "LOST"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "scope",
             "required": false,
             "schema": {
@@ -10245,11 +11037,21 @@
             }
           },
           {
+            "description": "按负责人筛选；unassigned 表示未指定负责人，仅管理员可筛选。",
             "in": "query",
             "name": "ownerMemberId",
             "required": false,
             "schema": {
-              "format": "uuid",
+              "oneOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "enum": ["unassigned"],
+                  "type": "string"
+                }
+              ],
               "type": "string"
             }
           },

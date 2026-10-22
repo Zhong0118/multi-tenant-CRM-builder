@@ -42,6 +42,8 @@ interface RuntimeSchemaResponse {
 }
 
 interface RecordResponse {
+  id: string;
+  version: number;
   recordNo: string;
   title: string;
   ownerMemberId: string | null;
@@ -57,6 +59,7 @@ interface DraftResponse {
     hasUnpublishedChanges: boolean;
   };
   fields: Array<{
+    id: string;
     fieldKey: string;
     publishedType: string | null;
     employeeAccess: string;
@@ -237,7 +240,7 @@ describe('Object publication chain (e2e)', () => {
     ]);
 
     // The employee now sees the object, without the hidden field.
-    const employee = (method: 'get' | 'post', url: string) =>
+    const employee = (method: 'get' | 'post' | 'patch', url: string) =>
       request(server)
         [method](url)
         .set('Origin', origin)
@@ -301,6 +304,87 @@ describe('Object publication chain (e2e)', () => {
     const live = unchanged.body as RuntimeSchemaResponse;
     expect(live.object.name).toBe('客户资料');
     expect(live.publication.number).toBe(1);
+
+    // Retiring a field edits the draft first, then hides it from both roles
+    // without dropping stored values, including during subsequent record edits.
+    version = (renamed.body as DraftResponse).object.version;
+    const amountId = (renamed.body as DraftResponse).fields.find(
+      (field) => field.fieldKey === 'amount',
+    )!.id;
+    const fieldUrl = `${base}/object-definitions/${objectId}/fields/${amountId}`;
+    const retired = await admin('patch', fieldUrl)
+      .send({ expectedVersion: version, status: 'INACTIVE' })
+      .expect(200);
+    version = (retired.body as DraftResponse).object.version;
+    expect(
+      (
+        (await employee('get', `${base}/objects/customers/schema`).expect(200))
+          .body as RuntimeSchemaResponse
+      ).fields,
+    ).toEqual(
+      expect.arrayContaining([expect.objectContaining({ fieldKey: 'amount' })]),
+    );
+    await admin('post', `${base}/object-definitions/${objectId}/publications`)
+      .send({ expectedVersion: version })
+      .expect(201);
+    for (const actor of [admin, employee]) {
+      const runtime = await actor(
+        'get',
+        `${base}/objects/customers/schema`,
+      ).expect(200);
+      expect((runtime.body as RuntimeSchemaResponse).fields).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ fieldKey: 'amount' }),
+        ]),
+      );
+      const detail = await actor(
+        'get',
+        `${base}/objects/customers/records/${createdRecord.id}`,
+      ).expect(200);
+      expect((detail.body as RecordResponse).values).not.toHaveProperty(
+        'amount',
+      );
+    }
+    const retiredDraft = await admin(
+      'get',
+      `${base}/object-definitions/${objectId}`,
+    ).expect(200);
+    expect(
+      (retiredDraft.body as DraftResponse).fields.find(
+        (field) => field.id === amountId,
+      )?.publishedType,
+    ).toBe('MONEY');
+    await admin('patch', fieldUrl)
+      .send({ expectedVersion: version, type: 'TEXT' })
+      .expect(400);
+    await employee(
+      'patch',
+      `${base}/objects/customers/records/${createdRecord.id}`,
+    )
+      .send({
+        version: createdRecord.version,
+        values: { name: '停用期间更新' },
+      })
+      .expect(200);
+    const stored = await adminDatabase.record.findUniqueOrThrow({
+      where: { id: createdRecord.id },
+    });
+    expect(stored.data).toMatchObject({ amount: '1200.50' });
+    const restored = await admin('patch', fieldUrl)
+      .send({ expectedVersion: version, status: 'ACTIVE' })
+      .expect(200);
+    version = (restored.body as DraftResponse).object.version;
+    await admin('post', `${base}/object-definitions/${objectId}/publications`)
+      .send({ expectedVersion: version })
+      .expect(201);
+    const restoredRecord = await employee(
+      'get',
+      `${base}/objects/customers/records/${createdRecord.id}`,
+    ).expect(200);
+    expect((restoredRecord.body as RecordResponse).values).toMatchObject({
+      amount: '1200.50',
+      name: '停用期间更新',
+    });
   });
 });
 

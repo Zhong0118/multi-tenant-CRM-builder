@@ -10,6 +10,7 @@ import {
   type DefaultViewInput,
   type EmployeePermissionsInput,
   type ObjectDraft,
+  type ObjectLifecycle,
   type ObjectPublication,
   type PublicationAnalysis,
   type RuntimeObjectNavigation,
@@ -82,6 +83,13 @@ export interface ObjectApi {
     tenantCode: string,
     objectId: string,
   ): Promise<ObjectPublication[]>;
+  lifecycle(tenantCode: string, objectId: string): Promise<ObjectLifecycle>;
+  restore(
+    tenantCode: string,
+    objectId: string,
+    expectedVersion: number,
+    acknowledgeLegacyTimers?: boolean,
+  ): Promise<ObjectDraft>;
   archive(
     tenantCode: string,
     objectId: string,
@@ -223,6 +231,26 @@ export const objectApi: ObjectApi = {
     return dataOrThrow(
       await browserApiClient.GET(`${DEFINITION}/publications`, {
         params: { path: { tenantCode, objectId } },
+      }),
+    );
+  },
+  async lifecycle(tenantCode, objectId) {
+    return dataOrThrow(
+      await browserApiClient.GET(`${DEFINITION}/lifecycle`, {
+        params: { path: { tenantCode, objectId } },
+      }),
+    );
+  },
+  async restore(
+    tenantCode,
+    objectId,
+    expectedVersion,
+    acknowledgeLegacyTimers,
+  ) {
+    return dataOrThrow(
+      await browserApiClient.POST(`${DEFINITION}/restore`, {
+        params: { path: { tenantCode, objectId } },
+        body: { expectedVersion, acknowledgeLegacyTimers },
       }),
     );
   },

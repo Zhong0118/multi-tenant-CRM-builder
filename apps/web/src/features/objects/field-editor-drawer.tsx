@@ -50,6 +50,7 @@ export interface FieldDraftValues {
 export interface FieldEditorDrawerProps {
   field: ConfigurableFieldView | null;
   saving?: boolean;
+  readOnly?: boolean;
   objectContext?: { name: string; saveEffect: string };
   error?: string;
   onSubmit: (values: FieldDraftValues) => void;
@@ -77,6 +78,7 @@ export function FieldEditorDrawer(props: FieldEditorDrawerProps) {
 function FieldEditor({
   field,
   saving = false,
+  readOnly = false,
   objectContext,
   error,
   onSubmit,
@@ -89,8 +91,9 @@ function FieldEditor({
   const fieldKeyLocked =
     field.publishedFieldKey === undefined || field.publishedFieldKey !== null;
   const typeLocked = field.publishedType !== null;
-  const patch = (next: Partial<FieldDraftValues>) =>
-    setValues({ ...values, ...next });
+  const patch = (next: Partial<FieldDraftValues>) => {
+    if (!readOnly) setValues({ ...values, ...next });
+  };
 
   return (
     <Drawer
@@ -125,7 +128,10 @@ function FieldEditor({
             <Button
               type="primary"
               loading={saving}
-              onClick={() => onSubmit(values)}
+              disabled={readOnly}
+              onClick={() => {
+                if (!readOnly) onSubmit(values);
+              }}
             >
               保存字段
             </Button>
@@ -137,7 +143,7 @@ function FieldEditor({
         <Typography.Paragraph type="danger">{error}</Typography.Paragraph>
       ) : null}
 
-      <Form component={false} layout="vertical">
+      <Form disabled={readOnly} component={false} layout="vertical">
         <section className={styles.drawerSection}>
           <DrawerSectionHeading
             number="01"
@@ -160,7 +166,7 @@ function FieldEditor({
               <Input
                 id="field-key"
                 value={values.fieldKey}
-                disabled={fieldKeyLocked}
+                disabled={readOnly || fieldKeyLocked}
                 onChange={(event) => patch({ fieldKey: event.target.value })}
               />
             </Form.Item>
@@ -189,7 +195,7 @@ function FieldEditor({
               <Select
                 id="field-type"
                 value={values.type}
-                disabled={typeLocked}
+                disabled={readOnly || typeLocked}
                 onChange={(type: PublishedFieldType) => patch({ type })}
                 options={PUBLISHED_FIELD_TYPES.map((type) => ({
                   value: type,
@@ -263,6 +269,7 @@ function FieldEditor({
           ) : null}
           {SELECT_TYPES.includes(values.type) ? (
             <OptionEditor
+              disabled={readOnly}
               options={values.options}
               onChange={(options) => patch({ options })}
             />
@@ -280,7 +287,7 @@ function FieldEditor({
           <DrawerSectionHeading
             number="04"
             title="员工访问"
-            description="平台管理员和公司管理员始终可见；这里控制普通员工。"
+            description="控制普通员工能否读取或修改此字段，不影响管理员；列表列设置不能绕过此权限。停用字段则对所有角色生效。"
           />
           <Form.Item
             label="员工访问级别"
@@ -383,9 +390,11 @@ function NumberField({
  * retired, never deleted or renamed into a different meaning.
  */
 function OptionEditor({
+  disabled = false,
   options,
   onChange,
 }: {
+  disabled?: boolean;
   options: SelectOptionView[];
   onChange: (options: SelectOptionView[]) => void;
 }) {
@@ -446,6 +455,7 @@ function OptionEditor({
           />
           <Button
             type="link"
+            disabled={disabled}
             aria-label={`${option.status === "ACTIVE" ? "停用" : "恢复"}选项 ${option.key}`}
             onClick={() => {
               const next = [...options];
@@ -462,6 +472,7 @@ function OptionEditor({
       ))}
       <Button
         className={styles.addOptionButton}
+        disabled={disabled}
         onClick={() =>
           onChange([
             ...options,

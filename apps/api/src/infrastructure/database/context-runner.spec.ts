@@ -50,3 +50,63 @@ describe('DatabaseContextRunner', () => {
     );
   });
 });
+
+describe('pool protection transaction failures', () => {
+  const context = {
+    userId: 'u',
+    tenantId: 't',
+    tenantCode: 't',
+    memberId: 'm',
+    role: 'TENANT_ADMIN',
+  } as const;
+  it.each([
+    [
+      'POOL_PROTECTION_OWNER_REQUIRED',
+      'VALIDATION_FAILED',
+      400,
+      '请管理员先分配关联记录的负责人，再确认成交。',
+    ],
+    ['POOL_PROTECTION_FORBIDDEN', 'OBJECT_ACTION_FORBIDDEN', 403, undefined],
+    [
+      'Record follow-up deadline expired',
+      'RECORD_VERSION_CONFLICT',
+      409,
+      '跟进期限已到，请刷新记录并重新领取或由管理员分配。',
+    ],
+    [
+      'POOL_PROTECTION_EXPIRED',
+      'RECORD_VERSION_CONFLICT',
+      409,
+      '关联记录的持有期限已到，请刷新并由管理员重新分配后再确认成交。',
+    ],
+  ])(
+    'maps %s to a safe actionable domain error',
+    async (marker, code, status, message) => {
+      const failure = Object.assign(
+        new Error(`Database write failed: ${marker}`),
+        { code: 'P2010' },
+      );
+      const database = {
+        transaction: () => Promise.reject(failure),
+      } as unknown as DatabaseService;
+      const runner = new DatabaseContextRunner(database);
+      await expect(
+        runner.withTenant(context, () => Promise.resolve()),
+      ).rejects.toMatchObject({ code, ...(message ? { message } : {}) });
+      await expect(
+        runner.withTenant(context, () => Promise.resolve()),
+      ).rejects.toHaveProperty('status', status);
+    },
+  );
+  it('keeps unrelated database failures intact', async () => {
+    const failure = new Error('unrelated failure');
+    const database = {
+      transaction: () => Promise.reject(failure),
+    } as unknown as DatabaseService;
+    await expect(
+      new DatabaseContextRunner(database).withTenant(context, () =>
+        Promise.resolve(),
+      ),
+    ).rejects.toBe(failure);
+  });
+});

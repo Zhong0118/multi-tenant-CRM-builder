@@ -197,3 +197,11 @@ describe("unfinished dashboard draft round trip", () => {
     ).toThrow("Invalid dashboard response");
   });
 });
+
+it("retains archived widgets alongside live results", () => {
+  const widgets = [
+    { id: "stopped", type: "METRIC", title: "客户", objectCode: "customers", width: "HALF", sortOrder: 0, state: "UNAVAILABLE", reason: "OBJECT_ARCHIVED" },
+    { id: "live", type: "METRIC", title: "订单", objectCode: "orders", width: "HALF", sortOrder: 1, state: "READY", data: { value: 7 } },
+  ];
+  expect(parseDashboardRuntime({ title: "工作台", period: { from: "2026-10-01", to: "2026-10-20", timezone: "Asia/Shanghai" }, widgets }).widgets).toEqual(widgets);
+});

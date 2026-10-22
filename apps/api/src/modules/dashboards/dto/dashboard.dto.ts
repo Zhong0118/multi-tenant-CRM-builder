@@ -401,6 +401,7 @@ export class DashboardUnavailableWidgetDto {
     enum: [
       'AUDIENCE_EXCLUDED',
       'OBJECT_UNAVAILABLE',
+      'OBJECT_ARCHIVED',
       'OBJECT_ACCESS_DENIED',
       'FIELD_HIDDEN',
       'QUERY_FAILED',

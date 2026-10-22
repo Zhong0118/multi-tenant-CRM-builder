@@ -1,6 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { lockMembers, lockObject } from './record-ownership-locks';
-import { ownershipDeadline } from './record-ownership';
+import {
+  assertAssignableOwner,
+  lockMembers,
+  lockObject,
+} from './record-ownership-locks';
+import {
+  POOL_STAGES,
+  type PoolStage,
+  type PoolOrigin,
+  type PoolQuality,
+  ownershipDeadline,
+} from './record-ownership';
 import { createHash } from 'node:crypto';
 
 import { ApiException } from '../../common/errors/api.exception';
@@ -44,6 +54,14 @@ export const RECORDS_ID_GENERATOR = Symbol('RECORDS_ID_GENERATOR');
 type RequestMeta = RecordRequestMeta;
 
 export interface RecordResponse {
+  poolStage?: PoolStage | null;
+  poolOrigin?: PoolOrigin | null;
+  poolClaimedAt?: string | null;
+  poolLastFollowUpAt?: string | null;
+  poolProtectedAt?: string | null;
+  poolReason?: string | null;
+  poolQuality?: PoolQuality | null;
+  protectionNeedsReview?: boolean;
   inPublicPool: boolean;
   ownershipExpiresAt: string | null;
   id: string;
@@ -57,6 +75,7 @@ export interface RecordResponse {
 }
 
 export interface RecordPageResponse {
+  poolCounts?: Record<PoolStage | 'LEGACY', number>;
   items: RecordResponse[];
   page: number;
   limit: number;
@@ -154,25 +173,28 @@ export class RecordsService {
       limit: number;
       search?: string;
       scope?: 'mine' | 'pool' | 'all';
+      poolStage?: PoolStage | 'LEGACY';
+      poolQuality?: PoolQuality;
       ownerMemberId?: string;
       filters?: string;
       sort: string;
       direction: 'asc' | 'desc';
     },
   ): Promise<RecordPageResponse> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
     const page = Math.max(1, Math.trunc(input.page));
     const limit = Math.min(1000, Math.max(1, Math.trunc(input.limit)));
     return this.repository.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
       const ownerMemberId = await resolveListOwner(
         context,
         resolved,
         store,
         input.ownerMemberId,
-        input.scope,
+        poolQueryScope(input.poolStage, input.scope),
       );
       const query: RecordListQuery = {
         objectId: resolved.schema.object.id,
@@ -180,14 +202,54 @@ export class RecordsService {
         limit,
         search: input.search?.trim() || undefined,
         searchFieldKeys: searchableFieldKeys(resolved),
-        inPublicPool: input.scope === 'pool' ? true : undefined,
+        inPublicPool:
+          poolQueryScope(input.poolStage, input.scope) === 'pool'
+            ? true
+            : undefined,
+        poolStage: input.poolStage,
+        poolQuality: input.poolQuality,
         ownerMemberId,
         filters: parseListFilters(input.filters, resolved, this.clock()),
         sort: parseListSort(input.sort, resolved),
         direction: input.direction,
       };
       const result = await store.listRecords(query);
+      const poolCounts = resolved.poolEnabled
+        ? (Object.fromEntries(
+            await Promise.all(
+              [...POOL_STAGES, 'LEGACY' as const].map(async (stage) => {
+                const stageScope =
+                  stage === 'LEAD_POOL' || stage === 'CUSTOMER_POOL'
+                    ? 'pool'
+                    : input.scope === 'pool'
+                      ? undefined
+                      : input.scope;
+                const stageOwner = await resolveListOwner(
+                  context,
+                  resolved,
+                  store,
+                  input.ownerMemberId,
+                  stageScope,
+                );
+                return [
+                  stage,
+                  (
+                    await store.listRecords({
+                      ...query,
+                      poolStage: stage,
+                      ownerMemberId: stageOwner,
+                      inPublicPool: stageScope === 'pool' ? true : undefined,
+                      page: 1,
+                      limit: 1,
+                    })
+                  ).total,
+                ];
+              }),
+            ),
+          ) as Record<PoolStage | 'LEGACY', number>)
+        : undefined;
       return {
+        ...(poolCounts ? { poolCounts } : {}),
         items: result.items.map((record) => projectRecord(record, resolved)),
         page,
         limit,
@@ -201,23 +263,25 @@ export class RecordsService {
     objectCode: string,
     input: RecordAggregateInput,
   ): Promise<RecordAggregateResult> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
     if (!Number.isInteger(input.limit) || input.limit < 1 || input.limit > 20) {
       throw invalidAggregate();
     }
-    const valueFieldKey = resolveAggregateValueField(
-      resolved,
-      input.aggregation,
-      input.valueFieldKey,
-    );
-    const groupByField = resolveAggregateGroupField(
-      resolved,
-      input.groupByFieldKey,
-    );
     return this.repository.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
+      const valueFieldKey = resolveAggregateValueField(
+        resolved,
+        input.aggregation,
+        input.valueFieldKey,
+      );
+      const groupByField = resolveAggregateGroupField(
+        resolved,
+        input.groupByFieldKey,
+      );
+
       const ownerMemberId = await resolveListOwner(
         context,
         resolved,
@@ -254,6 +318,8 @@ export class RecordsService {
     input: {
       search?: string;
       scope?: 'mine' | 'pool' | 'all';
+      poolStage?: PoolStage | 'LEGACY';
+      poolQuality?: PoolQuality;
       ownerMemberId?: string;
       filters?: string;
       sort: string;
@@ -262,17 +328,18 @@ export class RecordsService {
     },
     meta: RequestMeta,
   ): Promise<RecordExportFile> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
     return this.repository.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
       const ownerMemberId = await resolveListOwner(
         context,
         resolved,
         store,
         input.ownerMemberId,
-        input.scope,
+        poolQueryScope(input.poolStage, input.scope),
       );
       const query: RecordListQuery = {
         objectId: resolved.schema.object.id,
@@ -280,7 +347,12 @@ export class RecordsService {
         limit: RECORD_EXPORT_MAX_ROWS + 1,
         search: input.search?.trim() || undefined,
         searchFieldKeys: searchableFieldKeys(resolved),
-        inPublicPool: input.scope === 'pool' ? true : undefined,
+        inPublicPool:
+          poolQueryScope(input.poolStage, input.scope) === 'pool'
+            ? true
+            : undefined,
+        poolStage: input.poolStage,
+        poolQuality: input.poolQuality,
         ownerMemberId,
         filters: parseListFilters(input.filters, resolved, this.clock()),
         sort: parseListSort(input.sort, resolved),
@@ -366,12 +438,13 @@ export class RecordsService {
     },
     meta: RequestMeta,
   ): Promise<RecordResponse> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
-    return this.repository.withTenant(context, async (store) =>
-      projectRecord(
+    return this.repository.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
+      return projectRecord(
         await createRecordCommand({
           store,
           resolved,
@@ -383,8 +456,8 @@ export class RecordsService {
           idGenerator: this.idGenerator,
         }),
         resolved,
-      ),
-    );
+      );
+    });
   }
 
   async importRows(
@@ -392,6 +465,7 @@ export class RecordsService {
     objectCode: string,
     input: {
       rows: RecordImportRowInput[];
+      importToPool?: boolean;
       ownerMemberId?: string | null;
       batchId?: string;
       dryRun?: boolean;
@@ -399,10 +473,22 @@ export class RecordsService {
     },
     meta: RequestMeta,
   ): Promise<RecordImportResponse> {
-    if (context.role !== 'TENANT_ADMIN' && input.ownerMemberId !== undefined) {
+    if (
+      input.importToPool !== undefined &&
+      typeof input.importToPool !== 'boolean'
+    )
+      throw new ApiException('VALIDATION_FAILED', 400);
+    if (input.importToPool && input.ownerMemberId !== undefined)
+      throw new ApiException('VALIDATION_FAILED', 400, {
+        message: '导入公共池和指定负责人不能同时选择。',
+      });
+    if (
+      context.role !== 'TENANT_ADMIN' &&
+      (input.ownerMemberId !== undefined || input.importToPool)
+    ) {
       throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
     }
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
@@ -447,6 +533,7 @@ export class RecordsService {
     return this.repository.withTenantTransaction(
       context,
       async ({ store, tx }) => {
+        resolved = await store.resolveCurrentObject(resolved);
         const objectId = resolved.schema.object.id;
         // Acquire member locks before import advisory locks and record counters,
         // matching ordinary creates and ownership assignment.
@@ -458,7 +545,37 @@ export class RecordsService {
           );
         }
         let ownershipExpiresAt: string | null = null;
-        if (input.ownerMemberId) {
+        let poolStage: PoolStage | undefined;
+        let poolClaimedAt: string | null = null;
+        if (input.importToPool || input.ownerMemberId) {
+          await lockMembers(tx, context, input.ownerMemberId ?? undefined);
+          const object = await lockObject(tx, context, objectCode);
+          if (
+            input.importToPool &&
+            (!object.poolEnabled || !object.poolLifecycleEnabled)
+          )
+            throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403, {
+              message: '请先为此业务表启用新版公共池流转。',
+            });
+          if (input.importToPool) poolStage = 'LEAD_POOL';
+          if (input.ownerMemberId) {
+            await assertAssignableOwner(
+              tx,
+              context,
+              objectCode,
+              input.ownerMemberId,
+            );
+            if (object.poolEnabled && object.poolLifecycleEnabled) {
+              poolStage = 'PENDING_CONTACT';
+              poolClaimedAt = this.clock().toISOString();
+              ownershipExpiresAt = ownershipDeadline(
+                object.poolContactTtlHours,
+                this.clock(),
+              )!.toISOString();
+            }
+          }
+        }
+        if (input.ownerMemberId && !poolStage) {
           if (input.dryRun) {
             const member = await tx.tenantMember.findFirst({
               where: {
@@ -579,6 +696,10 @@ export class RecordsService {
               values: row.values,
               ownerMemberId: input.ownerMemberId,
               ownershipExpiresAt,
+              poolStage,
+              poolOrigin: poolStage ? 'LEAD_POOL' : undefined,
+              poolClaimedAt,
+              inPublicPool: input.importToPool,
               meta,
               clock: this.clock,
               idGenerator: this.idGenerator,
@@ -626,11 +747,12 @@ export class RecordsService {
     objectCode: string,
     recordId: string,
   ): Promise<RecordResponse> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
     return this.repository.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
       const record = await requireVisibleRecord(
         store,
         resolved,
@@ -653,11 +775,12 @@ export class RecordsService {
     },
     meta: RequestMeta,
   ): Promise<RecordResponse> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
     return this.repository.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
       const { record } = await updateRecordCommand({
         store,
         resolved,
@@ -680,7 +803,7 @@ export class RecordsService {
     },
     meta: RequestMeta,
   ): Promise<RecordBatchUpdateResponse> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
@@ -712,6 +835,7 @@ export class RecordsService {
       });
     }
     return this.repository.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
       const items: RecordBatchUpdateResultItem[] = [];
       for (const item of input.items) {
         try {
@@ -755,7 +879,7 @@ export class RecordsService {
     input: { version: number },
     meta: RequestMeta,
   ): Promise<{ accepted: true }> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
@@ -763,6 +887,7 @@ export class RecordsService {
       throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
     }
     return this.repository.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
       const current = await requireVisibleRecord(
         store,
         resolved,
@@ -799,13 +924,14 @@ export class RecordsService {
     recordId: string,
     input: { page: number; limit: number },
   ): Promise<RecordActivityPageResponse> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
     const page = Math.max(1, Math.trunc(input.page));
     const limit = Math.min(100, Math.max(1, Math.trunc(input.limit)));
     return this.repository.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
       await requireVisibleRecord(store, resolved, context, recordId, 'READ');
       const result = await store.listActivities(recordId, { page, limit });
       return {
@@ -828,12 +954,13 @@ export class RecordsService {
     },
     meta: RequestMeta,
   ): Promise<RecordActivityResponse> {
-    const resolved = await this.publishedObjects.resolveRuntimeSchema(
+    let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
     validateRecordActivityInput(input);
     return this.repository.withTenant(context, async (store) => {
+      resolved = await store.resolveCurrentObject(resolved);
       const { activity } = await createRecordActivityCommand({
         store,
         resolved,
@@ -1284,7 +1411,7 @@ async function resolveListOwner(
   store: RecordsStore,
   requested: string | undefined,
   scope?: 'mine' | 'pool' | 'all',
-): Promise<string | undefined> {
+): Promise<string | null | undefined> {
   if (scope !== undefined && !['mine', 'pool', 'all'].includes(scope))
     throw new ApiException('VALIDATION_FAILED', 400);
   if (scope === 'pool') {
@@ -1304,6 +1431,7 @@ async function resolveListOwner(
     throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
   }
   if (context.role !== 'TENANT_ADMIN' || !requested) return undefined;
+  if (requested === 'unassigned') return null;
   if (!(await store.memberExists(requested))) {
     throw new ApiException('OWNER_INVALID', 400);
   }
@@ -1328,4 +1456,13 @@ function resolveExportFields(
       return field ? [field] : [];
     },
   );
+}
+
+function poolQueryScope(
+  stage: PoolStage | 'LEGACY' | undefined,
+  scope?: 'mine' | 'pool' | 'all',
+) {
+  if (stage !== undefined && stage !== 'LEGACY' && !POOL_STAGES.includes(stage))
+    throw new ApiException('VALIDATION_FAILED', 400);
+  return stage === 'LEAD_POOL' || stage === 'CUSTOMER_POOL' ? 'pool' : scope;
 }

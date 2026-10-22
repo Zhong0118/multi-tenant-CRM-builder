@@ -210,6 +210,12 @@ interface TransitionHistoryRecord {
 }
 
 class MemoryRecordsStore implements Partial<RecordsStore> {
+  resolveCurrentObject(
+    previous: import('../objects/published-object.service').ResolvedObjectSchema,
+  ) {
+    return Promise.resolve(previous);
+  }
+
   records: DynamicRecord[] = [];
   audits: AuditEvent[] = [];
   history: TransitionHistoryRecord[] = [];

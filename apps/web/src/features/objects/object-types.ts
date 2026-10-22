@@ -183,6 +183,7 @@ export type RecordPage = Schemas["RecordPageResponseDto"];
  * and the published type that locks a field — so these are read directly from
  * the generated contract without re-interpretation.
  */
+export type ObjectLifecycle = Schemas["ObjectLifecycleResponseDto"];
 export type ObjectDraft = Schemas["ObjectDraftResponseDto"];
 export type ObjectDraftField = Schemas["ObjectDraftFieldResponseDto"];
 export type ObjectDraftSummary = Schemas["ObjectDraftObjectResponseDto"];
@@ -269,9 +270,9 @@ export const PUBLICATION_CHANGE_LABELS: Record<
  * list never implies a draft is live.
  */
 export function objectStatusLabel(object: ObjectDraftSummary): string {
-  if (object.status === "ARCHIVED") return "已归档";
-  if (object.publicationNumber === null) return "草稿";
-  return object.hasUnpublishedChanges ? "有未发布变更" : "已发布";
+  if (object.status === "ARCHIVED") return "已停用";
+  if (object.publicationNumber === null) return "未发布";
+  return "使用中";
 }
 
 export function fieldTypeLabel(type: string): string {

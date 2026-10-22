@@ -251,6 +251,7 @@ export type DashboardRuntimeWidget =
       reason?:
         | "AUDIENCE_EXCLUDED"
         | "OBJECT_UNAVAILABLE"
+        | "OBJECT_ARCHIVED"
         | "OBJECT_ACCESS_DENIED"
         | "FIELD_HIDDEN"
         | "QUERY_FAILED";
@@ -589,6 +590,7 @@ function parseRuntimeWidget(value: unknown): DashboardRuntimeWidget {
       unavailable.reason = one(root.reason, [
         "AUDIENCE_EXCLUDED",
         "OBJECT_UNAVAILABLE",
+        "OBJECT_ARCHIVED",
         "OBJECT_ACCESS_DENIED",
         "FIELD_HIDDEN",
         "QUERY_FAILED",

@@ -7,7 +7,11 @@ vi.mock("@/lib/api/server-client", () => ({
 vi.mock("@/features/objects/object-types", () => ({
   parseRuntimeObjectSchema: (value: unknown) => value,
 }));
-import { loadRuntimeObject, loadRecordPage } from "./load-runtime-object";
+import {
+  loadRuntimeObject,
+  loadRecordPage,
+  loadRecord,
+} from "./load-runtime-object";
 const ok = (data: unknown) => ({
   data,
   response: new Response(null, { status: 200 }),
@@ -76,4 +80,40 @@ describe("runtime record pool requests", () => {
     });
     expect(mocks.get.mock.calls[0][1].params.query.scope).toBe("pool");
   });
+});
+
+describe("authorized archived runtime links", () => {
+  it.each(["schema", "list", "record"])(
+    "preserves archived meaning for %s instead of invoking notFound",
+    async (kind) => {
+      mocks.get.mockResolvedValueOnce({
+        error: {
+          code: "OBJECT_ARCHIVED",
+          status: 409,
+          message: "业务表已停用",
+          requestId: "archived-test",
+        },
+        response: new Response(null, { status: 409 }),
+      });
+      const load =
+        kind === "schema"
+          ? loadRuntimeObject("northwind", "customers", "EMPLOYEE")
+          : kind === "record"
+            ? loadRecord("northwind", "customers", "r1")
+            : loadRecordPage("northwind", "customers", {
+                page: 1,
+                limit: 20,
+                filters: {},
+                sort: "updatedAt",
+                direction: "desc",
+              });
+      await expect(load).rejects.toMatchObject({ code: "OBJECT_ARCHIVED" });
+    },
+  );
+});
+
+
+it.each([403, 404])("keeps inaccessible objects private for HTTP %s", async (status) => {
+  mocks.get.mockResolvedValueOnce({ error: { code: "OBJECT_NOT_FOUND", status, message: "对象不可用", requestId: "private-test" }, response: new Response(null, { status }) });
+  await expect(loadRuntimeObject("northwind", "customers", "EMPLOYEE")).rejects.toThrow("NEXT_HTTP_ERROR_FALLBACK;404");
 });

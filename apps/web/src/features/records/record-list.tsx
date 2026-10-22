@@ -75,7 +75,7 @@ import {
 } from "./record-query-state";
 
 import { RecordOwnershipActions, RecordPoolStatus } from "./record-pool";
-import type { RecordPoolConfig } from "./record-pool-api";
+import { DEFAULT_POOL_LABELS, POOL_STAGES, POOL_LABEL_KEYS, type PoolStageFilter, type RecordPoolConfig } from "./record-pool-types";
 import styles from "./records.module.css";
 import { displayRecordOwner, displayValue, formatDateTime } from "./record-display-value";
 export { displayValue } from "./record-display-value";
@@ -171,7 +171,7 @@ export function RecordList({
   const records = useQuery({
     queryKey: ["workspace", tenantCode, "records", objectCode, query],
     queryFn: () => api.list(tenantCode, objectCode, query),
-    enabled: query.scope !== "pool" || poolConfig?.enabled !== false,
+    enabled: (query.scope !== "pool" && query.poolStage !== "LEAD_POOL" && query.poolStage !== "CUSTOMER_POOL") || poolConfig?.enabled !== false,
     initialData: initialPage,
     staleTime: 0,
   });
@@ -180,6 +180,8 @@ export function RecordList({
       api.export(tenantCode, objectCode, {
         search: query.search,
         scope: query.scope,
+        poolStage: query.poolStage,
+        poolQuality: query.poolQuality,
         ownerMemberId: query.ownerMemberId,
         filters: query.filters,
         sort: query.sort,
@@ -364,7 +366,7 @@ export function RecordList({
     }] : []),
     ...(poolConfig?.enabled ? [{
       title: "归属状态", key: "poolStatus", width: 180,
-      render: (_: unknown, row: RecordSummary) => <RecordPoolStatus record={row} />,
+      render: (_: unknown, row: RecordSummary) => <RecordPoolStatus record={row} config={poolConfig} />,
     }] : []),
     {
       title: "最近更新",
@@ -430,6 +432,7 @@ export function RecordList({
   const filtered = Boolean(
     query.search ||
     query.ownerMemberId ||
+    query.poolQuality ||
     Object.keys(query.filters).length > 0,
   );
 
@@ -441,9 +444,7 @@ export function RecordList({
         : schema.actions.canCreate ? "还没有记录，新建第一条。" : "还没有记录。"}
     >
       {filtered ? (
-        <Button onClick={() => apply(withFilter(query, {
-          search: undefined, ownerMemberId: undefined, filters: {},
-        }))}>
+        <Button onClick={() => apply({ ...query, page: 1, search: undefined, ownerMemberId: undefined, poolQuality: undefined, filters: {} })}>
           清除条件
         </Button>
       ) : null}
@@ -547,12 +548,62 @@ export function RecordList({
         ) : null}</Space>}
       />
 
-      {poolConfig?.enabled ? <Tabs
-        className={styles.poolTabs}
-        activeKey={query.scope ?? (owned ? "mine" : "all")}
-        onChange={(scope) => apply({ ...query, scope: scope as "mine" | "pool" | "all", page: 1, ownerMemberId: undefined })}
-        items={[{ key: "mine", label: "我的记录" }, { key: "pool", label: "公共池" }, ...(schema.scopes.read === "ALL" ? [{ key: "all", label: "全部记录" }] : [])]}
-      /> : null}
+        {poolConfig?.enabled ? (
+          <Tabs
+            className={styles.poolTabs}
+            activeKey={
+              poolConfig.lifecycleEnabled
+                ? (query.poolStage ?? "all")
+                : (query.scope ?? (owned ? "mine" : "all"))
+            }
+            onChange={(view) => {
+              if (!poolConfig.lifecycleEnabled)
+                return apply({
+                  ...query,
+                  scope: view as "mine" | "pool" | "all",
+                  poolStage: undefined,
+                  page: 1,
+                  ownerMemberId: undefined,
+                });
+              const privateStage = ["PENDING_CONTACT", "FOLLOWING", "PROTECTED"].includes(view);
+              apply({
+                ...query,
+                poolStage:
+                  view === "all" ? undefined : (view as PoolStageFilter),
+                scope: privateStage && !canFilterByOwner ? "mine" : undefined,
+                page: 1,
+                ownerMemberId: undefined,
+              });
+            }}
+            items={
+              poolConfig.lifecycleEnabled
+                ? [
+                    ...POOL_STAGES.map((stage) => ({
+                      key: stage,
+                      label: <span className={styles.poolTabLabel}><span>{{ ...DEFAULT_POOL_LABELS, ...poolConfig.labels }[POOL_LABEL_KEYS[stage]]}</span>{" "}{records.data?.poolCounts?.[stage] !== undefined ? <span className={styles.poolTabCount}>{records.data.poolCounts[stage]}</span> : null}</span>,
+                    })),
+                    {
+                      key: "LEGACY",
+                      label: <span className={styles.poolTabLabel}><span>旧记录</span>{" "}{records.data?.poolCounts?.LEGACY !== undefined ? <span className={styles.poolTabCount}>{records.data.poolCounts.LEGACY}</span> : null}</span>,
+                    },
+                    {
+                      key: "all",
+                      label:
+                        canFilterByOwner || schema.scopes.read === "ALL"
+                          ? "全部记录"
+                          : "全部可见记录",
+                    },
+                  ]
+                : [
+                    { key: "mine", label: "我的记录" },
+                    { key: "pool", label: "公共池" },
+                    ...(schema.scopes.read === "ALL"
+                      ? [{ key: "all", label: "全部记录" }]
+                      : []),
+                  ]
+            }
+          />
+        ) : null}
       {currentMemberId && (
         <SavedRecordFilters
           key={`${tenantCode}:${currentMemberId}:${objectCode}`}
@@ -649,6 +700,7 @@ export function RecordList({
         }
       >
         <div className={styles.primaryFilters} data-expanded={filtersOpen}>
+          {poolConfig?.lifecycleEnabled ? <Select aria-label="按资源质量筛选" allowClear placeholder="资源质量" value={query.poolQuality} onChange={(poolQuality) => apply({ ...query, poolQuality, page: 1 })} options={[{ value: "INVALID", label: "空号 / 无效" }, { value: "DUPLICATE", label: "重复" }, { value: "LOST", label: "丢单" }]} /> : null}
           {canFilterByOwner && query.scope !== "pool" && query.scope !== "mine" ? (
             <Select
               aria-label="按负责人筛选"
@@ -661,10 +713,13 @@ export function RecordList({
               onChange={(next?: string) =>
                 apply(withFilter(query, { ownerMemberId: next }))
               }
-              options={members.map((member) => ({
-                value: member.id,
-                label: member.displayName ?? "未设置姓名",
-              }))}
+              options={[
+                { value: "unassigned", label: "未指定负责人" },
+                ...members.map((member) => ({
+                  value: member.id,
+                  label: member.displayName ?? "未设置姓名",
+                })),
+              ]}
             />
           ) : null}
           {optionFilterFields.map((field) => {
@@ -1007,7 +1062,7 @@ export function RecordList({
                       </div>
                     ))}
                   </dl>
-                  {poolConfig?.enabled ? <RecordPoolStatus record={row} /> : null}
+                  {poolConfig?.enabled ? <RecordPoolStatus record={row} config={poolConfig} /> : null}
                   {recordActions(row)}
                 </li>
               );
@@ -1113,6 +1168,7 @@ export function RecordList({
           schema={schema}
           api={api}
           canChooseOwner={canFilterByOwner}
+          poolConfig={poolConfig}
           members={members}
           onClose={() => setImportOpen(false)}
           onCompleted={async () => {

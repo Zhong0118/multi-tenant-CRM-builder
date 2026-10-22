@@ -28,6 +28,7 @@ export interface RecordActivityTimelineProps {
   recordId: string;
   canCreate: boolean;
   api: RecordApi;
+  onCreated?: () => void | Promise<void>;
 }
 
 export function RecordActivityTimeline({
@@ -36,6 +37,7 @@ export function RecordActivityTimeline({
   recordId,
   canCreate,
   api,
+  onCreated,
 }: RecordActivityTimelineProps) {
   const queryClient = useQueryClient();
   const [composing, setComposing] = useState(false);
@@ -63,10 +65,15 @@ export function RecordActivityTimeline({
         activityType,
         content: content.trim(),
       }),
-    onSuccess: () => {
+    onSuccess: async () => {
       setContent("");
       setError(undefined);
       void queryClient.invalidateQueries({ queryKey });
+      try {
+        await onCreated?.();
+      } catch {
+        setError("活动已保存，但流转信息刷新失败，请刷新页面查看最新期限，不要重复提交");
+      }
     },
     onError: (caught) => {
       const apiError = toApiError(caught);

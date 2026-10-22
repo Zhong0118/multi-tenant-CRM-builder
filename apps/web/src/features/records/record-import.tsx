@@ -3,6 +3,7 @@
 import {
   Alert,
   Button,
+  Checkbox,
   Drawer,
   Progress,
   Select,
@@ -45,6 +46,7 @@ export interface RecordImportDrawerProps {
   schema: RuntimeObjectSchema;
   api: RecordApi;
   canChooseOwner?: boolean;
+  poolConfig?: import("./record-pool-types").RecordPoolConfig;
   members?: DynamicFieldMember[];
   onClose: () => void;
   onCompleted: (result: RecordImportResult) => void;
@@ -55,6 +57,7 @@ export function RecordImportDrawer({
   schema,
   api,
   canChooseOwner = false,
+  poolConfig,
   members = [],
   onClose,
   onCompleted,
@@ -63,6 +66,7 @@ export function RecordImportDrawer({
     (field) => field.access === "EDIT" && field.type !== "MEMBER",
   );
   const [ownerMemberId, setOwnerMemberId] = useState<string>();
+  const [importToPool, setImportToPool] = useState(Boolean(canChooseOwner && poolConfig?.enabled && poolConfig.lifecycleEnabled));
   const [batchId, setBatchId] = useState<string>();
   const [selectedFile, setSelectedFile] = useState<File>();
   const [encoding, setEncoding] = useState<CsvEncoding>("auto");
@@ -180,7 +184,11 @@ export function RecordImportDrawer({
           dryRun,
           matchFields,
           rows,
-          ...(canChooseOwner ? { ownerMemberId: ownerMemberId ?? null } : {}),
+          ...(canChooseOwner
+            ? importToPool && poolConfig?.enabled && poolConfig.lifecycleEnabled
+              ? { importToPool: true }
+              : { ownerMemberId: ownerMemberId ?? null }
+            : {}),
         },
         request: (input) =>
           api.importRows(tenantCode, schema.object.code, input),
@@ -337,6 +345,21 @@ export function RecordImportDrawer({
         CSV 自动尝试 UTF-8、UTF-16 编码标记和 GBK /
         GB18030。编码无法保证完全识别，请核对预览，必要时手动切换。
       </Typography.Paragraph>
+      {canChooseOwner && poolConfig?.enabled && poolConfig.lifecycleEnabled ? (
+        <Checkbox
+          aria-label="确认导入到初始公共池"
+          checked={importToPool}
+          disabled={!!busy || loadingFile || importStarted}
+          onChange={(event) => {
+            setImportToPool(event.target.checked);
+            setOwnerMemberId(undefined);
+            resetResult();
+          }}
+        >
+          确认导入到{poolConfig.labels?.leadPool ?? "初始公共池"}
+          ，允许有权限成员领取
+        </Checkbox>
+      ) : null}
       {canChooseOwner ? (
         <label className={styles.columnChooserRow}>
           <span>导入负责人</span>
@@ -354,15 +377,18 @@ export function RecordImportDrawer({
             }))}
             onChange={(next?: string) => {
               setOwnerMemberId(next);
+              if (next) setImportToPool(false);
               resetResult();
             }}
           />
         </label>
       ) : null}
       <Typography.Paragraph type="secondary">
-        {canChooseOwner
-          ? "仅为本次新增记录分配负责人，并按业务表的回收期限计时；未选择则保持未分配。公共池关闭时暂停回收，跳过的重复记录保持原归属。"
-          : "本次新增记录归你负责"}
+        {importToPool
+          ? "新记录无负责人，不计时；进入明确可领取的初始公共池，不能同时指定负责人"
+          : canChooseOwner
+            ? "仅为本次新增记录分配负责人，并按业务表的回收期限计时；未选择则保持未分配。公共池关闭时暂停回收，跳过的重复记录保持原归属。"
+            : "本次新增记录归你负责"}
       </Typography.Paragraph>
       <input
         type="file"

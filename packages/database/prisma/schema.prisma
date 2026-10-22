@@ -198,6 +198,7 @@ model User {
 }
 
 model Tenant {
+  notifications MemberNotification[]
   memberFieldPermissions MemberFieldPermission[]
   id                         String                         @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   name                       String                         @db.VarChar(200)
@@ -288,6 +289,7 @@ model TenantDashboardPublication {
 }
 
 model TenantMember {
+  notifications MemberNotification[]
   memberFieldPermissions MemberFieldPermission[]
   displayName String? @map("display_name") @db.VarChar(100)
   id                        String                       @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
@@ -381,7 +383,13 @@ model Session {
 }
 
 model ObjectDefinition {
+  notifications MemberNotification[]
   memberFieldPermissions MemberFieldPermission[]
+  poolLifecycleEnabled Boolean @default(false) @map("pool_lifecycle_enabled")
+  poolContactTtlHours Int @default(24) @map("pool_contact_ttl_hours")
+  poolFollowUpTtlHours Int @default(720) @map("pool_follow_up_ttl_hours")
+  poolLabels Json @default("{}") @map("pool_labels") @db.JsonB
+  poolProtectionRules Json @default("[]") @map("pool_protection_rules") @db.JsonB
   poolEnabled             Boolean                   @default(false) @map("pool_enabled")
   poolOwnershipTtlHours    Int?                      @map("pool_ownership_ttl_hours")
   poolConfigVersion        Int                       @default(1) @map("pool_config_version")
@@ -398,6 +406,8 @@ model ObjectDefinition {
   sourceTemplateVersionId String?                   @map("source_template_version_id") @db.Uuid
   activePublicationId     String?                   @map("active_publication_id") @db.Uuid
   publishedAt             DateTime?                 @map("published_at") @db.Timestamptz(3)
+  archivedAt              DateTime?                 @map("archived_at") @db.Timestamptz(3)
+  lifecycleVersionOffset  Int                       @default(0) @map("lifecycle_version_offset")
   version                 Int                       @default(1)
   createdAt               DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt               DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -604,6 +614,15 @@ model RecordCounter {
 }
 
 model Record {
+  notifications MemberNotification[]
+  poolStage String? @map("pool_stage") @db.VarChar(32)
+  poolOrigin String? @map("pool_origin") @db.VarChar(32)
+  poolClaimedAt DateTime? @map("pool_claimed_at") @db.Timestamptz(3)
+  poolLastFollowUpAt DateTime? @map("pool_last_follow_up_at") @db.Timestamptz(3)
+  poolProtectedAt DateTime? @map("pool_protected_at") @db.Timestamptz(3)
+  poolReason String? @map("pool_reason")
+  poolQuality String? @map("pool_quality") @db.VarChar(16)
+  protectionNeedsReview Boolean @default(false) @map("protection_needs_review")
   inPublicPool           Boolean                   @default(false) @map("in_public_pool")
   ownershipExpiresAt     DateTime?                 @map("ownership_expires_at") @db.Timestamptz(3)
   id                     String                    @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
@@ -630,6 +649,7 @@ model Record {
   transitionHistories    RecordTransitionHistory[]
 
   @@unique([tenantId, id])
+  @@unique([tenantId, objectId, id], map: "records_tenant_object_id_key")
   @@unique([tenantId, objectId, recordNo])
   @@index([tenantId, objectId, deletedAt, updatedAt(sort: Desc)])
   @@index([tenantId, objectId, ownerMemberId, deletedAt, updatedAt(sort: Desc)])
@@ -678,6 +698,7 @@ model AuditLog {
 }
 
 model RecordFollowUp {
+  notifications MemberNotification[]
   id               String       @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId         String       @map("tenant_id") @db.Uuid
   recordId         String       @map("record_id") @db.Uuid
@@ -693,6 +714,7 @@ model RecordFollowUp {
   record           Record       @relation(fields: [tenantId, recordId], references: [tenantId, id], onDelete: Restrict)
   assignee         TenantMember @relation(fields: [tenantId, assigneeMemberId], references: [tenantId, id], onDelete: Restrict)
 
+  @@unique([tenantId, recordId, id], map: "record_follow_ups_tenant_record_id_key")
   @@index([tenantId, assigneeMemberId, status, dueAt])
   @@map("record_follow_ups")
 }
@@ -887,4 +909,28 @@ model MemberFieldPermission {
   @@unique([tenantId, objectId, fieldId, memberId])
   @@index([tenantId, objectId, memberId])
   @@map("member_field_permissions")
+}
+
+model MemberNotification {
+  id String @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  recipientMemberId String @map("recipient_member_id") @db.Uuid
+  objectId String @map("object_id") @db.Uuid
+  recordId String @map("record_id") @db.Uuid
+  followUpId String? @map("follow_up_id") @db.Uuid
+  kind String @db.VarChar(32)
+  eventKey String @map("event_key") @db.VarChar(200)
+  dueAt DateTime? @map("due_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  createdXid String @default(dbgenerated("pg_current_xact_id()::text")) @map("created_xid") @db.Text
+  readAt DateTime? @map("read_at") @db.Timestamptz(3)
+  resolvedAt DateTime? @map("resolved_at") @db.Timestamptz(3)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  recipient TenantMember @relation(fields: [tenantId, recipientMemberId], references: [tenantId, id], onDelete: Cascade)
+  object ObjectDefinition @relation(fields: [tenantId, objectId], references: [tenantId, id], onDelete: Cascade)
+  record Record @relation(fields: [tenantId, objectId, recordId], references: [tenantId, objectId, id], onDelete: Cascade)
+  followUp RecordFollowUp? @relation(fields: [tenantId, recordId, followUpId], references: [tenantId, recordId, id], onDelete: Cascade)
+
+  @@unique([tenantId, recipientMemberId, kind, eventKey], map: "member_notifications_event_key")
+  @@map("member_notifications")
 }

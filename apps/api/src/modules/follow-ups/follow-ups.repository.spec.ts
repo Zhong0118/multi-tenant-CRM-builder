@@ -1,3 +1,11 @@
+jest.mock('../objects/published-object-transaction', () => ({
+  resolveReadableObjectByIdInTransaction: jest
+    .fn()
+    .mockResolvedValue({ access: { readScope: 'OWN', updateScope: 'OWN' } }),
+}));
+jest.mock('../objects/object-configuration-lock', () => ({
+  lockRuntimeObjectConfiguration: jest.fn().mockResolvedValue(undefined),
+}));
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
 import type { AuditService } from '../audit/audit.service';
@@ -488,6 +496,7 @@ describe('FollowUpsRepository listForAi', () => {
           record: {
             tenantId: admin.tenantId,
             deletedAt: null,
+            object: { status: 'ACTIVE', deletedAt: null },
             OR: [
               {
                 objectId: 'object-leads',
@@ -527,6 +536,7 @@ describe('FollowUpsRepository listForAi', () => {
           record: {
             tenantId: context.tenantId,
             deletedAt: null,
+            object: { status: 'ACTIVE', deletedAt: null },
             OR: [
               {
                 objectId: 'object-leads',

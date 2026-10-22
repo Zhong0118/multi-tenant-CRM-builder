@@ -30,6 +30,7 @@ import type {
   ConfigurableFieldView,
   ConfigurableObjectView,
 } from "./configuration-view";
+import { ObjectLifecycleControl } from "./object-lifecycle-control";
 import { FieldLedger } from "./field-ledger";
 import { objectApi as defaultObjectApi, type ObjectApi } from "./object-api";
 import { ObjectPreview, type PreviewRole } from "./object-preview";
@@ -61,8 +62,8 @@ type Section =
 
 const SECTIONS: Array<{ key: Section; label: string }> = [
   { key: "basics", label: "基本设置" },
-  { key: "fields", label: "字段" },
-  { key: "view", label: "列表视图" },
+  { key: "fields", label: "字段与表单" },
+  { key: "view", label: "列表展示与搜索" },
   { key: "permissions", label: "员工权限" },
   { key: "workflow", label: "流程" },
   { key: "publications", label: "发布记录" },
@@ -94,6 +95,9 @@ export function ObjectDesigner({
   const [editingField, setEditingField] =
     useState<ConfigurableFieldView | null>(null);
   const [fieldCreatorOpen, setFieldCreatorOpen] = useState(false);
+  const [statusField, setStatusField] = useState<ConfigurableFieldView | null>(
+    null,
+  );
   const [analysis, setAnalysis] = useState<PublicationAnalysis>();
   const [panelOpen, setPanelOpen] = useState(false);
   const [error, setError] = useState<string>();
@@ -104,6 +108,14 @@ export function ObjectDesigner({
   const objectId = draft.object.id;
   const archived = draft.object.status === "ARCHIVED";
   const configurableDraft = draft as unknown as ConfigurableObjectView;
+  const statusBlockReason =
+    statusField?.status === "ACTIVE"
+      ? statusField.fieldKey === draft.object.titleFieldKey
+        ? "请先在基本设置中更换记录名称字段，再停用此字段"
+        : statusField.isSystem
+          ? "系统字段不能停用"
+          : undefined
+      : undefined;
 
   function accept(next: ObjectDraft, saved?: string) {
     setDraft(next);
@@ -120,9 +132,7 @@ export function ObjectDesigner({
     const apiError = toApiError(caught);
     setError(`${apiError.message}（请求编号：${apiError.requestId}）`);
     setNotice(undefined);
-    setConflicted(
-      apiError.code === "CONFIG_VERSION_CONFLICT" || apiError.status === 409,
-    );
+    setConflicted(apiError.code === "CONFIG_VERSION_CONFLICT");
   }
 
   const reorder = useMutation({
@@ -232,6 +242,23 @@ export function ObjectDesigner({
     onError: reject,
   });
 
+  const changeFieldStatus = useMutation({
+    mutationFn: (field: ConfigurableFieldView) =>
+      api.updateField(tenantCode, objectId, field.id, {
+        expectedVersion: draft.object.version,
+        status: field.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
+      }),
+    onSuccess: (next, field) => {
+      accept(
+        next,
+        `字段已${field.status === "ACTIVE" ? "停用" : "恢复"}并保存到草稿，发布后生效`,
+      );
+      setStatusField(null);
+      setAnalysis(undefined);
+    },
+    onError: reject,
+  });
+
   const saveBasics = useMutation({
     mutationFn: (input: {
       name: string;
@@ -259,7 +286,7 @@ export function ObjectDesigner({
         expectedVersion: draft.object.version,
         ...input,
       }),
-    onSuccess: (next) => accept(next, "列表视图已保存"),
+    onSuccess: (next) => accept(next, "列表设置已保存"),
     onError: reject,
   });
 
@@ -412,13 +439,23 @@ export function ObjectDesigner({
             <span>
               {draft.object.publicationNumber === null
                 ? "员工端尚未发布"
-                : `员工使用已发布版本 v${draft.object.publicationNumber}`}
+                : archived
+                  ? `停用前发布版本 v${draft.object.publicationNumber}`
+                  : `员工使用已发布版本 v${draft.object.publicationNumber}`}
             </span>
           </div>
           <p className={styles.saveEffect}>
             发布前会检查变更；确认发布后才更新员工使用的版本。
           </p>
 
+          {archived ? (
+            <Alert
+              type="info"
+              showIcon
+              title="业务表已停用，配置只读，历史数据保留"
+            />
+          ) : null}
+          {draft.object.hasUnpublishedChanges ? <p>有未发布变更</p> : null}
           {notice ? (
             <Alert
               type="success"
@@ -472,21 +509,47 @@ export function ObjectDesigner({
 
         <div className={styles.designerWorkspace}>
           {section === "basics" ? (
-            <BasicsSection
-              tenantCode={tenantCode}
-              draft={draft}
-              saving={saveBasics.isPending}
-              onSave={(input) => saveBasics.mutate(input)}
-            />
+            <>
+              <BasicsSection
+                tenantCode={tenantCode}
+                draft={draft}
+                saving={saveBasics.isPending}
+                onSave={(input) => {
+                  if (!archived) saveBasics.mutate(input);
+                }}
+              />
+              <section className={styles.panel} aria-label="停用与恢复">
+                <h2>停用与恢复</h2>
+                <p>
+                  {archived
+                    ? `已停用 · 上次发布版本 v${draft.object.publicationNumber} · ${draft.object.archivedAt ? new Date(draft.object.archivedAt).toLocaleString("zh-CN") : "缺少历史停用时间"}`
+                    : draft.object.publicationNumber === null
+                      ? "尚未发布的业务表可使用删除草稿"
+                      : "停用立即生效，保留配置和历史数据"}
+                </p>
+                <ObjectLifecycleControl
+                  tenantCode={tenantCode}
+                  draft={draft}
+                  api={api}
+                  onChanged={(next) => {
+                    accept(next);
+                    setEditingField(null);
+                    setStatusField(null);
+                    setAnalysis(undefined);
+                    setPanelOpen(false);
+                  }}
+                />
+              </section>
+            </>
           ) : null}
 
           {section === "fields" ? (
             <section>
               <div className={styles.sectionHeading}>
                 <div>
-                  <h2>字段 {draft.fields.length}</h2>
+                  <h2>字段与表单 · {draft.fields.length} 个字段</h2>
                   <Typography.Text type="secondary">
-                    字段决定这张业务表收集哪些信息；点击配置可继续设置校验、选项和员工权限。
+                    定义收集哪些信息，以及新建、编辑表单的排列顺序。字段配置可设置类型、必填、选项和员工访问权限；表格展示哪些列请到“列表展示与搜索”设置。
                   </Typography.Text>
                 </div>
                 <Button
@@ -500,9 +563,19 @@ export function ObjectDesigner({
               <FieldLedger
                 fields={configurableDraft.fields}
                 titleFieldKey={draft.object.titleFieldKey}
-                reordering={reorder.isPending}
+                reordering={archived || reorder.isPending}
                 onSelect={setEditingField}
-                onReorder={(fieldIds) => reorder.mutate(fieldIds)}
+                onReorder={(fieldIds) => {
+                  if (!archived) reorder.mutate(fieldIds);
+                }}
+                onToggleStatus={
+                  archived
+                    ? undefined
+                    : (field) => {
+                        setError(undefined);
+                        setStatusField(field);
+                      }
+                }
               />
             </section>
           ) : null}
@@ -511,7 +584,9 @@ export function ObjectDesigner({
             <DefaultViewSection
               draft={draft}
               saving={saveView.isPending}
-              onSave={(input) => saveView.mutate(input)}
+              onSave={(input) => {
+                if (!archived) saveView.mutate(input);
+              }}
             />
           ) : null}
 
@@ -523,8 +598,12 @@ export function ObjectDesigner({
               saving={savePermissions.isPending}
               publishing={analyze.isPending || publish.isPending}
               onDirtyChange={setPermissionsDirty}
-              onPublish={() => analyze.mutate()}
-              onSave={(input) => savePermissions.mutate(input)}
+              onPublish={() => {
+                if (!archived) analyze.mutate();
+              }}
+              onSave={(input) => {
+                if (!archived) savePermissions.mutate(input);
+              }}
             />
           ) : null}
 
@@ -565,7 +644,52 @@ export function ObjectDesigner({
         />
       </Drawer>
 
+      <Modal
+        title={`${statusField?.status === "ACTIVE" ? "停用" : "恢复"}字段「${statusField?.label ?? ""}」`}
+        open={statusField !== null}
+        okText={statusField?.status === "ACTIVE" ? "确认停用" : "确认恢复"}
+        cancelText="取消"
+        confirmLoading={changeFieldStatus.isPending}
+        okButtonProps={{
+          disabled: !!statusBlockReason || archived || conflicted,
+          danger: statusField?.status === "ACTIVE" && !statusBlockReason,
+        }}
+        cancelButtonProps={{ disabled: changeFieldStatus.isPending }}
+        closable={!changeFieldStatus.isPending}
+        mask={{ closable: !changeFieldStatus.isPending }}
+        keyboard={!changeFieldStatus.isPending}
+        onCancel={() => setStatusField(null)}
+        onOk={() => {
+          if (statusField && !statusBlockReason && !archived && !conflicted)
+            changeFieldStatus.mutate(statusField);
+        }}
+      >
+        <div className={styles.fieldStatusSummary}>
+          {statusBlockReason ? (
+            <Alert type="warning" showIcon title={statusBlockReason} />
+          ) : null}
+          <p>
+            {statusField?.status === "ACTIVE"
+              ? "发布后，管理员和员工的表单、详情及列表不再使用此字段。历史数据保留，不会删除。"
+              : "发布后，字段重新用于表单和详情，原有历史数据和员工权限保留。"}
+          </p>
+          <p>
+            {statusField?.status === "ACTIVE"
+              ? "默认列表列和关键词搜索会同步移除此字段。若流程仍引用它，发布检查会提示需要修改的配置。"
+              : "如需在列表展示或用于关键词搜索，请到“列表展示与搜索”重新勾选。"}
+          </p>
+          <Alert
+            type="info"
+            showIcon
+            title="先保存到草稿，发布后才生效"
+            description="字段停用对所有角色生效；只限制员工查看时，请使用员工访问权限。"
+          />
+          {error ? <Alert type="error" showIcon title={error} /> : null}
+        </div>
+      </Modal>
+
       <FieldEditorDrawer
+        readOnly={archived}
         field={editingField}
         objectContext={{
           name: draft.object.name,
@@ -576,7 +700,8 @@ export function ObjectDesigner({
         saving={saveField.isPending}
         onClose={() => setEditingField(null)}
         onSubmit={(values) => {
-          if (editingField) saveField.mutate({ field: editingField, values });
+          if (editingField && !archived)
+            saveField.mutate({ field: editingField, values });
         }}
       />
 
@@ -585,7 +710,9 @@ export function ObjectDesigner({
           firstField={draft.fields.length === 0}
           saving={createField.isPending}
           onCancel={() => setFieldCreatorOpen(false)}
-          onCreate={(input) => createField.mutate(input)}
+          onCreate={(input) => {
+            if (!archived) createField.mutate(input);
+          }}
         />
       ) : null}
 
@@ -595,7 +722,9 @@ export function ObjectDesigner({
         loading={analyze.isPending}
         publishing={publish.isPending}
         error={error}
-        onConfirm={() => publish.mutate()}
+        onConfirm={() => {
+          if (!archived) publish.mutate();
+        }}
         onClose={() => setPanelOpen(false)}
       />
     </>
@@ -653,7 +782,11 @@ function BasicsSection({
         </StatusTag>
         <span>{objectStatusDescription(draft)}</span>
       </div>
-      <Form component={false} layout="vertical">
+      <Form
+        disabled={draft.object.status === "ARCHIVED"}
+        component={false}
+        layout="vertical"
+      >
         <Form.Item label="业务表名称" htmlFor="object-name">
           <Input
             id="object-name"
@@ -696,6 +829,7 @@ function BasicsSection({
         <Button
           type="primary"
           loading={saving}
+          disabled={draft.object.status === "ARCHIVED"}
           onClick={() => onSave({ name, titleFieldKey, description })}
         >
           保存基本设置
@@ -710,7 +844,7 @@ function BasicsSection({
 
 function objectStatusDescription(draft: ObjectDraft): string {
   if (draft.object.status === "ARCHIVED") {
-    return "已归档：停止继续配置，历史记录仍然保留。";
+    return "已停用：配置只读，历史记录仍然保留，恢复后沿用原发布版本。";
   }
   if (draft.object.publicationNumber === null) {
     return "草稿：只有公司管理员能看到，员工端尚未出现这张业务表。";
@@ -906,13 +1040,17 @@ function DefaultViewSection({
     <section className={styles.panel}>
       <div className={styles.sectionHeading}>
         <div>
-          <h2>默认列表视图</h2>
+          <h2>列表展示与搜索</h2>
           <Typography.Text type="secondary">
-            决定员工打开这张业务表时先看到哪些列、关键词搜索哪些字段，以及记录的默认顺序。
+            设置管理员和员工打开表格时默认展示的列、从左到右的顺序、搜索范围及记录排序。取消展示不会限制详情或表单访问；员工不可见的字段始终不会显示。个人列设置可覆盖默认展示。
           </Typography.Text>
         </div>
       </div>
-      <Form component={false} layout="vertical">
+      <Form
+        disabled={draft.object.status === "ARCHIVED"}
+        component={false}
+        layout="vertical"
+      >
         <Form.Item label="视图名称" htmlFor="default-view-name">
           <Input
             id="default-view-name"
@@ -920,7 +1058,7 @@ function DefaultViewSection({
             onChange={(event) => setName(event.target.value)}
           />
         </Form.Item>
-        <Form.Item label="显示列及顺序">
+        <Form.Item label="默认在列表展示的列与顺序">
           <div className={styles.columnChooser}>
             {orderedFields.map((field) => {
               const selectedIndex = columnFieldKeys.indexOf(field.fieldKey);
@@ -930,6 +1068,7 @@ function DefaultViewSection({
                   <label>
                     <input
                       type="checkbox"
+                      disabled={draft.object.status === "ARCHIVED"}
                       checked={selected}
                       onChange={(event) =>
                         toggleColumn(field.fieldKey, event.target.checked)
@@ -942,14 +1081,20 @@ function DefaultViewSection({
                     <Space size={4}>
                       <Button
                         size="small"
-                        disabled={selectedIndex === 0}
+                        disabled={
+                          draft.object.status === "ARCHIVED" ||
+                          selectedIndex === 0
+                        }
                         onClick={() => moveColumn(field.fieldKey, -1)}
                       >
                         上移
                       </Button>
                       <Button
                         size="small"
-                        disabled={selectedIndex === columnFieldKeys.length - 1}
+                        disabled={
+                          draft.object.status === "ARCHIVED" ||
+                          selectedIndex === columnFieldKeys.length - 1
+                        }
                         onClick={() => moveColumn(field.fieldKey, 1)}
                       >
                         下移
@@ -985,7 +1130,7 @@ function DefaultViewSection({
                             : `将${field.label}纳入关键词搜索`
                         }
                         checked={selected || isTitle}
-                        disabled={isTitle}
+                        disabled={draft.object.status === "ARCHIVED" || isTitle}
                         onChange={(event) =>
                           setSearchFieldKeys((current) =>
                             event.target.checked
@@ -1040,7 +1185,11 @@ function DefaultViewSection({
         <Button
           type="primary"
           loading={saving}
-          disabled={name.trim() === "" || columnFieldKeys.length === 0}
+          disabled={
+            draft.object.status === "ARCHIVED" ||
+            name.trim() === "" ||
+            columnFieldKeys.length === 0
+          }
           onClick={() =>
             onSave({
               name: name.trim(),
@@ -1052,7 +1201,7 @@ function DefaultViewSection({
             })
           }
         >
-          保存列表视图
+          保存列表设置
         </Button>
         <Typography.Text type="secondary">
           仅保存本节到对象草稿；发布后员工端生效。
@@ -1130,10 +1279,14 @@ function PermissionsSection({
             title="有未保存的权限修改，请先保存再发布。"
           />
         ) : null}
-        <Form component={false} layout="vertical">
+        <Form
+          disabled={draft.object.status === "ARCHIVED"}
+          component={false}
+          layout="vertical"
+        >
           <Form.Item label="可以新建记录" htmlFor="employee-can-create">
             <Switch
-              disabled={saving}
+              disabled={saving || draft.object.status === "ARCHIVED"}
               id="employee-can-create"
               aria-label="可以新建记录"
               checked={canCreate}
@@ -1142,7 +1295,7 @@ function PermissionsSection({
           </Form.Item>
           <Form.Item label="可以查看记录" htmlFor="employee-can-read">
             <Switch
-              disabled={saving}
+              disabled={saving || draft.object.status === "ARCHIVED"}
               id="employee-can-read"
               aria-label="可以查看记录"
               checked={canRead}
@@ -1157,7 +1310,7 @@ function PermissionsSection({
           </Form.Item>
           <Form.Item label="可以修改记录" htmlFor="employee-can-update">
             <Switch
-              disabled={saving}
+              disabled={saving || draft.object.status === "ARCHIVED"}
               id="employee-can-update"
               aria-label="可以修改记录"
               checked={canUpdate}
@@ -1169,7 +1322,7 @@ function PermissionsSection({
           </Form.Item>
           <Form.Item label="查看范围" htmlFor="employee-read-scope">
             <Select
-              disabled={saving}
+              disabled={saving || draft.object.status === "ARCHIVED"}
               id="employee-read-scope"
               value={readScope}
               onChange={setReadScope}
@@ -1178,7 +1331,7 @@ function PermissionsSection({
           </Form.Item>
           <Form.Item label="修改范围" htmlFor="employee-update-scope">
             <Select
-              disabled={saving}
+              disabled={saving || draft.object.status === "ARCHIVED"}
               id="employee-update-scope"
               value={updateScope}
               onChange={setUpdateScope}
@@ -1193,6 +1346,7 @@ function PermissionsSection({
           <Button
             type="primary"
             loading={saving}
+            disabled={draft.object.status === "ARCHIVED"}
             onClick={() =>
               onSave({ canCreate, canRead, canUpdate, readScope, updateScope })
             }
@@ -1232,7 +1386,11 @@ function PublicationHistorySection({ draft }: { draft: ObjectDraft }) {
             <span className={styles.publicationNumber}>
               v{draft.object.publicationNumber}
             </span>
-            <span>当前运行版本</span>
+            <span>
+              {draft.object.status === "ARCHIVED"
+                ? "停用前发布版本"
+                : "当前运行版本"}
+            </span>
             <Typography.Text type="secondary">
               {draft.object.publishedAt ?? ""}
             </Typography.Text>

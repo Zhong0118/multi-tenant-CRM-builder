@@ -1,5 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 
+import { toObjectDraftResponse } from './object-draft.presenter';
+import type { LifecycleBlocker } from './object-lifecycle.policy';
+
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { collectActionTargetObjectCodes } from '../actions/action-publication.policy';
@@ -355,19 +358,31 @@ export class ObjectsService {
           (candidate) => candidate.id === fieldId,
         );
         if (!field) throw new ApiException('FIELD_UNKNOWN', 404);
+        if (input.status === 'INACTIVE') {
+          if (field.fieldKey === draft.object.titleFieldKey) {
+            throw validationError(
+              'status',
+              '请先在基本设置中更换记录名称字段，再停用此字段。',
+            );
+          }
+          if (field.isSystem) {
+            throw validationError('status', '系统字段不能停用。');
+          }
+        }
         const publishedField = draft.activeSchema?.fields.find(
           (candidate) => candidate.fieldKey === field.fieldKey,
         );
+        const publishedType = field.publishedType ?? publishedField?.type;
         if (
           input.type !== undefined &&
-          publishedField &&
-          input.type !== field.type
+          publishedType &&
+          input.type !== publishedType
         ) {
           throw validationError('type', '字段发布后不能修改类型。');
         }
         if (input.fieldKey !== undefined) {
           const fieldKey = normalizeFieldKey(input.fieldKey);
-          if (publishedField && fieldKey !== field.fieldKey) {
+          if (publishedType && fieldKey !== field.fieldKey) {
             throw validationError('fieldKey', '字段发布后不能修改字段键。');
           }
           if (
@@ -381,6 +396,18 @@ export class ObjectsService {
           field.fieldKey = fieldKey;
         }
         assignFieldMutation(field, input);
+        if (input.status === 'INACTIVE' && draft.defaultView) {
+          draft.defaultView.columnFieldKeys =
+            draft.defaultView.columnFieldKeys.filter(
+              (key) => key !== field.fieldKey,
+            );
+          if (draft.defaultView.searchFieldKeys !== undefined) {
+            draft.defaultView.searchFieldKeys =
+              draft.defaultView.searchFieldKeys.filter(
+                (key) => key !== field.fieldKey,
+              );
+          }
+        }
       },
     );
   }
@@ -400,9 +427,13 @@ export class ObjectsService {
       throw validationError('items', '对象排序不能包含重复项。');
     }
     return this.repository.withTenant(context, async (store) => {
+      await store.lockLifecycleConfiguration();
+      for (const objectId of input.items.map((item) => item.objectId).sort())
+        await store.lockObject(objectId);
       for (const [index, item] of input.items.entries()) {
         const draft = await requireDraft(store, item.objectId);
         assertVersion(draft, item.expectedVersion);
+        assertNotArchived(draft);
         draft.object.sortOrder = (index + 1) * 10;
         const saved = await store.saveObject(draft, item.expectedVersion);
         if (!saved) throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
@@ -537,6 +568,7 @@ export class ObjectsService {
     return this.repository.withTenant(context, async (store) => {
       const draft = await requireDraft(store, objectId);
       assertVersion(draft, input.expectedVersion);
+      assertNotArchived(draft);
       draft.activeRecordCount = await store.countActiveRecords(objectId);
       draft.workflow = await store.findWorkflowDraft(objectId);
       draft.workflowStateRecordCounts =
@@ -554,9 +586,11 @@ export class ObjectsService {
   ): Promise<ObjectPublicationSummary> {
     assertTenantAdmin(context);
     return this.repository.withTenant(context, async (store) => {
+      await store.lockLifecycleConfiguration();
       await store.lockObject(objectId);
       const draft = await requireDraft(store, objectId);
       assertVersion(draft, input.expectedVersion);
+      assertNotArchived(draft);
       draft.activeRecordCount = await store.countActiveRecords(objectId);
       draft.workflow = await store.findWorkflowDraft(objectId);
       draft.workflowStateRecordCounts =
@@ -585,6 +619,7 @@ export class ObjectsService {
       draft.object.activePublicationId = publication.id;
       draft.object.publishedAt = publication.publishedAt;
       draft.object.status = 'ACTIVE';
+      draft.object.lifecycleVersionOffset = 0;
       const saved = await store.saveObject(draft, input.expectedVersion, {
         bumpVersion: false,
       });
@@ -611,24 +646,111 @@ export class ObjectsService {
     });
   }
 
+  async lifecycle(context: TenantContext, objectId: string) {
+    assertTenantAdmin(context);
+    return this.repository.withTenant(context, async (store) => {
+      const draft = await requireDraft(store, objectId);
+      return {
+        status: draft.object.status,
+        version: draft.object.version,
+        recordCount: draft.activeRecordCount,
+        activePublicationVersion:
+          draft.activeSchema?.publication.number ?? null,
+        archivedAt: draft.object.archivedAt ?? null,
+        hasUnpublishedChanges:
+          toObjectDraftResponse(draft).object.hasUnpublishedChanges,
+        blockers: await store.findLifecycleBlockers(
+          objectId,
+          draft.object.status === 'ARCHIVED' ? 'restore' : 'archive',
+        ),
+        requiresLegacyTimerAcknowledgement:
+          draft.object.status === 'ARCHIVED' && !draft.object.archivedAt,
+        expiredRecordCount: await store.countExpiredRecords(
+          objectId,
+          this.clock(),
+        ),
+      };
+    });
+  }
+
   archive(
     context: TenantContext,
     objectId: string,
     input: { expectedVersion: number },
     meta: RequestMeta,
   ): Promise<ObjectDraft> {
-    return this.mutateDraft(
-      context,
-      objectId,
-      input.expectedVersion,
-      meta,
-      'object.archived',
-      (draft) => {
-        if (!draft.activeSchema)
-          throw new ApiException('OBJECT_NOT_PUBLISHED', 409);
-        draft.object.status = 'ARCHIVED';
-      },
-    );
+    return this.changeLifecycle(context, objectId, input, meta, 'archive');
+  }
+
+  restore(
+    context: TenantContext,
+    objectId: string,
+    input: { expectedVersion: number; acknowledgeLegacyTimers?: boolean },
+    meta: RequestMeta,
+  ): Promise<ObjectDraft> {
+    return this.changeLifecycle(context, objectId, input, meta, 'restore');
+  }
+
+  private async changeLifecycle(
+    context: TenantContext,
+    objectId: string,
+    input: { expectedVersion: number; acknowledgeLegacyTimers?: boolean },
+    meta: RequestMeta,
+    operation: 'archive' | 'restore',
+  ): Promise<ObjectDraft> {
+    assertTenantAdmin(context);
+    return this.repository.withTenant(context, async (store) => {
+      await store.lockLifecycleConfiguration();
+      await store.lockObject(objectId);
+      const draft = await requireDraft(store, objectId);
+      assertVersion(draft, input.expectedVersion);
+      if (!draft.activeSchema || !draft.object.activePublicationId)
+        throw new ApiException('OBJECT_NOT_PUBLISHED', 409);
+      if (operation === 'archive') assertNotArchived(draft);
+      else if (draft.object.status !== 'ARCHIVED')
+        throw new ApiException('OBJECT_LIFECYCLE_CONFLICT', 409, {
+          message: '只有已停用的业务表可以恢复。',
+        });
+      const blockers = await store.findLifecycleBlockers(objectId, operation);
+      assertNoLifecycleBlockers(blockers);
+      if (
+        operation === 'restore' &&
+        !draft.object.archivedAt &&
+        input.acknowledgeLegacyTimers !== true
+      )
+        throw new ApiException('OBJECT_LIFECYCLE_CONFLICT', 409, {
+          message:
+            '此表缺少历史停用时间，恢复将保留原持有期限。请查看已到期记录数量后确认。',
+        });
+      const now = this.clock();
+      draft.object.status = operation === 'archive' ? 'ARCHIVED' : 'ACTIVE';
+      const saved = await store.changeLifecycle(
+        draft,
+        input.expectedVersion,
+        now,
+      );
+      if (!saved) throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
+      await store.appendAudit(
+        auditEvent(
+          context,
+          meta,
+          operation === 'archive' ? 'object.archived' : 'object.restored',
+          objectId,
+          {
+            version: saved.object.version,
+            publicationId: saved.object.activePublicationId,
+            archivedAt:
+              draft.object.archivedAt ??
+              (operation === 'archive' ? now.toISOString() : null),
+            acknowledgedLegacyTimers:
+              operation === 'restore' &&
+              !draft.object.archivedAt &&
+              input.acknowledgeLegacyTimers === true,
+          },
+        ),
+      );
+      return saved;
+    });
   }
 
   /**
@@ -666,8 +788,11 @@ export class ObjectsService {
   ): Promise<ObjectDraft> {
     assertTenantAdmin(context);
     return this.repository.withTenant(context, async (store) => {
+      await store.lockLifecycleConfiguration();
+      await store.lockObject(objectId);
       const draft = await requireDraft(store, objectId);
       assertVersion(draft, expectedVersion);
+      assertNotArchived(draft);
       mutate(draft);
       const saved = await store.saveObject(draft, expectedVersion);
       if (!saved) throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
@@ -810,4 +935,17 @@ function hasErrorCode(error: unknown, code: string): boolean {
     error !== null &&
     Reflect.get(error, 'code') === code
   );
+}
+
+function assertNotArchived(draft: ObjectDraft): void {
+  if (draft.object.status === 'ARCHIVED')
+    throw new ApiException('OBJECT_ARCHIVED', 409);
+}
+
+function assertNoLifecycleBlockers(blockers: LifecycleBlocker[]): void {
+  if (blockers.length)
+    throw new ApiException('OBJECT_LIFECYCLE_BLOCKED', 409, {
+      message: blockers.map((blocker) => blocker.description).join('；'),
+      fieldErrors: { blockers: blockers.map((blocker) => blocker.description) },
+    });
 }

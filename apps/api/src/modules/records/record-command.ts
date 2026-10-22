@@ -1,3 +1,4 @@
+import type { PoolOrigin, PoolStage } from './record-ownership';
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { AuditEvent, DomainAuditCorrelation } from '../audit/audit-event';
@@ -52,6 +53,10 @@ export interface CreateRecordCommandInput {
   values: Record<string, unknown>;
   ownerMemberId?: string | null;
   ownershipExpiresAt?: string | null;
+  poolStage?: PoolStage;
+  poolOrigin?: PoolOrigin;
+  poolClaimedAt?: string | null;
+  inPublicPool?: boolean;
   meta: RecordRequestMeta;
   clock: () => Date;
   idGenerator: () => string;
@@ -86,6 +91,14 @@ export async function createRecordCommand(
     recordNo: await store.allocateRecordNo(resolved.schema.object.id),
     ownerMemberId,
     ownershipExpiresAt: input.ownershipExpiresAt ?? null,
+    ...(input.poolStage
+      ? {
+          poolStage: input.poolStage,
+          poolOrigin: input.poolOrigin,
+          poolClaimedAt: input.poolClaimedAt,
+          inPublicPool: input.inPublicPool,
+        }
+      : {}),
     workflowStateKey: resolved.schema.workflow?.initialStateKey ?? null,
     title: normalized.title,
     values: normalized.values,
@@ -185,7 +198,7 @@ export async function createRecordActivityCommand({
   auditId: string;
 }> {
   const content = validateRecordActivityInput(input);
-  await requireVisibleRecord(
+  const record = await requireVisibleRecord(
     store,
     resolved,
     context,
@@ -193,6 +206,24 @@ export async function createRecordActivityCommand({
     'UPDATE',
     true,
   );
+  if (
+    record.poolStage === 'FOLLOWING' &&
+    resolved.poolEnabled &&
+    resolved.poolLifecycleEnabled
+  ) {
+    if (
+      context.role !== 'TENANT_ADMIN' &&
+      record.ownerMemberId !== context.memberId
+    )
+      throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+    if (
+      record.ownershipExpiresAt &&
+      new Date(record.ownershipExpiresAt).getTime() <= clock().getTime()
+    )
+      throw new ApiException('RECORD_VERSION_CONFLICT', 409, {
+        message: '跟进期限已到，请刷新记录。',
+      });
+  }
   const created = await store.createActivity({
     id: idGenerator(),
     recordId,
@@ -290,6 +321,18 @@ export function projectRecord(
     ownerMemberId: record.ownerMemberId,
     inPublicPool: record.inPublicPool ?? false,
     ownershipExpiresAt: record.ownershipExpiresAt ?? null,
+    ...(record.poolStage === undefined
+      ? {}
+      : {
+          poolStage: record.poolStage ?? null,
+          poolOrigin: record.poolOrigin ?? null,
+          poolClaimedAt: record.poolClaimedAt ?? null,
+          poolLastFollowUpAt: record.poolLastFollowUpAt ?? null,
+          poolProtectedAt: record.poolProtectedAt ?? null,
+          poolReason: record.poolReason ?? null,
+          poolQuality: record.poolQuality ?? null,
+          protectionNeedsReview: record.protectionNeedsReview ?? false,
+        }),
     title: record.title,
     values: projectVisibleValues(
       resolved.schema,
@@ -352,6 +395,20 @@ export async function prepareSourceRecordPatch(
     input.current.ownerMemberId,
     input.ownerMemberId,
   );
+  if (
+    input.current.poolStage &&
+    ownerMemberId !== input.current.ownerMemberId
+  ) {
+    if (!ownerMemberId)
+      throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403, {
+        message:
+          '已进入流转的记录需使用释放操作并填写原因；成交保护记录需先由管理员解除保护。',
+      });
+    await input.store.lockActiveOwners(
+      ownerMemberId,
+      input.resolved.schema.object.code,
+    );
+  }
   const normalized = await assertRecordMutation({
     mode: 'UPDATE',
     resolved: input.resolved,
@@ -443,6 +500,18 @@ export function auditRecord(record: DynamicRecord): Record<string, unknown> {
     ownerMemberId: record.ownerMemberId,
     inPublicPool: record.inPublicPool ?? false,
     ownershipExpiresAt: record.ownershipExpiresAt ?? null,
+    ...(record.poolStage === undefined
+      ? {}
+      : {
+          poolStage: record.poolStage ?? null,
+          poolOrigin: record.poolOrigin ?? null,
+          poolClaimedAt: record.poolClaimedAt ?? null,
+          poolLastFollowUpAt: record.poolLastFollowUpAt ?? null,
+          poolProtectedAt: record.poolProtectedAt ?? null,
+          poolReason: record.poolReason ?? null,
+          poolQuality: record.poolQuality ?? null,
+          protectionNeedsReview: record.protectionNeedsReview ?? false,
+        }),
     title: record.title,
     values: record.values,
     version: record.version,

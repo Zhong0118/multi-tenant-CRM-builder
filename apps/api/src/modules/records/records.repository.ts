@@ -1,3 +1,11 @@
+import { assertAssignableOwner } from './record-ownership-locks';
+import { lockRuntimeObjectConfiguration } from '../objects/object-configuration-lock';
+import {
+  isReadable,
+  type ResolvedObjectSchema,
+} from '../objects/published-object.service';
+import { resolvePublishedObjectInTransaction } from '../objects/published-object-transaction';
+import type { PoolStage, PoolOrigin, PoolQuality } from './record-ownership';
 import { ApiException } from '../../common/errors/api.exception';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@crm/database';
@@ -13,6 +21,14 @@ import {
 } from './record-activity';
 
 export interface DynamicRecord {
+  poolStage?: PoolStage | null;
+  poolOrigin?: PoolOrigin | null;
+  poolClaimedAt?: string | null;
+  poolLastFollowUpAt?: string | null;
+  poolProtectedAt?: string | null;
+  poolReason?: string | null;
+  poolQuality?: PoolQuality | null;
+  protectionNeedsReview?: boolean;
   inPublicPool?: boolean;
   ownershipExpiresAt?: string | null;
   id: string;
@@ -90,13 +106,15 @@ export type RecordListFieldSort = {
 };
 
 export interface RecordListQuery {
+  poolStage?: PoolStage | 'LEGACY';
+  poolQuality?: PoolQuality;
   inPublicPool?: boolean;
   objectId: string;
   page: number;
   limit: number;
   search?: string;
   searchFieldKeys: string[];
-  ownerMemberId?: string;
+  ownerMemberId?: string | null;
   filters: RecordListFilter[];
   sort: RecordListSystemSort | RecordListFieldSort;
   direction: 'asc' | 'desc';
@@ -110,11 +128,13 @@ export type RecordReadPredicate = Pick<
   | 'search'
   | 'searchFieldKeys'
   | 'inPublicPool'
+  | 'poolStage'
+  | 'poolQuality'
 >;
 
 export interface RecordAggregateQuery {
   objectId: string;
-  ownerMemberId?: string;
+  ownerMemberId?: string | null;
   filters: RecordListFilter[];
   aggregation: 'COUNT' | 'SUM' | 'AVG';
   valueFieldKey?: string;
@@ -163,11 +183,14 @@ export interface ApplySourceRecordPatchStoreInput {
 
 export interface ImportDuplicateQuery {
   objectId: string;
-  ownerMemberId?: string;
+  ownerMemberId?: string | null;
   values: Record<string, string | number | boolean>;
 }
 
 export interface RecordsStore {
+  resolveCurrentObject(
+    previous: ResolvedObjectSchema,
+  ): Promise<ResolvedObjectSchema>;
   lockImportMatching(objectId: string): Promise<void>;
   findImportDuplicate(query: ImportDuplicateQuery): Promise<string | null>;
   lockImportBatch(objectId: string, batchId: string): Promise<void>;
@@ -183,7 +206,7 @@ export interface RecordsStore {
     recordId: string,
   ): Promise<void>;
   memberExists(memberId: string): Promise<boolean>;
-  lockActiveOwners(ownerId: string | null): Promise<void>;
+  lockActiveOwners(ownerId: string | null, objectCode?: string): Promise<void>;
   allocateRecordNo(objectId: string): Promise<bigint>;
   createRecord(record: DynamicRecord): Promise<DynamicRecord>;
   listRecords(query: RecordListQuery): Promise<{
@@ -338,12 +361,13 @@ export class PrismaRecordsRepository implements RecordsRepository {
     context: TenantContext,
     work: (session: RecordsTransaction) => Promise<T>,
   ): Promise<T> {
-    return this.runner.withTenant(context, (transaction) =>
-      work({
+    return this.runner.withTenant(context, async (transaction) => {
+      await lockRuntimeObjectConfiguration(transaction, context.tenantId);
+      return work({
         tx: transaction,
         store: new PrismaRecordsStore(transaction, this.audit, context),
-      }),
-    );
+      });
+    });
   }
 }
 
@@ -353,6 +377,19 @@ class PrismaRecordsStore implements RecordsStore {
     private readonly audit: AuditService,
     private readonly context: TenantContext,
   ) {}
+
+  async resolveCurrentObject(
+    previous: ResolvedObjectSchema,
+  ): Promise<ResolvedObjectSchema> {
+    const resolved = await resolvePublishedObjectInTransaction(
+      this.transaction,
+      this.context,
+      previous.schema.object.code,
+    );
+    if (!isReadable(resolved.schema, resolved.access))
+      throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+    return resolved;
+  }
 
   async lockImportMatching(objectId: string): Promise<void> {
     const key = `record-import:${this.context.tenantId}:${objectId}`;
@@ -435,7 +472,7 @@ class PrismaRecordsStore implements RecordsStore {
     return recordNo;
   }
 
-  async lockActiveOwners(ownerId: string | null) {
+  async lockActiveOwners(ownerId: string | null, objectCode?: string) {
     for (const id of [
       ...new Set([this.context.memberId, ...(ownerId ? [ownerId] : [])]),
     ].sort()) {
@@ -446,6 +483,13 @@ class PrismaRecordsStore implements RecordsStore {
       if (id === this.context.memberId && rows[0].role !== this.context.role)
         throw new ApiException('WORKSPACE_FORBIDDEN', 403);
     }
+    if (ownerId && objectCode)
+      await assertAssignableOwner(
+        this.transaction,
+        this.context,
+        objectCode,
+        ownerId,
+      );
   }
 
   async createRecord(record: DynamicRecord): Promise<DynamicRecord> {
@@ -457,6 +501,20 @@ class PrismaRecordsStore implements RecordsStore {
         objectId: record.objectId,
         recordNo: record.recordNo,
         ownerMemberId: record.ownerMemberId,
+        inPublicPool: record.inPublicPool ?? false,
+        poolStage: record.poolStage,
+        poolOrigin: record.poolOrigin,
+        poolClaimedAt: record.poolClaimedAt
+          ? new Date(record.poolClaimedAt)
+          : null,
+        poolLastFollowUpAt: record.poolLastFollowUpAt
+          ? new Date(record.poolLastFollowUpAt)
+          : null,
+        poolProtectedAt: record.poolProtectedAt
+          ? new Date(record.poolProtectedAt)
+          : null,
+        poolReason: record.poolReason,
+        poolQuality: record.poolQuality,
         ownershipExpiresAt: record.ownershipExpiresAt
           ? new Date(record.ownershipExpiresAt)
           : null,
@@ -483,6 +541,12 @@ class PrismaRecordsStore implements RecordsStore {
       deletedAt: null,
       ownerMemberId: query.ownerMemberId,
       inPublicPool: query.inPublicPool,
+      ...(query.poolStage === undefined
+        ? {}
+        : { poolStage: query.poolStage === 'LEGACY' ? null : query.poolStage }),
+      ...(query.poolQuality === undefined
+        ? {}
+        : { poolQuality: query.poolQuality }),
       AND: [
         ...searchConditions(query.search, query.searchFieldKeys),
         ...query.filters.map(listFilterCondition),
@@ -823,6 +887,31 @@ class PrismaRecordsStore implements RecordsStore {
     actorMemberId: string;
     createdAt: string;
   }): Promise<RecordActivity> {
+    // Activity commands also run from AI/workflows: recheck current access in
+    // this transaction before an insertion can renew a private lease.
+    const record = await this.transaction.record.findFirstOrThrow({
+      where: {
+        tenantId: this.context.tenantId,
+        id: activity.recordId,
+        deletedAt: null,
+      },
+      include: { object: { select: { code: true } } },
+    });
+    const resolved = await resolvePublishedObjectInTransaction(
+      this.transaction,
+      this.context,
+      record.object.code,
+    );
+    if (
+      !isReadable(resolved.schema, resolved.access) ||
+      !resolved.access.canUpdate ||
+      resolved.access.readScope === 'NONE' ||
+      resolved.access.updateScope === 'NONE' ||
+      (this.context.role !== 'TENANT_ADMIN' &&
+        record.poolStage &&
+        record.ownerMemberId !== this.context.memberId)
+    )
+      throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
     const created = await this.transaction.recordActivity.create({
       data: {
         id: activity.id,
@@ -913,6 +1002,14 @@ function fromPrismaActivity(activity: {
 }
 
 function fromPrismaRecord(record: {
+  poolStage?: string | null;
+  poolOrigin?: string | null;
+  poolClaimedAt?: Date | null;
+  poolLastFollowUpAt?: Date | null;
+  poolProtectedAt?: Date | null;
+  poolReason?: string | null;
+  poolQuality?: string | null;
+  protectionNeedsReview?: boolean;
   inPublicPool?: boolean;
   ownershipExpiresAt?: Date | null;
   id: string;
@@ -934,6 +1031,14 @@ function fromPrismaRecord(record: {
     recordNo: record.recordNo,
     ownerMemberId: record.ownerMemberId,
     inPublicPool: record.inPublicPool ?? false,
+    poolStage: (record.poolStage ?? null) as PoolStage | null,
+    poolOrigin: (record.poolOrigin ?? null) as PoolOrigin | null,
+    poolClaimedAt: record.poolClaimedAt?.toISOString() ?? null,
+    poolLastFollowUpAt: record.poolLastFollowUpAt?.toISOString() ?? null,
+    poolProtectedAt: record.poolProtectedAt?.toISOString() ?? null,
+    poolReason: record.poolReason ?? null,
+    poolQuality: (record.poolQuality ?? null) as PoolQuality | null,
+    protectionNeedsReview: record.protectionNeedsReview ?? false,
     ownershipExpiresAt: record.ownershipExpiresAt?.toISOString() ?? null,
     workflowStateKey: record.statusKey,
     title: record.title,
@@ -1067,7 +1172,11 @@ function listWhereSql(
     Prisma.sql`${qualified ? Prisma.sql`r.object_id` : Prisma.sql`object_id`} = ${query.objectId}::uuid`,
     Prisma.sql`${qualified ? Prisma.sql`r.deleted_at` : Prisma.sql`deleted_at`} IS NULL`,
   ];
-  if (query.ownerMemberId) {
+  if (query.ownerMemberId === null) {
+    parts.push(
+      Prisma.sql`${qualified ? Prisma.sql`r.owner_member_id` : Prisma.sql`owner_member_id`} IS NULL`,
+    );
+  } else if (query.ownerMemberId !== undefined) {
     parts.push(
       Prisma.sql`${qualified ? Prisma.sql`r.owner_member_id` : Prisma.sql`owner_member_id`} = ${query.ownerMemberId}::uuid`,
     );
@@ -1077,6 +1186,18 @@ function listWhereSql(
       Prisma.sql`${qualified ? Prisma.sql`r.in_public_pool` : Prisma.sql`in_public_pool`} = ${query.inPublicPool}`,
     );
   }
+  if (query.poolStage === 'LEGACY')
+    parts.push(
+      Prisma.sql`${qualified ? Prisma.sql`r.pool_stage` : Prisma.sql`pool_stage`} IS NULL`,
+    );
+  else if (query.poolStage)
+    parts.push(
+      Prisma.sql`${qualified ? Prisma.sql`r.pool_stage` : Prisma.sql`pool_stage`} = ${query.poolStage}`,
+    );
+  if (query.poolQuality)
+    parts.push(
+      Prisma.sql`${qualified ? Prisma.sql`r.pool_quality` : Prisma.sql`pool_quality`} = ${query.poolQuality}`,
+    );
   if (query.search) {
     parts.push(searchSql(query.search, query.searchFieldKeys, qualified));
   }

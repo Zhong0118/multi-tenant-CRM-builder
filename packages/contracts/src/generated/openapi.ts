@@ -1092,6 +1092,70 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/notifications": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["NotificationsController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/notifications/{id}/read": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["NotificationsController_read"];
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/notifications/{id}/target": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["NotificationsController_target"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/notifications/read-all": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["NotificationsController_readAll"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/object-definitions": {
     parameters: {
       query?: never;
@@ -1204,6 +1268,22 @@ export interface paths {
     patch: operations["ObjectsController_updateField"];
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/lifecycle": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ObjectsController_lifecycle"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/permissions": {
     parameters: {
       query?: never;
@@ -1246,6 +1326,22 @@ export interface paths {
     get: operations["ObjectsController_publications"];
     put?: never;
     post: operations["ObjectsController_publish"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/restore": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ObjectsController_restore"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2184,6 +2280,7 @@ export interface components {
       reason?:
         | "AUDIENCE_EXCLUDED"
         | "OBJECT_UNAVAILABLE"
+        | "OBJECT_ARCHIVED"
         | "OBJECT_ACCESS_DENIED"
         | "FIELD_HIDDEN"
         | "QUERY_FAILED";
@@ -2357,6 +2454,7 @@ export interface components {
       batchId?: string;
       /** @description 仅校验和查重，不创建记录。 */
       dryRun?: boolean;
+      importToPool?: boolean;
       matchFields?: string[];
       /**
        * Format: uuid
@@ -2493,6 +2591,43 @@ export interface components {
       /** @example true */
       accepted: boolean;
     };
+    NotificationItemDto: {
+      canOpen: boolean;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      dueAt: string | null;
+      /** Format: uuid */
+      id: string;
+      /** @enum {string} */
+      kind:
+        | "CONTACT_DUE"
+        | "FOLLOW_UP_DUE"
+        | "TASK_OVERDUE"
+        | "POOL_RECLAIMED"
+        | "PROTECTION_REVIEW";
+      message: string;
+      /** Format: date-time */
+      readAt: string | null;
+      title: string;
+    };
+    NotificationOkDto: {
+      /** @enum {boolean} */
+      ok: true;
+    };
+    NotificationPageDto: {
+      items: components["schemas"]["NotificationItemDto"][];
+      limit: number;
+      page: number;
+      /** Format: date-time */
+      serverTime: string;
+      snapshot: string;
+      total: number;
+      unreadCount: number;
+    };
+    NotificationTargetDto: {
+      href: string | null;
+    };
     ObjectDraftDefaultViewResponseDto: {
       columnFieldKeys: string[];
       name: string;
@@ -2570,6 +2705,8 @@ export interface components {
       };
     };
     ObjectDraftObjectResponseDto: {
+      /** Format: date-time */
+      archivedAt?: string | null;
       code: string;
       description: string | null;
       hasUnpublishedChanges: boolean;
@@ -2598,6 +2735,26 @@ export interface components {
       object: components["schemas"]["ObjectDraftObjectResponseDto"];
       publishedEmployeeAccess:
         components["schemas"]["PublishedEmployeeAccessResponseDto"] | null;
+    };
+    ObjectLifecycleBlockerDto: {
+      description: string;
+      /** @enum {string} */
+      kind: "WORKFLOW" | "POOL_PROTECTION";
+      objectCode: string;
+      objectName: string;
+    };
+    ObjectLifecycleResponseDto: {
+      activePublicationVersion: number | null;
+      /** Format: date-time */
+      archivedAt: string | null;
+      blockers: components["schemas"]["ObjectLifecycleBlockerDto"][];
+      expiredRecordCount: number;
+      hasUnpublishedChanges: boolean;
+      recordCount: number;
+      requiresLegacyTimerAcknowledgement: boolean;
+      /** @enum {string} */
+      status: "DRAFT" | "ACTIVE" | "ARCHIVED";
+      version: number;
     };
     ObjectOrderDto: {
       items: components["schemas"]["ObjectOrderItemDto"][];
@@ -2737,6 +2894,40 @@ export interface components {
       suspended: number;
       total: number;
     };
+    PoolLabelsDto: {
+      customerPool?: string;
+      following?: string;
+      leadPool?: string;
+      pending?: string;
+      protected?: string;
+    };
+    PoolPermissionsDto: {
+      canRead: boolean;
+      canUpdate: boolean;
+      /** @enum {string} */
+      readScope: "ALL" | "OWN" | "NONE";
+      /** @enum {string} */
+      updateScope: "ALL" | "OWN" | "NONE";
+    };
+    PoolPreviewDto: {
+      expiredCount: number;
+      legacyOwned: number;
+      legacyPool: number;
+      legacyUnassigned: number;
+    };
+    PoolProtectionRuleDto: {
+      sourceObjectCode: string;
+      statusKeys: string[];
+    };
+    PoolProtectionSourceDto: {
+      objectCode: string;
+      objectName: string;
+      states: components["schemas"]["PoolProtectionStateDto"][];
+    };
+    PoolProtectionStateDto: {
+      key: string;
+      label: string;
+    };
     PreviewDashboardDto: {
       expectedVersion: number;
       period: components["schemas"]["DashboardPeriodInputDto"];
@@ -2838,6 +3029,11 @@ export interface components {
         [key: string]: unknown;
       };
     };
+    ReadAllNotificationsDto: {
+      /** Format: date-time */
+      before: string;
+      snapshot: string;
+    };
     RecordActivityPageResponseDto: {
       items: components["schemas"]["RecordActivityResponseDto"][];
       limit: number;
@@ -2899,9 +3095,19 @@ export interface components {
     };
     RecordOwnershipDto: {
       /** @enum {string} */
-      action: "CLAIM" | "RELEASE" | "ASSIGN";
+      action:
+        | "CLAIM"
+        | "RELEASE"
+        | "ASSIGN"
+        | "CONFIRM_CONTACT"
+        | "UNPROTECT_RELEASE";
       /** Format: uuid */
       ownerMemberId?: string;
+      /** @enum {string} */
+      poolStage?: "LEAD_POOL" | "CUSTOMER_POOL";
+      /** @enum {string} */
+      quality?: "INVALID" | "DUPLICATE" | "LOST";
+      reason?: string;
       version: number;
     };
     RecordOwnershipResponseDto: {
@@ -2913,11 +3119,26 @@ export interface components {
       items: components["schemas"]["RecordResponseDto"][];
       limit: number;
       page: number;
+      poolCounts?: {
+        [key: string]: number;
+      };
       total: number;
     };
     RecordPoolConfigResponseDto: {
+      /** @default 24 */
+      contactTtlHours: number;
       enabled: boolean;
+      /** @default 720 */
+      followUpTtlHours: number;
+      labels?: components["schemas"]["PoolLabelsDto"];
+      lifecycleEnabled?: boolean;
       ownershipTtlHours: number | null;
+      permissions?: components["schemas"]["PoolPermissionsDto"];
+      preview?: components["schemas"]["PoolPreviewDto"];
+      protectionRules?: components["schemas"]["PoolProtectionRuleDto"][];
+      protectionSources?: components["schemas"]["PoolProtectionSourceDto"][];
+      /** Format: date-time */
+      serverTime?: string;
       version: number;
     };
     RecordRelationDto: {
@@ -2936,6 +3157,26 @@ export interface components {
       ownerMemberId?: string | null;
       /** Format: date-time */
       ownershipExpiresAt: string | null;
+      /** Format: date-time */
+      poolClaimedAt?: string | null;
+      /** Format: date-time */
+      poolLastFollowUpAt?: string | null;
+      /** @enum {string|null} */
+      poolOrigin?: "LEAD_POOL" | "CUSTOMER_POOL" | null;
+      /** Format: date-time */
+      poolProtectedAt?: string | null;
+      /** @enum {string|null} */
+      poolQuality?: "INVALID" | "DUPLICATE" | "LOST" | null;
+      poolReason?: string | null;
+      /** @enum {string|null} */
+      poolStage?:
+        | "LEAD_POOL"
+        | "CUSTOMER_POOL"
+        | "PENDING_CONTACT"
+        | "FOLLOWING"
+        | "PROTECTED"
+        | null;
+      protectionNeedsReview?: boolean;
       recordNo: string;
       title: string;
       /** Format: date-time */
@@ -2968,6 +3209,10 @@ export interface components {
       newPassword: string;
       /** @example 13800138000 */
       phone: string;
+    };
+    RestoreObjectDto: {
+      acknowledgeLegacyTimers?: boolean;
+      expectedVersion: number;
     };
     RuntimeAvailableTransitionDto: {
       /** @description 静态 Effect Summary：该 Transition 将执行的动作类型，按执行顺序；没有 Action 时为空数组。不含字段映射细节。 */
@@ -3428,8 +3673,13 @@ export interface components {
       version: number;
     };
     UpdateRecordPoolConfigDto: {
+      contactTtlHours?: number;
       enabled: boolean;
+      followUpTtlHours?: number;
+      labels?: components["schemas"]["PoolLabelsDto"];
+      lifecycleEnabled?: boolean;
       ownershipTtlHours: number | null;
+      protectionRules?: components["schemas"]["PoolProtectionRuleDto"][];
       version: number;
     };
     UserResponseDto: {
@@ -5335,6 +5585,100 @@ export interface operations {
       };
     };
   };
+  NotificationsController_list: {
+    parameters: {
+      query?: {
+        limit?: number;
+        page?: number;
+        unreadOnly?: boolean;
+      };
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NotificationPageDto"];
+        };
+      };
+    };
+  };
+  NotificationsController_read: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NotificationOkDto"];
+        };
+      };
+    };
+  };
+  NotificationsController_target: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NotificationTargetDto"];
+        };
+      };
+    };
+  };
+  NotificationsController_readAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ReadAllNotificationsDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NotificationOkDto"];
+        };
+      };
+    };
+  };
   ObjectsController_list: {
     parameters: {
       query?: never;
@@ -5586,6 +5930,28 @@ export interface operations {
       };
     };
   };
+  ObjectsController_lifecycle: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ObjectLifecycleResponseDto"];
+        };
+      };
+    };
+  };
   ObjectsController_updatePermissions: {
     parameters: {
       query?: never;
@@ -5682,6 +6048,32 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ObjectPublicationResponseDto"];
+        };
+      };
+    };
+  };
+  ObjectsController_restore: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RestoreObjectDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ObjectDraftResponseDto"];
         };
       };
     };
@@ -5837,8 +6229,17 @@ export interface operations {
         /** @description 按已发布字段筛选的 JSON 对象，支持选项、日期范围或相对时间、数值区间、是否、成员、文本包含，以及有值/空值。 */
         filters?: string;
         limit?: number;
-        ownerMemberId?: string;
+        /** @description 按负责人筛选；unassigned 表示未指定负责人，仅管理员可筛选。 */
+        ownerMemberId?: string & (string | "unassigned");
         page?: number;
+        poolQuality?: "INVALID" | "DUPLICATE" | "LOST";
+        poolStage?:
+          | "LEAD_POOL"
+          | "CUSTOMER_POOL"
+          | "PENDING_CONTACT"
+          | "FOLLOWING"
+          | "PROTECTED"
+          | "LEGACY";
         scope?: "mine" | "pool" | "all";
         search?: string;
         /** @description updatedAt、createdAt、recordNo，或当前业务表中可排序的已发布字段键。 */
@@ -6331,8 +6732,17 @@ export interface operations {
         /** @description 按已发布字段筛选的 JSON 对象，支持选项、日期范围或相对时间、数值区间、是否、成员、文本包含，以及有值/空值。 */
         filters?: string;
         limit?: number;
-        ownerMemberId?: string;
+        /** @description 按负责人筛选；unassigned 表示未指定负责人，仅管理员可筛选。 */
+        ownerMemberId?: string & (string | "unassigned");
         page?: number;
+        poolQuality?: "INVALID" | "DUPLICATE" | "LOST";
+        poolStage?:
+          | "LEAD_POOL"
+          | "CUSTOMER_POOL"
+          | "PENDING_CONTACT"
+          | "FOLLOWING"
+          | "PROTECTED"
+          | "LEGACY";
         scope?: "mine" | "pool" | "all";
         search?: string;
         /** @description updatedAt、createdAt、recordNo，或当前业务表中可排序的已发布字段键。 */
