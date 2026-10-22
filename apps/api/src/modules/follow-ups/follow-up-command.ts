@@ -84,7 +84,7 @@ export async function lockFollowUpActor(
 ): Promise<void> {
   const members = await tx.$queryRaw<
     Array<{ id: string; role: string }>
-  >`SELECT id, role FROM tenant_members WHERE tenant_id=${context.tenantId}::uuid AND id=${context.memberId}::uuid AND status='ACTIVE' FOR UPDATE`;
+  >`SELECT id, role FROM tenant_members WHERE tenant_id=${context.tenantId}::uuid AND id=${context.memberId}::uuid AND status='ACTIVE' FOR NO KEY UPDATE`;
   if (!members.length || members[0].role !== context.role)
     throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
 }

@@ -140,7 +140,7 @@ class PrismaMembershipStore implements MembershipStore {
   async lockMembers(ids: string[]) {
     for (const id of ids)
       await this.transaction
-        .$queryRaw`SELECT id FROM tenant_members WHERE tenant_id = ${this.tenantId}::uuid AND id = ${id}::uuid FOR UPDATE`;
+        .$queryRaw`SELECT id FROM tenant_members WHERE tenant_id = ${this.tenantId}::uuid AND id = ${id}::uuid FOR NO KEY UPDATE`;
   }
 
   async updateMemberRole(id: string, role: 'TENANT_ADMIN' | 'EMPLOYEE') {

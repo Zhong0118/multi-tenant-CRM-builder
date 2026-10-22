@@ -57,7 +57,7 @@ async function lockActor(tx: Tx, context: TenantContext): Promise<void> {
     Array<{ id: string; user_id: string; status: string; role: string }>
   >`
     SELECT id, user_id, status, role FROM tenant_members
-    WHERE tenant_id = ${context.tenantId}::uuid AND id = ${context.memberId}::uuid FOR UPDATE`;
+    WHERE tenant_id = ${context.tenantId}::uuid AND id = ${context.memberId}::uuid FOR NO KEY UPDATE`;
   if (
     members.length !== 1 ||
     members[0].user_id !== context.userId ||

@@ -169,7 +169,7 @@ describe('createFollowUpCommand', () => {
 
     expect(fixture.sqlCalls[0].sql).toContain('FROM tenant_members');
     expect(fixture.sqlCalls[0].sql).toContain("status='ACTIVE'");
-    expect(fixture.sqlCalls[0].sql).toContain('FOR UPDATE');
+    expect(fixture.sqlCalls[0].sql).toContain('FOR NO KEY UPDATE');
     expect(fixture.sqlCalls[0].values).toEqual(['tenant-a', 'member-actor']);
     expect(fixture.createArgs).toHaveLength(1);
     expect(fixture.createArgs[0].data.id).toMatch(UUID_V4);
@@ -447,7 +447,7 @@ describe('lockFollowUpActor and lockFollowUpRecord', () => {
       'SELECT id, role FROM tenant_members',
     );
     expect(fixture.sqlCalls[0].sql).toContain("status='ACTIVE'");
-    expect(fixture.sqlCalls[0].sql).toContain('FOR UPDATE');
+    expect(fixture.sqlCalls[0].sql).toContain('FOR NO KEY UPDATE');
     expect(fixture.sqlCalls[0].values).toEqual(['tenant-a', 'member-actor']);
 
     for (const rows of [[], [{ id: 'member-actor', role: 'TENANT_ADMIN' }]]) {
