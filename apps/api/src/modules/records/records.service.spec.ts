@@ -584,6 +584,7 @@ class MemoryRecordsStore implements RecordsStore {
     activityType: MemberActivityType;
     content: string;
     nextActionAt: string | null;
+    outcome?: RecordActivity['outcome'];
     actorMemberId: string;
     createdAt: string;
   }): Promise<RecordActivity> {
@@ -593,6 +594,7 @@ class MemoryRecordsStore implements RecordsStore {
       activityType: activity.activityType,
       content: activity.content,
       nextActionAt: activity.nextActionAt,
+      outcome: activity.outcome ?? null,
       actorMemberId: activity.actorMemberId,
       actorDisplayName:
         activity.actorMemberId === admin.memberId ? '管理员' : '员工',
@@ -1552,14 +1554,17 @@ describe('RecordsService', () => {
       ownershipExpiresAt: '2026-08-22T10:30:00.000Z',
     });
 
-    // An employee's own customer starts in 跟进 with the follow-up deadline.
+    // An employee's own record is theirs but not yet contacted: 待联系 with
+    // the contact deadline, exactly like a claimed lead.
     await create(service, employee, '自拓客户');
     expect(store.records[2]).toMatchObject({
       ownerMemberId: employee.memberId,
-      poolStage: 'FOLLOWING',
-      poolLastFollowUpAt: '2026-08-21T10:30:00.000Z',
-      ownershipExpiresAt: '2026-09-20T10:30:00.000Z',
+      inPublicPool: false,
+      poolStage: 'PENDING_CONTACT',
+      poolClaimedAt: '2026-08-21T10:30:00.000Z',
+      ownershipExpiresAt: '2026-08-22T10:30:00.000Z',
     });
+    expect(store.records[2].poolLastFollowUpAt ?? null).toBeNull();
   });
 
   it('leaves single records unstaged on tables without the staged pool', async () => {

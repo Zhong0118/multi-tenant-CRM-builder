@@ -93,14 +93,70 @@ describe("RecordActivityTimeline", () => {
         { activityType: "NOTE", content: "已回访确认需求。" },
       ),
     );
-    expect(screen.queryByRole("button", { name: "编辑跟进" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "编辑跟进" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("sends an explicit outcome only when one is chosen, from the outcomes the activity type allows", async () => {
+    const api = recordApi();
+    renderTimeline(
+      <RecordActivityTimeline
+        tenantCode="northwind"
+        objectCode="customers"
+        recordId="record-1"
+        canCreate
+        api={api}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "追加活动" }));
+    // A note has no outcome to report.
+    expect(screen.queryByLabelText("结果")).not.toBeInTheDocument();
+
+    fireEvent.mouseDown(screen.getByLabelText("类型"));
+    fireEvent.click(await screen.findByTitle("电话"));
+    fireEvent.mouseDown(await screen.findByLabelText("结果"));
+    expect(await screen.findByTitle("未接通")).toBeInTheDocument();
+    expect(screen.queryByTitle("新加上微信")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTitle("已接通"));
+    fireEvent.change(screen.getByLabelText("内容"), {
+      target: { value: "接通，约了周五拜访。" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存活动" }));
+
+    await waitFor(() =>
+      expect(api.createActivity).toHaveBeenCalledWith(
+        "northwind",
+        "customers",
+        "record-1",
+        {
+          activityType: "CALL",
+          content: "接通，约了周五拜访。",
+          outcome: "CONNECTED",
+        },
+      ),
+    );
   });
 
   it("retains an activity draft after failure and while the form is collapsed", async () => {
-    const api = recordApi({ createActivity: vi.fn().mockRejectedValue(new Error("network unavailable")) });
-    renderTimeline(<RecordActivityTimeline tenantCode="northwind" objectCode="customers" recordId="record-1" canCreate api={api} />);
+    const api = recordApi({
+      createActivity: vi
+        .fn()
+        .mockRejectedValue(new Error("network unavailable")),
+    });
+    renderTimeline(
+      <RecordActivityTimeline
+        tenantCode="northwind"
+        objectCode="customers"
+        recordId="record-1"
+        canCreate
+        api={api}
+      />,
+    );
     fireEvent.click(screen.getByRole("button", { name: "追加活动" }));
-    fireEvent.change(screen.getByLabelText("内容"), { target: { value: "待保存的拜访记录" } });
+    fireEvent.change(screen.getByLabelText("内容"), {
+      target: { value: "待保存的拜访记录" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "保存活动" }));
     await screen.findByRole("alert");
     expect(screen.getByLabelText("内容")).toHaveValue("待保存的拜访记录");
@@ -121,7 +177,9 @@ describe("RecordActivityTimeline", () => {
     );
 
     expect(await screen.findByText("第一次电话未接通。")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "保存活动" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "保存活动" }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByText("当前权限只能查看活动历史，不能追加。"),
     ).toBeInTheDocument();
@@ -131,9 +189,20 @@ describe("RecordActivityTimeline", () => {
 it("refreshes lifecycle metadata after an activity commits and warns if refresh fails", async () => {
   const committed = vi.fn().mockRejectedValue(new Error("offline"));
   const api = recordApi();
-  renderTimeline(<RecordActivityTimeline tenantCode="northwind" objectCode="customers" recordId="record-1" canCreate api={api} onCreated={committed} />);
+  renderTimeline(
+    <RecordActivityTimeline
+      tenantCode="northwind"
+      objectCode="customers"
+      recordId="record-1"
+      canCreate
+      api={api}
+      onCreated={committed}
+    />,
+  );
   fireEvent.click(screen.getByRole("button", { name: "追加活动" }));
-  fireEvent.change(await screen.findByLabelText("内容"), { target: { value: "电话确认合作事项" } });
+  fireEvent.change(await screen.findByLabelText("内容"), {
+    target: { value: "电话确认合作事项" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "保存活动" }));
   await waitFor(() => expect(committed).toHaveBeenCalledOnce());
   expect(await screen.findByRole("alert")).toHaveTextContent("活动已保存");

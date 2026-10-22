@@ -1494,6 +1494,12 @@
             "format": "date-time",
             "nullable": true,
             "type": "string"
+          },
+          "outcome": {
+            "description": "What the activity achieved. CONNECTED and WECHAT_ADDED are a successful contact and move a lead waiting for contact forward.",
+            "enum": ["NOT_REACHED", "CONNECTED", "WECHAT_ADDED"],
+            "nullable": true,
+            "type": "string"
           }
         },
         "required": ["activityType", "content"],
@@ -4714,6 +4720,11 @@
             "format": "date-time",
             "nullable": true,
             "type": "string"
+          },
+          "outcome": {
+            "enum": ["NOT_REACHED", "CONNECTED", "WECHAT_ADDED"],
+            "nullable": true,
+            "type": "string"
           }
         },
         "required": [
@@ -4721,6 +4732,7 @@
           "activityType",
           "content",
           "nextActionAt",
+          "outcome",
           "actorMemberId",
           "actorDisplayName",
           "createdAt"

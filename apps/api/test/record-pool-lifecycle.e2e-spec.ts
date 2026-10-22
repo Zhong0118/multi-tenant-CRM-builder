@@ -148,6 +148,93 @@ describe('generic record pool lifecycle HTTP', () => {
       expect(attempts.filter((r) => r.status === 201)).toHaveLength(1);
     }
   });
+  it('starts an employee record waiting for contact and moves it only on an explicit contact outcome', async () => {
+    await configure();
+    const created = json<Row>(
+      await post(
+        '/records',
+        { values: { name: 'Self-sourced lead' } },
+        f.employee,
+      ).expect(201),
+    );
+    expect(created).toMatchObject({
+      ownerMemberId: f.employee.memberId,
+      poolStage: 'PENDING_CONTACT',
+    });
+    const activity = (body: object, actor: CriticalActor = f.employee) =>
+      post(`/records/${created.id}/activities`, body, actor);
+
+    // Neither an unanswered call, a plain note nor a message without a reply
+    // is contact.
+    await activity({
+      activityType: 'CALL',
+      content: '无人接听',
+      outcome: 'NOT_REACHED',
+    }).expect(201);
+    await activity({ activityType: 'NOTE', content: '准备资料' }).expect(201);
+    await activity({ activityType: 'MESSAGE', content: '发了介绍' }).expect(
+      201,
+    );
+    expect((await state(created.id)).poolStage).toBe('PENDING_CONTACT');
+
+    // Outcomes that do not fit the kind of activity are refused.
+    await activity({
+      activityType: 'CALL',
+      content: '加了微信',
+      outcome: 'WECHAT_ADDED',
+    }).expect(400);
+    await activity({
+      activityType: 'NOTE',
+      content: '已联系',
+      outcome: 'CONNECTED',
+    }).expect(400);
+    // Another employee, and another company, cannot log on this lead.
+    await activity(
+      { activityType: 'CALL', content: '越权', outcome: 'CONNECTED' },
+      f.otherEmployee,
+    ).expect((r) => expect([403, 404]).toContain(r.status));
+    await request(h.app.getHttpServer())
+      .post(
+        `/api/v1/workspaces/${f.tenantA.code}/objects/${f.object.code}/records/${created.id}/activities`,
+      )
+      .set('Cookie', f.tenantBAdmin.cookie)
+      .set('Origin', 'http://localhost:3000')
+      .send({ activityType: 'CALL', content: '跨公司', outcome: 'CONNECTED' })
+      .expect(403);
+    expect((await state(created.id)).poolStage).toBe('PENDING_CONTACT');
+
+    const logged = await activity({
+      activityType: 'MESSAGE',
+      content: '对方通过了好友申请',
+      outcome: 'WECHAT_ADDED',
+    }).expect(201);
+    expect(logged.body).toMatchObject({ outcome: 'WECHAT_ADDED' });
+    const following = await state(created.id);
+    expect(following.poolStage).toBe('FOLLOWING');
+    expect(
+      following.ownershipExpiresAt!.getTime() - Date.now(),
+    ).toBeGreaterThan(719 * 3600_000);
+    // The same audited state change as the 确认联系 button.
+    expect(
+      await h.adminDatabase.auditLog.count({
+        where: {
+          tenantId: f.tenantA.id,
+          resourceId: created.id,
+          action: 'record.ownership_confirm_contact',
+        },
+      }),
+    ).toBe(1);
+
+    // A claimed lead moves the same way after a connected call.
+    const lead = await pool();
+    await ownership(lead, 'CLAIM', {}, f.employee).expect(201);
+    await post(
+      `/records/${lead.id}/activities`,
+      { activityType: 'CALL', content: '接通，有意向', outcome: 'CONNECTED' },
+      f.employee,
+    ).expect(201);
+    expect((await state(lead.id)).poolStage).toBe('FOLLOWING');
+  });
   it('resolves an admin workflow transition racing the owner confirming contact without a deadlock', async () => {
     // Workflow transitions lock the record and then the owner's member row;
     // pool actions lock members, the table and then the record. Both orders

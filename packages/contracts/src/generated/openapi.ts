@@ -2277,6 +2277,11 @@ export interface components {
       content: string;
       /** Format: date-time */
       nextActionAt?: string | null;
+      /**
+       * @description What the activity achieved. CONNECTED and WECHAT_ADDED are a successful contact and move a lead waiting for contact forward.
+       * @enum {string|null}
+       */
+      outcome?: "NOT_REACHED" | "CONNECTED" | "WECHAT_ADDED" | null;
     };
     CreateRecordDto: {
       /** Format: uuid */
@@ -3357,6 +3362,8 @@ export interface components {
       id: string;
       /** Format: date-time */
       nextActionAt: string | null;
+      /** @enum {string|null} */
+      outcome: "NOT_REACHED" | "CONNECTED" | "WECHAT_ADDED" | null;
     };
     RecordBatchUpdateErrorDto: {
       code: string;

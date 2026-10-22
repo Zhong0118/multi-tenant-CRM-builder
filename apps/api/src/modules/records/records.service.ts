@@ -31,7 +31,12 @@ import {
   type RecordRequestMeta,
   type CreateRecordCommandInput,
 } from './record-command';
-import type { MemberActivityType } from './record-activity';
+import {
+  CONTACT_OUTCOMES,
+  type ActivityOutcome,
+  type MemberActivityType,
+} from './record-activity';
+import { applyOwnershipChange } from './record-ownership-command';
 import { projectVisibleValues } from './record-value-engine';
 import {
   RECORD_EXPORT_MAX_ROWS,
@@ -96,6 +101,7 @@ export interface RecordActivityResponse {
   activityType: MemberActivityType;
   content: string;
   nextActionAt: string | null;
+  outcome: ActivityOutcome | null;
   actorMemberId: string | null;
   actorDisplayName: string | null;
   createdAt: string;
@@ -964,6 +970,7 @@ export class RecordsService {
       activityType: MemberActivityType;
       content: string;
       nextActionAt?: string | null;
+      outcome?: ActivityOutcome | null;
     },
     meta: RequestMeta,
   ): Promise<RecordActivityResponse> {
@@ -972,20 +979,50 @@ export class RecordsService {
       objectCode,
     );
     validateRecordActivityInput(input);
-    return this.repository.withTenant(context, async (store) => {
-      resolved = await store.resolveCurrentObject(resolved);
-      const { activity } = await createRecordActivityCommand({
-        store,
-        resolved,
-        context,
-        recordId,
-        input,
-        meta,
-        clock: this.clock,
-        idGenerator: this.idGenerator,
-      });
-      return activity;
-    });
+    return this.repository.withTenantTransaction(
+      context,
+      async ({ tx, store }) => {
+        resolved = await store.resolveCurrentObject(resolved);
+        // A successful contact on a lead waiting for it is the same state change
+        // as 确认联系, made by the same function before the activity is written,
+        // so its locks (members, table, record) come in the usual order.
+        if (
+          input.outcome &&
+          CONTACT_OUTCOMES.includes(input.outcome) &&
+          resolved.poolEnabled &&
+          resolved.poolLifecycleEnabled
+        ) {
+          const current = await store.findRecord(
+            resolved.schema.object.id,
+            recordId,
+          );
+          if (current?.poolStage === 'PENDING_CONTACT')
+            await applyOwnershipChange(
+              tx,
+              {
+                clock: this.clock,
+                appendAudit: (_tx, event) => store.appendAudit(event),
+              },
+              context,
+              objectCode,
+              recordId,
+              { action: 'CONFIRM_CONTACT', version: current.version },
+              meta,
+            );
+        }
+        const { activity } = await createRecordActivityCommand({
+          store,
+          resolved,
+          context,
+          recordId,
+          input,
+          meta,
+          clock: this.clock,
+          idGenerator: this.idGenerator,
+        });
+        return activity;
+      },
+    );
   }
 }
 
@@ -1504,15 +1541,17 @@ async function initialPoolPlacement(
   const pool = (await store.findPoolLifecycle?.(objectCode)) ?? null;
   if (!pool) return {};
   const at = now.toISOString();
+  // Creating a record is not contact with it: an employee's own record starts
+  // waiting for contact like a claimed lead, and moves on when the employee
+  // confirms contact or logs an activity with a contact outcome.
   if (context.role === 'EMPLOYEE') {
     return {
-      poolStage: 'FOLLOWING',
+      poolStage: 'PENDING_CONTACT',
       poolOrigin: 'LEAD_POOL',
       poolClaimedAt: at,
-      poolLastFollowUpAt: at,
       inPublicPool: false,
       ownershipExpiresAt: ownershipDeadline(
-        pool.followUpTtlHours,
+        pool.contactTtlHours,
         now,
       )!.toISOString(),
     };

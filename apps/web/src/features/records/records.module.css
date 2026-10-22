@@ -593,7 +593,22 @@
 }
 
 .timelineComposerRow {
-  max-width: 220px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 200px));
+  gap: 12px;
+}
+
+.timelineHint {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+
+.timelineOutcome {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
 }
 
 .timelineList {

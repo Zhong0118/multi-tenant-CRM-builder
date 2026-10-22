@@ -150,10 +150,16 @@ class MemoryRecordsStore {
         record.deletedAt === null &&
         (!query.ownerMemberId || record.ownerMemberId === query.ownerMemberId),
     );
-    return Promise.resolve({ items: structuredClone(filtered), total: filtered.length });
+    return Promise.resolve({
+      items: structuredClone(filtered),
+      total: filtered.length,
+    });
   }
 
-  findRecord(objectId: string, recordId: string): Promise<DynamicRecord | null> {
+  findRecord(
+    objectId: string,
+    recordId: string,
+  ): Promise<DynamicRecord | null> {
     return Promise.resolve(
       structuredClone(
         this.records.find(
@@ -170,7 +176,9 @@ class MemoryRecordsStore {
     recordId: string,
     query: { page: number; limit: number },
   ): Promise<{ items: RecordActivity[]; total: number }> {
-    const filtered = this.activities.filter((activity) => activity.recordId === recordId);
+    const filtered = this.activities.filter(
+      (activity) => activity.recordId === recordId,
+    );
     return Promise.resolve({
       items: structuredClone(filtered.slice(0, query.limit)),
       total: filtered.length,
@@ -209,8 +217,10 @@ export function recordToolFixture(
   const publishedRepository = new MemoryPublishedRepository();
   const configuration = publishedRepository.record
     .configuration as PublishedObjectSchema;
-  if (access.readScope) configuration.employeeAccess.readScope = access.readScope;
-  if (access.canRead !== undefined) configuration.employeeAccess.canRead = access.canRead;
+  if (access.readScope)
+    configuration.employeeAccess.readScope = access.readScope;
+  if (access.canRead !== undefined)
+    configuration.employeeAccess.canRead = access.canRead;
   const store = new MemoryRecordsStore();
   store.records = [
     seedRecord(ownRecordId, employee.memberId, '自己的线索', '仅管理员可见'),
@@ -223,6 +233,7 @@ export function recordToolFixture(
       activityType: 'NOTE',
       content: '自己的跟进',
       nextActionAt: null,
+      outcome: null,
       actorMemberId: employee.memberId,
       actorDisplayName: '员工',
       createdAt: '2026-08-21T10:30:00.000Z',
@@ -233,6 +244,7 @@ export function recordToolFixture(
       activityType: 'CALL',
       content: '别人的跟进',
       nextActionAt: null,
+      outcome: null,
       actorMemberId: otherMemberId,
       actorDisplayName: '其他成员',
       createdAt: '2026-08-21T10:31:00.000Z',

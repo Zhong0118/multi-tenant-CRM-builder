@@ -21,6 +21,7 @@ import type { AuditEvent } from '../audit/audit-event';
 import { AuditService } from '../audit/audit.service';
 import {
   MEMBER_ACTIVITY_TYPES,
+  type ActivityOutcome,
   type MemberActivityType,
   type RecordActivity,
 } from './record-activity';
@@ -277,6 +278,7 @@ export interface RecordsStore {
     activityType: MemberActivityType;
     content: string;
     nextActionAt: string | null;
+    outcome: ActivityOutcome | null;
     actorMemberId: string;
     createdAt: string;
   }): Promise<RecordActivity>;
@@ -988,6 +990,7 @@ class PrismaRecordsStore implements RecordsStore {
     activityType: MemberActivityType;
     content: string;
     nextActionAt: string | null;
+    outcome: ActivityOutcome | null;
     actorMemberId: string;
     createdAt: string;
   }): Promise<RecordActivity> {
@@ -1026,6 +1029,7 @@ class PrismaRecordsStore implements RecordsStore {
         nextActionAt: activity.nextActionAt
           ? new Date(activity.nextActionAt)
           : null,
+        resultKey: activity.outcome,
         actorMemberId: activity.actorMemberId,
         metadata: {},
         createdAt: new Date(activity.createdAt),
@@ -1088,6 +1092,7 @@ function fromPrismaActivity(activity: {
   activityType: string;
   content: string;
   nextActionAt: Date | null;
+  resultKey?: string | null;
   actorMemberId: string | null;
   createdAt: Date;
   actor?: { displayName?: string | null; user: { displayName: string } } | null;
@@ -1098,6 +1103,7 @@ function fromPrismaActivity(activity: {
     activityType: activity.activityType as MemberActivityType,
     content: activity.content,
     nextActionAt: activity.nextActionAt?.toISOString() ?? null,
+    outcome: (activity.resultKey as ActivityOutcome | null | undefined) ?? null,
     actorMemberId: activity.actorMemberId,
     actorDisplayName:
       activity.actor?.displayName ?? activity.actor?.user.displayName ?? null,
