@@ -1118,7 +1118,7 @@ describe("whole-table lifecycle", () => {
       within(dialog).getByRole("button", { name: "添加选项" }),
     ).toBeDisabled();
     expect(
-      within(dialog).getByRole("button", { name: "停用选项 gold" }),
+      within(dialog).getByRole("switch", { name: "停用选项 gold" }),
     ).toBeDisabled();
     expect(
       within(dialog).getByRole("button", { name: "保存字段" }),

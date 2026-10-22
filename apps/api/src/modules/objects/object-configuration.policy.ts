@@ -148,6 +148,14 @@ export function analyzeObjectConfiguration(
         message: '选项键必须在字段内保持唯一。',
         fieldKey: field.fieldKey,
       });
+    } else if (!hasActiveOption(field)) {
+      // A select with no option left to choose cannot be filled in; when it is
+      // required no record of the table can be created at all.
+      blocking.push({
+        code: 'FIELD_OPTIONS_REQUIRED',
+        message: `选择字段「${field.label}」没有启用中的选项，无法填写。请至少添加或恢复一个选项。`,
+        fieldKey: field.fieldKey,
+      });
     }
   }
 
@@ -296,6 +304,22 @@ function toPublishedField(field: PublicationDraftField): PublishedField {
     sortOrder: field.sortOrder,
     isSystem: field.isSystem,
   };
+}
+
+/** Non-select fields pass; a select needs at least one option not retired. */
+function hasActiveOption(field: PublicationDraftField): boolean {
+  if (field.type !== 'SINGLE_SELECT' && field.type !== 'MULTI_SELECT') {
+    return true;
+  }
+  const options = field.config.options;
+  return (
+    Array.isArray(options) &&
+    options.some(
+      (option) =>
+        isPlainRecord(option) &&
+        (option.status === undefined || option.status === 'ACTIVE'),
+    )
+  );
 }
 
 function hasDuplicateOptionKeys(field: PublicationDraftField): boolean {

@@ -1560,3 +1560,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.optionProblem {
+  margin-top: 10px;
+}

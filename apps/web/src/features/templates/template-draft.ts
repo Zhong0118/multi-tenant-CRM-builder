@@ -12,6 +12,7 @@ import type {
   RecordSortField,
   SelectOptionView,
 } from "../objects/object-types";
+import { fieldSavePayload } from "../objects/field-editor-form";
 import type {
   BusinessTemplateDetail,
   SaveTemplateDraftInput,
@@ -333,26 +334,7 @@ export function buildFieldEditorPatch(
   field: TemplateFieldView,
   values: TemplateFieldEditorValues,
 ): EditableTemplateFieldPatch {
-  const allowedValidationKeys = VALIDATION_KEYS_BY_TYPE[values.type] ?? [];
-  const currentValidation = field.validation as Record<string, unknown>;
-  const validation: Record<string, unknown> = {};
-  for (const key of allowedValidationKeys) {
-    const managedValue = managedValidationValue(values, key);
-    if (managedValue !== undefined) {
-      validation[key] = managedValue;
-    } else if (key === "country" && currentValidation[key] !== undefined) {
-      validation[key] = currentValidation[key];
-    }
-  }
-
-  const config = { ...(field.config as Record<string, unknown>) };
-  if (values.type === "SINGLE_SELECT" || values.type === "MULTI_SELECT") {
-    config.options = values.options;
-  } else {
-    delete config.options;
-  }
-  if (values.help.trim()) config.help = values.help.trim();
-  else delete config.help;
+  const { validation, config } = fieldSavePayload(values, field);
 
   return {
     fieldKey: values.fieldKey.trim(),
@@ -575,24 +557,3 @@ function newStableId(): string {
   return globalThis.crypto.randomUUID();
 }
 
-const VALIDATION_KEYS_BY_TYPE: Partial<
-  Record<PublishedFieldType, readonly string[]>
-> = {
-  TEXT: ["minLength", "maxLength"],
-  TEXTAREA: ["minLength", "maxLength"],
-  PHONE: ["minLength", "maxLength", "country"],
-  NUMBER: ["min", "max", "scale"],
-  MONEY: ["min", "max", "scale"],
-};
-
-function managedValidationValue(
-  values: TemplateFieldEditorValues,
-  key: string,
-): number | undefined {
-  if (key === "minLength") return values.minLength;
-  if (key === "maxLength") return values.maxLength;
-  if (key === "min") return values.min;
-  if (key === "max") return values.max;
-  if (key === "scale") return values.scale;
-  return undefined;
-}

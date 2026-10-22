@@ -63,6 +63,60 @@ function validObjectConfiguration(): ObjectConfigurationDraft {
 }
 
 describe('object configuration policy', () => {
+  it('blocks a select whose options are all retired, as the 开单表 状态 field was published', () => {
+    const input = validObjectConfiguration();
+    input.fields.push({
+      id: 'field-status',
+      fieldKey: 'status',
+      label: '状态跟踪',
+      type: 'MULTI_SELECT',
+      required: true,
+      defaultValue: null,
+      validation: {},
+      config: {
+        options: [
+          { key: 'option_1', label: '选题', status: 'INACTIVE' },
+          { key: 'option_2', label: '投稿', status: 'INACTIVE' },
+        ],
+      },
+      sortOrder: 30,
+      isSystem: false,
+      status: 'ACTIVE',
+    });
+    input.employeeAccess!.fields.status = 'EDIT';
+
+    expect(analyzeObjectConfiguration(input).blocking).toContainEqual(
+      expect.objectContaining({ code: 'FIELD_OPTIONS_REQUIRED', fieldKey: 'status' }),
+    );
+
+    (input.fields[2].config.options as Array<{ status: string }>)[1].status = 'ACTIVE';
+    expect(
+      analyzeObjectConfiguration(input).blocking.map((issue) => issue.code),
+    ).not.toContain('FIELD_OPTIONS_REQUIRED');
+  });
+
+  it('blocks a select with no options at all', () => {
+    const input = validObjectConfiguration();
+    input.fields.push({
+      id: 'field-level',
+      fieldKey: 'level',
+      label: '等级',
+      type: 'SINGLE_SELECT',
+      required: false,
+      defaultValue: null,
+      validation: {},
+      config: {},
+      sortOrder: 30,
+      isSystem: false,
+      status: 'ACTIVE',
+    });
+    input.employeeAccess!.fields.level = 'EDIT';
+
+    expect(analyzeObjectConfiguration(input).blocking).toContainEqual(
+      expect.objectContaining({ code: 'FIELD_OPTIONS_REQUIRED', fieldKey: 'level' }),
+    );
+  });
+
   it('requires employee access for every active field', () => {
     const input = validObjectConfiguration();
     delete input.employeeAccess!.fields.email;
