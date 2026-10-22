@@ -36,7 +36,7 @@ export type MemberActivity = WorkCounts & {
 export class TeamActivityService {
   constructor(private readonly runner: DatabaseContextRunner) {}
 
-  summarize(context: TenantContext, query: TeamActivityQuery) {
+  async summarize(context: TenantContext, query: TeamActivityQuery) {
     if (context.role !== 'TENANT_ADMIN')
       throw new ApiException('WORKSPACE_FORBIDDEN', 403);
     if (query.from && query.to && query.from > query.to)
