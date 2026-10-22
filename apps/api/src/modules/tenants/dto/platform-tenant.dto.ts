@@ -58,6 +58,38 @@ export class CreatePlatformTenantDto {
   templateVersionId?: string;
 }
 
+export class TenantTableCountsDto {
+  @ApiProperty({ minimum: 0 }) total!: number;
+  @ApiProperty({
+    minimum: 0,
+    description: 'Never published; employees cannot see them.',
+  })
+  draft!: number;
+  @ApiProperty({ minimum: 0 }) published!: number;
+  @ApiProperty({
+    minimum: 0,
+    description: 'Published tables with unpublished draft changes.',
+  })
+  pendingChanges!: number;
+  @ApiProperty({
+    minimum: 0,
+    description: 'Stopped by the company admin; data kept.',
+  })
+  archived!: number;
+}
+
+export class TenantTemplateProvenanceDto {
+  @ApiProperty() name!: string;
+  @ApiProperty() versionNo!: number;
+  @ApiProperty({ type: String, format: 'date-time' }) appliedAt!: Date;
+}
+
+export class TenantConfigurationSummaryDto {
+  @ApiProperty({ type: TenantTableCountsDto }) tables!: TenantTableCountsDto;
+  @ApiProperty({ type: TenantTemplateProvenanceDto, nullable: true })
+  template!: TenantTemplateProvenanceDto | null;
+}
+
 export class TenantInitializationResponseDto {
   @ApiProperty() templateName!: string;
   @ApiProperty() templateVersionNo!: number;
@@ -147,6 +179,8 @@ export class PlatformTenantResponseDto {
   firstAdminInvitation?: FirstAdminInvitationResponseDto;
   @ApiPropertyOptional({ type: TenantInitializationResponseDto })
   initialization?: TenantInitializationResponseDto;
+  @ApiPropertyOptional({ type: TenantConfigurationSummaryDto })
+  configuration?: TenantConfigurationSummaryDto;
 }
 
 export class PlatformTenantPageResponseDto {

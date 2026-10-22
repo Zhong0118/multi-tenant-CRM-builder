@@ -5,6 +5,7 @@ import { DatabaseContextRunner } from '../../infrastructure/database/context-run
 import type { PlatformOperationsRepository } from './platform-operations.service';
 import type {
   PageResult,
+  PlatformAuditFacets,
   PlatformAuditItem,
   PlatformAuditQuery,
   PlatformOperationItem,
@@ -13,6 +14,42 @@ import type {
 @Injectable()
 export class PrismaPlatformOperationsRepository implements PlatformOperationsRepository {
   constructor(private readonly runner: DatabaseContextRunner) {}
+
+  /** The actions and resource types that actually occur, most frequent first. */
+  auditFacets(
+    actorId: string,
+    tenantId?: string,
+  ): Promise<PlatformAuditFacets> {
+    return this.runner.withUser(actorId, async (transaction) => {
+      const where = tenantId ? { tenantId } : {};
+      const [actions, resourceTypes] = await Promise.all([
+        transaction.auditLog.groupBy({
+          by: ['action'],
+          where,
+          _count: { _all: true },
+          orderBy: { _count: { action: 'desc' } },
+          take: 200,
+        }),
+        transaction.auditLog.groupBy({
+          by: ['resourceType'],
+          where,
+          _count: { _all: true },
+          orderBy: { _count: { resourceType: 'desc' } },
+          take: 100,
+        }),
+      ]);
+      return {
+        actions: actions.map((row) => ({
+          value: row.action,
+          count: row._count._all,
+        })),
+        resourceTypes: resourceTypes.map((row) => ({
+          value: row.resourceType,
+          count: row._count._all,
+        })),
+      };
+    });
+  }
 
   listAudit(
     actorId: string,
@@ -29,6 +66,15 @@ export class PrismaPlatformOperationsRepository implements PlatformOperationsRep
               resourceType: {
                 contains: query.resourceType,
                 mode: 'insensitive',
+              },
+            }
+          : {}),
+        ...(query.actorType ? { actorType: query.actorType } : {}),
+        ...(query.from || query.to
+          ? {
+              createdAt: {
+                ...(query.from ? { gte: beijingDayStart(query.from) } : {}),
+                ...(query.to ? { lt: beijingDayStart(query.to, 1) } : {}),
               },
             }
           : {}),
@@ -140,4 +186,11 @@ function jsonObject(value: Prisma.JsonValue): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? value
     : {};
+}
+
+/** Midnight of a Beijing calendar day (UTC+8, no daylight saving), plus `days`. */
+function beijingDayStart(day: string, days = 0): Date {
+  const start = new Date(`${day}T00:00:00+08:00`);
+  start.setUTCDate(start.getUTCDate() + days);
+  return start;
 }

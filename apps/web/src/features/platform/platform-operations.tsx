@@ -22,6 +22,19 @@ import styles from "./platform-operations.module.css";
 type Schemas = components["schemas"];
 type AuditPage = Schemas["PlatformAuditPageDto"];
 type AuditItem = Schemas["PlatformAuditItemDto"];
+type AuditFacets = Schemas["PlatformAuditFacetsDto"];
+
+export interface PlatformAuditFilters extends Record<
+  string,
+  string | undefined
+> {
+  tenantId?: string;
+  action?: string;
+  resourceType?: string;
+  actorType?: string;
+  from?: string;
+  to?: string;
+}
 type OperationPage = Schemas["PlatformOperationPageDto"];
 type RuntimeStatus = Schemas["RuntimeStatusDto"];
 
@@ -29,6 +42,7 @@ export function PlatformAuditView({
   data,
   tenants,
   filters,
+  facets,
   basePath = "/platform/audit",
   company = false,
 }: {
@@ -36,7 +50,9 @@ export function PlatformAuditView({
   company?: boolean;
   data: AuditPage;
   tenants: Array<{ id: string; name: string }>;
-  filters: { tenantId?: string; action?: string; resourceType?: string };
+  filters: PlatformAuditFilters;
+  /** Actions and resource types that occur; turns the code fields into choices. */
+  facets?: AuditFacets;
 }) {
   const [selected, setSelected] = useState<AuditItem>();
   return (
@@ -62,26 +78,75 @@ export function PlatformAuditView({
               </select>
             </label>
           ) : null}
-          <label>
-            动作
-            <input
-              name="action"
-              defaultValue={filters.action}
-              placeholder={
-                company
-                  ? "例如 record.updated"
-                  : "例如 platform.tenant.status_changed"
-              }
-            />
-          </label>
-          <label>
-            资源类型
-            <input
-              name="resourceType"
-              defaultValue={filters.resourceType}
-              placeholder={company ? "例如 record" : "例如 tenant"}
-            />
-          </label>
+          {facets ? (
+            <>
+              <label>
+                动作
+                <select name="action" defaultValue={filters.action ?? ""}>
+                  <option value="">全部动作</option>
+                  {facets.actions.map((facet) => (
+                    <option key={facet.value} value={facet.value}>
+                      {actionLabel(facet.value)}（{facet.count}）
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                资源类型
+                <select
+                  name="resourceType"
+                  defaultValue={filters.resourceType ?? ""}
+                >
+                  <option value="">全部资源</option>
+                  {facets.resourceTypes.map((facet) => (
+                    <option key={facet.value} value={facet.value}>
+                      {resourceLabel(facet.value)}（{facet.count}）
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                操作者
+                <select name="actorType" defaultValue={filters.actorType ?? ""}>
+                  <option value="">全部</option>
+                  <option value="USER">成员和管理员</option>
+                  <option value="SYSTEM">系统</option>
+                  <option value="INTEGRATION">集成</option>
+                </select>
+              </label>
+              <label>
+                从（北京时间）
+                <input type="date" name="from" defaultValue={filters.from} />
+              </label>
+              <label>
+                到
+                <input type="date" name="to" defaultValue={filters.to} />
+              </label>
+            </>
+          ) : (
+            <>
+              <label>
+                动作
+                <input
+                  name="action"
+                  defaultValue={filters.action}
+                  placeholder={
+                    company
+                      ? "例如 record.updated"
+                      : "例如 platform.tenant.status_changed"
+                  }
+                />
+              </label>
+              <label>
+                资源类型
+                <input
+                  name="resourceType"
+                  defaultValue={filters.resourceType}
+                  placeholder={company ? "例如 record" : "例如 tenant"}
+                />
+              </label>
+            </>
+          )}
           <Button type="primary" htmlType="submit">
             筛选
           </Button>
@@ -321,7 +386,9 @@ export function PlatformSettingsView({ status }: { status: RuntimeStatus }) {
           <ul>
             <li>数据库与 Redis 显示本次访问时的连接状态。</li>
             <li>短信显示配置状态，实际送达以发送结果为准。</li>
-            <li>此页为只读视图；服务配置由服务器维护，账号策略随系统版本更新。</li>
+            <li>
+              此页为只读视图；服务配置由服务器维护，账号策略随系统版本更新。
+            </li>
           </ul>
         </ReadingPanel>
       </div>

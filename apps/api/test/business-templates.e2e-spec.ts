@@ -700,6 +700,54 @@ describe('Business template HTTP workflow (e2e)', () => {
         orderBy: { id: 'asc' },
       }),
     ).toEqual(before);
+
+    // The platform sees each company's configuration state and provenance,
+    // read from inside the company's own scope.
+    const list = await platform
+      .get('/api/v1/platform/tenants?page=1&limit=100')
+      .expect(200);
+    const listed = (
+      list.body as {
+        items: Array<{
+          code: string;
+          configuration: {
+            tables: Record<string, number>;
+            template: { name: string; versionNo: number } | null;
+          };
+        }>;
+      }
+    ).items.find((item) => item.code === createdTenantCode);
+    expect(listed?.configuration).toMatchObject({
+      tables: { total: 2, draft: 2, published: 0, archived: 0 },
+      template: { name: templateCode, versionNo: 1 },
+    });
+
+    // Audit filters offer what actually happened and narrow by kind and day.
+    const facets = await platform
+      .get(`/api/v1/platform/audit/facets?tenantId=${createdId}`)
+      .expect(200);
+    expect(
+      (facets.body as { actions: Array<{ value: string }> }).actions.map(
+        (facet) => facet.value,
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        'platform.tenant.created',
+        'platform.template.applied',
+      ]),
+    );
+    const today = new Date(Date.now() + 8 * 3600_000)
+      .toISOString()
+      .slice(0, 10);
+    const filtered = await platform
+      .get(
+        `/api/v1/platform/audit?tenantId=${createdId}&action=platform.tenant.created&actorType=USER&from=${today}&to=${today}`,
+      )
+      .expect(200);
+    expect(filtered.body).toMatchObject({ total: 1 });
+    await platform
+      .get(`/api/v1/platform/audit?from=${today}&to=2000-01-01`)
+      .expect(400);
   });
 
   async function register(phone: string, displayName: string): Promise<Agent> {

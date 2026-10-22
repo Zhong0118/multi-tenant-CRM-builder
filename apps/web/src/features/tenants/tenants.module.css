@@ -208,3 +208,15 @@
   line-height: 1.7;
   margin-bottom: 10px;
 }
+
+.configuration {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.configuration small {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}

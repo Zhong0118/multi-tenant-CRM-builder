@@ -292,6 +292,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/platform/audit/facets": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["PlatformOperationsController_auditFacets"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/platform/business-templates": {
     parameters: {
       query?: never;
@@ -3251,6 +3267,14 @@ export interface components {
       tenantId: string;
       tenantName?: string;
     };
+    PlatformAuditFacetDto: {
+      count: number;
+      value: string;
+    };
+    PlatformAuditFacetsDto: {
+      actions: components["schemas"]["PlatformAuditFacetDto"][];
+      resourceTypes: components["schemas"]["PlatformAuditFacetDto"][];
+    };
     PlatformAuditItemDto: {
       action: string;
       /** Format: uuid */
@@ -3323,6 +3347,7 @@ export interface components {
       activatedAt?: string;
       activeAdminCount: number;
       code: string;
+      configuration?: components["schemas"]["TenantConfigurationSummaryDto"];
       /** Format: date-time */
       createdAt?: string;
       firstAdminInvitation?: components["schemas"]["FirstAdminInvitationResponseDto"];
@@ -4127,6 +4152,10 @@ export interface components {
       objectCount: number;
       objects: components["schemas"]["TenantObjectSummaryResponseDto"][];
     };
+    TenantConfigurationSummaryDto: {
+      tables: components["schemas"]["TenantTableCountsDto"];
+      template: components["schemas"]["TenantTemplateProvenanceDto"] | null;
+    };
     TenantInitializationResponseDto: {
       /** @description Business tables copied as unpublished drafts. */
       objectCount: number;
@@ -4187,6 +4216,22 @@ export interface components {
       recordCount: number;
       /** @enum {string} */
       status: "DRAFT" | "ACTIVE" | "ARCHIVED";
+    };
+    TenantTableCountsDto: {
+      /** @description Stopped by the company admin; data kept. */
+      archived: number;
+      /** @description Never published; employees cannot see them. */
+      draft: number;
+      /** @description Published tables with unpublished draft changes. */
+      pendingChanges: number;
+      published: number;
+      total: number;
+    };
+    TenantTemplateProvenanceDto: {
+      /** Format: date-time */
+      appliedAt: string;
+      name: string;
+      versionNo: number;
     };
     UpdateDashboardDto: {
       /** @enum {string} */
@@ -4797,10 +4842,15 @@ export interface operations {
     parameters: {
       query?: {
         action?: string;
+        actorType?: "USER" | "SYSTEM" | "INTEGRATION";
+        /** @description First day, inclusive, in Beijing time. */
+        from?: string;
         limit?: number;
         page?: number;
         resourceType?: string;
         tenantId?: string;
+        /** @description Last day, inclusive, in Beijing time. */
+        to?: string;
       };
       header?: never;
       path?: never;
@@ -4814,6 +4864,27 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["PlatformAuditPageDto"];
+        };
+      };
+    };
+  };
+  PlatformOperationsController_auditFacets: {
+    parameters: {
+      query?: {
+        tenantId?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlatformAuditFacetsDto"];
         };
       };
     };

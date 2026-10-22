@@ -11,6 +11,15 @@ export interface PlatformAuditQuery {
   tenantId?: string;
   action?: string;
   resourceType?: string;
+  actorType?: 'USER' | 'SYSTEM' | 'INTEGRATION';
+  /** Calendar days, inclusive, in Beijing time (the platform's default zone). */
+  from?: string;
+  to?: string;
+}
+
+export interface PlatformAuditFacets {
+  actions: Array<{ value: string; count: number }>;
+  resourceTypes: Array<{ value: string; count: number }>;
 }
 
 export interface PlatformAuditItem {

@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { DataPanel } from "@/components/workbench/surface";
 
 import styles from "./tenants.module.css";
-import { tenantNextStep } from "./tenant-next-step";
+import { tenantConfigurationText, tenantNextStep } from "./tenant-next-step";
 import { TenantStatusTag } from "./tenant-status";
 
 type PlatformTenant = components["schemas"]["PlatformTenantResponseDto"];
@@ -49,6 +49,18 @@ const columns: ColumnsType<PlatformTenant> = [
   },
   { title: "活跃管理员", dataIndex: "activeAdminCount" },
   {
+    title: "业务配置",
+    render: (_, tenant) => {
+      const text = tenantConfigurationText(tenant);
+      return (
+        <span className={styles.configuration}>
+          <span>{text.summary}</span>
+          {text.provenance ? <small>{text.provenance}</small> : null}
+        </span>
+      );
+    },
+  },
+  {
     title: "下一步",
     render: (_, tenant) => (
       <span className={styles.nextStep}>{tenantNextStep(tenant)}</span>
@@ -77,7 +89,7 @@ export function TenantTable({
         rowKey="id"
         columns={columns}
         dataSource={data.items}
-        scroll={{ x: 1080 }}
+        scroll={{ x: 1240 }}
         pagination={{
           current: data.page,
           pageSize: data.limit,

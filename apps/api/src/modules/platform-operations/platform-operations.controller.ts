@@ -6,8 +6,10 @@ import { PlatformAdminGuard } from '../../common/auth/platform-admin.guard';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
 import type { SessionPrincipal } from '../auth/session.service';
 import {
+  PlatformAuditFacetQueryDto,
+  PlatformAuditFilterDto,
+  PlatformAuditFacetsDto,
   PlatformAuditPageDto,
-  PlatformAuditQueryDto,
   PlatformOperationPageDto,
   PlatformPageQueryDto,
   RuntimeStatusDto,
@@ -21,11 +23,20 @@ import { PlatformOperationsService } from './platform-operations.service';
 export class PlatformOperationsController {
   constructor(private readonly operations: PlatformOperationsService) {}
 
+  @Get('audit/facets')
+  @ApiOkResponse({ type: PlatformAuditFacetsDto })
+  auditFacets(
+    @CurrentSession() current: SessionPrincipal,
+    @Query() query: PlatformAuditFacetQueryDto,
+  ) {
+    return this.operations.auditFacets(current.user.id, query.tenantId);
+  }
+
   @Get('audit')
   @ApiOkResponse({ type: PlatformAuditPageDto })
   audit(
     @CurrentSession() current: SessionPrincipal,
-    @Query() query: PlatformAuditQueryDto,
+    @Query() query: PlatformAuditFilterDto,
   ) {
     return this.operations.listAudit(current.user.id, query);
   }

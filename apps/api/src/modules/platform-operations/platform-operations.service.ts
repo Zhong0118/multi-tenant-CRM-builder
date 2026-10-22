@@ -2,8 +2,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import { RuntimeHealthService } from './runtime-health.service';
 import { ConfigService } from '@nestjs/config';
 
+import { ApiException } from '../../common/errors/api.exception';
 import type {
   PageResult,
+  PlatformAuditFacets,
   PlatformAuditItem,
   PlatformAuditQuery,
   PlatformOperationItem,
@@ -15,6 +17,7 @@ export const PLATFORM_OPERATIONS_REPOSITORY = Symbol(
 );
 
 export interface PlatformOperationsRepository {
+  auditFacets(actorId: string, tenantId?: string): Promise<PlatformAuditFacets>;
   listAudit(
     actorId: string,
     query: PlatformAuditQuery,
@@ -34,7 +37,15 @@ export class PlatformOperationsService {
     private readonly health: RuntimeHealthService,
   ) {}
 
+  auditFacets(actorId: string, tenantId?: string) {
+    return this.repository.auditFacets(actorId, tenantId);
+  }
+
   listAudit(actorId: string, query: PlatformAuditQuery) {
+    if (query.from && query.to && query.from > query.to)
+      throw new ApiException('VALIDATION_FAILED', 400, {
+        fieldErrors: { from: ['开始日期不能晚于结束日期。'] },
+      });
     return this.repository.listAudit(actorId, query);
   }
 

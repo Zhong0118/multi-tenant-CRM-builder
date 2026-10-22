@@ -31,6 +31,16 @@ export interface PlatformTenant {
   createdAt?: Date;
   updatedAt?: Date;
   activeAdminCount: number;
+  configuration?: {
+    tables: {
+      total: number;
+      draft: number;
+      published: number;
+      pendingChanges: number;
+      archived: number;
+    };
+    template: { name: string; versionNo: number; appliedAt: Date } | null;
+  };
   initialization?: {
     templateName: string;
     templateVersionNo: number;

@@ -13,14 +13,20 @@ export default async function PlatformAuditPage({
     tenantId: first(params.tenantId),
     action: first(params.action),
     resourceType: first(params.resourceType),
+    actorType: actorType(first(params.actorType)),
+    from: day(first(params.from)),
+    to: day(first(params.to)),
   };
   const client = await createServerApiClient();
-  const [auditResult, tenantResult] = await Promise.all([
+  const [auditResult, tenantResult, facetResult] = await Promise.all([
     client.GET("/api/v1/platform/audit", {
       params: { query: { page, limit: 20, ...defined(filters) } },
     }),
     client.GET("/api/v1/platform/tenants", {
       params: { query: { page: 1, limit: 100 } },
+    }),
+    client.GET("/api/v1/platform/audit/facets", {
+      params: { query: defined({ tenantId: filters.tenantId }) },
     }),
   ]);
   if (!auditResult.data || !tenantResult.data) {
@@ -35,8 +41,19 @@ export default async function PlatformAuditPage({
         name: tenant.name,
       }))}
       filters={filters}
+      facets={facetResult.data}
     />
   );
+}
+
+function actorType(value: string | undefined) {
+  return value === "USER" || value === "SYSTEM" || value === "INTEGRATION"
+    ? value
+    : undefined;
+}
+
+function day(value: string | undefined) {
+  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : undefined;
 }
 
 function first(value: string | string[] | undefined) {

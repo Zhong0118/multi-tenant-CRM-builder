@@ -241,25 +241,76 @@ class PrismaPlatformTenantStore implements PlatformTenantStore {
     return counts;
   }
 
-  private async enrichTenant(
-    tenant: Parameters<typeof mapTenant>[0],
-  ): Promise<PlatformTenant> {
-    const [activeAdminCount, firstAdminInvitation] = await Promise.all([
-      this.countActiveAdmins(tenant.id),
-      this.transaction.tenantInvitation.findFirst({
-        where: { tenantId: tenant.id, role: 'TENANT_ADMIN' },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+  /**
+   * Where the company's business configuration stands, read inside the
+   * company's own scope (the caller has entered it): how many tables were
+   * never published, are published (and how many of those carry unpublished
+   * draft changes), or are stopped, and which template, if any, they came from.
+   */
+  private async configurationSummary(tenantId: string) {
+    const [[tables], application] = await Promise.all([
+      this.transaction.$queryRaw<
+        Array<{
+          total: number;
+          draft: number;
+          published: number;
+          pendingChanges: number;
+          archived: number;
+        }>
+      >`
+        SELECT count(*)::int AS total,
+          count(*) FILTER (WHERE o.status = 'DRAFT')::int AS draft,
+          count(*) FILTER (WHERE o.status = 'ACTIVE')::int AS published,
+          count(*) FILTER (WHERE o.status = 'ACTIVE' AND p.source_draft_version IS DISTINCT FROM o.version)::int AS "pendingChanges",
+          count(*) FILTER (WHERE o.status = 'ARCHIVED')::int AS archived
+        FROM object_definitions o
+        LEFT JOIN object_publications p ON p.id = o.active_publication_id
+        WHERE o.tenant_id = ${tenantId}::uuid AND o.deleted_at IS NULL`,
+      this.transaction.businessTemplateApplication.findFirst({
+        where: { tenantId },
+        orderBy: { appliedAt: 'desc' },
         select: {
-          id: true,
-          targetPhone: true,
-          role: true,
-          status: true,
-          expiresAt: true,
+          appliedAt: true,
+          templateVersion: {
+            select: { versionNo: true, template: { select: { name: true } } },
+          },
         },
       }),
     ]);
     return {
+      tables,
+      template: application
+        ? {
+            name: application.templateVersion.template.name,
+            versionNo: application.templateVersion.versionNo,
+            appliedAt: application.appliedAt,
+          }
+        : null,
+    };
+  }
+
+  private async enrichTenant(
+    tenant: Parameters<typeof mapTenant>[0],
+  ): Promise<PlatformTenant> {
+    const [activeAdminCount, firstAdminInvitation, configuration] =
+      await Promise.all([
+        this.countActiveAdmins(tenant.id),
+        this.transaction.tenantInvitation.findFirst({
+          where: { tenantId: tenant.id, role: 'TENANT_ADMIN' },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          select: {
+            id: true,
+            targetPhone: true,
+            role: true,
+            status: true,
+            expiresAt: true,
+          },
+        }),
+        this.configurationSummary(tenant.id),
+      ]);
+    return {
       ...mapTenant(tenant, activeAdminCount),
+      configuration,
       firstAdminInvitation: firstAdminInvitation
         ? {
             id: firstAdminInvitation.id,

@@ -4133,6 +4133,36 @@
         ],
         "type": "object"
       },
+      "PlatformAuditFacetDto": {
+        "properties": {
+          "count": {
+            "type": "number"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": ["value", "count"],
+        "type": "object"
+      },
+      "PlatformAuditFacetsDto": {
+        "properties": {
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformAuditFacetDto"
+            },
+            "type": "array"
+          },
+          "resourceTypes": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformAuditFacetDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["actions", "resourceTypes"],
+        "type": "object"
+      },
       "PlatformAuditItemDto": {
         "properties": {
           "action": {
@@ -4363,6 +4393,9 @@
           },
           "code": {
             "type": "string"
+          },
+          "configuration": {
+            "$ref": "#/components/schemas/TenantConfigurationSummaryDto"
           },
           "createdAt": {
             "format": "date-time",
@@ -6761,6 +6794,24 @@
         ],
         "type": "object"
       },
+      "TenantConfigurationSummaryDto": {
+        "properties": {
+          "tables": {
+            "$ref": "#/components/schemas/TenantTableCountsDto"
+          },
+          "template": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TenantTemplateProvenanceDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          }
+        },
+        "required": ["tables", "template"],
+        "type": "object"
+      },
       "TenantInitializationResponseDto": {
         "properties": {
           "objectCount": {
@@ -6939,6 +6990,57 @@
           "fromTemplate",
           "archivedAt"
         ],
+        "type": "object"
+      },
+      "TenantTableCountsDto": {
+        "properties": {
+          "archived": {
+            "description": "Stopped by the company admin; data kept.",
+            "minimum": 0,
+            "type": "number"
+          },
+          "draft": {
+            "description": "Never published; employees cannot see them.",
+            "minimum": 0,
+            "type": "number"
+          },
+          "pendingChanges": {
+            "description": "Published tables with unpublished draft changes.",
+            "minimum": 0,
+            "type": "number"
+          },
+          "published": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "total": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "total",
+          "draft",
+          "published",
+          "pendingChanges",
+          "archived"
+        ],
+        "type": "object"
+      },
+      "TenantTemplateProvenanceDto": {
+        "properties": {
+          "appliedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "versionNo": {
+            "type": "number"
+          }
+        },
+        "required": ["name", "versionNo", "appliedAt"],
         "type": "object"
       },
       "UpdateDashboardDto": {
@@ -8159,6 +8261,35 @@
               "maxLength": 100,
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "actorType",
+            "required": false,
+            "schema": {
+              "enum": ["USER", "SYSTEM", "INTEGRATION"],
+              "type": "string"
+            }
+          },
+          {
+            "description": "First day, inclusive, in Beijing time.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "example": "2026-10-01",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Last day, inclusive, in Beijing time.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "example": "2026-10-22",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -8167,6 +8298,40 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PlatformAuditPageDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-operations"]
+      }
+    },
+    "/api/v1/platform/audit/facets": {
+      "get": {
+        "operationId": "PlatformOperationsController_auditFacets",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tenantId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformAuditFacetsDto"
                 }
               }
             },
