@@ -148,6 +148,37 @@ describe('generic record pool lifecycle HTTP', () => {
       expect(attempts.filter((r) => r.status === 201)).toHaveLength(1);
     }
   });
+  it('resolves an admin workflow transition racing the owner confirming contact without a deadlock', async () => {
+    // Workflow transitions lock the record and then the owner's member row;
+    // pool actions lock members, the table and then the record. Both orders
+    // must meet without a cycle.
+    await configure();
+    for (let round = 0; round < 40; round += 1) {
+      const row = await h.adminDatabase.record.update({
+        where: { id: f.workflowRecord.id },
+        data: {
+          statusKey: 'new',
+          ownerMemberId: f.employee.memberId,
+          inPublicPool: false,
+          poolStage: 'PENDING_CONTACT',
+          poolOrigin: 'LEAD_POOL',
+          poolClaimedAt: new Date(),
+          ownershipExpiresAt: new Date(Date.now() + 24 * 3600_000),
+        },
+      });
+      const attempts = await Promise.all([
+        post(
+          `/records/${row.id}/workflow/transitions/qualify`,
+          { expectedVersion: row.version },
+          f.admin,
+        ),
+        ownership(row, 'CONFIRM_CONTACT', {}, f.employee),
+      ]);
+      const statuses = attempts.map((r) => r.status);
+      expect(statuses.filter((s) => s >= 500)).toEqual([]);
+      expect(statuses.filter((s) => s === 200 || s === 201)).toHaveLength(1);
+    }
+  });
   it('claims once under contention, confirms contact, renews only by activity and releases with quality', async () => {
     await configure();
     const row = await pool();

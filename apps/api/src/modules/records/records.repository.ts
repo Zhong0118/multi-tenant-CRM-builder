@@ -751,12 +751,27 @@ class PrismaRecordsStore implements RecordsStore {
    * The owner predicate is deliberately part of the lock statement: an OWN
    * update scope must not be able to lock — or even learn about — another
    * member's record.
+   *
+   * The owner's member row is locked first. Pool actions lock members, the
+   * table and then the record, and the later patch of this path locks the
+   * owner too; taking the record first would let a transition wait on the
+   * owner's row while that owner's pool action waits on this record.
    */
   async lockRecord(input: {
     objectId: string;
     recordId: string;
     ownerMemberId: string | null;
   }): Promise<DynamicRecord | null> {
+    await this.transaction.$queryRaw`
+      SELECT m.id FROM tenant_members m
+      JOIN records r ON r.tenant_id = m.tenant_id AND r.owner_member_id = m.id
+      WHERE r.tenant_id = ${this.context.tenantId}::uuid
+        AND r.object_id = ${input.objectId}::uuid
+        AND r.id = ${input.recordId}::uuid
+        AND r.deleted_at IS NULL
+        AND (${input.ownerMemberId}::uuid IS NULL OR r.owner_member_id = ${input.ownerMemberId}::uuid)
+      FOR NO KEY UPDATE OF m
+    `;
     const rows = await this.transaction.$queryRaw<Array<{ id: string }>>`
       SELECT id FROM records
       WHERE tenant_id = ${this.context.tenantId}::uuid
