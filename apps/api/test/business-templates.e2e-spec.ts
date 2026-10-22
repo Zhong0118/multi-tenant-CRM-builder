@@ -487,6 +487,31 @@ describe('Business template HTTP workflow (e2e)', () => {
         where: { tenantId: activeTenantId, status: 'DRAFT' },
       }),
     ).resolves.toBeGreaterThan(0);
+
+    // Platform identity is not company membership: the template copy above is
+    // the platform's only write, and the company's tables stay the company's.
+    const applied = await adminDatabase.objectDefinition.findFirstOrThrow({
+      where: { tenantId: activeTenantId },
+    });
+    const workspace = `/api/v1/workspaces/${activeTenantCode}`;
+    for (const attempt of [
+      () => platform.get(`${workspace}/object-definitions`),
+      () => platform.get(`${workspace}/object-definitions/${applied.id}`),
+      () =>
+        platform
+          .post(`${workspace}/object-definitions`)
+          .set('Origin', origin)
+          .send({ name: '越权表', code: 'bypass' }),
+      () =>
+        platform
+          .post(`${workspace}/object-definitions/${applied.id}/archive`)
+          .set('Origin', origin)
+          .send({ expectedVersion: applied.version }),
+    ]) {
+      const response = await attempt();
+      expect(response.status).toBe(403);
+      expect(response.body).toMatchObject({ code: 'WORKSPACE_FORBIDDEN' });
+    }
   });
 
   async function register(phone: string, displayName: string): Promise<Agent> {
