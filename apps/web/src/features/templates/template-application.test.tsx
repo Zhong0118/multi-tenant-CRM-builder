@@ -454,14 +454,14 @@ describe("TenantBusinessConfiguration", () => {
       screen.queryByRole("button", { name: /应用业务模板/ }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText("公司已有业务表，不能再用模板覆盖初始化。"),
+      screen.getByText("公司已有业务表。模板只用于还没有业务表的公司，不会覆盖或合并已有配置。"),
     ).toBeInTheDocument();
   });
 
-  it("explains that a non-draft company cannot apply an initialization template", () => {
+  it("explains that a suspended company cannot apply a template", () => {
     renderWithQuery(
       <TenantBusinessConfiguration
-        tenant={{ ...tenant, status: "ACTIVE" }}
+        tenant={{ ...tenant, status: "SUSPENDED" }}
         initialSummary={{
           objectCount: 0,
           canApplyTemplate: false,
@@ -473,7 +473,7 @@ describe("TenantBusinessConfiguration", () => {
     );
 
     expect(
-      screen.getByText(/公司已启用。模板只能用于尚未初始化的草稿公司/),
+      screen.getByText("公司已暂停或关闭，不能应用模板。"),
     ).toBeInTheDocument();
   });
 });

@@ -132,6 +132,8 @@ export interface HydratedTenantConfiguration {
     name: string;
     type: 'TABLE';
     columnFieldKeys: string[];
+    /** Keyword search fields; stored beside the columns as the designer does. */
+    searchFieldKeys?: string[];
     sort: {
       field: 'updatedAt' | 'createdAt' | 'recordNo';
       direction: 'asc' | 'desc';
@@ -304,7 +306,10 @@ class PrismaTemplateApplicationStore implements TemplateApplicationStore {
     ) {
       return { kind: 'NOT_ALLOWED', reason: 'VERSION_NOT_ACTIVE' };
     }
-    if (target.status !== 'DRAFT') {
+    // An active company that has no business table yet can still start from a
+    // template: the copy only lands in an empty company (checked under lock by
+    // the service) and as unpublished drafts, so nothing employees use changes.
+    if (target.status !== 'DRAFT' && target.status !== 'ACTIVE') {
       return { kind: 'NOT_ALLOWED', reason: 'TENANT_NOT_DRAFT' };
     }
     return {
@@ -383,13 +388,17 @@ class PrismaTemplateApplicationStore implements TemplateApplicationStore {
           },
         });
       }
-      for (const view of hydrated.views.filter(
+      for (const { searchFieldKeys, ...view } of hydrated.views.filter(
         (candidate) => candidate.objectId === object.id,
       )) {
         await this.transaction.viewDefinition.create({
           data: {
             ...view,
-            columnFieldKeys: jsonInput(view.columnFieldKeys),
+            columnFieldKeys: jsonInput(
+              searchFieldKeys === undefined
+                ? view.columnFieldKeys
+                : { columnFieldKeys: view.columnFieldKeys, searchFieldKeys },
+            ),
             sort: jsonInput(view.sort),
           },
         });

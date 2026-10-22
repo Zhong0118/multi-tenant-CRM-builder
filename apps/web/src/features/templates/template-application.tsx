@@ -378,11 +378,11 @@ function blockingReasonText(
 ) {
   switch (reason) {
     case "TARGET_NOT_EMPTY":
-      return "公司已有业务表，不能再用模板覆盖初始化。";
+      return "公司已有业务表。模板只用于还没有业务表的公司，不会覆盖或合并已有配置。";
     case "TENANT_NOT_DRAFT":
-      return tenantStatus === "ACTIVE"
-        ? "公司已启用。模板只能用于尚未初始化的草稿公司；现在应由公司管理员手工创建业务表。"
-        : "只有草稿状态的公司可以使用初始化模板。";
+      return tenantStatus === "SUSPENDED" || tenantStatus === "CLOSED"
+        ? "公司已暂停或关闭，不能应用模板。"
+        : "当前公司暂时不能应用模板。";
     default:
       return "当前公司暂时不能使用初始化模板。";
   }

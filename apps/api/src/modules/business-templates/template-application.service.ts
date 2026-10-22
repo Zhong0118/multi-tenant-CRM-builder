@@ -56,7 +56,7 @@ export class TemplateApplicationService {
       await store.enterTenant(tenantId);
       const objectCount = await store.countTenantObjects(tenantId);
       const blockingReason =
-        target.status !== 'DRAFT'
+        target.status !== 'DRAFT' && target.status !== 'ACTIVE'
           ? 'TENANT_NOT_DRAFT'
           : objectCount > 0
             ? 'TARGET_NOT_EMPTY'
@@ -238,6 +238,9 @@ export function hydrateTenantConfiguration(
       name: sourceObject.defaultView.name,
       type: 'TABLE',
       columnFieldKeys: [...sourceObject.defaultView.columnFieldKeys],
+      ...(sourceObject.defaultView.searchFieldKeys
+        ? { searchFieldKeys: [...sourceObject.defaultView.searchFieldKeys] }
+        : {}),
       sort: { ...sourceObject.defaultView.sort },
       status: 'ACTIVE',
     });
@@ -281,7 +284,7 @@ function requireApplicable(
   if (eligibility.kind === 'NOT_ALLOWED') {
     const reason =
       eligibility.reason === 'TENANT_NOT_DRAFT'
-        ? '目标公司必须处于草稿状态。'
+        ? '已暂停或关闭的公司不能应用模板。'
         : eligibility.reason === 'TEMPLATE_ARCHIVED'
           ? '已归档模板不能应用。'
           : '只能应用模板当前的发布版本。';
