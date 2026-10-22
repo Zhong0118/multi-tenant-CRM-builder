@@ -6,9 +6,9 @@ import { LogoMark } from "./logo-mark";
 import styles from "./landing.module.css";
 
 export const SECTION_LINKS = [
-  { href: "#demo", label: "业务过程" },
-  { href: "#fields", label: "灵活字段" },
-  { href: "#team", label: "团队协作" },
+  { href: "#tables", label: "搭表" },
+  { href: "#pool", label: "线索公海" },
+  { href: "#access", label: "权限" },
   { href: "#ai", label: "AI 助手" },
   { href: "#faq", label: "常见问题" },
 ] as const;
@@ -54,9 +54,14 @@ export function LandingNav() {
           ))}
         </nav>
 
-        <Link href="/login" className={styles.navLogin}>
-          登录工作区
-        </Link>
+        <div className={styles.navActions}>
+          <Link href="/login" className={styles.navLogin}>
+            登录
+          </Link>
+          <Link href="/register" className={styles.navRegister}>
+            创建账号
+          </Link>
+        </div>
 
         <button
           ref={toggleRef}
