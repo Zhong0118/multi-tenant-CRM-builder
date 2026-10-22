@@ -219,6 +219,11 @@ export interface RecordsStore {
   ): Promise<void>;
   memberExists(memberId: string): Promise<boolean>;
   lockActiveOwners(ownerId: string | null, objectCode?: string): Promise<void>;
+  /** The staged-pool settings of a table, or null when it does not run one. */
+  findPoolLifecycle?(objectCode: string): Promise<{
+    contactTtlHours: number;
+    followUpTtlHours: number;
+  } | null>;
   allocateRecordNo(objectId: string): Promise<bigint>;
   createRecord(record: DynamicRecord): Promise<DynamicRecord>;
   listRecords(query: RecordListQuery): Promise<{
@@ -552,6 +557,28 @@ class PrismaRecordsStore implements RecordsStore {
         objectCode,
         ownerId,
       );
+  }
+
+  async findPoolLifecycle(objectCode: string) {
+    const object = await this.transaction.objectDefinition.findFirst({
+      where: {
+        tenantId: this.context.tenantId,
+        code: objectCode,
+        deletedAt: null,
+      },
+      select: {
+        poolEnabled: true,
+        poolLifecycleEnabled: true,
+        poolContactTtlHours: true,
+        poolFollowUpTtlHours: true,
+      },
+    });
+    return object?.poolEnabled && object.poolLifecycleEnabled
+      ? {
+          contactTtlHours: object.poolContactTtlHours,
+          followUpTtlHours: object.poolFollowUpTtlHours,
+        }
+      : null;
   }
 
   async createRecord(record: DynamicRecord): Promise<DynamicRecord> {

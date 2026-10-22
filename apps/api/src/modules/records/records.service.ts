@@ -29,6 +29,7 @@ import {
   updateRecordCommand,
   validateRecordActivityInput,
   type RecordRequestMeta,
+  type CreateRecordCommandInput,
 } from './record-command';
 import type { MemberActivityType } from './record-activity';
 import { projectVisibleValues } from './record-value-engine';
@@ -444,6 +445,13 @@ export class RecordsService {
     );
     return this.repository.withTenant(context, async (store) => {
       resolved = await store.resolveCurrentObject(resolved);
+      const placement = await initialPoolPlacement(
+        store,
+        context,
+        objectCode,
+        input.ownerMemberId,
+        this.clock(),
+      );
       return projectRecord(
         await createRecordCommand({
           store,
@@ -451,6 +459,7 @@ export class RecordsService {
           context,
           values: input.values,
           ownerMemberId: input.ownerMemberId,
+          ...placement,
           meta,
           clock: this.clock,
           idGenerator: this.idGenerator,
@@ -1469,4 +1478,63 @@ function poolQueryScope(
   if (stage !== undefined && stage !== 'LEGACY' && !POOL_STAGES.includes(stage))
     throw new ApiException('VALIDATION_FAILED', 400);
   return stage === 'LEAD_POOL' || stage === 'CUSTOMER_POOL' ? 'pool' : scope;
+}
+
+/**
+ * Where a record created one at a time starts on a table running the staged
+ * pool. Without it such records had no stage at all: never reclaimed, absent
+ * from every pool view and shown only as 旧记录.
+ *
+ * - An administrator who names no owner puts the record in the lead pool,
+ *   where any permitted employee can claim it.
+ * - An administrator who names an owner assigns it: 待联系 with the table's
+ *   contact deadline, exactly as assigning from the pool does.
+ * - An employee creates their own customer, one they are already in contact
+ *   with, so it starts in 跟进 with the table's follow-up deadline.
+ *
+ * Tables without the staged pool keep their previous behaviour.
+ */
+async function initialPoolPlacement(
+  store: RecordsStore,
+  context: TenantContext,
+  objectCode: string,
+  requestedOwner: string | null | undefined,
+  now: Date,
+): Promise<Partial<CreateRecordCommandInput>> {
+  const pool = (await store.findPoolLifecycle?.(objectCode)) ?? null;
+  if (!pool) return {};
+  const at = now.toISOString();
+  if (context.role === 'EMPLOYEE') {
+    return {
+      poolStage: 'FOLLOWING',
+      poolOrigin: 'LEAD_POOL',
+      poolClaimedAt: at,
+      poolLastFollowUpAt: at,
+      inPublicPool: false,
+      ownershipExpiresAt: ownershipDeadline(
+        pool.followUpTtlHours,
+        now,
+      )!.toISOString(),
+    };
+  }
+  if (requestedOwner === undefined || requestedOwner === null) {
+    return {
+      poolStage: 'LEAD_POOL',
+      poolOrigin: 'LEAD_POOL',
+      inPublicPool: true,
+    };
+  }
+  // The same check as assigning from the pool: an active member who may work
+  // on this table.
+  await store.lockActiveOwners(requestedOwner, objectCode);
+  return {
+    poolStage: 'PENDING_CONTACT',
+    poolOrigin: 'LEAD_POOL',
+    poolClaimedAt: at,
+    inPublicPool: false,
+    ownershipExpiresAt: ownershipDeadline(
+      pool.contactTtlHours,
+      now,
+    )!.toISOString(),
+  };
 }

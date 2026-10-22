@@ -56,6 +56,7 @@ export interface CreateRecordCommandInput {
   poolStage?: PoolStage;
   poolOrigin?: PoolOrigin;
   poolClaimedAt?: string | null;
+  poolLastFollowUpAt?: string | null;
   inPublicPool?: boolean;
   meta: RecordRequestMeta;
   clock: () => Date;
@@ -96,6 +97,7 @@ export async function createRecordCommand(
           poolStage: input.poolStage,
           poolOrigin: input.poolOrigin,
           poolClaimedAt: input.poolClaimedAt,
+          poolLastFollowUpAt: input.poolLastFollowUpAt ?? null,
           inPublicPool: input.inPublicPool,
         }
       : {}),
