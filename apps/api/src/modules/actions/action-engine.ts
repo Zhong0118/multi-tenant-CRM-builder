@@ -1,5 +1,7 @@
 import type { Prisma } from '@crm/database';
 
+import { initialPoolPlacement } from '../records/record-pool-placement';
+
 import {
   ApiException,
   type FieldErrors,
@@ -356,12 +358,23 @@ export async function executeActions(
             target.schema.fields,
           );
           const owner = action.owner;
+          const ownerMemberId = owner
+            ? resolveMember('owner', owner)
+            : undefined;
+          const placement = await initialPoolPlacement(
+            deps.store,
+            context,
+            target.schema.object.code,
+            ownerMemberId,
+            deps.clock(),
+          );
           const created = await createRecordCommand({
             store: deps.store,
             resolved: target,
             context,
             values,
-            ownerMemberId: owner ? resolveMember('owner', owner) : undefined,
+            ownerMemberId,
+            ...placement,
             meta: actionMeta(action),
             clock: deps.clock,
             idGenerator: deps.idGenerator,
