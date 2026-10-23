@@ -7,6 +7,7 @@ import type { AuditEvent } from '../audit/audit-event';
 import {
   checksumTemplateConfiguration,
   findTemplateIdentityBlockers,
+  findTemplateMemberDefaultBlockers,
 } from './business-template-publication.policy';
 import type { BusinessTemplateConfiguration } from './business-template.schema';
 import type {
@@ -152,6 +153,11 @@ export class TemplateApplicationService {
     if (findTemplateIdentityBlockers(source.configuration).length > 0) {
       throw applicationNotAllowed(
         '模板发布版本包含重复的对象或字段身份，不能应用。',
+      );
+    }
+    if (findTemplateMemberDefaultBlockers(source.configuration).length > 0) {
+      throw applicationNotAllowed(
+        '模板发布版本包含公司专属的默认成员，请清除成员字段默认值并重新发布。',
       );
     }
 

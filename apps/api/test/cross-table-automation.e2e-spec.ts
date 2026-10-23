@@ -174,6 +174,51 @@ describe('cross-table automation (real PostgreSQL)', () => {
       (await api('get', `${path()}/automations/history`)).body.items,
     ).toHaveLength(1);
   });
+  it.each(['MANUAL', 'FIELD_CHANGED'] as const)(
+    'initializes the target pool lease for %s automation-created records',
+    async (triggerType) => {
+      await h.adminDatabase.objectDefinition.update({
+        where: { id: f.rollbackTargetObject.id },
+        data: {
+          poolEnabled: true,
+          poolLifecycleEnabled: true,
+          poolContactTtlHours: 12,
+        },
+      });
+      await rules([
+        {
+          ...baseRule,
+          trigger:
+            triggerType === 'MANUAL' ? { type: 'MANUAL' } : baseRule.trigger,
+        },
+      ]);
+      const before = Date.now();
+      const response =
+        triggerType === 'MANUAL'
+          ? await api('post', `${path()}/automations/create-order/execute`, {
+              expectedVersion: 1,
+              requestId: randomUUID(),
+              inputs: {},
+            })
+          : await api('patch', path(), { version: 1, values: { name: 'won' } });
+      expect(response.status).toBe(triggerType === 'MANUAL' ? 201 : 200);
+      const created = await h.adminDatabase.record.findFirstOrThrow({
+        where: { objectId: f.rollbackTargetObject.id },
+      });
+      expect(created).toMatchObject({
+        ownerMemberId: f.admin.memberId,
+        poolStage: 'PENDING_CONTACT',
+        poolOrigin: 'LEAD_POOL',
+        inPublicPool: false,
+      });
+      expect(created.poolClaimedAt!.getTime()).toBeGreaterThanOrEqual(before);
+      expect(
+        created.ownershipExpiresAt!.getTime() -
+          created.poolClaimedAt!.getTime(),
+      ).toBe(12 * 60 * 60 * 1000);
+      expect(await executions()).toBe(1);
+    },
+  );
   it('does not trigger for historical matches, create, or imports', async () => {
     await h.adminDatabase.record.update({
       where: { id: f.ownedRecord.id },

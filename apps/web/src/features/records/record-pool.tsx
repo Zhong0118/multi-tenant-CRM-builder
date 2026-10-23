@@ -1,6 +1,11 @@
 "use client";
 
-import { ArrowRightOutlined, CheckCircleOutlined, ClockCircleOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
+import {
+  ArrowRightOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  SafetyCertificateOutlined,
+} from "@ant-design/icons";
 import { useMutation } from "@tanstack/react-query";
 import {
   Alert,
@@ -8,7 +13,7 @@ import {
   Drawer,
   Input,
   InputNumber,
-  message,
+  App,
   Popconfirm,
   Select,
   Space,
@@ -37,29 +42,59 @@ import {
 import { recordPoolApi, type RecordPoolApi } from "./record-pool-api";
 import styles from "./records.module.css";
 import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
+import { memberSelectOptions } from "@/components/identity/member-identity";
+import { StatusTag, type StatusTone } from "@/components/workbench/status-tag";
 
-function PoolDeadline({ expiresAt, serverTime, receivedAt }: { expiresAt: string; serverTime: string; receivedAt?: number }) {
-  const [clock] = useState(() => ({ server: Date.parse(serverTime), received: receivedAt ?? Date.now() }));
-  const [elapsed, setElapsed] = useState(() => Math.max(0, Date.now() - clock.received));
+function PoolDeadline({
+  expiresAt,
+  serverTime,
+  receivedAt,
+}: {
+  expiresAt: string;
+  serverTime: string;
+  receivedAt?: number;
+}) {
+  const [clock] = useState(() => ({
+    server: Date.parse(serverTime),
+    received: receivedAt ?? Date.now(),
+  }));
+  const [elapsed, setElapsed] = useState(() =>
+    Math.max(0, Date.now() - clock.received),
+  );
   useEffect(() => {
-    const interval = window.setInterval(() => setElapsed(Math.max(0, Date.now() - clock.received)), 30000);
+    const interval = window.setInterval(
+      () => setElapsed(Math.max(0, Date.now() - clock.received)),
+      30000,
+    );
     return () => window.clearInterval(interval);
   }, [clock]);
-  const minutes = Math.max(0, Math.ceil((Date.parse(expiresAt) - clock.server - elapsed) / 60000));
-  return <Typography.Text type={minutes ? "secondary" : "danger"}>{minutes ? `剩余 ${Math.floor(minutes / 60)} 小时 ${minutes % 60} 分钟` : "已到期，以服务端流转结果为准"}</Typography.Text>;
+  const minutes = Math.max(
+    0,
+    Math.ceil((Date.parse(expiresAt) - clock.server - elapsed) / 60000),
+  );
+  return (
+    <Typography.Text type={minutes ? "secondary" : "danger"}>
+      {minutes
+        ? `剩余 ${Math.floor(minutes / 60)} 小时 ${minutes % 60} 分钟`
+        : "已到期，以服务端流转结果为准"}
+    </Typography.Text>
+  );
 }
 
 export function RecordPoolStatus({
   record,
   config,
+  compact = false,
 }: {
   record: RecordSummary;
   config?: RecordPoolConfig;
+  /** In a table row: the stage and the countdown; the exact time is on the record. */
+  compact?: boolean;
 }) {
   const labels = { ...DEFAULT_POOL_LABELS, ...config?.labels };
   return (
     <Space size={4} wrap className={styles.poolStatus}>
-      <Tag color={record.inPublicPool ? "blue" : undefined}>
+      <StatusTag tone={poolStageTone(record)}>
         {record.poolStage
           ? labels[POOL_LABEL_KEYS[record.poolStage]]
           : record.inPublicPool
@@ -67,21 +102,28 @@ export function RecordPoolStatus({
             : record.ownerMemberId
               ? "已分配"
               : "未分配"}
-      </Tag>
+      </StatusTag>
       {record.poolQuality ? (
-        <Tag color="red">
+        <StatusTag tone="danger">
           {
             { INVALID: "空号 / 无效", DUPLICATE: "重复", LOST: "丢单" }[
               record.poolQuality
             ]
           }
-        </Tag>
+        </StatusTag>
       ) : null}
       {record.protectionNeedsReview ? (
-        <Tag color="red">保护依据待复核</Tag>
+        <StatusTag tone="warning">保护依据待复核</StatusTag>
       ) : null}
-      {record.ownershipExpiresAt && config?.serverTime ? <PoolDeadline key={`${record.ownershipExpiresAt}:${config.serverTime}`} expiresAt={record.ownershipExpiresAt} serverTime={config.serverTime} receivedAt={config.serverTimeReceivedAt} /> : null}
-      {record.ownershipExpiresAt ? (
+      {record.ownershipExpiresAt && config?.serverTime ? (
+        <PoolDeadline
+          key={`${record.ownershipExpiresAt}:${config.serverTime}`}
+          expiresAt={record.ownershipExpiresAt}
+          serverTime={config.serverTime}
+          receivedAt={config.serverTimeReceivedAt}
+        />
+      ) : null}
+      {record.ownershipExpiresAt && !compact ? (
         <Typography.Text type="secondary">
           回收于{" "}
           <time dateTime={record.ownershipExpiresAt}>
@@ -91,6 +133,21 @@ export function RecordPoolStatus({
       ) : null}
     </Space>
   );
+}
+
+/* Colour follows meaning: blue for a record waiting in a pool, amber for one
+   whose contact deadline is running, green once protected; the label always
+   says the stage in words. */
+function poolStageTone(record: RecordSummary): StatusTone {
+  if (record.inPublicPool) return "info";
+  switch (record.poolStage) {
+    case "PENDING_CONTACT":
+      return "warning";
+    case "PROTECTED":
+      return "success";
+    default:
+      return "neutral";
+  }
 }
 
 function poolError(caught: unknown) {
@@ -139,7 +196,10 @@ export function useRecordOwnership({
   const [ownerMemberId, setOwnerMemberId] = useState<string>();
   const [warning, setWarning] = useState<string>();
   const [committed, setCommitted] = useState(false);
+  // The App context's toast follows the workspace theme; the static one does not.
+  const { message } = App.useApp();
   const ownership = useMutation({
+    mutationKey: ["record-ownership", tenantCode, objectCode, record.id],
     mutationFn: (action: OwnershipAction) =>
       api.changeOwnership(tenantCode, objectCode, record.id, {
         action,
@@ -188,7 +248,10 @@ export function useRecordOwnership({
         schema.scopes.update !== "NONE"));
   const disabled = ownership.isPending || committed;
   const canConfirmContact = Boolean(
-    lifecycle && config?.enabled && record.poolStage === "PENDING_CONTACT" && canRelease,
+    lifecycle &&
+    config?.enabled &&
+    record.poolStage === "PENDING_CONTACT" &&
+    canRelease,
   );
   const releaseLabel = protectedRecord
     ? "解除保护并释放"
@@ -197,136 +260,134 @@ export function useRecordOwnership({
       : "释放";
   const drawers = (
     <>
-    <Drawer
-      open={releasing}
-      size={OVERLAY_SIZE.narrow}
-      title={
-        protectedRecord
-          ? "解除保护并释放"
-          : !record.poolStage
-            ? "旧记录显式归类"
-            : "释放到公共池"
-      }
-      onClose={() => setReleasing(false)}
-      destroyOnHidden
-    >
-      <Space orientation="vertical" className={styles.poolSettings}>
-        <Alert
-          type="warning"
-          showIcon
-          title={
-            protectedRecord
-              ? "管理员确认后解除保护并进入已联系公共池，其他成员可领取"
-              : "释放后清空当前负责人和期限，保留内容、关联与跟进历史"
-          }
-        />
-        {!record.poolStage && isAdmin ? (
-          <label>
-            目标公共池
-            <Select
-              aria-label="目标公共池"
-              value={releaseStage}
-              onChange={setReleaseStage}
-              options={[
-                { value: "LEAD_POOL", label: labels.leadPool },
-                { value: "CUSTOMER_POOL", label: labels.customerPool },
-              ]}
-            />
-          </label>
-        ) : null}
-        <label>
-          释放原因（必填）
-          <Input.TextArea
-            aria-label="释放原因"
-            maxLength={1000}
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-          />
-        </label>
-        <label>
-          资源质量
-          <Select
-            aria-label="资源质量"
-            allowClear
-            value={quality}
-            onChange={setQuality}
-            options={[
-              { value: "INVALID", label: "空号 / 无效" },
-              { value: "DUPLICATE", label: "重复" },
-              { value: "LOST", label: "丢单" },
-            ]}
-          />
-        </label>
-        {ownership.isError ? (
-          <Alert type="error" title={poolError(ownership.error)} />
-        ) : null}
-        <Button
-          type="primary"
-          danger
-          disabled={!reason.trim() || disabled}
-          loading={ownership.isPending}
-          onClick={() =>
-            ownership.mutate(
-              protectedRecord ? "UNPROTECT_RELEASE" : "RELEASE",
-            )
-          }
-        >
-          确认释放
-        </Button>
-      </Space>
-    </Drawer>
-    <Drawer
-      open={assigning}
-      size={OVERLAY_SIZE.narrow}
-      title={`分配 ${record.title}`}
-      onClose={() => setAssigning(false)}
-      destroyOnHidden
-    >
-      <Space orientation="vertical" className={styles.poolSettings}>
-        <Typography.Text>选择有该表处理权限的活动成员</Typography.Text>
-        {lifecycle ? (
+      <Drawer
+        open={releasing}
+        size={OVERLAY_SIZE.narrow}
+        title={
+          protectedRecord
+            ? "解除保护并释放"
+            : !record.poolStage
+              ? "旧记录显式归类"
+              : "释放到公共池"
+        }
+        onClose={() => setReleasing(false)}
+        destroyOnHidden
+      >
+        <Space orientation="vertical" className={styles.poolSettings}>
           <Alert
-            type="info"
+            type="warning"
             showIcon
             title={
               protectedRecord
-                ? "转交后继续保留保护，不启动回收计时"
-                : `分配后进入待联系，${config?.contactTtlHours ?? 24} 小时内须确认联系；超时回原池，旧未指定记录默认回初始公共池`
+                ? "管理员确认后解除保护并进入已联系公共池，其他成员可领取"
+                : "释放后清空当前负责人和期限，保留内容、关联与跟进历史"
             }
           />
-        ) : null}
-        <Select
-          aria-label="分配负责人"
-          placeholder="选择活动成员"
-          showSearch
-          optionFilterProp="label"
-          value={ownerMemberId}
-          onChange={setOwnerMemberId}
-          options={members.map((member) => ({
-            value: member.id,
-            label: member.displayName ?? "未设置姓名",
-          }))}
-        />
-        <Button
-          type="primary"
-          disabled={!ownerMemberId || disabled}
-          loading={ownership.isPending}
-          onClick={() => ownership.mutate("ASSIGN")}
-        >
-          确认分配
-        </Button>
-        {ownership.isError ? (
-          <Alert type="error" title={poolError(ownership.error)} />
-        ) : null}
-      </Space>
-    </Drawer>
+          {!record.poolStage && isAdmin ? (
+            <label>
+              目标公共池
+              <Select
+                aria-label="目标公共池"
+                value={releaseStage}
+                onChange={setReleaseStage}
+                options={[
+                  { value: "LEAD_POOL", label: labels.leadPool },
+                  { value: "CUSTOMER_POOL", label: labels.customerPool },
+                ]}
+              />
+            </label>
+          ) : null}
+          <label>
+            释放原因（必填）
+            <Input.TextArea
+              aria-label="释放原因"
+              maxLength={1000}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          </label>
+          <label>
+            资源质量
+            <Select
+              aria-label="资源质量"
+              allowClear
+              value={quality}
+              onChange={setQuality}
+              options={[
+                { value: "INVALID", label: "空号 / 无效" },
+                { value: "DUPLICATE", label: "重复" },
+                { value: "LOST", label: "丢单" },
+              ]}
+            />
+          </label>
+          {ownership.isError ? (
+            <Alert type="error" title={poolError(ownership.error)} />
+          ) : null}
+          <Button
+            type="primary"
+            danger
+            disabled={!reason.trim() || disabled}
+            loading={ownership.isPending}
+            onClick={() =>
+              ownership.mutate(
+                protectedRecord ? "UNPROTECT_RELEASE" : "RELEASE",
+              )
+            }
+          >
+            确认释放
+          </Button>
+        </Space>
+      </Drawer>
+      <Drawer
+        open={assigning}
+        size={OVERLAY_SIZE.narrow}
+        title={`分配 ${record.title}`}
+        onClose={() => setAssigning(false)}
+        destroyOnHidden
+      >
+        <Space orientation="vertical" className={styles.poolSettings}>
+          <Typography.Text>选择有该表处理权限的活动成员</Typography.Text>
+          {lifecycle ? (
+            <Alert
+              type="info"
+              showIcon
+              title={
+                protectedRecord
+                  ? "转交后继续保留保护，不启动回收计时"
+                  : `分配后进入待联系，${config?.contactTtlHours ?? 24} 小时内须确认联系；超时回原池，旧未指定记录默认回初始公共池`
+              }
+            />
+          ) : null}
+          <Select
+            aria-label="分配负责人"
+            placeholder="选择活动成员"
+            showSearch
+            optionFilterProp="searchText"
+            value={ownerMemberId}
+            onChange={setOwnerMemberId}
+            options={memberSelectOptions(members)}
+          />
+          <Button
+            type="primary"
+            disabled={!ownerMemberId || disabled}
+            loading={ownership.isPending}
+            onClick={() => ownership.mutate("ASSIGN")}
+          >
+            确认分配
+          </Button>
+          {ownership.isError ? (
+            <Alert type="error" title={poolError(ownership.error)} />
+          ) : null}
+        </Space>
+      </Drawer>
     </>
   );
 
   return {
     lifecycle,
     protectedRecord,
-    awaitingClassification: lifecycle && record.inPublicPool && !record.poolStage && !isAdmin,
+    awaitingClassification:
+      lifecycle && record.inPublicPool && !record.poolStage && !isAdmin,
     canClaim: Boolean(canClaim),
     canRelease: Boolean(canRelease),
     canConfirmContact,
@@ -353,7 +414,9 @@ export function useRecordOwnership({
   };
 }
 
-export function RecordOwnershipActions(props: Parameters<typeof useRecordOwnership>[0]) {
+export function RecordOwnershipActions(
+  props: Parameters<typeof useRecordOwnership>[0],
+) {
   const { record, config, isAdmin } = props;
   const {
     canClaim,
@@ -369,7 +432,9 @@ export function RecordOwnershipActions(props: Parameters<typeof useRecordOwnersh
   } = useRecordOwnership(props);
   return (
     <span className={styles.poolActions}>
-      {lifecycle && record.inPublicPool && !record.poolStage && !isAdmin ? <Typography.Text type="secondary">等待管理员归类后领取</Typography.Text> : null}
+      {lifecycle && record.inPublicPool && !record.poolStage && !isAdmin ? (
+        <Typography.Text type="secondary">等待管理员归类后领取</Typography.Text>
+      ) : null}
       {canClaim ? (
         <Button
           size="small"
@@ -387,7 +452,7 @@ export function RecordOwnershipActions(props: Parameters<typeof useRecordOwnersh
       canRelease ? (
         <Popconfirm
           title="确认已经建立联系？"
-          description={`确认后开始 ${config.followUpTtlHours ?? 720} 小时跟进期，待联系期间写活动不能代替联系确认`}
+          description={`确认后开始 ${config.followUpTtlHours ?? 720} 小时跟进期，普通备注不会确认联系，成功联系或添加微信的活动结果会自动确认`}
           okText="确认建立联系"
           cancelText="取消"
           onConfirm={() => ownership.mutate("CONFIRM_CONTACT")}
@@ -451,7 +516,6 @@ export function RecordOwnershipActions(props: Parameters<typeof useRecordOwnersh
   );
 }
 
-
 export function RecordPoolSettings({
   tenantCode,
   objectCode,
@@ -512,7 +576,8 @@ export function RecordPoolSettings({
       }
     },
   });
-  const archived = save.isError && toApiError(save.error).code === "OBJECT_ARCHIVED";
+  const archived =
+    save.isError && toApiError(save.error).code === "OBJECT_ARCHIVED";
   const validHours = (value: number | null) =>
     value !== null && Number.isInteger(value) && value >= 1 && value <= 8760;
   const invalid = lifecycle
@@ -522,9 +587,34 @@ export function RecordPoolSettings({
       rules.some((rule) => !rule.sourceObjectCode || !rule.statusKeys.length)
     : automatic && !validHours(hours);
   return (
-    <Drawer open title="公共池设置" size={OVERLAY_SIZE.drawer} onClose={onClose} destroyOnHidden
-      classNames={{ body: styles.poolSettingsBody, footer: styles.poolSettingsFooter }}
-      footer={<div className={styles.poolFooterContent}><span>保存即生效，无需发布</span><Space><Button onClick={onClose}>取消</Button><Button type="primary" loading={save.isPending} disabled={invalid || saved || archived} onClick={() => { if (!archived) save.mutate(); }}>保存设置</Button></Space></div>}
+    <Drawer
+      open
+      title="公共池设置"
+      size={OVERLAY_SIZE.drawer}
+      onClose={onClose}
+      destroyOnHidden
+      classNames={{
+        body: styles.poolSettingsBody,
+        footer: styles.poolSettingsFooter,
+      }}
+      footer={
+        <div className={styles.poolFooterContent}>
+          <span>保存即生效，无需发布</span>
+          <Space>
+            <Button onClick={onClose}>取消</Button>
+            <Button
+              type="primary"
+              loading={save.isPending}
+              disabled={invalid || saved || archived}
+              onClick={() => {
+                if (!archived) save.mutate();
+              }}
+            >
+              保存设置
+            </Button>
+          </Space>
+        </div>
+      }
     >
       <Space
         orientation="vertical"
@@ -533,10 +623,15 @@ export function RecordPoolSettings({
       >
         <div className={styles.poolSettingsIntro}>
           <Typography.Title level={4}>让资源有序流转</Typography.Title>
-          <Typography.Paragraph type="secondary">一张业务表共享资源，分配后由负责人持续跟进</Typography.Paragraph>
+          <Typography.Paragraph type="secondary">
+            一张业务表共享资源，分配后由负责人持续跟进
+          </Typography.Paragraph>
         </div>
         <label className={styles.poolSettingRow}>
-          <span><strong>启用公共池</strong><small>允许有权限的成员领取公共资源</small></span>
+          <span>
+            <strong>启用公共池</strong>
+            <small>允许有权限的成员领取公共资源</small>
+          </span>
           <Switch
             aria-label="启用公共池"
             checked={enabled}
@@ -544,9 +639,20 @@ export function RecordPoolSettings({
             disabled={save.isPending || saved || archived}
           />
         </label>
-        {!enabled ? <Alert type="warning" showIcon title="关闭后暂停领取、释放和回收" description="原有期限保留，重新开启会处理已到期记录。管理员仍可分配记录" /> : null}
+        {!enabled ? (
+          <Alert
+            type="warning"
+            showIcon
+            title="关闭后暂停领取、释放和回收"
+            description="原有期限保留，重新开启会处理已到期记录。管理员仍可分配记录"
+          />
+        ) : null}
         <section className={styles.poolConfigPreview} aria-label="当前生效规则">
-          <div className={styles.poolSectionHeading}><CheckCircleOutlined /><Typography.Text strong>当前生效规则</Typography.Text><Tag>{openedConfig.enabled ? "运行中" : "已关闭"}</Tag></div>
+          <div className={styles.poolSectionHeading}>
+            <CheckCircleOutlined />
+            <Typography.Text strong>当前生效规则</Typography.Text>
+            <Tag>{openedConfig.enabled ? "运行中" : "已关闭"}</Tag>
+          </div>
           <p>
             {openedConfig.enabled ? "公共池已启用" : "公共池已关闭"} ·{" "}
             {openedConfig.lifecycleEnabled
@@ -563,14 +669,18 @@ export function RecordPoolSettings({
           ) : null}
           {config.permissions ? (
             <p>
-              默认员工读取范围 {DATA_SCOPE_LABELS[config.permissions.readScope]} · 处理范围{" "}
-              {DATA_SCOPE_LABELS[config.permissions.updateScope]} · 启用不会改动员工权限
+              默认员工读取范围 {DATA_SCOPE_LABELS[config.permissions.readScope]}{" "}
+              · 处理范围 {DATA_SCOPE_LABELS[config.permissions.updateScope]} ·
+              启用不会改动员工权限
             </p>
           ) : null}
         </section>
 
         <label className={styles.poolSettingRow}>
-          <span><strong>启用分阶段流转</strong><small>领取后限时联系，跟进续期，成交后保护</small></span>
+          <span>
+            <strong>启用分阶段流转</strong>
+            <small>领取后限时联系，跟进续期，成交后保护</small>
+          </span>
           <Switch
             aria-label="启用分阶段流转"
             checked={lifecycle}
@@ -581,166 +691,203 @@ export function RecordPoolSettings({
         {lifecycle ? (
           <>
             <div className={styles.poolFlow} aria-label="流转规则说明">
-              <span>公海资源</span><ArrowRightOutlined /><span>限时联系</span><ArrowRightOutlined /><span>持续跟进</span><ArrowRightOutlined /><span>成交保护</span>
+              <span>公海资源</span>
+              <ArrowRightOutlined />
+              <span>限时联系</span>
+              <ArrowRightOutlined />
+              <span>持续跟进</span>
+              <ArrowRightOutlined />
+              <span>成交保护</span>
             </div>
-            <section className={styles.poolSettingsSection} aria-label="联系与跟进期限">
-            <div className={styles.poolSectionHeading}><ClockCircleOutlined /><Typography.Text strong>联系与跟进期限</Typography.Text></div>
-            <div className={styles.poolDurationGrid}>
-            <label>
-              联系期限（小时）
-              <InputNumber
-                aria-label="联系期限（小时）"
-                min={1}
-                max={8760}
-                precision={0}
-                value={contactHours}
-                onChange={setContactHours}
-                disabled={save.isPending || saved || archived}
-              />
-            </label>
-            <label>
-              跟进期限（小时）
-              <InputNumber
-                aria-label="跟进期限（小时）"
-                min={1}
-                max={8760}
-                precision={0}
-                value={followUpHours}
-                onChange={setFollowUpHours}
-                disabled={save.isPending || saved || archived}
-              />
-            </label>
-            </div>
-            <p className={styles.poolHelp}>领取后 {contactHours ?? "—"} 小时内确认联系；确认后获得 {followUpHours === null ? "—" : Number((followUpHours / 24).toFixed(2))} 天跟进期，每次有效跟进重新计时</p>
-            </section>
-            <section className={styles.poolSettingsSection} aria-label="阶段显示名称">
-            <div className={styles.poolSectionHeading}><Typography.Text strong>阶段显示名称</Typography.Text></div>
-            <Space wrap className={styles.poolPresetButtons}>
-              <Button
-                onClick={() => setLabels(DEFAULT_POOL_LABELS)}
-                disabled={save.isPending || saved || archived}
-              >
-                使用通用名称
-              </Button>
-              <Button
-                onClick={() => setLabels(CUSTOMER_POOL_LABELS)}
-                disabled={save.isPending || saved || archived}
-              >
-                使用客户预设
-              </Button>
-            </Space>
-            {(Object.keys(DEFAULT_POOL_LABELS) as (keyof PoolLabels)[]).map(
-              (key) => (
-                <label key={key} className={styles.poolSettingRow}>
-                  {DEFAULT_POOL_LABELS[key]}名称
-                  <Input
-                    aria-label={`${DEFAULT_POOL_LABELS[key]}名称`}
-                    maxLength={40}
-                    value={labels[key]}
-                    onChange={(event) =>
-                      setLabels({ ...labels, [key]: event.target.value })
-                    }
+            <section
+              className={styles.poolSettingsSection}
+              aria-label="联系与跟进期限"
+            >
+              <div className={styles.poolSectionHeading}>
+                <ClockCircleOutlined />
+                <Typography.Text strong>联系与跟进期限</Typography.Text>
+              </div>
+              <div className={styles.poolDurationGrid}>
+                <label>
+                  联系期限（小时）
+                  <InputNumber
+                    aria-label="联系期限（小时）"
+                    min={1}
+                    max={8760}
+                    precision={0}
+                    value={contactHours}
+                    onChange={setContactHours}
                     disabled={save.isPending || saved || archived}
                   />
                 </label>
-              ),
-            )}
-            </section>
-            <section className={styles.poolSettingsSection} aria-label="成交保护配置">
-            <div className={styles.poolSectionHeading}><SafetyCertificateOutlined /><Typography.Text strong>成交 / 合作保护依据</Typography.Text><Tag>可选</Tag></div>
-            <Typography.Paragraph type="secondary">
-              关联记录达到指定的正式状态后，当前负责人持续持有，不再自动回收。没有负责人的记录需先分配，再确认成交
-            </Typography.Paragraph>
-            {rules.map((rule, index) => {
-              const source = config.protectionSources?.find(
-                (item) => item.objectCode === rule.sourceObjectCode,
-              );
-              return (
-                <section key={index} className={styles.poolConfigPreview}>
-                  <label>
-                    来源业务表
-                    <Select
-                      aria-label={`保护来源表 ${index + 1}`}
-                      value={rule.sourceObjectCode || undefined}
-                      disabled={save.isPending || saved || archived}
-                      placeholder="选择业务表"
-                      options={config.protectionSources?.map((item) => ({
-                        value: item.objectCode,
-                        label: item.objectName,
-                      }))}
-                      onChange={(sourceObjectCode) =>
-                        setRules(
-                          rules.map((item, i) =>
-                            i === index
-                              ? { sourceObjectCode, statusKeys: [] }
-                              : item,
-                          ),
-                        )
-                      }
-                    />
-                  </label>
-                  <label>
-                    已发布流程状态
-                    <Select
-                      aria-label={`保护状态 ${index + 1}`}
-                      mode="multiple"
-                      value={rule.statusKeys}
-                      disabled={!source || save.isPending || saved || archived}
-                      options={source?.states.map((item) => ({
-                        value: item.key,
-                        label: item.label,
-                      }))}
-                      onChange={(statusKeys) =>
-                        setRules(
-                          rules.map((item, i) =>
-                            i === index ? { ...item, statusKeys } : item,
-                          ),
-                        )
-                      }
-                    />
-                  </label>
-                  {rule.sourceObjectCode && (!source ||
-                  !source.states.length ||
-                  rule.statusKeys.some(
-                    (key) => !source.states.some((state) => state.key === key),
-                  )) ? (
-                    <Alert
-                      type="warning"
-                      title="来源表或状态尚未发布，请先在业务表设计器发布流程，再重新打开配置"
-                    />
-                  ) : null}
-                  <Button
+                <label>
+                  跟进期限（小时）
+                  <InputNumber
+                    aria-label="跟进期限（小时）"
+                    min={1}
+                    max={8760}
+                    precision={0}
+                    value={followUpHours}
+                    onChange={setFollowUpHours}
                     disabled={save.isPending || saved || archived}
-                    onClick={() =>
-                      setRules(rules.filter((_, i) => i !== index))
-                    }
-                  >
-                    移除保护依据
-                  </Button>
-                </section>
-              );
-            })}
-            <Button
-              disabled={
-                save.isPending || saved || archived || !config.protectionSources?.length
-              }
-              onClick={() =>
-                setRules([...rules, { sourceObjectCode: "", statusKeys: [] }])
-              }
+                  />
+                </label>
+              </div>
+              <p className={styles.poolHelp}>
+                领取后 {contactHours ?? "—"} 小时内确认联系；确认后获得{" "}
+                {followUpHours === null
+                  ? "—"
+                  : Number((followUpHours / 24).toFixed(2))}{" "}
+                天跟进期，每次有效跟进重新计时
+              </p>
+            </section>
+            <section
+              className={styles.poolSettingsSection}
+              aria-label="阶段显示名称"
             >
-              添加保护依据
-            </Button>
-            {!config.protectionSources?.length ? (
-              <Alert
-                type="info"
-                title="暂无已发布流程可选，可先使用领取、联系和回收；需要保护时先发布来源业务表流程"
-              />
-            ) : null}
-            {!rules.length ? (
-              <Typography.Text type="secondary">
-                未配置保护依据，不会自动进入受保护阶段
-              </Typography.Text>
-            ) : null}
+              <div className={styles.poolSectionHeading}>
+                <Typography.Text strong>阶段显示名称</Typography.Text>
+              </div>
+              <Space wrap className={styles.poolPresetButtons}>
+                <Button
+                  onClick={() => setLabels(DEFAULT_POOL_LABELS)}
+                  disabled={save.isPending || saved || archived}
+                >
+                  使用通用名称
+                </Button>
+                <Button
+                  onClick={() => setLabels(CUSTOMER_POOL_LABELS)}
+                  disabled={save.isPending || saved || archived}
+                >
+                  使用客户预设
+                </Button>
+              </Space>
+              {(Object.keys(DEFAULT_POOL_LABELS) as (keyof PoolLabels)[]).map(
+                (key) => (
+                  <label key={key} className={styles.poolSettingRow}>
+                    {DEFAULT_POOL_LABELS[key]}名称
+                    <Input
+                      aria-label={`${DEFAULT_POOL_LABELS[key]}名称`}
+                      maxLength={40}
+                      value={labels[key]}
+                      onChange={(event) =>
+                        setLabels({ ...labels, [key]: event.target.value })
+                      }
+                      disabled={save.isPending || saved || archived}
+                    />
+                  </label>
+                ),
+              )}
+            </section>
+            <section
+              className={styles.poolSettingsSection}
+              aria-label="成交保护配置"
+            >
+              <div className={styles.poolSectionHeading}>
+                <SafetyCertificateOutlined />
+                <Typography.Text strong>成交 / 合作保护依据</Typography.Text>
+                <Tag>可选</Tag>
+              </div>
+              <Typography.Paragraph type="secondary">
+                关联记录达到指定的正式状态后，当前负责人持续持有，不再自动回收。没有负责人的记录需先分配，再确认成交
+              </Typography.Paragraph>
+              {rules.map((rule, index) => {
+                const source = config.protectionSources?.find(
+                  (item) => item.objectCode === rule.sourceObjectCode,
+                );
+                return (
+                  <section key={index} className={styles.poolConfigPreview}>
+                    <label>
+                      来源业务表
+                      <Select
+                        aria-label={`保护来源表 ${index + 1}`}
+                        value={rule.sourceObjectCode || undefined}
+                        disabled={save.isPending || saved || archived}
+                        placeholder="选择业务表"
+                        options={config.protectionSources?.map((item) => ({
+                          value: item.objectCode,
+                          label: item.objectName,
+                        }))}
+                        onChange={(sourceObjectCode) =>
+                          setRules(
+                            rules.map((item, i) =>
+                              i === index
+                                ? { sourceObjectCode, statusKeys: [] }
+                                : item,
+                            ),
+                          )
+                        }
+                      />
+                    </label>
+                    <label>
+                      已发布流程状态
+                      <Select
+                        aria-label={`保护状态 ${index + 1}`}
+                        mode="multiple"
+                        value={rule.statusKeys}
+                        disabled={
+                          !source || save.isPending || saved || archived
+                        }
+                        options={source?.states.map((item) => ({
+                          value: item.key,
+                          label: item.label,
+                        }))}
+                        onChange={(statusKeys) =>
+                          setRules(
+                            rules.map((item, i) =>
+                              i === index ? { ...item, statusKeys } : item,
+                            ),
+                          )
+                        }
+                      />
+                    </label>
+                    {rule.sourceObjectCode &&
+                    (!source ||
+                      !source.states.length ||
+                      rule.statusKeys.some(
+                        (key) =>
+                          !source.states.some((state) => state.key === key),
+                      )) ? (
+                      <Alert
+                        type="warning"
+                        title="来源表或状态尚未发布，请先在业务表设计器发布流程，再重新打开配置"
+                      />
+                    ) : null}
+                    <Button
+                      disabled={save.isPending || saved || archived}
+                      onClick={() =>
+                        setRules(rules.filter((_, i) => i !== index))
+                      }
+                    >
+                      移除保护依据
+                    </Button>
+                  </section>
+                );
+              })}
+              <Button
+                disabled={
+                  save.isPending ||
+                  saved ||
+                  archived ||
+                  !config.protectionSources?.length
+                }
+                onClick={() =>
+                  setRules([...rules, { sourceObjectCode: "", statusKeys: [] }])
+                }
+              >
+                添加保护依据
+              </Button>
+              {!config.protectionSources?.length ? (
+                <Alert
+                  type="info"
+                  title="暂无已发布流程可选，可先使用领取、联系和回收；需要保护时先发布来源业务表流程"
+                />
+              ) : null}
+              {!rules.length ? (
+                <Typography.Text type="secondary">
+                  未配置保护依据，不会自动进入受保护阶段
+                </Typography.Text>
+              ) : null}
             </section>
           </>
         ) : (

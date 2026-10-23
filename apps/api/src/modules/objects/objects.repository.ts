@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma as PrismaTypes } from '@crm/database';
 
 import type { TenantContext } from '../../common/tenancy/tenant-context';
+import { ApiException } from '../../common/errors/api.exception';
 import { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
 import type { AuditEvent } from '../audit/audit-event';
 import { AuditService } from '../audit/audit.service';
@@ -11,6 +12,7 @@ import type {
   PublicationDraft,
 } from './object-publication.policy';
 import type { PublishedObjectSchema } from './object-schema';
+import { RECORD_TITLE_MAX_LENGTH } from '../records/record-value-engine';
 import { lockObjectConfiguration } from './object-configuration-lock';
 import {
   lifecycleBlockers,
@@ -288,17 +290,17 @@ class PrismaObjectsStore implements ObjectsStore {
       ? (object.activePublication
           .configuration as unknown as PublishedObjectSchema)
       : null;
-    const publishedTypes = new Map(
-      (activeSchema?.fields ?? []).map((field) => [field.id, field.type]),
+    const publishedFields = new Map(
+      (activeSchema?.fields ?? []).map((field) => [field.id, field]),
     );
     if (
       activeSchema &&
-      object.fields.some((field) => !publishedTypes.has(field.id))
+      object.fields.some((field) => !publishedFields.has(field.id))
     ) {
       for (const publication of await this.listPublications(objectId)) {
         for (const field of publication.configuration.fields) {
-          if (!publishedTypes.has(field.id))
-            publishedTypes.set(field.id, field.type);
+          if (!publishedFields.has(field.id))
+            publishedFields.set(field.id, field);
         }
       }
     }
@@ -346,7 +348,7 @@ class PrismaObjectsStore implements ObjectsStore {
         sortOrder: field.sortOrder,
         isSystem: field.isSystem,
         status: field.status,
-        publishedType: publishedTypes.get(field.id) ?? null,
+        publishedType: publishedFields.get(field.id)?.type ?? null,
         updatedAt: field.updatedAt.toISOString(),
       })),
       defaultView: view
@@ -375,6 +377,7 @@ class PrismaObjectsStore implements ObjectsStore {
           }
         : null,
       activeSchema,
+      previousPublishedFields: [...publishedFields.values()],
       automations: (settings.automations ?? []) as unknown as NonNullable<
         ObjectDraft['automations']
       >,
@@ -706,6 +709,61 @@ class PrismaObjectsStore implements ObjectsStore {
     changes: PublicationAnalysis['changes'];
     publishedByMemberId: string;
   }): Promise<ObjectPublicationSummary> {
+    // The cached title is also used by search, export, relations and AI reads.
+    // Rebuild it under the publication's configuration lock so hiding a former
+    // title field cannot leave its value readable through this cache.
+    const titleField = input.schema.fields.find(
+      (field) => field.fieldKey === input.schema.object.titleFieldKey,
+    )!;
+    const labels =
+      titleField.type === 'SINGLE_SELECT' &&
+      Array.isArray(titleField.config.options)
+        ? Object.fromEntries(
+            titleField.config.options.flatMap((option) =>
+              option &&
+              typeof option === 'object' &&
+              !Array.isArray(option) &&
+              typeof option.key === 'string' &&
+              typeof option.label === 'string'
+                ? [[option.key, option.label]]
+                : [],
+            ),
+          )
+        : {};
+    // All allowed title types store strings. Selects use their configured label
+    // with the same legacy-key fallback as the record value engine. Deleted
+    // records may predate a required field; never retain their former title.
+    const [titles] = await this.transaction.$queryRaw<
+      Array<{ invalidCount: number }>
+    >`
+      WITH projected AS (
+        SELECT id, COALESCE(
+          ${JSON.stringify(labels)}::jsonb ->> (data ->> ${titleField.fieldKey}),
+          data ->> ${titleField.fieldKey},
+          '#' || record_no::text
+        ) AS title
+        FROM records
+        WHERE tenant_id = ${this.context.tenantId}::uuid
+          AND object_id = ${input.objectId}::uuid
+      ), refreshed AS (
+        UPDATE records AS record
+        SET title = projected.title
+        FROM projected
+        WHERE record.id = projected.id
+          AND record.tenant_id = ${this.context.tenantId}::uuid
+          AND record.object_id = ${input.objectId}::uuid
+          AND char_length(projected.title) <= ${RECORD_TITLE_MAX_LENGTH}
+          AND record.title IS DISTINCT FROM projected.title
+        RETURNING record.id
+      )
+      SELECT count(*)::int AS "invalidCount" FROM projected
+      WHERE char_length(title) > ${RECORD_TITLE_MAX_LENGTH}
+    `;
+    if (titles.invalidCount > 0) {
+      throw new ApiException('PUBLICATION_BLOCKED', 422, {
+        message: `现有记录的新标题超过 ${RECORD_TITLE_MAX_LENGTH} 个字符，请先缩短该字段值。`,
+      });
+    }
     const publication = await this.transaction.objectPublication.create({
       data: {
         id: input.schema.publication.id,

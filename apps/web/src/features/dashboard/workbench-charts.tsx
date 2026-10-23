@@ -3,6 +3,7 @@
 import { Line } from "@ant-design/charts";
 
 import styles from "./workbench.module.css";
+import { WORKSPACE_TOKENS } from "@/components/theme/workspace-theme";
 
 export function TrendChart({
   title,
@@ -29,7 +30,7 @@ export function TrendChart({
           xField="date"
           yField="value"
           axis={{ x: { title: false }, y: { title: false } }}
-          color="#167568"
+          color={WORKSPACE_TOKENS.primary}
           style={{ lineWidth: 2 }}
         />
       </div>

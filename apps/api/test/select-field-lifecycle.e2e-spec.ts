@@ -21,6 +21,7 @@ interface DraftResponse {
 }
 interface RecordResponse {
   id: string;
+  title: string;
   version: number;
   values: Record<string, unknown>;
 }
@@ -272,6 +273,158 @@ describe('select field lifecycle (e2e)', () => {
     await employee('patch', `${base}/objects/projects/records/${record.id}`)
       .send({ version: record.version, values: { labels: ['t3', 't1'] } })
       .expect(400);
+  });
+
+  it('keeps published option keys protected after a field is retired and restored', async () => {
+    await employee('post', `${base}/objects/projects/records`)
+      .send({ values: { name: '历史标签', labels: ['t1'] } })
+      .expect(201);
+    await patchField('labels', { status: 'INACTIVE' });
+    await publish().expect(201);
+    await patchField('labels', {
+      status: 'ACTIVE',
+      config: { options: [{ key: 't2', label: '乙', status: 'ACTIVE' }] },
+    });
+    expect((await analysis()).blocking).toContainEqual(
+      expect.objectContaining({
+        code: 'FIELD_OPTION_REMOVED',
+        fieldKey: 'labels',
+      }),
+    );
+    await publish().expect(422);
+  });
+
+  it('replaces cached titles when publishing a new title field or option label', async () => {
+    await patchField('priority', { required: true });
+    await publish().expect(201);
+    const record = (
+      await employee('post', `${base}/objects/projects/records`)
+        .send({ values: { name: 'private-former-title', priority: 'p1' } })
+        .expect(201)
+    ).body as RecordResponse;
+    const changed = await admin('patch', designer())
+      .send({ expectedVersion: version, titleFieldKey: 'priority' })
+      .expect(200);
+    version = (changed.body as DraftResponse).object.version;
+    await patchField('name', { required: false });
+    const permissions = await admin('put', designer('/permissions'))
+      .send({
+        expectedVersion: version,
+        canCreate: true,
+        canRead: true,
+        canUpdate: true,
+        canDelete: false,
+        readScope: 'OWN',
+        updateScope: 'OWN',
+        fields: { name: 'HIDDEN', priority: 'EDIT', labels: 'EDIT' },
+      })
+      .expect(200);
+    version = (permissions.body as DraftResponse).object.version;
+    await publish().expect(201);
+    const detail = (
+      await employee(
+        'get',
+        `${base}/objects/projects/records/${record.id}`,
+      ).expect(200)
+    ).body as RecordResponse;
+    expect(detail.values).not.toHaveProperty('name');
+    expect(detail.title).toBe('紧急');
+    const newSearch = await employee('get', `${base}/objects/projects/records`)
+      .query({ search: '紧急' })
+      .expect(200);
+    expect(
+      (newSearch.body as { items: RecordResponse[] }).items.map(
+        (item) => item.id,
+      ),
+    ).toEqual([record.id]);
+    const oldSearch = await employee('get', `${base}/objects/projects/records`)
+      .query({ search: 'private-former-title' })
+      .expect(200);
+    expect((oldSearch.body as { items: unknown[] }).items).toEqual([]);
+    const exported = await employee(
+      'get',
+      `${base}/objects/projects/records/export`,
+    ).expect(200);
+    expect(exported.text).toContain('紧急');
+    expect(exported.text).not.toContain('private-former-title');
+    await patchField('priority', {
+      config: {
+        options: [
+          { key: 'p1', label: '高优先级', status: 'ACTIVE' },
+          { key: 'p2', label: '普通', status: 'ACTIVE' },
+        ],
+      },
+    });
+    await publish().expect(201);
+    const relabeled = await employee(
+      'get',
+      `${base}/objects/projects/records/${record.id}`,
+    ).expect(200);
+    expect((relabeled.body as RecordResponse).title).toBe('高优先级');
+    expect((relabeled.body as RecordResponse).version).toBe(record.version);
+  });
+
+  it('rolls back title refresh and publication when an existing new title is too long', async () => {
+    const added = await admin('post', designer('/fields'))
+      .send({
+        expectedVersion: version,
+        fieldKey: 'email',
+        label: '邮箱',
+        type: 'EMAIL',
+        required: true,
+      })
+      .expect(201);
+    version = (added.body as DraftResponse).object.version;
+    const permissions = await admin('put', designer('/permissions'))
+      .send({
+        expectedVersion: version,
+        canCreate: true,
+        canRead: true,
+        canUpdate: true,
+        canDelete: false,
+        readScope: 'OWN',
+        updateScope: 'OWN',
+        fields: {
+          name: 'EDIT',
+          priority: 'EDIT',
+          labels: 'EDIT',
+          email: 'EDIT',
+        },
+      })
+      .expect(200);
+    version = (permissions.body as DraftResponse).object.version;
+    await publish().expect(201);
+    const longEmail = `${'a'.repeat(64)}@${'b'.repeat(63)}.${'c'.repeat(63)}.${'d'.repeat(63)}.${'e'.repeat(43)}.com`;
+    const records: RecordResponse[] = [];
+    for (const email of ['short@example.com', longEmail]) {
+      records.push(
+        (
+          await employee('post', `${base}/objects/projects/records`)
+            .send({ values: { name: '原标题', email } })
+            .expect(201)
+        ).body as RecordResponse,
+      );
+    }
+    const publicationCount = await adminDatabase.objectPublication.count({
+      where: { objectId },
+    });
+    const changed = await admin('patch', designer())
+      .send({ expectedVersion: version, titleFieldKey: 'email' })
+      .expect(200);
+    version = (changed.body as DraftResponse).object.version;
+    const refused = await publish().expect(422);
+    expect((refused.body as ErrorResponse).code).toBe('PUBLICATION_BLOCKED');
+    expect(
+      await adminDatabase.objectPublication.count({ where: { objectId } }),
+    ).toBe(publicationCount);
+    for (const record of records) {
+      const detail = await employee(
+        'get',
+        `${base}/objects/projects/records/${record.id}`,
+      ).expect(200);
+      expect((detail.body as RecordResponse).title).toBe('原标题');
+      expect((detail.body as RecordResponse).version).toBe(record.version);
+    }
   });
 
   it('refuses to publish a deleted published option, a select with no active option or an invalid default', async () => {

@@ -42,6 +42,8 @@ export interface ObjectConfigurationDraft {
   defaultView: PublicationDraft['defaultView'];
   employeeAccess: PublicationDraft['employeeAccess'];
   previousFields?: PublishedField[];
+  /** Historical definitions protect retired options without changing the current diff. */
+  historicalFields?: PublishedField[];
 }
 
 export interface CompleteObjectConfigurationDraft extends ObjectConfigurationDraft {
@@ -77,7 +79,10 @@ export function analyzeObjectConfiguration(
   );
   const titleField = activeFieldByKey.get(input.object.titleFieldKey);
   const previousByKey = new Map(
-    (input.previousFields ?? []).map((field) => [field.fieldKey, field]),
+    (input.historicalFields ?? input.previousFields ?? []).map((field) => [
+      field.fieldKey,
+      field,
+    ]),
   );
 
   if (!/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(input.object.code)) {

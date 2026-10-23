@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 
 import { LandingPage } from "@/features/landing/landing-page";
 
-const TITLE = "百杰 CRM：线索有人领，跟进有期限，表格按你的业务来搭";
+const TITLE = "百杰 CRM：按你的业务搭建的客户管理工作区";
 const DESCRIPTION =
-  "百杰 CRM 是给中小团队用的客户管理工作区。管理员自己搭业务表、字段和权限；线索放进公海，同事领取、联系、跟进，到期没推进的自动收回。支持 Excel 导入、流程、站内提醒和需确认后执行的 AI 助手。";
+  "百杰 CRM 是可配置的客户管理工作区：管理员自己搭建业务表、字段和权限；线索在公海里领取、限时联系，跟进和任务按时提醒，团队进展来自系统记录。支持 Excel 导入、跨表自动化和需你确认后才执行的 AI 助手。";
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },

@@ -53,16 +53,22 @@ export async function loadRuntimeObject(
     let page = 1;
     let loaded = 0;
     while (true) {
-      const roster = await client.GET("/api/v1/workspaces/{tenantCode}/members", {
-        params: { path: { tenantCode }, query: { page, limit: 100 } },
-      });
+      const roster = await client.GET(
+        "/api/v1/workspaces/{tenantCode}/members",
+        {
+          params: { path: { tenantCode }, query: { page, limit: 100 } },
+        },
+      );
       if (!roster.data) throw asError(roster.error, roster.response.status);
-      members.push(...roster.data.items
-        .filter((member) => member.status === "ACTIVE")
-        .map((member) => ({
+      // Disabled members stay in the roster so the records they still own
+      // show their name; every picker offers active members only.
+      members.push(
+        ...roster.data.items.map((member) => ({
           id: member.id,
           displayName: member.displayName ?? null,
-        })));
+          status: member.status,
+        })),
+      );
       loaded += roster.data.items.length;
       if (loaded >= roster.data.total || roster.data.items.length === 0) break;
       page += 1;

@@ -6,7 +6,8 @@
   display: flex;
   flex-direction: column;
   min-height: 100%;
-  padding: 18px 24px 0;
+  padding: 20px 24px 0;
+  background: var(--bg-page);
 }
 
 .page > header {
@@ -43,10 +44,8 @@
 }
 
 .conditionRow {
-  min-height: 40px;
-  padding: 6px 0;
-  margin-top: 8px;
-  border-top: 1px solid var(--border-hairline);
+  min-height: 36px;
+  padding: 8px 0 10px;
 }
 
 .rowStart,
@@ -167,11 +166,17 @@
 
 /* ---------- table ---------- */
 
+/* The data sits on its own white panel above the page; overflow: clip keeps
+   the rounded corners without becoming a scroll container, so the sticky
+   header still sticks to the app's scrolling main. */
 .data {
   flex: 1;
   min-width: 0;
-  margin: 0 -24px;
-  border-top: 1px solid var(--border-hairline);
+  overflow: clip;
+  border: 1px solid var(--border-default);
+  border-bottom: 0;
+  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+  background: var(--bg-surface);
 }
 
 .table :global(.ant-table) {
@@ -186,7 +191,11 @@
 
 .table :global(.ant-table-thead > tr > th:first-child),
 .table :global(.ant-table-tbody > tr > td:first-child) {
-  padding-left: 24px;
+  padding-left: 16px;
+}
+
+.table :global(.ant-table-tbody > tr > td) {
+  vertical-align: top;
 }
 
 .table :global(.ant-table-thead > tr > th) {
@@ -246,10 +255,13 @@ th[data-resizing="true"] .columnResizer::after {
   align-items: center;
   justify-content: space-between;
   min-height: 44px;
-  padding: 6px 24px;
-  margin: 0 -24px;
-  border-top: 1px solid var(--border-hairline);
+  padding: 6px 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-default);
+  border-top-color: var(--border-hairline);
+  border-radius: 0 0 var(--radius-panel) var(--radius-panel);
   background: var(--bg-surface);
+  transition: background-color var(--motion-fast) ease;
 }
 
 .footer[data-selecting="true"] {
@@ -292,35 +304,6 @@ th[data-resizing="true"] .columnResizer::after {
   color: var(--text-secondary);
 }
 
-/* ---------- column chooser ---------- */
-
-.columnPanel {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  width: 220px;
-  max-height: 60vh;
-  overflow: auto;
-}
-
-.columnHint {
-  margin-bottom: 6px;
-  color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 20px;
-}
-
-.columnOption:global(.ant-checkbox-wrapper) {
-  padding: 4px 2px;
-  margin-inline-start: 0;
-}
-
-.columnReset:global(.ant-btn) {
-  align-self: flex-start;
-  padding: 0;
-  margin-top: 6px;
-}
-
 /* ---------- filter popover (record-filter-controls) ---------- */
 
 .filterPanel {
@@ -343,7 +326,7 @@ th[data-resizing="true"] .columnResizer::after {
   list-style: none;
 }
 
-.conditionRow {
+.conditionItem {
   display: flex;
   gap: 8px;
   align-items: center;
@@ -449,15 +432,23 @@ th[data-resizing="true"] .columnResizer::after {
 }
 
 .cardMeta dd {
+  min-width: 0;
   overflow: hidden;
   color: var(--text-primary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 @media (max-width: 767px) {
   .page {
     padding: 14px 14px 0;
+  }
+
+  /* No scope or saved views: no empty row above the search box. */
+  .rowStart:empty {
+    display: none;
+  }
+
+  .data {
+    border-radius: var(--radius-panel) var(--radius-panel) 0 0;
   }
 
   .viewRow,
@@ -490,7 +481,7 @@ th[data-resizing="true"] .columnResizer::after {
   }
 
   .data {
-    margin: 0 -14px;
+    margin: 0;
   }
 
   .cards {
@@ -498,14 +489,20 @@ th[data-resizing="true"] .columnResizer::after {
     list-style: none;
   }
 
-  .table {
+  .data:has(.cards) .table {
     display: none;
   }
 
   .footer {
     flex-wrap: wrap;
-    padding: 6px 14px;
-    margin: 0 -14px;
+    padding: 6px 12px;
+    margin-bottom: 12px;
+  }
+
+  .footer .rowEnd {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    width: 100%;
   }
 }
 
@@ -515,8 +512,246 @@ th[data-resizing="true"] .columnResizer::after {
   display: flex;
   flex-direction: column;
   min-height: 100%;
+  background: var(--bg-page);
 }
 
 .workspace > .page {
   flex: 1;
+}
+
+/* ---------- cells: reading density and value types ---------- */
+
+/* 紧凑 one line; 舒适 up to three lines; 完整 everything with line breaks.
+   Long unbroken strings (URLs, codes) may break anywhere so they never push
+   the column wider. */
+.cellText {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.cellText[data-density="compact"] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cellText[data-density="comfortable"] {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+.cellText[data-density="full"] {
+  white-space: pre-wrap;
+}
+
+.noWrap {
+  white-space: nowrap;
+}
+
+.titleLink {
+  display: block;
+  overflow-wrap: anywhere;
+  font-weight: 500;
+}
+
+.titleLink[data-density="compact"] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.titleLink[data-density="comfortable"] {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+/* A cut-off value is a button: Enter, a click or a tap opens the reader. */
+.cellButton {
+  display: block;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 2px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: zoom-in;
+}
+
+.cellButton:hover .cellText {
+  text-decoration: underline dotted var(--text-tertiary);
+  text-underline-offset: 3px;
+}
+
+.cellButton:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.emptyValue {
+  color: var(--text-disabled);
+}
+
+.copyable {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+  max-width: 100%;
+}
+
+.copyable > :first-child {
+  min-width: 0;
+}
+
+.copyButton:global(.ant-btn) {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  color: var(--text-tertiary);
+  opacity: 0;
+  transition: opacity var(--motion-fast) ease;
+}
+
+.copyButton:global(.ant-btn):focus-visible,
+.table :global(.ant-table-row:hover) .copyButton:global(.ant-btn),
+.card:hover .copyButton:global(.ant-btn) {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .copyButton:global(.ant-btn) {
+    opacity: 1;
+  }
+}
+
+.tagValues {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  min-width: 0;
+}
+
+.tagValues[data-density="compact"] {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+/* A badge never squeezes into two lines; compact mode shows fewer instead. */
+.tagValues > * {
+  flex: none;
+}
+
+.moreTags {
+  flex: none;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.moreTags:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.readerRecord {
+  margin-bottom: 8px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+.readerText {
+  max-height: 60vh;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  line-height: 24px;
+}
+
+/* ---------- display settings ---------- */
+
+.displayPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 300px;
+  max-height: min(70vh, 560px);
+  overflow: auto;
+}
+
+.displayHeading {
+  margin: 0 0 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.displayHint {
+  margin-top: 6px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.displayColumns {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.displayColumns li {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+  padding: 0 2px 0 4px;
+  border-radius: var(--radius-control);
+}
+
+.displayColumns li:hover {
+  background: var(--bg-hover);
+}
+
+.displayColumnTools {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+.displayOwner:global(.ant-checkbox-wrapper) {
+  padding: 4px;
+}
+
+.displayFooter {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-hairline);
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
 }

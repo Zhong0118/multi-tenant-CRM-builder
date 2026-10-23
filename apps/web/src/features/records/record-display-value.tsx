@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+
+import { MemberIdentity } from "@/components/identity/member-identity";
 import {
   selectOptions,
   type PublishedFieldView,
@@ -15,7 +17,33 @@ export function displayRecordOwner(
   if (!ownerMemberId) return "未指定";
   const member = members.find((candidate) => candidate.id === ownerMemberId);
   if (member) return member.displayName?.trim() || "未设置姓名";
-  return ownerMemberId === currentMemberId ? "我" : "已指定";
+  return ownerMemberId === currentMemberId ? "我" : "其他成员";
+}
+
+/** The owner as an identity: avatar and name, 未指定, or 其他成员 — never an id. */
+export function RecordOwner({
+  ownerMemberId,
+  members,
+  currentMemberId,
+  size = "sm",
+}: {
+  ownerMemberId: string | null | undefined;
+  members: DynamicFieldMember[];
+  currentMemberId?: string;
+  size?: "sm" | "md";
+}) {
+  return (
+    <MemberIdentity
+      size={size}
+      member={
+        ownerMemberId
+          ? members.find((candidate) => candidate.id === ownerMemberId)
+          : undefined
+      }
+      memberId={ownerMemberId ?? null}
+      currentMemberId={currentMemberId}
+    />
+  );
 }
 
 export function displayValue(
@@ -39,8 +67,11 @@ export function displayValue(
       );
     case "MEMBER":
       return (
-        members.find((member) => member.id === value)?.displayName ??
-        String(value)
+        <MemberIdentity
+          size="sm"
+          member={members.find((member) => member.id === value)}
+          memberId={String(value)}
+        />
       );
     case "DATETIME":
       return formatDateTime(String(value));

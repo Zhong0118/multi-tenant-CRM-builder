@@ -132,8 +132,24 @@ const conflict = {
 describe("RecordForm creating a record", () => {
   it("locks fields and owner while saving and after commit", async () => {
     let resolve!: (record: typeof savedRecord) => void;
-    const api = recordApi({ create: vi.fn(() => new Promise<typeof savedRecord>((done) => { resolve = done; })) });
-    renderForm(<RecordForm tenantCode="northwind" schema={schema()} api={api} canChooseOwner members={[{ id: "member-lin", displayName: "林员工" }]} onSaved={vi.fn()} />);
+    const api = recordApi({
+      create: vi.fn(
+        () =>
+          new Promise<typeof savedRecord>((done) => {
+            resolve = done;
+          }),
+      ),
+    });
+    renderForm(
+      <RecordForm
+        tenantCode="northwind"
+        schema={schema()}
+        api={api}
+        canChooseOwner
+        members={[{ id: "member-lin", displayName: "林员工" }]}
+        onSaved={vi.fn()}
+      />,
+    );
     const name = screen.getByLabelText("客户名称");
     const amount = screen.getByLabelText("合同金额");
     const owner = screen.getByLabelText("负责人");
@@ -150,16 +166,33 @@ describe("RecordForm creating a record", () => {
     expect(amount).toBeDisabled();
     expect(owner).toBeDisabled();
     expect(name).toHaveValue("提交快照");
-    expect(vi.mocked(api.create).mock.calls[0][2].values).toEqual({ name: "提交快照" });
+    expect(vi.mocked(api.create).mock.calls[0][2].values).toEqual({
+      name: "提交快照",
+    });
   });
   it("does not create again while the real create panel waits for its non-awaitable route replacement", async () => {
     router.replace.mockClear();
-    const create = vi.spyOn(defaultRecordApi, "create").mockResolvedValue(savedRecord);
-    renderForm(<NewRecordPanel tenantCode="northwind" schema={schema()} members={[]} canChooseOwner={false} />);
-    fireEvent.change(screen.getByLabelText("客户名称"), { target: { value: "已提交" } });
+    const create = vi
+      .spyOn(defaultRecordApi, "create")
+      .mockResolvedValue(savedRecord);
+    renderForm(
+      <NewRecordPanel
+        tenantCode="northwind"
+        schema={schema()}
+        members={[]}
+        canChooseOwner={false}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("客户名称"), {
+      target: { value: "已提交" },
+    });
     const submit = screen.getByRole("button", { name: "创建记录" });
     fireEvent.click(submit);
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/workspace/northwind/objects/customers/record-1"));
+    await waitFor(() =>
+      expect(router.replace).toHaveBeenCalledWith(
+        "/workspace/northwind/objects/customers/record-1",
+      ),
+    );
     await waitFor(() => expect(submit).toBeDisabled());
     fireEvent.click(submit);
     expect(create).toHaveBeenCalledTimes(1);
@@ -168,11 +201,24 @@ describe("RecordForm creating a record", () => {
   });
   it("reports committed create separately when its refresh callback rejects", async () => {
     const api = recordApi();
-    renderForm(<RecordForm tenantCode="northwind" schema={schema()} api={api} onSaved={async () => { throw new Error("refresh callback unavailable"); }} />);
-    fireEvent.change(screen.getByLabelText("客户名称"), { target: { value: "已提交" } });
+    renderForm(
+      <RecordForm
+        tenantCode="northwind"
+        schema={schema()}
+        api={api}
+        onSaved={async () => {
+          throw new Error("refresh callback unavailable");
+        }}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("客户名称"), {
+      target: { value: "已提交" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "创建记录" }));
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("记录已保存，但刷新暂时失败。请重新载入查看最新记录，不要重复提交。");
+    expect(alert).toHaveTextContent(
+      "记录已保存，但刷新暂时失败。请重新载入查看最新记录，不要重复提交。",
+    );
     expect(screen.queryByText(/服务暂时不可用/)).not.toBeInTheDocument();
     expect(api.create).toHaveBeenCalledTimes(1);
     expect(screen.getByLabelText("客户名称")).toHaveValue("已提交");
@@ -355,5 +401,87 @@ describe("RecordForm updating a record", () => {
 
     expect(await screen.findByText("金额最多 2 位小数。")).toBeInTheDocument();
     expect(screen.getByLabelText("合同金额")).toHaveValue("1200.00");
+  });
+});
+
+describe("RecordForm unsaved changes", () => {
+  const existing = {
+    ...savedRecord,
+    version: 3,
+    values: { name: "百杰", amount: "1200.00", rating: "gold" },
+  };
+
+  it("cancels straight away when nothing changed", () => {
+    const onCancel = vi.fn();
+    renderForm(
+      <RecordForm
+        tenantCode="northwind"
+        schema={schema()}
+        record={existing}
+        api={recordApi()}
+        onSaved={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^取\s?消$/ }));
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  it("asks before discarding an edit, and keeps it when the member stays", async () => {
+    const onCancel = vi.fn();
+    const onDirtyChange = vi.fn();
+    renderForm(
+      <RecordForm
+        tenantCode="northwind"
+        schema={schema()}
+        record={existing}
+        api={recordApi()}
+        onSaved={vi.fn()}
+        onCancel={onCancel}
+        onDirtyChange={onDirtyChange}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("客户名称"), {
+      target: { value: "百杰科技" },
+    });
+    expect(onDirtyChange).toHaveBeenLastCalledWith(true);
+
+    fireEvent.click(screen.getByRole("button", { name: /^取\s?消$/ }));
+    expect(
+      (await screen.findAllByText("放弃未保存的修改？")).length,
+    ).toBeGreaterThan(0);
+    expect(onCancel).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "继续编辑" }));
+    expect(screen.getByLabelText("客户名称")).toHaveValue("百杰科技");
+    expect(onCancel).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: /^取\s?消$/ }));
+    const discard = await screen.findAllByRole("button", { name: "放弃修改" });
+    fireEvent.click(discard.at(-1)!);
+    await waitFor(() => expect(onCancel).toHaveBeenCalledOnce());
+  });
+
+  it("warns before the page unloads while an edit is unsaved", () => {
+    renderForm(
+      <RecordForm
+        tenantCode="northwind"
+        schema={schema()}
+        record={existing}
+        api={recordApi()}
+        onSaved={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    const clean = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(clean);
+    expect(clean.defaultPrevented).toBe(false);
+
+    fireEvent.change(screen.getByLabelText("客户名称"), {
+      target: { value: "百杰科技" },
+    });
+    const dirty = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(dirty);
+    expect(dirty.defaultPrevented).toBe(true);
   });
 });

@@ -1,436 +1,471 @@
 import Link from "next/link";
 
-import { AiDemo } from "./ai-demo";
-import {
-  ACCESS_POINTS,
-  COMPANY,
-  DAILY_POINTS,
-  DATA_POINTS,
-  FAQ,
-  FIELD_TYPES,
-  FLOW_POINTS,
-  ICP_RECORD,
-  ROADMAP,
-  TABLE_POINTS,
-} from "./content";
-import { HeroWorkspace } from "./hero-workspace";
+import { COMPANY, FAQ, ICP_RECORD, NAV_LINKS, START_STEPS } from "./content";
+import { ProductDemo } from "./demo/product-demo";
 import { LandingNav } from "./landing-nav";
 import { LogoMark } from "./logo-mark";
+import { LandingMotion } from "./landing-motion";
+import { RecordJourney } from "./record-journey";
+import {
+  ArrowRightOutlined,
+  CheckOutlined,
+  LockOutlined,
+  TeamOutlined,
+  ThunderboltOutlined,
+} from "./landing-icons";
 import { Phrases } from "./phrases";
-import { PoolJourney } from "./pool-journey";
-import { RevealObserver } from "./reveal";
-import { TableDesigner } from "./table-designer";
 import styles from "./landing.module.css";
 
-const ROOT_ID = "top";
-
-const ACCESS_ROWS = [
-  { name: "南湖实验学校 新校区教室家具", owner: "周航", margin: "41,000" },
-  { name: "城东社区医院 候诊区座椅", owner: "唐悦", margin: "8,900" },
-  { name: "启明设计事务所 办公室翻新", owner: "林岚", margin: "22,300" },
-  { name: "青禾幼儿园 午休床", owner: "周航", margin: "5,200" },
+const EXTRAS = [
+  "首页仪表盘",
+  "导入与导出",
+  "附件",
+  "任务与日报",
+  "离职交接",
+  "审计记录",
 ];
-
-const WORKBENCH = [
-  {
-    title: "今天",
-    items: [
-      { time: "16:00", text: "南湖实验学校 · 确认报价单" },
-      { time: "17:30", text: "城东社区医院 · 回访样品意见" },
-    ],
-  },
-  {
-    title: "已逾期",
-    tone: "amber",
-    items: [{ time: "2 天", text: "滨江职业学校 · 补发合同盖章页" }],
-  },
-  {
-    title: "未来 7 天",
-    items: [
-      { time: "周五", text: "启明设计事务所 · 上门量尺" },
-      { time: "下周一", text: "青禾幼儿园 · 送样" },
-    ],
-  },
-];
-
-const NOTICES = [
-  "联系期限还剩 2 小时：北岸物业服务中心",
-  "跟进到期：南湖实验学校 新校区教室家具",
-  "超过 24 小时未联系，已收回线索池：青禾幼儿园",
-  "成交保护待复核：启明设计事务所",
-];
-
-const FLOW = ["需求确认", "方案报价", "商务谈判", "赢单"];
 
 export function LandingPage() {
   return (
-    <div className={styles.page} id={ROOT_ID}>
-      <a href="#main" className={styles.skip}>
-        跳到正文
-      </a>
-      <LandingNav />
-      <RevealObserver rootId={ROOT_ID} />
+    <LandingMotion>
+      <div className={styles.page} id="top">
+        <a href="#main" className={styles.skip}>
+          跳到正文
+        </a>
+        <LandingNav />
 
-      <main id="main">
-        <section className={styles.hero} aria-labelledby="hero-title">
-          <div className={`${styles.container} ${styles.heroBand}`}>
-            <h1 id="hero-title">
-              <Phrases text="线索有人领，跟进有期限，" />
-              <br />
-              <Phrases text="表格按你的业务来搭" />
-            </h1>
-            <div className={styles.heroAside}>
-              <p className={styles.lead}>
-                百杰 CRM
-                是给中小团队用的客户管理工作区。管理员自己搭业务表和权限；线索放进公海，同事领取、联系、跟进，到期没推进的自动收回。
+        <main id="main">
+          <section className={styles.hero} aria-labelledby="hero-title">
+            <div className={`${styles.container} ${styles.heroBand}`}>
+              <div className={styles.heroEyebrow} data-hero-enter>
+                <span /> 为团队搭建的业务协作 CRM
+              </div>
+              <h1 id="hero-title" data-hero-enter>
+                把分散的表格
+                <br />
+                <span className={styles.heroAccent}>连成团队的生意</span>
+              </h1>
+              <p className={styles.lead} data-hero-enter>
+                从一份客户名单，到一次成交
+                <br className={styles.mobileBreak} />
+                让数据、跟进与协作，在同一个工作区里发生
               </p>
-              <div className={styles.heroActions}>
-                <Link href="/login" className={styles.buttonPrimary}>
-                  登录工作区
+              <div className={styles.heroActions} data-hero-enter>
+                <Link href="/register" className={styles.buttonPrimary}>
+                  创建账号 <ArrowRightOutlined />
                 </Link>
-                <Link href="/register" className={styles.buttonSecondary}>
-                  用手机号创建账号
-                </Link>
+                <a href="#scenarios" className={styles.buttonSecondary}>
+                  体验产品 <ArrowRightOutlined />
+                </a>
+              </div>
+              <div className={styles.heroProof} data-hero-enter>
+                <span>
+                  <CheckOutlined /> 业务表自由配置
+                </span>
+                <span>
+                  <CheckOutlined /> 公海与跟进闭环
+                </span>
+                <span>
+                  <CheckOutlined /> 权限细到每一列
+                </span>
+              </div>
+              <div
+                className={styles.flowRibbon}
+                aria-hidden="true"
+                data-hero-enter
+              >
+                <span>客户名单.xlsx</span>
+                <i />
+                <span>客户档案</span>
+                <i />
+                <span>跟进与询单</span>
+                <i />
+                <span>合同与回款</span>
               </div>
             </div>
-          </div>
-          <div className={`${styles.container} ${styles.heroStage}`}>
-            <p className={styles.heroHint}>
-              <span aria-hidden="true">↓</span> 在这张表里点“领取”
-            </p>
-            <HeroWorkspace />
-          </div>
-        </section>
 
-        <section
-          id="tables"
-          className={styles.section}
-          aria-labelledby="tables-title"
-        >
-          <div className={styles.container}>
-            <header className={styles.sectionHead} data-reveal>
-              <p className={styles.kicker}>搭表</p>
-              <h2 id="tables-title">
-                <Phrases text="表怎么建，由你的业务决定" />
-              </h2>
-              <p>
-                客户、商机、合同、回款，每家公司的表都不一样。管理员在草稿里加字段、调列表、设权限，确认无误再发布给同事。
-              </p>
-            </header>
-            <div data-reveal>
-              <TableDesigner />
-            </div>
-            <div className={styles.splitPoints} data-reveal>
-              <dl className={styles.points}>
-                {TABLE_POINTS.map((point) => (
-                  <div key={point.term}>
-                    <dt>{point.term}</dt>
-                    <dd>{point.detail}</dd>
-                  </div>
-                ))}
-              </dl>
-              <div className={styles.fieldTypes}>
-                <p>{FIELD_TYPES.length} 种字段</p>
-                <ul>
-                  {FIELD_TYPES.map((type) => (
-                    <li key={type}>{type}</li>
-                  ))}
-                </ul>
+            <div
+              id="scenarios"
+              className={`${styles.container} ${styles.demoWrap}`}
+              aria-label="产品演示"
+              role="region"
+            >
+              <div className={styles.demoHeading}>
+                <span>你的业务，打开就能看懂</span>
+                <small>选择一个场景，试着操作</small>
               </div>
+              <ProductDemo />
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section
-          id="pool"
-          className={`${styles.section} ${styles.sectionPaper}`}
-          aria-labelledby="pool-title"
-        >
-          <div className={styles.container}>
-            <header className={styles.sectionHead} data-reveal>
-              <p className={styles.kicker}>线索公海</p>
-              <h2 id="pool-title">
-                <Phrases text="每条线索，都知道谁在跟、还剩多久" />
-              </h2>
-              <p>
-                公海里的线索分四个阶段，每个阶段都有负责人和期限。期限内没有推进，就回到线索池，换别人接着跟。期限按业务表设置，下面是默认值。
-              </p>
-            </header>
-            <PoolJourney />
-          </div>
-        </section>
+          <RecordJourney />
 
-        <section
-          id="data"
-          className={styles.section}
-          aria-labelledby="data-title"
-        >
-          <div className={styles.container}>
-            <header className={styles.sectionHead} data-reveal>
-              <p className={styles.kicker}>数据与流程</p>
-              <h2 id="data-title">
-                <Phrases text="旧表格搬得进来，流程走得下去" />
-              </h2>
-            </header>
-            <div className={styles.twoCol}>
-              <div data-reveal>
-                <h3 className={styles.colTitle}>数据进出</h3>
-                <dl className={styles.points}>
-                  {DATA_POINTS.map((point) => (
-                    <div key={point.term}>
-                      <dt>{point.term}</dt>
-                      <dd>{point.detail}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </div>
-              <div data-reveal>
-                <h3 className={styles.colTitle}>流程</h3>
-                <figure className={styles.flow}>
-                  <figcaption>商机 · 阶段</figcaption>
-                  <ol>
-                    {FLOW.map((step, index) => (
-                      <li
-                        key={step}
-                        data-current={index === FLOW.length - 1 || undefined}
-                      >
-                        {step}
-                      </li>
-                    ))}
-                  </ol>
-                  <p className={styles.flowEffect}>
-                    <span aria-hidden="true">↳</span>
-                    这家公司配置了：推进到“赢单”时，在合同表新建一条记录并与商机关联，再创建一条“准备合同”的跟进。
-                  </p>
-                </figure>
-                <ul className={styles.plainList}>
-                  {FLOW_POINTS.map((point) => (
-                    <li key={point}>{point}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section
-          id="access"
-          className={`${styles.section} ${styles.sectionPaper}`}
-          aria-labelledby="access-title"
-        >
-          <div className={styles.container}>
-            <header className={styles.sectionHead} data-reveal>
-              <p className={styles.kicker}>权限</p>
-              <h2 id="access-title">
-                <Phrases text="同一张表，每个人看到该看的" />
-              </h2>
-              <p>
-                商机表设为“仅本人负责”，预计毛利对员工隐藏。同一时刻，公司管理员和销售周航看到的是这样：
-              </p>
-            </header>
-            <div className={styles.accessViews} data-reveal>
-              <figure>
-                <figcaption>公司管理员 · 全部记录</figcaption>
-                <table className={styles.miniTable}>
-                  <thead>
-                    <tr>
-                      <th scope="col">商机</th>
-                      <th scope="col">负责人</th>
-                      <th scope="col" className={styles.num}>
-                        预计毛利
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ACCESS_ROWS.map((row) => (
-                      <tr key={row.name}>
-                        <td>{row.name}</td>
-                        <td>{row.owner}</td>
-                        <td className={styles.num}>{row.margin}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </figure>
-              <figure>
-                <figcaption>销售 周航 · 仅本人负责</figcaption>
-                <table className={styles.miniTable}>
-                  <thead>
-                    <tr>
-                      <th scope="col">商机</th>
-                      <th scope="col">负责人</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ACCESS_ROWS.filter((row) => row.owner === "周航").map(
-                      (row) => (
-                        <tr key={row.name}>
-                          <td>{row.name}</td>
-                          <td>{row.owner}</td>
-                        </tr>
-                      ),
-                    )}
-                  </tbody>
-                </table>
-                <p className={styles.previewFoot}>
-                  另外 2 条不在列表里，预计毛利这一列不出现，AI 助手也读不到。
+          <section
+            id="product"
+            className={styles.section}
+            aria-labelledby="product-title"
+          >
+            <div className={styles.container}>
+              <header className={styles.sectionHead} data-reveal>
+                <h2 id="product-title">
+                  <Phrases text="一套 CRM，按你的业务来配" />
+                </h2>
+                <p>
+                  不用把业务硬塞进一张固定的客户表。表怎么建、谁能看什么、线索怎么流转，都由你们决定。
                 </p>
-              </figure>
-            </div>
-            <ul className={`${styles.plainList} ${styles.columns}`} data-reveal>
-              {ACCESS_POINTS.map((point) => (
-                <li key={point}>{point}</li>
-              ))}
-            </ul>
-          </div>
-        </section>
+              </header>
 
-        <section
-          id="daily"
-          className={styles.section}
-          aria-labelledby="daily-title"
-        >
-          <div className={styles.container}>
-            <header className={styles.sectionHead} data-reveal>
-              <p className={styles.kicker}>每天</p>
-              <h2 id="daily-title">
-                <Phrases text="每天打开，先看到今天要做的事" />
-              </h2>
-            </header>
-            <div className={styles.daily} data-reveal>
-              <div className={styles.workbench}>
-                {WORKBENCH.map((group) => (
-                  <div key={group.title} data-tone={group.tone}>
-                    <h3>
-                      {group.title} <b>{group.items.length}</b>
-                    </h3>
-                    <ul>
-                      {group.items.map((item) => (
-                        <li key={item.text}>
-                          <span className={styles.when}>{item.time}</span>
-                          <span>{item.text}</span>
-                        </li>
-                      ))}
-                    </ul>
+              <div className={styles.features} data-reveal>
+                <article className={`${styles.feature} ${styles.featureWide}`}>
+                  <div className={styles.featureText}>
+                    <h3>业务表按需搭建</h3>
+                    <p>
+                      客户、商机、合同、回款……字段、选项、列表和流程状态都由管理员在草稿里调整，发布后同事才用到。可以从业务模板开始；不再用的字段和表停用即可，数据保留。
+                    </p>
                   </div>
-                ))}
-              </div>
-              <div className={styles.notices}>
-                <h3>消息</h3>
-                <ul>
-                  {NOTICES.map((notice) => (
-                    <li key={notice}>{notice}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-            <dl className={`${styles.points} ${styles.pointsRow}`} data-reveal>
-              {DAILY_POINTS.map((point) => (
-                <div key={point.term}>
-                  <dt>{point.term}</dt>
-                  <dd>{point.detail}</dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        </section>
+                  <figure className={styles.visual} aria-hidden="true">
+                    <div className={styles.visualHead}>
+                      <b>商机</b>
+                      <span className={styles.pill} data-tone="warn">
+                        草稿 · 1 处待发布
+                      </span>
+                    </div>
+                    <ul className={styles.fields}>
+                      <li>
+                        商机名称<span>文本</span>
+                      </li>
+                      <li>
+                        阶段<span>单选</span>
+                      </li>
+                      <li>
+                        金额<span>金额</span>
+                      </li>
+                      <li data-new>
+                        预计签约<span>日期</span>
+                      </li>
+                    </ul>
+                    <p className={styles.visualFoot}>
+                      12 种字段：文本、电话、金额、日期、单选、多选、成员……
+                    </p>
+                  </figure>
+                </article>
 
-        <section
-          id="ai"
-          className={`${styles.section} ${styles.sectionDark}`}
-          aria-labelledby="ai-title"
-        >
-          <div className={`${styles.container} ${styles.aiLayout}`}>
-            <header className={styles.sectionHead} data-reveal>
-              <p className={styles.kicker}>AI 助手</p>
-              <h2 id="ai-title">
-                <Phrases text="会回答，要改数据时先问你" />
-              </h2>
-              <ul className={styles.plainList}>
-                <li>
-                  用中文提问。范围和你在工作区里能看到的一致，没有权限的表、记录和隐藏字段都不会读取。
-                </li>
-                <li>回答下面列出引用的记录，点开就能核对。</li>
-                <li>
-                  需要新建或修改时，只给出待确认的建议。你确认后，系统重新检查权限和记录版本再执行；记录在此期间被别人改过，就不会覆盖。
-                </li>
-                <li>AI 助手由平台开通后才能使用。</li>
-              </ul>
-            </header>
-            <div data-reveal>
-              <AiDemo />
-            </div>
-          </div>
-        </section>
+                <article className={styles.feature}>
+                  <div className={styles.featureText}>
+                    <h3>权限到表、记录和字段</h3>
+                    <p>
+                      每张表可设为全部记录、仅本人负责或无权访问；每个字段可编辑、只读或隐藏。限制在服务端执行，AI
+                      助手同样遵守。
+                    </p>
+                  </div>
+                  <figure className={styles.visual} aria-hidden="true">
+                    <table className={styles.permTable}>
+                      <thead>
+                        <tr>
+                          <th />
+                          <th>管理员</th>
+                          <th>销售</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <th>商机记录</th>
+                          <td>全部</td>
+                          <td>仅本人负责</td>
+                        </tr>
+                        <tr>
+                          <th>金额</th>
+                          <td>可编辑</td>
+                          <td>只读</td>
+                        </tr>
+                        <tr>
+                          <th>预计毛利</th>
+                          <td>可编辑</td>
+                          <td data-off>隐藏</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </figure>
+                </article>
 
-        <section
-          id="roadmap"
-          className={styles.section}
-          aria-labelledby="roadmap-title"
-        >
-          <div className={`${styles.container} ${styles.roadmap}`}>
-            <header className={styles.sectionHead} data-reveal>
-              <p className={styles.kicker}>正在路上</p>
-              <h2 id="roadmap-title">尚未上线的功能</h2>
-              <p>下面这些正在开发和测试，上线前不会出现在你的工作区里。</p>
-            </header>
-            <ul data-reveal>
-              {ROADMAP.map((item) => (
-                <li key={item.name}>
-                  <span className={styles.tag} data-tone="muted">
-                    尚未上线
+                <article className={styles.feature}>
+                  <div className={styles.featureText}>
+                    <h3>公海与负责人</h3>
+                    <p>
+                      每条线索都有负责人和期限。领取后限时联系，接通或加上微信才算联系成功；到期没推进，自动回到线索池。
+                    </p>
+                  </div>
+                  <figure className={styles.visual} aria-hidden="true">
+                    <ol className={styles.stages}>
+                      <li>
+                        线索池<span>领取或分配</span>
+                      </li>
+                      <li>
+                        待联系<span>默认 24 小时</span>
+                      </li>
+                      <li>
+                        跟进中<span>默认 30 天，沟通后顺延</span>
+                      </li>
+                      <li data-tone="ok">
+                        成交保护<span>不再自动回收</span>
+                      </li>
+                    </ol>
+                  </figure>
+                </article>
+
+                <article className={`${styles.feature} ${styles.featureWide}`}>
+                  <div className={styles.featureText}>
+                    <h3>跨表关联与自动化</h3>
+                    <p>
+                      记录之间互相关联。商机的阶段变为“赢单”时，可以自动在合同表新建一条记录并关联；也可以做成按钮，先预览、补填，再由有权限的人确认执行。
+                    </p>
+                  </div>
+                  <figure className={styles.visual} aria-hidden="true">
+                    <div className={styles.flow}>
+                      <div className={styles.flowNode}>
+                        <small>商机</small>
+                        <b>南湖实验学校</b>
+                        <span className={styles.pill} data-tone="ok">
+                          阶段 → 赢单
+                        </span>
+                      </div>
+                      <span className={styles.flowArrow}>新建并关联</span>
+                      <div className={styles.flowNode}>
+                        <small>合同</small>
+                        <b>南湖实验学校</b>
+                        <span className={styles.pill}>负责人：周航</span>
+                      </div>
+                    </div>
+                  </figure>
+                </article>
+              </div>
+
+              <p className={styles.extras}>
+                <span>还包括</span>
+                {EXTRAS.map((item) => (
+                  <span key={item} className={styles.extra}>
+                    {item}
                   </span>
-                  <h3>{item.name}</h3>
-                  <p>{item.detail}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        <section
-          id="faq"
-          className={`${styles.section} ${styles.sectionPaper}`}
-          aria-labelledby="faq-title"
-        >
-          <div className={`${styles.container} ${styles.faqLayout}`}>
-            <h2 id="faq-title">常见问题</h2>
-            <div className={styles.faq}>
-              {FAQ.map((item) => (
-                <details key={item.q}>
-                  <summary>{item.q}</summary>
-                  <p>{item.a}</p>
-                </details>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className={styles.closing} aria-labelledby="closing-title">
-          <div className={`${styles.container} ${styles.closingInner}`}>
-            <div>
-              <h2 id="closing-title">
-                <Phrases text="已经收到邀请？登录就能开始" />
-              </h2>
-              <p>
-                还没有账号，先用手机号创建；公司管理员邀请你之后，就能进入公司的工作区。
+                ))}
               </p>
             </div>
-            <div className={styles.closingActions}>
-              <Link href="/login" className={styles.buttonPrimary}>
-                登录工作区
+          </section>
+
+          <section
+            className={`${styles.section} ${styles.teamSection}`}
+            aria-labelledby="team-title"
+          >
+            <div className={`${styles.container} ${styles.teamLayout}`}>
+              <div data-reveal>
+                <span className={styles.eyebrow}>
+                  <TeamOutlined /> 让团队各有重点，也彼此看见
+                </span>
+                <h2 id="team-title">
+                  员工知道下一步
+                  <br />
+                  管理员看清全局
+                </h2>
+                <p>
+                  客户归谁、今天做什么、进展到哪里，都落在具体记录上。减少反复问询，把时间留给真正需要推进的事。
+                </p>
+                <ul className={styles.checkList}>
+                  <li>
+                    <CheckOutlined /> 员工查看自己的客户、跟进与任务
+                  </li>
+                  <li>
+                    <CheckOutlined /> 管理员分配任务，查看实际工作记录
+                  </li>
+                  <li>
+                    <CheckOutlined /> 到期、逾期和回收，在站内消息中提醒
+                  </li>
+                </ul>
+              </div>
+              <div className={styles.teamVisual} data-reveal>
+                <div className={styles.teamVisualHead}>
+                  <span>周航的工作台</span>
+                  <span className={styles.personAvatar}>周</span>
+                </div>
+                <h3>把今天，安排得明明白白</h3>
+                <div className={styles.taskRow}>
+                  <span className={styles.taskCheck}>
+                    <CheckOutlined />
+                  </span>
+                  <div>
+                    <b>确认南湖实验学校采购数量</b>
+                    <span>已完成 · 电话已接通</span>
+                  </div>
+                  <span>09:30</span>
+                </div>
+                <div className={styles.taskRow}>
+                  <span className={styles.taskDot} />
+                  <div>
+                    <b>给城东社区医院发正式报价</b>
+                    <span>待跟进 · 关联客户档案</span>
+                  </div>
+                  <span>14:00</span>
+                </div>
+                <div className={styles.taskRow}>
+                  <span className={styles.taskDot} />
+                  <div>
+                    <b>整理本周跟进与工作结果</b>
+                    <span>工作日报 · 记录今日进展</span>
+                  </div>
+                  <span>17:30</span>
+                </div>
+                <div className={styles.teamNote}>
+                  <span className={styles.personAvatar}>林</span>
+                  <span>
+                    林岚分配了新的任务
+                    <br />
+                    <small>报价确认后，安排下周上门送样</small>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section
+            className={`${styles.section} ${styles.aiSection}`}
+            aria-labelledby="ai-title"
+          >
+            <div className={`${styles.container} ${styles.aiLayout}`}>
+              <div className={styles.aiVisual} data-reveal>
+                <div className={styles.aiVisualLabel}>
+                  <ThunderboltOutlined /> AI 助手
+                </div>
+                <div className={styles.aiQuestion}>
+                  南湖实验学校跟进到哪一步了？
+                </div>
+                <div className={styles.aiAnswer}>
+                  <span className={styles.aiMark}>
+                    <ThunderboltOutlined />
+                  </span>
+                  <div>
+                    <p>
+                      已成功联系，正在确认采购报价。负责人是周航，业务进度为
+                      <strong>询单中</strong>。
+                    </p>
+                    <div className={styles.aiSource}>
+                      <span>客户 · 南湖实验学校</span>
+                      <span>
+                        已读取 <CheckOutlined />
+                      </span>
+                    </div>
+                    <p>可以接着安排下一步跟进，或查看这条客户的完整记录。</p>
+                  </div>
+                </div>
+                <div className={styles.aiInput}>
+                  继续问业务问题
+                  <span>
+                    <ArrowRightOutlined />
+                  </span>
+                </div>
+              </div>
+              <div data-reveal>
+                <span className={styles.eyebrow}>
+                  <ThunderboltOutlined /> 让系统里的记录，回答你的问题
+                </span>
+                <h2 id="ai-title">
+                  用一句话
+                  <br />
+                  找到业务的下一步
+                </h2>
+                <p>
+                  查客户、看跟进、汇总业务数据。AI
+                  根据你有权访问的记录回答，并保留来源入口；涉及改动时，先预览，再由你确认。
+                </p>
+                <div className={styles.aiPermission}>
+                  <LockOutlined />
+                  <div>
+                    <b>和你拥有同样的数据权限</b>
+                    <span>看不到的记录和字段，AI 也不能越权读取</span>
+                  </div>
+                </div>
+                <a href="#scenarios" className={styles.textLink}>
+                  试试上方的 AI 问答场景 <ArrowRightOutlined />
+                </a>
+              </div>
+            </div>
+          </section>
+
+          <section
+            id="start"
+            className={`${styles.section} ${styles.sectionBand}`}
+            aria-labelledby="start-title"
+          >
+            <div className={`${styles.container} ${styles.start}`} data-reveal>
+              <header>
+                <h2 id="start-title">从注册到开始工作</h2>
+                <div className={styles.startActions}>
+                  <Link href="/register" className={styles.buttonPrimary}>
+                    创建账号
+                  </Link>
+                  <Link href="/login" className={styles.buttonSecondary}>
+                    登录工作区
+                  </Link>
+                </div>
+              </header>
+              <ol className={styles.steps}>
+                {START_STEPS.map((step, index) => (
+                  <li key={step.title}>
+                    <span className={styles.stepNo} aria-hidden="true">
+                      {index + 1}
+                    </span>
+                    <div>
+                      <h3>{step.title}</h3>
+                      <p>{step.detail}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </section>
+
+          <section
+            id="faq"
+            className={styles.section}
+            aria-labelledby="faq-title"
+          >
+            <div
+              className={`${styles.container} ${styles.faqLayout}`}
+              data-reveal
+            >
+              <h2 id="faq-title">常见问题</h2>
+              <div className={styles.faq}>
+                {FAQ.map((item) => (
+                  <details key={item.q}>
+                    <summary>{item.q}</summary>
+                    <p>{item.a}</p>
+                  </details>
+                ))}
+              </div>
+            </div>
+          </section>
+        </main>
+
+        <footer className={styles.footer}>
+          <div
+            className={`${styles.container} ${styles.footerCta}`}
+            data-reveal
+          >
+            <div>
+              <span>从下一条客户记录开始</span>
+              <h2>
+                让每一次跟进
+                <br />
+                都有下文
+              </h2>
+            </div>
+            <div>
+              <Link href="/register" className={styles.buttonPrimary}>
+                创建账号 <ArrowRightOutlined />
               </Link>
-              <Link href="/register" className={styles.buttonOnDark}>
-                创建账号
+              <Link href="/login" className={styles.footerLogin}>
+                已有账号？登录工作区 <ArrowRightOutlined />
               </Link>
             </div>
           </div>
-        </section>
-      </main>
-
-      <footer className={styles.footer}>
-        <div className={`${styles.container} ${styles.footerInner}`}>
-          <div className={styles.footerIntro}>
+          <div className={`${styles.container} ${styles.footerTop}`}>
             <a
               href="#top"
               className={styles.footerBrand}
@@ -439,37 +474,31 @@ export function LandingPage() {
               <LogoMark className={styles.brandMark} />
               <span>百杰 CRM</span>
             </a>
-            <p>业务表自己搭，线索有人领，跟进有期限。</p>
+            <nav className={styles.footerNav} aria-label="页脚导航">
+              {NAV_LINKS.map((link) => (
+                <a key={link.href} href={link.href}>
+                  {link.label}
+                </a>
+              ))}
+              <Link href="/login">登录</Link>
+              <Link href="/register">创建账号</Link>
+            </nav>
           </div>
-          <nav className={styles.footerNav} aria-label="页脚产品导航">
-            <h3>了解产品</h3>
-            <a href="#tables">搭表</a>
-            <a href="#pool">线索公海</a>
-            <a href="#data">数据与流程</a>
-            <a href="#access">权限</a>
-            <a href="#ai">AI 助手</a>
-          </nav>
-          <nav className={styles.footerNav} aria-label="页脚工作区入口">
-            <h3>开始使用</h3>
-            <Link href="/login">登录工作区</Link>
-            <Link href="/register">创建账号</Link>
-            <a href="#faq">常见问题</a>
-          </nav>
-        </div>
-        <div className={`${styles.container} ${styles.footerBottom}`}>
-          <small>
-            © {new Date().getFullYear()} {COMPANY}
-          </small>
-          <a
-            href={ICP_RECORD.lookup}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.icp}
-          >
-            {ICP_RECORD.number}
-          </a>
-        </div>
-      </footer>
-    </div>
+          <div className={`${styles.container} ${styles.footerBottom}`}>
+            <small>
+              © {new Date().getFullYear()} {COMPANY}
+            </small>
+            <a
+              href={ICP_RECORD.lookup}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.icp}
+            >
+              {ICP_RECORD.number}
+            </a>
+          </div>
+        </footer>
+      </div>
+    </LandingMotion>
   );
 }

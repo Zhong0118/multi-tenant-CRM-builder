@@ -57,6 +57,99 @@
   --ink-secondary: var(--text-secondary);
 }
 
+/* Scale tokens shared by every surface: spacing, type, motion, elevation. */
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-title: 20px;
+  --line-height-body: 22px;
+
+  --control-height-sm: 26px;
+  --control-height: 32px;
+
+  --radius-panel: 12px;
+  --radius-overlay: 12px;
+
+  --shadow-raised: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-panel:
+    0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-overlay:
+    0 10px 28px -10px rgba(16, 24, 40, 0.22), 0 2px 6px rgba(16, 24, 40, 0.06);
+
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-slow: 240ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --focus-ring: 0 0 0 3px rgba(22, 117, 104, 0.24);
+}
+
+/* The signed-in workspace and platform (AppShell sets data-ui="workspace").
+   :has() puts the palette on the root, so drawers, modals and popovers that
+   render in portals outside the shell use it too. Public pages, sign-in and
+   the account area keep the palette above. Values mirror WORKSPACE_TOKENS in
+   components/theme/workspace-theme.ts. */
+:root:has([data-ui="workspace"]) {
+  --shell-ink: #111a2c;
+  --shell-ink-hover: #1f2a3f;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-active: #1e40af;
+  --color-primary-soft: #eef4ff;
+  --color-primary-soft-hover: #e0eaff;
+  --color-primary-border: #bfd3fe;
+
+  --text-primary: #111a2c;
+  --text-secondary: #4b5870;
+  --text-tertiary: #64718a;
+  --text-disabled: #98a2b3;
+
+  --border-default: #dbe1ea;
+  --border-strong: #c4cdda;
+  --border-hairline: #e6eaf0;
+
+  --bg-page: #f3f6fa;
+  --bg-surface: #ffffff;
+  --bg-surface-subtle: #f8fafc;
+  --bg-hover: #f1f4f9;
+  --bg-selected: #eef4ff;
+  --bg-sidebar: #ebeff5;
+  --bg-sidebar-active: #dfe6f0;
+  --bg-track: #e4e9f1;
+
+  --color-success: #15803d;
+  --color-success-soft: #ecfdf3;
+  --color-success-border: #abefc6;
+  --color-warning: #b45309;
+  --color-warning-soft: #fff6e5;
+  --color-warning-border: #fbd38d;
+  --color-danger: #c0262d;
+  --color-danger-soft: #fef1f1;
+  --color-danger-border: #f9c2c2;
+  --color-info: #2563eb;
+  --color-neutral-soft: #eef1f5;
+
+  --radius-control: 6px;
+  --radius-status: 4px;
+  --radius-panel: 10px;
+  --radius-reading: 10px;
+  --radius-data: 10px;
+  --radius-overlay: 12px;
+
+  --focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.28);
+}
+
 html {
   height: 100%;
 }
@@ -139,4 +232,17 @@ table,
 .ant-modal .ant-modal-body > .ant-alert,
 .ant-drawer .ant-drawer-body > .ant-alert {
   margin-bottom: 12px;
+}
+
+/* Reduced motion in the signed-in workspace (and its portalled overlays):
+   state changes stay, movement goes. */
+@media (prefers-reduced-motion: reduce) {
+  :root:has([data-ui="workspace"]) *,
+  :root:has([data-ui="workspace"]) *::before,
+  :root:has([data-ui="workspace"]) *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

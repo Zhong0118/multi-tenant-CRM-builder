@@ -80,6 +80,8 @@ export interface PublicationDraft {
     memberOverrides?: Record<string, unknown>;
   } | null;
   activeSchema: PublishedObjectSchema | null;
+  /** Last published definition for each field, including currently retired fields. */
+  previousPublishedFields?: PublishedField[];
   activeRecordCount: number;
   missingRequiredValueCounts?: Record<string, number>;
   workflow?: WorkflowDraft | null;
@@ -128,6 +130,7 @@ export function analyzePublication(
     defaultView: input.defaultView,
     employeeAccess: input.employeeAccess,
     previousFields: input.activeSchema?.fields,
+    historicalFields: input.previousPublishedFields,
   });
   const blocking = [...configuration.blocking];
   if (

@@ -29,6 +29,18 @@ export class ApiExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(ApiExceptionFilter.name);
 
   toBody(exception: unknown, requestId: string): ApiErrorBody {
+    if (
+      exception instanceof Error &&
+      'type' in exception &&
+      exception.type === 'entity.too.large' &&
+      'status' in exception &&
+      exception.status === 413
+    ) {
+      exception = new ApiException('VALIDATION_FAILED', 413, {
+        message: '请求内容过大，请减少内容或分批提交。',
+      });
+    }
+
     if (exception instanceof ApiException) {
       return {
         code: exception.code,

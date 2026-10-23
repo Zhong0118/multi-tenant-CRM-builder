@@ -21,8 +21,8 @@ export function LogoMark({ className }: { className?: string }) {
               width="6"
               height="6"
               rx="1.5"
-              fill={active ? "#167568" : "none"}
-              stroke={active ? "#167568" : "currentColor"}
+              fill={active ? "var(--blue, #1f5ad6)" : "none"}
+              stroke={active ? "var(--blue, #1f5ad6)" : "currentColor"}
               strokeWidth="1.5"
               opacity={active ? 1 : 0.55}
             />

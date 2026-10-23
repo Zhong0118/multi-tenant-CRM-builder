@@ -406,7 +406,28 @@ describe('assigning work to members (HTTP + PostgreSQL)', () => {
     ).toBe(0);
   });
 
+  it.each(['2026-02-29', '2026-02-30', '2026-04-31', '0000-01-01'])(
+    'rejects nonexistent daily-report date %s on reads and writes',
+    async (workDate) => {
+      await get(`/daily-reports/${workDate}/mine`, f.employee).expect(400);
+      await get(`/daily-reports/${workDate}`).expect(400);
+      await send(
+        'put',
+        `/daily-reports/${workDate}/mine`,
+        {
+          version: 0,
+          plans: '',
+          completed: '回访客户',
+          problems: '',
+          nextSteps: '',
+        },
+        f.employee,
+      ).expect(400);
+    },
+  );
+
   it('keeps one editable report per member and day, never in the future', async () => {
+    await get('/daily-reports/2024-02-29/mine', f.employee).expect(200);
     const view = json<{ today: string; report: null; canEdit: boolean }>(
       await get(`/daily-reports/${todayInCompany()}/mine`, f.employee).expect(
         200,

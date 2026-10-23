@@ -300,6 +300,17 @@ describe('generic record pool lifecycle HTTP', () => {
     expect(
       following.ownershipExpiresAt!.getTime() - Date.now(),
     ).toBeGreaterThan(719 * 3600_000);
+    // Inquiry is ordinary business progress, independent of the pool lease.
+    await request(h.app.getHttpServer())
+      .patch(`${path()}/records/${row.id}`)
+      .set('Cookie', actor.cookie)
+      .set('Origin', 'http://localhost:3000')
+      .send({ version: following.version, values: { name: '询单中' } })
+      .expect(200);
+    const inquiry = await state(row.id);
+    expect(inquiry.poolStage).toBe('FOLLOWING');
+    expect(inquiry.ownerMemberId).toBe(following.ownerMemberId);
+    expect(inquiry.ownershipExpiresAt).toEqual(following.ownershipExpiresAt);
     await h.adminDatabase.record.update({
       where: { id: row.id },
       data: { ownershipExpiresAt: new Date(Date.now() + 3600_000) },
