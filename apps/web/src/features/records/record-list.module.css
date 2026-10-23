@@ -647,6 +647,11 @@ th[data-resizing="true"] .columnResizer::after {
   overflow: hidden;
 }
 
+/* A badge never squeezes into two lines; compact mode shows fewer instead. */
+.tagValues > * {
+  flex: none;
+}
+
 .moreTags {
   flex: none;
   min-width: 26px;

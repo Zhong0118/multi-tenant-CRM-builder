@@ -177,7 +177,7 @@ export const RecordCellValue = memo(function RecordCellValue({
     const options = selectOptions(field);
     const limit =
       density === "compact"
-        ? Math.max(1, Math.floor((width - 40) / 72))
+        ? Math.max(1, Math.floor((width - 56) / 76))
         : density === "comfortable"
           ? 6
           : keys.length;
