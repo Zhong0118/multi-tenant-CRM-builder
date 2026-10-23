@@ -1,4 +1,7 @@
-import type { PublishedFieldView } from "@/features/objects/object-types";
+import {
+  selectOptions,
+  type PublishedFieldView,
+} from "@/features/objects/object-types";
 
 export type AutomationValue = string | number | boolean | string[] | null;
 export type AutomationMapping =
@@ -79,4 +82,30 @@ export function editableAutomationField(
     isSystem: false,
     access: "EDIT",
   };
+}
+
+/** Display stored option keys using the same labels as the business form. */
+export function automationValueLabel(
+  value: unknown,
+  field?: AutomationInputField,
+): string {
+  const options = field ? selectOptions(field) : [];
+  const label = (item: unknown) =>
+    typeof item === "boolean"
+      ? item
+        ? "是"
+        : "否"
+      : (options.find((option) => option.key === item)?.label ??
+        String(item ?? "—"));
+  return Array.isArray(value) ? value.map(label).join("、") : label(value);
+}
+
+export function automationTriggerLabel(
+  rule: AutomationRule,
+  fields: AutomationInputField[],
+): string {
+  const trigger = rule.trigger;
+  if (trigger.type === "MANUAL") return "点击动作并确认后";
+  const field = fields.find((item) => item.fieldKey === trigger.fieldKey);
+  return `「${field?.label ?? trigger.fieldKey}」变为「${automationValueLabel(trigger.equals, field)}」时`;
 }

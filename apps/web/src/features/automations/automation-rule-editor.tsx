@@ -2,7 +2,7 @@
 
 import { ArrowRightOutlined } from "@ant-design/icons";
 import { Alert, Button, Checkbox, Form, Input, Select, Switch } from "antd";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   DynamicField,
   type DynamicFieldMember,
@@ -10,6 +10,8 @@ import {
 import { FIELD_TYPE_LABELS } from "@/features/objects/object-types";
 import {
   editableAutomationField,
+  automationTriggerLabel,
+  automationValueLabel,
   type AutomationInputField,
   type AutomationMapping,
   type AutomationRule,
@@ -27,6 +29,7 @@ export interface AutomationRuleEditorProps {
   members?: DynamicFieldMember[];
   saving?: boolean;
   readOnly?: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
   preview?: (rule: AutomationRule) => ReactNode;
 }
 
@@ -63,8 +66,13 @@ export function AutomationRuleEditor({
   saving = false,
   readOnly = false,
   preview,
+  onDirtyChange,
 }: AutomationRuleEditorProps) {
   const [rule, setRule] = useState(initial);
+  const dirty = JSON.stringify(rule) !== JSON.stringify(initial);
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
   const [errors, setErrors] = useState<string[]>([]);
   const target = targets.find((table) => table.code === rule.targetObjectCode);
   const trigger = rule.trigger;
@@ -122,11 +130,13 @@ export function AutomationRuleEditor({
   return (
     <div className={styles.panel}>
       <div className={styles.steps}>
-        <strong>1 设置触发方式</strong>
+        <strong>1 何时执行</strong>
         <ArrowRightOutlined />
-        <span>2 对应目标字段</span>
+        <span>2 新增到哪张表</span>
         <ArrowRightOutlined />
-        <span>3 预览并保存</span>
+        <span>3 内容如何填写</span>
+        <ArrowRightOutlined />
+        <span>4 预览并发布</span>
       </div>
       <div className={styles.editor}>
         <Form
@@ -134,6 +144,7 @@ export function AutomationRuleEditor({
           className={styles.form}
           disabled={saving || readOnly}
         >
+          <h3 className={styles.sectionHeading}>1 何时执行</h3>
           <Form.Item label="规则名称" htmlFor="automation-label" required>
             <Input
               id="automation-label"
@@ -163,7 +174,7 @@ export function AutomationRuleEditor({
                   })
                 }
                 options={[
-                  { value: "MANUAL", label: "员工点击动作后确认" },
+                  { value: "MANUAL", label: "点击动作后手动确认" },
                   { value: "FIELD_CHANGED", label: "字段变为指定值时" },
                 ]}
               />
@@ -232,9 +243,10 @@ export function AutomationRuleEditor({
           )}
           <p className={styles.caption}>
             {rule.trigger.type === "MANUAL"
-              ? "执行前可以补填信息。同一客户需要再次开单时，可再次点击此动作"
+              ? "执行前可以补填信息。同一条来源记录可以多次执行，每次确认会新增一条目标记录"
               : "仅从其他值变为指定值时执行，每条来源记录只自动创建一次。历史记录和导入不会自动触发"}
           </p>
+          <h3 className={styles.sectionHeading}>2 新增到哪张表</h3>
           <Form.Item
             label="在哪张表创建记录"
             htmlFor="automation-target"
@@ -255,8 +267,16 @@ export function AutomationRuleEditor({
               }
             />
           </Form.Item>
+          <h3 className={styles.sectionHeading}>3 新记录内容如何填写</h3>
+          <p className={styles.caption}>
+            左边选择内容来源，右边是新记录的字段。只在创建时复制，以后不会同步覆盖。
+          </p>
           {target && (
             <section aria-label="字段映射" className={styles.mapping}>
+              <div className={styles.mappingHeader}>
+                <span>内容从哪里来</span>
+                <span>写入 {target.name}</span>
+              </div>
               {target.fields.map((field) => {
                 const value = rule.mappings[field.fieldKey];
                 const label = `${field.label}取值方式`;
@@ -273,8 +293,8 @@ export function AutomationRuleEditor({
                               ? "请选择取值方式"
                               : "不填写 / 使用默认值",
                           },
-                          { value: "SOURCE_FIELD", label: "来源记录的字段" },
-                          { value: "LITERAL", label: "固定值" },
+                          { value: "SOURCE_FIELD", label: "从来源记录带入" },
+                          { value: "LITERAL", label: "固定填写" },
                           ...(rule.trigger.type === "MANUAL"
                             ? [
                                 {
@@ -378,18 +398,39 @@ export function AutomationRuleEditor({
           </Form.Item>
         </Form>
         <aside className={styles.preview} aria-label="规则预览">
+          <h3 className={styles.sectionHeading}>4 预览执行结果</h3>
           <h3>
             {source.name} <ArrowRightOutlined /> {target?.name ?? "目标业务表"}
           </h3>
           <p className={styles.caption}>
-            创建新记录并建立关联，来源记录保持保留
+            原记录保留在来源表，新记录出现在目标表，两条记录相互关联
+          </p>
+          <p className={styles.ruleSummary}>
+            {automationTriggerLabel(rule, source.fields)}，在「
+            {target?.name ?? "目标业务表"}」新增一条记录
+          </p>
+          <p className={styles.caption}>
+            新记录负责人：
+            {rule.owner === "SOURCE_OWNER"
+              ? "沿用来源记录负责人"
+              : "执行本次操作的人"}
           </p>
           <dl className={styles.previewValues}>
             {target?.fields.map((field) => (
               <div key={field.fieldKey} style={{ display: "contents" }}>
                 <dt>{field.label}</dt>
                 <dd>
-                  {describeMapping(rule.mappings[field.fieldKey], source)}
+                  {rule.mappings[field.fieldKey]?.source === "LITERAL"
+                    ? automationValueLabel(
+                        (
+                          rule.mappings[field.fieldKey] as Extract<
+                            AutomationMapping,
+                            { source: "LITERAL" }
+                          >
+                        ).value,
+                        field,
+                      )
+                    : describeMapping(rule.mappings[field.fieldKey], source)}
                 </dd>
               </div>
             ))}
@@ -412,7 +453,12 @@ export function AutomationRuleEditor({
         />
       )}
       <div className={styles.actions}>
-        <Button onClick={onCancel} disabled={saving || readOnly}>
+        {!readOnly && (
+          <span className={styles.caption}>
+            保存后还需发布来源业务表，员工端才会生效
+          </span>
+        )}
+        <Button onClick={onCancel} disabled={saving}>
           {readOnly ? "关闭" : "取消"}
         </Button>
         {!readOnly && (

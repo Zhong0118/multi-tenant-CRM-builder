@@ -136,7 +136,7 @@ describe("AutomationDesigner", () => {
       screen.queryByLabelText("查看规则 确认开单"),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText("配置一条规则，查看业务表之间的联系"),
+      screen.getByText("还没有生效规则，保存草稿并发布后将在这里显示"),
     ).toBeInTheDocument();
   });
 });
@@ -156,4 +156,17 @@ it("refreshes live rules after publication without another draft edit", async ()
   fireEvent.click(screen.getByLabelText("查看规则 确认开单"));
   expect(await screen.findByLabelText("规则名称")).toBeDisabled();
   expect(screen.queryByText("保存规则草稿")).not.toBeInTheDocument();
+});
+
+it("keeps edits when canceling the discard confirmation", async () => {
+  const { api } = setup();
+  fireEvent.click(await screen.findByLabelText("查看规则 确认开单"));
+  fireEvent.change(screen.getByLabelText("规则名称"), {
+    target: { value: "新名称" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /取\s*消/ }));
+  expect(await screen.findByText("放弃未保存的规则修改？")).toBeInTheDocument();
+  fireEvent.click(screen.getByText("继续编辑"));
+  expect(screen.getByLabelText("规则名称")).toHaveValue("新名称");
+  expect(api.save).not.toHaveBeenCalled();
 });

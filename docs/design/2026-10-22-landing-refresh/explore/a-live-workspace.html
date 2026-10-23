@@ -1,0 +1,60 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>A 打开就是在用</title>
+<style>
+:root{--ink:#17232d;--muted:#5d6b75;--teal:#167568;--teal-soft:#e7f3f0;--mist:#f3f6f8;--rule:#dfe5e9;--amber:#c66c18;--amber-soft:#fff3e5;--paper:#fff}
+*{box-sizing:border-box;margin:0}
+body{font-family:"PingFang SC","HarmonyOS Sans SC","Noto Sans SC",system-ui,sans-serif;color:var(--ink);background:var(--mist);width:1440px;height:900px;overflow:hidden}
+.nav{height:64px;display:flex;align-items:center;gap:32px;padding:0 48px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:650;font-size:17px}
+.links{display:flex;gap:26px;font-size:15px;color:var(--muted);margin-left:16px}
+.nav .right{margin-left:auto;display:flex;gap:10px}
+.btn{height:38px;padding:0 16px;border-radius:8px;display:inline-flex;align-items:center;font-size:15px;font-weight:550;border:1px solid var(--rule);background:var(--paper)}
+.btn.primary{background:var(--teal);border-color:var(--teal);color:#fff}
+.band{display:flex;align-items:end;justify-content:space-between;padding:28px 48px 26px}
+h1{font-size:46px;line-height:1.18;font-weight:650;letter-spacing:-.01em}
+.band p{font-size:17px;line-height:1.7;color:var(--muted);max-width:520px;margin-top:12px}
+.band .ctas{display:flex;gap:10px;margin-bottom:6px}
+.app{margin:0 48px;height:560px;border-radius:14px 14px 0 0;background:var(--paper);border:1px solid var(--rule);display:grid;grid-template-columns:208px 1fr 360px;overflow:hidden;box-shadow:0 30px 60px -30px rgba(23,35,45,.25)}
+.side{background:#eceef1;padding:16px 12px;font-size:14px}
+.side .ws{font-weight:600;padding:6px 8px 14px}
+.side .item{padding:7px 10px;border-radius:7px;color:#3d4a54}
+.side .item.on{background:#e0e3e8;color:var(--ink);font-weight:550}
+.side .group{font-size:12px;color:#7c8992;padding:16px 10px 6px}
+.main{padding:18px 22px;font-size:14px;border-right:1px solid var(--rule)}
+.head{display:flex;align-items:center;gap:10px}
+.head h2{font-size:18px}
+.count{color:#7c8992}
+.head .add{margin-left:auto}
+.tabs{display:flex;gap:4px;margin:14px 0 12px;background:#e4e8eb;border-radius:8px;padding:3px;width:max-content}
+.tabs span{padding:5px 12px;border-radius:6px;font-size:13px;color:#4b5963}
+.tabs span.on{background:#fff;color:var(--ink);font-weight:550}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12px;color:#7c8992;font-weight:500;padding:9px 8px;border-bottom:1px solid var(--rule)}
+td{padding:11px 8px;border-bottom:1px solid #edf0f2}
+tr.hot td{background:var(--amber-soft)}
+.chip{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--teal-soft);color:var(--teal)}
+.chip.amber{background:#fde7cf;color:#94500f}
+.claim{font-size:12px;padding:4px 10px;border-radius:6px;background:var(--teal);color:#fff}
+.panel{padding:18px 20px;font-size:14px}
+.panel h3{font-size:16px}
+.meta{color:#7c8992;font-size:13px;margin:4px 0 14px}
+.deadline{display:flex;justify-content:space-between;background:var(--teal-soft);border-radius:8px;padding:10px 12px;color:var(--teal);font-weight:550}
+.act{border-left:2px solid var(--rule);padding:2px 0 12px 14px;margin-top:14px}
+.act b{font-size:13px}.act p{color:#3d4a54;margin-top:4px;line-height:1.6}
+</style></head><body>
+<nav class="nav"><span class="brand"><svg width="22" height="22" viewBox="0 0 24 24"><g fill="none" stroke="#17232d" stroke-width="1.5" opacity=".55"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="17" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/><rect x="1" y="17" width="6" height="6" rx="1.5"/><rect x="9" y="17" width="6" height="6" rx="1.5"/><rect x="17" y="17" width="6" height="6" rx="1.5"/></g><rect x="17" y="9" width="6" height="6" rx="1.5" fill="#167568"/></svg>百杰 CRM</span>
+<span class="links"><span>产品</span><span>线索公海</span><span>权限</span><span>AI 助手</span><span>常见问题</span></span>
+<span class="right"><span class="btn">登录</span><span class="btn primary">创建账号</span></span></nav>
+<section class="band"><div><h1>把表格里的生意，变成团队推进的流程</h1><p>业务表按你的生意自己搭；线索进公海，按规则领取、联系和回收；每次沟通和期限都留在记录上。</p></div>
+<div class="ctas"><span class="btn">看产品演示</span><span class="btn primary">登录工作区</span></div></section>
+<div class="app"><aside class="side"><div class="ws">禾木办公家具</div><div class="item">工作台</div><div class="item">跟进待办</div><div class="group">业务数据</div><div class="item on">客户</div><div class="item">商机</div><div class="item">合同</div><div class="item">回款</div></aside>
+<main class="main"><div class="head"><h2>客户</h2><span class="count">128</span><span class="btn primary add">新建客户</span></div>
+<div class="tabs"><span class="on">线索池 18</span><span>待联系 6</span><span>跟进中 41</span><span>成交保护 9</span><span>全部</span></div>
+<table><thead><tr><th>客户名称</th><th>来源</th><th>意向</th><th>进池时间</th><th></th></tr></thead><tbody>
+<tr class="hot"><td>南湖实验学校</td><td>官网表单</td><td><span class="chip amber">高</span></td><td>今天 09:12</td><td><span class="claim">领取</span></td></tr>
+<tr><td>城东社区医院</td><td>转介绍</td><td><span class="chip">中</span></td><td>昨天 16:40</td><td><span class="claim">领取</span></td></tr>
+<tr><td>启明设计事务所</td><td>展会</td><td><span class="chip">中</span></td><td>昨天 11:05</td><td><span class="claim">领取</span></td></tr>
+<tr><td>青禾幼儿园</td><td>电话咨询</td><td><span class="chip">低</span></td><td>10-20 15:30</td><td><span class="claim">领取</span></td></tr>
+<tr><td>北岸物业服务中心</td><td>官网表单</td><td><span class="chip">中</span></td><td>10-20 10:18</td><td><span class="claim">领取</span></td></tr></tbody></table></main>
+<aside class="panel"><h3>南湖实验学校</h3><div class="meta">周航 刚刚领取 · 待联系</div><div class="deadline"><span>联系期限</span><span>剩 23 小时</span></div>
+<div class="act"><b>电话 · 周航 · 10:20</b><p>约了下周二去新校区看教室，需要先报 40 套课桌椅的价。</p></div><div class="act"><b>跟进 · 明天 15:00</b><p>发送报价单并确认送货时间</p></div></aside></div>
+</body></html>

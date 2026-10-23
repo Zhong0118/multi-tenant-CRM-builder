@@ -52,8 +52,15 @@ export function assertAutomationRole(
 export async function automationTarget(
   session: AutomationSession,
   rule: AutomationRule,
+  previewScope: 'RUNTIME' | 'ADMIN_DRAFT' = 'RUNTIME',
 ) {
-  assertAutomationRole(rule, session.context);
+  if (previewScope === 'ADMIN_DRAFT') {
+    // Inspect configuration as the administrator, without impersonating a role.
+    if (session.context.role !== 'TENANT_ADMIN')
+      throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+  } else {
+    assertAutomationRole(rule, session.context);
+  }
   const target = await resolvePublishedObjectInTransaction(
     session.tx,
     session.context,
@@ -78,9 +85,10 @@ export async function previewAutomation(
   session: AutomationSession,
   rule: AutomationRule,
   inputs: Record<string, AutomationValue>,
+  previewScope: 'RUNTIME' | 'ADMIN_DRAFT' = 'RUNTIME',
 ) {
   const { resolved, source, context, store } = session;
-  const target = await automationTarget(session, rule);
+  const target = await automationTarget(session, rule, previewScope);
   const allowedInputs = new Set(
     Object.entries(rule.mappings)
       .filter(([, value]) => value.source === 'INPUT')

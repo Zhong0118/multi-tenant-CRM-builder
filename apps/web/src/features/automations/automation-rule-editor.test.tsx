@@ -58,3 +58,44 @@ describe("AutomationRuleEditor", () => {
     expect(screen.getByText("客户名称：请选择取值方式")).toBeInTheDocument();
   });
 });
+
+it("lets an administrator close a read-only published rule", () => {
+  const close = vi.fn();
+  render(
+    <AutomationRuleEditor
+      initial={rule}
+      source={source}
+      targets={[target]}
+      onSave={vi.fn()}
+      onCancel={close}
+      readOnly
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: /关\s*闭/ }));
+  expect(close).toHaveBeenCalledOnce();
+});
+
+it("explains a select condition using its label rather than its stored key", () => {
+  const status = {
+    ...fields[0],
+    fieldKey: "stage",
+    label: "客户阶段",
+    type: "SINGLE_SELECT" as const,
+    config: { options: [{ key: "signed", label: "已开单" }] },
+  };
+  render(
+    <AutomationRuleEditor
+      initial={{
+        ...rule,
+        trigger: { type: "FIELD_CHANGED", fieldKey: "stage", equals: "signed" },
+      }}
+      source={{ ...source, fields: [...fields, status] }}
+      targets={[target]}
+      onSave={vi.fn()}
+      onCancel={vi.fn()}
+    />,
+  );
+  expect(
+    screen.getByText("「客户阶段」变为「已开单」时，在「开单」新增一条记录"),
+  ).toBeInTheDocument();
+});

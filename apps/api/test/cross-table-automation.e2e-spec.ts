@@ -450,6 +450,53 @@ describe('cross-table automation (real PostgreSQL)', () => {
     expect((await api('get', `${path()}/automations`)).status).toBe(409);
     expect(await targets()).toBe(0);
   });
+  it.each([true, false])(
+    'lets admins inspect employee-only drafts without granting runtime execution or employee access (enabled=%s)',
+    async (enabled) => {
+      const rule: AutomationRule = {
+        ...baseRule,
+        allowedRoles: ['EMPLOYEE'],
+        trigger: { type: 'MANUAL' },
+      };
+      await rules([rule]);
+      const draftUrl = `/api/v1/workspaces/critical-a/object-definitions/${f.object.id}/automations/preview`;
+      const input = {
+        rule: { ...rule, enabled },
+        sourceRecordId: f.ownedRecord.id,
+        inputs: {},
+      };
+      const before = await snapshot();
+      const preview = await api('post', draftUrl, input);
+      expect(preview.status).toBe(201);
+      expect(preview.body.values).toEqual({ name: (await source()).title });
+      expect(
+        (await api('post', draftUrl, input, f.employee.cookie)).status,
+      ).toBe(403);
+      expect(
+        (
+          await api('post', `${path()}/automations/create-order/preview`, {
+            inputs: {},
+          })
+        ).status,
+      ).toBe(403);
+      expect(
+        (
+          await api('post', `${path()}/automations/create-order/execute`, {
+            expectedVersion: 1,
+            requestId: randomUUID(),
+            inputs: {},
+          })
+        ).status,
+      ).toBe(403);
+      expect(await snapshot()).toEqual(before);
+      await h.adminDatabase.objectDefinition.update({
+        where: { id: f.rollbackTargetObject.id },
+        data: { status: 'ARCHIVED' },
+      });
+      expect((await api('post', draftUrl, input)).status).toBe(409);
+      expect(await snapshot()).toEqual(before);
+    },
+  );
   it('saves versioned drafts, previews without writes, and only enables frozen published rules', async () => {
     const schema = await republish(f.object.id, () => undefined);
     for (const field of schema.fields) {
@@ -508,6 +555,18 @@ describe('cross-table automation (real PostgreSQL)', () => {
       allowedRoles: ['TENANT_ADMIN'],
       trigger: { type: 'MANUAL' },
     };
+    const duplicateRules = [
+      { ...baseRule, allowedRoles: rule.allowedRoles },
+      { ...baseRule, allowedRoles: rule.allowedRoles, key: 'duplicate-order' },
+    ];
+    expect(
+      (await api('put', url, { expectedVersion: 1, rules: duplicateRules }))
+        .status,
+    ).toBe(400);
+    expect((await api('get', url)).body).toMatchObject({
+      version: 1,
+      rules: [],
+    });
     const saved = await api('put', url, { expectedVersion: 1, rules: [rule] });
     expect(saved.status).toBe(200);
     expect(saved.body).toMatchObject({
