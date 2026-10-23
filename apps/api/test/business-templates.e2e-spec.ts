@@ -576,6 +576,7 @@ describe('Business template HTTP workflow (e2e)', () => {
       .send({
         expectedVersion: 1,
         name: 'Dashboard template',
+        description: null,
         configuration: {
           ...twoObjectTemplateFixture,
           dashboard: { schemaVersion: 2, title: 'Template home', widgets: [] },
@@ -807,7 +808,12 @@ describe('Business template HTTP workflow (e2e)', () => {
       `/api/v1/platform/business-templates/${second.templateId}/applications`,
       { tenantId: raceId, templateVersionId: second.templateVersionId },
     ).expect(409);
-    expect(JSON.stringify(refused.body)).toContain('已经存在业务对象');
+    expect(refused.body).toMatchObject({
+      code: 'TEMPLATE_APPLICATION_NOT_ALLOWED',
+    });
+    expect(stringProperty(refused.body, 'message')).toContain(
+      '不能使用初始化模板覆盖',
+    );
     expect(
       await adminDatabase.objectDefinition.findMany({
         where: { tenantId: raceId },
