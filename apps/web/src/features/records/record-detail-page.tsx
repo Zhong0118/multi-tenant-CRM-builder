@@ -1,7 +1,7 @@
 "use client";
 
 import { EllipsisOutlined, LeftOutlined, LockOutlined, RightOutlined } from "@ant-design/icons";
-import { skipToken, useMutation, useQuery } from "@tanstack/react-query";
+import { skipToken, useIsMutating, useMutation, useQuery } from "@tanstack/react-query";
 import { Alert, Button, Collapse, Dropdown, Modal, Tooltip } from "antd";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -75,6 +75,9 @@ export function RecordDetailPage({
   onClose,
   onChanged,
 }: RecordDetailPageProps) {
+  const ownershipPending = useIsMutating({
+    mutationKey: ["record-ownership", tenantCode, schema.object.code, record.id],
+  }) > 0;
   const poolPreview = record.inPublicPool && !canChooseOwner;
   const canEdit = schema.actions.canUpdate && !poolPreview;
   const [editing, setEditing] = useState(initialEditing && canEdit);
@@ -302,6 +305,7 @@ export function RecordDetailPage({
           ) : null}
           {canEdit && !editing && !deleted ? (
             <Button
+              disabled={ownershipPending}
               onClick={() => {
                 setEditingRecord(record);
                 setEditing(true);

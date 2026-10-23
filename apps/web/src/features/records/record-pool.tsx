@@ -140,6 +140,7 @@ export function useRecordOwnership({
   const [warning, setWarning] = useState<string>();
   const [committed, setCommitted] = useState(false);
   const ownership = useMutation({
+    mutationKey: ["record-ownership", tenantCode, objectCode, record.id],
     mutationFn: (action: OwnershipAction) =>
       api.changeOwnership(tenantCode, objectCode, record.id, {
         action,
@@ -387,7 +388,7 @@ export function RecordOwnershipActions(props: Parameters<typeof useRecordOwnersh
       canRelease ? (
         <Popconfirm
           title="确认已经建立联系？"
-          description={`确认后开始 ${config.followUpTtlHours ?? 720} 小时跟进期，待联系期间写活动不能代替联系确认`}
+          description={`确认后开始 ${config.followUpTtlHours ?? 720} 小时跟进期，普通备注不会确认联系，成功联系或添加微信的活动结果会自动确认`}
           okText="确认建立联系"
           cancelText="取消"
           onConfirm={() => ownership.mutate("CONFIRM_CONTACT")}
