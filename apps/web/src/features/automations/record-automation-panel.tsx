@@ -160,7 +160,7 @@ export function RecordAutomationPanel({
     <section className={styles.panel} aria-label="关联与自动化">
       <div className={styles.heading}>
         <h3>
-          <LinkOutlined /> 关联与自动化
+          <LinkOutlined /> 新增关联记录
         </h3>
       </div>
       {available.isError && (

@@ -129,11 +129,7 @@ export class AutomationsService {
           draft.object.code,
           session.resolved.schema.fields.map((field) => field.fieldKey),
         );
-        return previewAutomation(
-          session,
-          { ...rule, enabled: true },
-          input.inputs,
-        );
+        return previewAutomation(session, rule, input.inputs, 'ADMIN_DRAFT');
       },
     );
   }

@@ -89,7 +89,26 @@ export function validateAutomationRules(
         invalid('字段自动触发不能要求本次填写。');
     }
   }
-  return structuredClone(input) as AutomationRule[];
+  const rules = input as AutomationRule[];
+  for (const [index, rule] of rules.entries()) {
+    if (!rule.enabled || rule.trigger.type !== 'FIELD_CHANGED') continue;
+    const trigger = rule.trigger;
+    const duplicate = rules
+      .slice(0, index)
+      .find(
+        (previous) =>
+          previous.enabled &&
+          previous.trigger.type === 'FIELD_CHANGED' &&
+          previous.targetObjectCode === rule.targetObjectCode &&
+          previous.trigger.fieldKey === trigger.fieldKey &&
+          isDeepStrictEqual(previous.trigger.equals, trigger.equals),
+      );
+    if (duplicate)
+      invalid(
+        `规则「${rule.label}」与「${duplicate.label}」的触发字段、条件和目标表重复，请停用或修改其中一条，避免一次变更重复创建记录。`,
+      );
+  }
+  return structuredClone(rules);
 }
 export function matchesFieldChange(
   rule: AutomationRule,

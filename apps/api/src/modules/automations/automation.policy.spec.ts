@@ -15,6 +15,39 @@ const rule = {
 };
 
 describe('cross-table rule contract', () => {
+  it('rejects enabled rules creating into the same target for the same field condition', () => {
+    expect(() =>
+      validateAutomationRules(
+        [
+          rule,
+          {
+            ...rule,
+            key: 'another-order',
+            label: '另一条开单',
+            owner: 'SOURCE_OWNER',
+            mappings: {},
+          },
+        ],
+        'customer',
+        ['name', 'stage'],
+      ),
+    ).toThrow(/重复/);
+  });
+  it.each([
+    { enabled: false },
+    { targetObjectCode: 'invoice' },
+    { trigger: { type: 'FIELD_CHANGED', fieldKey: 'stage', equals: 'lost' } },
+    { trigger: { type: 'FIELD_CHANGED', fieldKey: 'name', equals: 'won' } },
+    { trigger: { type: 'MANUAL' } },
+  ])('allows a distinct or inactive entry: %j', (difference) => {
+    expect(() =>
+      validateAutomationRules(
+        [rule, { ...rule, key: 'another-order', ...difference }],
+        'customer',
+        ['name', 'stage'],
+      ),
+    ).not.toThrow();
+  });
   it('fires only when crossing into the matching value', () => {
     const [normalized] = validateAutomationRules([rule], 'customer', [
       'name',

@@ -41,7 +41,9 @@ export function RecordRowActions({
   ...ownershipProps
 }: RecordRowActionsProps) {
   const owner = useRecordOwnership({ ...ownershipProps, record, toast: true });
-  const [confirm, setConfirm] = useState<"delete" | "release" | null>(null);
+  const [confirm, setConfirm] = useState<
+    "delete" | "release" | "contact" | null
+  >(null);
 
   const items: MenuProps["items"] = [
     { key: "view", label: "查看", onClick: onView },
@@ -52,18 +54,59 @@ export function RecordRowActions({
       onClick: onEdit,
     },
     ...(owner.canClaim
-      ? [{ key: "claim", label: "领取", disabled: owner.disabled, onClick: owner.claim }]
+      ? [
+          {
+            key: "claim",
+            label: "领取",
+            disabled: owner.disabled,
+            onClick: owner.claim,
+          },
+        ]
       : []),
     ...(owner.canAssign
-      ? [{ key: "assign", label: "分配负责人", disabled: owner.disabled, onClick: owner.startAssign }]
+      ? [
+          {
+            key: "assign",
+            label: "分配负责人",
+            disabled: owner.disabled,
+            onClick: owner.startAssign,
+          },
+        ]
+      : []),
+    ...(owner.canConfirmContact
+      ? [
+          {
+            key: "contact",
+            label: "确认已联系",
+            disabled: owner.disabled,
+            onClick: () => setConfirm("contact"),
+          },
+        ]
+      : []),
+    ...(owner.awaitingClassification
+      ? [
+          {
+            key: "classification",
+            label: "等待管理员归类后领取",
+            disabled: true,
+          },
+        ]
       : []),
     ...(owner.canRelease
-      ? [{
-          key: "release",
-          label: "释放到公共池",
-          disabled: owner.disabled,
-          onClick: () => setConfirm("release"),
-        }]
+      ? [
+          {
+            key: "release",
+            label:
+              owner.releaseLabel === "释放"
+                ? "释放到公共池"
+                : owner.releaseLabel,
+            disabled: owner.disabled,
+            onClick: () =>
+              owner.releaseNeedsForm
+                ? owner.startRelease()
+                : setConfirm("release"),
+          },
+        ]
       : []),
     { type: "divider" },
     {
@@ -113,6 +156,19 @@ export function RecordRowActions({
         }}
       >
         <p>释放后负责人和回收时间将清空，其他成员可以领取</p>
+      </Modal>
+      <Modal
+        open={confirm === "contact"}
+        title="确认已经建立联系？"
+        okText="确认建立联系"
+        cancelText="取消"
+        onCancel={() => setConfirm(null)}
+        onOk={() => {
+          setConfirm(null);
+          owner.confirmContact();
+        }}
+      >
+        <p>确认后进入跟进阶段，跟进期限从本次确认时间开始计算</p>
       </Modal>
       {owner.drawers}
     </>

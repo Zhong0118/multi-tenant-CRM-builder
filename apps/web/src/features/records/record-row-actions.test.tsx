@@ -48,7 +48,9 @@ function renderMenu(
   };
   render(
     <QueryClientProvider
-      client={new QueryClient({ defaultOptions: { mutations: { retry: false } } })}
+      client={
+        new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+      }
     >
       <RecordRowActions
         tenantCode="northwind"
@@ -81,7 +83,9 @@ describe("record row actions menu", () => {
 
   it("releases to the public pool only after confirmation, with the displayed version", async () => {
     const { pool, onChanged } = renderMenu();
-    fireEvent.click(await screen.findByRole("menuitem", { name: "释放到公共池" }));
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "释放到公共池" }),
+    );
     expect(pool.changeOwnership).not.toHaveBeenCalled();
     fireEvent.click(await screen.findByRole("button", { name: "确认释放" }));
     await waitFor(() => expect(onChanged).toHaveBeenCalledWith("RELEASE"));
@@ -98,7 +102,9 @@ describe("record row actions menu", () => {
       record: { ...record, inPublicPool: true, ownerMemberId: null },
     });
     expect(await screen.findByRole("menuitem", { name: "领取" })).toBeEnabled();
-    expect(screen.queryByRole("menuitem", { name: "释放到公共池" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "释放到公共池" }),
+    ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("menuitem", { name: "领取" }));
     await waitFor(() => expect(onChanged).toHaveBeenCalledWith("CLAIM"));
     expect(pool.changeOwnership).toHaveBeenCalledWith(
@@ -126,6 +132,153 @@ describe("record row actions menu", () => {
   it("only admins can assign an owner", async () => {
     renderMenu({ isAdmin: false });
     await screen.findByRole("menuitem", { name: "查看" });
-    expect(screen.queryByRole("menuitem", { name: "分配负责人" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "分配负责人" }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("lifecycle actions in the row menu", () => {
+  const lifecycleConfig = { ...config, lifecycleEnabled: true };
+
+  it("confirms contact with the displayed version", async () => {
+    const { pool, onChanged } = renderMenu({
+      config: lifecycleConfig,
+      record: { ...record, poolStage: "PENDING_CONTACT" },
+    });
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "确认已联系" }),
+    );
+    expect(pool.changeOwnership).not.toHaveBeenCalled();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "确认建立联系" }),
+    );
+    await waitFor(() =>
+      expect(onChanged).toHaveBeenCalledWith("CONFIRM_CONTACT"),
+    );
+    expect(pool.changeOwnership).toHaveBeenCalledWith(
+      "northwind",
+      "customers",
+      "r1",
+      {
+        action: "CONFIRM_CONTACT",
+        version: 7,
+      },
+    );
+  });
+
+  it("requires a reason and submits the chosen quality when releasing", async () => {
+    const { pool, onChanged } = renderMenu({
+      config: lifecycleConfig,
+      record: { ...record, poolStage: "FOLLOWING" },
+    });
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "释放到公共池" }),
+    );
+    const release = await screen.findByRole("button", { name: "确认释放" });
+    expect(release).toBeDisabled();
+    fireEvent.change(screen.getByRole("textbox", { name: "释放原因" }), {
+      target: { value: "  号码无效  " },
+    });
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "资源质量" }));
+    fireEvent.click(await screen.findByText("空号 / 无效"));
+    fireEvent.click(release);
+    await waitFor(() => expect(onChanged).toHaveBeenCalledWith("RELEASE"));
+    expect(pool.changeOwnership).toHaveBeenCalledWith(
+      "northwind",
+      "customers",
+      "r1",
+      {
+        action: "RELEASE",
+        version: 7,
+        reason: "号码无效",
+        quality: "INVALID",
+      },
+    );
+  });
+
+  it("uses UNPROTECT_RELEASE when an administrator releases a protected record", async () => {
+    const { pool, onChanged } = renderMenu({
+      config: lifecycleConfig,
+      isAdmin: true,
+      record: { ...record, poolStage: "PROTECTED" },
+    });
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "解除保护并释放" }),
+    );
+    fireEvent.change(await screen.findByRole("textbox", { name: "释放原因" }), {
+      target: { value: "已复核保护依据" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "确认释放" }));
+    await waitFor(() =>
+      expect(onChanged).toHaveBeenCalledWith("UNPROTECT_RELEASE"),
+    );
+    expect(pool.changeOwnership).toHaveBeenCalledWith(
+      "northwind",
+      "customers",
+      "r1",
+      {
+        action: "UNPROTECT_RELEASE",
+        version: 7,
+        reason: "已复核保护依据",
+      },
+    );
+  });
+
+  it("does not offer protected release to an employee", async () => {
+    renderMenu({
+      config: lifecycleConfig,
+      record: { ...record, poolStage: "PROTECTED" },
+    });
+    await screen.findByRole("menuitem", { name: "查看" });
+    expect(
+      screen.queryByRole("menuitem", { name: /释放/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("requires administrators to classify legacy pool records explicitly", async () => {
+    const { pool } = renderMenu({
+      config: lifecycleConfig,
+      isAdmin: true,
+      record: { ...record, inPublicPool: true, ownerMemberId: null },
+    });
+    expect(
+      screen.queryByRole("menuitem", { name: "领取" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "归类到公共池" }),
+    );
+    fireEvent.change(await screen.findByRole("textbox", { name: "释放原因" }), {
+      target: { value: "历史资源归类" },
+    });
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "目标公共池" }));
+    fireEvent.click(await screen.findByText("已联系公共池"));
+    fireEvent.click(screen.getByRole("button", { name: "确认释放" }));
+    await waitFor(() =>
+      expect(pool.changeOwnership).toHaveBeenCalledWith(
+        "northwind",
+        "customers",
+        "r1",
+        {
+          action: "RELEASE",
+          version: 7,
+          reason: "历史资源归类",
+          poolStage: "CUSTOMER_POOL",
+        },
+      ),
+    );
+  });
+
+  it("explains why employees cannot claim unclassified legacy pool records", async () => {
+    renderMenu({
+      config: lifecycleConfig,
+      record: { ...record, inPublicPool: true, ownerMemberId: null },
+    });
+    expect(
+      await screen.findByRole("menuitem", { name: "等待管理员归类后领取" }),
+    ).toHaveAttribute("aria-disabled", "true");
+    expect(
+      screen.queryByRole("menuitem", { name: "领取" }),
+    ).not.toBeInTheDocument();
   });
 });

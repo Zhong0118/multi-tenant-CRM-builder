@@ -11,6 +11,7 @@ import { toApiError } from "@/lib/api/api-error";
 import { automationApi } from "./automation-api";
 import {
   editableAutomationField,
+  automationValueLabel,
   type AutomationPreview,
   type AutomationRule,
   type AutomationTable,
@@ -42,7 +43,10 @@ export function PreviewValues({
                 key}
             </dt>
             <dd>
-              {Array.isArray(value) ? value.join("、") : String(value ?? "—")}
+              {automationValueLabel(
+                value,
+                target?.fields.find((field) => field.fieldKey === key),
+              )}
             </dd>
           </div>
         ))}
@@ -114,6 +118,9 @@ export function DraftAutomationPreview({
     );
   return (
     <div className={styles.panel}>
+      <p className={styles.caption}>
+        用一条已有记录检查取值，不会写入数据。这里使用管理员权限；员工实际执行时仍按其权限检查。
+      </p>
       <Form layout="vertical">
         <Form.Item label="选择样例记录" htmlFor="automation-sample">
           <Select

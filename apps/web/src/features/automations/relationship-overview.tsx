@@ -6,6 +6,7 @@ import { useState } from "react";
 import { objectApi } from "@/features/objects/object-api";
 import { automationApi } from "./automation-api";
 import { automationError } from "./automation-preview";
+import { automationTriggerLabel } from "./automation-types";
 import { RelationshipMap } from "./relationship-map";
 import styles from "./automations.module.css";
 
@@ -51,7 +52,7 @@ export function RelationshipOverview({ tenantCode }: { tenantCode: string }) {
     <div className={styles.panel}>
       <div className={styles.heading}>
         <p className={styles.caption}>
-          查看公司业务表之间的创建规则和记录关联，点击连线查看字段对应关系
+          查看“从哪张表新增到哪张表”的自动化规则。点击连线查看字段对应；手动关联的已有记录请到记录详情查看
         </p>
         <Segmented
           aria-label="总览规则版本"
@@ -76,7 +77,7 @@ export function RelationshipOverview({ tenantCode }: { tenantCode: string }) {
           source: draft.object.code,
           target: rule.targetObjectCode,
           label: rule.label,
-          trigger: rule.trigger.type === "MANUAL" ? "手动确认" : "字段变化",
+          trigger: automationTriggerLabel(rule, draft.fields),
           enabled: rule.enabled && draft.object.status !== "ARCHIVED",
         }))}
         selectedId={selected}
