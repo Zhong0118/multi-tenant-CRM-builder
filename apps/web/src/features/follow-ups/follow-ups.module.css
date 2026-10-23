@@ -11,9 +11,11 @@
 
 .toolbar {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   align-items: center;
   justify-content: space-between;
+  min-width: 0;
 }
 
 .statusCount {
@@ -187,7 +189,7 @@
   font-weight: 500;
 }
 .summary:hover {
-  background: #dceee9;
+  background: var(--color-primary-soft-hover, #dceee9);
 }
 .workbench {
   display: grid;

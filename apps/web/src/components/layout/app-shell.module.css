@@ -200,7 +200,7 @@
   align-items: center;
   padding: 0 8px;
   margin-bottom: 1px;
-  color: #43505b;
+  color: var(--text-secondary);
   font-family: inherit;
   font-size: 14px;
   text-align: left;
@@ -229,11 +229,15 @@
   background: var(--bg-sidebar-active);
 }
 
+/* The current page is a raised white row, the same surface as the page it opens. */
 .navItemCurrent,
 .navItemCurrent:hover {
   color: var(--text-primary);
   font-weight: 500;
-  background: var(--bg-sidebar-active);
+  background: var(--bg-surface);
+  box-shadow:
+    var(--shadow-raised),
+    inset 0 0 0 1px var(--border-hairline);
 }
 
 .navItemCurrent .navIcon {

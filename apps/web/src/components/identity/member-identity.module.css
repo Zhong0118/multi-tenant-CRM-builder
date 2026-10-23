@@ -1,0 +1,89 @@
+.identity {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  max-width: 100%;
+  min-width: 0;
+  vertical-align: middle;
+  color: var(--text-primary);
+  line-height: 20px;
+}
+
+.identity[data-size="sm"] {
+  gap: 6px;
+}
+
+.avatar {
+  display: inline-grid;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  overflow: hidden;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  user-select: none;
+}
+
+.avatar[data-size="sm"] {
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+}
+
+.avatar[data-size="lg"] {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Unassigned and out-of-roster people get an outline, not a colour, so they
+   never pass for a real member. */
+.avatar[data-variant="placeholder"] {
+  border: 1px dashed var(--border-strong);
+  background: transparent;
+  color: var(--text-tertiary);
+}
+
+.name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.identity[data-state="unassigned"] .name,
+.identity[data-state="unknown"] .name {
+  color: var(--text-tertiary);
+}
+
+.self {
+  color: var(--text-tertiary);
+}
+
+.identity[data-state="disabled"] .avatar {
+  filter: grayscale(1);
+  opacity: 0.7;
+}
+
+.identity[data-state="disabled"] .name {
+  color: var(--text-secondary);
+}
+
+.status {
+  flex: none;
+  padding: 0 6px;
+  border-radius: var(--radius-status, 4px);
+  background: var(--color-neutral-soft, #eef1f5);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}

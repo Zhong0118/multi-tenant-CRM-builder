@@ -79,12 +79,18 @@ export function RecordWorkflowPanel({
       queryClient.setQueryData(runtimeKey, next);
       // Actions may create records in another object and schedule follow-ups.
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: historyKey, refetchType: "all" }),
+        queryClient.invalidateQueries({
+          queryKey: historyKey,
+          refetchType: "all",
+        }),
         queryClient.invalidateQueries({
           queryKey: ["workspace", tenantCode, "records"],
           refetchType: "all",
         }),
-        queryClient.invalidateQueries({ queryKey: followUpQueryKeys.root(tenantCode), refetchType: "all" }),
+        queryClient.invalidateQueries({
+          queryKey: followUpQueryKeys.root(tenantCode),
+          refetchType: "all",
+        }),
         refreshRecord(),
       ]);
     },
@@ -129,7 +135,7 @@ export function RecordWorkflowPanel({
       <h3 className={styles.detailSectionTitle}>流程状态</h3>
       <div className={styles.workflowState}>
         {view.currentState ? (
-          <StatusTag tone={view.currentState.isTerminal ? "success" : "warning"}>
+          <StatusTag tone={view.currentState.isTerminal ? "success" : "info"}>
             {view.currentState.label}
           </StatusTag>
         ) : (
@@ -222,7 +228,10 @@ export function RecordWorkflowPanel({
           ))}
         </ol>
       ) : (
-        <Empty description="还没有流程历史" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        <Empty
+          description="还没有流程历史"
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+        />
       )}
     </section>
   );

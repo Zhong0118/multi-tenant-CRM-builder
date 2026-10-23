@@ -500,7 +500,7 @@
 }
 
 .detailDisclosure summary:focus-visible {
-  outline: 2px solid var(--crm-primary, #167568);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
@@ -863,7 +863,9 @@
   }
 }
 
-.poolTabs, .poolStatus, .poolSettings {
+.poolTabs,
+.poolStatus,
+.poolSettings {
   animation: poolEnter 180ms ease-out;
 }
 .poolActions {
@@ -873,26 +875,56 @@
   gap: 6px;
 }
 .poolActions :global(.ant-btn) {
-  transition: transform 160ms ease, background-color 160ms ease, opacity 160ms ease;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    opacity 160ms ease;
 }
-.poolActions :global(.ant-btn:hover) { transform: scale(1.03); }
-.poolActions :global(.ant-btn:active) { transform: scale(0.97); }
-.poolSettings, .poolSettings :global(.ant-select) { width: 100%; }
-.poolSettingRow { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.poolActions :global(.ant-btn:hover) {
+  transform: scale(1.03);
+}
+.poolActions :global(.ant-btn:active) {
+  transform: scale(0.97);
+}
+.poolSettings,
+.poolSettings :global(.ant-select) {
+  width: 100%;
+}
+.poolSettingRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
 @keyframes poolEnter {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .poolTabs, .poolStatus, .poolSettings { animation: none; }
+  .poolTabs,
+  .poolStatus,
+  .poolSettings {
+    animation: none;
+  }
   .poolActions :global(.ant-btn),
   .poolActions :global(.ant-btn:hover),
-  .poolActions :global(.ant-btn:active) { transition: none; transform: none; }
+  .poolActions :global(.ant-btn:active) {
+    transition: none;
+    transform: none;
+  }
 }
 
 /* Keep the controls and pagination outside the record scrolling region. */
 .list {
-  height: calc(100dvh - var(--header-height) - var(--shell-inset-y, 0px) - 40px);
+  height: calc(
+    100dvh - var(--header-height) - var(--shell-inset-y, 0px) - 40px
+  );
   min-height: 0;
   gap: 16px;
 }
@@ -907,8 +939,12 @@
   scrollbar-width: thin;
 }
 
-.listControls > * { flex-shrink: 0; }
-.listControls > header { margin-bottom: 0; }
+.listControls > * {
+  flex-shrink: 0;
+}
+.listControls > header {
+  margin-bottom: 0;
+}
 
 .registerPanel,
 .register,
@@ -922,9 +958,13 @@
   min-height: 0;
 }
 
-.register { overflow: hidden; }
+.register {
+  overflow: hidden;
+}
 .register :global(.ant-pagination),
-.registerPanel > .cardControls { flex-shrink: 0; }
+.registerPanel > .cardControls {
+  flex-shrink: 0;
+}
 
 .register :global(.ant-table-content) {
   flex: 1;
@@ -942,20 +982,32 @@
 }
 
 @media (max-height: 600px) {
-  .listControls { max-height: 40%; }
+  .listControls {
+    max-height: 40%;
+  }
 }
 
 @media (max-width: 767px) {
-  .list { height: calc(100dvh - var(--header-height) - var(--shell-inset-y, 0px) - 28px); }
-  .register { display: none; }
+  .list {
+    height: calc(
+      100dvh - var(--header-height) - var(--shell-inset-y, 0px) - 28px
+    );
+  }
+  .register {
+    display: none;
+  }
   .registerPanel > .cardList {
     flex: 1;
     min-height: 0;
     overflow: auto;
     overscroll-behavior: contain;
   }
-  .registerPanel > .cardControls { padding-bottom: 0; }
-  .resultCount { white-space: normal; }
+  .registerPanel > .cardControls {
+    padding-bottom: 0;
+  }
+  .resultCount {
+    white-space: normal;
+  }
 }
 
 .poolConfigPreview {
@@ -999,10 +1051,18 @@
 }
 
 /* Pool settings keep the current state, editable rules and save action distinct. */
-.poolSettingsBody { padding: 24px !important; }
-.poolSettingsIntro :global(.ant-typography) { margin: 0 0 8px; }
-.poolSettingsIntro p { line-height: 1.7; }
-.poolSettings :global(.ant-typography-secondary) { color: var(--ink-secondary); }
+.poolSettingsBody {
+  padding: 24px !important;
+}
+.poolSettingsIntro :global(.ant-typography) {
+  margin: 0 0 8px;
+}
+.poolSettingsIntro p {
+  line-height: 1.7;
+}
+.poolSettings :global(.ant-typography-secondary) {
+  color: var(--ink-secondary);
+}
 .poolSettings .poolSettingRow {
   display: flex;
   justify-content: space-between;
@@ -1010,52 +1070,194 @@
   gap: 20px;
   min-height: 48px;
 }
-.poolSettingRow > span { min-width: 0; }
-.poolSettingRow strong { display: block; font-weight: 600; }
-.poolSettingRow small { display: block; margin-top: 4px; color: var(--ink-secondary); font-size: 13px; line-height: 1.6; }
-.poolSettingRow :global(.ant-switch) { flex: 0 0 auto; }
-.poolSettingsSection { display: grid; gap: 16px; padding-top: 22px; border-top: 1px solid var(--ant-color-border-secondary, #e8edf4); animation: poolEnter 180ms ease-out; }
-.poolSettingsSection .poolConfigPreview { display: grid; gap: 14px; }
-.poolSettingsSection > :global(.ant-typography) { margin: 0; }
-.poolSettingsSection .poolSettingRow :global(.ant-input) { max-width: 260px; }
-.poolSectionHeading { display: flex; gap: 8px; align-items: center; }
-.poolSectionHeading > :global(.anticon) { color: var(--working-blue); font-size: 17px; }
-.poolSectionHeading :global(.ant-tag) { margin-left: auto; margin-inline-end: 0; }
-.poolDurationGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.poolDurationGrid :global(.ant-input-number) { width: 100%; }
-.poolHelp { margin: 0; color: var(--ink-secondary); font-size: 13px; line-height: 1.7; }
-.poolFlow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 14px 16px; background: var(--color-primary-soft, #eff6ff); border-radius: 10px; font-size: 13px; font-weight: 500; }
-.poolFlow > :global(.anticon) { font-size: 10px; color: var(--ink-secondary); }
-.poolSettingsFooter { padding: 16px 24px !important; }
-.poolFooterContent { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.poolFooterContent > span { font-size: 13px; color: var(--ink-secondary); }
-.poolFooterContent :global(.ant-btn) { transition: transform 160ms ease; }
-.poolFooterContent :global(.ant-btn:active) { transform: scale(.98); }
-.poolPresetButtons :global(.ant-btn) { border-radius: 8px; }
-.poolTabs:global(.ant-tabs) :global(.ant-tabs-nav) { margin-bottom: 4px; }
-.poolTabs:global(.ant-tabs) :global(.ant-tabs-nav::before) { border: none; }
-.poolTabs:global(.ant-tabs) :global(.ant-tabs-nav-list) { gap: 6px; }
-.poolTabs:global(.ant-tabs) :global(.ant-tabs-tab) { margin: 0 !important; padding: 9px 14px; border-radius: 8px; transition: background 160ms ease, box-shadow 160ms ease, transform 160ms ease; }
-.poolTabs:global(.ant-tabs) :global(.ant-tabs-tab:hover) { background: var(--ant-color-fill-quaternary, #f6f8fa); }
-.poolTabs:global(.ant-tabs) :global(.ant-tabs-tab:active) { transform: scale(.98); }
-.poolTabs:global(.ant-tabs) :global(.ant-tabs-tab-active) { background: var(--color-primary-soft, #eff6ff); box-shadow: inset 0 0 0 1px var(--ant-color-primary-border, #bfdbfe); }
-.poolTabs:global(.ant-tabs) :global(.ant-tabs-tab-active .ant-tabs-tab-btn) { text-shadow: none; font-weight: 600; }
-.poolTabs:global(.ant-tabs) :global(.ant-tabs-ink-bar) { display: none; }
-.poolTabLabel { display: inline-flex; align-items: center; gap: 8px; }
-.poolTabCount { min-width: 20px; padding: 0 5px; border-radius: 5px; background: var(--ant-color-fill-tertiary, #f0f2f5); color: var(--ink-secondary); font-size: 12px; font-variant-numeric: tabular-nums; text-align: center; }
-.poolTabs:global(.ant-tabs) :global(.ant-tabs-tab-active) .poolTabCount { background: var(--ant-color-primary, #2563eb); color: white; }
+.poolSettingRow > span {
+  min-width: 0;
+}
+.poolSettingRow strong {
+  display: block;
+  font-weight: 600;
+}
+.poolSettingRow small {
+  display: block;
+  margin-top: 4px;
+  color: var(--ink-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.poolSettingRow :global(.ant-switch) {
+  flex: 0 0 auto;
+}
+.poolSettingsSection {
+  display: grid;
+  gap: 16px;
+  padding-top: 22px;
+  border-top: 1px solid var(--ant-color-border-secondary, #e8edf4);
+  animation: poolEnter 180ms ease-out;
+}
+.poolSettingsSection .poolConfigPreview {
+  display: grid;
+  gap: 14px;
+}
+.poolSettingsSection > :global(.ant-typography) {
+  margin: 0;
+}
+.poolSettingsSection .poolSettingRow :global(.ant-input) {
+  max-width: 260px;
+}
+.poolSectionHeading {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.poolSectionHeading > :global(.anticon) {
+  color: var(--working-blue);
+  font-size: 17px;
+}
+.poolSectionHeading :global(.ant-tag) {
+  margin-left: auto;
+  margin-inline-end: 0;
+}
+.poolDurationGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.poolDurationGrid :global(.ant-input-number) {
+  width: 100%;
+}
+.poolHelp {
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.poolFlow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 16px;
+  background: var(--color-primary-soft, #eff6ff);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.poolFlow > :global(.anticon) {
+  font-size: 10px;
+  color: var(--ink-secondary);
+}
+.poolSettingsFooter {
+  padding: 16px 24px !important;
+}
+.poolFooterContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.poolFooterContent > span {
+  font-size: 13px;
+  color: var(--ink-secondary);
+}
+.poolFooterContent :global(.ant-btn) {
+  transition: transform 160ms ease;
+}
+.poolFooterContent :global(.ant-btn:active) {
+  transform: scale(0.98);
+}
+.poolPresetButtons :global(.ant-btn) {
+  border-radius: 8px;
+}
+.poolTabs:global(.ant-tabs) :global(.ant-tabs-nav) {
+  margin-bottom: 4px;
+}
+.poolTabs:global(.ant-tabs) :global(.ant-tabs-nav::before) {
+  border: none;
+}
+.poolTabs:global(.ant-tabs) :global(.ant-tabs-nav-list) {
+  gap: 6px;
+}
+.poolTabs:global(.ant-tabs) :global(.ant-tabs-tab) {
+  margin: 0 !important;
+  padding: 9px 14px;
+  border-radius: 8px;
+  transition:
+    background 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+.poolTabs:global(.ant-tabs) :global(.ant-tabs-tab:hover) {
+  background: var(--ant-color-fill-quaternary, #f6f8fa);
+}
+.poolTabs:global(.ant-tabs) :global(.ant-tabs-tab:active) {
+  transform: scale(0.98);
+}
+.poolTabs:global(.ant-tabs) :global(.ant-tabs-tab-active) {
+  background: var(--color-primary-soft, #eff6ff);
+  box-shadow: inset 0 0 0 1px var(--ant-color-primary-border, #bfdbfe);
+}
+.poolTabs:global(.ant-tabs) :global(.ant-tabs-tab-active .ant-tabs-tab-btn) {
+  text-shadow: none;
+  font-weight: 600;
+}
+.poolTabs:global(.ant-tabs) :global(.ant-tabs-ink-bar) {
+  display: none;
+}
+.poolTabLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.poolTabCount {
+  min-width: 20px;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: var(--ant-color-fill-tertiary, #f0f2f5);
+  color: var(--ink-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.poolTabs:global(.ant-tabs) :global(.ant-tabs-tab-active) .poolTabCount {
+  background: var(--ant-color-primary, #2563eb);
+  color: white;
+}
 @media (max-width: 480px) {
-  .poolSettingsBody { padding: 20px 16px !important; }
-  .poolSettingsFooter { padding: 14px 16px !important; }
-  .poolSettingsSection .poolSettingRow { display: grid; gap: 8px; }
-  .poolSettingsSection .poolSettingRow :global(.ant-input) { max-width: none; width: 100%; }
-  .poolFlow { gap: 5px; padding: 12px 10px; flex-wrap: wrap; }
-  .poolFooterContent > span { font-size: 12px; }
+  .poolSettingsBody {
+    padding: 20px 16px !important;
+  }
+  .poolSettingsFooter {
+    padding: 14px 16px !important;
+  }
+  .poolSettingsSection .poolSettingRow {
+    display: grid;
+    gap: 8px;
+  }
+  .poolSettingsSection .poolSettingRow :global(.ant-input) {
+    max-width: none;
+    width: 100%;
+  }
+  .poolFlow {
+    gap: 5px;
+    padding: 12px 10px;
+    flex-wrap: wrap;
+  }
+  .poolFooterContent > span {
+    font-size: 12px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .poolSettingsSection { animation: none; }
-  .poolTabs:global(.ant-tabs) :global(.ant-tabs-tab), .poolFooterContent :global(.ant-btn) { transition: none; }
-  .poolTabs:global(.ant-tabs) :global(.ant-tabs-tab:active), .poolFooterContent :global(.ant-btn:active) { transform: none; }
+  .poolSettingsSection {
+    animation: none;
+  }
+  .poolTabs:global(.ant-tabs) :global(.ant-tabs-tab),
+  .poolFooterContent :global(.ant-btn) {
+    transition: none;
+  }
+  .poolTabs:global(.ant-tabs) :global(.ant-tabs-tab:active),
+  .poolFooterContent :global(.ant-btn:active) {
+    transform: none;
+  }
 }
 
 /* Inside the record page's 动态 section: hint on the left, the add button on the right. */

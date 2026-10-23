@@ -12,7 +12,7 @@
 
 .tag[data-tone="neutral"] {
   color: var(--text-secondary);
-  background: var(--bg-hover);
+  background: var(--color-neutral-soft, var(--bg-hover));
 }
 
 .tag[data-tone="info"] {
@@ -22,7 +22,7 @@
 
 .tag[data-tone="success"] {
   color: var(--color-success);
-  background: var(--color-primary-soft);
+  background: var(--color-success-soft, var(--color-primary-soft));
 }
 
 .tag[data-tone="warning"] {
@@ -32,5 +32,5 @@
 
 .tag[data-tone="danger"] {
   color: var(--color-danger);
-  background: #fef0ef;
+  background: var(--color-danger-soft, #fef0ef);
 }

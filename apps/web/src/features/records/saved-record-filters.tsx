@@ -95,8 +95,11 @@ function SavedRecordFiltersSession({
   const label = name.trim();
   // The view the list is showing right now, so the menu can say which one is open.
   const current = JSON.stringify({ ...query, page: 1 });
-  const active = saved.find((view) => JSON.stringify({ ...view.query, page: 1 }) === current)?.name ?? selected;
-  const atLimit = saved.length >= MAX_SAVED && !saved.some((v) => v.name === label);
+  const active =
+    saved.find((view) => JSON.stringify({ ...view.query, page: 1 }) === current)
+      ?.name ?? selected;
+  const atLimit =
+    saved.length >= MAX_SAVED && !saved.some((v) => v.name === label);
   function save() {
     if (!label || atLimit) return;
     // Keep the form open and the name typed when the browser refuses to store it.
@@ -109,6 +112,8 @@ function SavedRecordFiltersSession({
     setName("");
     setSaveOpen(false);
   }
+  // Nothing saved yet: the views slot takes no room in the toolbar.
+  if (part === "views" && saved.length === 0) return null;
   return (
     <div aria-label="我的筛选视图" className={styles.savedFilters}>
       <Space size={2}>
@@ -160,47 +165,54 @@ function SavedRecordFiltersSession({
           </Popover>
         ) : null}
         {part !== "views" ? (
-        <Popover
-          trigger="click"
-          placement="bottomRight"
-          open={saveOpen}
-          onOpenChange={setSaveOpen}
-          title="保存为视图"
-          content={
-            <div className={styles.savedViewForm}>
-              <Typography.Text type="secondary">
-                把当前搜索、筛选和排序存成视图，仅保存在此浏览器。
-              </Typography.Text>
-              <Input
-                aria-label="视图名称"
-                placeholder="为当前筛选命名"
-                maxLength={50}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onPressEnter={save}
-              />
-              {atLimit ? (
-                <Typography.Text type="danger">
-                  最多保存 {MAX_SAVED} 个视图，请先删除不用的。
+          <Popover
+            trigger="click"
+            placement="bottomRight"
+            open={saveOpen}
+            onOpenChange={setSaveOpen}
+            title="保存为视图"
+            content={
+              <div className={styles.savedViewForm}>
+                <Typography.Text type="secondary">
+                  把当前搜索、筛选和排序存成视图，仅保存在此浏览器。
                 </Typography.Text>
-              ) : null}
-              {error ? (
-                <Alert type="error" title="浏览器无法保存筛选，请检查存储设置。" />
-              ) : null}
-              <Button type="primary" disabled={!label || atLimit} onClick={save}>
-                保存视图
-              </Button>
-            </div>
-          }
-        >
-          <Button
-            type="text"
-            className={styles.savedViewTrigger}
-            icon={<PlusOutlined aria-hidden />}
+                <Input
+                  aria-label="视图名称"
+                  placeholder="为当前筛选命名"
+                  maxLength={50}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onPressEnter={save}
+                />
+                {atLimit ? (
+                  <Typography.Text type="danger">
+                    最多保存 {MAX_SAVED} 个视图，请先删除不用的。
+                  </Typography.Text>
+                ) : null}
+                {error ? (
+                  <Alert
+                    type="error"
+                    title="浏览器无法保存筛选，请检查存储设置。"
+                  />
+                ) : null}
+                <Button
+                  type="primary"
+                  disabled={!label || atLimit}
+                  onClick={save}
+                >
+                  保存视图
+                </Button>
+              </div>
+            }
           >
-            保存为视图
-          </Button>
-        </Popover>
+            <Button
+              type="text"
+              className={styles.savedViewTrigger}
+              icon={<PlusOutlined aria-hidden />}
+            >
+              保存为视图
+            </Button>
+          </Popover>
         ) : null}
       </Space>
     </div>

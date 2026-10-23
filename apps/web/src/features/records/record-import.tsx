@@ -38,6 +38,7 @@ import { runImportBatches, summarizeImport } from "./record-import-batches";
 
 import styles from "./records.module.css";
 import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
+import { memberSelectOptions } from "@/components/identity/member-identity";
 
 const SKIP = "__skip__";
 
@@ -66,7 +67,11 @@ export function RecordImportDrawer({
     (field) => field.access === "EDIT" && field.type !== "MEMBER",
   );
   const [ownerMemberId, setOwnerMemberId] = useState<string>();
-  const [importToPool, setImportToPool] = useState(Boolean(canChooseOwner && poolConfig?.enabled && poolConfig.lifecycleEnabled));
+  const [importToPool, setImportToPool] = useState(
+    Boolean(
+      canChooseOwner && poolConfig?.enabled && poolConfig.lifecycleEnabled,
+    ),
+  );
   const [batchId, setBatchId] = useState<string>();
   const [selectedFile, setSelectedFile] = useState<File>();
   const [encoding, setEncoding] = useState<CsvEncoding>("auto");
@@ -391,14 +396,11 @@ export function RecordImportDrawer({
             aria-label="导入负责人"
             allowClear
             showSearch
-            optionFilterProp="label"
+            optionFilterProp="searchText"
             placeholder="未分配"
             value={ownerMemberId}
             disabled={!!busy || loadingFile || importStarted}
-            options={members.map((member) => ({
-              value: member.id,
-              label: member.displayName ?? "未设置姓名",
-            }))}
+            options={memberSelectOptions(members)}
             onChange={(next?: string) => {
               setOwnerMemberId(next);
               if (next) setImportToPool(false);
@@ -649,7 +651,6 @@ export function RecordImportDrawer({
           这里只展示前 50 个错误，完整结果请下载失败明细。
         </Typography.Paragraph>
       ) : null}
-
     </Drawer>
   );
 }

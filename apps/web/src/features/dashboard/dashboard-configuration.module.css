@@ -206,7 +206,7 @@
   cursor: pointer;
 }
 .libraryItem:hover {
-  border-color: #167568;
+  border-color: var(--color-primary);
   background: #f5fbfa;
 }
 .libraryItem strong {
@@ -221,7 +221,7 @@
   position: absolute;
   right: 10px;
   top: 21px;
-  color: #167568;
+  color: var(--color-primary);
   font-size: 18px;
 }
 .outline {
@@ -278,7 +278,7 @@
 }
 .widgetCard:hover,
 .widgetSelected {
-  border-color: #167568;
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 2px rgb(22 117 104 / 10%);
 }
 .widgetToolbar {

@@ -18,7 +18,7 @@ const ok = (data: unknown) => ({
 });
 describe("runtime record pool requests", () => {
   beforeEach(() => mocks.get.mockReset());
-  it("loads active assignment choices beyond the first admin roster page", async () => {
+  it("loads the whole admin roster across pages and labels disabled members", async () => {
     mocks.get
       .mockResolvedValueOnce(ok({ object: { code: "customers" } }))
       .mockResolvedValueOnce(
@@ -49,8 +49,19 @@ describe("runtime record pool requests", () => {
       "customers",
       "TENANT_ADMIN",
     );
-    expect(result.members).toHaveLength(101);
-    expect(result.members.at(-1)?.displayName).toBe("末页成员");
+    // Disabled members stay so the records they own show a name; pickers
+    // (memberSelectOptions) offer only the active ones.
+    expect(result.members).toHaveLength(102);
+    expect(result.members.at(-2)).toEqual({
+      id: "member-100",
+      displayName: "末页成员",
+      status: "ACTIVE",
+    });
+    expect(result.members.at(-1)).toEqual({
+      id: "member-101",
+      displayName: "停用成员",
+      status: "DISABLED",
+    });
     expect(mocks.get.mock.calls[2][1].params.query).toEqual({
       page: 2,
       limit: 100,
@@ -112,8 +123,20 @@ describe("authorized archived runtime links", () => {
   );
 });
 
-
-it.each([403, 404])("keeps inaccessible objects private for HTTP %s", async (status) => {
-  mocks.get.mockResolvedValueOnce({ error: { code: "OBJECT_NOT_FOUND", status, message: "对象不可用", requestId: "private-test" }, response: new Response(null, { status }) });
-  await expect(loadRuntimeObject("northwind", "customers", "EMPLOYEE")).rejects.toThrow("NEXT_HTTP_ERROR_FALLBACK;404");
-});
+it.each([403, 404])(
+  "keeps inaccessible objects private for HTTP %s",
+  async (status) => {
+    mocks.get.mockResolvedValueOnce({
+      error: {
+        code: "OBJECT_NOT_FOUND",
+        status,
+        message: "对象不可用",
+        requestId: "private-test",
+      },
+      response: new Response(null, { status }),
+    });
+    await expect(
+      loadRuntimeObject("northwind", "customers", "EMPLOYEE"),
+    ).rejects.toThrow("NEXT_HTTP_ERROR_FALLBACK;404");
+  },
+);

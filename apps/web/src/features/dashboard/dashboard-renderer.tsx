@@ -609,7 +609,7 @@ function optionColor(color: string) {
       GRAY: "#7C8992",
       BLUE: "#3478F6",
       CYAN: "#0891B2",
-      GREEN: "#167568",
+      GREEN: "#15803D",
       YELLOW: "#CA8A04",
       ORANGE: "#C66C18",
       RED: "#B42318",

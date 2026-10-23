@@ -16,6 +16,7 @@ import type { DynamicFieldMember } from "./dynamic-field";
 import { recordPoolApi, type RecordPoolApi } from "./record-pool-api";
 import styles from "./records.module.css";
 import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
+import { memberSelectOptions } from "@/components/identity/member-identity";
 
 export const MAX_OWNER_ASSIGNMENT_RECORDS = 1000;
 
@@ -113,7 +114,9 @@ export function RecordBatchAssignDrawer({
             type="primary"
             loading={busy}
             aria-label={started ? "重试失败项" : "确认分配"}
-            disabled={busy || !owner || exceedsLimit || succeeded === rows.length}
+            disabled={
+              busy || !owner || exceedsLimit || succeeded === rows.length
+            }
             onClick={() => void assign()}
           >
             {started ? "重试失败项" : "确认分配"}
@@ -145,14 +148,11 @@ export function RecordBatchAssignDrawer({
           aria-label="批量分配负责人"
           placeholder="选择负责人"
           showSearch
-          optionFilterProp="label"
+          optionFilterProp="searchText"
           value={owner}
           disabled={busy || started}
           onChange={setOwner}
-          options={members.map((member) => ({
-            value: member.id,
-            label: member.displayName ?? "未设置姓名",
-          }))}
+          options={memberSelectOptions(members)}
         />
         {started ? (
           <>

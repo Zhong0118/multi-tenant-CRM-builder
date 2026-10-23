@@ -292,61 +292,112 @@ describe("RecordList query navigation", () => {
     renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
       canFilterByOwner: true,
       members: [{ id: "member-1", displayName: "林晨" }],
-      page: { ...page, items: [{ ...page.items[0], ownerMemberId: "member-1" }] },
+      page: {
+        ...page,
+        items: [{ ...page.items[0], ownerMemberId: "member-1" }],
+      },
     });
     const table = screen.getByRole("table");
-    expect(within(table).getByRole("columnheader", { name: "负责人" })).toBeVisible();
+    expect(
+      within(table).getByRole("columnheader", { name: "负责人" }),
+    ).toBeVisible();
     expect(within(table).getByText("林晨")).toBeVisible();
-    expect(within(screen.getByRole("list", { name: "客户记录卡片" })).getByText("林晨")).toBeVisible();
+    expect(
+      within(screen.getByRole("list", { name: "客户记录卡片" })).getByText(
+        "林晨",
+      ),
+    ).toBeVisible();
   });
 
-  it.each([[null, "未指定"], ["unknown-member", "已指定"]])("shows owner %s as %s without exposing an identifier", (ownerMemberId, label) => {
-    renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
-      canFilterByOwner: true,
-      page: { ...page, items: [{ ...page.items[0], ownerMemberId }] },
-    });
-    expect(within(screen.getByRole("table")).getByText(label!)).toBeVisible();
-    expect(within(screen.getByRole("list", { name: "客户记录卡片" })).getByText(label!)).toBeVisible();
-    expect(screen.queryByText("unknown-member")).not.toBeInTheDocument();
-  });
+  it.each([
+    [null, "未指定"],
+    ["unknown-member", "其他成员"],
+  ])(
+    "shows owner %s as %s without exposing an identifier",
+    (ownerMemberId, label) => {
+      renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+        canFilterByOwner: true,
+        page: { ...page, items: [{ ...page.items[0], ownerMemberId }] },
+      });
+      expect(within(screen.getByRole("table")).getByText(label!)).toBeVisible();
+      expect(
+        within(screen.getByRole("list", { name: "客户记录卡片" })).getByText(
+          label!,
+        ),
+      ).toBeVisible();
+      expect(screen.queryByText("unknown-member")).not.toBeInTheDocument();
+    },
+  );
 
   it("omits repetitive owner labels from an employee's own-record list", () => {
     renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
       currentMemberId: "member-1",
       schema: { ...schema, scopes: { read: "OWN", update: "OWN" } },
-      page: { ...page, items: [{ ...page.items[0], ownerMemberId: "member-1" }] },
+      page: {
+        ...page,
+        items: [{ ...page.items[0], ownerMemberId: "member-1" }],
+      },
     });
-    expect(screen.queryByRole("columnheader", { name: "负责人" })).not.toBeInTheDocument();
-    expect(within(screen.getByRole("list", { name: "客户记录卡片" })).queryByText("负责人")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("columnheader", { name: "负责人" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole("list", { name: "客户记录卡片" })).queryByText(
+        "负责人",
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it("remembers owner visibility separately from business fields and restores the default", async () => {
     const options = { canFilterByOwner: true, currentMemberId: "member-1" };
     const view = renderList(vi.fn(), DEFAULT_RECORD_QUERY, options);
-    fireEvent.click(screen.getByRole("button", { name: /^列$|列$/ }));
+    fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "显示系统负责人" }));
-    expect(screen.queryByRole("columnheader", { name: "负责人" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("columnheader", { name: "负责人" }),
+    ).not.toBeInTheDocument();
+    const key = "crm.records.display.v2.northwind.member-1.customers";
+    expect(JSON.parse(window.localStorage.getItem(key)!)).toMatchObject({
+      ownerVisible: false,
+    });
     view.unmount();
     renderList(vi.fn(), DEFAULT_RECORD_QUERY, options);
-    expect(screen.queryByRole("columnheader", { name: "负责人" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /^列$|列$/ }));
-    fireEvent.click(screen.getByRole("button", { name: "恢复默认列" }));
+    expect(
+      screen.queryByRole("columnheader", { name: "负责人" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
+    fireEvent.click(screen.getByRole("button", { name: "恢复默认" }));
     expect(screen.getByRole("columnheader", { name: "负责人" })).toBeVisible();
-    expect(window.localStorage.getItem("crm.records.columns.northwind.customers")).not.toContain("ownerMemberId");
+    expect(window.localStorage.getItem(key)).toBeNull();
+    // The owner is a system column, never a business field in the column list.
+    expect(
+      window.localStorage.getItem("crm.records.columns.northwind.customers"),
+    ).toBeNull();
   });
   it("reflects a new URL search without remounting the list", () => {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const api = { list: vi.fn().mockResolvedValue(page) } as unknown as RecordApi;
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const api = {
+      list: vi.fn().mockResolvedValue(page),
+    } as unknown as RecordApi;
     const view = (search: string) => (
       <QueryClientProvider client={client}>
-        <RecordList tenantCode="northwind" schema={schema}
-          query={{ ...DEFAULT_RECORD_QUERY, search }} initialPage={page}
-          api={api} navigate={vi.fn()} />
+        <RecordList
+          tenantCode="northwind"
+          schema={schema}
+          query={{ ...DEFAULT_RECORD_QUERY, search }}
+          initialPage={page}
+          api={api}
+          navigate={vi.fn()}
+        />
       </QueryClientProvider>
     );
     const { rerender } = render(view("旧关键词"));
     rerender(view("新关键词"));
-    expect(screen.getByRole("textbox", { name: /搜索/ })).toHaveValue("新关键词");
+    expect(screen.getByRole("textbox", { name: /搜索/ })).toHaveValue(
+      "新关键词",
+    );
   });
 
   it("keeps a pending draft when other URL query props receive a same-value refresh", async () => {
@@ -355,18 +406,26 @@ describe("RecordList query navigation", () => {
     const input = screen.getByRole("textbox", { name: /搜索/ });
     fireEvent.change(input, { target: { value: "保留草稿" } });
     result.rerender(
-      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <QueryClientProvider
+        client={
+          new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        }
+      >
         <RecordList
           tenantCode="northwind"
           schema={schema}
           query={{ ...DEFAULT_RECORD_QUERY }}
           initialPage={page}
-          api={{ list: vi.fn().mockResolvedValue(page) } as unknown as RecordApi}
+          api={
+            { list: vi.fn().mockResolvedValue(page) } as unknown as RecordApi
+          }
           navigate={navigate}
         />
       </QueryClientProvider>,
     );
-    expect(screen.getByRole("textbox", { name: /搜索/ })).toHaveValue("保留草稿");
+    expect(screen.getByRole("textbox", { name: /搜索/ })).toHaveValue(
+      "保留草稿",
+    );
     await new Promise((resolve) => setTimeout(resolve, 400));
     expect(navigate).toHaveBeenCalledWith(
       "/workspace/northwind/objects/customers?search=%E4%BF%9D%E7%95%99%E8%8D%89%E7%A8%BF",
@@ -413,9 +472,15 @@ describe("RecordList query navigation", () => {
 describe("RecordList table sorting", () => {
   it("offers card sort and pagination using the same URL query", () => {
     const navigate = vi.fn();
-    renderList(navigate, DEFAULT_RECORD_QUERY, { page: { ...page, total: 45 } });
+    renderList(navigate, DEFAULT_RECORD_QUERY, {
+      page: { ...page, total: 45 },
+    });
     fireEvent.mouseDown(screen.getByRole("combobox", { name: "卡片排序字段" }));
-    fireEvent.click(screen.getByText("业务编号", { selector: ".ant-select-item-option-content" }));
+    fireEvent.click(
+      screen.getByText("业务编号", {
+        selector: ".ant-select-item-option-content",
+      }),
+    );
     expect(navigate).toHaveBeenLastCalledWith(
       "/workspace/northwind/objects/customers?sort=recordNo",
     );
@@ -450,36 +515,59 @@ describe("RecordList table sorting", () => {
     // Selection actions live in the footer's selection bar.
     const bulk = screen.getByRole("toolbar", { name: "批量操作" });
     expect(within(bulk).getByText("已选 101 条")).toBeInTheDocument();
-    expect(within(bulk).getByRole("button", { name: /批量修改/ })).toBeDisabled();
-    expect(within(bulk).getByRole("button", { name: /分配负责人/ })).toBeEnabled();
+    expect(
+      within(bulk).getByRole("button", { name: /批量修改/ }),
+    ).toBeDisabled();
+    expect(
+      within(bulk).getByRole("button", { name: /分配负责人/ }),
+    ).toBeEnabled();
     fireEvent.click(within(bulk).getByRole("button", { name: /分配负责人/ }));
     expect(await screen.findByText("批量分配 101 条记录")).toBeInTheDocument();
   });
 
   it("shares card selection with the existing batch edit action", async () => {
     renderList(vi.fn());
-    fireEvent.click(screen.getByRole("checkbox", { name: "选择卡片 天际科技" }));
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "选择卡片 天际科技" }),
+    );
     fireEvent.click(screen.getByRole("button", { name: /批量修改/ }));
     expect(screen.getByText("批量修改 1 条")).toBeInTheDocument();
   });
   it("recovers filtered empty results without changing sort or page size", () => {
     const navigate = vi.fn();
-    renderList(navigate, {
-      ...DEFAULT_RECORD_QUERY, search: "不存在", ownerMemberId: "member-1",
-      filters: { lead_status: ["new"] }, page: 3, sort: "recordNo", direction: "asc",
-    }, { page: { ...page, items: [], total: 0, page: 3 } });
+    renderList(
+      navigate,
+      {
+        ...DEFAULT_RECORD_QUERY,
+        search: "不存在",
+        ownerMemberId: "member-1",
+        filters: { lead_status: ["new"] },
+        page: 3,
+        sort: "recordNo",
+        direction: "asc",
+      },
+      { page: { ...page, items: [], total: 0, page: 3 } },
+    );
     fireEvent.click(screen.getAllByRole("button", { name: "清除条件" })[0]);
-    expect(navigate).toHaveBeenCalledWith("/workspace/northwind/objects/customers?sort=recordNo&direction=asc");
+    expect(navigate).toHaveBeenCalledWith(
+      "/workspace/northwind/objects/customers?sort=recordNo&direction=asc",
+    );
   });
 
   it("does not offer filter recovery for a genuinely empty register", () => {
-    renderList(vi.fn(), DEFAULT_RECORD_QUERY, { page: { ...page, items: [], total: 0 } });
-    expect(screen.getAllByText("还没有记录，新建第一条。").length).toBeGreaterThan(0);
+    renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+      page: { ...page, items: [], total: 0 },
+    });
+    expect(
+      screen.getAllByText("还没有记录，新建第一条。").length,
+    ).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: "清除条件" })).toBeNull();
   });
 
   it("shows API failure instead of empty results and retries the same query", async () => {
-    const list = vi.fn().mockRejectedValueOnce(new Error("服务暂不可用"))
+    const list = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("服务暂不可用"))
       .mockResolvedValue(page);
     renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
       api: { list } as unknown as RecordApi,
@@ -488,28 +576,41 @@ describe("RecordList table sorting", () => {
     const retry = await screen.findByRole("button", { name: "重试" });
     expect(screen.queryByText("还没有记录，新建第一条。")).toBeNull();
     fireEvent.click(retry);
-    await waitFor(() => expect(screen.getAllByText("天际科技").length).toBeGreaterThan(0));
-    expect(list).toHaveBeenLastCalledWith("northwind", "customers", DEFAULT_RECORD_QUERY);
+    await waitFor(() =>
+      expect(screen.getAllByText("天际科技").length).toBeGreaterThan(0),
+    );
+    expect(list).toHaveBeenLastCalledWith(
+      "northwind",
+      "customers",
+      DEFAULT_RECORD_QUERY,
+    );
   });
 
   it("uses the page header for the owned title, description and create action", () => {
     const navigate = vi.fn();
     renderList(navigate, DEFAULT_RECORD_QUERY, {
-      schema: { ...schema, object: { ...schema.object, description: "管理客户关系" },
-        scopes: { ...schema.scopes, read: "OWN" } },
+      schema: {
+        ...schema,
+        object: { ...schema.object, description: "管理客户关系" },
+        scopes: { ...schema.scopes, read: "OWN" },
+      },
     });
     const title = screen.getByRole("heading", { level: 1, name: "我的客户" });
     const header = title.closest("header")!;
     expect(within(header).getByText("管理客户关系")).toBeInTheDocument();
     fireEvent.click(within(header).getByRole("button", { name: "新建客户" }));
-    expect(navigate).toHaveBeenCalledWith("/workspace/northwind/objects/customers/new");
+    expect(navigate).toHaveBeenCalledWith(
+      "/workspace/northwind/objects/customers/new",
+    );
   });
 
   it("keeps creation out of the page header when not permitted", () => {
     renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
       schema: { ...schema, actions: { ...schema.actions, canCreate: false } },
     });
-    expect(screen.getByRole("heading", { level: 1, name: "客户" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "客户" }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "新建客户" })).toBeNull();
   });
 
@@ -679,56 +780,121 @@ describe("RecordList table sorting", () => {
     renderList(navigate, DEFAULT_RECORD_QUERY, { api });
 
     fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "导入 Excel / CSV" }));
-    expect(await screen.findByLabelText("选择 Excel 或 CSV 文件")).toBeInTheDocument();
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "导入 Excel / CSV" }),
+    );
+    expect(
+      await screen.findByLabelText("选择 Excel 或 CSV 文件"),
+    ).toBeInTheDocument();
   });
 
-  it.each(["选择卡片", "选择"])("keeps %s batch count and request on the current page", async (label) => {
-    const second = { ...page.items[0], id: "record-2", title: "第二页客户", version: 4 };
-    const firstPage = { ...page, limit: 1, total: 2 };
-    const secondPage = { ...firstPage, page: 2, items: [second] };
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const api = {
-      list: vi.fn().mockImplementation((_tenant, _object, query: RecordQuery) =>
-        Promise.resolve(query.page === 2 ? secondPage : firstPage)),
-      batchUpdate: vi.fn().mockResolvedValue({ updated: 1, failed: 0, items: [] }),
-    } as unknown as RecordApi;
-    function TwoPages() {
-      const [query, setQuery] = useState(DEFAULT_RECORD_QUERY);
-      return <RecordList tenantCode="northwind" schema={schema} query={query}
-        initialPage={query.page === 2 ? secondPage : firstPage} api={api}
-        navigate={(path) => setQuery({ ...DEFAULT_RECORD_QUERY, page: Number(new URL(path, "http://test").searchParams.get("page") ?? 1) })} />;
-    }
-    render(<QueryClientProvider client={client}><TwoPages /></QueryClientProvider>);
-    fireEvent.click(await screen.findByRole("checkbox", { name: `${label} 天际科技` }));
-    // One pager in the footer serves the table and the cards.
-    fireEvent.click(screen.getAllByTitle("2")[0]);
-    fireEvent.click(await screen.findByRole("checkbox", { name: `${label} 第二页客户` }));
-    expect(screen.getByText("已选 1 条")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /批量修改/ }));
-    expect(screen.getByText("批量修改 1 条")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("checkbox", { name: "批量修改 备注" }));
-    fireEvent.change(screen.getByRole("textbox", { name: "备注" }), { target: { value: "当前页修改" } });
-    fireEvent.click(screen.getByRole("button", { name: "应用到选中记录" }));
-    await waitFor(() => expect(api.batchUpdate).toHaveBeenCalledWith("northwind", "customers", {
-      items: [{ recordId: "record-2", version: 4 }], values: { notes: "当前页修改" },
-    }));
-  });
+  it.each(["选择卡片", "选择"])(
+    "keeps %s batch count and request on the current page",
+    async (label) => {
+      const second = {
+        ...page.items[0],
+        id: "record-2",
+        title: "第二页客户",
+        version: 4,
+      };
+      const firstPage = { ...page, limit: 1, total: 2 };
+      const secondPage = { ...firstPage, page: 2, items: [second] };
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const api = {
+        list: vi
+          .fn()
+          .mockImplementation((_tenant, _object, query: RecordQuery) =>
+            Promise.resolve(query.page === 2 ? secondPage : firstPage),
+          ),
+        batchUpdate: vi
+          .fn()
+          .mockResolvedValue({ updated: 1, failed: 0, items: [] }),
+      } as unknown as RecordApi;
+      function TwoPages() {
+        const [query, setQuery] = useState(DEFAULT_RECORD_QUERY);
+        return (
+          <RecordList
+            tenantCode="northwind"
+            schema={schema}
+            query={query}
+            initialPage={query.page === 2 ? secondPage : firstPage}
+            api={api}
+            navigate={(path) =>
+              setQuery({
+                ...DEFAULT_RECORD_QUERY,
+                page: Number(
+                  new URL(path, "http://test").searchParams.get("page") ?? 1,
+                ),
+              })
+            }
+          />
+        );
+      }
+      render(
+        <QueryClientProvider client={client}>
+          <TwoPages />
+        </QueryClientProvider>,
+      );
+      fireEvent.click(
+        await screen.findByRole("checkbox", { name: `${label} 天际科技` }),
+      );
+      // One pager in the footer serves the table and the cards.
+      fireEvent.click(screen.getAllByTitle("2")[0]);
+      fireEvent.click(
+        await screen.findByRole("checkbox", { name: `${label} 第二页客户` }),
+      );
+      expect(screen.getByText("已选 1 条")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: /批量修改/ }));
+      expect(screen.getByText("批量修改 1 条")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("checkbox", { name: "批量修改 备注" }));
+      fireEvent.change(screen.getByRole("textbox", { name: "备注" }), {
+        target: { value: "当前页修改" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "应用到选中记录" }));
+      await waitFor(() =>
+        expect(api.batchUpdate).toHaveBeenCalledWith("northwind", "customers", {
+          items: [{ recordId: "record-2", version: 4 }],
+          values: { notes: "当前页修改" },
+        }),
+      );
+    },
+  );
 
   it("clears selection when an external filter URL changes even if the same record remains", async () => {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const api = { list: vi.fn().mockResolvedValue(page) } as unknown as RecordApi;
-    const view = (query: RecordQuery) => <QueryClientProvider client={client}>
-      <RecordList tenantCode="northwind" schema={schema} query={query} initialPage={page} api={api} navigate={vi.fn()} />
-    </QueryClientProvider>;
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const api = {
+      list: vi.fn().mockResolvedValue(page),
+    } as unknown as RecordApi;
+    const view = (query: RecordQuery) => (
+      <QueryClientProvider client={client}>
+        <RecordList
+          tenantCode="northwind"
+          schema={schema}
+          query={query}
+          initialPage={page}
+          api={api}
+          navigate={vi.fn()}
+        />
+      </QueryClientProvider>
+    );
     const { rerender } = render(view(DEFAULT_RECORD_QUERY));
-    fireEvent.click(await screen.findByRole("checkbox", { name: "选择卡片 天际科技" }));
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: "选择卡片 天际科技" }),
+    );
     fireEvent.click(screen.getByRole("button", { name: /批量修改/ }));
     expect(screen.getByText("批量修改 1 条")).toBeInTheDocument();
     rerender(view({ ...DEFAULT_RECORD_QUERY, search: "天际" }));
     expect(screen.queryByText("批量修改 0 条")).not.toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "选择卡片 天际科技" })).not.toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "选择 天际科技" })).not.toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "选择卡片 天际科技" }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "选择 天际科技" }),
+    ).not.toBeChecked();
     // With nothing selected the selection bar, and its batch actions, are gone.
     expect(screen.queryByRole("toolbar", { name: "批量操作" })).toBeNull();
   });
@@ -755,9 +921,12 @@ describe("RecordList table sorting", () => {
       list: vi.fn().mockResolvedValue(page),
       export: vi.fn().mockResolvedValue(undefined),
     } as unknown as RecordApi;
-    renderList(navigate, DEFAULT_RECORD_QUERY, { api });
+    renderList(navigate, DEFAULT_RECORD_QUERY, {
+      api,
+      currentMemberId: "member-1",
+    });
 
-    fireEvent.click(screen.getByRole("button", { name: /^列$|列$/ }));
+    fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "显示列 手机号" }));
     fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
     fireEvent.click(
@@ -774,8 +943,12 @@ describe("RecordList table sorting", () => {
       ),
     );
     expect(
-      window.localStorage.getItem("crm.records.columns.northwind.customers"),
-    ).toBe(JSON.stringify(["name", "lead_status", "score"]));
+      JSON.parse(
+        window.localStorage.getItem(
+          "crm.records.display.v2.northwind.member-1.customers",
+        )!,
+      ),
+    ).toMatchObject({ columns: ["name", "lead_status", "score"] });
   });
 
   it("exports the current list filter from the toolbar", async () => {
@@ -810,17 +983,29 @@ describe("RecordList table sorting", () => {
     expect(screen.getByLabelText("搜索客户名称、手机号")).toBeInTheDocument();
     // Every other filterable field is one condition away in the 筛选 popover.
     await addCondition("签约日");
-    expect(screen.getByRole("group", { name: "按签约日筛选" })).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "按签约日快捷筛选" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("group", { name: "按签约日筛选" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "按签约日快捷筛选" }),
+    ).toBeInTheDocument();
     await addCondition("评分");
-    expect(screen.getByRole("group", { name: "按评分筛选" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("group", { name: "按评分筛选" }),
+    ).toBeInTheDocument();
     await addCondition("已启用");
-    expect(screen.getByRole("combobox", { name: "按已启用筛选" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "按已启用筛选" }),
+    ).toBeInTheDocument();
     await addCondition("跟进人");
-    expect(screen.getByRole("combobox", { name: "按跟进人筛选" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "按跟进人筛选" }),
+    ).toBeInTheDocument();
     await addCondition("备注");
     expect(screen.getByLabelText("按备注筛选")).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "按备注填充筛选" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "按备注填充筛选" }),
+    ).toBeInTheDocument();
     fireEvent.mouseDown(
       screen.getByRole("combobox", { name: "按客户标签筛选" }),
     );
@@ -870,7 +1055,9 @@ describe("RecordList table sorting", () => {
     expect(within(cards).getByText("待联系")).toBeInTheDocument();
     expect(within(cards).getByText("李明")).toBeInTheDocument();
     // A card carries the same ⋯ menu as its table row.
-    fireEvent.click(within(cards).getByRole("button", { name: "更多操作 天际科技" }));
+    fireEvent.click(
+      within(cards).getByRole("button", { name: "更多操作 天际科技" }),
+    );
     fireEvent.click(screen.getByRole("menuitem", { name: "查看" }));
     expect(navigate).toHaveBeenCalledWith(
       "/workspace/northwind/objects/customers/record-1",
@@ -880,9 +1067,21 @@ describe("RecordList table sorting", () => {
 
 it("switches to public pool preserving filters and resetting owner and page", () => {
   const navigate = vi.fn();
-  renderList(navigate, { ...DEFAULT_RECORD_QUERY, page: 3, ownerMemberId: "member-1", search: "测试", filters: { lead_status: ["new"] } }, { poolConfig: { enabled: true, ownershipTtlHours: null, version: 1 } });
+  renderList(
+    navigate,
+    {
+      ...DEFAULT_RECORD_QUERY,
+      page: 3,
+      ownerMemberId: "member-1",
+      search: "测试",
+      filters: { lead_status: ["new"] },
+    },
+    { poolConfig: { enabled: true, ownershipTtlHours: null, version: 1 } },
+  );
   // The record scope is a single-choice control, so it is a radio group rather than tabs.
-  expect(screen.getByRole("radiogroup", { name: "记录范围" })).toBeInTheDocument();
+  expect(
+    screen.getByRole("radiogroup", { name: "记录范围" }),
+  ).toBeInTheDocument();
   fireEvent.click(screen.getByRole("radio", { name: "公共池" }));
   const url = new URL(navigate.mock.calls[0][0], "http://localhost");
   expect(url.searchParams.get("scope")).toBe("pool");
@@ -892,35 +1091,83 @@ it("switches to public pool preserving filters and resetting owner and page", ()
   expect(url.searchParams.get("filters")).toContain("new");
 });
 it("keeps employee public pool rows read-only and omits all tab for OWN readers", () => {
-  renderList(vi.fn(), DEFAULT_RECORD_QUERY, { schema: { ...schema, scopes: { read: "OWN", update: "OWN" } }, poolConfig: { enabled: true, ownershipTtlHours: null, version: 1 }, page: { ...page, items: [{ ...page.items[0], inPublicPool: true, ownershipExpiresAt: null }] } });
-  expect(screen.queryByRole("radio", { name: "全部记录" })).not.toBeInTheDocument();
+  renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+    schema: { ...schema, scopes: { read: "OWN", update: "OWN" } },
+    poolConfig: { enabled: true, ownershipTtlHours: null, version: 1 },
+    page: {
+      ...page,
+      items: [
+        { ...page.items[0], inPublicPool: true, ownershipExpiresAt: null },
+      ],
+    },
+  });
+  expect(
+    screen.queryByRole("radio", { name: "全部记录" }),
+  ).not.toBeInTheDocument();
   expect(screen.getByRole("radio", { name: "公共池" })).toBeInTheDocument();
   // The row menu explains why editing is unavailable.
-  fireEvent.click(within(screen.getByRole("table", { name: "客户记录" })).getByRole("button", { name: "更多操作 天际科技" }));
-  expect(screen.getByRole("menuitem", { name: "编辑（领取后可编辑）" })).toHaveAttribute("aria-disabled", "true");
-  expect(screen.getByRole("checkbox", { name: "选择 天际科技" })).toBeDisabled();
-  expect(screen.getAllByRole("button", { name: "领取 天际科技" }).length).toBeGreaterThan(0);
+  fireEvent.click(
+    within(screen.getByRole("table", { name: "客户记录" })).getByRole(
+      "button",
+      { name: "更多操作 天际科技" },
+    ),
+  );
+  expect(
+    screen.getByRole("menuitem", { name: "编辑（领取后可编辑）" }),
+  ).toHaveAttribute("aria-disabled", "true");
+  expect(
+    screen.getByRole("checkbox", { name: "选择 天际科技" }),
+  ).toBeDisabled();
+  expect(
+    screen.getAllByRole("button", { name: "领取 天际科技" }).length,
+  ).toBeGreaterThan(0);
 });
 
 it("uses the business table title in the public pool for OWN readers", () => {
-  renderList(vi.fn(), { ...DEFAULT_RECORD_QUERY, scope: "pool" }, { schema: { ...schema, scopes: { read: "OWN", update: "OWN" } }, poolConfig: { enabled: true, ownershipTtlHours: null, version: 1 } });
+  renderList(
+    vi.fn(),
+    { ...DEFAULT_RECORD_QUERY, scope: "pool" },
+    {
+      schema: { ...schema, scopes: { read: "OWN", update: "OWN" } },
+      poolConfig: { enabled: true, ownershipTtlHours: null, version: 1 },
+    },
+  );
   expect(screen.getByRole("heading", { name: "客户" })).toBeInTheDocument();
-  expect(screen.queryByRole("heading", { name: "我的客户" })).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("heading", { name: "我的客户" }),
+  ).not.toBeInTheDocument();
 });
 
 it("does not refetch the current public pool route after its config is disabled", () => {
-  const api = { list: vi.fn().mockRejectedValue(new Error("PUBLIC_POOL_DISABLED")) } as unknown as RecordApi;
-  renderList(vi.fn(), { ...DEFAULT_RECORD_QUERY, scope: "pool" }, { api, poolConfig: { enabled: false, ownershipTtlHours: null, version: 2 } });
+  const api = {
+    list: vi.fn().mockRejectedValue(new Error("PUBLIC_POOL_DISABLED")),
+  } as unknown as RecordApi;
+  renderList(
+    vi.fn(),
+    { ...DEFAULT_RECORD_QUERY, scope: "pool" },
+    {
+      api,
+      poolConfig: { enabled: false, ownershipTtlHours: null, version: 2 },
+    },
+  );
   expect(api.list).not.toHaveBeenCalled();
 });
 
 it("explains an empty pool without implying the business table has no records", () => {
-  renderList(vi.fn(), { ...DEFAULT_RECORD_QUERY, scope: "pool" }, {
-    poolConfig: { enabled: true, ownershipTtlHours: null, version: 1 },
-    page: { ...page, items: [], total: 0 },
-  });
-  expect(screen.getAllByText("公共池暂无记录，可由负责人释放或管理员移入").length).toBeGreaterThan(0);
-  expect(screen.queryByText("还没有记录，新建第一条。")).not.toBeInTheDocument();
+  renderList(
+    vi.fn(),
+    { ...DEFAULT_RECORD_QUERY, scope: "pool" },
+    {
+      poolConfig: { enabled: true, ownershipTtlHours: null, version: 1 },
+      page: { ...page, items: [], total: 0 },
+    },
+  );
+  expect(
+    screen.getAllByText("公共池暂无记录，可由负责人释放或管理员移入").length,
+  ).toBeGreaterThan(0);
+  expect(
+    screen.queryByText("还没有记录，新建第一条。"),
+  ).not.toBeInTheDocument();
 });
 
 it("navigates staged views with visible counts and preserves legacy and all access", () => {
@@ -971,20 +1218,61 @@ it("navigates staged views with visible counts and preserves legacy and all acce
 });
 
 it("does not refetch a staged public view after the pool is closed", () => {
-  const api = { list: vi.fn().mockRejectedValue(new Error("PUBLIC_POOL_DISABLED")) } as unknown as RecordApi;
-  renderList(vi.fn(), { ...DEFAULT_RECORD_QUERY, poolStage: "LEAD_POOL" }, { api, poolConfig: { enabled: false, lifecycleEnabled: true, ownershipTtlHours: null, version: 2 } });
+  const api = {
+    list: vi.fn().mockRejectedValue(new Error("PUBLIC_POOL_DISABLED")),
+  } as unknown as RecordApi;
+  renderList(
+    vi.fn(),
+    { ...DEFAULT_RECORD_QUERY, poolStage: "LEAD_POOL" },
+    {
+      api,
+      poolConfig: {
+        enabled: false,
+        lifecycleEnabled: true,
+        ownershipTtlHours: null,
+        version: 2,
+      },
+    },
+  );
   expect(api.list).not.toHaveBeenCalled();
 });
 
 it("defaults an employee's private stage to their own records even with ALL read access", () => {
   const navigate = vi.fn();
-  renderList(navigate, DEFAULT_RECORD_QUERY, { poolConfig: { enabled: true, lifecycleEnabled: true, ownershipTtlHours: null, version: 1 } });
+  renderList(navigate, DEFAULT_RECORD_QUERY, {
+    poolConfig: {
+      enabled: true,
+      lifecycleEnabled: true,
+      ownershipTtlHours: null,
+      version: 1,
+    },
+  });
   fireEvent.click(screen.getByRole("radio", { name: "跟进中" }));
-  expect(new URL(navigate.mock.calls.at(-1)![0], "http://test").searchParams.get("scope")).toBe("mine");
+  expect(
+    new URL(navigate.mock.calls.at(-1)![0], "http://test").searchParams.get(
+      "scope",
+    ),
+  ).toBe("mine");
 });
 
 it("never includes system owner unassigned sentinel in a business MEMBER filter", async () => {
-  renderList(vi.fn(), DEFAULT_RECORD_QUERY, { canFilterByOwner: true, members: [{ id: "member-1", displayName: "林晨" }], schema: { ...schema, fields: [...schema.fields, { ...schema.fields[0], id: "collaborator", fieldKey: "collaborator", label: "协作人", type: "MEMBER" }] } });
+  renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+    canFilterByOwner: true,
+    members: [{ id: "member-1", displayName: "林晨" }],
+    schema: {
+      ...schema,
+      fields: [
+        ...schema.fields,
+        {
+          ...schema.fields[0],
+          id: "collaborator",
+          fieldKey: "collaborator",
+          label: "协作人",
+          type: "MEMBER",
+        },
+      ],
+    },
+  });
   await addCondition("协作人");
   fireEvent.mouseDown(screen.getByRole("combobox", { name: "按协作人筛选" }));
   expect(await screen.findByText("林晨")).toBeInTheDocument();
@@ -996,7 +1284,11 @@ async function addCondition(label: string) {
   if (!screen.queryByRole("group", { name: "筛选条件" })) {
     fireEvent.click(screen.getByRole("button", { name: /^筛选/ }));
   }
-  fireEvent.mouseDown(await screen.findByRole("combobox", { name: "添加条件" }));
-  const options = await screen.findAllByText(label, { selector: ".ant-select-item-option-content" });
+  fireEvent.mouseDown(
+    await screen.findByRole("combobox", { name: "添加条件" }),
+  );
+  const options = await screen.findAllByText(label, {
+    selector: ".ant-select-item-option-content",
+  });
   fireEvent.click(options.at(-1)!);
 }

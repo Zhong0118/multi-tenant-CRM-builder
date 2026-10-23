@@ -10,9 +10,13 @@ import styles from "./page.module.css";
  * - `settings`: every page of the settings area, lists and forms alike, in one
  *   1040px column so their edges line up from page to page.
  * - `form`: a single form outside settings, such as a new record (≤720px).
+ * - `reading`: a detail or log to read, such as an audit entry (≤1280px).
+ * - `editor`: complex configuration — designers, builders, maps — that needs
+ *   the desktop width for lists, an editor and a preview side by side.
  * - `bleed`: layouts that manage their own margins, such as the record page.
  */
-export type PageWidth = "full" | "settings" | "form" | "bleed";
+export type PageWidth =
+  "full" | "settings" | "form" | "reading" | "editor" | "bleed";
 
 export function Page({
   width = "full",
@@ -41,7 +45,11 @@ export function PageToolbar({
   ariaLabel?: string;
 }) {
   return (
-    <div className={styles.toolbar} role={ariaLabel ? "toolbar" : undefined} aria-label={ariaLabel}>
+    <div
+      className={styles.toolbar}
+      role={ariaLabel ? "toolbar" : undefined}
+      aria-label={ariaLabel}
+    >
       <div className={styles.toolbarStart}>{start}</div>
       {end ? <div className={styles.toolbarEnd}>{end}</div> : null}
     </div>
@@ -89,7 +97,11 @@ export function SettingRow({
   return (
     <div className={styles.row}>
       <div className={styles.rowLabel}>
-        {htmlFor ? <label htmlFor={htmlFor}>{label}</label> : <span>{label}</span>}
+        {htmlFor ? (
+          <label htmlFor={htmlFor}>{label}</label>
+        ) : (
+          <span>{label}</span>
+        )}
         {help ? <p>{help}</p> : null}
       </div>
       <div className={styles.rowControl}>{children}</div>
@@ -98,7 +110,13 @@ export function SettingRow({
 }
 
 /** A list of setting rows, with an optional footer for the section's save action. */
-export function SettingRows({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
+export function SettingRows({
+  children,
+  footer,
+}: {
+  children: ReactNode;
+  footer?: ReactNode;
+}) {
   return (
     <>
       <div className={styles.rows}>{children}</div>

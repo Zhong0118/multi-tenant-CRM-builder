@@ -413,7 +413,7 @@ describe("record detail reading hierarchy", () => {
         />
       </QueryClientProvider>,
     );
-    expect(screen.getByText("负责人：已指定")).toBeVisible();
+    expect(screen.getByText("负责人：其他成员")).toBeVisible();
   });
 
   it("tells a member without the roster that they own the record", () => {
@@ -471,9 +471,33 @@ describe("record detail reading hierarchy", () => {
 });
 
 it("does not expose editing or follow-up workflows in an employee pool preview", () => {
-  render(<QueryClientProvider client={new QueryClient()}><RecordDetailDrawer tenantCode="northwind" schema={{ ...schema, actions: { ...schema.actions, canUpdate: true } }} record={{ ...record, inPublicPool: true, ownershipExpiresAt: null, ownerMemberId: null }} initialEditing onClose={vi.fn()} onChanged={vi.fn()} /></QueryClientProvider>);
-  expect(screen.queryByRole("button", { name: "保存修改" })).not.toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: /^编\s*辑$/ })).not.toBeInTheDocument();
-  expect(screen.queryByRole("region", { name: "工作流" })).not.toBeInTheDocument();
-  expect(screen.queryByRole("region", { name: "下一步跟进" })).not.toBeInTheDocument();
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <RecordDetailDrawer
+        tenantCode="northwind"
+        schema={{ ...schema, actions: { ...schema.actions, canUpdate: true } }}
+        record={{
+          ...record,
+          inPublicPool: true,
+          ownershipExpiresAt: null,
+          ownerMemberId: null,
+        }}
+        initialEditing
+        onClose={vi.fn()}
+        onChanged={vi.fn()}
+      />
+    </QueryClientProvider>,
+  );
+  expect(
+    screen.queryByRole("button", { name: "保存修改" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: /^编\s*辑$/ }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("region", { name: "工作流" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("region", { name: "下一步跟进" }),
+  ).not.toBeInTheDocument();
 });
