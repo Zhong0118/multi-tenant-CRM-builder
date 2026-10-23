@@ -162,6 +162,25 @@
   color: #2563eb;
   font-weight: 600;
 }
+.formFooter .filing {
+  margin-top: 20px;
+  font-size: 12px;
+}
+.formFooter .filing a {
+  color: #637484;
+  font-weight: 400;
+  text-underline-offset: 3px;
+  transition: color 160ms ease;
+}
+.formFooter .filing a:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+.formFooter .filing a:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 4px;
+  border-radius: 2px;
+}
 @media (max-width: 960px) {
   .authPage {
     grid-template-columns: 1fr;

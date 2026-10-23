@@ -9,6 +9,7 @@ import styles from "./story.module.css";
 const JOURNEY = [
   {
     stage: "线索公海",
+    tone: "neutral",
     title: "散落在表格里的机会",
     text: "导入名单，检查字段和数据格式。确认后进入公司的线索公海，等待领取。",
     owner: "未指定负责人",
@@ -23,6 +24,7 @@ const JOURNEY = [
   },
   {
     stage: "我的待联系",
+    tone: "pending",
     title: "每条线索，都有接手的人",
     text: "员工主动领取，或由管理员批量分配。联系期限清楚可见，未及时联系的线索自动回到公海。",
     owner: "周航 · 负责人",
@@ -37,6 +39,7 @@ const JOURNEY = [
   },
   {
     stage: "我的跟进客户",
+    tone: "active",
     title: "把每一次沟通接起来",
     text: "成功联系后开始跟进期。明确需求后标记询单，沟通记录、下一步待办和到期提醒始终跟着客户走。",
     owner: "周航 · 负责人",
@@ -51,6 +54,7 @@ const JOURNEY = [
   },
   {
     stage: "我的成交客户",
+    tone: "success",
     title: "从客户到订单，连成闭环",
     text: "将客户信息带入合同，保留双向关联。合同达到管理员配置的确认状态后，客户进入成交保护。",
     owner: "周航 · 负责人",
@@ -125,7 +129,7 @@ export function RecordJourney() {
                     : "期限与名称由公司按表配置"}
                 </div>
               </div>
-              <div className={styles.record}>
+              <div className={styles.record} data-tone={item.tone}>
                 <div className={styles.recordBar}>
                   <span>客户 / 南湖实验学校</span>
                   <span className={styles.status}>{item.stage}</span>
@@ -141,7 +145,28 @@ export function RecordJourney() {
                   {item.fields.map(([k, v]) => (
                     <div key={k}>
                       <dt>{k}</dt>
-                      <dd>{v}</dd>
+                      <dd>
+                        {k === "业务进度" ||
+                        k === "流程状态" ||
+                        k === "来源" ? (
+                          <span
+                            className={styles.fieldTag}
+                            data-tone={
+                              k === "业务进度"
+                                ? "inquiry"
+                                : k === "流程状态"
+                                  ? "success"
+                                  : "neutral"
+                            }
+                          >
+                            {v}
+                          </span>
+                        ) : k === "负责人" ? (
+                          <span className={styles.ownerTag}>{v}</span>
+                        ) : (
+                          v
+                        )}
+                      </dd>
                     </div>
                   ))}
                 </dl>
@@ -149,7 +174,12 @@ export function RecordJourney() {
                   <span className={styles.person}>
                     {index === 0 ? "—" : "周"}
                   </span>
-                  {item.owner}
+                  <span
+                    className={styles.ownerTag}
+                    data-unassigned={index === 0 || undefined}
+                  >
+                    {item.owner}
+                  </span>
                   <span className={styles.deadline}>
                     {index === 3 ? <LockOutlined /> : <PhoneOutlined />}
                     {item.action}
