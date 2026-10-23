@@ -1,18 +1,28 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { AiDemo } from "./ai-demo";
+import { ICP_RECORD, ROADMAP } from "./content";
+import { HeroWorkspace } from "./hero-workspace";
 import { LandingPage } from "./landing-page";
-import { AiStep, FollowUpStep } from "./demo-steps";
-import { ProductDemo } from "./product-demo";
+import { TableDesigner } from "./table-designer";
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("LandingPage", () => {
-  it("links only to its own sections and to sign-in or registration", () => {
+  it("links to its own sections, sign-in, registration and the ICP lookup only", () => {
     const { container } = render(<LandingPage />);
 
     for (const link of container.querySelectorAll("a[href]")) {
       const href = link.getAttribute("href") ?? "";
       if (href.startsWith("#")) {
         expect(document.getElementById(href.slice(1)), href).not.toBeNull();
+      } else if (href.startsWith("https://")) {
+        expect(href).toBe(ICP_RECORD.lookup);
+        expect(link).toHaveAttribute("target", "_blank");
+        expect(link.getAttribute("rel")).toContain("noopener");
       } else {
         expect(["/", "/login", "/register"]).toContain(href);
       }
@@ -22,27 +32,19 @@ describe("LandingPage", () => {
     }
   });
 
-  it("moves through the demo steps with the arrow, Home and End keys", () => {
-    const { container } = render(<LandingPage />);
-    const tabs = [...container.querySelectorAll<HTMLElement>('[role="tab"]')];
-    const visiblePanels = () =>
-      [...container.querySelectorAll<HTMLElement>('[role="tabpanel"]')]
-        .filter((panel) => !panel.hidden)
-        .map((panel) => panel.id);
+  it("shows the filing number in the footer, linked to the official lookup", () => {
+    render(<LandingPage />);
+    const icp = screen.getByRole("link", { name: ICP_RECORD.number });
+    expect(icp).toHaveAttribute("href", "https://beian.miit.gov.cn/");
+    expect(icp.closest("footer")).not.toBeNull();
+  });
 
-    expect(visiblePanels()).toEqual(["demo-panel-import"]);
-
-    tabs[0].focus();
-    fireEvent.keyDown(tabs[0], { key: "ArrowRight" });
-    expect(tabs[1]).toHaveAttribute("aria-selected", "true");
-    expect(tabs[1]).toHaveFocus();
-    expect(visiblePanels()).toEqual(["demo-panel-assign"]);
-
-    fireEvent.keyDown(tabs[1], { key: "End" });
-    expect(tabs.at(-1)).toHaveFocus();
-    fireEvent.keyDown(tabs.at(-1)!, { key: "ArrowRight" });
-    expect(tabs[0]).toHaveFocus();
-    expect(tabs.map((tab) => tab.tabIndex)).toEqual([0, -1, -1, -1, -1]);
+  it("labels every unreleased feature as not yet available", () => {
+    render(<LandingPage />);
+    const roadmap = document.getElementById("roadmap")!;
+    expect(within(roadmap).getAllByText("尚未上线")).toHaveLength(
+      ROADMAP.length,
+    );
   });
 
   it("closes the phone menu on Escape and returns focus to its button", () => {
@@ -57,69 +59,66 @@ describe("LandingPage", () => {
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(toggle).toHaveFocus();
   });
+});
 
-  it("keeps the demo's announced orientation in sync with its responsive layout", () => {
-    let onChange = () => {};
-    const media = {
-      matches: false,
-      addEventListener: vi.fn((_event, listener) => {
-        onChange = listener;
-      }),
-      removeEventListener: vi.fn(),
-    };
-    const matchMedia = vi
-      .spyOn(window, "matchMedia")
-      .mockReturnValue(media as unknown as MediaQueryList);
-    try {
-      const { unmount } = render(<ProductDemo />);
-      expect(screen.getByRole("tablist")).toHaveAttribute(
-        "aria-orientation",
-        "horizontal",
-      );
-      act(() => {
-        media.matches = true;
-        onChange();
-      });
-      expect(screen.getByRole("tablist")).toHaveAttribute(
-        "aria-orientation",
-        "vertical",
-      );
-      unmount();
-      expect(media.removeEventListener).toHaveBeenCalled();
-    } finally {
-      matchMedia.mockRestore();
-    }
-  });
+describe("HeroWorkspace", () => {
+  it("moves a claimed lead to 待联系 and starts its 24-hour deadline", () => {
+    vi.useFakeTimers();
+    render(<HeroWorkspace />);
 
-  it.each(["确认执行", "拒绝"])(
-    "keeps keyboard focus on the AI outcome after %s",
-    (action) => {
-      render(<AiStep />);
-      fireEvent.click(
-        screen.getByRole("button", {
-          name: "报价确认后，帮我约下周一上门送样",
-        }),
-      );
-      const button = screen.getByRole("button", { name: action });
-      button.focus();
-      fireEvent.click(button);
-      expect(screen.getByRole("status")).toHaveFocus();
-    },
-  );
-
-  it("moves focus through completing and scheduling a follow-up", () => {
-    render(<FollowUpStep />);
-    const complete = screen.getByRole("button", {
-      name: "标记完成，安排下一步",
+    expect(screen.getByText("领取后开始 24 小时联系期限")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "领取 城东社区医院" }));
+    act(() => {
+      vi.advanceTimersByTime(400);
     });
-    complete.focus();
-    fireEvent.click(complete);
-    expect(screen.getByLabelText("事项")).toHaveFocus();
-    const due = screen.getByLabelText("时间");
-    due.focus();
-    fireEvent.change(due, { target: { value: "下周一 09:30" } });
-    expect(due).toHaveFocus();
-    fireEvent.click(screen.getByRole("button", { name: "安排跟进" }));
-    expect(screen.getByText("寄送正式报价单").parentElement).toHaveFocus();
+
+    expect(
+      screen.queryByRole("button", { name: "领取 城东社区医院" }),
+    ).toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "已领取城东社区医院，进入待联系，联系期限 24 小时。",
+    );
+    expect(screen.getByText("剩 24:00:00")).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(screen.getByText("剩 23:59:58")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "重新演示" }));
+    expect(
+      screen.getByRole("button", { name: "领取 城东社区医院" }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("TableDesigner", () => {
+  it("shows the new column to staff only after publishing", () => {
+    render(<TableDesigner />);
+    expect(screen.getByText("草稿 · 2 处待发布")).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "预计签约" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "发布" }));
+    expect(screen.getByText("已发布")).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "预计签约" }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("AiDemo", () => {
+  it.each([
+    ["确认执行", "跟进已写入"],
+    ["拒绝", "没有写入任何数据"],
+  ])("moves focus to the outcome after %s", (action, outcome) => {
+    render(<AiDemo />);
+    fireEvent.click(
+      screen.getByRole("button", { name: "报价确认后，帮我约下周一上门送样" }),
+    );
+    const button = screen.getByRole("button", { name: action });
+    button.focus();
+    fireEvent.click(button);
+    expect(screen.getByRole("status")).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent(outcome);
   });
 });

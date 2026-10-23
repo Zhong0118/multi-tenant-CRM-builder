@@ -1,0 +1,37 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>B 一行一行往前推</title>
+<style>
+:root{--ink:#17232d;--muted:#5d6b75;--teal:#167568;--teal-soft:#e7f3f0;--mist:#f3f6f8;--rule:#cfd8de;--amber:#c66c18;--paper:#fff}
+*{box-sizing:border-box;margin:0}
+body{font-family:"PingFang SC","HarmonyOS Sans SC","Noto Sans SC",system-ui,sans-serif;color:var(--ink);background:var(--paper);width:1440px;height:900px;overflow:hidden}
+.nav{height:64px;display:flex;align-items:center;padding:0 56px;border-bottom:1px solid #e6ebee}
+.brand{display:flex;align-items:center;gap:10px;font-weight:650;font-size:17px}
+.links{display:flex;gap:28px;font-size:15px;color:var(--muted);margin:0 auto}
+.btn{height:40px;padding:0 18px;border-radius:999px;display:inline-flex;align-items:center;font-size:15px;font-weight:550;border:1px solid var(--rule)}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+.right{display:flex;gap:10px}
+h1{font-size:92px;line-height:1.04;font-weight:700;letter-spacing:-.035em;padding:64px 56px 0}
+h1 em{font-style:normal;color:var(--teal)}
+.sub{display:flex;justify-content:space-between;align-items:end;padding:26px 56px 0}
+.sub p{font-size:19px;line-height:1.7;color:var(--muted);max-width:640px}
+.sub .ctas{display:flex;gap:10px}
+.grid{position:absolute;left:0;right:0;bottom:0;height:300px;padding:0 56px;display:grid;grid-template-rows:repeat(4,1fr);gap:10px}
+.row{display:grid;grid-template-columns:repeat(12,1fr);gap:10px}
+.cell{border:1.5px solid var(--rule);border-radius:10px;opacity:.7}
+.row.moving{transform:translateX(196px)}
+.row.moving .cell{background:var(--teal);border-color:var(--teal);opacity:1;position:relative}
+.stages{position:absolute;left:56px;right:56px;bottom:226px;display:flex;justify-content:space-between;font-size:14px;color:var(--muted)}
+.stages span.on{color:var(--teal);font-weight:600}
+.label{position:absolute;left:252px;bottom:156px;color:#fff;font-size:15px;font-weight:600;z-index:2}
+.label small{font-weight:400;opacity:.85;margin-left:12px}
+</style></head><body>
+<nav class="nav"><span class="brand"><svg width="22" height="22" viewBox="0 0 24 24"><g fill="none" stroke="#17232d" stroke-width="1.5" opacity=".55"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="17" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/><rect x="1" y="17" width="6" height="6" rx="1.5"/><rect x="9" y="17" width="6" height="6" rx="1.5"/><rect x="17" y="17" width="6" height="6" rx="1.5"/></g><rect x="17" y="9" width="6" height="6" rx="1.5" fill="#167568"/></svg>百杰 CRM</span>
+<span class="links"><span>产品</span><span>线索公海</span><span>权限</span><span>AI 助手</span><span>常见问题</span></span><span class="right"><span class="btn">登录</span><span class="btn primary">创建账号</span></span></nav>
+<h1>表格里的每一行，<br>都该<em>有人往前推</em></h1>
+<div class="sub"><p>百杰 CRM 让管理员按自己的生意搭业务表。线索进公海，按规则领取、联系和回收；谁负责、下一步、期限，都写在那一行上。</p><div class="ctas"><span class="btn">看产品演示</span><span class="btn primary">登录工作区</span></div></div>
+<div class="stages"><span>线索池</span><span class="on">待联系 · 剩 23 小时</span><span>跟进中</span><span>成交保护</span></div>
+<div class="grid"><div class="row"><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i></div>
+<div class="row moving"><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i></div>
+<div class="row"><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i></div>
+<div class="row"><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i><i class="cell"></i></div></div>
+<div class="label">南湖实验学校<small>周航 领取 · 下一步：明天 15:00 发报价</small></div>
+</body></html>

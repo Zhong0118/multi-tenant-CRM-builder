@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AuthShell } from "@/features/auth/auth-shell";
 import { RegisterForm } from "@/features/auth/register-form";
+
+export const metadata: Metadata = {
+  title: "创建账号",
+  alternates: { canonical: "/register" },
+};
 
 export default function RegisterPage() {
   return (

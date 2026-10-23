@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "project": "百杰 CRM 落地页",
+  "brief": "crm.baijiehub.com 的产品首页：讲清自己搭业务表、线索公海、团队跟进，入口为登录与创建账号",
+  "round": "01",
+  "nativeViewport": "1440x900",
+  "candidates": [
+    {"id": "a", "name": "A 打开就是在用", "concept": "首屏就是正在工作的客户工作区，标题只占一条带", "typography": "PingFang SC 650 46px 标题 / 17px 正文，界面 14px", "palette": ["#167568", "#17232d", "#f3f6f8", "#c66c18"], "traits": ["画面即界面", "左对齐标题带", "三栏工作区：导航、公海列表、记录详情"], "source": "a-live-workspace.html"},
+    {"id": "b", "name": "B 一行一行往前推", "concept": "品牌的方格标志放大成首屏：一行被拿起、往前推", "typography": "PingFang SC 700 92px 通栏标题", "palette": ["#167568", "#17232d", "#ffffff"], "traits": ["通栏上下堆叠", "抽象方格带", "无产品截图"], "source": "b-row-forward.html"},
+    {"id": "c", "name": "C 一眼看完一家公司的业务", "concept": "六块真实界面碎片拼成首屏，没有单一主角", "typography": "PingFang SC 650 48px 标题 / 14px 碎片", "palette": ["#17232d", "#167568", "#eef2f4", "#fff3e5"], "traits": ["网格拼贴", "深色标题块", "字段、公海、权限、AI、导入并列"], "source": "c-collage.html"}
+  ]
+}
