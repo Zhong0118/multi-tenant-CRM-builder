@@ -120,6 +120,29 @@ function validTemplate(): BusinessTemplateConfiguration {
   };
 }
 
+describe('template member defaults', () => {
+  it('refuses company-specific member defaults in reusable templates', () => {
+    const input = validTemplate();
+    const field = input.objects[0].fields[1];
+    field.type = 'MEMBER';
+    field.defaultValue = '018f47a2-4b5c-7d8e-9f01-23456789abcd';
+
+    expect(analyzeTemplatePublication(input, null).blocking).toContainEqual({
+      code: 'TEMPLATE_MEMBER_DEFAULT_NOT_PORTABLE',
+      message: expect.any(String) as unknown,
+      objectId: input.objects[0].id,
+      fieldKey: field.fieldKey,
+    });
+  });
+
+  it('allows member fields with no default', () => {
+    const input = validTemplate();
+    input.objects[0].fields[1].type = 'MEMBER';
+
+    expect(analyzeTemplatePublication(input, null).blocking).toEqual([]);
+  });
+});
+
 describe('business template publication policy', () => {
   it('keeps templates without a dashboard compatible when compiling', () => {
     const compiled = compileTemplateVersion(validTemplate());

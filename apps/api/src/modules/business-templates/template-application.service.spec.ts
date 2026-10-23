@@ -329,6 +329,16 @@ describe('TemplateApplicationService', () => {
 
   it.each([
     {
+      name: 'a previously published company-specific member default',
+      configuration: () => {
+        const input = configuration();
+        input.objects[0].fields[1].type = 'MEMBER';
+        input.objects[0].fields[1].defaultValue =
+          '018f47a2-4b5c-7d8e-9f01-23456789abcd';
+        return input;
+      },
+    },
+    {
       name: 'duplicate template object ids',
       configuration: () => {
         const input = configuration(2);

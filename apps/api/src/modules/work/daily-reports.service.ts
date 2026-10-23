@@ -173,7 +173,9 @@ async function workDay(
     return resolveCompanyPeriod(tx, tenantId, { preset: 'today' });
   if (
     !/^\d{4}-\d{2}-\d{2}$/.test(workDate) ||
-    !Number.isFinite(Date.parse(workDate))
+    workDate.startsWith('0000-') ||
+    !Number.isFinite(Date.parse(workDate)) ||
+    new Date(workDate).toISOString().slice(0, 10) !== workDate
   )
     throw dateInvalid('请选择有效的日期。');
   const day = await resolveCompanyPeriod(tx, tenantId, {

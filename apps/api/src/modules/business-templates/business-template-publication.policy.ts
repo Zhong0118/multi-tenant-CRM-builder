@@ -80,6 +80,7 @@ export function analyzeTemplatePublication(
   const warnings: TemplatePublicationIssue[] = [];
 
   blocking.push(...findTemplateIdentityBlockers(input));
+  blocking.push(...findTemplateMemberDefaultBlockers(input));
   blocking.push(...analyzeTemplateDashboard(input.dashboard, activeObjects));
 
   if (activeObjects.length === 0) {
@@ -173,6 +174,29 @@ export function analyzeTemplatePublication(
       0,
     ),
   };
+}
+
+/** Member IDs belong to one company and cannot be copied into another. */
+export function findTemplateMemberDefaultBlockers(
+  input: BusinessTemplateConfiguration,
+): TemplatePublicationIssue[] {
+  return input.objects
+    .filter((object) => object.status === 'ACTIVE')
+    .flatMap((object) =>
+      object.fields
+        .filter(
+          (field) =>
+            field.status === 'ACTIVE' &&
+            field.type === 'MEMBER' &&
+            field.defaultValue !== null,
+        )
+        .map((field) => ({
+          code: 'TEMPLATE_MEMBER_DEFAULT_NOT_PORTABLE',
+          message: '模板成员字段不能设置默认成员，请在公司初始化后配置。',
+          objectId: object.id,
+          fieldKey: field.fieldKey,
+        })),
+    );
 }
 
 export function findTemplateIdentityBlockers(
