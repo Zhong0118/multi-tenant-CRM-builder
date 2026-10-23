@@ -1,11 +1,13 @@
 # Phase 1 verification
 
 **Environment**
+
 - Local stack, with this branch on :3700/:3701 and unmodified `main` (`42e5974`) on :3710/:3711.
 - Both stacks use `crm_ui_foundation`, a clone of the local dev database, so the shared dev data is untouched.
 - Production builds (`next build` + `next start`) were used for timings and final screenshots.
 
 **Test data (in the clone only)**
+
 - Table "UI 验收表" (`ui-acceptance`) with all 12 field types, created and published through the admin API.
 - Employee permissions: read ALL, update OWN, 邮箱 hidden, 预计金额 read-only.
 - 1,000 records imported through the import endpoint, covering:
@@ -18,32 +20,32 @@
 
 ## Acceptance checklist
 
-| Scenario | Admin 刘洋 | Employee 孙悦 |
-|---|---|---|
-| Widths 1440 / 1280 / 900 / 390: no page overflow | ✅ list and record page | ✅ list (1440) |
-| 紧凑 / 舒适 / 完整 change the cells, not the column widths | ✅ | ✅ (紧凑) |
-| Cut-off value: Enter opens the reader, Escape returns focus to the cell | ✅ | — |
-| Multiselect `+N` reader; badges never squeeze | ✅ | ✅ |
-| Line breaks kept in notes (lost on `main`); long URL wraps inside its column | ✅ | ✅ |
-| Drag resize (header and body together), saved per member; double-click reset; no sort triggered | ✅ | — |
-| Column visibility, order (↑↓), per-column density, restore defaults | ✅ | ✅ (hidden 邮箱 never offered) |
-| Preferences isolated per member in the same browser | ✅ separate keys; admin key unchanged after the employee changed density | ✅ |
-| Search, owner filter (identities, 已停用 marked), bulk selection bar, pagination | ✅ | owner filter correctly absent |
-| Return to list keeps the search; ‹ n / N › on the record page | ✅ | — |
-| Edit in place; unsaved edits ask on cancel, back and paging; warn on unload | ✅ | — |
-| Members: avatar plus name; 未指定; 已停用; 我; 其他成员; no raw ids | ✅ | ✅ |
-| Hidden field absent from list, panel and record page; read-only field marked 🔒 | n/a | ✅ |
-| Lead-pool table: stage tabs, stage tag tone, countdown on one line (rows 115 → 47px) | ✅ | — |
-| Theme scoped: `/` and `/forgot-password` stay teal; workspace blue, also in portals | ✅ | ✅ |
-| Phone: cards (compact cells), wrapped footer, single-column record page in order fields → ownership → activity | ✅ | — |
+| Scenario                                                                                                       | Admin 刘洋                                                               | Employee 孙悦                  |
+| -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------ |
+| Widths 1440 / 1280 / 900 / 390: no page overflow                                                               | ✅ list and record page                                                  | ✅ list (1440)                 |
+| 紧凑 / 舒适 / 完整 change the cells, not the column widths                                                     | ✅                                                                       | ✅ (紧凑)                      |
+| Cut-off value: Enter opens the reader, Escape returns focus to the cell                                        | ✅                                                                       | —                              |
+| Multiselect `+N` reader; badges never squeeze                                                                  | ✅                                                                       | ✅                             |
+| Line breaks kept in notes (lost on `main`); long URL wraps inside its column                                   | ✅                                                                       | ✅                             |
+| Drag resize (header and body together), saved per member; double-click reset; no sort triggered                | ✅                                                                       | —                              |
+| Column visibility, order (↑↓), per-column density, restore defaults                                            | ✅                                                                       | ✅ (hidden 邮箱 never offered) |
+| Preferences isolated per member in the same browser                                                            | ✅ separate keys; admin key unchanged after the employee changed density | ✅                             |
+| Search, owner filter (identities, 已停用 marked), bulk selection bar, pagination                               | ✅                                                                       | owner filter correctly absent  |
+| Return to list keeps the search; ‹ n / N › on the record page                                                  | ✅                                                                       | —                              |
+| Edit in place; unsaved edits ask on cancel, back and paging; warn on unload                                    | ✅                                                                       | —                              |
+| Members: avatar plus name; 未指定; 已停用; 我; 其他成员; no raw ids                                            | ✅                                                                       | ✅                             |
+| Hidden field absent from list, panel and record page; read-only field marked 🔒                                | n/a                                                                      | ✅                             |
+| Lead-pool table: stage tabs, stage tag tone, countdown on one line (rows 115 → 47px)                           | ✅                                                                       | —                              |
+| Theme scoped: `/` and `/forgot-password` stay teal; workspace blue, also in portals                            | ✅                                                                       | ✅                             |
+| Phone: cards (compact cells), wrapped footer, single-column record page in order fields → ownership → activity | ✅                                                                       | —                              |
 
 ## Performance (production build, 1,000-record table)
 
 | Rows per page | DOM nodes (this branch / main) | Owner column toggle | Density switch |
-|---|---|---|---|
-| 20 | 2,310 / 2,336 | 31ms / 60ms | 42–47ms |
-| 100 | 7,545 / 8,464 | 111ms / 148ms | 129–140ms |
-| 1,000 | 66,353 / 77,357 | 1.25s / ~2.4s | 1.09–1.23s |
+| ------------- | ------------------------------ | ------------------- | -------------- |
+| 20            | 2,310 / 2,336                  | 31ms / 60ms         | 42–47ms        |
+| 100           | 7,545 / 8,464                  | 111ms / 148ms       | 129–140ms      |
+| 1,000         | 66,353 / 77,357                | 1.25s / ~2.4s       | 1.09–1.23s     |
 
 - Typing in search re-renders only the search box. The list re-renders once, after the 300ms pause.
 - Rows have variable height; there is no virtual scrolling (none existed before).
