@@ -1,0 +1,33 @@
+# Official-domain entry. Use with compose.production.yaml + compose.domain.yaml.
+{
+	# Clients that connect to the bare IP without SNI still get the IP
+	# certificate, so the redirect below is reachable over HTTPS.
+	default_sni {$LEGACY_IP}
+}
+
+# The CRM on its official domain. Caddy obtains and renews the certificate;
+# HTTP is redirected to HTTPS automatically. Same-origin routing: /api/v1 to
+# the API, everything else to Web, so the host-only session cookie reaches both.
+{$WEB_HOST} {
+	handle /api/v1/* {
+		reverse_proxy api:3001 {
+			# Only the actual peer reaches the application's IP limiter.
+			header_up X-Forwarded-For {remote_host}
+		}
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+}
+
+# The previous public-IP entry keeps working as a permanent redirect, with the
+# short-lived IP certificate it already had, so saved links land on the domain.
+{$LEGACY_IP} {
+	tls {
+		issuer acme {
+			dir https://acme-v02.api.letsencrypt.org/directory
+			profile shortlived
+		}
+	}
+	redir https://{$WEB_HOST}{uri} 308
+}

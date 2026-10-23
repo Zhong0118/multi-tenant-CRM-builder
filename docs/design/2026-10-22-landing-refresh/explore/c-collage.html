@@ -1,0 +1,46 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>C 一眼看完一家公司的业务</title>
+<style>
+:root{--ink:#17232d;--muted:#5d6b75;--teal:#167568;--teal-soft:#e7f3f0;--mist:#eef2f4;--rule:#dfe5e9;--amber:#c66c18;--amber-soft:#fff3e5;--paper:#fff}
+*{box-sizing:border-box;margin:0}
+body{font-family:"PingFang SC","HarmonyOS Sans SC","Noto Sans SC",system-ui,sans-serif;color:var(--ink);background:var(--mist);width:1440px;height:900px;overflow:hidden}
+.nav{height:60px;display:flex;align-items:center;gap:28px;padding:0 40px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:650;font-size:17px}
+.links{display:flex;gap:24px;font-size:15px;color:var(--muted)}
+.right{margin-left:auto;display:flex;gap:10px}
+.btn{height:36px;padding:0 14px;border-radius:7px;display:inline-flex;align-items:center;font-size:14px;font-weight:550;border:1px solid var(--rule);background:#fff}
+.btn.primary{background:var(--teal);border-color:var(--teal);color:#fff}
+.bento{display:grid;grid-template-columns:1.25fr 1fr 1fr;grid-template-rows:1.15fr 1fr;gap:14px;padding:6px 40px 40px;height:840px}
+.t{background:var(--paper);border-radius:16px;padding:22px;border:1px solid var(--rule);overflow:hidden;font-size:14px}
+.t h3{font-size:15px;margin-bottom:12px}
+.t .cap{color:var(--muted);font-size:13px;margin-top:10px}
+.hero{background:var(--ink);color:#fff;border:0;display:flex;flex-direction:column;justify-content:space-between;padding:34px}
+.hero h1{font-size:48px;line-height:1.16;font-weight:650;letter-spacing:-.01em}
+.hero p{font-size:16px;line-height:1.75;color:#b9c6ce;margin-top:16px}
+.hero .ctas{display:flex;gap:10px}.hero .btn{background:transparent;color:#fff;border-color:#3d4c57}.hero .btn.primary{background:var(--teal);border-color:var(--teal)}
+.f{display:grid;grid-template-columns:1fr 70px;gap:8px 10px;align-items:center;padding:7px 0;border-bottom:1px solid #edf0f2}
+.tag{font-size:12px;padding:2px 8px;border-radius:6px;background:var(--mist);text-align:center}
+.draft{font-size:12px;color:#94500f;background:var(--amber-soft);padding:2px 8px;border-radius:999px;margin-left:8px}
+.lane{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.lane div{background:var(--mist);border-radius:10px;padding:10px;min-height:120px}
+.lane b{font-size:12px;color:var(--muted);display:block;margin-bottom:8px}
+.card{background:#fff;border-radius:8px;padding:7px 8px;font-size:12px;margin-bottom:6px;border:1px solid var(--rule)}
+.card.hot{border-color:var(--teal);box-shadow:0 0 0 2px var(--teal-soft)}
+.lens{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.lens div{border:1px solid var(--rule);border-radius:10px;padding:10px;font-size:12px}
+.lens p{padding:4px 0;border-bottom:1px solid #f0f2f4}.hidden{color:#b0bac1}
+.q{background:var(--mist);border-radius:10px;padding:10px 12px}
+.a{margin-top:10px;line-height:1.7}.src{display:flex;gap:6px;margin-top:8px}.src span{font-size:12px;border:1px solid var(--rule);border-radius:6px;padding:2px 6px}
+.confirm{margin-top:10px;display:flex;justify-content:space-between;align-items:center;background:var(--amber-soft);border-radius:8px;padding:8px 10px;font-size:13px;color:#94500f}
+.big{font-size:40px;font-weight:650;letter-spacing:-.02em}
+.note{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #edf0f2}.dot{width:8px;height:8px;border-radius:50%;background:var(--amber);margin-top:7px}
+</style></head><body>
+<nav class="nav"><span class="brand"><svg width="22" height="22" viewBox="0 0 24 24"><g fill="none" stroke="#17232d" stroke-width="1.5" opacity=".55"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="17" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/><rect x="1" y="17" width="6" height="6" rx="1.5"/><rect x="9" y="17" width="6" height="6" rx="1.5"/><rect x="17" y="17" width="6" height="6" rx="1.5"/></g><rect x="17" y="9" width="6" height="6" rx="1.5" fill="#167568"/></svg>百杰 CRM</span>
+<span class="links"><span>产品</span><span>线索公海</span><span>权限</span><span>AI 助手</span><span>常见问题</span></span><span class="right"><span class="btn">登录</span><span class="btn primary">创建账号</span></span></nav>
+<div class="bento">
+<section class="t hero"><div><h1>把表格里的生意，变成团队推进的流程</h1><p>业务表按你的生意自己搭；线索进公海，按规则领取、联系和回收；权限、提醒和 AI 助手都在同一个工作区。</p></div><div class="ctas"><span class="btn primary">登录工作区</span><span class="btn">看产品演示</span></div></section>
+<section class="t"><h3>商机 <span class="draft">草稿 · 未发布</span></h3><div class="f"><span>商机名称</span><span class="tag">文本</span></div><div class="f"><span>阶段</span><span class="tag">单选</span></div><div class="f"><span>金额</span><span class="tag">金额</span></div><div class="f"><span>预计签约</span><span class="tag">日期</span></div><div class="f"><span>负责人</span><span class="tag">成员</span></div><p class="cap">12 种字段类型，改好再发布</p></section>
+<section class="t"><h3>线索公海</h3><div class="lane"><div><b>线索池</b><p class="card">青禾幼儿园</p><p class="card">北岸物业</p></div><div><b>待联系</b><p class="card hot">南湖实验学校<br>剩 23 小时</p></div><div><b>跟进中</b><p class="card">启明设计</p></div><div><b>成交保护</b><p class="card">城东医院</p></div></div></section>
+<section class="t"><h3>同一张表，看到的不一样</h3><div class="lens"><div><b>管理员</b><p>南湖实验学校 · 41,000</p><p>城东社区医院 · 8,900</p><p>启明设计 · 22,300</p></div><div><b>员工</b><p>南湖实验学校</p><p class="hidden">预计毛利 · 隐藏</p></div></div><p class="cap">表、记录、字段三级权限，服务端执行</p></section>
+<section class="t"><h3>AI 助手</h3><div class="q">本周哪些客户该跟进了？</div><p class="a">有 3 位客户的跟进今天到期，南湖实验学校的联系期限还剩 23 小时。</p><div class="src"><span>南湖实验学校</span><span>城东社区医院</span><span>+1</span></div><div class="confirm"><span>建议：为南湖实验学校创建明天的跟进</span><b>待你确认</b></div></section>
+<section class="t"><h3>导入与提醒</h3><p class="big">10,000 <small style="font-size:15px;font-weight:400;color:#5d6b75">行 Excel 一次导入</small></p><div class="note"><i class="dot"></i><span>南湖实验学校：联系期限还剩 3 小时</span></div><div class="note"><i class="dot"></i><span>城东社区医院：成交保护需要复核</span></div></section>
+</div></body></html>

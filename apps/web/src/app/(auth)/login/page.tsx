@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AuthShell } from "@/features/auth/auth-shell";
 import { LoginForm } from "@/features/auth/login-form";
+
+export const metadata: Metadata = {
+  title: "登录",
+  alternates: { canonical: "/login" },
+};
 
 export default async function LoginPage({
   searchParams,

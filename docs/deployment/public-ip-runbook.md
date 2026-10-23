@@ -1,5 +1,7 @@
 # 公网 IP HTTPS 内部试用
 
+> 正式域名 `crm.baijiehub.com` 的切换见 [official-domain-runbook](official-domain-runbook.md)。切换后，本页的 IP 入口只做永久跳转，同时保留为回退路径。
+
 用户于 2026-10-08 明确授权启用公网 IP 直连。此模式替代 SSH 隧道入口；保留原账号、数据库、Redis、附件与备份，不代表完整公司业务验收已通过。
 
 ## 配置与镜像

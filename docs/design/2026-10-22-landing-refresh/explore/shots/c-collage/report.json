@@ -1,0 +1,29 @@
+[
+  {
+    "file": "page.png",
+    "state": null,
+    "size": "1440x900",
+    "zoom": 1,
+    "animationWaitMs": 0,
+    "issues": [],
+    "lint": [
+      {
+        "rule": "nestedCards",
+        "label": "卡片里套卡片",
+        "count": 2,
+        "examples": [
+          "div「管理员 南湖实验学校 · 41,000 城东社区」（外层 section.t）",
+          "div「员工 南湖实验学校 预计毛利 · 隐藏」（外层 section.t）"
+        ]
+      },
+      {
+        "rule": "contrastLow",
+        "label": "文字对比度不达标（正文低于 4.5:1，大字低于 3:1）",
+        "count": 1,
+        "examples": [
+          "p.hidden「预计毛利 · 隐藏」（1.97:1）"
+        ]
+      }
+    ]
+  }
+]
