@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TeamActivity } from "@/features/team-activity/team-activity";
@@ -137,12 +137,11 @@ function setup(view: "mine" | "team", total = 101) {
       return { data: task, response: new Response(null, { status: 200 }) };
     },
   );
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: 30_000 } },
+  });
   render(
-    <QueryClientProvider
-      client={
-        new QueryClient({ defaultOptions: { queries: { retry: false } } })
-      }
-    >
+    <QueryClientProvider client={client}>
       {view === "mine" ? (
         <MyWork tenantCode="northwind" />
       ) : (
@@ -150,6 +149,7 @@ function setup(view: "mine" | "team", total = 101) {
       )}
     </QueryClientProvider>,
   );
+  return { tasks, client };
 }
 
 beforeEach(() => vi.resetAllMocks());
@@ -176,6 +176,28 @@ describe.each(["mine", "team"] as const)("%s task pagination", (view) => {
     expect(await screen.findByText("已完成的任务")).toBeInTheDocument();
     expect(screen.queryByText("任务 101")).not.toBeInTheDocument();
     expect(screen.getByText("共 1 项")).toBeInTheDocument();
+  });
+
+  it("allows a previously removed last page to become reachable again", async () => {
+    const { tasks, client } = setup(view);
+    await screen.findByText("任务 1");
+    fireEvent.click(screen.getByTitle("2"));
+    const item = (await screen.findByText("任务 101")).closest("li")!;
+    fireEvent.click(within(item).getByRole("button", { name: /^完\s?成$/ }));
+    fireEvent.click(within(item).getByText("标记完成"));
+    await screen.findByText("共 100 项");
+    await screen.findByText("任务 1");
+
+    tasks.push({ ...tasks[0], id: "new-task", title: "新任务" });
+    await act(async () => {
+      await client.invalidateQueries({
+        queryKey: ["workspace", "northwind", "work-tasks"],
+      });
+    });
+    await screen.findByText("共 101 项");
+    fireEvent.click(screen.getByTitle("2"));
+    expect(await screen.findByText("新任务")).toBeInTheDocument();
+    expect(screen.queryByText("任务 1")).not.toBeInTheDocument();
   });
 
   it.each([

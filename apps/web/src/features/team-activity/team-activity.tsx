@@ -451,7 +451,11 @@ function TeamTasks({
     queryKey: workKeys.tasks(tenantCode, filter),
     queryFn: () => api.listTasks(tenantCode, filter),
   });
-  if (tasks.data) {
+  if (
+    tasks.isSuccess &&
+    tasks.isFetchedAfterMount &&
+    tasks.fetchStatus === "idle"
+  ) {
     const lastPage = Math.max(1, Math.ceil(tasks.data.total / tasks.data.limit));
     if (page > lastPage) setPage(lastPage);
   }

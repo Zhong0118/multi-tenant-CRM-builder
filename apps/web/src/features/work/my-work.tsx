@@ -65,7 +65,11 @@ function MyTasks({ tenantCode, api }: { tenantCode: string; api: WorkApi }) {
     queryKey: workKeys.tasks(tenantCode, { status, page }),
     queryFn: () => api.listTasks(tenantCode, { status, page }),
   });
-  if (query.data) {
+  if (
+    query.isSuccess &&
+    query.isFetchedAfterMount &&
+    query.fetchStatus === "idle"
+  ) {
     const lastPage = Math.max(1, Math.ceil(query.data.total / query.data.limit));
     if (page > lastPage) setPage(lastPage);
   }
