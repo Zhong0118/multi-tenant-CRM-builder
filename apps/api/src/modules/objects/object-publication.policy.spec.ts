@@ -91,6 +91,36 @@ function blockingCodes(draft: PublicationDraft): string[] {
 }
 
 describe('object publication policy', () => {
+  it('protects select options from the last publication containing a retired field', () => {
+    const draft = validDraft();
+    draft.fields[0].type = 'MULTI_SELECT';
+    draft.fields[0].validation = {};
+    draft.fields[0].config = {
+      options: [
+        { key: 'a', label: 'A' },
+        { key: 'b', label: 'B' },
+      ],
+    };
+    const publication = {
+      id: 'publication-1',
+      number: 1,
+      sourceDraftVersion: 7,
+      publishedAt: '2026-10-23T00:00:00Z',
+    };
+    const original = compilePublication({ ...draft, publication });
+    draft.fields[0].status = 'INACTIVE';
+    draft.defaultView!.columnFieldKeys = ['name'];
+    draft.activeSchema = compilePublication({ ...draft, publication });
+    draft.previousPublishedFields = original.fields;
+    draft.fields[0].status = 'ACTIVE';
+    draft.fields[0].config = { options: [{ key: 'b', label: 'B' }] };
+    expect(blockingCodes(draft)).toContain('FIELD_OPTION_REMOVED');
+    expect(analyzePublication(draft).changes).toContainEqual({
+      kind: 'ADDED',
+      fieldKey: 'phone',
+    });
+  });
+
   it('blocks a title field that is not required', () => {
     const draft = validDraft();
     draft.fields[1].required = false;
