@@ -1141,3 +1141,32 @@ describe('prepareSourceRecordPatch / applySourceRecordPatch', () => {
     ).resolves.toMatchObject({ title: 'user@example.com' });
   });
 });
+
+describe('shared ordinary, batch and AI automation seam', () => {
+  it('passes both full snapshots to the store hook and propagates failure for rollback', async () => {
+    const store = new MemoryStore();
+    await seed(store);
+    let snapshots: unknown;
+    Object.assign(store, {
+      runFieldAutomations: (
+        _resolved: unknown,
+        before: DynamicRecord,
+        after: DynamicRecord,
+      ) => {
+        snapshots = { before: before.values.name, after: after.values.name };
+        return Promise.reject(new Error('target required value missing'));
+      },
+    });
+    await expect(
+      updateRecordCommand({
+        store,
+        resolved: resolved(),
+        context: admin,
+        recordId: 'record-seed',
+        input: { version: 4, values: { name: 'new' } },
+        meta,
+      }),
+    ).rejects.toThrow('target required value missing');
+    expect(snapshots).toEqual({ before: '原始线索', after: 'new' });
+  });
+});

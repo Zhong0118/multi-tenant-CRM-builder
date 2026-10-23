@@ -18,6 +18,12 @@
   --bg-surface: #ffffff;
   --bg-hover: #eef2f4;
   --bg-selected: #e7f3f0;
+  /* Chrome is meaningfully darker than the white work surface so the content
+     area advances and the sidebar retreats — the Attio/Linear trick. */
+  --bg-sidebar: #eceef1;
+  --bg-sidebar-active: #e0e3e8;
+  --bg-track: #e4e8eb;
+  --border-hairline: #e2e5e9;
   --color-success: #167568;
   --color-warning: #c66c18;
   --color-warning-soft: #fff3e5;
@@ -29,7 +35,7 @@
   --radius-data: 12px;
   --sidebar-width: 224px;
   --sidebar-collapsed-width: 64px;
-  --header-height: 56px;
+  --header-height: 52px;
 
   --font-ui:
     "IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei",
@@ -98,4 +104,39 @@ textarea {
 table,
 [data-numeric] {
   font-variant-numeric: tabular-nums;
+}
+
+/* Dialogs and drawers share one grammar: a 16px title, the consequence in one
+   secondary paragraph, actions bottom-right with the primary last. */
+.ant-drawer .ant-drawer-header {
+  padding: 14px 20px;
+}
+
+.ant-drawer .ant-drawer-title,
+.ant-modal .ant-modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.ant-drawer .ant-drawer-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 12px 20px;
+}
+
+.ant-modal .ant-modal-body > p,
+.ant-drawer .ant-drawer-body > p:first-child {
+  margin-bottom: 12px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.ant-modal .ant-modal-body > .ant-alert,
+.ant-drawer .ant-drawer-body > .ant-alert {
+  margin-bottom: 12px;
 }

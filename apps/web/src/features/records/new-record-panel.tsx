@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { ReadingPanel } from "@/components/workbench/surface";
+import { Page } from "@/components/layout/page";
+import { PageHeader } from "@/components/layout/page-header";
 import type { RuntimeObjectSchema } from "@/features/objects/object-types";
 
 import type { DynamicFieldMember } from "./dynamic-field";
 import { RecordForm } from "./record-form";
 
-import styles from "./records.module.css";
 
 export interface NewRecordPanelProps {
   tenantCode: string;
@@ -32,14 +32,12 @@ export function NewRecordPanel({
   const listPath = `/workspace/${tenantCode}/objects/${schema.object.code}`;
 
   return (
-    <main className={styles.list}>
-      <header className={styles.listHeader}>
-        <div>
-          <h1>新建{schema.object.name}</h1>
-          <Link href={listPath}>返回{schema.object.name}列表</Link>
-        </div>
-      </header>
-      <ReadingPanel className={styles.formPanel} ariaLabel={`新建${schema.object.name}表单`}>
+    <Page width="form">
+      <PageHeader
+        breadcrumb={<Link href={listPath}>{schema.object.name}</Link>}
+        title={`新建${schema.object.name}`}
+      />
+      <section aria-label={`新建${schema.object.name}表单`}>
         <RecordForm
           tenantCode={tenantCode}
           schema={schema}
@@ -48,7 +46,7 @@ export function NewRecordPanel({
           onSaved={(record) => router.replace(`${listPath}/${record.id}`)}
           onCancel={() => router.push(listPath)}
         />
-      </ReadingPanel>
-    </main>
+      </section>
+    </Page>
   );
 }

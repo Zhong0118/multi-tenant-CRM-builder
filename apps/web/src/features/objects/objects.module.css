@@ -37,11 +37,28 @@
   background: var(--paper);
 }
 
+/* Inside the designer a section sits on the page surface instead of in a card. */
+.designerWorkspace .panel {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
 .designer {
-  display: grid;
-  grid-template-columns: 168px minmax(0, 1fr) minmax(280px, 340px);
+  display: flex;
+  flex-direction: column;
   gap: 16px;
-  align-items: start;
+}
+
+.designer > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.designer > div:first-child > header {
+  margin-bottom: 0;
 }
 
 .designerHeader {
@@ -170,63 +187,113 @@
   font-size: 12px;
 }
 
-/* Left rail encodes the real configuration steps, not decorative numbering. */
+/* The designer's sections are tabs under the header, the same underline tabs
+   as the record page; the field count rides on its tab. */
 .designerNav {
-  position: sticky;
-  top: 16px;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-right: 16px;
-  border-right: 1px solid var(--rule);
+  gap: 4px;
+  margin-top: -4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--border-hairline);
 }
 
 .designerNavItem {
-  padding: 8px 10px;
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  gap: 6px;
+  align-items: baseline;
+  height: 40px;
+  padding: 0 10px;
   border: 0;
-  border-radius: 6px;
   background: transparent;
-  color: var(--ledger-ink);
+  color: var(--text-secondary);
   font: inherit;
   font-size: 14px;
-  text-align: left;
+  line-height: 40px;
   cursor: pointer;
 }
 
 .designerNavItem:hover {
-  background: var(--canvas);
+  color: var(--text-primary);
 }
 
-.designerNavItemActive {
-  background: var(--color-primary-soft);
-  color: var(--working-blue);
-  font-weight: 600;
+.designerNavItemActive,
+.designerNavItemActive:hover {
+  color: var(--text-primary);
+  font-weight: 500;
 }
 
-.designerNavVersion {
-  margin-top: 12px;
-  padding: 8px 10px;
-  color: var(--ink-secondary);
-  font-family: var(--font-mono);
+.designerNavItemActive::after {
+  position: absolute;
+  right: 10px;
+  bottom: -1px;
+  left: 10px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-primary);
+  content: "";
+}
+
+.designerNavCount {
+  color: var(--text-tertiary);
   font-size: 12px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.designerTitle {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.designerIcon {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: var(--radius-control);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 16px;
+}
+
+.designerMeta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+/* Archive and restore: the last row of 基本设置, set apart like a danger zone. */
+.dangerZone {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0 0;
+  margin-top: 28px;
+  border-top: 1px solid var(--border-hairline);
+}
+
+.dangerZone h2 {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.dangerZone p {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
 }
 
 .designerWorkspace {
   min-width: 0;
-}
-
-.designerPreview {
-  position: sticky;
-  top: 16px;
-  min-width: 0;
-  padding: 16px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-reading);
-}
-
-.compactPreviewButton {
-  display: none;
 }
 
 .sectionHeading {
@@ -246,41 +313,76 @@
   font-weight: 600;
 }
 
+/* Tables in the designer and the business-table list use the shared hairline
+   table: no box, no grey header band, secondary header text. */
 .ledger {
-  overflow: hidden;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-data);
-  background: var(--bg-surface);
-}
-
-.ledger :global(.ant-table) {
-  background: var(--bg-surface);
+  border-top: 1px solid var(--border-hairline);
 }
 
 .ledger :global(.ant-table-thead > tr > th) {
-  padding-top: 10px !important;
-  padding-bottom: 10px !important;
-  border-bottom: 1px solid var(--border-strong) !important;
-  color: #44515c;
-  font-family: var(--font-label);
-  font-size: 12px;
-  font-weight: 650;
-  letter-spacing: 0.02em;
-  background: #f2f5f7 !important;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
 }
 
-.ledger :global(.ant-table-tbody > tr > td) {
-  border-bottom: 1px solid var(--border-default) !important;
-  background: var(--bg-surface);
-  transition: background-color 140ms ease;
+.tableName {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  color: var(--text-primary);
 }
 
-.ledger :global(.ant-table-tbody > tr:hover > td) {
-  background: #f3f8f7 !important;
+.tableName .ledgerIcon {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  place-items: center;
+  border-radius: var(--radius-control);
+  background: var(--bg-page);
+  vertical-align: middle;
 }
 
-.ledger :global(.ant-table-tbody > tr:last-child > td) {
-  border-bottom: 0 !important;
+.tableNameText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 20px;
+}
+
+.tableNameText strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.tableName:hover strong {
+  color: var(--color-primary);
+}
+
+.archivedRow td {
+  color: var(--text-tertiary);
+}
+
+.archivedRow .ledgerIcon {
+  opacity: 0.5;
+}
+
+.listAlert {
+  margin-bottom: 12px;
+}
+
+.listEmpty {
+  padding: 48px 0;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .ledgerName {
@@ -360,7 +462,6 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 0 20px;
-  max-width: 720px;
 }
 
 .statusExplanation {
@@ -787,16 +888,16 @@
 }
 
 @media (min-width: 768px) and (max-width: 1199px) {
-  .designer {
-    grid-template-columns: 160px minmax(0, 1fr);
+  .fieldsLayout {
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
   }
 
-  .designerPreview {
-    display: none;
+  .fieldListColumn {
+    padding-right: 20px;
   }
 
-  .compactPreviewButton {
-    display: inline-flex;
+  .fieldEditorColumn {
+    padding-left: 20px;
   }
 }
 
@@ -819,8 +920,7 @@
 }
 
 .designerContext {
-  padding-block: 12px;
-  border-bottom: 1px solid var(--border-default);
+  gap: 4px 16px;
   color: var(--text-secondary);
   font-size: 13px;
 }
@@ -830,7 +930,7 @@
 }
 
 .saveEffect {
-  margin: 8px 0 16px;
+  margin: 0;
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 20px;
@@ -994,5 +1094,469 @@
     animation: none;
     transition: none;
     transform: none;
+  }
+}
+
+/* Icon choices for a business table. */
+.iconGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 36px);
+  gap: 6px;
+  /* Twelve across: the 36 icons fill three rows on a desktop. */
+  max-width: 498px;
+}
+
+.iconTile {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  color: var(--text-secondary);
+  font-size: 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.iconTile:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.iconTile[aria-checked="true"] {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+}
+
+.iconTile:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.iconTile:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.ledgerIcon {
+  display: inline-flex;
+  margin-right: 8px;
+  color: var(--text-secondary);
+  vertical-align: -2px;
+}
+
+/* ── Fields: the list on the left, the selected field's editor on the right ── */
+.fieldsLayout {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  align-items: start;
+}
+
+.fieldListColumn {
+  min-width: 0;
+  padding-right: 24px;
+}
+
+.fieldEditorColumn {
+  min-width: 0;
+  min-height: 320px;
+  padding-left: 28px;
+  border-left: 1px solid var(--border-hairline);
+}
+
+.fieldListHeading {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.fieldListHeading h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.fieldListHeading :global(.ant-typography) {
+  display: block;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.fieldList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border-hairline);
+}
+
+.fieldListItem {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  padding-left: 4px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.fieldListItem:hover {
+  background: var(--bg-hover);
+}
+
+.fieldListItemSelected,
+.fieldListItemSelected:hover {
+  background: var(--color-primary-soft);
+}
+
+.fieldListItemInactive .fieldListText {
+  color: var(--text-secondary);
+}
+
+.fieldListItemDragging {
+  background: var(--bg-surface);
+  box-shadow: 0 4px 14px rgb(23 35 45 / 14%);
+}
+
+.fieldListSelect {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px 10px 2px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fieldListSelect:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.fieldTypeBadge {
+  display: grid;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+  background: var(--bg-hover);
+  border-radius: 8px;
+}
+
+.fieldListItemSelected .fieldTypeBadge {
+  color: var(--color-primary);
+  background: var(--bg-surface);
+}
+
+.fieldListText {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  line-height: 1.45;
+}
+
+.fieldListName {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fieldListMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.fieldListMeta > span + span::before {
+  margin-right: 8px;
+  color: var(--border-strong);
+  content: "·";
+}
+
+.fieldListMeta .stableKey {
+  font-size: 13px;
+}
+
+.fieldListHead {
+  display: flex;
+  min-width: 0;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fieldListFlags {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+
+.fieldFlag {
+  display: inline-flex;
+  height: 22px;
+  align-items: center;
+  padding: 0 7px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--bg-hover);
+  border-radius: 6px;
+}
+
+.fieldListItemSelected .fieldFlag {
+  background: var(--bg-surface);
+}
+
+.fieldFlagRequired {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.fieldFlagDraft {
+  color: #94500f;
+  background: var(--color-warning-soft);
+}
+
+.fieldListEmpty {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.fieldPanel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.fieldPanelHeader {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding-bottom: 16px;
+}
+
+.fieldPanelHeader .fieldTypeBadge {
+  width: 40px;
+  height: 40px;
+  color: var(--color-primary);
+  font-size: 18px;
+  background: var(--color-primary-soft);
+  border-radius: 10px;
+}
+
+.fieldPanelTitle {
+  min-width: 0;
+}
+
+.fieldPanelTitle h2 {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fieldPanelTitle p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.fieldPanelTitle .stableKey {
+  font-size: 13px;
+}
+
+/* The shared sections were drawn as cards for the drawer; here they are flat. */
+.fieldPanel .drawerSection {
+  padding: 18px 0;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--border-hairline);
+  border-radius: 0;
+}
+
+.fieldPanel .drawerSection + .drawerSection {
+  margin-top: 0;
+}
+
+.drawerSectionHeadingPlain {
+  grid-template-columns: minmax(0, 1fr);
+  margin-bottom: 12px;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+/* The page area has 20px of padding that a sticky element does not reach into,
+   so the bar offsets it to sit flush with the bottom edge. */
+.fieldPanelFooter {
+  position: sticky;
+  bottom: -20px;
+  z-index: 2;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+  margin-bottom: -20px;
+  padding: 12px 0 32px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-hairline);
+}
+
+.fieldPanelNote {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.fieldPanelDirty {
+  color: #94500f;
+  font-weight: 500;
+}
+
+.fieldPanelSaved {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+/* Forms share the settings column with every other section of the designer. */
+.formColumn {
+  max-width: none;
+}
+
+/* Tighter rhythm inside the field editor: the section rules already separate. */
+.fieldPanel :global(.ant-form-item) {
+  margin-bottom: 14px;
+}
+
+.fieldPanel .drawerSection > :global(.ant-form-item:last-child),
+.fieldPanel .drawerSection > :last-child {
+  margin-bottom: 0;
+}
+
+.unpublishedNote {
+  color: #94500f;
+  font-weight: 500;
+}
+
+/* A designer section opens with one line on where the draft stands, not a
+   repeated heading: the tab above already names the section. */
+.sectionLead {
+  margin-bottom: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.settingInput {
+  width: 100%;
+  max-width: 420px;
+}
+
+/* Inside the designer the active tab names the section, so the section's own
+   h2 is kept for assistive technology only and its side notes stay visible. */
+.designerWorkspace .sectionHeading h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.designerWorkspace .sectionHeading {
+  justify-content: flex-end;
+  min-height: 0;
+}
+
+.designerWorkspace .sectionHeading:not(:has(> :not(h2))) {
+  margin-bottom: 0;
+}
+
+.designerWorkspace .statusExplanation {
+  border-left: 0;
+  padding-left: 0;
+  background: transparent;
+}
+
+/* Designer forms read as settings rows: the label and its help on the left,
+   the control on the right, a hairline between rows (the same grammar as
+   SettingRow in components/layout/page). */
+.designerWorkspace .formColumn :global(.ant-form-item) {
+  margin-bottom: 0;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.designerWorkspace .formColumn :global(.ant-form-item-row) {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 8px 32px;
+}
+
+.designerWorkspace .formColumn :global(.ant-form-item-label) {
+  padding: 5px 0 0;
+  text-align: left;
+}
+
+.designerWorkspace .formColumn :global(.ant-form-item-label > label) {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.designerWorkspace .formColumn :global(.ant-form-item-control) {
+  min-width: 0;
+}
+
+.designerWorkspace .formColumn :global(.ant-input:not(textarea)),
+.designerWorkspace .formColumn :global(.ant-select) {
+  max-width: 420px;
+}
+
+.designerWorkspace .formColumn .formGrid {
+  display: block;
+}
+
+.designerWorkspace .formColumn :global(.ant-form-item:first-of-type) {
+  border-top: 1px solid var(--border-hairline);
+}
+
+.designerWorkspace .formColumn .sectionActions {
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+  padding-top: 14px;
+}
+
+@media (max-width: 767px) {
+  .designerWorkspace .formColumn :global(.ant-form-item-row) {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

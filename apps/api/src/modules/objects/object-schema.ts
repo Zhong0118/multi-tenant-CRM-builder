@@ -1,3 +1,4 @@
+import type { AutomationRule } from '../automations/automation.types';
 import type { PublishedWorkflow } from '../workflows/workflow.types';
 
 export type JsonPrimitive = string | number | boolean | null;
@@ -93,6 +94,7 @@ export interface PublishedObjectSchema {
     fields: Record<string, PublishedFieldAccess>;
   };
   workflow?: PublishedWorkflow;
+  automations?: AutomationRule[];
 }
 
 export function isPublishedFieldType(

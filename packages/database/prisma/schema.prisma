@@ -198,6 +198,7 @@ model User {
 }
 
 model Tenant {
+  automationExecutions RecordAutomationExecution[]
   notifications MemberNotification[]
   memberFieldPermissions MemberFieldPermission[]
   id                         String                         @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
@@ -289,6 +290,7 @@ model TenantDashboardPublication {
 }
 
 model TenantMember {
+  automationExecutions RecordAutomationExecution[]
   notifications MemberNotification[]
   memberFieldPermissions MemberFieldPermission[]
   displayName String? @map("display_name") @db.VarChar(100)
@@ -520,6 +522,7 @@ model FieldDefinition {
 }
 
 model ObjectPublication {
+  automationExecutions RecordAutomationExecution[]
   id                  String                    @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId            String                    @map("tenant_id") @db.Uuid
   objectId            String                    @map("object_id") @db.Uuid
@@ -614,6 +617,8 @@ model RecordCounter {
 }
 
 model Record {
+  sourceAutomations RecordAutomationExecution[] @relation("AutomationSource")
+  targetAutomations RecordAutomationExecution[] @relation("AutomationTarget")
   notifications MemberNotification[]
   poolStage String? @map("pool_stage") @db.VarChar(32)
   poolOrigin String? @map("pool_origin") @db.VarChar(32)
@@ -933,4 +938,25 @@ model MemberNotification {
 
   @@unique([tenantId, recipientMemberId, kind, eventKey], map: "member_notifications_event_key")
   @@map("member_notifications")
+}
+
+model RecordAutomationExecution {
+  id String @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  sourceRecordId String @map("source_record_id") @db.Uuid
+  targetRecordId String @map("target_record_id") @db.Uuid
+  ruleKey String @map("rule_key") @db.VarChar(64)
+  dedupKey String @map("dedup_key") @db.VarChar(128)
+  publicationId String @map("publication_id") @db.Uuid
+  actorMemberId String @map("actor_member_id") @db.Uuid
+  result Json @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  sourceRecord Record @relation("AutomationSource", fields: [tenantId, sourceRecordId], references: [tenantId, id], onDelete: Restrict, map: "record_automation_executions_source_record_fkey")
+  targetRecord Record @relation("AutomationTarget", fields: [tenantId, targetRecordId], references: [tenantId, id], onDelete: Restrict, map: "record_automation_executions_target_record_fkey")
+  publication ObjectPublication @relation(fields: [tenantId, publicationId], references: [tenantId, id], onDelete: Restrict, map: "record_automation_executions_publication_fkey")
+  actor TenantMember @relation(fields: [tenantId, actorMemberId], references: [tenantId, id], onDelete: Restrict, map: "record_automation_executions_actor_fkey")
+  @@unique([tenantId, sourceRecordId, ruleKey, dedupKey], map: "record_automation_executions_dedup_key")
+  @@index([tenantId, sourceRecordId, createdAt(sort: Desc)], map: "record_automation_executions_history_idx")
+  @@map("record_automation_executions")
 }

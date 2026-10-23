@@ -1,3 +1,4 @@
+import { analyzeAutomationDependencies } from '../automations/automation-publication';
 import { Inject, Injectable } from '@nestjs/common';
 
 import { toObjectDraftResponse } from './object-draft.presenter';
@@ -574,7 +575,11 @@ export class ObjectsService {
       draft.workflowStateRecordCounts =
         await store.countRecordsByWorkflowState(objectId);
       await loadActionTargets(store, draft);
-      return analyzePublication(draft);
+      const analysis = analyzePublication(draft);
+      analysis.blocking.push(
+        ...analyzeAutomationDependencies(draft, await store.listObjects()),
+      );
+      return analysis;
     });
   }
 
@@ -597,6 +602,9 @@ export class ObjectsService {
         await store.countRecordsByWorkflowState(objectId);
       await loadActionTargets(store, draft);
       const analysis = analyzePublication(draft);
+      analysis.blocking.push(
+        ...analyzeAutomationDependencies(draft, await store.listObjects()),
+      );
       if (analysis.blocking.length > 0) {
         throw new ApiException('PUBLICATION_BLOCKED', 422, {
           message: analysis.blocking.map((item) => item.message).join('；'),
@@ -821,10 +829,16 @@ async function loadActionTargets(
   store: ObjectsStore,
   draft: ObjectDraft,
 ): Promise<void> {
-  if (!draft.workflow?.isEnabled) return;
-  draft.actionTargets = await store.findActionTargetObjects(
-    collectActionTargetObjectCodes(draft.workflow.transitions),
-  );
+  const codes = [
+    ...(draft.workflow?.isEnabled
+      ? collectActionTargetObjectCodes(draft.workflow.transitions)
+      : []),
+    ...(draft.automations ?? [])
+      .filter((rule) => rule.enabled)
+      .map((rule) => rule.targetObjectCode),
+  ];
+  if (!codes.length && !draft.workflow?.isEnabled) return;
+  draft.actionTargets = await store.findActionTargetObjects(codes);
 }
 
 async function requireDraft(

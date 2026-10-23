@@ -3,7 +3,7 @@ import type { PoolProtectionRule } from '../records/record-ownership';
 import type { PublishedObjectSchema } from './object-schema';
 
 export interface LifecycleBlocker {
-  kind: 'WORKFLOW' | 'POOL_PROTECTION';
+  kind: 'WORKFLOW' | 'POOL_PROTECTION' | 'AUTOMATION';
   objectCode: string;
   objectName: string;
   description: string;
@@ -58,6 +58,26 @@ export function lifecycleBlockers(
               : `已发布流程“${transition.label}”依赖的业务表“${target?.name ?? code}”未启用，请先恢复该表。`,
         });
       }
+    }
+    for (const rule of source.schema?.automations ?? []) {
+      if (!rule.enabled) continue;
+      const target = byCode.get(rule.targetObjectCode);
+      if (
+        operation === 'archive'
+          ? rule.targetObjectCode !== subject.code
+          : target?.status === 'ACTIVE' && target.schema !== null
+      )
+        continue;
+      const referenced = operation === 'archive' ? source : target;
+      blockers.push({
+        kind: 'AUTOMATION',
+        objectCode: referenced?.code ?? rule.targetObjectCode,
+        objectName: referenced?.name ?? rule.targetObjectCode,
+        description:
+          operation === 'archive'
+            ? `“${source.name}”的已发布自动化“${rule.label}”依赖此表，请先停用规则并发布。`
+            : `自动化“${rule.label}”依赖的业务表未启用，请先恢复目标表。`,
+      });
     }
     if (!source.poolEnabled || !source.poolLifecycleEnabled) continue;
     for (const rule of source.protectionRules) {

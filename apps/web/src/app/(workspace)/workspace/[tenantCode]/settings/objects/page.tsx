@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 
 import { ObjectList } from "@/features/objects/object-list";
 import type { ObjectDraft } from "@/features/objects/object-types";
-import styles from "@/features/objects/objects.module.css";
 import { toApiError } from "@/lib/api/api-error";
 import { createServerApiClient } from "@/lib/api/server-client";
 import { requireWorkspace } from "@/lib/auth/require-workspace";
@@ -35,17 +34,9 @@ export default async function ObjectSettingsPage({
   }
 
   return (
-    <main className={styles.page}>
-      <header className={styles.pageHeader}>
-        <h1>业务表</h1>
-        <p>
-          在这里创建公司自己的业务表、添加字段、设置默认列表和员工权限。字段、列表和权限配置先保存为草稿，发布后影响员工页面；停用与恢复业务表立即生效。
-        </p>
-      </header>
-      <ObjectList
-        tenantCode={tenantCode}
-        initialDrafts={result.data as ObjectDraft[]}
-      />
-    </main>
+    <ObjectList
+      tenantCode={tenantCode}
+      initialDrafts={result.data as ObjectDraft[]}
+    />
   );
 }

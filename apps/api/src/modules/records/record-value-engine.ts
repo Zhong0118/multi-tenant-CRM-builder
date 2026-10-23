@@ -9,6 +9,11 @@ import type {
   PublishedObjectSchema,
 } from '../objects/object-schema';
 
+type RecordValueField = Pick<
+  PublishedField,
+  'fieldKey' | 'type' | 'required' | 'validation' | 'config'
+>;
+
 type RecordValueErrorCode = Extract<
   ApiErrorCode,
   | 'OBJECT_ACTION_FORBIDDEN'
@@ -184,10 +189,27 @@ function isFieldVisible(
 }
 
 async function normalizeValue(
-  field: PublishedField,
+  field: RecordValueField,
   value: unknown,
   memberExists: (id: string) => Promise<boolean>,
 ): Promise<unknown> {
+  const normalized = normalizeStaticFieldValue(field, value);
+  if (field.type === 'MEMBER' && !(await memberExists(normalized as string))) {
+    invalid(field);
+  }
+  return normalized;
+}
+
+/** Same field rules at publication and runtime; active-member lookup stays runtime-only. */
+export function normalizeStaticFieldValue(
+  field: RecordValueField,
+  value: unknown,
+): unknown {
+  if (value === null) {
+    if (field.required)
+      throw new RecordValueError('FIELD_REQUIRED', field.fieldKey);
+    return null;
+  }
   switch (field.type) {
     case 'TEXT':
       return normalizeText(field, value, 1, 300);
@@ -210,7 +232,7 @@ async function normalizeValue(
     case 'MULTI_SELECT':
       return normalizeMultiSelect(field, value);
     case 'MEMBER':
-      return normalizeMember(field, value, memberExists);
+      return normalizeMember(field, value);
     case 'BOOLEAN':
       if (typeof value !== 'boolean') invalid(field);
       return value;
@@ -218,7 +240,7 @@ async function normalizeValue(
 }
 
 function normalizeText(
-  field: PublishedField,
+  field: RecordValueField,
   value: unknown,
   defaultMin: number,
   defaultMax: number,
@@ -230,7 +252,7 @@ function normalizeText(
   return value;
 }
 
-function normalizeEmail(field: PublishedField, value: unknown): string {
+function normalizeEmail(field: RecordValueField, value: unknown): string {
   if (typeof value !== 'string') invalid(field);
   const normalized = value.toLowerCase();
   if (
@@ -242,7 +264,7 @@ function normalizeEmail(field: PublishedField, value: unknown): string {
   return normalized;
 }
 
-function normalizeNumber(field: PublishedField, value: unknown): number {
+function normalizeNumber(field: RecordValueField, value: unknown): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) invalid(field);
   const min = configNumber(field.validation.min);
   const max = configNumber(field.validation.max);
@@ -253,7 +275,7 @@ function normalizeNumber(field: PublishedField, value: unknown): number {
   return value;
 }
 
-function normalizeMoney(field: PublishedField, value: unknown): string {
+function normalizeMoney(field: RecordValueField, value: unknown): string {
   if (typeof value !== 'string' || !/^-?\d+(?:\.\d+)?$/.test(value))
     invalid(field);
   const scale = configInteger(field.validation.scale) ?? 2;
@@ -276,7 +298,7 @@ function normalizeMoney(field: PublishedField, value: unknown): string {
     : `${sign}${normalizedInteger}.${fraction.padEnd(scale, '0')}`;
 }
 
-function normalizeDate(field: PublishedField, value: unknown): string {
+function normalizeDate(field: RecordValueField, value: unknown): string {
   if (typeof value !== 'string') invalid(field);
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) invalid(field);
@@ -294,7 +316,7 @@ function normalizeDate(field: PublishedField, value: unknown): string {
   return value;
 }
 
-function normalizeDateTime(field: PublishedField, value: unknown): string {
+function normalizeDateTime(field: RecordValueField, value: unknown): string {
   if (
     typeof value !== 'string' ||
     !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2})$/.test(
@@ -308,7 +330,10 @@ function normalizeDateTime(field: PublishedField, value: unknown): string {
   return new Date(timestamp).toISOString();
 }
 
-function normalizeSingleSelect(field: PublishedField, value: unknown): string {
+function normalizeSingleSelect(
+  field: RecordValueField,
+  value: unknown,
+): string {
   if (typeof value !== 'string') invalid(field);
   const option = selectOptions(field).find(
     (candidate) => candidate.key === value,
@@ -320,7 +345,10 @@ function normalizeSingleSelect(field: PublishedField, value: unknown): string {
   return value;
 }
 
-function normalizeMultiSelect(field: PublishedField, value: unknown): string[] {
+function normalizeMultiSelect(
+  field: RecordValueField,
+  value: unknown,
+): string[] {
   if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
     invalid(field);
   }
@@ -338,17 +366,12 @@ function normalizeMultiSelect(field: PublishedField, value: unknown): string[] {
     .map((option) => option.key);
 }
 
-async function normalizeMember(
-  field: PublishedField,
-  value: unknown,
-  memberExists: (id: string) => Promise<boolean>,
-): Promise<string> {
+function normalizeMember(field: RecordValueField, value: unknown): string {
   if (
     typeof value !== 'string' ||
     !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
       value,
-    ) ||
-    !(await memberExists(value))
+    )
   ) {
     invalid(field);
   }
@@ -408,7 +431,7 @@ interface SelectOption {
   status: 'ACTIVE' | 'INACTIVE';
 }
 
-function selectOptions(field: PublishedField): SelectOption[] {
+function selectOptions(field: RecordValueField): SelectOption[] {
   const rawOptions = field.config.options;
   if (!Array.isArray(rawOptions)) return [];
   return rawOptions.flatMap((option) => {
@@ -449,6 +472,6 @@ function hasScale(value: number, scale: number): boolean {
   );
 }
 
-function invalid(field: PublishedField): never {
+function invalid(field: RecordValueField): never {
   throw new RecordValueError('FIELD_INVALID', field.fieldKey);
 }

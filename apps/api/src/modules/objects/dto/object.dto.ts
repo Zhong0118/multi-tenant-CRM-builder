@@ -61,8 +61,8 @@ export class RestoreObjectDto extends ExpectedVersionDto {
 }
 
 export class ObjectLifecycleBlockerDto {
-  @ApiProperty({ enum: ['WORKFLOW', 'POOL_PROTECTION'] }) kind!:
-    'WORKFLOW' | 'POOL_PROTECTION';
+  @ApiProperty({ enum: ['WORKFLOW', 'POOL_PROTECTION', 'AUTOMATION'] }) kind!:
+    'WORKFLOW' | 'POOL_PROTECTION' | 'AUTOMATION';
   @ApiProperty() objectCode!: string;
   @ApiProperty() objectName!: string;
   @ApiProperty() description!: string;

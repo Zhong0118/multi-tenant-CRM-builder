@@ -6,6 +6,7 @@ import { browserApiClient } from "@/lib/api/browser-client";
 import { toApiError } from "@/lib/api/api-error";
 import { runMemberBatch, type MemberBatchRow } from "./member-batch";
 import type { TenantMember } from "./member-table";
+import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
 
 type BatchAction = "EMPLOYEE" | "TENANT_ADMIN" | "ACTIVE" | "DISABLED";
 const actions: { label: string; value: BatchAction }[] = [
@@ -55,7 +56,43 @@ export function MemberNameEditor({
   api?: typeof memberEditApi;
 }) {
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
+  return (
+    <>
+      <Button
+        type="link"
+        aria-label={`修改姓名 ${member.displayName ?? "该成员"}`}
+        onClick={() => setOpen(true)}
+      >
+        修改姓名
+      </Button>
+      {open ? (
+        <MemberNameDialog
+          tenantCode={tenantCode}
+          member={member}
+          api={api}
+          onClose={() => setOpen(false)}
+          onChanged={onChanged}
+        />
+      ) : null}
+    </>
+  );
+}
+
+/** The rename dialog on its own, mounted while open so it starts from the current name. */
+export function MemberNameDialog({
+  tenantCode,
+  member,
+  onClose,
+  onChanged,
+  api = memberEditApi,
+}: {
+  tenantCode: string;
+  member: TenantMember;
+  onClose: () => void;
+  onChanged: () => void;
+  api?: typeof memberEditApi;
+}) {
+  const [name, setName] = useState(member.displayName ?? "");
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const running = useRef(false);
@@ -66,7 +103,7 @@ export function MemberNameEditor({
     setError(undefined);
     try {
       await api.name(tenantCode, member.id, name.trim());
-      setOpen(false);
+      onClose();
       onChanged();
     } catch (caught) {
       setError(toApiError(caught).message);
@@ -76,45 +113,34 @@ export function MemberNameEditor({
     }
   }
   return (
-    <>
-      <Button
-        type="link"
-        aria-label={`修改姓名 ${member.displayName ?? "该成员"}`}
-        onClick={() => {
-          setName(member.displayName ?? "");
-          setError(undefined);
-          setOpen(true);
-        }}
-      >
-        修改姓名
-      </Button>
-      <Modal
-        title="修改公司内姓名"
-        open={open}
-        onCancel={() => {
-          if (!running.current) setOpen(false);
-        }}
-        onOk={() => void save()}
-        okText="保存"
-        cancelText="取消"
-        confirmLoading={busy}
-        okButtonProps={{ disabled: !name.trim() }}
-        cancelButtonProps={{ disabled: busy }}
-        closable={!busy}
-        mask={{ closable: !busy }}
-        keyboard={!busy}
-      >
-        <p>仅更新本公司名册及业务记录中的姓名。</p>
-        <Input
-          aria-label="公司内姓名"
-          maxLength={100}
-          value={name}
-          disabled={busy}
-          onChange={(event) => setName(event.target.value)}
-        />
-        {error && <Alert type="error" title={error} />}
-      </Modal>
-    </>
+    <Modal
+      title="修改公司内姓名"
+      open
+      width={OVERLAY_SIZE.confirm}
+      onCancel={() => {
+        if (!running.current) onClose();
+      }}
+      onOk={() => void save()}
+      okText="保存"
+      cancelText="取消"
+      confirmLoading={busy}
+      okButtonProps={{ disabled: !name.trim() }}
+      cancelButtonProps={{ disabled: busy }}
+      closable={!busy}
+      mask={{ closable: !busy }}
+      keyboard={!busy}
+    >
+      <p>仅更新本公司名册及业务记录中的姓名。</p>
+      <Input
+        aria-label="公司内姓名"
+        maxLength={100}
+        value={name}
+        disabled={busy}
+        onChange={(event) => setName(event.target.value)}
+        onPressEnter={() => void save()}
+      />
+      {error && <Alert type="error" title={error} />}
+    </Modal>
   );
 }
 
@@ -122,11 +148,13 @@ export function BulkMemberActions({
   tenantCode,
   selected,
   onChanged,
+  buttonLabel,
   api = memberEditApi,
 }: {
   tenantCode: string;
   selected: TenantMember[];
   onChanged: () => void;
+  buttonLabel?: string;
   api?: typeof memberEditApi;
 }) {
   const [rows, setRows] = useState<MemberBatchRow<TenantMember>[]>([]);
@@ -161,12 +189,12 @@ export function BulkMemberActions({
           setOpen(true);
         }}
       >
-        批量管理{selected.length ? `（${selected.length}）` : ""}
+        {buttonLabel ?? `批量管理${selected.length ? `（${selected.length}）` : ""}`}
       </Button>
       <Modal
         title={`批量管理 ${rows.length} 位成员`}
         open={open}
-        width={680}
+        width={OVERLAY_SIZE.wide}
         onCancel={() => {
           if (!running.current) setOpen(false);
         }}

@@ -1,6 +1,5 @@
-import Link from "next/link";
-
-import styles from "@/features/auth/auth.module.css";
+import { AccountShell } from "@/components/layout/account-shell";
+import { PageHeader } from "@/components/layout/page-header";
 import { SessionList } from "@/features/auth/session-list";
 import { toApiError } from "@/lib/api/api-error";
 import { createServerApiClient } from "@/lib/api/server-client";
@@ -25,18 +24,15 @@ export default async function AccountSecurityPage() {
   }
 
   return (
-    <main className={styles.securityPage}>
-      <header className={styles.securityHeader}>
-        <h1>账号安全</h1>
-        <p>
-          {user.displayName} · {user.phone}　
-          <Link href="/workspaces">返回工作区</Link>
-        </p>
-      </header>
+    <AccountShell current="security">
+      <PageHeader
+        title="账号安全"
+        description={`${user.displayName} · ${user.phone}`}
+      />
       <SessionList
         initialActive={activeResult.data}
         initialHistory={historyResult.data}
       />
-    </main>
+    </AccountShell>
   );
 }

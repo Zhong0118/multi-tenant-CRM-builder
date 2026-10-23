@@ -1,122 +1,119 @@
-.page {
+/* Members: header, a 成员 / 邀请 switch with the selection actions beside it,
+   and one table. Lives in the settings column (Page width="settings"). */
+
+.toolbar {
   display: flex;
-  flex-direction: column;
-  gap: 24px;
-  width: 100%;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 36px;
+  margin-bottom: 8px;
 }
-.pageHeader {
-  margin-bottom: 0;
-}
-.pageHeader h1 {
-  margin: 4px 0 8px;
+
+.selection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
   color: var(--text-primary);
-  font-size: 24px;
-  font-weight: 650;
-  line-height: 32px;
-}
-.pageHeader p,
-.invitePanel p,
-.tableHeading > span,
-.secondary {
-  color: var(--text-secondary);
-  line-height: 22px;
-}
-.tableHeading > span {
   font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
-.invitePanel {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 24px;
-  align-items: center;
-  padding: 24px 28px;
-  border-left: 3px solid var(--verified-teal);
+
+.selection > span:first-child {
+  margin-right: 4px;
+  font-weight: 600;
 }
-.inviteCopy {
+
+.tabLabel {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.tabCount {
+  color: var(--color-warning);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.alert {
+  margin-bottom: 8px;
+}
+
+.table {
+  border-top: 1px solid var(--border-hairline);
+}
+
+.table :global(.ant-table-thead > tr > th) {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.person {
+  display: flex;
+  gap: 10px;
+  align-items: center;
   min-width: 0;
 }
-.invitePanel h2,
-.tableHeading h2 {
-  margin: 0;
-  color: var(--text-primary);
-  font-size: 20px;
-  line-height: 28px;
+
+.avatar {
+  display: inline-grid;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 600;
 }
-.inviteFields {
-  display: grid;
-  grid-template-columns:
-    minmax(140px, 1fr) minmax(180px, 1.2fr) minmax(140px, 1fr)
-    auto;
-  gap: 12px;
-  align-items: end;
+
+.avatar[data-pending] {
+  border: 1px dashed var(--border-strong);
+  background: var(--bg-surface);
+  color: var(--text-tertiary);
 }
-.inviteFields :global(.ant-form-item) {
-  margin-bottom: 0;
-}
-.inviteFields :global(.ant-form-item-label) {
-  padding-bottom: 6px;
-}
-.inviteFields :global(.ant-select),
-.inviteFields :global(.ant-input) {
-  width: 100%;
-}
-.inviteFields > :global(.ant-btn) {
-  margin-bottom: 1px;
-}
-.tables {
-  display: grid;
-  gap: 16px;
-}
-.tablePanel {
-  padding: 0;
-  overflow: hidden;
-}
-.tableHeading {
+
+.personText {
   display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 60px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--rule);
+  flex-direction: column;
+  min-width: 0;
 }
-.tablePanel :global(.ant-table-wrapper) {
-  overflow-x: auto;
-}
-.tablePanel :global(.ant-table-cell) {
+
+.personText strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-weight: 500;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
-.tableActions {
-  white-space: normal;
-}
-.tableActions :global(.ant-btn) {
-  padding-inline: 5px;
-}
-.tablePanel :global(.ant-table-thead > tr > th) {
-  background: var(--bg-hover);
-}
+
 .secondary {
-  display: block;
-  margin-top: 3px;
-  font-size: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
 }
-@media (max-width: 1000px) {
-  .invitePanel {
-    grid-template-columns: 1fr;
-  }
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
-@media (max-width: 680px) {
-  .inviteFields {
-    grid-template-columns: 1fr;
-  }
-  .invitePanel {
-    padding: 20px;
+
+@media (max-width: 767px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 
-/* Member object access: one panel per published object. */
 .accessList {
   display: flex;
   flex-direction: column;

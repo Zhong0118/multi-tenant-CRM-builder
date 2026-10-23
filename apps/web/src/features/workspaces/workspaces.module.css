@@ -1,50 +1,81 @@
+/* Companies the person belongs to, one row each (Linear's workspace switcher). */
 .workspaceList {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-}
-.workspaceCard {
-  position: relative;
-  overflow: hidden;
-  min-height: 220px;
-  padding: 25px 24px 22px 28px;
-  border: 1px solid #d8e0e6;
-  background: #fff;
-  box-shadow: 0 12px 32px rgba(22, 37, 50, 0.05);
-}
-.workspaceCard.inactive {
-  background: #f9fafb;
-  box-shadow: none;
-}
-.rail {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: #0f766e;
-}
-.inactive .rail {
-  background: #93a1ac;
-}
-.cardHeader {
   display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 26px;
+  flex-direction: column;
+  border-top: 1px solid var(--border-hairline);
 }
-.cardHeader h3 {
-  margin: 6px 0 0 !important;
-  color: #162532 !important;
+
+.workspaceRow {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--border-hairline);
 }
+
+.initial {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: var(--radius-control);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.inactive .initial {
+  background: var(--bg-track);
+  color: var(--text-tertiary);
+}
+
+.rowText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rowTitle:global(.ant-typography) {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.inactive .rowTitle:global(.ant-typography) {
+  color: var(--text-secondary);
+}
+
+.rowMeta {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
 .reason {
   display: inline-flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  color: #526473;
-  font-size: 14px;
+  color: var(--text-secondary);
+  font-size: 13px;
 }
-@media (max-width: 760px) {
-  .workspaceList {
-    grid-template-columns: 1fr;
-  }
+
+.enter {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius-control);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.enter:hover {
+  background: var(--color-primary-hover);
+  color: #fff;
 }

@@ -39,6 +39,7 @@ import {
 } from "./template-draft";
 
 import styles from "./templates.module.css";
+import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
 
 export interface TemplateObjectEditorProps {
   draft: TemplateDraft;
@@ -583,7 +584,7 @@ export function TemplateObjectEditor({
       />
       <Drawer
         open={previewOpen}
-        size={520}
+        size={OVERLAY_SIZE.narrow}
         title={`${object.object.name} · 成员预览`}
         onClose={() => setPreviewOpen(false)}
         destroyOnHidden

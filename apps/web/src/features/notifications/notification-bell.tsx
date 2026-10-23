@@ -1,9 +1,11 @@
 "use client";
 
 import { BellOutlined, CheckOutlined, ClockCircleOutlined, InboxOutlined, PhoneOutlined, SafetyCertificateOutlined, ScheduleOutlined, ReloadOutlined } from "@ant-design/icons";
-import { Alert, Badge, Button, Drawer, Empty, Pagination, Segmented, Spin } from "antd";
+import { Alert, Badge, Button, Drawer, Empty, Pagination, Popover, Segmented, Spin, Tooltip } from "antd";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+import type { NavItemRenderState } from "@/components/layout/sidebar";
 
 import { notificationsApi, type NotificationItem, type NotificationPage, type NotificationsApi } from "./notification-api";
 import styles from "./notifications.module.css";
@@ -12,6 +14,8 @@ interface Props {
   tenantCode: string;
   api?: NotificationsApi;
   onNavigate?: (href: string) => void;
+  /** Renders the inbox as a sidebar row and opens the panel beside the sidebar. */
+  nav?: NavItemRenderState;
 }
 const groups = {
   CONTACT_DUE: { label: "联系提醒", icon: <PhoneOutlined /> },
@@ -26,7 +30,7 @@ const dateLabel = (value: string) => new Date(value).toLocaleString("zh-CN", { m
 export function NotificationBell(props: Props) {
   return props.tenantCode ? <CompanyNotifications key={props.tenantCode} {...props} /> : null;
 }
-function CompanyNotifications({ tenantCode, api = notificationsApi, onNavigate }: Props) {
+function CompanyNotifications({ tenantCode, api = notificationsApi, onNavigate, nav }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(1);
@@ -102,11 +106,7 @@ function CompanyNotifications({ tenantCode, api = notificationsApi, onNavigate }
     });
   }
   const unreadLabel = error ? "读取失败" : data ? `${data.unreadCount} 条未读` : "正在读取";
-  return <>
-    <Badge className={styles.badge} count={error ? "!" : data?.unreadCount} color="#1677ff" size="small" offset={[-4, 4]}>
-      <Button type="text" icon={<BellOutlined />} className={styles.bell} aria-label={`打开消息，${unreadLabel}`} aria-expanded={open} onClick={() => setOpen(true)} />
-    </Badge>
-    <Drawer title="消息" open={open} onClose={() => setOpen(false)} size={440} rootClassName={styles.drawer} styles={{ wrapper: { maxWidth: "100vw" }, body: { padding: 0, overflowX: "hidden" } }} footer={<Pagination size="small" simple current={page} pageSize={20} total={data?.total ?? 0} showSizeChanger={false} onChange={(value) => { setData(undefined); setPage(value); }} />}>
+  const panelBody = <>
       <div className={styles.toolbar}>
         <Segmented aria-label="消息筛选" value={unreadOnly ? "unread" : "all"} options={[{ label: "全部", value: "all" }, { label: "未读", value: "unread" }]} onChange={(value) => { setData(undefined); setPage(1); setUnreadOnly(value === "unread"); }} />
         <div className={styles.actions}>
@@ -135,6 +135,54 @@ function CompanyNotifications({ tenantCode, api = notificationsApi, onNavigate }
           </section> : null;
         })}
       </div>}
+  </>;
+  if (nav) {
+    return (
+      <Popover
+        open={open}
+        onOpenChange={(next) => {
+          if (next) nav.onNavigate();
+          setOpen(next);
+        }}
+        trigger="click"
+        placement="rightTop"
+        arrow={false}
+        align={{ offset: [16, -6] }}
+        rootClassName={styles.popover}
+        content={
+          <div className={styles.panel} role="dialog" aria-label="消息">
+            <div className={styles.panelHeader}>
+              <h2>消息</h2>
+              {data?.unreadCount ? <span>{data.unreadCount} 条未读</span> : null}
+            </div>
+            <div className={styles.panelScroll}>{panelBody}</div>
+            {data && data.total > 20 ? <div className={styles.panelFooter}><Pagination size="small" simple current={page} pageSize={20} total={data?.total ?? 0} showSizeChanger={false} onChange={(value) => { setData(undefined); setPage(value); }} /></div> : null}
+          </div>
+        }
+      >
+        <Tooltip title={nav.collapsed && !open ? "消息" : undefined} placement="right">
+          <button
+            type="button"
+            className={`${nav.className} ${open ? styles.navOpen : ""}`}
+            aria-label={`打开消息，${unreadLabel}`}
+            aria-expanded={open}
+          >
+            <span className={nav.iconClassName} aria-hidden><BellOutlined /></span>
+            {nav.collapsed ? null : <span className={nav.labelClassName}>消息</span>}
+            {error ? <span className={nav.countClassName} aria-hidden>!</span>
+              : data?.unreadCount ? <span className={nav.countClassName} data-tone="attention" aria-hidden>{data.unreadCount > 99 ? "99+" : data.unreadCount}</span>
+              : null}
+          </button>
+        </Tooltip>
+      </Popover>
+    );
+  }
+  return <>
+    <Badge className={styles.badge} count={error ? "!" : data?.unreadCount} color="var(--color-primary)" size="small" offset={[-4, 4]}>
+      <Button type="text" icon={<BellOutlined />} className={styles.bell} aria-label={`打开消息，${unreadLabel}`} aria-expanded={open} onClick={() => setOpen(true)} />
+    </Badge>
+    <Drawer title="消息" open={open} onClose={() => setOpen(false)} size={420} placement="right" rootClassName={styles.drawer} styles={{ wrapper: { maxWidth: "100vw" }, body: { padding: 0, overflowX: "hidden" } }} footer={<Pagination size="small" simple current={page} pageSize={20} total={data?.total ?? 0} showSizeChanger={false} onChange={(value) => { setData(undefined); setPage(value); }} />}>
+      {panelBody}
     </Drawer>
   </>;
 }

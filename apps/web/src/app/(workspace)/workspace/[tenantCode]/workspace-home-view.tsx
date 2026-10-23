@@ -9,6 +9,7 @@ import { dashboardSettingsPath } from "@/features/dashboard/workbench-period";
 import { BusinessObjectBar } from "@/features/dashboard/workbench-elements";
 import { WorkbenchOverviewFailure } from "@/features/dashboard/workbench-chrome";
 import { PersonalFollowUpWorkbench } from "@/features/follow-ups/follow-up-workbench";
+import { Page } from "@/components/layout/page";
 import { SourceReturnFocus } from "@/features/records/source-return-focus";
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
@@ -26,9 +27,9 @@ export type WorkspaceHomeViewProps = {
 );
 
 export function WorkspaceHomeView(props: WorkspaceHomeViewProps) {
-  return <SourceReturnFocus tenantCode={props.tenantCode} heading="h1">
+  return <Page><SourceReturnFocus tenantCode={props.tenantCode} heading="h1">
     <WorkspaceHomeContent {...props} />
-  </SourceReturnFocus>;
+  </SourceReturnFocus></Page>;
 }
 
 function WorkspaceHomeContent({

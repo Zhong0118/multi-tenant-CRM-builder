@@ -293,3 +293,28 @@
     justify-self: start;
   }
 }
+
+/* Account security inside the account shell: sections of rows, no cards. */
+.securityStack {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.rowField {
+  max-width: 360px;
+  margin-bottom: 0;
+}
+
+.securityStack .sessionList {
+  border-top: 1px solid var(--border-hairline);
+}
+
+.securityStack .sessionRow {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-hairline);
+}

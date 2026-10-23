@@ -15,6 +15,7 @@ import { toApiError } from "@/lib/api/api-error";
 import type { DynamicFieldMember } from "./dynamic-field";
 import { recordPoolApi, type RecordPoolApi } from "./record-pool-api";
 import styles from "./records.module.css";
+import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
 
 export const MAX_OWNER_ASSIGNMENT_RECORDS = 1000;
 
@@ -103,6 +104,23 @@ export function RecordBatchAssignDrawer({
 
   return (
     <Drawer
+      footer={
+        <>
+          <Button disabled={busy} onClick={onClose}>
+            关闭
+          </Button>
+          <Button
+            type="primary"
+            loading={busy}
+            aria-label={started ? "重试失败项" : "确认分配"}
+            disabled={busy || !owner || exceedsLimit || succeeded === rows.length}
+            onClick={() => void assign()}
+          >
+            {started ? "重试失败项" : "确认分配"}
+          </Button>
+        </>
+      }
+      size={OVERLAY_SIZE.narrow}
       open
       title={`批量分配 ${records.length} 条记录`}
       onClose={() => {
@@ -160,20 +178,6 @@ export function RecordBatchAssignDrawer({
           </>
         ) : null}
         {warning ? <Alert type="warning" title={warning} /> : null}
-        <Space>
-          <Button
-            type="primary"
-            loading={busy}
-            aria-label={started ? "重试失败项" : "确认分配"}
-            disabled={busy || !owner || exceedsLimit || succeeded === rows.length}
-            onClick={() => void assign()}
-          >
-            {started ? "重试失败项" : "确认分配"}
-          </Button>
-          <Button disabled={busy} onClick={onClose}>
-            关闭
-          </Button>
-        </Space>
       </Space>
     </Drawer>
   );

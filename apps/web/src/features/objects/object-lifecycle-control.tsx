@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Checkbox, Modal, Spin } from "antd";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { toApiError } from "@/lib/api/api-error";
 
@@ -18,12 +18,18 @@ export function ObjectLifecycleControl({
   api,
   onChanged,
   labelled = false,
+  autoStart = false,
+  onClose,
 }: {
   tenantCode: string;
   draft: ObjectDraft;
   api: ObjectApi;
   onChanged: (next: ObjectDraft) => void;
   labelled?: boolean;
+  /** Open the check at once with no button of its own, as from a row menu. */
+  autoStart?: boolean;
+  /** Called when the dialog closes, so a menu-driven caller can unmount it. */
+  onClose?: () => void;
 }) {
   const router = useRouter();
   const client = useQueryClient();
@@ -53,7 +59,7 @@ export function ObjectLifecycleControl({
     mutationFn: () => api.draft(tenantCode, draft.object.id),
     onSuccess: (next) => {
       onChanged(next);
-      setOpen(false);
+      close();
       router.refresh();
     },
   });
@@ -69,7 +75,7 @@ export function ObjectLifecycleControl({
         : api.archive(tenantCode, draft.object.id, draft.object.version),
     onSuccess: (next) => {
       onChanged(next);
-      setOpen(false);
+      close();
       setNotice(
         archived
           ? "业务表已恢复，沿用原发布版本，草稿未发布"
@@ -82,32 +88,47 @@ export function ObjectLifecycleControl({
       setConflicted(toApiError(caught).code === "CONFIG_VERSION_CONFLICT"),
   });
   const pending = change.isPending || refresh.isPending;
+  const start = () => {
+    setOpen(true);
+    setNotice(undefined);
+    setAcknowledged(false);
+    setConflicted(false);
+    change.reset();
+    refresh.reset();
+    preview.reset();
+    preview.mutate();
+  };
+  const started = useRef(false);
+  useEffect(() => {
+    if (!autoStart || started.current) return;
+    started.current = true;
+    start();
+    // Starting once on mount is the point; start is recreated every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart]);
+  const close = () => {
+    setOpen(false);
+    onClose?.();
+  };
   const failure = refresh.error ?? change.error ?? preview.error;
   const apiError = failure ? toApiError(failure) : undefined;
   if (draft.object.publicationNumber === null) return null;
 
   return (
     <div className={styles.lifecycleControl}>
-      <Button
-        danger={!archived}
-        aria-label={
-          labelled ? `${action}业务表 ${draft.object.name}` : undefined
-        }
-        disabled={pending}
-        onClick={() => {
-          setOpen(true);
-          setNotice(undefined);
-          setAcknowledged(false);
-          setConflicted(false);
-          change.reset();
-          refresh.reset();
-          preview.reset();
-          preview.mutate();
-        }}
-      >
-        {action}业务表
-      </Button>
-      {notice ? <Alert type="success" showIcon title={notice} /> : null}
+      {autoStart ? null : (
+        <Button
+          danger={!archived}
+          aria-label={
+            labelled ? `${action}业务表 ${draft.object.name}` : undefined
+          }
+          disabled={pending}
+          onClick={start}
+        >
+          {action}业务表
+        </Button>
+      )}
+      {notice && !autoStart ? <Alert type="success" showIcon title={notice} /> : null}
       <Modal
         title={`${action}业务表「${draft.object.name}」`}
         open={open}
@@ -119,7 +140,7 @@ export function ObjectLifecycleControl({
         closable={!pending}
         mask={{ closable: !pending }}
         keyboard={!pending}
-        onCancel={() => setOpen(false)}
+        onCancel={close}
         onOk={() => {
           if (!blocked && !pending) change.mutate();
         }}

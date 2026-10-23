@@ -40,6 +40,6 @@ import {
       useExisting: new (...args: never[]) => PublishedObjectRepository;
     },
   ],
-  exports: [ObjectsService, PublishedObjectService],
+  exports: [ObjectsService, PublishedObjectService, OBJECTS_REPOSITORY],
 })
 export class ObjectsModule {}

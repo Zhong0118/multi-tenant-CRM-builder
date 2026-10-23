@@ -8,6 +8,7 @@ import type {
   RecordSummary,
   RuntimeObjectSchema,
 } from "@/features/objects/object-types";
+import { relationRequest } from "@/lib/api/relation-request";
 import { toApiError } from "@/lib/api/api-error";
 
 import type { DynamicFieldMember } from "./dynamic-field";
@@ -15,6 +16,7 @@ import { RecordAttachmentsPanel } from "@/features/attachments/record-attachment
 import { RecordRelationsPanel } from "./record-relations-panel";
 import { FollowUpPanel } from "@/features/follow-ups/follow-up-panel";
 import { RecordActivityTimeline } from "./record-activity-timeline";
+import { RecordAutomationPanel } from "@/features/automations/record-automation-panel";
 import { RecordWorkflowPanel } from "./record-workflow-panel";
 import { displayValue } from "./record-list";
 import { displayRecordOwner, formatDateTime } from "./record-display-value";
@@ -83,7 +85,8 @@ export function RecordDetailDrawer({
   // Observe the panels' existing list caches; these observers never request counts.
   const relations = useQuery<unknown[]>({
     queryKey: ["relations", tenantCode, schema.object.code, record.id],
-    queryFn: skipToken,
+    queryFn: () => relationRequest<unknown[]>(`/api/v1/workspaces/${encodeURIComponent(tenantCode)}/objects/${encodeURIComponent(schema.object.code)}/records/${encodeURIComponent(record.id)}/relations`),
+    enabled: false,
   });
   const attachments = useQuery<unknown[]>({
     queryKey: ["attachments", tenantCode, schema.object.code, record.id],
@@ -132,7 +135,11 @@ export function RecordDetailDrawer({
     <Drawer
       open
       size={640}
-      className={styles.detailDrawer}
+      classNames={{
+        mask: styles.detailMask,
+        header: styles.detailHeader,
+        body: styles.detailBody,
+      }}
       onClose={onClose}
       destroyOnHidden
       title={
@@ -142,7 +149,7 @@ export function RecordDetailDrawer({
         </div>
       }
       extra={
-        <Space>
+        <Space size={4}>
           {canEdit && !editing && !deleted ? (
             <Button
               onClick={() => {
@@ -160,7 +167,12 @@ export function RecordDetailDrawer({
               okText="删除记录"
               onConfirm={() => remove.mutate()}
             >
-              <Button danger loading={remove.isPending} disabled={deleted}>
+              <Button
+                danger
+                type="text"
+                loading={remove.isPending}
+                disabled={deleted}
+              >
                 删除
               </Button>
             </Popconfirm>
@@ -205,15 +217,19 @@ export function RecordDetailDrawer({
         />
       ) : (
         <>
-          <RecordOwnershipActions key={`${record.id}:${record.version}`} tenantCode={tenantCode} objectCode={schema.object.code} record={record} schema={schema} config={poolConfig} currentMemberId={currentMemberId} isAdmin={canChooseOwner} members={members} onChanged={async (action) => {
-            if (action === "RELEASE" || action === "UNPROTECT_RELEASE" || (action === "ASSIGN" && !canChooseOwner)) {
-              onClose();
-              await onChanged(null);
-            } else {
-              await onChanged(await api.detail(tenantCode, schema.object.code, record.id));
-            }
-          }} />
-          {poolConfig?.enabled || record.inPublicPool ? <RecordPoolStatus record={record} config={poolConfig} /> : null}
+          {poolConfig?.enabled || canChooseOwner || record.inPublicPool ? (
+            <div className={styles.detailOwnership}>
+              {poolConfig?.enabled || record.inPublicPool ? <RecordPoolStatus record={record} config={poolConfig} /> : null}
+              <RecordOwnershipActions key={`${record.id}:${record.version}`} tenantCode={tenantCode} objectCode={schema.object.code} record={record} schema={schema} config={poolConfig} currentMemberId={currentMemberId} isAdmin={canChooseOwner} members={members} onChanged={async (action) => {
+                if (action === "RELEASE" || action === "UNPROTECT_RELEASE" || (action === "ASSIGN" && !canChooseOwner)) {
+                  onClose();
+                  await onChanged(null);
+                } else {
+                  await onChanged(await api.detail(tenantCode, schema.object.code, record.id));
+                }
+              }} />
+            </div>
+          ) : null}
           {record.poolStage ? (
             <section aria-label="流转信息" className={styles.poolConfigPreview}>
               {record.poolClaimedAt ? (
@@ -278,6 +294,13 @@ export function RecordDetailDrawer({
                 .detail(tenantCode, schema.object.code, record.id)
                 .then(onChanged)
             }
+          /> : null}
+
+          {!poolPreview ? <RecordAutomationPanel
+            key={`${record.id}:${schema.object.code}`}
+            tenantCode={tenantCode} objectCode={schema.object.code} recordId={record.id}
+            recordVersion={record.version} members={members}
+            onRecordChanged={() => api.detail(tenantCode, schema.object.code, record.id).then(onChanged)}
           /> : null}
 
           {!poolPreview ? <FollowUpPanel

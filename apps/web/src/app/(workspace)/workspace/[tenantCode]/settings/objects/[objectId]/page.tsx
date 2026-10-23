@@ -1,21 +1,24 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
+
+import { Page } from "@/components/layout/page";
 
 import { ObjectDesigner } from "@/features/objects/object-designer";
 import type { ObjectDraft } from "@/features/objects/object-types";
-import styles from "@/features/objects/objects.module.css";
 import { toApiError } from "@/lib/api/api-error";
 import { createServerApiClient } from "@/lib/api/server-client";
 import { requireWorkspace } from "@/lib/auth/require-workspace";
 
 export interface ObjectDesignerPageProps {
   params: Promise<{ tenantCode: string; objectId: string }>;
+  searchParams?: Promise<{section?: string}>;
 }
 
 export default async function ObjectDesignerPage({
   params,
+  searchParams,
 }: ObjectDesignerPageProps) {
   const { tenantCode, objectId } = await params;
+  const section = (await searchParams)?.section;
   const workspace = await requireWorkspace(tenantCode);
   if (workspace.role !== "TENANT_ADMIN") notFound();
 
@@ -33,14 +36,12 @@ export default async function ObjectDesignerPage({
   }
 
   return (
-    <main className={styles.page}>
-      <Link href={`/workspace/${tenantCode}/settings/objects`}>
-        返回业务表列表
-      </Link>
+    <Page width="settings">
       <ObjectDesigner
         tenantCode={tenantCode}
         initialDraft={result.data as ObjectDraft}
+        initialSection={section === "automations" ? "automations" : undefined}
       />
-    </main>
+    </Page>
   );
 }

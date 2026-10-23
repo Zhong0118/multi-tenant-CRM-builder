@@ -1,20 +1,23 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Alert,
-  Button,
-  Empty,
-  Radio,
-  Space,
-  Table,
-  Tag,
-  Typography,
-} from "antd";
+  ArrowDownOutlined,
+  ArrowUpOutlined,
+  EllipsisOutlined,
+  PlusOutlined,
+} from "@ant-design/icons";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Alert, Button, Dropdown, Empty, Segmented, Table, Typography } from "antd";
+import type { MenuProps } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { Page, PageToolbar } from "@/components/layout/page";
+import { PageHeader } from "@/components/layout/page-header";
+import { ObjectIcon } from "@/components/navigation/object-icon";
+import { StatusTag } from "@/components/workbench/status-tag";
 import { toApiError } from "@/lib/api/api-error";
 
 import { ObjectLifecycleControl } from "./object-lifecycle-control";
@@ -37,6 +40,9 @@ export function ObjectList({
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState("ALL");
   const [error, setError] = useState<string>();
+  const [notice, setNotice] = useState<string>();
+  const [lifecycle, setLifecycle] = useState<ObjectDraft>();
+  const router = useRouter();
   const queryKey = ["workspace", tenantCode, "object-definitions"] as const;
   const drafts = useQuery({
     queryKey,
@@ -82,116 +88,105 @@ export function ObjectList({
     );
   }
 
+  const position = (row: ObjectDraft) =>
+    editable.findIndex((item) => item.object.id === row.object.id);
+  const designerHref = (row: ObjectDraft) =>
+    `/workspace/${tenantCode}/settings/objects/${row.object.id}`;
+
   const columns: ColumnsType<ObjectDraft> = [
     {
       title: "业务表",
       key: "object",
-      width: 160,
       render: (_, row) => (
-        <Link
-          className={styles.ledgerName}
-          href={`/workspace/${tenantCode}/settings/objects/${row.object.id}`}
-        >
-          {row.object.name}
+        <Link className={styles.tableName} href={designerHref(row)}>
+          <span className={styles.ledgerIcon}>
+            <ObjectIcon name={row.object.icon} />
+          </span>
+          <span className={styles.tableNameText}>
+            <strong>{row.object.name}</strong>
+            <span className={styles.stableKey}>{row.object.code}</span>
+          </span>
         </Link>
-      ),
-    },
-    {
-      title: "业务表代码",
-      key: "code",
-      width: 180,
-      render: (_, row) => (
-        <span className={styles.stableKey}>{row.object.code}</span>
       ),
     },
     {
       title: "状态",
       key: "status",
-      width: 130,
+      width: 120,
       render: (_, row) => (
-        <Tag color={objectStatusColor(row)}>
-          {objectStatusLabel(row.object)}
-        </Tag>
+        <StatusTag tone={objectStatusTone(row)}>{objectStatusText(row)}</StatusTag>
       ),
     },
     {
       title: "字段",
       key: "fields",
-      width: 72,
+      width: 80,
       align: "right",
       render: (_, row) => row.fields.length,
     },
     {
-      title: "当前版本",
-      key: "publication",
-      width: 100,
-      render: (_, row) =>
-        row.object.publicationNumber === null ? (
-          <span className={styles.ledgerMuted}>未发布</span>
-        ) : (
-          <span className={styles.stableKey}>
-            v{row.object.publicationNumber}
-          </span>
-        ),
-    },
-    {
       title: "记录",
       key: "records",
-      width: 80,
+      width: 96,
       align: "right",
       render: (_, row) => row.activeRecordCount,
     },
     {
-      title: "导航顺序",
-      key: "order",
-      width: 132,
-      render: (_, row) => (
-        <div className={styles.ledgerOrder}>
-          <Button
-            size="small"
-            type="text"
-            aria-label={`上移 ${row.object.name}`}
-            disabled={
-              row.object.status === "ARCHIVED" ||
-              editable.findIndex((item) => item.object.id === row.object.id) ===
-                0 ||
-              reorder.isPending
-            }
-            onClick={() => move(row.object.id, -1)}
-          >
-            上移
-          </Button>
-          <Button
-            size="small"
-            type="text"
-            aria-label={`下移 ${row.object.name}`}
-            disabled={
-              row.object.status === "ARCHIVED" ||
-              editable.findIndex((item) => item.object.id === row.object.id) ===
-                editable.length - 1 ||
-              reorder.isPending
-            }
-            onClick={() => move(row.object.id, 1)}
-          >
-            下移
-          </Button>
-        </div>
-      ),
+      title: "已发布",
+      key: "publication",
+      width: 96,
+      render: (_, row) =>
+        row.object.publicationNumber === null ? (
+          <span className={styles.ledgerMuted}>—</span>
+        ) : (
+          <span className={styles.stableKey}>v{row.object.publicationNumber}</span>
+        ),
     },
     {
-      title: "停用与恢复",
-      key: "lifecycle",
-      fixed: "right",
-      width: 140,
-      render: (_, row) => (
-        <ObjectLifecycleControl
-          tenantCode={tenantCode}
-          draft={row}
-          api={api}
-          labelled
-          onChanged={(next) => clientAccept(next)}
-        />
-      ),
+      title: <span className={styles.visuallyHidden}>操作</span>,
+      key: "actions",
+      width: 56,
+      align: "center",
+      render: (_, row) => {
+        const index = position(row);
+        const archived = row.object.status === "ARCHIVED";
+        const items: MenuProps["items"] = [
+          { key: "open", label: "打开设计器", onClick: () => router.push(designerHref(row)) },
+          { type: "divider" },
+          {
+            key: "up",
+            label: "在导航中上移",
+            icon: <ArrowUpOutlined aria-hidden />,
+            disabled: archived || index <= 0 || reorder.isPending,
+            onClick: () => move(row.object.id, -1),
+          },
+          {
+            key: "down",
+            label: "在导航中下移",
+            icon: <ArrowDownOutlined aria-hidden />,
+            disabled: archived || index === editable.length - 1 || reorder.isPending,
+            onClick: () => move(row.object.id, 1),
+          },
+          ...(row.object.publicationNumber !== null
+            ? [
+                { type: "divider" as const },
+                archived
+                  ? { key: "restore", label: "恢复业务表", onClick: () => setLifecycle(row) }
+                  : { key: "archive", label: "停用业务表", danger: true, onClick: () => setLifecycle(row) },
+              ]
+            : []),
+        ];
+        return (
+          <Dropdown trigger={["click"]} placement="bottomRight" menu={{ items }}>
+            <Button
+              type="text"
+              size="small"
+              aria-label={`更多操作 ${row.object.name}`}
+              icon={<EllipsisOutlined aria-hidden />}
+            />
+          </Dropdown>
+        );
+      },
     },
   ];
 
@@ -201,69 +196,112 @@ export function ObjectList({
     );
   }
 
-  if (rows.length === 0) {
-    return (
-      <section className={styles.panel}>
+  const newButton = (
+    <Link href={`/workspace/${tenantCode}/settings/objects/new`}>
+      <Button type="primary" icon={<PlusOutlined aria-hidden />}>
+        新建业务表
+      </Button>
+    </Link>
+  );
+  const counts = {
+    ALL: rows.length,
+    ACTIVE: rows.filter((row) => row.object.status === "ACTIVE").length,
+    DRAFT: rows.filter((row) => row.object.publicationNumber === null && row.object.status !== "ARCHIVED").length,
+    ARCHIVED: rows.filter((row) => row.object.status === "ARCHIVED").length,
+  };
+
+  return (
+    <Page width="settings">
+      <PageHeader
+        title="业务表"
+        count={rows.length}
+        description="字段、列表和权限的改动先存为草稿，发布后员工才看到；停用与恢复立即生效。"
+        extra={newButton}
+      />
+      {error ? <Alert type="error" showIcon title={error} className={styles.listAlert} /> : null}
+      {notice ? (
+        <Alert type="success" showIcon closable title={notice} onClose={() => setNotice(undefined)} className={styles.listAlert} />
+      ) : null}
+      {rows.length === 0 ? (
         <Empty
+          className={styles.listEmpty}
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
           description={
-            <Space orientation="vertical">
-              <span>还没有业务表。</span>
+            <>
+              还没有业务表。
+              <br />
               <Typography.Text type="secondary">
-                一张业务表对应一类业务数据，例如获客、跟单或客户；创建后可以继续添加字段、配置列表和员工权限。
+                一张业务表对应一类业务数据，例如获客、跟单或客户。
               </Typography.Text>
-            </Space>
+            </>
           }
         >
           <Link href={`/workspace/${tenantCode}/settings/objects/new`}>
             <Button type="primary">创建第一张业务表</Button>
           </Link>
         </Empty>
-      </section>
-    );
-  }
-
-  return (
-    <section>
-      {error ? <Alert type="error" showIcon title={error} /> : null}
-      <div className={styles.sectionHeading}>
-        <h2>业务表 {rows.length}</h2>
-        <Link href={`/workspace/${tenantCode}/settings/objects/new`}>
-          <Button type="primary">新建业务表</Button>
-        </Link>
-      </div>
-      <Radio.Group
-        aria-label="业务表状态筛选"
-        value={filter}
-        onChange={(event) => setFilter(event.target.value as string)}
-        optionType="button"
-        options={[
-          { label: "全部", value: "ALL" },
-          { label: "使用中", value: "ACTIVE" },
-          { label: "已停用", value: "ARCHIVED" },
-          { label: "未发布", value: "DRAFT" },
-        ]}
-      />
-      <Table
-        className={styles.ledger}
-        rowKey={(row) => row.object.id}
-        size="small"
-        columns={columns}
-        dataSource={visible}
-        pagination={false}
-        // Narrow screens scroll the ledger sideways instead of stacking names
-        // one character per line.
-        scroll={{ x: "max-content" }}
-        loading={drafts.isFetching}
-        aria-label="业务表列表"
-      />
-    </section>
+      ) : (
+        <>
+          <PageToolbar
+            start={
+              <Segmented
+                aria-label="业务表状态筛选"
+                value={filter}
+                onChange={(value) => setFilter(String(value))}
+                options={[
+                  { label: `全部 ${counts.ALL}`, value: "ALL" },
+                  { label: `使用中 ${counts.ACTIVE}`, value: "ACTIVE" },
+                  { label: `未发布 ${counts.DRAFT}`, value: "DRAFT" },
+                  { label: `已停用 ${counts.ARCHIVED}`, value: "ARCHIVED" },
+                ]}
+              />
+            }
+          />
+          <Table
+            className={styles.ledger}
+            rowKey={(row) => row.object.id}
+            rowClassName={(row) => (row.object.status === "ARCHIVED" ? styles.archivedRow : "")}
+            columns={columns}
+            dataSource={visible}
+            pagination={false}
+            scroll={{ x: 640 }}
+            loading={drafts.isFetching}
+            aria-label="业务表列表"
+            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有符合条件的业务表" /> }}
+          />
+        </>
+      )}
+      {lifecycle ? (
+        <ObjectLifecycleControl
+          key={lifecycle.object.id}
+          tenantCode={tenantCode}
+          draft={lifecycle}
+          api={api}
+          autoStart
+          onClose={() => setLifecycle(undefined)}
+          onChanged={(next) => {
+            clientAccept(next);
+            setNotice(
+              next.object.status === "ARCHIVED"
+                ? `「${next.object.name}」已停用，配置和历史数据已保留`
+                : `「${next.object.name}」已恢复，沿用原发布版本，草稿未发布`,
+            );
+          }}
+        />
+      ) : null}
+    </Page>
   );
 }
 
-function objectStatusColor(
-  draft: ObjectDraft,
-): "blue" | "gold" | "green" | undefined {
-  if (draft.object.status === "ARCHIVED") return undefined;
-  if (draft.object.publicationNumber === null) return "blue";
-  return draft.object.hasUnpublishedChanges ? "gold" : "green";
+function objectStatusTone(draft: ObjectDraft): "neutral" | "info" | "warning" | "success" {
+  if (draft.object.status === "ARCHIVED") return "neutral";
+  if (draft.object.publicationNumber === null) return "info";
+  return draft.object.hasUnpublishedChanges ? "warning" : "success";
+}
+
+function objectStatusText(draft: ObjectDraft): string {
+  if (draft.object.status !== "ARCHIVED" && draft.object.publicationNumber !== null && draft.object.hasUnpublishedChanges) {
+    return "有待发布改动";
+  }
+  return objectStatusLabel(draft.object);
 }

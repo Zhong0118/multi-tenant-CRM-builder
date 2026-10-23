@@ -136,13 +136,15 @@ describe("MemberTable", () => {
       />,
     );
 
-    const pending = screen.getByRole("region", { name: "待处理邀请" });
-    expect(pending).toHaveTextContent("没有待处理的邀请。");
-    expect(pending.querySelector(".ant-pagination")).toBeNull();
+    // Invitations are a tab beside the roster, not a permanent empty table.
+    expect(screen.queryByText("没有待处理的邀请。")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: /邀请/ }));
+    expect(screen.getByText("没有待处理的邀请。")).toBeInTheDocument();
+    expect(document.querySelector(".ant-pagination")).toBeNull();
     expect(screen.queryByText("每页 20 条")).not.toBeInTheDocument();
   });
 
-  it("offers pending invitation and active member actions while protecting the final admin", () => {
+  it("offers pending invitation and active member actions while protecting the final admin", async () => {
     renderWithQuery(
       <MemberTable
         tenantCode="northwind"
@@ -153,10 +155,20 @@ describe("MemberTable", () => {
       />,
     );
 
-    expect(buttonByText("重新发送")).toBeEnabled();
-    expect(buttonByText("撤销邀请")).toBeEnabled();
-    expect(screen.getByLabelText("停用 林员工")).toBeEnabled();
-    expect(screen.getByLabelText("停用 陈管理员")).toBeDisabled();
+    // Every member action sits in the row's ⋯ menu.
+    fireEvent.click(screen.getByRole("button", { name: "更多操作 林员工" }));
+    expect(await screen.findByRole("menuitem", { name: "停用" })).not.toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(screen.getByRole("button", { name: "更多操作 陈管理员" }));
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("menuitem", { name: /停用（需保留至少一位在职管理员）/ })[0],
+      ).toHaveAttribute("aria-disabled", "true"),
+    );
+
+    fireEvent.click(screen.getByRole("radio", { name: /邀请/ }));
+    fireEvent.click(screen.getByRole("button", { name: "更多操作 +8613700137000" }));
+    expect(await screen.findByRole("menuitem", { name: "重新发送" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "撤销邀请" })).toBeInTheDocument();
   });
 
   it("invites a member by phone and role", async () => {
@@ -171,7 +183,8 @@ describe("MemberTable", () => {
     );
     const invalidate = vi.spyOn(client, "invalidateQueries");
 
-    fireEvent.change(screen.getByLabelText("成员手机号"), {
+    fireEvent.click(screen.getByRole("button", { name: "邀请成员" }));
+    fireEvent.change(await screen.findByLabelText("成员手机号"), {
       target: { value: "13700137000" },
     });
     fireEvent.click(screen.getByRole("button", { name: "发送邀请" }));
@@ -215,18 +228,21 @@ describe("MemberTable", () => {
         navigate={vi.fn()}
       />,
     );
-    expect(buttonByText("批量设置访问权限（0 人）")).toBeDisabled();
+    // Bulk actions appear only once rows are selected.
+    expect(screen.queryByText("设置访问权限")).not.toBeInTheDocument();
     for (const name of ["林员工", "已停用员工", "其他管理员"]) {
       const row = screen.getByText(name).closest("tr")!;
       fireEvent.click(within(row).getByRole("checkbox"));
     }
-    expect(buttonByText("批量设置访问权限（1 人）")).toBeEnabled();
+    expect(screen.getByText("已选 3 人")).toBeInTheDocument();
+    // Only the active employee is eligible; admins and disabled members are left out.
+    expect(buttonByText("设置访问权限")).toBeEnabled();
     fireEvent.click(
       screen
         .getAllByRole("button", { name: "right" })
         .find((button) => !button.hasAttribute("disabled"))!,
     );
-    expect(buttonByText("批量设置访问权限（0 人）")).toBeDisabled();
+    expect(screen.queryByText("设置访问权限")).not.toBeInTheDocument();
   });
 
   it("writes member pagination to the page URL", () => {
@@ -252,7 +268,7 @@ describe("MemberTable", () => {
     );
   });
 
-  it("offers object access only for employees, who are the ones it can restrict", () => {
+  it("offers object access only for employees, who are the ones it can restrict", async () => {
     renderWithQuery(
       <MemberTable
         tenantCode="northwind"
@@ -263,14 +279,11 @@ describe("MemberTable", () => {
       />,
     );
 
-    expect(
-      screen.getByRole("link", { name: "访问权限 林员工" }),
-    ).toHaveAttribute(
-      "href",
-      "/workspace/northwind/members/member-employee/access",
-    );
-    expect(
-      screen.queryByRole("link", { name: "访问权限 陈管理员" }),
-    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "更多操作 林员工" }));
+    expect(await screen.findByRole("menuitem", { name: "访问权限" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "更多操作 陈管理员" }));
+    // An administrator's own menu has no 访问权限: admins always hold full access.
+    const adminMenu = (await screen.findByRole("menuitem", { name: /改为员工/ })).closest("ul")!;
+    expect(within(adminMenu).queryByRole("menuitem", { name: "访问权限" })).toBeNull();
   });
 });

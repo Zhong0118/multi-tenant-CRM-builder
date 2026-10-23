@@ -11,9 +11,9 @@ import { WorkspaceGuard } from '../../common/tenancy/workspace.guard';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
 import { CompanyAuditService } from './company-audit.service';
 import {
-  PlatformAuditPageDto,
-  PlatformAuditQueryDto,
-} from './dto/platform-operations.dto';
+  CompanyAuditPageDto,
+  CompanyAuditQueryDto,
+} from './dto/company-audit.dto';
 
 @Controller('workspaces/:tenantCode/audit')
 @UseGuards(SessionAuthGuard, WorkspaceGuard)
@@ -23,10 +23,10 @@ export class CompanyAuditController {
   constructor(private readonly audit: CompanyAuditService) {}
   @Get()
   @ApiParam({ name: 'tenantCode', type: String })
-  @ApiOkResponse({ type: PlatformAuditPageDto })
+  @ApiOkResponse({ type: CompanyAuditPageDto })
   list(
     @CurrentTenant() context: TenantContext,
-    @Query() query: PlatformAuditQueryDto,
+    @Query() query: CompanyAuditQueryDto,
   ) {
     return this.audit.list(context, query);
   }

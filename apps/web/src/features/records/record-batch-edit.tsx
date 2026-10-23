@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { Alert, Button, Drawer, Form, Space, Typography } from "antd";
+import { Alert, Button, Drawer, Form, Typography } from "antd";
 import { useMemo, useState } from "react";
 
 import type {
@@ -15,6 +15,7 @@ import { DynamicField, type DynamicFieldMember } from "./dynamic-field";
 import type { RecordApi, RecordBatchUpdateResult } from "./record-api";
 
 import styles from "./records.module.css";
+import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
 
 export interface RecordBatchEditDrawerProps {
   tenantCode: string;
@@ -70,8 +71,21 @@ export function RecordBatchEditDrawer({
 
   return (
     <Drawer
+      footer={
+        <>
+          <Button onClick={onClose}>关闭</Button>
+          <Button
+            type="primary"
+            loading={save.isPending}
+            disabled={!canSubmit}
+            onClick={() => save.mutate()}
+          >
+            应用到选中记录
+          </Button>
+        </>
+      }
       open
-      size={480}
+      size={OVERLAY_SIZE.drawer}
       title={`批量修改 ${records.length} 条`}
       onClose={onClose}
       destroyOnHidden
@@ -142,17 +156,6 @@ export function RecordBatchEditDrawer({
         </ul>
       ) : null}
 
-      <Space>
-        <Button
-          type="primary"
-          loading={save.isPending}
-          disabled={!canSubmit}
-          onClick={() => save.mutate()}
-        >
-          应用到选中记录
-        </Button>
-        <Button onClick={onClose}>关闭</Button>
-      </Space>
     </Drawer>
   );
 }

@@ -6,19 +6,19 @@ import type { components } from "@crm/contracts";
 import {
   Alert,
   Button,
-  Card,
   Empty,
   Form,
   Input,
   Pagination,
   Popconfirm,
-  Tabs,
+  Segmented,
   Tag,
 } from "antd";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { PageSection, SettingRow, SettingRows } from "@/components/layout/page";
 import { toApiError } from "@/lib/api/api-error";
 import { browserApiClient } from "@/lib/api/browser-client";
 
@@ -109,6 +109,7 @@ export function SessionList({
     },
   );
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [view, setView] = useState<"active" | "history">("active");
   const [summary, setSummary] = useState<{
     type: "error" | "success";
     text: string;
@@ -190,7 +191,7 @@ export function SessionList({
   });
 
   return (
-    <div className={styles.securityGrid}>
+    <div className={styles.securityStack}>
       {summary && (
         <Alert
           className={styles.securityAlert}
@@ -200,105 +201,107 @@ export function SessionList({
         />
       )}
 
-      <Card className={styles.securityCard} title="登录设备与记录">
-        <Tabs
-          items={[
-            {
-              key: "active",
-              label: `活跃设备 ${sessions.length}`,
-              children: (
-                <SessionRows
-                  sessions={sessions}
-                  empty="当前没有活跃设备"
-                  revokeMutation={revokeMutation}
-                />
-              ),
-            },
-            {
-              key: "history",
-              label: `登录历史 ${history.total}`,
-              children: (
-                <>
-                  <SessionRows
-                    sessions={history.items}
-                    empty="近 90 天没有历史记录"
-                  />
-                  {history.total > history.limit ? (
-                    <Pagination
-                      className={styles.sessionPagination}
-                      current={history.page}
-                      pageSize={history.limit}
-                      total={history.total}
-                      showSizeChanger={false}
-                      disabled={historyLoading}
-                      onChange={(page) => void loadHistory(page)}
-                    />
-                  ) : null}
-                </>
-              ),
-            },
-          ]}
-        />
-      </Card>
-
-      <Card className={styles.securityCard} title="修改密码">
-        <p className={styles.securityHint}>
-          更新后保留当前会话，其他设备将自动退出。
-        </p>
+      <PageSection title="修改密码" description="更新后保留当前会话，其他设备将自动退出。">
         <form
-          className={styles.authForm}
           onSubmit={handleSubmit((values) => {
             setSummary(undefined);
             passwordMutation.mutate(values);
           })}
           noValidate
         >
-          <Form.Item
-            label="当前密码"
-            htmlFor="security-current-password"
-            validateStatus={errors.currentPassword ? "error" : undefined}
-            help={errors.currentPassword?.message}
+          <SettingRows
+            footer={
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={passwordMutation.isPending}
+              >
+                更新密码
+              </Button>
+            }
           >
-            <Controller
-              name="currentPassword"
-              control={control}
-              render={({ field }) => (
-                <Input.Password
-                  id="security-current-password"
-                  autoComplete="current-password"
-                  {...field}
+            <SettingRow label="当前密码" htmlFor="security-current-password">
+              <Form.Item
+                className={styles.rowField}
+                validateStatus={errors.currentPassword ? "error" : undefined}
+                help={errors.currentPassword?.message}
+              >
+                <Controller
+                  name="currentPassword"
+                  control={control}
+                  render={({ field }) => (
+                    <Input.Password
+                      id="security-current-password"
+                      autoComplete="current-password"
+                      {...field}
+                    />
+                  )}
                 />
-              )}
-            />
-          </Form.Item>
-          <Form.Item
-            label="新密码"
-            htmlFor="security-new-password"
-            validateStatus={errors.newPassword ? "error" : undefined}
-            help={errors.newPassword?.message}
-            extra="10–72 位，同时包含字母和数字。"
-          >
-            <Controller
-              name="newPassword"
-              control={control}
-              render={({ field }) => (
-                <Input.Password
-                  id="security-new-password"
-                  autoComplete="new-password"
-                  {...field}
+              </Form.Item>
+            </SettingRow>
+            <SettingRow label="新密码" htmlFor="security-new-password" help="10–72 位，同时包含字母和数字。">
+              <Form.Item
+                className={styles.rowField}
+                validateStatus={errors.newPassword ? "error" : undefined}
+                help={errors.newPassword?.message}
+              >
+                <Controller
+                  name="newPassword"
+                  control={control}
+                  render={({ field }) => (
+                    <Input.Password
+                      id="security-new-password"
+                      autoComplete="new-password"
+                      {...field}
+                    />
+                  )}
                 />
-              )}
-            />
-          </Form.Item>
-          <Button
-            type="primary"
-            htmlType="submit"
-            loading={passwordMutation.isPending}
-          >
-            更新密码
-          </Button>
+              </Form.Item>
+            </SettingRow>
+          </SettingRows>
         </form>
-      </Card>
+      </PageSection>
+
+      <PageSection
+        title="登录设备"
+        description="不认识的设备可以撤销，它需要重新登录。"
+        extra={
+          <Segmented
+            size="small"
+            aria-label="登录设备与记录"
+            value={view}
+            onChange={(value) => setView(value as "active" | "history")}
+            options={[
+              { value: "active", label: `活跃设备 ${sessions.length}` },
+              { value: "history", label: `登录历史 ${history.total}` },
+            ]}
+          />
+        }
+      >
+        {view === "active" ? (
+          <SessionRows
+            sessions={sessions}
+            empty="当前没有活跃设备"
+            revokeMutation={revokeMutation}
+          />
+        ) : (
+          <>
+            <SessionRows sessions={history.items} empty="近 90 天没有历史记录" />
+            {history.total > history.limit ? (
+              <Pagination
+                className={styles.sessionPagination}
+                size="small"
+                current={history.page}
+                pageSize={history.limit}
+                total={history.total}
+                showSizeChanger={false}
+                disabled={historyLoading}
+                onChange={(page) => void loadHistory(page)}
+              />
+            ) : null}
+          </>
+        )}
+      </PageSection>
     </div>
   );
 }
@@ -357,6 +360,8 @@ function SessionRows({
             >
               <Button
                 danger
+                type="text"
+                size="small"
                 loading={
                   revokeMutation.isPending &&
                   revokeMutation.variables === session.id

@@ -1,37 +1,40 @@
 "use client";
 
-import { DeleteOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
+import {
+  CloseOutlined,
+  DownloadOutlined,
+  EditOutlined,
+  EllipsisOutlined,
+  FilterOutlined,
+  PlusOutlined,
+  SearchOutlined,
+  SettingOutlined,
+  TableOutlined,
+  UploadOutlined,
+  UserSwitchOutlined,
+} from "@ant-design/icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Alert,
   Button,
   Checkbox,
-  Pagination,
-  DatePicker,
-  Drawer,
   Dropdown,
-  Tag,
   Empty,
   Input,
-  InputNumber,
-  Popconfirm,
+  Pagination,
+  Popover,
+  Segmented,
   Select,
-  Space,
   Table,
-  Tabs,
-  Tooltip,
-  Typography,
 } from "antd";
-import type { TableProps } from "antd";
+import type { MenuProps, TableProps } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import dayjs, { type Dayjs } from "dayjs";
 import { useRouter } from "next/navigation";
+import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { SavedRecordFilters } from "./saved-record-filters";
-import { FilterBar } from "@/components/workbench/filter-bar";
 import { PageHeader } from "@/components/layout/page-header";
-import { DataPanel } from "@/components/workbench/surface";
+import { ObjectIcon } from "@/components/navigation/object-icon";
 import {
   SORTABLE_FIELD_TYPES,
   selectOptions,
@@ -40,44 +43,43 @@ import {
   type RecordSummary,
   type RuntimeObjectSchema,
 } from "@/features/objects/object-types";
-import { OptionBadge } from "@/features/objects/option-badge";
+import { toApiError } from "@/lib/api/api-error";
 
 import type { DynamicFieldMember } from "./dynamic-field";
+import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
 import {
   MAX_OWNER_ASSIGNMENT_RECORDS,
   RecordBatchAssignDrawer,
 } from "./record-batch-assign";
 import { RecordBatchEditDrawer } from "./record-batch-edit";
-import { RecordImportDrawer } from "./record-import";
-import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
 import { recordCardFields } from "./record-card-fields";
 import {
   readStoredRecordColumnKeys,
   resolveRecordColumnKeys,
   writeStoredRecordColumnKeys,
 } from "./record-columns";
-import { toApiError } from "@/lib/api/api-error";
+import { displayRecordOwner, displayValue, formatDateTime } from "./record-display-value";
 import {
-  booleanFilterValue,
-  dateRangeFilterValue,
+  describeFilter,
+  filterableFields,
+  OptionQuickFilter,
+  RecordFilterPopover,
+} from "./record-filter-controls";
+import { RecordImportDrawer } from "./record-import";
+import { RecordOwnershipActions, RecordPoolStatus } from "./record-pool";
+import { DEFAULT_POOL_LABELS, POOL_STAGES, POOL_LABEL_KEYS, type PoolStageFilter, type RecordPoolConfig } from "./record-pool-types";
+import {
   DEFAULT_RECORD_QUERY,
-  numericRangeFilterValue,
-  optionFilterValues,
-  presenceFilterValue,
   recordQuerySearch,
-  relativeDateFilterValue,
-  RELATIVE_DATE_PRESET_LABELS,
-  RELATIVE_DATE_PRESETS,
-  textContainsFilterValue,
   withFilter,
   type RecordFilterValue,
   type RecordQuery,
 } from "./record-query-state";
-
-import { RecordOwnershipActions, RecordPoolStatus } from "./record-pool";
-import { DEFAULT_POOL_LABELS, POOL_STAGES, POOL_LABEL_KEYS, type PoolStageFilter, type RecordPoolConfig } from "./record-pool-types";
+import { RecordRowActions } from "./record-row-actions";
+import { ResizableHeaderCell, useColumnWidths } from "./resizable-columns";
+import { SavedRecordFilters } from "./saved-record-filters";
+import rl from "./record-list.module.css";
 import styles from "./records.module.css";
-import { displayRecordOwner, displayValue, formatDateTime } from "./record-display-value";
 export { displayValue } from "./record-display-value";
 
 export interface RecordListProps {
@@ -156,6 +158,7 @@ export function RecordList({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStoredColumnKeys(readStoredRecordColumnKeys(tenantCode, objectCode));
   }, [tenantCode, objectCode]);
+  const { widths: columnWidths, setWidth: setColumnWidth, reset: resetColumnWidths } = useColumnWidths(tenantCode, objectCode);
   const columnFieldKeys = useMemo(
     () => resolveRecordColumnKeys(schema, storedColumnKeys),
     [schema, storedColumnKeys],
@@ -262,26 +265,6 @@ export function RecordList({
       (field.type === "SINGLE_SELECT" || field.type === "MULTI_SELECT") &&
       selectOptions(field).length > 0,
   );
-  const dateFilterFields = schema.fields.filter(
-    (field) => field.type === "DATE" || field.type === "DATETIME",
-  );
-  const numericFilterFields = schema.fields.filter(
-    (field) => field.type === "NUMBER" || field.type === "MONEY",
-  );
-  const booleanFilterFields = schema.fields.filter(
-    (field) => field.type === "BOOLEAN",
-  );
-  const memberFilterFields = schema.fields.filter(
-    (field) => field.type === "MEMBER",
-  );
-  const textFilterFields = schema.fields.filter(
-    (field) =>
-      (field.type === "TEXT" ||
-        field.type === "TEXTAREA" ||
-        field.type === "PHONE" ||
-        field.type === "EMAIL") &&
-      field.fieldKey !== schema.object.titleFieldKey,
-  );
   const searchFieldLabels = schema.fields
     .filter(
       (field) =>
@@ -384,11 +367,13 @@ export function RecordList({
       render: (updatedAt: string) => formatDateTime(updatedAt),
     },
     {
-      title: "操作",
+      // The header is read by assistive technology only; the menu button is self-explanatory.
+      title: <span className={styles.visuallyHidden}>操作</span>,
       key: "actions",
-      width: poolConfig?.enabled || canFilterByOwner ? 280 : 124,
+      width: 56,
       fixed: "right",
-      render: (_, row) => recordActions(row),
+      align: "center",
+      render: (_, row) => rowMenu(row),
     },
   ];
 
@@ -462,513 +447,340 @@ export function RecordList({
     window.localStorage.setItem(ownerStorageKey, visible ? "visible" : "hidden");
   }
 
-  function recordActions(row: RecordSummary) {
+  function rowMenu(row: RecordSummary) {
     return (
-      <Space size={2} className={styles.rowActions}>
-        <Tooltip title="查看">
-          <Button
-            type="text"
-            size="small"
-            className={styles.rowActionButton}
-            aria-label={`查看 ${row.title}`}
-            icon={<EyeOutlined />}
-            onClick={() => go(recordPath(row.id))}
-          />
-        </Tooltip>
-        <Tooltip title={editableRecord(row) ? "编辑" : row.inPublicPool ? "领取后可编辑" : "无编辑权限"}>
-          <span className={styles.actionSlot}>
-            <Button
-              type="text"
-              size="small"
-              className={styles.rowActionButton}
-              aria-label={`编辑 ${row.title}`}
-              icon={<EditOutlined />}
-              disabled={!editableRecord(row)}
-              onClick={() => go(recordPath(row.id, "edit"))}
-            />
-          </span>
-        </Tooltip>
-        {schema.actions.canDelete ? (
-          <Popconfirm
-            title={`确认删除 ${row.title}？`}
-            description="删除后业务列表不再显示，审计历史仍会保留。"
-            okText="确认删除"
-            cancelText="取消"
-            onConfirm={() => remove.mutate(row)}
-          >
-            <Tooltip title="删除">
-              <Button
-                danger
-                type="text"
-                size="small"
-                className={styles.rowActionButton}
-                aria-label={`删除 ${row.title}`}
-                icon={<DeleteOutlined />}
-                loading={remove.isPending && remove.variables?.id === row.id}
-              />
-            </Tooltip>
-          </Popconfirm>
-        ) : (
-          <Tooltip title="无删除权限">
-            <span className={styles.actionSlot}>
-              <Button
-                danger
-                disabled
-                type="text"
-                size="small"
-                className={styles.rowActionButton}
-                aria-label={`删除 ${row.title}`}
-                icon={<DeleteOutlined />}
-              />
-            </span>
-          </Tooltip>
-        )}
-        <RecordOwnershipActions key={`${row.id}:${row.version}`} tenantCode={tenantCode} objectCode={objectCode} record={row} schema={schema} config={poolConfig} currentMemberId={currentMemberId} isAdmin={canFilterByOwner} members={members} onChanged={async () => {
+      <RecordRowActions
+        key={`${row.id}:${row.version}`}
+        record={row}
+        editable={editableRecord(row)}
+        editBlockedReason={row.inPublicPool ? "领取后可编辑" : "无编辑权限"}
+        canDelete={schema.actions.canDelete}
+        deleting={remove.isPending && remove.variables?.id === row.id}
+        onView={() => go(recordPath(row.id))}
+        onEdit={() => go(recordPath(row.id, "edit"))}
+        onDelete={() => remove.mutate(row)}
+        tenantCode={tenantCode}
+        objectCode={objectCode}
+        schema={schema}
+        config={poolConfig}
+        currentMemberId={currentMemberId}
+        isAdmin={canFilterByOwner}
+        members={members}
+        onChanged={async () => {
           const result = await records.refetch();
           if (result.isError) throw result.error;
           router.refresh();
-        }} />
-      </Space>
+        }}
+      />
     );
   }
 
+  const quickFilterFields = optionFilterFields.slice(0, 3);
+  const conditionFields = filterableFields(schema.fields, schema.object.titleFieldKey);
+  const chipFilterKeys = Object.keys(query.filters).filter(
+    (key) => !quickFilterFields.some((field) => field.fieldKey === key),
+  );
+  const conditionCount = Object.keys(query.filters).length;
+  const anyCondition = Boolean(
+    conditionCount || query.ownerMemberId || query.poolQuality,
+  );
+  const clearConditions = () =>
+    apply({ ...withFilter(query, { filters: {}, ownerMemberId: undefined }), poolQuality: undefined });
+  const selectedCount = currentSelectedRowKeys.length;
+  const tooManyToEdit = selectedCount > 100;
+  const tooManyToAssign = selectedCount > MAX_OWNER_ASSIGNMENT_RECORDS;
+  const canAssign = canFilterByOwner && schema.actions.canUpdate;
+  const columnLabel = (key: string) =>
+    key === "recordNo" ? "业务编号" : key === "updatedAt" ? "最近更新" : key === "systemOwner" ? "负责人" : key === "poolStatus" ? "归属状态" : (schema.fields.find((field) => field.fieldKey === key)?.label ?? key);
+  const resizableColumns: ColumnsType<RecordSummary> = columns.map((column) => {
+    const key = String(column.key);
+    if (key === "actions") return column;
+    const width = columnWidths[key] ?? (typeof column.width === "number" ? column.width : 160);
+    return {
+      ...column,
+      width,
+      onHeaderCell: () =>
+        ({
+          width,
+          resizeLabel: `拖动调整「${columnLabel(key)}」列宽，双击恢复`,
+          onResize: (next: number) => setColumnWidth(key, next),
+          onResizeReset: () => setColumnWidth(key, undefined),
+        }) as React.HTMLAttributes<HTMLElement>,
+    };
+  });
+
+  const overflowItems: MenuProps["items"] = [
+    ...(schema.actions.canCreate
+      ? [{ key: "import", label: "导入 Excel / CSV", icon: <UploadOutlined aria-hidden />, onClick: () => setImportOpen(true) }]
+      : []),
+    {
+      key: "export",
+      label: "导出当前结果",
+      icon: <DownloadOutlined aria-hidden />,
+      disabled: !schema.actions.canRead || page.total === 0 || exporting.isPending,
+      onClick: () => exporting.mutate(),
+    },
+    ...(canFilterByOwner && onPoolSettings
+      ? [{ type: "divider" as const }, { key: "pool", label: "公共池设置", icon: <SettingOutlined aria-hidden />, onClick: onPoolSettings }]
+      : []),
+  ];
+
+  const columnChooser = (
+    <div className={rl.columnPanel}>
+      <p className={rl.columnHint}>只影响你自己看到和导出的列。</p>
+      {!owned ? (
+        <Checkbox
+          className={rl.columnOption}
+          checked={ownerVisible}
+          onChange={(event) => saveOwnerVisibility(event.target.checked)}
+          aria-label="显示系统负责人"
+        >
+          负责人
+        </Checkbox>
+      ) : null}
+      {choosableFields.map((field) => (
+        <Checkbox
+          key={field.fieldKey}
+          className={rl.columnOption}
+          aria-label={`显示列 ${field.label}`}
+          checked={columnFieldKeys.includes(field.fieldKey)}
+          onChange={(event) =>
+            saveColumns(
+              event.target.checked
+                ? [...columnFieldKeys, field.fieldKey]
+                : columnFieldKeys.filter((fieldKey) => fieldKey !== field.fieldKey),
+            )
+          }
+        >
+          {field.label}
+        </Checkbox>
+      ))}
+      <Button
+        type="link"
+        size="small"
+        className={rl.columnReset}
+        onClick={() => {
+          saveColumns(schema.defaultView.columnFieldKeys);
+          saveOwnerVisibility(true);
+          resetColumnWidths();
+        }}
+      >
+        恢复默认列
+      </Button>
+    </div>
+  );
+
   return (
-    <div className={styles.list}>
-      <div className={styles.listControls}>
-      {error ? <Alert type="error" showIcon title={error} /> : null}
+    <div className={rl.page}>
+      {error ? <Alert type="error" showIcon title={error} className={rl.alert} /> : null}
       <PageHeader
-        title={owned && !poolConfig?.enabled ? `我的${schema.object.name}` : schema.object.name}
+        title={
+          <span className={rl.title}>
+            <ObjectIcon name={schema.object.icon} />
+            {owned && !poolConfig?.enabled ? `我的${schema.object.name}` : schema.object.name}
+          </span>
+        }
+        count={page.total}
         description={schema.object.description}
-        extra={<Space>
-          {canFilterByOwner && onPoolSettings ? <Button onClick={onPoolSettings}>公共池设置</Button> : null}
-          {schema.actions.canCreate ? (
-          <Button type="primary" onClick={() => go(`${listPath}/new`)}>
-            新建{schema.object.name}
-          </Button>
-        ) : null}</Space>}
+        extra={
+          <>
+            <Dropdown trigger={["click"]} placement="bottomRight" menu={{ items: overflowItems }}>
+              <Button aria-label="更多操作" icon={<EllipsisOutlined aria-hidden />} loading={exporting.isPending} />
+            </Dropdown>
+            {schema.actions.canCreate ? (
+              <Button type="primary" icon={<PlusOutlined aria-hidden />} onClick={() => go(`${listPath}/new`)}>
+                新建{schema.object.name}
+              </Button>
+            ) : null}
+          </>
+        }
       />
 
-        {poolConfig?.enabled ? (
-          <Tabs
-            className={styles.poolTabs}
-            activeKey={
-              poolConfig.lifecycleEnabled
-                ? (query.poolStage ?? "all")
-                : (query.scope ?? (owned ? "mine" : "all"))
-            }
-            onChange={(view) => {
-              if (!poolConfig.lifecycleEnabled)
-                return apply({
+      <div className={rl.viewRow}>
+        <div className={rl.rowStart}>
+          {poolConfig?.enabled ? (
+            <Segmented
+              className={rl.scope}
+              aria-label="记录范围"
+              value={
+                poolConfig.lifecycleEnabled
+                  ? (query.poolStage ?? "all")
+                  : (query.scope ?? (owned ? "mine" : "all"))
+              }
+              onChange={(value) => {
+                const view = String(value);
+                if (!poolConfig.lifecycleEnabled)
+                  return apply({
+                    ...query,
+                    scope: view as "mine" | "pool" | "all",
+                    poolStage: undefined,
+                    page: 1,
+                    ownerMemberId: undefined,
+                  });
+                const privateStage = ["PENDING_CONTACT", "FOLLOWING", "PROTECTED"].includes(view);
+                apply({
                   ...query,
-                  scope: view as "mine" | "pool" | "all",
-                  poolStage: undefined,
+                  poolStage: view === "all" ? undefined : (view as PoolStageFilter),
+                  scope: privateStage && !canFilterByOwner ? "mine" : undefined,
                   page: 1,
                   ownerMemberId: undefined,
                 });
-              const privateStage = ["PENDING_CONTACT", "FOLLOWING", "PROTECTED"].includes(view);
-              apply({
-                ...query,
-                poolStage:
-                  view === "all" ? undefined : (view as PoolStageFilter),
-                scope: privateStage && !canFilterByOwner ? "mine" : undefined,
-                page: 1,
-                ownerMemberId: undefined,
-              });
-            }}
-            items={
-              poolConfig.lifecycleEnabled
-                ? [
-                    ...POOL_STAGES.map((stage) => ({
-                      key: stage,
-                      label: <span className={styles.poolTabLabel}><span>{{ ...DEFAULT_POOL_LABELS, ...poolConfig.labels }[POOL_LABEL_KEYS[stage]]}</span>{" "}{records.data?.poolCounts?.[stage] !== undefined ? <span className={styles.poolTabCount}>{records.data.poolCounts[stage]}</span> : null}</span>,
-                    })),
-                    {
-                      key: "LEGACY",
-                      label: <span className={styles.poolTabLabel}><span>旧记录</span>{" "}{records.data?.poolCounts?.LEGACY !== undefined ? <span className={styles.poolTabCount}>{records.data.poolCounts.LEGACY}</span> : null}</span>,
-                    },
-                    {
-                      key: "all",
-                      label:
-                        canFilterByOwner || schema.scopes.read === "ALL"
-                          ? "全部记录"
-                          : "全部可见记录",
-                    },
-                  ]
-                : [
-                    { key: "mine", label: "我的记录" },
-                    { key: "pool", label: "公共池" },
-                    ...(schema.scopes.read === "ALL"
-                      ? [{ key: "all", label: "全部记录" }]
-                      : []),
-                  ]
-            }
-          />
-        ) : null}
-      {currentMemberId && (
-        <SavedRecordFilters
-          key={`${tenantCode}:${currentMemberId}:${objectCode}`}
-          tenantCode={tenantCode}
-          memberId={currentMemberId}
-          objectCode={objectCode}
-          query={query}
-          onApply={apply}
-        />
-      )}
-      <FilterBar
-        ariaLabel={`${schema.object.name}筛选与排序`}
-        search={
+              }}
+              options={
+                poolConfig.lifecycleEnabled
+                  ? [
+                      ...POOL_STAGES.map((stage) => ({
+                        value: stage,
+                        label: <span className={rl.scopeLabel}><span>{{ ...DEFAULT_POOL_LABELS, ...poolConfig.labels }[POOL_LABEL_KEYS[stage]]}</span>{" "}{records.data?.poolCounts?.[stage] !== undefined ? <span className={rl.scopeCount}>{records.data.poolCounts[stage]}</span> : null}</span>,
+                      })),
+                      {
+                        value: "LEGACY",
+                        label: <span className={rl.scopeLabel}><span>旧记录</span>{" "}{records.data?.poolCounts?.LEGACY !== undefined ? <span className={rl.scopeCount}>{records.data.poolCounts.LEGACY}</span> : null}</span>,
+                      },
+                      {
+                        value: "all",
+                        label: canFilterByOwner || schema.scopes.read === "ALL" ? "全部记录" : "全部可见记录",
+                      },
+                    ]
+                  : [
+                      { value: "mine", label: "我的记录" },
+                      { value: "pool", label: "公共池" },
+                      ...(schema.scopes.read === "ALL" ? [{ value: "all", label: "全部记录" }] : []),
+                    ]
+              }
+            />
+          ) : null}
+          {currentMemberId ? (
+            <SavedRecordFilters
+              key={`${tenantCode}:${currentMemberId}:${objectCode}:views`}
+              tenantCode={tenantCode}
+              memberId={currentMemberId}
+              objectCode={objectCode}
+              query={query}
+              onApply={apply}
+              part="views"
+            />
+          ) : null}
+        </div>
+        <div className={rl.rowEnd}>
           <Input
             aria-label={searchLabel}
-            placeholder={searchLabel}
+            title={searchLabel}
+            placeholder={`搜索${schema.object.name}`}
             allowClear
+            prefix={<SearchOutlined aria-hidden />}
             value={searchInput}
-            className={styles.searchInput}
+            className={rl.search}
             onChange={(event) => onSearchChange(event.target.value)}
-            onPressEnter={() =>
-              apply(
-                withFilter(query, { search: searchInput.trim() || undefined }),
-              )
-            }
+            onPressEnter={() => apply(withFilter(query, { search: searchInput.trim() || undefined }))}
           />
-        }
-        batchActions={
-          <div className={styles.tableTools}>
-            <Typography.Text type="secondary" className={styles.resultCount}>
-              共 {page.total} 条 · 第 {page.page} 页
-              {currentSelectedRowKeys.length > 100 ? ` · 批量修改每次最多 100 条，负责人分配每次最多 ${MAX_OWNER_ASSIGNMENT_RECORDS} 条` : ""}
-            </Typography.Text>
-            <Select
-              aria-label="每页条数"
-              value={page.limit}
-              options={[20, 50, 100, 300, 500, 1000].map((value) => ({
-                value,
-                label: `${value} 条 / 页`,
-              }))}
-              onChange={(limit) => apply({ ...query, limit, page: 1 })}
-            />
-            <Dropdown
-              trigger={["click"]}
-              menu={{
-                items: [
-                  ...(canFilterByOwner && schema.actions.canUpdate
-                    ? [{
-                        key: "assign",
-                        label: "批量分配负责人",
-                        disabled: currentSelectedRowKeys.length === 0 || currentSelectedRowKeys.length > MAX_OWNER_ASSIGNMENT_RECORDS,
-                        onClick: () => setAssignmentRecords([...selectedRecords]),
-                      }]
-                    : []),
-                  ...(schema.actions.canUpdate
-                    ? [
-                        {
-                          key: "batch",
-                          label: `批量修改${currentSelectedRowKeys.length ? ` ${currentSelectedRowKeys.length}` : ""}`,
-                          disabled: currentSelectedRowKeys.length === 0 || currentSelectedRowKeys.length > 100,
-                          onClick: () => setBatchOpen(true),
-                        },
-                      ]
-                    : []),
-                  ...(schema.actions.canCreate
-                    ? [
-                        {
-                          key: "import",
-                          label: "导入 Excel / CSV",
-                          onClick: () => setImportOpen(true),
-                        },
-                      ]
-                    : []),
-                  {
-                    key: "columns",
-                    label: "列设置",
-                    onClick: () => setColumnsOpen(true),
-                  },
-                  {
-                    key: "export",
-                    label: "导出当前结果",
-                    disabled:
-                      !schema.actions.canRead ||
-                      page.total === 0 ||
-                      exporting.isPending,
-                    onClick: () => exporting.mutate(),
-                  },
-                ],
-              }}
-            >
-              <Button loading={exporting.isPending}>更多操作</Button>
-            </Dropdown>
-          </div>
-        }
-      >
-        <div className={styles.primaryFilters} data-expanded={filtersOpen}>
-          {poolConfig?.lifecycleEnabled ? <Select aria-label="按资源质量筛选" allowClear placeholder="资源质量" value={query.poolQuality} onChange={(poolQuality) => apply({ ...query, poolQuality, page: 1 })} options={[{ value: "INVALID", label: "空号 / 无效" }, { value: "DUPLICATE", label: "重复" }, { value: "LOST", label: "丢单" }]} /> : null}
+          <Popover
+            trigger="click"
+            placement="bottomRight"
+            arrow={false}
+            open={columnsOpen}
+            onOpenChange={setColumnsOpen}
+            content={columnChooser}
+          >
+            <Button icon={<TableOutlined aria-hidden />} className={rl.desktopOnly}>
+              列
+            </Button>
+          </Popover>
+        </div>
+      </div>
+
+      <div className={rl.conditionRow} role="group" aria-label={`${schema.object.name}筛选`}>
+        <div className={rl.rowStart}>
           {canFilterByOwner && query.scope !== "pool" && query.scope !== "mine" ? (
             <Select
               aria-label="按负责人筛选"
-              placeholder="全部负责人"
+              placeholder="负责人"
+              variant="borderless"
               allowClear
               showSearch
               optionFilterProp="label"
-              className={styles.ownerFilter}
+              popupMatchSelectWidth={false}
+              className={rl.quickFilter}
               value={query.ownerMemberId}
-              onChange={(next?: string) =>
-                apply(withFilter(query, { ownerMemberId: next }))
-              }
+              onChange={(next?: string) => apply(withFilter(query, { ownerMemberId: next }))}
               options={[
                 { value: "unassigned", label: "未指定负责人" },
-                ...members.map((member) => ({
-                  value: member.id,
-                  label: member.displayName ?? "未设置姓名",
-                })),
+                ...members.map((member) => ({ value: member.id, label: member.displayName ?? "未设置姓名" })),
               ]}
             />
           ) : null}
-          {optionFilterFields.map((field) => {
-            const options = selectOptions(field);
-            return (
-              <Select
-                key={field.fieldKey}
-                mode="multiple"
-                aria-label={`按${field.label}筛选`}
-                placeholder={`全部${field.label}`}
-                allowClear
-                className={styles.optionFilter}
-                value={optionFilterValues(query.filters, field.fieldKey)}
-                onChange={(values: string[]) =>
-                  applyFieldFilter(
-                    field.fieldKey,
-                    values.length === 0 ? undefined : values,
-                  )
-                }
-                options={options.map((option) => ({
-                  value: option.key,
-                  label: <OptionBadge option={option} />,
-                }))}
-              />
-            );
-          })}
-        </div>
-        <Button
-          aria-expanded={filtersOpen}
-          onClick={() => setFiltersOpen(!filtersOpen)}
-        >
-          更多筛选
-          {Object.keys(query.filters).length
-            ? ` · ${Object.keys(query.filters).length}`
-            : ""}
-        </Button>
-        <div className={styles.secondaryFilters} hidden={!filtersOpen}>
-          {dateFilterFields.map((field) => {
-            const range = dateRangeFilterValue(query.filters, field.fieldKey);
-            const relative = relativeDateFilterValue(
-              query.filters,
-              field.fieldKey,
-            );
-            return (
-              <div
-                key={field.fieldKey}
-                role="group"
-                aria-label={`按${field.label}筛选`}
-                className={styles.dateFilterGroup}
-              >
-                <Select
-                  allowClear
-                  aria-label={`按${field.label}快捷筛选`}
-                  placeholder="快捷时间"
-                  className={styles.relativeFilter}
-                  value={relative}
-                  onChange={(next?: (typeof RELATIVE_DATE_PRESETS)[number]) =>
-                    applyFieldFilter(
-                      field.fieldKey,
-                      next ? { relative: next } : undefined,
-                    )
-                  }
-                  options={RELATIVE_DATE_PRESETS.map((preset) => ({
-                    value: preset,
-                    label: RELATIVE_DATE_PRESET_LABELS[preset],
-                  }))}
-                />
-                <DatePicker.RangePicker
-                  allowEmpty={[true, true]}
-                  allowClear
-                  className={styles.dateFilter}
-                  separator="至"
-                  placeholder={[`${field.label}起`, `${field.label}止`]}
-                  value={[
-                    range?.from ? dayjs(range.from) : null,
-                    range?.to ? dayjs(range.to) : null,
-                  ]}
-                  onChange={(next: [Dayjs | null, Dayjs | null] | null) => {
-                    const from = next?.[0]?.isValid()
-                      ? next[0].format("YYYY-MM-DD")
-                      : undefined;
-                    const to = next?.[1]?.isValid()
-                      ? next[1].format("YYYY-MM-DD")
-                      : undefined;
-                    applyFieldFilter(
-                      field.fieldKey,
-                      !from && !to ? undefined : { from, to },
-                    );
-                  }}
-                />
-              </div>
-            );
-          })}
-          {numericFilterFields.map((field) => {
-            const range = numericRangeFilterValue(
-              query.filters,
-              field.fieldKey,
-            );
-            const money = field.type === "MONEY";
-            return (
-              <div
-                key={field.fieldKey}
-                role="group"
-                aria-label={`按${field.label}筛选`}
-                className={styles.numericFilter}
-              >
-                <InputNumber
-                  aria-label={`${field.label}最小值`}
-                  placeholder={`${field.label}最小`}
-                  value={range?.min}
-                  min={field.validation.min}
-                  max={field.validation.max}
-                  precision={money ? (field.validation.scale ?? 2) : undefined}
-                  onChange={(next) => {
-                    const min = typeof next === "number" ? next : undefined;
-                    const max = range?.max;
-                    applyFieldFilter(
-                      field.fieldKey,
-                      min === undefined && max === undefined
-                        ? undefined
-                        : { min, max },
-                    );
-                  }}
-                />
-                <span aria-hidden>至</span>
-                <InputNumber
-                  aria-label={`${field.label}最大值`}
-                  placeholder={`${field.label}最大`}
-                  value={range?.max}
-                  min={field.validation.min}
-                  max={field.validation.max}
-                  precision={money ? (field.validation.scale ?? 2) : undefined}
-                  onChange={(next) => {
-                    const min = range?.min;
-                    const max = typeof next === "number" ? next : undefined;
-                    applyFieldFilter(
-                      field.fieldKey,
-                      min === undefined && max === undefined
-                        ? undefined
-                        : { min, max },
-                    );
-                  }}
-                />
-              </div>
-            );
-          })}
-          {booleanFilterFields.map((field) => (
+          {poolConfig?.lifecycleEnabled ? (
             <Select
-              key={field.fieldKey}
+              aria-label="按资源质量筛选"
               allowClear
-              aria-label={`按${field.label}筛选`}
-              placeholder={`全部${field.label}`}
-              className={styles.booleanFilter}
-              value={booleanFilterValue(query.filters, field.fieldKey)}
-              onChange={(next?: boolean) =>
-                applyFieldFilter(field.fieldKey, next)
-              }
-              options={[
-                { value: true, label: "是" },
-                { value: false, label: "否" },
-              ]}
+              variant="borderless"
+              placeholder="资源质量"
+              popupMatchSelectWidth={false}
+              className={rl.quickFilter}
+              value={query.poolQuality}
+              onChange={(poolQuality) => apply({ ...query, poolQuality, page: 1 })}
+              options={[{ value: "INVALID", label: "空号 / 无效" }, { value: "DUPLICATE", label: "重复" }, { value: "LOST", label: "丢单" }]}
             />
+          ) : null}
+          {quickFilterFields.map((field) => (
+            <OptionQuickFilter key={field.fieldKey} field={field} filters={query.filters} onChange={applyFieldFilter} />
           ))}
-          {memberFilterFields.map((field) => (
-            <Select
-              key={field.fieldKey}
-              mode="multiple"
-              allowClear
-              showSearch
-              optionFilterProp="label"
-              aria-label={`按${field.label}筛选`}
-              placeholder={`全部${field.label}`}
-              className={styles.ownerFilter}
-              value={optionFilterValues(query.filters, field.fieldKey)}
-              onChange={(values: string[]) =>
-                applyFieldFilter(
-                  field.fieldKey,
-                  values.length === 0 ? undefined : values,
-                )
-              }
-              options={members.map((member) => ({
-                value: member.id,
-                label: member.displayName ?? "未设置姓名",
-              }))}
-            />
-          ))}
-          {textFilterFields.map((field) => (
-            <div key={field.fieldKey} className={styles.textFilterGroup}>
-              <Select
-                allowClear
-                aria-label={`按${field.label}填充筛选`}
-                placeholder="有值或空值"
-                className={styles.presenceFilter}
-                value={presenceFilterValue(query.filters, field.fieldKey)}
-                onChange={(next?: "empty" | "not_empty") =>
-                  applyFieldFilter(
-                    field.fieldKey,
-                    next ? { presence: next } : undefined,
-                  )
-                }
-                options={[
-                  { value: "not_empty", label: "有值" },
-                  { value: "empty", label: "空值" },
-                ]}
-              />
-              <Input
-                allowClear
-                aria-label={`按${field.label}筛选`}
-                placeholder={`${field.label}包含`}
-                className={styles.searchInput}
-                value={
-                  textContainsFilterValue(query.filters, field.fieldKey) ?? ""
-                }
-                onChange={(event) => {
-                  const next = event.target.value.trim();
-                  applyFieldFilter(
-                    field.fieldKey,
-                    next === "" ? undefined : { contains: next },
-                  );
-                }}
-              />
-            </div>
-          ))}
-          {Object.keys(query.filters).length > 0 ? (
-            <Button
-              type="text"
-              onClick={() => apply(withFilter(query, { filters: {} }))}
+          {chipFilterKeys.map((key) => {
+            const field = schema.fields.find((candidate) => candidate.fieldKey === key);
+            const label = field?.label ?? key;
+            return (
+              <span key={key} className={rl.chip}>
+                <button type="button" className={rl.chipBody} onClick={() => setFiltersOpen(true)}>
+                  <span className={rl.chipField}>{label}</span>
+                  {field ? describeFilter(field, query.filters[key], members) : null}
+                </button>
+                <button
+                  type="button"
+                  className={rl.chipRemove}
+                  aria-label={`删除条件 ${label}`}
+                  onClick={() => applyFieldFilter(key, undefined)}
+                >
+                  <CloseOutlined aria-hidden />
+                </button>
+              </span>
+            );
+          })}
+          {conditionFields.length ? (
+            <RecordFilterPopover
+              fields={conditionFields}
+              filters={query.filters}
+              members={members}
+              open={filtersOpen}
+              onOpenChange={setFiltersOpen}
+              onChange={applyFieldFilter}
             >
-              清除筛选
+              <Button type="text" size="small" className={rl.addFilter} icon={<FilterOutlined aria-hidden />} aria-expanded={filtersOpen}>
+                筛选{chipFilterKeys.length ? ` ${chipFilterKeys.length}` : ""}
+              </Button>
+            </RecordFilterPopover>
+          ) : null}
+        </div>
+        <div className={rl.rowEnd}>
+          {anyCondition ? (
+            <Button type="text" size="small" className={rl.quiet} onClick={clearConditions}>
+              清除
             </Button>
           ) : null}
+          {currentMemberId ? (
+            <SavedRecordFilters
+              key={`${tenantCode}:${currentMemberId}:${objectCode}:save`}
+              tenantCode={tenantCode}
+              memberId={currentMemberId}
+              objectCode={objectCode}
+              query={query}
+              onApply={apply}
+              part="save"
+            />
+          ) : null}
         </div>
-      </FilterBar>
-      {Object.keys(query.filters).length > 0 ? (
-        <div className={styles.activeFilters}>
-          {Object.keys(query.filters).map((key) => (
-            <Tag
-              key={key}
-              closable
-              onClose={() => applyFieldFilter(key, undefined)}
-            >
-              {schema.fields.find((field) => field.fieldKey === key)?.label ??
-                key}
-            </Tag>
-          ))}
-        </div>
-      ) : null}
+      </div>
 
-      <div className={styles.cardControls}>
+      <div className={rl.mobileSort}>
         <Select
           aria-label="卡片排序字段"
           value={query.sort}
@@ -988,11 +800,8 @@ export function RecordList({
           options={[{ value: "asc", label: "升序" }, { value: "desc", label: "降序" }]}
         />
       </div>
-      </div>
-      <DataPanel
-        className={styles.registerPanel}
-        ariaLabel={`${schema.object.name}记录表`}
-      >
+
+      <section className={rl.data} aria-label={`${schema.object.name}记录表`}>
         {records.isError ? (
           <Alert
             type="error"
@@ -1001,17 +810,14 @@ export function RecordList({
             action={<Button aria-label="重试" loading={records.isFetching} onClick={() => records.refetch()}>重试</Button>}
           />
         ) : page.items.length === 0 ? (
-          <div className={styles.cardList}>{emptyState}</div>
+          <div className={rl.cards}>{emptyState}</div>
         ) : (
-          <ul
-            className={styles.cardList}
-            aria-label={`${schema.object.name}记录卡片`}
-          >
+          <ul className={rl.cards} aria-label={`${schema.object.name}记录卡片`}>
             {page.items.map((row) => {
               const ownerName = displayRecordOwner(row.ownerMemberId, members, currentMemberId);
               return (
-                <li key={row.id} className={styles.card}>
-                  <div className={styles.cardHeader}>
+                <li key={row.id} className={rl.card}>
+                  <div className={rl.cardHeader}>
                     {schema.actions.canUpdate ? (
                       <Checkbox
                         disabled={!editableRecord(row)}
@@ -1032,48 +838,60 @@ export function RecordList({
                     >
                       {row.title}
                     </a>
-                    {cardFields.status
-                      ? displayValue(
-                          cardFields.status,
-                          row.values[cardFields.status.fieldKey],
-                          members,
-                        )
-                      : null}
+                    {cardFields.status ? displayValue(cardFields.status, row.values[cardFields.status.fieldKey], members) : null}
+                    <span className={rl.cardMenu}>{rowMenu(row)}</span>
                   </div>
-                  <dl className={styles.cardMeta}>
+                  <dl className={rl.cardMeta}>
                     <div>
                       <dt>业务编号</dt>
                       <dd className={styles.recordNo}>{row.recordNo}</dd>
                     </div>
-                    {showOwner ? <div>
-                      <dt>负责人</dt>
-                      <dd>{ownerName}</dd>
-                    </div> : null}
+                    {showOwner ? (
+                      <div>
+                        <dt>负责人</dt>
+                        <dd>{ownerName}</dd>
+                      </div>
+                    ) : null}
                     {cardFields.extras.map((field) => (
                       <div key={field.fieldKey}>
                         <dt>{field.label}</dt>
-                        <dd>
-                          {displayValue(
-                            field,
-                            row.values[field.fieldKey],
-                            members,
-                          )}
-                        </dd>
+                        <dd>{displayValue(field, row.values[field.fieldKey], members)}</dd>
                       </div>
                     ))}
                   </dl>
-                  {poolConfig?.enabled ? <RecordPoolStatus record={row} config={poolConfig} /> : null}
-                  {recordActions(row)}
+                  {poolConfig?.enabled ? (
+                    <div className={rl.cardPool}>
+                      <RecordPoolStatus record={row} config={poolConfig} />
+                      {/* On a phone, claiming from the pool is the card's main action. */}
+                      <RecordOwnershipActions
+                        key={`${row.id}:${row.version}`}
+                        tenantCode={tenantCode}
+                        objectCode={objectCode}
+                        record={row}
+                        schema={schema}
+                        config={poolConfig}
+                        currentMemberId={currentMemberId}
+                        isAdmin={canFilterByOwner}
+                        members={members}
+                        onChanged={async () => {
+                          const result = await records.refetch();
+                          if (result.isError) throw result.error;
+                          router.refresh();
+                        }}
+                      />
+                    </div>
+                  ) : null}
                 </li>
               );
             })}
           </ul>
         )}
         <Table
-          className={styles.register}
+          className={rl.table}
           rowKey="id"
           size="small"
-          columns={columns}
+          columns={resizableColumns}
+          components={{ header: { cell: ResizableHeaderCell } }}
           dataSource={page.items}
           loading={records.isFetching}
           onChange={handleTableChange}
@@ -1081,6 +899,7 @@ export function RecordList({
           rowSelection={
             schema.actions.canUpdate
               ? {
+                  columnWidth: 40,
                   selectedRowKeys: currentSelectedRowKeys,
                   onChange: (keys) => setSelectedRowKeys(keys.map(String)),
                   getCheckboxProps: (row) => ({
@@ -1092,75 +911,53 @@ export function RecordList({
           }
           aria-label={`${schema.object.name}记录`}
           locale={{ emptyText: emptyState }}
-          pagination={{
-            current: page.page,
-            pageSize: page.limit,
-            total: page.total,
-            showSizeChanger: false,
-            onChange: (nextPage) => apply({ ...query, page: nextPage }),
-          }}
+          pagination={false}
         />
-        <div className={styles.cardControls}>
+      </section>
+
+      <footer className={rl.footer} data-selecting={selectedCount > 0 ? "true" : undefined}>
+        {selectedCount > 0 ? (
+        <div className={rl.bulkBar} role="toolbar" aria-label="批量操作">
+          <span className={rl.bulkCount}>已选 {selectedCount} 条</span>
+          {tooManyToEdit || tooManyToAssign ? (
+            <span className={rl.bulkLimit}>批量修改每次最多 100 条，负责人分配每次最多 {MAX_OWNER_ASSIGNMENT_RECORDS} 条</span>
+          ) : null}
+          {schema.actions.canUpdate ? (
+            <Button size="small" type="text" icon={<EditOutlined aria-hidden />} disabled={tooManyToEdit} onClick={() => setBatchOpen(true)}>
+              批量修改
+            </Button>
+          ) : null}
+          {canAssign ? (
+            <Button size="small" type="text" icon={<UserSwitchOutlined aria-hidden />} disabled={tooManyToAssign} onClick={() => setAssignmentRecords([...selectedRecords])}>
+              分配负责人
+            </Button>
+          ) : null}
+          <Button size="small" type="text" className={rl.bulkClear} aria-label="取消选择" icon={<CloseOutlined aria-hidden />} onClick={() => setSelectedRowKeys([])} />
+        </div>
+              ) : (
+          <span className={rl.total}>共 {page.total} 条</span>
+        )}
+        <div className={rl.rowEnd}>
+          <Select
+            aria-label="每页条数"
+            variant="borderless"
+            size="small"
+            className={rl.pageSize}
+            value={page.limit}
+            options={[20, 50, 100, 300, 500, 1000].map((value) => ({ value, label: `${value} 条 / 页` }))}
+            onChange={(limit) => apply({ ...query, limit, page: 1 })}
+          />
           <Pagination
+            size="small"
             current={page.page}
             pageSize={page.limit}
             total={page.total}
             showSizeChanger={false}
+            hideOnSinglePage={false}
             onChange={(nextPage) => apply({ ...query, page: nextPage })}
           />
         </div>
-      </DataPanel>
-
-      <Drawer
-        title="列设置"
-        open={columnsOpen}
-        onClose={() => setColumnsOpen(false)}
-        destroyOnHidden
-      >
-        <Typography.Paragraph type="secondary">
-          只影响你自己看到和导出的列，不会改业务表发布时的默认列表。隐藏字段不会出现在这里。
-        </Typography.Paragraph>
-        {!owned ? <Typography.Paragraph>
-          <Checkbox checked={ownerVisible} onChange={(event) => saveOwnerVisibility(event.target.checked)} aria-label="显示系统负责人">
-            显示负责人
-          </Checkbox>
-          <Typography.Text type="secondary">（仅影响列表和卡片显示）</Typography.Text>
-        </Typography.Paragraph> : null}
-        <div className={styles.columnChooser}>
-          {choosableFields.map((field) => {
-            const selected = columnFieldKeys.includes(field.fieldKey);
-            return (
-              <label key={field.fieldKey} className={styles.columnChooserRow}>
-                <input
-                  type="checkbox"
-                  aria-label={`显示列 ${field.label}`}
-                  checked={selected}
-                  onChange={(event) =>
-                    saveColumns(
-                      event.target.checked
-                        ? [...columnFieldKeys, field.fieldKey]
-                        : columnFieldKeys.filter(
-                            (fieldKey) => fieldKey !== field.fieldKey,
-                          ),
-                    )
-                  }
-                />
-                <span>{field.label}</span>
-                <code>{field.fieldKey}</code>
-              </label>
-            );
-          })}
-        </div>
-        <Button
-          className={styles.columnReset}
-          onClick={() => {
-            saveColumns(schema.defaultView.columnFieldKeys);
-            saveOwnerVisibility(true);
-          }}
-        >
-          恢复默认列
-        </Button>
-      </Drawer>
+      </footer>
 
       {importOpen ? (
         <RecordImportDrawer

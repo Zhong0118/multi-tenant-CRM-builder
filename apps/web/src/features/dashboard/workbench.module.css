@@ -447,6 +447,7 @@
   min-width: 0;
   flex-direction: column;
   gap: 14px;
+  container: dashboard / inline-size;
 }
 
 .metricBand {
@@ -904,25 +905,6 @@
     grid-column: span 6;
   }
 
-  .analysisBand,
-  .tablesBand {
-    grid-template-columns: 1fr;
-  }
-
-  .metricBand,
-  .metricBand[data-metric-count="3"],
-  .metricBand[data-metric-count="5"] {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .metricWidget:nth-child(even) {
-    border-right: 0;
-  }
-
-  .metricWidget:nth-child(n + 3) {
-    border-top: 1px solid var(--border-default);
-  }
-
   .kpiBand {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -942,6 +924,32 @@
   .analysisCanvas .analysisRail {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-rows: auto;
+  }
+}
+
+/* The published dashboard folds by its own width, not the window's: with the
+   sidebar open a 1280px laptop still has room for four metrics across and the
+   chart beside its distribution. */
+@container dashboard (max-width: 820px) {
+  .analysisBand,
+  .tablesBand {
+    grid-template-columns: 1fr;
+  }
+}
+
+@container dashboard (max-width: 640px) {
+  .metricBand,
+  .metricBand[data-metric-count="3"],
+  .metricBand[data-metric-count="5"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metricWidget:nth-child(even) {
+    border-right: 0;
+  }
+
+  .metricWidget:nth-child(n + 3) {
+    border-top: 1px solid var(--border-default);
   }
 }
 

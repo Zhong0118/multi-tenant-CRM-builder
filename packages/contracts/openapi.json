@@ -301,6 +301,332 @@
         "required": ["accepted", "user"],
         "type": "object"
       },
+      "AutomationConfigurationDto": {
+        "properties": {
+          "objectId": {
+            "type": "string"
+          },
+          "publishedRules": {
+            "items": {
+              "$ref": "#/components/schemas/AutomationRuleDto"
+            },
+            "type": "array"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/AutomationRuleDto"
+            },
+            "type": "array"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": ["objectId", "version", "publishedRules", "rules"],
+        "type": "object"
+      },
+      "AutomationExecutionDto": {
+        "properties": {
+          "actorMemberId": {
+            "type": "string"
+          },
+          "executedAt": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "publicationId": {
+            "type": "string"
+          },
+          "ruleKey": {
+            "type": "string"
+          },
+          "ruleLabel": {
+            "type": "string"
+          },
+          "sourceRecordId": {
+            "type": "string"
+          },
+          "targetObjectCode": {
+            "type": "string"
+          },
+          "targetRecordId": {
+            "type": "string"
+          },
+          "targetRecordNo": {
+            "type": "string"
+          },
+          "triggerType": {
+            "enum": ["MANUAL", "FIELD_CHANGED"],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ruleKey",
+          "ruleLabel",
+          "triggerType",
+          "sourceRecordId",
+          "targetObjectCode",
+          "targetRecordId",
+          "targetRecordNo",
+          "actorMemberId",
+          "executedAt",
+          "publicationId"
+        ],
+        "type": "object"
+      },
+      "AutomationHistoryDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AutomationExecutionDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["items"],
+        "type": "object"
+      },
+      "AutomationInputFieldDto": {
+        "properties": {
+          "config": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "defaultValue": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "fieldKey": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "type": {
+            "type": "string"
+          },
+          "validation": {
+            "additionalProperties": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "fieldKey",
+          "label",
+          "type",
+          "required",
+          "config",
+          "defaultValue",
+          "validation"
+        ],
+        "type": "object"
+      },
+      "AutomationPreviewDto": {
+        "properties": {
+          "fieldLabels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "ownerMemberId": {
+            "type": "string"
+          },
+          "ruleKey": {
+            "type": "string"
+          },
+          "sourceRecordId": {
+            "type": "string"
+          },
+          "targetObjectCode": {
+            "type": "string"
+          },
+          "targetObjectName": {
+            "type": "string"
+          },
+          "values": {
+            "additionalProperties": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "fieldLabels",
+          "ruleKey",
+          "targetObjectCode",
+          "targetObjectName",
+          "values",
+          "ownerMemberId",
+          "sourceRecordId"
+        ],
+        "type": "object"
+      },
+      "AutomationRuleDto": {
+        "properties": {
+          "allowedRoles": {
+            "items": {
+              "enum": ["TENANT_ADMIN", "EMPLOYEE"],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "mappings": {
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "properties": {
+                    "fieldKey": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "enum": ["SOURCE_FIELD"],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["source", "fieldKey"],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "source": {
+                      "enum": ["LITERAL"],
+                      "type": "string"
+                    },
+                    "value": {
+                      "nullable": true,
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        }
+                      ]
+                    }
+                  },
+                  "required": ["source", "value"],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "source": {
+                      "enum": ["NOW", "INPUT"],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["source"],
+                  "type": "object"
+                }
+              ]
+            },
+            "type": "object"
+          },
+          "owner": {
+            "enum": ["ACTOR", "SOURCE_OWNER"],
+            "type": "string"
+          },
+          "targetObjectCode": {
+            "type": "string"
+          },
+          "trigger": {
+            "oneOf": [
+              {
+                "properties": {
+                  "type": {
+                    "enum": ["MANUAL"],
+                    "type": "string"
+                  }
+                },
+                "required": ["type"],
+                "type": "object"
+              },
+              {
+                "properties": {
+                  "equals": {
+                    "nullable": true,
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      }
+                    ]
+                  },
+                  "fieldKey": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "enum": ["FIELD_CHANGED"],
+                    "type": "string"
+                  }
+                },
+                "required": ["type", "fieldKey", "equals"],
+                "type": "object"
+              }
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "enabled",
+          "allowedRoles",
+          "trigger",
+          "targetObjectCode",
+          "owner",
+          "mappings"
+        ],
+        "type": "object"
+      },
       "BatchUpdateRecordItemDto": {
         "properties": {
           "recordId": {
@@ -741,6 +1067,192 @@
           }
         },
         "required": ["status"],
+        "type": "object"
+      },
+      "CompanyAuditChangeDto": {
+        "properties": {
+          "after": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "before": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "key": {
+            "description": "Field key or top-level payload key.",
+            "type": "string"
+          },
+          "label": {
+            "description": "The business field label when the key is a record field.",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": ["key", "before", "after"],
+        "type": "object"
+      },
+      "CompanyAuditItemDto": {
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "actorId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "actorName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "actorType": {
+            "enum": ["USER", "SYSTEM", "INTEGRATION"],
+            "type": "string"
+          },
+          "after": {
+            "additionalProperties": true,
+            "nullable": true,
+            "type": "object"
+          },
+          "before": {
+            "additionalProperties": true,
+            "nullable": true,
+            "type": "object"
+          },
+          "changes": {
+            "description": "Changed keys when both before and after are objects.",
+            "items": {
+              "$ref": "#/components/schemas/CompanyAuditChangeDto"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "ip": {
+            "nullable": true,
+            "type": "string"
+          },
+          "objectName": {
+            "description": "The business table the resource belongs to.",
+            "nullable": true,
+            "type": "string"
+          },
+          "reason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "recordTitle": {
+            "description": "Title of the record a follow-up, attachment or activity belongs to.",
+            "nullable": true,
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "resourceId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "resourceName": {
+            "description": "Human name of the resource: record title, business table, member, …",
+            "nullable": true,
+            "type": "string"
+          },
+          "resourceType": {
+            "type": "string"
+          },
+          "tenantId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "tenantName": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "actorType",
+          "action",
+          "resourceType",
+          "requestId",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "CompanyAuditPageDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CompanyAuditItemDto"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "number"
+          },
+          "page": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "timezone": {
+            "example": "Asia/Shanghai",
+            "type": "string"
+          },
+          "total": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": ["items", "page", "limit", "total", "timezone"],
         "type": "object"
       },
       "ConfirmAiProposalDto": {
@@ -1975,6 +2487,41 @@
         ],
         "type": "object"
       },
+      "ExecuteAutomationDto": {
+        "properties": {
+          "expectedVersion": {
+            "type": "number"
+          },
+          "inputs": {
+            "additionalProperties": {
+              "nullable": true,
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            "type": "object"
+          },
+          "requestId": {
+            "type": "string"
+          }
+        },
+        "required": ["inputs", "expectedVersion", "requestId"],
+        "type": "object"
+      },
       "ExecuteWorkflowTransitionDto": {
         "properties": {
           "expectedVersion": {
@@ -3122,7 +3669,7 @@
             "type": "string"
           },
           "kind": {
-            "enum": ["WORKFLOW", "POOL_PROTECTION"],
+            "enum": ["WORKFLOW", "POOL_PROTECTION", "AUTOMATION"],
             "type": "string"
           },
           "objectCode": {
@@ -3721,6 +4268,35 @@
         "required": ["key", "label"],
         "type": "object"
       },
+      "PreviewAutomationDto": {
+        "properties": {
+          "inputs": {
+            "additionalProperties": {
+              "nullable": true,
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            "type": "object"
+          }
+        },
+        "required": ["inputs"],
+        "type": "object"
+      },
       "PreviewDashboardDto": {
         "properties": {
           "expectedVersion": {
@@ -3732,6 +4308,41 @@
           }
         },
         "required": ["expectedVersion", "period"],
+        "type": "object"
+      },
+      "PreviewDraftAutomationDto": {
+        "properties": {
+          "inputs": {
+            "additionalProperties": {
+              "nullable": true,
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            "type": "object"
+          },
+          "rule": {
+            "$ref": "#/components/schemas/AutomationRuleDto"
+          },
+          "sourceRecordId": {
+            "type": "string"
+          }
+        },
+        "required": ["inputs", "rule", "sourceRecordId"],
         "type": "object"
       },
       "PublicationAnalysisResponseDto": {
@@ -4523,6 +5134,48 @@
         "required": ["expectedVersion"],
         "type": "object"
       },
+      "RuntimeAutomationDto": {
+        "properties": {
+          "inputFields": {
+            "items": {
+              "$ref": "#/components/schemas/AutomationInputFieldDto"
+            },
+            "type": "array"
+          },
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "targetObjectCode": {
+            "type": "string"
+          },
+          "targetObjectName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "targetObjectCode",
+          "targetObjectName",
+          "inputFields"
+        ],
+        "type": "object"
+      },
+      "RuntimeAutomationsDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RuntimeAutomationDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["items"],
+        "type": "object"
+      },
       "RuntimeAvailableTransitionDto": {
         "properties": {
           "effects": {
@@ -4744,6 +5397,21 @@
           }
         },
         "required": ["key", "label", "isTerminal"],
+        "type": "object"
+      },
+      "SaveAutomationsDto": {
+        "properties": {
+          "expectedVersion": {
+            "type": "number"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/AutomationRuleDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["expectedVersion", "rules"],
         "type": "object"
       },
       "SaveBusinessTemplateDraftDto": {
@@ -8019,6 +8687,36 @@
             }
           },
           {
+            "description": "The acting user (a member’s userId).",
+            "in": "query",
+            "name": "actorId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "First calendar day, inclusive, in the company’s timezone.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "example": "2026-10-14",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Last calendar day, inclusive, in the company’s timezone.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "example": "2026-10-20",
+              "type": "string"
+            }
+          },
+          {
             "in": "path",
             "name": "tenantCode",
             "required": true,
@@ -8032,7 +8730,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PlatformAuditPageDto"
+                  "$ref": "#/components/schemas/CompanyAuditPageDto"
                 }
               }
             },
@@ -9976,6 +10674,150 @@
         "tags": ["object-definitions"]
       }
     },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/automations": {
+      "get": {
+        "operationId": "AutomationAdminController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationConfigurationDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["automations"]
+      },
+      "put": {
+        "operationId": "AutomationAdminController_save",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveAutomationsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationConfigurationDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["automations"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/automations/preview": {
+      "post": {
+        "operationId": "AutomationAdminController_preview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewDraftAutomationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationPreviewDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["automations"]
+      }
+    },
     "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/default-view": {
       "put": {
         "operationId": "ObjectsController_updateDefaultView",
@@ -11690,6 +12532,242 @@
           }
         ],
         "tags": ["attachments"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/automations": {
+      "get": {
+        "operationId": "AutomationRuntimeController_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeAutomationsDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["automations"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/automations/history": {
+      "get": {
+        "operationId": "AutomationRuntimeController_history",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationHistoryDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["automations"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/automations/{ruleKey}/execute": {
+      "post": {
+        "operationId": "AutomationRuntimeController_execute",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ruleKey",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecuteAutomationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationExecutionDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["automations"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/automations/{ruleKey}/preview": {
+      "post": {
+        "operationId": "AutomationRuntimeController_preview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ruleKey",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewAutomationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationPreviewDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["automations"]
       }
     },
     "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/ownership": {

@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { Sidebar } from "./sidebar";
+import { Sidebar, type NavItemRenderState } from "./sidebar";
 import { TopHeader } from "./top-header";
 import styles from "./app-shell.module.css";
 import {
@@ -29,13 +29,22 @@ export interface ShellUser {
 }
 
 export interface ShellNavItem {
-  href: string;
+  /** Omitted for an item that renders its own control, such as the inbox. */
+  href?: string;
   label: string;
   icon?: ReactNode;
+  /** A short number or status shown at the end of the row. */
+  count?: ReactNode;
+  /** Quieter text for a way out, such as "返回工作区". */
+  subtle?: boolean;
+  key?: string;
+  render?: (state: NavItemRenderState) => ReactNode;
 }
 
 export interface ShellNavGroup {
   ariaLabel: string;
+  /** Keeps the group label for assistive technology only. */
+  hideLabel?: boolean;
   items: ShellNavItem[];
   emptyLabel?: string;
   emptyHref?: string;
@@ -47,11 +56,17 @@ export interface AppShellProps {
   brandIcon?: ReactNode;
   brandHref: string;
   navGroups: ShellNavGroup[];
-  headerLeft: ReactNode;
+  /** Destinations pinned above the account, such as settings. */
+  footerItems?: ShellNavItem[];
+  /** Breadcrumb or title for a desktop header; omit for no desktop header. */
+  headerLeft?: ReactNode;
+  /** Controls kept in the compact header on a phone. */
   headerActions?: ReactNode;
   user: ShellUser;
   roleLabel: string;
   showWorkspaceSwitch?: boolean;
+  /** Pads the content area for routes that do not wrap themselves in a Page. */
+  contentPadding?: boolean;
   children: ReactNode;
 }
 
@@ -121,11 +136,13 @@ export function AppShell({
   brandIcon,
   brandHref,
   navGroups,
+  footerItems,
   headerLeft,
   headerActions,
   user,
   roleLabel,
   showWorkspaceSwitch = false,
+  contentPadding = false,
   children,
 }: AppShellProps) {
   const pathname = usePathname() ?? "";
@@ -244,7 +261,10 @@ export function AppShell({
   }, []);
 
   return (
-    <div className={styles.shell} ref={shell}>
+    <div
+      className={`${styles.shell} ${headerLeft ? "" : styles.shellHeaderless}`}
+      ref={shell}
+    >
       {mobileOpen ? (
         <button
           type="button"
@@ -257,7 +277,11 @@ export function AppShell({
         brand={brand}
         brandIcon={brandIcon}
         brandHref={brandHref}
+        user={user}
+        roleLabel={roleLabel}
+        showWorkspaceSwitch={showWorkspaceSwitch}
         navGroups={navGroups}
+        footerItems={footerItems}
         pathname={pathname}
         collapsed={mobileOpen ? false : collapsed}
         width={width}
@@ -272,17 +296,15 @@ export function AppShell({
       />
       <div className={styles.column}>
         <TopHeader
+          brand={brand}
           headerLeft={headerLeft}
           headerActions={headerActions}
-          user={user}
-          roleLabel={roleLabel}
-          showWorkspaceSwitch={showWorkspaceSwitch}
           onOpenNavigation={() => {
             navigationTrigger.current = shell.current?.querySelector<HTMLElement>("header button") ?? null;
             setMobileOpen(true);
           }}
         />
-        <main className={styles.main} data-scroll-region="main">
+        <main className={`${styles.main} ${contentPadding ? styles.mainPadded : ""}`} data-scroll-region="main">
           {children}
         </main>
       </div>

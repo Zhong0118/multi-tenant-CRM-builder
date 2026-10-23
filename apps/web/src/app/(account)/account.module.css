@@ -1,53 +1,64 @@
-.accountPage {
-  min-height: 100vh;
-  padding: 46px clamp(18px, 6vw, 88px) 72px;
-  background: #f4f7f9;
-}
-.accountHeader,
-.accountContent {
-  max-width: 1080px;
-  margin-inline: auto;
-}
-.accountHeader {
-  display: flex;
-  gap: 28px;
-  align-items: flex-end;
-  justify-content: space-between;
-  margin-bottom: 30px;
-  padding-bottom: 24px;
-  border-bottom: 1px solid #d8e0e6;
-}
-.accountHeader h1 {
-  margin: 6px 0 8px;
-  color: #162532;
-  font-size: clamp(29px, 4vw, 42px);
-  letter-spacing: -0.03em;
-}
-.accountHeader p {
-  max-width: 650px;
-  color: #526473;
-  line-height: 1.7;
-}
-.accountActions {
-  display: flex;
-  flex: none;
-  gap: 10px;
-}
+/* Pages in the account shell (components/layout/account-shell). */
+
 .notice {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
-.detailWidth {
-  max-width: 760px;
+
+/* Waiting for an invitation: where the person is on the way to a workspace. */
+.steps {
+  display: flex;
+  flex-direction: column;
+  margin: 4px 0 28px;
+  list-style: none;
+  border-top: 1px solid var(--border-hairline);
 }
-@media (max-width: 680px) {
-  .accountPage {
-    padding: 30px 16px 50px;
-  }
-  .accountHeader {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-  .accountActions {
-    flex-wrap: wrap;
-  }
+
+.steps li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.steps strong {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.steps p {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.stepMark {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.steps li[data-state="done"] .stepMark {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.steps li[data-state="current"] .stepMark {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.steps li[data-state="pending"] strong {
+  color: var(--text-secondary);
 }
