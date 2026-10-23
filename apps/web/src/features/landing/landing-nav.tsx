@@ -2,16 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+
+import { NAV_LINKS } from "./content";
 import { LogoMark } from "./logo-mark";
 import styles from "./landing.module.css";
 
-export const SECTION_LINKS = [
-  { href: "#tables", label: "搭表" },
-  { href: "#pool", label: "线索公海" },
-  { href: "#access", label: "权限" },
-  { href: "#ai", label: "AI 助手" },
-  { href: "#faq", label: "常见问题" },
-] as const;
+const WIDE = "(min-width: 760px)";
 
 export function LandingNav() {
   const [open, setOpen] = useState(false);
@@ -24,9 +20,9 @@ export function LandingNav() {
       setOpen(false);
       toggleRef.current?.focus();
     };
-    // The menu only exists below the tablet breakpoint; widening the window
-    // must not leave the page locked behind an invisible open menu.
-    const wide = window.matchMedia("(min-width: 960px)");
+    // The menu only exists on narrow screens; widening the window must not
+    // leave an invisible menu open.
+    const wide = window.matchMedia(WIDE);
     const onWide = () => {
       if (wide.matches) setOpen(false);
     };
@@ -47,7 +43,7 @@ export function LandingNav() {
         </Link>
 
         <nav className={styles.navLinks} aria-label="页面导航">
-          {SECTION_LINKS.map((link) => (
+          {NAV_LINKS.map((link) => (
             <a key={link.href} href={link.href}>
               {link.label}
             </a>
@@ -76,21 +72,32 @@ export function LandingNav() {
         </button>
       </div>
 
-      <div id="landing-menu" className={styles.menuPanel} hidden={!open}>
-        <nav aria-label="页面导航（菜单）">
-          {SECTION_LINKS.map((link) => (
-            <a key={link.href} href={link.href} onClick={() => setOpen(false)}>
-              {link.label}
-            </a>
-          ))}
-        </nav>
-        <div className={styles.menuActions}>
-          <Link href="/login" className={styles.buttonPrimary}>
-            登录工作区
-          </Link>
-          <Link href="/register" className={styles.menuInvite}>
-            用手机号创建账号
-          </Link>
+      <div
+        id="landing-menu"
+        className={styles.menuPanel}
+        data-open={open || undefined}
+        inert={!open}
+      >
+        <div>
+          <nav aria-label="页面导航（菜单）">
+            {NAV_LINKS.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={() => setOpen(false)}
+              >
+                {link.label}
+              </a>
+            ))}
+          </nav>
+          <div className={styles.menuActions}>
+            <Link href="/register" className={styles.buttonPrimary}>
+              创建账号
+            </Link>
+            <Link href="/login" className={styles.buttonSecondary}>
+              登录工作区
+            </Link>
+          </div>
         </div>
       </div>
     </header>
