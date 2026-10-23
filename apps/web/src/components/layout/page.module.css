@@ -20,6 +20,20 @@
   max-width: 720px;
 }
 
+.page[data-width="reading"] .inner {
+  max-width: 1280px;
+}
+
+/* Complex configuration (designers, builders) may use the whole desktop
+   width; only a very wide screen gets margins. */
+.page[data-width="editor"] {
+  padding: 16px 20px 32px;
+}
+
+.page[data-width="editor"] .inner {
+  max-width: 1680px;
+}
+
 .page[data-width="bleed"] .inner {
   height: 100%;
 }

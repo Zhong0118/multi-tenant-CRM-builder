@@ -18,6 +18,33 @@ describe('ApiExceptionFilter', () => {
     });
   });
 
+  it('renders oversized body-parser requests as 413 without logging a server failure', () => {
+    const filter = new ApiExceptionFilter();
+    const error = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const tooLarge = Object.assign(new Error('request entity too large'), {
+      type: 'entity.too.large',
+      status: 413,
+      statusCode: 413,
+      limit: 102400,
+      length: 214402,
+    });
+
+    try {
+      expect(filter.toBody(tooLarge, 'req_413')).toEqual({
+        code: 'VALIDATION_FAILED',
+        message: '请求内容过大，请减少内容或分批提交。',
+        fieldErrors: {},
+        requestId: 'req_413',
+        status: 413,
+      });
+      expect(error).not.toHaveBeenCalled();
+    } finally {
+      error.mockRestore();
+    }
+  });
+
   it('logs an unexpected failure against its request id without leaking it', () => {
     const filter = new ApiExceptionFilter();
     const error = jest

@@ -21,10 +21,16 @@ import {
 } from "@/features/objects/object-types";
 
 import styles from "./records.module.css";
+import {
+  MemberIdentity,
+  memberSelectOptions,
+} from "@/components/identity/member-identity";
 
 export interface DynamicFieldMember {
   id: string;
   displayName: string | null;
+  /** Disabled members still label the records they own; pickers skip them. */
+  status?: "ACTIVE" | "DISABLED";
 }
 
 export interface DynamicFieldProps {
@@ -228,12 +234,11 @@ function EditableControl({
           className={styles.fullWidth}
           allowClear={!field.required}
           showSearch
-          optionFilterProp="label"
+          optionFilterProp="searchText"
           value={typeof value === "string" ? value : undefined}
-          options={members.map((member) => ({
-            value: member.id,
-            label: member.displayName ?? "未设置姓名",
-          }))}
+          options={memberSelectOptions(members, {
+            selected: typeof value === "string" ? value : undefined,
+          })}
           onChange={(next?: string) => onChange(next ?? null)}
         />
       );
@@ -358,8 +363,11 @@ function displayValue(
       return toKeys(value).map((key) => optionValue(field, key));
     case "MEMBER":
       return (
-        members.find((member) => member.id === value)?.displayName ??
-        String(value)
+        <MemberIdentity
+          size="sm"
+          member={members.find((member) => member.id === value)}
+          memberId={String(value)}
+        />
       );
     case "DATETIME":
       return dayjs(String(value)).format("YYYY-MM-DD HH:mm");

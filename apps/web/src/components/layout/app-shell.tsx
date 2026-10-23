@@ -11,6 +11,10 @@ import {
   type ReactNode,
 } from "react";
 
+import { App, ConfigProvider, type ThemeConfig } from "antd";
+
+import { WORKSPACE_THEME } from "@/components/theme/workspace-theme";
+
 import { Sidebar, type NavItemRenderState } from "./sidebar";
 import { TopHeader } from "./top-header";
 import styles from "./app-shell.module.css";
@@ -95,7 +99,11 @@ function subscribeViewport(listener: () => void) {
 }
 
 function getViewportSnapshot() {
-  return window.innerWidth < 768 ? "mobile" : window.innerWidth < 1200 ? "compact" : "desktop";
+  return window.innerWidth < 768
+    ? "mobile"
+    : window.innerWidth < 1200
+      ? "compact"
+      : "desktop";
 }
 
 function getViewportServerSnapshot() {
@@ -151,7 +159,11 @@ export function AppShell({
   const dragging = useRef(false);
   const navigationTrigger = useRef<HTMLElement | null>(null);
   const shell = useRef<HTMLDivElement>(null);
-  const viewport = useSyncExternalStore(subscribeViewport, getViewportSnapshot, getViewportServerSnapshot);
+  const viewport = useSyncExternalStore(
+    subscribeViewport,
+    getViewportSnapshot,
+    getViewportServerSnapshot,
+  );
   const collapsedPreference = useSyncExternalStore(
     subscribeCollapsed,
     getCollapsedSnapshot,
@@ -162,7 +174,8 @@ export function AppShell({
     getWidthSnapshot,
     getWidthServerSnapshot,
   );
-  const collapsed = viewport !== "mobile" && (collapsedPreference ?? viewport === "compact");
+  const collapsed =
+    viewport !== "mobile" && (collapsedPreference ?? viewport === "compact");
   const closeNavigation = useCallback(() => {
     setMobileOpen(false);
   }, []);
@@ -170,7 +183,9 @@ export function AppShell({
   useEffect(() => {
     if (!mobileOpen) return;
     const sidebar = shell.current?.querySelector<HTMLElement>("aside");
-    const background = shell.current?.querySelector<HTMLElement>(`.${styles.column}`);
+    const background = shell.current?.querySelector<HTMLElement>(
+      `.${styles.column}`,
+    );
     background?.setAttribute("inert", "");
     sidebar?.querySelector<HTMLElement>("a")?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
@@ -178,12 +193,19 @@ export function AppShell({
         event.preventDefault();
         closeNavigation();
       } else if (event.key === "Tab") {
-        const controls = Array.from(sidebar?.querySelectorAll<HTMLElement>(
-          'a[href], button:not(:disabled), [tabindex="0"]',
-        ) ?? []).filter((element) => {
-          for (let node: HTMLElement | null = element; node && node !== sidebar; node = node.parentElement) {
+        const controls = Array.from(
+          sidebar?.querySelectorAll<HTMLElement>(
+            'a[href], button:not(:disabled), [tabindex="0"]',
+          ) ?? [],
+        ).filter((element) => {
+          for (
+            let node: HTMLElement | null = element;
+            node && node !== sidebar;
+            node = node.parentElement
+          ) {
             const style = getComputedStyle(node);
-            if (style.display === "none" || style.visibility === "hidden") return false;
+            if (style.display === "none" || style.visibility === "hidden")
+              return false;
           }
           return true;
         });
@@ -228,16 +250,19 @@ export function AppShell({
     persistCollapsed(next.collapsed);
   }, []);
 
-  const onResizePointerDown = useCallback((event: PointerEvent<HTMLElement>) => {
-    if (event.button !== 0) return;
-    dragging.current = true;
-    setResizing(true);
-    try {
-      event.currentTarget.setPointerCapture?.(event.pointerId);
-    } catch {
-      // jsdom and synthetic pointer events have no active pointer to capture.
-    }
-  }, []);
+  const onResizePointerDown = useCallback(
+    (event: PointerEvent<HTMLElement>) => {
+      if (event.button !== 0) return;
+      dragging.current = true;
+      setResizing(true);
+      try {
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+      } catch {
+        // jsdom and synthetic pointer events have no active pointer to capture.
+      }
+    },
+    [],
+  );
 
   const onResizePointerMove = useCallback(
     (event: PointerEvent<HTMLElement>) => {
@@ -261,53 +286,69 @@ export function AppShell({
   }, []);
 
   return (
-    <div
-      className={`${styles.shell} ${headerLeft ? "" : styles.shellHeaderless}`}
-      ref={shell}
-    >
-      {mobileOpen ? (
-        <button
-          type="button"
-          className={styles.backdrop}
-          aria-label="关闭导航"
-          onClick={closeNavigation}
-        />
-      ) : null}
-      <Sidebar
-        brand={brand}
-        brandIcon={brandIcon}
-        brandHref={brandHref}
-        user={user}
-        roleLabel={roleLabel}
-        showWorkspaceSwitch={showWorkspaceSwitch}
-        navGroups={navGroups}
-        footerItems={footerItems}
-        pathname={pathname}
-        collapsed={mobileOpen ? false : collapsed}
-        width={width}
-        resizing={resizing}
-        onToggle={toggleCollapsed}
-        mobileOpen={mobileOpen}
-        onMobileClose={() => { if (mobileOpen) closeNavigation(); }}
-        onResizePointerDown={onResizePointerDown}
-        onResizePointerMove={onResizePointerMove}
-        onResizePointerUp={onResizePointerUp}
-        onResizeDoubleClick={onResizeDoubleClick}
-      />
-      <div className={styles.column}>
-        <TopHeader
-          brand={brand}
-          headerLeft={headerLeft}
-          headerActions={headerActions}
-          onOpenNavigation={() => {
-            navigationTrigger.current = shell.current?.querySelector<HTMLElement>("header button") ?? null;
-            setMobileOpen(true);
-          }}
-        />
-        <main className={`${styles.main} ${contentPadding ? styles.mainPadded : ""}`} data-scroll-region="main">
-          {children}
-        </main>
-      </div>
-    </div>
+    <ConfigProvider theme={SHELL_THEME}>
+      <App component={false}>
+        <div
+          className={`${styles.shell} ${headerLeft ? "" : styles.shellHeaderless}`}
+          ref={shell}
+          data-ui="workspace"
+        >
+          {mobileOpen ? (
+            <button
+              type="button"
+              className={styles.backdrop}
+              aria-label="关闭导航"
+              onClick={closeNavigation}
+            />
+          ) : null}
+          <Sidebar
+            brand={brand}
+            brandIcon={brandIcon}
+            brandHref={brandHref}
+            user={user}
+            roleLabel={roleLabel}
+            showWorkspaceSwitch={showWorkspaceSwitch}
+            navGroups={navGroups}
+            footerItems={footerItems}
+            pathname={pathname}
+            collapsed={mobileOpen ? false : collapsed}
+            width={width}
+            resizing={resizing}
+            onToggle={toggleCollapsed}
+            mobileOpen={mobileOpen}
+            onMobileClose={() => {
+              if (mobileOpen) closeNavigation();
+            }}
+            onResizePointerDown={onResizePointerDown}
+            onResizePointerMove={onResizePointerMove}
+            onResizePointerUp={onResizePointerUp}
+            onResizeDoubleClick={onResizeDoubleClick}
+          />
+          <div className={styles.column}>
+            <TopHeader
+              brand={brand}
+              headerLeft={headerLeft}
+              headerActions={headerActions}
+              onOpenNavigation={() => {
+                navigationTrigger.current =
+                  shell.current?.querySelector<HTMLElement>("header button") ??
+                  null;
+                setMobileOpen(true);
+              }}
+            />
+            <main
+              className={`${styles.main} ${contentPadding ? styles.mainPadded : ""}`}
+              data-scroll-region="main"
+            >
+              {children}
+            </main>
+          </div>
+        </div>
+      </App>
+    </ConfigProvider>
   );
 }
+
+/* The workspace palette replaces the public theme wholesale (inherit: false),
+   so no teal tint from app/providers.tsx leaks into a signed-in screen. */
+const SHELL_THEME: ThemeConfig = { ...WORKSPACE_THEME, inherit: false };

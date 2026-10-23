@@ -1,11 +1,12 @@
-/* The record page: a 48px top bar, then a 360px sheet beside the tab area.
-   Both columns scroll with the page; the top bar stays put. */
+/* The record page: a sticky top bar, then the record in a wide main column
+   (fields, then activity tabs) beside a rail with ownership and workflow.
+   One column below 1024px. Everything scrolls with the app's main. */
 
 .page {
   display: flex;
   flex-direction: column;
   min-height: 100%;
-  background: var(--bg-surface);
+  background: var(--bg-page);
 }
 
 /* ---------- top bar ---------- */
@@ -20,7 +21,7 @@
   justify-content: space-between;
   height: 48px;
   padding: 0 16px 0 24px;
-  border-bottom: 1px solid var(--border-hairline);
+  border-bottom: 1px solid var(--border-default);
   background: var(--bg-surface);
 }
 
@@ -84,20 +85,63 @@
 
 /* ---------- body ---------- */
 
-.body {
+.layout {
   display: grid;
   flex: 1;
-  grid-template-columns: 340px minmax(0, 1fr);
-  align-items: stretch;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 16px;
+  align-items: start;
+  width: 100%;
+  max-width: 1360px;
+  padding: 20px 24px 48px;
+  margin: 0 auto;
 }
 
-.sheet {
+.mainColumn,
+.rail {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   min-width: 0;
-  padding: 20px 24px 40px;
-  border-right: 1px solid var(--border-hairline);
+}
+
+.rail {
+  position: sticky;
+  top: 64px;
+}
+
+.card,
+.railCard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-panel);
+  background: var(--bg-surface);
+}
+
+.railCard {
+  gap: 12px;
+  padding: 16px;
+}
+
+/* The workflow panel renders nothing when the table has no published flow. */
+.railCard:empty {
+  display: none;
+}
+
+.cardTitle {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.crumbBack {
+  color: var(--text-tertiary);
+  font-size: 12px;
 }
 
 .identity h1 {
@@ -122,22 +166,13 @@
   font-variant-numeric: tabular-nums;
 }
 
-.block {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.blockTitle {
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 20px;
-}
-
-.fields {
-  display: flex;
-  flex-direction: column;
+/* Fields in two columns; notes and long text take the full width. */
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 32px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-hairline);
 }
 
 .field {
@@ -145,7 +180,13 @@
   grid-template-columns: 112px minmax(0, 1fr);
   gap: 12px;
   align-items: baseline;
-  padding: 6px 0;
+  min-width: 0;
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--border-hairline);
+}
+
+.field[data-span="full"] {
+  grid-column: 1 / -1;
 }
 
 .field dt {
@@ -164,11 +205,47 @@
   font-size: 14px;
   line-height: 22px;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.field dd[data-type="NUMBER"],
+.field dd[data-type="MONEY"] {
+  font-variant-numeric: tabular-nums;
 }
 
 .fieldLock {
   color: var(--text-tertiary);
   font-size: 11px;
+}
+
+.editor {
+  padding-top: 14px;
+  border-top: 1px solid var(--border-hairline);
+}
+
+.facts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.facts > div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 32px;
+}
+
+.facts dt {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.facts dd {
+  min-width: 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
 }
 
 .hint {
@@ -183,81 +260,12 @@
   gap: 8px;
 }
 
-.sections {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0;
-  padding: 20px 24px 48px;
+.tabs :global(.ant-tabs-nav) {
+  margin-bottom: 12px;
 }
 
-/* Key values in a row of tiles above the sections. */
-.highlights {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  overflow: hidden;
-  border: 1px solid var(--border-hairline);
-  border-radius: var(--radius-reading);
-}
-
-.highlight {
-  min-width: 0;
-  padding: 12px 16px;
-  border-right: 1px solid var(--border-hairline);
-}
-
-.highlight:last-child {
-  border-right: 0;
-}
-
-.highlight dt {
-  color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.highlight dd {
-  margin-top: 4px;
-  overflow: hidden;
-  color: var(--text-primary);
-  font-size: 15px;
+.tabs :global(.ant-tabs-tab) {
   font-weight: 500;
-  line-height: 24px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Each related area folds under its own header with a count, so a record with
-   five follow-ups and no files shows the five and a folded 附件 0. */
-.collapse:global(.ant-collapse) {
-  border-top: 1px solid var(--border-hairline);
-  border-radius: 0;
-}
-
-.collapse :global(.ant-collapse-item) {
-  border-bottom: 1px solid var(--border-hairline);
-}
-
-.collapse :global(.ant-collapse-item > .ant-collapse-header) {
-  align-items: center;
-  padding: 12px 4px;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 22px;
-}
-
-.collapse :global(.ant-collapse-item > .ant-collapse-header .ant-collapse-expand-icon) {
-  height: 22px;
-  padding-inline-end: 10px;
-  color: var(--text-tertiary);
-}
-
-.collapse :global(.ant-collapse-item > .ant-collapse-header:hover) {
-  background: var(--bg-hover);
-}
-
-.collapse :global(.ant-collapse-panel > .ant-collapse-body) {
-  padding: 4px 4px 20px 30px;
 }
 
 .tabLabel {
@@ -267,19 +275,73 @@
 }
 
 .tabCount {
-  color: var(--text-tertiary);
+  min-width: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--color-neutral-soft, #eef1f5);
+  color: var(--text-secondary);
   font-size: 12px;
+  line-height: 18px;
+  text-align: center;
   font-variant-numeric: tabular-nums;
 }
 
+/* The tab already names each panel, so a panel's own h2 is kept for
+   assistive technology only; empty states are one quiet line. */
+.tabs :global(.ant-tabs-tabpane) > section > h2,
+.tabs :global(.ant-tabs-tabpane) h2:first-child {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.tabs :global(.ant-empty) {
+  margin: 4px 0;
+  text-align: left;
+}
+
+.tabs :global(.ant-empty-image) {
+  display: none;
+}
+
+.tabs :global(.ant-empty-description) {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+@media (max-width: 1279px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+}
+
+/* One column: fields, then ownership and workflow, then activity. The two
+   columns dissolve so their cards can take that order. */
 @media (max-width: 1023px) {
-  .body {
-    grid-template-columns: minmax(0, 1fr);
+  .layout {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  .sheet {
-    border-right: 0;
-    border-bottom: 1px solid var(--border-hairline);
+  .mainColumn,
+  .rail {
+    display: contents;
+  }
+
+  .card[data-slot="activity"] {
+    order: 3;
+  }
+
+  .railCard {
+    order: 2;
+  }
+
+  .fieldGrid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -292,36 +354,18 @@
     display: none;
   }
 
-  .sheet {
-    padding: 16px 14px 24px;
+  .layout {
+    gap: 12px;
+    padding: 12px 12px 32px;
   }
 
-  .sections {
-    padding: 16px 14px 32px;
+  .card,
+  .railCard {
+    padding: 14px;
   }
-}
 
-/* The section header already names each panel, so a panel's own h2 is kept
-   for assistive technology only; empty states are one quiet line. */
-.collapse :global(.ant-collapse-body) h2 {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-
-.collapse :global(.ant-collapse-body .ant-empty) {
-  margin: 4px 0;
-  text-align: left;
-}
-
-.collapse :global(.ant-collapse-body .ant-empty-image) {
-  display: none;
-}
-
-.collapse :global(.ant-collapse-body .ant-empty-description) {
-  color: var(--text-secondary);
-  font-size: 13px;
+  .field {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
 }

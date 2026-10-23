@@ -1,8 +1,8 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { Alert, Button, Form, Select, Space } from "antd";
-import { useState } from "react";
+import { Alert, Button, Form, Modal, Select, Space } from "antd";
+import { useEffect, useState } from "react";
 
 import type {
   PublishedFieldView,
@@ -15,6 +15,7 @@ import { DynamicField, type DynamicFieldMember } from "./dynamic-field";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
 
 import styles from "./records.module.css";
+import { memberSelectOptions } from "@/components/identity/member-identity";
 
 export interface RecordFormProps {
   tenantCode: string;
@@ -27,6 +28,8 @@ export interface RecordFormProps {
   onCancel?: () => void;
   /** What leaving the owner empty means on this table, when it differs from "unassigned". */
   ownerHint?: string;
+  /** Told whether the form holds changes that are not saved yet. */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 /**
@@ -47,6 +50,7 @@ export function RecordForm({
   onSaved,
   onCancel,
   ownerHint,
+  onDirtyChange,
 }: RecordFormProps) {
   const editable = schema.fields.filter((field) => field.access === "EDIT");
   const [values, setValues] = useState<Record<string, unknown>>(() =>
@@ -60,7 +64,6 @@ export function RecordForm({
   const [conflicted, setConflicted] = useState(false);
   const [refreshWarning, setRefreshWarning] = useState(false);
   const [committed, setCommitted] = useState(false);
-
   const mode = record ? "UPDATE" : "CREATE";
   const objectCode = schema.object.code;
   const canSave = record ? schema.actions.canUpdate : schema.actions.canCreate;
@@ -104,6 +107,46 @@ export function RecordForm({
     },
   });
 
+  const [modal, modalHolder] = Modal.useModal();
+  const [pristine] = useState(() =>
+    JSON.stringify({
+      values: initialValues(schema, record),
+      owner: record?.ownerMemberId ?? undefined,
+    }),
+  );
+  // A save already on its way is not "unsaved": cancelling then just closes.
+  const dirty =
+    !committed &&
+    !save.isPending &&
+    JSON.stringify({ values, owner }) !== pristine;
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+
+  // Reloading or closing the tab with unsaved edits asks first.
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
+  function cancel() {
+    if (!onCancel) return;
+    if (!dirty) return onCancel();
+    void modal.confirm({
+      title: "放弃未保存的修改？",
+      content: "刚才的修改还没有保存，离开后会丢失。",
+      okText: "放弃修改",
+      okButtonProps: { danger: true },
+      cancelText: "继续编辑",
+      onOk: onCancel,
+    });
+  }
+
   function submit() {
     if (!canSave || committed || save.isPending) return;
     const missing = editable.filter(
@@ -126,7 +169,13 @@ export function RecordForm({
 
   return (
     <div className={styles.form}>
-      {refreshWarning ? <Alert type="warning" showIcon title="记录已保存，但刷新暂时失败。请重新载入查看最新记录，不要重复提交。" /> : null}
+      {refreshWarning ? (
+        <Alert
+          type="warning"
+          showIcon
+          title="记录已保存，但刷新暂时失败。请重新载入查看最新记录，不要重复提交。"
+        />
+      ) : null}
       {summary ? (
         <Alert
           type="error"
@@ -169,13 +218,10 @@ export function RecordForm({
                 disabled={!canSave || save.isPending || committed}
                 allowClear
                 showSearch
-                optionFilterProp="label"
+                optionFilterProp="searchText"
                 value={owner}
                 onChange={(next?: string) => setOwner(next)}
-                options={members.map((member) => ({
-                  value: member.id,
-                  label: member.displayName ?? "未设置姓名",
-                }))}
+                options={memberSelectOptions(members, { selected: owner })}
               />
             </Form.Item>
           ) : null}
@@ -183,11 +229,17 @@ export function RecordForm({
       </Form>
 
       <Space>
-        <Button type="primary" loading={save.isPending} disabled={!canSave || committed} onClick={submit}>
+        <Button
+          type="primary"
+          loading={save.isPending}
+          disabled={!canSave || committed}
+          onClick={submit}
+        >
           {mode === "CREATE" ? "创建记录" : "保存修改"}
         </Button>
-        {onCancel ? <Button onClick={onCancel}>取消</Button> : null}
+        {onCancel ? <Button onClick={cancel}>取消</Button> : null}
       </Space>
+      {modalHolder}
     </div>
   );
 }
