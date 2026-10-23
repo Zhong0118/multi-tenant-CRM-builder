@@ -38,6 +38,24 @@ describe("LandingPage", () => {
     }
   });
 
+  it("exposes every customer stage without requiring scroll animation", () => {
+    render(<LandingPage />);
+    const flow = within(screen.getByRole("list", { name: "客户完整流转说明" }));
+    expect(flow.getAllByRole("listitem")).toHaveLength(4);
+    for (const stage of [
+      "线索公海",
+      "我的待联系",
+      "我的跟进客户",
+      "我的成交客户",
+    ]) {
+      expect(flow.getByText(stage, { exact: true })).toBeInTheDocument();
+    }
+    expect(flow.getByText(/明确需求后标记询单/)).toBeInTheDocument();
+    expect(
+      flow.getByText(/合同达到管理员配置的确认状态后/),
+    ).toBeInTheDocument();
+  });
+
   it("shows the filing number in the footer, linked to the official lookup", () => {
     render(<LandingPage />);
     const icp = screen.getByRole("link", { name: ICP_RECORD.number });
