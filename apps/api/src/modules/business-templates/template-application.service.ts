@@ -64,7 +64,7 @@ export class TemplateApplicationService {
       const blockingReason =
         target.status !== 'DRAFT' && target.status !== 'ACTIVE'
           ? 'TENANT_NOT_DRAFT'
-          : objectCount > 0
+          : !(await store.assertTenantEmpty(tenantId))
             ? 'TARGET_NOT_EMPTY'
             : null;
       return {
@@ -158,7 +158,7 @@ export class TemplateApplicationService {
     await store.enterTenant(input.tenantId);
     if (!(await store.assertTenantEmpty(input.tenantId))) {
       throw applicationNotAllowed(
-        '目标公司已经存在业务对象，不能使用初始化模板覆盖。',
+        '目标公司已经存在业务表或看板配置，不能使用初始化模板覆盖。请保留现有配置并手动配置业务表，或选择尚未配置的公司。',
       );
     }
 

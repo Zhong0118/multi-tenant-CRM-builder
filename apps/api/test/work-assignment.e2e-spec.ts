@@ -235,6 +235,138 @@ describe('assigning work to members (HTTP + PostgreSQL)', () => {
       .expect(403);
   });
 
+  it('transfers open work of both kinds before offboarding and preserves completed history', async () => {
+    const memberPath = `/members/${f.employee.memberId}`;
+    // Leave only general tasks first: these alone must prevent direct disable.
+    await h.adminDatabase.record.updateMany({
+      where: { tenantId: f.tenantA.id, ownerMemberId: f.employee.memberId },
+      data: { ownerMemberId: f.admin.memberId },
+    });
+    const tasks: Task[] = [];
+    for (const status of ['OPEN', 'DONE', 'CANCELLED']) {
+      const created = json<Task>(
+        await send('post', '/work-tasks', {
+          title: `Offboarding ${status}`,
+          dueAt: due(4),
+          assigneeMemberId: f.employee.memberId,
+        }).expect(201),
+      );
+      tasks.push(
+        status === 'OPEN'
+          ? created
+          : json<Task>(
+              await send('patch', `/work-tasks/${created.id}`, {
+                version: created.version,
+                status,
+                result: status === 'DONE' ? 'Delivered' : '',
+              }).expect(200),
+            ),
+      );
+    }
+    await get(`${memberPath}/offboarding`)
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toMatchObject({ records: 0, openTasks: 1 });
+      });
+    await send('patch', memberPath, { status: 'DISABLED' }).expect(409);
+    const historyBefore = await h.adminDatabase.workTask.findMany({
+      where: { id: { in: tasks.slice(1).map((task) => task.id) } },
+      orderBy: { id: 'asc' },
+    });
+    const followUps = [];
+    for (const status of ['OPEN', 'DONE', 'CANCELLED']) {
+      followUps.push(
+        await h.adminDatabase.recordFollowUp.create({
+          data: {
+            tenantId: f.tenantA.id,
+            recordId: f.ownedRecord.id,
+            assigneeMemberId: f.employee.memberId,
+            title: `Legacy ${status}`,
+            dueAt: new Date(due(4)),
+            status,
+          },
+        }),
+      );
+    }
+    const foreignTask = await h.adminDatabase.workTask.create({
+      data: {
+        tenantId: f.tenantB.id,
+        assigneeMemberId: f.tenantBAdmin.memberId,
+        createdByMemberId: f.tenantBAdmin.memberId,
+        title: 'Other tenant',
+        dueAt: new Date(due(4)),
+      },
+    });
+    await get(`${memberPath}/offboarding`)
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toMatchObject({ records: 0, openTasks: 2 });
+      });
+    await send('post', `${memberPath}/offboarding`, {
+      recipientMemberId: f.admin.memberId,
+    })
+      .expect(201)
+      .expect({ records: 0, openTasks: 2 });
+    expect(
+      await h.adminDatabase.workTask.findUniqueOrThrow({
+        where: { id: tasks[0].id },
+      }),
+    ).toMatchObject({
+      assigneeMemberId: f.admin.memberId,
+      version: tasks[0].version + 1,
+      status: 'OPEN',
+      createdByMemberId: f.admin.memberId,
+    });
+    expect(
+      await h.adminDatabase.recordFollowUp.findUniqueOrThrow({
+        where: { id: followUps[0].id },
+      }),
+    ).toMatchObject({
+      assigneeMemberId: f.admin.memberId,
+      version: 2,
+      status: 'OPEN',
+    });
+    expect(
+      await h.adminDatabase.workTask.findMany({
+        where: { id: { in: tasks.slice(1).map((task) => task.id) } },
+        orderBy: { id: 'asc' },
+      }),
+    ).toEqual(historyBefore);
+    for (const history of followUps.slice(1))
+      expect(
+        await h.adminDatabase.recordFollowUp.findUniqueOrThrow({
+          where: { id: history.id },
+        }),
+      ).toEqual(history);
+    expect(
+      await h.adminDatabase.workTask.findUniqueOrThrow({
+        where: { id: foreignTask.id },
+      }),
+    ).toEqual(foreignTask);
+    expect(
+      await h.adminDatabase.auditLog.findFirstOrThrow({
+        where: {
+          tenantId: f.tenantA.id,
+          action: 'membership.offboarded',
+          resourceId: f.employee.memberId,
+        },
+      }),
+    ).toMatchObject({
+      after: {
+        recipientMemberId: f.admin.memberId,
+        records: 0,
+        openTasks: 2,
+        status: 'DISABLED',
+      },
+    });
+    await get('/work-tasks', f.employee).expect(403);
+    // An administrator holding the old version must reload the transferred task.
+    await send('patch', `/work-tasks/${tasks[0].id}`, {
+      version: tasks[0].version,
+      status: 'DONE',
+    }).expect(409);
+  });
+
   it('rechecks the recipient and the actor where the task commits', async () => {
     const disabled = await parkedBehind(
       f.otherEmployee.memberId,

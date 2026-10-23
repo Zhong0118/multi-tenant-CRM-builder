@@ -387,7 +387,12 @@ class PrismaTemplateApplicationStore implements TemplateApplicationStore {
   }
 
   async assertTenantEmpty(tenantId: string): Promise<boolean> {
-    return (await this.countTenantObjects(tenantId)) === 0;
+    return (
+      (await this.countTenantObjects(tenantId)) === 0 &&
+      (await this.transaction.tenantDashboardConfiguration.count({
+        where: { tenantId },
+      })) === 0
+    );
   }
 
   async insertTenantConfiguration(

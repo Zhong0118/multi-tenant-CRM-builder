@@ -42,6 +42,35 @@ describe('TemplateApplicationService', () => {
     expect(state.applications).toHaveLength(1);
   });
 
+  it('refuses initialization and reports ineligibility when an active company already has a dashboard', async () => {
+    const { service, state } = applicationFixture({
+      tenantStatus: 'ACTIVE',
+      configuration: configurationWithDashboard(),
+    });
+    state.dashboard = {
+      tenantId: 'tenant-1',
+      draftVersion: 1,
+      draftConfiguration: dashboardPreset(),
+      sourceTemplateVersionId: 'existing-version',
+      activePublicationId: null,
+    };
+    const existing = structuredClone(state.dashboard);
+    await expect(
+      service.summarizeTarget(platformAdmin, 'tenant-1'),
+    ).resolves.toMatchObject({
+      objectCount: 0,
+      canApplyTemplate: false,
+      blockingReason: 'TARGET_NOT_EMPTY',
+    });
+    await expect(
+      service.apply(platformAdmin, applicationInput(), meta),
+    ).rejects.toMatchObject({ code: 'TEMPLATE_APPLICATION_NOT_ALLOWED' });
+    expect(state.dashboard).toEqual(existing);
+    expect(state.objects).toEqual([]);
+    expect(state.applications).toEqual([]);
+    expect(state.audits).toEqual([]);
+  });
+
   it('keeps the template default view keyword search fields', () => {
     const source = configuration();
     source.objects[0].defaultView!.searchFieldKeys = ['phone'];
@@ -603,7 +632,10 @@ class MemoryApplicationStore implements TemplateApplicationStore {
 
   async assertTenantEmpty(tenantId: string) {
     this.events.push('assertTenantEmpty');
-    return (await this.countTenantObjects(tenantId)) === 0;
+    return (
+      (await this.countTenantObjects(tenantId)) === 0 &&
+      this.state.dashboard?.tenantId !== tenantId
+    );
   }
 
   async insertTenantConfiguration(hydrated: HydratedTenantConfiguration) {

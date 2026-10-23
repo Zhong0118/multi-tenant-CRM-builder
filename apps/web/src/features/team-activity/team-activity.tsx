@@ -8,6 +8,7 @@ import {
   DatePicker,
   Drawer,
   Empty,
+  Pagination,
   Segmented,
   Select,
   Table,
@@ -439,11 +440,21 @@ function TeamTasks({
 }) {
   const [status, setStatus] = useState<"OPEN" | "DONE" | "CANCELLED">("OPEN");
   const [assignee, setAssignee] = useState<string>();
-  const filter = { scope: "team" as const, status, assigneeMemberId: assignee };
+  const [page, setPage] = useState(1);
+  const filter = {
+    scope: "team" as const,
+    status,
+    assigneeMemberId: assignee,
+    page,
+  };
   const tasks = useQuery({
     queryKey: workKeys.tasks(tenantCode, filter),
     queryFn: () => api.listTasks(tenantCode, filter),
   });
+  if (tasks.data) {
+    const lastPage = Math.max(1, Math.ceil(tasks.data.total / tasks.data.limit));
+    if (page > lastPage) setPage(lastPage);
+  }
   return (
     <PageSection
       title="团队任务"
@@ -456,7 +467,10 @@ function TeamTasks({
             allowClear
             placeholder="全部成员"
             value={assignee}
-            onChange={setAssignee}
+            onChange={(value) => {
+              setAssignee(value);
+              setPage(1);
+            }}
             options={members.map((m) => ({ value: m.memberId, label: m.name }))}
             style={{ width: 140 }}
           />
@@ -464,7 +478,10 @@ function TeamTasks({
             aria-label="任务状态"
             size="small"
             value={status}
-            onChange={(value) => setStatus(value as typeof status)}
+            onChange={(value) => {
+              setStatus(value as typeof status);
+              setPage(1);
+            }}
             options={[
               { value: "OPEN", label: "进行中" },
               { value: "DONE", label: "已完成" },
@@ -490,6 +507,17 @@ function TeamTasks({
       </ul>
       {tasks.isSuccess && tasks.data.items.length === 0 ? (
         <Typography.Text type="secondary">没有符合条件的任务。</Typography.Text>
+      ) : null}
+      {tasks.data ? (
+        <Pagination
+          size="small"
+          current={page}
+          total={tasks.data.total}
+          pageSize={tasks.data.limit}
+          showSizeChanger={false}
+          showTotal={(total) => `共 ${total} 项`}
+          onChange={setPage}
+        />
       ) : null}
     </PageSection>
   );

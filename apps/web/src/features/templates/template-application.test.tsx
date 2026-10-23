@@ -460,8 +460,33 @@ describe("TenantBusinessConfiguration", () => {
       screen.queryByRole("button", { name: /应用业务模板/ }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText("公司已有业务表。模板只用于还没有业务表的公司，不会覆盖或合并已有配置。"),
+      screen.getByText("公司已有业务表或看板配置。模板不会覆盖或合并已有配置，请手动配置业务表或选择尚未配置的公司。"),
     ).toBeInTheDocument();
+  });
+
+  it("does not recommend initialization when an active company has only dashboard configuration", () => {
+    renderWithQuery(
+      <TenantBusinessConfiguration
+        tenant={{ ...tenant, status: "ACTIVE" }}
+        initialSummary={{
+          objectCount: 0,
+          canApplyTemplate: false,
+          blockingReason: "TARGET_NOT_EMPTY",
+          application: null,
+          objects: [],
+        }}
+        api={templateApi()}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /应用业务模板/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/可以现在应用一套已发布模板/)).not.toBeInTheDocument();
+    expect(screen.queryByText("暂不使用模板")).not.toBeInTheDocument();
+    expect(screen.getByText(/公司已有业务表或看板配置/)).toBeInTheDocument();
+    expect(screen.getByText(/模板不会覆盖或合并已有配置/)).toBeInTheDocument();
+    expect(screen.getByText(/请公司管理员登录自己的账号/)).toBeInTheDocument();
   });
 
   it("lists the company's tables read-only, with deactivated ones marked", () => {

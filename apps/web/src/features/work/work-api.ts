@@ -14,6 +14,7 @@ export type SaveDailyReport = components["schemas"]["SaveDailyReportDto"];
 export type WorkCounts = components["schemas"]["TeamActivityCountsDto"];
 
 export interface WorkTaskQuery {
+  page?: number;
   scope?: "mine" | "team";
   status?: "OPEN" | "DONE" | "CANCELLED";
   assigneeMemberId?: string;
@@ -30,7 +31,7 @@ export const workApi = {
       await browserApiClient.GET("/api/v1/workspaces/{tenantCode}/work-tasks", {
         params: {
           path: { tenantCode },
-          query: { ...query, page: 1, limit: 100 },
+          query: { ...query, page: query.page ?? 1, limit: 100 },
         },
       }),
     );

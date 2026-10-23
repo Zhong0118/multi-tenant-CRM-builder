@@ -8,6 +8,7 @@ import {
   DatePicker,
   Empty,
   Input,
+  Pagination,
   Segmented,
   Tag,
   Typography,
@@ -58,11 +59,16 @@ export function MyWork({
 
 function MyTasks({ tenantCode, api }: { tenantCode: string; api: WorkApi }) {
   const [status, setStatus] = useState<"OPEN" | "DONE">("OPEN");
+  const [page, setPage] = useState(1);
   const [adding, setAdding] = useState(false);
   const query = useQuery({
-    queryKey: workKeys.tasks(tenantCode, { status }),
-    queryFn: () => api.listTasks(tenantCode, { status }),
+    queryKey: workKeys.tasks(tenantCode, { status, page }),
+    queryFn: () => api.listTasks(tenantCode, { status, page }),
   });
+  if (query.data) {
+    const lastPage = Math.max(1, Math.ceil(query.data.total / query.data.limit));
+    if (page > lastPage) setPage(lastPage);
+  }
   return (
     <PageSection
       title="我的任务"
@@ -81,7 +87,10 @@ function MyTasks({ tenantCode, api }: { tenantCode: string; api: WorkApi }) {
       <Segmented
         aria-label="任务状态"
         value={status}
-        onChange={(value) => setStatus(value as "OPEN" | "DONE")}
+        onChange={(value) => {
+          setStatus(value as "OPEN" | "DONE");
+          setPage(1);
+        }}
         options={[
           { value: "OPEN", label: "进行中" },
           { value: "DONE", label: "已完成" },
@@ -113,6 +122,17 @@ function MyTasks({ tenantCode, api }: { tenantCode: string; api: WorkApi }) {
           description={
             status === "OPEN" ? "没有进行中的任务" : "还没有完成的任务"
           }
+        />
+      ) : null}
+      {query.data ? (
+        <Pagination
+          size="small"
+          current={page}
+          total={query.data.total}
+          pageSize={query.data.limit}
+          showSizeChanger={false}
+          showTotal={(total) => `共 ${total} 项`}
+          onChange={setPage}
         />
       ) : null}
     </PageSection>

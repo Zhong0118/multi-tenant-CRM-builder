@@ -143,9 +143,11 @@ export function TenantBusinessConfiguration({
         <div>
           <h2>初始化业务表</h2>
           <p>
-            {summary.objectCount === 0
+            {summary.canApplyTemplate
               ? "模板只是加速器。可以现在应用一套已发布模板，也可以暂不使用，等公司启用后由管理员手工创建。"
-              : `当前公司已有 ${summary.objectCount} 张业务表。`}
+              : summary.objectCount === 0
+                ? "当前公司尚无业务表，暂时不能使用初始化模板。"
+                : `当前公司已有 ${summary.objectCount} 张业务表。`}
           </p>
         </div>
       </div>
@@ -426,7 +428,7 @@ function blockingReasonText(
 ) {
   switch (reason) {
     case "TARGET_NOT_EMPTY":
-      return "公司已有业务表。模板只用于还没有业务表的公司，不会覆盖或合并已有配置。";
+      return "公司已有业务表或看板配置。模板不会覆盖或合并已有配置，请手动配置业务表或选择尚未配置的公司。";
     case "TENANT_NOT_DRAFT":
       return tenantStatus === "SUSPENDED" || tenantStatus === "CLOSED"
         ? "公司已暂停或关闭，不能应用模板。"
