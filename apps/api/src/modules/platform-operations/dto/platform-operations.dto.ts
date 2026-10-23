@@ -1,6 +1,8 @@
 import { Type } from 'class-transformer';
 import {
+  IsIn,
   IsInt,
+  IsISO8601,
   IsOptional,
   IsString,
   IsUUID,
@@ -9,6 +11,7 @@ import {
   Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Matches } from 'class-validator';
 
 export class PlatformPageQueryDto {
   @ApiPropertyOptional({ type: Number, minimum: 1, default: 1 })
@@ -44,6 +47,51 @@ export class PlatformAuditQueryDto extends PlatformPageQueryDto {
   @IsString()
   @MaxLength(100)
   resourceType?: string;
+}
+
+/** The platform audit list's own filters; company audit defines its own range. */
+export class PlatformAuditFilterDto extends PlatformAuditQueryDto {
+  @ApiPropertyOptional({ enum: ['USER', 'SYSTEM', 'INTEGRATION'] })
+  @IsOptional()
+  @IsIn(['USER', 'SYSTEM', 'INTEGRATION'])
+  actorType?: 'USER' | 'SYSTEM' | 'INTEGRATION';
+
+  @ApiPropertyOptional({
+    example: '2026-10-01',
+    description: 'First day, inclusive, in Beijing time.',
+  })
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  @IsISO8601({ strict: true })
+  from?: string;
+
+  @ApiPropertyOptional({
+    example: '2026-10-22',
+    description: 'Last day, inclusive, in Beijing time.',
+  })
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  @IsISO8601({ strict: true })
+  to?: string;
+}
+
+export class PlatformAuditFacetQueryDto {
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  tenantId?: string;
+}
+
+export class PlatformAuditFacetDto {
+  @ApiProperty() value!: string;
+  @ApiProperty() count!: number;
+}
+
+export class PlatformAuditFacetsDto {
+  @ApiProperty({ type: PlatformAuditFacetDto, isArray: true })
+  actions!: PlatformAuditFacetDto[];
+  @ApiProperty({ type: PlatformAuditFacetDto, isArray: true })
+  resourceTypes!: PlatformAuditFacetDto[];
 }
 
 export class PlatformAuditItemDto {

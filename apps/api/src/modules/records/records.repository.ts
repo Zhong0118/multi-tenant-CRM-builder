@@ -21,6 +21,7 @@ import type { AuditEvent } from '../audit/audit-event';
 import { AuditService } from '../audit/audit.service';
 import {
   MEMBER_ACTIVITY_TYPES,
+  type ActivityOutcome,
   type MemberActivityType,
   type RecordActivity,
 } from './record-activity';
@@ -219,6 +220,11 @@ export interface RecordsStore {
   ): Promise<void>;
   memberExists(memberId: string): Promise<boolean>;
   lockActiveOwners(ownerId: string | null, objectCode?: string): Promise<void>;
+  /** The staged-pool settings of a table, or null when it does not run one. */
+  findPoolLifecycle?(objectCode: string): Promise<{
+    contactTtlHours: number;
+    followUpTtlHours: number;
+  } | null>;
   allocateRecordNo(objectId: string): Promise<bigint>;
   createRecord(record: DynamicRecord): Promise<DynamicRecord>;
   listRecords(query: RecordListQuery): Promise<{
@@ -272,6 +278,7 @@ export interface RecordsStore {
     activityType: MemberActivityType;
     content: string;
     nextActionAt: string | null;
+    outcome: ActivityOutcome | null;
     actorMemberId: string;
     createdAt: string;
   }): Promise<RecordActivity>;
@@ -540,7 +547,7 @@ class PrismaRecordsStore implements RecordsStore {
     ].sort()) {
       const rows = await this.transaction.$queryRaw<
         Array<{ id: string; role: string }>
-      >`SELECT m.id,m.role FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id = ${this.context.tenantId}::uuid AND m.id = ${id}::uuid AND m.status = 'ACTIVE' AND u.status='ACTIVE' FOR UPDATE OF m`;
+      >`SELECT m.id,m.role FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id = ${this.context.tenantId}::uuid AND m.id = ${id}::uuid AND m.status = 'ACTIVE' AND u.status='ACTIVE' FOR NO KEY UPDATE OF m`;
       if (!rows.length) throw new ApiException('OWNER_INVALID', 400);
       if (id === this.context.memberId && rows[0].role !== this.context.role)
         throw new ApiException('WORKSPACE_FORBIDDEN', 403);
@@ -552,6 +559,28 @@ class PrismaRecordsStore implements RecordsStore {
         objectCode,
         ownerId,
       );
+  }
+
+  async findPoolLifecycle(objectCode: string) {
+    const object = await this.transaction.objectDefinition.findFirst({
+      where: {
+        tenantId: this.context.tenantId,
+        code: objectCode,
+        deletedAt: null,
+      },
+      select: {
+        poolEnabled: true,
+        poolLifecycleEnabled: true,
+        poolContactTtlHours: true,
+        poolFollowUpTtlHours: true,
+      },
+    });
+    return object?.poolEnabled && object.poolLifecycleEnabled
+      ? {
+          contactTtlHours: object.poolContactTtlHours,
+          followUpTtlHours: object.poolFollowUpTtlHours,
+        }
+      : null;
   }
 
   async createRecord(record: DynamicRecord): Promise<DynamicRecord> {
@@ -724,12 +753,27 @@ class PrismaRecordsStore implements RecordsStore {
    * The owner predicate is deliberately part of the lock statement: an OWN
    * update scope must not be able to lock — or even learn about — another
    * member's record.
+   *
+   * The owner's member row is locked first. Pool actions lock members, the
+   * table and then the record, and the later patch of this path locks the
+   * owner too; taking the record first would let a transition wait on the
+   * owner's row while that owner's pool action waits on this record.
    */
   async lockRecord(input: {
     objectId: string;
     recordId: string;
     ownerMemberId: string | null;
   }): Promise<DynamicRecord | null> {
+    await this.transaction.$queryRaw`
+      SELECT m.id FROM tenant_members m
+      JOIN records r ON r.tenant_id = m.tenant_id AND r.owner_member_id = m.id
+      WHERE r.tenant_id = ${this.context.tenantId}::uuid
+        AND r.object_id = ${input.objectId}::uuid
+        AND r.id = ${input.recordId}::uuid
+        AND r.deleted_at IS NULL
+        AND (${input.ownerMemberId}::uuid IS NULL OR r.owner_member_id = ${input.ownerMemberId}::uuid)
+      FOR NO KEY UPDATE OF m
+    `;
     const rows = await this.transaction.$queryRaw<Array<{ id: string }>>`
       SELECT id FROM records
       WHERE tenant_id = ${this.context.tenantId}::uuid
@@ -946,6 +990,7 @@ class PrismaRecordsStore implements RecordsStore {
     activityType: MemberActivityType;
     content: string;
     nextActionAt: string | null;
+    outcome: ActivityOutcome | null;
     actorMemberId: string;
     createdAt: string;
   }): Promise<RecordActivity> {
@@ -984,6 +1029,7 @@ class PrismaRecordsStore implements RecordsStore {
         nextActionAt: activity.nextActionAt
           ? new Date(activity.nextActionAt)
           : null,
+        resultKey: activity.outcome,
         actorMemberId: activity.actorMemberId,
         metadata: {},
         createdAt: new Date(activity.createdAt),
@@ -1046,6 +1092,7 @@ function fromPrismaActivity(activity: {
   activityType: string;
   content: string;
   nextActionAt: Date | null;
+  resultKey?: string | null;
   actorMemberId: string | null;
   createdAt: Date;
   actor?: { displayName?: string | null; user: { displayName: string } } | null;
@@ -1056,6 +1103,7 @@ function fromPrismaActivity(activity: {
     activityType: activity.activityType as MemberActivityType,
     content: activity.content,
     nextActionAt: activity.nextActionAt?.toISOString() ?? null,
+    outcome: (activity.resultKey as ActivityOutcome | null | undefined) ?? null,
     actorMemberId: activity.actorMemberId,
     actorDisplayName:
       activity.actor?.displayName ?? activity.actor?.user.displayName ?? null,

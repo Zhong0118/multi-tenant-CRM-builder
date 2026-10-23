@@ -18,7 +18,10 @@ import type {
   TemplateApplicationStore,
   TemplateApplicationTarget,
 } from './template-application.repository';
-import { TemplateApplicationService } from './template-application.service';
+import {
+  hydrateTenantConfiguration,
+  TemplateApplicationService,
+} from './template-application.service';
 
 const platformAdmin = {
   id: 'platform-user-1',
@@ -30,6 +33,67 @@ const meta = { requestId: 'req-application-1', ip: '127.0.0.1' };
 const appliedAt = new Date('2026-08-26T04:00:00.000Z');
 
 describe('TemplateApplicationService', () => {
+  it('applies a template to an active company that has no business table yet', async () => {
+    const { service, state } = applicationFixture({ tenantStatus: 'ACTIVE' });
+    await service.apply(platformAdmin, applicationInput(), meta);
+    expect(state.objects).toEqual([
+      expect.objectContaining({ status: 'DRAFT', activePublicationId: null }),
+    ]);
+    expect(state.applications).toHaveLength(1);
+  });
+
+  it('refuses initialization and reports ineligibility when an active company already has a dashboard', async () => {
+    const { service, state } = applicationFixture({
+      tenantStatus: 'ACTIVE',
+      configuration: configurationWithDashboard(),
+    });
+    state.dashboard = {
+      tenantId: 'tenant-1',
+      draftVersion: 1,
+      draftConfiguration: dashboardPreset(),
+      sourceTemplateVersionId: 'existing-version',
+      activePublicationId: null,
+    };
+    const existing = structuredClone(state.dashboard);
+    await expect(
+      service.summarizeTarget(platformAdmin, 'tenant-1'),
+    ).resolves.toMatchObject({
+      objectCount: 0,
+      canApplyTemplate: false,
+      blockingReason: 'TARGET_NOT_EMPTY',
+    });
+    await expect(
+      service.apply(platformAdmin, applicationInput(), meta),
+    ).rejects.toMatchObject({ code: 'TEMPLATE_APPLICATION_NOT_ALLOWED' });
+    expect(state.dashboard).toEqual(existing);
+    expect(state.objects).toEqual([]);
+    expect(state.applications).toEqual([]);
+    expect(state.audits).toEqual([]);
+  });
+
+  it('keeps the template default view keyword search fields', () => {
+    const source = configuration();
+    source.objects[0].defaultView!.searchFieldKeys = ['phone'];
+    const hydrated = hydrateTenantConfiguration(
+      source,
+      'tenant-1',
+      'version-1',
+      () => crypto.randomUUID(),
+    );
+    expect(hydrated.views[0]).toMatchObject({
+      columnFieldKeys: ['name', 'phone'],
+      searchFieldKeys: ['phone'],
+    });
+
+    const withoutSearch = hydrateTenantConfiguration(
+      configuration(),
+      'tenant-1',
+      'version-1',
+      () => crypto.randomUUID(),
+    );
+    expect(withoutSearch.views[0]).not.toHaveProperty('searchFieldKeys');
+  });
+
   it('creates a complete tenant draft graph with fresh identities and source facts', async () => {
     const { service, state, transactionEvents } = applicationFixture();
 
@@ -247,7 +311,7 @@ describe('TemplateApplicationService', () => {
   });
 
   it.each<[string, FixtureOptions]>([
-    ['a non-DRAFT tenant', { tenantStatus: 'ACTIVE' as const }],
+    ['a suspended tenant', { tenantStatus: 'SUSPENDED' as const }],
     ['an existing object row of any status', { existingObject: true }],
     ['a stale requested active version', { activeVersionId: 'version-2' }],
     ['an archived template', { archived: true }],
@@ -324,13 +388,23 @@ describe('TemplateApplicationService', () => {
       canApplyTemplate: true,
       blockingReason: null,
       application: null,
+      objects: [],
     });
 
-    const nonDraft = applicationFixture({ tenantStatus: 'ACTIVE' });
+    // An active company with no business table yet may still start from a template.
+    const activeEmpty = applicationFixture({ tenantStatus: 'ACTIVE' });
     await expect(
-      nonDraft.service.summarizeTarget(platformAdmin, 'tenant-1'),
+      activeEmpty.service.summarizeTarget(platformAdmin, 'tenant-1'),
     ).resolves.toMatchObject({
       objectCount: 0,
+      canApplyTemplate: true,
+      blockingReason: null,
+    });
+
+    const suspended = applicationFixture({ tenantStatus: 'SUSPENDED' });
+    await expect(
+      suspended.service.summarizeTarget(platformAdmin, 'tenant-1'),
+    ).resolves.toMatchObject({
       canApplyTemplate: false,
       blockingReason: 'TENANT_NOT_DRAFT',
     });
@@ -402,6 +476,18 @@ class MemoryApplicationRepository implements TemplateApplicationRepository {
     private readonly applicationAfterLocks?: TemplateApplicationResult,
     private readonly winnerOnCreateConflict?: TemplateApplicationResult,
   ) {}
+
+  /** The caller's transaction: writes land directly, rollback is the caller's. */
+  storeFor(): TemplateApplicationStore {
+    return new MemoryApplicationStore(
+      this.state,
+      'outer-transaction',
+      this.transactionEvents,
+      this.failAfterObject,
+      this.applicationAfterLocks,
+      Boolean(this.winnerOnCreateConflict),
+    );
+  }
 
   async transaction<T>(
     actorId: string,
@@ -514,7 +600,8 @@ class MemoryApplicationStore implements TemplateApplicationStore {
       !template.version ||
       template.version.id !== input.templateVersionId ||
       template.version.templateId !== input.templateId ||
-      this.state.tenant.status !== 'DRAFT'
+      (this.state.tenant.status !== 'DRAFT' &&
+        this.state.tenant.status !== 'ACTIVE')
     ) {
       return { kind: 'NOT_ALLOWED' };
     }
@@ -545,7 +632,10 @@ class MemoryApplicationStore implements TemplateApplicationStore {
 
   async assertTenantEmpty(tenantId: string) {
     this.events.push('assertTenantEmpty');
-    return (await this.countTenantObjects(tenantId)) === 0;
+    return (
+      (await this.countTenantObjects(tenantId)) === 0 &&
+      this.state.dashboard?.tenantId !== tenantId
+    );
   }
 
   async insertTenantConfiguration(hydrated: HydratedTenantConfiguration) {
@@ -610,7 +700,7 @@ class MemoryApplicationStore implements TemplateApplicationStore {
 interface FixtureOptions {
   configuration?: BusinessTemplateConfiguration;
   failAfterObject?: number;
-  tenantStatus?: 'DRAFT' | 'ACTIVE';
+  tenantStatus?: 'DRAFT' | 'ACTIVE' | 'SUSPENDED';
   existingObject?: boolean;
   activeVersionId?: string;
   archived?: boolean;

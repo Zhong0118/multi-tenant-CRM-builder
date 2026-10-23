@@ -84,6 +84,7 @@ interface HarnessOptions {
   recordRows?: Array<{ id: string }>;
   updateCount?: number;
   tenantTimezone?: string | null;
+  pendingRows?: unknown[];
 }
 
 interface WorkbenchQueryArgs {
@@ -125,6 +126,12 @@ function harness(options: HarnessOptions = {}) {
       count: jest.fn((_args: WorkbenchQueryArgs) => Promise.resolve(0)),
       findMany: jest.fn((_args: WorkbenchQueryArgs) =>
         Promise.resolve([] as unknown[]),
+      ),
+    },
+    record: {
+      count: jest.fn(() => Promise.resolve(options.pendingRows?.length ?? 0)),
+      findMany: jest.fn<Promise<unknown[]>, [unknown]>(() =>
+        Promise.resolve(options.pendingRows ?? []),
       ),
     },
     tenant: {
@@ -401,6 +408,56 @@ describe('FollowUpsRepository personal workbench', () => {
     });
   });
 
+  it("lists the actor's own leads waiting for contact, with the table's stage name", async () => {
+    const fixture = harness({
+      pendingRows: [
+        {
+          id: 'record-lead',
+          title: '王老师',
+          ownershipExpiresAt: new Date('2026-09-18T02:00:00.000Z'),
+          object: {
+            code: 'customers',
+            name: '客户',
+            poolLabels: { pending: '已加微信' },
+          },
+        },
+      ],
+    });
+
+    const result = await fixture.repository.workbench(
+      context,
+      SCOPES,
+      RANGE,
+      'Asia/Shanghai',
+    );
+
+    expect(result.pendingContacts).toEqual({
+      count: 1,
+      items: [
+        {
+          recordId: 'record-lead',
+          recordTitle: '王老师',
+          objectCode: 'customers',
+          objectName: '客户',
+          stageLabel: '已加微信',
+          expiresAt: '2026-09-18T02:00:00.000Z',
+        },
+      ],
+    });
+    const where = (
+      fixture.tx.record.findMany.mock.calls[0][0] as {
+        where: Record<string, unknown>;
+      }
+    ).where;
+    expect(where).toMatchObject({
+      tenantId: context.tenantId,
+      ownerMemberId: context.memberId,
+      poolStage: 'PENDING_CONTACT',
+      deletedAt: null,
+      objectId: { in: SCOPES.map((scope) => scope.objectId) },
+    });
+  });
+
   it('returns the empty safe shape without querying when nothing is readable', async () => {
     const fixture = harness();
 
@@ -410,6 +467,7 @@ describe('FollowUpsRepository personal workbench', () => {
       timezone: 'Asia/Shanghai',
       counts: { allOpen: 0, overdue: 0, today: 0, upcoming: 0 },
       preview: { overdue: [], today: [], upcoming: [] },
+      pendingContacts: { count: 0, items: [] },
     });
     expect(fixture.tx.recordFollowUp.count).not.toHaveBeenCalled();
     expect(fixture.tx.recordFollowUp.findMany).not.toHaveBeenCalled();

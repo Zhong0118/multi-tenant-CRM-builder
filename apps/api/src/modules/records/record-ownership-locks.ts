@@ -27,12 +27,15 @@ export async function lockMembers(
   context: TenantContext,
   target?: string,
 ) {
+  // NO KEY UPDATE still serializes against member disable and role changes, but
+  // lets other transactions' foreign-key checks (created_by, owner) through;
+  // FOR UPDATE here deadlocked a claim against the lead creator's own action.
   for (const id of [
     ...new Set([context.memberId, ...(target ? [target] : [])]),
   ].sort()) {
     const rows = await tx.$queryRaw<
       Array<{ id: string; role: string; userId: string }>
-    >`SELECT m.id, m.role, m.user_id AS "userId" FROM tenant_members m JOIN users u ON u.id = m.user_id JOIN tenants t ON t.id = m.tenant_id WHERE m.tenant_id = ${context.tenantId}::uuid AND m.id = ${id}::uuid AND m.status = 'ACTIVE' AND u.status = 'ACTIVE' AND t.status = 'ACTIVE' FOR UPDATE OF m, u`;
+    >`SELECT m.id, m.role, m.user_id AS "userId" FROM tenant_members m JOIN users u ON u.id = m.user_id JOIN tenants t ON t.id = m.tenant_id WHERE m.tenant_id = ${context.tenantId}::uuid AND m.id = ${id}::uuid AND m.status = 'ACTIVE' AND u.status = 'ACTIVE' AND t.status = 'ACTIVE' FOR NO KEY UPDATE OF m, u`;
     if (!rows.length)
       throw new ApiException(
         id === context.memberId ? 'WORKSPACE_FORBIDDEN' : 'OWNER_INVALID',

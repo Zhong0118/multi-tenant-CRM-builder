@@ -208,14 +208,12 @@ describe("ObjectDesigner configuration ledger", () => {
 
   it("keeps the field active and reports a version conflict when retirement fails", async () => {
     const api = objectApi({
-      updateField: vi
-        .fn()
-        .mockRejectedValue({
-          code: "CONFIG_VERSION_CONFLICT",
-          message: "配置已更新，请重新载入",
-          status: 409,
-          requestId: "status-conflict",
-        }),
+      updateField: vi.fn().mockRejectedValue({
+        code: "CONFIG_VERSION_CONFLICT",
+        message: "配置已更新，请重新载入",
+        status: 409,
+        requestId: "status-conflict",
+      }),
     });
     renderDesigner(draft(), api);
     fireEvent.click(fieldRow("最终评级"));
@@ -232,19 +230,26 @@ describe("ObjectDesigner configuration ledger", () => {
   it("identifies the editing section, draft and employee live version with a mobile return path", () => {
     renderDesigner(draft(), objectApi());
     // The active tab names the section; the header carries draft and live version.
-    expect(screen.getByRole("button", { name: /^字段与表单/ })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: /^字段与表单/ })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
     expect(screen.getByText("草稿修订 4")).toBeInTheDocument();
     expect(screen.getByText("员工使用 v3")).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "业务表" }),
-    ).toHaveAttribute("href", "/workspace/northwind/settings/objects");
+    expect(screen.getByRole("link", { name: "业务表" })).toHaveAttribute(
+      "href",
+      "/workspace/northwind/settings/objects",
+    );
     for (const [section, save] of [
       ["基本设置", "保存基本设置"],
       ["列表展示与搜索", "保存列表设置"],
       ["员工权限", "保存员工权限"],
     ]) {
       fireEvent.click(screen.getByRole("button", { name: section }));
-      expect(screen.getByRole("button", { name: section })).toHaveAttribute("aria-current", "page");
+      expect(screen.getByRole("button", { name: section })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
       const action = screen.getByRole("button", { name: save }).parentElement!;
       expect(
         within(action).getByText("仅保存本节到对象草稿；发布后员工端生效。"),
@@ -255,7 +260,10 @@ describe("ObjectDesigner configuration ledger", () => {
     const api = objectApi();
     const view = renderDesigner(draft(), api);
     fireEvent.click(screen.getByRole("button", { name: "基本设置" }));
-    expect(screen.getByRole("radio", { name: "默认" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: "默认" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
     fireEvent.click(screen.getByRole("radio", { name: "团队" }));
     fireEvent.click(screen.getByRole("button", { name: "保存基本设置" }));
     await waitFor(() =>
@@ -268,9 +276,15 @@ describe("ObjectDesigner configuration ledger", () => {
     view.unmount();
 
     const stored = objectApi();
-    renderDesigner(draft({ object: { ...draft().object, icon: "team" } }), stored);
+    renderDesigner(
+      draft({ object: { ...draft().object, icon: "team" } }),
+      stored,
+    );
     fireEvent.click(screen.getByRole("button", { name: "基本设置" }));
-    expect(screen.getByRole("radio", { name: "团队" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: "团队" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
     fireEvent.click(screen.getByRole("radio", { name: "默认" }));
     fireEvent.click(screen.getByRole("button", { name: "保存基本设置" }));
     await waitFor(() =>
@@ -684,7 +698,9 @@ describe("ObjectDesigner publication flow", () => {
 describe("ObjectDesigner employee preview", () => {
   it("keeps the employee preview out of the page until it is asked for", async () => {
     renderDesigner(draft(), objectApi());
-    expect(screen.queryByRole("region", { name: "权限预览" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("region", { name: "权限预览" }),
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "打开员工端预览" }));
 
@@ -935,19 +951,17 @@ describe("whole-table lifecycle", () => {
   });
   it("blocks archive with actionable dependencies and does not call it a version conflict", async () => {
     const api = await openLifecycle(draft(), {
-      lifecycle: vi
-        .fn()
-        .mockResolvedValue({
-          ...preview,
-          blockers: [
-            {
-              kind: "WORKFLOW",
-              objectCode: "orders",
-              objectName: "订单",
-              description: "签约动作写入客户，请先修改已发布流程",
-            },
-          ],
-        }),
+      lifecycle: vi.fn().mockResolvedValue({
+        ...preview,
+        blockers: [
+          {
+            kind: "WORKFLOW",
+            objectCode: "orders",
+            objectName: "订单",
+            description: "签约动作写入客户，请先修改已发布流程",
+          },
+        ],
+      }),
     });
     expect(screen.getByRole("dialog")).toHaveTextContent("签约动作写入客户");
     expect(screen.getByRole("button", { name: "确认停用" })).toBeDisabled();
@@ -984,13 +998,11 @@ describe("whole-table lifecycle", () => {
       object: { ...draft().object, status: "ARCHIVED" },
     });
     const api = await openLifecycle(initial, {
-      lifecycle: vi
-        .fn()
-        .mockResolvedValue({
-          ...preview,
-          status: "ARCHIVED",
-          requiresLegacyTimerAcknowledgement: true,
-        }),
+      lifecycle: vi.fn().mockResolvedValue({
+        ...preview,
+        status: "ARCHIVED",
+        requiresLegacyTimerAcknowledgement: true,
+      }),
       restore: vi.fn().mockResolvedValue(draft()),
     });
     expect(screen.getByRole("dialog")).toHaveTextContent("2 条已到期");
@@ -1062,14 +1074,12 @@ describe("whole-table lifecycle", () => {
   });
   it("keeps a raced dependency failure visible and retryable without a stale-version label", async () => {
     const api = await openLifecycle(draft(), {
-      archive: vi
-        .fn()
-        .mockRejectedValue({
-          code: "OBJECT_LIFECYCLE_BLOCKED",
-          message: "订单流程需要此表，请先处理依赖",
-          status: 409,
-          requestId: "blocked-test",
-        }),
+      archive: vi.fn().mockRejectedValue({
+        code: "OBJECT_LIFECYCLE_BLOCKED",
+        message: "订单流程需要此表，请先处理依赖",
+        status: 409,
+        requestId: "blocked-test",
+      }),
     });
     fireEvent.click(screen.getByRole("button", { name: "确认停用" }));
     await screen.findByText(/订单流程需要此表/);
@@ -1082,14 +1092,12 @@ describe("whole-table lifecycle", () => {
   });
   it("reloads explicitly after a mutation version conflict without retrying the stale mutation", async () => {
     const api = await openLifecycle(draft(), {
-      archive: vi
-        .fn()
-        .mockRejectedValue({
-          code: "CONFIG_VERSION_CONFLICT",
-          message: "版本已变化",
-          status: 409,
-          requestId: "stale-test",
-        }),
+      archive: vi.fn().mockRejectedValue({
+        code: "CONFIG_VERSION_CONFLICT",
+        message: "版本已变化",
+        status: 409,
+        requestId: "stale-test",
+      }),
     });
     fireEvent.click(screen.getByRole("button", { name: "确认停用" }));
     await screen.findByText(/版本已变化/);
@@ -1118,11 +1126,38 @@ describe("whole-table lifecycle", () => {
       within(dialog).getByRole("button", { name: "添加选项" }),
     ).toBeDisabled();
     expect(
-      within(dialog).getByRole("button", { name: "停用选项 gold" }),
+      within(dialog).getByRole("switch", { name: "停用选项 gold" }),
     ).toBeDisabled();
     expect(
       within(dialog).getByRole("button", { name: "保存字段" }),
     ).toBeDisabled();
+  });
+  it("locks the keys of a published select's options but not of new or unpublished ones", () => {
+    const base = draft();
+    const published = draft({
+      fields: [
+        base.fields[0],
+        { ...base.fields[1], publishedType: "SINGLE_SELECT" },
+      ],
+    });
+    const { unmount } = renderDesigner(published, objectApi());
+    fireEvent.click(fieldRow("最终评级"));
+    let dialog = screen.getByRole("region", { name: "配置字段：最终评级" });
+    expect(within(dialog).getByLabelText("选项键 gold")).toHaveAttribute(
+      "readonly",
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "添加选项" }));
+    expect(
+      within(dialog).getByLabelText("选项键 option_2"),
+    ).not.toHaveAttribute("readonly");
+    unmount();
+
+    renderDesigner(draft(), objectApi());
+    fireEvent.click(fieldRow("最终评级"));
+    dialog = screen.getByRole("region", { name: "配置字段：最终评级" });
+    expect(within(dialog).getByLabelText("选项键 gold")).not.toHaveAttribute(
+      "readonly",
+    );
   });
   it("disables archived view custom controls and permission saves", () => {
     renderDesigner(
@@ -1183,7 +1218,9 @@ describe("object management lifecycle filters and ordering", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^停用客户/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "更多操作 停用客户" }));
-    expect(await screen.findByRole("menuitem", { name: "恢复业务表" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("menuitem", { name: "恢复业务表" }),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: /^未发布/ }));
     expect(screen.getByRole("link", { name: /^新表/ })).toBeInTheDocument();
     expect(
@@ -1191,7 +1228,9 @@ describe("object management lifecycle filters and ordering", () => {
     ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: /^全部/ }));
     fireEvent.click(screen.getByRole("button", { name: "更多操作 客户资料" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: /在导航中下移/ }));
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: /在导航中下移/ }),
+    );
     await waitFor(() =>
       expect(api.reorderObjects).toHaveBeenCalledExactlyOnceWith("northwind", [
         { objectId: "new", expectedVersion: 4 },

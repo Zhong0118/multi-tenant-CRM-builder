@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import {
   FieldEditorSections,
+  selectOptionsProblem,
   initialValues,
   type FieldDraftValues,
 } from "./field-editor-form";
@@ -121,7 +122,7 @@ export function FieldEditorPanel({
           </Button>
           <Button
             type="primary"
-            disabled={readOnly || !dirty}
+            disabled={readOnly || !dirty || Boolean(selectOptionsProblem(values))}
             loading={saving}
             onClick={() => onSubmit(values)}
           >

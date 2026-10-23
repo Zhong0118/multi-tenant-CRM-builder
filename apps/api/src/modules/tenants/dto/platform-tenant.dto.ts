@@ -1,14 +1,16 @@
 import {
   IsIn,
+  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
   Length,
   Matches,
-  MaxLength,
-  IsInt,
   Max,
+  MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -26,6 +28,73 @@ export class CreatePlatformTenantDto {
   @IsString()
   @IsNotEmpty()
   firstAdminPhone!: string;
+
+  @ApiPropertyOptional({
+    enum: ['BLANK', 'TEMPLATE'],
+    default: 'BLANK',
+    description:
+      'BLANK: the company admin builds tables from scratch. TEMPLATE: the chosen published template is copied in the same transaction as unpublished drafts.',
+  })
+  @IsOptional()
+  @IsIn(['BLANK', 'TEMPLATE'])
+  initialization?: 'BLANK' | 'TEMPLATE';
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @ValidateIf(
+    (dto: CreatePlatformTenantDto) => dto.initialization === 'TEMPLATE',
+  )
+  @IsUUID()
+  templateId?: string;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'The template version shown when choosing; must still be current.',
+  })
+  @ValidateIf(
+    (dto: CreatePlatformTenantDto) => dto.initialization === 'TEMPLATE',
+  )
+  @IsUUID()
+  templateVersionId?: string;
+}
+
+export class TenantTableCountsDto {
+  @ApiProperty({ minimum: 0 }) total!: number;
+  @ApiProperty({
+    minimum: 0,
+    description: 'Never published; employees cannot see them.',
+  })
+  draft!: number;
+  @ApiProperty({ minimum: 0 }) published!: number;
+  @ApiProperty({
+    minimum: 0,
+    description: 'Published tables with unpublished draft changes.',
+  })
+  pendingChanges!: number;
+  @ApiProperty({
+    minimum: 0,
+    description: 'Stopped by the company admin; data kept.',
+  })
+  archived!: number;
+}
+
+export class TenantTemplateProvenanceDto {
+  @ApiProperty() name!: string;
+  @ApiProperty() versionNo!: number;
+  @ApiProperty({ type: String, format: 'date-time' }) appliedAt!: Date;
+}
+
+export class TenantConfigurationSummaryDto {
+  @ApiProperty({ type: TenantTableCountsDto }) tables!: TenantTableCountsDto;
+  @ApiProperty({ type: TenantTemplateProvenanceDto, nullable: true })
+  template!: TenantTemplateProvenanceDto | null;
+}
+
+export class TenantInitializationResponseDto {
+  @ApiProperty() templateName!: string;
+  @ApiProperty() templateVersionNo!: number;
+  @ApiProperty({ description: 'Business tables copied as unpublished drafts.' })
+  objectCount!: number;
 }
 
 export class ChangeTenantStatusDto {
@@ -108,6 +177,10 @@ export class PlatformTenantResponseDto {
   activeAdminCount!: number;
   @ApiPropertyOptional({ type: FirstAdminInvitationResponseDto })
   firstAdminInvitation?: FirstAdminInvitationResponseDto;
+  @ApiPropertyOptional({ type: TenantInitializationResponseDto })
+  initialization?: TenantInitializationResponseDto;
+  @ApiPropertyOptional({ type: TenantConfigurationSummaryDto })
+  configuration?: TenantConfigurationSummaryDto;
 }
 
 export class PlatformTenantPageResponseDto {

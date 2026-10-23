@@ -13,6 +13,10 @@ const tenantAdminPhone = '13977771003';
 const employeePhone = '13977771004';
 const tenantCode = 'e2e-template-company';
 const activeTenantCode = 'e2e-template-active-company';
+const createdTenantCode = 'e2e-template-created-company';
+const staleTenantCode = 'e2e-template-stale-company';
+const raceTenantCode = 'e2e-template-race-company';
+const secondTemplateCode = 'test-crm-e2e-second';
 const templateCode = 'test-crm-e2e';
 const invalidTemplateCode = '9test-crm-e2e';
 
@@ -455,20 +459,416 @@ describe('Business template HTTP workflow (e2e)', () => {
       .set('Origin', origin)
       .send({ status: 'ACTIVE' })
       .expect(200);
-    await platform
-      .post(`/api/v1/platform/business-templates/${templateId}/applications`)
-      .set('Origin', origin)
-      .send({ tenantId: activeTenantId, templateVersionId })
+    // A suspended or closed company cannot be initialized; an active one that
+    // has not configured any business table yet still can.
+    const setStatus = (status: string) =>
+      platform
+        .patch(`/api/v1/platform/tenants/${activeTenantId}/status`)
+        .set('Origin', origin)
+        .send({ status })
+        .expect(200);
+    const applyToActive = () =>
+      platform
+        .post(`/api/v1/platform/business-templates/${templateId}/applications`)
+        .set('Origin', origin)
+        .send({ tenantId: activeTenantId, templateVersionId });
+    await setStatus('SUSPENDED');
+    await applyToActive()
       .expect(409)
       .expect((response) => {
         expect(response.body).toMatchObject({
           code: 'TEMPLATE_APPLICATION_NOT_ALLOWED',
-          message: '目标公司必须处于草稿状态。',
+          message: '已暂停或关闭的公司不能应用模板。',
           fieldErrors: {
-            application: ['目标公司必须处于草稿状态。'],
+            application: ['已暂停或关闭的公司不能应用模板。'],
           },
         });
       });
+    await setStatus('ACTIVE');
+    await applyToActive().expect(201);
+    await expect(
+      adminDatabase.objectDefinition.count({
+        where: { tenantId: activeTenantId, status: 'DRAFT' },
+      }),
+    ).resolves.toBeGreaterThan(0);
+
+    // Platform identity is not company membership: the template copy above is
+    // the platform's only write, and the company's tables stay the company's.
+    const applied = await adminDatabase.objectDefinition.findFirstOrThrow({
+      where: { tenantId: activeTenantId },
+    });
+    const workspace = `/api/v1/workspaces/${activeTenantCode}`;
+    for (const attempt of [
+      () => platform.get(`${workspace}/object-definitions`),
+      () => platform.get(`${workspace}/object-definitions/${applied.id}`),
+      () =>
+        platform
+          .post(`${workspace}/object-definitions`)
+          .set('Origin', origin)
+          .send({ name: '越权表', code: 'bypass' }),
+      () =>
+        platform
+          .post(`${workspace}/object-definitions/${applied.id}/archive`)
+          .set('Origin', origin)
+          .send({ expectedVersion: applied.version }),
+    ]) {
+      const response = await attempt();
+      expect(response.status).toBe(403);
+      expect(response.body).toMatchObject({ code: 'WORKSPACE_FORBIDDEN' });
+    }
+  });
+
+  it('rejects template initialization when an empty active company already has a home dashboard', async () => {
+    const platform = await register(platformPhone, '平台管理员');
+    const tenantAdmin = await register(tenantAdminPhone, '公司管理员');
+    await adminDatabase.user.update({
+      where: { phone: normalized(platformPhone) },
+      data: { isPlatformAdmin: true },
+    });
+    const tenant = await platform
+      .post('/api/v1/platform/tenants')
+      .set('Origin', origin)
+      .send({
+        name: '已有看板公司',
+        code: activeTenantCode,
+        firstAdminPhone: tenantAdminPhone,
+      })
+      .expect(201);
+    const tenantId = stringProperty(tenant.body, 'id');
+    await acceptInvitation(tenantAdmin, tenantId);
+    await platform
+      .patch(`/api/v1/platform/tenants/${tenantId}/status`)
+      .set('Origin', origin)
+      .send({ status: 'ACTIVE' })
+      .expect(200);
+    const dashboard = await adminDatabase.tenantDashboardConfiguration.create({
+      data: {
+        tenantId,
+        code: 'home',
+        name: 'My home',
+        draftVersion: 3,
+        draftConfiguration: {
+          schemaVersion: 2,
+          title: 'My saved home',
+          widgets: [],
+        },
+      },
+    });
+    await adminDatabase.tenant.update({
+      where: { id: tenantId },
+      data: {
+        defaultAdminDashboardId: dashboard.id,
+        defaultEmployeeDashboardId: dashboard.id,
+      },
+    });
+    const tenantBefore = await adminDatabase.tenant.findUniqueOrThrow({
+      where: { id: tenantId },
+    });
+    const template = await platform
+      .post('/api/v1/platform/business-templates')
+      .set('Origin', origin)
+      .send({ code: templateCode, name: 'Dashboard template' })
+      .expect(201);
+    const templateId = stringProperty(template.body, 'id');
+    const saved = await platform
+      .put(`/api/v1/platform/business-templates/${templateId}/draft`)
+      .set('Origin', origin)
+      .send({
+        expectedVersion: 1,
+        name: 'Dashboard template',
+        description: null,
+        configuration: {
+          ...twoObjectTemplateFixture,
+          dashboard: { schemaVersion: 2, title: 'Template home', widgets: [] },
+        },
+      })
+      .expect(200);
+    const published = await platform
+      .post(`/api/v1/platform/business-templates/${templateId}/versions`)
+      .set('Origin', origin)
+      .send({ expectedVersion: numberProperty(saved.body, 'draftVersion') })
+      .expect(201);
+    await platform
+      .get(`/api/v1/platform/tenants/${tenantId}/business-configuration`)
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toMatchObject({
+          objectCount: 0,
+          canApplyTemplate: false,
+          blockingReason: 'TARGET_NOT_EMPTY',
+        });
+      });
+    await platform
+      .post(`/api/v1/platform/business-templates/${templateId}/applications`)
+      .set('Origin', origin)
+      .send({
+        tenantId,
+        templateVersionId: stringProperty(published.body, 'id'),
+      })
+      .expect(409)
+      .expect((response) => {
+        expect(response.body).toMatchObject({
+          code: 'TEMPLATE_APPLICATION_NOT_ALLOWED',
+        });
+      });
+    expect(
+      await adminDatabase.tenantDashboardConfiguration.findUniqueOrThrow({
+        where: { id: dashboard.id },
+      }),
+    ).toEqual(dashboard);
+    expect(
+      await adminDatabase.tenant.findUniqueOrThrow({ where: { id: tenantId } }),
+    ).toEqual(tenantBefore);
+    expect(
+      await adminDatabase.objectDefinition.count({ where: { tenantId } }),
+    ).toBe(0);
+    expect(
+      await adminDatabase.businessTemplateApplication.count({
+        where: { tenantId },
+      }),
+    ).toBe(0);
+    expect(
+      await adminDatabase.auditLog.count({
+        where: { tenantId, action: 'platform.template.applied' },
+      }),
+    ).toBe(0);
+  });
+
+  it('creates a company from a template atomically, copies select settings and search, and never copies twice', async () => {
+    const platform = await register(platformPhone, '平台管理员');
+    await adminDatabase.user.update({
+      where: { phone: normalized(platformPhone) },
+      data: { isPlatformAdmin: true },
+    });
+    const post = (path: string, body: object) =>
+      platform.post(path).set('Origin', origin).send(body);
+    async function publishTemplate(code: string, configuration: object) {
+      const created = await post('/api/v1/platform/business-templates', {
+        name: code,
+        code,
+        description: code,
+      }).expect(201);
+      const id = stringProperty(created.body, 'id');
+      const saved = await platform
+        .put(`/api/v1/platform/business-templates/${id}/draft`)
+        .set('Origin', origin)
+        .send({
+          expectedVersion: 1,
+          name: code,
+          description: code,
+          configuration,
+        })
+        .expect(200);
+      const published = await post(
+        `/api/v1/platform/business-templates/${id}/versions`,
+        { expectedVersion: numberProperty(saved.body, 'draftVersion') },
+      ).expect(201);
+      return {
+        templateId: id,
+        templateVersionId: stringProperty(published.body, 'id'),
+      };
+    }
+    const selectTemplate = structuredClone(twoObjectTemplateFixture) as {
+      schemaVersion: 1;
+      objects: Array<
+        Record<string, unknown> & {
+          fields: Array<Record<string, unknown>>;
+          defaultView: Record<string, unknown>;
+          employeeAccess: { fields: Record<string, string> };
+        }
+      >;
+    };
+    selectTemplate.objects[0].fields.push({
+      ...templateField(
+        '00000000-0000-4000-8000-000000000113',
+        'grade',
+        '客户等级',
+        'TEXT',
+        false,
+        30,
+      ),
+      type: 'SINGLE_SELECT',
+      defaultValue: 'b',
+      config: {
+        options: [
+          { key: 'a', label: 'A 级', status: 'INACTIVE', color: 'BLUE' },
+          { key: 'b', label: 'B 级', status: 'ACTIVE', color: 'GREEN' },
+        ],
+      },
+    });
+    selectTemplate.objects[0].defaultView.searchFieldKeys = ['phone'];
+    selectTemplate.objects[0].employeeAccess.fields.grade = 'EDIT';
+    const first = await publishTemplate(templateCode, selectTemplate);
+
+    // A stale version fails the whole creation: no company is left behind.
+    await post('/api/v1/platform/tenants', {
+      name: '过期版本公司',
+      code: staleTenantCode,
+      firstAdminPhone: tenantAdminPhone,
+      initialization: 'TEMPLATE',
+      templateId: first.templateId,
+      templateVersionId: '00000000-0000-4000-8000-00000000dead',
+    }).expect(409);
+    expect(
+      await adminDatabase.tenant.count({ where: { code: staleTenantCode } }),
+    ).toBe(0);
+    // Choosing a template without naming one is refused.
+    await post('/api/v1/platform/tenants', {
+      name: '未选模板公司',
+      code: staleTenantCode,
+      firstAdminPhone: tenantAdminPhone,
+      initialization: 'TEMPLATE',
+    }).expect(400);
+
+    const created = await post('/api/v1/platform/tenants', {
+      name: '模板创建公司',
+      code: createdTenantCode,
+      firstAdminPhone: tenantAdminPhone,
+      initialization: 'TEMPLATE',
+      ...first,
+    }).expect(201);
+    expect(created.body).toMatchObject({
+      status: 'DRAFT',
+      initialization: { templateVersionNo: 1, objectCount: 2 },
+    });
+    const createdId = stringProperty(created.body, 'id');
+    const customers = await adminDatabase.objectDefinition.findFirstOrThrow({
+      where: { tenantId: createdId, code: 'customers' },
+      include: { fields: true, views: true },
+    });
+    expect(customers).toMatchObject({
+      status: 'DRAFT',
+      activePublicationId: null,
+    });
+    // Deactivated options, defaults and search fields arrive as configured.
+    expect(
+      customers.fields.find((field) => field.fieldKey === 'grade'),
+    ).toMatchObject({
+      type: 'SINGLE_SELECT',
+      defaultValue: 'b',
+      config: {
+        options: [
+          { key: 'a', label: 'A 级', status: 'INACTIVE', color: 'BLUE' },
+          { key: 'b', label: 'B 级', status: 'ACTIVE', color: 'GREEN' },
+        ],
+      },
+    });
+    // The designer stores search fields beside the columns in one JSON value.
+    expect(customers.views[0].columnFieldKeys).toEqual({
+      columnFieldKeys: ['name', 'phone'],
+      searchFieldKeys: ['phone'],
+    });
+    // Nothing is visible to employees until the company admin publishes.
+    expect(
+      await adminDatabase.objectPublication.count({
+        where: { tenantId: createdId },
+      }),
+    ).toBe(0);
+
+    // Concurrent and repeated applications copy once.
+    const race = await post('/api/v1/platform/tenants', {
+      name: '并发应用公司',
+      code: raceTenantCode,
+      firstAdminPhone: tenantAdminPhone,
+      initialization: 'BLANK',
+    }).expect(201);
+    const raceId = stringProperty(race.body, 'id');
+    const applies = await Promise.all(
+      [0, 1, 2].map(() =>
+        post(
+          `/api/v1/platform/business-templates/${first.templateId}/applications`,
+          {
+            tenantId: raceId,
+            templateVersionId: first.templateVersionId,
+          },
+        ),
+      ),
+    );
+    expect(applies.map((r) => r.status)).toEqual([201, 201, 201]);
+    expect(new Set(applies.map((r) => stringProperty(r.body, 'id'))).size).toBe(
+      1,
+    );
+    expect(
+      await adminDatabase.objectDefinition.count({
+        where: { tenantId: raceId },
+      }),
+    ).toBe(2);
+
+    // A company that already has tables is never overwritten by another template.
+    const second = await publishTemplate(
+      secondTemplateCode,
+      twoObjectTemplateFixture,
+    );
+    const before = await adminDatabase.objectDefinition.findMany({
+      where: { tenantId: raceId },
+      select: { id: true, version: true },
+      orderBy: { id: 'asc' },
+    });
+    const refused = await post(
+      `/api/v1/platform/business-templates/${second.templateId}/applications`,
+      { tenantId: raceId, templateVersionId: second.templateVersionId },
+    ).expect(409);
+    expect(refused.body).toMatchObject({
+      code: 'TEMPLATE_APPLICATION_NOT_ALLOWED',
+    });
+    expect(stringProperty(refused.body, 'message')).toContain(
+      '不能使用初始化模板覆盖',
+    );
+    expect(
+      await adminDatabase.objectDefinition.findMany({
+        where: { tenantId: raceId },
+        select: { id: true, version: true },
+        orderBy: { id: 'asc' },
+      }),
+    ).toEqual(before);
+
+    // The platform sees each company's configuration state and provenance,
+    // read from inside the company's own scope.
+    const list = await platform
+      .get('/api/v1/platform/tenants?page=1&limit=100')
+      .expect(200);
+    const listed = (
+      list.body as {
+        items: Array<{
+          code: string;
+          configuration: {
+            tables: Record<string, number>;
+            template: { name: string; versionNo: number } | null;
+          };
+        }>;
+      }
+    ).items.find((item) => item.code === createdTenantCode);
+    expect(listed?.configuration).toMatchObject({
+      tables: { total: 2, draft: 2, published: 0, archived: 0 },
+      template: { name: templateCode, versionNo: 1 },
+    });
+
+    // Audit filters offer what actually happened and narrow by kind and day.
+    const facets = await platform
+      .get(`/api/v1/platform/audit/facets?tenantId=${createdId}`)
+      .expect(200);
+    expect(
+      (facets.body as { actions: Array<{ value: string }> }).actions.map(
+        (facet) => facet.value,
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        'platform.tenant.created',
+        'platform.template.applied',
+      ]),
+    );
+    const today = new Date(Date.now() + 8 * 3600_000)
+      .toISOString()
+      .slice(0, 10);
+    const filtered = await platform
+      .get(
+        `/api/v1/platform/audit?tenantId=${createdId}&action=platform.tenant.created&actorType=USER&from=${today}&to=${today}`,
+      )
+      .expect(200);
+    expect(filtered.body).toMatchObject({ total: 1 });
+    await platform
+      .get(`/api/v1/platform/audit?from=${today}&to=2000-01-01`)
+      .expect(400);
   });
 
   async function register(phone: string, displayName: string): Promise<Agent> {
@@ -575,12 +975,24 @@ function templateField(
 
 async function cleanup(database: PrismaClient): Promise<void> {
   const tenants = await database.tenant.findMany({
-    where: { code: { in: [tenantCode, activeTenantCode] } },
+    where: {
+      code: {
+        in: [
+          tenantCode,
+          activeTenantCode,
+          createdTenantCode,
+          staleTenantCode,
+          raceTenantCode,
+        ],
+      },
+    },
     select: { id: true },
   });
   const tenantIds = tenants.map(({ id }) => id);
   const templates = await database.businessTemplate.findMany({
-    where: { code: { in: [templateCode, invalidTemplateCode] } },
+    where: {
+      code: { in: [templateCode, invalidTemplateCode, secondTemplateCode] },
+    },
     select: { id: true },
   });
   const users = await database.user.findMany({
@@ -631,6 +1043,13 @@ async function cleanup(database: PrismaClient): Promise<void> {
       where: { tenantId: { in: tenantIds } },
     });
     await database.tenantInvitation.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await database.tenant.updateMany({
+      where: { id: { in: tenantIds } },
+      data: { defaultAdminDashboardId: null, defaultEmployeeDashboardId: null },
+    });
+    await database.tenantDashboardConfiguration.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });
     await database.tenantMember.deleteMany({

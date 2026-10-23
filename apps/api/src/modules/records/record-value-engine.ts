@@ -84,6 +84,7 @@ export async function validateRecordMutation(input: {
           field,
           submittedValue,
           input.memberExists,
+          input.mode === 'UPDATE' ? input.current?.[field.fieldKey] : undefined,
         );
       }
       continue;
@@ -192,18 +193,28 @@ async function normalizeValue(
   field: RecordValueField,
   value: unknown,
   memberExists: (id: string) => Promise<boolean>,
+  stored?: unknown,
 ): Promise<unknown> {
-  const normalized = normalizeStaticFieldValue(field, value);
+  const normalized = normalizeStaticFieldValue(field, value, stored);
   if (field.type === 'MEMBER' && !(await memberExists(normalized as string))) {
     invalid(field);
   }
   return normalized;
 }
 
-/** Same field rules at publication and runtime; active-member lookup stays runtime-only. */
+/**
+ * Same field rules at publication and runtime; active-member lookup stays runtime-only.
+ *
+ * `stored` is the record's saved value on update. A select option that was
+ * deactivated (or, in data from before removal was blocked, deleted) after it
+ * was saved stays valid for that record: forms resubmit every editable field,
+ * so rejecting it would make the record uneditable, and dropping it would
+ * silently rewrite history. Only newly chosen options must be active.
+ */
 export function normalizeStaticFieldValue(
   field: RecordValueField,
   value: unknown,
+  stored?: unknown,
 ): unknown {
   if (value === null) {
     if (field.required)
@@ -228,9 +239,9 @@ export function normalizeStaticFieldValue(
     case 'DATETIME':
       return normalizeDateTime(field, value);
     case 'SINGLE_SELECT':
-      return normalizeSingleSelect(field, value);
+      return normalizeSingleSelect(field, value, stored);
     case 'MULTI_SELECT':
-      return normalizeMultiSelect(field, value);
+      return normalizeMultiSelect(field, value, stored);
     case 'MEMBER':
       return normalizeMember(field, value);
     case 'BOOLEAN':
@@ -333,8 +344,10 @@ function normalizeDateTime(field: RecordValueField, value: unknown): string {
 function normalizeSingleSelect(
   field: RecordValueField,
   value: unknown,
+  stored: unknown,
 ): string {
   if (typeof value !== 'string') invalid(field);
+  if (value === stored) return value;
   const option = selectOptions(field).find(
     (candidate) => candidate.key === value,
   );
@@ -348,22 +361,34 @@ function normalizeSingleSelect(
 function normalizeMultiSelect(
   field: RecordValueField,
   value: unknown,
+  stored: unknown,
 ): string[] {
   if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
     invalid(field);
   }
   const submitted = new Set(value as string[]);
+  const kept = new Set(
+    Array.isArray(stored)
+      ? stored.filter((item): item is string => typeof item === 'string')
+      : [],
+  );
   const options = selectOptions(field);
   for (const key of submitted) {
+    if (kept.has(key)) continue;
     const option = options.find((candidate) => candidate.key === key);
     if (!option) invalid(field);
     if (option.status === 'INACTIVE') {
       throw new RecordValueError('FIELD_OPTION_INACTIVE', field.fieldKey);
     }
   }
-  return options
-    .filter((option) => submitted.has(option.key))
-    .map((option) => option.key);
+  // Configured order, deduplicated; a kept key no longer configured follows.
+  const known = new Set(options.map((option) => option.key));
+  return [
+    ...options
+      .filter((option) => submitted.has(option.key))
+      .map((option) => option.key),
+    ...[...submitted].filter((key) => !known.has(key)),
+  ];
 }
 
 function normalizeMember(field: RecordValueField, value: unknown): string {

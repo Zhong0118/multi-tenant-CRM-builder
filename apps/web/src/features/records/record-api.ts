@@ -104,11 +104,25 @@ export const MEMBER_ACTIVITY_TYPES = [
 
 export type MemberActivityType = (typeof MEMBER_ACTIVITY_TYPES)[number];
 
+/** CONNECTED and WECHAT_ADDED are a successful contact; nothing else is. */
+export type ActivityOutcome = "NOT_REACHED" | "CONNECTED" | "WECHAT_ADDED";
+
+export const OUTCOMES_BY_ACTIVITY_TYPE: Record<
+  MemberActivityType,
+  readonly ActivityOutcome[]
+> = {
+  CALL: ["NOT_REACHED", "CONNECTED"],
+  MESSAGE: ["NOT_REACHED", "CONNECTED", "WECHAT_ADDED"],
+  MEETING: ["CONNECTED"],
+  NOTE: [],
+};
+
 export interface RecordActivity {
   id: string;
   activityType: MemberActivityType;
   content: string;
   nextActionAt: string | null;
+  outcome?: ActivityOutcome | null;
   actorMemberId: string | null;
   actorDisplayName: string | null;
   createdAt: string;
@@ -125,6 +139,7 @@ export interface CreateRecordActivityInput {
   activityType: MemberActivityType;
   content: string;
   nextActionAt?: string | null;
+  outcome?: ActivityOutcome | null;
 }
 
 export interface RecordApi {

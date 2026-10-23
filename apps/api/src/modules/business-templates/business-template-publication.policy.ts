@@ -364,14 +364,15 @@ function analyzeTemplateDashboard(
   if (!dashboard) return [];
   try {
     const parsed = parseDashboardDraft(dashboard);
-    return validateDashboardDraft(parsed, templateDashboardCatalog(activeObjects)).map(
-      (issue) => ({
-        code: issue.code,
-        message: issue.message,
-        objectId: '',
-        path: `dashboard.${issue.path}`,
-      }),
-    );
+    return validateDashboardDraft(
+      parsed,
+      templateDashboardCatalog(activeObjects),
+    ).map((issue) => ({
+      code: issue.code,
+      message: issue.message,
+      objectId: '',
+      path: `dashboard.${issue.path}`,
+    }));
   } catch {
     return [
       {

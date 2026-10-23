@@ -26,7 +26,7 @@ import { StatusTag } from "@/components/workbench/status-tag";
 import { toApiError } from "@/lib/api/api-error";
 
 import { FieldEditorPanel } from "./field-editor-panel";
-import type { FieldDraftValues } from "./field-editor-form";
+import { fieldSavePayload, type FieldDraftValues } from "./field-editor-form";
 import type {
   ConfigurableFieldView,
   ConfigurableObjectView,
@@ -38,6 +38,7 @@ import { objectApi as defaultObjectApi, type ObjectApi } from "./object-api";
 import { ObjectPreview, type PreviewRole } from "./object-preview";
 import {
   DATA_SCOPE_LABELS,
+  defaultSelectOptionColor,
   FIELD_KEY_PATTERN,
   FIELD_TYPE_LABELS,
   isSearchableFieldType,
@@ -194,7 +195,12 @@ export function ObjectDesigner({
         required: input.required,
         defaultValue: null,
         validation: {},
-        config: {},
+        // A select starts with one active option, so it is fillable as soon as
+        // it is published; the editor opens next to rename it and add more.
+        config:
+          input.type === "SINGLE_SELECT" || input.type === "MULTI_SELECT"
+            ? { options: [{ key: "option_1", label: "选项 1", status: "ACTIVE", color: defaultSelectOptionColor(0) }] }
+            : {},
         isSystem: false,
       }),
     onSuccess: (next, input) => {
@@ -223,17 +229,9 @@ export function ObjectDesigner({
           label: values.label,
           type: values.type,
           required: values.required,
-          validation: pruneUndefined({
-            minLength: values.minLength,
-            maxLength: values.maxLength,
-            min: values.min,
-            max: values.max,
-            scale: values.scale,
-          }),
-          config: pruneUndefined({
-            options: values.options.length > 0 ? values.options : undefined,
-            help: values.help === "" ? undefined : values.help,
-          }),
+          // Only the rules of the field's current type: options or length
+          // limits left over from an earlier type would block publication.
+          ...fieldSavePayload(values, field),
         });
 
         if (
@@ -1472,8 +1470,3 @@ function scopeOptions() {
   }));
 }
 
-function pruneUndefined<T extends object>(input: T): T {
-  return Object.fromEntries(
-    Object.entries(input).filter(([, value]) => value !== undefined),
-  ) as T;
-}

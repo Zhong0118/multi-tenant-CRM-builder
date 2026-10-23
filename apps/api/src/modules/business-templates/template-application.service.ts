@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type { Prisma } from '@crm/database';
 
 import { ApiException } from '../../common/errors/api.exception';
 import type { AuthenticatedUser } from '../../common/tenancy/tenant-context';
@@ -14,6 +15,8 @@ import type {
   TemplateApplicationInput,
   TemplateApplicationRepository,
   TemplateApplicationResult,
+  TemplateApplicationStore,
+  TenantObjectSummary,
 } from './template-application.repository';
 import type { RequestMeta } from './business-templates.service';
 
@@ -32,6 +35,8 @@ export interface TenantBusinessConfigurationSummary {
   canApplyTemplate: boolean;
   blockingReason: TemplateApplicationBlockingReason | null;
   application: TemplateApplicationResult | null;
+  /** The company's tables, so the platform sees what exists without entering the workspace. */
+  objects: TenantObjectSummary[];
 }
 
 type IdGenerator = () => string;
@@ -55,10 +60,11 @@ export class TemplateApplicationService {
       const application = await store.findLatestApplication(tenantId);
       await store.enterTenant(tenantId);
       const objectCount = await store.countTenantObjects(tenantId);
+      const objects = (await store.listTenantObjects?.(tenantId)) ?? [];
       const blockingReason =
-        target.status !== 'DRAFT'
+        target.status !== 'DRAFT' && target.status !== 'ACTIVE'
           ? 'TENANT_NOT_DRAFT'
-          : objectCount > 0
+          : !(await store.assertTenantEmpty(tenantId))
             ? 'TARGET_NOT_EMPTY'
             : null;
       return {
@@ -66,6 +72,7 @@ export class TemplateApplicationService {
         canApplyTemplate: blockingReason === null,
         blockingReason,
         application,
+        objects,
       };
     });
   }
@@ -76,69 +83,9 @@ export class TemplateApplicationService {
     meta: RequestMeta,
   ): Promise<TemplateApplicationResult> {
     try {
-      return await this.repository.transaction(actor.id, async (store) => {
-        const repeated = await store.findApplication(
-          input.tenantId,
-          input.templateVersionId,
-          input.templateId,
-        );
-        if (repeated) return repeated;
-
-        await store.lockTemplate(input.templateId);
-        await store.lockTenant(input.tenantId);
-        const concurrent = await store.findApplication(
-          input.tenantId,
-          input.templateVersionId,
-          input.templateId,
-        );
-        if (concurrent) return concurrent;
-
-        const eligibility = await store.requireApplicableVersion(input);
-        const { source, target } = requireApplicable(eligibility);
-
-        if (
-          checksumTemplateConfiguration(source.configuration) !==
-          source.configurationChecksum
-        ) {
-          throw applicationNotAllowed('模板发布版本校验失败，不能应用。');
-        }
-        if (findTemplateIdentityBlockers(source.configuration).length > 0) {
-          throw applicationNotAllowed(
-            '模板发布版本包含重复的对象或字段身份，不能应用。',
-          );
-        }
-
-        await store.enterTenant(input.tenantId);
-        if (!(await store.assertTenantEmpty(input.tenantId))) {
-          throw applicationNotAllowed(
-            '目标公司已经存在业务对象，不能使用初始化模板覆盖。',
-          );
-        }
-
-        const hydrated = hydrateTenantConfiguration(
-          source.configuration,
-          target.id,
-          source.id,
-          this.idGenerator,
-        );
-        await store.insertTenantConfiguration(hydrated);
-        const application = await store.createApplication({
-          id: this.idGenerator(),
-          templateId: source.templateId,
-          templateCode: source.templateCode,
-          templateName: source.templateName,
-          templateVersionId: source.id,
-          templateVersionNo: source.versionNo,
-          tenantId: target.id,
-          tenantCode: target.code,
-          tenantName: target.name,
-          appliedByUserId: actor.id,
-          configurationChecksum: source.configurationChecksum,
-          objects: hydrated.objectsResult,
-        });
-        await store.appendAudit(applicationAudit(application, actor.id, meta));
-        return application;
-      });
+      return await this.repository.transaction(actor.id, (store) =>
+        this.applyIn(store, actor, input, meta),
+      );
     } catch (error) {
       if (!hasErrorCode(error, 'P2002')) throw error;
       return this.repository.transaction(actor.id, async (store) => {
@@ -151,6 +98,93 @@ export class TemplateApplicationService {
         throw error;
       });
     }
+  }
+
+  /**
+   * Applies inside a transaction the caller already holds, so creating a
+   * company and initializing it from a template commit or roll back together.
+   */
+  applyWithin(
+    tx: Prisma.TransactionClient,
+    actor: AuthenticatedUser,
+    input: TemplateApplicationInput,
+    meta: RequestMeta,
+  ): Promise<TemplateApplicationResult> {
+    return this.applyIn(this.repository.storeFor(tx), actor, input, meta);
+  }
+
+  /**
+   * One template application: locks the template and the company, returns an
+   * existing application of the same version instead of copying twice, and
+   * copies only into an eligible, empty company — as unpublished drafts.
+   */
+  private async applyIn(
+    store: TemplateApplicationStore,
+    actor: AuthenticatedUser,
+    input: TemplateApplicationInput,
+    meta: RequestMeta,
+  ): Promise<TemplateApplicationResult> {
+    const repeated = await store.findApplication(
+      input.tenantId,
+      input.templateVersionId,
+      input.templateId,
+    );
+    if (repeated) return repeated;
+
+    await store.lockTemplate(input.templateId);
+    await store.lockTenant(input.tenantId);
+    const concurrent = await store.findApplication(
+      input.tenantId,
+      input.templateVersionId,
+      input.templateId,
+    );
+    if (concurrent) return concurrent;
+
+    const eligibility = await store.requireApplicableVersion(input);
+    const { source, target } = requireApplicable(eligibility);
+
+    if (
+      checksumTemplateConfiguration(source.configuration) !==
+      source.configurationChecksum
+    ) {
+      throw applicationNotAllowed('模板发布版本校验失败，不能应用。');
+    }
+    if (findTemplateIdentityBlockers(source.configuration).length > 0) {
+      throw applicationNotAllowed(
+        '模板发布版本包含重复的对象或字段身份，不能应用。',
+      );
+    }
+
+    await store.enterTenant(input.tenantId);
+    if (!(await store.assertTenantEmpty(input.tenantId))) {
+      throw applicationNotAllowed(
+        '目标公司已经存在业务表或看板配置，不能使用初始化模板覆盖。请保留现有配置并手动配置业务表，或选择尚未配置的公司。',
+      );
+    }
+
+    const hydrated = hydrateTenantConfiguration(
+      source.configuration,
+      target.id,
+      source.id,
+      this.idGenerator,
+    );
+    await store.insertTenantConfiguration(hydrated);
+    const application = await store.createApplication({
+      id: this.idGenerator(),
+      templateId: source.templateId,
+      templateCode: source.templateCode,
+      templateName: source.templateName,
+      templateVersionId: source.id,
+      templateVersionNo: source.versionNo,
+      tenantId: target.id,
+      tenantCode: target.code,
+      tenantName: target.name,
+      appliedByUserId: actor.id,
+      configurationChecksum: source.configurationChecksum,
+      objects: hydrated.objectsResult,
+    });
+    await store.appendAudit(applicationAudit(application, actor.id, meta));
+    return application;
   }
 }
 
@@ -167,8 +201,7 @@ export function hydrateTenantConfiguration(
           dashboard: {
             tenantId,
             code: 'home',
-            name:
-              configuration.dashboard.title.trim() || '工作台',
+            name: configuration.dashboard.title.trim() || '工作台',
             draftVersion: 1,
             draftConfiguration: structuredClone(configuration.dashboard),
             activePublicationId: null,
@@ -238,6 +271,9 @@ export function hydrateTenantConfiguration(
       name: sourceObject.defaultView.name,
       type: 'TABLE',
       columnFieldKeys: [...sourceObject.defaultView.columnFieldKeys],
+      ...(sourceObject.defaultView.searchFieldKeys
+        ? { searchFieldKeys: [...sourceObject.defaultView.searchFieldKeys] }
+        : {}),
       sort: { ...sourceObject.defaultView.sort },
       status: 'ACTIVE',
     });
@@ -281,7 +317,7 @@ function requireApplicable(
   if (eligibility.kind === 'NOT_ALLOWED') {
     const reason =
       eligibility.reason === 'TENANT_NOT_DRAFT'
-        ? '目标公司必须处于草稿状态。'
+        ? '已暂停或关闭的公司不能应用模板。'
         : eligibility.reason === 'TEMPLATE_ARCHIVED'
           ? '已归档模板不能应用。'
           : '只能应用模板当前的发布版本。';

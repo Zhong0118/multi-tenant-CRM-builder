@@ -90,6 +90,7 @@ export const followUpApi = {
       recordId: string;
       title: string;
       dueAt: string;
+      assigneeMemberId?: string;
     },
   ) {
     return dataOrThrow(

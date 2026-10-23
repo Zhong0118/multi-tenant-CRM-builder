@@ -429,6 +429,112 @@ describe('whole-table lifecycle HTTP and PostgreSQL', () => {
     await get(`${runtime()}/schema`, f.otherEmployee).expect(404);
   });
 
+  it('refuses every side write on a stopped table: activities, tasks, relations, files, ownership, batch and automations', async () => {
+    const before = await h.adminDatabase.record.findUniqueOrThrow({
+      where: { id: f.ownedRecord.id },
+    });
+    await archive();
+    const record = `${runtime()}/records/${f.ownedRecord.id}`;
+    const attempts: Array<
+      [string, () => PromiseLike<{ status: number; body: unknown }>]
+    > = [
+      [
+        'activity',
+        () =>
+          post(
+            `${record}/activities`,
+            { activityType: 'NOTE', content: 'bypass' },
+            f.employee,
+          ),
+      ],
+      [
+        'follow-up',
+        () =>
+          post(
+            `${base()}/follow-ups`,
+            {
+              objectCode: f.object.code,
+              recordId: f.ownedRecord.id,
+              title: 'bypass',
+              dueAt: new Date(Date.now() + 86_400_000).toISOString(),
+            },
+            f.employee,
+          ),
+      ],
+      [
+        'relation',
+        () =>
+          post(`${record}/relations`, {
+            objectCode: f.rollbackObject.code,
+            recordId: f.rollbackRecord.id,
+          }),
+      ],
+      [
+        'ownership',
+        () =>
+          post(`${record}/ownership`, {
+            action: 'ASSIGN',
+            version: f.ownedRecord.version,
+            ownerMemberId: f.otherEmployee.memberId,
+          }),
+      ],
+      [
+        'batch',
+        () =>
+          post(`${runtime()}/records/batch`, {
+            items: [
+              { recordId: f.ownedRecord.id, version: f.ownedRecord.version },
+            ],
+            values: { name: 'bypass' },
+          }),
+      ],
+      [
+        'automation',
+        () =>
+          post(`${record}/automations/any-rule/execute`, {
+            expectedVersion: f.ownedRecord.version,
+            requestId: 'lifecycle-probe',
+            inputs: {},
+          }),
+      ],
+      [
+        'attachment',
+        () =>
+          request(h.app.getHttpServer())
+            .post(`${record}/attachments`)
+            .set('Cookie', f.employee.cookie)
+            .set('Origin', origin)
+            .attach('file', Buffer.from('bypass'), 'bypass.txt'),
+      ],
+    ];
+    const outcomes: Record<string, string> = {};
+    for (const [label, attempt] of attempts) {
+      const response = await attempt();
+      outcomes[label] =
+        `${response.status} ${json<{ code: string }>(response).code}`;
+    }
+    expect(outcomes).toEqual(
+      Object.fromEntries(
+        attempts.map(([label]) => [label, '409 OBJECT_ARCHIVED']),
+      ),
+    );
+    // Linking to a stopped table's record from an active table is refused too.
+    const reverse = await post(
+      `${runtime(f.rollbackObject.code)}/records/${f.rollbackRecord.id}/relations`,
+      { objectCode: f.object.code, recordId: f.ownedRecord.id },
+    );
+    expect(reverse.status).toBe(409);
+    expect(
+      await h.adminDatabase.record.findUniqueOrThrow({
+        where: { id: f.ownedRecord.id },
+      }),
+    ).toEqual(before);
+    const tasks = await h.adminDatabase.recordFollowUp.count({
+      where: { recordId: f.ownedRecord.id, title: 'bypass' },
+    });
+    expect(tasks).toBe(0);
+  });
+
   it('pauses future deadlines, preserves expired and protected rows and manual task dates', async () => {
     await configure();
     const now = Date.now();

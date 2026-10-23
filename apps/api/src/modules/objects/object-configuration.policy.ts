@@ -9,6 +9,7 @@ import type {
   PublicationDraftField,
   PublicationIssue,
 } from './object-publication.policy';
+import { normalizeStaticFieldValue } from '../records/record-value-engine';
 
 const TITLE_FIELD_TYPES = new Set<PublicationDraftField['type']>([
   'TEXT',
@@ -75,6 +76,9 @@ export function analyzeObjectConfiguration(
     activeFields.map((field) => [field.fieldKey, field]),
   );
   const titleField = activeFieldByKey.get(input.object.titleFieldKey);
+  const previousByKey = new Map(
+    (input.previousFields ?? []).map((field) => [field.fieldKey, field]),
+  );
 
   if (!/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(input.object.code)) {
     blocking.push({
@@ -148,6 +152,30 @@ export function analyzeObjectConfiguration(
         message: '选项键必须在字段内保持唯一。',
         fieldKey: field.fieldKey,
       });
+    } else if (!hasActiveOption(field)) {
+      // A select with no option left to choose cannot be filled in; when it is
+      // required no record of the table can be created at all.
+      blocking.push({
+        code: 'FIELD_OPTIONS_REQUIRED',
+        message: `选择字段「${field.label}」没有启用中的选项，无法填写。请至少添加或恢复一个选项。`,
+        fieldKey: field.fieldKey,
+      });
+    } else {
+      const removed = removedPublishedOptions(field, previousByKey);
+      if (removed.length > 0) {
+        blocking.push({
+          code: 'FIELD_OPTION_REMOVED',
+          message: `「${field.label}」的选项「${removed.join('」「')}」已经发布过，已有记录可能正在使用。请改为停用该选项，不要删除。`,
+          fieldKey: field.fieldKey,
+        });
+      }
+      if (!validationInvalid && !hasValidDefault(field)) {
+        blocking.push({
+          code: 'FIELD_DEFAULT_VALUE_INVALID',
+          message: `「${field.label}」的默认值不符合字段规则（例如指向已停用的选项），会让新建记录失败。请修改或清空默认值。`,
+          fieldKey: field.fieldKey,
+        });
+      }
     }
   }
 
@@ -296,6 +324,91 @@ function toPublishedField(field: PublicationDraftField): PublishedField {
     sortOrder: field.sortOrder,
     isSystem: field.isSystem,
   };
+}
+
+/**
+ * Published option keys may be deactivated but not deleted: records keep the
+ * key, and without the option its label and status are gone.
+ */
+function removedPublishedOptions(
+  field: PublicationDraftField,
+  previousByKey: Map<string, PublishedField>,
+): string[] {
+  const previous = previousByKey.get(field.fieldKey);
+  if (!previous || previous.type !== field.type) return [];
+  const keys = new Set(optionRecords(field.config.options).map((o) => o.key));
+  return optionRecords(previous.config.options)
+    .filter((option) => !keys.has(option.key))
+    .map((option) => option.label || option.key);
+}
+
+function optionRecords(
+  options: unknown,
+): Array<{ key: string; label: string }> {
+  if (!Array.isArray(options)) return [];
+  return options.flatMap((option) =>
+    isPlainRecord(option) && typeof option.key === 'string'
+      ? [
+          {
+            key: option.key,
+            label: typeof option.label === 'string' ? option.label : '',
+          },
+        ]
+      : [],
+  );
+}
+
+/**
+ * After a draft field's type changes, drops what the new type cannot use:
+ * validation keys of other types, options on a non-select, and a default the
+ * new type rejects. Still-valid settings (help text, options between the two
+ * select types, shared validation keys) are kept.
+ */
+export function dropIncompatibleSettings(field: PublicationDraftField): void {
+  const allowed = new Set(VALIDATION_KEYS_BY_FIELD_TYPE[field.type] ?? []);
+  field.validation = Object.fromEntries(
+    Object.entries(field.validation ?? {}).filter(([key]) => allowed.has(key)),
+  );
+  if (
+    field.type !== 'SINGLE_SELECT' &&
+    field.type !== 'MULTI_SELECT' &&
+    isPlainRecord(field.config) &&
+    'options' in field.config
+  ) {
+    const config = { ...field.config };
+    delete config.options;
+    field.config = config;
+  }
+  if (!hasValidDefault(field)) field.defaultValue = null;
+}
+
+/** A default must pass the field's own value rules, or every create fails. */
+function hasValidDefault(field: PublicationDraftField): boolean {
+  if (field.defaultValue === null || !isPublishedFieldType(field.type)) {
+    return true;
+  }
+  try {
+    normalizeStaticFieldValue(toPublishedField(field), field.defaultValue);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Non-select fields pass; a select needs at least one option not retired. */
+function hasActiveOption(field: PublicationDraftField): boolean {
+  if (field.type !== 'SINGLE_SELECT' && field.type !== 'MULTI_SELECT') {
+    return true;
+  }
+  const options = field.config.options;
+  return (
+    Array.isArray(options) &&
+    options.some(
+      (option) =>
+        isPlainRecord(option) &&
+        (option.status === undefined || option.status === 'ACTIVE'),
+    )
+  );
 }
 
 function hasDuplicateOptionKeys(field: PublicationDraftField): boolean {

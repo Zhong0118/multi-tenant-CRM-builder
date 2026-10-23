@@ -3,6 +3,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Page } from "@/components/layout/page";
 import { SourceReturnFocus } from "@/features/records/source-return-focus";
 import { FollowUpPanel } from "./follow-up-panel";
+import { PendingContacts } from "./pending-contacts";
 import type { FollowUpStatus } from "./follow-up-api";
 
 export function FollowUpList({ tenantCode }: { tenantCode: string }) {
@@ -17,5 +18,5 @@ export function FollowUpList({ tenantCode }: { tenantCode: string }) {
   const search = params.toString();
   return <Page><SourceReturnFocus tenantCode={tenantCode} heading="h1"><FollowUpPanel tenantCode={tenantCode} listState={{ status, page }}
     returnTo={`${path}${search ? `?${search}` : ""}`}
-    onListStateChange={(next) => router.replace(`${path}?${new URLSearchParams({ status: next.status, page: String(next.page) })}`, { scroll: false })} /></SourceReturnFocus></Page>;
+    onListStateChange={(next) => router.replace(`${path}?${new URLSearchParams({ status: next.status, page: String(next.page) })}`, { scroll: false })} beforeList={<PendingContacts tenantCode={tenantCode} />} /></SourceReturnFocus></Page>;
 }

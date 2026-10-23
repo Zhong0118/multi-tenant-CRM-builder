@@ -223,6 +223,7 @@ export class FollowUpsRepository {
           timezone,
           counts: { allOpen: 0, overdue: 0, today: 0, upcoming: 0 },
           preview: { overdue: [], today: [], upcoming: [] },
+          pendingContacts: { count: 0, items: [] },
         };
       }
 
@@ -295,6 +296,36 @@ export class FollowUpsRepository {
         ),
       });
 
+      // Leads the actor claimed or was assigned and has not confirmed as
+      // contacted, on readable tables running the staged pool.
+      const pendingWhere: Prisma.RecordWhereInput = {
+        tenantId: context.tenantId,
+        ownerMemberId: context.memberId,
+        poolStage: 'PENDING_CONTACT',
+        deletedAt: null,
+        objectId: { in: scopes.map((scope) => scope.objectId) },
+        object: {
+          status: 'ACTIVE',
+          deletedAt: null,
+          poolEnabled: true,
+          poolLifecycleEnabled: true,
+        },
+      };
+      const [pendingCount, pendingRows] = await Promise.all([
+        tx.record.count({ where: pendingWhere }),
+        tx.record.findMany({
+          where: pendingWhere,
+          select: {
+            id: true,
+            title: true,
+            ownershipExpiresAt: true,
+            object: { select: { code: true, name: true, poolLabels: true } },
+          },
+          orderBy: [{ ownershipExpiresAt: 'asc' }, { id: 'asc' }],
+          take: WORKBENCH_PREVIEW_LIMIT,
+        }),
+      ]);
+
       return {
         timezone,
         counts: { allOpen, overdue, today, upcoming },
@@ -302,6 +333,23 @@ export class FollowUpsRepository {
           overdue: overdueRows.map((row) => project(row, true)),
           today: todayRows.map((row) => project(row, false)),
           upcoming: upcomingRows.map((row) => project(row, false)),
+        },
+        pendingContacts: {
+          count: pendingCount,
+          items: pendingRows.flatMap((row) =>
+            row.ownershipExpiresAt
+              ? [
+                  {
+                    recordId: row.id,
+                    recordTitle: row.title,
+                    objectCode: row.object.code,
+                    objectName: row.object.name,
+                    stageLabel: pendingStageLabel(row.object.poolLabels),
+                    expiresAt: row.ownershipExpiresAt.toISOString(),
+                  },
+                ]
+              : [],
+          ),
         },
       };
     });
@@ -382,6 +430,8 @@ export class FollowUpsRepository {
             ? context.memberId
             : undefined,
       };
+      if (input.assigneeMemberId && input.assigneeMemberId !== context.memberId)
+        await lockFollowUpRecipient(tx, context, input.assigneeMemberId, scope);
       return createFollowUpCommand(tx, context, input, meta, currentScope, {
         audit: this.audit,
       });
@@ -419,7 +469,7 @@ export class FollowUpsRepository {
       ].sort()) {
         const members = await tx.$queryRaw<
           Array<{ id: string; role: string }>
-        >`SELECT m.id, m.role FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=${context.tenantId}::uuid AND m.id=${memberId}::uuid AND m.status='ACTIVE' AND u.status='ACTIVE' FOR UPDATE OF m`;
+        >`SELECT m.id, m.role FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=${context.tenantId}::uuid AND m.id=${memberId}::uuid AND m.status='ACTIVE' AND u.status='ACTIVE' FOR NO KEY UPDATE OF m`;
         if (
           !members.length ||
           members[0].role !==
@@ -431,6 +481,8 @@ export class FollowUpsRepository {
       }
       await lockFollowUpRecord(tx, context, scope);
       if (recipientScope) await lockFollowUpRecord(tx, context, recipientScope);
+      if (input.assigneeMemberId && input.assigneeMemberId !== context.memberId)
+        await lockFollowUpRecipient(tx, context, input.assigneeMemberId, scope);
       const before = await tx.recordFollowUp.findFirst({
         where: {
           id,
@@ -497,6 +549,69 @@ export class FollowUpsRepository {
           : undefined,
       );
       return presentFollowUp(item);
+    });
+  }
+}
+
+function pendingStageLabel(labels: Prisma.JsonValue): string {
+  const pending =
+    labels && typeof labels === 'object' && !Array.isArray(labels)
+      ? (labels as Record<string, unknown>).pending
+      : undefined;
+  return typeof pending === 'string' && pending.trim() ? pending : '待联系';
+}
+
+/**
+ * Re-checks inside the committing transaction that a member handed a task can
+ * work on its record: ACTIVE, with current effective access that lets them
+ * update the table, and owning the record where their scope is OWN. The checks
+ * made before the transaction only chose the candidate; a permission or
+ * ownership change since then is caught here. Member rows are locked in id
+ * order, as every other multi-member lock does.
+ */
+async function lockFollowUpRecipient(
+  tx: Prisma.TransactionClient,
+  context: TenantContext,
+  recipientMemberId: string,
+  scope: FollowUpRecordScope,
+): Promise<void> {
+  for (const id of [context.memberId, recipientMemberId].sort())
+    await tx.$queryRaw`SELECT id FROM tenant_members WHERE tenant_id=${context.tenantId}::uuid AND id=${id}::uuid FOR NO KEY UPDATE`;
+  const rows = await tx.$queryRaw<
+    Array<{ role: TenantContext['role']; userId: string }>
+  >`SELECT m.role, m.user_id AS "userId" FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=${context.tenantId}::uuid AND m.id=${recipientMemberId}::uuid AND m.status='ACTIVE' AND u.status='ACTIVE'`;
+  if (!rows.length)
+    throw new ApiException('VALIDATION_FAILED', 400, {
+      message: '请选择在职成员。',
+    });
+  const recipient: TenantContext = {
+    ...context,
+    memberId: recipientMemberId,
+    userId: rows[0].userId,
+    role: rows[0].role,
+  };
+  let ownScope: boolean;
+  try {
+    const { access } = await resolveReadableObjectByIdInTransaction(
+      tx,
+      recipient,
+      scope.objectId,
+      true,
+    );
+    ownScope = access.readScope === 'OWN' || access.updateScope === 'OWN';
+  } catch {
+    throw new ApiException('VALIDATION_FAILED', 400, {
+      message: '该成员没有这张表的处理权限，不能接收这条跟进。',
+    });
+  }
+  try {
+    await lockFollowUpRecord(tx, recipient, {
+      ...scope,
+      requiredOwnerMemberId: ownScope ? recipientMemberId : undefined,
+    });
+  } catch {
+    throw new ApiException('VALIDATION_FAILED', 400, {
+      message: '该成员看不到这条记录，不能接收这条跟进。',
     });
   }
 }

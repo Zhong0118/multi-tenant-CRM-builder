@@ -13,6 +13,7 @@ import {
   type FollowUpWorkbench,
   type FollowUpWorkbenchItem,
 } from "./follow-up-api";
+import { PendingContacts } from "./pending-contacts";
 import styles from "./follow-ups.module.css";
 
 const BUCKETS = [
@@ -143,6 +144,8 @@ export function PersonalFollowUpWorkbench({
               </strong>
             </span>
           </div>
+
+          <PendingContacts tenantCode={tenantCode} data={data} />
 
           {!hasItems && (
             <p className={styles.workbenchEmpty}>

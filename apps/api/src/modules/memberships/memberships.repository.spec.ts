@@ -112,3 +112,63 @@ it('skips a membership whose company is hidden from the member', async () => {
     },
   ]);
 });
+
+it.each(['counts', 'transfer'])(
+  'includes only this member’s open work tasks in offboarding %s',
+  async (operation) => {
+    const count = jest.fn().mockResolvedValue(0);
+    const updateMany = jest.fn().mockResolvedValue({ count: 0 });
+    const transaction = {
+      $queryRawUnsafe: jest.fn(),
+      record: { count, updateMany },
+      recordFollowUp: {
+        count: jest.fn().mockResolvedValue(2),
+        updateMany: jest.fn().mockResolvedValue({ count: 2 }),
+      },
+      workTask: {
+        count: jest.fn().mockResolvedValue(3),
+        updateMany: jest.fn().mockResolvedValue({ count: 3 }),
+      },
+    };
+    const repository = new PrismaMembershipsRepository(
+      {
+        transaction: (work: (tx: typeof transaction) => unknown) =>
+          work(transaction),
+      } as unknown as DatabaseService,
+      {} as AuditService,
+    );
+    await repository.withTenant(
+      {
+        tenantId: 'tenant',
+        tenantCode: 'tenant',
+        memberId: 'admin',
+        userId: 'user',
+        role: 'TENANT_ADMIN',
+      },
+      async (store) => {
+        const result =
+          operation === 'counts'
+            ? await store.offboardingCounts('employee')
+            : await store.transferWork('employee', 'recipient');
+        expect(result).toEqual({ records: 0, openTasks: 5 });
+      },
+    );
+    if (operation === 'counts')
+      expect(transaction.workTask.count).toHaveBeenCalledWith({
+        where: {
+          tenantId: 'tenant',
+          assigneeMemberId: 'employee',
+          status: 'OPEN',
+        },
+      });
+    else
+      expect(transaction.workTask.updateMany).toHaveBeenCalledWith({
+        where: {
+          tenantId: 'tenant',
+          assigneeMemberId: 'employee',
+          status: 'OPEN',
+        },
+        data: { assigneeMemberId: 'recipient', version: { increment: 1 } },
+      });
+  },
+);

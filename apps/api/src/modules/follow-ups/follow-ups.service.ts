@@ -159,11 +159,36 @@ export class FollowUpsService {
       input.recordId,
     );
     const validated = validateCreateFollowUpInput(input);
+    // A company administrator may hand the new task straight to a member, with
+    // the same check as 转交: an active member who can work on this record.
+    // Everyone else schedules for themselves.
+    if (input.assigneeMemberId && input.assigneeMemberId !== context.memberId) {
+      if (context.role !== 'TENANT_ADMIN')
+        throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+      const member = await this.repository.activeMember(
+        context,
+        input.assigneeMemberId,
+      );
+      if (!member)
+        throw new ApiException('VALIDATION_FAILED', 400, {
+          message: '请选择在职成员。',
+        });
+      await this.requireRecord(
+        {
+          ...context,
+          memberId: member.id,
+          userId: member.userId,
+          role: member.role,
+        },
+        input.objectCode,
+        input.recordId,
+      );
+    }
     /**
      * §24: the HTTP boundary keeps its own tenant transaction (opened by the
      * repository) and runs the shared transaction-aware command inside it, so
      * the Action Engine can later run the same command inside the Transition's
-     * transaction. The assignee stays hard-coded to the acting member.
+     * transaction.
      */
     return this.repository.create(
       context,

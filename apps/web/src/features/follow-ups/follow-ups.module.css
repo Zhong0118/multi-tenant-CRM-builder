@@ -284,3 +284,58 @@
 .embedded :global(.ant-empty-image) {
   display: none;
 }
+
+/* 待联系客户: leads to confirm before their contact deadline. */
+.pendingContacts {
+  display: grid;
+  gap: 8px;
+}
+.pendingHeading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+}
+.pendingHeading h2 {
+  font-size: 15px;
+  font-weight: 600;
+}
+.pendingHeading > span {
+  color: var(--color-warning);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.pendingHeading p {
+  flex-basis: 100%;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.pendingList {
+  list-style: none;
+  border-top: 1px solid var(--border-hairline);
+}
+.pendingList li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+.pendingList a {
+  overflow: hidden;
+  color: var(--color-primary);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pendingList time {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.pendingList time.pendingUrgent {
+  color: var(--color-danger);
+  font-weight: 600;
+}

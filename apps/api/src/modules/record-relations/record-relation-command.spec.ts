@@ -355,7 +355,7 @@ describe('createRecordRelationCommand', () => {
     expect(first.sql).toContain('FROM tenant_members m JOIN users u');
     expect(first.sql).toContain("m.status='ACTIVE'");
     expect(first.sql).toContain("u.status='ACTIVE'");
-    expect(first.sql).toContain('FOR UPDATE OF m');
+    expect(first.sql).toContain('FOR NO KEY UPDATE OF m');
     expect(first.values).toEqual(['tenant-a', 'member-actor', 'user-actor']);
     expect(fixture.recordReads).toHaveLength(2);
   });

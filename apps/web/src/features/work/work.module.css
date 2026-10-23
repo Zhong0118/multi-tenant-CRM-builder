@@ -1,0 +1,209 @@
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 32px;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.taskList {
+  display: flex;
+  flex-direction: column;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border-hairline);
+}
+
+.task {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.task[data-status="DONE"] strong,
+.task[data-status="CANCELLED"] strong {
+  color: var(--text-secondary);
+}
+
+.task[data-status="CANCELLED"] strong {
+  text-decoration: line-through;
+}
+
+.taskMain {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.taskMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.overdue {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.taskNotes,
+.taskResult {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+.taskResult {
+  color: var(--text-primary);
+}
+
+.taskActions {
+  display: flex;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.completeForm {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.taskForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+}
+
+.taskForm > :global(.ant-picker) {
+  align-self: flex-start;
+  min-width: 200px;
+}
+
+.formActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.report {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1200px) {
+  .report {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.reportForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reportField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reportField > span {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.fillButton {
+  align-self: flex-start;
+  padding: 0;
+}
+
+.reference {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--bg-surface);
+  font-size: 13px;
+}
+
+.reference h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.reference dl {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+}
+
+.reference dl > div {
+  display: flex;
+  justify-content: space-between;
+}
+
+.reference dt {
+  color: var(--text-secondary);
+}
+
+.reference dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.reference ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 10px 0 0;
+  border-top: 1px solid var(--border-hairline);
+  list-style: none;
+}
+
+.reference li {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.reference li > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reference p {
+  margin: 10px 0 0;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.reference li :global(.ant-tag) {
+  flex: none;
+  margin: 0;
+}

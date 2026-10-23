@@ -827,3 +827,43 @@ button.applicationChoice:hover {
     transition: none;
   }
 }
+
+/* The company's tables, read-only on the platform company page. */
+.companyTables {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.companyTables table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.companyTables th {
+  padding: 6px 8px 6px 0;
+  border-bottom: 1px solid var(--border-hairline);
+  color: var(--text-secondary);
+  font-weight: 500;
+  text-align: left;
+}
+.companyTables td {
+  padding: 8px 8px 8px 0;
+  border-bottom: 1px solid var(--border-hairline);
+  font-variant-numeric: tabular-nums;
+  vertical-align: top;
+}
+.companyTables td strong {
+  display: block;
+  font-weight: 500;
+}
+.companyTables td span {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+.companyTables tr[data-archived="true"] td {
+  color: var(--text-tertiary);
+}
+.companyTables p {
+  color: var(--text-secondary);
+  font-size: 13px;
+}

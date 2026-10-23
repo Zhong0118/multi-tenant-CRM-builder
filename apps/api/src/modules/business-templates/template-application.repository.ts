@@ -132,6 +132,8 @@ export interface HydratedTenantConfiguration {
     name: string;
     type: 'TABLE';
     columnFieldKeys: string[];
+    /** Keyword search fields; stored beside the columns as the designer does. */
+    searchFieldKeys?: string[];
     sort: {
       field: 'updatedAt' | 'createdAt' | 'recordNo';
       direction: 'asc' | 'desc';
@@ -180,6 +182,8 @@ export interface TemplateApplicationStore {
   ): Promise<TemplateApplicationEligibility>;
   enterTenant(tenantId: string): Promise<void>;
   countTenantObjects(tenantId: string): Promise<number>;
+  /** The company's business tables, read-only, for the platform overview. */
+  listTenantObjects?(tenantId: string): Promise<TenantObjectSummary[]>;
   assertTenantEmpty(tenantId: string): Promise<boolean>;
   insertTenantConfiguration(
     hydrated: HydratedTenantConfiguration,
@@ -190,11 +194,24 @@ export interface TemplateApplicationStore {
   appendAudit(event: AuditEvent): Promise<void>;
 }
 
+export interface TenantObjectSummary {
+  code: string;
+  name: string;
+  status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  published: boolean;
+  fieldCount: number;
+  recordCount: number;
+  fromTemplate: boolean;
+  archivedAt: string | null;
+}
+
 export interface TemplateApplicationRepository {
   transaction<T>(
     actorId: string,
     work: (store: TemplateApplicationStore) => Promise<T>,
   ): Promise<T>;
+  /** A store over a transaction the caller already opened (actor already set). */
+  storeFor(tx: Prisma.TransactionClient): TemplateApplicationStore;
 }
 
 @Injectable()
@@ -212,6 +229,10 @@ export class PrismaTemplateApplicationRepository implements TemplateApplicationR
       await transaction.$queryRawUnsafe(SET_USER, actorId);
       return work(new PrismaTemplateApplicationStore(transaction, this.audit));
     });
+  }
+
+  storeFor(tx: Prisma.TransactionClient): TemplateApplicationStore {
+    return new PrismaTemplateApplicationStore(tx, this.audit);
   }
 }
 
@@ -304,7 +325,10 @@ class PrismaTemplateApplicationStore implements TemplateApplicationStore {
     ) {
       return { kind: 'NOT_ALLOWED', reason: 'VERSION_NOT_ACTIVE' };
     }
-    if (target.status !== 'DRAFT') {
+    // An active company that has no business table yet can still start from a
+    // template: the copy only lands in an empty company (checked under lock by
+    // the service) and as unpublished drafts, so nothing employees use changes.
+    if (target.status !== 'DRAFT' && target.status !== 'ACTIVE') {
       return { kind: 'NOT_ALLOWED', reason: 'TENANT_NOT_DRAFT' };
     }
     return {
@@ -331,8 +355,44 @@ class PrismaTemplateApplicationStore implements TemplateApplicationStore {
     return this.transaction.objectDefinition.count({ where: { tenantId } });
   }
 
+  async listTenantObjects(tenantId: string): Promise<TenantObjectSummary[]> {
+    const objects = await this.transaction.objectDefinition.findMany({
+      where: { tenantId, deletedAt: null },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+      select: {
+        code: true,
+        name: true,
+        status: true,
+        activePublicationId: true,
+        sourceTemplateVersionId: true,
+        archivedAt: true,
+        _count: {
+          select: {
+            fields: { where: { status: 'ACTIVE' } },
+            records: { where: { deletedAt: null } },
+          },
+        },
+      },
+    });
+    return objects.map((object) => ({
+      code: object.code,
+      name: object.name,
+      status: object.status,
+      published: object.activePublicationId !== null,
+      fieldCount: object._count.fields,
+      recordCount: object._count.records,
+      fromTemplate: object.sourceTemplateVersionId !== null,
+      archivedAt: object.archivedAt?.toISOString() ?? null,
+    }));
+  }
+
   async assertTenantEmpty(tenantId: string): Promise<boolean> {
-    return (await this.countTenantObjects(tenantId)) === 0;
+    return (
+      (await this.countTenantObjects(tenantId)) === 0 &&
+      (await this.transaction.tenantDashboardConfiguration.count({
+        where: { tenantId },
+      })) === 0
+    );
   }
 
   async insertTenantConfiguration(
@@ -383,13 +443,17 @@ class PrismaTemplateApplicationStore implements TemplateApplicationStore {
           },
         });
       }
-      for (const view of hydrated.views.filter(
+      for (const { searchFieldKeys, ...view } of hydrated.views.filter(
         (candidate) => candidate.objectId === object.id,
       )) {
         await this.transaction.viewDefinition.create({
           data: {
             ...view,
-            columnFieldKeys: jsonInput(view.columnFieldKeys),
+            columnFieldKeys: jsonInput(
+              searchFieldKeys === undefined
+                ? view.columnFieldKeys
+                : { columnFieldKeys: view.columnFieldKeys, searchFieldKeys },
+            ),
             sort: jsonInput(view.sort),
           },
         });
@@ -406,17 +470,20 @@ class PrismaTemplateApplicationStore implements TemplateApplicationStore {
       }
     }
     if (hydrated.dashboard) {
-      const created = await this.transaction.tenantDashboardConfiguration.create({
-        data: {
-          tenantId: hydrated.dashboard.tenantId,
-          code: hydrated.dashboard.code,
-          name: hydrated.dashboard.name,
-          draftVersion: hydrated.dashboard.draftVersion,
-          draftConfiguration: jsonInput(hydrated.dashboard.draftConfiguration),
-          activePublicationId: hydrated.dashboard.activePublicationId,
-          sourceTemplateVersionId: hydrated.dashboard.sourceTemplateVersionId,
-        },
-      });
+      const created =
+        await this.transaction.tenantDashboardConfiguration.create({
+          data: {
+            tenantId: hydrated.dashboard.tenantId,
+            code: hydrated.dashboard.code,
+            name: hydrated.dashboard.name,
+            draftVersion: hydrated.dashboard.draftVersion,
+            draftConfiguration: jsonInput(
+              hydrated.dashboard.draftConfiguration,
+            ),
+            activePublicationId: hydrated.dashboard.activePublicationId,
+            sourceTemplateVersionId: hydrated.dashboard.sourceTemplateVersionId,
+          },
+        });
       await this.transaction.tenant.update({
         where: { id: hydrated.dashboard.tenantId },
         data: {

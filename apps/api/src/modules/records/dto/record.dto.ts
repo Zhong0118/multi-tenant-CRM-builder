@@ -342,6 +342,7 @@ export class DeleteRecordResponseDto {
 }
 
 const MEMBER_ACTIVITY_TYPES = ['CALL', 'MESSAGE', 'MEETING', 'NOTE'] as const;
+const ACTIVITY_OUTCOMES = ['NOT_REACHED', 'CONNECTED', 'WECHAT_ADDED'] as const;
 
 export class RecordActivityListQueryDto {
   @ApiPropertyOptional({ type: Number, minimum: 1, default: 1 })
@@ -375,6 +376,17 @@ export class CreateRecordActivityDto {
   @ValidateIf((_, value) => value !== null && value !== undefined)
   @IsDateString({ strict: true })
   nextActionAt?: string | null;
+
+  @ApiPropertyOptional({
+    enum: ACTIVITY_OUTCOMES,
+    nullable: true,
+    description:
+      'What the activity achieved. CONNECTED and WECHAT_ADDED are a successful contact and move a lead waiting for contact forward.',
+  })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsIn(ACTIVITY_OUTCOMES)
+  outcome?: (typeof ACTIVITY_OUTCOMES)[number] | null;
 }
 
 export class RecordActivityResponseDto {
@@ -384,6 +396,8 @@ export class RecordActivityResponseDto {
   @ApiProperty() content!: string;
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   nextActionAt!: string | null;
+  @ApiProperty({ enum: ACTIVITY_OUTCOMES, nullable: true })
+  outcome!: (typeof ACTIVITY_OUTCOMES)[number] | null;
   @ApiProperty({ type: String, format: 'uuid', nullable: true })
   actorMemberId!: string | null;
   @ApiProperty({ type: String, nullable: true })

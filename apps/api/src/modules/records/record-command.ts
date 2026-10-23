@@ -6,6 +6,8 @@ import type { ResolvedObjectSchema } from '../objects/published-object.service';
 import { projectVisibleValues } from './record-value-engine';
 import {
   MEMBER_ACTIVITY_TYPES,
+  OUTCOMES_BY_ACTIVITY_TYPE,
+  type ActivityOutcome,
   type MemberActivityType,
   type RecordActivity,
 } from './record-activity';
@@ -56,6 +58,7 @@ export interface CreateRecordCommandInput {
   poolStage?: PoolStage;
   poolOrigin?: PoolOrigin;
   poolClaimedAt?: string | null;
+  poolLastFollowUpAt?: string | null;
   inPublicPool?: boolean;
   meta: RecordRequestMeta;
   clock: () => Date;
@@ -96,6 +99,7 @@ export async function createRecordCommand(
           poolStage: input.poolStage,
           poolOrigin: input.poolOrigin,
           poolClaimedAt: input.poolClaimedAt,
+          poolLastFollowUpAt: input.poolLastFollowUpAt ?? null,
           inPublicPool: input.inPublicPool,
         }
       : {}),
@@ -178,6 +182,7 @@ export interface CreateRecordActivityCommandInput {
     activityType: MemberActivityType;
     content: string;
     nextActionAt?: string | null;
+    outcome?: ActivityOutcome | null;
   };
   meta: RecordRequestMeta;
   clock: () => Date;
@@ -231,6 +236,7 @@ export async function createRecordActivityCommand({
     activityType: input.activityType,
     content,
     nextActionAt: input.nextActionAt ?? null,
+    outcome: input.outcome ?? null,
     actorMemberId: context.memberId,
     createdAt: clock().toISOString(),
   });
@@ -245,6 +251,7 @@ export async function createRecordActivityCommand({
       recordId,
       activityType: created.activityType,
       nextActionAt: created.nextActionAt,
+      outcome: created.outcome,
       ...(meta.actionAudit ?? {}),
     },
     requestId: meta.requestId,
@@ -269,6 +276,13 @@ export function validateRecordActivityInput(
   if (!MEMBER_ACTIVITY_TYPES.includes(input.activityType))
     throw new ApiException('VALIDATION_FAILED', 400, {
       fieldErrors: { activityType: ['不支持该跟进类型。'] },
+    });
+  if (
+    input.outcome &&
+    !OUTCOMES_BY_ACTIVITY_TYPE[input.activityType].includes(input.outcome)
+  )
+    throw new ApiException('VALIDATION_FAILED', 400, {
+      fieldErrors: { outcome: ['这类跟进不能记录该结果。'] },
     });
   return content;
 }
@@ -354,6 +368,7 @@ export function projectActivity(
     activityType: activity.activityType,
     content: activity.content,
     nextActionAt: activity.nextActionAt,
+    outcome: activity.outcome,
     actorMemberId: activity.actorMemberId,
     actorDisplayName: activity.actorDisplayName,
     createdAt: activity.createdAt,

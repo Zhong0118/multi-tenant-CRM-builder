@@ -22,7 +22,7 @@ describe("shared follow-up refresh", () => {
       list: vi.fn(async (_tenant, query) => page(query.limit ?? 20)),
       workbench: vi.fn(async () => {
         if (changed) await gate;
-        return { timezone: "Asia/Shanghai", counts: { allOpen: changed ? 0 : 1, overdue: 0, today: changed ? 0 : 1, upcoming: 0 }, preview: { overdue: [], today: changed ? [] : [task], upcoming: [] } };
+        return { timezone: "Asia/Shanghai", counts: { allOpen: changed ? 0 : 1, overdue: 0, today: changed ? 0 : 1, upcoming: 0 }, preview: { overdue: [], today: changed ? [] : [task], upcoming: [] }, pendingContacts: { count: 0, items: [] } };
       }),
       create: vi.fn(async () => { changed = true; return task; }),
       update: vi.fn(async () => { changed = true; return task; }),

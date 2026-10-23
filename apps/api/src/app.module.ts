@@ -4,6 +4,7 @@ import { AttachmentsModule } from './modules/attachments/attachments.module';
 import { RecordRelationsModule } from './modules/record-relations/record-relations.module';
 import { Module } from '@nestjs/common';
 import { FollowUpsModule } from './modules/follow-ups/follow-ups.module';
+import { WorkModule } from './modules/work/work.module';
 import { ConfigModule } from '@nestjs/config';
 import { join } from 'node:path';
 
@@ -51,6 +52,7 @@ import { AiModule } from './modules/ai/ai.module';
     ObjectsModule,
     RecordsModule,
     FollowUpsModule,
+    WorkModule,
     NotificationsModule,
     AiModule,
     TenantsModule,

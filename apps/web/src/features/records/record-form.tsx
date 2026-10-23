@@ -25,6 +25,8 @@ export interface RecordFormProps {
   api?: RecordApi;
   onSaved: (record: RecordSummary) => void | Promise<void>;
   onCancel?: () => void;
+  /** What leaving the owner empty means on this table, when it differs from "unassigned". */
+  ownerHint?: string;
 }
 
 /**
@@ -44,6 +46,7 @@ export function RecordForm({
   api = defaultRecordApi,
   onSaved,
   onCancel,
+  ownerHint,
 }: RecordFormProps) {
   const editable = schema.fields.filter((field) => field.access === "EDIT");
   const [values, setValues] = useState<Record<string, unknown>>(() =>
@@ -159,7 +162,7 @@ export function RecordForm({
             <Form.Item
               label="负责人"
               htmlFor="record-owner"
-              extra="不选择时记录暂不指定负责人。"
+              extra={ownerHint ?? "不选择时记录暂不指定负责人。"}
             >
               <Select
                 id="record-owner"

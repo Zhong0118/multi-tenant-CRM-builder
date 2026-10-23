@@ -27,15 +27,22 @@ export function workspaceNavigationGroups(
       icon: "home",
     },
     { href: `${root}/follow-ups`, label: "跟进待办", icon: "calendar" },
+    // General tasks and the daily report; not tied to any business record.
+    { href: `${root}/work`, label: "任务与日报", icon: "tasks" },
+    // What each member did, from the work the system records; administrators only.
+    ...(role === "TENANT_ADMIN"
+      ? [{ href: `${root}/team`, label: "团队动态", icon: "team" }]
+      : []),
     { href: `${root}/ai`, label: "AI 助手", icon: "ai" },
   ];
 
   return {
     work: shared,
     // Administration is one entry; inside it the sidebar lists its pages.
-    admin: role === "EMPLOYEE" ? [] : [
-      { href: `${root}/settings`, label: "设置", icon: "settings" },
-    ],
+    admin:
+      role === "EMPLOYEE"
+        ? []
+        : [{ href: `${root}/settings`, label: "设置", icon: "settings" }],
   };
 }
 
@@ -57,8 +64,16 @@ export function workspaceSettingsNavigation(
       label: "数据",
       items: [
         { href: `${root}/settings/objects`, label: "业务表", icon: "object" },
-        { href: `${root}/settings/relationships`, label: "关系与自动化", icon: "relation" },
-        { href: `${root}/settings/dashboards/home`, label: "工作台配置", icon: "stats" },
+        {
+          href: `${root}/settings/relationships`,
+          label: "关系与自动化",
+          icon: "relation",
+        },
+        {
+          href: `${root}/settings/dashboards/home`,
+          label: "工作台配置",
+          icon: "stats",
+        },
       ],
     },
     {
@@ -69,10 +84,15 @@ export function workspaceSettingsNavigation(
 }
 
 /** Whether a path belongs to the administration area rather than daily work. */
-export function isWorkspaceSettingsPath(tenantCode: string, pathname: string): boolean {
+export function isWorkspaceSettingsPath(
+  tenantCode: string,
+  pathname: string,
+): boolean {
   const root = `/workspace/${tenantCode}`;
   return ["/settings", "/members", "/audit"].some(
-    (section) => pathname === `${root}${section}` || pathname.startsWith(`${root}${section}/`),
+    (section) =>
+      pathname === `${root}${section}` ||
+      pathname.startsWith(`${root}${section}/`),
   );
 }
 

@@ -1,6 +1,15 @@
 "use client";
 
-import { Button, Form, Input, Radio, Select, Switch, Typography } from "antd";
+import {
+  Alert,
+  Button,
+  Form,
+  Input,
+  Radio,
+  Select,
+  Switch,
+  Typography,
+} from "antd";
 
 import { OptionBadge } from "./option-badge";
 import {
@@ -35,8 +44,92 @@ export interface FieldDraftValues {
 }
 
 const SELECT_TYPES: PublishedFieldType[] = ["SINGLE_SELECT", "MULTI_SELECT"];
-const TEXT_TYPES: PublishedFieldType[] = ["TEXT", "TEXTAREA", "PHONE", "EMAIL"];
+// Mirrors VALIDATION_KEYS_BY_FIELD_TYPE in the API's configuration policy:
+// email has a fixed format and accepts no length rules.
+const TEXT_TYPES: PublishedFieldType[] = ["TEXT", "TEXTAREA", "PHONE"];
 const NUMERIC_TYPES: PublishedFieldType[] = ["NUMBER", "MONEY"];
+
+const VALIDATION_KEYS_BY_TYPE: Partial<
+  Record<PublishedFieldType, readonly string[]>
+> = {
+  TEXT: ["minLength", "maxLength"],
+  TEXTAREA: ["minLength", "maxLength"],
+  PHONE: ["minLength", "maxLength", "country"],
+  NUMBER: ["min", "max", "scale"],
+  MONEY: ["min", "max", "scale"],
+};
+
+export function isSelectType(type: PublishedFieldType): boolean {
+  return SELECT_TYPES.includes(type);
+}
+
+/**
+ * The validation and config a field saves for its *current* type. Values left
+ * in the form from an earlier type (options after switching a select to text,
+ * a length rule after switching text to a select) are dropped, because the API
+ * refuses to publish a field carrying rules of another type. Keys the editor
+ * does not manage, such as a phone's country or a placeholder, are kept.
+ */
+export function fieldSavePayload(
+  values: FieldDraftValues,
+  current: { validation: unknown; config: unknown },
+): { validation: Record<string, unknown>; config: Record<string, unknown> } {
+  const currentValidation = (current.validation ?? {}) as Record<
+    string,
+    unknown
+  >;
+  const validation: Record<string, unknown> = {};
+  for (const key of VALIDATION_KEYS_BY_TYPE[values.type] ?? []) {
+    const managed =
+      key === "minLength"
+        ? values.minLength
+        : key === "maxLength"
+          ? values.maxLength
+          : key === "min"
+            ? values.min
+            : key === "max"
+              ? values.max
+              : key === "scale"
+                ? values.scale
+                : undefined;
+    if (managed !== undefined) validation[key] = managed;
+    else if (key === "country" && currentValidation[key] !== undefined) {
+      validation[key] = currentValidation[key];
+    }
+  }
+  const config = { ...((current.config ?? {}) as Record<string, unknown>) };
+  if (isSelectType(values.type)) config.options = values.options;
+  else delete config.options;
+  if (values.help.trim()) config.help = values.help.trim();
+  else delete config.help;
+  return { validation, config };
+}
+
+/** Why a select field cannot be saved as it is, or undefined when it can. */
+export function selectOptionsProblem(
+  values: FieldDraftValues,
+): string | undefined {
+  if (!isSelectType(values.type)) return undefined;
+  if (values.options.length === 0)
+    return "请至少添加一个选项，否则这个字段无法填写。";
+  if (!values.options.some((option) => option.status === "ACTIVE")) {
+    return "所有选项都已停用，这个字段将无法填写。请至少启用一个选项。";
+  }
+  if (
+    values.options.some(
+      (option) => option.label.trim() === "" || option.key.trim() === "",
+    )
+  ) {
+    return "选项名称和选项键不能为空。";
+  }
+  if (
+    new Set(values.options.map((option) => option.key)).size !==
+    values.options.length
+  ) {
+    return "选项键不能重复。";
+  }
+  return undefined;
+}
 
 /**
  * The four parts of a field's configuration, shared by the drawer the template
@@ -116,7 +209,13 @@ export function FieldEditorSections({
               id="field-type"
               value={values.type}
               disabled={readOnly || typeLocked}
-              onChange={(type: PublishedFieldType) => patch({ type })}
+              onChange={(type: PublishedFieldType) =>
+                patch(
+                  isSelectType(type) && values.options.length === 0
+                    ? { type, options: [newOption(0)] }
+                    : { type },
+                )
+              }
               options={PUBLISHED_FIELD_TYPES.map((type) => ({
                 value: type,
                 label: FIELD_TYPE_LABELS[type],
@@ -188,11 +287,22 @@ export function FieldEditorSections({
           </div>
         ) : null}
         {SELECT_TYPES.includes(values.type) ? (
-          <OptionEditor
-            disabled={readOnly}
-            options={values.options}
-            onChange={(options) => patch({ options })}
-          />
+          <>
+            <OptionEditor
+              disabled={readOnly}
+              lockedKeys={typeLocked ? savedOptionKeys(field) : undefined}
+              options={values.options}
+              onChange={(options) => patch({ options })}
+            />
+            {selectOptionsProblem(values) ? (
+              <Alert
+                className={styles.optionProblem}
+                type="warning"
+                showIcon
+                title={selectOptionsProblem(values)}
+              />
+            ) : null}
+          </>
         ) : null}
         {!TEXT_TYPES.includes(values.type) &&
         !NUMERIC_TYPES.includes(values.type) &&
@@ -313,10 +423,13 @@ function NumberField({
  */
 function OptionEditor({
   disabled = false,
+  lockedKeys,
   options,
   onChange,
 }: {
   disabled?: boolean;
+  /** Keys a published field already offered: records may hold them. */
+  lockedKeys?: ReadonlySet<string>;
   options: SelectOptionView[];
   onChange: (options: SelectOptionView[]) => void;
 }) {
@@ -326,7 +439,7 @@ function OptionEditor({
         <span>选项名称</span>
         <span>选项键</span>
         <span>颜色</span>
-        <span>状态</span>
+        <span>启用</span>
       </div>
       {options.map((option, index) => (
         <div key={index} className={styles.optionEditorRow}>
@@ -343,6 +456,12 @@ function OptionEditor({
             aria-label={`选项键 ${option.key}`}
             className={styles.optionKeyInput}
             value={option.key}
+            readOnly={lockedKeys?.has(option.key)}
+            title={
+              lockedKeys?.has(option.key)
+                ? "已发布字段的选项键不能修改；不再使用时请停用。"
+                : undefined
+            }
             onChange={(event) => {
               const next = [...options];
               next[index] = {
@@ -375,42 +494,59 @@ function OptionEditor({
               ),
             }))}
           />
-          <Button
-            type="link"
+          {/* A switch shows the option's state; a link reading "停用" next to a
+              状态 heading was read as the state and clicked to "enable" it. */}
+          <Switch
+            size="small"
             disabled={disabled}
+            checked={option.status === "ACTIVE"}
             aria-label={`${option.status === "ACTIVE" ? "停用" : "恢复"}选项 ${option.key}`}
-            onClick={() => {
+            onChange={(active) => {
               const next = [...options];
               next[index] = {
                 ...option,
-                status: option.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
+                status: active ? "ACTIVE" : "INACTIVE",
               };
               onChange(next);
             }}
-          >
-            {option.status === "ACTIVE" ? "停用" : "恢复"}
-          </Button>
+          />
         </div>
       ))}
       <Button
         className={styles.addOptionButton}
         disabled={disabled}
         onClick={() =>
-          onChange([
-            ...options,
-            {
-              key: `option_${options.length + 1}`,
-              label: `选项 ${options.length + 1}`,
-              status: "ACTIVE",
-              color: defaultSelectOptionColor(options.length),
-            },
-          ])
+          onChange([...options, newOption(options.length, options)])
         }
       >
         添加选项
       </Button>
     </div>
   );
+}
+
+function savedOptionKeys(field: ConfigurableFieldView): ReadonlySet<string> {
+  return new Set(
+    selectOptions({ config: field.config as never }).map(
+      (option) => option.key,
+    ),
+  );
+}
+
+/** A new active option whose key does not collide with the existing ones. */
+function newOption(
+  index: number,
+  existing: SelectOptionView[] = [],
+): SelectOptionView {
+  let number = index + 1;
+  while (existing.some((option) => option.key === `option_${number}`))
+    number += 1;
+  return {
+    key: `option_${number}`,
+    label: `选项 ${number}`,
+    status: "ACTIVE",
+    color: defaultSelectOptionColor(index),
+  };
 }
 
 export function initialValues(field: ConfigurableFieldView): FieldDraftValues {

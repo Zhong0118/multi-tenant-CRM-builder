@@ -502,6 +502,12 @@ async function cleanupCriticalData(database: PrismaClient): Promise<void> {
   const userIds = users.map(({ id }) => id);
 
   if (tenantIds.length > 0) {
+    await database.workTask.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
+    await database.dailyReport.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
     await database.aiOperation.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });

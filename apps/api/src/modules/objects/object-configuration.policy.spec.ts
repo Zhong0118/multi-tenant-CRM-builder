@@ -63,6 +63,161 @@ function validObjectConfiguration(): ObjectConfigurationDraft {
 }
 
 describe('object configuration policy', () => {
+  it('blocks a select whose options are all retired, whatever the field is called', () => {
+    const input = validObjectConfiguration();
+    input.fields.push({
+      id: 'field-status',
+      fieldKey: 'status',
+      label: '状态跟踪',
+      type: 'MULTI_SELECT',
+      required: true,
+      defaultValue: null,
+      validation: {},
+      config: {
+        options: [
+          { key: 'option_1', label: '选题', status: 'INACTIVE' },
+          { key: 'option_2', label: '投稿', status: 'INACTIVE' },
+        ],
+      },
+      sortOrder: 30,
+      isSystem: false,
+      status: 'ACTIVE',
+    });
+    input.employeeAccess!.fields.status = 'EDIT';
+
+    expect(analyzeObjectConfiguration(input).blocking).toContainEqual(
+      expect.objectContaining({
+        code: 'FIELD_OPTIONS_REQUIRED',
+        fieldKey: 'status',
+      }),
+    );
+
+    (input.fields[2].config.options as Array<{ status: string }>)[1].status =
+      'ACTIVE';
+    expect(
+      analyzeObjectConfiguration(input).blocking.map((issue) => issue.code),
+    ).not.toContain('FIELD_OPTIONS_REQUIRED');
+  });
+
+  function withSelect(
+    type: 'SINGLE_SELECT' | 'MULTI_SELECT',
+    options: Array<{ key: string; label: string; status: string }>,
+    defaultValue: PublicationDraftField['defaultValue'] = null,
+  ) {
+    const input = validObjectConfiguration();
+    input.fields.push({
+      id: 'field-tags',
+      fieldKey: 'tags',
+      label: '客户标签',
+      type,
+      required: false,
+      defaultValue,
+      validation: {},
+      config: { options },
+      sortOrder: 30,
+      isSystem: false,
+      status: 'ACTIVE',
+    });
+    input.employeeAccess!.fields.tags = 'EDIT';
+    return input;
+  }
+  const codes = (input: ObjectConfigurationDraft) =>
+    analyzeObjectConfiguration(input).blocking.map((issue) => issue.code);
+
+  it('blocks deleting an option that was published, and accepts deactivating it', () => {
+    const published = withSelect('MULTI_SELECT', [
+      { key: 'vip', label: '重点', status: 'ACTIVE' },
+      { key: 'cold', label: '冷淡', status: 'ACTIVE' },
+    ]);
+    const previousFields = [
+      {
+        id: 'field-tags',
+        fieldKey: 'tags',
+        label: '客户标签',
+        type: 'MULTI_SELECT' as const,
+        required: false,
+        defaultValue: null,
+        validation: {},
+        config: published.fields[2].config,
+        sortOrder: 30,
+        isSystem: false,
+      },
+    ];
+    const deleted = withSelect('MULTI_SELECT', [
+      { key: 'vip', label: '重点', status: 'ACTIVE' },
+    ]);
+    deleted.previousFields = previousFields;
+    expect(analyzeObjectConfiguration(deleted).blocking).toContainEqual(
+      expect.objectContaining({
+        code: 'FIELD_OPTION_REMOVED',
+        fieldKey: 'tags',
+      }),
+    );
+
+    const deactivated = withSelect('MULTI_SELECT', [
+      { key: 'vip', label: '重点', status: 'ACTIVE' },
+      { key: 'cold', label: '冷淡', status: 'INACTIVE' },
+    ]);
+    deactivated.previousFields = previousFields;
+    expect(codes(deactivated)).not.toContain('FIELD_OPTION_REMOVED');
+
+    // A field never published may drop options freely while it is drafted.
+    expect(codes({ ...deleted, previousFields: [] })).not.toContain(
+      'FIELD_OPTION_REMOVED',
+    );
+  });
+
+  it.each([
+    ['a deactivated option', 'SINGLE_SELECT', 'cold'],
+    ['an unknown option', 'SINGLE_SELECT', 'missing'],
+    ['an array on a single-select', 'SINGLE_SELECT', ['vip']],
+    ['a scalar on a multi-select', 'MULTI_SELECT', 'vip'],
+  ] as const)('blocks a default value that is %s', (_label, type, value) => {
+    const input = withSelect(
+      type,
+      [
+        { key: 'vip', label: '重点', status: 'ACTIVE' },
+        { key: 'cold', label: '冷淡', status: 'INACTIVE' },
+      ],
+      value as PublicationDraftField['defaultValue'],
+    );
+    expect(codes(input)).toContain('FIELD_DEFAULT_VALUE_INVALID');
+  });
+
+  it('accepts a default that matches an active option', () => {
+    const input = withSelect(
+      'MULTI_SELECT',
+      [{ key: 'vip', label: '重点', status: 'ACTIVE' }],
+      ['vip'],
+    );
+    expect(codes(input)).not.toContain('FIELD_DEFAULT_VALUE_INVALID');
+  });
+
+  it('blocks a select with no options at all', () => {
+    const input = validObjectConfiguration();
+    input.fields.push({
+      id: 'field-level',
+      fieldKey: 'level',
+      label: '等级',
+      type: 'SINGLE_SELECT',
+      required: false,
+      defaultValue: null,
+      validation: {},
+      config: {},
+      sortOrder: 30,
+      isSystem: false,
+      status: 'ACTIVE',
+    });
+    input.employeeAccess!.fields.level = 'EDIT';
+
+    expect(analyzeObjectConfiguration(input).blocking).toContainEqual(
+      expect.objectContaining({
+        code: 'FIELD_OPTIONS_REQUIRED',
+        fieldKey: 'level',
+      }),
+    );
+  });
+
   it('requires employee access for every active field', () => {
     const input = validObjectConfiguration();
     delete input.employeeAccess!.fields.email;

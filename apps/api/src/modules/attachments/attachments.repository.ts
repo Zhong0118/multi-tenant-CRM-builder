@@ -63,7 +63,7 @@ export class AttachmentsRepository {
         : undefined;
     const actors = await tx.$queryRaw<
       Array<{ role: string }>
-    >`SELECT m.role FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=${c.tenantId}::uuid AND m.id=${c.memberId}::uuid AND m.status='ACTIVE' AND u.status='ACTIVE' FOR UPDATE OF m`;
+    >`SELECT m.role FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=${c.tenantId}::uuid AND m.id=${c.memberId}::uuid AND m.status='ACTIVE' AND u.status='ACTIVE' FOR NO KEY UPDATE OF m`;
     if (!actors.length || actors[0].role !== c.role)
       throw new ApiException('WORKSPACE_FORBIDDEN', 403);
     const rows = await tx.$queryRaw<

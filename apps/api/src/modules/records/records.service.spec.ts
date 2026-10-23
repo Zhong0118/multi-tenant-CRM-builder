@@ -584,6 +584,7 @@ class MemoryRecordsStore implements RecordsStore {
     activityType: MemberActivityType;
     content: string;
     nextActionAt: string | null;
+    outcome?: RecordActivity['outcome'];
     actorMemberId: string;
     createdAt: string;
   }): Promise<RecordActivity> {
@@ -593,6 +594,7 @@ class MemoryRecordsStore implements RecordsStore {
       activityType: activity.activityType,
       content: activity.content,
       nextActionAt: activity.nextActionAt,
+      outcome: activity.outcome ?? null,
       actorMemberId: activity.actorMemberId,
       actorDisplayName:
         activity.actorMemberId === admin.memberId ? '管理员' : '员工',
@@ -1523,6 +1525,57 @@ describe('RecordsService', () => {
     await expect(
       new PublishedObjectService(publishedRepository).listAccessible(employee),
     ).resolves.toEqual([]);
+  });
+
+  it('starts single records in the staged pool instead of leaving them as 旧记录', async () => {
+    const { service, store } = fixture();
+    Object.assign(store, {
+      findPoolLifecycle: () =>
+        Promise.resolve({ contactTtlHours: 24, followUpTtlHours: 720 }),
+    });
+
+    // An administrator who names no owner puts the customer in the lead pool.
+    await create(service, admin, '公海客户');
+    expect(store.records[0]).toMatchObject({
+      ownerMemberId: null,
+      inPublicPool: true,
+      poolStage: 'LEAD_POOL',
+      poolOrigin: 'LEAD_POOL',
+      ownershipExpiresAt: null,
+    });
+
+    // Naming an owner assigns it: 待联系 with the contact deadline.
+    await create(service, admin, '指派客户', employee.memberId);
+    expect(store.records[1]).toMatchObject({
+      ownerMemberId: employee.memberId,
+      inPublicPool: false,
+      poolStage: 'PENDING_CONTACT',
+      poolClaimedAt: '2026-08-21T10:30:00.000Z',
+      ownershipExpiresAt: '2026-08-22T10:30:00.000Z',
+    });
+
+    // An employee's own record is theirs but not yet contacted: 待联系 with
+    // the contact deadline, exactly like a claimed lead.
+    await create(service, employee, '自拓客户');
+    expect(store.records[2]).toMatchObject({
+      ownerMemberId: employee.memberId,
+      inPublicPool: false,
+      poolStage: 'PENDING_CONTACT',
+      poolClaimedAt: '2026-08-21T10:30:00.000Z',
+      ownershipExpiresAt: '2026-08-22T10:30:00.000Z',
+    });
+    expect(store.records[2].poolLastFollowUpAt ?? null).toBeNull();
+  });
+
+  it('leaves single records unstaged on tables without the staged pool', async () => {
+    const { service, store } = fixture();
+    Object.assign(store, { findPoolLifecycle: () => Promise.resolve(null) });
+    await create(service, admin, '普通客户');
+    expect(store.records[0]).toMatchObject({
+      ownerMemberId: null,
+      ownershipExpiresAt: null,
+    });
+    expect(store.records[0].poolStage ?? null).toBeNull();
   });
 
   it('initializes new records with the published workflow initial state', async () => {

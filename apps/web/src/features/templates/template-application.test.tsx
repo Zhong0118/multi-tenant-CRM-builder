@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { templateApi } from "./template-api";
@@ -191,6 +191,7 @@ describe("TenantBusinessConfiguration", () => {
           canApplyTemplate: true,
           blockingReason: null,
           application: null,
+          objects: [],
         }}
         api={api}
       />,
@@ -243,6 +244,7 @@ describe("TenantBusinessConfiguration", () => {
           canApplyTemplate: true,
           blockingReason: null,
           application: null,
+          objects: [],
         }}
         api={api}
       />,
@@ -310,6 +312,7 @@ describe("TenantBusinessConfiguration", () => {
           canApplyTemplate: true,
           blockingReason: null,
           application: null,
+          objects: [],
         }}
         api={api}
       />,
@@ -346,6 +349,7 @@ describe("TenantBusinessConfiguration", () => {
           canApplyTemplate: true,
           blockingReason: null,
           application: null,
+          objects: [],
         }}
         api={api}
       />,
@@ -410,6 +414,7 @@ describe("TenantBusinessConfiguration", () => {
           canApplyTemplate: true,
           blockingReason: null,
           application: null,
+          objects: [],
         }}
         api={api}
       />,
@@ -445,6 +450,7 @@ describe("TenantBusinessConfiguration", () => {
           canApplyTemplate: false,
           blockingReason: "TARGET_NOT_EMPTY",
           application: null,
+          objects: [],
         }}
         api={templateApi()}
       />,
@@ -454,26 +460,75 @@ describe("TenantBusinessConfiguration", () => {
       screen.queryByRole("button", { name: /应用业务模板/ }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText("公司已有业务表，不能再用模板覆盖初始化。"),
+      screen.getByText("公司已有业务表或看板配置。模板不会覆盖或合并已有配置，请手动配置业务表或选择尚未配置的公司。"),
     ).toBeInTheDocument();
   });
 
-  it("explains that a non-draft company cannot apply an initialization template", () => {
+  it("does not recommend initialization when an active company has only dashboard configuration", () => {
     renderWithQuery(
       <TenantBusinessConfiguration
         tenant={{ ...tenant, status: "ACTIVE" }}
         initialSummary={{
           objectCount: 0,
           canApplyTemplate: false,
-          blockingReason: "TENANT_NOT_DRAFT",
+          blockingReason: "TARGET_NOT_EMPTY",
           application: null,
+          objects: [],
         }}
         api={templateApi()}
       />,
     );
 
     expect(
-      screen.getByText(/公司已启用。模板只能用于尚未初始化的草稿公司/),
+      screen.queryByRole("button", { name: /应用业务模板/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/可以现在应用一套已发布模板/)).not.toBeInTheDocument();
+    expect(screen.queryByText("暂不使用模板")).not.toBeInTheDocument();
+    expect(screen.getByText(/公司已有业务表或看板配置/)).toBeInTheDocument();
+    expect(screen.getByText(/模板不会覆盖或合并已有配置/)).toBeInTheDocument();
+    expect(screen.getByText(/请公司管理员登录自己的账号/)).toBeInTheDocument();
+  });
+
+  it("lists the company's tables read-only, with deactivated ones marked", () => {
+    renderWithQuery(
+      <TenantBusinessConfiguration
+        tenant={{ ...tenant, status: "ACTIVE" }}
+        initialSummary={{
+          objectCount: 2,
+          canApplyTemplate: false,
+          blockingReason: "TARGET_NOT_EMPTY",
+          application: null,
+          objects: [
+            { code: "customers", name: "客户", status: "ACTIVE", published: true, fieldCount: 14, recordCount: 21, fromTemplate: true, archivedAt: null },
+            { code: "orders", name: "开单表", status: "ARCHIVED", published: true, fieldCount: 13, recordCount: 0, fromTemplate: false, archivedAt: "2026-10-20T00:00:00.000Z" },
+          ],
+        }}
+        api={templateApi()}
+      />,
+    );
+    const table = screen.getByRole("table", { name: "公司业务表" });
+    expect(within(table).getByText("customers · 来自模板")).toBeInTheDocument();
+    expect(within(table.querySelector('tr[data-archived="true"]') as HTMLElement).getByText("已停用")).toBeInTheDocument();
+    expect(screen.getByText(/由公司管理员在工作空间/)).toBeInTheDocument();
+  });
+
+  it("explains that a suspended company cannot apply a template", () => {
+    renderWithQuery(
+      <TenantBusinessConfiguration
+        tenant={{ ...tenant, status: "SUSPENDED" }}
+        initialSummary={{
+          objectCount: 0,
+          canApplyTemplate: false,
+          blockingReason: "TENANT_NOT_DRAFT",
+          application: null,
+          objects: [],
+        }}
+        api={templateApi()}
+      />,
+    );
+
+    expect(
+      screen.getByText("公司已暂停或关闭，不能应用模板。"),
     ).toBeInTheDocument();
   });
 });

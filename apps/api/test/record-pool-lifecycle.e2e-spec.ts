@@ -99,6 +99,11 @@ describe('generic record pool lifecycle HTTP', () => {
   });
   it('enables without enrolling legacy data, previews only for admin and explicitly classifies legacy records', async () => {
     const old = await state(f.ownedRecord.id);
+    const legacy = json<Row>(
+      await post('/records', { values: { name: 'Legacy unassigned' } }).expect(
+        201,
+      ),
+    );
     await configure();
     const after = await state(old.id);
     const adminSettings = json<Config>(await get('/pool-config').expect(200));
@@ -111,18 +116,155 @@ describe('generic record pool lifecycle HTTP', () => {
     expect(employee.preview).toBeUndefined();
     expect(employee.protectionSources).toBeUndefined();
     expect(employee.permissions?.readScope).toBe('OWN');
-    const created = json<Row>(
-      await post('/records', { values: { name: 'Legacy unassigned' } }).expect(
-        201,
-      ),
-    );
-    expect(created.poolStage).toBeNull();
-    await ownership(created, 'RELEASE', { reason: '分类' }).expect(400);
-    await ownership(created, 'RELEASE', {
+    expect((await state(legacy.id)).poolStage).toBeNull();
+    await ownership(legacy, 'RELEASE', { reason: '分类' }).expect(400);
+    await ownership(legacy, 'RELEASE', {
       reason: '确认资源进入线索池',
       poolStage: 'LEAD_POOL',
     }).expect(201);
-    expect((await state(created.id)).poolStage).toBe('LEAD_POOL');
+    expect((await state(legacy.id)).poolStage).toBe('LEAD_POOL');
+    // Records created once the lifecycle is on are placed, not left unclassified.
+    const created = json<Row>(
+      await post('/records', { values: { name: 'New unassigned' } }).expect(
+        201,
+      ),
+    );
+    expect(created.poolStage).toBe('LEAD_POOL');
+    expect(created.ownerMemberId).toBeNull();
+  });
+  it('resolves a claim racing the lead creator as a conflict, never a deadlock', async () => {
+    // The winner's second write re-checks every foreign key on its own fresh
+    // row version, including created_by → the creator's member row, which the
+    // creator's request locks first. Member locks must not block those checks.
+    await configure();
+    for (let round = 0; round < 6; round += 1) {
+      const row = await pool();
+      const attempts = await Promise.all([
+        ownership(row, 'CLAIM', {}, f.employee),
+        ownership(row, 'CLAIM', {}, f.admin),
+      ]);
+      for (const attempt of attempts)
+        expect([201, 404, 409]).toContain(attempt.status);
+      expect(attempts.filter((r) => r.status === 201)).toHaveLength(1);
+    }
+  });
+  it('starts an employee record waiting for contact and moves it only on an explicit contact outcome', async () => {
+    await configure();
+    const created = json<Row>(
+      await post(
+        '/records',
+        { values: { name: 'Self-sourced lead' } },
+        f.employee,
+      ).expect(201),
+    );
+    expect(created).toMatchObject({
+      ownerMemberId: f.employee.memberId,
+      poolStage: 'PENDING_CONTACT',
+    });
+    const activity = (body: object, actor: CriticalActor = f.employee) =>
+      post(`/records/${created.id}/activities`, body, actor);
+
+    // Neither an unanswered call, a plain note nor a message without a reply
+    // is contact.
+    await activity({
+      activityType: 'CALL',
+      content: '无人接听',
+      outcome: 'NOT_REACHED',
+    }).expect(201);
+    await activity({ activityType: 'NOTE', content: '准备资料' }).expect(201);
+    await activity({ activityType: 'MESSAGE', content: '发了介绍' }).expect(
+      201,
+    );
+    expect((await state(created.id)).poolStage).toBe('PENDING_CONTACT');
+
+    // Outcomes that do not fit the kind of activity are refused.
+    await activity({
+      activityType: 'CALL',
+      content: '加了微信',
+      outcome: 'WECHAT_ADDED',
+    }).expect(400);
+    await activity({
+      activityType: 'NOTE',
+      content: '已联系',
+      outcome: 'CONNECTED',
+    }).expect(400);
+    // Another employee, and another company, cannot log on this lead.
+    await activity(
+      { activityType: 'CALL', content: '越权', outcome: 'CONNECTED' },
+      f.otherEmployee,
+    ).expect((r) => expect([403, 404]).toContain(r.status));
+    await request(h.app.getHttpServer())
+      .post(
+        `/api/v1/workspaces/${f.tenantA.code}/objects/${f.object.code}/records/${created.id}/activities`,
+      )
+      .set('Cookie', f.tenantBAdmin.cookie)
+      .set('Origin', 'http://localhost:3000')
+      .send({ activityType: 'CALL', content: '跨公司', outcome: 'CONNECTED' })
+      .expect(403);
+    expect((await state(created.id)).poolStage).toBe('PENDING_CONTACT');
+
+    const logged = await activity({
+      activityType: 'MESSAGE',
+      content: '对方通过了好友申请',
+      outcome: 'WECHAT_ADDED',
+    }).expect(201);
+    expect(logged.body).toMatchObject({ outcome: 'WECHAT_ADDED' });
+    const following = await state(created.id);
+    expect(following.poolStage).toBe('FOLLOWING');
+    expect(
+      following.ownershipExpiresAt!.getTime() - Date.now(),
+    ).toBeGreaterThan(719 * 3600_000);
+    // The same audited state change as the 确认联系 button.
+    expect(
+      await h.adminDatabase.auditLog.count({
+        where: {
+          tenantId: f.tenantA.id,
+          resourceId: created.id,
+          action: 'record.ownership_confirm_contact',
+        },
+      }),
+    ).toBe(1);
+
+    // A claimed lead moves the same way after a connected call.
+    const lead = await pool();
+    await ownership(lead, 'CLAIM', {}, f.employee).expect(201);
+    await post(
+      `/records/${lead.id}/activities`,
+      { activityType: 'CALL', content: '接通，有意向', outcome: 'CONNECTED' },
+      f.employee,
+    ).expect(201);
+    expect((await state(lead.id)).poolStage).toBe('FOLLOWING');
+  });
+  it('resolves an admin workflow transition racing the owner confirming contact without a deadlock', async () => {
+    // Workflow transitions lock the record and then the owner's member row;
+    // pool actions lock members, the table and then the record. Both orders
+    // must meet without a cycle.
+    await configure();
+    for (let round = 0; round < 40; round += 1) {
+      const row = await h.adminDatabase.record.update({
+        where: { id: f.workflowRecord.id },
+        data: {
+          statusKey: 'new',
+          ownerMemberId: f.employee.memberId,
+          inPublicPool: false,
+          poolStage: 'PENDING_CONTACT',
+          poolOrigin: 'LEAD_POOL',
+          poolClaimedAt: new Date(),
+          ownershipExpiresAt: new Date(Date.now() + 24 * 3600_000),
+        },
+      });
+      const attempts = await Promise.all([
+        post(
+          `/records/${row.id}/workflow/transitions/qualify`,
+          { expectedVersion: row.version },
+          f.admin,
+        ),
+        ownership(row, 'CONFIRM_CONTACT', {}, f.employee),
+      ]);
+      const statuses = attempts.map((r) => r.status);
+      expect(statuses.filter((s) => s >= 500)).toEqual([]);
+      expect(statuses.filter((s) => s === 200 || s === 201)).toHaveLength(1);
+    }
   });
   it('claims once under contention, confirms contact, renews only by activity and releases with quality', async () => {
     await configure();

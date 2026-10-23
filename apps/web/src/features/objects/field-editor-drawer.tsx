@@ -7,6 +7,7 @@ import { StatusTag } from "@/components/workbench/status-tag";
 
 import {
   FieldEditorSections,
+  selectOptionsProblem,
   initialValues,
   type FieldDraftValues,
 } from "./field-editor-form";
@@ -91,7 +92,7 @@ function FieldEditor({
             <Button
               type="primary"
               loading={saving}
-              disabled={readOnly}
+              disabled={readOnly || Boolean(selectOptionsProblem(values))}
               onClick={() => {
                 if (!readOnly) onSubmit(values);
               }}

@@ -319,6 +319,85 @@ describe('dynamic record values', () => {
     );
   });
 
+  describe('options deactivated after a record saved them', () => {
+    const options = [
+      { key: 'new', label: '新线索', status: 'ACTIVE' },
+      { key: 'lost', label: '已流失', status: 'INACTIVE' },
+      { key: 'won', label: '已成交', status: 'ACTIVE' },
+    ];
+    const update = (
+      selectField: PublishedField,
+      submitted: unknown,
+      stored: unknown,
+    ) => {
+      const testSchema = schema(selectField);
+      return validateRecordMutation({
+        mode: 'UPDATE',
+        schema: testSchema,
+        access: editableAccess(testSchema),
+        submitted: { name: '客户 A', value: submitted },
+        current: { name: '客户 A', value: stored },
+        memberExists: () => Promise.resolve(true),
+      });
+    };
+
+    it('keeps a single-select value when the form resubmits it unchanged', async () => {
+      const result = await update(
+        field('SINGLE_SELECT', { config: { options } }),
+        'lost',
+        'lost',
+      );
+      expect(result.values.value).toBe('lost');
+    });
+
+    it('still refuses switching a single-select to a deactivated option', async () => {
+      await expect(
+        update(field('SINGLE_SELECT', { config: { options } }), 'lost', 'new'),
+      ).rejects.toMatchObject({
+        code: 'FIELD_OPTION_INACTIVE',
+        fieldKey: 'value',
+      });
+    });
+
+    it('lets a multi-select keep a stored deactivated key while adding an active one', async () => {
+      const result = await update(
+        field('MULTI_SELECT', { config: { options } }),
+        ['won', 'lost', 'won'],
+        ['lost'],
+      );
+      expect(result.values.value).toEqual(['lost', 'won']);
+    });
+
+    it('refuses adding a deactivated key the record did not hold', async () => {
+      await expect(
+        update(field('MULTI_SELECT', { config: { options } }), ['lost'], []),
+      ).rejects.toMatchObject({ code: 'FIELD_OPTION_INACTIVE' });
+    });
+
+    it('keeps a stored key that is no longer configured, after configured keys', async () => {
+      const result = await update(
+        field('MULTI_SELECT', { config: { options } }),
+        ['legacy', 'new'],
+        ['legacy'],
+      );
+      expect(result.values.value).toEqual(['new', 'legacy']);
+    });
+
+    it('does not let a create reuse a deactivated option', async () => {
+      const testSchema = schema(field('MULTI_SELECT', { config: { options } }));
+      await expect(
+        validateRecordMutation({
+          mode: 'CREATE',
+          schema: testSchema,
+          access: editableAccess(testSchema),
+          submitted: { name: '客户 A', value: ['lost'] },
+          current: { value: ['lost'] },
+          memberExists: () => Promise.resolve(true),
+        }),
+      ).rejects.toMatchObject({ code: 'FIELD_OPTION_INACTIVE' });
+    });
+  });
+
   it('requires the active-tenant member callback to accept MEMBER values', async () => {
     const testField = field('MEMBER');
     const testSchema = schema(testField);

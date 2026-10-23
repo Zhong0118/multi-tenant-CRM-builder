@@ -191,6 +191,7 @@ export function RecordDetailPage({
           tenantCode={tenantCode}
           followUpId={followUpId}
           record={{ id: record.id, objectCode: schema.object.code, canCreate: canEdit }}
+          assignees={canChooseOwner ? members : undefined}
         />
       ),
     },

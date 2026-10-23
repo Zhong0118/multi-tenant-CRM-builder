@@ -5,6 +5,7 @@ import { PlatformOperationsService } from './platform-operations.service';
 describe('PlatformOperationsService', () => {
   it('returns paged audit and operation data from the platform repository', async () => {
     const repository = {
+      auditFacets: jest.fn(),
       listAudit: jest.fn().mockResolvedValue({
         items: [{ id: 'audit-1', action: 'TENANT_CREATED' }],
         page: 2,
@@ -54,7 +55,11 @@ describe('PlatformOperationsService', () => {
 
   async function smsStatus(values: Record<string, string>) {
     return new PlatformOperationsService(
-      { listAudit: jest.fn(), listOperations: jest.fn() },
+      {
+        auditFacets: jest.fn(),
+        listAudit: jest.fn(),
+        listOperations: jest.fn(),
+      },
       config(values),
       {
         check: () => Promise.resolve({ database: true, redis: true }),
@@ -116,6 +121,7 @@ describe('PlatformOperationsService', () => {
   it('reports readiness without returning connection strings or secrets', async () => {
     const service = new PlatformOperationsService(
       {
+        auditFacets: jest.fn(),
         listAudit: jest.fn(),
         listOperations: jest.fn(),
       },

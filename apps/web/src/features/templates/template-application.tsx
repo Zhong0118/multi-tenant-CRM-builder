@@ -86,13 +86,27 @@ export function TenantBusinessConfiguration({
         templateVersionId: version.id,
       });
     },
-    onSuccess: (next) => {
+    onSuccess: (next, { version }) => {
       setResult(next);
       setSummary({
         objectCount: next.objects.length,
         canApplyTemplate: false,
         blockingReason: "TARGET_NOT_EMPTY",
         application: next,
+        // The applied drafts, as the next server read will list them.
+        objects: next.objects.map((object) => ({
+          code: object.code,
+          name: object.name,
+          status: "DRAFT" as const,
+          published: false,
+          fieldCount:
+            version.configuration.objects
+              .find((source) => source.code === object.code)
+              ?.fields.filter((field) => field.status === "ACTIVE").length ?? 0,
+          recordCount: 0,
+          fromTemplate: true,
+          archivedAt: null,
+        })),
       });
       setOpen(false);
       resetModalState();
@@ -129,12 +143,48 @@ export function TenantBusinessConfiguration({
         <div>
           <h2>初始化业务表</h2>
           <p>
-            {summary.objectCount === 0
+            {summary.canApplyTemplate
               ? "模板只是加速器。可以现在应用一套已发布模板，也可以暂不使用，等公司启用后由管理员手工创建。"
-              : `当前公司已有 ${summary.objectCount} 张业务表。`}
+              : summary.objectCount === 0
+                ? "当前公司尚无业务表，暂时不能使用初始化模板。"
+                : `当前公司已有 ${summary.objectCount} 张业务表。`}
           </p>
         </div>
       </div>
+
+      {summary.objects.length ? (
+        <div className={styles.companyTables}>
+          <table aria-label="公司业务表">
+            <thead>
+              <tr>
+                <th>业务表</th>
+                <th>状态</th>
+                <th>字段</th>
+                <th>记录</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summary.objects.map((object) => (
+                <tr key={object.code} data-archived={object.status === "ARCHIVED" ? "true" : undefined}>
+                  <td>
+                    <strong>{object.name}</strong>
+                    <span>
+                      {object.code}
+                      {object.fromTemplate ? " · 来自模板" : ""}
+                    </span>
+                  </td>
+                  <td>{companyTableStatus(object)}</td>
+                  <td>{object.fieldCount}</td>
+                  <td>{object.recordCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p>
+            只读概览。业务表的配置、发布、停用与恢复由公司管理员在工作空间「设置 → 业务表」中操作；需要紧急停止整个公司时，在上方暂停公司。
+          </p>
+        </div>
+      ) : null}
 
       {summary.canApplyTemplate ? (
         <div className={styles.applicationChoices}>
@@ -378,12 +428,18 @@ function blockingReasonText(
 ) {
   switch (reason) {
     case "TARGET_NOT_EMPTY":
-      return "公司已有业务表，不能再用模板覆盖初始化。";
+      return "公司已有业务表或看板配置。模板不会覆盖或合并已有配置，请手动配置业务表或选择尚未配置的公司。";
     case "TENANT_NOT_DRAFT":
-      return tenantStatus === "ACTIVE"
-        ? "公司已启用。模板只能用于尚未初始化的草稿公司；现在应由公司管理员手工创建业务表。"
-        : "只有草稿状态的公司可以使用初始化模板。";
+      return tenantStatus === "SUSPENDED" || tenantStatus === "CLOSED"
+        ? "公司已暂停或关闭，不能应用模板。"
+        : "当前公司暂时不能应用模板。";
     default:
       return "当前公司暂时不能使用初始化模板。";
   }
+}
+
+function companyTableStatus(object: TenantBusinessConfigurationSummary["objects"][number]) {
+  if (object.status === "ARCHIVED") return "已停用";
+  if (!object.published) return "未发布";
+  return "使用中";
 }

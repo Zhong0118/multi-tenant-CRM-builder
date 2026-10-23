@@ -1,9 +1,11 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
+import type { Prisma } from '@crm/database';
 import { createHash, randomBytes } from 'node:crypto';
 
 import { ApiException } from '../../common/errors/api.exception';
 import type { AuthenticatedUser } from '../../common/tenancy/tenant-context';
 import type { AuditEvent } from '../audit/audit-event';
+import { TemplateApplicationService } from '../business-templates/template-application.service';
 import { normalizeChineseMobile } from '../auth/phone-number';
 
 export const PLATFORM_TENANT_REPOSITORY = Symbol('PLATFORM_TENANT_REPOSITORY');
@@ -29,6 +31,21 @@ export interface PlatformTenant {
   createdAt?: Date;
   updatedAt?: Date;
   activeAdminCount: number;
+  configuration?: {
+    tables: {
+      total: number;
+      draft: number;
+      published: number;
+      pendingChanges: number;
+      archived: number;
+    };
+    template: { name: string; versionNo: number; appliedAt: Date } | null;
+  };
+  initialization?: {
+    templateName: string;
+    templateVersionNo: number;
+    objectCount: number;
+  };
   firstAdminInvitation?: {
     id: string;
     targetPhone: string;
@@ -87,7 +104,10 @@ export interface PlatformTenantStore {
 export interface PlatformTenantRepository {
   transaction<T>(
     actorId: string,
-    work: (store: PlatformTenantStore) => Promise<T>,
+    work: (
+      store: PlatformTenantStore,
+      tx: Prisma.TransactionClient,
+    ) => Promise<T>,
   ): Promise<T>;
   list(actorId: string, page: TenantPageQuery): Promise<PlatformTenantPage>;
   find(actorId: string, tenantId: string): Promise<PlatformTenant | null>;
@@ -103,6 +123,7 @@ export class TenantsService {
     @Inject(TENANT_CLOCK) private readonly clock: () => Date,
     @Inject(INVITATION_TOKEN_GENERATOR)
     private readonly tokenGenerator: () => string,
+    @Optional() private readonly templates?: TemplateApplicationService,
   ) {}
 
   async createTenant(
@@ -111,10 +132,18 @@ export class TenantsService {
       name: string;
       code: string;
       firstAdminPhone: string;
+      initialization?: 'BLANK' | 'TEMPLATE';
+      templateId?: string;
+      templateVersionId?: string;
       requestId: string;
       ip?: string;
     },
   ): Promise<PlatformTenant> {
+    const fromTemplate = input.initialization === 'TEMPLATE';
+    if (fromTemplate && (!input.templateId || !input.templateVersionId))
+      throw new ApiException('VALIDATION_FAILED', 400, {
+        fieldErrors: { templateId: ['请选择要使用的模板。'] },
+      });
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.code)) {
       throw new ApiException('VALIDATION_FAILED', 400, {
         fieldErrors: { code: ['仅支持小写字母、数字和单个连字符。'] },
@@ -122,7 +151,7 @@ export class TenantsService {
     }
     const targetPhone = normalizeChineseMobile(input.firstAdminPhone);
 
-    return await this.repository.transaction(actor.id, async (store) => {
+    return await this.repository.transaction(actor.id, async (store, tx) => {
       const tenant = await store.createTenant({
         name: input.name,
         code: input.code,
@@ -147,7 +176,37 @@ export class TenantsService {
         requestId: input.requestId,
         ip: input.ip,
       });
-      return { ...tenant, activeAdminCount: 0, firstAdminInvitation };
+      // The company and its initial configuration commit together: a template
+      // that cannot be applied leaves no half-made company behind.
+      if (fromTemplate && !this.templates)
+        throw new Error('Template application is not wired into tenants');
+      const application =
+        fromTemplate && this.templates
+          ? await this.templates.applyWithin(
+              tx,
+              actor,
+              {
+                templateId: input.templateId!,
+                templateVersionId: input.templateVersionId!,
+                tenantId: tenant.id,
+              },
+              { requestId: input.requestId, ip: input.ip },
+            )
+          : undefined;
+      return {
+        ...tenant,
+        activeAdminCount: 0,
+        firstAdminInvitation,
+        ...(application
+          ? {
+              initialization: {
+                templateName: application.templateName,
+                templateVersionNo: application.templateVersionNo,
+                objectCount: application.objects.length,
+              },
+            }
+          : {}),
+      };
     });
   }
 

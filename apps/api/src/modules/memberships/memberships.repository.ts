@@ -140,7 +140,7 @@ class PrismaMembershipStore implements MembershipStore {
   async lockMembers(ids: string[]) {
     for (const id of ids)
       await this.transaction
-        .$queryRaw`SELECT id FROM tenant_members WHERE tenant_id = ${this.tenantId}::uuid AND id = ${id}::uuid FOR UPDATE`;
+        .$queryRaw`SELECT id FROM tenant_members WHERE tenant_id = ${this.tenantId}::uuid AND id = ${id}::uuid FOR NO KEY UPDATE`;
   }
 
   async updateMemberRole(id: string, role: 'TENANT_ADMIN' | 'EMPLOYEE') {
@@ -158,7 +158,10 @@ class PrismaMembershipStore implements MembershipStore {
     const openTasks = await this.transaction.recordFollowUp.count({
       where: { tenantId: this.tenantId, assigneeMemberId: id, status: 'OPEN' },
     });
-    return { records, openTasks };
+    const workTasks = await this.transaction.workTask.count({
+      where: { tenantId: this.tenantId, assigneeMemberId: id, status: 'OPEN' },
+    });
+    return { records, openTasks: openTasks + workTasks };
   }
 
   async offboardingRecipients(id: string) {
@@ -193,7 +196,15 @@ class PrismaMembershipStore implements MembershipStore {
       },
       data: { assigneeMemberId: recipient, version: { increment: 1 } },
     });
-    return { records: records.count, openTasks: tasks.count };
+    const workTasks = await this.transaction.workTask.updateMany({
+      where: {
+        tenantId: this.tenantId,
+        assigneeMemberId: source,
+        status: 'OPEN',
+      },
+      data: { assigneeMemberId: recipient, version: { increment: 1 } },
+    });
+    return { records: records.count, openTasks: tasks.count + workTasks.count };
   }
 
   async listMembers(page: MemberPageQuery) {

@@ -1388,6 +1388,10 @@
       },
       "CreateFollowUpDto": {
         "properties": {
+          "assigneeMemberId": {
+            "format": "uuid",
+            "type": "string"
+          },
           "dueAt": {
             "format": "date-time",
             "type": "string"
@@ -1467,9 +1471,24 @@
             "example": "13800138000",
             "type": "string"
           },
+          "initialization": {
+            "default": "BLANK",
+            "description": "BLANK: the company admin builds tables from scratch. TEMPLATE: the chosen published template is copied in the same transaction as unpublished drafts.",
+            "enum": ["BLANK", "TEMPLATE"],
+            "type": "string"
+          },
           "name": {
             "maxLength": 200,
             "minLength": 1,
+            "type": "string"
+          },
+          "templateId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "templateVersionId": {
+            "description": "The template version shown when choosing; must still be current.",
+            "format": "uuid",
             "type": "string"
           }
         },
@@ -1488,6 +1507,12 @@
           },
           "nextActionAt": {
             "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "outcome": {
+            "description": "What the activity achieved. CONNECTED and WECHAT_ADDED are a successful contact and move a lead waiting for contact forward.",
+            "enum": ["NOT_REACHED", "CONNECTED", "WECHAT_ADDED"],
             "nullable": true,
             "type": "string"
           }
@@ -1523,6 +1548,29 @@
         "required": ["objectCode", "recordId"],
         "type": "object"
       },
+      "CreateWorkTaskDto": {
+        "properties": {
+          "assigneeMemberId": {
+            "description": "Defaults to the acting member; others only for administrators.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "dueAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "notes": {
+            "maxLength": 4000,
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": ["title", "dueAt"],
+        "type": "object"
+      },
       "CreatedInvitationResponseDto": {
         "properties": {
           "id": {
@@ -1535,6 +1583,170 @@
           }
         },
         "required": ["id", "status"],
+        "type": "object"
+      },
+      "DailyReportDto": {
+        "properties": {
+          "completed": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "nextSteps": {
+            "type": "string"
+          },
+          "plans": {
+            "type": "string"
+          },
+          "problems": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          },
+          "workDate": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "workDate",
+          "plans",
+          "completed",
+          "problems",
+          "nextSteps",
+          "version",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "DailyReportListDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DailyReportListItemDto"
+            },
+            "type": "array"
+          },
+          "workDate": {
+            "type": "string"
+          }
+        },
+        "required": ["workDate", "items"],
+        "type": "object"
+      },
+      "DailyReportListItemDto": {
+        "properties": {
+          "memberId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "memberName": {
+            "type": "string"
+          },
+          "report": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DailyReportDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          }
+        },
+        "required": ["memberId", "memberName", "report"],
+        "type": "object"
+      },
+      "DailyReportReferenceDto": {
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/TeamActivityCountsDto"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/DailyReportTaskDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["counts", "tasks"],
+        "type": "object"
+      },
+      "DailyReportTaskDto": {
+        "properties": {
+          "completedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "dueAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          },
+          "status": {
+            "enum": ["OPEN", "DONE", "CANCELLED"],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "title", "status", "dueAt", "completedAt", "result"],
+        "type": "object"
+      },
+      "DailyReportViewDto": {
+        "properties": {
+          "canEdit": {
+            "type": "boolean"
+          },
+          "memberId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "memberName": {
+            "type": "string"
+          },
+          "reference": {
+            "$ref": "#/components/schemas/DailyReportReferenceDto"
+          },
+          "report": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DailyReportDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "today": {
+            "type": "string"
+          },
+          "workDate": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "workDate",
+          "today",
+          "memberId",
+          "memberName",
+          "canEdit",
+          "report",
+          "reference"
+        ],
         "type": "object"
       },
       "DashboardConfigurationEnvelopeDto": {
@@ -2845,6 +3057,9 @@
           "counts": {
             "$ref": "#/components/schemas/FollowUpWorkbenchCountsDto"
           },
+          "pendingContacts": {
+            "$ref": "#/components/schemas/PendingContactsDto"
+          },
           "preview": {
             "$ref": "#/components/schemas/FollowUpWorkbenchPreviewDto"
           },
@@ -2852,7 +3067,7 @@
             "type": "string"
           }
         },
-        "required": ["timezone", "counts", "preview"],
+        "required": ["timezone", "counts", "preview", "pendingContacts"],
         "type": "object"
       },
       "ForgotPasswordDto": {
@@ -3820,6 +4035,53 @@
         "required": ["records", "openTasks", "recipients"],
         "type": "object"
       },
+      "PendingContactItemDto": {
+        "properties": {
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "objectCode": {
+            "type": "string"
+          },
+          "objectName": {
+            "type": "string"
+          },
+          "recordId": {
+            "type": "string"
+          },
+          "recordTitle": {
+            "type": "string"
+          },
+          "stageLabel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "recordId",
+          "recordTitle",
+          "objectCode",
+          "objectName",
+          "stageLabel",
+          "expiresAt"
+        ],
+        "type": "object"
+      },
+      "PendingContactsDto": {
+        "properties": {
+          "count": {
+            "type": "number"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PendingContactItemDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["count", "items"],
+        "type": "object"
+      },
       "PersonalInvitationResponseDto": {
         "properties": {
           "acceptedByUserId": {
@@ -3869,6 +4131,36 @@
           "status",
           "expiresAt"
         ],
+        "type": "object"
+      },
+      "PlatformAuditFacetDto": {
+        "properties": {
+          "count": {
+            "type": "number"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": ["value", "count"],
+        "type": "object"
+      },
+      "PlatformAuditFacetsDto": {
+        "properties": {
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformAuditFacetDto"
+            },
+            "type": "array"
+          },
+          "resourceTypes": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformAuditFacetDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["actions", "resourceTypes"],
         "type": "object"
       },
       "PlatformAuditItemDto": {
@@ -4102,6 +4394,9 @@
           "code": {
             "type": "string"
           },
+          "configuration": {
+            "$ref": "#/components/schemas/TenantConfigurationSummaryDto"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -4112,6 +4407,9 @@
           "id": {
             "format": "uuid",
             "type": "string"
+          },
+          "initialization": {
+            "$ref": "#/components/schemas/TenantInitializationResponseDto"
           },
           "locale": {
             "type": "string"
@@ -4660,6 +4958,11 @@
             "format": "date-time",
             "nullable": true,
             "type": "string"
+          },
+          "outcome": {
+            "enum": ["NOT_REACHED", "CONNECTED", "WECHAT_ADDED"],
+            "nullable": true,
+            "type": "string"
           }
         },
         "required": [
@@ -4667,6 +4970,7 @@
           "activityType",
           "content",
           "nextActionAt",
+          "outcome",
           "actorMemberId",
           "actorDisplayName",
           "createdAt"
@@ -5437,6 +5741,32 @@
         "required": ["expectedVersion", "name", "description", "configuration"],
         "type": "object"
       },
+      "SaveDailyReportDto": {
+        "properties": {
+          "completed": {
+            "maxLength": 4000,
+            "type": "string"
+          },
+          "nextSteps": {
+            "maxLength": 4000,
+            "type": "string"
+          },
+          "plans": {
+            "maxLength": 4000,
+            "type": "string"
+          },
+          "problems": {
+            "maxLength": 4000,
+            "type": "string"
+          },
+          "version": {
+            "description": "0 creates the report; otherwise the version being edited.",
+            "type": "number"
+          }
+        },
+        "required": ["version", "plans", "completed", "problems", "nextSteps"],
+        "type": "object"
+      },
       "SaveDashboardConfigurationDto": {
         "properties": {
           "configuration": {
@@ -5589,6 +5919,227 @@
           }
         },
         "required": ["content"],
+        "type": "object"
+      },
+      "TeamActivityCountsDto": {
+        "properties": {
+          "calls": {
+            "description": "Calls logged (电话 activities).",
+            "type": "number"
+          },
+          "connectedCalls": {
+            "description": "Calls logged with the outcome 已接通.",
+            "type": "number"
+          },
+          "contactsConfirmed": {
+            "type": "number"
+          },
+          "customersFollowed": {
+            "description": "Distinct records on customer-pool tables with a call, message or visit.",
+            "type": "number"
+          },
+          "followUpsDone": {
+            "type": "number"
+          },
+          "followUpsOverdue": {
+            "description": "Open customer follow-ups past due right now.",
+            "type": "number"
+          },
+          "followUpsOverdueInPeriod": {
+            "description": "Customer follow-ups due in the period and not completed by their due time.",
+            "type": "number"
+          },
+          "leadsClaimed": {
+            "type": "number"
+          },
+          "messages": {
+            "description": "Messages logged (微信/消息 activities).",
+            "type": "number"
+          },
+          "notes": {
+            "description": "Notes logged (备注 activities).",
+            "type": "number"
+          },
+          "recordsCreated": {
+            "type": "number"
+          },
+          "reportsWritten": {
+            "description": "Daily reports saved for work dates in the period.",
+            "type": "number"
+          },
+          "tasksDone": {
+            "type": "number"
+          },
+          "tasksOverdue": {
+            "description": "Open work tasks past due right now.",
+            "type": "number"
+          },
+          "tasksOverdueInPeriod": {
+            "description": "Work tasks due in the period and not completed by their due time.",
+            "type": "number"
+          },
+          "visits": {
+            "description": "Visits logged (拜访 activities).",
+            "type": "number"
+          },
+          "wechatAdded": {
+            "description": "Customers explicitly logged as newly added on WeChat; each member–customer pair once, in the period of its first entry.",
+            "type": "number"
+          }
+        },
+        "required": [
+          "calls",
+          "connectedCalls",
+          "messages",
+          "wechatAdded",
+          "visits",
+          "notes",
+          "customersFollowed",
+          "leadsClaimed",
+          "contactsConfirmed",
+          "recordsCreated",
+          "followUpsDone",
+          "followUpsOverdue",
+          "followUpsOverdueInPeriod",
+          "tasksDone",
+          "tasksOverdue",
+          "tasksOverdueInPeriod",
+          "reportsWritten"
+        ],
+        "type": "object"
+      },
+      "TeamActivityMemberDto": {
+        "properties": {
+          "calls": {
+            "description": "Calls logged (电话 activities).",
+            "type": "number"
+          },
+          "connectedCalls": {
+            "description": "Calls logged with the outcome 已接通.",
+            "type": "number"
+          },
+          "contactsConfirmed": {
+            "type": "number"
+          },
+          "customersFollowed": {
+            "description": "Distinct records on customer-pool tables with a call, message or visit.",
+            "type": "number"
+          },
+          "followUpsDone": {
+            "type": "number"
+          },
+          "followUpsOverdue": {
+            "description": "Open customer follow-ups past due right now.",
+            "type": "number"
+          },
+          "followUpsOverdueInPeriod": {
+            "description": "Customer follow-ups due in the period and not completed by their due time.",
+            "type": "number"
+          },
+          "leadsClaimed": {
+            "type": "number"
+          },
+          "memberId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "messages": {
+            "description": "Messages logged (微信/消息 activities).",
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "notes": {
+            "description": "Notes logged (备注 activities).",
+            "type": "number"
+          },
+          "recordsCreated": {
+            "type": "number"
+          },
+          "reportsWritten": {
+            "description": "Daily reports saved for work dates in the period.",
+            "type": "number"
+          },
+          "role": {
+            "enum": ["TENANT_ADMIN", "EMPLOYEE"],
+            "type": "string"
+          },
+          "status": {
+            "enum": ["ACTIVE", "DISABLED"],
+            "type": "string"
+          },
+          "tasksDone": {
+            "type": "number"
+          },
+          "tasksOverdue": {
+            "description": "Open work tasks past due right now.",
+            "type": "number"
+          },
+          "tasksOverdueInPeriod": {
+            "description": "Work tasks due in the period and not completed by their due time.",
+            "type": "number"
+          },
+          "visits": {
+            "description": "Visits logged (拜访 activities).",
+            "type": "number"
+          },
+          "wechatAdded": {
+            "description": "Customers explicitly logged as newly added on WeChat; each member–customer pair once, in the period of its first entry.",
+            "type": "number"
+          }
+        },
+        "required": [
+          "calls",
+          "connectedCalls",
+          "messages",
+          "wechatAdded",
+          "visits",
+          "notes",
+          "customersFollowed",
+          "leadsClaimed",
+          "contactsConfirmed",
+          "recordsCreated",
+          "followUpsDone",
+          "followUpsOverdue",
+          "followUpsOverdueInPeriod",
+          "tasksDone",
+          "tasksOverdue",
+          "tasksOverdueInPeriod",
+          "reportsWritten",
+          "memberId",
+          "name",
+          "role",
+          "status"
+        ],
+        "type": "object"
+      },
+      "TeamActivityResponseDto": {
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/TeamActivityMemberDto"
+            },
+            "type": "array"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "today": {
+            "description": "Today in the company calendar.",
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/TeamActivityCountsDto"
+          }
+        },
+        "required": ["timezone", "today", "from", "to", "members", "totals"],
         "type": "object"
       },
       "TemplateApplicationObjectResponseDto": {
@@ -6226,14 +6777,55 @@
           "objectCount": {
             "minimum": 0,
             "type": "number"
+          },
+          "objects": {
+            "items": {
+              "$ref": "#/components/schemas/TenantObjectSummaryResponseDto"
+            },
+            "type": "array"
           }
         },
         "required": [
           "objectCount",
           "canApplyTemplate",
           "blockingReason",
-          "application"
+          "application",
+          "objects"
         ],
+        "type": "object"
+      },
+      "TenantConfigurationSummaryDto": {
+        "properties": {
+          "tables": {
+            "$ref": "#/components/schemas/TenantTableCountsDto"
+          },
+          "template": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TenantTemplateProvenanceDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          }
+        },
+        "required": ["tables", "template"],
+        "type": "object"
+      },
+      "TenantInitializationResponseDto": {
+        "properties": {
+          "objectCount": {
+            "description": "Business tables copied as unpublished drafts.",
+            "type": "number"
+          },
+          "templateName": {
+            "type": "string"
+          },
+          "templateVersionNo": {
+            "type": "number"
+          }
+        },
+        "required": ["templateName", "templateVersionNo", "objectCount"],
         "type": "object"
       },
       "TenantInvitationResponseDto": {
@@ -6354,6 +6946,101 @@
           }
         },
         "required": ["name", "count"],
+        "type": "object"
+      },
+      "TenantObjectSummaryResponseDto": {
+        "properties": {
+          "archivedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "fieldCount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "fromTemplate": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "recordCount": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "status": {
+            "enum": ["DRAFT", "ACTIVE", "ARCHIVED"],
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "status",
+          "published",
+          "fieldCount",
+          "recordCount",
+          "fromTemplate",
+          "archivedAt"
+        ],
+        "type": "object"
+      },
+      "TenantTableCountsDto": {
+        "properties": {
+          "archived": {
+            "description": "Stopped by the company admin; data kept.",
+            "minimum": 0,
+            "type": "number"
+          },
+          "draft": {
+            "description": "Never published; employees cannot see them.",
+            "minimum": 0,
+            "type": "number"
+          },
+          "pendingChanges": {
+            "description": "Published tables with unpublished draft changes.",
+            "minimum": 0,
+            "type": "number"
+          },
+          "published": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "total": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "total",
+          "draft",
+          "published",
+          "pendingChanges",
+          "archived"
+        ],
+        "type": "object"
+      },
+      "TenantTemplateProvenanceDto": {
+        "properties": {
+          "appliedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "versionNo": {
+            "type": "number"
+          }
+        },
+        "required": ["name", "versionNo", "appliedAt"],
         "type": "object"
       },
       "UpdateDashboardDto": {
@@ -6549,6 +7236,39 @@
         "required": ["enabled", "ownershipTtlHours", "version"],
         "type": "object"
       },
+      "UpdateWorkTaskDto": {
+        "properties": {
+          "assigneeMemberId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "dueAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "notes": {
+            "maxLength": 4000,
+            "type": "string"
+          },
+          "result": {
+            "maxLength": 4000,
+            "type": "string"
+          },
+          "status": {
+            "enum": ["OPEN", "DONE", "CANCELLED"],
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": ["version"],
+        "type": "object"
+      },
       "UserResponseDto": {
         "properties": {
           "displayName": {
@@ -6585,6 +7305,118 @@
           }
         },
         "required": ["phone", "purpose", "deviceKey"],
+        "type": "object"
+      },
+      "WorkTaskDto": {
+        "properties": {
+          "assigneeMemberId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "assigneeName": {
+            "type": "string"
+          },
+          "canComplete": {
+            "description": "May complete, reopen and record the result.",
+            "type": "boolean"
+          },
+          "canManage": {
+            "description": "May change the plan or cancel.",
+            "type": "boolean"
+          },
+          "canReassign": {
+            "description": "May hand the task to another member.",
+            "type": "boolean"
+          },
+          "completedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdByMemberId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "createdByName": {
+            "type": "string"
+          },
+          "dueAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "overdue": {
+            "type": "boolean"
+          },
+          "result": {
+            "type": "string"
+          },
+          "status": {
+            "enum": ["OPEN", "DONE", "CANCELLED"],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "notes",
+          "dueAt",
+          "status",
+          "result",
+          "completedAt",
+          "overdue",
+          "assigneeMemberId",
+          "assigneeName",
+          "createdByMemberId",
+          "createdByName",
+          "version",
+          "createdAt",
+          "updatedAt",
+          "canComplete",
+          "canManage",
+          "canReassign"
+        ],
+        "type": "object"
+      },
+      "WorkTaskPageDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WorkTaskDto"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": ["items", "page", "limit", "total"],
         "type": "object"
       },
       "WorkflowActionDraftDto": {
@@ -7429,6 +8261,35 @@
               "maxLength": 100,
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "actorType",
+            "required": false,
+            "schema": {
+              "enum": ["USER", "SYSTEM", "INTEGRATION"],
+              "type": "string"
+            }
+          },
+          {
+            "description": "First day, inclusive, in Beijing time.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "example": "2026-10-01",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Last day, inclusive, in Beijing time.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "example": "2026-10-22",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -7437,6 +8298,40 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PlatformAuditPageDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-operations"]
+      }
+    },
+    "/api/v1/platform/audit/facets": {
+      "get": {
+        "operationId": "PlatformOperationsController_auditFacets",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tenantId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformAuditFacetsDto"
                 }
               }
             },
@@ -8743,6 +9638,195 @@
           }
         ],
         "tags": ["company-audit"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/daily-reports/{workDate}": {
+      "get": {
+        "operationId": "DailyReportsController_list",
+        "parameters": [
+          {
+            "description": "A company calendar day, or `today` in the company timezone.",
+            "in": "path",
+            "name": "workDate",
+            "required": true,
+            "schema": {
+              "example": "2026-10-22",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyReportListDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["work"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/daily-reports/{workDate}/members/{memberId}": {
+      "get": {
+        "operationId": "DailyReportsController_member",
+        "parameters": [
+          {
+            "description": "A company calendar day, or `today` in the company timezone.",
+            "in": "path",
+            "name": "workDate",
+            "required": true,
+            "schema": {
+              "example": "2026-10-22",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyReportViewDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["work"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/daily-reports/{workDate}/mine": {
+      "get": {
+        "operationId": "DailyReportsController_mine",
+        "parameters": [
+          {
+            "description": "A company calendar day, or `today` in the company timezone.",
+            "in": "path",
+            "name": "workDate",
+            "required": true,
+            "schema": {
+              "example": "2026-10-22",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyReportViewDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["work"]
+      },
+      "put": {
+        "operationId": "DailyReportsController_save",
+        "parameters": [
+          {
+            "description": "A company calendar day, or `today` in the company timezone.",
+            "in": "path",
+            "name": "workDate",
+            "required": true,
+            "schema": {
+              "example": "2026-10-22",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveDailyReportDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyReportDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["work"]
       }
     },
     "/api/v1/workspaces/{tenantCode}/dashboards": {
@@ -13279,6 +14363,241 @@
           }
         ],
         "tags": ["memberships"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/team-activity": {
+      "get": {
+        "operationId": "TeamActivityController_summarize",
+        "parameters": [
+          {
+            "description": "A period resolved in the company timezone (weeks start on Monday). Wins over from/to.",
+            "in": "query",
+            "name": "preset",
+            "required": false,
+            "schema": {
+              "enum": ["today", "yesterday", "week", "month"],
+              "type": "string"
+            }
+          },
+          {
+            "description": "First day, inclusive, in the company timezone. Default: today.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "example": "2026-10-22",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Last day, inclusive, in the company timezone. Default: the first day.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "example": "2026-10-22",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamActivityResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["team-activity"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/work-tasks": {
+      "get": {
+        "operationId": "WorkTasksController_list",
+        "parameters": [
+          {
+            "description": "team: every member’s tasks (administrators only).",
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "enum": ["mine", "team"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": ["OPEN", "DONE", "CANCELLED"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "assigneeMemberId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "type": "number"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkTaskPageDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["work"]
+      },
+      "post": {
+        "operationId": "WorkTasksController_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWorkTaskDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkTaskDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["work"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/work-tasks/{taskId}": {
+      "patch": {
+        "operationId": "WorkTasksController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "taskId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWorkTaskDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkTaskDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["work"]
       }
     }
   },

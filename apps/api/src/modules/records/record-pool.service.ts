@@ -1,7 +1,4 @@
-import {
-  lockObjectConfiguration,
-  lockRuntimeObjectConfiguration,
-} from '../objects/object-configuration-lock';
+import { lockObjectConfiguration } from '../objects/object-configuration-lock';
 import { configOf, validatePoolConfig } from './record-pool-config';
 import { Inject, Injectable } from '@nestjs/common';
 import { ApiException } from '../../common/errors/api.exception';
@@ -11,17 +8,10 @@ import { AuditService } from '../audit/audit.service';
 import { resolvePublishedObjectInTransaction } from '../objects/published-object-transaction';
 import { isReadable } from '../objects/published-object.service';
 import type { RecordRequestMeta } from './record-command';
-import {
-  ownershipChange,
-  type OwnershipInput,
-  type PoolConfig,
-} from './record-ownership';
-import {
-  assertAssignableOwner,
-  lockMembers,
-  lockObject,
-} from './record-ownership-locks';
+import { type OwnershipInput, type PoolConfig } from './record-ownership';
+import { lockMembers, lockObject } from './record-ownership-locks';
 import { RECORDS_CLOCK } from './records.service';
+import { applyOwnershipChange } from './record-ownership-command';
 
 @Injectable()
 export class RecordPoolService {
@@ -231,92 +221,16 @@ export class RecordPoolService {
     input: OwnershipInput,
     meta: RecordRequestMeta,
   ) {
-    return this.runner.withTenant(context, async (tx) => {
-      await lockRuntimeObjectConfiguration(tx, context.tenantId);
-      await lockMembers(
+    return this.runner.withTenant(context, (tx) =>
+      applyOwnershipChange(
         tx,
-        context,
-        input.action === 'ASSIGN' ? input.ownerMemberId : undefined,
-      );
-      const object = await lockObject(tx, context, objectCode);
-      const resolved = await resolvePublishedObjectInTransaction(
-        tx,
+        { clock: this.clock, appendAudit: (t, e) => this.audit.append(t, e) },
         context,
         objectCode,
-      );
-      if (!isReadable(resolved.schema, resolved.access))
-        throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
-      if (input.action === 'ASSIGN' && input.ownerMemberId)
-        await assertAssignableOwner(
-          tx,
-          context,
-          objectCode,
-          input.ownerMemberId,
-        );
-      const locked = await tx.$queryRaw<
-        Array<{ id: string }>
-      >`SELECT id FROM records WHERE tenant_id = ${context.tenantId}::uuid AND object_id = ${object.id}::uuid AND id = ${recordId}::uuid AND deleted_at IS NULL FOR UPDATE`;
-      if (!locked.length) throw new ApiException('RECORD_NOT_FOUND', 404);
-      const record = await tx.record.findFirstOrThrow({
-        where: {
-          tenantId: context.tenantId,
-          id: recordId,
-          objectId: object.id,
-          deletedAt: null,
-        },
-      });
-      const change = ownershipChange(
-        context,
-        resolved.access,
-        configOf(object),
-        record,
+        recordId,
         input,
-        this.clock(),
-      );
-      const updated = await tx.record.updateMany({
-        where: {
-          tenantId: context.tenantId,
-          objectId: object.id,
-          id: recordId,
-          version: input.version,
-          deletedAt: null,
-        },
-        data: {
-          ...change,
-          ownershipExpiresAt: undefined,
-          version: { increment: 1 },
-        },
-      });
-      if (updated.count !== 1)
-        throw new ApiException('RECORD_VERSION_CONFLICT', 409);
-      // The database owner-change trigger clears the old owner's lease for every
-      // mutation path. This explicit command starts the new lease after that reset.
-      await tx.record.update({
-        where: { id: recordId },
-        data: { ...change },
-      });
-      await this.audit.append(tx, {
-        tenantId: context.tenantId,
-        actorType: 'USER',
-        actorId: context.userId,
-        action: `record.ownership_${input.action.toLowerCase()}`,
-        resourceType: 'record',
-        resourceId: recordId,
-        before: {
-          ownerMemberId: record.ownerMemberId,
-          inPublicPool: record.inPublicPool,
-          ownershipExpiresAt: record.ownershipExpiresAt?.toISOString() ?? null,
-          version: record.version,
-        },
-        after: {
-          ...change,
-          ownershipExpiresAt: change.ownershipExpiresAt?.toISOString() ?? null,
-          version: input.version + 1,
-        },
-        requestId: meta.requestId,
-        ip: meta.ip,
-      });
-      return { recordId, version: input.version + 1 };
-    });
+        meta,
+      ),
+    );
   }
 }

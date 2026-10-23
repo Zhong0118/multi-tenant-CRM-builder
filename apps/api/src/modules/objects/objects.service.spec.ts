@@ -621,6 +621,62 @@ describe('ObjectsService', () => {
     ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
   });
 
+  it('drops settings the new type cannot use when a draft field changes type through the API', async () => {
+    const { service } = fixture();
+    let draft = await createPublishableDraft(service);
+    draft = await service.createField(
+      admin,
+      draft.object.id,
+      {
+        expectedVersion: draft.object.version,
+        fieldKey: 'grade',
+        label: '等级',
+        type: 'SINGLE_SELECT',
+        required: false,
+        defaultValue: 'a',
+        validation: {},
+        config: {
+          help: '客户分级',
+          options: [{ key: 'a', label: 'A', status: 'ACTIVE' }],
+        },
+        isSystem: false,
+      },
+      meta,
+    );
+    const grade = draft.fields.find((field) => field.fieldKey === 'grade')!;
+
+    // Between the two select types the options stay; a scalar default does not.
+    draft = await service.updateField(
+      admin,
+      draft.object.id,
+      grade.id,
+      { expectedVersion: draft.object.version, type: 'MULTI_SELECT' },
+      meta,
+    );
+    let changed = draft.fields.find((field) => field.id === grade.id)!;
+    expect(changed.config).toEqual({
+      help: '客户分级',
+      options: [{ key: 'a', label: 'A', status: 'ACTIVE' }],
+    });
+    expect(changed.defaultValue).toBeNull();
+
+    // To a text type the options go; help text and new-type rules are kept.
+    draft = await service.updateField(
+      admin,
+      draft.object.id,
+      grade.id,
+      {
+        expectedVersion: draft.object.version,
+        type: 'TEXT',
+        validation: { maxLength: 20, scale: 2 },
+      },
+      meta,
+    );
+    changed = draft.fields.find((field) => field.id === grade.id)!;
+    expect(changed.config).toEqual({ help: '客户分级' });
+    expect(changed.validation).toEqual({ maxLength: 20 });
+  });
+
   it('retires fields atomically with list/search cleanup and restores their original permission', async () => {
     const { service } = fixture();
     let draft = await createPublishableDraft(service);

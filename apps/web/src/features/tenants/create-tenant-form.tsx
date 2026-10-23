@@ -2,15 +2,19 @@
 
 import type { components } from "@crm/contracts";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
-import { Alert, Button, Form, Input, Result } from "antd";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Alert, Button, Form, Input, Radio, Result, Select } from "antd";
 import Link from "next/link";
 import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { toApiError } from "@/lib/api/api-error";
 import { browserApiClient } from "@/lib/api/browser-client";
+import {
+  browserTemplateApi,
+  type TemplateApi,
+} from "@/features/templates/template-api";
 
 import styles from "./tenants.module.css";
 
@@ -24,9 +28,17 @@ const schema = z.object({
   firstAdminPhone: z
     .string()
     .regex(/^1[3-9]\d{9}$/, "请输入 11 位中国大陆手机号。"),
+  initialization: z.enum(["BLANK", "TEMPLATE"], {
+    error: "请选择从模板开始还是空白开始。",
+  }),
+  templateId: z.string().optional(),
 });
 
-type CreateTenantInput = z.infer<typeof schema>;
+type CreateTenantFields = z.infer<typeof schema>;
+type CreateTenantInput = Omit<CreateTenantFields, "templateId"> & {
+  templateId?: string;
+  templateVersionId?: string;
+};
 
 export interface TenantApi {
   create(input: CreateTenantInput): Promise<PlatformTenant>;
@@ -74,17 +86,31 @@ export const tenantApi: TenantApi = {
   },
 };
 
-export function CreateTenantForm({ api = tenantApi }: { api?: TenantApi }) {
+export function CreateTenantForm({
+  api = tenantApi,
+  templates = browserTemplateApi,
+}: {
+  api?: TenantApi;
+  templates?: Pick<TemplateApi, "list">;
+}) {
   const [created, setCreated] = useState<PlatformTenant>();
   const [summary, setSummary] = useState<string>();
   const [nameConflictCount, setNameConflictCount] = useState<number>();
   const {
     control,
     handleSubmit,
+    setError,
     formState: { errors },
-  } = useForm<CreateTenantInput>({
+  } = useForm<CreateTenantFields>({
     resolver: zodResolver(schema),
     defaultValues: { name: "", code: "", firstAdminPhone: "" },
+  });
+  const initialization = useWatch({ control, name: "initialization" });
+  const published = useQuery({
+    queryKey: ["platform", "business-templates", "published"],
+    queryFn: () =>
+      templates.list({ page: 1, limit: 100, hasActiveVersion: true }),
+    enabled: initialization === "TEMPLATE",
   });
   const mutation = useMutation({
     mutationFn: (input: CreateTenantInput) => api.create(input),
@@ -106,7 +132,11 @@ export function CreateTenantForm({ api = tenantApi }: { api?: TenantApi }) {
         className={styles.creationResult}
         status="success"
         title="公司草稿已创建"
-        subTitle={`${created.name} 仍处于草稿状态。下一步：等待首位管理员接受邀请，然后由平台启用公司。模板不是必选项。`}
+        subTitle={
+          created.initialization
+            ? `${created.name} 已从模板「${created.initialization.templateName}」v${created.initialization.templateVersionNo} 复制 ${created.initialization.objectCount} 张业务表，全部是未发布的草稿，员工暂时看不到。下一步：首位管理员接受邀请后，在「业务表」中检查并发布；平台再启用公司。`
+            : `${created.name} 是空白公司，仍处于草稿状态。下一步：首位管理员接受邀请后自行搭建业务表（也可以之后再应用模板，只要公司里还没有业务表）；平台再启用公司。`
+        }
         extra={[
           <Link key="detail" href={`/platform/tenants/${created.id}`}>
             查看开通详情
@@ -137,7 +167,22 @@ export function CreateTenantForm({ api = tenantApi }: { api?: TenantApi }) {
       noValidate
       onSubmit={handleSubmit((values) => {
         setSummary(undefined);
-        mutation.mutate(values);
+        if (values.initialization === "TEMPLATE") {
+          const template = published.data?.items.find(
+            (item) => item.id === values.templateId,
+          );
+          if (!template?.activeVersion) {
+            setError("templateId", { message: "请选择一个已发布的模板。" });
+            return;
+          }
+          mutation.mutate({
+            ...values,
+            templateId: template.id,
+            templateVersionId: template.activeVersion.id,
+          });
+          return;
+        }
+        mutation.mutate({ ...values, templateId: undefined });
       })}
     >
       {summary ? <Alert type="error" showIcon title={summary} /> : null}
@@ -200,6 +245,61 @@ export function CreateTenantForm({ api = tenantApi }: { api?: TenantApi }) {
           )}
         />
       </Form.Item>
+      <Form.Item
+        label="初始化方式"
+        validateStatus={errors.initialization ? "error" : undefined}
+        help={errors.initialization?.message}
+        extra="模板只在创建时复制一次，成为这家公司自己的草稿配置；之后修改模板不会改动这家公司。"
+      >
+        <Controller
+          name="initialization"
+          control={control}
+          render={({ field }) => (
+            <Radio.Group
+              aria-label="初始化方式"
+              value={field.value}
+              onChange={(event) => field.onChange(event.target.value)}
+              options={[
+                { value: "TEMPLATE", label: "从模板开始" },
+                { value: "BLANK", label: "空白开始" },
+              ]}
+            />
+          )}
+        />
+      </Form.Item>
+      {initialization === "TEMPLATE" ? (
+        <Form.Item
+          label="模板"
+          htmlFor="tenant-template"
+          validateStatus={errors.templateId ? "error" : undefined}
+          help={
+            errors.templateId?.message ??
+            (published.isSuccess && published.data.items.length === 0
+              ? "还没有已发布的模板，可以先选择空白开始。"
+              : undefined)
+          }
+          extra="复制为未发布的草稿：首位管理员检查并发布后，员工才能使用。"
+        >
+          <Controller
+            name="templateId"
+            control={control}
+            render={({ field }) => (
+              <Select
+                id="tenant-template"
+                aria-label="模板"
+                loading={published.isLoading}
+                placeholder="选择已发布的模板"
+                value={field.value}
+                onChange={field.onChange}
+                options={(published.data?.items ?? []).map((template) => ({
+                  value: template.id,
+                  label: `${template.name} · v${template.activeVersion?.versionNo ?? "—"}`,
+                }))}
+              />
+            )}
+          />
+        </Form.Item>
+      ) : null}
       <Button type="primary" htmlType="submit" loading={mutation.isPending}>
         {mutation.isPending ? "正在创建…" : "创建公司"}
       </Button>

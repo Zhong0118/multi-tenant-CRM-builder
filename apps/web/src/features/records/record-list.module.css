@@ -58,13 +58,22 @@
   min-width: 0;
 }
 
+.rowStart {
+  flex: 1 1 auto;
+}
+
 .rowEnd {
   flex: none;
   flex-wrap: nowrap;
 }
 
+/* Lifecycle tables add a scope per pool stage; scroll them rather than run
+   under the search box. */
 .scope:global(.ant-segmented) {
-  flex: none;
+  flex: 0 1 auto;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
 .scopeLabel {
@@ -464,11 +473,6 @@ th[data-resizing="true"] .columnResizer::after {
   .search:global(.ant-input-affix-wrapper) {
     flex: 1;
     width: auto;
-  }
-
-  .scope:global(.ant-segmented) {
-    max-width: 100%;
-    overflow-x: auto;
   }
 
   .desktopOnly {

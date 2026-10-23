@@ -12,9 +12,10 @@ import {
 import { PlatformAdminGuard } from '../../common/auth/platform-admin.guard';
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
+import { BusinessTemplatesModule } from '../business-templates/business-templates.module';
 
 @Module({
-  imports: [AuditModule, AuthModule],
+  imports: [AuditModule, AuthModule, BusinessTemplatesModule],
   controllers: [TenantsController],
   providers: [
     TenantsService,

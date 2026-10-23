@@ -25,7 +25,10 @@ const shellUser = {
 beforeEach(() => {
   mocks.pathname = "/workspace/northwind";
   window.localStorage.clear();
-  Object.defineProperty(window, "innerWidth", { configurable: true, value: 1440 });
+  Object.defineProperty(window, "innerWidth", {
+    configurable: true,
+    value: 1440,
+  });
 });
 
 function businessObject(overrides: Record<string, unknown> = {}) {
@@ -48,6 +51,8 @@ describe("workspaceNavigation", () => {
     expect(items.map((item) => item.href)).toEqual([
       "/workspace/northwind",
       "/workspace/northwind/follow-ups",
+      "/workspace/northwind/work",
+      "/workspace/northwind/team",
       "/workspace/northwind/ai",
       // Administration is one 设置 entry whose pages the settings sidebar lists.
       "/workspace/northwind/settings",
@@ -73,6 +78,11 @@ describe("workspaceNavigation", () => {
         icon: "calendar",
       },
       {
+        href: "/workspace/northwind/work",
+        label: "任务与日报",
+        icon: "tasks",
+      },
+      {
         href: "/workspace/northwind/ai",
         label: "AI 助手",
         icon: "ai",
@@ -84,16 +94,27 @@ describe("workspaceNavigation", () => {
 describe("WorkspaceShell", () => {
   it("orders work, business data, and management without classifying by translated labels", () => {
     render(
-      <WorkspaceShell tenantCode="northwind" tenantName="百杰" role="TENANT_ADMIN"
-        user={shellUser} businessObjects={[businessObject({ name: "成员管理" })]}>
+      <WorkspaceShell
+        tenantCode="northwind"
+        tenantName="百杰"
+        role="TENANT_ADMIN"
+        user={shellUser}
+        businessObjects={[businessObject({ name: "成员管理" })]}
+      >
         <p>内容</p>
       </WorkspaceShell>,
     );
-    expect(screen.getAllByRole("navigation").map((nav) => nav.getAttribute("aria-label")))
-      .toEqual(["工作", "业务数据", "设置"]);
-    expect(within(screen.getByRole("navigation", { name: "业务数据" }))
-      .getByRole("link", { name: "成员管理" }))
-      .toHaveAttribute("href", "/workspace/northwind/objects/customers");
+    expect(
+      screen
+        .getAllByRole("navigation")
+        .map((nav) => nav.getAttribute("aria-label")),
+    ).toEqual(["工作", "业务数据", "设置"]);
+    expect(
+      within(screen.getByRole("navigation", { name: "业务数据" })).getByRole(
+        "link",
+        { name: "成员管理" },
+      ),
+    ).toHaveAttribute("href", "/workspace/northwind/objects/customers");
   });
 
   it("keeps employee navigation free of administrator destinations", () => {
@@ -171,12 +192,21 @@ describe("WorkspaceShell", () => {
       </WorkspaceShell>,
     );
 
-    expect(screen.getByRole("link", { name: "返回工作区" })).toHaveAttribute("href", "/workspace/northwind");
+    expect(screen.getByRole("link", { name: "返回工作区" })).toHaveAttribute(
+      "href",
+      "/workspace/northwind",
+    );
     expect(
-      within(screen.getByRole("navigation", { name: "成员与权限" })).getByRole("link", { name: "成员" }),
+      within(screen.getByRole("navigation", { name: "成员与权限" })).getByRole(
+        "link",
+        { name: "成员" },
+      ),
     ).toHaveAttribute("href", "/workspace/northwind/members");
     expect(
-      within(screen.getByRole("navigation", { name: "安全" })).getByRole("link", { name: "公司审计" }),
+      within(screen.getByRole("navigation", { name: "安全" })).getByRole(
+        "link",
+        { name: "公司审计" },
+      ),
     ).toHaveAttribute("href", "/workspace/northwind/audit");
   });
 
@@ -199,8 +229,12 @@ describe("WorkspaceShell", () => {
       "aria-current",
       "page",
     );
-    expect(screen.getByRole("link", { name: "概览" })).not.toHaveAttribute("aria-current");
-    expect(screen.getByRole("link", { name: "返回工作区" })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("link", { name: "概览" })).not.toHaveAttribute(
+      "aria-current",
+    );
+    expect(
+      screen.getByRole("link", { name: "返回工作区" }),
+    ).not.toHaveAttribute("aria-current");
   });
 
   it("never treats the workspace root as active on a business table route", () => {
@@ -234,20 +268,40 @@ describe("WorkspaceShell", () => {
         role="TENANT_ADMIN"
         user={shellUser}
         businessObjects={[
-          businessObject({ code: "customers", name: "客户", icon: "team", sortOrder: 1 }),
-          businessObject({ code: "orders", name: "订单", icon: null, sortOrder: 2 }),
-          businessObject({ code: "legacy", name: "旧表", icon: "contacts", sortOrder: 3 }),
+          businessObject({
+            code: "customers",
+            name: "客户",
+            icon: "team",
+            sortOrder: 1,
+          }),
+          businessObject({
+            code: "orders",
+            name: "订单",
+            icon: null,
+            sortOrder: 2,
+          }),
+          businessObject({
+            code: "legacy",
+            name: "旧表",
+            icon: "contacts",
+            sortOrder: 3,
+          }),
         ]}
       >
         <p>内容</p>
       </WorkspaceShell>,
     );
     const iconOf = (name: string) =>
-      screen.getByRole("link", { name }).querySelector("[data-icon]")?.getAttribute("data-icon");
+      screen
+        .getByRole("link", { name })
+        .querySelector("[data-icon]")
+        ?.getAttribute("data-icon");
     expect(iconOf("客户")).toBe("team");
     expect(iconOf("订单")).toBe("table");
     expect(iconOf("旧表")).toBe("table");
-    expect(container.querySelectorAll('nav[aria-label="业务数据"] [data-icon]')).toHaveLength(3);
+    expect(
+      container.querySelectorAll('nav[aria-label="业务数据"] [data-icon]'),
+    ).toHaveLength(3);
   });
 
   it("renders business object links in the order supplied by the server", () => {
