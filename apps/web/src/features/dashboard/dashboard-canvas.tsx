@@ -10,11 +10,12 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
+  rectSortingStrategy,
   sortableKeyboardCoordinates,
   useSortable,
-  verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { CopyOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import type {
   DashboardConfigurationIssue,
   DashboardWidgetDraft,
@@ -59,8 +60,11 @@ export function DashboardCanvas({
     <main className={styles.canvas} aria-label="工作台画布">
       <div className={styles.canvasHeading}>
         <span>草稿画布</span>
-        <small>拖拽调整顺序</small>
+        <small>按设置的宽度排列 · 拖动或用 ↑↓ 调整顺序</small>
       </div>
+      <p className={styles.canvasNote}>
+        发布后的工作台目前按组件类型分区：指标、趋势、状态分布、排行、列表依次排列，同类组件沿用这里的顺序；宽度设置会保存，但工作台暂不按宽度排版。以「预览草稿」为准。
+      </p>
       {widgets.length ? (
         <DndContext
           // dnd-kit falls back to a module-level counter for its generated ids
@@ -72,25 +76,27 @@ export function DashboardCanvas({
           collisionDetection={closestCenter}
           onDragEnd={dragEnd}
         >
-          <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-            {widgets.map((widget, index) => (
-              <WidgetCard
-                key={widget.id}
-                widget={widget}
-                index={index}
-                total={widgets.length}
-                selected={selectedId === widget.id}
-                issues={issues.filter((issue) =>
-                  issue.path.startsWith(`widgets[${index}]`),
-                )}
-                onSelect={onSelect}
-                onIssue={onIssue}
-                onCopy={onCopy}
-                onDelete={onDelete}
-                onWidth={onWidth}
-                onMove={onMove}
-              />
-            ))}
+          <SortableContext items={ids} strategy={rectSortingStrategy}>
+            <div className={styles.canvasGrid}>
+              {widgets.map((widget, index) => (
+                <WidgetCard
+                  key={widget.id}
+                  widget={widget}
+                  index={index}
+                  total={widgets.length}
+                  selected={selectedId === widget.id}
+                  issues={issues.filter((issue) =>
+                    issue.path.startsWith(`widgets[${index}]`),
+                  )}
+                  onSelect={onSelect}
+                  onIssue={onIssue}
+                  onCopy={onCopy}
+                  onDelete={onDelete}
+                  onWidth={onWidth}
+                  onMove={onMove}
+                />
+              ))}
+            </div>
           </SortableContext>
         </DndContext>
       ) : (
@@ -134,6 +140,7 @@ function WidgetCard({
       ref={setNodeRef}
       style={style}
       className={`${styles.widgetCard} ${selected ? styles.widgetSelected : ""}`}
+      data-width={widget.width}
       aria-label={`${widget.title} 组件`}
       onClick={() => onSelect(widget.id)}
     >
@@ -151,13 +158,14 @@ function WidgetCard({
         <div>
           <button
             type="button"
+            title="编辑属性"
             aria-label={`编辑组件 ${widget.title}`}
             onClick={(event) => {
               event.stopPropagation();
               onSelect(widget.id);
             }}
           >
-            编辑
+            <EditOutlined aria-hidden />
           </button>
           <button
             type="button"
@@ -191,29 +199,32 @@ function WidgetCard({
               )
             }
           >
-            <option value="QUARTER">1/4</option>
-            <option value="HALF">1/2</option>
+            <option value="QUARTER">1/4 宽</option>
+            <option value="HALF">1/2 宽</option>
             <option value="FULL">整行</option>
           </select>
           <button
             type="button"
+            title="复制"
             aria-label={`复制组件 ${widget.title}`}
             onClick={(event) => {
               event.stopPropagation();
               onCopy(widget.id);
             }}
           >
-            复制
+            <CopyOutlined aria-hidden />
           </button>
           <button
             type="button"
+            title="删除"
+            data-danger
             aria-label={`删除组件 ${widget.title}`}
             onClick={(event) => {
               event.stopPropagation();
               onDelete(widget.id);
             }}
           >
-            删除
+            <DeleteOutlined aria-hidden />
           </button>
         </div>
       </div>
@@ -221,6 +232,7 @@ function WidgetCard({
       <p>
         {label(widget.type)} · {widget.objectCode || "尚未绑定业务表"}
       </p>
+      <WidgetSketch type={widget.type} />
       {issues.map((issue) => (
         <button
           key={`${issue.path}:${issue.message}`}
@@ -238,6 +250,38 @@ function WidgetCard({
     </article>
   );
 }
+/** A quiet sketch of what the component draws, so the canvas reads as a layout. */
+function WidgetSketch({ type }: { type: DashboardWidgetDraft["type"] }) {
+  return (
+    <div className={styles.sketch} data-type={type} aria-hidden>
+      {type === "METRIC" ? <span className={styles.sketchNumber} /> : null}
+      {type === "STATUS_DISTRIBUTION" || type === "LEADERBOARD"
+        ? [80, 56, 38, 22].map((width) => (
+            <span
+              key={width}
+              className={styles.sketchBar}
+              style={{ width: `${width}%` }}
+            />
+          ))
+        : null}
+      {type === "TREND" ? (
+        <svg
+          viewBox="0 0 100 32"
+          preserveAspectRatio="none"
+          className={styles.sketchLine}
+        >
+          <polyline points="0,26 18,20 34,22 52,12 70,15 86,6 100,9" />
+        </svg>
+      ) : null}
+      {type === "RECORD_LIST"
+        ? [0, 1, 2].map((row) => (
+            <span key={row} className={styles.sketchRow} />
+          ))
+        : null}
+    </div>
+  );
+}
+
 function label(type: DashboardWidgetDraft["type"]) {
   return {
     METRIC: "指标卡",

@@ -1,0 +1,649 @@
+/* Business-table designer: a section rail beside the workspace on wide
+   screens, tabs above it on narrower ones, and the shared pieces the sections
+   use (lead text, split layouts, matrices, the publication timeline). */
+
+.designer {
+  min-width: 0;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.phoneNote {
+  display: none;
+}
+
+/* ── Shell ─────────────────────────────────────────────────────────────── */
+
+.shell {
+  display: grid;
+  grid-template-columns: 208px minmax(0, 1fr);
+  gap: var(--space-8, 32px);
+  align-items: start;
+}
+
+.rail.rail {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  overflow: visible;
+  border-bottom: 0;
+}
+
+.railGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.railGroupLabel {
+  padding: 0 10px 4px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.rail .railItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  height: auto;
+  padding: 7px 10px;
+  border-radius: var(--radius-control);
+  line-height: 20px;
+  text-align: left;
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+
+.rail .railItem:hover {
+  background: var(--bg-hover);
+}
+
+.rail .railItem[aria-current="page"] {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.rail .railItem[aria-current="page"]::after {
+  display: none;
+}
+
+.railLabel {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.railHint {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.dirtyDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-warning);
+}
+
+.workspace {
+  min-width: 0;
+}
+
+/* The section panels stack their parts; the fields grid keeps its own layout. */
+.workspace > section[aria-label] {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Narrower screens: the rail becomes the underline tabs above the section. */
+@media (max-width: 1199px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .rail.rail {
+    position: static;
+    flex-direction: row;
+    gap: 4px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--border-hairline);
+  }
+
+  .railGroup {
+    flex-direction: row;
+    flex: none;
+  }
+
+  .railGroupLabel,
+  .railHint {
+    display: none;
+  }
+
+  .rail .railItem {
+    flex-direction: row;
+    height: 40px;
+    border-radius: 0;
+    line-height: 40px;
+  }
+
+  .rail .railItem:hover,
+  .rail .railItem[aria-current="page"] {
+    background: transparent;
+  }
+
+  .rail .railItem[aria-current="page"] {
+    color: var(--text-primary);
+  }
+
+  .rail .railItem[aria-current="page"]::after {
+    display: block;
+  }
+}
+
+@media (max-width: 767px) {
+  .phoneNote {
+    display: block;
+    margin: 0;
+    padding: 8px 12px;
+    border-radius: var(--radius-control);
+    background: var(--bg-surface-subtle);
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 20px;
+  }
+}
+
+/* ── Shared section pieces ─────────────────────────────────────────────── */
+
+.lead {
+  max-width: 72ch;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 21px;
+}
+
+.lead strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.muted {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.blockTitle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  margin: 8px 0 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.blockTitle span {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.crossLink,
+.orderNote {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.crossLink :global(.ant-btn-link),
+.orderNote :global(.ant-btn-link) {
+  height: auto;
+  padding: 0 2px;
+  font-size: 13px;
+}
+
+.orderNote strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.saveBar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding: 12px 0;
+  border-top: 1px solid var(--border-hairline);
+  background: var(--bg-surface);
+}
+
+/* A main column and a side column that sit side by side on desktop. */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.splitMain,
+.splitSide {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+@media (max-width: 1023px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+}
+
+/* ── List display: ordered columns and a live header preview ───────────── */
+
+.columnList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border-hairline);
+}
+
+.columnRow {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 40px;
+  padding: 2px 4px;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.columnRow:not([data-selected]) {
+  color: var(--text-tertiary);
+}
+
+.columnRow label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.columnRow code,
+.checkList code {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.columnIndex {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.columnRow[data-selected] .columnIndex {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.moveButtons {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.columnHidden {
+  padding-right: 8px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.tablePreview {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-panel);
+  background: var(--bg-surface-subtle);
+}
+
+.tablePreview figcaption {
+  margin-bottom: 8px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.tablePreviewHead {
+  display: flex;
+  overflow-x: auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--bg-surface);
+}
+
+.tablePreviewHead > span {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  min-width: 96px;
+  padding: 8px 12px;
+  border-right: 1px solid var(--border-hairline);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.tablePreviewHead em {
+  color: var(--color-primary);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 400;
+}
+
+.previewEmpty.previewEmpty {
+  color: var(--color-danger);
+  font-weight: 400;
+}
+
+.tablePreview p {
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.checkList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+
+.checkList label {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.checkList em {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-style: normal;
+}
+
+/* ── Employee permission matrix ────────────────────────────────────────── */
+
+.matrixScroll {
+  overflow-x: auto;
+}
+
+.matrix,
+.effectTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.matrix {
+  min-width: 720px;
+}
+
+.matrix th,
+.matrix td,
+.effectTable th,
+.effectTable td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-hairline);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.matrix thead th,
+.effectTable thead th {
+  background: var(--bg-surface-subtle);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.matrix tbody th,
+.effectTable tbody th {
+  width: 22%;
+  color: var(--text-primary);
+  font-weight: 400;
+}
+
+.matrix td {
+  color: var(--text-secondary);
+}
+
+.matrix td:last-child {
+  width: 34%;
+}
+
+.matrixGroup th {
+  padding-top: 16px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.matrixGroup th span {
+  margin-left: 12px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.matrixControl {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  color: var(--text-primary);
+}
+
+.scopeSelect {
+  width: 120px;
+}
+
+.rowNote {
+  margin-left: 8px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.markUnsaved {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+/* ── Publish and disable ───────────────────────────────────────────────── */
+
+.statusStrip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  gap: 16px 32px;
+  align-items: center;
+  padding: 16px 20px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-panel);
+  background: var(--bg-surface-subtle);
+}
+
+.statusStrip > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statusStrip strong {
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 26px;
+}
+
+.statusLabel,
+.statusMeta {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.effectTable tbody td:last-child {
+  width: 120px;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.lifecycleRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-block: 1px solid var(--border-hairline);
+}
+
+.lifecycleRow h3 {
+  margin: 0;
+}
+
+.timeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline > li {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.timelineVersion {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.timeline > li[data-current] .timelineVersion {
+  color: var(--color-success);
+}
+
+.timelineHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: center;
+  margin: 0;
+  font-size: 13px;
+}
+
+.timelineHead > span:last-child {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.changeList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.changeList li {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--color-neutral-soft, #eef1f5);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.changeList li[data-kind="ADDED"] {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.changeList li[data-kind="INACTIVATED"] {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+
+@media (max-width: 767px) {
+  .statusStrip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .effectTable thead {
+    display: none;
+  }
+
+  .effectTable tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-hairline);
+  }
+
+  .effectTable th,
+  .effectTable td {
+    padding: 2px 0;
+    border: 0;
+  }
+
+  .effectTable tbody th {
+    width: auto;
+    font-weight: 500;
+  }
+
+  .effectTable tbody td:nth-of-type(1) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    color: var(--text-secondary);
+  }
+
+  .saveBar {
+    position: static;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail .railItem {
+    transition: none;
+  }
+}

@@ -637,3 +637,34 @@ describe('object configuration policy', () => {
     });
   });
 });
+
+it('ignores jsonb property order in publication field changes but retains real edits', () => {
+  const input = validObjectConfiguration();
+  input.fields[0].validation = { minLength: 1, maxLength: 100 };
+  const snapshot = compileObjectConfiguration({
+    ...input,
+    defaultView: input.defaultView!,
+    employeeAccess: input.employeeAccess!,
+  });
+  const reorder = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(reorder);
+    if (value !== null && typeof value === 'object')
+      return Object.fromEntries(
+        Object.entries(value)
+          .reverse()
+          .map(([key, item]) => [key, reorder(item)]),
+      );
+    return value;
+  };
+  input.previousFields = reorder(snapshot.fields) as typeof snapshot.fields;
+  expect(analyzeObjectConfiguration(input).changes).toEqual([]);
+  input.fields[0].label = '修改后的名称';
+  expect(analyzeObjectConfiguration(input).changes).toEqual([
+    { kind: 'UPDATED', fieldKey: 'name' },
+  ]);
+  input.fields[0].label = snapshot.fields[0].label;
+  input.fields[0].validation.maxLength = 101;
+  expect(analyzeObjectConfiguration(input).changes).toEqual([
+    { kind: 'UPDATED', fieldKey: 'name' },
+  ]);
+});

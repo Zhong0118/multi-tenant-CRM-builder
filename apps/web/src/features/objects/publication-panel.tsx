@@ -19,6 +19,12 @@ export interface PublicationPanelProps {
   error?: string;
   onConfirm: () => void;
   onClose: () => void;
+  /** Runs the publication check again after the draft was fixed. */
+  onRecheck?: () => void;
+  /** Takes the administrator to where an issue can be fixed. */
+  onLocate?: (issue: PublicationIssue) => void;
+  /** The field's name, shown beside its key. */
+  fieldLabel?: (fieldKey: string) => string | undefined;
 }
 
 /**
@@ -34,6 +40,9 @@ export function PublicationPanel({
   error,
   onConfirm,
   onClose,
+  onRecheck,
+  onLocate,
+  fieldLabel,
 }: PublicationPanelProps) {
   const blocked = (analysis?.blocking.length ?? 0) > 0;
   const hasChanges = (analysis?.changes.length ?? 0) > 0;
@@ -45,6 +54,16 @@ export function PublicationPanel({
       onCancel={onClose}
       destroyOnHidden
       footer={[
+        blocked ? (
+          <span key="why" className={styles.publishBlockedNote}>
+            解决「必须先解决」中的问题并保存后，重新检查即可发布
+          </span>
+        ) : null,
+        blocked && onRecheck ? (
+          <Button key="recheck" onClick={onRecheck} loading={loading}>
+            重新检查
+          </Button>
+        ) : null,
         <Button key="cancel" onClick={onClose}>
           返回继续编辑
         </Button>,
@@ -76,6 +95,8 @@ export function PublicationPanel({
               label="必须先解决"
               issues={analysis.blocking}
               tone="blocking"
+              onLocate={onLocate}
+              fieldLabel={fieldLabel}
             />
           ) : null}
           {analysis.warnings.length > 0 ? (
@@ -83,10 +104,12 @@ export function PublicationPanel({
               label="发布后请注意"
               issues={analysis.warnings}
               tone="warning"
+              onLocate={onLocate}
+              fieldLabel={fieldLabel}
             />
           ) : null}
           {hasChanges ? (
-            <ChangeGroup changes={analysis.changes} />
+            <ChangeGroup changes={analysis.changes} fieldLabel={fieldLabel} />
           ) : (
             <Typography.Paragraph type="secondary">
               本次没有字段结构变更；权限等其他已保存配置仍会随本次发布生效。
@@ -102,10 +125,14 @@ function IssueGroup({
   label,
   issues,
   tone,
+  onLocate,
+  fieldLabel,
 }: {
   label: string;
   issues: PublicationIssue[];
   tone: "blocking" | "warning";
+  onLocate?: (issue: PublicationIssue) => void;
+  fieldLabel?: (fieldKey: string) => string | undefined;
 }) {
   return (
     <section
@@ -117,7 +144,9 @@ function IssueGroup({
           : styles.issueGroupWarning
       }`}
     >
-      <span className={styles.issueGroupLabel}>{label}</span>
+      <span className={styles.issueGroupLabel}>
+        {label} · {issues.length} 项
+      </span>
       <ul className={styles.issueList}>
         {issues.map((issue) => (
           <li
@@ -126,7 +155,23 @@ function IssueGroup({
           >
             {issue.message}
             {issue.fieldKey ? (
-              <span className={styles.stableKey}> {issue.fieldKey}</span>
+              <span className={styles.stableKey}>
+                {" "}
+                {fieldLabel?.(issue.fieldKey)
+                  ? `${fieldLabel(issue.fieldKey)}（${issue.fieldKey}）`
+                  : issue.fieldKey}
+              </span>
+            ) : null}
+            {onLocate &&
+            (issue.fieldKey || issue.transitionKey || issue.actionKey) ? (
+              <Button
+                type="link"
+                size="small"
+                className={styles.issueLocate}
+                onClick={() => onLocate(issue)}
+              >
+                去修改
+              </Button>
             ) : null}
           </li>
         ))}
@@ -135,7 +180,13 @@ function IssueGroup({
   );
 }
 
-function ChangeGroup({ changes }: { changes: PublicationChange[] }) {
+function ChangeGroup({
+  changes,
+  fieldLabel,
+}: {
+  changes: PublicationChange[];
+  fieldLabel?: (fieldKey: string) => string | undefined;
+}) {
   return (
     <section role="group" aria-label="本次变更" className={styles.issueGroup}>
       <span className={styles.issueGroupLabel}>本次变更</span>
@@ -146,6 +197,9 @@ function ChangeGroup({ changes }: { changes: PublicationChange[] }) {
             className={styles.change}
           >
             <span>{PUBLICATION_CHANGE_LABELS[change.kind]}</span>
+            {fieldLabel?.(change.fieldKey) ? (
+              <span>{fieldLabel(change.fieldKey)}</span>
+            ) : null}
             <span className={styles.stableKey}>{change.fieldKey}</span>
           </li>
         ))}

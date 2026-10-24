@@ -1,0 +1,240 @@
+/* Relationship map: source tables, numbered rules, target tables. */
+
+.map {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-panel);
+  background: var(--bg-surface-subtle);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.legendItem {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.legendLine {
+  display: inline-block;
+  width: 20px;
+  border-top: 2px dashed var(--border-strong);
+}
+
+.search {
+  width: 240px;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr) 32px 200px;
+  gap: 12px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.columns > :nth-child(2) {
+  grid-column: 2 / 4;
+}
+
+.groups,
+.rules {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.group {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.node {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  align-items: center;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-panel);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-raised);
+}
+
+.node strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node > .nodeMeta {
+  width: 100%;
+  padding-left: 22px;
+  font-size: 12px;
+}
+
+.node[data-role="source"] {
+  border-color: var(--color-primary);
+}
+
+.rules {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 12px;
+  border-left: 2px solid var(--color-primary);
+}
+
+.rule {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px 200px;
+  gap: 12px;
+  align-items: center;
+}
+
+.edge {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--bg-surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard);
+}
+
+.edge:hover,
+.edge[aria-pressed="true"] {
+  border-color: var(--color-primary);
+}
+
+.edge[aria-pressed="true"] {
+  background: var(--color-primary-soft);
+}
+
+.edge:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.number {
+  flex: none;
+  color: var(--color-primary);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.edgeText {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.edgeText strong {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.edgeText small {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.offTag {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--color-neutral-soft, #eef1f5);
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.arrow {
+  justify-self: center;
+  color: var(--color-primary);
+}
+
+.rule[data-off] .edge {
+  border-style: dashed;
+}
+
+.rule[data-off] .arrow,
+.rule[data-off] .number {
+  color: var(--text-tertiary);
+}
+
+@media (max-width: 900px) {
+  .columns {
+    display: none;
+  }
+
+  .group {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rule {
+    grid-template-columns: minmax(0, 1fr) 24px minmax(0, 0.8fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .search {
+    width: 100%;
+  }
+
+  .rule {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .arrow {
+    justify-self: start;
+    transform: rotate(90deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .edge {
+    transition: none;
+  }
+}

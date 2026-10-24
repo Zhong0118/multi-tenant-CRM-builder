@@ -166,8 +166,11 @@
   white-space: nowrap;
 }
 .brandMark {
+  display: block;
+  width: 32px;
+  height: 32px;
   flex: none;
-  color: var(--text);
+  border-radius: 7px;
 }
 .navLinks {
   display: flex;

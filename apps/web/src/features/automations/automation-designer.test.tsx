@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type {
   ObjectDraft,
@@ -43,7 +43,7 @@ const rule: AutomationRule = {
   owner: "ACTOR",
   mappings: { name: { source: "SOURCE_FIELD", fieldKey: "name" } },
 };
-function setup() {
+function setup(onDirtyChange = vi.fn()) {
   const api = {
     configuration: vi.fn().mockResolvedValue({
       objectId: "source",
@@ -96,6 +96,7 @@ function setup() {
         api={api}
         objects={objects}
         onObjectVersion={changed}
+        onDirtyChange={onDirtyChange}
       />
     </QueryClientProvider>
   );
@@ -169,4 +170,17 @@ it("keeps edits when canceling the discard confirmation", async () => {
   fireEvent.click(screen.getByText("继续编辑"));
   expect(screen.getByLabelText("规则名称")).toHaveValue("新名称");
   expect(api.save).not.toHaveBeenCalled();
+});
+
+it("reports unsaved rule edits and clears the page guard on discard", async () => {
+  const dirty = vi.fn();
+  setup(dirty);
+  fireEvent.click(await screen.findByLabelText("查看规则 确认开单"));
+  fireEvent.change(screen.getByLabelText("规则名称"), {
+    target: { value: "尚未保存的规则" },
+  });
+  await waitFor(() => expect(dirty).toHaveBeenLastCalledWith(true));
+  fireEvent.click(screen.getByRole("button", { name: /取\s*消/ }));
+  fireEvent.click(await screen.findByText("放弃修改"));
+  await waitFor(() => expect(dirty).toHaveBeenLastCalledWith(false));
 });

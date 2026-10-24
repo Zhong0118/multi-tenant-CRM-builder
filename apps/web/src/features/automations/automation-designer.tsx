@@ -20,7 +20,7 @@ import {
   TableOutlined,
 } from "@ant-design/icons";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { browserApiClient } from "@/lib/api/browser-client";
 import type { DynamicFieldMember } from "@/features/records/dynamic-field";
 import { objectApi, type ObjectApi } from "@/features/objects/object-api";
@@ -33,18 +33,21 @@ import {
 } from "./automation-types";
 import { AutomationRuleEditor } from "./automation-rule-editor";
 import { automationError, DraftAutomationPreview } from "./automation-preview";
+import { ruleResult } from "./relationship-overview";
 import styles from "./automations.module.css";
 
 export function AutomationDesigner({
   tenantCode,
   draft,
   onObjectVersion,
+  onDirtyChange,
   api = automationApi,
   objects = objectApi,
 }: {
   tenantCode: string;
   draft: ObjectDraft;
   onObjectVersion: (draft: ObjectDraft) => void;
+  onDirtyChange?: (dirty: boolean) => void;
   api?: AutomationApi;
   objects?: ObjectApi;
 }) {
@@ -128,6 +131,12 @@ export function AutomationDesigner({
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
   const archived = draft.object.status === "ARCHIVED";
+  const dirty =
+    Boolean(editing) && editorDirty && view === "draft" && !archived;
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
   const source: AutomationTable = {
     code: draft.object.code,
     name: draft.object.name,
@@ -343,14 +352,21 @@ export function AutomationDesigner({
                 </div>
               </div>
             </div>
-            <p className={styles.caption}>
-              {Object.keys(rule.mappings).length} 个字段已配置取值 ·{" "}
-              {rule.owner === "SOURCE_OWNER" ? "沿用来源负责人" : "归属执行人"}{" "}
-              ·{" "}
-              {rule.trigger.type === "MANUAL"
-                ? "每次确认都会新增记录"
-                : "每条来源记录仅自动创建一次"}
-            </p>
+            <dl className={styles.ruleFacts}>
+              <dt>触发条件</dt>
+              <dd>{automationTriggerLabel(rule, source.fields)}</dd>
+              <dt>字段对应</dt>
+              <dd>{Object.keys(rule.mappings).length} 个字段已配置取值</dd>
+              <dt>执行结果</dt>
+              <dd>
+                {ruleResult(
+                  rule,
+                  targets.data.find(
+                    (table) => table.code === rule.targetObjectCode,
+                  )?.name ?? rule.targetObjectCode,
+                )}
+              </dd>
+            </dl>
           </article>
         ))}
       </div>

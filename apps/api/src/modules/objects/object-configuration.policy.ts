@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from 'node:util';
+
 import {
   isPublishedFieldType,
   isSearchableFieldType,
@@ -751,7 +753,7 @@ function analyzeFieldChanges(
       changes.push({ kind: 'ADDED', fieldKey: field.fieldKey });
     } else if (isPublishedFieldType(field.type)) {
       const current = toPublishedField(field);
-      if (JSON.stringify(current) !== JSON.stringify(previous)) {
+      if (!isDeepStrictEqual(current, previous)) {
         changes.push({ kind: 'UPDATED', fieldKey: field.fieldKey });
       }
     }
