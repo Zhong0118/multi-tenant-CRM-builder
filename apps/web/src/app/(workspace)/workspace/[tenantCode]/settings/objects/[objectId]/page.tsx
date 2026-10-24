@@ -10,7 +10,7 @@ import { requireWorkspace } from "@/lib/auth/require-workspace";
 
 export interface ObjectDesignerPageProps {
   params: Promise<{ tenantCode: string; objectId: string }>;
-  searchParams?: Promise<{section?: string}>;
+  searchParams?: Promise<{ section?: string }>;
 }
 
 export default async function ObjectDesignerPage({
@@ -36,7 +36,7 @@ export default async function ObjectDesignerPage({
   }
 
   return (
-    <Page width="settings">
+    <Page width="editor">
       <ObjectDesigner
         tenantCode={tenantCode}
         initialDraft={result.data as ObjectDraft}

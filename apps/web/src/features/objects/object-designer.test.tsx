@@ -928,7 +928,7 @@ describe("whole-table lifecycle", () => {
       ...overrides,
     });
     renderDesigner(initial, api);
-    fireEvent.click(screen.getByRole("button", { name: "基本设置" }));
+    fireEvent.click(screen.getByRole("button", { name: "发布与停用" }));
     fireEvent.click(
       screen.getByRole("button", {
         name:
@@ -991,6 +991,8 @@ describe("whole-table lifecycle", () => {
       4,
     );
     expect(router.refresh).toHaveBeenCalled();
+    // Disable and restore now live under 发布与停用; the basics turn read-only.
+    fireEvent.click(screen.getByRole("button", { name: "基本设置" }));
     expect(screen.getByRole("button", { name: "保存基本设置" })).toBeDisabled();
   });
   it("requires legacy timer acknowledgement and restores the old publication without publishing", async () => {
@@ -1044,7 +1046,7 @@ describe("whole-table lifecycle", () => {
       restore: vi.fn(),
     });
     renderDesigner(draft(), api);
-    fireEvent.click(screen.getByRole("button", { name: "基本设置" }));
+    fireEvent.click(screen.getByRole("button", { name: "发布与停用" }));
     fireEvent.click(screen.getByRole("button", { name: "停用业务表" }));
     await screen.findByText(/检查暂时失败/);
     expect(screen.getByRole("button", { name: "确认停用" })).toBeDisabled();
@@ -1237,5 +1239,151 @@ describe("object management lifecycle filters and ordering", () => {
         { objectId: "object-1", expectedVersion: 4 },
       ]),
     );
+  });
+});
+
+describe("designer sections and unsaved edits", () => {
+  it("groups the sections and says what each one decides", () => {
+    renderDesigner(draft(), objectApi());
+    const nav = screen.getByRole("navigation", { name: "业务表配置步骤" });
+    for (const group of ["结构", "权限", "规则", "发布"]) {
+      expect(
+        within(nav).getByRole("group", { name: group }),
+      ).toBeInTheDocument();
+    }
+    expect(
+      screen.getByRole("button", { name: "列表展示与搜索" }),
+    ).toHaveAccessibleDescription("表格的列和顺序、搜索、排序");
+    // The field list says which order it controls, and where the other lives.
+    expect(
+      screen.getByText(/新建、编辑表单和详情页中的字段顺序/),
+    ).toBeInTheDocument();
+  });
+
+  it("marks a section with unsaved list edits and asks before leaving it", async () => {
+    const api = objectApi();
+    renderDesigner(draft(), api);
+    fireEvent.click(screen.getByRole("button", { name: "列表展示与搜索" }));
+    fireEvent.change(screen.getByLabelText("视图名称"), {
+      target: { value: "改过的名字" },
+    });
+    expect(
+      screen.getByRole("button", { name: /列表展示与搜索.*有未保存的修改/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "发布变更" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "员工权限" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "放弃未保存的修改？",
+    });
+    expect(dialog).toHaveTextContent("「列表展示与搜索」的修改还没有保存");
+    fireEvent.click(within(dialog).getByRole("button", { name: "放弃修改" }));
+    expect(screen.getByRole("button", { name: "员工权限" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.getByRole("button", { name: "发布变更" })).toBeEnabled();
+  });
+
+  it("asks before an in-app link takes unsaved edits away", async () => {
+    renderDesigner(draft(), objectApi());
+    fireEvent.click(screen.getByRole("button", { name: "基本设置" }));
+    fireEvent.change(screen.getByLabelText("业务表名称"), {
+      target: { value: "新名字" },
+    });
+    fireEvent.click(screen.getByRole("link", { name: "业务表" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "放弃未保存的修改？",
+    });
+    expect(router.push).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "放弃修改" }));
+    expect(router.push).toHaveBeenCalledWith(
+      "/workspace/northwind/settings/objects",
+    );
+  });
+
+  it("saves table actions and column access together from the matrix", async () => {
+    const api = objectApi();
+    renderDesigner(draft(), api);
+    fireEvent.click(screen.getByRole("button", { name: "员工权限" }));
+    const matrix = screen.getByRole("table", { name: "员工默认权限对照" });
+    const row = within(matrix).getByText("字段：最终评级").closest("tr")!;
+    expect(row).toHaveTextContent("未发布此字段");
+    fireEvent.click(within(row).getByText("隐藏"));
+    expect(within(row).getByText("未保存")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "保存员工权限" }));
+    await waitFor(() =>
+      expect(api.updatePermissions).toHaveBeenCalledWith(
+        "northwind",
+        "object-1",
+        expect.objectContaining({
+          fields: { customer_name: "EDIT", final_rating: "HIDDEN" },
+        }),
+      ),
+    );
+  });
+
+  it("warns that hiding the record name hides the whole table", () => {
+    renderDesigner(draft(), objectApi());
+    fireEvent.click(screen.getByRole("button", { name: "员工权限" }));
+    const row = screen.getByText("字段：客户名称").closest("tr")!;
+    fireEvent.click(within(row).getByText("隐藏"));
+    expect(
+      screen.getByText("隐藏记录名称列会使员工无法访问整张业务表。"),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("publication history", () => {
+  it("lists every publication with what it changed, newest first", async () => {
+    const api = objectApi({
+      listPublications: vi.fn().mockResolvedValue([
+        {
+          id: "p1",
+          number: 1,
+          sourceDraftVersion: 1,
+          publishedAt: "2026-08-01T02:00:00.000Z",
+          changes: [{ fieldKey: "customer_name", kind: "ADDED" }],
+        },
+        {
+          id: "p3",
+          number: 3,
+          sourceDraftVersion: 4,
+          publishedAt: "2026-08-20T00:00:00.000Z",
+          changes: [{ fieldKey: "final_rating", kind: "INACTIVATED" }],
+        },
+      ]),
+    });
+    renderDesigner(draft(), api);
+    fireEvent.click(screen.getByRole("button", { name: "发布与停用" }));
+    const history = await screen.findByRole("list", { name: "发布记录" });
+    const items = within(history)
+      .getAllByRole("listitem")
+      .filter((item) => item.textContent?.startsWith("v"));
+    expect(items[0]).toHaveTextContent("v3");
+    expect(items[0]).toHaveTextContent("当前运行版本");
+    expect(items[0]).toHaveTextContent("停用字段「最终评级」");
+    expect(items[1]).toHaveTextContent("新增字段「客户名称」");
+    // What each action changes, and when employees see it.
+    const effects = screen.getByRole("table", { name: "每种操作的影响" });
+    expect(effects).toHaveTextContent("草稿成为新版本 v4");
+    expect(effects).toHaveTextContent("回到停用前发布的版本，不会顺带发布草稿");
+  });
+
+  it("keeps a failed history load on screen with a retry", async () => {
+    const api = objectApi({
+      listPublications: vi.fn().mockRejectedValue({
+        code: "SERVICE_UNAVAILABLE",
+        message: "服务暂时不可用",
+        fieldErrors: {},
+        status: 503,
+        requestId: "req_history",
+      }),
+    });
+    renderDesigner(draft(), api);
+    fireEvent.click(screen.getByRole("button", { name: "发布与停用" }));
+    expect(
+      await screen.findByText("发布记录读取失败：服务暂时不可用"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/^重\s?试$/).closest("button")).toBeEnabled();
   });
 });

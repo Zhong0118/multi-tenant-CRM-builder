@@ -626,6 +626,10 @@ describe("DashboardBuilder", () => {
     fireEvent.change(screen.getByLabelText("组件宽度 修改后的第一个指标"), {
       target: { value: "FULL" },
     });
+    // The canvas lays the component out at its published width.
+    expect(
+      screen.getByRole("article", { name: "修改后的第一个指标 组件" }),
+    ).toHaveAttribute("data-width", "FULL");
 
     expect(
       screen.getByRole("button", {

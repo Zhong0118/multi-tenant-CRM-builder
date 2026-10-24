@@ -264,15 +264,13 @@ describe("WorkflowDesigner", () => {
     const getDraft = vi.fn().mockResolvedValue(emptyWorkflow());
     const api: WorkflowApi = {
       getDraft,
-      saveDraft: vi
-        .fn()
-        .mockRejectedValue({
-          code: "VERSION_CONFLICT",
-          message: "草稿版本已更新",
-          requestId: "req-conflict",
-          status: 409,
-          fieldErrors: {},
-        }),
+      saveDraft: vi.fn().mockRejectedValue({
+        code: "VERSION_CONFLICT",
+        message: "草稿版本已更新",
+        requestId: "req-conflict",
+        status: 409,
+        fieldErrors: {},
+      }),
       getRuntime: vi.fn(),
       executeTransition: vi.fn(),
       history: vi.fn(),
@@ -371,7 +369,9 @@ describe("WorkflowDesigner", () => {
     const customerName = dropdown?.querySelector('[title="客户名称"]');
     if (customerName) fireEvent.click(customerName);
     expect(mapping).toBeDisabled();
-    expect(screen.queryByLabelText("映射目标字段 1-1-1")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("映射目标字段 1-1-1"),
+    ).not.toBeInTheDocument();
 
     const submitted = vi.mocked(api.saveDraft).mock.calls[0][2];
     await act(async () => {
@@ -598,15 +598,11 @@ it("keeps archived workflow controls and custom action buttons read-only", async
     getRuntime: vi.fn(),
     executeTransition: vi.fn(),
     history: vi.fn(),
-    getDraft: vi
-      .fn()
-      .mockResolvedValue({
-        ...emptyWorkflow(),
-        states: [
-          { key: "new", label: "新建", isTerminal: false, sortOrder: 0 },
-        ],
-        transitions: [],
-      }),
+    getDraft: vi.fn().mockResolvedValue({
+      ...emptyWorkflow(),
+      states: [{ key: "new", label: "新建", isTerminal: false, sortOrder: 0 }],
+      transitions: [],
+    }),
     saveDraft: vi.fn(),
   };
   render(
@@ -633,4 +629,105 @@ it("keeps archived workflow controls and custom action buttons read-only", async
   expect(screen.getByRole("textbox", { name: "状态名称 1" })).toBeDisabled();
   expect(screen.getByRole("button", { name: "添加状态" })).toBeDisabled();
   expect(screen.getByRole("button", { name: "保存流程" })).toBeDisabled();
+});
+
+describe("workflow map", () => {
+  const workflow = (): WorkflowDraft => ({
+    isEnabled: true,
+    initialStateKey: "new",
+    objectVersion: 4,
+    states: [
+      { key: "new", label: "新建", sortOrder: 10, isTerminal: false },
+      { key: "visiting", label: "拜访中", sortOrder: 20, isTerminal: false },
+      { key: "won", label: "赢单", sortOrder: 30, isTerminal: true },
+      { key: "parked", label: "搁置", sortOrder: 40, isTerminal: false },
+    ],
+    transitions: [
+      {
+        key: "start",
+        label: "开始拜访",
+        fromStateKey: "new",
+        toStateKey: "visiting",
+        allowedRoles: ["EMPLOYEE"],
+        requiredFieldKeys: ["customer_name"],
+        sortOrder: 10,
+        actions: [],
+      },
+      {
+        key: "close",
+        label: "签约",
+        fromStateKey: "visiting",
+        toStateKey: "won",
+        allowedRoles: ["TENANT_ADMIN", "EMPLOYEE"],
+        requiredFieldKeys: [],
+        sortOrder: 20,
+        actions: [],
+      },
+    ],
+  });
+  const api = (draft = workflow()): WorkflowApi => ({
+    getDraft: vi.fn().mockResolvedValue(draft),
+    saveDraft: vi.fn(),
+    getRuntime: vi.fn(),
+    executeTransition: vi.fn(),
+    history: vi.fn(),
+  });
+
+  it("draws every state with the actions that leave it and marks start and end", async () => {
+    renderDesigner(api());
+    const map = await screen.findByRole("figure", { name: "流程图" });
+    expect(within(map).getByText("起点")).toBeInTheDocument();
+    expect(within(map).getByText("终点")).toBeInTheDocument();
+    expect(
+      within(map).getByRole("button", { name: /开始拜访.*拜访中/ }),
+    ).toBeInTheDocument();
+    // 搁置 can neither be reached nor left, so the map says so twice.
+    expect(
+      within(map).getByText("没有可执行动作，记录会停在这里"),
+    ).toBeInTheDocument();
+    expect(within(map).getByText("没有动作进入这个状态")).toBeInTheDocument();
+  });
+
+  it("summarises each action and opens its editor from the map", async () => {
+    renderDesigner(api());
+    const map = await screen.findByRole("figure", { name: "流程图" });
+    const summary = screen.getByRole("button", { name: /签约.*拜访中.*赢单/ });
+    expect(summary).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.getByText(/员工 · 执行前必填 1 个字段 · 只改变状态/),
+    ).toBeInTheDocument();
+    fireEvent.click(within(map).getByRole("button", { name: /签约/ }));
+    expect(summary).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByLabelText("动作名称 2")).toHaveValue("签约");
+    expect(screen.queryByLabelText("动作名称 1")).not.toBeInTheDocument();
+  });
+
+  it("reports unsaved edits and clears them once saved", async () => {
+    const onDirtyChange = vi.fn();
+    const backend = api();
+    vi.mocked(backend.saveDraft).mockImplementation(async (_t, _o, input) => ({
+      ...input,
+      objectVersion: 5,
+    }));
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <WorkflowDesigner
+          tenantCode="northwind"
+          draft={objectDraft()}
+          onObjectVersion={vi.fn()}
+          onDirtyChange={onDirtyChange}
+          api={backend}
+          objectApi={objectApi()}
+        />
+      </QueryClientProvider>,
+    );
+    fireEvent.change(await screen.findByLabelText("状态名称 1"), {
+      target: { value: "待处理" },
+    });
+    await waitFor(() => expect(onDirtyChange).toHaveBeenLastCalledWith(true));
+    expect(screen.getByText("有未保存的修改")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "保存流程" }));
+    await screen.findByText("流程配置已保存");
+    await waitFor(() => expect(onDirtyChange).toHaveBeenLastCalledWith(false));
+  });
 });
