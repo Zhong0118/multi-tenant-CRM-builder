@@ -212,7 +212,8 @@
 .windowMark {
   width: 18px;
   height: 18px;
-  color: var(--text);
+  flex: none;
+  border-radius: 4px;
 }
 .windowPath {
   overflow: hidden;
