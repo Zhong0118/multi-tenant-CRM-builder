@@ -473,3 +473,21 @@
     transition: none;
   }
 }
+
+.ruleFacts {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 4px 8px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.ruleFacts dt {
+  color: var(--text-tertiary);
+}
+
+.ruleFacts dd {
+  margin: 0;
+  color: var(--text-primary);
+}

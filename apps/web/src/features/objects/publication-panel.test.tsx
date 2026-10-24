@@ -137,3 +137,35 @@ describe("PublicationPanel", () => {
     expect(screen.getByRole("button", { name: "确认发布" })).toBeDisabled();
   });
 });
+
+describe("PublicationPanel locating issues", () => {
+  it("names the field, says why publishing waits, and leads to the fix", () => {
+    const onLocate = vi.fn();
+    const onRecheck = vi.fn();
+    const issue = {
+      code: "WORKFLOW_FIELD_INACTIVE",
+      message: "流程引用了已停用的字段。",
+      fieldKey: "amount",
+    };
+    render(
+      <PublicationPanel
+        open
+        analysis={analysis({ blocking: [issue] })}
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+        onLocate={onLocate}
+        onRecheck={onRecheck}
+        fieldLabel={(key) => (key === "amount" ? "金额" : undefined)}
+      />,
+    );
+    expect(screen.getByText("必须先解决 · 1 项")).toBeInTheDocument();
+    expect(screen.getByText(/金额（amount）/)).toBeInTheDocument();
+    expect(
+      screen.getByText("解决「必须先解决」中的问题并保存后，重新检查即可发布"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByText(/^去\s?修\s?改$/).closest("button")!);
+    expect(onLocate).toHaveBeenCalledWith(issue);
+    fireEvent.click(screen.getByText(/^重新检查$/).closest("button")!);
+    expect(onRecheck).toHaveBeenCalled();
+  });
+});

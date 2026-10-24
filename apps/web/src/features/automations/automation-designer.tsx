@@ -33,6 +33,7 @@ import {
 } from "./automation-types";
 import { AutomationRuleEditor } from "./automation-rule-editor";
 import { automationError, DraftAutomationPreview } from "./automation-preview";
+import { ruleResult } from "./relationship-overview";
 import styles from "./automations.module.css";
 
 export function AutomationDesigner({
@@ -343,14 +344,21 @@ export function AutomationDesigner({
                 </div>
               </div>
             </div>
-            <p className={styles.caption}>
-              {Object.keys(rule.mappings).length} 个字段已配置取值 ·{" "}
-              {rule.owner === "SOURCE_OWNER" ? "沿用来源负责人" : "归属执行人"}{" "}
-              ·{" "}
-              {rule.trigger.type === "MANUAL"
-                ? "每次确认都会新增记录"
-                : "每条来源记录仅自动创建一次"}
-            </p>
+            <dl className={styles.ruleFacts}>
+              <dt>触发条件</dt>
+              <dd>{automationTriggerLabel(rule, source.fields)}</dd>
+              <dt>字段对应</dt>
+              <dd>{Object.keys(rule.mappings).length} 个字段已配置取值</dd>
+              <dt>执行结果</dt>
+              <dd>
+                {ruleResult(
+                  rule,
+                  targets.data.find(
+                    (table) => table.code === rule.targetObjectCode,
+                  )?.name ?? rule.targetObjectCode,
+                )}
+              </dd>
+            </dl>
           </article>
         ))}
       </div>

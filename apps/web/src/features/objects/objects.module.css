@@ -881,12 +881,6 @@
   font-size: 12px;
 }
 
-/* Object configuration is a desktop task; below the breakpoint we say so
-   instead of shipping controls that cannot be operated. */
-.desktopOnly {
-  display: none;
-}
-
 @media (min-width: 768px) and (max-width: 1199px) {
   .fieldsLayout {
     grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
@@ -898,16 +892,6 @@
 
   .fieldEditorColumn {
     padding-left: 20px;
-  }
-}
-
-@media (max-width: 767px) {
-  .designer {
-    display: none;
-  }
-
-  .desktopOnly {
-    display: block;
   }
 }
 
@@ -1563,4 +1547,34 @@
 
 .optionProblem {
   margin-top: 10px;
+}
+
+.publishBlockedNote {
+  margin-right: auto;
+  color: var(--color-danger);
+  font-size: 12px;
+}
+
+.issueLocate.issueLocate {
+  height: auto;
+  margin-left: 4px;
+  padding: 0 4px;
+  font-size: 12px;
+}
+
+/* Phones: the field list stacks above the editor instead of beside it. */
+@media (max-width: 767px) {
+  .fieldsLayout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .fieldListColumn {
+    padding-right: 0;
+  }
+
+  .fieldEditorColumn {
+    padding-left: 0;
+    border-left: 0;
+  }
 }
