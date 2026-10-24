@@ -17,8 +17,7 @@ import {
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { useToast } from "@/components/feedback/use-toast";
 import { MemberIdentity } from "@/components/identity/member-identity";
@@ -40,12 +39,21 @@ export type TenantInvitation =
   components["schemas"]["TenantInvitationResponseDto"];
 export type InvitationPage = components["schemas"]["InvitationPageResponseDto"];
 
+export interface MemberListFilters {
+  q?: string;
+  role?: TenantMember["role"];
+  status?: TenantMember["status"];
+}
+
+type MemberCriteria = MemberListFilters & { page: number; limit: number };
+
 export interface MemberApi {
   /** One page of the roster; 20 per page unless a `limit` (≤100) is given. */
   listMembers(
     tenantCode: string,
     page: number,
     limit?: number,
+    filters?: MemberListFilters,
   ): Promise<TenantMemberPage>;
   listInvitations(tenantCode: string, cursor?: string): Promise<InvitationPage>;
   invite(
@@ -81,10 +89,10 @@ async function dataOrThrow<T>(result: {
 }
 
 export const memberApi: MemberApi = {
-  async listMembers(tenantCode, page, limit = 20) {
+  async listMembers(tenantCode, page, limit = 20, filters = {}) {
     return dataOrThrow(
       await browserApiClient.GET("/api/v1/workspaces/{tenantCode}/members", {
-        params: { path: { tenantCode }, query: { page, limit } },
+        params: { path: { tenantCode }, query: { page, limit, ...filters } },
       }),
     );
   },
@@ -138,23 +146,6 @@ export const memberApi: MemberApi = {
   },
 };
 
-/**
- * The whole roster, for search and filters: the API pages members and has no
- * search, so a search loads every page (100 at a time) and filters here.
- */
-export async function loadRoster(
-  api: MemberApi,
-  tenantCode: string,
-): Promise<TenantMember[]> {
-  const roster: TenantMember[] = [];
-  for (let page = 1; page <= 50; page += 1) {
-    const result = await api.listMembers(tenantCode, page, 100);
-    roster.push(...result.items);
-    if (!result.items.length || roster.length >= result.total) break;
-  }
-  return roster;
-}
-
 /** 「188 0000 1001」 for a mainland number, anything else as stored. */
 export function formatPhone(phone: string | undefined): string | undefined {
   const mainland = phone?.match(/^\+86(1\d{2})(\d{4})(\d{4})$/);
@@ -165,20 +156,13 @@ const ROLE_TEXT = { TENANT_ADMIN: "公司管理员", EMPLOYEE: "员工" } as con
 type RoleFilter = "ALL" | TenantMember["role"];
 type StatusFilter = "ALL" | TenantMember["status"];
 
-function matches(
-  member: TenantMember,
-  query: string,
-  role: RoleFilter,
-  status: StatusFilter,
-) {
-  if (role !== "ALL" && member.role !== role) return false;
-  if (status !== "ALL" && member.status !== status) return false;
-  if (!query) return true;
-  const digits = query.replace(/\D/g, "");
-  return (
-    (member.displayName ?? "").toLowerCase().includes(query.toLowerCase()) ||
-    (digits.length >= 3 && (member.phone ?? "").includes(digits))
-  );
+function memberCriteriaPath(tenantCode: string, criteria: MemberCriteria) {
+  const params = new URLSearchParams({ page: String(criteria.page) });
+  if (criteria.limit !== 20) params.set("limit", String(criteria.limit));
+  if (criteria.q) params.set("q", criteria.q);
+  if (criteria.role) params.set("role", criteria.role);
+  if (criteria.status) params.set("status", criteria.status);
+  return `/workspace/${tenantCode}/members?${params}`;
 }
 
 export function MemberTable({
@@ -186,6 +170,7 @@ export function MemberTable({
   viewerRole,
   viewerMemberId,
   initialMemberPage,
+  initialFilters = {},
   initialInvitationPage,
   headerActions,
   api = memberApi,
@@ -195,18 +180,20 @@ export function MemberTable({
   viewerRole: "TENANT_ADMIN" | "EMPLOYEE";
   viewerMemberId?: string;
   initialMemberPage: TenantMemberPage;
+  initialFilters?: MemberListFilters;
   initialInvitationPage: InvitationPage;
   /** 邀请成员 and 批量邀请, rendered in the page header beside the count. */
   headerActions?: ReactNode;
   api?: MemberApi;
   navigate?: (path: string) => void;
 }) {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const toast = useToast();
-  const [memberPageNumber, setMemberPageNumber] = useState(
-    initialMemberPage.page,
-  );
+  const [criteria, setCriteria] = useState<MemberCriteria>({
+    page: initialMemberPage.page,
+    limit: initialMemberPage.limit,
+    ...initialFilters,
+  });
   const [selectedIds, setSelectedIds] = useState<React.Key[]>([]);
   const [page, setPage] = useState(1);
   const [cursors, setCursors] = useState<Array<string | undefined>>([
@@ -215,32 +202,76 @@ export function MemberTable({
   const [error, setError] = useState<string>();
   const [tab, setTab] = useState<"members" | "invitations">("members");
   const [revoking, setRevoking] = useState<TenantInvitation>();
-  const [query, setQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>("ALL");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
-  const [filteredPage, setFilteredPage] = useState(1);
+  const [query, setQuery] = useState(initialFilters.q ?? "");
   const search = query.trim();
-  const filtering =
-    Boolean(search) || roleFilter !== "ALL" || statusFilter !== "ALL";
+  const searchPending = search !== (criteria.q ?? "");
+  const filtering = Boolean(criteria.q || criteria.role || criteria.status);
   const cursor = cursors[page - 1];
   const membersQueryKey = ["workspace", tenantCode, "members"] as const;
   const invitationsQueryKey = ["workspace", tenantCode, "invitations"] as const;
+  const { page: memberPageNumber, limit, ...filters } = criteria;
   const membersQuery = useQuery({
-    queryKey: [...membersQueryKey, memberPageNumber],
-    queryFn: () => api.listMembers(tenantCode, memberPageNumber),
+    queryKey: [...membersQueryKey, criteria],
+    queryFn: () =>
+      api.listMembers(tenantCode, memberPageNumber, limit, filters),
     initialData:
-      memberPageNumber === initialMemberPage.page
+      memberPageNumber === initialMemberPage.page &&
+      limit === initialMemberPage.limit &&
+      criteria.q === initialFilters.q &&
+      criteria.role === initialFilters.role &&
+      criteria.status === initialFilters.status
         ? initialMemberPage
         : undefined,
     staleTime: Number.POSITIVE_INFINITY,
     enabled: viewerRole === "TENANT_ADMIN",
   });
-  const rosterQuery = useQuery({
-    queryKey: [...membersQueryKey, "roster"],
-    queryFn: () => loadRoster(api, tenantCode),
-    staleTime: Number.POSITIVE_INFINITY,
-    enabled: viewerRole === "TENANT_ADMIN" && filtering,
-  });
+  useEffect(() => {
+    if (!searchPending) return;
+    const timer = setTimeout(() => {
+      setCriteria((current) => ({
+        ...current,
+        page: 1,
+        q: search || undefined,
+      }));
+      setSelectedIds([]);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, searchPending]);
+
+  useEffect(() => {
+    if (viewerRole !== "TENANT_ADMIN") return;
+    const path = memberCriteriaPath(tenantCode, criteria);
+    if (navigate) navigate(path);
+    else if (`${window.location.pathname}${window.location.search}` !== path)
+      window.history.replaceState(null, "", path);
+  }, [criteria, navigate, tenantCode, viewerRole]);
+
+  useEffect(() => {
+    if (!membersQuery.data || membersQuery.isFetching || membersQuery.error)
+      return;
+    const lastPage = Math.max(1, Math.ceil(membersQuery.data.total / limit));
+    if (memberPageNumber <= lastPage) return;
+    // A successful refresh can shrink the result set after a member is changed.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCriteria((current) => ({ ...current, page: lastPage }));
+    setSelectedIds([]);
+  }, [
+    membersQuery.data,
+    membersQuery.isFetching,
+    membersQuery.error,
+    limit,
+    memberPageNumber,
+  ]);
+
+  function changeCriteria(change: Partial<MemberCriteria>) {
+    setSelectedIds([]);
+    setCriteria((current) => ({
+      ...current,
+      page: 1,
+      q: search || undefined,
+      ...change,
+    }));
+  }
   const invitationsQuery = useQuery({
     queryKey: [...invitationsQueryKey, cursor ?? "first"],
     queryFn: () => api.listInvitations(tenantCode, cursor),
@@ -303,9 +334,7 @@ export function MemberTable({
 
   function clearFilters() {
     setQuery("");
-    setRoleFilter("ALL");
-    setStatusFilter("ALL");
-    setFilteredPage(1);
+    setCriteria((current) => ({ page: 1, limit: current.limit }));
     setSelectedIds([]);
   }
 
@@ -484,19 +513,12 @@ export function MemberTable({
   const pendingCount = (invitationPage?.items ?? []).filter(
     (item) => item.status === "PENDING",
   ).length;
-  const filteredMembers = filtering
-    ? (rosterQuery.data ?? []).filter((member) =>
-        matches(member, search, roleFilter, statusFilter),
-      )
-    : [];
-  const memberItems = filtering
-    ? filteredMembers.slice((filteredPage - 1) * 20, filteredPage * 20)
-    : (membersQuery.data?.items ?? []);
+  const memberItems = membersQuery.data?.items ?? [];
   const selectedMembers = memberItems.filter((member) =>
     selectedIds.includes(member.id),
   );
-  const listError = filtering ? rosterQuery.error : membersQuery.error;
-  const total = membersQuery.data?.total ?? 0;
+  const listError = membersQuery.error;
+  const total = membersQuery.data?.total;
 
   return (
     <>
@@ -505,8 +527,10 @@ export function MemberTable({
         count={total}
         description={
           <>
-            {activeAdminCount}{" "}
-            位在职管理员，可使用全部业务表和设置。员工按业务表的员工默认权限访问，可为个人设置例外。
+            {membersQuery.data
+              ? `${activeAdminCount} 位在职管理员`
+              : "公司管理员"}
+            ，可使用全部业务表和设置。员工按业务表的员工默认权限访问，可为个人设置例外。
           </>
         }
         extra={headerActions}
@@ -535,6 +559,7 @@ export function MemberTable({
           <div className={styles.filters} role="search" aria-label="筛选成员">
             <Input
               allowClear
+              maxLength={100}
               aria-label="搜索成员"
               placeholder="搜索姓名或手机号"
               prefix={<SearchOutlined aria-hidden />}
@@ -542,19 +567,16 @@ export function MemberTable({
               className={styles.search}
               onChange={(event) => {
                 setQuery(event.target.value);
-                setFilteredPage(1);
                 setSelectedIds([]);
               }}
             />
             <Select
               aria-label="角色"
-              value={roleFilter}
+              value={criteria.role ?? "ALL"}
               className={styles.filter}
               popupMatchSelectWidth={false}
               onChange={(value: RoleFilter) => {
-                setRoleFilter(value);
-                setFilteredPage(1);
-                setSelectedIds([]);
+                changeCriteria({ role: value === "ALL" ? undefined : value });
               }}
               options={[
                 { value: "ALL", label: "全部角色" },
@@ -564,13 +586,11 @@ export function MemberTable({
             />
             <Select
               aria-label="状态"
-              value={statusFilter}
+              value={criteria.status ?? "ALL"}
               className={styles.filter}
               popupMatchSelectWidth={false}
               onChange={(value: StatusFilter) => {
-                setStatusFilter(value);
-                setFilteredPage(1);
-                setSelectedIds([]);
+                changeCriteria({ status: value === "ALL" ? undefined : value });
               }}
               options={[
                 { value: "ALL", label: "全部状态" },
@@ -616,9 +636,12 @@ export function MemberTable({
             </div>
           ) : (
             <span className={styles.resultCount} role="status">
-              {rosterQuery.isFetching && !rosterQuery.data
-                ? "正在载入全部成员…"
-                : `找到 ${filteredMembers.length} 位成员`}
+              {listError
+                ? "成员名单读取失败"
+                : searchPending ||
+                    (membersQuery.isFetching && !membersQuery.data)
+                  ? "正在查询成员…"
+                  : `找到 ${total ?? 0} 位成员`}
             </span>
           )}
           {filtering ? (
@@ -645,14 +668,7 @@ export function MemberTable({
           className={styles.alert}
           title={`成员名单读取失败：${toApiError(listError).message}`}
           action={
-            <Button
-              size="small"
-              onClick={() =>
-                void (filtering
-                  ? rosterQuery.refetch()
-                  : membersQuery.refetch())
-              }
-            >
+            <Button size="small" onClick={() => void membersQuery.refetch()}>
               重试
             </Button>
           }
@@ -673,7 +689,11 @@ export function MemberTable({
             onChange: setSelectedIds,
             getTitleCheckboxProps: () => ({ "aria-label": "选择本页全部成员" }),
             getCheckboxProps: (member) => ({
-              disabled: !viewerMemberId || member.id === viewerMemberId,
+              disabled:
+                searchPending ||
+                membersQuery.isFetching ||
+                !viewerMemberId ||
+                member.id === viewerMemberId,
               "aria-label":
                 member.id === viewerMemberId
                   ? "不能选择自己"
@@ -681,52 +701,49 @@ export function MemberTable({
             }),
           }}
           dataSource={memberItems}
-          loading={filtering ? rosterQuery.isFetching : membersQuery.isFetching}
+          loading={searchPending || membersQuery.isFetching}
           locale={{
             emptyText: (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                 description={
-                  filtering
-                    ? rosterQuery.isFetching
-                      ? "正在载入全部成员…"
-                      : "没有符合条件的成员"
-                    : "公司还没有成员"
+                  listError
+                    ? "名单暂时无法读取，请重试"
+                    : searchPending || membersQuery.isFetching
+                      ? "正在查询成员…"
+                      : filtering
+                        ? "没有符合条件的成员"
+                        : "公司还没有成员"
                 }
               >
-                {filtering && !rosterQuery.isFetching ? (
+                {filtering &&
+                !listError &&
+                !searchPending &&
+                !membersQuery.isFetching ? (
                   <Button onClick={clearFilters}>清除筛选</Button>
                 ) : null}
               </Empty>
             ),
           }}
           pagination={
-            filtering
+            membersQuery.data && !listError
               ? {
-                  current: filteredPage,
-                  pageSize: 20,
-                  total: filteredMembers.length,
-                  hideOnSinglePage: true,
-                  showSizeChanger: false,
-                  onChange: (nextPage) => {
-                    setSelectedIds([]);
-                    setFilteredPage(nextPage);
-                  },
-                }
-              : {
                   current: memberPageNumber,
-                  pageSize: 20,
-                  total,
-                  hideOnSinglePage: true,
-                  showSizeChanger: false,
-                  onChange: (nextPage) => {
-                    setSelectedIds([]);
-                    setMemberPageNumber(nextPage);
-                    (navigate ?? router.push)(
-                      `/workspace/${tenantCode}/members?page=${nextPage}`,
-                    );
+                  pageSize: limit,
+                  total: total ?? 0,
+                  hideOnSinglePage: false,
+                  showSizeChanger: true,
+                  pageSizeOptions: [20, 50, 100],
+                  showTotal: (count) => `共 ${count} 位成员`,
+                  locale: { items_per_page: "人 / 页" },
+                  onChange: (nextPage, nextLimit) => {
+                    changeCriteria({
+                      page: nextLimit === limit ? nextPage : 1,
+                      limit: nextLimit,
+                    });
                   },
                 }
+              : false
           }
         />
       ) : (

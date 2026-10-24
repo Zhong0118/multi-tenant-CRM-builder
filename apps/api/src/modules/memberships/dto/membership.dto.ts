@@ -158,6 +158,28 @@ export class InvitationPageQueryDto {
 }
 
 export class MemberPageQueryDto {
+  @ApiPropertyOptional({
+    maxLength: 100,
+    description: '按成员展示姓名或手机号搜索',
+  })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @IsString()
+  @Length(0, 100)
+  q?: string;
+
+  @ApiPropertyOptional({ enum: ['TENANT_ADMIN', 'EMPLOYEE'] })
+  @IsOptional()
+  @IsIn(['TENANT_ADMIN', 'EMPLOYEE'])
+  role?: 'TENANT_ADMIN' | 'EMPLOYEE';
+
+  @ApiPropertyOptional({ enum: ['ACTIVE', 'DISABLED'] })
+  @IsOptional()
+  @IsIn(['ACTIVE', 'DISABLED'])
+  status?: 'ACTIVE' | 'DISABLED';
+
   @ApiPropertyOptional({ type: Number, minimum: 1, default: 1 })
   @IsOptional()
   @Type(() => Number)

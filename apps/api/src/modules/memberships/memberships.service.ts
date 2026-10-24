@@ -35,6 +35,9 @@ export interface TenantMemberSummary {
 }
 
 export interface MemberPageQuery {
+  q?: string;
+  role?: MemberRole;
+  status?: 'ACTIVE' | 'DISABLED';
   page: number;
   limit: number;
 }

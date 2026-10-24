@@ -13,6 +13,7 @@ const platformPhone = '13933330000';
 const userAPhone = '13933331111';
 const userBPhone = '13933332222';
 const employeePhone = '13933334444';
+const directoryPhones = ['13933336666', '13933337777'];
 const tenantACode = 'e2e-onboarding-a';
 const tenantBCode = 'e2e-onboarding-b';
 
@@ -227,6 +228,167 @@ describe('Invitation and workspace onboarding (e2e)', () => {
       });
   });
 
+  it('filters the displayed member directory with consistent pagination and tenant isolation', async () => {
+    const platform = await register(platformPhone, '平台管理员');
+    await admin.user.update({
+      where: { phone: normalized(platformPhone) },
+      data: { isPlatformAdmin: true },
+    });
+    const tenantA = await createTenant(platform, tenantACode, userAPhone);
+    const tenantB = await createTenant(platform, tenantBCode, userBPhone);
+    const userA = await register(userAPhone, '公司 A 管理员');
+    const invitations = await userA.get('/api/v1/me/invitations').expect(200);
+    await userA
+      .post(`/api/v1/me/invitations/${firstId(invitations.body)}/accept`)
+      .set('Origin', origin)
+      .expect(201);
+    await activate(platform, tenantA);
+    const employee = await register(employeePhone, 'Account Alias');
+    const employeeUser = await admin.user.findUniqueOrThrow({
+      where: { phone: normalized(employeePhone) },
+    });
+    const employeeMember = await admin.tenantMember.create({
+      data: {
+        tenantId: tenantA,
+        userId: employeeUser.id,
+        displayName: 'Alice Chen',
+        role: 'EMPLOYEE',
+        status: 'ACTIVE',
+      },
+    });
+    const fallbackUser = await admin.user.create({
+      data: {
+        phone: normalized(directoryPhones[0]),
+        displayName: 'Alice Legacy',
+        passwordHash: employeeUser.passwordHash,
+        phoneVerifiedAt: new Date(),
+      },
+    });
+    const fallbackMember = await admin.tenantMember.create({
+      data: { tenantId: tenantA, userId: fallbackUser.id, role: 'EMPLOYEE' },
+    });
+    const disabledUser = await admin.user.create({
+      data: {
+        phone: normalized(directoryPhones[1]),
+        displayName: 'Alice Disabled',
+        passwordHash: employeeUser.passwordHash,
+        phoneVerifiedAt: new Date(),
+      },
+    });
+    const disabledMember = await admin.tenantMember.create({
+      data: {
+        tenantId: tenantA,
+        userId: disabledUser.id,
+        role: 'EMPLOYEE',
+        status: 'DISABLED',
+      },
+    });
+    await admin.tenantMember.create({
+      data: {
+        tenantId: tenantB,
+        userId: employeeUser.id,
+        displayName: 'Alice Foreign',
+        role: 'EMPLOYEE',
+      },
+    });
+    const path = `/api/v1/workspaces/${tenantACode}/members`;
+    const matching = {
+      q: '  ALICE  ',
+      role: 'EMPLOYEE',
+      status: 'ACTIVE',
+      limit: 1,
+    };
+    const first = await userA
+      .get(path)
+      .query({ ...matching, page: 1 })
+      .expect(200);
+    const second = await userA
+      .get(path)
+      .query({ ...matching, page: 2 })
+      .expect(200);
+    expect(first.body).toMatchObject({
+      page: 1,
+      limit: 1,
+      total: 2,
+      activeAdminCount: 1,
+    });
+    expect(second.body).toMatchObject({
+      page: 2,
+      limit: 1,
+      total: 2,
+      activeAdminCount: 1,
+    });
+    expect(first.body).toMatchObject({
+      items: [{ id: employeeMember.id, displayName: 'Alice Chen' }],
+    });
+    expect(second.body).toMatchObject({
+      items: [{ id: fallbackMember.id, displayName: 'Alice Legacy' }],
+    });
+    await userA
+      .get(path)
+      .query({ q: 'Alice', status: 'DISABLED' })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({ total: 1, activeAdminCount: 1 });
+        expect(body).toMatchObject({ items: [{ id: disabledMember.id }] });
+      });
+    await userA
+      .get(path)
+      .query({ q: '139 3333 4444' })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({
+          total: 1,
+          items: [{ id: employeeMember.id }],
+        });
+      });
+    for (const q of ['Account Alias', 'Alice Foreign', '不存在']) {
+      await userA
+        .get(path)
+        .query({ q })
+        .expect(200)
+        .expect(({ body }) => {
+          expect(body).toMatchObject({
+            items: [],
+            total: 0,
+            activeAdminCount: 1,
+          });
+        });
+    }
+    await userA
+      .get(path)
+      .query({ q: '  ', role: 'TENANT_ADMIN' })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({ total: 1, activeAdminCount: 1 });
+        expect(body).toMatchObject({ items: [{ role: 'TENANT_ADMIN' }] });
+      });
+    await userA
+      .get(path)
+      .query({ ...matching, page: 3 })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({
+          items: [],
+          total: 2,
+          activeAdminCount: 1,
+        });
+      });
+    for (const query of [
+      { q: 'x'.repeat(101) },
+      { role: 'PLATFORM_ADMIN' },
+      { status: 'LOCKED' },
+      { limit: 101 },
+    ]) {
+      await userA.get(path).query(query).expect(400);
+    }
+    await employee.get(path).query({ q: 'Alice' }).expect(403);
+    await userA
+      .get(`/api/v1/workspaces/${tenantBCode}/members`)
+      .query({ q: 'Alice' })
+      .expect(403);
+  });
+
   it.each([{ status: 'REVOKED' }, { expiresAt: new Date('2030-01-01') }])(
     'preserves acceptance when it commits after an administrator read: %p',
     async (patch) => {
@@ -350,9 +512,13 @@ describe('Invitation and workspace onboarding (e2e)', () => {
 });
 
 async function cleanup(database: PrismaClient): Promise<void> {
-  const phones = [platformPhone, userAPhone, userBPhone, employeePhone].map(
-    normalized,
-  );
+  const phones = [
+    platformPhone,
+    userAPhone,
+    userBPhone,
+    employeePhone,
+    ...directoryPhones,
+  ].map(normalized);
   const tenants = await database.tenant.findMany({
     where: { code: { in: [tenantACode, tenantBCode] } },
     select: { id: true },

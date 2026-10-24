@@ -10,6 +10,7 @@ import {
   memberApi,
   MemberTable,
   type InvitationPage,
+  type MemberListFilters,
   type TenantMemberPage,
 } from "./member-table";
 
@@ -18,12 +19,14 @@ export function MemberAdministration({
   viewerRole,
   viewerMemberId,
   initialMemberPage,
+  initialFilters,
   initialInvitationPage,
 }: {
   tenantCode: string;
   viewerRole: "TENANT_ADMIN" | "EMPLOYEE";
   viewerMemberId?: string;
   initialMemberPage: TenantMemberPage;
+  initialFilters?: MemberListFilters;
   initialInvitationPage: InvitationPage;
 }) {
   const queryClient = useQueryClient();
@@ -31,7 +34,9 @@ export function MemberAdministration({
   // remount the invite dialog and drawer in its header, closing them before
   // they show the registration link and per-row results.
   const created = () => {
-    void queryClient.invalidateQueries({ queryKey: ["workspace", tenantCode, "invitations"] });
+    void queryClient.invalidateQueries({
+      queryKey: ["workspace", tenantCode, "invitations"],
+    });
   };
   return (
     <Page width="settings">
@@ -39,8 +44,15 @@ export function MemberAdministration({
         headerActions={
           viewerRole === "TENANT_ADMIN" ? (
             <>
-              <BulkInviteMembers tenantCode={tenantCode} api={memberApi} onChanged={created} />
-              <InviteMemberForm tenantCode={tenantCode} onInvitationCreated={created} />
+              <BulkInviteMembers
+                tenantCode={tenantCode}
+                api={memberApi}
+                onChanged={created}
+              />
+              <InviteMemberForm
+                tenantCode={tenantCode}
+                onInvitationCreated={created}
+              />
             </>
           ) : undefined
         }
@@ -49,6 +61,7 @@ export function MemberAdministration({
         viewerRole={viewerRole}
         viewerMemberId={viewerMemberId}
         initialMemberPage={initialMemberPage}
+        initialFilters={initialFilters}
         initialInvitationPage={initialInvitationPage}
       />
     </Page>

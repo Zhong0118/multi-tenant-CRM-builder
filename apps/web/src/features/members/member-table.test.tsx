@@ -16,7 +16,6 @@ vi.mock("next/navigation", () => ({
 import { InviteMemberForm } from "./invite-member-form";
 import {
   formatPhone,
-  loadRoster,
   MemberTable,
   type MemberApi,
   type TenantInvitation,
@@ -375,11 +374,11 @@ describe("MemberTable", () => {
       phone: "+8613600136000",
     };
     vi.mocked(api.listMembers).mockImplementation(
-      async (_tenant, page, limit) => ({
-        items: limit === 100 ? [...members, beyondPage] : members,
+      async (_tenant, page, limit = 20, filters = {}) => ({
+        items: filters.q === "136 0013" ? [beyondPage] : [],
         page,
-        limit: limit ?? 20,
-        total: 3,
+        limit,
+        total: filters.q === "136 0013" ? 1 : 0,
         activeAdminCount: 1,
       }),
     );
@@ -399,7 +398,9 @@ describe("MemberTable", () => {
     expect(await screen.findByText("远页员工")).toBeInTheDocument();
     expect(screen.queryByText("林员工")).not.toBeInTheDocument();
     expect(screen.getByText("找到 1 位成员")).toBeInTheDocument();
-    expect(api.listMembers).toHaveBeenCalledWith("northwind", 1, 100);
+    expect(api.listMembers).toHaveBeenCalledWith("northwind", 1, 20, {
+      q: "136 0013",
+    });
 
     fireEvent.change(screen.getByLabelText("搜索成员"), {
       target: { value: "没有这个人" },
@@ -434,6 +435,174 @@ describe("MemberTable", () => {
       await screen.findByText("成员名单读取失败：服务暂时不可用"),
     ).toBeInTheDocument();
     expect(screen.getByText(/^重\s?试$/).closest("button")).toBeEnabled();
+    expect(screen.queryByText(/0 位在职管理员/)).not.toBeInTheDocument();
+    expect(screen.queryByText("找到 0 位成员")).not.toBeInTheDocument();
+    expect(screen.queryByText("没有符合条件的成员")).not.toBeInTheDocument();
+    vi.mocked(api.listMembers).mockResolvedValue({
+      ...initialMemberPage,
+      items: [members[1]],
+      total: 1,
+    });
+    fireEvent.click(screen.getByText(/^重\s?试$/).closest("button")!);
+    expect(await screen.findByText("林员工")).toBeInTheDocument();
+  });
+
+  it("keeps search in the URL and paginates all server results", async () => {
+    const api = memberApi();
+    const navigate = vi.fn();
+    vi.mocked(api.listMembers).mockImplementation(
+      async (_tenant, page, limit = 20) => ({
+        items: [{ ...members[1], displayName: `筛选结果${page}` }],
+        page,
+        limit,
+        total: 5001,
+        activeAdminCount: 1,
+      }),
+    );
+    renderWithQuery(
+      <MemberTable
+        tenantCode="northwind"
+        viewerRole="TENANT_ADMIN"
+        viewerMemberId="member-admin"
+        initialMemberPage={initialMemberPage}
+        initialInvitationPage={{ items: [] }}
+        api={api}
+        navigate={navigate}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("搜索成员"), {
+      target: { value: "林" },
+    });
+    expect(await screen.findByText("筛选结果1")).toBeInTheDocument();
+    expect(screen.getByText("找到 5001 位成员")).toBeInTheDocument();
+    fireEvent.click(
+      screen
+        .getByText("筛选结果1")
+        .closest("tr")!
+        .querySelector('input[type="checkbox"]')!,
+    );
+    expect(screen.getByText("已选 1 人")).toBeInTheDocument();
+    fireEvent.click(
+      screen
+        .getAllByRole("button", { name: "right" })
+        .find((b) => !b.hasAttribute("disabled"))!,
+    );
+    expect(await screen.findByText("筛选结果2")).toBeInTheDocument();
+    expect(screen.queryByText("已选 1 人")).not.toBeInTheDocument();
+    expect(api.listMembers).toHaveBeenLastCalledWith("northwind", 2, 20, {
+      q: "林",
+    });
+    expect(navigate).toHaveBeenLastCalledWith(
+      "/workspace/northwind/members?page=2&q=%E6%9E%97",
+    );
+  });
+
+  it("hydrates a filtered page with its saved criteria", () => {
+    const api = memberApi();
+    renderWithQuery(
+      <MemberTable
+        tenantCode="northwind"
+        viewerRole="TENANT_ADMIN"
+        initialFilters={{ q: "林", role: "EMPLOYEE", status: "ACTIVE" }}
+        initialMemberPage={{
+          ...initialMemberPage,
+          items: [members[1]],
+          total: 1,
+          limit: 50,
+        }}
+        initialInvitationPage={{ items: [] }}
+        api={api}
+      />,
+    );
+    expect(screen.getByLabelText("搜索成员")).toHaveValue("林");
+    expect(screen.queryByText("陈管理员")).not.toBeInTheDocument();
+    expect(screen.getByText("找到 1 位成员")).toBeInTheDocument();
+    expect(api.listMembers).not.toHaveBeenCalled();
+  });
+
+  it("moves to a valid page when refreshing removes its last matching member", async () => {
+    const api = memberApi();
+    vi.mocked(api.listMembers).mockImplementation(
+      async (_tenant, page, limit = 20) => ({
+        items: page === 2 ? [] : [members[1]],
+        page,
+        limit,
+        total: 20,
+        activeAdminCount: 1,
+      }),
+    );
+    const { client } = renderWithQuery(
+      <MemberTable
+        tenantCode="northwind"
+        viewerRole="TENANT_ADMIN"
+        initialFilters={{ status: "ACTIVE" }}
+        initialMemberPage={{
+          ...initialMemberPage,
+          page: 2,
+          items: [members[1]],
+          total: 21,
+        }}
+        initialInvitationPage={{ items: [] }}
+        api={api}
+      />,
+    );
+    await client.invalidateQueries({
+      queryKey: ["workspace", "northwind", "members"],
+    });
+    await waitFor(() =>
+      expect(api.listMembers).toHaveBeenCalledWith("northwind", 1, 20, {
+        status: "ACTIVE",
+      }),
+    );
+    expect(await screen.findByText("林员工")).toBeInTheDocument();
+    expect(screen.queryByText("没有符合条件的成员")).not.toBeInTheDocument();
+  });
+
+  it("queries combined role and status filters on the server", async () => {
+    const api = memberApi();
+    vi.mocked(api.listMembers).mockImplementation(
+      async (_tenant, page, limit = 20, filters = {}) => ({
+        items: members.filter(
+          (m) =>
+            (!filters.role || m.role === filters.role) &&
+            (!filters.status || m.status === filters.status),
+        ),
+        page,
+        limit,
+        total: filters.status === "DISABLED" ? 0 : 1,
+        activeAdminCount: 1,
+      }),
+    );
+    renderWithQuery(
+      <MemberTable
+        tenantCode="northwind"
+        viewerRole="TENANT_ADMIN"
+        initialMemberPage={initialMemberPage}
+        initialInvitationPage={{ items: [] }}
+        api={api}
+      />,
+    );
+    fireEvent.mouseDown(screen.getByLabelText("角色"));
+    const roleOptions = document.querySelector(
+      ".ant-select-dropdown:not(.ant-select-dropdown-hidden)",
+    )!;
+    fireEvent.click(
+      within(roleOptions as HTMLElement).getByText("员工", { exact: true }),
+    );
+    await waitFor(() =>
+      expect(api.listMembers).toHaveBeenCalledWith("northwind", 1, 20, {
+        role: "EMPLOYEE",
+      }),
+    );
+    fireEvent.mouseDown(screen.getByLabelText("状态"));
+    fireEvent.click(await screen.findByText("已停用", { exact: true }));
+    await waitFor(() =>
+      expect(api.listMembers).toHaveBeenLastCalledWith("northwind", 1, 20, {
+        role: "EMPLOYEE",
+        status: "DISABLED",
+      }),
+    );
+    expect(await screen.findByText("没有符合条件的成员")).toBeInTheDocument();
   });
 
   it("confirms a successful status change", async () => {
@@ -471,36 +640,5 @@ describe("member roster helpers", () => {
     expect(formatPhone("+8618800001001")).toBe("188 0000 1001");
     expect(formatPhone("+85291234567")).toBe("+85291234567");
     expect(formatPhone(undefined)).toBeUndefined();
-  });
-
-  it("loads every page of the roster and stops at the total", async () => {
-    const page = (n: number) =>
-      Array.from({ length: n }, (_, index) => ({
-        ...members[1],
-        id: `m-${n}-${index}`,
-      }));
-    const listMembers = vi
-      .fn()
-      .mockResolvedValueOnce({
-        items: page(100),
-        page: 1,
-        limit: 100,
-        total: 130,
-        activeAdminCount: 1,
-      })
-      .mockResolvedValueOnce({
-        items: page(30),
-        page: 2,
-        limit: 100,
-        total: 130,
-        activeAdminCount: 1,
-      });
-    const roster = await loadRoster(
-      { ...memberApi(), listMembers },
-      "northwind",
-    );
-    expect(roster).toHaveLength(130);
-    expect(listMembers).toHaveBeenCalledTimes(2);
-    expect(listMembers).toHaveBeenLastCalledWith("northwind", 2, 100);
   });
 });
