@@ -41,32 +41,37 @@
 }
 .actions { gap: 2px; }
 .feedback { margin: 12px 16px; }
-.list { padding-bottom: 12px; }
+.list { display: flex; flex-direction: column; gap: 16px; padding: 8px 12px 12px; }
+.list > section { display: flex; flex-direction: column; gap: 8px; }
 .groupTitle {
   display: flex;
   gap: 8px;
   align-items: center;
   margin: 0;
-  padding: 16px 20px 8px;
+  padding: 4px 4px 0;
   color: #667085;
   font-size: 12px;
   font-weight: 500;
 }
 .groupTitle > span:last-child { margin-left: auto; }
 .item {
-  padding: 14px 20px;
-  border-bottom: 1px solid #f0f2f5;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-control);
   overflow-wrap: anywhere;
   animation: appear 160ms ease;
   transition: background 180ms ease;
 }
 .unread { background: var(--color-primary-soft); }
-.itemHeading { justify-content: space-between; gap: 12px; }
+.itemHeading { grid-column: 1 / -1; justify-content: space-between; gap: 12px; }
 .item h4 { margin: 0; font-size: 14px; font-weight: 600; }
-.item p { margin: 6px 0 10px; color: #475467; line-height: 1.65; font-size: 13px; }
+.item p { grid-column: 1 / -1; margin: 0; color: #475467; line-height: 1.5; font-size: 13px; }
 .unreadDot { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; background: var(--color-primary); }
-.itemMeta { gap: 8px 14px; flex-wrap: wrap; color: #667085; font-size: 12px; }
-.itemActions { justify-content: flex-end; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
+.itemMeta { align-self: center; gap: 4px 10px; flex-wrap: wrap; color: #667085; font-size: 12px; }
+.itemActions { justify-content: flex-end; flex-wrap: wrap; gap: 4px; margin-top: 0; }
 .unavailable { color: #667085; font-size: 12px; }
 .loading { padding: 32px; }
 .spinnerSpace { height: 40px; }
@@ -81,8 +86,8 @@
 
 /* The inbox opens beside its sidebar row, like Linear's and Notion's inbox
    popovers, instead of a drawer pinned to the window edge. */
-.popover :global(.ant-popover-inner) {
-  padding: 0;
+.popover :global(.ant-popover-container) {
+  padding: 0 !important;
   overflow: hidden;
   border-radius: var(--radius-reading);
 }
@@ -121,4 +126,15 @@
   justify-content: flex-end;
   padding: 8px 16px;
   border-top: 1px solid var(--border-hairline);
+}
+
+@media (max-width: 767px) {
+  .popover {
+    position: fixed !important;
+    top: 64px !important;
+    left: 16px !important;
+  }
+  .panel {
+    max-height: min(600px, calc(100dvh - 80px));
+  }
 }

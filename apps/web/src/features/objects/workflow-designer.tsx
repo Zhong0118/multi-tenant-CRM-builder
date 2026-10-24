@@ -125,7 +125,7 @@ function WorkflowDesignerForm({
         states: current.states,
         transitions: current.transitions,
       }),
-    onSuccess: (saved) => {
+    onSuccess: async (saved) => {
       setForm(saved);
       setNotice("流程配置已保存");
       setError(undefined);
@@ -133,8 +133,24 @@ function WorkflowDesignerForm({
       queryClient.setQueryData(queryKey, saved);
       onObjectVersion({
         ...draft,
-        object: { ...draft.object, version: saved.objectVersion },
+        object: {
+          ...draft.object,
+          version: saved.objectVersion,
+          hasUnpublishedChanges: true,
+        },
       });
+      try {
+        const current = await objectApi.draft(tenantCode, draft.object.id);
+        if (current.object.version === saved.objectVersion) {
+          onObjectVersion(current);
+        } else {
+          setNotice(
+            "流程配置已保存，但配置已被其他管理员更新，请重新载入配置后继续编辑",
+          );
+        }
+      } catch {
+        setNotice("流程配置已保存，但发布状态读取失败，请重新载入配置核对");
+      }
     },
     onError: (caught) => {
       const apiError = toApiError(caught);
@@ -143,6 +159,10 @@ function WorkflowDesignerForm({
       // §34: the envelope message is generic; the located reason only exists in
       // the field errors, so they are kept for the Action editor to render.
       setFieldErrors(apiError.fieldErrors);
+      const first = Object.keys(apiError.fieldErrors)
+        .map((path) => /^transitions\.(\d+)\./.exec(path)?.[1])
+        .find((index) => index !== undefined);
+      if (first !== undefined) setOpenTransition(Number(first));
     },
   });
 
@@ -198,15 +218,7 @@ function WorkflowDesignerForm({
     const state = form.states.find((item) => item.key === key);
     return state ? state.label || state.key || "未命名状态" : key || "未选择";
   };
-  // The transition a server error points at opens by itself, so the located
-  // reason is never hidden in a collapsed row.
-  const erroredTransition = Object.keys(fieldErrors)
-    .map((path) => /^transitions\.(\d+)\./.exec(path)?.[1])
-    .find((index) => index !== undefined);
-  const openIndex =
-    erroredTransition !== undefined
-      ? Number(erroredTransition)
-      : openTransition;
+  const openIndex = openTransition;
 
   function showTransition(index: number) {
     setOpenTransition(index);

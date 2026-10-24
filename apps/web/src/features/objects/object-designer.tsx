@@ -871,6 +871,7 @@ export function ObjectDesigner({
                 draft={draft}
                 onObjectVersion={setDraft}
                 objects={api}
+                onDirtyChange={dirtyHandlers.automations}
               />
             ) : null}
 
@@ -1074,7 +1075,7 @@ function BasicsSection({
       ),
   );
 
-  const disabled = draft.object.status === "ARCHIVED";
+  const disabled = saving || draft.object.status === "ARCHIVED";
   useReportDirty(
     name !== draft.object.name ||
       icon !== draft.object.icon ||
@@ -1381,6 +1382,7 @@ function DefaultViewSection({
     onDirtyChange,
   );
   const archived = draft.object.status === "ARCHIVED";
+  const locked = archived || saving;
   const labelOf = (fieldKey: string) =>
     activeFields.find((field) => field.fieldKey === fieldKey)?.label ??
     fieldKey;
@@ -1425,7 +1427,7 @@ function DefaultViewSection({
                   <label>
                     <input
                       type="checkbox"
-                      disabled={archived}
+                      disabled={locked}
                       checked={selected}
                       onChange={(event) =>
                         toggleColumn(field.fieldKey, event.target.checked)
@@ -1441,7 +1443,7 @@ function DefaultViewSection({
                         type="text"
                         aria-label={`上移 ${field.label}`}
                         icon={<ArrowUpOutlined aria-hidden />}
-                        disabled={archived || selectedIndex === 0}
+                        disabled={locked || selectedIndex === 0}
                         onClick={() => moveColumn(field.fieldKey, -1)}
                       />
                       <Button
@@ -1450,8 +1452,7 @@ function DefaultViewSection({
                         aria-label={`下移 ${field.label}`}
                         icon={<ArrowDownOutlined aria-hidden />}
                         disabled={
-                          archived ||
-                          selectedIndex === columnFieldKeys.length - 1
+                          locked || selectedIndex === columnFieldKeys.length - 1
                         }
                         onClick={() => moveColumn(field.fieldKey, 1)}
                       />
@@ -1467,7 +1468,8 @@ function DefaultViewSection({
 
         <div className={designer.splitSide}>
           <figure className={designer.tablePreview} aria-label="默认列表预览">
-            <figcaption>员工打开表格时看到的表头</figcaption>
+            <figcaption>默认列配置预览</figcaption>
+            <p>员工实际显示的列还受字段权限、成员例外和个人显示偏好影响。</p>
             <div className={designer.tablePreviewHead}>
               {columnFieldKeys.length ? (
                 columnFieldKeys.map((fieldKey, index) => (
@@ -1492,7 +1494,7 @@ function DefaultViewSection({
             </p>
           </figure>
 
-          <Form disabled={archived} component={false} layout="vertical">
+          <Form disabled={locked} component={false} layout="vertical">
             <Form.Item label="视图名称" htmlFor="default-view-name">
               <Input
                 id="default-view-name"
@@ -1524,7 +1526,7 @@ function DefaultViewSection({
                               : `将${field.label}纳入关键词搜索`
                           }
                           checked={selected || isTitle}
-                          disabled={archived || isTitle}
+                          disabled={locked || isTitle}
                           onChange={(event) =>
                             setSearchFieldKeys((current) =>
                               event.target.checked
@@ -1577,7 +1579,7 @@ function DefaultViewSection({
           type="primary"
           loading={saving}
           disabled={
-            archived || name.trim() === "" || columnFieldKeys.length === 0
+            locked || name.trim() === "" || columnFieldKeys.length === 0
           }
           onClick={() =>
             onSave({

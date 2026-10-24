@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -1386,4 +1387,46 @@ describe("publication history", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/^重\s?试$/).closest("button")).toBeEnabled();
   });
+});
+
+describe("pending configuration saves", () => {
+  it.each([
+    ["基本设置", "业务表名称", "保存基本设置", "updateDraft"],
+    ["列表展示与搜索", "视图名称", "保存列表设置", "updateDefaultView"],
+  ] as const)(
+    "locks %s until its saved revision arrives",
+    async (section, label, action, method) => {
+      let resolveSave!: (value: ObjectDraft) => void;
+      const pending = new Promise<ObjectDraft>((resolve) => {
+        resolveSave = resolve;
+      });
+      const api = objectApi({ [method]: vi.fn().mockReturnValue(pending) });
+      renderDesigner(draft(), api);
+      fireEvent.click(screen.getByRole("button", { name: section }));
+      fireEvent.change(screen.getByLabelText(label), {
+        target: { value: "待保存的配置" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: action }));
+      await waitFor(() => expect(api[method]).toHaveBeenCalledTimes(1));
+      expect(screen.getByLabelText(label)).toBeDisabled();
+      if (section === "列表展示与搜索") {
+        for (const input of screen.getAllByRole("checkbox"))
+          expect(input).toBeDisabled();
+        expect(screen.getByLabelText("默认排序字段")).toBeDisabled();
+        expect(
+          screen.getByRole("button", { name: "下移 客户名称" }),
+        ).toBeDisabled();
+      } else {
+        expect(screen.getByLabelText("说明")).toBeDisabled();
+        expect(screen.getByLabelText("记录名称字段")).toBeDisabled();
+      }
+      const saved = draft({
+        object: { ...draft().object, version: 5, name: "待保存的配置" },
+        defaultView: { ...draft().defaultView!, name: "待保存的配置" },
+      });
+      await act(async () => resolveSave(saved));
+      await waitFor(() => expect(screen.getByLabelText(label)).toBeEnabled());
+      expect(screen.getByLabelText(label)).toHaveValue("待保存的配置");
+    },
+  );
 });

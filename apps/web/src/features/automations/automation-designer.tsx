@@ -20,7 +20,7 @@ import {
   TableOutlined,
 } from "@ant-design/icons";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { browserApiClient } from "@/lib/api/browser-client";
 import type { DynamicFieldMember } from "@/features/records/dynamic-field";
 import { objectApi, type ObjectApi } from "@/features/objects/object-api";
@@ -40,12 +40,14 @@ export function AutomationDesigner({
   tenantCode,
   draft,
   onObjectVersion,
+  onDirtyChange,
   api = automationApi,
   objects = objectApi,
 }: {
   tenantCode: string;
   draft: ObjectDraft;
   onObjectVersion: (draft: ObjectDraft) => void;
+  onDirtyChange?: (dirty: boolean) => void;
   api?: AutomationApi;
   objects?: ObjectApi;
 }) {
@@ -129,6 +131,12 @@ export function AutomationDesigner({
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
   const archived = draft.object.status === "ARCHIVED";
+  const dirty =
+    Boolean(editing) && editorDirty && view === "draft" && !archived;
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
   const source: AutomationTable = {
     code: draft.object.code,
     name: draft.object.name,

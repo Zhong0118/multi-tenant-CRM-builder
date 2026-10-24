@@ -127,7 +127,14 @@ function objectApi(overrides: Partial<ObjectApi> = {}): ObjectApi {
     listAccessible: vi.fn(),
     runtimeSchema: vi.fn(),
     listDrafts: vi.fn().mockResolvedValue([objectDraft(), targetDraft()]),
-    draft: vi.fn(),
+    draft: vi.fn().mockResolvedValue({
+      ...objectDraft(),
+      object: {
+        ...objectDraft().object,
+        version: 5,
+        hasUnpublishedChanges: true,
+      },
+    }),
     createDraft: vi.fn(),
     updateDraft: vi.fn(),
     reorderObjects: vi.fn(),
@@ -338,7 +345,11 @@ describe("WorkflowDesigner", () => {
     expect(screen.getByLabelText("状态名称 1")).toHaveValue("保存的状态");
     expect(onObjectVersion).toHaveBeenCalledWith({
       ...objectDraft(),
-      object: { ...objectDraft().object, version: 5 },
+      object: {
+        ...objectDraft().object,
+        version: 5,
+        hasUnpublishedChanges: true,
+      },
     });
   });
 
@@ -433,7 +444,11 @@ describe("WorkflowDesigner", () => {
     expect(await screen.findByText("流程配置已保存")).toBeInTheDocument();
     expect(onObjectVersion).toHaveBeenCalledWith({
       ...objectDraft(),
-      object: { ...objectDraft().object, version: 5 },
+      object: {
+        ...objectDraft().object,
+        version: 5,
+        hasUnpublishedChanges: true,
+      },
     });
   });
 
@@ -700,6 +715,99 @@ describe("workflow map", () => {
     expect(summary).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByLabelText("动作名称 2")).toHaveValue("签约");
     expect(screen.queryByLabelText("动作名称 1")).not.toBeInTheDocument();
+  });
+
+  it("opens the server error once and then lets another action be edited", async () => {
+    const backend = api();
+    vi.mocked(backend.saveDraft).mockRejectedValue({
+      code: "VALIDATION_ERROR",
+      message: "动作配置不合法",
+      requestId: "req-map",
+      status: 400,
+      fieldErrors: { "transitions.0.label": ["请检查动作名称"] },
+    });
+    renderDesigner(backend);
+    fireEvent.change(await screen.findByLabelText("状态名称 1"), {
+      target: { value: "待处理" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存流程" }));
+    await screen.findByText(/req-map/);
+    expect(screen.getByLabelText("动作名称 1")).toBeInTheDocument();
+    const map = screen.getByRole("figure", { name: "流程图" });
+    fireEvent.click(within(map).getByRole("button", { name: /签约/ }));
+    expect(screen.getByLabelText("动作名称 2")).toHaveValue("签约");
+    expect(screen.queryByLabelText("动作名称 1")).not.toBeInTheDocument();
+  });
+
+  it("refreshes authoritative publication state after saving a workflow", async () => {
+    const backend = api();
+    vi.mocked(backend.saveDraft).mockImplementation(async (_t, _o, input) => ({
+      ...input,
+      objectVersion: 5,
+    }));
+    const savedObject = {
+      ...objectDraft(),
+      object: {
+        ...objectDraft().object,
+        version: 5,
+        hasUnpublishedChanges: true,
+      },
+    };
+    const objects = objectApi({
+      draft: vi.fn().mockResolvedValue(savedObject),
+    });
+    const changed = vi.fn();
+    renderDesigner(backend, objects, changed);
+    fireEvent.change(await screen.findByLabelText("状态名称 1"), {
+      target: { value: "待处理" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存流程" }));
+    await waitFor(() =>
+      expect(objects.draft).toHaveBeenCalledWith("northwind", "object-1"),
+    );
+    await waitFor(() => expect(changed).toHaveBeenLastCalledWith(savedObject));
+  });
+
+  it("does not lend a newer concurrent revision to the older workflow form", async () => {
+    const backend = api();
+    vi.mocked(backend.saveDraft).mockImplementation(async (_t, _o, input) => ({
+      ...input,
+      objectVersion: 5,
+    }));
+    const newer = {
+      ...objectDraft(),
+      object: {
+        ...objectDraft().object,
+        version: 6,
+        hasUnpublishedChanges: true,
+      },
+    };
+    const changed = vi.fn();
+    renderDesigner(
+      backend,
+      objectApi({ draft: vi.fn().mockResolvedValue(newer) }),
+      changed,
+    );
+    fireEvent.change(await screen.findByLabelText("状态名称 1"), {
+      target: { value: "本地已保存状态" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存流程" }));
+    await waitFor(() => expect(changed).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "保存流程" })).toBeEnabled(),
+    );
+    expect(changed).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        object: expect.objectContaining({ version: 6 }),
+      }),
+    );
+    expect(changed).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        object: expect.objectContaining({ version: 5 }),
+      }),
+    );
+    expect(screen.getByText(/配置已被其他管理员更新/)).toBeInTheDocument();
+    expect(screen.getByLabelText("状态名称 1")).toHaveValue("本地已保存状态");
   });
 
   it("reports unsaved edits and clears them once saved", async () => {
