@@ -1,0 +1,26 @@
+.due {
+  display: inline-flex;
+  gap: 4px;
+  align-items: baseline;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.prefix {
+  color: var(--text-tertiary);
+}
+
+.due[data-tone="danger"] {
+  color: var(--color-danger);
+  font-weight: 500;
+}
+
+.due[data-tone="warning"] {
+  color: var(--color-warning);
+}
+
+.due[data-tone="info"] {
+  color: var(--color-primary);
+}

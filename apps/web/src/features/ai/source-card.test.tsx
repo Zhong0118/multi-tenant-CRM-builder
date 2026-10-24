@@ -41,4 +41,22 @@ describe("SourceCard", () => {
       "/workspace/northwind/objects/leads/rec-1",
     );
   });
+
+  it("groups digits in an aggregate value", () => {
+    render(
+      <SourceCard
+        tenantCode="northwind"
+        source={
+          {
+            kind: "AGGREGATE",
+            objectCode: "deals",
+            objectName: "商机",
+            label: "金额合计",
+            value: "1234567.5",
+          } as never
+        }
+      />,
+    );
+    expect(screen.getByText("1,234,567.5")).toBeInTheDocument();
+  });
 });

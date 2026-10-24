@@ -1,0 +1,141 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-panel);
+  background: var(--bg-surface);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+}
+
+.head h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.meta {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.more {
+  margin-left: auto;
+  font-size: 13px;
+}
+
+.counts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.counts a {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  height: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  background: var(--bg-surface-subtle);
+  color: var(--text-secondary);
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+
+.counts a:hover {
+  background: var(--bg-hover);
+}
+
+.counts a:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.counts strong {
+  color: var(--text-primary);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 28px;
+  font-variant-numeric: tabular-nums;
+}
+
+.counts span {
+  font-size: 12px;
+}
+
+.counts li[data-tone="danger"] a {
+  background: var(--color-danger-soft);
+}
+
+.counts li[data-tone="danger"] strong {
+  color: var(--color-danger);
+}
+
+.counts li[data-tone="warning"] a {
+  background: var(--color-warning-soft);
+}
+
+.counts li[data-tone="warning"] strong {
+  color: var(--color-warning);
+}
+
+.behind {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 4px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.behind li {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border-hairline);
+  font-size: 12px;
+}
+
+.behind li > span:nth-child(2) {
+  color: var(--text-secondary);
+}
+
+.behind strong {
+  color: var(--color-danger);
+  font-variant-numeric: tabular-nums;
+}
+
+.calm {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+@media (max-width: 767px) {
+  .counts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .more {
+    margin-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .counts a {
+    transition: none;
+  }
+}

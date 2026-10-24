@@ -15,6 +15,7 @@ import {
   updateDashboard,
 } from "./dashboard-api";
 import { DashboardCanvas } from "./dashboard-canvas";
+import { DashboardRenderer } from "./dashboard-renderer";
 import { DashboardWidgetInspector } from "./dashboard-widget-inspector";
 import { DashboardWidgetLibrary } from "./dashboard-widget-library";
 import { parseDraft } from "./dashboard-types";
@@ -578,7 +579,14 @@ export function DashboardBuilder({
           description="本地内容没有被覆盖。"
         />
       ) : null}
-      {preview ? <PreviewPanel preview={preview} /> : null}
+      {preview ? (
+        <PreviewPanel
+          tenantCode={tenantCode}
+          preview={preview}
+          stale={dirty}
+          onClose={() => setPreview(undefined)}
+        />
+      ) : null}
       <div className={styles.builderLayout}>
         <DashboardCanvas
           widgets={definition.widgets}
@@ -755,35 +763,37 @@ function WorkbenchCatalog({
   );
 }
 
-function PreviewPanel({ preview }: { preview: DashboardRuntime }) {
+/**
+ * The saved draft rendered exactly as the published workbench will be: same
+ * renderer, same order and widths, with this administrator's data access.
+ */
+function PreviewPanel({
+  tenantCode,
+  preview,
+  stale,
+  onClose,
+}: {
+  tenantCode: string;
+  preview: DashboardRuntime;
+  stale: boolean;
+  onClose: () => void;
+}) {
   return (
     <section className={styles.previewPanel} aria-label="草稿预览">
-      <strong>草稿预览</strong>
-      {preview.widgets.map((widget) => (
-        <article key={widget.id}>
-          <b>{widget.title}</b>
-          <span>
-            {widget.state === "UNAVAILABLE"
-              ? `不可用：${widget.reason ?? "未知原因"}`
-              : previewSummary(widget)}
-          </span>
-        </article>
-      ))}
+      <div className={styles.previewHead}>
+        <strong>草稿预览</strong>
+        <span>
+          {stale
+            ? "画布有未保存的修改，预览仍是上次保存的草稿；保存后重新预览。"
+            : "按已保存草稿渲染，布局与发布后一致；数据按你的权限计算。"}
+        </span>
+        <Button size="small" onClick={onClose}>
+          关闭预览
+        </Button>
+      </div>
+      <DashboardRenderer tenantCode={tenantCode} runtime={preview} />
     </section>
   );
-}
-function previewSummary(widget: DashboardRuntime["widgets"][number]) {
-  if (widget.state === "UNAVAILABLE") return widget.reason ?? "不可用";
-  if (widget.type === "METRIC")
-    return widget.data.value == null ? "无数据" : String(widget.data.value);
-  if (
-    widget.type === "STATUS_DISTRIBUTION" ||
-    widget.type === "TREND" ||
-    widget.type === "LEADERBOARD" ||
-    widget.type === "RECORD_LIST"
-  )
-    return `${widget.data.items.length} 项`;
-  return "";
 }
 function emptyDefinition(): DashboardDefinitionV2 {
   return { schemaVersion: 2, title: "工作台", widgets: [] };

@@ -21,6 +21,12 @@ vi.mock("@ant-design/charts", () => ({
   Line: () => <div data-testid="trend-chart" />,
 }));
 
+vi.mock("@/features/dashboard/team-attention", () => ({
+  TeamAttention: ({ tenantCode }: { tenantCode: string }) => (
+    <section data-testid="team-attention">team:{tenantCode}</section>
+  ),
+}));
+
 vi.mock("@/features/follow-ups/follow-up-workbench", () => ({
   PersonalFollowUpWorkbench: ({ tenantCode }: { tenantCode: string }) => (
     <section data-testid="personal-follow-up-workbench">
@@ -120,11 +126,11 @@ describe("WorkspaceHomeView", () => {
       ),
     ).toEqual([
       "total",
-      "unavailable",
-      "trend",
       "status",
+      "trend",
       "leaderboard",
       "records",
+      "unavailable",
     ]);
   });
 
@@ -162,7 +168,7 @@ describe("WorkspaceHomeView", () => {
     expect(screen.getByText("工作台尚未启用")).toBeInTheDocument();
   });
 
-  it("renders published widgets in type bands, ignoring configured widths", () => {
+  it("renders published widgets in their saved order and widths", () => {
     const { container } = render(
       <WorkspaceHomeView
         tenantCode="northwind"
@@ -194,38 +200,22 @@ describe("WorkspaceHomeView", () => {
       "/workspace/northwind/objects/orders/record-1?returnTo=%2Fworkspace%2Fnorthwind",
     );
 
+    // Published widgets keep the configurator's order and widths.
     const widgets = container.querySelectorAll("[data-dashboard-widget]");
     expect(
-      [...widgets].map((widget) => widget.getAttribute("data-widget-id")),
-    ).toEqual([
-      "total",
-      "unavailable",
-      "trend",
-      "status",
-      "leaderboard",
-      "records",
-    ]);
-    const metricBand = container.querySelector(
-      '[data-dashboard-band="metrics"]',
-    );
-    expect(metricBand).toContainElement(widgets[0] as HTMLElement);
-    expect(metricBand).toHaveAttribute("data-metric-count", "2");
-    expect(
-      container.querySelector('[data-dashboard-band="analysis"]'),
-    ).toContainElement(screen.getByRole("heading", { name: "每日订单" }));
-    expect(
-      container.querySelector('[data-dashboard-band="tables"]'),
-    ).toContainElement(screen.getByRole("heading", { name: "近期订单" }));
-    expect(
-      [...widgets].some((widget) =>
-        [...widget.classList].some(
-          (name) =>
-            name.includes("widgetQuarter") ||
-            name.includes("widgetHalf") ||
-            name.includes("widgetFull"),
-        ),
+      [...widgets].map(
+        (widget) =>
+          `${widget.getAttribute("data-widget-id")}:${widget.getAttribute("data-width")}`,
       ),
-    ).toBe(false);
+    ).toEqual([
+      "total:QUARTER",
+      "status:HALF",
+      "trend:HALF",
+      "leaderboard:HALF",
+      "records:FULL",
+      "unavailable:QUARTER",
+    ]);
+    expect(container.querySelector("[data-dashboard-band]")).toBeNull();
   });
 
   it("keeps ready siblings visible when one published widget is unavailable", () => {

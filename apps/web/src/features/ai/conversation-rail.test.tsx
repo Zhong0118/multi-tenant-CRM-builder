@@ -152,14 +152,14 @@ describe("ConversationRail mutations", () => {
         ],
       });
       await openRename();
-      fireEvent.change(screen.getByRole("textbox"), {
+      fireEvent.change(screen.getByRole("textbox", { name: "会话名称" }), {
         target: { value: "旧请求标题" },
       });
       fireEvent.click(screen.getByRole("button", { name: /^保\s*存$/ }));
       fireEvent.click(screen.getByRole("button", { name: /^取\s*消$/ }));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
       await openRename("另一会话");
-      fireEvent.change(screen.getByRole("textbox"), {
+      fireEvent.change(screen.getByRole("textbox", { name: "会话名称" }), {
         target: { value: "新会话输入" },
       });
       await act(async () => {
@@ -167,7 +167,9 @@ describe("ConversationRail mutations", () => {
         else reject(new Error("旧请求失败"));
       });
       expect(screen.getByRole("dialog")).toBeInTheDocument();
-      expect(screen.getByRole("textbox")).toHaveValue("新会话输入");
+      expect(screen.getByRole("textbox", { name: "会话名称" })).toHaveValue(
+        "新会话输入",
+      );
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: /^保\s*存$/ })).toBeEnabled();
     },
@@ -254,6 +256,25 @@ describe("ConversationRail mutations", () => {
     expect(onDelete).toHaveBeenCalledTimes(1);
     expect(onDelete).toHaveBeenCalledWith("c1");
     resolve();
+  });
+
+  it("filters conversations by title and shows when nothing matches", () => {
+    renderRail({
+      conversations: [
+        conversation,
+        {
+          id: "c2",
+          title: "本月回款",
+          lastMessageAt: conversation.lastMessageAt,
+        },
+      ],
+    });
+    const search = screen.getByRole("textbox", { name: "搜索会话" });
+    fireEvent.change(search, { target: { value: "回款" } });
+    expect(screen.getByText("本月回款")).toBeInTheDocument();
+    expect(screen.queryByText("原标题")).not.toBeInTheDocument();
+    fireEvent.change(search, { target: { value: "不存在" } });
+    expect(screen.getByText(/没有匹配「不存在」的会话/)).toBeInTheDocument();
   });
 
   it("explains the empty list", () => {

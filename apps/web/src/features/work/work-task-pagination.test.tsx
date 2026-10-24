@@ -2,6 +2,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  usePathname: () => "/workspace/northwind/work",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 import { TeamActivity } from "@/features/team-activity/team-activity";
 
 import { MyWork } from "./my-work";

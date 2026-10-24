@@ -153,4 +153,16 @@
   .rowLabel {
     padding-top: 0;
   }
+
+  /* Section controls drop below the title instead of running off the screen. */
+  .sectionHead {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .sectionExtra {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
 }

@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { PersonalFollowUpWorkbench } from "./follow-up-workbench";
 import type { followUpApi } from "./follow-up-api";
+import type { WorkApi, WorkTask } from "@/features/work/work-api";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/workspace/northwind/dashboards/sales",
@@ -56,7 +57,7 @@ const workbench = {
 
 function setup(
   payload: typeof workbench = workbench,
-  options: { fail?: boolean } = {},
+  options: { fail?: boolean; tasks?: WorkTask[] } = {},
 ) {
   const api = {
     recipients: vi.fn().mockResolvedValue([]),
@@ -76,6 +77,14 @@ function setup(
       ? vi.fn().mockRejectedValue(new Error("network unavailable"))
       : vi.fn().mockResolvedValue(payload),
   };
+  const work = {
+    listTasks: vi.fn().mockResolvedValue({
+      items: options.tasks ?? [],
+      total: options.tasks?.length ?? 0,
+      page: 1,
+      limit: 100,
+    }),
+  } as unknown as WorkApi;
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -85,6 +94,7 @@ function setup(
       <PersonalFollowUpWorkbench
         tenantCode="northwind"
         api={api as unknown as typeof followUpApi}
+        work={work}
       />
     </QueryClientProvider>,
   );

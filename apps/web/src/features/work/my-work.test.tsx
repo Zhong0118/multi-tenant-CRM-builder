@@ -8,6 +8,12 @@ import {
 } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  usePathname: () => "/workspace/northwind/work",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 import { MyWork } from "./my-work";
 import type { WorkApi, WorkTask } from "./work-api";
 
@@ -120,6 +126,8 @@ describe("MyWork", () => {
     fireEvent.change(within(item).getByLabelText("整理本周报价单 的结果"), {
       target: { value: "已发给 3 家客户" },
     });
+    await waitFor(() => expect(api.myReport).toHaveBeenCalled());
+    const reportLoads = vi.mocked(api.myReport).mock.calls.length;
     fireEvent.click(within(item).getByRole("button", { name: "标记完成" }));
     await waitFor(() =>
       expect(api.updateTask).toHaveBeenCalledWith("northwind", "t-1", {
@@ -127,6 +135,12 @@ describe("MyWork", () => {
         status: "DONE",
         result: "已发给 3 家客户",
       }),
+    );
+    // The report beside it shows the system's task record, so it reloads too.
+    await waitFor(() =>
+      expect(vi.mocked(api.myReport).mock.calls.length).toBeGreaterThan(
+        reportLoads,
+      ),
     );
   });
 
@@ -161,13 +175,44 @@ describe("MyWork", () => {
     const api = setup({ version: 4 });
     const form = await screen.findByRole("form", { name: "2026-10-22 日报" });
     expect(within(form).getByLabelText("完成情况")).toHaveValue("旧内容");
+    // Nothing to save until something changes.
+    expect(
+      within(form).getByRole("button", { name: "保存日报" }),
+    ).toBeDisabled();
+    fireEvent.change(within(form).getByLabelText("完成情况"), {
+      target: { value: "旧内容，补充一条" },
+    });
+    expect(
+      within(form).getByText("有未保存的修改（已暂存在本机）"),
+    ).toBeInTheDocument();
     fireEvent.click(within(form).getByRole("button", { name: "保存日报" }));
     await waitFor(() =>
       expect(api.saveReport).toHaveBeenCalledWith(
         "northwind",
         "2026-10-22",
-        expect.objectContaining({ version: 4, completed: "旧内容" }),
+        expect.objectContaining({ version: 4, completed: "旧内容，补充一条" }),
       ),
     );
+  });
+
+  it("offers back an unsaved draft kept from before a reload", async () => {
+    window.localStorage.setItem(
+      "crm.daily-report-draft.v1.northwind.me.2026-10-22",
+      JSON.stringify({
+        sections: {
+          plans: "",
+          completed: "刷新前写的",
+          problems: "",
+          nextSteps: "",
+        },
+        savedAt: "2099-01-01T00:00:00.000Z",
+      }),
+    );
+    setup({ version: 4 });
+    const form = await screen.findByRole("form", { name: "2026-10-22 日报" });
+    expect(within(form).getByLabelText("完成情况")).toHaveValue("旧内容");
+    fireEvent.click(within(form).getByRole("button", { name: "恢复草稿" }));
+    expect(within(form).getByLabelText("完成情况")).toHaveValue("刷新前写的");
+    window.localStorage.clear();
   });
 });

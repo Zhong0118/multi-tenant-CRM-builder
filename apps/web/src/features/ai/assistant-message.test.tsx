@@ -78,3 +78,30 @@ it("keeps an interrupted historical tool duration at the authoritative completio
   expect(screen.getByText("3.0 秒")).toBeVisible();
   expect(vi.getTimerCount()).toBe(0);
 });
+
+describe("copying an answer", () => {
+  const done: AiMessage = { ...base, toolSummary: [] };
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("writes the answer text to the clipboard", async () => {
+    const writeText = vi.fn(async () => undefined);
+    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
+    render(<AssistantMessage tenantCode="demo" message={done} />);
+    fireEvent.click(screen.getByRole("button", { name: /复制回答/ }));
+    expect(writeText).toHaveBeenCalledWith("已有结果");
+    await act(async () => undefined);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("says so when the clipboard refuses", async () => {
+    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText: vi.fn(async () => { throw new Error("denied"); }) } });
+    render(<AssistantMessage tenantCode="demo" message={done} />);
+    fireEvent.click(screen.getByRole("button", { name: /复制回答/ }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("无法写入剪贴板");
+  });
+
+  it("is not offered while the answer is still streaming", () => {
+    render(<AssistantMessage tenantCode="demo" message={{ ...done, status: "STREAMING", durationMs: undefined }} />);
+    expect(screen.queryByRole("button", { name: /复制回答/ })).not.toBeInTheDocument();
+  });
+});

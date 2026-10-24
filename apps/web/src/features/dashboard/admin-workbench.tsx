@@ -3,12 +3,13 @@
 import { Button } from "antd";
 import Link from "next/link";
 
-import { FollowUpSummary } from "@/features/follow-ups/follow-up-summary";
+import { PersonalFollowUpWorkbench } from "@/features/follow-ups/follow-up-workbench";
 import { PageHeader } from "@/components/layout/page-header";
 import type { RuntimeObjectNavigation } from "@/features/objects/object-types";
 
 import type { DashboardRuntimeResult } from "./dashboard-types";
 import { DashboardRenderer } from "./dashboard-renderer";
+import { TeamAttention } from "./team-attention";
 import { WorkbenchPeriodNav, WorkbenchSwitcher } from "./workbench-chrome";
 import { BusinessObjectBar } from "./workbench-elements";
 import { dashboardSettingsPath, workbenchPath } from "./workbench-period";
@@ -33,7 +34,6 @@ export function AdminWorkbench({
         description={`${tenantName} · 按当前权限实时统计`}
         extra={
           <>
-            <FollowUpSummary tenantCode={tenantCode} />
             <Link
               href={dashboardSettingsPath(tenantCode, overview.dashboardCode)}
             >
@@ -42,6 +42,8 @@ export function AdminWorkbench({
           </>
         }
       />
+      <TeamAttention tenantCode={tenantCode} />
+      <PersonalFollowUpWorkbench tenantCode={tenantCode} />
       <div className={styles.workbenchChrome}>
         <WorkbenchSwitcher
           tenantCode={tenantCode}
