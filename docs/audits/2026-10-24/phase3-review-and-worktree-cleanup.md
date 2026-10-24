@@ -27,7 +27,7 @@
 - API：113 suites /1567 tests；完整 HTTP E2E：21 suites /199 tests。
 - monorepo build/typecheck、受影响 TypeScript ESLint、diff --check 通过；最终消息 CSS 另做 Web 生产构建。
 - 新建隔离库 crm_phase3_acceptance_1024，来自本任务自己的 crm_member_directory_1024。刘洋管理员真实操作：流程保存、发布状态、推进说明只读草稿→发布v2→历史核对；自动化规则输入后 beforeunload 被阻止，放弃后可离开；延迟保存时基本输入被锁定。赵晨员工新建表单显示只读提示，配置器地址为404。消息在1440/390验收。UI agent 的 crm_ui_designers 未修改。
-- 原 PR #54 的六项 CI 已通过；整合头需另通过六项 CI 后合并。
+- 原 PR #54 的六项 CI 已通过；整合头需另通过六项 CI 后合并。显式引用 Next 自带静态图片声明，避免图标依赖本地 next-env.d.ts 缓存；排除 next-env.d.ts/.next 的临时配置先复现 TS2307，补声明后类型检查通过。
 
 ## 工作树清理
 
