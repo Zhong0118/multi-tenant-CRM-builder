@@ -6172,6 +6172,10 @@ export interface operations {
       query?: {
         limit?: number;
         page?: number;
+        /** @description 按成员展示姓名或手机号搜索 */
+        q?: string;
+        role?: "TENANT_ADMIN" | "EMPLOYEE";
+        status?: "ACTIVE" | "DISABLED";
       };
       header?: never;
       path: {

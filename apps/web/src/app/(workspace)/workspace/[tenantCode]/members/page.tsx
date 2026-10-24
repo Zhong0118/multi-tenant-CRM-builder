@@ -1,6 +1,7 @@
 import { MemberAdministration } from "@/features/members/member-administration";
 import {
   type InvitationPage,
+  type MemberListFilters,
   type TenantMemberPage,
 } from "@/features/members/member-table";
 import { toApiError } from "@/lib/api/api-error";
@@ -9,7 +10,13 @@ import { requireWorkspace } from "@/lib/auth/require-workspace";
 
 export interface MembersPageProps {
   params: Promise<{ tenantCode: string }>;
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{
+    page?: string | string[];
+    limit?: string | string[];
+    q?: string | string[];
+    role?: string | string[];
+    status?: string | string[];
+  }>;
 }
 
 export default async function MembersPage({
@@ -17,12 +24,28 @@ export default async function MembersPage({
   searchParams,
 }: MembersPageProps) {
   const { tenantCode } = await params;
-  const page = parsePage((await searchParams).page);
+  const query = await searchParams;
+  const page = parsePage(query.page);
+  const limit =
+    typeof query.limit === "string" &&
+    [20, 50, 100].includes(Number(query.limit))
+      ? Number(query.limit)
+      : 20;
+  const search = typeof query.q === "string" ? query.q.trim() : "";
+  const initialFilters: MemberListFilters = {
+    ...(search ? { q: search } : {}),
+    ...(query.role === "TENANT_ADMIN" || query.role === "EMPLOYEE"
+      ? { role: query.role }
+      : {}),
+    ...(query.status === "ACTIVE" || query.status === "DISABLED"
+      ? { status: query.status }
+      : {}),
+  };
   const workspace = await requireWorkspace(tenantCode);
   let memberPage: TenantMemberPage = {
     items: [],
     page,
-    limit: 20,
+    limit,
     total: 0,
     activeAdminCount: 0,
   };
@@ -32,7 +55,10 @@ export default async function MembersPage({
     const client = await createServerApiClient();
     const [memberResult, invitationResult] = await Promise.all([
       client.GET("/api/v1/workspaces/{tenantCode}/members", {
-        params: { path: { tenantCode }, query: { page, limit: 20 } },
+        params: {
+          path: { tenantCode },
+          query: { page, limit, ...initialFilters },
+        },
       }),
       client.GET("/api/v1/workspaces/{tenantCode}/invitations", {
         params: { path: { tenantCode }, query: {} },
@@ -46,18 +72,19 @@ export default async function MembersPage({
 
   return (
     <MemberAdministration
-        key={page}
-        tenantCode={tenantCode}
-        viewerRole={workspace.role}
-        viewerMemberId={workspace.memberId}
-        initialMemberPage={memberPage}
-        initialInvitationPage={invitationPage}
-      />
+      key={page}
+      tenantCode={tenantCode}
+      viewerRole={workspace.role}
+      viewerMemberId={workspace.memberId}
+      initialMemberPage={memberPage}
+      initialFilters={initialFilters}
+      initialInvitationPage={invitationPage}
+    />
   );
 }
 
-function parsePage(value?: string): number {
-  if (!value || !/^\d+$/.test(value)) return 1;
+function parsePage(value?: string | string[]): number {
+  if (typeof value !== "string" || !/^\d+$/.test(value)) return 1;
   const page = Number(value);
   return Number.isSafeInteger(page) && page > 0 ? page : 1;
 }

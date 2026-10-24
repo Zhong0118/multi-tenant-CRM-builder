@@ -6,6 +6,8 @@ import type { MenuProps } from "antd";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { useToast } from "@/components/feedback/use-toast";
+import { memberSelectOptions } from "@/components/identity/member-identity";
 import { toApiError } from "@/lib/api/api-error";
 import { browserApiClient } from "@/lib/api/browser-client";
 
@@ -30,11 +32,27 @@ async function unwrap<T>(result: {
   throw toApiError(result.error, result.response.status);
 }
 
-const CONFIRM_COPY: Record<Confirm, (member: TenantMember) => { title: string; body: string; ok: string; danger?: boolean }> = {
+const CONFIRM_COPY: Record<
+  Confirm,
+  (member: TenantMember) => {
+    title: string;
+    body: string;
+    ok: string;
+    danger?: boolean;
+  }
+> = {
   role: (member) =>
     member.role === "EMPLOYEE"
-      ? { title: "授予公司管理员权限？", body: "角色变更立即生效。管理员可以管理成员、业务表和全部数据。", ok: "设为管理员" }
-      : { title: "将此管理员改为员工？", body: "角色变更立即生效，员工将按已发布的对象权限访问。", ok: "改为员工" },
+      ? {
+          title: "授予公司管理员权限？",
+          body: "角色变更立即生效。管理员可以管理成员、业务表和全部数据。",
+          ok: "设为管理员",
+        }
+      : {
+          title: "将此管理员改为员工？",
+          body: "角色变更立即生效。之后按业务表已发布的员工默认权限访问，可另为其设置成员例外。",
+          ok: "改为员工",
+        },
   handoff: () => ({
     title: "将我的管理员身份移交给此成员？",
     body: "对方将成为管理员，你将成为员工并返回工作空间。不能移交给自己。",
@@ -60,6 +78,7 @@ export function MemberRowMenu({
   protectsFinalAdmin,
   onStatusChange,
   onChanged,
+  onError,
 }: {
   tenantCode: string;
   member: TenantMember;
@@ -67,8 +86,11 @@ export function MemberRowMenu({
   protectsFinalAdmin: boolean;
   onStatusChange: (status: "ACTIVE" | "DISABLED") => void;
   onChanged: () => void;
+  /** Where an error from the menu itself goes (dialogs show their own). */
+  onError?: (message: string) => void;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [nameOpen, setNameOpen] = useState(false);
   const [confirm, setConfirm] = useState<Confirm>();
   const [preview, setPreview] = useState<Preview>();
@@ -79,14 +101,18 @@ export function MemberRowMenu({
   const path = { tenantCode, memberId: member.id };
   const active = member.status === "ACTIVE";
 
-  async function run(work: () => Promise<unknown>) {
+  async function run(
+    work: () => Promise<unknown>,
+    report: (message: string) => void = setError,
+  ) {
     setError(undefined);
     setBusy(true);
     try {
       await work();
       return true;
     } catch (caught) {
-      setError(toApiError(caught).message);
+      const failure = toApiError(caught);
+      report(`${failure.message}（请求编号：${failure.requestId}）`);
       return false;
     } finally {
       setBusy(false);
@@ -102,20 +128,34 @@ export function MemberRowMenu({
     const done = await run(async () => {
       if (confirm === "role") {
         await unwrap(
-          await browserApiClient.PATCH("/api/v1/workspaces/{tenantCode}/members/{memberId}/role", {
-            params: { path },
-            body: { role: member.role === "EMPLOYEE" ? "TENANT_ADMIN" : "EMPLOYEE" },
-          }),
+          await browserApiClient.PATCH(
+            "/api/v1/workspaces/{tenantCode}/members/{memberId}/role",
+            {
+              params: { path },
+              body: {
+                role: member.role === "EMPLOYEE" ? "TENANT_ADMIN" : "EMPLOYEE",
+              },
+            },
+          ),
+        );
+        toast.success(
+          member.role === "EMPLOYEE"
+            ? `已将${name}设为公司管理员`
+            : `已将${name}改为员工`,
         );
         onChanged();
         router.refresh();
       } else if (confirm === "handoff") {
         await unwrap(
-          await browserApiClient.POST("/api/v1/workspaces/{tenantCode}/members/admin-handoff", {
-            params: { path: { tenantCode } },
-            body: { recipientMemberId: member.id },
-          }),
+          await browserApiClient.POST(
+            "/api/v1/workspaces/{tenantCode}/members/admin-handoff",
+            {
+              params: { path: { tenantCode } },
+              body: { recipientMemberId: member.id },
+            },
+          ),
         );
+        toast.success(`已将管理员身份移交给${name}`);
         router.push(`/workspace/${tenantCode}`);
         router.refresh();
       }
@@ -123,11 +163,22 @@ export function MemberRowMenu({
     if (done) setConfirm(undefined);
   }
 
-  const finalAdminReason = protectsFinalAdmin ? "（需保留至少一位在职管理员）" : "";
+  const finalAdminReason = protectsFinalAdmin
+    ? "（需保留至少一位在职管理员）"
+    : "";
   const items: MenuProps["items"] = [
     { key: "name", label: "修改姓名", onClick: () => setNameOpen(true) },
     ...(member.role === "EMPLOYEE" && active
-      ? [{ key: "access", label: "访问权限", onClick: () => router.push(`/workspace/${tenantCode}/members/${member.id}/access`) }]
+      ? [
+          {
+            key: "access",
+            label: "访问权限",
+            onClick: () =>
+              router.push(
+                `/workspace/${tenantCode}/members/${member.id}/access`,
+              ),
+          },
+        ]
       : []),
     ...(active
       ? [
@@ -138,7 +189,15 @@ export function MemberRowMenu({
             disabled: protectsFinalAdmin,
             onClick: () => setConfirm("role"),
           },
-          ...(!isSelf ? [{ key: "handoff", label: "移交管理员", onClick: () => setConfirm("handoff") }] : []),
+          ...(!isSelf
+            ? [
+                {
+                  key: "handoff",
+                  label: "移交管理员",
+                  onClick: () => setConfirm("handoff"),
+                },
+              ]
+            : []),
         ]
       : []),
     { type: "divider" as const },
@@ -150,15 +209,28 @@ export function MemberRowMenu({
       onClick: () =>
         void run(async () => {
           const data = await unwrap(
-            await browserApiClient.GET("/api/v1/workspaces/{tenantCode}/members/{memberId}/offboarding", { params: { path } }),
+            await browserApiClient.GET(
+              "/api/v1/workspaces/{tenantCode}/members/{memberId}/offboarding",
+              { params: { path } },
+            ),
           );
           setRecipient(undefined);
           setPreview(data);
-        }),
+        }, onError ?? setError),
     },
     active
-      ? { key: "disable", label: `停用${finalAdminReason}`, danger: true, disabled: protectsFinalAdmin, onClick: () => setConfirm("disable") }
-      : { key: "restore", label: "恢复使用", onClick: () => onStatusChange("ACTIVE") },
+      ? {
+          key: "disable",
+          label: `停用${finalAdminReason}`,
+          danger: true,
+          disabled: protectsFinalAdmin,
+          onClick: () => setConfirm("disable"),
+        }
+      : {
+          key: "restore",
+          label: "恢复使用",
+          onClick: () => onStatusChange("ACTIVE"),
+        },
   ];
 
   const copy = confirm ? CONFIRM_COPY[confirm](member) : undefined;
@@ -166,13 +238,32 @@ export function MemberRowMenu({
   return (
     <>
       <Dropdown trigger={["click"]} placement="bottomRight" menu={{ items }}>
-        <Button type="text" size="small" aria-label={`更多操作 ${name}`} icon={<EllipsisOutlined aria-hidden />} loading={busy && !confirm && !preview} />
+        <Button
+          type="text"
+          size="small"
+          aria-label={`更多操作 ${name}`}
+          icon={<EllipsisOutlined aria-hidden />}
+          loading={busy && !confirm && !preview}
+        />
       </Dropdown>
       {error && !confirm && !preview ? (
-        <Alert type="error" title={error} closable onClose={() => setError(undefined)} />
+        <Alert
+          type="error"
+          title={error}
+          closable
+          onClose={() => setError(undefined)}
+        />
       ) : null}
       {nameOpen ? (
-        <MemberNameDialog tenantCode={tenantCode} member={member} onClose={() => setNameOpen(false)} onChanged={onChanged} />
+        <MemberNameDialog
+          tenantCode={tenantCode}
+          member={member}
+          onClose={() => setNameOpen(false)}
+          onChanged={() => {
+            toast.success("姓名已更新");
+            onChanged();
+          }}
+        />
       ) : null}
       <Modal
         open={Boolean(copy)}
@@ -204,12 +295,16 @@ export function MemberRowMenu({
           void run(async () => {
             if (!recipient) return;
             await unwrap(
-              await browserApiClient.POST("/api/v1/workspaces/{tenantCode}/members/{memberId}/offboarding", {
-                params: { path },
-                body: { recipientMemberId: recipient },
-              }),
+              await browserApiClient.POST(
+                "/api/v1/workspaces/{tenantCode}/members/{memberId}/offboarding",
+                {
+                  params: { path },
+                  body: { recipientMemberId: recipient },
+                },
+              ),
             );
             setPreview(undefined);
+            toast.success(`已完成${name}的离职交接并停用`);
             if (isSelf) router.push("/workspaces");
             onChanged();
             router.refresh();
@@ -217,7 +312,8 @@ export function MemberRowMenu({
         }
       >
         <p>
-          将转交 {preview?.records ?? 0} 条负责记录（含已删除记录）和 {preview?.openTasks ?? 0}{" "}
+          将转交 {preview?.records ?? 0} 条负责记录（含已删除记录）和{" "}
+          {preview?.openTasks ?? 0}{" "}
           项未完成待办，然后停用此成员。实际数量以提交时为准，已完成待办保留原负责人。
         </p>
         <p>
@@ -229,12 +325,18 @@ export function MemberRowMenu({
           placeholder="选择在职公司管理员"
           value={recipient}
           onChange={setRecipient}
-          options={preview?.recipients.map((item) => ({
-            value: item.id,
-            label: item.displayName ? `${item.displayName} · ${item.phone ?? ""}` : (item.phone ?? item.id),
-          }))}
+          optionFilterProp="searchText"
+          showSearch
+          options={memberSelectOptions(
+            (preview?.recipients ?? []).map((item) => ({
+              ...item,
+              displayName: item.displayName ?? item.phone ?? null,
+            })),
+          )}
         />
-        {preview?.recipients.length === 0 ? <Alert type="warning" title="请先将另一位在职成员设为公司管理员。" /> : null}
+        {preview?.recipients.length === 0 ? (
+          <Alert type="warning" title="请先将另一位在职成员设为公司管理员。" />
+        ) : null}
         {error && preview ? <Alert type="error" title={error} /> : null}
       </Modal>
     </>

@@ -10810,6 +10810,34 @@
         "operationId": "MembershipsController_members",
         "parameters": [
           {
+            "description": "按成员展示姓名或手机号搜索",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "role",
+            "required": false,
+            "schema": {
+              "enum": ["TENANT_ADMIN", "EMPLOYEE"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": ["ACTIVE", "DISABLED"],
+              "type": "string"
+            }
+          },
+          {
             "in": "query",
             "name": "page",
             "required": false,

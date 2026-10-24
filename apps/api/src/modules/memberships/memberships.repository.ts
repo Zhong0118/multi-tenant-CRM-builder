@@ -208,14 +208,33 @@ class PrismaMembershipStore implements MembershipStore {
   }
 
   async listMembers(page: MemberPageQuery) {
+    const query = page.q?.trim();
+    const where: Prisma.TenantMemberWhereInput = {
+      tenantId: this.tenantId,
+      role: page.role,
+      status: page.status,
+      ...(query
+        ? {
+            OR: [
+              { displayName: { contains: query, mode: 'insensitive' } },
+              {
+                displayName: null,
+                user: { displayName: { contains: query, mode: 'insensitive' } },
+              },
+              { user: { phone: { contains: query.replace(/\s+/gu, '') } } },
+            ],
+          }
+        : {}),
+    };
     const [members, total, activeAdminCount] = await Promise.all([
       this.transaction.tenantMember.findMany({
+        where,
         include: { user: { select: { displayName: true, phone: true } } },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
         skip: (page.page - 1) * page.limit,
         take: page.limit,
       }),
-      this.transaction.tenantMember.count(),
+      this.transaction.tenantMember.count({ where }),
       this.countActiveAdmins(),
     ]);
     return {

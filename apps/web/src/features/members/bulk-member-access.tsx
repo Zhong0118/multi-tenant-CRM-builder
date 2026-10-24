@@ -217,8 +217,8 @@ export function BulkMemberAccess({
           <Alert
             type="info"
             showIcon
-            title="未修改的表和列保留各员工现有权限"
-            description="成员覆盖保存后立即生效；员工默认权限仍需发布。列权限不能突破表的查看与修改范围。隐藏标题列会使员工无法访问整张业务表。"
+            title="只改你选择的表和列，其余保留各员工现有权限"
+            description="这里保存的是成员例外，立即生效；员工默认在业务表设计器中修改并发布。列权限不能超出表的查看与修改范围；隐藏标题列会使员工无法访问整张业务表。"
           />
           {error && <Alert type="error" showIcon title={error} />}
           <Form layout="vertical" component={false}>
@@ -250,12 +250,12 @@ export function BulkMemberAccess({
                     onChange={setObjectMode}
                     options={[
                       { value: "KEEP", label: "不修改" },
-                      { value: "INHERIT", label: "跟随默认" },
-                      { value: "OVERRIDE", label: "自定义完整策略" },
+                      { value: "INHERIT", label: "恢复为员工默认" },
+                      { value: "OVERRIDE", label: "设置成员例外" },
                     ]}
                   />
                 </Form.Item>
-                <p className={styles.accessInherited}>
+                <p className={styles.drawerNote}>
                   员工默认：{row.inherited.canCreate ? "可新建" : "不可新建"} ·{" "}
                   {row.inherited.canRead ? "可查看" : "不可查看"} ·{" "}
                   {row.inherited.canUpdate ? "可修改" : "不可修改"} · 查看
@@ -307,18 +307,18 @@ export function BulkMemberAccess({
                     ))}
                   </div>
                 )}
-                <h3>列权限</h3>
+                <h3 className={styles.drawerHeading}>列权限</h3>
                 {(row.fields ?? []).map((field) => (
                   <div className={styles.fieldAccessRow} key={field.fieldId}>
-                    <div>
+                    <div className={styles.fieldAccessName}>
                       <strong>{field.label}</strong>
                       <span className={styles.secondary}>
                         员工默认：{FIELD_ACCESS_LABELS[field.inherited]}
-                        {field.isSystem ? " · 系统列，不可覆盖" : ""}
+                        {field.isSystem ? " · 系统列，不可设置例外" : ""}
                       </span>
                     </div>
                     {field.isSystem ? (
-                      <span>只读</span>
+                      <span className={styles.secondary}>只读</span>
                     ) : (
                       <Select
                         aria-label={`${field.label}权限`}
@@ -326,7 +326,7 @@ export function BulkMemberAccess({
                         disabled={saving}
                         options={[
                           { value: "KEEP", label: "不修改" },
-                          { value: "INHERIT", label: "跟随默认" },
+                          { value: "INHERIT", label: "恢复为员工默认" },
                           ...Object.entries(FIELD_ACCESS_LABELS).map(
                             ([value, label]) => ({ value, label }),
                           ),

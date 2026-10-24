@@ -1,7 +1,6 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
 
 import { Page } from "@/components/layout/page";
 
@@ -11,6 +10,7 @@ import {
   memberApi,
   MemberTable,
   type InvitationPage,
+  type MemberListFilters,
   type TenantMemberPage,
 } from "./member-table";
 
@@ -19,20 +19,24 @@ export function MemberAdministration({
   viewerRole,
   viewerMemberId,
   initialMemberPage,
+  initialFilters,
   initialInvitationPage,
 }: {
   tenantCode: string;
   viewerRole: "TENANT_ADMIN" | "EMPLOYEE";
   viewerMemberId?: string;
   initialMemberPage: TenantMemberPage;
+  initialFilters?: MemberListFilters;
   initialInvitationPage: InvitationPage;
 }) {
-  const [invitationRevision, setInvitationRevision] = useState(0);
-
   const queryClient = useQueryClient();
+  // Refresh the invitations in place. Remounting the table here would also
+  // remount the invite dialog and drawer in its header, closing them before
+  // they show the registration link and per-row results.
   const created = () => {
-    setInvitationRevision((current) => current + 1);
-    void queryClient.invalidateQueries({ queryKey: ["workspace", tenantCode, "invitations"] });
+    void queryClient.invalidateQueries({
+      queryKey: ["workspace", tenantCode, "invitations"],
+    });
   };
   return (
     <Page width="settings">
@@ -40,16 +44,24 @@ export function MemberAdministration({
         headerActions={
           viewerRole === "TENANT_ADMIN" ? (
             <>
-              <BulkInviteMembers tenantCode={tenantCode} api={memberApi} onChanged={created} />
-              <InviteMemberForm tenantCode={tenantCode} onInvitationCreated={created} />
+              <BulkInviteMembers
+                tenantCode={tenantCode}
+                api={memberApi}
+                onChanged={created}
+              />
+              <InviteMemberForm
+                tenantCode={tenantCode}
+                onInvitationCreated={created}
+              />
             </>
           ) : undefined
         }
-        key={`${initialMemberPage.page}:${invitationRevision}`}
+        key={initialMemberPage.page}
         tenantCode={tenantCode}
         viewerRole={viewerRole}
         viewerMemberId={viewerMemberId}
         initialMemberPage={initialMemberPage}
+        initialFilters={initialFilters}
         initialInvitationPage={initialInvitationPage}
       />
     </Page>
