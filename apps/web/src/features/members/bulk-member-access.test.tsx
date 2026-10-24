@@ -131,7 +131,7 @@ it("retains failed drafts and retries restoring field defaults without touching 
     screen.getByRole("button", { name: "批量设置访问权限（2 人）" }),
   );
   await choose("业务表", "客户");
-  await choose("金额权限", "跟随默认");
+  await choose("金额权限", "恢复为员工默认");
   fireEvent.click(screen.getByRole("button", { name: /保存并应用到 2 人/ }));
   await screen.findByText(/保存失败/);
   expect(onChanged).not.toHaveBeenCalled();
@@ -160,7 +160,7 @@ it("restores only the object policy when no column is selected", async () => {
     screen.getByRole("button", { name: "批量设置访问权限（2 人）" }),
   );
   await choose("业务表", "客户");
-  await choose("表权限", "跟随默认");
+  await choose("表权限", "恢复为员工默认");
   fireEvent.click(screen.getByRole("button", { name: /保存并应用到 2 人/ }));
   await waitFor(() =>
     expect(api.set).toHaveBeenCalledWith("acme", "customers", {
@@ -182,7 +182,7 @@ it("submits the complete custom object policy and locks the draft until the batc
     screen.getByRole("button", { name: "批量设置访问权限（2 人）" }),
   );
   await choose("业务表", "客户");
-  await choose("表权限", "自定义完整策略");
+  await choose("表权限", "设置成员例外");
   fireEvent.click(screen.getByLabelText("可以新建记录"));
   fireEvent.click(screen.getByRole("button", { name: /保存并应用到 2 人/ }));
   await waitFor(() =>

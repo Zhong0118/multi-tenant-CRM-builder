@@ -1,4 +1,41 @@
-/* Settings home: one list of rows per group. */
+/* Settings home: a note on when changes take effect, an attention row while
+   business tables wait to be published, then one list of rows per group. */
+
+.effectNote {
+  margin: calc(var(--space-2) * -1) 0 var(--space-5);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.attention {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  margin-bottom: var(--space-6);
+  padding: 10px 14px;
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-warning-soft);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.attention > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.attentionAction {
+  color: var(--color-primary);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.attention:hover .attentionAction {
+  text-decoration: underline;
+}
 
 .rows {
   list-style: none;
@@ -40,6 +77,29 @@
   min-width: 0;
 }
 
+.rowTitle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+}
+
+/* When a change reaches employees: quiet text, not a status colour. */
+.rowCopy .effect {
+  padding: 0 6px;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.rowCopy .effect[data-effect="publish"] {
+  border-color: transparent;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
 .rowCopy strong {
   font-size: 14px;
   font-weight: 500;
@@ -54,9 +114,14 @@
 
 .rowValue {
   color: var(--text-secondary);
+  text-align: right;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.rowValue[data-failed] {
+  color: var(--color-danger);
 }
 
 .rowChevron {
@@ -68,11 +133,34 @@
 }
 
 @media (max-width: 767px) {
+  /* The status moves under the description instead of disappearing. */
   .row {
     grid-template-columns: 32px minmax(0, 1fr) 12px;
+    grid-template-areas:
+      "icon copy chevron"
+      ". value chevron";
+    row-gap: 2px;
+  }
+
+  .rowIcon {
+    grid-area: icon;
+  }
+
+  .rowCopy {
+    grid-area: copy;
   }
 
   .rowValue {
-    display: none;
+    grid-area: value;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .rowChevron {
+    grid-area: chevron;
+  }
+
+  .attention {
+    flex-wrap: wrap;
   }
 }

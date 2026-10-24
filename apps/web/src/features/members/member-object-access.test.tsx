@@ -13,7 +13,6 @@ import { memberBatchAccessApi } from "./bulk-member-access";
 import {
   MemberObjectAccess,
   type MemberAccessApi,
-  type MemberObjectAccessInput,
   type MemberObjectAccessRow,
 } from "./member-object-access";
 
@@ -90,16 +89,44 @@ function expectEditorsLocked(scope: HTMLElement) {
   ]) {
     expect(within(scope).getByLabelText(label)).toBeDisabled();
   }
-  for (const radio of within(scope).getAllByRole("radio")) {
-    expect(radio).toBeDisabled();
-  }
   expect(
-    within(scope).getByRole("button", { name: /保存覆盖/ }),
+    within(scope).getByRole("button", { name: /保存例外/ }),
   ).toBeDisabled();
 }
 
+function expand(objectName: string) {
+  fireEvent.click(
+    within(panel(objectName)).getByRole("button", {
+      name: new RegExp(objectName),
+    }),
+  );
+}
+
+function startException(objectName: string) {
+  expand(objectName);
+  fireEvent.click(
+    within(panel(objectName)).getByRole("button", {
+      name: /设置表例外|修改表例外/,
+    }),
+  );
+}
+
+function confirmDialog() {
+  const dialog = document.querySelector<HTMLElement>(".ant-modal");
+  if (!dialog) throw new Error("No confirmation dialog is open");
+  return dialog;
+}
+
+function fieldRow(scope: HTMLElement, label: string) {
+  const table = within(scope).getByRole("table", { name: "列权限对照" });
+  const header = within(table).getByText(label);
+  const row = header.closest("tr");
+  if (!row) throw new Error(`No column row for ${label}`);
+  return row;
+}
+
 describe("MemberObjectAccess", () => {
-  it("shows effective member field access and opens the shared editor for one employee", async () => {
+  it("compares each column with the employee default and opens the shared editor for one employee", async () => {
     renderAccess(
       <MemberObjectAccess
         tenantCode="northwind"
@@ -132,21 +159,19 @@ describe("MemberObjectAccess", () => {
         api={accessApi()}
       />,
     );
-    expect(
-      within(panel("客户资料")).getByText(/金额.*当前：可编辑.*默认：隐藏/),
-    ).toBeInTheDocument();
-    expect(
-      within(panel("客户资料")).getByText(/创建时间.*系统列/),
-    ).toBeInTheDocument();
-    fireEvent.click(
-      within(panel("客户资料")).getByRole("button", { name: "设置表和列权限" }),
-    );
+    const scope = panel("客户资料");
+    // The collapsed row already says a column differs from the default.
+    expect(within(scope).getByText("1 列例外")).toBeInTheDocument();
+    expand("客户资料");
+    expect(fieldRow(scope, "金额")).toHaveTextContent(/金额成员例外隐藏可编辑/);
+    expect(fieldRow(scope, "创建时间")).toHaveTextContent(/系统列/);
+    fireEvent.click(within(scope).getByRole("button", { name: "设置列权限" }));
     expect(
       await screen.findByText(/将应用到 1 位有效员工/),
     ).toBeInTheDocument();
   });
 
-  it("saves one employee through the shared editor and refreshes effective columns", async () => {
+  it("saves one employee through the shared editor and refreshes the columns", async () => {
     const fields: MemberObjectAccessRow["fields"] = [
       {
         fieldId: "amount",
@@ -159,13 +184,11 @@ describe("MemberObjectAccess", () => {
       },
     ];
     const api = accessApi({
-      list: vi
-        .fn()
-        .mockResolvedValue([
-          row({
-            fields: [{ ...fields[0], effective: "EDIT", override: "EDIT" }],
-          }),
-        ]),
+      list: vi.fn().mockResolvedValue([
+        row({
+          fields: [{ ...fields[0], effective: "EDIT", override: "EDIT" }],
+        }),
+      ]),
     });
     const batchSave = vi
       .spyOn(memberBatchAccessApi, "set")
@@ -180,10 +203,9 @@ describe("MemberObjectAccess", () => {
           api={api}
         />,
       );
+      expand("客户资料");
       fireEvent.click(
-        within(panel("客户资料")).getByRole("button", {
-          name: "设置表和列权限",
-        }),
+        within(panel("客户资料")).getByRole("button", { name: "设置列权限" }),
       );
       fireEvent.mouseDown(await screen.findByLabelText("金额权限"));
       fireEvent.click(
@@ -204,9 +226,12 @@ describe("MemberObjectAccess", () => {
           },
         ),
       );
+      expect(
+        await screen.findByText("客户资料的列权限已保存，立即生效"),
+      ).toBeInTheDocument();
       await waitFor(() =>
         expect(
-          within(panel("客户资料")).getByText(/金额.*当前：可编辑.*默认：隐藏/),
+          within(panel("客户资料")).getByText("1 列例外"),
         ).toBeInTheDocument(),
       );
     } finally {
@@ -214,7 +239,7 @@ describe("MemberObjectAccess", () => {
     }
   });
 
-  it("keeps saved mode and server effective access distinct from an unsaved override", async () => {
+  it("keeps the saved source and the server's effective access apart from an unsaved exception", async () => {
     const effective = {
       ...row().effective,
       canCreate: false,
@@ -234,300 +259,73 @@ describe("MemberObjectAccess", () => {
         tenantCode="northwind"
         memberId="member-lin"
         memberName="林员工"
-        initialRows={[row({ effective })]}
+        initialRows={[row()]}
         api={api}
       />,
     );
     const scope = panel("客户资料");
-    expect(within(scope).getByText("已生效：跟随员工默认")).toBeInTheDocument();
+    expect(within(scope).getByText("跟随员工默认")).toBeInTheDocument();
+    startException("客户资料");
+    fireEvent.click(within(scope).getByLabelText("可以新建记录"));
+    // Editing changes nothing until it is saved.
+    expect(within(scope).getByText("跟随员工默认")).toBeInTheDocument();
     expect(
-      within(scope).getByText(
-        "当前有效权限：查看 · 查看全部记录 · 修改无权访问",
-      ),
-    ).toBeInTheDocument();
-    fireEvent.click(within(scope).getByRole("radio", { name: "成员覆盖" }));
-    expect(within(scope).getByText("已生效：跟随员工默认")).toBeInTheDocument();
-    expect(
-      within(scope).getByText("正在编辑成员覆盖；保存后立即生效，无需发布。"),
+      within(scope).getByText("成员例外 · 保存后立即生效"),
     ).toBeInTheDocument();
     expect(api.set).not.toHaveBeenCalled();
-    fireEvent.click(within(scope).getByRole("button", { name: "保存覆盖" }));
+    fireEvent.click(within(scope).getByRole("button", { name: "保存例外" }));
     expect(
-      await within(scope).findByText("已生效：成员覆盖"),
+      await screen.findByText("客户资料的成员例外已保存，立即生效"),
     ).toBeInTheDocument();
-    expect(
-      within(scope).getByText(
-        "当前有效权限：查看 · 查看全部记录 · 修改无权访问",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText("保存已立即生效，无需重新发布对象。"),
-    ).toBeInTheDocument();
+    expect(within(scope).getByText("成员例外")).toBeInTheDocument();
+    // The summary shows what the server says applies, not the draft.
+    const summary = within(scope).getByLabelText("当前生效");
+    expect(summary).toHaveTextContent("新建不可以");
+    expect(summary).toHaveTextContent("查看全部记录");
+    expect(summary).toHaveTextContent("修改不可以");
   });
 
-  it("retains saved override and local input if restoring defaults fails", async () => {
+  it("keeps the exception when restoring the default fails", async () => {
     const api = accessApi({
-      set: vi
-        .fn()
-        .mockRejectedValue({
-          code: "SERVICE_UNAVAILABLE",
-          message: "保存失败",
-          fieldErrors: {},
-          status: 503,
-          requestId: "req_save",
-        }),
+      set: vi.fn().mockRejectedValue({
+        code: "SERVICE_UNAVAILABLE",
+        message: "保存失败",
+        fieldErrors: {},
+        status: 503,
+        requestId: "req_save",
+      }),
     });
-    renderAccess(
-      <MemberObjectAccess
-        tenantCode="northwind"
-        memberId="member-lin"
-        memberName="林员工"
-        initialRows={[row({ mode: "OVERRIDE", override: row().inherited })]}
-        api={api}
-      />,
-    );
-    fireEvent.click(within(panel("客户资料")).getByLabelText("可以新建记录"));
-    fireEvent.click(
-      within(panel("客户资料")).getByRole("radio", { name: "使用员工默认" }),
-    );
-    await screen.findByText(/保存失败/);
-    expect(
-      within(panel("客户资料")).getByText("已生效：成员覆盖"),
-    ).toBeInTheDocument();
-    fireEvent.click(
-      within(panel("客户资料")).getByRole("radio", { name: "成员覆盖" }),
-    );
-    expect(
-      within(panel("客户资料")).getByLabelText("可以新建记录"),
-    ).not.toBeChecked();
-  });
-
-  it("locks editors during delayed success and displays the server effective projection", async () => {
-    const save = deferredSave();
-    const api = accessApi({ set: vi.fn(() => save.promise) });
-    renderAccess(
-      <MemberObjectAccess tenantCode="northwind" memberId="member-lin" memberName="林员工" initialRows={[row()]} api={api} />,
-    );
-    const scope = panel("客户资料");
-    fireEvent.click(within(scope).getByRole("radio", { name: "成员覆盖" }));
-    fireEvent.click(within(scope).getByRole("button", { name: "保存覆盖" }));
-    await waitFor(() => expect(within(scope).getByRole("radio", { name: "使用员工默认" })).toBeDisabled());
-    expect(api.set).toHaveBeenCalledWith("northwind", "member-lin", "object-customers", {
-      mode: "OVERRIDE", canCreate: true, canRead: true, canUpdate: true, readScope: "OWN", updateScope: "OWN",
-    });
-    fireEvent.click(within(scope).getByLabelText("可以新建记录"));
-    expect(within(scope).getByLabelText("可以新建记录")).toBeChecked();
-    expectEditorsLocked(scope);
-    expect(within(scope).getByText("已生效：跟随员工默认")).toBeInTheDocument();
-    save.resolve(row({
-      mode: "OVERRIDE", override: row().inherited,
-      effective: { ...row().effective, canCreate: false, canUpdate: false, readScope: "ALL", updateScope: "NONE" },
-    }));
-    await screen.findByText("客户资料的成员覆盖已保存");
-    await waitFor(() => expect(within(scope).getByLabelText("可以新建记录")).toBeEnabled());
-    expect(within(scope).getByLabelText("可以新建记录")).toBeChecked();
-    expect(within(scope).getByText("当前有效权限：查看 · 查看全部记录 · 修改无权访问")).toBeInTheDocument();
-    expect(within(scope).getByText("已生效：成员覆盖")).toBeInTheDocument();
-  });
-
-  it("unlocks after delayed failure without losing draft or changing saved access", async () => {
-    const save = deferredSave();
-    const api = accessApi({ set: vi.fn(() => save.promise) });
-    renderAccess(
-      <MemberObjectAccess tenantCode="northwind" memberId="member-lin" memberName="林员工" initialRows={[row()]} api={api} />,
-    );
-    const scope = panel("客户资料");
-    fireEvent.click(within(scope).getByRole("radio", { name: "成员覆盖" }));
-    fireEvent.click(within(scope).getByLabelText("可以新建记录"));
-    fireEvent.click(within(scope).getByRole("button", { name: "保存覆盖" }));
-    await waitFor(() => expect(within(scope).getByRole("radio", { name: "使用员工默认" })).toBeDisabled());
-    expectEditorsLocked(scope);
-    fireEvent.click(within(scope).getByLabelText("可以新建记录"));
-    save.reject({ code: "SERVICE_UNAVAILABLE", message: "保存失败", fieldErrors: {}, status: 503, requestId: "req_delayed" });
-    await screen.findByText("保存失败（请求编号：req_delayed）");
-    await waitFor(() => expect(within(scope).getByLabelText("可以新建记录")).toBeEnabled());
-    expect(within(scope).getByLabelText("可以新建记录")).not.toBeChecked();
-    expect(within(scope).getByText("已生效：跟随员工默认")).toBeInTheDocument();
-    expect(within(scope).getByText("当前有效权限：新建 / 查看 / 修改 · 查看仅本人负责 · 修改仅本人负责")).toBeInTheDocument();
-    expect(screen.queryByText("客户资料的成员覆盖已保存")).not.toBeInTheDocument();
-  });
-
-  it.each(["success", "failure"] as const)("locks modes during delayed default restoration: %s", async (outcome) => {
-    const save = deferredSave();
-    const api = accessApi({ set: vi.fn(() => save.promise) });
-    renderAccess(
-      <MemberObjectAccess tenantCode="northwind" memberId="member-lin" memberName="林员工" initialRows={[row({ mode: "OVERRIDE", override: row().inherited })]} api={api} />,
-    );
-    const scope = panel("客户资料");
-    fireEvent.click(within(scope).getByLabelText("可以新建记录"));
-    fireEvent.click(within(scope).getByRole("radio", { name: "使用员工默认" }));
-    await waitFor(() => expect(within(scope).getByRole("radio", { name: "成员覆盖" })).toBeDisabled());
-    expect(api.set).toHaveBeenCalledWith("northwind", "member-lin", "object-customers", { mode: "INHERIT" });
-    fireEvent.click(within(scope).getByRole("radio", { name: "成员覆盖" }));
-    expect(within(scope).queryByLabelText("可以新建记录")).not.toBeInTheDocument();
-    expect(within(scope).getByText("已生效：成员覆盖")).toBeInTheDocument();
-    if (outcome === "success") {
-      save.resolve(row({ effective: { ...row().effective, canCreate: false } }));
-      await screen.findByText("客户资料已恢复为员工默认权限");
-      expect(within(scope).getByText("已生效：跟随员工默认")).toBeInTheDocument();
-      expect(within(scope).getByText("当前有效权限：查看 / 修改 · 查看仅本人负责 · 修改仅本人负责")).toBeInTheDocument();
-    } else {
-      save.reject({ code: "SERVICE_UNAVAILABLE", message: "恢复失败", fieldErrors: {}, status: 503, requestId: "req_restore" });
-      await screen.findByText(/恢复失败/);
-      expect(within(scope).getByText("已生效：成员覆盖")).toBeInTheDocument();
-    }
-    await waitFor(() => expect(within(scope).getByRole("radio", { name: "成员覆盖" })).toBeEnabled());
-    fireEvent.click(within(scope).getByRole("radio", { name: "成员覆盖" }));
-    expect(within(scope).getByLabelText("可以新建记录")).not.toBeChecked();
-  });
-
-  it("locks other panels so a second save cannot replace the pending mutation observer", async () => {
-    const save = deferredSave();
-    const api = accessApi({ set: vi.fn(() => save.promise) });
-    renderAccess(
-      <MemberObjectAccess tenantCode="northwind" memberId="member-lin" memberName="林员工" initialRows={[row(), row({ objectId: "object-leads", objectName: "获客", objectCode: "leads" })]} api={api} />,
-    );
-    const first = panel("客户资料");
-    const second = panel("获客");
-    for (const scope of [first, second]) {
-      fireEvent.click(within(scope).getByRole("radio", { name: "成员覆盖" }));
-    }
-    fireEvent.click(within(first).getByRole("button", { name: "保存覆盖" }));
-    await waitFor(() => expect(within(first).getByRole("radio", { name: "使用员工默认" })).toBeDisabled());
-    fireEvent.click(within(second).getByRole("button", { name: /保存覆盖/ }));
-    await waitFor(() => expect(within(second).getByRole("radio", { name: "使用员工默认" })).toBeDisabled());
-    expectEditorsLocked(first);
-    expectEditorsLocked(second);
-    expect(api.set).toHaveBeenCalledTimes(1);
-    save.resolve(row({ mode: "OVERRIDE", override: row().inherited }));
-    await screen.findByText("客户资料的成员覆盖已保存");
-    await waitFor(() => expect(within(second).getByLabelText("可以新建记录")).toBeEnabled());
-  });
-
-  it("lists every published object with the employee default it inherits", () => {
     renderAccess(
       <MemberObjectAccess
         tenantCode="northwind"
         memberId="member-lin"
         memberName="林员工"
         initialRows={[
-          row(),
           row({
-            objectId: "object-leads",
-            objectCode: "leads",
-            objectName: "获客",
-            inherited: {
-              canCreate: false,
-              canRead: true,
-              canUpdate: false,
-              canDelete: false,
-              readScope: "ALL",
-              updateScope: "NONE",
-            },
+            mode: "OVERRIDE",
+            override: { ...row().inherited, canCreate: false },
           }),
         ]}
-        api={accessApi()}
-      />,
-    );
-
-    expect(panel("客户资料")).toHaveTextContent("customers");
-    expect(panel("客户资料")).toHaveTextContent("仅本人负责");
-    expect(panel("获客")).toHaveTextContent("全部记录");
-  });
-
-  it("says a member override applies without republishing", () => {
-    renderAccess(
-      <MemberObjectAccess
-        tenantCode="northwind"
-        memberId="member-lin"
-        memberName="林员工"
-        initialRows={[row()]}
-        api={accessApi()}
-      />,
-    );
-
-    expect(
-      screen.getByText(
-        /成员覆盖保存后立即生效.*员工默认权限需要在对象设计器中发布后生效/,
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it("offers no action or scope controls while the object is inherited", () => {
-    renderAccess(
-      <MemberObjectAccess
-        tenantCode="northwind"
-        memberId="member-lin"
-        memberName="林员工"
-        initialRows={[row()]}
-        api={accessApi()}
-      />,
-    );
-
-    const scope = panel("客户资料");
-    expect(
-      within(scope).queryByLabelText("可以新建记录"),
-    ).not.toBeInTheDocument();
-    expect(within(scope).queryByLabelText("查看范围")).not.toBeInTheDocument();
-  });
-
-  it("reveals the complete policy form when an override is chosen", () => {
-    renderAccess(
-      <MemberObjectAccess
-        tenantCode="northwind"
-        memberId="member-lin"
-        memberName="林员工"
-        initialRows={[row()]}
-        api={accessApi()}
-      />,
-    );
-
-    fireEvent.click(
-      within(panel("客户资料")).getByRole("radio", { name: "成员覆盖" }),
-    );
-
-    const scope = panel("客户资料");
-    expect(within(scope).getByLabelText("可以新建记录")).toBeInTheDocument();
-    expect(within(scope).getByLabelText("可以查看记录")).toBeInTheDocument();
-    expect(within(scope).getByLabelText("可以修改记录")).toBeInTheDocument();
-    expect(within(scope).getByLabelText("查看范围")).toBeInTheDocument();
-    expect(within(scope).getByLabelText("修改范围")).toBeInTheDocument();
-  });
-
-  it("replaces the whole policy rather than sending only what changed", async () => {
-    const api = accessApi();
-    renderAccess(
-      <MemberObjectAccess
-        tenantCode="northwind"
-        memberId="member-lin"
-        memberName="林员工"
-        initialRows={[row()]}
         api={api}
       />,
     );
-
-    const scope = () => panel("客户资料");
-    fireEvent.click(within(scope()).getByRole("radio", { name: "成员覆盖" }));
-    fireEvent.click(within(scope()).getByLabelText("可以新建记录"));
-    fireEvent.click(within(scope()).getByRole("button", { name: "保存覆盖" }));
-
-    await waitFor(() => expect(api.set).toHaveBeenCalledTimes(1));
-    expect(api.set).toHaveBeenCalledWith(
-      "northwind",
-      "member-lin",
-      "object-customers",
-      {
-        mode: "OVERRIDE",
-        canCreate: false,
-        canRead: true,
-        canUpdate: true,
-        readScope: "OWN",
-        updateScope: "OWN",
-      },
+    expand("客户资料");
+    const scope = panel("客户资料");
+    fireEvent.click(
+      within(scope).getByRole("button", { name: "恢复为员工默认" }),
     );
+    fireEvent.click(
+      within(confirmDialog()).getByRole("button", { name: "恢复为员工默认" }),
+    );
+    expect(
+      await screen.findByText("保存失败（请求编号：req_save）"),
+    ).toBeInTheDocument();
+    expect(within(scope).getByText("成员例外")).toBeInTheDocument();
+    fireEvent.click(within(scope).getByRole("button", { name: "修改表例外" }));
+    expect(within(scope).getByLabelText("可以新建记录")).not.toBeChecked();
   });
 
-  it("deletes the override when the object returns to the employee default", async () => {
+  it("asks before restoring the default and says what the member will get", async () => {
     const api = accessApi();
     renderAccess(
       <MemberObjectAccess
@@ -550,11 +348,17 @@ describe("MemberObjectAccess", () => {
         api={api}
       />,
     );
-
+    expand("客户资料");
     fireEvent.click(
-      within(panel("客户资料")).getByRole("radio", { name: "使用员工默认" }),
+      within(panel("客户资料")).getByRole("button", { name: "恢复为员工默认" }),
     );
-
+    expect(confirmDialog()).toHaveTextContent(
+      "立即改为员工默认：可以新建，查看仅本人负责，修改仅本人负责",
+    );
+    expect(api.set).not.toHaveBeenCalled();
+    fireEvent.click(
+      within(confirmDialog()).getByRole("button", { name: "恢复为员工默认" }),
+    );
     await waitFor(() =>
       expect(api.set).toHaveBeenCalledWith(
         "northwind",
@@ -563,34 +367,226 @@ describe("MemberObjectAccess", () => {
         { mode: "INHERIT" },
       ),
     );
+    expect(
+      await screen.findByText("客户资料已恢复为员工默认权限，立即生效"),
+    ).toBeInTheDocument();
   });
 
-  it("names the object and the mode each save applied", async () => {
-    const api = accessApi({
-      set: vi.fn(
-        async (
-          _tenantCode: string,
-          _memberId: string,
-          objectId: string,
-          input: MemberObjectAccessInput,
-        ) =>
-          row({
-            objectId,
-            mode: input.mode,
-            override:
-              input.mode === "OVERRIDE"
-                ? {
-                    canCreate: true,
-                    canRead: true,
-                    canUpdate: true,
-                    canDelete: false,
-                    readScope: "OWN",
-                    updateScope: "OWN",
-                  }
-                : null,
-          }),
+  it("locks the editor during a slow save and then shows the server's effective access", async () => {
+    const save = deferredSave();
+    const api = accessApi({ set: vi.fn(() => save.promise) });
+    renderAccess(
+      <MemberObjectAccess
+        tenantCode="northwind"
+        memberId="member-lin"
+        memberName="林员工"
+        initialRows={[row()]}
+        api={api}
+      />,
+    );
+    const scope = panel("客户资料");
+    startException("客户资料");
+    fireEvent.click(within(scope).getByRole("button", { name: "保存例外" }));
+    await waitFor(() =>
+      expect(api.set).toHaveBeenCalledWith(
+        "northwind",
+        "member-lin",
+        "object-customers",
+        {
+          mode: "OVERRIDE",
+          canCreate: true,
+          canRead: true,
+          canUpdate: true,
+          readScope: "OWN",
+          updateScope: "OWN",
+        },
       ),
+    );
+    await waitFor(() => expectEditorsLocked(scope));
+    expect(within(scope).getByText("跟随员工默认")).toBeInTheDocument();
+    save.resolve(
+      row({
+        mode: "OVERRIDE",
+        override: row().inherited,
+        effective: {
+          ...row().effective,
+          canCreate: false,
+          canUpdate: false,
+          readScope: "ALL",
+          updateScope: "NONE",
+        },
+      }),
+    );
+    await screen.findByText("客户资料的成员例外已保存，立即生效");
+    expect(within(scope).getByText("成员例外")).toBeInTheDocument();
+    expect(within(scope).getByLabelText("当前生效")).toHaveTextContent(
+      "查看全部记录",
+    );
+    // The editor closes; the next edit starts from what is stored.
+    expect(
+      within(scope).queryByLabelText("可以新建记录"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("unlocks after a slow failure without losing the draft or changing saved access", async () => {
+    const save = deferredSave();
+    const api = accessApi({ set: vi.fn(() => save.promise) });
+    renderAccess(
+      <MemberObjectAccess
+        tenantCode="northwind"
+        memberId="member-lin"
+        memberName="林员工"
+        initialRows={[row()]}
+        api={api}
+      />,
+    );
+    const scope = panel("客户资料");
+    startException("客户资料");
+    fireEvent.click(within(scope).getByLabelText("可以新建记录"));
+    fireEvent.click(within(scope).getByRole("button", { name: "保存例外" }));
+    await waitFor(() => expectEditorsLocked(scope));
+    save.reject({
+      code: "SERVICE_UNAVAILABLE",
+      message: "保存失败",
+      fieldErrors: {},
+      status: 503,
+      requestId: "req_delayed",
     });
+    await screen.findByText("保存失败（请求编号：req_delayed）");
+    await waitFor(() =>
+      expect(within(scope).getByLabelText("可以新建记录")).toBeEnabled(),
+    );
+    expect(within(scope).getByLabelText("可以新建记录")).not.toBeChecked();
+    expect(within(scope).getByText("跟随员工默认")).toBeInTheDocument();
+    expect(within(scope).getByLabelText("当前生效")).toHaveTextContent(
+      "新建可以",
+    );
+  });
+
+  it("locks other tables so a second save cannot replace the pending one", async () => {
+    const save = deferredSave();
+    const api = accessApi({ set: vi.fn(() => save.promise) });
+    renderAccess(
+      <MemberObjectAccess
+        tenantCode="northwind"
+        memberId="member-lin"
+        memberName="林员工"
+        initialRows={[
+          row(),
+          row({
+            objectId: "object-leads",
+            objectName: "获客",
+            objectCode: "leads",
+          }),
+        ]}
+        api={api}
+      />,
+    );
+    startException("客户资料");
+    startException("获客");
+    fireEvent.click(
+      within(panel("客户资料")).getByRole("button", { name: "保存例外" }),
+    );
+    await waitFor(() => expectEditorsLocked(panel("获客")));
+    fireEvent.click(
+      within(panel("获客")).getByRole("button", { name: /保存例外/ }),
+    );
+    expect(api.set).toHaveBeenCalledTimes(1);
+    save.resolve(row({ mode: "OVERRIDE", override: row().inherited }));
+    await screen.findByText("客户资料的成员例外已保存，立即生效");
+    await waitFor(() =>
+      expect(
+        within(panel("获客")).getByLabelText("可以新建记录"),
+      ).toBeEnabled(),
+    );
+  });
+
+  it("lists every published table with what the member can do there", () => {
+    renderAccess(
+      <MemberObjectAccess
+        tenantCode="northwind"
+        memberId="member-lin"
+        memberName="林员工"
+        initialRows={[
+          row(),
+          row({
+            objectId: "object-leads",
+            objectCode: "leads",
+            objectName: "获客",
+            effective: {
+              canCreate: false,
+              canRead: true,
+              canUpdate: false,
+              canDelete: false,
+              readScope: "ALL",
+              updateScope: "NONE",
+            },
+          }),
+        ]}
+        api={accessApi()}
+      />,
+    );
+
+    expect(panel("客户资料")).toHaveTextContent("customers");
+    expect(panel("客户资料")).toHaveTextContent("仅本人负责");
+    expect(panel("获客")).toHaveTextContent("全部记录");
+    expect(panel("获客")).toHaveTextContent("修改不可以");
+  });
+
+  it("explains where defaults and exceptions come from and when each applies", () => {
+    renderAccess(
+      <MemberObjectAccess
+        tenantCode="northwind"
+        memberId="member-lin"
+        memberName="林员工"
+        initialRows={[row()]}
+        api={accessApi()}
+      />,
+    );
+
+    const sources = screen.getByLabelText("权限来源");
+    expect(sources).toHaveTextContent(
+      /员工默认.*发布后生效.*修改后要发布业务表/,
+    );
+    expect(sources).toHaveTextContent(/成员例外.*保存即生效.*只对林员工生效/);
+    expect(
+      within(sources).getByRole("link", { name: "去业务表" }),
+    ).toHaveAttribute("href", "/workspace/northwind/settings/objects");
+  });
+
+  it("offers no policy controls until an exception is started", () => {
+    renderAccess(
+      <MemberObjectAccess
+        tenantCode="northwind"
+        memberId="member-lin"
+        memberName="林员工"
+        initialRows={[row()]}
+        api={accessApi()}
+      />,
+    );
+
+    const scope = panel("客户资料");
+    expand("客户资料");
+    expect(
+      within(scope).queryByLabelText("可以新建记录"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(scope).queryByRole("button", { name: "恢复为员工默认" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(within(scope).getByRole("button", { name: "设置表例外" }));
+    for (const label of [
+      "可以新建记录",
+      "可以查看记录",
+      "可以修改记录",
+      "查看范围",
+      "修改范围",
+    ]) {
+      expect(within(scope).getByLabelText(label)).toBeInTheDocument();
+    }
+  });
+
+  it("replaces the whole policy rather than sending only what changed", async () => {
+    const api = accessApi();
     renderAccess(
       <MemberObjectAccess
         tenantCode="northwind"
@@ -601,23 +597,43 @@ describe("MemberObjectAccess", () => {
       />,
     );
 
+    startException("客户资料");
+    fireEvent.click(within(panel("客户资料")).getByLabelText("可以新建记录"));
     fireEvent.click(
-      within(panel("客户资料")).getByRole("radio", { name: "成员覆盖" }),
+      within(panel("客户资料")).getByRole("button", { name: "保存例外" }),
     );
-    fireEvent.click(
-      within(panel("客户资料")).getByRole("button", { name: "保存覆盖" }),
-    );
-    expect(
-      await screen.findByText("客户资料的成员覆盖已保存"),
-    ).toBeInTheDocument();
 
-    // Returning to the default collapses the panel, so this notice is the only
-    // thing left telling the administrator the change landed.
-    fireEvent.click(
-      within(panel("客户资料")).getByRole("radio", { name: "使用员工默认" }),
+    await waitFor(() => expect(api.set).toHaveBeenCalledTimes(1));
+    expect(api.set).toHaveBeenCalledWith(
+      "northwind",
+      "member-lin",
+      "object-customers",
+      {
+        mode: "OVERRIDE",
+        canCreate: false,
+        canRead: true,
+        canUpdate: true,
+        readScope: "OWN",
+        updateScope: "OWN",
+      },
     );
+  });
+
+  it("filters to the tables with exceptions", () => {
+    renderAccess(
+      <MemberObjectAccess
+        tenantCode="northwind"
+        memberId="member-lin"
+        memberName="林员工"
+        initialRows={[row()]}
+        api={accessApi()}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("有例外 0"));
+    expect(screen.queryByRole("group", { name: "客户资料" })).toBeNull();
     expect(
-      await screen.findByText("客户资料已恢复为员工默认权限"),
+      screen.getByText("林员工在所有业务表上都跟随员工默认权限。"),
     ).toBeInTheDocument();
   });
 
@@ -632,8 +648,6 @@ describe("MemberObjectAccess", () => {
       />,
     );
 
-    expect(
-      screen.getByText("公司还没有已发布的业务对象。"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("公司还没有已发布的业务表。")).toBeInTheDocument();
   });
 });

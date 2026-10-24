@@ -87,3 +87,25 @@
   font-size: 12px;
   line-height: 18px;
 }
+
+/* Two lines beside the avatar: the name (with its markers), then a detail. */
+.stack {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.line {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.description {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

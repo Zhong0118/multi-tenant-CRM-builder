@@ -1,7 +1,6 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
 
 import { Page } from "@/components/layout/page";
 
@@ -27,11 +26,11 @@ export function MemberAdministration({
   initialMemberPage: TenantMemberPage;
   initialInvitationPage: InvitationPage;
 }) {
-  const [invitationRevision, setInvitationRevision] = useState(0);
-
   const queryClient = useQueryClient();
+  // Refresh the invitations in place. Remounting the table here would also
+  // remount the invite dialog and drawer in its header, closing them before
+  // they show the registration link and per-row results.
   const created = () => {
-    setInvitationRevision((current) => current + 1);
     void queryClient.invalidateQueries({ queryKey: ["workspace", tenantCode, "invitations"] });
   };
   return (
@@ -45,7 +44,7 @@ export function MemberAdministration({
             </>
           ) : undefined
         }
-        key={`${initialMemberPage.page}:${invitationRevision}`}
+        key={initialMemberPage.page}
         tenantCode={tenantCode}
         viewerRole={viewerRole}
         viewerMemberId={viewerMemberId}

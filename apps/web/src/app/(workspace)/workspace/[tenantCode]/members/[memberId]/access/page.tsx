@@ -54,7 +54,7 @@ export default async function MemberAccessPage({
       <PageHeader
         breadcrumb={<Link href={`/workspace/${tenantCode}/members`}>成员</Link>}
         title={`${memberName}的访问权限`}
-        description="按业务表设置这位员工能做什么、能看到哪些记录，以及每个字段可编辑、只读还是隐藏。"
+        description="这位员工在每张业务表上能新建、查看和修改哪些记录，哪些列可编辑、只读或隐藏。"
       />
       <MemberObjectAccess
         tenantCode={tenantCode}

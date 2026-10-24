@@ -103,6 +103,7 @@ export function MemberIdentity({
   size = "md",
   unassignedLabel = "未指定",
   suffix,
+  description,
 }: {
   /** The member, when the viewer's roster has them. */
   member?: IdentityMember | null;
@@ -112,7 +113,18 @@ export function MemberIdentity({
   size?: MemberIdentitySize;
   unassignedLabel?: string;
   suffix?: ReactNode;
+  /** A second line beside the avatar, such as a phone number in a roster. */
+  description?: ReactNode;
 }) {
+  const stacked = (line: ReactNode) =>
+    description === undefined ? (
+      line
+    ) : (
+      <span className={styles.stack}>
+        <span className={styles.line}>{line}</span>
+        <span className={styles.description}>{description}</span>
+      </span>
+    );
   const id = member?.id ?? memberId ?? null;
   if (!id) {
     return (
@@ -122,7 +134,7 @@ export function MemberIdentity({
         data-state="unassigned"
       >
         <Avatar seed="" label="" size={size} variant="placeholder" />
-        <span className={styles.name}>{unassignedLabel}</span>
+        {stacked(<span className={styles.name}>{unassignedLabel}</span>)}
       </span>
     );
   }
@@ -160,14 +172,18 @@ export function MemberIdentity({
         size={size}
         imageUrl={member.avatarUrl}
       />
-      <span className={styles.name}>
-        {name}
-        {member.id === currentMemberId ? (
-          <span className={styles.self}>（我）</span>
-        ) : null}
-      </span>
-      {disabled ? <span className={styles.status}>已停用</span> : null}
-      {suffix}
+      {stacked(
+        <>
+          <span className={styles.name}>
+            {name}
+            {member.id === currentMemberId ? (
+              <span className={styles.self}>（我）</span>
+            ) : null}
+          </span>
+          {disabled ? <span className={styles.status}>已停用</span> : null}
+          {suffix}
+        </>,
+      )}
     </span>
   );
 }

@@ -6,6 +6,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { App } from "antd";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
@@ -14,6 +15,8 @@ vi.mock("next/navigation", () => ({
 
 import { InviteMemberForm } from "./invite-member-form";
 import {
+  formatPhone,
+  loadRoster,
   MemberTable,
   type MemberApi,
   type TenantInvitation,
@@ -157,18 +160,28 @@ describe("MemberTable", () => {
 
     // Every member action sits in the row's ⋯ menu.
     fireEvent.click(screen.getByRole("button", { name: "更多操作 林员工" }));
-    expect(await screen.findByRole("menuitem", { name: "停用" })).not.toHaveAttribute("aria-disabled", "true");
+    expect(
+      await screen.findByRole("menuitem", { name: "停用" }),
+    ).not.toHaveAttribute("aria-disabled", "true");
     fireEvent.click(screen.getByRole("button", { name: "更多操作 陈管理员" }));
     await waitFor(() =>
       expect(
-        screen.getAllByRole("menuitem", { name: /停用（需保留至少一位在职管理员）/ })[0],
+        screen.getAllByRole("menuitem", {
+          name: /停用（需保留至少一位在职管理员）/,
+        })[0],
       ).toHaveAttribute("aria-disabled", "true"),
     );
 
     fireEvent.click(screen.getByRole("radio", { name: /邀请/ }));
-    fireEvent.click(screen.getByRole("button", { name: "更多操作 +8613700137000" }));
-    expect(await screen.findByRole("menuitem", { name: "重新发送" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "撤销邀请" })).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "更多操作 +8613700137000" }),
+    );
+    expect(
+      await screen.findByRole("menuitem", { name: "重新发送" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: "撤销邀请" }),
+    ).toBeInTheDocument();
   });
 
   it("invites a member by phone and role", async () => {
@@ -280,10 +293,214 @@ describe("MemberTable", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "更多操作 林员工" }));
-    expect(await screen.findByRole("menuitem", { name: "访问权限" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("menuitem", { name: "访问权限" }),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "更多操作 陈管理员" }));
     // An administrator's own menu has no 访问权限: admins always hold full access.
-    const adminMenu = (await screen.findByRole("menuitem", { name: /改为员工/ })).closest("ul")!;
-    expect(within(adminMenu).queryByRole("menuitem", { name: "访问权限" })).toBeNull();
+    const adminMenu = (
+      await screen.findByRole("menuitem", { name: /改为员工/ })
+    ).closest("ul")!;
+    expect(
+      within(adminMenu).queryByRole("menuitem", { name: "访问权限" }),
+    ).toBeNull();
+  });
+
+  it("shows the employee a way back to the workspace", () => {
+    renderWithQuery(
+      <MemberTable
+        tenantCode="northwind"
+        viewerRole="EMPLOYEE"
+        initialMemberPage={initialMemberPage}
+        initialInvitationPage={{ items: [] }}
+        api={memberApi()}
+      />,
+    );
+    expect(screen.getByText("返回工作台").closest("a")).toHaveAttribute(
+      "href",
+      "/workspace/northwind",
+    );
+  });
+
+  it("links employees to their access page and says administrators have every table", () => {
+    // A desktop-width window, so the md-only 访问权限 column is rendered.
+    const narrow = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      ...narrow(query),
+      matches: true,
+    })) as typeof window.matchMedia;
+    try {
+      renderWithQuery(
+        <MemberTable
+          tenantCode="northwind"
+          viewerRole="TENANT_ADMIN"
+          viewerMemberId="member-admin"
+          initialMemberPage={initialMemberPage}
+          initialInvitationPage={{ items: [] }}
+          api={memberApi()}
+        />,
+      );
+      const employee = screen.getByText("林员工").closest("tr")!;
+      expect(
+        within(employee).getByText("查看和设置").closest("a"),
+      ).toHaveAttribute(
+        "href",
+        "/workspace/northwind/members/member-employee/access",
+      );
+      const admin = screen.getByText("陈管理员").closest("tr")!;
+      expect(within(admin).getByText("全部业务表")).toBeInTheDocument();
+      // Phones read as numbers, and the viewer is marked.
+      expect(within(employee).getByText(/139 0013 9000/)).toBeInTheDocument();
+      expect(within(admin).getByText("（我）")).toBeInTheDocument();
+      // Checkboxes are named after the member, in Chinese.
+      expect(within(employee).getByRole("checkbox")).toHaveAttribute(
+        "aria-label",
+        "选择 林员工",
+      );
+      expect(within(admin).getByRole("checkbox")).toHaveAttribute(
+        "aria-label",
+        "不能选择自己",
+      );
+    } finally {
+      window.matchMedia = narrow;
+    }
+  });
+
+  it("searches the whole roster, not just the page on screen", async () => {
+    const api = memberApi();
+    const beyondPage: TenantMember = {
+      ...members[1],
+      id: "member-far",
+      displayName: "远页员工",
+      phone: "+8613600136000",
+    };
+    vi.mocked(api.listMembers).mockImplementation(
+      async (_tenant, page, limit) => ({
+        items: limit === 100 ? [...members, beyondPage] : members,
+        page,
+        limit: limit ?? 20,
+        total: 3,
+        activeAdminCount: 1,
+      }),
+    );
+    renderWithQuery(
+      <MemberTable
+        tenantCode="northwind"
+        viewerRole="TENANT_ADMIN"
+        initialMemberPage={{ ...initialMemberPage, total: 3 }}
+        initialInvitationPage={{ items: [] }}
+        api={api}
+      />,
+    );
+    expect(screen.queryByText("远页员工")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("搜索成员"), {
+      target: { value: "136 0013" },
+    });
+    expect(await screen.findByText("远页员工")).toBeInTheDocument();
+    expect(screen.queryByText("林员工")).not.toBeInTheDocument();
+    expect(screen.getByText("找到 1 位成员")).toBeInTheDocument();
+    expect(api.listMembers).toHaveBeenCalledWith("northwind", 1, 100);
+
+    fireEvent.change(screen.getByLabelText("搜索成员"), {
+      target: { value: "没有这个人" },
+    });
+    expect(await screen.findByText("没有符合条件的成员")).toBeInTheDocument();
+    fireEvent.click(screen.getAllByText("清除筛选")[0].closest("button")!);
+    expect(await screen.findByText("林员工")).toBeInTheDocument();
+  });
+
+  it("keeps a failed roster load on screen with a retry", async () => {
+    const api = memberApi();
+    vi.mocked(api.listMembers).mockRejectedValue({
+      code: "SERVICE_UNAVAILABLE",
+      message: "服务暂时不可用",
+      fieldErrors: {},
+      status: 503,
+      requestId: "req_roster",
+    });
+    renderWithQuery(
+      <MemberTable
+        tenantCode="northwind"
+        viewerRole="TENANT_ADMIN"
+        initialMemberPage={initialMemberPage}
+        initialInvitationPage={{ items: [] }}
+        api={api}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("搜索成员"), {
+      target: { value: "林" },
+    });
+    expect(
+      await screen.findByText("成员名单读取失败：服务暂时不可用"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/^重\s?试$/).closest("button")).toBeEnabled();
+  });
+
+  it("confirms a successful status change", async () => {
+    const api = memberApi();
+    const disabled = { ...members[1], status: "DISABLED" as const };
+    renderWithQuery(
+      <App>
+        <MemberTable
+          tenantCode="northwind"
+          viewerRole="TENANT_ADMIN"
+          initialMemberPage={{
+            ...initialMemberPage,
+            items: [members[0], disabled],
+          }}
+          initialInvitationPage={{ items: [] }}
+          api={api}
+        />
+      </App>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "更多操作 林员工" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "恢复使用" }));
+    await waitFor(() =>
+      expect(api.changeMemberStatus).toHaveBeenCalledWith(
+        "northwind",
+        "member-employee",
+        "ACTIVE",
+      ),
+    );
+    expect(await screen.findByText("林员工已恢复使用")).toBeInTheDocument();
+  });
+});
+
+describe("member roster helpers", () => {
+  it("formats mainland numbers and leaves others alone", () => {
+    expect(formatPhone("+8618800001001")).toBe("188 0000 1001");
+    expect(formatPhone("+85291234567")).toBe("+85291234567");
+    expect(formatPhone(undefined)).toBeUndefined();
+  });
+
+  it("loads every page of the roster and stops at the total", async () => {
+    const page = (n: number) =>
+      Array.from({ length: n }, (_, index) => ({
+        ...members[1],
+        id: `m-${n}-${index}`,
+      }));
+    const listMembers = vi
+      .fn()
+      .mockResolvedValueOnce({
+        items: page(100),
+        page: 1,
+        limit: 100,
+        total: 130,
+        activeAdminCount: 1,
+      })
+      .mockResolvedValueOnce({
+        items: page(30),
+        page: 2,
+        limit: 100,
+        total: 130,
+        activeAdminCount: 1,
+      });
+    const roster = await loadRoster(
+      { ...memberApi(), listMembers },
+      "northwind",
+    );
+    expect(roster).toHaveLength(130);
+    expect(listMembers).toHaveBeenCalledTimes(2);
+    expect(listMembers).toHaveBeenLastCalledWith("northwind", 2, 100);
   });
 });
