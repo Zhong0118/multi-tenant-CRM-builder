@@ -1105,3 +1105,78 @@
   font-size: 13px;
   line-height: 1.6;
 }
+
+/* ── Published layout: saved order and width ───────────────────────────────
+   Four columns on desktop; a quarter, half or full row per the configurator.
+   The dashboard folds by its own width (the sidebar may be open): two
+   columns below 880px, one below 560px. */
+.dashboard {
+  display: block;
+}
+
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+
+.dashboardGrid > [data-width="QUARTER"] {
+  grid-column: span 1;
+}
+
+.dashboardGrid > [data-width="HALF"] {
+  grid-column: span 2;
+}
+
+.dashboardGrid > [data-width="FULL"] {
+  grid-column: 1 / -1;
+}
+
+/* A metric is its own card now that it can sit beside any other widget. */
+.dashboardGrid > .metricWidget {
+  min-height: 112px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-panel);
+  background: var(--bg-surface);
+}
+
+.dashboardGrid > .metricWidget:last-child {
+  border-right: 1px solid var(--border-default);
+}
+
+.dashboardGrid > .widget {
+  border-color: var(--border-default);
+  border-radius: var(--radius-panel);
+  background: var(--bg-surface);
+}
+
+.dashboardGrid > .trendWidget {
+  min-height: 360px;
+}
+
+@container dashboard (max-width: 880px) {
+  .dashboardGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboardGrid > [data-width="HALF"],
+  .dashboardGrid > [data-width="FULL"] {
+    grid-column: 1 / -1;
+  }
+}
+
+@container dashboard (max-width: 560px) {
+  .dashboardGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dashboardGrid > [data-width] {
+    grid-column: 1 / -1;
+  }
+
+  .dashboardGrid > .trendWidget {
+    min-height: 300px;
+  }
+}

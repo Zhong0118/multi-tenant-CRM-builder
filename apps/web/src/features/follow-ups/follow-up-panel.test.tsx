@@ -144,7 +144,7 @@ describe("FollowUpPanel", () => {
 
   it("switches the query to overdue rather than filtering just the loaded page", async () => {
     const api = setup();
-    await screen.findByText("暂无待跟进事项，从业务记录详情安排下一步。");
+    await screen.findByText(/这条记录还没有待跟进事项/);
     fireEvent.click(screen.getByRole("radio", { name: "已逾期" }));
     await waitFor(() =>
       expect(api.list).toHaveBeenLastCalledWith("northwind", {

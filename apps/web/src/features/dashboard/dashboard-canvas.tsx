@@ -60,11 +60,11 @@ export function DashboardCanvas({
     <main className={styles.canvas} aria-label="工作台画布">
       <div className={styles.canvasHeading}>
         <span>草稿画布</span>
-        <small>按设置的宽度排列 · 拖动或用 ↑↓ 调整顺序</small>
+        <small>
+          与发布后的布局一致：宽屏四列，较窄时两列，手机一列 · 拖动或用 ↑↓
+          调整顺序
+        </small>
       </div>
-      <p className={styles.canvasNote}>
-        发布后的工作台目前按组件类型分区：指标、趋势、状态分布、排行、列表依次排列，同类组件沿用这里的顺序；宽度设置会保存，但工作台暂不按宽度排版。以「预览草稿」为准。
-      </p>
       {widgets.length ? (
         <DndContext
           // dnd-kit falls back to a module-level counter for its generated ids

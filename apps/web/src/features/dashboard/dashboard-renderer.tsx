@@ -12,8 +12,8 @@ import type {
   DashboardRuntime,
   DashboardRuntimeWidget,
 } from "./dashboard-types";
-import { layoutDashboardWidgets } from "./layout-dashboard-widgets";
 import { TrendChart } from "./workbench-charts";
+import { MemberIdentity } from "@/components/identity/member-identity";
 import styles from "./workbench.module.css";
 
 export function DashboardRenderer({
@@ -33,93 +33,58 @@ export function DashboardRenderer({
     );
   }
 
-  const layout = layoutDashboardWidgets(runtime.widgets);
-  const hasAnalysis =
-    Boolean(layout.primaryTrend) || layout.distributions.length > 0;
-  const analysisSolo =
-    !layout.primaryTrend || layout.distributions.length === 0;
-  const hasTables =
-    layout.leaderboards.length > 0 || layout.recordLists.length > 0;
-  const tablesSolo =
-    layout.leaderboards.length === 0 || layout.recordLists.length === 0;
-
-  function renderWidget(widget: DashboardRuntimeWidget, className?: string) {
-    return (
-      <WidgetSurface key={widget.id} widget={widget} className={className}>
-        {widget.state === "UNAVAILABLE" ? (
-          <UnavailableWidget widget={widget} />
-        ) : (
-          <ReadyWidget tenantCode={tenantCode} widget={widget} />
-        )}
-      </WidgetSurface>
-    );
-  }
+  const widgets = orderedWidgets(runtime.widgets);
 
   return (
-    <div className={styles.dashboard} aria-label={runtime.title}>
-      {layout.metrics.length ? (
-        <section
-          className={styles.metricBand}
-          data-dashboard-band="metrics"
-          data-metric-count={Math.min(layout.metrics.length, 5)}
-          aria-label="指标"
-        >
-          {layout.metrics.map((widget) =>
-            renderWidget(widget, styles.metricWidget),
-          )}
-        </section>
-      ) : null}
-
-      {hasAnalysis ? (
-        <section
-          className={`${styles.analysisBand} ${analysisSolo ? styles.analysisBandSolo : ""}`}
-          data-dashboard-band="analysis"
-          aria-label="分析"
-        >
-          {layout.primaryTrend
-            ? renderWidget(layout.primaryTrend, styles.trendWidget)
-            : null}
-          {layout.distributions.length ? (
-            <div className={styles.analysisRail}>
-              {layout.distributions.map((widget) => renderWidget(widget))}
-            </div>
-          ) : null}
-        </section>
-      ) : null}
-
-      {layout.extraTrends.length ? (
-        <section className={styles.extraTrendBand} aria-label="其他趋势">
-          {layout.extraTrends.map((widget) =>
-            renderWidget(widget, styles.trendWidget),
-          )}
-        </section>
-      ) : null}
-
-      {hasTables ? (
-        <section
-          className={`${styles.tablesBand} ${tablesSolo ? styles.tablesBandSolo : ""}`}
-          data-dashboard-band="tables"
-          aria-label="列表"
-        >
-          {layout.leaderboards.length ? (
-            <div className={styles.tableStack}>
-              {layout.leaderboards.map((widget) =>
-                renderWidget(widget, styles.tableWidget),
-              )}
-            </div>
-          ) : null}
-          {layout.recordLists.length ? (
-            <div className={styles.tableStack}>
-              {layout.recordLists.map((widget) =>
-                renderWidget(widget, styles.tableWidget),
-              )}
-            </div>
-          ) : null}
-        </section>
-      ) : null}
+    <div
+      className={styles.dashboard}
+      aria-label={runtime.title}
+      data-dashboard-layout="grid"
+    >
+      <div className={styles.dashboardGrid}>
+        {widgets.map((widget) => (
+          <WidgetSurface
+            key={widget.id}
+            widget={widget}
+            className={TYPE_CLASS[widget.type]}
+          >
+            {widget.state === "UNAVAILABLE" ? (
+              <UnavailableWidget widget={widget} />
+            ) : (
+              <ReadyWidget tenantCode={tenantCode} widget={widget} />
+            )}
+          </WidgetSurface>
+        ))}
+      </div>
     </div>
   );
 }
+
+/**
+ * Widgets in the order the administrator arranged them. Each takes the width
+ * saved in the configurator — a quarter, half or full row of four columns on
+ * desktop; narrower dashboards fold to two columns and then one.
+ */
+export function orderedWidgets<T extends { sortOrder: number }>(
+  widgets: T[],
+): T[] {
+  return widgets
+    .map((widget, index) => ({ widget, index }))
+    .sort(
+      (left, right) =>
+        left.widget.sortOrder - right.widget.sortOrder ||
+        left.index - right.index,
+    )
+    .map(({ widget }) => widget);
+}
+
+const TYPE_CLASS: Record<DashboardRuntimeWidget["type"], string> = {
+  METRIC: styles.metricWidget,
+  STATUS_DISTRIBUTION: styles.distributionWidget,
+  TREND: styles.trendWidget,
+  LEADERBOARD: styles.tableWidget,
+  RECORD_LIST: styles.tableWidget,
+};
 
 function WidgetSurface({
   widget,
@@ -135,6 +100,8 @@ function WidgetSurface({
       className={`${styles.widget} ${className ?? ""}`.trim()}
       data-dashboard-widget
       data-widget-id={widget.id}
+      data-width={widget.width}
+      data-type={widget.type}
       aria-label={widget.title}
     >
       <div className={styles.widgetHeading}>
@@ -435,7 +402,24 @@ function LeaderboardWidget({
   >["data"]["items"];
 }) {
   const columns: ColumnsType<(typeof rows)[number]> = [
-    { title: "成员", dataIndex: "displayName", key: "displayName" },
+    {
+      title: "成员",
+      dataIndex: "displayName",
+      key: "displayName",
+      // The API falls back to the member id when it has no name to give (for
+      // example a disabled member); an id is never shown.
+      render: (displayName: string, row) => (
+        <MemberIdentity
+          size="sm"
+          memberId={row.memberId}
+          member={
+            displayName && displayName !== row.memberId
+              ? { id: row.memberId, displayName }
+              : null
+          }
+        />
+      ),
+    },
     {
       title: "数值",
       dataIndex: "value",

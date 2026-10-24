@@ -341,3 +341,164 @@
   color: var(--color-danger);
   font-weight: 600;
 }
+
+/* ── 今天要处理: the workbench agenda ─────────────────────────────────────── */
+.agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-panel);
+  background: var(--bg-surface);
+}
+
+.agendaHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+}
+
+.agendaHead h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.agendaCounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agendaCounts li {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--bg-surface-subtle);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.agendaCounts strong {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.agendaCounts li[data-tone="danger"] {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.agendaCounts li[data-tone="danger"] strong {
+  color: var(--color-danger);
+}
+
+.agendaCounts li[data-tone="warning"] {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+
+.agendaCounts li[data-tone="warning"] strong {
+  color: var(--color-warning);
+}
+
+.agendaLinks {
+  display: inline-flex;
+  gap: 12px;
+  margin-left: auto;
+  font-size: 13px;
+}
+
+.agendaBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 16px 24px;
+}
+
+.agendaColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.agendaColumnTitle {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.agendaColumnTitle .muted {
+  font-weight: 400;
+}
+
+.agenda .task {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 4px 12px;
+  align-items: center;
+}
+
+.due {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.due > span {
+  color: var(--text-secondary);
+}
+
+.due[data-tone="danger"] > span {
+  color: var(--color-danger);
+  font-weight: 500;
+}
+
+.due[data-tone="warning"] > span {
+  color: var(--color-warning);
+}
+
+.agenda[data-quiet] {
+  gap: 4px;
+}
+
+.agenda[data-quiet] .workbenchEmpty {
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .agendaBody {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .agendaLinks {
+    margin-left: 0;
+  }
+
+  .agenda .task {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .agenda .task .actions {
+    grid-column: 1 / -1;
+  }
+}

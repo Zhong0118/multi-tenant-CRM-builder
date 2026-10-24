@@ -20,6 +20,7 @@ import { useState } from "react";
 
 import { Page, PageSection, PageToolbar } from "@/components/layout/page";
 import { PageHeader } from "@/components/layout/page-header";
+import { MemberIdentity } from "@/components/identity/member-identity";
 import { toApiError } from "@/lib/api/api-error";
 import { browserApiClient } from "@/lib/api/browser-client";
 import {
@@ -178,47 +179,78 @@ export function TeamActivity({
   });
   const [assignTo, setAssignTo] = useState<MemberRow>();
   const [reportOf, setReportOf] = useState<MemberRow>();
+  const [detailOf, setDetailOf] = useState<MemberRow>();
+  // One kind of work at a time compares best; 全部指标 keeps the full sheet.
+  const [view, setView] = useState<string>(GROUPS[0].title);
   const singleDay = query.data && query.data.from === query.data.to;
+  const members = query.data?.members ?? [];
+  const shownGroups =
+    view === "all" ? GROUPS : GROUPS.filter((group) => group.title === view);
+  const maxOf = (key: keyof Counts) =>
+    Math.max(1, ...members.map((member) => member[key] as number));
+
+  const metricColumn = (
+    metric: (typeof GROUPS)[number]["metrics"][number],
+    compare: boolean,
+  ): ColumnType<MemberRow> => ({
+    title: <span title={metric.help}>{metric.title}</span>,
+    key: metric.key,
+    dataIndex: metric.key,
+    align: compare ? "left" : "right",
+    width: compare ? 150 : 76,
+    sorter: (left, right) =>
+      (left[metric.key] as number) - (right[metric.key] as number),
+    render: (value: number) => (
+      <span className={compare ? styles.compareCell : undefined}>
+        {compare ? (
+          <span className={styles.compareBar} aria-hidden>
+            <span
+              data-warn={metric.warn || undefined}
+              style={{ width: `${(value / maxOf(metric.key)) * 100}%` }}
+            />
+          </span>
+        ) : null}
+        {value ? (
+          <span className={metric.warn ? styles.warn : undefined}>{value}</span>
+        ) : (
+          <span className={styles.zero}>0</span>
+        )}
+      </span>
+    ),
+  });
 
   const columns: ColumnsType<MemberRow> = [
     {
       title: "成员",
       key: "member",
       fixed: "left",
-      width: 140,
+      width: 160,
       render: (_, row) => (
-        <span className={styles.member}>
-          <span className={styles.avatar} aria-hidden>
-            {row.name.slice(0, 1)}
-          </span>
-          <span>
-            {row.name}
-            {row.status === "DISABLED" ? (
-              <span className={styles.muted}> · 已停用</span>
-            ) : null}
-          </span>
-        </span>
+        <button
+          type="button"
+          className={styles.memberButton}
+          aria-label={`查看${row.name}的明细`}
+          onClick={() => setDetailOf(row)}
+        >
+          <MemberIdentity
+            size="sm"
+            member={{
+              id: row.memberId,
+              displayName: row.name,
+              status: row.status,
+            }}
+          />
+        </button>
       ),
     },
-    ...GROUPS.map((group): ColumnGroupType<MemberRow> => ({
-      title: group.title,
-      children: group.metrics.map((metric): ColumnType<MemberRow> => ({
-        title: <span title={metric.help}>{metric.title}</span>,
-        key: metric.key,
-        dataIndex: metric.key,
-        align: "right",
-        width: 76,
-        sorter: (left, right) => left[metric.key] - right[metric.key],
-        render: (value: number) =>
-          value ? (
-            <span className={metric.warn ? styles.warn : undefined}>
-              {value}
-            </span>
-          ) : (
-            <span className={styles.zero}>0</span>
-          ),
-      })),
-    })),
+    ...(view === "all"
+      ? GROUPS.map(
+          (group): ColumnGroupType<MemberRow> => ({
+            title: group.title,
+            children: group.metrics.map((metric) => metricColumn(metric, false)),
+          }),
+        )
+      : shownGroups[0].metrics.map((metric) => metricColumn(metric, true))),
     {
       title: "操作",
       key: "actions",
@@ -283,6 +315,45 @@ export function TeamActivity({
           </>
         }
       />
+      {query.data ? (
+        <ul className={styles.groupCards} aria-label="按类别查看">
+          {GROUPS.map((group) => (
+            <li key={group.title}>
+              <button
+                type="button"
+                aria-pressed={view === group.title}
+                onClick={() => setView(group.title)}
+              >
+                <strong>{group.title}</strong>
+                <span className={styles.groupFacts}>
+                  {group.metrics.map((metric) => (
+                    <span
+                      key={metric.key}
+                      title={metric.help}
+                      data-warn={(metric.warn && query.data.totals[metric.key]) || undefined}
+                    >
+                      <span title={metric.help}>{metric.title}</span>{" "}
+                      <b>{query.data.totals[metric.key]}</b>
+                    </span>
+                  ))}
+                </span>
+              </button>
+            </li>
+          ))}
+          <li>
+            <button
+              type="button"
+              aria-pressed={view === "all"}
+              onClick={() => setView("all")}
+            >
+              <strong>全部指标</strong>
+              <span className={styles.groupFacts}>
+                <span>{GROUPS.length} 类 · {METRICS.length} 项</span>
+              </span>
+            </button>
+          </li>
+        </ul>
+      ) : null}
       {query.isError ? (
         <Alert
           type="error"
@@ -308,16 +379,22 @@ export function TeamActivity({
               <Table.Summary fixed="bottom">
                 <Table.Summary.Row className={styles.totals}>
                   <Table.Summary.Cell index={0}>合计</Table.Summary.Cell>
-                  {METRICS.map((metric, index) => (
-                    <Table.Summary.Cell
-                      key={metric.key}
-                      index={index + 1}
-                      align="right"
-                    >
-                      {query.data.totals[metric.key]}
-                    </Table.Summary.Cell>
-                  ))}
-                  <Table.Summary.Cell index={METRICS.length + 1} />
+                  {shownGroups
+                    .flatMap((group) => group.metrics)
+                    .map((metric, index) => (
+                      <Table.Summary.Cell
+                        key={metric.key}
+                        index={index + 1}
+                        align={view === "all" ? "right" : "left"}
+                      >
+                        <span className={view === "all" ? undefined : styles.totalValue}>
+                          {query.data.totals[metric.key]}
+                        </span>
+                      </Table.Summary.Cell>
+                    ))}
+                  <Table.Summary.Cell
+                    index={shownGroups.flatMap((group) => group.metrics).length + 1}
+                  />
                 </Table.Summary.Row>
               </Table.Summary>
             ) : null
@@ -336,6 +413,65 @@ export function TeamActivity({
         )}
       />
 
+      <Drawer
+        open={!!detailOf}
+        onClose={() => setDetailOf(undefined)}
+        title={detailOf ? `${detailOf.name} · 明细` : undefined}
+        size="default"
+        destroyOnHidden
+      >
+        {detailOf && query.data ? (
+          <div className={styles.detail}>
+            <p className={styles.muted}>
+              {query.data.from === query.data.to
+                ? query.data.from
+                : `${query.data.from} 至 ${query.data.to}`}
+              {detailOf.role === "TENANT_ADMIN" ? " · 公司管理员" : " · 员工"}
+              {detailOf.status === "DISABLED" ? " · 已停用" : ""}
+            </p>
+            {GROUPS.map((group) => (
+              <section key={group.title} aria-label={group.title}>
+                <h3>{group.title}</h3>
+                <dl>
+                  {group.metrics.map((metric) => (
+                    <div key={metric.key} title={metric.help}>
+                      <dt>{metric.title}</dt>
+                      <dd className={metric.warn && detailOf[metric.key] ? styles.warn : undefined}>
+                        {detailOf[metric.key]}
+                        <span className={styles.muted}>
+                          {" "}/ 团队 {query.data.totals[metric.key]}
+                        </span>
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            ))}
+            {detailOf.status === "ACTIVE" ? (
+              <div className={styles.detailActions}>
+                <Button
+                  onClick={() => {
+                    setAssignTo(detailOf);
+                    setDetailOf(undefined);
+                  }}
+                >
+                  安排任务
+                </Button>
+                {singleDay ? (
+                  <Button
+                    onClick={() => {
+                      setReportOf(detailOf);
+                      setDetailOf(undefined);
+                    }}
+                  >
+                    看日报
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </Drawer>
       <Drawer
         open={!!assignTo}
         onClose={() => setAssignTo(undefined)}
