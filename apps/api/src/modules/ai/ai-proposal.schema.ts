@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { OBJECT_CODE_REFERENCE_PATTERN } from '../objects/object-code';
 
 const target = {
-  objectCode: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/),
+  objectCode: z.string().regex(OBJECT_CODE_REFERENCE_PATTERN),
   recordId: z.uuid(),
 };
 const forbiddenFieldKeys = new Set([

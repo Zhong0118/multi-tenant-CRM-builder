@@ -1,3 +1,4 @@
+import { projectStoredFieldValue } from '../records/record-value-engine';
 import {
   ACTION_OUTPUT_PROPERTIES,
   MAX_DUE_AT_OFFSET_DAYS,
@@ -180,7 +181,10 @@ function readSourceField(
   }
   // A declared but unset field is a legitimate null (§15): the target field's
   // own required/optional rules decide what that means.
-  return context.source.values[fieldKey] ?? null;
+  return projectStoredFieldValue(
+    field,
+    context.source.values[fieldKey] ?? null,
+  );
 }
 
 function readSourceMeta(

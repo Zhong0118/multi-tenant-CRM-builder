@@ -13,6 +13,7 @@ import type { FollowUpMeta, FollowUpRecordScope } from './follow-up-command';
 import { FollowUpsRepository } from './follow-ups.repository';
 import {
   followUpWorkbenchRange,
+  followUpLocalDateTime,
   isValidFollowUpTimeZone,
 } from './follow-up-workbench-time';
 export type { FollowUpMeta, FollowUpRecordScope } from './follow-up-command';
@@ -97,8 +98,16 @@ export class FollowUpsService {
   async listForAi(
     context: TenantContext,
     input: AiFollowUpReadInput,
-  ): Promise<AiFollowUpReadItem[]> {
+  ): Promise<
+    (AiFollowUpReadItem & { timezone: string; dueAtLocal: string })[]
+  > {
     let scopes = await this.resolveReadableScopes(context);
+    const timezone = await this.repository.getTenantTimezone(context);
+    if (!isValidFollowUpTimeZone(timezone)) {
+      throw new ApiException('INTERNAL_ERROR', 500, {
+        message: '租户时区配置无效，请联系平台管理员。',
+      });
+    }
     if (input.objectCode) {
       const resolved = await this.objects.resolveRuntimeSchema(
         context,
@@ -107,7 +116,12 @@ export class FollowUpsService {
       const objectId = resolved.schema.object.id;
       scopes = scopes.filter((scope) => scope.objectId === objectId);
     }
-    return this.repository.listForAi(context, scopes, input);
+    const items = await this.repository.listForAi(context, scopes, input);
+    return items.map((item) => ({
+      ...item,
+      timezone,
+      dueAtLocal: followUpLocalDateTime(new Date(item.dueAt), timezone),
+    }));
   }
 
   /**

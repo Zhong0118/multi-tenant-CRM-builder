@@ -110,6 +110,19 @@ describe('resolveActionValue', () => {
     ).toBe(12);
   });
 
+  it('maps historical numeric MONEY as decimal text without changing the snapshot', () => {
+    const ctx = context();
+    ctx.source = {
+      ...ctx.source,
+      fields: new Map([['amount', field('amount', 'MONEY')]]),
+      values: { amount: 71000 },
+    };
+    expect(
+      resolveActionValue({ source: 'SOURCE_FIELD', fieldKey: 'amount' }, ctx),
+    ).toBe('71000.00');
+    expect(ctx.source.values.amount).toBe(71000);
+  });
+
   it('reads SOURCE_FIELD date and datetime values verbatim', () => {
     const ctx = context();
 

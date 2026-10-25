@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { OBJECT_CODE_REFERENCE_PATTERN } from '../objects/object-code';
 import {
   IsDateString,
   IsIn,
@@ -17,7 +18,7 @@ export class CreateFollowUpDto {
   @ApiProperty()
   @IsString()
   @MaxLength(64)
-  @Matches(/^[a-z][a-z0-9_]*$/)
+  @Matches(OBJECT_CODE_REFERENCE_PATTERN)
   objectCode!: string;
   @ApiProperty({ format: 'uuid' }) @IsUUID() recordId!: string;
   @ApiProperty({ maxLength: 200 })

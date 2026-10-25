@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
 
+import { ApiException } from '../../common/errors/api.exception';
+import {
+  followUpLocalDateTime,
+  isValidFollowUpTimeZone,
+} from '../follow-ups/follow-up-workbench-time';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type {
   AssistantFinalizeOutcome,
@@ -17,6 +22,23 @@ import { ConversationRepository } from './conversation.repository';
 @Injectable()
 export class ConversationService {
   constructor(private readonly repository: ConversationRepository) {}
+
+  async timeContext(context: TenantContext) {
+    const timezone = await this.repository.getTenantTimezone(context);
+    if (!isValidFollowUpTimeZone(timezone)) {
+      throw new ApiException('INTERNAL_ERROR', 500, {
+        message: '租户时区配置无效，请联系平台管理员。',
+      });
+    }
+    const now = new Date();
+    const currentDateTime = followUpLocalDateTime(now, timezone);
+    return {
+      timezone,
+      currentDate: currentDateTime.slice(0, 10),
+      currentDateTime,
+      currentInstant: now.toISOString(),
+    };
+  }
 
   list(
     context: TenantContext,

@@ -22,7 +22,7 @@ export function createListFollowupsTool(
   return {
     name: 'list_followups',
     description:
-      "List the current actor's own follow-ups on records they can still read. Limit is 1-20; never pass an assignee.",
+      "List the current actor's own follow-ups on records they can still read. Limit is 1-20; never pass an assignee. dueAt is UTC. dueAtLocal uses the company timezone, except historical offsets with second precision retain UTC ending in Z; label those fallback values UTC. timezone always identifies the company zone. Date filters must include the correct UTC offset for the target date.",
     inputSchema: listFollowupsInput,
     async execute(input) {
       const parsed = listFollowupsInput.parse(input);

@@ -1,3 +1,4 @@
+import { normalizeStaticFieldValue } from '../modules/records/record-value-engine';
 import {
   buildDemoCompanyFixture,
   buildDemoDashboardDraft,
@@ -48,6 +49,26 @@ describe('demo company fixture', () => {
     expect(DEMO_DASHBOARD_CONFIGURATION.opportunity.wonOptionKeys).toEqual([
       'won',
     ]);
+  });
+
+  it('seeds money values that can pass normal record editing validation', () => {
+    const fixture = buildDemoCompanyFixture();
+    for (const [objectCode, expected] of [
+      ['opportunities', '53500.00'],
+      ['contracts', '85000.00'],
+      ['payments', '32000.00'],
+    ]) {
+      const object = fixture.template.configuration.objects.find(
+        (item) => item.code === objectCode,
+      )!;
+      const money = object.fields.find((item) => item.fieldKey === 'amount')!;
+      const record = fixture.records.find(
+        (item) => item.objectCode === objectCode,
+      )!;
+      expect(normalizeStaticFieldValue(money, record.values.amount)).toBe(
+        expected,
+      );
+    }
   });
 
   it('publishes a compact KPI strip plus analysis and table bands', () => {

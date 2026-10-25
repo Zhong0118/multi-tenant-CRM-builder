@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { assertIsolatedTestDatabase } from './helpers/isolated-database';
 import { AiProposalService } from '../src/modules/ai/ai-proposal.service';
 import { ConversationService } from '../src/modules/ai/conversation.service';
 import type { TenantContext } from '../src/common/tenancy/tenant-context';
@@ -19,18 +20,10 @@ describe('isolated AI proposal atomic confirmation', () => {
   let conversations: ConversationService;
   let context: TenantContext;
   beforeAll(async () => {
-    const adminUrl = new URL(process.env.TEST_DATABASE_ADMIN_URL ?? '');
-    const runtimeUrl = new URL(process.env.TEST_DATABASE_URL ?? '');
-    for (const url of [adminUrl, runtimeUrl]) {
-      if (
-        url.hostname !== '127.0.0.1' ||
-        url.port !== '55433' ||
-        url.pathname !== '/crm_v1b_test'
-      )
-        throw new Error('Refusing non-isolated database');
-    }
-    if (adminUrl.username !== 'crm' || runtimeUrl.username !== 'crm_app')
-      throw new Error('Refusing unexpected database roles');
+    assertIsolatedTestDatabase(
+      process.env.TEST_DATABASE_URL,
+      process.env.TEST_DATABASE_ADMIN_URL,
+    );
     harness = await createCriticalHarness();
     service = harness.app.get(AiProposalService);
     conversations = harness.app.get(ConversationService);

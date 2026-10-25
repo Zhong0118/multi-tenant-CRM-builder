@@ -707,6 +707,42 @@ describe('dynamic record values', () => {
     });
   });
 
+  it.each([
+    [71000, 2, '71000.00'],
+    [12.5, 2, '12.50'],
+    [0, 2, '0.00'],
+    [-12.5, 2, '-12.50'],
+    [0.0000001, 8, '0.00000010'],
+    [1.2345, 2, '1.2345'],
+    ['9007199254740993.01', 2, '9007199254740993.01'],
+  ])(
+    'projects legacy money %s without rounding or mutating stored data',
+    (value, scale, expected) => {
+      const testSchema = schema(field('MONEY', { validation: { scale } }));
+      const values = { name: '历史金额', value };
+      expect(
+        projectVisibleValues(testSchema, editableAccess(testSchema), values),
+      ).toEqual({ name: '历史金额', value: expected });
+      expect(values.value).toBe(value);
+    },
+  );
+
+  it('keeps money visibility and numeric input validation unchanged', async () => {
+    const testSchema = schema(field('MONEY'));
+    const access = editableAccess(testSchema);
+    access.fields.value = 'HIDDEN';
+    expect(
+      projectVisibleValues(testSchema, access, { name: '客户', value: 71000 }),
+    ).toEqual({ name: '客户' });
+    await expect(validate(field('MONEY'), 71000)).rejects.toMatchObject({
+      code: 'FIELD_INVALID',
+    });
+    expect(await validate(field('MONEY'), '71000.00')).toEqual({
+      name: '张三',
+      value: '71000.00',
+    });
+  });
+
   it('projects response values by field visibility', () => {
     const testSchema = schema(field('PHONE'));
     const access = editableAccess(testSchema);

@@ -13,7 +13,7 @@ import { hashSessionToken } from '../src/modules/auth/session.service';
 const origin = 'http://localhost:3000';
 const tenantCode = 'e2e-records-company';
 const foreignTenantCode = 'e2e-records-foreign';
-const objectCode = 'leads';
+const objectCode = 'sales-leads';
 const phones = ['+8613988811001', '+8613988811002', '+8613988811003'];
 const bulkPhones = Array.from(
   { length: 98 },

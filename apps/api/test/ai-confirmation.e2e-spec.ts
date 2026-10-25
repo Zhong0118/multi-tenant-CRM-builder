@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { assertIsolatedTestDatabase } from './helpers/isolated-database';
 import request from 'supertest';
 
 import { AiProposalService } from '../src/modules/ai/ai-proposal.service';
@@ -16,18 +17,6 @@ import {
 jest.setTimeout(180_000);
 
 type OperationType = 'UPDATE_RECORD' | 'CREATE_FOLLOW_UP' | 'ADD_ACTIVITY_NOTE';
-
-function isolatedUrl(name: string): URL {
-  const url = new URL(process.env[name] ?? '');
-  if (
-    url.hostname !== '127.0.0.1' ||
-    url.port !== '55433' ||
-    url.pathname !== '/crm_v1b_test'
-  ) {
-    throw new Error(`Refusing non-isolated database in ${name}`);
-  }
-  return url;
-}
 
 function candidate(type: OperationType, recordId: string) {
   if (type === 'UPDATE_RECORD') {
@@ -62,11 +51,10 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
   let context: TenantContext;
 
   beforeAll(async () => {
-    const admin = isolatedUrl('TEST_DATABASE_ADMIN_URL');
-    const runtime = isolatedUrl('TEST_DATABASE_URL');
-    if (admin.username !== 'crm' || runtime.username !== 'crm_app') {
-      throw new Error('Refusing unexpected database roles');
-    }
+    assertIsolatedTestDatabase(
+      process.env.TEST_DATABASE_URL,
+      process.env.TEST_DATABASE_ADMIN_URL,
+    );
     harness = await createCriticalHarness();
     proposals = harness.app.get(AiProposalService);
   });
