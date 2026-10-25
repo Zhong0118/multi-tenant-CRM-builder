@@ -207,3 +207,28 @@
   flex: none;
   margin: 0;
 }
+
+.reportDate {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.recoveryActions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.saveState {
+  margin-right: auto;
+  font-size: 12px;
+}
+
+.taskTitleRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+}

@@ -8,6 +8,12 @@ import {
 } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  usePathname: () => "/workspace/northwind/work",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 import type { WorkApi } from "@/features/work/work-api";
 
 import { TeamActivity, teamActivityApi, type Period } from "./team-activity";

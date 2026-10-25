@@ -1,13 +1,13 @@
 "use client";
 
-import { MoreOutlined, PlusOutlined } from "@ant-design/icons";
+import { MoreOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import { Button, Dropdown, Input, Modal, Skeleton } from "antd";
 import { useMemo, useRef, useState } from "react";
 
 import { toApiError } from "@/lib/api/api-error";
 
 import styles from "./ai-assistant.module.css";
-import { conversationGroup } from "./ai-copy";
+import { conversationGroup, conversationTime } from "./ai-copy";
 import type { AiConversation } from "./ai-types";
 
 const GROUPS = ["今天", "最近 7 天", "更早"] as const;
@@ -43,17 +43,30 @@ export function ConversationRail({
   onLoadMore?: () => void;
   hideBrand?: boolean;
 }) {
+  const [filter, setFilter] = useState("");
+  const query = filter.trim().toLocaleLowerCase();
+  const visible = useMemo(
+    () =>
+      query
+        ? conversations.filter((item) =>
+            [item.title, item.latestUserPreview ?? ""].some((text) =>
+              text.toLocaleLowerCase().includes(query),
+            ),
+          )
+        : conversations,
+    [conversations, query],
+  );
   const grouped = useMemo(() => {
     const buckets: Record<(typeof GROUPS)[number], AiConversation[]> = {
       今天: [],
       "最近 7 天": [],
       更早: [],
     };
-    for (const item of conversations) {
+    for (const item of visible) {
       buckets[conversationGroup(item.lastMessageAt)].push(item);
     }
     return buckets;
-  }, [conversations]);
+  }, [visible]);
   const [renaming, setRenaming] = useState<AiConversation>();
   const [title, setTitle] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
@@ -171,6 +184,21 @@ export function ConversationRail({
             还没有会话。发送第一个问题后，会话会保存在这里。
           </p>
         ) : null}
+        {conversations.length > 0 ? (
+          <Input
+            allowClear
+            size="small"
+            aria-label="搜索会话"
+            placeholder="搜索会话"
+            prefix={<SearchOutlined aria-hidden />}
+            className={styles.railSearch}
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+          />
+        ) : null}
+        {query && visible.length === 0 ? (
+          <p className={styles.railEmpty}>没有匹配「{filter.trim()}」的会话。</p>
+        ) : null}
         {!loading && !error
           ? GROUPS.map((group) =>
               grouped[group].length === 0 ? null : (
@@ -191,7 +219,15 @@ export function ConversationRail({
                         }
                         onClick={() => onSelect(item.id)}
                       >
-                        <span className={styles.sessionTitle}>{item.title}</span>
+                        <span className={styles.sessionTitleRow}>
+                          <span className={styles.sessionTitle}>{item.title}</span>
+                          <time
+                            className={styles.sessionTime}
+                            dateTime={item.lastMessageAt}
+                          >
+                            {conversationTime(item.lastMessageAt)}
+                          </time>
+                        </span>
                         {item.latestUserPreview && item.latestUserPreview !== item.title ? <span className={styles.sessionPreview}>{item.latestUserPreview}</span> : null}
                       </button>
                       <Dropdown

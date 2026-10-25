@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { FollowUpPanel } from "./follow-up-panel";
 import { PersonalFollowUpWorkbench } from "./follow-up-workbench";
 import { followUpQueryKeys, type followUpApi, type FollowUp, type FollowUpPage } from "./follow-up-api";
+import type { WorkApi } from "@/features/work/work-api";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/workspace/northwind", useSearchParams: () => new URLSearchParams() }));
 const task = { id: "task-1", recordId: "record-1", objectCode: "orders", objectName: "订单", recordTitle: "订单 A", title: "确认反馈", dueAt: "2026-10-04T00:00:00Z", status: "OPEN" as const, version: 7, overdue: false, canManage: true, assigneeMemberId: "member-1", assigneeName: "成员" } satisfies FollowUp;
@@ -32,7 +33,7 @@ describe("shared follow-up refresh", () => {
     await client.fetchQuery({ queryKey: inactiveKey, queryFn: () => page(20) });
     const view = render(<QueryClientProvider client={client}>
       <FollowUpPanel tenantCode="northwind" record={{ id: "record-1", objectCode: "orders", canCreate: true }} api={api} />
-      <PersonalFollowUpWorkbench tenantCode="northwind" api={api} />
+      <PersonalFollowUpWorkbench tenantCode="northwind" api={api} work={{ listTasks: async () => ({ items: [], total: 0, page: 1, limit: 100 }) } as unknown as WorkApi} />
     </QueryClientProvider>);
     const panel = screen.getByRole("region", { name: "下一步跟进" });
     await screen.findByTestId("workbench-count-all");

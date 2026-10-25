@@ -23,7 +23,7 @@ export function SourceCard({
         : source.objectName;
   const detail =
     source.kind === "AGGREGATE"
-      ? source.value
+      ? formatAggregate(source.value)
       : source.kind === "RECORDS"
         ? `${source.count} 条记录`
         : `${source.count} 条活动`;
@@ -42,4 +42,12 @@ export function SourceCard({
       </span>
     </Link>
   );
+}
+
+/** A plain number from the API reads with grouping (255,000); anything else as given. */
+function formatAggregate(value: unknown): string {
+  const text = String(value ?? "");
+  return /^-?\d+(\.\d+)?$/.test(text)
+    ? Number(text).toLocaleString("zh-CN", { maximumFractionDigits: 2 })
+    : text;
 }

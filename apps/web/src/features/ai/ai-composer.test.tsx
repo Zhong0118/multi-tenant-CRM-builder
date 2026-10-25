@@ -37,4 +37,23 @@ describe("AiComposer", () => {
     fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
     expect(onSend).not.toHaveBeenCalled();
   });
+
+  it("stops generation with Esc", () => {
+    const onStop = vi.fn();
+    render(
+      <AiComposer
+        value="问"
+        phase="STREAMING"
+        onChange={vi.fn()}
+        onSend={vi.fn()}
+        onStop={onStop}
+      />,
+    );
+    expect(screen.getByText(/Esc 停止生成/)).toBeInTheDocument();
+    fireEvent.keyDown(
+      screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
+      { key: "Escape" },
+    );
+    expect(onStop).toHaveBeenCalledTimes(1);
+  });
 });

@@ -35,6 +35,12 @@ export function AiComposer({
           autoSize={{ minRows: 2, maxRows: 6 }}
           placeholder="基于当前权限，询问可访问的 CRM 数据"
           onChange={(event) => onChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && generating) {
+              event.preventDefault();
+              onStop();
+            }
+          }}
           onPressEnter={(event) => {
             if (event.shiftKey) return;
             event.preventDefault();
@@ -44,7 +50,9 @@ export function AiComposer({
         />
         <div className={styles.composerBar}>
           <div className={styles.composerMeta}>
-            <span className={styles.composerHint}>Enter 发送 · Shift+Enter 换行</span>
+            <span className={styles.composerHint}>
+              {generating ? "Esc 停止生成" : "Enter 发送 · Shift+Enter 换行"}
+            </span>
             <span className={styles.composerCount} aria-live="polite">
               {trimmedLength}/{AI_MAX_INPUT}
             </span>
