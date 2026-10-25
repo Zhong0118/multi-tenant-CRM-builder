@@ -1,7 +1,11 @@
 "use client";
 
-import { Alert, Descriptions, Tag, Typography } from "antd";
+import { Alert, Button, Descriptions, Typography } from "antd";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+
+import { StatePanel } from "@/components/workbench/state-panel";
+import { StatusTag, type StatusTone } from "@/components/workbench/status-tag";
 
 import { InvitationActions } from "./invitation-actions";
 import {
@@ -28,6 +32,14 @@ const statusText: Record<PersonalInvitation["status"], string> = {
   EXPIRED: "已过期",
 };
 
+const statusTone: Record<PersonalInvitation["status"], StatusTone> = {
+  PENDING: "warning",
+  ACCEPTED: "success",
+  DECLINED: "neutral",
+  REVOKED: "neutral",
+  EXPIRED: "neutral",
+};
+
 const roleText: Record<PersonalInvitation["role"], string> = {
   TENANT_ADMIN: "公司管理员",
   EMPLOYEE: "员工",
@@ -49,11 +61,15 @@ export function InvitationDetail({
   const router = useRouter();
   if (unavailable || !invitation) {
     return (
-      <Alert
-        type="warning"
-        showIcon
+      <StatePanel
+        tone="blocked"
         title="邀请不可用"
         description="该邀请不存在、已不属于当前账号，或无法继续处理。请联系公司管理员确认。"
+        action={
+          <Link href="/waiting">
+            <Button>查看我的邀请</Button>
+          </Link>
+        }
       />
     );
   }
@@ -67,9 +83,9 @@ export function InvitationDetail({
             {invitation.tenantName ?? "公司邀请"}
           </Typography.Title>
         </div>
-        <Tag color={invitation.status === "PENDING" ? "cyan" : "default"}>
+        <StatusTag tone={statusTone[invitation.status]}>
           {statusText[invitation.status]}
-        </Tag>
+        </StatusTag>
       </header>
       <Descriptions column={1} bordered size="small">
         <Descriptions.Item label="拟授予角色">

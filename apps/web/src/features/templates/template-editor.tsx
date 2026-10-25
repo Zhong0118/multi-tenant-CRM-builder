@@ -7,6 +7,7 @@ import { useRef, useState } from "react";
 
 import { StatusTag } from "@/components/workbench/status-tag";
 import { toApiError } from "@/lib/api/api-error";
+import { useLeaveGuard } from "@/lib/hooks/use-leave-guard";
 
 import { browserTemplateApi, type TemplateApi } from "./template-api";
 import {
@@ -50,6 +51,7 @@ export function TemplateEditor({
     initialTemplate.configuration.objects[0]?.id,
   );
   const [dirty, setDirty] = useState(false);
+  const guard = useLeaveGuard(dirty);
   const [saving, setSaving] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -269,8 +271,8 @@ export function TemplateEditor({
             </StatusTag>
             <span className={styles.publicationIdentity}>
               {template.activeVersion
-                ? `v${template.activeVersion.versionNo} 当前发布身份`
-                : "尚无发布身份"}
+                ? `公司可用 v${template.activeVersion.versionNo}`
+                : "尚未发布，公司不可用"}
             </span>
           </div>
         </div>
@@ -516,6 +518,17 @@ export function TemplateEditor({
           setPanelError(undefined);
         }}
       />
+      <Modal
+        open={guard.pending !== null}
+        title="放弃未保存的模板修改？"
+        okText="放弃修改"
+        cancelText="继续编辑"
+        okButtonProps={{ danger: true }}
+        onCancel={guard.stay}
+        onOk={guard.leave}
+      >
+        离开后，还没保存的业务表和字段改动会丢失。要保留，请先点「保存草稿」。
+      </Modal>
     </main>
   );
 }

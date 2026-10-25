@@ -107,3 +107,14 @@ it("does not report draft objects as published or closed companies as activatabl
     "complete",
   );
 });
+
+it("treats admins without an invitation row as invited", () => {
+  const steps = buildTenantSetupSteps({
+    tenantStatus: "ACTIVE",
+    activeAdminCount: 2,
+    objectCount: 10,
+  });
+  const invited = steps.find((step) => step.key === "invited");
+  expect(invited?.state).toBe("complete");
+  expect(invited?.description).toBe("已有公司管理员，无邀请记录");
+});

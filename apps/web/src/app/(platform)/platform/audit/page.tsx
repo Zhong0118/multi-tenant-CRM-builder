@@ -1,4 +1,4 @@
-import { PlatformAuditView } from "@/features/platform/platform-operations";
+import { PlatformAuditView } from "@/features/platform/platform-audit";
 import { toApiError } from "@/lib/api/api-error";
 import { createServerApiClient } from "@/lib/api/server-client";
 

@@ -867,3 +867,21 @@ button.applicationChoice:hover {
   color: var(--text-secondary);
   font-size: 13px;
 }
+
+.templateName,
+.templateState {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+}
+
+.templateName code {
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.templateState small {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}

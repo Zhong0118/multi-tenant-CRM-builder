@@ -14,39 +14,66 @@ import styles from "./templates.module.css";
 
 const columns: ColumnsType<BusinessTemplate> = [
   {
-    title: "模板名称",
+    title: "模板",
     dataIndex: "name",
     render: (name: string, template) => (
-      <Link
-        className={styles.templateLink}
-        href={`/platform/templates/${template.id}`}
-        onClick={(event) => event.stopPropagation()}
-      >
-        {name}
-      </Link>
+      <span className={styles.templateName}>
+        <Link
+          className={styles.templateLink}
+          href={`/platform/templates/${template.id}`}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {name}
+        </Link>
+        <code>{template.code}</code>
+      </span>
     ),
   },
-  { title: "模板代码", dataIndex: "code", className: styles.code },
   {
     title: "状态",
     dataIndex: "status",
-    render: (status: BusinessTemplate["status"]) => (
-      <TemplateStatus status={status} />
+    render: (_, template) => (
+      <span className={styles.templateState}>
+        <TemplateStatus status={template.status} />
+        <small>{templateStateHint(template)}</small>
+      </span>
     ),
   },
-  { title: "对象数", dataIndex: "objectCount" },
   {
-    title: "当前版本",
+    title: "内容",
     render: (_, template) =>
-      template.activeVersion ? `v${template.activeVersion.versionNo}` : "—",
+      `${template.objectCount} 张业务表 · ${template.fieldCount} 个字段`,
   },
-  { title: "已应用公司", dataIndex: "applicationCount" },
+  {
+    title: "已应用公司",
+    dataIndex: "applicationCount",
+    width: 112,
+    render: (count: number) => (count ? `${count} 家` : "未应用"),
+  },
   {
     title: "更新时间",
     dataIndex: "updatedAt",
+    width: 120,
     render: (value?: string) => formatDate(value),
   },
 ];
+
+/** What the state means for companies, the thing an operator acts on. */
+export function templateStateHint(template: BusinessTemplate): string {
+  const live = template.activeVersion
+    ? `公司可用 v${template.activeVersion.versionNo}`
+    : null;
+  switch (template.status) {
+    case "DRAFT":
+      return "尚未发布，公司不可用";
+    case "CHANGED":
+      return live ? `草稿有改动，${live}` : "草稿有改动，尚未发布";
+    case "ARCHIVED":
+      return "不再提供给新公司";
+    default:
+      return live ?? "已发布";
+  }
+}
 
 export function TemplateList({
   data,
@@ -79,12 +106,14 @@ export function TemplateList({
         columns={columns}
         dataSource={data.items}
         rowKey="id"
-        scroll={{ x: 860 }}
+        scroll={{ x: 820 }}
         pagination={{
           current: data.page,
           pageSize: data.limit,
           total: data.total,
           showSizeChanger: false,
+          hideOnSinglePage: true,
+          showTotal: (total) => `共 ${total} 个模板`,
           onChange: (page) => go(`/platform/templates?page=${page}`),
         }}
         onRow={(template) => ({
@@ -113,7 +142,10 @@ function TemplateStatus({ status }: { status: BusinessTemplate["status"] }) {
 
 function formatDate(value?: string): string {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" }).format(
-    new Date(value),
-  );
+  return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(value));
 }

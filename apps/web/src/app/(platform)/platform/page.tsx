@@ -4,10 +4,13 @@ import { createServerApiClient } from "@/lib/api/server-client";
 
 export default async function PlatformPage() {
   const client = await createServerApiClient();
-  const [summaryResult, tenantsResult] = await Promise.all([
+  const [summaryResult, tenantsResult, auditResult] = await Promise.all([
     client.GET("/api/v1/platform/tenants/summary"),
     client.GET("/api/v1/platform/tenants", {
       params: { query: { page: 1, limit: 8 } },
+    }),
+    client.GET("/api/v1/platform/audit", {
+      params: { query: { page: 1, limit: 1 } },
     }),
   ]);
 
@@ -30,6 +33,9 @@ export default async function PlatformPage() {
     <PlatformOverview
       summary={summaryResult.data}
       tenants={tenantsResult.data}
+      latestChange={
+        auditResult.data ? (auditResult.data.items[0] ?? null) : "unavailable"
+      }
     />
   );
 }
