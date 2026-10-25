@@ -179,7 +179,10 @@ export function TeamActivity({
   });
   const [assignTo, setAssignTo] = useState<MemberRow>();
   const [reportOf, setReportOf] = useState<MemberRow>();
-  const [detailOf, setDetailOf] = useState<MemberRow>();
+  const [detailMemberId, setDetailMemberId] = useState<string>();
+  const detailOf = query.data?.members.find(
+    (member) => member.memberId === detailMemberId,
+  );
   // One kind of work at a time compares best; 全部指标 keeps the full sheet.
   const [view, setView] = useState<string>(GROUPS[0].title);
   const singleDay = query.data && query.data.from === query.data.to;
@@ -230,7 +233,7 @@ export function TeamActivity({
           type="button"
           className={styles.memberButton}
           aria-label={`查看${row.name}的明细`}
-          onClick={() => setDetailOf(row)}
+          onClick={() => setDetailMemberId(row.memberId)}
         >
           <MemberIdentity
             size="sm"
@@ -244,12 +247,10 @@ export function TeamActivity({
       ),
     },
     ...(view === "all"
-      ? GROUPS.map(
-          (group): ColumnGroupType<MemberRow> => ({
-            title: group.title,
-            children: group.metrics.map((metric) => metricColumn(metric, false)),
-          }),
-        )
+      ? GROUPS.map((group): ColumnGroupType<MemberRow> => ({
+          title: group.title,
+          children: group.metrics.map((metric) => metricColumn(metric, false)),
+        }))
       : shownGroups[0].metrics.map((metric) => metricColumn(metric, true))),
     {
       title: "操作",
@@ -330,7 +331,10 @@ export function TeamActivity({
                     <span
                       key={metric.key}
                       title={metric.help}
-                      data-warn={(metric.warn && query.data.totals[metric.key]) || undefined}
+                      data-warn={
+                        (metric.warn && query.data.totals[metric.key]) ||
+                        undefined
+                      }
                     >
                       <span title={metric.help}>{metric.title}</span>{" "}
                       <b>{query.data.totals[metric.key]}</b>
@@ -348,7 +352,9 @@ export function TeamActivity({
             >
               <strong>全部指标</strong>
               <span className={styles.groupFacts}>
-                <span>{GROUPS.length} 类 · {METRICS.length} 项</span>
+                <span>
+                  {GROUPS.length} 类 · {METRICS.length} 项
+                </span>
               </span>
             </button>
           </li>
@@ -387,13 +393,19 @@ export function TeamActivity({
                         index={index + 1}
                         align={view === "all" ? "right" : "left"}
                       >
-                        <span className={view === "all" ? undefined : styles.totalValue}>
+                        <span
+                          className={
+                            view === "all" ? undefined : styles.totalValue
+                          }
+                        >
                           {query.data.totals[metric.key]}
                         </span>
                       </Table.Summary.Cell>
                     ))}
                   <Table.Summary.Cell
-                    index={shownGroups.flatMap((group) => group.metrics).length + 1}
+                    index={
+                      shownGroups.flatMap((group) => group.metrics).length + 1
+                    }
                   />
                 </Table.Summary.Row>
               </Table.Summary>
@@ -415,7 +427,7 @@ export function TeamActivity({
 
       <Drawer
         open={!!detailOf}
-        onClose={() => setDetailOf(undefined)}
+        onClose={() => setDetailMemberId(undefined)}
         title={detailOf ? `${detailOf.name} · 明细` : undefined}
         size="default"
         destroyOnHidden
@@ -436,10 +448,17 @@ export function TeamActivity({
                   {group.metrics.map((metric) => (
                     <div key={metric.key} title={metric.help}>
                       <dt>{metric.title}</dt>
-                      <dd className={metric.warn && detailOf[metric.key] ? styles.warn : undefined}>
+                      <dd
+                        className={
+                          metric.warn && detailOf[metric.key]
+                            ? styles.warn
+                            : undefined
+                        }
+                      >
                         {detailOf[metric.key]}
                         <span className={styles.muted}>
-                          {" "}/ 团队 {query.data.totals[metric.key]}
+                          {" "}
+                          / 团队 {query.data.totals[metric.key]}
                         </span>
                       </dd>
                     </div>
@@ -452,7 +471,7 @@ export function TeamActivity({
                 <Button
                   onClick={() => {
                     setAssignTo(detailOf);
-                    setDetailOf(undefined);
+                    setDetailMemberId(undefined);
                   }}
                 >
                   安排任务
@@ -461,7 +480,7 @@ export function TeamActivity({
                   <Button
                     onClick={() => {
                       setReportOf(detailOf);
-                      setDetailOf(undefined);
+                      setDetailMemberId(undefined);
                     }}
                   >
                     看日报
@@ -592,7 +611,10 @@ function TeamTasks({
     tasks.isFetchedAfterMount &&
     tasks.fetchStatus === "idle"
   ) {
-    const lastPage = Math.max(1, Math.ceil(tasks.data.total / tasks.data.limit));
+    const lastPage = Math.max(
+      1,
+      Math.ceil(tasks.data.total / tasks.data.limit),
+    );
     if (page > lastPage) setPage(lastPage);
   }
   return (

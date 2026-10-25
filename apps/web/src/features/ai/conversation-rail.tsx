@@ -189,7 +189,7 @@ export function ConversationRail({
             allowClear
             size="small"
             aria-label="搜索会话"
-            placeholder="搜索会话"
+            placeholder="搜索已加载的会话"
             prefix={<SearchOutlined aria-hidden />}
             className={styles.railSearch}
             value={filter}
@@ -197,7 +197,11 @@ export function ConversationRail({
           />
         ) : null}
         {query && visible.length === 0 ? (
-          <p className={styles.railEmpty}>没有匹配「{filter.trim()}」的会话。</p>
+          <p className={styles.railEmpty}>
+            {onLoadMore
+              ? `已加载会话中没有匹配「${filter.trim()}」的内容，可继续加载更早会话。`
+              : `没有匹配「${filter.trim()}」的会话。`}
+          </p>
         ) : null}
         {!loading && !error
           ? GROUPS.map((group) =>
@@ -220,7 +224,9 @@ export function ConversationRail({
                         onClick={() => onSelect(item.id)}
                       >
                         <span className={styles.sessionTitleRow}>
-                          <span className={styles.sessionTitle}>{item.title}</span>
+                          <span className={styles.sessionTitle}>
+                            {item.title}
+                          </span>
                           <time
                             className={styles.sessionTime}
                             dateTime={item.lastMessageAt}
@@ -228,7 +234,12 @@ export function ConversationRail({
                             {conversationTime(item.lastMessageAt)}
                           </time>
                         </span>
-                        {item.latestUserPreview && item.latestUserPreview !== item.title ? <span className={styles.sessionPreview}>{item.latestUserPreview}</span> : null}
+                        {item.latestUserPreview &&
+                        item.latestUserPreview !== item.title ? (
+                          <span className={styles.sessionPreview}>
+                            {item.latestUserPreview}
+                          </span>
+                        ) : null}
                       </button>
                       <Dropdown
                         trigger={["click"]}

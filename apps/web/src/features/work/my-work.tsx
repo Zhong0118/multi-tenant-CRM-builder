@@ -15,7 +15,7 @@ import {
   Typography,
 } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useToast } from "@/components/feedback/use-toast";
 import { DueLabel } from "@/components/workbench/due-label";
@@ -78,7 +78,10 @@ function MyTasks({ tenantCode, api }: { tenantCode: string; api: WorkApi }) {
     query.isFetchedAfterMount &&
     query.fetchStatus === "idle"
   ) {
-    const lastPage = Math.max(1, Math.ceil(query.data.total / query.data.limit));
+    const lastPage = Math.max(
+      1,
+      Math.ceil(query.data.total / query.data.limit),
+    );
     if (page > lastPage) setPage(lastPage);
   }
   return (
@@ -195,7 +198,9 @@ export function NewTaskForm({
       }),
     onSuccess: async () => {
       toast.success(
-        assignee ? `已给${assignee.name}安排「${title.trim()}」` : `已添加「${title.trim()}」`,
+        assignee
+          ? `已给${assignee.name}安排「${title.trim()}」`
+          : `已添加「${title.trim()}」`,
       );
       await queryClient.invalidateQueries({
         queryKey: workKeys.allTasks(tenantCode),
@@ -436,6 +441,14 @@ function ReportEditor({
 }) {
   const [workDate, setWorkDate] = useState("today");
   const [dirty, setDirty] = useState(false);
+  const ownedCache = useRef<string | null>(null);
+  const reportDirty = useCallback(
+    (next: boolean, raw: string | null = null) => {
+      ownedCache.current = raw;
+      setDirty(next);
+    },
+    [],
+  );
   const [switchTo, setSwitchTo] = useState<string>();
   const guard = useLeaveGuard(dirty);
   const view = useQuery({
@@ -480,18 +493,23 @@ function ReportEditor({
           }
         />
       ) : null}
-      {view.isLoading ? <Typography.Text type="secondary">正在载入日报…</Typography.Text> : null}
+      {view.isLoading ? (
+        <Typography.Text type="secondary">正在载入日报…</Typography.Text>
+      ) : null}
       {loaded ? (
         <div className={styles.report}>
-          {/* Keyed by day and version: a loaded or saved report starts a fresh draft. */}
+          {/* Server refreshes must not remount an editor holding unsaved input. */}
           <ReportForm
-            key={`${loaded.workDate}:${loaded.report?.version ?? 0}`}
+            key={`${tenantCode}:${loaded.memberId}:${loaded.workDate}`}
             tenantCode={tenantCode}
             api={api}
             loaded={loaded}
             queryDate={workDate}
-            onDirtyChange={setDirty}
-            onReload={() => void view.refetch()}
+            onDirtyChange={reportDirty}
+            onReload={async () => {
+              const result = await view.refetch();
+              return result.isError ? undefined : result.data;
+            }}
           />
           <ReportReference
             counts={loaded.reference.counts}
@@ -510,6 +528,11 @@ function ReportEditor({
           guard.stay();
         }}
         onOk={() => {
+          if (loaded)
+            removeDraft(
+              draftKey(tenantCode, loaded.memberId, loaded.workDate),
+              ownedCache.current,
+            );
           setDirty(false);
           if (switchTo) {
             setWorkDate(switchTo);
@@ -534,22 +557,51 @@ function draftKey(tenantCode: string, memberId: string, workDate: string) {
   return `crm.daily-report-draft.v1.${tenantCode}.${memberId}.${workDate}`;
 }
 
-function readDraft(key: string): { sections: Sections; savedAt: string } | null {
+function readDraft(
+  key: string,
+): { sections: Sections; savedAt: string; raw: string } | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(key);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { sections?: Partial<Sections>; savedAt?: string };
+    const parsed = JSON.parse(raw) as {
+      sections?: Partial<Sections>;
+      savedAt?: string;
+    };
     if (!parsed.sections || typeof parsed.savedAt !== "string") return null;
     const sections = { ...emptySections };
     for (const { key: section } of SECTIONS) {
       const value = parsed.sections[section];
       if (typeof value === "string") sections[section] = value;
     }
-    return { sections, savedAt: parsed.savedAt };
+    return { sections, savedAt: parsed.savedAt, raw };
   } catch {
     return null;
   }
+}
+
+function removeDraft(key: string, expectedRaw: string | null): boolean {
+  try {
+    if (
+      expectedRaw !== null &&
+      window.localStorage.getItem(key) === expectedRaw
+    )
+      window.localStorage.removeItem(key);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function reportSections(report: DailyReportView["report"]): Sections {
+  return report
+    ? {
+        plans: report.plans,
+        completed: report.completed,
+        problems: report.problems,
+        nextSteps: report.nextSteps,
+      }
+    : emptySections;
 }
 
 function sameSections(a: Sections, b: Sections) {
@@ -568,62 +620,104 @@ function ReportForm({
   api: WorkApi;
   loaded: DailyReportView;
   queryDate: string;
-  onDirtyChange: (dirty: boolean) => void;
-  onReload: () => void;
+  onDirtyChange: (dirty: boolean, raw?: string | null) => void;
+  onReload: () => Promise<DailyReportView | undefined>;
 }) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const timeZone = useTenantTimezone(tenantCode);
-  const saved: Sections = loaded.report
-    ? {
-        plans: loaded.report.plans,
-        completed: loaded.report.completed,
-        problems: loaded.report.problems,
-        nextSteps: loaded.report.nextSteps,
-      }
-    : emptySections;
+  const [baseReport, setBaseReport] = useState(loaded.report);
+  const saved = reportSections(baseReport);
+  const baseVersion = baseReport?.version ?? 0;
+  const ownedCache = useRef<string | null>(null);
   const key = draftKey(tenantCode, loaded.memberId, loaded.workDate);
   const [draft, setDraft] = useState<Sections>(saved);
-  // A draft kept from before a reload, offered back rather than applied, and
-  // only when it is newer than what was saved to the server.
+  // A differing local draft is offered back even after a newer server save.
+  // A timestamp cannot decide that the member no longer needs their edits.
   const [recovery, setRecovery] = useState(() => {
     const kept = readDraft(key);
-    if (!kept || sameSections(kept.sections, saved)) return null;
-    if (loaded.report && loaded.report.updatedAt > kept.savedAt) return null;
+    if (!loaded.canEdit || !kept || sameSections(kept.sections, saved))
+      return null;
     return kept;
   });
   const dirty = loaded.canEdit && !sameSections(draft, saved);
   useEffect(() => {
-    onDirtyChange(dirty);
-  }, [dirty, onDirtyChange]);
+    onDirtyChange(dirty || recovery?.raw === "", ownedCache.current);
+  }, [dirty, draft, recovery, onDirtyChange]);
   useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
-  useEffect(() => {
-    if (!loaded.canEdit || typeof window === "undefined") return;
-    if (dirty) {
-      window.localStorage.setItem(
-        key,
-        JSON.stringify({ sections: draft, savedAt: new Date().toISOString() }),
-      );
-    } else if (!recovery) {
-      window.localStorage.removeItem(key);
+  const [storageError, setStorageError] = useState(false);
+  const [reloading, setReloading] = useState(false);
+  const newerServerVersion = (loaded.report?.version ?? 0) > baseVersion;
+  if (!dirty && !recovery && newerServerVersion) {
+    setBaseReport(loaded.report);
+    setDraft(reportSections(loaded.report));
+  }
+  function updateDraft(next: Sections) {
+    setDraft(next);
+    try {
+      if (sameSections(next, saved)) {
+        if (!removeDraft(key, ownedCache.current))
+          throw new Error("draft storage unavailable");
+        ownedCache.current = null;
+      } else {
+        const raw = JSON.stringify({
+          sections: next,
+          savedAt: new Date().toISOString(),
+        });
+        window.localStorage.setItem(key, raw);
+        ownedCache.current = raw;
+      }
+      setStorageError(false);
+    } catch {
+      setStorageError(true);
     }
-  }, [dirty, draft, key, loaded.canEdit, recovery]);
+  }
+
+  async function reloadReport() {
+    if (reloading) return;
+    setReloading(true);
+    try {
+      const latest = await onReload();
+      if (!latest) return;
+      const kept = dirty
+        ? {
+            sections: draft,
+            savedAt: new Date().toISOString(),
+            raw: storageError ? "" : (ownedCache.current ?? ""),
+          }
+        : recovery;
+      const latestSections = reportSections(latest.report);
+      setRecovery(
+        kept && !sameSections(kept.sections, latestSections) ? kept : null,
+      );
+      setBaseReport(latest.report);
+      setDraft(latestSections);
+    } finally {
+      setReloading(false);
+    }
+  }
 
   const save = useMutation({
     mutationFn: () =>
       api.saveReport(tenantCode, loaded.workDate, {
-        version: loaded.report?.version ?? 0,
+        version: baseVersion,
         ...draft,
       }),
-    onSuccess: async () => {
-      window.localStorage.removeItem(key);
+    onSuccess: async (savedReport) => {
+      setStorageError(!removeDraft(key, ownedCache.current));
+      ownedCache.current = null;
+      setBaseReport(savedReport);
+      setDraft(reportSections(savedReport));
+      setRecovery(null);
       toast.success(`${loaded.workDate} 的日报已保存`);
       await queryClient.invalidateQueries({
         queryKey: workKeys.report(tenantCode, queryDate),
       });
     },
   });
-  const empty = SECTIONS.every(({ key: section }) => draft[section].trim() === "");
+  const empty = SECTIONS.every(
+    ({ key: section }) => draft[section].trim() === "",
+  );
   const doneTasks = loaded.reference.tasks.filter(
     (task) => task.status === "DONE",
   );
@@ -645,18 +739,43 @@ function ReportForm({
           description="日报只能在当天或之后补写自己的；这一天不能再修改。"
         />
       ) : null}
+      {newerServerVersion ? (
+        <Alert
+          type="warning"
+          showIcon
+          title="日报已在别处更新，当前输入已保留。"
+          action={
+            <Button
+              size="small"
+              loading={reloading}
+              disabled={save.isPending || reloading}
+              onClick={() => void reloadReport()}
+            >
+              载入最新日报
+            </Button>
+          }
+        />
+      ) : null}
       {recovery ? (
         <Alert
           type="warning"
           showIcon
-          title={`有一份未保存的日报草稿（${dayjs(recovery.savedAt).format("MM-DD HH:mm")} 暂存在本机）`}
+          title={`有一份未保存的日报草稿（${dayjs(recovery.savedAt).format("MM-DD HH:mm")}）`}
+          description={
+            recovery.raw === ""
+              ? "草稿仅保留在当前页面，刷新或离开会丢失。恢复后请核对内容并保存。"
+              : loaded.report && loaded.report.updatedAt > recovery.savedAt
+                ? "云端日报也有更新。恢复后请核对内容，再决定是否保存。"
+                : undefined
+          }
           action={
             <span className={styles.recoveryActions}>
               <Button
                 size="small"
                 type="primary"
+                disabled={save.isPending || reloading}
                 onClick={() => {
-                  setDraft(recovery.sections);
+                  updateDraft(recovery.sections);
                   setRecovery(null);
                 }}
               >
@@ -664,8 +783,9 @@ function ReportForm({
               </Button>
               <Button
                 size="small"
+                disabled={save.isPending || reloading}
                 onClick={() => {
-                  window.localStorage.removeItem(key);
+                  setStorageError(!removeDraft(key, recovery.raw));
                   setRecovery(null);
                 }}
               >
@@ -684,9 +804,9 @@ function ReportForm({
             maxLength={4000}
             value={draft[section]}
             readOnly={readOnly}
-            disabled={save.isPending}
+            disabled={save.isPending || reloading}
             onChange={(event) =>
-              setDraft({ ...draft, [section]: event.target.value })
+              updateDraft({ ...draft, [section]: event.target.value })
             }
           />
         </label>
@@ -696,8 +816,9 @@ function ReportForm({
           size="small"
           type="link"
           className={styles.fillButton}
+          disabled={save.isPending || reloading}
           onClick={() =>
-            setDraft({
+            updateDraft({
               ...draft,
               completed: [
                 draft.completed.trim(),
@@ -714,19 +835,32 @@ function ReportForm({
           填入当天完成的任务
         </Button>
       ) : null}
+      {storageError ? (
+        <Alert
+          type="warning"
+          showIcon
+          title="无法暂存到本机，请先保存日报再离开。"
+        />
+      ) : null}
       {save.isError ? (
         <Alert
           type="error"
           showIcon
           title={`${toApiError(save.error).message}（请求编号：${toApiError(save.error).requestId}）`}
           description={
-            toApiError(save.error).status === 409
-              ? "日报在别处更新过。你的修改仍保存在本机，重新载入后可以恢复。"
-              : "你的修改仍在这里，也已暂存在本机。"
+            storageError
+              ? "你的修改仍在当前页面，请先复制内容；恢复浏览器存储后再重新载入。"
+              : toApiError(save.error).status === 409
+                ? "日报在别处更新过。你的修改仍保存在本机，重新载入后可以恢复。"
+                : "你的修改仍在这里，也已暂存在本机。"
           }
           action={
             toApiError(save.error).status === 409 ? (
-              <Button size="small" onClick={onReload}>
+              <Button
+                size="small"
+                loading={reloading}
+                onClick={() => void reloadReport()}
+              >
                 重新载入
               </Button>
             ) : undefined
@@ -737,16 +871,18 @@ function ReportForm({
         <div className={styles.formActions}>
           <Typography.Text type="secondary" className={styles.saveState}>
             {dirty
-              ? "有未保存的修改（已暂存在本机）"
-              : loaded.report
-                ? `已保存 · ${new Intl.DateTimeFormat("zh-CN", { timeZone, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(loaded.report.updatedAt))}`
+              ? storageError
+                ? "有未保存的修改（仅保留在当前页面）"
+                : "有未保存的修改（已暂存在本机）"
+              : baseReport
+                ? `已保存 · ${new Intl.DateTimeFormat("zh-CN", { timeZone, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(baseReport.updatedAt))}`
                 : "还没有保存"}
           </Typography.Text>
           <Button
             type="primary"
             htmlType="submit"
             loading={save.isPending}
-            disabled={empty || !dirty}
+            disabled={empty || !dirty || reloading}
           >
             保存日报
           </Button>

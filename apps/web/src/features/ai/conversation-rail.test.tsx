@@ -282,3 +282,14 @@ describe("ConversationRail mutations", () => {
     expect(screen.getByText(/还没有会话/)).toBeInTheDocument();
   });
 });
+
+it("makes the loaded-page search limit clear when older conversations remain", () => {
+  const onLoadMore = vi.fn();
+  renderRail({ onLoadMore });
+  fireEvent.change(screen.getByRole("textbox", { name: "搜索会话" }), {
+    target: { value: "尚未加载的旧会话" },
+  });
+  expect(screen.getByText(/继续加载更早会话/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "加载更多" }));
+  expect(onLoadMore).toHaveBeenCalledTimes(1);
+});

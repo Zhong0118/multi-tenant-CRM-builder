@@ -40,9 +40,7 @@ const workbench = {
     ],
   },
   preview: {
-    overdue: [
-      { ...item, id: "overdue-1", title: "逾期跟进", overdue: true },
-    ],
+    overdue: [{ ...item, id: "overdue-1", title: "逾期跟进", overdue: true }],
     today: [item],
     upcoming: [
       {
@@ -57,7 +55,12 @@ const workbench = {
 
 function setup(
   payload: typeof workbench = workbench,
-  options: { fail?: boolean; tasks?: WorkTask[] } = {},
+  options: {
+    fail?: boolean;
+    tasks?: WorkTask[];
+    taskFail?: boolean;
+    total?: number;
+  } = {},
 ) {
   const api = {
     recipients: vi.fn().mockResolvedValue([]),
@@ -78,12 +81,14 @@ function setup(
       : vi.fn().mockResolvedValue(payload),
   };
   const work = {
-    listTasks: vi.fn().mockResolvedValue({
-      items: options.tasks ?? [],
-      total: options.tasks?.length ?? 0,
-      page: 1,
-      limit: 100,
-    }),
+    listTasks: options.taskFail
+      ? vi.fn().mockRejectedValue(new Error("offline"))
+      : vi.fn().mockResolvedValue({
+          items: options.tasks ?? [],
+          total: options.total ?? options.tasks?.length ?? 0,
+          page: 1,
+          limit: 100,
+        }),
   } as unknown as WorkApi;
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -125,9 +130,10 @@ describe("PersonalFollowUpWorkbench", () => {
     expect(screen.getByTestId("workbench-bucket-upcoming")).toHaveTextContent(
       "近期跟进",
     );
-    expect(
-      screen.getByRole("link", { name: "查看全部跟进" }),
-    ).toHaveAttribute("href", "/workspace/northwind/follow-ups");
+    expect(screen.getByRole("link", { name: "查看全部跟进" })).toHaveAttribute(
+      "href",
+      "/workspace/northwind/follow-ups",
+    );
   });
 
   it("links each item to its record and renders the due time in the tenant zone", async () => {
@@ -187,9 +193,7 @@ describe("PersonalFollowUpWorkbench", () => {
   it("isolates a workbench failure from the rest of the page", async () => {
     const api = setup(workbench, { fail: true });
 
-    expect(
-      await screen.findByText("跟进事项暂时无法加载"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("跟进事项暂时无法加载")).toBeInTheDocument();
     expect(screen.getByTestId("page-sibling")).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId("workbench-retry"));
@@ -197,4 +201,38 @@ describe("PersonalFollowUpWorkbench", () => {
     await waitFor(() => expect(api.workbench).toHaveBeenCalledTimes(2));
     expect(screen.getByTestId("page-sibling")).toBeInTheDocument();
   });
+});
+
+it("keeps task errors visible when follow-ups and contacts are empty", async () => {
+  setup(
+    {
+      ...workbench,
+      preview: { overdue: [], today: [], upcoming: [] },
+      pendingContacts: { count: 0, items: [] },
+    },
+    { taskFail: true },
+  );
+  expect(await screen.findByText("任务暂时无法加载")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /^重\s*试$/ })).toBeInTheDocument();
+  expect(
+    screen.queryByText("今天没有需要处理的跟进事项，也没有进行中的任务。"),
+  ).not.toBeInTheDocument();
+});
+
+it("uses the server task total instead of the first page length", async () => {
+  const tasks = Array.from(
+    { length: 100 },
+    (_, index) =>
+      ({
+        id: `many-${index}`,
+        title: `任务${index}`,
+        status: "OPEN",
+        dueAt: "2099-01-01T00:00:00Z",
+        createdByMemberId: "me",
+        assigneeMemberId: "me",
+      }) as WorkTask,
+  );
+  setup(workbench, { tasks, total: 150 });
+  expect(await screen.findByText("150 项进行中")).toBeInTheDocument();
+  expect(screen.getByText("还有 145 项，去任务与日报")).toBeInTheDocument();
 });

@@ -60,7 +60,8 @@ export function PersonalFollowUpWorkbench({
   });
   const tasks = useQuery({
     queryKey: workKeys.tasks(tenantCode, { scope: "mine", status: "OPEN" }),
-    queryFn: () => work.listTasks(tenantCode, { scope: "mine", status: "OPEN" }),
+    queryFn: () =>
+      work.listTasks(tenantCode, { scope: "mine", status: "OPEN" }),
     refetchInterval: 60_000,
   });
   const now = useNow();
@@ -95,7 +96,8 @@ export function PersonalFollowUpWorkbench({
     data !== undefined &&
     !hasItems &&
     !data.pendingContacts.count &&
-    !(tasks.data?.items.some((task) => task.status === "OPEN") ?? false);
+    tasks.isSuccess &&
+    tasks.data.total === 0;
   return (
     <section
       className={styles.agenda}
@@ -202,7 +204,13 @@ export function PersonalFollowUpWorkbench({
                             </div>
                             <Link
                               data-testid={`workbench-link-${task.id}`}
-                              href={sourceRecordHref(tenantCode, task.objectCode, task.recordId, source, task.id)}
+                              href={sourceRecordHref(
+                                tenantCode,
+                                task.objectCode,
+                                task.recordId,
+                                source,
+                                task.id,
+                              )}
                             >
                               {task.recordTitle}{" "}
                               <span className={styles.muted}>
@@ -271,11 +279,12 @@ function MyOpenTasks({
   const open = (query.data?.items ?? [])
     .filter((task) => task.status === "OPEN")
     .sort((a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt));
+  const total = query.data?.total ?? 0;
   return (
     <section className={styles.bucket} aria-label="我的任务">
       <h3 className={styles.agendaColumnTitle}>
         我的任务
-        {open.length ? <span className={styles.muted}>{open.length} 项进行中</span> : null}
+        {total ? <span className={styles.muted}>{total} 项进行中</span> : null}
       </h3>
       {query.isError ? (
         <Alert
@@ -320,9 +329,12 @@ function MyOpenTasks({
           })}
         </ul>
       )}
-      {open.length > 5 ? (
-        <Link className={styles.workbenchAll} href={`/workspace/${tenantCode}/work`}>
-          还有 {open.length - 5} 项，去任务与日报
+      {total > 5 ? (
+        <Link
+          className={styles.workbenchAll}
+          href={`/workspace/${tenantCode}/work`}
+        >
+          还有 {total - 5} 项，去任务与日报
         </Link>
       ) : null}
     </section>
