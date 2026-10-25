@@ -10,19 +10,19 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-reading);
   background: var(--bg-surface);
-  border-top: 3px solid var(--color-primary);
 }
 
+/* A coloured edge only when the count asks for attention; zero stays quiet. */
 .kpiSuccess {
-  border-top-color: var(--color-success);
+  box-shadow: inset 0 3px 0 var(--color-success);
 }
 
 .kpiWarning {
-  border-top-color: var(--color-warning);
+  box-shadow: inset 0 3px 0 var(--color-warning);
 }
 
 .kpiDanger {
-  border-top-color: var(--color-danger);
+  box-shadow: inset 0 3px 0 var(--color-danger);
 }
 
 .kpiLabel {
@@ -120,8 +120,11 @@
 }
 
 .code {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-tertiary);
   font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
+  font-size: 12px;
 }
 
 @media (max-width: 1023px) {
@@ -161,7 +164,8 @@
   font-size: 12px;
   line-height: 1.65;
 }
-.actions a {
+.actions a,
+.actions .quiet {
   padding: 4px 12px;
   border-left: 1px solid var(--border-default);
   color: var(--text-primary);
@@ -174,11 +178,15 @@
 .actions a:hover strong {
   color: var(--color-primary);
 }
+.actions .quiet strong {
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
 .tableScroll {
   overflow-x: auto;
 }
 .table {
-  min-width: 760px;
+  min-width: 640px;
 }
 .nextStep {
   max-width: 260px;
@@ -193,7 +201,8 @@
   .actions {
     grid-template-columns: 1fr;
   }
-  .actions a {
+  .actions a,
+  .actions .quiet {
     border-left: 0;
     border-top: 1px solid var(--border-default);
     padding: 12px 0 0;

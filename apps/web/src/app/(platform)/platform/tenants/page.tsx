@@ -1,8 +1,10 @@
 import { Button } from "antd";
 import Link from "next/link";
 
+import { PageToolbar } from "@/components/layout/page";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatePanel } from "@/components/workbench/state-panel";
+import { TenantSearch } from "@/features/tenants/tenant-search";
 import { TenantTable } from "@/features/tenants/tenant-table";
 import styles from "@/features/tenants/tenants.module.css";
 import { toApiError } from "@/lib/api/api-error";
@@ -37,7 +39,7 @@ export default async function TenantsPage({ searchParams }: TenantsPageProps) {
 
   const extra = (
     <Link href="/platform/tenants/new">
-      <Button type="primary">+ 新增公司</Button>
+      <Button type="primary">新增公司</Button>
     </Link>
   );
 
@@ -48,73 +50,53 @@ export default async function TenantsPage({ searchParams }: TenantsPageProps) {
         description="统一管理公司工作空间的开通状态与首位管理员"
         extra={extra}
       />
-      <form
-        key={`${status ?? ""}:${search ?? ""}`}
-        action="/platform/tenants"
-        className={styles.filters}
-      >
-        <label>
-          搜索公司
-          <input
-            name="search"
-            defaultValue={search}
-            placeholder="公司名称或工作空间代码"
-            maxLength={200}
+      <PageToolbar
+        start={
+          summaryResult.data ? (
+            <nav aria-label="按状态查看" className={styles.summary}>
+              {[
+                ["全部", "", summaryResult.data.total],
+                ["草稿", "DRAFT", summaryResult.data.draft],
+                ["运行中", "ACTIVE", summaryResult.data.active],
+                ["已暂停", "SUSPENDED", summaryResult.data.suspended],
+                ["已关闭", "CLOSED", summaryResult.data.closed],
+              ].map(([label, value, count]) => (
+                <Link
+                  key={String(label)}
+                  aria-current={(status ?? "") === value ? "page" : undefined}
+                  href={tenantsHref({ status: String(value), search })}
+                >
+                  {label}
+                  <strong>{count}</strong>
+                </Link>
+              ))}
+            </nav>
+          ) : null
+        }
+        end={
+          <TenantSearch
+            search={search}
+            status={status}
+            clearHref={tenantsHref({ status })}
           />
-        </label>
-        <label>
-          状态
-          <select name="status" defaultValue={status ?? ""}>
-            <option value="">全部状态</option>
-            <option value="DRAFT">草稿</option>
-            <option value="ACTIVE">运行中</option>
-            <option value="SUSPENDED">已暂停</option>
-            <option value="CLOSED">已关闭</option>
-          </select>
-        </label>
-        <Button htmlType="submit">筛选</Button>
-        {status || search ? (
-          <Link href="/platform/tenants">清空筛选</Link>
-        ) : null}
-      </form>
-      {summaryResult.data ? (
-        <nav aria-label="公司状态汇总" className={styles.summary}>
-          {[
-            ["全部", "", summaryResult.data.total],
-            ["草稿", "DRAFT", summaryResult.data.draft],
-            ["运行中", "ACTIVE", summaryResult.data.active],
-            ["已暂停", "SUSPENDED", summaryResult.data.suspended],
-            ["已关闭", "CLOSED", summaryResult.data.closed],
-          ].map(([label, value, count]) => (
-            <Link
-              key={String(label)}
-              aria-current={(status ?? "") === value ? "page" : undefined}
-              href={
-                value
-                  ? `/platform/tenants?status=${value}`
-                  : "/platform/tenants"
-              }
-            >
-              {label}
-              <strong>{count}</strong>
-            </Link>
-          ))}
-        </nav>
-      ) : null}
+        }
+      />
       {data.items.length > 0 ? (
         <TenantTable data={data} filters={filters} />
       ) : (
         <StatePanel
           title={
-            status || search
-              ? "没有符合条件的公司"
-              : data.total > 0
-                ? "这一页没有公司"
-                : "尚未开通公司"
+            search
+              ? `没有名称或代码包含「${search}」的公司`
+              : status
+                ? "没有这个状态的公司"
+                : data.total > 0
+                  ? "这一页没有公司"
+                  : "尚未开通公司"
           }
           description={
             status || search
-              ? "尝试调整公司名称、代码或状态筛选。"
+              ? "换一个关键词，或切换到「全部」查看。"
               : data.total > 0
                 ? "返回第一页查看现有公司。"
                 : "创建第一家公司草稿，并邀请首位公司管理员。"
@@ -130,6 +112,14 @@ export default async function TenantsPage({ searchParams }: TenantsPageProps) {
       )}
     </div>
   );
+}
+
+function tenantsHref(filters: { status?: string; search?: string }) {
+  const params = new URLSearchParams();
+  if (filters.status) params.set("status", filters.status);
+  if (filters.search) params.set("search", filters.search);
+  const query = params.toString();
+  return query ? `/platform/tenants?${query}` : "/platform/tenants";
 }
 
 function parsePage(value?: string): number {

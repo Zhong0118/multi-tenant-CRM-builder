@@ -24,7 +24,7 @@ export default async function AccountSecurityPage() {
   }
 
   return (
-    <AccountShell current="security">
+    <AccountShell current="security" platformAdmin={user.isPlatformAdmin}>
       <PageHeader
         title="账号安全"
         description={`${user.displayName} · ${user.phone}`}

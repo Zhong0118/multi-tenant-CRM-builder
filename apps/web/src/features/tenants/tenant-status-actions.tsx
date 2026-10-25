@@ -6,8 +6,9 @@ import { Alert, Button, Input, Popconfirm, Space } from "antd";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { toApiError } from "@/lib/api/api-error";
+import { useToast } from "@/components/feedback/use-toast";
 import { ReadingPanel } from "@/components/workbench/surface";
+import { toApiError } from "@/lib/api/api-error";
 
 import {
   tenantApi,
@@ -15,6 +16,12 @@ import {
   type TenantApi,
 } from "./create-tenant-form";
 import styles from "./tenants.module.css";
+
+const STATUS_DONE: Partial<Record<PlatformTenant["status"], string>> = {
+  ACTIVE: "公司已启用",
+  SUSPENDED: "公司已暂停",
+  CLOSED: "公司已关闭",
+};
 
 export function TenantStatusActions({
   tenant,
@@ -24,6 +31,7 @@ export function TenantStatusActions({
   api?: TenantApi;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
@@ -33,7 +41,11 @@ export function TenantStatusActions({
         status,
         reason: reason.trim() || undefined,
       }),
-    onSuccess: () => router.refresh(),
+    onSuccess: (_, status) => {
+      setReason("");
+      toast.success(STATUS_DONE[status] ?? "公司状态已更新");
+      router.refresh();
+    },
     onMutate: () => setError(undefined),
     onError: (caught) => {
       const apiError = toApiError(caught);
@@ -91,7 +103,11 @@ export function TenantStatusActions({
             cancelText="取消"
             onConfirm={() => renewal.mutate()}
           >
-            <Button loading={renewal.isPending} disabled={mutation.isPending}>
+            <Button
+              type="primary"
+              loading={renewal.isPending}
+              disabled={mutation.isPending}
+            >
               重新邀请管理员
             </Button>
           </Popconfirm>

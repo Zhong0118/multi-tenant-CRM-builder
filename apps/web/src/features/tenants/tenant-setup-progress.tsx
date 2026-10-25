@@ -35,10 +35,15 @@ export function buildTenantSetupSteps(input: {
     {
       key: "invited",
       label: "邀请首位管理员",
+      // A company can already have admins with no invitation row (seeded or
+      // migrated); then this step is done, not waiting for an invitation.
       description: input.invitationStatus
         ? `邀请状态：${invitationStatusText[input.invitationStatus]}`
-        : "尚未发出首位管理员邀请",
-      state: input.invitationStatus ? "complete" : "current",
+        : invitationAccepted
+          ? "已有公司管理员，无邀请记录"
+          : "尚未发出首位管理员邀请",
+      state:
+        input.invitationStatus || invitationAccepted ? "complete" : "current",
     },
     {
       key: "accepted",

@@ -8,6 +8,9 @@ import {
 } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+const push = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+
 import { templateApi, type TemplateApi } from "./template-api";
 import {
   addObject,
@@ -326,6 +329,36 @@ describe("TemplateEditor save and publication flow", () => {
     expect(screen.getByText("有未保存变更")).toBeInTheDocument();
   });
 
+  it("asks before leaving with unsaved changes", async () => {
+    renderEditor();
+    fireEvent.click(screen.getByRole("button", { name: "新增业务表" }));
+    const dialog = await screen.findByRole("dialog", { name: "新增业务表" });
+    fireEvent.change(within(dialog).getByLabelText("业务表名称"), {
+      target: { value: "回访记录" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("业务表代码"), {
+      target: { value: "follow-ups" },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "创建并配置" }));
+
+    fireEvent.click(screen.getByRole("link", { name: "返回业务模板" }));
+    const leaveDialog = async () =>
+      (await screen.findByText("放弃未保存的模板修改？")).closest(
+        ".ant-modal",
+      ) as HTMLElement;
+    fireEvent.click(
+      within(await leaveDialog()).getByRole("button", { name: "继续编辑" }),
+    );
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.getByText("有未保存变更")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("link", { name: "返回业务模板" }));
+    fireEvent.click(
+      within(await leaveDialog()).getByRole("button", { name: "放弃修改" }),
+    );
+    expect(push).toHaveBeenCalledWith("/platform/templates");
+  });
+
   it("shows one clear business table configuration step at a time", () => {
     renderEditor();
 
@@ -543,7 +576,7 @@ describe("TemplateEditor save and publication flow", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "重试刷新" }));
 
-    expect(await screen.findByText("v2 当前发布身份")).toBeInTheDocument();
+    expect(await screen.findByText("公司可用 v2")).toBeInTheDocument();
     expect(screen.getByLabelText("业务表名称")).toHaveValue(
       "刷新失败后的本地客户",
     );
@@ -661,7 +694,7 @@ describe("TemplateEditor save and publication flow", () => {
     await waitFor(() =>
       expect(api.listVersions).toHaveBeenCalledWith(detail().id),
     );
-    expect(await screen.findByText("v2 当前发布身份")).toBeInTheDocument();
+    expect(await screen.findByText("公司可用 v2")).toBeInTheDocument();
   });
 });
 

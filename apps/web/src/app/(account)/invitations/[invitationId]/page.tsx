@@ -13,7 +13,9 @@ export interface InvitationPageProps {
 
 export default async function InvitationPage({ params }: InvitationPageProps) {
   const { invitationId } = await params;
-  await requireUser(`/invitations/${encodeURIComponent(invitationId)}`);
+  const user = await requireUser(
+    `/invitations/${encodeURIComponent(invitationId)}`,
+  );
   const client = await createServerApiClient();
   const { data, response } = await client.GET(
     "/api/v1/me/invitations/{invitationId}",
@@ -25,7 +27,7 @@ export default async function InvitationPage({ params }: InvitationPageProps) {
   }
 
   return (
-    <AccountShell>
+    <AccountShell platformAdmin={user.isPlatformAdmin}>
       <PageHeader
         breadcrumb={<Link href="/waiting">我的邀请</Link>}
         title="确认公司邀请"

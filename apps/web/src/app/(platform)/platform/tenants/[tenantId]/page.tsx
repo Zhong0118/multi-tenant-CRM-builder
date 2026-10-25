@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { ReadingPanel } from "@/components/workbench/surface";
 import { TenantBusinessConfiguration } from "@/features/templates/template-application";
@@ -38,6 +39,7 @@ export default async function TenantDetailPage({
     }),
   ]);
   const { data: tenant, error, response } = tenantResult;
+  if (response.status === 404) notFound();
   if (!tenant) {
     const apiError = toApiError(error, response.status);
     throw Object.assign(new Error(apiError.message), apiError);
@@ -69,10 +71,6 @@ export default async function TenantDetailPage({
         activeAdminCount={tenant.activeAdminCount}
         objectCount={configurationResult.data.objectCount}
       />
-      <TenantBusinessConfiguration
-        tenant={tenant}
-        initialSummary={configurationResult.data}
-      />
       <div className={styles.detailLayout}>
         <ReadingPanel
           ariaLabel="公司与管理员信息"
@@ -101,12 +99,15 @@ export default async function TenantDetailPage({
               <dd>{formatDate(tenant.createdAt)}</dd>
             </div>
           </dl>
-          <h2 className={styles.panelTitle}>首位管理员</h2>
+          <h2 className={`${styles.panelTitle} ${styles.panelTitleSpaced}`}>
+            首位管理员
+          </h2>
           <dl className={styles.detailLedger}>
             <div>
               <dt>手机号</dt>
               <dd>
-                {tenant.firstAdminInvitation?.targetPhone ?? "未创建邀请"}
+                {tenant.firstAdminInvitation?.targetPhone ??
+                  (activeAdminReady ? "无邀请记录" : "未创建邀请")}
               </dd>
             </div>
             <div>
@@ -114,7 +115,9 @@ export default async function TenantDetailPage({
               <dd>
                 {tenant.firstAdminInvitation
                   ? invitationStatusText[tenant.firstAdminInvitation.status]
-                  : "未创建"}
+                  : activeAdminReady
+                    ? "无邀请记录（已有在职管理员）"
+                    : "未创建"}
               </dd>
             </div>
             <div>
@@ -143,6 +146,10 @@ export default async function TenantDetailPage({
           <TenantStatusActions tenant={tenant} />
         </aside>
       </div>
+      <TenantBusinessConfiguration
+        tenant={tenant}
+        initialSummary={configurationResult.data}
+      />
     </div>
   );
 }
@@ -150,6 +157,7 @@ export default async function TenantDetailPage({
 function formatDate(value?: string): string {
   if (!value) return "—";
   return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));

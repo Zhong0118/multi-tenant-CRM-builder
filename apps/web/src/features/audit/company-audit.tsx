@@ -9,6 +9,10 @@ import { useState } from "react";
 
 import { Page, PageToolbar } from "@/components/layout/page";
 import { PageHeader } from "@/components/layout/page-header";
+import {
+  auditFieldLabel,
+  formatAuditValue,
+} from "@/features/platform/audit-changes";
 import { actionLabel, resourceLabel } from "@/features/platform/audit-labels";
 
 import styles from "./company-audit.module.css";
@@ -280,9 +284,11 @@ function AuditDetail({ item, timezone }: { item: AuditItem; timezone: string }) 
             <tbody>
               {item.changes.map((change) => (
                 <tr key={change.key}>
-                  <td>{change.label ?? change.key}</td>
-                  <td className={styles.before}>{formatValue(change.before)}</td>
-                  <td>{formatValue(change.after)}</td>
+                  <td>{change.label ?? auditFieldLabel(change.key)}</td>
+                  <td className={styles.before}>
+                    {changeValue(change, "before", item.resourceType, timezone)}
+                  </td>
+                  <td>{changeValue(change, "after", item.resourceType, timezone)}</td>
                 </tr>
               ))}
             </tbody>
@@ -319,6 +325,22 @@ function context(item: AuditItem) {
     (part): part is string => Boolean(part) && part !== subject(item),
   );
   return parts.join(" · ");
+}
+
+/**
+ * Business fields arrive labelled by the server and are shown as stored;
+ * system keys (status, role, times) get the shared readable form.
+ */
+function changeValue(
+  change: { label?: string | null; key: string; before?: unknown; after?: unknown },
+  side: "before" | "after",
+  resourceType: string,
+  timezone: string,
+) {
+  const value = change[side];
+  return change.label
+    ? formatValue(value)
+    : formatAuditValue(value, change.key, resourceType.toLowerCase(), timezone);
 }
 
 function formatValue(value: unknown): string {

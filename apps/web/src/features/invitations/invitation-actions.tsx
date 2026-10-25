@@ -1,6 +1,7 @@
 "use client";
 
-import { Alert, Button, Space } from "antd";
+import { Alert, Button, Popconfirm, Space } from "antd";
+import Link from "next/link";
 import { useState } from "react";
 
 import type { ApiError } from "@/lib/api/api-error";
@@ -81,14 +82,22 @@ export function InvitationActions({
         >
           接受邀请
         </Button>
-        <Button
-          danger
+        <Popconfirm
+          title="拒绝这个邀请？"
+          description="拒绝后不能再接受，需要公司管理员重新邀请。"
+          okText="确认拒绝"
+          okButtonProps={{ danger: true }}
+          cancelText="取消"
           disabled={disabled}
-          loading={pendingAction === "decline"}
-          onClick={() => void decline()}
+          onConfirm={() => void decline()}
         >
-          拒绝邀请
-        </Button>
+          <Button danger disabled={disabled} loading={pendingAction === "decline"}>
+            拒绝邀请
+          </Button>
+        </Popconfirm>
+        {pendingAction === "decline" && result ? (
+          <Link href="/waiting">返回我的邀请</Link>
+        ) : null}
       </Space>
     </div>
   );

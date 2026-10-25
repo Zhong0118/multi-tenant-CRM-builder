@@ -92,7 +92,7 @@ export function TemplatePublicationPanel({
               type="success"
               showIcon
               title="发布检查已通过"
-              description="确认后将创建新的模板版本，并把它标记为当前发布身份。"
+              description="确认后将创建新的模板版本，之后应用到公司的就是这个版本。"
             />
           )}
           {groupedWarnings.length > 0 ? (

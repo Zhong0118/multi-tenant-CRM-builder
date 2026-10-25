@@ -59,4 +59,56 @@ describe("PlatformOverview", () => {
       screen.getByRole("region", { name: "最近开通的公司" }),
     ).toHaveAttribute("data-surface", "data");
   });
+
+  it("keeps zero counts quiet and names the latest real change", () => {
+    const { container } = render(
+      <PlatformOverview
+        summary={{ total: 3, draft: 0, active: 3, suspended: 0, closed: 0 }}
+        tenants={{ items: [], page: 1, limit: 8, total: 3 }}
+        latestChange={{
+          id: "audit-1",
+          tenantId: "tenant-1",
+          tenantName: "星云科技",
+          actorType: "USER",
+          actorId: "user-1",
+          actorName: "刘洋",
+          action: "follow_up.completed",
+          resourceType: "record_follow_up",
+          resourceId: "follow-1",
+          before: null,
+          after: null,
+          reason: null,
+          requestId: "req-1",
+          ip: null,
+          createdAt: "2026-10-24T08:54:00.000Z",
+        }}
+      />,
+    );
+    expect(screen.getByText("没有待开通的草稿公司")).toBeInTheDocument();
+    expect(screen.getByText("没有暂停的公司")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /家暂停公司/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /最近一次变更/ }),
+    ).toHaveTextContent("星云科技 · 刘洋 完成跟进，10/24 16:54");
+    // Only the running count is highlighted.
+    expect(
+      container.querySelectorAll("[class*='kpiDanger'], [class*='kpiWarning']"),
+    ).toHaveLength(0);
+  });
+
+  it("says when the latest change could not be read", () => {
+    render(
+      <PlatformOverview
+        summary={{ total: 1, draft: 1, active: 0, suspended: 0, closed: 0 }}
+        tenants={{ items: [], page: 1, limit: 8, total: 1 }}
+        latestChange="unavailable"
+      />,
+    );
+    expect(screen.getByRole("link", { name: /暂时无法读取/ })).toHaveAttribute(
+      "href",
+      "/platform/audit",
+    );
+  });
 });
