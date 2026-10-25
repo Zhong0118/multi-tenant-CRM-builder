@@ -1,250 +1,30 @@
 "use client";
 
-import {
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  EyeOutlined,
-  SafetyCertificateOutlined,
-  SettingOutlined,
-  WarningOutlined,
-} from "@ant-design/icons";
+import { CheckCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import type { components } from "@crm/contracts";
-import { Button, Drawer, Empty, Tag } from "antd";
+import { Empty } from "antd";
 import Link from "next/link";
-import { useState } from "react";
 
+import { PageSection } from "@/components/layout/page";
 import { PageHeader } from "@/components/layout/page-header";
-import { DataPanel, ReadingPanel } from "@/components/workbench/surface";
+import { StatusTag, type StatusTone } from "@/components/workbench/status-tag";
+import { DataPanel } from "@/components/workbench/surface";
 
-import { actionLabel, resourceLabel } from "./audit-labels";
 import styles from "./platform-operations.module.css";
 
 type Schemas = components["schemas"];
-type AuditPage = Schemas["PlatformAuditPageDto"];
-type AuditItem = Schemas["PlatformAuditItemDto"];
-type AuditFacets = Schemas["PlatformAuditFacetsDto"];
 
-export interface PlatformAuditFilters extends Record<
-  string,
-  string | undefined
-> {
-  tenantId?: string;
-  action?: string;
-  resourceType?: string;
-  actorType?: string;
-  from?: string;
-  to?: string;
-}
 type OperationPage = Schemas["PlatformOperationPageDto"];
 type RuntimeStatus = Schemas["RuntimeStatusDto"];
-
-export function PlatformAuditView({
-  data,
-  tenants,
-  filters,
-  facets,
-  basePath = "/platform/audit",
-  company = false,
-}: {
-  basePath?: string;
-  company?: boolean;
-  data: AuditPage;
-  tenants: Array<{ id: string; name: string }>;
-  filters: PlatformAuditFilters;
-  /** Actions and resource types that occur; turns the code fields into choices. */
-  facets?: AuditFacets;
-}) {
-  const [selected, setSelected] = useState<AuditItem>();
-  return (
-    <div className={styles.page}>
-      <PageHeader
-        title={company ? "公司审计" : "日志中心"}
-        description="追踪公司、模板、成员和业务配置发生过的关键变更。"
-        status={<span className={styles.count}>{data.total} 条记录</span>}
-      />
-
-      <DataPanel className={styles.filterPanel} ariaLabel="审计筛选">
-        <form action={basePath} className={styles.filters}>
-          {!company ? (
-            <label>
-              公司
-              <select name="tenantId" defaultValue={filters.tenantId ?? ""}>
-                <option value="">全部公司</option>
-                {tenants.map((tenant) => (
-                  <option key={tenant.id} value={tenant.id}>
-                    {tenant.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-          {facets ? (
-            <>
-              <label>
-                动作
-                <select name="action" defaultValue={filters.action ?? ""}>
-                  <option value="">全部动作</option>
-                  {facets.actions.map((facet) => (
-                    <option key={facet.value} value={facet.value}>
-                      {actionLabel(facet.value)}（{facet.count}）
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                资源类型
-                <select
-                  name="resourceType"
-                  defaultValue={filters.resourceType ?? ""}
-                >
-                  <option value="">全部资源</option>
-                  {facets.resourceTypes.map((facet) => (
-                    <option key={facet.value} value={facet.value}>
-                      {resourceLabel(facet.value)}（{facet.count}）
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                操作者
-                <select name="actorType" defaultValue={filters.actorType ?? ""}>
-                  <option value="">全部</option>
-                  <option value="USER">成员和管理员</option>
-                  <option value="SYSTEM">系统</option>
-                  <option value="INTEGRATION">集成</option>
-                </select>
-              </label>
-              <label>
-                从（北京时间）
-                <input type="date" name="from" defaultValue={filters.from} />
-              </label>
-              <label>
-                到
-                <input type="date" name="to" defaultValue={filters.to} />
-              </label>
-            </>
-          ) : (
-            <>
-              <label>
-                动作
-                <input
-                  name="action"
-                  defaultValue={filters.action}
-                  placeholder={
-                    company
-                      ? "例如 record.updated"
-                      : "例如 platform.tenant.status_changed"
-                  }
-                />
-              </label>
-              <label>
-                资源类型
-                <input
-                  name="resourceType"
-                  defaultValue={filters.resourceType}
-                  placeholder={company ? "例如 record" : "例如 tenant"}
-                />
-              </label>
-            </>
-          )}
-          <Button type="primary" htmlType="submit">
-            筛选
-          </Button>
-          <Link href={basePath}>清空</Link>
-        </form>
-      </DataPanel>
-
-      <DataPanel
-        className={styles.tablePanel}
-        ariaLabel={company ? "公司审计日志" : "平台审计日志"}
-      >
-        {data.items.length ? (
-          <div className={styles.tableScroll}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>发生时间</th>
-                  <th>公司</th>
-                  <th>动作</th>
-                  <th>资源</th>
-                  <th>操作者</th>
-                  <th aria-label="操作" />
-                </tr>
-              </thead>
-              <tbody>
-                {data.items.map((item) => (
-                  <tr key={item.id}>
-                    <td className={styles.time}>
-                      {formatDate(item.createdAt)}
-                    </td>
-                    <td>{item.tenantName ?? "平台级"}</td>
-                    <td>
-                      <strong>{actionLabel(item.action)}</strong>
-                      {actionLabel(item.action) === item.action ? null : (
-                        <small>{item.action}</small>
-                      )}
-                    </td>
-                    <td>
-                      {resourceLabel(item.resourceType)}
-                      {item.resourceId ? (
-                        <small>{shortId(item.resourceId)}</small>
-                      ) : null}
-                    </td>
-                    <td>{item.actorName ?? actorLabel(item.actorType)}</td>
-                    <td>
-                      <Button
-                        type="text"
-                        icon={<EyeOutlined />}
-                        aria-label="查看详情"
-                        onClick={() => setSelected(item)}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <Empty description="当前筛选条件下没有审计记录" />
-        )}
-        <PagePager
-          basePath={basePath}
-          page={data.page}
-          limit={data.limit}
-          total={data.total}
-          query={filters}
-        />
-      </DataPanel>
-
-      <Drawer
-        title="审计详情"
-        size={560}
-        open={Boolean(selected)}
-        onClose={() => setSelected(undefined)}
-      >
-        {selected ? <AuditDetail item={selected} /> : null}
-      </Drawer>
-    </div>
-  );
-}
 
 export function PlatformOperationsView({ data }: { data: OperationPage }) {
   return (
     <div className={styles.page}>
       <PageHeader
         title="平台操作记录"
-        description="查看业务模板为各公司生成业务表草稿的记录。"
-        status={<span className={styles.count}>{data.total} 次操作</span>}
+        count={data.total}
+        description="业务模板为各公司生成业务表草稿的记录。只记录已生成的草稿；草稿是否发布，由公司管理员决定。"
       />
-      <ReadingPanel className={styles.notice} ariaLabel="任务机制说明">
-        <ClockCircleOutlined />
-        <div>
-          <strong>模板应用结果</strong>
-          <span>
-            这里只记录已成功生成的业务表草稿，不代表已发布。请由公司管理员继续审核、发布。
-          </span>
-        </div>
-      </ReadingPanel>
       <DataPanel className={styles.tablePanel} ariaLabel="平台操作记录">
         {data.items.length ? (
           <div className={styles.tableScroll}>
@@ -254,9 +34,8 @@ export function PlatformOperationsView({ data }: { data: OperationPage }) {
                   <th>完成时间</th>
                   <th>操作</th>
                   <th>目标公司</th>
-                  <th>生成内容</th>
+                  <th>结果</th>
                   <th>操作者</th>
-                  <th>状态</th>
                 </tr>
               </thead>
               <tbody>
@@ -267,9 +46,8 @@ export function PlatformOperationsView({ data }: { data: OperationPage }) {
                     </td>
                     <td>
                       <strong>
-                        {item.templateName} · V{item.templateVersionNo}
+                        应用「{item.templateName}」v{item.templateVersionNo}
                       </strong>
-                      <small>应用业务模板</small>
                     </td>
                     <td>
                       <Link href={`/platform/tenants/${item.tenantId}`}>
@@ -277,20 +55,23 @@ export function PlatformOperationsView({ data }: { data: OperationPage }) {
                       </Link>
                       <small>{item.tenantCode}</small>
                     </td>
-                    <td>{item.objectCount} 张业务表</td>
-                    <td>{item.appliedByName}</td>
                     <td>
-                      <Tag color="green">已完成</Tag>
+                      <StatusTag tone="success">已生成</StatusTag>
+                      <small>{item.objectCount} 张业务表草稿</small>
                     </td>
+                    <td>{item.appliedByName}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         ) : (
-          <Empty description="还没有模板应用记录">
-            <p>
-              选择草稿公司可应用已发布模板，也可由公司管理员手工创建业务表。
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="还没有模板应用记录"
+          >
+            <p className={styles.emptyHint}>
+              在草稿公司的详情页可以应用已发布的模板，也可以由公司管理员手工创建业务表。
             </p>
             <Link href="/platform/tenants?status=DRAFT">查看草稿公司</Link>
           </Empty>
@@ -307,144 +88,92 @@ export function PlatformOperationsView({ data }: { data: OperationPage }) {
   );
 }
 
-export function PlatformSettingsView({ status }: { status: RuntimeStatus }) {
-  const readyCount = status.services.filter(
-    (item) => item.status === "READY",
-  ).length;
+/**
+ * Nothing on this page can be changed here: services are configured on the
+ * server and account policies ship with the release. The page says so once,
+ * then shows what is running (checked when the page opened) apart from the
+ * policies in force.
+ */
+export function PlatformSettingsView({
+  status,
+  checkedAt,
+}: {
+  status: RuntimeStatus;
+  /** When the server read the status, so server and browser render the same time. */
+  checkedAt: string;
+}) {
+  const attention = status.services.filter((item) => item.status !== "READY");
   return (
     <div className={styles.page}>
       <PageHeader
         title="系统设置"
-        description="查看运行服务与当前账号策略。"
-        status={
-          <span className={styles.count}>
-            {readyCount}/{status.services.length} 项就绪
-          </span>
-        }
+        status={<StatusTag>只读</StatusTag>}
+        description="这里没有可在页面上修改的配置：服务由服务器环境配置，账号策略随系统版本发布。"
       />
 
-      <section className={styles.serviceGrid} aria-label="运行服务">
-        {status.services.map((service) => (
-          <article key={service.key} className={styles.serviceCard}>
-            <div className={styles.serviceIcon} data-status={service.status}>
-              {service.status === "READY" ? (
-                <CheckCircleOutlined />
-              ) : (
-                <WarningOutlined />
-              )}
-            </div>
-            <div>
-              <span>{service.label}</span>
-              <strong>
+      <PageSection
+        title="运行状态"
+        description={`打开页面时检测（北京时间 ${formatClock(checkedAt)}）· 环境 ${status.environment}`}
+        extra={
+          attention.length ? (
+            <StatusTag tone="warning">{attention.length} 项需要留意</StatusTag>
+          ) : (
+            <StatusTag tone="success">全部就绪</StatusTag>
+          )
+        }
+      >
+        <ul className={styles.serviceList} aria-label="运行服务">
+          {status.services.map((service) => (
+            <li key={service.key}>
+              <span
+                className={styles.serviceIcon}
+                data-status={service.status}
+                aria-hidden
+              >
+                {service.status === "READY" ? (
+                  <CheckCircleOutlined />
+                ) : (
+                  <WarningOutlined />
+                )}
+              </span>
+              <span className={styles.serviceName}>{service.label}</span>
+              <StatusTag tone={serviceTone(service.status)}>
                 {service.status === "READY" &&
                 (service.key === "sms" || service.key === "webOrigin")
                   ? "已配置"
                   : statusLabel(service.status)}
-              </strong>
-              <p>{service.detail}</p>
-            </div>
-          </article>
-        ))}
-      </section>
-
-      <div className={styles.settingsGrid}>
-        <DataPanel className={styles.policyPanel} ariaLabel="安全策略">
-          <div className={styles.panelTitle}>
-            <SafetyCertificateOutlined />
-            <div>
-              <h2>账号与数据保留</h2>
-              <p>当前后端实际执行的策略</p>
-            </div>
-          </div>
-          <dl className={styles.policyList}>
-            <Policy
-              label="登录有效期"
-              value={`${status.policies.sessionTtlDays} 天`}
-            />
-            <Policy
-              label="登录历史"
-              value={`登录历史保留 ${status.policies.sessionHistoryRetentionDays} 天`}
-            />
-            <Policy
-              label="验证码有效期"
-              value={`${status.policies.verificationTtlMinutes} 分钟`}
-            />
-            <Policy
-              label="验证码记录"
-              value={`保留 ${status.policies.verificationRetentionDays} 天`}
-            />
-          </dl>
-        </DataPanel>
-        <ReadingPanel className={styles.deployPanel} ariaLabel="运行说明">
-          <div className={styles.panelTitle}>
-            <SettingOutlined />
-            <div>
-              <h2>运行说明</h2>
-              <p>当前环境：{status.environment}</p>
-            </div>
-          </div>
-          <ul>
-            <li>数据库与 Redis 显示本次访问时的连接状态。</li>
-            <li>短信显示配置状态，实际送达以发送结果为准。</li>
-            <li>
-              此页为只读视图；服务配置由服务器维护，账号策略随系统版本更新。
+              </StatusTag>
+              <span className={styles.serviceDetail}>{service.detail}</span>
             </li>
-          </ul>
-        </ReadingPanel>
-      </div>
+          ))}
+        </ul>
+      </PageSection>
+
+      <PageSection
+        title="账号与数据保留"
+        description="后端当前执行的策略，随系统版本更新。"
+      >
+        <dl className={styles.policyList}>
+          <Policy
+            label="登录有效期"
+            value={`${status.policies.sessionTtlDays} 天`}
+          />
+          <Policy
+            label="登录历史保留"
+            value={`${status.policies.sessionHistoryRetentionDays} 天`}
+          />
+          <Policy
+            label="验证码有效期"
+            value={`${status.policies.verificationTtlMinutes} 分钟`}
+          />
+          <Policy
+            label="验证码记录保留"
+            value={`${status.policies.verificationRetentionDays} 天`}
+          />
+        </dl>
+      </PageSection>
     </div>
   );
-}
-
-function AuditDetail({ item }: { item: AuditItem }) {
-  return (
-    <div className={styles.auditDetail}>
-      <dl>
-        <div>
-          <dt>动作</dt>
-          <dd>
-            {actionLabel(item.action)} · {item.action}
-          </dd>
-        </div>
-        <div>
-          <dt>公司</dt>
-          <dd>{item.tenantName ?? "平台级"}</dd>
-        </div>
-        <div>
-          <dt>操作者</dt>
-          <dd>{item.actorName ?? actorLabel(item.actorType)}</dd>
-        </div>
-        <div>
-          <dt>时间</dt>
-          <dd>{formatDate(item.createdAt)}</dd>
-        </div>
-        <div>
-          <dt>原因</dt>
-          <dd>{item.reason ?? "未填写"}</dd>
-        </div>
-        <div>
-          <dt>请求编号</dt>
-          <dd>{item.requestId}</dd>
-        </div>
-        <div>
-          <dt>IP</dt>
-          <dd>{item.ip ?? "未记录"}</dd>
-        </div>
-      </dl>
-      <section>
-        <h3>变更前</h3>
-        <JsonBlock value={item.before} />
-      </section>
-      <section>
-        <h3>变更后</h3>
-        <JsonBlock value={item.after} />
-      </section>
-    </div>
-  );
-}
-
-function JsonBlock({ value }: { value: unknown }) {
-  return <pre>{value == null ? "无" : JSON.stringify(value, null, 2)}</pre>;
 }
 
 function Policy({ label, value }: { label: string; value: string }) {
@@ -496,24 +225,30 @@ function PagePager({
   );
 }
 
+function serviceTone(status: string): StatusTone {
+  if (status === "READY") return "success";
+  if (status === "DEVELOPMENT") return "warning";
+  return "danger";
+}
+
 function statusLabel(status: string) {
   if (status === "READY") return "已就绪";
   if (status === "DEVELOPMENT") return "开发模式";
   return "需要处理";
 }
 
-function actorLabel(type: string) {
-  if (type === "SYSTEM") return "系统";
-  if (type === "INTEGRATION") return "集成服务";
-  return "用户";
-}
-
-function shortId(value: string) {
-  return `${value.slice(0, 8)}…`;
+function formatClock(value: string) {
+  return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(value));
 }
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));

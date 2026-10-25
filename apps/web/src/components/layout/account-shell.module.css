@@ -27,14 +27,9 @@
 }
 
 .mark {
-  display: inline-grid;
   width: 28px;
   height: 28px;
-  place-items: center;
   border-radius: var(--radius-control);
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 14px;
 }
 
 .nav {

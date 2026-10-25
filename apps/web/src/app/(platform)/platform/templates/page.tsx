@@ -29,7 +29,8 @@ export default async function TemplatesPage({
     <div className={styles.page}>
       <PageHeader
         title="业务模板"
-        description="统一维护可复用的业务对象配置。"
+        count={data.total}
+        description="开通公司时可选用的一套业务表。只有已发布的版本能应用到公司，应用后生成的是草稿，由公司管理员发布。"
         extra={
           <Link href="/platform/templates/new">
             <Button type="primary">新建模板</Button>

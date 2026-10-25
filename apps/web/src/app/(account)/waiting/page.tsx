@@ -21,7 +21,7 @@ export default async function WaitingPage() {
   const invited = (data ?? []).some((invitation) => invitation.status === "PENDING");
 
   return (
-    <AccountShell>
+    <AccountShell platformAdmin={user.isPlatformAdmin}>
       <PageHeader
         title={`你好，${user.displayName}`}
         description="个人账号已经准备好，下一步是加入你的公司。"

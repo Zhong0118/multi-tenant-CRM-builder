@@ -1,9 +1,10 @@
-import { Alert } from "antd";
+import { Alert, Button, Space } from "antd";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AccountShell } from "@/components/layout/account-shell";
 import { PageHeader } from "@/components/layout/page-header";
+import { StatePanel } from "@/components/workbench/state-panel";
 import { isActiveWorkspace } from "@/features/workspaces/workspace-access";
 import { WorkspaceList } from "@/features/workspaces/workspace-list";
 import { createServerApiClient } from "@/lib/api/server-client";
@@ -33,7 +34,7 @@ export default async function WorkspacesPage({
   }
 
   return (
-    <AccountShell current="workspaces">
+    <AccountShell current="workspaces" platformAdmin={user.isPlatformAdmin}>
       <PageHeader
         title="选择工作空间"
         description={`${user.displayName}，选择要进入的公司。开通中的公司会显示为等待平台启用。`}
@@ -49,11 +50,27 @@ export default async function WorkspacesPage({
           />
         ) : null}
         {active.length === 0 && (workspaces ?? []).length === 0 ? (
-          <Alert
-            type="info"
-            showIcon
-            title="尚未加入公司"
-            description={<Link href="/waiting">返回等待页查看公司邀请</Link>}
+          <StatePanel
+            title="还没有加入公司"
+            description={
+              user.isPlatformAdmin
+                ? "你的账号是平台管理员，可以在管理中心开通和管理公司；被公司邀请后，工作空间会出现在这里。"
+                : "公司管理员按你的手机号发出邀请后，接受邀请即可进入工作空间。"
+            }
+            action={
+              user.isPlatformAdmin ? (
+                <Space wrap>
+                  <Link href="/platform">
+                    <Button type="primary">进入管理中心</Button>
+                  </Link>
+                  <Link href="/waiting">查看公司邀请</Link>
+                </Space>
+              ) : (
+                <Link href="/waiting">
+                  <Button type="primary">查看公司邀请</Button>
+                </Link>
+              )
+            }
           />
         ) : (
           <WorkspaceList workspaces={workspaces ?? []} />

@@ -207,7 +207,17 @@ export function TenantBusinessConfiguration({
         </div>
       ) : null}
 
-      {displayedResult ? <ApplicationResult result={displayedResult} /> : null}
+      {result ? (
+        <ApplicationResult result={result} />
+      ) : summary.application ? (
+        // An earlier application is history: say where the tables came from
+        // without asking for a review that may have happened long ago.
+        <p className={styles.applicationBlocked}>
+          来源：{summary.application.templateName} v
+          {summary.application.templateVersionNo}，生成了{" "}
+          {summary.application.objects.length} 张业务表草稿。
+        </p>
+      ) : null}
       {!displayedResult && !summary.canApplyTemplate ? (
         <p className={styles.applicationBlocked}>
           {blockingReasonText(summary.blockingReason, tenant.status)}

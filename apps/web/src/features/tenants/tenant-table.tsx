@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 
 import { DataPanel } from "@/components/workbench/surface";
 
+import { maskPhone } from "./mask-phone";
 import styles from "./tenants.module.css";
 import { tenantConfigurationText, tenantNextStep } from "./tenant-next-step";
 import { TenantStatusTag } from "./tenant-status";
@@ -21,33 +22,48 @@ const columns: ColumnsType<PlatformTenant> = [
     title: "公司",
     dataIndex: "name",
     render: (name: string, tenant) => (
-      <Link
-        href={`/platform/tenants/${tenant.id}`}
-        className={styles.tenantLink}
-        onClick={(event) => event.stopPropagation()}
-      >
-        {name}
-      </Link>
+      <span className={styles.tenantName}>
+        <Link
+          href={`/platform/tenants/${tenant.id}`}
+          className={styles.tenantLink}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {name}
+        </Link>
+        <code>{tenant.code}</code>
+      </span>
     ),
   },
-  { title: "工作空间代码", dataIndex: "code" },
   {
     title: "状态",
     dataIndex: "status",
+    width: 96,
     render: (status: PlatformTenant["status"]) => (
       <TenantStatusTag status={status} />
     ),
   },
   {
-    title: "首位管理员",
+    title: "公司管理员",
     // A company that is already running has no pending invitation to show, and
-    // "尚未邀请" beside a non-zero 活跃管理员 count contradicts itself. Say what
-    // is actually true — no invitation row — as the company detail page does.
-    render: (_, tenant) =>
-      tenant.firstAdminInvitation?.targetPhone ??
-      (tenant.activeAdminCount > 0 ? "未创建邀请" : "尚未邀请"),
+    // "尚未邀请" beside a non-zero admin count contradicts itself. Say what is
+    // actually true — no invitation row — as the company detail page does.
+    render: (_, tenant) => (
+      <span className={styles.configuration}>
+        <span>
+          {tenant.activeAdminCount > 0
+            ? `${tenant.activeAdminCount} 位在职`
+            : "暂无在职管理员"}
+        </span>
+        <small>
+          {tenant.firstAdminInvitation?.targetPhone
+            ? `首位邀请 ${maskPhone(tenant.firstAdminInvitation.targetPhone)}`
+            : tenant.activeAdminCount > 0
+              ? "无邀请记录"
+              : "尚未邀请"}
+        </small>
+      </span>
+    ),
   },
-  { title: "活跃管理员", dataIndex: "activeAdminCount" },
   {
     title: "业务配置",
     render: (_, tenant) => {
@@ -69,6 +85,7 @@ const columns: ColumnsType<PlatformTenant> = [
   {
     title: "创建时间",
     dataIndex: "createdAt",
+    width: 116,
     render: (value?: string) => formatDate(value),
   },
 ];
@@ -89,7 +106,7 @@ export function TenantTable({
         rowKey="id"
         columns={columns}
         dataSource={data.items}
-        scroll={{ x: 1240 }}
+        scroll={{ x: 920 }}
         pagination={{
           current: data.page,
           pageSize: data.limit,
@@ -112,7 +129,10 @@ export function TenantTable({
 
 function formatDate(value?: string): string {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" }).format(
-    new Date(value),
-  );
+  return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(value));
 }

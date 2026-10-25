@@ -118,4 +118,33 @@ describe("SessionList", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("当前会话")).toBeInTheDocument();
   });
+
+  it("shows a history read failure beside the history with a retry", async () => {
+    const page2 = { items: [sessions[2]], page: 2, limit: 1, total: 2 };
+    const api: SecurityApi = {
+      revokeSession: vi.fn(),
+      changePassword: vi.fn(),
+      listSessions: vi
+        .fn()
+        .mockRejectedValueOnce(new Error("offline"))
+        .mockResolvedValueOnce(page2),
+    };
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <SessionList
+          initialActive={{ items: [sessions[0]], page: 1, limit: 10, total: 1 }}
+          initialHistory={{ items: [sessions[2]], page: 1, limit: 1, total: 2 }}
+          api={api}
+        />
+      </QueryClientProvider>,
+    );
+    fireEvent.click(screen.getByRole("radio", { name: /登录历史/ }));
+    fireEvent.click(screen.getByTitle("2"));
+    expect(await screen.findByText(/登录历史读取失败/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /重\s*试/ }));
+    await waitFor(() =>
+      expect(screen.queryByText(/登录历史读取失败/)).not.toBeInTheDocument(),
+    );
+    expect(api.listSessions).toHaveBeenNthCalledWith(2, "HISTORY", 2, 1);
+  });
 });

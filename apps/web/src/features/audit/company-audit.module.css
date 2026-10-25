@@ -220,7 +220,8 @@
     grid-template-columns: 24px minmax(0, 1fr) auto;
   }
 
-  .chevron {
+  /* Beats antd's .anticon display, which would put the chevron on a line of its own. */
+  .entry .chevron {
     display: none;
   }
 

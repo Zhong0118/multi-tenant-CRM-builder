@@ -10,7 +10,6 @@ import {
   Empty,
   Input,
   Modal,
-  Result,
   Segmented,
   Select,
   Table,
@@ -19,6 +18,7 @@ import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { RouteForbidden } from "@/components/feedback/route-states";
 import { useToast } from "@/components/feedback/use-toast";
 import { MemberIdentity } from "@/components/identity/member-identity";
 import { PageHeader } from "@/components/layout/page-header";
@@ -340,15 +340,9 @@ export function MemberTable({
 
   if (viewerRole !== "TENANT_ADMIN") {
     return (
-      <Result
-        status="403"
+      <RouteForbidden
         title="仅公司管理员可管理成员"
-        subTitle="你可以继续使用工作空间内已授权的业务功能。"
-        extra={
-          <Link href={`/workspace/${tenantCode}`}>
-            <Button type="primary">返回工作台</Button>
-          </Link>
-        }
+        homeHref={`/workspace/${tenantCode}`}
       />
     );
   }

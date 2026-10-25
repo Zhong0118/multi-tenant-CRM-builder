@@ -175,4 +175,17 @@ describe("InvitationDetail", () => {
     ).toBeInTheDocument();
     expect(onNavigate).toHaveBeenCalledWith("/workspaces");
   });
+
+  it("asks before declining, then offers the way back", async () => {
+    const api = createApi();
+    render(<InvitationDetail invitation={pendingInvitation} api={api} onNavigate={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "拒绝邀请" }));
+    expect(api.decline).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole("button", { name: "确认拒绝" }));
+
+    await waitFor(() => expect(api.decline).toHaveBeenCalledWith(pendingInvitation.id));
+    expect(await screen.findByText(/已拒绝该邀请/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "返回我的邀请" })).toHaveAttribute("href", "/waiting");
+  });
 });

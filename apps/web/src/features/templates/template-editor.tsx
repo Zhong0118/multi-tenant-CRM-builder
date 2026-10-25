@@ -7,6 +7,7 @@ import { useRef, useState } from "react";
 
 import { StatusTag } from "@/components/workbench/status-tag";
 import { toApiError } from "@/lib/api/api-error";
+import { useLeaveGuard } from "@/lib/hooks/use-leave-guard";
 
 import { browserTemplateApi, type TemplateApi } from "./template-api";
 import {
@@ -28,28 +29,51 @@ import type {
 
 import styles from "./templates.module.css";
 
+interface TemplateRecovery {
+  sessionId: string;
+  draft: TemplateDraft;
+  draftVersion: number;
+  activeObjectId?: string;
+  revision: number;
+}
+
 export interface TemplateEditorProps {
+  userId: string;
   initialTemplate: BusinessTemplateDetail;
   initialVersions: BusinessTemplateVersion[];
   api?: TemplateApi;
 }
 
 export function TemplateEditor({
+  userId,
   initialTemplate,
   initialVersions,
   api = browserTemplateApi,
 }: TemplateEditorProps) {
   const queryClient = useQueryClient();
-  const [template, setTemplate] = useState(initialTemplate);
-  const initialDraft = templateDraftFromDetail(initialTemplate);
+  const recoveryKey = ["template-editor-recovery", userId, initialTemplate.id];
+  const [recovery] = useState(() =>
+    queryClient.getQueryData<TemplateRecovery>(recoveryKey),
+  );
+  const [sessionId] = useState(
+    () => recovery?.sessionId ?? crypto.randomUUID(),
+  );
+  const [template, setTemplate] = useState(() => ({
+    ...initialTemplate,
+    // Keep the version these edits were based on so conflicts remain detectable.
+    draftVersion: recovery?.draftVersion ?? initialTemplate.draftVersion,
+  }));
+  const initialDraft =
+    recovery?.draft ?? templateDraftFromDetail(initialTemplate);
   const [draft, setDraft] = useState(initialDraft);
   const draftRef = useRef(initialDraft);
-  const localRevision = useRef(0);
+  const localRevision = useRef(recovery?.revision ?? 0);
   const [versions, setVersions] = useState(initialVersions);
   const [activeObjectId, setActiveObjectId] = useState<string | undefined>(
-    initialTemplate.configuration.objects[0]?.id,
+    recovery?.activeObjectId ?? initialDraft.objects[0]?.object.id,
   );
-  const [dirty, setDirty] = useState(false);
+  const [dirty, setDirty] = useState(Boolean(recovery));
+  const guard = useLeaveGuard(dirty);
   const [saving, setSaving] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -78,6 +102,16 @@ export function TemplateEditor({
     setDirty(true);
     setError(undefined);
     setAnalysis(undefined);
+    // The root QueryClient survives client-side back/forward navigation. This
+    // cache stays in this tab's memory, scoped to the signed-in user/template.
+    queryClient.setQueryDefaults(recoveryKey, { gcTime: Infinity });
+    queryClient.setQueryData<TemplateRecovery>(recoveryKey, {
+      sessionId,
+      draft: next,
+      draftVersion: template.draftVersion,
+      activeObjectId,
+      revision: localRevision.current,
+    });
   }
 
   const duplicateObjectCode = draft.objects.some(
@@ -109,6 +143,9 @@ export function TemplateEditor({
     const created = next.objects.at(-1);
     changeDraft(next);
     setActiveObjectId(created?.object.id);
+    queryClient.setQueryData<TemplateRecovery>(recoveryKey, (current) =>
+      current ? { ...current, activeObjectId: created?.object.id } : current,
+    );
     setCreatorOpen(false);
   }
 
@@ -133,6 +170,18 @@ export function TemplateEditor({
         description: template.description,
         configuration: toTemplateConfiguration(savingDraft),
       });
+      const cached = queryClient.getQueryData<TemplateRecovery>(recoveryKey);
+      if (
+        cached?.sessionId === sessionId &&
+        cached.revision === savingRevision
+      ) {
+        queryClient.removeQueries({ queryKey: recoveryKey, exact: true });
+      } else if (cached?.sessionId === sessionId) {
+        queryClient.setQueryData<TemplateRecovery>(recoveryKey, {
+          ...cached,
+          draftVersion: saved.draftVersion,
+        });
+      }
       if (localRevision.current === savingRevision) {
         const nextDraft = templateDraftFromDetail(saved);
         draftRef.current = nextDraft;
@@ -269,8 +318,8 @@ export function TemplateEditor({
             </StatusTag>
             <span className={styles.publicationIdentity}>
               {template.activeVersion
-                ? `v${template.activeVersion.versionNo} 当前发布身份`
-                : "尚无发布身份"}
+                ? `公司可用 v${template.activeVersion.versionNo}`
+                : "尚未发布，公司不可用"}
             </span>
           </div>
         </div>
@@ -299,6 +348,15 @@ export function TemplateEditor({
           </Button>
         </div>
       </header>
+
+      {recovery && dirty ? (
+        <Alert
+          type="warning"
+          showIcon
+          title="已恢复本标签页未保存的模板修改"
+          description="请检查后保存。其他人若已修改此模板，保存时会提示版本冲突；这些改动尚未应用到任何公司。"
+        />
+      ) : null}
 
       {error ? (
         <Alert
@@ -516,6 +574,20 @@ export function TemplateEditor({
           setPanelError(undefined);
         }}
       />
+      <Modal
+        open={guard.pending !== null}
+        title="放弃未保存的模板修改？"
+        okText="放弃修改"
+        cancelText="继续编辑"
+        okButtonProps={{ danger: true }}
+        onCancel={guard.stay}
+        onOk={() => {
+          queryClient.removeQueries({ queryKey: recoveryKey, exact: true });
+          guard.leave();
+        }}
+      >
+        离开后，还没保存的业务表和字段改动会丢失。要保留，请先点「保存草稿」。
+      </Modal>
     </main>
   );
 }

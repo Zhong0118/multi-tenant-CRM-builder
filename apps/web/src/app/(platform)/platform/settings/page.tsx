@@ -9,5 +9,10 @@ export default async function PlatformSettingsPage() {
     const apiError = toApiError(result.error, result.response.status);
     throw Object.assign(new Error(apiError.message), apiError);
   }
-  return <PlatformSettingsView status={result.data} />;
+  return (
+    <PlatformSettingsView
+      status={result.data}
+      checkedAt={new Date().toISOString()}
+    />
+  );
 }

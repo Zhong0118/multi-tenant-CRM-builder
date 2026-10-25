@@ -1,6 +1,8 @@
+import { RouteForbidden } from "@/components/feedback/route-states";
 import { CompanyAuditView } from "@/features/audit/company-audit";
 import { createServerApiClient } from "@/lib/api/server-client";
 import { toApiError } from "@/lib/api/api-error";
+import { requireWorkspace } from "@/lib/auth/require-workspace";
 
 const CALENDAR_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -13,6 +15,16 @@ export default async function WorkspaceAuditPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { tenantCode } = await params;
+  const workspace = await requireWorkspace(tenantCode);
+  // The API refuses employees; say so instead of showing a load failure.
+  if (workspace.role !== "TENANT_ADMIN") {
+    return (
+      <RouteForbidden
+        title="仅公司管理员可查看公司审计"
+        homeHref={`/workspace/${encodeURIComponent(tenantCode)}`}
+      />
+    );
+  }
   const search = await searchParams;
   const first = (value: string | string[] | undefined) =>
     Array.isArray(value) ? value[0] : value;

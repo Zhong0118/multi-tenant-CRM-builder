@@ -12,13 +12,14 @@ import {
   Pagination,
   Popconfirm,
   Segmented,
-  Tag,
 } from "antd";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { useToast } from "@/components/feedback/use-toast";
 import { PageSection, SettingRow, SettingRows } from "@/components/layout/page";
+import { StatusTag } from "@/components/workbench/status-tag";
 import { toApiError } from "@/lib/api/api-error";
 import { browserApiClient } from "@/lib/api/browser-client";
 
@@ -109,6 +110,8 @@ export function SessionList({
     },
   );
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<{ page: number; text: string }>();
+  const toast = useToast();
   const [view, setView] = useState<"active" | "history">("active");
   const [summary, setSummary] = useState<{
     type: "error" | "success";
@@ -144,7 +147,8 @@ export function SessionList({
         }
         return current.filter((session) => session.id !== sessionId);
       });
-      setSummary({ type: "success", text: "会话已撤销。" });
+      setSummary(undefined);
+      toast.success("会话已撤销，该设备需要重新登录");
     },
     onError: (error) => {
       const apiError = normalizeFormError(error);
@@ -158,13 +162,15 @@ export function SessionList({
   async function loadHistory(page: number) {
     if (!api.listSessions) return;
     setHistoryLoading(true);
+    setHistoryError(undefined);
     try {
       setHistory(await api.listSessions("HISTORY", page, history.limit));
     } catch (error) {
+      // Shown beside the history it concerns, with a retry for the same page.
       const apiError = normalizeFormError(error);
-      setSummary({
-        type: "error",
-        text: `${apiError.message}（请求编号：${apiError.requestId}）`,
+      setHistoryError({
+        page,
+        text: `登录历史读取失败：${apiError.message}（请求编号：${apiError.requestId}）`,
       });
     } finally {
       setHistoryLoading(false);
@@ -286,6 +292,23 @@ export function SessionList({
           />
         ) : (
           <>
+            {historyError ? (
+              <Alert
+                className={styles.securityAlert}
+                type="error"
+                showIcon
+                title={historyError.text}
+                action={
+                  <Button
+                    size="small"
+                    loading={historyLoading}
+                    onClick={() => void loadHistory(historyError.page)}
+                  >
+                    重试
+                  </Button>
+                }
+              />
+            ) : null}
             <SessionRows sessions={history.items} empty="近 90 天没有历史记录" />
             {history.total > history.limit ? (
               <Pagination
@@ -328,11 +351,11 @@ function SessionRows({
           <div>
             <div className={styles.sessionTitle}>
               <strong>{session.deviceSummary || "未知设备"}</strong>
-              {session.isCurrent && <Tag color="cyan">当前会话</Tag>}
-              {session.revokedAt && <Tag>已撤销</Tag>}
+              {session.isCurrent && <StatusTag tone="info">当前会话</StatusTag>}
+              {session.revokedAt && <StatusTag>已撤销</StatusTag>}
               {!session.revokedAt &&
               new Date(session.expiresAt) <= new Date() ? (
-                <Tag>已过期</Tag>
+                <StatusTag>已过期</StatusTag>
               ) : null}
             </div>
             <dl className={styles.sessionMeta}>

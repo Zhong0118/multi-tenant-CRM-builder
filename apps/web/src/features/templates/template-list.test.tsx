@@ -59,5 +59,11 @@ describe("TemplateList", () => {
       "data-tone",
       "warning",
     );
+    expect(screen.getByText("草稿有改动，尚未发布")).toBeInTheDocument();
+    expect(screen.getByText("3 张业务表 · 12 个字段")).toBeInTheDocument();
+    expect(screen.getByText("未应用")).toBeInTheDocument();
+    // One page: no pager.
+    expect(screen.queryByRole("list", { name: /pagination/i })).not.toBeInTheDocument();
+    expect(screen.queryByTitle("1")).not.toBeInTheDocument();
   });
 });
