@@ -3,6 +3,7 @@
 import { CopyOutlined, RightOutlined } from "@ant-design/icons";
 import type { components } from "@crm/contracts";
 import {
+  Alert,
   Button,
   DatePicker,
   Drawer,
@@ -13,7 +14,7 @@ import {
 } from "antd";
 import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
 import { PageToolbar } from "@/components/layout/page";
@@ -73,14 +74,23 @@ export function PlatformAuditView({
   const router = useRouter();
   const [selected, setSelected] = useState<AuditItem>();
   const filtered = Object.values(filters).some(Boolean);
+  const pendingFilters = useRef(filters);
+  useEffect(() => {
+    pendingFilters.current = filters;
+  }, [filters]);
 
   function go(next: PlatformAuditFilters, page = 1) {
+    pendingFilters.current = next;
     const params = new URLSearchParams();
     if (page > 1) params.set("page", String(page));
     for (const [key, value] of Object.entries(next))
       if (value) params.set(key, value);
     const search = params.toString();
     router.push(search ? `${basePath}?${search}` : basePath);
+  }
+
+  function change(patch: Partial<PlatformAuditFilters>) {
+    go({ ...pendingFilters.current, ...patch });
   }
 
   const days = groupByDay(data.items);
@@ -92,6 +102,19 @@ export function PlatformAuditView({
         count={data.total}
         description="平台和各公司的关键变更：谁、在什么时候、对什么做了什么，以及变更前后的内容。"
       />
+      {!facets ? (
+        <Alert
+          type="error"
+          showIcon
+          title="筛选选项读取失败"
+          description="日志仍可查看，请重新加载动作和对象类型选项。"
+          action={
+            <Button size="small" onClick={() => router.refresh()}>
+              重新加载筛选
+            </Button>
+          }
+        />
+      ) : null}
       <PageToolbar
         ariaLabel="日志筛选"
         start={
@@ -108,8 +131,7 @@ export function PlatformAuditView({
               onChange={(tenantId?: string) =>
                 // Facets are counted per company, so an action chosen for one
                 // company may not exist in the next one.
-                go({
-                  ...filters,
+                change({
                   tenantId,
                   action: undefined,
                   resourceType: undefined,
@@ -129,12 +151,14 @@ export function PlatformAuditView({
               className={styles.filter}
               popupMatchSelectWidth={false}
               value={filters.action}
-              onChange={(action?: string) => go({ ...filters, action })}
+              onChange={(action?: string) => change({ action })}
               options={(facets?.actions ?? []).map((facet) => ({
                 value: facet.value,
                 label: `${actionLabel(facet.value)}（${facet.count}）`,
               }))}
-              notFoundContent="没有可选的动作"
+              notFoundContent={
+                facets ? "没有可选的动作" : "筛选选项读取失败，请重试"
+              }
             />
             <Select
               aria-label="按对象类型筛选"
@@ -143,14 +167,14 @@ export function PlatformAuditView({
               className={styles.filter}
               popupMatchSelectWidth={false}
               value={filters.resourceType}
-              onChange={(resourceType?: string) =>
-                go({ ...filters, resourceType })
-              }
+              onChange={(resourceType?: string) => change({ resourceType })}
               options={(facets?.resourceTypes ?? []).map((facet) => ({
                 value: facet.value,
                 label: `${resourceLabel(facet.value)}（${facet.count}）`,
               }))}
-              notFoundContent="没有可选的对象类型"
+              notFoundContent={
+                facets ? "没有可选的对象类型" : "筛选选项读取失败，请重试"
+              }
             />
             <Select
               aria-label="按操作者筛选"
@@ -159,7 +183,7 @@ export function PlatformAuditView({
               className={styles.filter}
               popupMatchSelectWidth={false}
               value={filters.actorType}
-              onChange={(actorType?: string) => go({ ...filters, actorType })}
+              onChange={(actorType?: string) => change({ actorType })}
               options={ACTOR_TYPES}
             />
             <DatePicker.RangePicker
@@ -172,8 +196,7 @@ export function PlatformAuditView({
                 filters.to ? dayjs(filters.to) : null,
               ]}
               onChange={(range) =>
-                go({
-                  ...filters,
+                change({
                   from: range?.[0]?.format("YYYY-MM-DD"),
                   to: range?.[1]?.format("YYYY-MM-DD"),
                 })
@@ -259,7 +282,11 @@ export function PlatformAuditView({
             total={data.total}
             showSizeChanger={false}
             showTotal={(total) => `共 ${total} 条`}
-            onChange={(page) => go(filters, page)}
+            onChange={(page) => {
+              // Pagination still belongs to the previous result until the
+              // new filters arrive from the server.
+              if (pendingFilters.current === filters) go(filters, page);
+            }}
           />
         </div>
       ) : null}
@@ -284,12 +311,8 @@ export function AuditDetail({ item }: { item: AuditItem }) {
     item.resourceType,
     TIME_ZONE,
   );
-  const kind =
-    !item.before && item.after
-      ? "created"
-      : item.before && !item.after
-        ? "removed"
-        : "changed";
+  const hasBefore = item.before != null;
+  const hasAfter = item.after != null;
   return (
     <div className={styles.detail}>
       <p className={styles.detailSentence}>
@@ -356,29 +379,25 @@ export function AuditDetail({ item }: { item: AuditItem }) {
 
       <section>
         <h3 className={styles.detailHeading}>
-          {kind === "created"
-            ? "创建时的内容"
-            : kind === "removed"
-              ? "删除前的内容"
-              : "变更内容"}
+          {hasBefore && hasAfter ? "变更内容" : "记录内容"}
         </h3>
         {changes.length ? (
           <table className={styles.changes}>
             <thead>
               <tr>
                 <th>字段</th>
-                {kind === "created" ? null : <th>之前</th>}
-                {kind === "removed" ? null : <th>之后</th>}
+                {hasBefore ? <th>之前</th> : null}
+                {hasAfter ? <th>之后</th> : null}
               </tr>
             </thead>
             <tbody>
               {changes.map((change) => (
                 <tr key={change.key}>
                   <td>{change.label}</td>
-                  {kind === "created" ? null : (
+                  {!hasBefore ? null : (
                     <td className={styles.before}>{change.before}</td>
                   )}
-                  {kind === "removed" ? null : <td>{change.after}</td>}
+                  {hasAfter ? <td>{change.after}</td> : null}
                 </tr>
               ))}
             </tbody>

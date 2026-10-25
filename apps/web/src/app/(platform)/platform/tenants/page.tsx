@@ -4,25 +4,33 @@ import Link from "next/link";
 import { PageToolbar } from "@/components/layout/page";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatePanel } from "@/components/workbench/state-panel";
-import { TenantSearch } from "@/features/tenants/tenant-search";
+import {
+  TenantSearch,
+  TenantSummaryWarning,
+} from "@/features/tenants/tenant-search";
 import { TenantTable } from "@/features/tenants/tenant-table";
 import styles from "@/features/tenants/tenants.module.css";
 import { toApiError } from "@/lib/api/api-error";
 import { createServerApiClient } from "@/lib/api/server-client";
 
 export interface TenantsPageProps {
-  searchParams: Promise<{ page?: string; status?: string; search?: string }>;
+  searchParams: Promise<{
+    page?: string | string[];
+    status?: string | string[];
+    search?: string | string[];
+  }>;
 }
 
 export default async function TenantsPage({ searchParams }: TenantsPageProps) {
   const params = await searchParams;
-  const page = parsePage(params.page);
+  const page = parsePage(single(params.page));
+  const requestedStatus = single(params.status);
   const status = ["DRAFT", "ACTIVE", "SUSPENDED", "CLOSED"].includes(
-    params.status ?? "",
+    requestedStatus ?? "",
   )
-    ? (params.status as "DRAFT" | "ACTIVE" | "SUSPENDED" | "CLOSED")
+    ? (requestedStatus as "DRAFT" | "ACTIVE" | "SUSPENDED" | "CLOSED")
     : undefined;
-  const search = params.search?.trim().slice(0, 200) || undefined;
+  const search = single(params.search)?.trim().slice(0, 200) || undefined;
   const filters = { status, search };
   const client = await createServerApiClient();
   const [result, summaryResult] = await Promise.all([
@@ -52,26 +60,24 @@ export default async function TenantsPage({ searchParams }: TenantsPageProps) {
       />
       <PageToolbar
         start={
-          summaryResult.data ? (
-            <nav aria-label="按状态查看" className={styles.summary}>
-              {[
-                ["全部", "", summaryResult.data.total],
-                ["草稿", "DRAFT", summaryResult.data.draft],
-                ["运行中", "ACTIVE", summaryResult.data.active],
-                ["已暂停", "SUSPENDED", summaryResult.data.suspended],
-                ["已关闭", "CLOSED", summaryResult.data.closed],
-              ].map(([label, value, count]) => (
-                <Link
-                  key={String(label)}
-                  aria-current={(status ?? "") === value ? "page" : undefined}
-                  href={tenantsHref({ status: String(value), search })}
-                >
-                  {label}
-                  <strong>{count}</strong>
-                </Link>
-              ))}
-            </nav>
-          ) : null
+          <nav aria-label="按状态查看" className={styles.summary}>
+            {[
+              ["全部", "", summaryResult.data?.total],
+              ["草稿", "DRAFT", summaryResult.data?.draft],
+              ["运行中", "ACTIVE", summaryResult.data?.active],
+              ["已暂停", "SUSPENDED", summaryResult.data?.suspended],
+              ["已关闭", "CLOSED", summaryResult.data?.closed],
+            ].map(([label, value, count]) => (
+              <Link
+                key={String(label)}
+                aria-current={(status ?? "") === value ? "page" : undefined}
+                href={tenantsHref({ status: String(value), search })}
+              >
+                {label}
+                {count !== undefined ? <strong>{count}</strong> : null}
+              </Link>
+            ))}
+          </nav>
         }
         end={
           <TenantSearch
@@ -81,6 +87,7 @@ export default async function TenantsPage({ searchParams }: TenantsPageProps) {
           />
         }
       />
+      {!summaryResult.data ? <TenantSummaryWarning /> : null}
       {data.items.length > 0 ? (
         <TenantTable data={data} filters={filters} />
       ) : (
@@ -126,4 +133,8 @@ function parsePage(value?: string): number {
   if (!value || !/^\d+$/.test(value)) return 1;
   const page = Number(value);
   return Number.isSafeInteger(page) && page > 0 ? page : 1;
+}
+
+function single(value: string | string[] | undefined) {
+  return typeof value === "string" ? value : undefined;
 }

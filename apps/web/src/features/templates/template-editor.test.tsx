@@ -164,13 +164,15 @@ function renderEditor(
   initialTemplate = detail(),
   api = editorApi(),
   initialVersions: BusinessTemplateVersion[] = [version()],
-) {
-  const client = new QueryClient({
+  client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
+  }),
+  userId = "test-user",
+) {
   return render(
     <QueryClientProvider client={client}>
       <TemplateEditor
+        userId={userId}
         initialTemplate={initialTemplate}
         initialVersions={initialVersions}
         api={api}
@@ -357,6 +359,90 @@ describe("TemplateEditor save and publication flow", () => {
       within(await leaveDialog()).getByRole("button", { name: "放弃修改" }),
     );
     expect(push).toHaveBeenCalledWith("/platform/templates");
+  });
+
+  it("recovers edits on same-tab return without adopting a newer server version", async () => {
+    const client = new QueryClient();
+    const api = editorApi();
+    const view = renderEditor(detail(), api, [version()], client);
+    createBusinessTable("尚未保存的回访");
+    view.unmount();
+    renderEditor(detail({ draftVersion: 8 }), api, [version()], client);
+    expect(screen.getByDisplayValue("尚未保存的回访")).toBeInTheDocument();
+    expect(
+      screen.getByText("已恢复本标签页未保存的模板修改"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
+    await waitFor(() =>
+      expect(api.saveDraft).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ expectedVersion: 3 }),
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.getByText("草稿已保存")).toBeInTheDocument(),
+    );
+    expect(
+      client.getQueryData([
+        "template-editor-recovery",
+        "test-user",
+        detail().id,
+      ]),
+    ).toBeUndefined();
+  });
+
+  it("keeps recovery isolated between users and clears it on explicit discard", async () => {
+    const client = new QueryClient();
+    const view = renderEditor(detail(), editorApi(), [version()], client);
+    createBusinessTable("私有草稿");
+    view.unmount();
+    const other = renderEditor(
+      detail(),
+      editorApi(),
+      [version()],
+      client,
+      "other-user",
+    );
+    expect(screen.queryByDisplayValue("私有草稿")).not.toBeInTheDocument();
+    other.unmount();
+    const restored = renderEditor(detail(), editorApi(), [version()], client);
+    fireEvent.click(screen.getByRole("link", { name: "返回业务模板" }));
+    fireEvent.click(await screen.findByRole("button", { name: "放弃修改" }));
+    restored.unmount();
+    renderEditor(detail(), editorApi(), [version()], client);
+    expect(screen.queryByDisplayValue("私有草稿")).not.toBeInTheDocument();
+    expect(screen.getByText("草稿已保存")).toBeInTheDocument();
+  });
+
+  it("does not let a discarded draft's late save erase a new recovery", async () => {
+    const client = new QueryClient();
+    const pending = deferred<BusinessTemplateDetail>();
+    const api = editorApi({ saveDraft: vi.fn(() => pending.promise) });
+    const first = renderEditor(detail(), api, [version()], client);
+    fireEvent.change(screen.getByLabelText("业务表名称"), {
+      target: { value: "旧草稿" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
+    first.unmount();
+    const resumed = renderEditor(detail(), editorApi(), [version()], client);
+    fireEvent.click(screen.getByRole("link", { name: "返回业务模板" }));
+    fireEvent.click(await screen.findByRole("button", { name: "放弃修改" }));
+    resumed.unmount();
+    const next = renderEditor(detail(), editorApi(), [version()], client);
+    fireEvent.change(screen.getByLabelText("业务表名称"), {
+      target: { value: "新的未保存草稿" },
+    });
+    const key = ["template-editor-recovery", "test-user", detail().id];
+    const recovery = client.getQueryData(key);
+    pending.resolve(detail({ draftVersion: 4 }));
+    await waitFor(() => expect(client.isMutating()).toBe(0));
+    // Flush the old save continuation before navigating away again.
+    await pending.promise;
+    await Promise.resolve();
+    expect(client.getQueryData(key)).toEqual(recovery);
+    next.unmount();
+    renderEditor(detail({ draftVersion: 4 }), editorApi(), [version()], client);
+    expect(screen.getByLabelText("业务表名称")).toHaveValue("新的未保存草稿");
   });
 
   it("shows one clear business table configuration step at a time", () => {
