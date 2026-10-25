@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -7,6 +8,12 @@ import {
   within,
 } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  usePathname: () => "/workspace/northwind/work",
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 import type { WorkApi } from "@/features/work/work-api";
 
@@ -100,12 +107,11 @@ function setup() {
       }),
     ),
   } as unknown as WorkApi;
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   render(
-    <QueryClientProvider
-      client={
-        new QueryClient({ defaultOptions: { queries: { retry: false } } })
-      }
-    >
+    <QueryClientProvider client={client}>
       <TeamActivity
         tenantCode="northwind"
         api={{ ...teamActivityApi, summarize }}
@@ -113,7 +119,7 @@ function setup() {
       />
     </QueryClientProvider>,
   );
-  return { summarize, work };
+  return { summarize, work, client };
 }
 
 describe("TeamActivity", () => {
@@ -171,4 +177,28 @@ describe("TeamActivity", () => {
       "m-1",
     );
   });
+});
+
+it("keeps member detail and team totals on the same refreshed snapshot", async () => {
+  const { summarize, client } = setup();
+  fireEvent.click(await screen.findByLabelText("查看孙悦的明细"));
+  const original: Awaited<ReturnType<typeof summarize>> =
+    await summarize.mock.results[0].value;
+  summarize.mockResolvedValue({
+    ...original,
+    members: original.members.map((m) =>
+      m.memberId === "m-1" ? { ...m, calls: 20 } : m,
+    ),
+    totals: { ...original.totals, calls: 25 },
+  });
+  await act(async () => {
+    await client.invalidateQueries({
+      queryKey: ["workspace", "northwind", "team-activity"],
+    });
+  });
+  await waitFor(() =>
+    expect(
+      screen.getByText("孙悦 · 明细").closest(".ant-drawer-section")!,
+    ).toHaveTextContent(/20\s*\/ 团队 25/),
+  );
 });

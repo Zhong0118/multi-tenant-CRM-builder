@@ -1,6 +1,11 @@
 "use client";
 
-import { ArrowRightOutlined, BarChartOutlined, HistoryOutlined, TableOutlined } from "@ant-design/icons";
+import {
+  ArrowRightOutlined,
+  BarChartOutlined,
+  HistoryOutlined,
+  TableOutlined,
+} from "@ant-design/icons";
 import Link from "next/link";
 
 import styles from "./ai-assistant.module.css";
@@ -23,11 +28,16 @@ export function SourceCard({
         : source.objectName;
   const detail =
     source.kind === "AGGREGATE"
-      ? source.value
+      ? formatAggregate(source.value)
       : source.kind === "RECORDS"
         ? `${source.count} 条记录`
         : `${source.count} 条活动`;
-  const Glyph = source.kind === "AGGREGATE" ? BarChartOutlined : source.kind === "TIMELINE" ? HistoryOutlined : TableOutlined;
+  const Glyph =
+    source.kind === "AGGREGATE"
+      ? BarChartOutlined
+      : source.kind === "TIMELINE"
+        ? HistoryOutlined
+        : TableOutlined;
   return (
     <Link className={styles.sourceCard} href={href}>
       <span className={styles.sourceGlyph} aria-hidden>
@@ -42,4 +52,13 @@ export function SourceCard({
       </span>
     </Link>
   );
+}
+
+/** A plain number from the API reads with grouping (255,000); anything else as given. */
+function formatAggregate(value: unknown): string {
+  const text = String(value ?? "");
+  const number = /^(-?)(\d+)(\.\d+)?$/.exec(text);
+  return number
+    ? `${number[1]}${number[2].replace(/\B(?=(\d{3})+(?!\d))/g, ",")}${number[3] ?? ""}`
+    : text;
 }

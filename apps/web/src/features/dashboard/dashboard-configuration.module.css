@@ -145,6 +145,20 @@
   margin-bottom: 10px;
 }
 
+.previewHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.previewHead span {
+  flex: 1;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
 .previewPanel {
   margin-bottom: 12px;
   padding: 12px 16px;
@@ -274,16 +288,6 @@
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 600;
-}
-
-.canvasNote {
-  margin: 0 0 12px;
-  padding: 8px 10px;
-  border-radius: var(--radius-control);
-  background: var(--color-warning-soft);
-  color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 18px;
 }
 
 /* ── Library ───────────────────────────────────────────────────────────── */

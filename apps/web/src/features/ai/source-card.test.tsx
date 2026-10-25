@@ -41,4 +41,44 @@ describe("SourceCard", () => {
       "/workspace/northwind/objects/leads/rec-1",
     );
   });
+
+  it("groups digits in an aggregate value", () => {
+    render(
+      <SourceCard
+        tenantCode="northwind"
+        source={
+          {
+            kind: "AGGREGATE",
+            objectCode: "deals",
+            objectName: "商机",
+            label: "金额合计",
+            value: "1234567.5",
+          } as never
+        }
+      />,
+    );
+    expect(screen.getByText("1,234,567.5")).toBeInTheDocument();
+  });
+});
+
+it.each([
+  ["0.004", "0.004"],
+  ["12345678901234567890.12", "12,345,678,901,234,567,890.12"],
+  ["-9876.543210", "-9,876.543210"],
+])("groups %s without losing decimal precision", (value, expected) => {
+  render(
+    <SourceCard
+      tenantCode="northwind"
+      source={
+        {
+          kind: "AGGREGATE",
+          objectCode: "deals",
+          objectName: "商机",
+          label: "金额合计",
+          value,
+        } as never
+      }
+    />,
+  );
+  expect(screen.getByText(expected)).toBeInTheDocument();
 });

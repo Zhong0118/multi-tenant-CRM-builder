@@ -22,6 +22,18 @@ export function conversationGroup(lastMessageAt: string, now = new Date()): "今
   return "更早";
 }
 
+/** A conversation's last activity: the time today, the date otherwise. */
+export function conversationTime(lastMessageAt: string, now = new Date()): string {
+  const date = new Date(lastMessageAt);
+  if (Number.isNaN(date.getTime())) return "";
+  if (conversationGroup(lastMessageAt, now) === "今天") {
+    return date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
+  }
+  return date.getFullYear() === now.getFullYear()
+    ? `${date.getMonth() + 1}月${date.getDate()}日`
+    : `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+}
+
 export function toolPrimaryLine(tool: AiToolSummary): string {
   const prefix =
     tool.status === "FAILED" ? "!" : tool.status === "COMPLETED" ? "✓" : "…";

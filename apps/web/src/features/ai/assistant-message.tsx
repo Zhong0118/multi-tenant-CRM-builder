@@ -1,6 +1,10 @@
 "use client";
 
-import { ClockCircleOutlined } from "@ant-design/icons";
+import { ClockCircleOutlined, CopyOutlined } from "@ant-design/icons";
+import { Button } from "antd";
+import { useState } from "react";
+
+import { useToast } from "@/components/feedback/use-toast";
 
 import { elapsedSince, formatDuration, useElapsedNow } from "./ai-elapsed";
 import styles from "./ai-assistant.module.css";
@@ -29,6 +33,8 @@ export function AssistantMessage({
   proposalBusy?: boolean;
   proposalError?: string | null;
 }) {
+  const toast = useToast();
+  const [copyFailed, setCopyFailed] = useState(false);
   const active = message.status === "STREAMING" || message.status === "GENERATING";
   const now = useElapsedNow(active);
   // Persisted GENERATING rows retain the original creation time on retries.
@@ -62,6 +68,30 @@ export function AssistantMessage({
         <ToolActivity tools={message.toolSummary} running={active} now={active ? now : message.completedAt ? Date.parse(message.completedAt) : undefined} />
         {message.proposal ? <AiProposalCard tenantCode={tenantCode} proposal={message.proposal} busy={proposalBusy} mutationError={proposalError} onConfirm={() => onConfirmProposal?.(message.proposal!.proposalId)} onReject={() => onRejectProposal?.(message.proposal!.proposalId)} /> : null}
         {message.content ? <div className={styles.answerContent}><AnswerText content={message.content} /></div> : null}
+        {message.content && !active && message.status !== "FAILED" ? (
+          <div className={styles.answerActions}>
+            <Button
+              size="small"
+              type="text"
+              icon={<CopyOutlined aria-hidden />}
+              onClick={() => {
+                const failed = () => setCopyFailed(true);
+                setCopyFailed(false);
+                if (!navigator.clipboard) return failed();
+                void navigator.clipboard
+                  .writeText(message.content)
+                  .then(() => toast.success("回答已复制"), failed);
+              }}
+            >
+              复制回答
+            </Button>
+            {copyFailed ? (
+              <span role="alert" className={styles.copyFailed}>
+                无法写入剪贴板，请选中回答文字手动复制
+              </span>
+            ) : null}
+          </div>
+        ) : null}
         {partial ? (
           <AiErrorState message={failedTools.some((tool) => tool.detail || tool.errorCode) ? "查询未全部成功，请展开查看原因" : "部分查询未成功，可展开查看"} onRetry={retryable ? () => onRetry(message.turnId) : undefined} />
         ) : null}
