@@ -493,6 +493,8 @@ describe('personal follow-up AI read', () => {
         recordTitle: '张三',
         title: '回访客户',
         dueAt: '2026-09-20T00:00:00.000Z',
+        dueAtLocal: '2026-09-20T08:00:00.000+08:00',
+        timezone: 'Asia/Shanghai',
         status: 'OPEN',
         overdue: true,
       },
@@ -545,4 +547,94 @@ describe('personal follow-up AI read', () => {
       },
     ]);
   });
+});
+
+describe('AI follow-up local time', () => {
+  it.each([
+    ['Asia/Shanghai', '1900-01-01T00:00:00.000Z', '1900-01-01T00:00:00.000Z'],
+    [
+      'Asia/Shanghai',
+      '2026-09-17T02:00:00.123Z',
+      '2026-09-17T10:00:00.123+08:00',
+    ],
+    [
+      'America/New_York',
+      '2026-07-01T02:00:00.000Z',
+      '2026-06-30T22:00:00.000-04:00',
+    ],
+    [
+      'America/New_York',
+      '2026-01-01T02:00:00.000Z',
+      '2025-12-31T21:00:00.000-05:00',
+    ],
+    [
+      'America/New_York',
+      '2026-03-08T06:59:00.000Z',
+      '2026-03-08T01:59:00.000-05:00',
+    ],
+    [
+      'America/New_York',
+      '2026-03-08T07:00:00.000Z',
+      '2026-03-08T03:00:00.000-04:00',
+    ],
+    [
+      'America/New_York',
+      '2026-11-01T05:30:00.000Z',
+      '2026-11-01T01:30:00.000-04:00',
+    ],
+    [
+      'America/New_York',
+      '2026-11-01T06:30:00.000Z',
+      '2026-11-01T01:30:00.000-05:00',
+    ],
+  ])(
+    'returns a valid timezone-qualified due time for %s at %s',
+    async (timezone, dueAt, dueAtLocal) => {
+      const { service, repository } = fixture();
+      repository.getTenantTimezone.mockResolvedValue(timezone);
+      repository.listForAi.mockResolvedValue([
+        {
+          id: 'task',
+          objectCode: 'leads',
+          objectName: '线索',
+          recordId: 'record',
+          recordTitle: '客户',
+          title: '回访',
+          dueAt,
+          status: 'OPEN',
+          overdue: false,
+        },
+      ]);
+
+      const items = await service.listForAi(context, { limit: 20 });
+
+      expect(items).toEqual([
+        expect.objectContaining({ dueAt, dueAtLocal, timezone }),
+      ]);
+      expect(Date.parse(items[0].dueAtLocal)).toBe(Date.parse(dueAt));
+      expect(repository.getTenantTimezone).toHaveBeenCalledWith(context);
+      expect(repository.listForAi).toHaveBeenCalledWith(
+        context,
+        [
+          expect.objectContaining({
+            objectId: 'object',
+            ownerMemberId: 'me',
+          }),
+        ],
+        { limit: 20 },
+      );
+    },
+  );
+
+  it.each([null, '', 'Not/A_Timezone'])(
+    'rejects unusable timezone %s without returning misleading dates',
+    async (timezone) => {
+      const { service, repository } = fixture();
+      repository.getTenantTimezone.mockResolvedValue(timezone);
+      await expect(
+        service.listForAi(context, { limit: 20 }),
+      ).rejects.toMatchObject({ code: 'INTERNAL_ERROR' });
+      expect(repository.listForAi).not.toHaveBeenCalled();
+    },
+  );
 });

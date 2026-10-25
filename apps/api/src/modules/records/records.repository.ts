@@ -406,6 +406,57 @@ class PrismaRecordsStore implements RecordsStore {
     private readonly context: TenantContext,
   ) {}
 
+  /**
+   * Prisma decodes JSON numbers as doubles. Read legacy MONEY directly as
+   * PostgreSQL text before a response, action snapshot or full JSON update can
+   * make that rounding permanent. Include retired fields because updates also
+   * retain their stored values. Published field types cannot be changed.
+   */
+  private async preserveStoredMoney(
+    records: DynamicRecord[],
+  ): Promise<DynamicRecord[]> {
+    const candidates = records.filter((record) =>
+      Object.values(record.values).some((value) => typeof value === 'number'),
+    );
+    if (!candidates.length) return records;
+    const rows = await this.transaction.$queryRaw<
+      Array<{ id: string; values: Record<string, string> }>
+    >(Prisma.sql`
+      WITH requested(id, object_id, version) AS (
+        VALUES ${Prisma.join(
+          candidates.map(
+            (record) =>
+              Prisma.sql`(${record.id}::uuid, ${record.objectId}::uuid, ${record.version}::int)`,
+          ),
+        )}
+      )
+      SELECT r.id, COALESCE(
+        jsonb_object_agg(f.field_key, r.data ->> f.field_key)
+          FILTER (WHERE f.field_key IS NOT NULL),
+        '{}'::jsonb
+      ) AS values
+      FROM requested q
+      JOIN records r ON r.id = q.id AND r.object_id = q.object_id
+        AND r.version = q.version AND r.tenant_id = ${this.context.tenantId}::uuid
+      LEFT JOIN field_definitions f ON f.tenant_id = r.tenant_id
+        AND f.object_id = r.object_id AND f.type = 'MONEY'
+        AND jsonb_typeof(r.data -> f.field_key) = 'number'
+      GROUP BY r.id
+    `);
+    // READ COMMITTED may see a later row on the second query. Never combine
+    // that row's amount with the earlier version/owner, or fall back to doubles.
+    if (rows.length !== candidates.length) {
+      throw new ApiException('RECORD_VERSION_CONFLICT', 409, {
+        message: '记录在读取期间已变更，请刷新后重试。',
+      });
+    }
+    const byId = new Map(rows.map((row) => [row.id, row.values]));
+    return records.map((record) => ({
+      ...record,
+      values: { ...record.values, ...byId.get(record.id) },
+    }));
+  }
+
   async runFieldAutomations(
     resolved: ResolvedObjectSchema,
     before: DynamicRecord,
@@ -619,31 +670,41 @@ class PrismaRecordsStore implements RecordsStore {
         updatedAt: new Date(record.updatedAt),
       },
     });
-    return fromPrismaRecord(created);
+    return (await this.preserveStoredMoney([fromPrismaRecord(created)]))[0];
   }
 
   async listRecords(query: RecordListQuery): Promise<{
     items: DynamicRecord[];
     total: number;
   }> {
-    const where: Prisma.RecordWhereInput = {
-      tenantId: this.context.tenantId,
-      objectId: query.objectId,
-      deletedAt: null,
-      ownerMemberId: query.ownerMemberId,
-      inPublicPool: query.inPublicPool,
-      ...(query.poolStage === undefined
-        ? {}
-        : { poolStage: query.poolStage === 'LEGACY' ? null : query.poolStage }),
-      ...(query.poolQuality === undefined
-        ? {}
-        : { poolQuality: query.poolQuality }),
-      AND: [
-        ...searchConditions(query.search, query.searchFieldKeys),
-        ...query.filters.map(listFilterCondition),
-      ],
-    };
-    if (typeof query.sort === 'string') {
+    if (
+      typeof query.sort === 'string' &&
+      !query.filters.some(
+        (filter) =>
+          filter.mode === 'NUMBER_RANGE' ||
+          filter.mode === 'EMPTY' ||
+          filter.mode === 'NOT_EMPTY',
+      )
+    ) {
+      const where: Prisma.RecordWhereInput = {
+        tenantId: this.context.tenantId,
+        objectId: query.objectId,
+        deletedAt: null,
+        ownerMemberId: query.ownerMemberId,
+        inPublicPool: query.inPublicPool,
+        ...(query.poolStage === undefined
+          ? {}
+          : {
+              poolStage: query.poolStage === 'LEGACY' ? null : query.poolStage,
+            }),
+        ...(query.poolQuality === undefined
+          ? {}
+          : { poolQuality: query.poolQuality }),
+        AND: [
+          ...searchConditions(query.search, query.searchFieldKeys),
+          ...query.filters.map(listFilterCondition),
+        ],
+      };
       const [items, total] = await Promise.all([
         this.transaction.record.findMany({
           where,
@@ -653,7 +714,10 @@ class PrismaRecordsStore implements RecordsStore {
         }),
         this.transaction.record.count({ where }),
       ]);
-      return { items: items.map(fromPrismaRecord), total };
+      return {
+        items: await this.preserveStoredMoney(items.map(fromPrismaRecord)),
+        total,
+      };
     }
 
     const direction =
@@ -661,11 +725,13 @@ class PrismaRecordsStore implements RecordsStore {
     const offset = (query.page - 1) * query.limit;
     const filterSql = listWhereSql(this.context.tenantId, query, true);
     const [rows, counted] = await Promise.all([
-      this.transaction.$queryRaw<Array<{ id: string }>>(Prisma.sql`
-        SELECT r.id
+      this.transaction.$queryRaw<
+        Array<{ id: string; version: number }>
+      >(Prisma.sql`
+        SELECT r.id, r.version
         FROM records r
         WHERE ${filterSql}
-        ORDER BY ${fieldSortExpression(query.sort)} ${direction} NULLS LAST, r.id ${direction}
+        ORDER BY ${recordSortExpression(query.sort)} ${direction} NULLS LAST, r.id ${direction}
         OFFSET ${offset}
         LIMIT ${query.limit}
       `),
@@ -678,14 +744,38 @@ class PrismaRecordsStore implements RecordsStore {
     const total = counted[0]?.count ?? 0;
     if (rows.length === 0) return { items: [], total };
     const records = await this.transaction.record.findMany({
-      where: { id: { in: rows.map((row) => row.id) } },
+      where: {
+        tenantId: this.context.tenantId,
+        objectId: query.objectId,
+        deletedAt: null,
+        ownerMemberId: query.ownerMemberId,
+        inPublicPool: query.inPublicPool,
+        ...(query.poolStage === undefined
+          ? {}
+          : {
+              poolStage: query.poolStage === 'LEGACY' ? null : query.poolStage,
+            }),
+        ...(query.poolQuality === undefined
+          ? {}
+          : { poolQuality: query.poolQuality }),
+        OR: rows.map(({ id, version }) => ({ id, version })),
+      },
     });
+    // A transfer, deletion or edit between page selection and loading must
+    // not expose a new owner's data or silently return an incomplete page.
+    if (records.length !== rows.length) {
+      throw new ApiException('RECORD_VERSION_CONFLICT', 409, {
+        message: '记录在读取期间已变更，请刷新后重试。',
+      });
+    }
     const byId = new Map(records.map((record) => [record.id, record]));
     return {
-      items: rows.flatMap((row) => {
-        const record = byId.get(row.id);
-        return record ? [fromPrismaRecord(record)] : [];
-      }),
+      items: await this.preserveStoredMoney(
+        rows.flatMap((row) => {
+          const record = byId.get(row.id);
+          return record ? [fromPrismaRecord(record)] : [];
+        }),
+      ),
       total,
     };
   }
@@ -741,7 +831,9 @@ class PrismaRecordsStore implements RecordsStore {
         deletedAt: null,
       },
     });
-    return record ? fromPrismaRecord(record) : null;
+    return record
+      ? (await this.preserveStoredMoney([fromPrismaRecord(record)]))[0]
+      : null;
   }
 
   /**
@@ -820,7 +912,9 @@ class PrismaRecordsStore implements RecordsStore {
     const record = await this.transaction.record.findUnique({
       where: { id: recordId },
     });
-    return record ? fromPrismaRecord(record) : null;
+    return record
+      ? (await this.preserveStoredMoney([fromPrismaRecord(record)]))[0]
+      : null;
   }
 
   /**
@@ -920,7 +1014,9 @@ class PrismaRecordsStore implements RecordsStore {
     const record = await this.transaction.record.findUnique({
       where: { id: input.recordId },
     });
-    return record ? fromPrismaRecord(record) : null;
+    return record
+      ? (await this.preserveStoredMoney([fromPrismaRecord(record)]))[0]
+      : null;
   }
 
   async listTransitionHistory(
@@ -1196,7 +1292,7 @@ function listFilterCondition(
     return { AND: bounds.map((bound) => ({ data: bound })) };
   }
   if (filter.mode === 'NUMBER_RANGE') {
-    return numericRangeCondition(filter);
+    throw new Error('Numeric filters require the SQL record query');
   }
   if (filter.mode === 'BOOLEAN_EQUALS') {
     return {
@@ -1229,33 +1325,7 @@ function listFilterCondition(
       })),
     };
   }
-  return {
-    AND: presenceSql(filter.fieldKey, filter.mode === 'EMPTY', false),
-  } as Prisma.RecordWhereInput;
-}
-
-/**
- * NUMBER is a JSON number; MONEY is a scaled decimal string. Both are read as
- * text and compared numerically so a money value is never ordered as a string.
- * Prisma's JsonFilter gte/lte cannot express that cast, so the predicate is
- * injected as a parameterized SQL fragment the way dashboard metrics do.
- */
-function numericRangeCondition(
-  filter: RecordListNumericFilter,
-): Prisma.RecordWhereInput {
-  const value = Prisma.sql`data ->> ${filter.fieldKey}`;
-  const bounds: Prisma.Sql[] = [
-    Prisma.sql`${value} ~ '^-?[0-9]+([.][0-9]+)?$'`,
-  ];
-  if (filter.min !== undefined) {
-    bounds.push(Prisma.sql`${value}::numeric >= ${filter.min}`);
-  }
-  if (filter.max !== undefined) {
-    bounds.push(Prisma.sql`${value}::numeric <= ${filter.max}`);
-  }
-  return {
-    AND: Prisma.join(bounds, ' AND '),
-  } as Prisma.RecordWhereInput;
+  throw new Error('Presence filters require the SQL record query');
 }
 
 function aggregateValueSql(query: RecordAggregateQuery): Prisma.Sql {
@@ -1347,10 +1417,10 @@ function filterSql(filter: RecordListFilter, qualified: boolean): Prisma.Sql {
       Prisma.sql`${text} ~ '^-?[0-9]+([.][0-9]+)?$'`,
     ];
     if (filter.min !== undefined) {
-      bounds.push(Prisma.sql`${text}::numeric >= ${filter.min}`);
+      bounds.push(Prisma.sql`(${text})::numeric >= ${filter.min}`);
     }
     if (filter.max !== undefined) {
-      bounds.push(Prisma.sql`${text}::numeric <= ${filter.max}`);
+      bounds.push(Prisma.sql`(${text})::numeric <= ${filter.max}`);
     }
     return Prisma.join(bounds, ' AND ');
   }
@@ -1409,12 +1479,19 @@ function jsonValue(fieldKey: string, qualified: boolean): Prisma.Sql {
     : Prisma.sql`data -> ${fieldKey}`;
 }
 
-function fieldSortExpression(sort: RecordListFieldSort): Prisma.Sql {
+function recordSortExpression(sort: RecordListQuery['sort']): Prisma.Sql {
+  if (typeof sort === 'string') {
+    return {
+      updatedAt: Prisma.sql`r.updated_at`,
+      createdAt: Prisma.sql`r.created_at`,
+      recordNo: Prisma.sql`r.record_no`,
+    }[sort];
+  }
   const value = Prisma.sql`r.data ->> ${sort.fieldKey}`;
   if (sort.kind === 'NUMBER') {
     return Prisma.sql`
       CASE
-        WHEN ${value} ~ '^-?[0-9]+([.][0-9]+)?$' THEN ${value}::numeric
+        WHEN ${value} ~ '^-?[0-9]+([.][0-9]+)?$' THEN (${value})::numeric
         ELSE NULL
       END
     `;

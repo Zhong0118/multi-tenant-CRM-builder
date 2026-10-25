@@ -17,6 +17,17 @@ describe('pool config validation', () => {
         ],
       }),
     ).not.toThrow());
+  it.each(['sales-orders', 'legacy_orders'])(
+    'accepts protection sources from existing table %s',
+    (sourceObjectCode) => {
+      expect(() =>
+        validatePoolConfig({
+          ...base,
+          protectionRules: [{ sourceObjectCode, statusKeys: ['signed'] }],
+        }),
+      ).not.toThrow();
+    },
+  );
   it.each([
     { contactTtlHours: 0 },
     { followUpTtlHours: 8761 },

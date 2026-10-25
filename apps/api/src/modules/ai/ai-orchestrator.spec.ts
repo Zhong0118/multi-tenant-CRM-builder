@@ -11,7 +11,9 @@ import type {
   AiProviderEvent,
   AiProviderTool,
 } from './ai-provider';
-import type { ConversationService } from './conversation.service';
+import { ConversationService } from './conversation.service';
+import { ConversationRepository } from './conversation.repository';
+import type { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { AiPublicStreamEvent } from '@crm/contracts';
 import type { BeginTurnResult } from './ai.types';
@@ -85,6 +87,12 @@ function providerWith(
 
 function conversationMock() {
   return {
+    timeContext: jest.fn().mockResolvedValue({
+      timezone: 'Asia/Shanghai',
+      currentDate: '2026-09-18',
+      currentDateTime: '2026-09-18T18:00:00.000+08:00',
+      currentInstant: '2026-09-18T10:00:00.000Z',
+    }),
     beginTurn: jest.fn().mockResolvedValue(begun),
     retryTurn: jest.fn().mockResolvedValue(begun),
     finalizeAssistant: jest.fn().mockResolvedValue(undefined),
@@ -1449,4 +1457,163 @@ describe('AiOrchestrator.streamTurn', () => {
       ),
     ).toHaveLength(101);
   });
+});
+
+describe('AiOrchestrator company time context', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  function fixture(timezone: string | null) {
+    const tenant = { findUnique: jest.fn().mockResolvedValue({ timezone }) };
+    const withTenant = jest.fn(
+      (
+        _context: TenantContext,
+        run: Parameters<DatabaseContextRunner['withTenant']>[1],
+      ) => run({ tenant } as never),
+    );
+    const repository = new ConversationRepository({
+      withTenant,
+    } as unknown as DatabaseContextRunner);
+    const conversations = new ConversationService(repository);
+    jest.spyOn(conversations, 'beginTurn').mockResolvedValue(begun);
+    jest.spyOn(conversations, 'retryTurn').mockResolvedValue(begun);
+    jest.spyOn(conversations, 'contextMessages').mockResolvedValue([]);
+    const finalize = jest
+      .spyOn(conversations, 'finalizeAssistant')
+      .mockResolvedValue(undefined);
+    const inputs: Parameters<AiProvider['streamTurn']>[0][] = [];
+    const provider: AiProvider = {
+      providerKey: 'fake',
+      modelKey: 'fake',
+      streamTurn(input) {
+        inputs.push(input);
+        return providerWith([{ type: 'COMPLETED' }]).streamTurn(input);
+      },
+    };
+    const orchestrator = new AiOrchestrator(
+      conversations,
+      provider,
+      registryWith([]),
+    );
+    return { orchestrator, inputs, tenant, withTenant, finalize };
+  }
+
+  it.each([
+    [
+      'Asia/Shanghai',
+      '2026-09-17T02:00:00.123Z',
+      '2026-09-17T10:00:00.123+08:00',
+    ],
+    [
+      'Asia/Shanghai',
+      '2026-09-17T16:30:00.000Z',
+      '2026-09-18T00:30:00.000+08:00',
+    ],
+    [
+      'America/New_York',
+      '2026-07-01T02:00:00.000Z',
+      '2026-06-30T22:00:00.000-04:00',
+    ],
+    [
+      'America/New_York',
+      '2026-01-01T02:00:00.000Z',
+      '2025-12-31T21:00:00.000-05:00',
+    ],
+    [
+      'Asia/Kathmandu',
+      '2026-01-01T00:00:00.000Z',
+      '2026-01-01T05:45:00.000+05:45',
+    ],
+  ])(
+    'sends trusted %s calendar time at %s to the provider',
+    async (timezone, instant, localTime) => {
+      jest.setSystemTime(new Date(instant));
+      const { orchestrator, inputs, tenant, withTenant } = fixture(timezone);
+      const events = await collect(
+        await orchestrator.streamTurn(
+          context,
+          { content: '今天几点' },
+          new AbortController().signal,
+        ),
+      );
+
+      expect(events.map((event) => event.event)).toContain('turn.completed');
+      expect(inputs).toHaveLength(1);
+      expect(inputs[0].system).toContain(`"timezone":"${timezone}"`);
+      expect(inputs[0].system).toContain(
+        `"currentDate":"${localTime.slice(0, 10)}"`,
+      );
+      expect(inputs[0].system).toContain(`"currentDateTime":"${localTime}"`);
+      expect(inputs[0].system).toContain(`"currentInstant":"${instant}"`);
+      expect(withTenant).toHaveBeenCalledWith(context, expect.any(Function));
+      expect(tenant.findUnique).toHaveBeenCalledWith({
+        where: { id: context.tenantId },
+        select: { timezone: true },
+      });
+      expect(
+        inputs[0].messages.some((message) =>
+          message.content.includes(localTime),
+        ),
+      ).toBe(false);
+    },
+  );
+
+  it('refreshes company date and timezone for a later turn and retry', async () => {
+    const { orchestrator, inputs, tenant } = fixture('Asia/Shanghai');
+    jest.setSystemTime(new Date('2026-09-17T15:59:00.000Z'));
+    await collect(
+      await orchestrator.streamTurn(
+        context,
+        { content: '今天' },
+        new AbortController().signal,
+      ),
+    );
+    jest.setSystemTime(new Date('2026-09-17T16:01:00.000Z'));
+    await collect(
+      await orchestrator.streamTurn(
+        context,
+        { content: '现在' },
+        new AbortController().signal,
+      ),
+    );
+    tenant.findUnique.mockResolvedValue({ timezone: 'America/New_York' });
+    await collect(
+      await orchestrator.retryTurn(
+        context,
+        'turn-1',
+        new AbortController().signal,
+      ),
+    );
+
+    expect(inputs.map((input) => input.system)).toEqual([
+      expect.stringContaining('2026-09-17T23:59:00.000+08:00'),
+      expect.stringContaining('2026-09-18T00:01:00.000+08:00'),
+      expect.stringContaining('2026-09-17T12:01:00.000-04:00'),
+    ]);
+  });
+
+  it.each([null, '', 'Not/A_Timezone'])(
+    'fails closed for unusable company timezone %s',
+    async (timezone) => {
+      const { orchestrator, inputs, finalize } = fixture(timezone);
+      const events = await collect(
+        await orchestrator.streamTurn(
+          context,
+          { content: '今天的跟进' },
+          new AbortController().signal,
+        ),
+      );
+
+      expect(inputs).toHaveLength(0);
+      expect(events.map((event) => event.event)).toContain('turn.failed');
+      expect(finalize).toHaveBeenCalledWith(
+        context,
+        'turn-1',
+        expect.objectContaining({
+          status: 'FAILED',
+          errorCode: 'AI_TURN_FAILED',
+        }),
+      );
+    },
+  );
 });

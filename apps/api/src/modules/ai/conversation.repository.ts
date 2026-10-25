@@ -319,6 +319,16 @@ export class ConversationRepository {
     @Optional() private readonly operations?: AiOperationRepository,
   ) {}
 
+  getTenantTimezone(context: TenantContext): Promise<string | null> {
+    return this.runner.withTenant(context, async (tx) => {
+      const tenant = await tx.tenant.findUnique({
+        where: { id: context.tenantId },
+        select: { timezone: true },
+      });
+      return tenant?.timezone ?? null;
+    });
+  }
+
   list(
     context: TenantContext,
     query: ConversationListQuery,

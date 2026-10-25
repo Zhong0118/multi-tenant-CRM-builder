@@ -22,12 +22,13 @@ import { CurrentTenant } from '../../common/tenancy/tenant-context.decorator';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { WorkspaceGuard } from '../../common/tenancy/workspace.guard';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
+import { OBJECT_CODE_REFERENCE_PATTERN } from '../objects/object-code';
 import { RecordRelationsService } from './record-relations.service';
 export class CreateRecordRelationDto {
   @ApiProperty()
   @IsString()
   @MaxLength(64)
-  @Matches(/^[a-z][a-z0-9_]*$/)
+  @Matches(OBJECT_CODE_REFERENCE_PATTERN)
   objectCode!: string;
   @ApiProperty({ format: 'uuid' }) @IsUUID() recordId!: string;
 }

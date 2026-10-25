@@ -420,7 +420,7 @@ function buildRecords(employees: DemoUser[]): DemoRecord[] {
           stage,
           {
             name: `数字化项目 ${suffix}`,
-            amount: 50000 + serial * 3500,
+            amount: (50000 + serial * 3500).toFixed(2),
             stage,
             closeDate,
             note:
@@ -441,13 +441,13 @@ function buildRecords(employees: DemoUser[]): DemoRecord[] {
         demoRecord('contracts', employee, `销售合同 ${suffix}`, 'active', {
           name: `销售合同 ${suffix}`,
           contractNo: `HT-2026-${String(serial).padStart(4, '0')}`,
-          amount: 80000 + serial * 5000,
+          amount: (80000 + serial * 5000).toFixed(2),
           signDate: `2026-08-${day}`,
           status: 'active',
         }),
         demoRecord('payments', employee, `首期回款 ${suffix}`, null, {
           name: `首期回款 ${suffix}`,
-          amount: 30000 + serial * 2000,
+          amount: (30000 + serial * 2000).toFixed(2),
           paymentDate: `2026-08-${day}`,
           method: 'transfer',
           note: '演示数据：首期款已登记。',

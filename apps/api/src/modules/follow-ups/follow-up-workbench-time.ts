@@ -91,6 +91,19 @@ function wallClockAt(instant: Date, formatter: Intl.DateTimeFormat): WallClock {
   return { year, month, day, hour, minute, second };
 }
 
+/** Format in the tenant zone, retaining UTC for historical sub-minute offsets. */
+export function followUpLocalDateTime(instant: Date, timeZone: string): string {
+  const clock = wallClockAt(instant, wallClockFormatter(timeZone));
+  const milliseconds = instant.toISOString().slice(19, 23);
+  const local = `${clock.year}-${clock.month}-${clock.day}T${clock.hour}:${clock.minute}:${clock.second}${milliseconds}`;
+  const offsetMinutes = (Date.parse(`${local}Z`) - instant.getTime()) / 60_000;
+  if (!Number.isInteger(offsetMinutes)) return instant.toISOString();
+  const absoluteOffset = Math.abs(offsetMinutes);
+  const hours = String(Math.floor(absoluteOffset / 60)).padStart(2, '0');
+  const minutes = String(absoluteOffset % 60).padStart(2, '0');
+  return `${local}${offsetMinutes < 0 ? '-' : '+'}${hours}:${minutes}`;
+}
+
 function localDateAt(now: Date, timeZone: string): string {
   if (!Number.isFinite(now.getTime())) throw new Error('Invalid instant');
   const clock = wallClockAt(now, wallClockFormatter(timeZone));

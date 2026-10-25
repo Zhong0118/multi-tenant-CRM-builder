@@ -219,6 +219,92 @@ describe('cross-table automation (real PostgreSQL)', () => {
       expect(await executions()).toBe(1);
     },
   );
+  it('reads and maps legacy numeric money without rewriting the source, then saves it through normal validation', async () => {
+    for (const objectId of [f.object.id, f.rollbackTargetObject.id]) {
+      await h.adminDatabase.fieldDefinition.create({
+        data: {
+          tenantId: f.tenantA.id,
+          objectId,
+          fieldKey: 'amount',
+          label: '金额',
+          type: 'MONEY',
+          validation: { scale: 2 },
+        },
+      });
+      await republish(objectId, (schema) => {
+        schema.fields.push({
+          ...schema.fields[0],
+          id: randomUUID(),
+          fieldKey: 'amount',
+          label: '金额',
+          type: 'MONEY',
+          required: false,
+          defaultValue: null,
+          validation: { scale: 2 },
+          config: {},
+        });
+        schema.employeeAccess.fields.amount = 'EDIT';
+        schema.employeeAccess.canCreate = true;
+      });
+    }
+    await rules([
+      {
+        ...baseRule,
+        trigger: { type: 'MANUAL' },
+        mappings: {
+          name: { source: 'SOURCE_FIELD', fieldKey: 'name' },
+          amount: { source: 'SOURCE_FIELD', fieldKey: 'amount' },
+        },
+      },
+    ]);
+    const row = await source();
+    await h.adminDatabase.record.update({
+      where: { id: row.id },
+      data: { data: { ...(row.data as object), amount: 71000 } },
+    });
+    const before = await source();
+    const read = await api('get', path(), undefined, f.employee.cookie);
+    expect(read.status).toBe(200);
+    expect(read.body.values?.amount).toBe('71000.00');
+    expect(await source()).toEqual(before);
+    const preview = await api(
+      'post',
+      `${path()}/automations/create-order/preview`,
+      { inputs: {} },
+      f.employee.cookie,
+    );
+    expect(preview.status).toBe(201);
+    expect(preview.body.values?.amount).toBe('71000.00');
+    expect(await source()).toEqual(before);
+    const execution = await api(
+      'post',
+      `${path()}/automations/create-order/execute`,
+      {
+        expectedVersion: before.version,
+        requestId: randomUUID(),
+        inputs: {},
+      },
+      f.employee.cookie,
+    );
+    expect(execution.status).toBe(201);
+    const created = await h.adminDatabase.record.findFirstOrThrow({
+      where: { objectId: f.rollbackTargetObject.id },
+    });
+    expect((created.data as Record<string, unknown>).amount).toBe('71000.00');
+    // Execution already writes the source version; that normal save also
+    // normalizes the legacy amount representation without changing its value.
+    const unchanged = await source();
+    expect((unchanged.data as Record<string, unknown>).amount).toBe('71000');
+    const saved = await api(
+      'patch',
+      path(),
+      { version: unchanged.version, values: { amount: '71000.00' } },
+      f.employee.cookie,
+    );
+    expect(saved.status).toBe(200);
+    expect((await source()).data).toMatchObject({ amount: '71000.00' });
+  });
+
   it('does not trigger for historical matches, create, or imports', async () => {
     await h.adminDatabase.record.update({
       where: { id: f.ownedRecord.id },
@@ -621,8 +707,11 @@ describe('cross-table automation (real PostgreSQL)', () => {
     });
     expect((await api('get', `${path()}/automations`)).body.items).toEqual([]);
     expect(
-      (await api('put', url, { expectedVersion: 1, rules: [] })).status,
-    ).toBe(409);
+      await api('put', url, { expectedVersion: 1, rules: [] }),
+    ).toMatchObject({
+      status: 409,
+      body: { code: 'CONFIG_VERSION_CONFLICT' },
+    });
     expect((await api('get', url, undefined, f.employee.cookie)).status).toBe(
       403,
     );

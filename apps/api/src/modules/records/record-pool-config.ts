@@ -1,4 +1,5 @@
 import { ApiException } from '../../common/errors/api.exception';
+import { OBJECT_CODE_REFERENCE_PATTERN } from '../objects/object-code';
 import type { PoolConfig, PoolProtectionRule } from './record-ownership';
 
 export function validatePoolConfig(input: PoolConfig): void {
@@ -37,7 +38,7 @@ export function validatePoolConfig(input: PoolConfig): void {
           (rule) =>
             !rule ||
             typeof rule.sourceObjectCode !== 'string' ||
-            !/^[a-z][a-z0-9_]*$/.test(rule.sourceObjectCode) ||
+            !OBJECT_CODE_REFERENCE_PATTERN.test(rule.sourceObjectCode) ||
             !Array.isArray(rule.statusKeys) ||
             !rule.statusKeys.length ||
             rule.statusKeys.length > 100 ||

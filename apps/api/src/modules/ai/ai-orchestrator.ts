@@ -109,6 +109,7 @@ export class AiOrchestrator {
         begun.conversationId,
       );
       const messages = toProviderMessages(history, begun);
+      const timeContext = await this.conversations.timeContext(context);
 
       let inputTokens: number | undefined;
       let outputTokens: number | undefined;
@@ -119,7 +120,12 @@ export class AiOrchestrator {
         const merged = mergeProviderAndPublicEvents(
           this.provider.streamTurn({
             messages,
-            system: AI_SYSTEM_PROMPT,
+            system: [
+              AI_SYSTEM_PROMPT,
+              'Trusted company time context for this turn:',
+              JSON.stringify(timeContext),
+              'Interpret today, tomorrow and other relative dates in this company timezone using currentDate. Display timestamps in this timezone unless the user explicitly requests another. Follow-up dueAtLocal includes the company-local offset, except historical offsets with second precision retain the original UTC timestamp ending in Z. Explicitly label those fallback values UTC, not company-local time. dueAt is always the same instant in UTC. Use the timezone offset for the target date, which may differ across daylight saving transitions. Preserve date-only field values as calendar dates.',
+            ].join('\n'),
             tools,
             abortSignal,
           }),

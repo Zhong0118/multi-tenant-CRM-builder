@@ -137,9 +137,36 @@ export function projectVisibleValues(
       ) {
         return [];
       }
-      return [[field.fieldKey, values[field.fieldKey]]];
+      const value = values[field.fieldKey];
+      return [[field.fieldKey, projectStoredFieldValue(field, value)]];
     }),
   );
+}
+
+/** Read compatibility only: keep stored rows and strict decimal-string writes intact. */
+export function projectStoredFieldValue(
+  field: RecordValueField,
+  value: unknown,
+): unknown {
+  if (field.type !== 'MONEY') return value;
+  let text: string;
+  if (typeof value === 'string' && /^-?\d+(?:\.\d+)?$/.test(value)) {
+    text = value;
+  } else if (typeof value === 'number' && Number.isFinite(value)) {
+    // Database reads supply exact decimal text; also support in-memory legacy
+    // snapshots without exponent notation or additional rounding.
+    text = value.toLocaleString('en-US', {
+      useGrouping: false,
+      maximumSignificantDigits: 21,
+    });
+  } else {
+    return value;
+  }
+  const [integer, fraction = ''] = text.split('.');
+  const scale = configInteger(field.validation.scale) ?? 2;
+  // Historical precision may exceed today's scale; never truncate it on read.
+  const digits = fraction.padEnd(scale, '0');
+  return digits ? `${integer}.${digits}` : integer;
 }
 
 function assertActionAllowed(

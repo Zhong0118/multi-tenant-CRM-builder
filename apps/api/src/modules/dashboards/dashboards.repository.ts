@@ -732,7 +732,6 @@ async function executeLeaderboard(
     LEFT JOIN tenant_members tm
       ON tm.tenant_id = r.tenant_id
       AND tm.id::text = r.dashboard_member_id
-      AND tm.status = 'ACTIVE'
     LEFT JOIN users u ON u.id = tm.user_id
     WHERE r.dashboard_member_id IS NOT NULL
     GROUP BY 1, 2
