@@ -1,3 +1,7 @@
+import type { TemplateCaptureSource } from './template-capture';
+import { configOf } from '../records/record-pool-config';
+import type { PublishedObjectSchema } from '../objects/object-schema';
+import type { TemplateGoalRule } from './business-template.schema';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
 
@@ -69,6 +73,7 @@ export interface CreateBusinessTemplateVersion {
 }
 
 export interface BusinessTemplateStore {
+  captureSource?(tenantId: string): Promise<TemplateCaptureSource | null>;
   listTemplates(query: TemplatePageQuery): Promise<{
     items: BusinessTemplateRecord[];
     total: number;
@@ -98,6 +103,7 @@ export interface BusinessTemplateRepository {
   withActor<T>(
     actorId: string,
     work: (store: BusinessTemplateStore) => Promise<T>,
+    options?: { consistentRead?: boolean },
   ): Promise<T>;
 }
 
@@ -108,8 +114,13 @@ export class PrismaBusinessTemplateRepository implements BusinessTemplateReposit
   withActor<T>(
     actorId: string,
     work: (store: BusinessTemplateStore) => Promise<T>,
+    options?: { consistentRead?: boolean },
   ): Promise<T> {
     return this.database.transaction(async (transaction) => {
+      if (options?.consistentRead)
+        await transaction.$executeRawUnsafe(
+          'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY',
+        );
       await transaction.$queryRawUnsafe(SET_USER, actorId);
       return work(new PrismaBusinessTemplateStore(transaction));
     });
@@ -118,6 +129,83 @@ export class PrismaBusinessTemplateRepository implements BusinessTemplateReposit
 
 class PrismaBusinessTemplateStore implements BusinessTemplateStore {
   constructor(private readonly transaction: Prisma.TransactionClient) {}
+
+  async captureSource(tenantId: string): Promise<TemplateCaptureSource | null> {
+    await this.transaction.$queryRawUnsafe(
+      "SELECT set_config('app.tenant_id', $1, true)",
+      tenantId,
+    );
+    const tenant = await this.transaction.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true, name: true, code: true },
+    });
+    if (!tenant) return null;
+    const [
+      objects,
+      unpublishedObjects,
+      objectOverrides,
+      fieldOverrides,
+      goals,
+    ] = await Promise.all([
+      this.transaction.objectDefinition.findMany({
+        where: {
+          tenantId,
+          status: 'ACTIVE',
+          deletedAt: null,
+          archivedAt: null,
+          activePublicationId: { not: null },
+        },
+        include: { activePublication: { select: { configuration: true } } },
+        orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
+      }),
+      this.transaction.objectDefinition.count({
+        where: {
+          tenantId,
+          deletedAt: null,
+          archivedAt: null,
+          status: { not: 'ARCHIVED' },
+          activePublicationId: null,
+        },
+      }),
+      this.transaction.objectPermission.count({
+        where: { tenantId, subjectType: 'MEMBER' },
+      }),
+      this.transaction.memberFieldPermission.count({ where: { tenantId } }),
+      this.transaction.workGoalRule.findMany({
+        where: { tenantId },
+        orderBy: { metric: 'asc' },
+      }),
+    ]);
+    return {
+      tenant,
+      objects: objects.map((object) => {
+        const { version: _version, ...pool } = configOf(object);
+        void _version;
+        return {
+          schema: object.activePublication!
+            .configuration as unknown as PublishedObjectSchema,
+          pool,
+        };
+      }),
+      excluded: {
+        unpublishedObjects,
+        memberOverrides: objectOverrides + fieldOverrides,
+        selectedGoalRules: goals.filter(
+          (g) => g.audience === 'SELECTED_MEMBERS',
+        ).length,
+      },
+      goalRules: goals
+        .filter((g) => g.audience === 'ALL_EMPLOYEES')
+        .map(({ metric, target, remindAt, weekdays, enabled }) => ({
+          metric: metric as TemplateGoalRule['metric'],
+          target,
+          remindAt,
+          weekdays,
+          enabled,
+          audience: 'ALL_EMPLOYEES',
+        })),
+    };
+  }
 
   async listTemplates(query: TemplatePageQuery) {
     const where =

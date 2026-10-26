@@ -4,6 +4,45 @@ import { validate, type ValidationError } from 'class-validator';
 import { SaveBusinessTemplateDraftDto } from './business-template.dto';
 
 describe('business template DTOs', () => {
+  it.each(['contractNo', 'signDate'])(
+    'accepts captured runtime field key %s',
+    async (fieldKey) => {
+      const input = validDraftInput();
+      draftField(input).fieldKey = fieldKey;
+      await expect(
+        validate(plainToInstance(SaveBusinessTemplateDraftDto, input)),
+      ).resolves.toEqual([]);
+    },
+  );
+  it('accepts portable extensions and legacy object codes with strict whitelist validation', async () => {
+    const input = validDraftInput();
+    const object = input.configuration.objects[0] as Record<string, unknown>;
+    object.code = 'legacy_customers';
+    object.workflow = {
+      isEnabled: false,
+      initialStateKey: null,
+      states: [],
+      transitions: [],
+    };
+    object.automations = [];
+    object.pool = { enabled: true, ownershipTtlHours: null };
+    (input.configuration as Record<string, unknown>).goalRules = [
+      {
+        metric: 'calls',
+        target: 20,
+        remindAt: '17:00',
+        weekdays: [1],
+        audience: 'ALL_EMPLOYEES',
+        enabled: true,
+      },
+    ];
+    await expect(
+      validate(plainToInstance(SaveBusinessTemplateDraftDto, input), {
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }),
+    ).resolves.toEqual([]);
+  });
   it.each([
     ['description', (input: DraftInput) => delete input.description],
     [

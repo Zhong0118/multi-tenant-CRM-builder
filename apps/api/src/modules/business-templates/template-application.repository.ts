@@ -1,3 +1,10 @@
+import type { WorkflowDraft } from '../workflows/workflow.types';
+import type {
+  PoolProtectionRule,
+  PoolLabels,
+} from '../records/record-ownership';
+import type { AutomationRule } from '../automations/automation.types';
+import { GOAL_METRICS } from '../work/dto/work-goals.dto';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
 
@@ -88,6 +95,18 @@ export interface HydratedTenantConfiguration {
     activePublicationId: null;
     sourceTemplateVersionId: string;
   };
+  workflows?: Array<{
+    objectId: string;
+    sourceTemplateVersionId: string;
+    draft: WorkflowDraft;
+  }>;
+  goalRules?: Array<
+    import('./business-template.schema').TemplateGoalRule & {
+      id: string;
+      tenantId: string;
+      version: 1;
+    }
+  >;
   objects: Array<{
     id: string;
     tenantId: string;
@@ -98,7 +117,15 @@ export interface HydratedTenantConfiguration {
     titleFieldKey: string;
     sortOrder: number;
     status: 'DRAFT' | 'ARCHIVED';
-    settings: { description: string | null };
+    settings: { description: string | null; automations?: AutomationRule[] };
+    poolEnabled?: boolean;
+    poolOwnershipTtlHours?: number | null;
+    poolConfigVersion?: number;
+    poolLifecycleEnabled?: boolean;
+    poolContactTtlHours?: number;
+    poolFollowUpTtlHours?: number;
+    poolLabels?: Partial<PoolLabels>;
+    poolProtectionRules?: PoolProtectionRule[];
     sourceTemplateVersionId: string | null;
     activePublicationId: null;
     publishedAt: null;
@@ -181,6 +208,7 @@ export interface TemplateApplicationStore {
     input: TemplateApplicationInput,
   ): Promise<TemplateApplicationEligibility>;
   enterTenant(tenantId: string): Promise<void>;
+  lockGoalConfiguration?(tenantId: string): Promise<void>;
   countTenantObjects(tenantId: string): Promise<number>;
   /** The company's business tables, read-only, for the platform overview. */
   listTenantObjects?(tenantId: string): Promise<TenantObjectSummary[]>;
@@ -302,6 +330,12 @@ class PrismaTemplateApplicationStore implements TemplateApplicationStore {
     `;
   }
 
+  async lockGoalConfiguration(tenantId: string): Promise<void> {
+    for (const metric of [...GOAL_METRICS].sort())
+      await this.transaction
+        .$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${tenantId + ':goal:' + metric},0))::text`;
+  }
+
   async requireApplicableVersion(
     input: TemplateApplicationInput,
   ): Promise<TemplateApplicationEligibility> {
@@ -391,7 +425,8 @@ class PrismaTemplateApplicationStore implements TemplateApplicationStore {
       (await this.countTenantObjects(tenantId)) === 0 &&
       (await this.transaction.tenantDashboardConfiguration.count({
         where: { tenantId },
-      })) === 0
+      })) === 0 &&
+      (await this.transaction.workGoalRule.count({ where: { tenantId } })) === 0
     );
   }
 
@@ -412,6 +447,18 @@ class PrismaTemplateApplicationStore implements TemplateApplicationStore {
           status: object.status,
           sortOrder: object.sortOrder,
           settings: jsonInput(object.settings),
+          poolEnabled: object.poolEnabled,
+          poolOwnershipTtlHours: object.poolOwnershipTtlHours,
+          poolConfigVersion: object.poolConfigVersion,
+          poolLifecycleEnabled: object.poolLifecycleEnabled,
+          poolContactTtlHours: object.poolContactTtlHours,
+          poolFollowUpTtlHours: object.poolFollowUpTtlHours,
+          ...(object.poolLabels === undefined
+            ? {}
+            : { poolLabels: jsonInput(object.poolLabels) }),
+          ...(object.poolProtectionRules === undefined
+            ? {}
+            : { poolProtectionRules: jsonInput(object.poolProtectionRules) }),
           sourceTemplateVersionId: object.sourceTemplateVersionId,
           activePublicationId: null,
           publishedAt: null,
@@ -469,6 +516,39 @@ class PrismaTemplateApplicationStore implements TemplateApplicationStore {
         await this.transaction.fieldPermission.create({ data: permission });
       }
     }
+    for (const workflow of hydrated.workflows ?? []) {
+      const object = hydrated.objects.find((o) => o.id === workflow.objectId);
+      if (
+        !object ||
+        object.sourceTemplateVersionId !== workflow.sourceTemplateVersionId
+      )
+        throw new Error('Workflow template source differs from its object');
+      await this.transaction.objectWorkflowDefinition.create({
+        data: {
+          tenantId: hydrated.tenantId,
+          objectDefinitionId: workflow.objectId,
+          sourceTemplateVersionId: workflow.sourceTemplateVersionId,
+          createdByMemberId: null,
+          updatedByMemberId: null,
+          isEnabled: workflow.draft.isEnabled,
+          initialStateKey: workflow.draft.initialStateKey,
+          states: {
+            create: workflow.draft.states.map((state) => ({
+              ...state,
+              description: state.description ?? null,
+            })),
+          },
+          transitions: {
+            create: workflow.draft.transitions.map((transition) => ({
+              ...transition,
+              actions: jsonInput(transition.actions ?? []),
+            })),
+          },
+        },
+      });
+    }
+    for (const goal of hydrated.goalRules ?? [])
+      await this.transaction.workGoalRule.create({ data: goal });
     if (hydrated.dashboard) {
       const created =
         await this.transaction.tenantDashboardConfiguration.create({

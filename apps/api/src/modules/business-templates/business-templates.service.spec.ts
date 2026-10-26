@@ -52,6 +52,21 @@ describe('BusinessTemplatesService', () => {
     expect(saved.configuration.objects).toHaveLength(2);
   });
 
+  it('rejects a fixed member default before persisting a portable draft', async () => {
+    const { service } = publishedFixture();
+    const configuration = validTemplateConfiguration();
+    configuration.objects[0].fields[0].type = 'MEMBER';
+    configuration.objects[0].fields[0].defaultValue = 'source-member';
+    await expect(
+      service.saveDraft(
+        platformAdmin,
+        'template-1',
+        { expectedVersion: 2, name: '销售', description: null, configuration },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
+
   it('publishes without consuming the draft version', async () => {
     const { service } = publishedFixture();
 

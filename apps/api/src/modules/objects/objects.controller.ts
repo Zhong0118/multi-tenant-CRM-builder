@@ -1,4 +1,9 @@
 import {
+  TemplateInitializationResponseDto,
+  PublishTemplateInitializationDto,
+  TemplateInitializationPublishedResponseDto,
+} from './dto/template-initialization.dto';
+import {
   Body,
   Controller,
   Delete,
@@ -118,6 +123,27 @@ export class ObjectsController {
       requestMeta(request),
     );
     return drafts.map(toObjectDraftResponse);
+  }
+
+  @Get('object-definitions/template-initialization')
+  @ApiOkResponse({ type: TemplateInitializationResponseDto })
+  templateInitialization(@CurrentTenant() context: TenantContext) {
+    return this.objects.templateInitialization(context);
+  }
+
+  @Post('object-definitions/template-initialization')
+  @HttpCode(200)
+  @ApiOkResponse({ type: TemplateInitializationPublishedResponseDto })
+  publishTemplateInitialization(
+    @CurrentTenant() context: TenantContext,
+    @Body() dto: PublishTemplateInitializationDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.objects.publishTemplateInitialization(
+      context,
+      dto,
+      requestMeta(request),
+    );
   }
 
   @Get('object-definitions/:objectId')

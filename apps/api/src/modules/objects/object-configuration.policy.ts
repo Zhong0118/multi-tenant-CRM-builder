@@ -1,3 +1,4 @@
+import { OBJECT_CODE_REFERENCE_PATTERN } from './object-code';
 import { isDeepStrictEqual } from 'node:util';
 
 import {
@@ -87,7 +88,7 @@ export function analyzeObjectConfiguration(
     ]),
   );
 
-  if (!/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(input.object.code)) {
+  if (!OBJECT_CODE_REFERENCE_PATTERN.test(input.object.code)) {
     blocking.push({
       code: 'OBJECT_CODE_INVALID',
       message:

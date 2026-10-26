@@ -72,3 +72,23 @@ export function configOf(object: {
     protectionRules: (object.poolProtectionRules ?? []) as PoolProtectionRule[],
   };
 }
+
+/** Targets can be current publications or the unified initialization graph. */
+export function analyzePoolProtectionSources(
+  pool: Omit<PoolConfig, 'version'>,
+  statesByCode: ReadonlyMap<string, readonly string[]>,
+): Array<{ code: string; message: string }> {
+  if (!pool.enabled || !pool.lifecycleEnabled) return [];
+  return (pool.protectionRules ?? []).flatMap((rule) => {
+    const states = statesByCode.get(rule.sourceObjectCode);
+    return !states?.length ||
+      rule.statusKeys.some((key) => !states.includes(key))
+      ? [
+          {
+            code: 'POOL_PROTECTION_SOURCE_INVALID',
+            message: `保护依据「${rule.sourceObjectCode}」必须选择当前有效流程中的状态。`,
+          },
+        ]
+      : [];
+  });
+}

@@ -1,4 +1,10 @@
 import { createHash } from 'node:crypto';
+import { analyzePublication } from '../objects/object-publication.policy';
+import {
+  findTemplatePortabilityBlockers,
+  templateActionTargets,
+  analyzeTemplateExtensions,
+} from './template-configuration-graph';
 
 import {
   analyzeObjectConfiguration,
@@ -34,7 +40,7 @@ export interface TemplatePublicationIssue extends PublicationIssue {
 
 export interface TemplatePublicationChange {
   kind: 'ADDED' | 'UPDATED' | 'INACTIVATED';
-  entity: 'OBJECT' | 'FIELD';
+  entity: 'OBJECT' | 'FIELD' | 'GOAL_RULES';
   objectId: string;
   fieldKey?: string;
 }
@@ -81,6 +87,8 @@ export function analyzeTemplatePublication(
 
   blocking.push(...findTemplateIdentityBlockers(input));
   blocking.push(...findTemplateMemberDefaultBlockers(input));
+  blocking.push(...findTemplatePortabilityBlockers(input));
+  blocking.push(...analyzeTemplateExtensions(input));
   blocking.push(...analyzeTemplateDashboard(input.dashboard, activeObjects));
 
   if (activeObjects.length === 0) {
@@ -110,12 +118,17 @@ export function analyzeTemplatePublication(
       });
     }
 
-    const configuration = analyzeObjectConfiguration({
-      object,
+    const configuration = analyzePublication({
+      object: { ...object, version: 1 },
+      activeSchema: null,
+      activeRecordCount: 0,
+      workflow: object.workflow,
+      automations: object.automations,
+      actionTargets: templateActionTargets(input),
       fields: object.fields,
       defaultView: object.defaultView,
       employeeAccess: object.employeeAccess,
-      previousFields: previousObjectById
+      previousPublishedFields: previousObjectById
         .get(object.id)
         ?.fields.filter((field) => field.status === 'ACTIVE'),
     });
@@ -165,7 +178,19 @@ export function analyzeTemplatePublication(
   return {
     blocking,
     warnings,
-    changes: analyzeTemplateChanges(activeObjects, previousObjects),
+    changes: [
+      ...analyzeTemplateChanges(activeObjects, previousObjects),
+      ...(JSON.stringify(input.goalRules) !==
+      JSON.stringify(previous?.goalRules)
+        ? [
+            {
+              kind: 'UPDATED' as const,
+              entity: 'GOAL_RULES' as const,
+              objectId: '',
+            },
+          ]
+        : []),
+    ],
     objectCount: activeObjects.length,
     fieldCount: activeObjects.reduce(
       (count, object) =>
@@ -265,6 +290,15 @@ export function compileTemplateVersion(
 
         return {
           ...configuration.object,
+          ...(object.workflow === undefined
+            ? {}
+            : { workflow: structuredClone(object.workflow) }),
+          ...(object.automations === undefined
+            ? {}
+            : { automations: structuredClone(object.automations) }),
+          ...(object.pool === undefined
+            ? {}
+            : { pool: structuredClone(object.pool) }),
           status: 'ACTIVE' as const,
           fields: configuration.fields.map((field) => ({
             ...field,
@@ -275,6 +309,9 @@ export function compileTemplateVersion(
         };
       }),
     ...(dashboard ? { dashboard } : {}),
+    ...(input.goalRules === undefined
+      ? {}
+      : { goalRules: structuredClone(input.goalRules) }),
   };
 }
 
@@ -353,6 +390,10 @@ function sameObjectDefinition(
   previous: TemplateObjectConfiguration,
 ): boolean {
   return (
+    JSON.stringify(current.workflow) === JSON.stringify(previous.workflow) &&
+    JSON.stringify(current.automations) ===
+      JSON.stringify(previous.automations) &&
+    JSON.stringify(current.pool) === JSON.stringify(previous.pool) &&
     current.code === previous.code &&
     current.name === previous.name &&
     current.description === previous.description &&
@@ -371,6 +412,9 @@ function normalizeTemplateConfiguration(
 ): BusinessTemplateConfiguration {
   return {
     schemaVersion: configuration.schemaVersion,
+    ...(configuration.goalRules === undefined
+      ? {}
+      : { goalRules: configuration.goalRules }),
     objects: [...configuration.objects].sort(compareObjects).map((object) => ({
       ...object,
       fields: [...object.fields].sort(compareFields),
@@ -430,7 +474,10 @@ function templateDashboardCatalog(
     },
     fields: source.fields
       .filter((field) => field.status === 'ACTIVE')
-      .map(({ status: _status, ...field }) => field),
+      .map(({ status, ...field }) => {
+        void status;
+        return field;
+      }),
     defaultView: source.defaultView ?? {
       code: 'default',
       name: '',

@@ -1,3 +1,7 @@
+import type { WorkflowDraft } from '../workflows/workflow.types';
+import type { AutomationRule } from '../automations/automation.types';
+import type { PoolConfig } from '../records/record-ownership';
+import type { GoalMetric } from '../work/dto/work-goals.dto';
 import type {
   JsonValue,
   PublishedDataScope,
@@ -53,10 +57,23 @@ export interface TemplateObjectConfiguration {
   fields: TemplateFieldConfiguration[];
   defaultView: TemplateDefaultView | null;
   employeeAccess: TemplateEmployeeAccess | null;
+  workflow?: WorkflowDraft;
+  automations?: AutomationRule[];
+  pool?: Omit<PoolConfig, 'version'>;
+}
+
+export interface TemplateGoalRule {
+  metric: GoalMetric;
+  target: number;
+  remindAt: string;
+  weekdays: number[];
+  audience: 'ALL_EMPLOYEES';
+  enabled: boolean;
 }
 
 export interface BusinessTemplateConfiguration {
   schemaVersion: 1;
   objects: TemplateObjectConfiguration[];
   dashboard?: DashboardDefinitionV2;
+  goalRules?: TemplateGoalRule[];
 }

@@ -937,11 +937,54 @@
         "required": ["id", "versionNo", "sourceDraftVersion", "publishedAt"],
         "type": "object"
       },
+      "BusinessTemplateCapturePreviewResponseDto": {
+        "properties": {
+          "blocking": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateCaptureIssueDto"
+            },
+            "type": "array"
+          },
+          "configuration": {
+            "$ref": "#/components/schemas/BusinessTemplateConfigurationResponseDto"
+          },
+          "excluded": {
+            "$ref": "#/components/schemas/TemplateCaptureExcludedDto"
+          },
+          "sourceTenant": {
+            "$ref": "#/components/schemas/TemplateCaptureSourceTenantDto"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/TemplateCaptureSummaryDto"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateCaptureIssueDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "configuration",
+          "sourceTenant",
+          "excluded",
+          "summary",
+          "blocking",
+          "warnings"
+        ],
+        "type": "object"
+      },
       "BusinessTemplateConfigurationDto": {
         "properties": {
           "dashboard": {
             "additionalProperties": true,
             "type": "object"
+          },
+          "goalRules": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateGoalRuleDto"
+            },
+            "type": "array"
           },
           "objects": {
             "items": {
@@ -962,6 +1005,12 @@
           "dashboard": {
             "additionalProperties": true,
             "type": "object"
+          },
+          "goalRules": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateGoalRuleDto"
+            },
+            "type": "array"
           },
           "objects": {
             "items": {
@@ -1221,6 +1270,20 @@
           "publishedByUserId",
           "publishedAt"
         ],
+        "type": "object"
+      },
+      "CaptureBusinessTemplatePreviewDto": {
+        "properties": {
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "sourceTenantId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["expectedVersion", "sourceTenantId"],
         "type": "object"
       },
       "ChangeMemberNameDto": {
@@ -4995,6 +5058,22 @@
         "required": ["expectedVersion"],
         "type": "object"
       },
+      "PublishTemplateInitializationDto": {
+        "properties": {
+          "objects": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateInitializationExpectedObjectDto"
+            },
+            "type": "array"
+          },
+          "templateVersionId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["templateVersionId", "objects"],
+        "type": "object"
+      },
       "PublishedEmployeeAccessResponseDto": {
         "properties": {
           "canCreate": {
@@ -6563,6 +6642,113 @@
         ],
         "type": "object"
       },
+      "TemplateCaptureExcludedDto": {
+        "properties": {
+          "memberOverrides": {
+            "type": "number"
+          },
+          "selectedGoalRules": {
+            "type": "number"
+          },
+          "unpublishedObjects": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "unpublishedObjects",
+          "memberOverrides",
+          "selectedGoalRules"
+        ],
+        "type": "object"
+      },
+      "TemplateCaptureIssueDto": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "fieldKey": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "objectId": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": ["code", "message"],
+        "type": "object"
+      },
+      "TemplateCaptureObjectSummaryDto": {
+        "properties": {
+          "automationCount": {
+            "type": "number"
+          },
+          "code": {
+            "type": "string"
+          },
+          "fieldCount": {
+            "type": "number"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "poolEnabled": {
+            "type": "boolean"
+          },
+          "stateCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "code",
+          "fieldCount",
+          "stateCount",
+          "automationCount",
+          "poolEnabled"
+        ],
+        "type": "object"
+      },
+      "TemplateCaptureSourceTenantDto": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "name", "code"],
+        "type": "object"
+      },
+      "TemplateCaptureSummaryDto": {
+        "properties": {
+          "goalRuleCount": {
+            "type": "number"
+          },
+          "objects": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateCaptureObjectSummaryDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["objects", "goalRuleCount"],
+        "type": "object"
+      },
       "TemplateDefaultViewDto": {
         "properties": {
           "code": {
@@ -6850,8 +7036,156 @@
         ],
         "type": "object"
       },
+      "TemplateGoalRuleDto": {
+        "properties": {
+          "audience": {
+            "enum": ["ALL_EMPLOYEES"],
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "metric": {
+            "enum": [
+              "calls",
+              "connectedCalls",
+              "wechatAdded",
+              "customersFollowed",
+              "followUpsDone",
+              "tasksDone"
+            ],
+            "type": "string"
+          },
+          "remindAt": {
+            "example": "17:00",
+            "type": "string"
+          },
+          "target": {
+            "maximum": 100000,
+            "minimum": 1,
+            "type": "number"
+          },
+          "weekdays": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "target",
+          "remindAt",
+          "weekdays",
+          "audience",
+          "enabled",
+          "metric"
+        ],
+        "type": "object"
+      },
+      "TemplateInitializationExpectedObjectDto": {
+        "properties": {
+          "expectedPoolConfigVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["id", "expectedVersion", "expectedPoolConfigVersion"],
+        "type": "object"
+      },
+      "TemplateInitializationGroupDto": {
+        "properties": {
+          "objects": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateInitializationObjectDto"
+            },
+            "type": "array"
+          },
+          "templateVersionId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["templateVersionId", "objects"],
+        "type": "object"
+      },
+      "TemplateInitializationObjectDto": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "poolConfigVersion": {
+            "type": "number"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": ["id", "name", "code", "version", "poolConfigVersion"],
+        "type": "object"
+      },
+      "TemplateInitializationPublishedObjectDto": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "code", "name"],
+        "type": "object"
+      },
+      "TemplateInitializationPublishedResponseDto": {
+        "properties": {
+          "published": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateInitializationPublishedObjectDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["published"],
+        "type": "object"
+      },
+      "TemplateInitializationResponseDto": {
+        "properties": {
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateInitializationGroupDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["groups"],
+        "type": "object"
+      },
       "TemplateObjectDraftDto": {
         "properties": {
+          "automations": {
+            "items": {
+              "$ref": "#/components/schemas/AutomationRuleDto"
+            },
+            "type": "array"
+          },
           "code": {
             "maxLength": 64,
             "type": "string"
@@ -6899,6 +7233,9 @@
             "minLength": 1,
             "type": "string"
           },
+          "pool": {
+            "$ref": "#/components/schemas/TemplatePoolDto"
+          },
           "sortOrder": {
             "type": "number"
           },
@@ -6908,6 +7245,9 @@
           },
           "titleFieldKey": {
             "type": "string"
+          },
+          "workflow": {
+            "$ref": "#/components/schemas/TemplateWorkflowDto"
           }
         },
         "required": [
@@ -6927,6 +7267,12 @@
       },
       "TemplateObjectResponseDto": {
         "properties": {
+          "automations": {
+            "items": {
+              "$ref": "#/components/schemas/AutomationRuleDto"
+            },
+            "type": "array"
+          },
           "code": {
             "maxLength": 64,
             "type": "string"
@@ -6974,6 +7320,9 @@
             "minLength": 1,
             "type": "string"
           },
+          "pool": {
+            "$ref": "#/components/schemas/TemplatePoolDto"
+          },
           "publishedCode": {
             "nullable": true,
             "type": "string"
@@ -6987,6 +7336,9 @@
           },
           "titleFieldKey": {
             "type": "string"
+          },
+          "workflow": {
+            "$ref": "#/components/schemas/TemplateWorkflowDto"
           }
         },
         "required": [
@@ -7003,6 +7355,43 @@
           "employeeAccess",
           "publishedCode"
         ],
+        "type": "object"
+      },
+      "TemplatePoolDto": {
+        "properties": {
+          "contactTtlHours": {
+            "maximum": 8760,
+            "minimum": 1,
+            "type": "number"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "followUpTtlHours": {
+            "maximum": 8760,
+            "minimum": 1,
+            "type": "number"
+          },
+          "labels": {
+            "$ref": "#/components/schemas/PoolLabelsDto"
+          },
+          "lifecycleEnabled": {
+            "type": "boolean"
+          },
+          "ownershipTtlHours": {
+            "maximum": 8760,
+            "minimum": 1,
+            "nullable": true,
+            "type": "number"
+          },
+          "protectionRules": {
+            "items": {
+              "$ref": "#/components/schemas/PoolProtectionRuleDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["enabled", "ownershipTtlHours"],
         "type": "object"
       },
       "TemplatePublicationAnalysisResponseDto": {
@@ -7046,7 +7435,7 @@
       "TemplatePublicationChangeResponseDto": {
         "properties": {
           "entity": {
-            "enum": ["OBJECT", "FIELD"],
+            "enum": ["OBJECT", "FIELD", "GOAL_RULES"],
             "type": "string"
           },
           "fieldKey": {
@@ -7083,6 +7472,31 @@
           }
         },
         "required": ["code", "message", "objectId"],
+        "type": "object"
+      },
+      "TemplateWorkflowDto": {
+        "properties": {
+          "initialStateKey": {
+            "nullable": true,
+            "type": "string"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "states": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowStateDraftDto"
+            },
+            "type": "array"
+          },
+          "transitions": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowTransitionDraftDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["isEnabled", "states", "transitions"],
         "type": "object"
       },
       "TenantBusinessConfigurationSummaryResponseDto": {
@@ -8998,6 +9412,50 @@
           }
         ],
         "tags": ["platform-business-template-applications"]
+      }
+    },
+    "/api/v1/platform/business-templates/{templateId}/capture-preview": {
+      "post": {
+        "operationId": "BusinessTemplatesController_capturePreview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "templateId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaptureBusinessTemplatePreviewDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessTemplateCapturePreviewResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["platform-business-templates"]
       }
     },
     "/api/v1/platform/business-templates/{templateId}/draft": {
@@ -12071,6 +12529,80 @@
                     "$ref": "#/components/schemas/ObjectDraftResponseDto"
                   },
                   "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/template-initialization": {
+      "get": {
+        "operationId": "ObjectsController_templateInitialization",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateInitializationResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      },
+      "post": {
+        "operationId": "ObjectsController_publishTemplateInitialization",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishTemplateInitializationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateInitializationPublishedResponseDto"
                 }
               }
             },

@@ -356,6 +356,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/platform/business-templates/{templateId}/capture-preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BusinessTemplatesController_capturePreview"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/platform/business-templates/{templateId}/draft": {
     parameters: {
       query?: never;
@@ -1508,6 +1524,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/template-initialization": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ObjectsController_templateInitialization"];
+    put?: never;
+    post: operations["ObjectsController_publishTemplateInitialization"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/objects": {
     parameters: {
       query?: never;
@@ -2234,10 +2266,19 @@ export interface components {
       sourceDraftVersion: number;
       versionNo: number;
     };
+    BusinessTemplateCapturePreviewResponseDto: {
+      blocking: components["schemas"]["TemplateCaptureIssueDto"][];
+      configuration: components["schemas"]["BusinessTemplateConfigurationResponseDto"];
+      excluded: components["schemas"]["TemplateCaptureExcludedDto"];
+      sourceTenant: components["schemas"]["TemplateCaptureSourceTenantDto"];
+      summary: components["schemas"]["TemplateCaptureSummaryDto"];
+      warnings: components["schemas"]["TemplateCaptureIssueDto"][];
+    };
     BusinessTemplateConfigurationDto: {
       dashboard?: {
         [key: string]: unknown;
       };
+      goalRules?: components["schemas"]["TemplateGoalRuleDto"][];
       objects: components["schemas"]["TemplateObjectDraftDto"][];
       /** @enum {number} */
       schemaVersion: 1;
@@ -2246,6 +2287,7 @@ export interface components {
       dashboard?: {
         [key: string]: unknown;
       };
+      goalRules?: components["schemas"]["TemplateGoalRuleDto"][];
       objects: components["schemas"]["TemplateObjectResponseDto"][];
       /** @enum {number} */
       schemaVersion: 1;
@@ -2319,6 +2361,11 @@ export interface components {
       /** Format: uuid */
       templateId: string;
       versionNo: number;
+    };
+    CaptureBusinessTemplatePreviewDto: {
+      expectedVersion: number;
+      /** Format: uuid */
+      sourceTenantId: string;
     };
     ChangeMemberNameDto: {
       displayName: string;
@@ -3678,6 +3725,11 @@ export interface components {
         [key: string]: unknown;
       };
     };
+    PublishTemplateInitializationDto: {
+      objects: components["schemas"]["TemplateInitializationExpectedObjectDto"][];
+      /** Format: uuid */
+      templateVersionId: string;
+    };
     ReadAllNotificationsDto: {
       /** Format: date-time */
       before: string;
@@ -4142,6 +4194,38 @@ export interface components {
       tenantId: string;
       tenantName: string;
     };
+    TemplateCaptureExcludedDto: {
+      memberOverrides: number;
+      selectedGoalRules: number;
+      unpublishedObjects: number;
+    };
+    TemplateCaptureIssueDto: {
+      code: string;
+      fieldKey?: string;
+      message: string;
+      objectId?: string;
+      path?: string;
+    };
+    TemplateCaptureObjectSummaryDto: {
+      automationCount: number;
+      code: string;
+      fieldCount: number;
+      /** Format: uuid */
+      id: string;
+      name: string;
+      poolEnabled: boolean;
+      stateCount: number;
+    };
+    TemplateCaptureSourceTenantDto: {
+      code: string;
+      /** Format: uuid */
+      id: string;
+      name: string;
+    };
+    TemplateCaptureSummaryDto: {
+      goalRuleCount: number;
+      objects: components["schemas"]["TemplateCaptureObjectSummaryDto"][];
+    };
     TemplateDefaultViewDto: {
       /** @enum {string} */
       code: "default";
@@ -4262,7 +4346,56 @@ export interface components {
         | "BOOLEAN";
       validation: components["schemas"]["FieldValidationDto"];
     };
+    TemplateGoalRuleDto: {
+      /** @enum {string} */
+      audience: "ALL_EMPLOYEES";
+      enabled: boolean;
+      /** @enum {string} */
+      metric:
+        | "calls"
+        | "connectedCalls"
+        | "wechatAdded"
+        | "customersFollowed"
+        | "followUpsDone"
+        | "tasksDone";
+      /** @example 17:00 */
+      remindAt: string;
+      target: number;
+      weekdays: number[];
+    };
+    TemplateInitializationExpectedObjectDto: {
+      expectedPoolConfigVersion: number;
+      expectedVersion: number;
+      /** Format: uuid */
+      id: string;
+    };
+    TemplateInitializationGroupDto: {
+      objects: components["schemas"]["TemplateInitializationObjectDto"][];
+      /** Format: uuid */
+      templateVersionId: string;
+    };
+    TemplateInitializationObjectDto: {
+      code: string;
+      /** Format: uuid */
+      id: string;
+      name: string;
+      poolConfigVersion: number;
+      version: number;
+    };
+    TemplateInitializationPublishedObjectDto: {
+      code: string;
+      /** Format: uuid */
+      id: string;
+      name: string;
+    };
+    TemplateInitializationPublishedResponseDto: {
+      published: components["schemas"]["TemplateInitializationPublishedObjectDto"][];
+    };
+    TemplateInitializationResponseDto: {
+      groups: components["schemas"]["TemplateInitializationGroupDto"][];
+    };
     TemplateObjectDraftDto: {
+      automations?: components["schemas"]["AutomationRuleDto"][];
       code: string;
       defaultView: components["schemas"]["TemplateDefaultViewDto"] | null;
       description: string | null;
@@ -4272,12 +4405,15 @@ export interface components {
       /** Format: uuid */
       id: string;
       name: string;
+      pool?: components["schemas"]["TemplatePoolDto"];
       sortOrder: number;
       /** @enum {string} */
       status: "ACTIVE" | "INACTIVE";
       titleFieldKey: string;
+      workflow?: components["schemas"]["TemplateWorkflowDto"];
     };
     TemplateObjectResponseDto: {
+      automations?: components["schemas"]["AutomationRuleDto"][];
       code: string;
       defaultView: components["schemas"]["TemplateDefaultViewDto"] | null;
       description: string | null;
@@ -4287,11 +4423,22 @@ export interface components {
       /** Format: uuid */
       id: string;
       name: string;
+      pool?: components["schemas"]["TemplatePoolDto"];
       publishedCode: string | null;
       sortOrder: number;
       /** @enum {string} */
       status: "ACTIVE" | "INACTIVE";
       titleFieldKey: string;
+      workflow?: components["schemas"]["TemplateWorkflowDto"];
+    };
+    TemplatePoolDto: {
+      contactTtlHours?: number;
+      enabled: boolean;
+      followUpTtlHours?: number;
+      labels?: components["schemas"]["PoolLabelsDto"];
+      lifecycleEnabled?: boolean;
+      ownershipTtlHours: number | null;
+      protectionRules?: components["schemas"]["PoolProtectionRuleDto"][];
     };
     TemplatePublicationAnalysisResponseDto: {
       blocking: components["schemas"]["TemplatePublicationIssueResponseDto"][];
@@ -4302,7 +4449,7 @@ export interface components {
     };
     TemplatePublicationChangeResponseDto: {
       /** @enum {string} */
-      entity: "OBJECT" | "FIELD";
+      entity: "OBJECT" | "FIELD" | "GOAL_RULES";
       fieldKey?: string;
       /** @enum {string} */
       kind: "ADDED" | "UPDATED" | "INACTIVATED";
@@ -4315,6 +4462,12 @@ export interface components {
       message: string;
       objectId: string;
       path?: string;
+    };
+    TemplateWorkflowDto: {
+      initialStateKey?: string | null;
+      isEnabled: boolean;
+      states: components["schemas"]["WorkflowStateDraftDto"][];
+      transitions: components["schemas"]["WorkflowTransitionDraftDto"][];
     };
     TenantBusinessConfigurationSummaryResponseDto: {
       application:
@@ -5202,6 +5355,31 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["TemplateApplicationResponseDto"];
+        };
+      };
+    };
+  };
+  BusinessTemplatesController_capturePreview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        templateId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CaptureBusinessTemplatePreviewDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BusinessTemplateCapturePreviewResponseDto"];
         };
       };
     };
@@ -7312,6 +7490,52 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ObjectDraftResponseDto"][];
+        };
+      };
+    };
+  };
+  ObjectsController_templateInitialization: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TemplateInitializationResponseDto"];
+        };
+      };
+    };
+  };
+  ObjectsController_publishTemplateInitialization: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PublishTemplateInitializationDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TemplateInitializationPublishedResponseDto"];
         };
       };
     };

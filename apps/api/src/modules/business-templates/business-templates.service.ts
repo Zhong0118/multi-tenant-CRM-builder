@@ -1,3 +1,5 @@
+import { captureTemplateConfiguration } from './template-capture';
+import { findTemplatePortabilityBlockers } from './template-configuration-graph';
 import { Inject, Injectable } from '@nestjs/common';
 
 import { ApiException } from '../../common/errors/api.exception';
@@ -6,6 +8,7 @@ import {
   analyzeTemplatePublication,
   checksumTemplateConfiguration,
   compileTemplateVersion,
+  findTemplateMemberDefaultBlockers,
   type TemplatePublicationAnalysis,
 } from './business-template-publication.policy';
 import type { BusinessTemplateConfiguration } from './business-template.schema';
@@ -116,6 +119,70 @@ export class BusinessTemplatesService {
     });
   }
 
+  capturePreview(
+    actor: AuthenticatedUser,
+    templateId: string,
+    input: { expectedVersion: number; sourceTenantId: string },
+  ) {
+    if (!actor.isPlatformAdmin)
+      throw new ApiException('WORKSPACE_FORBIDDEN', 403);
+    return this.repository.withActor(
+      actor.id,
+      async (store) => {
+        const template = await store.findTemplate(templateId);
+        if (!template) throw new ApiException('TEMPLATE_NOT_FOUND', 404);
+        assertVersion(template.draftVersion, input.expectedVersion);
+        const versions = (await store.listVersions(templateId)).sort(
+          (a, b) => a.versionNo - b.versionNo,
+        );
+        const source = await store.captureSource!(input.sourceTenantId);
+        if (!source) throw new ApiException('TENANT_NOT_FOUND', 404);
+        const history = versions.map((v) => v.configuration);
+        const configuration = captureTemplateConfiguration(
+          source,
+          template.configuration,
+          history,
+        );
+        const analysis = analyzeTemplatePublication(
+          configuration,
+          template.activeVersion?.configuration ?? null,
+          history,
+        );
+        return {
+          configuration: toTemplateDetail(
+            { ...template, configuration },
+            versions,
+          ).configuration,
+          sourceTenant: source.tenant,
+          excluded: source.excluded,
+          summary: {
+            objects: configuration.objects.map((object) => ({
+              id: object.id,
+              code: object.code,
+              name: object.name,
+              fieldCount: object.fields.length,
+              stateCount: object.workflow?.states.length ?? 0,
+              automationCount: object.automations?.length ?? 0,
+              poolEnabled: object.pool?.enabled ?? false,
+            })),
+            goalRuleCount: configuration.goalRules?.length ?? 0,
+          },
+          blocking: analysis.blocking,
+          warnings: [
+            ...analysis.warnings,
+            ...Object.entries(source.excluded)
+              .filter(([, count]) => count > 0)
+              .map(([key, count]) => ({
+                code: 'CAPTURE_EXCLUDED_' + key.toUpperCase(),
+                message: `已排除 ${count} 项${({ unpublishedObjects: '未发布业务表', memberOverrides: '成员专属权限', selectedGoalRules: '指定员工目标' } as Record<string, string>)[key]}。`,
+              })),
+          ],
+        };
+      },
+      { consistentRead: true },
+    );
+  }
+
   saveDraft(
     actor: AuthenticatedUser,
     templateId: string,
@@ -129,6 +196,14 @@ export class BusinessTemplatesService {
       if (before.draftVersion !== input.expectedVersion) {
         throw new ApiException('TEMPLATE_VERSION_CONFLICT', 409);
       }
+      const portability = [
+        ...findTemplateMemberDefaultBlockers(input.configuration),
+        ...findTemplatePortabilityBlockers(input.configuration),
+      ];
+      if (portability.length)
+        throw new ApiException('VALIDATION_FAILED', 400, {
+          fieldErrors: groupPublicationIssues(portability),
+        });
       const saved = await store.saveDraft(
         templateId,
         {

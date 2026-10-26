@@ -94,6 +94,57 @@ describe('TemplateApplicationService', () => {
     expect(withoutSearch.views[0]).not.toHaveProperty('searchFieldKeys');
   });
 
+  it('hydrates workflows, automations, live pools and all-employee goals with new identities and no fake members', () => {
+    const source = configuration();
+    source.objects[0].workflow = {
+      isEnabled: true,
+      initialStateKey: 'new',
+      states: [{ key: 'new', label: '新建', sortOrder: 0, isTerminal: false }],
+      transitions: [],
+    };
+    source.objects[0].automations = [];
+    source.objects[0].pool = {
+      enabled: true,
+      lifecycleEnabled: true,
+      ownershipTtlHours: null,
+      contactTtlHours: 12,
+    };
+    source.goalRules = [
+      {
+        metric: 'calls',
+        target: 20,
+        remindAt: '17:00',
+        weekdays: [1],
+        audience: 'ALL_EMPLOYEES',
+        enabled: true,
+      },
+    ];
+    const hydrated = hydrateTenantConfiguration(
+      source,
+      'tenant-new',
+      'version-new',
+      () => crypto.randomUUID(),
+    );
+    expect(hydrated.objects[0]).toMatchObject({
+      poolEnabled: true,
+      poolContactTtlHours: 12,
+      poolConfigVersion: 1,
+      settings: { automations: [] },
+    });
+    expect(hydrated).toMatchObject({
+      workflows: [
+        {
+          objectId: hydrated.objects[0].id,
+          sourceTemplateVersionId: 'version-new',
+          draft: source.objects[0].workflow,
+        },
+      ],
+      goalRules: [
+        { ...source.goalRules[0], tenantId: 'tenant-new', version: 1 },
+      ],
+    });
+  });
+
   it('creates a complete tenant draft graph with fresh identities and source facts', async () => {
     const { service, state, transactionEvents } = applicationFixture();
 
