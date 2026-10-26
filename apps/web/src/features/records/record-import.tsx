@@ -210,10 +210,25 @@ export function RecordImportDrawer({
       if (!stopped.current && dryRun)
         setChecked(summarizeImport([...merged.values()]));
     } catch (caught) {
-      if (!stopped.current)
-        setSummary(
-          `请求中断，已成功的行会保留。请重新检查剩余行后继续。${toApiError(caught).message}`,
-        );
+      if (!stopped.current) {
+        const error = toApiError(caught);
+        if (error.status >= 400 && error.status < 500) {
+          const created = dryRun
+            ? (result?.created ?? 0)
+            : summarizeImport([...merged.values()]).created;
+          const ownerHint =
+            error.code === "OWNER_INVALID"
+              ? "请更换负责人，或由管理员确认该成员处于启用状态，且读取、修改权限已生效。"
+              : "";
+          setSummary(
+            `${dryRun ? "检查未通过" : "导入未完成"}：${error.message}${ownerHint}${created > 0 ? `已成功导入 ${created} 行，数据已保留。` : ""}请处理以上问题后重新检查${importStarted || !dryRun ? "剩余行" : "数据"}。`,
+          );
+        } else {
+          setSummary(
+            `${dryRun ? "检查请求中断，本次检查不会写入数据，请重新检查。" : "请求中断，已成功的行会保留。请重新检查剩余行后继续。"}${error.message}`,
+          );
+        }
+      }
     } finally {
       running.current = false;
       if (!stopped.current) {
