@@ -4,10 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 
 import { FIELD_KEY_PATTERN } from "@/features/objects/object-types";
 
+import { isColumnOrderId } from "./record-column-order";
+
 /**
  * How one member reads one business table in this browser: which columns, in
- * which order, how wide, and how much of each cell. Presentation only — it
- * never changes the table definition or what a member may see.
+ * which order, how wide, how much of each cell and the header colour.
+ * Presentation only — it never changes the table definition, the company's
+ * default view or what a member may see, so nothing is published.
  *
  * - 紧凑 `compact`: one line, cut with an ellipsis, for scanning many rows.
  * - 舒适 `comfortable`: up to three lines (the default).
@@ -27,22 +30,48 @@ export const READING_DENSITIES: {
 
 export const DEFAULT_DENSITY: ReadingDensity = "comfortable";
 
+/**
+ * A few coordinated header colours for this table only. Each one sets the
+ * header, its hover and sorted states, the resize handles and the selected
+ * rows together (see `.data[data-header-tone]` in the stylesheet); there is
+ * no free colour picking.
+ */
+export type HeaderTone = "default" | "blue" | "gray" | "cyan";
+
+export const HEADER_TONES: { value: HeaderTone; label: string }[] = [
+  { value: "default", label: "默认" },
+  { value: "blue", label: "浅蓝" },
+  { value: "gray", label: "浅灰" },
+  { value: "cyan", label: "浅青" },
+];
+
+export const DEFAULT_HEADER_TONE: HeaderTone = "default";
+
 export interface RecordDisplayPrefs {
   /** Field columns in display order; empty means the published default. */
   columns: string[];
+  /**
+   * Field keys and `system:` column ids in display order, so system columns
+   * can sit between fields. Arranges only (see `resolveColumnOrder`); empty
+   * means the published arrangement.
+   */
+  order: string[];
   widths: Record<string, number>;
   density: ReadingDensity;
   /** Per-column overrides of `density`. */
   columnDensity: Record<string, ReadingDensity>;
   ownerVisible: boolean;
+  headerTone: HeaderTone;
 }
 
 export const DEFAULT_DISPLAY_PREFS: RecordDisplayPrefs = {
   columns: [],
+  order: [],
   widths: {},
   density: DEFAULT_DENSITY,
   columnDensity: {},
   ownerVisible: true,
+  headerTone: DEFAULT_HEADER_TONE,
 };
 
 export const RECORD_DISPLAY_KEY_PREFIX = "crm.records.display.v2";
@@ -73,6 +102,10 @@ export function legacyOwnerVisibilityKey(
 const DENSITY_VALUES = new Set<string>(["compact", "comfortable", "full"]);
 const isDensity = (value: unknown): value is ReadingDensity =>
   typeof value === "string" && DENSITY_VALUES.has(value);
+
+const TONE_VALUES = new Set<string>(HEADER_TONES.map((tone) => tone.value));
+const isHeaderTone = (value: unknown): value is HeaderTone =>
+  typeof value === "string" && TONE_VALUES.has(value);
 
 const COLUMN_KEY = /^[a-zA-Z][a-zA-Z0-9_]*$/;
 
@@ -113,12 +146,21 @@ export function parseDisplayPrefs(
             ),
           )
         : {};
+    // Preferences saved before system columns could move have no order: the
+    // published arrangement applies to them.
+    const order = Array.isArray(raw.order)
+      ? raw.order.filter(isColumnOrderId)
+      : [];
     return {
       columns: [...new Set(columns)],
+      order: [...new Set(order)],
       widths,
       density: isDensity(raw.density) ? raw.density : DEFAULT_DENSITY,
       columnDensity,
       ownerVisible: raw.ownerVisible !== false,
+      headerTone: isHeaderTone(raw.headerTone)
+        ? raw.headerTone
+        : DEFAULT_HEADER_TONE,
     };
   } catch {
     return null;

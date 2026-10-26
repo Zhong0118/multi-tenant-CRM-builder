@@ -147,14 +147,76 @@ describe("record display preferences", () => {
           widths: { name: 300, "<script>": 10, phone: "wide" },
           density: "huge",
           columnDensity: { notes: "full", name: "giant" },
+          order: ["system:updatedAt", "name", 7, "system:evil", "name"],
+          headerTone: "neon",
         }),
       ),
     ).toEqual({
       columns: ["name"],
+      order: ["system:updatedAt", "name"],
       widths: { name: 300 },
       density: "comfortable",
       columnDensity: { notes: "full" },
       ownerVisible: true,
+      headerTone: "default",
     });
+  });
+
+  it("reads a layout saved before header colours and system column order existed", () => {
+    window.localStorage.setItem(
+      recordDisplayKey("northwind", "member-a", "customers"),
+      JSON.stringify({
+        columns: ["phone", "name"],
+        widths: { name: 280, updatedAt: 180 },
+        density: "compact",
+        columnDensity: {},
+        ownerVisible: false,
+      }),
+    );
+    expect(
+      readDisplayPrefs(
+        "northwind",
+        "member-a",
+        "customers",
+        window.localStorage,
+      ),
+    ).toEqual({
+      columns: ["phone", "name"],
+      order: [],
+      widths: { name: 280, updatedAt: 180 },
+      density: "compact",
+      columnDensity: {},
+      ownerVisible: false,
+      headerTone: "default",
+    });
+  });
+
+  it("keeps the header colour per member and table, and clears it on reset", () => {
+    const view = renderHook(() =>
+      useRecordDisplayPrefs("northwind", "member-a", "customers"),
+    );
+    act(() =>
+      view.result.current.update({
+        headerTone: "cyan",
+        order: ["name", "system:recordNo"],
+      }),
+    );
+    view.unmount();
+
+    const other = renderHook(() =>
+      useRecordDisplayPrefs("northwind", "member-a", "deals"),
+    );
+    expect(other.result.current.prefs.headerTone).toBe("default");
+    other.unmount();
+
+    const again = renderHook(() =>
+      useRecordDisplayPrefs("northwind", "member-a", "customers"),
+    );
+    expect(again.result.current.prefs).toMatchObject({
+      headerTone: "cyan",
+      order: ["name", "system:recordNo"],
+    });
+    act(() => again.result.current.reset());
+    expect(again.result.current.prefs).toEqual(DEFAULT_DISPLAY_PREFS);
   });
 });
