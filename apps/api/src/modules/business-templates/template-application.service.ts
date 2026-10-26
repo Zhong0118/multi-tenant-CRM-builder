@@ -8,6 +8,7 @@ import {
   checksumTemplateConfiguration,
   findTemplateIdentityBlockers,
   findTemplateMemberDefaultBlockers,
+  analyzeTemplatePublication,
 } from './business-template-publication.policy';
 import type { BusinessTemplateConfiguration } from './business-template.schema';
 import type {
@@ -133,6 +134,8 @@ export class TemplateApplicationService {
     if (repeated) return repeated;
 
     await store.lockTemplate(input.templateId);
+    // Goal saves lock metric before their tenant FK check; use the same order.
+    await store.lockGoalConfiguration?.(input.tenantId);
     await store.lockTenant(input.tenantId);
     const concurrent = await store.findApplication(
       input.tenantId,
@@ -168,6 +171,10 @@ export class TemplateApplicationService {
       );
     }
 
+    if (analyzeTemplatePublication(source.configuration, null).blocking.length)
+      throw applicationNotAllowed(
+        '模板发布版本配置不合法或包含不可移植绑定，不能应用。',
+      );
     const hydrated = hydrateTenantConfiguration(
       source.configuration,
       target.id,
@@ -202,6 +209,19 @@ export function hydrateTenantConfiguration(
 ): HydratedTenantConfiguration {
   const hydrated: HydratedTenantConfiguration = {
     tenantId,
+    ...(configuration.goalRules === undefined
+      ? {}
+      : {
+          goalRules: configuration.goalRules.map((goal) => ({
+            ...structuredClone(goal),
+            id: idGenerator(),
+            tenantId,
+            version: 1 as const,
+          })),
+        }),
+    ...(configuration.objects.some((object) => object.workflow !== undefined)
+      ? { workflows: [] }
+      : {}),
     ...(configuration.dashboard
       ? {
           dashboard: {
@@ -240,12 +260,37 @@ export function hydrateTenantConfiguration(
       titleFieldKey: sourceObject.titleFieldKey,
       sortOrder: sourceObject.sortOrder,
       status: 'DRAFT',
-      settings: { description: sourceObject.description },
+      settings: {
+        description: sourceObject.description,
+        ...(sourceObject.automations === undefined
+          ? {}
+          : { automations: structuredClone(sourceObject.automations) }),
+      },
+      ...(sourceObject.pool === undefined
+        ? {}
+        : {
+            poolEnabled: sourceObject.pool.enabled,
+            poolOwnershipTtlHours: sourceObject.pool.ownershipTtlHours,
+            poolConfigVersion: 1,
+            poolLifecycleEnabled: sourceObject.pool.lifecycleEnabled ?? false,
+            poolContactTtlHours: sourceObject.pool.contactTtlHours ?? 24,
+            poolFollowUpTtlHours: sourceObject.pool.followUpTtlHours ?? 720,
+            poolLabels: structuredClone(sourceObject.pool.labels ?? {}),
+            poolProtectionRules: structuredClone(
+              sourceObject.pool.protectionRules ?? [],
+            ),
+          }),
       sourceTemplateVersionId,
       activePublicationId: null,
       publishedAt: null,
       version: 1,
     });
+    if (sourceObject.workflow)
+      hydrated.workflows!.push({
+        objectId,
+        sourceTemplateVersionId,
+        draft: structuredClone(sourceObject.workflow),
+      });
     hydrated.objectsResult.push({
       templateObjectId: sourceObject.id,
       objectId,

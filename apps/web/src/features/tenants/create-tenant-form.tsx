@@ -134,7 +134,7 @@ export function CreateTenantForm({
         title="公司草稿已创建"
         subTitle={
           created.initialization
-            ? `${created.name} 已从模板「${created.initialization.templateName}」v${created.initialization.templateVersionNo} 复制 ${created.initialization.objectCount} 张业务表，全部是未发布的草稿，员工暂时看不到。下一步：首位管理员接受邀请后，在「业务表」中检查并发布；平台再启用公司。`
+            ? `${created.name} 已从模板「${created.initialization.templateName}」v${created.initialization.templateVersionNo} 复制 ${created.initialization.objectCount} 张业务表，全部是未发布的草稿，员工暂时看不到。下一步：首位管理员接受邀请后，由平台启用公司，再由公司管理员在「业务表」中检查并发布。`
             : `${created.name} 是空白公司，仍处于草稿状态。下一步：首位管理员接受邀请后自行搭建业务表（也可以之后再应用模板，只要公司里还没有业务表）；平台再启用公司。`
         }
         extra={[

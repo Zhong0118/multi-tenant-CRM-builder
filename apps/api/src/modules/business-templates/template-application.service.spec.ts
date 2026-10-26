@@ -33,6 +33,38 @@ const meta = { requestId: 'req-application-1', ip: '127.0.0.1' };
 const appliedAt = new Date('2026-08-26T04:00:00.000Z');
 
 describe('TemplateApplicationService', () => {
+  it.each(['workflow', 'automations', 'pool', 'goalRules'])(
+    'rejects stored null %s before hydration',
+    async (key) => {
+      const input = configuration();
+      Object.assign(key === 'goalRules' ? input : input.objects[0], {
+        [key]: null,
+      });
+      const { service, state } = applicationFixture({ configuration: input });
+      await expect(
+        service.apply(platformAdmin, applicationInput(), meta),
+      ).rejects.toMatchObject({ code: 'TEMPLATE_APPLICATION_NOT_ALLOWED' });
+      expect(state.objects).toEqual([]);
+      expect(state.applications).toEqual([]);
+    },
+  );
+  it('rejects stored duplicate disabled workflow states before hydration', async () => {
+    const input = configuration();
+    const state = { key: 'new', label: 'New', sortOrder: 0, isTerminal: false };
+    input.objects[0].workflow = {
+      isEnabled: false,
+      initialStateKey: null,
+      states: [state, { ...state }],
+      transitions: [],
+    };
+    const fixture = applicationFixture({ configuration: input });
+    await expect(
+      fixture.service.apply(platformAdmin, applicationInput(), meta),
+    ).rejects.toMatchObject({ code: 'TEMPLATE_APPLICATION_NOT_ALLOWED' });
+    expect(fixture.state.objects).toEqual([]);
+    expect(fixture.state.applications).toEqual([]);
+  });
+
   it('applies a template to an active company that has no business table yet', async () => {
     const { service, state } = applicationFixture({ tenantStatus: 'ACTIVE' });
     await service.apply(platformAdmin, applicationInput(), meta);
@@ -92,6 +124,57 @@ describe('TemplateApplicationService', () => {
       () => crypto.randomUUID(),
     );
     expect(withoutSearch.views[0]).not.toHaveProperty('searchFieldKeys');
+  });
+
+  it('hydrates workflows, automations, live pools and all-employee goals with new identities and no fake members', () => {
+    const source = configuration();
+    source.objects[0].workflow = {
+      isEnabled: true,
+      initialStateKey: 'new',
+      states: [{ key: 'new', label: '新建', sortOrder: 0, isTerminal: false }],
+      transitions: [],
+    };
+    source.objects[0].automations = [];
+    source.objects[0].pool = {
+      enabled: true,
+      lifecycleEnabled: true,
+      ownershipTtlHours: null,
+      contactTtlHours: 12,
+    };
+    source.goalRules = [
+      {
+        metric: 'calls',
+        target: 20,
+        remindAt: '17:00',
+        weekdays: [1],
+        audience: 'ALL_EMPLOYEES',
+        enabled: true,
+      },
+    ];
+    const hydrated = hydrateTenantConfiguration(
+      source,
+      'tenant-new',
+      'version-new',
+      () => crypto.randomUUID(),
+    );
+    expect(hydrated.objects[0]).toMatchObject({
+      poolEnabled: true,
+      poolContactTtlHours: 12,
+      poolConfigVersion: 1,
+      settings: { automations: [] },
+    });
+    expect(hydrated).toMatchObject({
+      workflows: [
+        {
+          objectId: hydrated.objects[0].id,
+          sourceTemplateVersionId: 'version-new',
+          draft: source.objects[0].workflow,
+        },
+      ],
+      goalRules: [
+        { ...source.goalRules[0], tenantId: 'tenant-new', version: 1 },
+      ],
+    });
   });
 
   it('creates a complete tenant draft graph with fresh identities and source facts', async () => {

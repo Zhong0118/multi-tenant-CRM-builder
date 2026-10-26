@@ -346,7 +346,11 @@ class PrismaMembershipStore implements MembershipStore {
 
   countActiveAdmins(): Promise<number> {
     return this.transaction.tenantMember.count({
-      where: { role: 'TENANT_ADMIN', status: 'ACTIVE' },
+      where: {
+        tenantId: this.tenantId,
+        role: 'TENANT_ADMIN',
+        status: 'ACTIVE',
+      },
     });
   }
 

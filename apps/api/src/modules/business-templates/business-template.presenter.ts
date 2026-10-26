@@ -20,7 +20,10 @@ export type PresentedTemplateObject = Omit<
   fields: PresentedTemplateField[];
 };
 
-export interface PresentedTemplateConfiguration {
+export interface PresentedTemplateConfiguration extends Omit<
+  BusinessTemplateConfiguration,
+  'objects'
+> {
   schemaVersion: 1;
   objects: PresentedTemplateObject[];
   dashboard?: DashboardDefinitionV2;
@@ -106,6 +109,7 @@ export function toTemplateDetail(
   return {
     ...toTemplateSummary(template),
     configuration: {
+      ...structuredClone(template.configuration),
       schemaVersion: 1,
       objects: template.configuration.objects.map((object) => {
         const publishedObject = publishedObjectById.get(object.id);

@@ -360,3 +360,225 @@ function dashboardPreset(sortOrder: number): DashboardDefinitionV2 {
     ],
   };
 }
+
+it('retains published select options when analyzing a template through the shared publication policy', () => {
+  const previous = validTemplate();
+  previous.objects[0].fields[1].type = 'SINGLE_SELECT';
+  previous.objects[0].fields[1].config = {
+    options: [
+      { key: 'new', label: 'New', status: 'ACTIVE' },
+      { key: 'old', label: 'Old', status: 'ACTIVE' },
+    ],
+  };
+  const input = structuredClone(previous);
+  input.objects[0].fields[1].config = {
+    options: [{ key: 'new', label: 'New', status: 'ACTIVE' }],
+  };
+  expect(analyzeTemplatePublication(input, previous).blocking).toContainEqual(
+    expect.objectContaining({
+      code: 'FIELD_OPTION_REMOVED',
+      fieldKey: 'phone',
+    }),
+  );
+});
+
+describe('portable workflow template extensions', () => {
+  const extended = () => {
+    const input = validTemplate() as BusinessTemplateConfiguration & {
+      goalRules: unknown[];
+    };
+    Object.assign(input.objects[0], {
+      workflow: {
+        isEnabled: true,
+        initialStateKey: 'new',
+        states: [
+          { key: 'new', label: '新建', sortOrder: 0, isTerminal: false },
+          { key: 'done', label: '完成', sortOrder: 10, isTerminal: true },
+        ],
+        transitions: [
+          {
+            key: 'finish',
+            label: '完成',
+            fromStateKey: 'new',
+            toStateKey: 'done',
+            allowedRoles: ['TENANT_ADMIN'],
+            requiredFieldKeys: [],
+            sortOrder: 0,
+            actions: [],
+          },
+        ],
+      },
+      automations: [
+        {
+          key: 'create-company',
+          label: '建公司',
+          enabled: true,
+          allowedRoles: ['TENANT_ADMIN'],
+          trigger: { type: 'MANUAL' },
+          targetObjectCode: 'companies',
+          owner: 'ACTOR',
+          mappings: { name: { source: 'SOURCE_FIELD', fieldKey: 'name' } },
+        },
+      ],
+      pool: {
+        enabled: true,
+        lifecycleEnabled: true,
+        ownershipTtlHours: null,
+        protectionRules: [{ sourceObjectCode: 'leads', statusKeys: ['done'] }],
+      },
+    });
+    input.goalRules = [
+      {
+        metric: 'calls',
+        target: 20,
+        remindAt: '17:00',
+        weekdays: [1, 2, 3, 4, 5],
+        audience: 'ALL_EMPLOYEES',
+        enabled: true,
+      },
+    ];
+    return input;
+  };
+
+  it.each(['workflow', 'automations', 'pool', 'goalRules'])(
+    'blocks explicit null %s in stored configuration',
+    (key) => {
+      const input = validTemplate();
+      Object.assign(key === 'goalRules' ? input : input.objects[0], {
+        [key]: null,
+      });
+      expect(analyzeTemplatePublication(input, null).blocking).toContainEqual(
+        expect.objectContaining({
+          code: 'TEMPLATE_EXTENSION_INVALID',
+          path:
+            key === 'goalRules' ? key : `objects.${input.objects[0].id}.${key}`,
+        }),
+      );
+    },
+  );
+  it.each(['states', 'transitions'] as const)(
+    'blocks duplicate %s even in a disabled carried workflow',
+    (key) => {
+      const input = extended();
+      const workflow = input.objects[0].workflow!;
+      workflow.isEnabled = false;
+      if (key === 'states') workflow.states.push({ ...workflow.states[0] });
+      else workflow.transitions.push({ ...workflow.transitions[0] });
+      expect(analyzeTemplatePublication(input, null).blocking).toContainEqual(
+        expect.objectContaining({
+          code: 'TEMPLATE_WORKFLOW_INVALID',
+          objectId: input.objects[0].id,
+        }),
+      );
+    },
+  );
+  it('accepts an empty disabled carried workflow without changing its shape', () => {
+    const input = validTemplate();
+    input.objects[0].workflow = {
+      isEnabled: false,
+      initialStateKey: null,
+      states: [],
+      transitions: [],
+    };
+    expect(analyzeTemplatePublication(input, null).blocking).toEqual([]);
+    expect(compileTemplateVersion(input).objects[0].workflow).toEqual(
+      input.objects[0].workflow,
+    );
+  });
+  it('compiles every extension without inserting absent optional properties into legacy configurations', () => {
+    const input = extended();
+    const result = compileTemplateVersion(input);
+    expect(result.objects[0]).toMatchObject({
+      workflow: { transitions: [{ actions: [] }] },
+      automations: [{ key: 'create-company' }],
+      pool: { enabled: true },
+    });
+    expect(result).toHaveProperty('goalRules', input.goalRules);
+    expect(compileTemplateVersion(validTemplate())).not.toHaveProperty(
+      'goalRules',
+    );
+    expect(
+      compileTemplateVersion(validTemplate()).objects[0],
+    ).not.toHaveProperty('workflow');
+  });
+  it('includes goals in checksums and extension changes in publication summaries', () => {
+    const input = extended();
+    const previous = structuredClone(input);
+    input.goalRules[0] = { ...input.goalRules[0], target: 25 };
+    expect(checksumTemplateConfiguration(input)).not.toEqual(
+      checksumTemplateConfiguration(previous),
+    );
+    expect(
+      analyzeTemplatePublication(input, previous).changes.length,
+    ).toBeGreaterThan(0);
+    expect(
+      analyzeTemplatePublication(input, validTemplate()).changes,
+    ).toContainEqual(
+      expect.objectContaining({
+        objectId: 'template-object-lead',
+        entity: 'OBJECT',
+        kind: 'UPDATED',
+      }),
+    );
+  });
+  it('blocks missing cross-object workflow and pool state references', () => {
+    const input = extended();
+    const object = input.objects[0] as unknown as {
+      automations: Array<{ targetObjectCode: string }>;
+      pool: { protectionRules: Array<{ statusKeys: string[] }> };
+    };
+    object.automations[0].targetObjectCode = 'missing';
+    object.pool.protectionRules[0].statusKeys = ['missing'];
+    const analysis = analyzeTemplatePublication(input, null);
+    expect(analysis.blocking).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'WORKFLOW_ACTION_TARGET_OBJECT_INVALID',
+        }),
+        expect.objectContaining({ code: 'POOL_PROTECTION_SOURCE_INVALID' }),
+      ]),
+    );
+  });
+  it.each(['ACTOR', 'LITERAL', 'TRIGGER'])(
+    'blocks fixed members in %s, including disabled automations',
+    (source) => {
+      const input = extended();
+      input.objects[1].fields[1].type = 'MEMBER';
+      input.objects[0].fields[1].type = 'MEMBER';
+      const object = input.objects[0] as unknown as {
+        workflow: { transitions: Array<{ actions: unknown[] }> };
+        automations: Array<{
+          enabled: boolean;
+          mappings: object;
+          trigger: object;
+        }>;
+      };
+      object.automations[0].enabled = false;
+      if (source === 'TRIGGER')
+        object.automations[0].trigger = {
+          type: 'FIELD_CHANGED',
+          fieldKey: 'phone',
+          equals: 'member-id',
+        };
+      if (source === 'LITERAL')
+        object.automations[0].mappings = {
+          email: { source: 'LITERAL', value: 'member-id' },
+        };
+      if (source === 'ACTOR')
+        object.workflow.transitions[0].actions = [
+          {
+            key: 'update',
+            type: 'UPDATE_RECORD',
+            target: 'SOURCE_RECORD',
+            values: { phone: { source: 'ACTOR', memberId: 'member-id' } },
+          },
+        ];
+      expect(analyzeTemplatePublication(input, null).blocking).toContainEqual(
+        expect.objectContaining({
+          code: 'TEMPLATE_MEMBER_BINDING_NOT_PORTABLE',
+          path: expect.any(String) as unknown,
+        }),
+      );
+    },
+  );
+});

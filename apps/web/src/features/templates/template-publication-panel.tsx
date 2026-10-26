@@ -119,7 +119,9 @@ export function TemplatePublicationPanel({
                     >
                       <StatusTag>{CHANGE_LABELS[change.kind]}</StatusTag>
                       <span>
-                        {change.entity === "OBJECT"
+                        {change.entity === "GOAL_RULES"
+                          ? "员工目标规则"
+                          : change.entity === "OBJECT"
                           ? (object?.object.name ?? change.objectId)
                           : `${object?.object.name ?? change.objectId} · ${field?.label ?? change.fieldKey}`}
                       </span>
@@ -184,6 +186,7 @@ function IssueGroups({
                   )}
                   <span>{issue.message}</span>
                   {issue.fieldKey ? <code>{issue.fieldKey}</code> : null}
+                  {issue.path ? <code>{issue.path}</code> : null}
                 </li>
               ))}
             </ul>

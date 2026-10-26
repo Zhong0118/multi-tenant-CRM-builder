@@ -16,3 +16,6 @@ export type TemplateApplication = Schemas["TemplateApplicationResponseDto"];
 export type CreateTemplateInput = Schemas["CreateBusinessTemplateDto"];
 export type SaveTemplateDraftInput = Schemas["SaveBusinessTemplateDraftDto"];
 export type ApplyTemplateInput = Schemas["ApplyBusinessTemplateDto"];
+export type TemplateCapturePreview = Schemas["BusinessTemplateCapturePreviewResponseDto"];
+export type TemplateCaptureInput = { expectedVersion: number; sourceTenantId: string };
+export type TemplateSourcePage = Schemas["PlatformTenantPageResponseDto"];

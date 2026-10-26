@@ -478,6 +478,7 @@ model BusinessTemplateVersion {
   applications          BusinessTemplateApplication[]
   sourceObjects         ObjectDefinition[]
   sourceDashboards      TenantDashboardConfiguration[]
+  sourceWorkflows       ObjectWorkflowDefinition[]
 
   @@unique([templateId, versionNo])
   @@unique([templateId, sourceDraftVersion])
@@ -782,19 +783,21 @@ model DailyReport {
 }
 
 model ObjectWorkflowDefinition {
+  sourceTemplateVersionId String? @map("source_template_version_id") @db.Uuid
+  sourceTemplateVersion BusinessTemplateVersion? @relation(fields:[sourceTemplateVersionId],references:[id],onDelete:Restrict)
   id                 String                         @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId           String                         @map("tenant_id") @db.Uuid
   objectDefinitionId String                         @unique @map("object_definition_id") @db.Uuid
   isEnabled          Boolean                        @default(false) @map("is_enabled")
   initialStateKey    String?                        @map("initial_state_key") @db.VarChar(64)
-  createdByMemberId  String                         @map("created_by_member_id") @db.Uuid
-  updatedByMemberId  String                         @map("updated_by_member_id") @db.Uuid
+  createdByMemberId  String?                         @map("created_by_member_id") @db.Uuid
+  updatedByMemberId  String?                         @map("updated_by_member_id") @db.Uuid
   createdAt          DateTime                       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime                       @updatedAt @map("updated_at") @db.Timestamptz(3)
   tenant             Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   object             ObjectDefinition               @relation(fields: [tenantId, objectDefinitionId], references: [tenantId, id], onDelete: Restrict)
-  createdBy          TenantMember                   @relation("WorkflowCreatedBy", fields: [tenantId, createdByMemberId], references: [tenantId, id], onDelete: Restrict)
-  updatedBy          TenantMember                   @relation("WorkflowUpdatedBy", fields: [tenantId, updatedByMemberId], references: [tenantId, id], onDelete: Restrict)
+  createdBy          TenantMember?                   @relation("WorkflowCreatedBy", fields: [tenantId, createdByMemberId], references: [tenantId, id], onDelete: Restrict)
+  updatedBy          TenantMember?                   @relation("WorkflowUpdatedBy", fields: [tenantId, updatedByMemberId], references: [tenantId, id], onDelete: Restrict)
   states             WorkflowStateDefinition[]
   transitions        WorkflowTransitionDefinition[]
 

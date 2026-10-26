@@ -1,5 +1,9 @@
 import { lockObjectConfiguration } from '../objects/object-configuration-lock';
-import { configOf, validatePoolConfig } from './record-pool-config';
+import {
+  configOf,
+  validatePoolConfig,
+  analyzePoolProtectionSources,
+} from './record-pool-config';
 import { Inject, Injectable } from '@nestjs/common';
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
@@ -153,6 +157,7 @@ export class RecordPoolService {
         lifecycleEnabled: input.lifecycleEnabled ?? stored.lifecycleEnabled,
         protectionRules: input.protectionRules ?? stored.protectionRules,
       };
+      const sourceStates = new Map<string, string[]>();
       for (const rule of effective.enabled && effective.lifecycleEnabled
         ? (effective.protectionRules ?? [])
         : []) {
@@ -161,19 +166,19 @@ export class RecordPoolService {
           context,
           rule.sourceObjectCode,
         );
-        if (
-          !source.schema.workflow ||
-          rule.statusKeys.some(
-            (key) =>
-              !source.schema.workflow!.states.some(
-                (state) => state.key === key,
-              ),
-          )
-        )
-          throw new ApiException('VALIDATION_FAILED', 400, {
-            message: '保护依据必须选择来源表当前已发布流程中的状态。',
-          });
+        sourceStates.set(
+          rule.sourceObjectCode,
+          source.schema.workflow?.states.map((state) => state.key) ?? [],
+        );
       }
+      const protectionIssues = analyzePoolProtectionSources(
+        effective,
+        sourceStates,
+      );
+      if (protectionIssues.length)
+        throw new ApiException('VALIDATION_FAILED', 400, {
+          message: protectionIssues.map((issue) => issue.message).join('；'),
+        });
       const updated = await tx.objectDefinition.update({
         where: { id: object.id },
         data: {

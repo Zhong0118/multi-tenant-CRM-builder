@@ -1,7 +1,17 @@
+import { SaveWorkflowDraftDto } from '../../workflows/dto/workflow.dto';
+import { AutomationRuleDto } from '../../automations/automation.dto';
+import { UpdateRecordPoolConfigDto } from '../../records/dto/record-pool.dto';
+import {
+  SaveWorkGoalDto,
+  GOAL_METRICS,
+  type GoalMetric,
+} from '../../work/dto/work-goals.dto';
+import { OBJECT_CODE_REFERENCE_PATTERN } from '../../objects/object-code';
 import { Transform, Type } from 'class-transformer';
 import {
   ApiProperty,
   ApiPropertyOptional,
+  OmitType,
   type ApiPropertyOptions,
 } from '@nestjs/swagger';
 import {
@@ -208,7 +218,8 @@ export class TemplateFieldDraftDto {
   @ApiProperty({ type: String, format: 'uuid' }) @IsUUID() id!: string;
 
   @ApiProperty({ type: String, maxLength: 64 })
-  @Matches(/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/)
+  // Published fields can use legacy camelCase keys; preserve their references.
+  @Matches(/^[a-z][a-zA-Z0-9]*(?:_[a-zA-Z0-9]+)*$/)
   @MaxLength(64)
   fieldKey!: string;
 
@@ -246,11 +257,43 @@ export class TemplateFieldDraftDto {
   status!: 'ACTIVE' | 'INACTIVE';
 }
 
+export class TemplateWorkflowDto extends OmitType(SaveWorkflowDraftDto, [
+  'expectedDraftRevision',
+] as const) {}
+export class TemplatePoolDto extends OmitType(UpdateRecordPoolConfigDto, [
+  'version',
+] as const) {}
+export class TemplateGoalRuleDto extends OmitType(SaveWorkGoalDto, [
+  'expectedVersion',
+  'memberIds',
+] as const) {
+  @ApiProperty({ enum: GOAL_METRICS }) @IsIn(GOAL_METRICS) metric!: GoalMetric;
+  @ApiProperty({ enum: ['ALL_EMPLOYEES'] })
+  @Equals('ALL_EMPLOYEES')
+  declare audience: 'ALL_EMPLOYEES';
+}
+
 export class TemplateObjectDraftDto {
+  @ApiPropertyOptional({ type: TemplateWorkflowDto })
+  @ValidateIf((_object, value) => value !== undefined)
+  @ValidateNested()
+  @Type(() => TemplateWorkflowDto)
+  workflow?: TemplateWorkflowDto;
+  @ApiPropertyOptional({ type: AutomationRuleDto, isArray: true })
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AutomationRuleDto)
+  automations?: AutomationRuleDto[];
+  @ApiPropertyOptional({ type: TemplatePoolDto })
+  @ValidateIf((_object, value) => value !== undefined)
+  @ValidateNested()
+  @Type(() => TemplatePoolDto)
+  pool?: TemplatePoolDto;
   @ApiProperty({ type: String, format: 'uuid' }) @IsUUID() id!: string;
 
   @ApiProperty({ type: String, maxLength: 64 })
-  @Matches(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/, {
+  @Matches(OBJECT_CODE_REFERENCE_PATTERN, {
     message: '业务对象代码仅支持小写字母、数字和单个连字符，且必须以字母开头。',
   })
   @MaxLength(64)
@@ -305,6 +348,12 @@ export class TemplateObjectDraftDto {
 }
 
 export class BusinessTemplateConfigurationDto {
+  @ApiPropertyOptional({ type: TemplateGoalRuleDto, isArray: true })
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TemplateGoalRuleDto)
+  goalRules?: TemplateGoalRuleDto[];
   @ApiProperty({ type: Number, enum: [1] })
   @Equals(1)
   schemaVersion!: 1;
@@ -377,8 +426,8 @@ export class TemplatePublicationChangeResponseDto {
   @ApiProperty({ type: String, enum: ['ADDED', 'UPDATED', 'INACTIVATED'] })
   kind!: 'ADDED' | 'UPDATED' | 'INACTIVATED';
 
-  @ApiProperty({ type: String, enum: ['OBJECT', 'FIELD'] })
-  entity!: 'OBJECT' | 'FIELD';
+  @ApiProperty({ type: String, enum: ['OBJECT', 'FIELD', 'GOAL_RULES'] })
+  entity!: 'OBJECT' | 'FIELD' | 'GOAL_RULES';
 
   @ApiProperty({ type: String, format: 'uuid' }) objectId!: string;
   @ApiPropertyOptional({ type: String }) fieldKey?: string;
@@ -525,4 +574,50 @@ export class TenantBusinessConfigurationSummaryResponseDto {
   application!: TemplateApplicationResponseDto | null;
   @ApiProperty({ type: TenantObjectSummaryResponseDto, isArray: true })
   objects!: TenantObjectSummaryResponseDto[];
+}
+
+export class CaptureBusinessTemplatePreviewDto extends ExpectedTemplateVersionDto {
+  @ApiProperty({ format: 'uuid' }) @IsUUID() sourceTenantId!: string;
+}
+export class TemplateCaptureSourceTenantDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiProperty() name!: string;
+  @ApiProperty() code!: string;
+}
+export class TemplateCaptureExcludedDto {
+  @ApiProperty() unpublishedObjects!: number;
+  @ApiProperty() memberOverrides!: number;
+  @ApiProperty() selectedGoalRules!: number;
+}
+export class TemplateCaptureObjectSummaryDto extends TemplateCaptureSourceTenantDto {
+  @ApiProperty() fieldCount!: number;
+  @ApiProperty() stateCount!: number;
+  @ApiProperty() automationCount!: number;
+  @ApiProperty() poolEnabled!: boolean;
+}
+export class TemplateCaptureSummaryDto {
+  @ApiProperty({ type: TemplateCaptureObjectSummaryDto, isArray: true })
+  objects!: TemplateCaptureObjectSummaryDto[];
+  @ApiProperty() goalRuleCount!: number;
+}
+export class TemplateCaptureIssueDto {
+  @ApiProperty() code!: string;
+  @ApiProperty() message!: string;
+  @ApiPropertyOptional() objectId?: string;
+  @ApiPropertyOptional() fieldKey?: string;
+  @ApiPropertyOptional() path?: string;
+}
+export class BusinessTemplateCapturePreviewResponseDto {
+  @ApiProperty({ type: BusinessTemplateConfigurationResponseDto })
+  configuration!: BusinessTemplateConfigurationResponseDto;
+  @ApiProperty({ type: TemplateCaptureSourceTenantDto })
+  sourceTenant!: TemplateCaptureSourceTenantDto;
+  @ApiProperty({ type: TemplateCaptureExcludedDto })
+  excluded!: TemplateCaptureExcludedDto;
+  @ApiProperty({ type: TemplateCaptureSummaryDto })
+  summary!: TemplateCaptureSummaryDto;
+  @ApiProperty({ type: TemplateCaptureIssueDto, isArray: true })
+  blocking!: TemplateCaptureIssueDto[];
+  @ApiProperty({ type: TemplateCaptureIssueDto, isArray: true })
+  warnings!: TemplateCaptureIssueDto[];
 }

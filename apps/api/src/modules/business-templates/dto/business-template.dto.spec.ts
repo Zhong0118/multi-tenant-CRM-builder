@@ -4,6 +4,69 @@ import { validate, type ValidationError } from 'class-validator';
 import { SaveBusinessTemplateDraftDto } from './business-template.dto';
 
 describe('business template DTOs', () => {
+  it.each(['workflow', 'automations', 'pool', 'goalRules'])(
+    'rejects explicit null %s while extensions may be absent',
+    async (key) => {
+      const input = validDraftInput();
+      const target =
+        key === 'goalRules'
+          ? input.configuration
+          : input.configuration.objects[0];
+      Object.assign(target, { [key]: null });
+      const errors = await validate(
+        plainToInstance(SaveBusinessTemplateDraftDto, input),
+        {
+          whitelist: true,
+          forbidNonWhitelisted: true,
+        },
+      );
+      expect(errorPaths(errors)).toContain(
+        key === 'goalRules'
+          ? 'configuration.goalRules'
+          : `configuration.objects.0.${key}`,
+      );
+    },
+  );
+
+  it.each(['contractNo', 'signDate'])(
+    'accepts captured runtime field key %s',
+    async (fieldKey) => {
+      const input = validDraftInput();
+      draftField(input).fieldKey = fieldKey;
+      await expect(
+        validate(plainToInstance(SaveBusinessTemplateDraftDto, input)),
+      ).resolves.toEqual([]);
+    },
+  );
+  it('accepts portable extensions and legacy object codes with strict whitelist validation', async () => {
+    const input = validDraftInput();
+    const object = input.configuration.objects[0] as Record<string, unknown>;
+    object.code = 'legacy_customers';
+    object.workflow = {
+      isEnabled: false,
+      initialStateKey: null,
+      states: [],
+      transitions: [],
+    };
+    object.automations = [];
+    object.pool = { enabled: true, ownershipTtlHours: null };
+    (input.configuration as Record<string, unknown>).goalRules = [
+      {
+        metric: 'calls',
+        target: 20,
+        remindAt: '17:00',
+        weekdays: [1],
+        audience: 'ALL_EMPLOYEES',
+        enabled: true,
+      },
+    ];
+    await expect(
+      validate(plainToInstance(SaveBusinessTemplateDraftDto, input), {
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }),
+    ).resolves.toEqual([]);
+  });
   it.each([
     ['description', (input: DraftInput) => delete input.description],
     [

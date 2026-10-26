@@ -28,6 +28,8 @@ import type { BusinessTemplateConfiguration } from './business-template.schema';
 import { BusinessTemplatesService } from './business-templates.service';
 import {
   BusinessTemplateDetailResponseDto,
+  CaptureBusinessTemplatePreviewDto,
+  BusinessTemplateCapturePreviewResponseDto,
   BusinessTemplatePageQueryDto,
   BusinessTemplatePageResponseDto,
   BusinessTemplateVersionResponseDto,
@@ -75,6 +77,18 @@ export class BusinessTemplatesController {
     @Param('templateId', new ParseUUIDPipe()) templateId: string,
   ) {
     return this.templates.detail(current.user, templateId);
+  }
+
+  @Post(':templateId/capture-preview')
+  @HttpCode(200)
+  @ApiParam({ name: 'templateId', format: 'uuid' })
+  @ApiOkResponse({ type: BusinessTemplateCapturePreviewResponseDto })
+  capturePreview(
+    @CurrentSession() current: SessionPrincipal,
+    @Param('templateId', new ParseUUIDPipe()) templateId: string,
+    @Body() dto: CaptureBusinessTemplatePreviewDto,
+  ) {
+    return this.templates.capturePreview(current.user, templateId, dto);
   }
 
   @Put(':templateId/draft')

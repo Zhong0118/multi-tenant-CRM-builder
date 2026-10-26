@@ -885,3 +885,58 @@ button.applicationChoice:hover {
   color: var(--text-tertiary);
   font-size: 12px;
 }
+
+.captureBody,
+.capturePreview,
+.flowObjectList {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.capturePreview {
+  padding-top: 16px;
+  border-top: 1px solid var(--border-default);
+  animation: captureEnter 180ms ease-out both;
+}
+
+.sourceCompanies {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.sourceCompany {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-reading);
+  cursor: pointer;
+  transition: border-color 160ms, background 160ms, transform 160ms;
+}
+
+.sourceCompany:hover,
+.sourceCompany[data-selected="true"] {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+.sourceCompany:active { transform: scale(.99); }
+.sourceCompany input { accent-color: var(--color-primary); }
+.sourceCompany span { display: grid; gap: 4px; min-width: 0; }
+.sourceCompany strong { color: var(--text-primary); overflow-wrap: anywhere; }
+.sourceCompany small,
+.captureExclusions { color: var(--text-secondary); font-size: 12px; }
+.flowObject { padding: 12px 14px; border: 1px solid var(--border-default); border-radius: var(--radius-reading); }
+.flowObject > strong { margin-right: 10px; color: var(--text-primary); }
+.flowObject code { color: var(--text-secondary); font-size: 12px; overflow-wrap: anywhere; }
+.flowObject > div { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.captureIssues { padding-left: 18px; margin: 6px 0; }
+.captureIssues li { margin: 6px 0; }
+.captureIssues code { display: block; overflow-wrap: anywhere; font-size: 11px; }
+@keyframes captureEnter { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 520px) { .sourceCompanies { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .capturePreview { animation: none; } .sourceCompany { transition: none; } }

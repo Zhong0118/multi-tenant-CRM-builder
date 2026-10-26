@@ -21,6 +21,7 @@ import { StatusTag } from "@/components/workbench/status-tag";
 import { toApiError } from "@/lib/api/api-error";
 
 import { ObjectLifecycleControl } from "./object-lifecycle-control";
+import { TemplateInitialization } from "./template-initialization";
 import { objectApi as defaultObjectApi, type ObjectApi } from "./object-api";
 import { objectStatusLabel, type ObjectDraft } from "./object-types";
 
@@ -222,6 +223,10 @@ export function ObjectList({
       {notice ? (
         <Alert type="success" showIcon closable title={notice} onClose={() => setNotice(undefined)} className={styles.listAlert} />
       ) : null}
+      {rows.length > 0 ? <TemplateInitialization key={tenantCode} tenantCode={tenantCode} onPublished={() => {
+        void queryClient.invalidateQueries({ queryKey });
+        router.refresh();
+      }} /> : null}
       {rows.length === 0 ? (
         <Empty
           className={styles.listEmpty}

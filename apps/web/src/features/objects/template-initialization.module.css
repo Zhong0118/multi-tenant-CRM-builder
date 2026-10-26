@@ -1,0 +1,77 @@
+.banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 18px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-reading);
+  background: var(--color-primary-soft);
+  animation: appear 180ms ease-out both;
+}
+.icon {
+  font-size: 24px;
+  color: var(--color-primary);
+}
+.copy {
+  flex: 1;
+  min-width: 160px;
+}
+.copy strong {
+  color: var(--text-primary);
+}
+.copy p {
+  margin: 4px 0;
+  overflow-wrap: anywhere;
+}
+.copy small {
+  color: var(--text-secondary);
+}
+.content {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.content p {
+  margin: 0;
+  line-height: 1.7;
+}
+.content code {
+  overflow-wrap: anywhere;
+}
+.objects {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.objects li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-data);
+}
+.objects code {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .banner {
+    animation: none;
+  }
+}

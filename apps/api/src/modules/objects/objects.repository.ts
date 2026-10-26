@@ -1,3 +1,5 @@
+import { configOf } from '../records/record-pool-config';
+import type { PoolConfig } from '../records/record-ownership';
 import { Injectable } from '@nestjs/common';
 import type { Prisma as PrismaTypes } from '@crm/database';
 
@@ -25,6 +27,7 @@ import {
 } from '../workflows/workflow.types';
 
 export interface ObjectDraft extends PublicationDraft {
+  pool?: PoolConfig;
   object: PublicationDraft['object'] & {
     status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
     activePublicationId: string | null;
@@ -39,7 +42,22 @@ export type ObjectPublicationSummary = PublishedObjectSchema['publication'] & {
   changes: PublicationAnalysis['changes'];
 };
 
+export interface TemplateInitializationCandidate {
+  id: string;
+  name: string;
+  code: string;
+  version: number;
+  poolConfigVersion: number;
+  templateVersionId: string;
+}
+
 export interface ObjectsStore {
+  listTemplateInitializationCandidates?(): Promise<
+    TemplateInitializationCandidate[]
+  >;
+  listPublishedPoolConfigurations?(): Promise<
+    Array<{ code: string; pool: PoolConfig; schema: PublishedObjectSchema }>
+  >;
   lockLifecycleConfiguration(): Promise<void>;
   findLifecycleBlockers(
     objectId: string,
@@ -126,6 +144,55 @@ class PrismaObjectsStore implements ObjectsStore {
     private readonly audit: AuditService,
     private readonly context: TenantContext,
   ) {}
+
+  async listTemplateInitializationCandidates(): Promise<
+    TemplateInitializationCandidate[]
+  > {
+    const objects = await this.transaction.objectDefinition.findMany({
+      where: {
+        tenantId: this.context.tenantId,
+        sourceTemplateVersionId: { not: null },
+        status: { not: 'ARCHIVED' },
+        deletedAt: null,
+        archivedAt: null,
+        activePublicationId: null,
+        publications: { none: {} },
+        records: { none: {} },
+      },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        version: true,
+        poolConfigVersion: true,
+        sourceTemplateVersionId: true,
+      },
+      orderBy: { id: 'asc' },
+    });
+    return objects.map(({ sourceTemplateVersionId, ...object }) => ({
+      ...object,
+      templateVersionId: sourceTemplateVersionId!,
+    }));
+  }
+
+  async listPublishedPoolConfigurations() {
+    const objects = await this.transaction.objectDefinition.findMany({
+      where: {
+        tenantId: this.context.tenantId,
+        status: 'ACTIVE',
+        deletedAt: null,
+        archivedAt: null,
+        activePublicationId: { not: null },
+      },
+      include: { activePublication: { select: { configuration: true } } },
+    });
+    return objects.map((object) => ({
+      code: object.code,
+      pool: configOf(object),
+      schema: object.activePublication!
+        .configuration as unknown as PublishedObjectSchema,
+    }));
+  }
 
   lockLifecycleConfiguration(): Promise<void> {
     return lockObjectConfiguration(this.transaction, this.context.tenantId);
@@ -376,6 +443,7 @@ class PrismaObjectsStore implements ObjectsStore {
             ),
           }
         : null,
+      pool: configOf(object),
       activeSchema,
       previousPublishedFields: [...publishedFields.values()],
       automations: (settings.automations ?? []) as unknown as NonNullable<
@@ -627,8 +695,7 @@ class PrismaObjectsStore implements ObjectsStore {
         label: transition.label,
         fromStateKey: transition.fromStateKey,
         toStateKey: transition.toStateKey,
-        allowedRoles:
-          transition.allowedRoles as WorkflowDraft['transitions'][number]['allowedRoles'],
+        allowedRoles: transition.allowedRoles,
         requiredFieldKeys: transition.requiredFieldKeys,
         actions: toWorkflowActions(transition.actions),
         sortOrder: transition.sortOrder,
@@ -853,9 +920,7 @@ function viewColumns(value: PrismaTypes.JsonValue): {
   const object = jsonObject(value);
   const searchFieldKeys = object.searchFieldKeys;
   return {
-    columnFieldKeys: stringArray(
-      object.columnFieldKeys as PrismaTypes.JsonValue,
-    ),
+    columnFieldKeys: stringArray(object.columnFieldKeys),
     ...(Array.isArray(searchFieldKeys)
       ? { searchFieldKeys: stringArray(searchFieldKeys) }
       : {}),

@@ -173,3 +173,39 @@ describe('PrismaWorkflowRepository actions mapping', () => {
     expect(calls[0]?.data.transitions.create[0]?.actions).toEqual([]);
   });
 });
+
+it('preserves template provenance and original creator when an administrator edits an initialized workflow', async () => {
+  const calls: TransitionCreateArgs[] = [];
+  const transaction = {
+    ...transactionWithCreate(calls),
+    objectWorkflowDefinition: {
+      findFirst: jest.fn().mockResolvedValue({
+        id: 'workflow-1',
+        sourceTemplateVersionId: 'template-version-1',
+        createdByMemberId: null,
+      }),
+      delete: jest.fn().mockResolvedValue({}),
+      create: jest.fn((args: TransitionCreateArgs) => {
+        calls.push(args);
+        return Promise.resolve({});
+      }),
+    },
+    workflowTransitionDefinition: {
+      deleteMany: jest.fn().mockResolvedValue({}),
+    },
+    workflowStateDefinition: { deleteMany: jest.fn().mockResolvedValue({}) },
+  };
+  await repository(transaction).withTenant(admin, (store) =>
+    store.replaceDraft({
+      objectId: 'object-1',
+      expectedVersion: 7,
+      draft,
+      actorMemberId: 'member-admin',
+    }),
+  );
+  expect(calls[0].data).toMatchObject({
+    sourceTemplateVersionId: 'template-version-1',
+    createdByMemberId: null,
+    updatedByMemberId: 'member-admin',
+  });
+});

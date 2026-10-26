@@ -12,6 +12,9 @@ import type {
   SaveTemplateDraftInput,
   TemplateApplication,
   TemplatePublicationAnalysis,
+  TemplateCaptureInput,
+  TemplateCapturePreview,
+  TemplateSourcePage,
 } from "./template-types";
 
 export interface TemplateListQuery {
@@ -21,6 +24,8 @@ export interface TemplateListQuery {
 }
 
 export interface TemplateApi {
+  listSourceTenants(query: { page: number; search?: string }): Promise<TemplateSourcePage>;
+  capturePreview(templateId: string, input: TemplateCaptureInput): Promise<TemplateCapturePreview>;
   list(query: TemplateListQuery): Promise<BusinessTemplatePage>;
   create(input: CreateTemplateInput): Promise<BusinessTemplateDetail>;
   detail(templateId: string): Promise<BusinessTemplateDetail>;
@@ -47,6 +52,12 @@ const TEMPLATES = "/api/v1/platform/business-templates" as const;
 const TEMPLATE = `${TEMPLATES}/{templateId}` as const;
 
 export const browserTemplateApi: TemplateApi = {
+  async listSourceTenants(query) {
+    return dataOrThrow(await browserApiClient.GET("/api/v1/platform/tenants", { params: { query: { ...query, limit: 20, status: "ACTIVE" } } }));
+  },
+  async capturePreview(templateId, input) {
+    return dataOrThrow(await browserApiClient.POST(`${TEMPLATE}/capture-preview`, { params: { path: { templateId } }, body: input }));
+  },
   async list(query) {
     return dataOrThrow(
       await browserApiClient.GET(TEMPLATES, {

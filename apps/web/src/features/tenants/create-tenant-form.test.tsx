@@ -198,6 +198,11 @@ describe("CreateTenantForm", () => {
     expect(
       await screen.findByText(/复制 4 张业务表，全部是未发布的草稿/),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /首位管理员接受邀请后，由平台启用公司，再由公司管理员在「业务表」中检查并发布/,
+      ),
+    ).toBeInTheDocument();
   });
 });
 

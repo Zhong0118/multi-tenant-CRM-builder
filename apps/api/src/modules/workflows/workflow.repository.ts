@@ -108,8 +108,7 @@ class PrismaWorkflowStore implements WorkflowStore {
         label: transition.label,
         fromStateKey: transition.fromStateKey,
         toStateKey: transition.toStateKey,
-        allowedRoles:
-          transition.allowedRoles as WorkflowDraft['transitions'][number]['allowedRoles'],
+        allowedRoles: transition.allowedRoles,
         requiredFieldKeys: transition.requiredFieldKeys,
         actions: toWorkflowActions(transition.actions),
         sortOrder: transition.sortOrder,
@@ -141,7 +140,11 @@ class PrismaWorkflowStore implements WorkflowStore {
         tenantId: this.context.tenantId,
         objectDefinitionId: input.objectId,
       },
-      select: { id: true },
+      select: {
+        id: true,
+        sourceTemplateVersionId: true,
+        createdByMemberId: true,
+      },
     });
     if (existing) {
       await this.transaction.workflowTransitionDefinition.deleteMany({
@@ -167,7 +170,10 @@ class PrismaWorkflowStore implements WorkflowStore {
         objectDefinitionId: input.objectId,
         isEnabled: input.draft.isEnabled,
         initialStateKey: input.draft.initialStateKey,
-        createdByMemberId: input.actorMemberId,
+        sourceTemplateVersionId: existing?.sourceTemplateVersionId ?? null,
+        createdByMemberId: existing
+          ? existing.createdByMemberId
+          : input.actorMemberId,
         updatedByMemberId: input.actorMemberId,
         states: {
           create: input.draft.states.map((state) => ({

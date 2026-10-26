@@ -27,7 +27,7 @@ import {
 import {
   addField,
   buildFieldEditorPatch,
-  isTemplateObjectCode,
+  isTemplateObjectReference,
   reorderFields,
   setDefaultView,
   setEmployeeAccess,
@@ -76,7 +76,7 @@ export function TemplateObjectEditor({
   );
 
   if (!object) return null;
-  const objectCodeInvalid = !isTemplateObjectCode(object.object.code);
+  const objectCodeInvalid = !isTemplateObjectReference(object.object.code);
 
   function reorderFieldIds(fieldIds: string[]) {
     onChange(reorderFields(draft, objectId, fieldIds));
