@@ -157,6 +157,63 @@ describe("RecordImportDrawer", () => {
     ).toEqual(["m1", "m2", "m2"]);
     expect(screen.getByLabelText("导入负责人")).toBeDisabled();
   });
+  it("explains owner permission rejection during checking without claiming an interrupted import", async () => {
+    const api = recordApi();
+    vi.mocked(api.importRows).mockRejectedValue({
+      code: "OWNER_INVALID",
+      status: 400,
+      requestId: "owner-check",
+      fieldErrors: {},
+      message: "目标成员需具有该业务表的读取和处理权限。",
+    });
+    const { onCompleted } = setup(api, schema, true);
+    chooseFile("姓名\n新客户");
+    await screen.findByText("1 行 · 1 列");
+    fireEvent.mouseDown(screen.getByLabelText("导入负责人"));
+    fireEvent.click(await screen.findByText("员工甲"));
+    fireEvent.click(screen.getByRole("button", { name: "检查数据" }));
+    await screen.findByText(
+      /检查未通过：目标成员需具有该业务表的读取和处理权限/,
+    );
+    expect(screen.getByText(/读取、修改权限已生效/)).toBeInTheDocument();
+    expect(screen.queryByText(/请求中断/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/已成功的行会保留/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("导入负责人")).toBeEnabled();
+    expect(
+      vi.mocked(api.importRows).mock.calls.every((call) => call[2].dryRun),
+    ).toBe(true);
+    expect(onCompleted).not.toHaveBeenCalled();
+  });
+
+  it("preserves confirmed batches and explains a later permission rejection as a business error", async () => {
+    const api = recordApi();
+    const original = vi.mocked(api.importRows).getMockImplementation()!;
+    let writes = 0;
+    vi.mocked(api.importRows).mockImplementation(async (...args) => {
+      if (!args[2].dryRun && ++writes === 2)
+        throw {
+          code: "OBJECT_ACTION_FORBIDDEN",
+          status: 403,
+          requestId: "import-permission",
+          fieldErrors: {},
+          message: "你没有此业务表的新增权限。",
+        };
+      return original(...args);
+    });
+    setup(api);
+    chooseFile(
+      "姓名\n" + Array.from({ length: 101 }, (_, i) => `客户${i}`).join("\n"),
+    );
+    await screen.findByText("101 行 · 1 列");
+    await checkAndImport();
+    await screen.findByText(/导入未完成：你没有此业务表的新增权限/);
+    expect(
+      screen.getByText(/已成功导入 100 行，数据已保留/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/请求中断/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "检查剩余行" })).toBeEnabled();
+  });
+
   it("does not offer employees an owner override", () => {
     setup();
     expect(screen.queryByLabelText("导入负责人")).not.toBeInTheDocument();
@@ -324,10 +381,14 @@ it("imports into the initial pool only after explicit selection and excludes own
     ownershipTtlHours: null,
     version: 1,
   });
-  expect(screen.getByRole("checkbox", { name: "确认导入到初始公共池" })).toBeChecked();
+  expect(
+    screen.getByRole("checkbox", { name: "确认导入到初始公共池" }),
+  ).toBeChecked();
   fireEvent.mouseDown(screen.getByLabelText("导入负责人"));
   fireEvent.click(await screen.findByText("员工甲"));
-  expect(screen.getByRole("checkbox", { name: "确认导入到初始公共池" })).not.toBeChecked();
+  expect(
+    screen.getByRole("checkbox", { name: "确认导入到初始公共池" }),
+  ).not.toBeChecked();
   fireEvent.click(
     screen.getByRole("checkbox", { name: "确认导入到初始公共池" }),
   );
