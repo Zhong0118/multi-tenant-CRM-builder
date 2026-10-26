@@ -244,6 +244,140 @@ th[data-resizing="true"] .columnResizer::after {
   outline: none;
 }
 
+/* ---------- header tone ----------
+   A member's personal header colour for this table. Every tone is a set of
+   values that work together: header, its hover and sorted states, sorter
+   icons, resize handles and selected rows. They are custom properties on the
+   table's own panel (and on the swatches in 显示设置), so no other table,
+   overlay or the global theme changes. Without data-header-tone (默认) none
+   of the rules below apply and the table keeps the workspace theme. */
+
+.data[data-header-tone="default"],
+.toneSwatch[data-header-tone="default"] {
+  --tone-head: var(--bg-surface-subtle);
+  --tone-rule: var(--border-default);
+  --tone-handle: var(--border-strong);
+}
+
+.data[data-header-tone="blue"],
+.toneSwatch[data-header-tone="blue"] {
+  --tone-head: #eaf1fe;
+  --tone-head-hover: #dde8fd;
+  --tone-head-sorted: #e2ebfe;
+  --tone-text: #2f4168;
+  --tone-icon: #6b7fa8;
+  --tone-icon-hover: #3e5482;
+  --tone-rule: #c9d8f7;
+  --tone-handle: #9fb6e6;
+  --tone-row-hover: #f5f8fe;
+  --tone-row-selected: #eaf1fe;
+  --tone-row-selected-hover: #dde8fd;
+}
+
+.data[data-header-tone="gray"],
+.toneSwatch[data-header-tone="gray"] {
+  --tone-head: #eef1f5;
+  --tone-head-hover: #e3e7ee;
+  --tone-head-sorted: #e7ebf1;
+  --tone-text: #374255;
+  --tone-icon: #737e92;
+  --tone-icon-hover: #485367;
+  --tone-rule: #d5dbe4;
+  --tone-handle: #aab4c3;
+  --tone-row-hover: #f5f7fa;
+  --tone-row-selected: #edf1f7;
+  --tone-row-selected-hover: #e3e8f0;
+}
+
+.data[data-header-tone="cyan"],
+.toneSwatch[data-header-tone="cyan"] {
+  --tone-head: #e5f4f6;
+  --tone-head-hover: #d4ecef;
+  --tone-head-sorted: #dbf0f3;
+  --tone-text: #20505a;
+  --tone-icon: #5b8c95;
+  --tone-icon-hover: #2f6670;
+  --tone-rule: #bddfe4;
+  --tone-handle: #8cc3cc;
+  --tone-row-hover: #f3fafb;
+  --tone-row-selected: #e5f4f6;
+  --tone-row-selected-hover: #d4ecef;
+}
+
+/* Every header cell, including the selection cell and the sticky (fixed)
+   row-menu cell, so a horizontally scrolled header stays one colour. */
+.data[data-header-tone] .table :global(.ant-table-thead > tr > th) {
+  border-bottom-color: var(--tone-rule);
+  background: var(--tone-head);
+  color: var(--tone-text);
+}
+
+.data[data-header-tone]
+  .table
+  :global(.ant-table-thead > tr > th.ant-table-column-sort) {
+  background: var(--tone-head-sorted);
+}
+
+.data[data-header-tone]
+  .table
+  :global(.ant-table-thead > tr > th.ant-table-column-has-sorters:hover) {
+  background: var(--tone-head-hover);
+}
+
+.data[data-header-tone]
+  .table
+  :global(.ant-table-thead .ant-table-column-sorter) {
+  color: var(--tone-icon);
+}
+
+.data[data-header-tone]
+  .table
+  :global(
+    .ant-table-thead
+      th.ant-table-column-has-sorters:hover
+      .ant-table-column-sorter
+  ) {
+  color: var(--tone-icon-hover);
+}
+
+/* The active direction keeps the primary colour on every tone. */
+.data[data-header-tone]
+  .table
+  :global(
+    .ant-table-thead
+      .ant-table-column-sorter
+      :is(.ant-table-column-sorter-up, .ant-table-column-sorter-down).active
+  ) {
+  color: var(--color-primary);
+}
+
+.data[data-header-tone] .columnResizer::after {
+  background: var(--tone-handle);
+}
+
+.data[data-header-tone] .columnResizer:hover::after,
+.data[data-header-tone] th[data-resizing="true"] .columnResizer::after {
+  background: var(--color-primary);
+}
+
+.data[data-header-tone]
+  .table
+  :global(.ant-table-tbody > tr:not(.ant-table-row-selected):hover > td) {
+  background: var(--tone-row-hover);
+}
+
+.data[data-header-tone]
+  .table
+  :global(.ant-table-tbody > tr.ant-table-row-selected > td) {
+  background: var(--tone-row-selected);
+}
+
+.data[data-header-tone]
+  .table
+  :global(.ant-table-tbody > tr.ant-table-row-selected:hover > td) {
+  background: var(--tone-row-selected-hover);
+}
+
 /* ---------- footer and selection ---------- */
 
 .footer {
@@ -690,10 +824,21 @@ th[data-resizing="true"] .columnResizer::after {
 .displayPanel {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  width: 300px;
-  max-height: min(70vh, 560px);
+  gap: 16px;
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  max-height: min(72vh, 620px);
   overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.displaySection {
+  min-width: 0;
+}
+
+.displaySection + .displaySection {
+  padding-top: 14px;
+  border-top: 1px solid var(--border-hairline);
 }
 
 .displayHeading {
@@ -705,10 +850,14 @@ th[data-resizing="true"] .columnResizer::after {
 }
 
 .displayHint {
-  margin-top: 6px;
+  margin: 6px 0 0;
   color: var(--text-tertiary);
   font-size: 12px;
   line-height: 18px;
+}
+
+.displayHeading + .displayHint {
+  margin: -2px 0 8px;
 }
 
 .displayColumns {
@@ -721,6 +870,7 @@ th[data-resizing="true"] .columnResizer::after {
 }
 
 .displayColumns li {
+  position: relative;
   display: flex;
   gap: 4px;
   align-items: center;
@@ -728,10 +878,72 @@ th[data-resizing="true"] .columnResizer::after {
   min-height: 32px;
   padding: 0 2px 0 4px;
   border-radius: var(--radius-control);
+  background: var(--bg-surface);
 }
 
 .displayColumns li:hover {
   background: var(--bg-hover);
+}
+
+.displayColumns li[data-dragging="true"] {
+  background: var(--bg-surface);
+  box-shadow: 0 6px 16px -8px rgba(16, 24, 40, 0.3);
+}
+
+.displayHandle {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-status);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: grab;
+  touch-action: none;
+}
+
+.displayHandle:hover,
+.displayHandle:focus-visible {
+  background: var(--bg-track);
+  color: var(--text-primary);
+}
+
+.displayHandle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.displayHandle:active {
+  cursor: grabbing;
+}
+
+.displayColumnName {
+  display: inline-flex;
+  flex: 1;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+/* An always-shown system column: aligned with the checkbox labels, without a
+   checkbox that could only ever be disabled. */
+.displayFixedName {
+  padding-left: 24px;
+  color: var(--text-primary);
+}
+
+.displaySystemTag {
+  flex: none;
+  padding: 0 5px;
+  border-radius: var(--radius-status);
+  background: var(--color-neutral-soft);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 18px;
 }
 
 .displayColumnTools {
@@ -740,18 +952,38 @@ th[data-resizing="true"] .columnResizer::after {
   align-items: center;
 }
 
-.displayOwner:global(.ant-checkbox-wrapper) {
-  padding: 4px;
+.toneOption {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
 }
 
+.toneSwatch {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--tone-handle);
+  border-radius: 3px;
+  background: var(--tone-head);
+}
+
+/* The note and 恢复默认 stay in view however long the column list is. */
 .displayFooter {
+  position: sticky;
+  z-index: 2;
+  bottom: 0;
   display: flex;
   gap: 8px;
   align-items: flex-start;
   justify-content: space-between;
+  margin-top: -4px;
   padding-top: 10px;
   border-top: 1px solid var(--border-hairline);
+  background: var(--bg-surface);
   color: var(--text-tertiary);
   font-size: 12px;
   line-height: 18px;
+}
+
+.displayFooter :global(.ant-btn) {
+  flex: none;
 }
