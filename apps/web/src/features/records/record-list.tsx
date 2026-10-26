@@ -2,6 +2,7 @@
 
 import {
   CloseOutlined,
+  DeleteOutlined,
   DownloadOutlined,
   EditOutlined,
   EllipsisOutlined,
@@ -13,7 +14,7 @@ import {
   UploadOutlined,
   UserSwitchOutlined,
 } from "@ant-design/icons";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   Button,
@@ -59,6 +60,10 @@ import {
   RecordBatchAssignDrawer,
 } from "./record-batch-assign";
 import { RecordBatchEditDrawer } from "./record-batch-edit";
+import {
+  MAX_DELETE_RECORDS,
+  RecordBatchDeleteDrawer,
+} from "./record-batch-delete";
 import { recordCardFields } from "./record-card-fields";
 import { CellReaderProvider, RecordCellValue } from "./record-cell";
 import {
@@ -140,6 +145,7 @@ export function RecordList({
   navigate,
 }: RecordListProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const objectCode = schema.object.code;
   const listPath = `/workspace/${tenantCode}/objects/${objectCode}`;
   const queryDefaults: RecordQuery = {
@@ -153,6 +159,7 @@ export function RecordList({
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [assignmentRecords, setAssignmentRecords] = useState<RecordSummary[]>();
+  const [deletionRecords, setDeletionRecords] = useState<RecordSummary[]>();
   const [batchOpen, setBatchOpen] = useState(false);
   const selectionScope = `${tenantCode}:${objectCode}:${recordQuerySearch(query, queryDefaults)}`;
   const [previousSelectionScope, setPreviousSelectionScope] =
@@ -162,6 +169,7 @@ export function RecordList({
     setSelectedRowKeys([]);
     setBatchOpen(false);
     setAssignmentRecords(undefined);
+    setDeletionRecords(undefined);
   }
   const [importOpen, setImportOpen] = useState(false);
   // Columns, widths, order and reading density for this member and table.
@@ -258,8 +266,11 @@ export function RecordList({
   );
   const editableRecord = (row: RecordSummary) =>
     canEditRecord(schema, row, currentMemberId, canFilterByOwner);
+  const canSelect = schema.actions.canUpdate || schema.actions.canDelete;
+  const selectableRecord = (row: RecordSummary) =>
+    schema.actions.canDelete || editableRecord(row);
   const selectedRecords = page.items.filter(
-    (item) => selectedRowKeys.includes(item.id) && editableRecord(item),
+    (item) => selectedRowKeys.includes(item.id) && selectableRecord(item),
   );
   const currentSelectedRowKeys = selectedRecords.map((item) => item.id);
   const owned = schema.scopes.read === "OWN";
@@ -603,7 +614,7 @@ export function RecordList({
       (sum, column) =>
         sum + (typeof column.width === "number" ? column.width : 0),
       0,
-    ) + (schema.actions.canUpdate ? 40 : 0);
+    ) + (canSelect ? 40 : 0);
 
   const overflowItems: MenuProps["items"] = [
     ...(schema.actions.canCreate
@@ -1035,9 +1046,9 @@ export function RecordList({
                 return (
                   <li key={row.id} className={rl.card}>
                     <div className={rl.cardHeader}>
-                      {schema.actions.canUpdate ? (
+                      {canSelect ? (
                         <Checkbox
-                          disabled={!editableRecord(row)}
+                          disabled={!selectableRecord(row)}
                           aria-label={`选择卡片 ${row.title}`}
                           checked={currentSelectedRowKeys.includes(row.id)}
                           onChange={(event) =>
@@ -1135,14 +1146,14 @@ export function RecordList({
             tableLayout="fixed"
             scroll={{ x: tableWidth }}
             rowSelection={
-              schema.actions.canUpdate
+              canSelect
                 ? {
                     columnWidth: 40,
                     selectedRowKeys: currentSelectedRowKeys,
                     onChange: (keys) => setSelectedRowKeys(keys.map(String)),
                     getCheckboxProps: (row) => ({
                       "aria-label": `选择 ${row.title}`,
-                      disabled: !editableRecord(row),
+                      disabled: !selectableRecord(row),
                     }),
                   }
                 : undefined
@@ -1171,7 +1182,10 @@ export function RecordList({
                   size="small"
                   type="text"
                   icon={<EditOutlined aria-hidden />}
-                  disabled={tooManyToEdit}
+                  disabled={
+                    tooManyToEdit ||
+                    selectedRecords.some((row) => !editableRecord(row))
+                  }
                   onClick={() => setBatchOpen(true)}
                 >
                   批量修改
@@ -1186,6 +1200,18 @@ export function RecordList({
                   onClick={() => setAssignmentRecords([...selectedRecords])}
                 >
                   分配负责人
+                </Button>
+              ) : null}
+              {schema.actions.canDelete ? (
+                <Button
+                  size="small"
+                  type="text"
+                  danger
+                  icon={<DeleteOutlined aria-hidden />}
+                  disabled={selectedCount > MAX_DELETE_RECORDS}
+                  onClick={() => setDeletionRecords([...selectedRecords])}
+                >
+                  批量删除
                 </Button>
               ) : null}
               <Button
@@ -1254,6 +1280,29 @@ export function RecordList({
             onChanged={async () => {
               await records.refetch();
               router.refresh();
+            }}
+          />
+        ) : null}
+        {deletionRecords ? (
+          <RecordBatchDeleteDrawer
+            tenantCode={tenantCode}
+            objectCode={objectCode}
+            records={deletionRecords}
+            api={api}
+            onChanged={async () => {
+              const key = ["workspace", tenantCode, "records", objectCode, query];
+              await queryClient.cancelQueries({ queryKey: key, exact: true });
+              // A query refetch can pause indefinitely offline. This explicit
+              // refresh must settle so deletion feedback remains dismissible.
+              const result = await api.list(tenantCode, objectCode, query);
+              queryClient.setQueryData(key, result);
+              router.refresh();
+            }}
+            onClose={() => {
+              setDeletionRecords(undefined);
+              setSelectedRowKeys([]);
+              const lastPage = Math.max(1, Math.ceil(page.total / page.limit));
+              if (query.page > lastPage) apply({ ...query, page: lastPage });
             }}
           />
         ) : null}
