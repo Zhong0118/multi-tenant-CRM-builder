@@ -1,4 +1,8 @@
-import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  onlineManager,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import {
   act,
   fireEvent,
@@ -1522,3 +1526,241 @@ async function addCondition(label: string) {
   });
   fireEvent.click(options.at(-1)!);
 }
+
+describe("RecordList personal display settings", () => {
+  const key = "crm.records.display.v2.northwind.member-1.customers";
+  const headerTexts = () =>
+    within(screen.getByRole("table"))
+      .getAllByRole("columnheader")
+      .map((cell) => cell.textContent?.trim() ?? "");
+
+  it("orders system columns among fields while selection and actions stay at the ends", async () => {
+    const api = {
+      list: vi.fn().mockResolvedValue(page),
+      export: vi.fn().mockResolvedValue(undefined),
+    } as unknown as RecordApi;
+    renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+      api,
+      currentMemberId: "member-1",
+      canFilterByOwner: true,
+    });
+    expect(headerTexts().slice(1)).toEqual([
+      "业务编号",
+      "客户名称",
+      "线索状态",
+      "手机号",
+      "评分",
+      "负责人",
+      "最近更新",
+      "操作",
+    ]);
+
+    fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
+    fireEvent.click(screen.getByRole("button", { name: "上移 最近更新" }));
+    fireEvent.click(screen.getByRole("button", { name: "上移 最近更新" }));
+    fireEvent.click(screen.getByRole("button", { name: "下移 业务编号" }));
+    expect(headerTexts().slice(1)).toEqual([
+      "客户名称",
+      "业务编号",
+      "线索状态",
+      "手机号",
+      "最近更新",
+      "评分",
+      "负责人",
+      "操作",
+    ]);
+    // The selection checkbox is still the first header cell.
+    expect(
+      within(screen.getAllByRole("columnheader")[0]).getByRole("checkbox"),
+    ).toBeInTheDocument();
+
+    const saved = JSON.parse(window.localStorage.getItem(key)!);
+    expect(saved.order).toEqual([
+      "name",
+      "system:recordNo",
+      "lead_status",
+      "phone",
+      "system:updatedAt",
+      "score",
+      "system:systemOwner",
+    ]);
+    expect(saved.columns).toEqual(["name", "lead_status", "phone", "score"]);
+
+    // An export only ever receives business fields.
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "导出当前结果" }),
+    );
+    await waitFor(() =>
+      expect(api.export).toHaveBeenCalledWith(
+        "northwind",
+        "customers",
+        expect.objectContaining({
+          columns: ["name", "lead_status", "phone", "score"],
+        }),
+      ),
+    );
+  });
+
+  it("keeps historical field keys after moving a system column, reloading and exporting", async () => {
+    const historicalSchema: RuntimeObjectSchema = {
+      ...schema,
+      fields: [
+        ...schema.fields,
+        {
+          ...schema.fields[0],
+          id: "field-close-date",
+          fieldKey: "closeDate",
+          label: "预计成交日",
+          type: "DATE",
+          required: false,
+        },
+      ],
+      defaultView: {
+        ...schema.defaultView,
+        columnFieldKeys: ["name", "closeDate"],
+      },
+    };
+    const api = {
+      list: vi.fn().mockResolvedValue(page),
+      export: vi.fn().mockResolvedValue(undefined),
+    } as unknown as RecordApi;
+    const options = {
+      api,
+      schema: historicalSchema,
+      currentMemberId: "member-1",
+    };
+    const view = renderList(vi.fn(), DEFAULT_RECORD_QUERY, options);
+    expect(headerTexts()).toContain("预计成交日");
+    fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
+    fireEvent.click(screen.getByRole("button", { name: "上移 最近更新" }));
+    const beforeReload = headerTexts();
+    view.unmount();
+    renderList(vi.fn(), DEFAULT_RECORD_QUERY, options);
+    expect(headerTexts()).toEqual(beforeReload);
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "导出当前结果" }),
+    );
+    await waitFor(() =>
+      expect(api.export).toHaveBeenCalledWith(
+        "northwind",
+        "customers",
+        expect.objectContaining({ columns: ["name", "closeDate"] }),
+      ),
+    );
+  });
+
+  it("moves a column from the keyboard on its drag handle", () => {
+    renderList(vi.fn(), DEFAULT_RECORD_QUERY, { currentMemberId: "member-1" });
+    fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
+    const handle = screen.getByRole("button", {
+      name: "拖动调整 最近更新 的位置",
+    });
+    fireEvent.keyDown(handle, { key: "ArrowUp" });
+    expect(headerTexts().slice(-3)).toEqual(["最近更新", "负责人", "操作"]);
+    expect(
+      screen.getByRole("button", { name: "拖动调整 最近更新 的位置" }),
+    ).toHaveFocus();
+  });
+
+  it("applies a personal header colour to this table, keeps it and resets it", () => {
+    const view = renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+      currentMemberId: "member-1",
+    });
+    const panel = () => screen.getByRole("region", { name: "客户记录表" });
+    expect(panel()).not.toHaveAttribute("data-header-tone");
+    fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
+    expect(
+      screen.getByText(/个人显示偏好.*无需发布，不改变公司默认视图/),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "浅青" }));
+    expect(panel()).toHaveAttribute("data-header-tone", "cyan");
+    expect(JSON.parse(window.localStorage.getItem(key)!)).toMatchObject({
+      headerTone: "cyan",
+    });
+    // Other tables of the same member keep their own colour.
+    expect(
+      window.localStorage.getItem(
+        "crm.records.display.v2.northwind.member-1.deals",
+      ),
+    ).toBeNull();
+    view.unmount();
+
+    renderList(vi.fn(), DEFAULT_RECORD_QUERY, { currentMemberId: "member-1" });
+    expect(panel()).toHaveAttribute("data-header-tone", "cyan");
+    fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
+    fireEvent.click(screen.getByRole("button", { name: "恢复默认" }));
+    expect(panel()).not.toHaveAttribute("data-header-tone");
+    expect(JSON.parse(window.localStorage.getItem(key)!)).toMatchObject({
+      headerTone: "default",
+      order: [],
+      columns: [],
+    });
+  });
+
+  it("never brings back a field or system column the member may not see through a saved order", () => {
+    window.localStorage.setItem(
+      key,
+      JSON.stringify({
+        columns: ["margin", "name", "phone"],
+        order: [
+          "system:systemOwner",
+          "margin",
+          "system:updatedAt",
+          "phone",
+          "name",
+        ],
+        widths: {},
+        density: "comfortable",
+        columnDensity: {},
+        ownerVisible: true,
+      }),
+    );
+    renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+      currentMemberId: "member-1",
+      schema: {
+        ...schema,
+        fields: [
+          ...schema.fields,
+          {
+            id: "field-margin",
+            fieldKey: "margin",
+            label: "毛利",
+            type: "MONEY",
+            required: false,
+            defaultValue: null,
+            validation: {},
+            config: {},
+            sortOrder: 99,
+            isSystem: false,
+            access: "HIDDEN",
+          },
+        ],
+        scopes: { read: "OWN", update: "OWN" },
+      },
+      poolConfig: { enabled: true, ownershipTtlHours: null, version: 1 },
+    });
+    // Only the member's own records: no owner column; the pool keeps its
+    // column. Columns the saved order never mentioned take their usual place.
+    expect(headerTexts().slice(1)).toEqual([
+      "业务编号",
+      "最近更新",
+      "客户名称",
+      "手机号",
+      "归属状态",
+      "操作",
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
+    expect(screen.queryByText("毛利")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", { name: "显示系统负责人" }),
+    ).not.toBeInTheDocument();
+    // Pool status is always shown with the pool on: listed, not switchable.
+    const columnsList = screen.getByRole("list", { name: "显示的列与顺序" });
+    expect(within(columnsList).getByText("归属状态")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("checkbox", { name: "显示列 归属状态" }),
+    ).not.toBeInTheDocument();
+  });
+});

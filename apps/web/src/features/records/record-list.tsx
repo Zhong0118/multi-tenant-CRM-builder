@@ -72,6 +72,12 @@ import {
   SYSTEM_COLUMN_BOUNDS,
   type ColumnBounds,
 } from "./record-column-layout";
+import {
+  resolveColumnOrder,
+  SYSTEM_COLUMN_LABELS,
+  systemColumnKey,
+  type SystemColumnKey,
+} from "./record-column-order";
 import { resolveRecordColumnKeys } from "./record-columns";
 import { useRecordDisplayPrefs } from "./record-display-prefs";
 import { RecordDisplaySettings } from "./record-display-settings";
@@ -125,6 +131,8 @@ export interface RecordListProps {
 }
 
 const SEARCH_DEBOUNCE_MS = 300;
+
+type RecordColumn = ColumnsType<RecordSummary>[number];
 
 /**
  * The record register. Filters, sort and page live in the URL so returning from
@@ -321,8 +329,62 @@ export function RecordList({
   const columnDensity = (key: string) =>
     display.prefs.columnDensity[key] ?? display.prefs.density;
 
-  const columns: ColumnsType<RecordSummary> = [
-    {
+  const fieldColumn = (field: PublishedFieldView): RecordColumn => {
+    const sortable = (SORTABLE_FIELD_TYPES as readonly string[]).includes(
+      field.type,
+    );
+    const sortOrder: "ascend" | "descend" | null =
+      sortable && query.sort === field.fieldKey
+        ? query.direction === "asc"
+          ? "ascend"
+          : "descend"
+        : null;
+    const width = columnWidth(field.fieldKey);
+    const density = columnDensity(field.fieldKey);
+    return {
+      title: field.label,
+      key: field.fieldKey,
+      width,
+      align:
+        field.type === "MONEY" || field.type === "NUMBER"
+          ? ("right" as const)
+          : ("left" as const),
+      sorter: sortable || undefined,
+      sortOrder,
+      sortDirections: sortable
+        ? (["ascend", "descend"] as ("ascend" | "descend")[])
+        : undefined,
+      render: (_: unknown, row: RecordSummary) =>
+        field.fieldKey === schema.object.titleFieldKey ? (
+          <a
+            className={`${styles.recordTitle} ${rl.titleLink}`}
+            data-density={density}
+            href={recordPath(row.id)}
+            onClick={(event) => {
+              event.preventDefault();
+              go(recordPath(row.id));
+            }}
+          >
+            {row.title}
+          </a>
+        ) : (
+          <RecordCellValue
+            field={field}
+            value={row.values[field.fieldKey]}
+            members={members}
+            density={density}
+            width={width}
+            recordTitle={row.title}
+            currentMemberId={currentMemberId}
+          />
+        ),
+    };
+  };
+  // The record's own columns. Which of them show keeps its conditions (owner
+  // when the member can see others' records and chose to, pool status when
+  // the pool is on); the member's order only arranges them among the fields.
+  const systemColumns: Record<SystemColumnKey, RecordColumn> = {
+    recordNo: {
       title: "业务编号",
       key: "recordNo",
       dataIndex: "recordNo",
@@ -339,86 +401,28 @@ export function RecordList({
         <span className={styles.recordNo}>{recordNo}</span>
       ),
     },
-    ...visibleColumns.map((field) => {
-      const sortable = (SORTABLE_FIELD_TYPES as readonly string[]).includes(
-        field.type,
-      );
-      const sortOrder: "ascend" | "descend" | null =
-        sortable && query.sort === field.fieldKey
-          ? query.direction === "asc"
-            ? "ascend"
-            : "descend"
-          : null;
-      const width = columnWidth(field.fieldKey);
-      const density = columnDensity(field.fieldKey);
-      return {
-        title: field.label,
-        key: field.fieldKey,
-        width,
-        align:
-          field.type === "MONEY" || field.type === "NUMBER"
-            ? ("right" as const)
-            : ("left" as const),
-        sorter: sortable || undefined,
-        sortOrder,
-        sortDirections: sortable
-          ? (["ascend", "descend"] as ("ascend" | "descend")[])
-          : undefined,
-        render: (_: unknown, row: RecordSummary) =>
-          field.fieldKey === schema.object.titleFieldKey ? (
-            <a
-              className={`${styles.recordTitle} ${rl.titleLink}`}
-              data-density={density}
-              href={recordPath(row.id)}
-              onClick={(event) => {
-                event.preventDefault();
-                go(recordPath(row.id));
-              }}
-            >
-              {row.title}
-            </a>
-          ) : (
-            <RecordCellValue
-              field={field}
-              value={row.values[field.fieldKey]}
-              members={members}
-              density={density}
-              width={width}
-              recordTitle={row.title}
-              currentMemberId={currentMemberId}
-            />
-          ),
-      };
-    }),
-    ...(showOwner
-      ? [
-          {
-            title: "负责人",
-            key: "systemOwner",
-            width: columnWidth("systemOwner"),
-            render: (_: unknown, row: RecordSummary) => (
-              <RecordOwner
-                ownerMemberId={row.ownerMemberId}
-                members={members}
-                currentMemberId={currentMemberId}
-              />
-            ),
-          },
-        ]
-      : []),
-    ...(poolConfig?.enabled
-      ? [
-          {
-            title: "归属状态",
-            key: "poolStatus",
-            width: columnWidth("poolStatus"),
-            render: (_: unknown, row: RecordSummary) => (
-              <RecordPoolStatus record={row} config={poolConfig} compact />
-            ),
-          },
-        ]
-      : []),
-    {
+    systemOwner: {
+      title: "负责人",
+      key: "systemOwner",
+      width: columnWidth("systemOwner"),
+      render: (_: unknown, row: RecordSummary) => (
+        <RecordOwner
+          ownerMemberId={row.ownerMemberId}
+          members={members}
+          currentMemberId={currentMemberId}
+        />
+      ),
+    },
+    poolStatus: {
+      title: "归属状态",
+      key: "poolStatus",
+      width: columnWidth("poolStatus"),
+      render: (_: unknown, row: RecordSummary) =>
+        poolConfig ? (
+          <RecordPoolStatus record={row} config={poolConfig} compact />
+        ) : null,
+    },
+    updatedAt: {
       title: "最近更新",
       key: "updatedAt",
       dataIndex: "updatedAt",
@@ -435,6 +439,27 @@ export function RecordList({
         <span className={rl.noWrap}>{formatDateTime(updatedAt)}</span>
       ),
     },
+  };
+  const shownSystemColumns: SystemColumnKey[] = [
+    "recordNo",
+    ...(showOwner ? (["systemOwner"] as const) : []),
+    ...(poolConfig?.enabled ? (["poolStatus"] as const) : []),
+    "updatedAt",
+  ];
+  const columnOrder = resolveColumnOrder(
+    display.prefs.order,
+    visibleColumns.map((field) => field.fieldKey),
+    shownSystemColumns,
+  );
+  // The selection checkbox (antd puts it first) and the row menu stay at the
+  // two ends whatever the member's order.
+  const columns: ColumnsType<RecordSummary> = [
+    ...columnOrder.map((id) => {
+      const system = systemColumnKey(id);
+      if (system) return systemColumns[system];
+      const field = visibleColumns.find((item) => item.fieldKey === id);
+      return field ? fieldColumn(field) : null;
+    }).filter((column): column is RecordColumn => column !== null),
     {
       // The header is read by assistive technology only; the menu button is self-explanatory.
       title: <span className={styles.visuallyHidden}>操作</span>,
@@ -571,16 +596,9 @@ export function RecordList({
   const tooManyToAssign = selectedCount > MAX_OWNER_ASSIGNMENT_RECORDS;
   const canAssign = canFilterByOwner && schema.actions.canUpdate;
   const columnLabel = (key: string) =>
-    key === "recordNo"
-      ? "业务编号"
-      : key === "updatedAt"
-        ? "最近更新"
-        : key === "systemOwner"
-          ? "负责人"
-          : key === "poolStatus"
-            ? "归属状态"
-            : (schema.fields.find((field) => field.fieldKey === key)?.label ??
-              key);
+    key in SYSTEM_COLUMN_LABELS
+      ? SYSTEM_COLUMN_LABELS[key as SystemColumnKey]
+      : (schema.fields.find((field) => field.fieldKey === key)?.label ?? key);
   const setColumnWidth = (key: string, width: number | undefined) =>
     display.update((current) => {
       const widths = { ...current.widths };
@@ -651,7 +669,7 @@ export function RecordList({
   const columnChooser = (
     <RecordDisplaySettings
       fields={choosableFields}
-      columns={columnFieldKeys}
+      order={columnOrder}
       prefs={display.prefs}
       ownerChoice={!owned}
       onChange={(change) =>
@@ -1012,7 +1030,15 @@ export function RecordList({
           />
         </div>
 
-        <section className={rl.data} aria-label={`${schema.object.name}记录表`}>
+        <section
+          className={rl.data}
+          aria-label={`${schema.object.name}记录表`}
+          data-header-tone={
+            display.prefs.headerTone === "default"
+              ? undefined
+              : display.prefs.headerTone
+          }
+        >
           {records.isError ? (
             <Alert
               type="error"
