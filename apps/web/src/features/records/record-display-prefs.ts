@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { FIELD_KEY_PATTERN } from "@/features/objects/object-types";
-
 import { isColumnOrderId } from "./record-column-order";
 
 /**
@@ -121,7 +119,7 @@ export function parseDisplayPrefs(
     const columns = Array.isArray(raw.columns)
       ? raw.columns.filter(
           (key): key is string =>
-            typeof key === "string" && FIELD_KEY_PATTERN.test(key),
+            typeof key === "string" && COLUMN_KEY.test(key),
         )
       : [];
     const widths =

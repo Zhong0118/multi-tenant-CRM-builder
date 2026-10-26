@@ -904,6 +904,11 @@ th[data-resizing="true"] .columnResizer::after {
   color: var(--text-tertiary);
   cursor: grab;
   touch-action: none;
+  transition:
+    background-color var(--motion-fast) ease,
+    color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease,
+    transform var(--motion-fast) ease;
 }
 
 .displayHandle:hover,
@@ -919,6 +924,7 @@ th[data-resizing="true"] .columnResizer::after {
 
 .displayHandle:active {
   cursor: grabbing;
+  transform: scale(0.94);
 }
 
 .displayColumnName {

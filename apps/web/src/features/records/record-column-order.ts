@@ -1,4 +1,4 @@
-import { FIELD_KEY_PATTERN } from "@/features/objects/object-types";
+const COLUMN_KEY = /^[a-zA-Z][a-zA-Z0-9_]*$/;
 
 /**
  * The record table's own columns, which are not business fields: they come
@@ -6,7 +6,7 @@ import { FIELD_KEY_PATTERN } from "@/features/objects/object-types";
  * have no field definition, no field permission and no place in an export's
  * field list. Their keys are the table's column keys (also used for widths
  * and sorting); in a saved column order they are written as `system:<key>`,
- * which can never be a field key (field keys are lower snake case).
+ * which cannot collide with a field key, including historical camelCase keys.
  */
 export const SYSTEM_COLUMN_KEYS = [
   "recordNo",
@@ -46,8 +46,7 @@ export function isSystemColumnId(id: string): id is SystemColumnId {
 /** A saved order entry worth keeping: a field key or a known system column. */
 export function isColumnOrderId(id: unknown): id is string {
   return (
-    typeof id === "string" &&
-    (FIELD_KEY_PATTERN.test(id) || isSystemColumnId(id))
+    typeof id === "string" && (COLUMN_KEY.test(id) || isSystemColumnId(id))
   );
 }
 

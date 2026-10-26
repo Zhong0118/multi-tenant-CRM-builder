@@ -1,4 +1,8 @@
-import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  onlineManager,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import {
   act,
   fireEvent,
@@ -1594,6 +1598,55 @@ describe("RecordList personal display settings", () => {
         expect.objectContaining({
           columns: ["name", "lead_status", "phone", "score"],
         }),
+      ),
+    );
+  });
+
+  it("keeps historical field keys after moving a system column, reloading and exporting", async () => {
+    const historicalSchema: RuntimeObjectSchema = {
+      ...schema,
+      fields: [
+        ...schema.fields,
+        {
+          ...schema.fields[0],
+          id: "field-close-date",
+          fieldKey: "closeDate",
+          label: "预计成交日",
+          type: "DATE",
+          required: false,
+        },
+      ],
+      defaultView: {
+        ...schema.defaultView,
+        columnFieldKeys: ["name", "closeDate"],
+      },
+    };
+    const api = {
+      list: vi.fn().mockResolvedValue(page),
+      export: vi.fn().mockResolvedValue(undefined),
+    } as unknown as RecordApi;
+    const options = {
+      api,
+      schema: historicalSchema,
+      currentMemberId: "member-1",
+    };
+    const view = renderList(vi.fn(), DEFAULT_RECORD_QUERY, options);
+    expect(headerTexts()).toContain("预计成交日");
+    fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
+    fireEvent.click(screen.getByRole("button", { name: "上移 最近更新" }));
+    const beforeReload = headerTexts();
+    view.unmount();
+    renderList(vi.fn(), DEFAULT_RECORD_QUERY, options);
+    expect(headerTexts()).toEqual(beforeReload);
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "导出当前结果" }),
+    );
+    await waitFor(() =>
+      expect(api.export).toHaveBeenCalledWith(
+        "northwind",
+        "customers",
+        expect.objectContaining({ columns: ["name", "closeDate"] }),
       ),
     );
   });

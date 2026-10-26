@@ -26,6 +26,8 @@ describe("record column order", () => {
     expect(systemColumnKey("system:somethingElse")).toBeNull();
     expect(isColumnOrderId("system:poolStatus")).toBe(true);
     expect(isColumnOrderId("name")).toBe(true);
+    expect(isColumnOrderId("closeDate")).toBe(true);
+    expect(isColumnOrderId("contractNo")).toBe(true);
     expect(isColumnOrderId("system:drop_table")).toBe(false);
     expect(isColumnOrderId("Bad Key")).toBe(false);
     expect(
