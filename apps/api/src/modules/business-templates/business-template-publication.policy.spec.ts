@@ -439,6 +439,52 @@ describe('portable workflow template extensions', () => {
     ];
     return input;
   };
+
+  it.each(['workflow', 'automations', 'pool', 'goalRules'])(
+    'blocks explicit null %s in stored configuration',
+    (key) => {
+      const input = validTemplate();
+      Object.assign(key === 'goalRules' ? input : input.objects[0], {
+        [key]: null,
+      });
+      expect(analyzeTemplatePublication(input, null).blocking).toContainEqual(
+        expect.objectContaining({
+          code: 'TEMPLATE_EXTENSION_INVALID',
+          path:
+            key === 'goalRules' ? key : `objects.${input.objects[0].id}.${key}`,
+        }),
+      );
+    },
+  );
+  it.each(['states', 'transitions'] as const)(
+    'blocks duplicate %s even in a disabled carried workflow',
+    (key) => {
+      const input = extended();
+      const workflow = input.objects[0].workflow!;
+      workflow.isEnabled = false;
+      if (key === 'states') workflow.states.push({ ...workflow.states[0] });
+      else workflow.transitions.push({ ...workflow.transitions[0] });
+      expect(analyzeTemplatePublication(input, null).blocking).toContainEqual(
+        expect.objectContaining({
+          code: 'TEMPLATE_WORKFLOW_INVALID',
+          objectId: input.objects[0].id,
+        }),
+      );
+    },
+  );
+  it('accepts an empty disabled carried workflow without changing its shape', () => {
+    const input = validTemplate();
+    input.objects[0].workflow = {
+      isEnabled: false,
+      initialStateKey: null,
+      states: [],
+      transitions: [],
+    };
+    expect(analyzeTemplatePublication(input, null).blocking).toEqual([]);
+    expect(compileTemplateVersion(input).objects[0].workflow).toEqual(
+      input.objects[0].workflow,
+    );
+  });
   it('compiles every extension without inserting absent optional properties into legacy configurations', () => {
     const input = extended();
     const result = compileTemplateVersion(input);

@@ -408,6 +408,126 @@ describe('portable workflow templates (HTTP + PostgreSQL)', () => {
   afterAll(async () => {
     if (h) await closeCriticalHarness(h);
   });
+
+  it.each(['count', 'disable', 'demote'])(
+    'scopes sole-administrator %s protection to the current company',
+    async (operation) => {
+      const tenants = await Promise.all(
+        [0, 1].map(() =>
+          h.adminDatabase.tenant.create({
+            data: {
+              code: 'admin-scope-' + randomUUID(),
+              name: 'Admin scope',
+              status: 'ACTIVE',
+              activatedAt: new Date(),
+            },
+          }),
+        ),
+      );
+      const admin = await actor(tenants[0].id, 'TENANT_ADMIN');
+      const otherMembership = await h.adminDatabase.tenantMember.create({
+        data: {
+          tenantId: tenants[1].id,
+          userId: admin.userId,
+          role: 'TENANT_ADMIN',
+          status: 'ACTIVE',
+          joinedAt: new Date(),
+        },
+      });
+      if (operation === 'count') {
+        for (const tenant of tenants) {
+          const page = response<{ total: number; activeAdminCount: number }>(
+            await api(
+              'get',
+              '/workspaces/' + tenant.code + '/members',
+              admin.cookie,
+            ).expect(200),
+          );
+          expect(page).toMatchObject({ total: 1, activeAdminCount: 1 });
+        }
+        return;
+      }
+      const path =
+        '/workspaces/' + tenants[0].code + '/members/' + admin.memberId;
+      const result =
+        operation === 'disable'
+          ? await api('patch', path, admin.cookie, {
+              status: 'DISABLED',
+            }).expect(409)
+          : await api('patch', path + '/role', admin.cookie, {
+              role: 'EMPLOYEE',
+            }).expect(409);
+      expect(response<{ code: string }>(result).code).toBe(
+        'TENANT_ADMIN_REQUIRED',
+      );
+      const members = await h.adminDatabase.tenantMember.findMany({
+        where: { id: { in: [admin.memberId, otherMembership.id] } },
+      });
+      expect(members).toHaveLength(2);
+      for (const member of members)
+        expect(member).toMatchObject({
+          role: 'TENANT_ADMIN',
+          status: 'ACTIVE',
+        });
+    },
+  );
+  it.each(['workflow', 'automations', 'pool', 'goalRules'])(
+    'refuses saving a captured template with null %s',
+    async (key) => {
+      const f = await fixture();
+      const configuration = draftConfiguration(
+        (await captured(f)).configuration,
+      );
+      Object.assign(
+        key === 'goalRules' ? configuration : configuration.objects[0],
+        { [key]: null },
+      );
+      await api('put', f.path + '/draft', f.platform.cookie, {
+        expectedVersion: 1,
+        name: 'Invalid null extension',
+        description: null,
+        configuration,
+      }).expect(400);
+    },
+  );
+  it.each(['states', 'transitions'] as const)(
+    'refuses publishing duplicate disabled workflow %s without creating a version',
+    async (key) => {
+      const f = await fixture();
+      const configuration = draftConfiguration(
+        (await captured(f)).configuration,
+      );
+      const workflow = configuration.objects[0].workflow!;
+      workflow.isEnabled = false;
+      configuration.objects[0].pool!.protectionRules = [];
+      if (key === 'states') workflow.states.push({ ...workflow.states[0] });
+      else workflow.transitions.push({ ...workflow.transitions[0] });
+      const saved = response<TemplateDetail>(
+        await api('put', f.path + '/draft', f.platform.cookie, {
+          expectedVersion: 1,
+          name: 'Incomplete disabled workflow',
+          description: null,
+          configuration,
+        }).expect(200),
+      );
+      const blocked = await api(
+        'post',
+        f.path + '/versions',
+        f.platform.cookie,
+        {
+          expectedVersion: saved.draftVersion,
+        },
+      ).expect(409);
+      expect(response<{ code: string }>(blocked).code).toBe(
+        'TEMPLATE_PUBLICATION_BLOCKED',
+      );
+      expect(
+        await h.adminDatabase.businessTemplateVersion.count({
+          where: { templateId: f.template.id },
+        }),
+      ).toBe(0);
+    },
+  );
   it('captures current published flows and live pools without writing or copying draft-only objects', async () => {
     const f = await fixture();
     const fingerprint = async () =>

@@ -275,18 +275,18 @@ export class TemplateGoalRuleDto extends OmitType(SaveWorkGoalDto, [
 
 export class TemplateObjectDraftDto {
   @ApiPropertyOptional({ type: TemplateWorkflowDto })
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @ValidateNested()
   @Type(() => TemplateWorkflowDto)
   workflow?: TemplateWorkflowDto;
   @ApiPropertyOptional({ type: AutomationRuleDto, isArray: true })
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => AutomationRuleDto)
   automations?: AutomationRuleDto[];
   @ApiPropertyOptional({ type: TemplatePoolDto })
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @ValidateNested()
   @Type(() => TemplatePoolDto)
   pool?: TemplatePoolDto;
@@ -349,7 +349,7 @@ export class TemplateObjectDraftDto {
 
 export class BusinessTemplateConfigurationDto {
   @ApiPropertyOptional({ type: TemplateGoalRuleDto, isArray: true })
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => TemplateGoalRuleDto)

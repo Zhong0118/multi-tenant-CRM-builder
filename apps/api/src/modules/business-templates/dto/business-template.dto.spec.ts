@@ -4,6 +4,30 @@ import { validate, type ValidationError } from 'class-validator';
 import { SaveBusinessTemplateDraftDto } from './business-template.dto';
 
 describe('business template DTOs', () => {
+  it.each(['workflow', 'automations', 'pool', 'goalRules'])(
+    'rejects explicit null %s while extensions may be absent',
+    async (key) => {
+      const input = validDraftInput();
+      const target =
+        key === 'goalRules'
+          ? input.configuration
+          : input.configuration.objects[0];
+      Object.assign(target, { [key]: null });
+      const errors = await validate(
+        plainToInstance(SaveBusinessTemplateDraftDto, input),
+        {
+          whitelist: true,
+          forbidNonWhitelisted: true,
+        },
+      );
+      expect(errorPaths(errors)).toContain(
+        key === 'goalRules'
+          ? 'configuration.goalRules'
+          : `configuration.objects.0.${key}`,
+      );
+    },
+  );
+
   it.each(['contractNo', 'signDate'])(
     'accepts captured runtime field key %s',
     async (fieldKey) => {

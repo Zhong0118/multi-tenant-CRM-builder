@@ -33,6 +33,38 @@ const meta = { requestId: 'req-application-1', ip: '127.0.0.1' };
 const appliedAt = new Date('2026-08-26T04:00:00.000Z');
 
 describe('TemplateApplicationService', () => {
+  it.each(['workflow', 'automations', 'pool', 'goalRules'])(
+    'rejects stored null %s before hydration',
+    async (key) => {
+      const input = configuration();
+      Object.assign(key === 'goalRules' ? input : input.objects[0], {
+        [key]: null,
+      });
+      const { service, state } = applicationFixture({ configuration: input });
+      await expect(
+        service.apply(platformAdmin, applicationInput(), meta),
+      ).rejects.toMatchObject({ code: 'TEMPLATE_APPLICATION_NOT_ALLOWED' });
+      expect(state.objects).toEqual([]);
+      expect(state.applications).toEqual([]);
+    },
+  );
+  it('rejects stored duplicate disabled workflow states before hydration', async () => {
+    const input = configuration();
+    const state = { key: 'new', label: 'New', sortOrder: 0, isTerminal: false };
+    input.objects[0].workflow = {
+      isEnabled: false,
+      initialStateKey: null,
+      states: [state, { ...state }],
+      transitions: [],
+    };
+    const fixture = applicationFixture({ configuration: input });
+    await expect(
+      fixture.service.apply(platformAdmin, applicationInput(), meta),
+    ).rejects.toMatchObject({ code: 'TEMPLATE_APPLICATION_NOT_ALLOWED' });
+    expect(fixture.state.objects).toEqual([]);
+    expect(fixture.state.applications).toEqual([]);
+  });
+
   it('applies a template to an active company that has no business table yet', async () => {
     const { service, state } = applicationFixture({ tenantStatus: 'ACTIVE' });
     await service.apply(platformAdmin, applicationInput(), meta);

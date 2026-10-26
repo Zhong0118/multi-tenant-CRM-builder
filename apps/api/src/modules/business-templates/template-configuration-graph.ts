@@ -9,6 +9,8 @@ import {
   analyzePoolProtectionSources,
 } from '../records/record-pool-config';
 import { GOAL_METRICS } from '../work/dto/work-goals.dto';
+import { ApiException } from '../../common/errors/api.exception';
+import { validateWorkflowDraft } from '../workflows/workflow-draft.policy';
 
 export function templateActionTargets(
   input: BusinessTemplateConfiguration,
@@ -118,6 +120,41 @@ export function analyzeTemplateExtensions(
   input: BusinessTemplateConfiguration,
 ): TemplatePublicationIssue[] {
   const issues: TemplatePublicationIssue[] = [];
+  if (input.goalRules === null)
+    issues.push({
+      code: 'TEMPLATE_EXTENSION_INVALID',
+      message: '模板目标规则不能为 null，请省略未配置的扩展。',
+      objectId: '',
+      path: 'goalRules',
+    });
+  for (const object of input.objects) {
+    for (const key of ['workflow', 'automations', 'pool'] as const) {
+      if (object[key] === null)
+        issues.push({
+          code: 'TEMPLATE_EXTENSION_INVALID',
+          message: '模板流程扩展不能为 null，请省略未配置的扩展。',
+          objectId: object.id,
+          path: `objects.${object.id}.${key}`,
+        });
+    }
+    if (object.workflow) {
+      try {
+        // Disabled workflows are retained and inserted into relational rows too.
+        validateWorkflowDraft(object.workflow, {
+          knownFieldKeys: object.fields.map((field) => field.fieldKey),
+        });
+      } catch (error) {
+        const errors = error instanceof ApiException ? error.fieldErrors : {};
+        const [field, messages] = Object.entries(errors)[0] ?? [];
+        issues.push({
+          code: 'TEMPLATE_WORKFLOW_INVALID',
+          message: messages?.[0] ?? '模板流程结构不合法。',
+          objectId: object.id,
+          path: `objects.${object.id}.workflow${field ? '.' + field : ''}`,
+        });
+      }
+    }
+  }
   const states = new Map(
     input.objects
       .filter((o) => o.status === 'ACTIVE')
