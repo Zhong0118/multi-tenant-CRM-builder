@@ -198,6 +198,7 @@ model User {
 }
 
 model Tenant {
+  workGoalRules WorkGoalRule[]
   automationExecutions RecordAutomationExecution[]
   notifications MemberNotification[]
   memberFieldPermissions MemberFieldPermission[]
@@ -292,6 +293,7 @@ model TenantDashboardPublication {
 }
 
 model TenantMember {
+  workGoalRecipients WorkGoalRecipient[]
   automationExecutions RecordAutomationExecution[]
   notifications MemberNotification[]
   memberFieldPermissions MemberFieldPermission[]
@@ -975,9 +977,13 @@ model MemberNotification {
   id String @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId String @map("tenant_id") @db.Uuid
   recipientMemberId String @map("recipient_member_id") @db.Uuid
-  objectId String @map("object_id") @db.Uuid
-  recordId String @map("record_id") @db.Uuid
+  objectId String? @map("object_id") @db.Uuid
+  recordId String? @map("record_id") @db.Uuid
   followUpId String? @map("follow_up_id") @db.Uuid
+  goalRuleId String? @map("goal_rule_id") @db.Uuid
+  goalDate DateTime? @map("goal_date") @db.Date
+  details Json? @db.JsonB
+  goalRule WorkGoalRule? @relation(fields: [tenantId, goalRuleId], references: [tenantId, id], onDelete: Cascade)
   kind String @db.VarChar(32)
   eventKey String @map("event_key") @db.VarChar(200)
   dueAt DateTime? @map("due_at") @db.Timestamptz(3)
@@ -987,8 +993,8 @@ model MemberNotification {
   resolvedAt DateTime? @map("resolved_at") @db.Timestamptz(3)
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   recipient TenantMember @relation(fields: [tenantId, recipientMemberId], references: [tenantId, id], onDelete: Cascade)
-  object ObjectDefinition @relation(fields: [tenantId, objectId], references: [tenantId, id], onDelete: Cascade)
-  record Record @relation(fields: [tenantId, objectId, recordId], references: [tenantId, objectId, id], onDelete: Cascade)
+  object ObjectDefinition? @relation(fields: [tenantId, objectId], references: [tenantId, id], onDelete: Cascade)
+  record Record? @relation(fields: [tenantId, objectId, recordId], references: [tenantId, objectId, id], onDelete: Cascade)
   followUp RecordFollowUp? @relation(fields: [tenantId, recordId, followUpId], references: [tenantId, recordId, id], onDelete: Cascade)
 
   @@unique([tenantId, recipientMemberId, kind, eventKey], map: "member_notifications_event_key")
@@ -1014,4 +1020,33 @@ model RecordAutomationExecution {
   @@unique([tenantId, sourceRecordId, ruleKey, dedupKey], map: "record_automation_executions_dedup_key")
   @@index([tenantId, sourceRecordId, createdAt(sort: Desc)], map: "record_automation_executions_history_idx")
   @@map("record_automation_executions")
+}
+
+model WorkGoalRule {
+  id String @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  metric String @db.VarChar(32)
+  target Int
+  remindAt String @default("17:00") @map("remind_at") @db.VarChar(5)
+  weekdays Int[] @default([1,2,3,4,5])
+  audience String @db.VarChar(32)
+  enabled Boolean @default(true)
+  version Int @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  recipients WorkGoalRecipient[]
+  notifications MemberNotification[]
+  @@unique([tenantId, metric])
+  @@unique([tenantId, id])
+  @@map("work_goal_rules")
+}
+model WorkGoalRecipient {
+  tenantId String @map("tenant_id") @db.Uuid
+  ruleId String @map("rule_id") @db.Uuid
+  memberId String @map("member_id") @db.Uuid
+  rule WorkGoalRule @relation(fields: [tenantId, ruleId], references: [tenantId, id], onDelete: Cascade)
+  member TenantMember @relation(fields: [tenantId, memberId], references: [tenantId, id], onDelete: Cascade)
+  @@id([tenantId, ruleId, memberId])
+  @@map("work_goal_recipients")
 }

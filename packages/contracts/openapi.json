@@ -3779,7 +3779,8 @@
               "FOLLOW_UP_DUE",
               "TASK_OVERDUE",
               "POOL_RECLAIMED",
-              "PROTECTION_REVIEW"
+              "PROTECTION_REVIEW",
+              "WORK_GOAL_BEHIND"
             ],
             "type": "string"
           },
@@ -6064,6 +6065,52 @@
         "required": ["expectedVersion", "configuration"],
         "type": "object"
       },
+      "SaveWorkGoalDto": {
+        "properties": {
+          "audience": {
+            "enum": ["ALL_EMPLOYEES", "SELECTED_MEMBERS"],
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "expectedVersion": {
+            "type": "number"
+          },
+          "memberIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "remindAt": {
+            "example": "17:00",
+            "type": "string"
+          },
+          "target": {
+            "maximum": 100000,
+            "minimum": 1,
+            "type": "number"
+          },
+          "weekdays": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "target",
+          "remindAt",
+          "weekdays",
+          "audience",
+          "memberIds",
+          "enabled"
+        ],
+        "type": "object"
+      },
       "SaveWorkflowDraftDto": {
         "properties": {
           "expectedDraftRevision": {
@@ -7591,6 +7638,163 @@
           }
         },
         "required": ["phone", "purpose", "deviceKey"],
+        "type": "object"
+      },
+      "WorkGoalDto": {
+        "properties": {
+          "audience": {
+            "enum": ["ALL_EMPLOYEES", "SELECTED_MEMBERS"],
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "memberIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "metric": {
+            "enum": [
+              "calls",
+              "connectedCalls",
+              "wechatAdded",
+              "customersFollowed",
+              "followUpsDone",
+              "tasksDone"
+            ],
+            "type": "string"
+          },
+          "remindAt": {
+            "type": "string"
+          },
+          "target": {
+            "type": "number"
+          },
+          "version": {
+            "type": "number"
+          },
+          "weekdays": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "metric",
+          "target",
+          "remindAt",
+          "weekdays",
+          "audience",
+          "memberIds",
+          "enabled",
+          "version"
+        ],
+        "type": "object"
+      },
+      "WorkGoalMemberDto": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "name"],
+        "type": "object"
+      },
+      "WorkGoalProgressDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WorkGoalProgressItemDto"
+            },
+            "type": "array"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "today": {
+            "type": "string"
+          }
+        },
+        "required": ["timezone", "today", "items"],
+        "type": "object"
+      },
+      "WorkGoalProgressItemDto": {
+        "properties": {
+          "actual": {
+            "type": "number"
+          },
+          "memberId": {
+            "type": "string"
+          },
+          "memberName": {
+            "type": "string"
+          },
+          "metric": {
+            "enum": [
+              "calls",
+              "connectedCalls",
+              "wechatAdded",
+              "customersFollowed",
+              "followUpsDone",
+              "tasksDone"
+            ],
+            "type": "string"
+          },
+          "remindAt": {
+            "type": "string"
+          },
+          "ruleId": {
+            "type": "string"
+          },
+          "scheduledToday": {
+            "type": "boolean"
+          },
+          "target": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "ruleId",
+          "metric",
+          "memberId",
+          "memberName",
+          "target",
+          "actual",
+          "remindAt",
+          "scheduledToday"
+        ],
+        "type": "object"
+      },
+      "WorkGoalSettingsDto": {
+        "properties": {
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/WorkGoalMemberDto"
+            },
+            "type": "array"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/WorkGoalDto"
+            },
+            "type": "array"
+          },
+          "timezone": {
+            "type": "string"
+          }
+        },
+        "required": ["timezone", "rules", "members"],
         "type": "object"
       },
       "WorkTaskDto": {
@@ -14891,6 +15095,141 @@
           }
         ],
         "tags": ["team-activity"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/work-goals/progress": {
+      "get": {
+        "operationId": "WorkGoalsController_progress",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "default": "mine",
+              "enum": ["mine", "team"],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkGoalProgressDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["work"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/work-goals/settings": {
+      "get": {
+        "operationId": "WorkGoalsController_settings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkGoalSettingsDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["work"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/work-goals/{metric}": {
+      "put": {
+        "operationId": "WorkGoalsController_save",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "metric",
+            "required": true,
+            "schema": {
+              "enum": [
+                "calls",
+                "connectedCalls",
+                "wechatAdded",
+                "customersFollowed",
+                "followUpsDone",
+                "tasksDone"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveWorkGoalDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkGoalDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["work"]
       }
     },
     "/api/v1/workspaces/{tenantCode}/work-tasks": {

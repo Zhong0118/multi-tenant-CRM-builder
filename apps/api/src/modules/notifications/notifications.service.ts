@@ -16,21 +16,36 @@ import type {
 type NotificationRow = {
   id: string;
   kind: NotificationKind;
-  object_id: string;
-  object_code: string;
-  object_name: string;
-  record_id: string;
-  record_no: number;
+  object_id: string | null;
+  object_code: string | null;
+  object_name: string | null;
+  record_id: string | null;
+  record_no: number | null;
   follow_up_id: string | null;
   created_at: Date;
   due_at: Date | null;
   read_at: Date | null;
   can_open: boolean;
+  details: {
+    date: string;
+    metric: string;
+    actual: number;
+    target: number;
+  } | null;
 };
 const READABLE = `(n.object_id=ANY($3::uuid[]) OR (n.object_id=ANY($4::uuid[]) AND (n.record_owner_member_id=$2::uuid OR EXISTS (SELECT 1 FROM records pr JOIN object_definitions po ON po.id=pr.object_id AND po.tenant_id=pr.tenant_id WHERE pr.tenant_id=n.tenant_id AND pr.id=n.record_id AND pr.in_public_pool AND po.pool_enabled))))`;
-const VISIBLE = `n.tenant_id=$1::uuid AND n.recipient_member_id=$2::uuid AND (n.kind='POOL_RECLAIMED' OR ${READABLE})`;
-const CAN_OPEN = `(${READABLE} AND EXISTS (SELECT 1 FROM records r WHERE r.tenant_id=n.tenant_id AND r.id=n.record_id AND r.deleted_at IS NULL))`;
+const VISIBLE = `n.tenant_id=$1::uuid AND n.recipient_member_id=$2::uuid AND (n.kind IN ('POOL_RECLAIMED','WORK_GOAL_BEHIND') OR ${READABLE})`;
+const CAN_OPEN = `(n.kind='WORK_GOAL_BEHIND' OR (${READABLE} AND EXISTS (SELECT 1 FROM records r WHERE r.tenant_id=n.tenant_id AND r.id=n.record_id AND r.deleted_at IS NULL)))`;
+const GOAL_NAMES: Record<string, string> = {
+  calls: '电话次数',
+  connectedCalls: '接通次数',
+  wechatAdded: '新加微信',
+  customersFollowed: '跟进客户',
+  followUpsDone: '完成跟进',
+  tasksDone: '完成任务',
+};
 const COPY: Record<NotificationKind, [string, string]> = {
+  WORK_GOAL_BEHIND: ['每日目标尚未完成', '请查看今日工作进度'],
   CONTACT_DUE: [
     '联系期限即将到期',
     '请在期限内确认已联系，超时后记录会自动回到公海',
@@ -156,6 +171,11 @@ export class NotificationsService {
       return rows[0];
     });
     if (!row?.can_open) return { href: null };
+    if (row.kind === 'WORK_GOAL_BEHIND')
+      return {
+        href: `/workspace/${encodeURIComponent(context.tenantCode)}/work`,
+      };
+    if (!row.object_code || !row.record_id) return { href: null };
     try {
       // Reuse the record endpoint's current visibility check; notification delivery grants no access.
       await this.records.detail(context, row.object_code, row.record_id);
@@ -216,9 +236,11 @@ export class NotificationsService {
 function toItem(row: NotificationRow): NotificationItemDto {
   const [title, copy] = COPY[row.kind];
   const message =
-    row.can_open && row.kind !== 'POOL_RECLAIMED'
-      ? `${row.object_name} · 记录 #${row.record_no}：${copy}`
-      : copy;
+    row.kind === 'WORK_GOAL_BEHIND' && row.details
+      ? `${row.details.date} · ${GOAL_NAMES[row.details.metric] ?? row.details.metric}：截至提醒时已完成 ${row.details.actual}，每日目标 ${row.details.target}`
+      : row.can_open && row.kind !== 'POOL_RECLAIMED'
+        ? `${row.object_name} · 记录 #${row.record_no}：${copy}`
+        : copy;
   return {
     id: row.id,
     kind: row.kind,

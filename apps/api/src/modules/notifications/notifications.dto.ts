@@ -19,6 +19,7 @@ export const NOTIFICATION_KINDS = [
   'TASK_OVERDUE',
   'POOL_RECLAIMED',
   'PROTECTION_REVIEW',
+  'WORK_GOAL_BEHIND',
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
