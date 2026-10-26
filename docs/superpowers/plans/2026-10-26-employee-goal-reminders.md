@@ -17,17 +17,17 @@
 
 **Interfaces:** consume spec API types; produce those exact endpoints and response properties, shared SQL counter function, existing member-notification integration. New notification kind WORK_GOAL_BEHIND with target /workspace/:tenantCode/work.
 
-- [ ] Write real database tests showing missing goal storage/function, then run and record RED evidence. Example essential assertions:
+- [x] Write real database tests showing missing goal storage/function, then run and record RED evidence. Example essential assertions:
 ```js
 await sweepGoals(); await sweepGoals();
 assert.equal((await noticesFor(employee)).length,1);
 assert.equal((await noticesFor(otherTenantEmployee)).length,0);
 assert.equal((await currentProgress(employee)).actual,1);
 ```
-- [ ] Implement additive schema, same-tenant FK/RLS, shared metric function and bounded notification scanning, with old notification constraints retained. Scan uses server/company calendar, not JS host date.
-- [ ] Write API tests for admin config, selected recipients, expectedVersion, personal/team progress, then implement DTO/controller/service using existing context/audit/member locking patterns.
-- [ ] Add notification-kind rendering metadata/target support in backend, register scheduler call without overlapping ticks. Verify old notifications still pass.
-- [ ] Run focused API/database tests, typecheck and contract generation. Commit only backend, database, contracts and related tests. Write report with commands and RED/GREEN evidence.
+- [x] Implement additive schema, same-tenant FK/RLS, shared metric function and bounded notification scanning, with old notification constraints retained. Scan uses server/company calendar, not JS host date.
+- [x] Write API tests for admin config, selected recipients, expectedVersion, personal/team progress, then implement DTO/controller/service using existing context/audit/member locking patterns.
+- [x] Add notification-kind rendering metadata/target support in backend, register scheduler call without overlapping ticks. Verify old notifications still pass.
+- [x] Run focused API/database tests, typecheck and contract generation. Commit only backend, database, contracts and related tests. Write report with commands and RED/GREEN evidence.
 
 ### Task 2: UI and acceptance
 
@@ -35,8 +35,8 @@ assert.equal((await currentProgress(employee)).actual,1);
 
 **Interfaces:** consume Task 1 endpoints exactly; administrator controls from team page; personal panel on /work. Existing components and transitions, reduced-motion support; no emoji or extra dependency.
 
-- [ ] Add failing tests for goal progress, administrator configuration payload/selected users, server conflict preserving inputs, and notification target.
-- [ ] Add compact progress cards and admin Drawer: metric, target, weekdays, company-local reminder time, all/selected employees, enabled. Existing configured rules are editable with expectedVersion, no implicit reset of untouched rules.
-- [ ] Integrate team and personal panels; add 目标提醒 group with 查看目标 action while keeping record-message wording unchanged.
-- [ ] Run frontend tests/lint/typecheck, then full monorepo tests/build/contracts and real local admin/employee flow in a dedicated database. Record existing-data baseline and compare.
+- [x] Add failing tests for goal progress, administrator configuration payload/selected users, server conflict preserving inputs, and notification target.
+- [x] Add compact progress cards and admin Drawer: metric, target, weekdays, company-local reminder time, all/selected employees, enabled. Existing configured rules are editable with expectedVersion, no implicit reset of untouched rules.
+- [x] Integrate team and personal panels; add 目标提醒 group with 查看目标 action while keeping record-message wording unchanged.
+- [x] Run frontend tests/lint/typecheck, then full monorepo tests/build/contracts and real local admin/employee flow in a dedicated database. Record existing-data baseline and compare.
 - [ ] Independent whole-branch review; fix meaningful findings with tests. Push/create PR, await six checks, merge after passing. Do not deploy. Next feature starts from merged main.

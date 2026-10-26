@@ -10,10 +10,10 @@
 刘洋配置赵晨电话目标10、00:00以及工作任务目标1、23:59。赵晨看到1/10和0/1，收到电话未达成消息；查看目标跳转/work。赵晨创建并完成一项专用验收任务后自动显示1/1已达成；刘洋刷新看到同值。390px无横向溢出；员工无管理入口。
 原库和副本records表均1111行，整表内容MD5 4c68c4a162aa42b70d6413e2f48c50b5 一致。连续扫描只1条WORK_GOAL_BEHIND消息。
 
-已通过：API unit115suites1613tests；Web126files1122tests+architecture3；Worker2；Contracts8；Database schema10；Tenant templates2；数据库完整集成88；核心HTTP14；目标/工作/通知HTTP32；聚焦UI52。全仓typecheck/build/contracts见对应/tmp/crm-goals日志。
+已通过：API unit115suites1613tests；Web126files1122tests+architecture3；Worker2；Contracts8；Database schema10；Tenant templates2；数据库完整集成88；核心HTTP19（含新增目标接口5）；目标/工作/通知HTTP32；聚焦UI62（含草稿恢复10个新增场景）。全仓typecheck/build/contracts见对应/tmp/crm-goals日志。
 最初全仓并行测试受到沙箱监听EPERM与既有auth-proxy5秒并发超时影响；允许本地监听并串行各包后全部通过，未修改这些测试或业务代码规避。
 全仓旧API lint并非全绿，已有428errors/13warnings；本轮改动文件focused lint通过，不改无关模块。
 
 ## 评审与决策
-后端任务评审未发现阻断。前端评审发现浏览器历史导航不经过既有链接离开提示，正在补仅当前管理员/公司的内存草稿恢复；不重写全局浏览器导航。显式关闭仍要求确认，重新进入时保留原版本，冲突不会自动覆盖服务端。
+后端任务评审未发现阻断。前端评审发现浏览器历史导航不经过既有链接离开提示，已补仅当前管理员/公司的内存草稿恢复；不重写全局浏览器导航。显式关闭仍要求确认，重新进入时保留原版本，冲突不会自动覆盖服务端。
 业务边界采用每日目标、每指标一条规则、复用现有站内消息；没有新增周/月销售指标或外部通知。未配置规则的旧公司行为不变。两个特性使用独立PR，后续完整流程模板仍需独立验收。
