@@ -491,3 +491,56 @@
   margin: 0;
   color: var(--text-primary);
 }
+
+.statTotals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.statTotals > div {
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.statTotals span {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.statTotals strong {
+  font-size: 28px;
+  font-weight: 600;
+}
+.statError {
+  color: var(--color-error, #c53b35);
+}
+.statistics :global(button),
+.statistics a {
+  transition:
+    transform 160ms,
+    opacity 160ms;
+}
+.statistics :global(button:not(:disabled)):hover,
+.statistics a:hover {
+  transform: scale(1.02);
+}
+.statistics :global(button:not(:disabled)):active,
+.statistics a:active {
+  transform: scale(0.98);
+}
+.statistics > *,
+.statistics li {
+  animation: enter 180ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .statistics > *,
+  .statistics li {
+    animation: none;
+  }
+  .statistics :global(button),
+  .statistics a {
+    transition: none;
+  }
+}

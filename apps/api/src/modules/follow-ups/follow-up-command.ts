@@ -24,6 +24,11 @@ import type { AuditService } from '../audit/audit.service';
 export const followUpInclude = {
   record: { include: { object: true } },
   assignee: { include: { user: { select: { displayName: true } } } },
+  completionActivity: {
+    include: {
+      actor: { include: { user: { select: { displayName: true } } } },
+    },
+  },
 } as const;
 
 export type FollowUpTask = Prisma.RecordFollowUpGetPayload<{
@@ -70,6 +75,19 @@ export function presentFollowUp(
     version: task.version,
     overdue: task.status === 'OPEN' && task.dueAt < now,
     canManage,
+    completionResult: task.completionActivity
+      ? {
+          activityId: task.completionActivity.id,
+          activityType: task.completionActivity.activityType,
+          content: task.completionActivity.content,
+          outcome: task.completionActivity.resultKey,
+          actorDisplayName:
+            task.completionActivity.actor?.displayName ??
+            task.completionActivity.actor?.user.displayName ??
+            null,
+          completedAt: task.completedAt!.toISOString(),
+        }
+      : null,
   };
 }
 

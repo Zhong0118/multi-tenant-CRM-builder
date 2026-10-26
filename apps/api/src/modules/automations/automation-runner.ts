@@ -229,6 +229,28 @@ export async function executeAutomation(
     throw error;
   }
 }
+/** Record a committed skip without storing inputs or executing actions again. */
+export async function auditAutomationDeduplication(
+  session: AutomationSession,
+  rule: AutomationRule,
+  meta: RecordRequestMeta,
+) {
+  await session.audit.append(session.tx, {
+    tenantId: session.context.tenantId,
+    actorType: 'USER',
+    actorId: session.context.userId,
+    action: 'automation.execution_deduplicated',
+    resourceType: 'record',
+    resourceId: session.source.id,
+    after: {
+      ruleKey: rule.key,
+      publicationId: session.resolved.schema.publication.id,
+      triggerType: rule.trigger.type,
+    },
+    requestId: meta.requestId,
+    ip: meta.ip,
+  });
+}
 async function executeAutomationSteps(
   session: AutomationSession,
   rule: AutomationRule,
@@ -321,8 +343,10 @@ export async function runFieldAutomations(
   for (const rule of session.resolved.schema.automations ?? []) {
     if (!matchesFieldChange(rule, before.values, session.source.values))
       continue;
-    if (await findAutomationExecution(session, rule.key, 'field:first'))
+    if (await findAutomationExecution(session, rule.key, 'field:first')) {
+      await auditAutomationDeduplication(session, rule, meta);
       continue;
+    }
     if (
       rule.trigger.type === 'FIELD_CHANGED' &&
       session.resolved.access.fields[rule.trigger.fieldKey] === 'HIDDEN'

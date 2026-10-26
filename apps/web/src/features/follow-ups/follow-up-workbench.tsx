@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { sourceRecordHref } from "@/features/records/source-navigation";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Alert, Button, Skeleton } from "antd";
 import { useState } from "react";
-import { toApiError } from "@/lib/api/api-error";
 import {
   followUpApi,
   followUpQueryKeys,
@@ -14,6 +13,7 @@ import {
   type FollowUpWorkbenchItem,
 } from "./follow-up-api";
 import { PendingContacts } from "./pending-contacts";
+import { FollowUpCompletionDialog } from "./follow-up-completion";
 import { describeDue } from "@/lib/format/due";
 import { useNow } from "@/lib/format/use-now";
 import {
@@ -47,11 +47,10 @@ export function PersonalFollowUpWorkbench({
   api?: typeof followUpApi;
   work?: WorkApi;
 }) {
-  const client = useQueryClient();
   const pathname = usePathname();
   const search = useSearchParams().toString();
   const source = `${pathname}${search ? `?${search}` : ""}`;
-  const [error, setError] = useState<string>();
+  const [completing, setCompleting] = useState<FollowUpWorkbenchItem>();
 
   const query = useQuery({
     queryKey: followUpQueryKeys.workbench(tenantCode),
@@ -65,28 +64,6 @@ export function PersonalFollowUpWorkbench({
     refetchInterval: 60_000,
   });
   const now = useNow();
-
-  const complete = useMutation({
-    mutationFn: (task: FollowUpWorkbenchItem) =>
-      api.update(tenantCode, task.id, {
-        version: task.version,
-        status: "DONE",
-      }),
-    onSuccess: async () => {
-      setError(undefined);
-      await client.invalidateQueries({
-        queryKey: followUpQueryKeys.root(tenantCode),
-        refetchType: "all",
-      });
-    },
-    onError: async (caught) => {
-      setError(toApiError(caught).message);
-      await client.invalidateQueries({
-        queryKey: followUpQueryKeys.root(tenantCode),
-        refetchType: "all",
-      });
-    },
-  });
 
   const data: FollowUpWorkbench | undefined = query.data;
   const hasItems =
@@ -140,15 +117,6 @@ export function PersonalFollowUpWorkbench({
           <Link href={`/workspace/${tenantCode}/work`}>任务与日报</Link>
         </span>
       </header>
-      {error && (
-        <Alert
-          type="error"
-          showIcon
-          title={error}
-          closable
-          onClose={() => setError(undefined)}
-        />
-      )}
       {query.isLoading && <Skeleton active paragraph={{ rows: 2 }} />}
       {query.isError && (
         <Alert
@@ -234,8 +202,8 @@ export function PersonalFollowUpWorkbench({
                               <Button
                                 size="small"
                                 data-testid={`workbench-complete-${task.id}`}
-                                disabled={complete.isPending}
-                                onClick={() => complete.mutate(task)}
+                                disabled={!!completing}
+                                onClick={() => setCompleting(task)}
                               >
                                 完成
                               </Button>
@@ -260,6 +228,7 @@ export function PersonalFollowUpWorkbench({
           </div>
         </div>
       ) : null}
+      {completing ? <FollowUpCompletionDialog tenantCode={tenantCode} task={completing} api={api} onClose={() => setCompleting(undefined)} /> : null}
     </section>
   );
 }

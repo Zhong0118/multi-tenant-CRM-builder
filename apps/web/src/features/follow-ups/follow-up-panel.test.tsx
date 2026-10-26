@@ -197,10 +197,13 @@ describe("FollowUpPanel", () => {
   it("completes the observed task version and refreshes its query", async () => {
     const api = setup([task]);
     fireEvent.click(await screen.findByRole("button", { name: /完\s*成/ }));
+    fireEvent.change(await screen.findByLabelText("完成结果"), { target: { value: "  已确认反馈  " } });
+    fireEvent.click(screen.getByRole("button", { name: "保存并完成" }));
     await waitFor(() =>
       expect(api.update).toHaveBeenCalledWith("northwind", "task-1", {
         version: 3,
         status: "DONE",
+        completionResult: { activityType: "NOTE", content: "已确认反馈" },
       }),
     );
     await waitFor(() => expect(api.list.mock.calls.length).toBeGreaterThan(1));

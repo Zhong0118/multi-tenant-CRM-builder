@@ -1,5 +1,6 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -222,7 +223,7 @@ function renderList(
       list: vi.fn().mockResolvedValue(options.page ?? page),
     } as unknown as RecordApi);
 
-  return render(
+  const rendered = render(
     <QueryClientProvider client={client}>
       <RecordList
         tenantCode="northwind"
@@ -238,7 +239,161 @@ function renderList(
       />
     </QueryClientProvider>,
   );
+  return { ...rendered, client };
 }
+
+describe("RecordList batch deletion", () => {
+  it("does not let an older list response restore deleted rows or totals", async () => {
+    let finishOldRead!: (value: RecordPage) => void;
+    const oldRead = new Promise<RecordPage>((resolve) => {
+      finishOldRead = resolve;
+    });
+    const list = vi
+      .fn()
+      .mockReturnValueOnce(oldRead)
+      .mockResolvedValue({ ...page, items: [], total: 0 });
+    const api = {
+      list,
+      remove: vi.fn().mockResolvedValue({ accepted: true }),
+    } as unknown as RecordApi;
+    const { client } = renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+      api,
+      schema: { ...schema, actions: { ...schema.actions, canDelete: true } },
+    });
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole("checkbox", { name: "选择 天际科技" }));
+    fireEvent.click(screen.getByRole("button", { name: "批量删除" }));
+    fireEvent.click(screen.getByRole("button", { name: "确认删除 1 条" }));
+    await screen.findByText("成功删除 1 条，失败 0 条，未处理 0 条");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("checkbox", { name: "选择 天际科技" }),
+      ).not.toBeInTheDocument(),
+    );
+    await act(async () => {
+      finishOldRead(page);
+      await oldRead;
+    });
+    await waitFor(() => expect(client.isFetching()).toBe(0));
+    expect(
+      client.getQueryData<RecordPage>([
+        "workspace",
+        "northwind",
+        "records",
+        "customers",
+        DEFAULT_RECORD_QUERY,
+      ])?.total,
+    ).toBe(0);
+    expect(
+      screen.queryByRole("checkbox", { name: "选择 天际科技" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("共 0 条")).toBeInTheDocument();
+  });
+
+  it("does not lock the deletion panel when offline refresh would pause the query", async () => {
+    const list = vi.fn().mockResolvedValue(page);
+    const api = {
+      list,
+      remove: vi.fn().mockResolvedValue({ accepted: true }),
+    } as unknown as RecordApi;
+    renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+      api,
+      schema: { ...schema, actions: { ...schema.actions, canDelete: true } },
+    });
+    await waitFor(() => expect(list).toHaveBeenCalled());
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: "选择 天际科技" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "批量删除" }));
+    list.mockRejectedValue(new Error("offline"));
+    onlineManager.setOnline(false);
+    try {
+      fireEvent.click(screen.getByRole("button", { name: "确认删除 1 条" }));
+      await screen.findByText("成功删除 1 条，失败 0 条，未处理 0 条");
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: "关闭" })).toBeEnabled(),
+      );
+      expect(
+        screen.getByRole("button", { name: "重试刷新列表" }),
+      ).toBeEnabled();
+      expect(api.remove).toHaveBeenCalledTimes(1);
+    } finally {
+      onlineManager.setOnline(true);
+    }
+  });
+
+  it("allows delete-only access, asks before deletion, and moves off an emptied last page preserving filters", async () => {
+    let deleted = false;
+    const navigate = vi.fn();
+    const lastPage = { ...page, page: 2, total: 21 };
+    const api = {
+      list: vi
+        .fn()
+        .mockImplementation(async () =>
+          deleted ? { ...lastPage, items: [], total: 20 } : lastPage,
+        ),
+      remove: vi.fn().mockImplementation(async () => {
+        deleted = true;
+        return { accepted: true };
+      }),
+    } as unknown as RecordApi;
+    renderList(
+      navigate,
+      {
+        ...DEFAULT_RECORD_QUERY,
+        page: 2,
+        search: "天际",
+        sort: "recordNo",
+        direction: "asc",
+      },
+      {
+        api,
+        page: lastPage,
+        schema: {
+          ...schema,
+          actions: { ...schema.actions, canUpdate: false, canDelete: true },
+        },
+      },
+    );
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: "选择 天际科技" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "批量删除" }));
+    expect(api.remove).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "确认删除 1 条" }));
+    await screen.findByText("成功删除 1 条，失败 0 条，未处理 0 条");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "关闭" })).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "关闭" }));
+    expect(api.remove).toHaveBeenCalledWith(
+      "northwind",
+      "customers",
+      page.items[0].id,
+      page.items[0].version,
+    );
+    const target = new URL(navigate.mock.calls.at(-1)![0], "http://localhost");
+    expect(target.searchParams.get("page")).toBeNull();
+    expect(target.searchParams.get("search")).toBe("天际");
+    expect(target.searchParams.get("sort")).toBe("recordNo");
+    expect(target.searchParams.get("direction")).toBe("asc");
+  });
+
+  it("does not offer batch deletion without delete permission", async () => {
+    renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+      schema: { ...schema, actions: { ...schema.actions, canDelete: false } },
+    });
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: "选择 天际科技" }),
+    );
+    expect(
+      screen.queryByRole("button", { name: "批量删除" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /批量修改/ }),
+    ).toBeInTheDocument();
+  });
+});
 
 describe("RecordList query navigation", () => {
   it("filters unassigned owners and resets pagination while preserving the other query conditions", async () => {

@@ -228,6 +228,7 @@ export function RecordDetailPage({
       label: "跟进",
       children: (
         <FollowUpPanel
+          onCompleted={async () => { await refresh(); }}
           tenantCode={tenantCode}
           followUpId={followUpId}
           record={{

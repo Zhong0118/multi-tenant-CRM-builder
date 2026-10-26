@@ -9,12 +9,17 @@ import {
   type CriticalFixture,
   type CriticalHarness,
 } from './helpers/critical-fixture';
+import type {
+  AutomationStatsDto,
+  AutomationStatsEventsDto,
+} from '../src/modules/automations/automation.dto';
 import type { AutomationRule } from '../src/modules/automations/automation.types';
 import type { PublishedObjectSchema } from '../src/modules/objects/object-schema';
 import { RECORDS_REPOSITORY } from '../src/modules/records/records.service';
 import type { RecordsRepository } from '../src/modules/records/records.repository';
 import { updateRecordCommand } from '../src/modules/records/record-command';
 import { resolvePublishedObjectInTransaction } from '../src/modules/objects/published-object-transaction';
+import { readAutomationStatsEvents } from '../src/modules/automations/automation-stats';
 
 jest.setTimeout(90000);
 const baseRule: AutomationRule = {
@@ -141,6 +146,455 @@ describe('cross-table automation (real PostgreSQL)', () => {
       }),
     };
   }
+  const statsPath = (objectId = f.object.id) =>
+    `/api/v1/workspaces/critical-a/object-definitions/${objectId}/automations/stats`;
+  const stats = async <T = AutomationStatsDto>(
+    suffix = '',
+    cookie = f.admin.cookie,
+  ) => {
+    const response = await request(h.app.getHttpServer())
+      .get(`${statsPath()}${suffix}`)
+      .set('Cookie', cookie);
+    return { status: response.status, body: response.body as T };
+  };
+  async function pendingFailure(publicationId: string) {
+    let release!: () => void;
+    let inserted!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const ready = new Promise<void>((resolve) => {
+      inserted = resolve;
+    });
+    const pending = h.adminDatabase.$transaction(
+      async (tx) => {
+        await tx.auditLog.create({
+          data: {
+            tenantId: f.tenantA.id,
+            actorType: 'USER',
+            actorId: f.admin.userId,
+            action: 'automation.execution_failed',
+            resourceType: 'record',
+            resourceId: f.ownedRecord.id,
+            after: {
+              ruleKey: 'create-order',
+              publicationId,
+              code: 'FIELD_REQUIRED',
+            },
+            requestId: randomUUID(),
+          },
+        });
+        inserted();
+        await gate;
+      },
+      { timeout: 15000 },
+    );
+    await Promise.race([ready, pending]);
+    return async () => {
+      release();
+      await pending;
+    };
+  }
+
+  it('does not repeat earlier rows when a pre-window-end transaction commits between pages', async () => {
+    const publication = await rules();
+    await h.adminDatabase.auditLog.createMany({
+      data: Array.from({ length: 21 }, () => ({
+        tenantId: f.tenantA.id,
+        actorType: 'USER' as const,
+        actorId: f.admin.userId,
+        action: 'automation.execution_failed',
+        resourceType: 'record',
+        resourceId: f.ownedRecord.id,
+        after: {
+          ruleKey: 'create-order',
+          publicationId: publication.publication.id,
+          code: 'FIELD_REQUIRED',
+        },
+        requestId: randomUUID(),
+        createdAt: new Date(Date.now() - 10000),
+      })),
+    });
+    const original = await h.adminDatabase.auditLog.findMany({
+      where: { tenantId: f.tenantA.id, action: 'automation.execution_failed' },
+      select: { id: true },
+    });
+    const commit = await pendingFailure(publication.publication.id);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      const until = new Date().toISOString();
+      const first = await stats<AutomationStatsEventsDto>(
+        `/create-order/events?until=${until}&status=FAILED`,
+      );
+      expect(first.body.total).toBe(21);
+      await commit();
+      const second = await stats<AutomationStatsEventsDto>(
+        `/create-order/events?until=${until}&status=FAILED&cursor=${first.body.nextCursor}`,
+      );
+      expect(second.body.total).toBe(22);
+      const firstIds = new Set(first.body.items.map((item) => item.id));
+      expect(second.body.items.filter((item) => firstIds.has(item.id))).toEqual(
+        [],
+      );
+      expect(second.body.items).toHaveLength(1);
+      expect(
+        new Set(
+          [...first.body.items, ...second.body.items].map((item) => item.id),
+        ),
+      ).toEqual(new Set(original.map((item) => item.id)));
+    } finally {
+      await commit();
+    }
+  });
+
+  it('counts and reads one statement snapshot when another transaction commits after the first read', async () => {
+    const publication = await rules();
+    await h.adminDatabase.auditLog.create({
+      data: {
+        tenantId: f.tenantA.id,
+        actorType: 'USER',
+        actorId: f.admin.userId,
+        action: 'automation.execution_failed',
+        resourceType: 'record',
+        resourceId: f.ownedRecord.id,
+        after: {
+          ruleKey: 'create-order',
+          publicationId: publication.publication.id,
+          code: 'FIELD_REQUIRED',
+        },
+        requestId: randomUUID(),
+      },
+    });
+    const commit = await pendingFailure(publication.publication.id);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      const until = new Date().toISOString();
+      const context = {
+        userId: f.admin.userId,
+        memberId: f.admin.memberId,
+        role: 'TENANT_ADMIN' as const,
+        tenantId: f.tenantA.id,
+        tenantCode: 'critical-a',
+      };
+      const repository = h.app.get<RecordsRepository>(RECORDS_REPOSITORY);
+      const result = await repository.withTenantTransaction(
+        context,
+        async ({ tx }) => {
+          // Every query still executes against PostgreSQL. Only schedule the writer
+          // after the first read, exposing a second SQL statement's newer snapshot.
+          const transaction = new Proxy(tx, {
+            get(target, property, receiver) {
+              if (property !== '$queryRaw')
+                return Reflect.get(target, property, receiver) as unknown;
+              return async (...args: Parameters<typeof tx.$queryRaw>) => {
+                const rows = await tx.$queryRaw(...args);
+                await commit();
+                return rows;
+              };
+            },
+          });
+          return readAutomationStatsEvents(
+            transaction,
+            context,
+            f.object.id,
+            'create-order',
+            { days: 30, until, status: 'FAILED' },
+          );
+        },
+      );
+      expect(result.items).toHaveLength(result.total);
+      expect(result.total).toBe(1);
+      expect(
+        (
+          await stats<AutomationStatsEventsDto>(
+            `/create-order/events?until=${until}&status=FAILED`,
+          )
+        ).body.total,
+      ).toBe(2);
+    } finally {
+      await commit();
+    }
+  });
+
+  it('counts committed successes, rolled-back failures and both dedup paths without executing from statistics', async () => {
+    await rules([
+      { ...baseRule, trigger: { type: 'MANUAL' } },
+      { ...baseRule, key: 'never-run', label: '尚未执行' },
+    ]);
+    const executionPath = `${path()}/automations/create-order/execute`;
+    const input = { expectedVersion: 1, requestId: randomUUID(), inputs: {} };
+    expect((await api('post', executionPath, input)).status).toBe(201);
+    expect((await api('post', executionPath, input)).status).toBe(201);
+    // A denied outer request and a preview are not execution attempts.
+    expect(
+      (await api('post', executionPath, { ...input, requestId: randomUUID() }))
+        .status,
+    ).toBe(409);
+    expect(
+      (
+        await api('post', `${path()}/automations/create-order/preview`, {
+          inputs: {},
+        })
+      ).status,
+    ).toBe(201);
+    await rules([
+      { ...baseRule, mappings: {} },
+      { ...baseRule, key: 'never-run', label: '尚未执行', enabled: false },
+    ]);
+    expect(
+      (await api('patch', path(), { version: 2, values: { name: 'won' } }))
+        .status,
+    ).toBe(400);
+    expect((await source()).version).toBe(2);
+    await rules([
+      { ...baseRule, label: '生效名称' },
+      { ...baseRule, key: 'never-run', label: '尚未执行', enabled: false },
+    ]);
+    expect(
+      (await api('patch', path(), { version: 2, values: { name: 'won' } }))
+        .status,
+    ).toBe(200);
+    expect(
+      (await api('patch', path(), { version: 3, values: { name: 'reset' } }))
+        .status,
+    ).toBe(200);
+    expect(
+      (await api('patch', path(), { version: 4, values: { name: 'won' } }))
+        .status,
+    ).toBe(200);
+    const before = await snapshot();
+    await h.adminDatabase.tenant.update({
+      where: { id: f.tenantA.id },
+      data: { timezone: 'America/New_York' },
+    });
+    const response = await stats();
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      days: 30,
+      timezone: 'America/New_York',
+      deduplicationCoverage: 'SINCE_INSTRUMENTATION',
+      totals: { succeeded: 2, failed: 1, deduplicated: 2 },
+      items: expect.arrayContaining([
+        expect.objectContaining({
+          ruleKey: 'create-order',
+          ruleLabel: '生效名称',
+          succeeded: 2,
+          failed: 1,
+          deduplicated: 2,
+          current: true,
+        }),
+        expect.objectContaining({
+          ruleKey: 'never-run',
+          succeeded: 0,
+          failed: 0,
+          deduplicated: 0,
+          lastExecutedAt: null,
+        }),
+      ]) as unknown,
+    });
+    expect(await snapshot()).toEqual(before);
+    expect(await targets()).toBe(2);
+    const failures = await stats<AutomationStatsEventsDto>(
+      '/create-order/events?status=FAILED',
+    );
+    expect(failures.status).toBe(200);
+    expect(failures.body).toMatchObject({
+      total: 1,
+      items: [
+        expect.objectContaining({
+          status: 'FAILED',
+          errorCode: 'FIELD_REQUIRED',
+          errorMessage: expect.any(String) as unknown,
+        }) as unknown,
+      ],
+    });
+    expect(JSON.stringify(failures.body)).not.toContain('won');
+    expect(JSON.stringify(failures.body)).not.toContain('dedupKey');
+    await rules([]);
+    await h.adminDatabase.objectDefinition.update({
+      where: { id: f.object.id },
+      data: { status: 'ARCHIVED' },
+    });
+    const historical = await stats();
+    expect(historical.status).toBe(200);
+    expect(historical.body.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ruleKey: 'create-order',
+          current: false,
+          succeeded: 2,
+        }),
+      ]),
+    );
+    const events = await stats<AutomationStatsEventsDto>(
+      '/create-order/events',
+    );
+    expect(events.status).toBe(200);
+    expect(events.body.items).toHaveLength(5);
+    expect(
+      events.body.items.every(
+        (item: { sourceAvailable: boolean }) => !item.sourceAvailable,
+      ),
+    ).toBe(true);
+  });
+
+  it('scopes identical rule keys by publication tenant and source object and rejects non-admin or malformed queries', async () => {
+    const publication = await rules([{ ...baseRule, mappings: {} }]);
+    const other = await republish(f.rollbackObject.id, (schema) => {
+      schema.automations = [{ ...baseRule, label: '另一张表' }];
+    });
+    const audit = (tenantId: string, publicationId: string) =>
+      h.adminDatabase.auditLog.create({
+        data: {
+          tenantId,
+          actorType: 'USER',
+          actorId: f.admin.userId,
+          action: 'automation.execution_failed',
+          resourceType: 'record',
+          resourceId: f.ownedRecord.id,
+          after: {
+            ruleKey: 'create-order',
+            publicationId,
+            code: 'FIELD_REQUIRED',
+          },
+          requestId: randomUUID(),
+        },
+      });
+    await audit(f.tenantA.id, other.publication.id);
+    await audit(f.tenantB.id, publication.publication.id);
+    expect((await stats()).body.totals).toEqual({
+      succeeded: 0,
+      failed: 0,
+      deduplicated: 0,
+    });
+    expect((await stats('', f.employee.cookie)).status).toBe(403);
+    expect(
+      (await stats('/create-order/events', f.employee.cookie)).status,
+    ).toBe(403);
+    expect((await stats('', f.tenantBAdmin.cookie)).status).toBe(403);
+    expect((await api('get', statsPath(randomUUID()))).status).toBe(404);
+    expect((await api('get', statsPath('not-uuid'))).status).toBe(400);
+    for (const suffix of [
+      '?days=1',
+      '?days=91',
+      '/create-order/events?cursor=!',
+      '/create-order/events?cursor=invalid',
+      `/create-order/events?cursor=${'a'.repeat(513)}`,
+      '/create-order/events?status=UNKNOWN',
+      '/bad_key/events',
+      '?until=not-date',
+      '?until=2099-01-01T00:00:00.000Z',
+      `?until=${new Date(Date.now() - 86400000).toISOString().slice(0, 10)}`,
+      `?until=${new Date(Date.now() - 86400000).toISOString().slice(0, -1)}`,
+    ]) {
+      expect((await stats(suffix)).status).toBe(400);
+    }
+  });
+
+  it('paginates a stable filtered timeline and uses inclusive start, exclusive end rolling windows', async () => {
+    const publication = await rules();
+    const until = new Date(Date.now() - 1000);
+    const start = new Date(until.getTime() - 7 * 86400000);
+    for (let index = 0; index < 23; index++) {
+      await h.adminDatabase.auditLog.create({
+        data: {
+          tenantId: f.tenantA.id,
+          actorType: 'USER',
+          actorId: f.admin.userId,
+          action: 'automation.execution_failed',
+          resourceType: 'record',
+          resourceId: f.ownedRecord.id,
+          after: {
+            ruleKey: 'create-order',
+            publicationId: publication.publication.id,
+            code: index === 0 ? 'private raw failure' : 'FIELD_REQUIRED',
+            message: 'PRIVATE_VALUE',
+          },
+          requestId: randomUUID(),
+          createdAt:
+            index === 21
+              ? until
+              : index === 22
+                ? new Date(start.getTime() - 1)
+                : start,
+        },
+      });
+    }
+    const query = `days=7&until=${until.toISOString()}`;
+    const summary = await stats(`?${query}`);
+    expect(summary.status).toBe(200);
+    expect(summary.body.totals).toEqual({
+      succeeded: 0,
+      failed: 21,
+      deduplicated: 0,
+    });
+    const first = await stats<AutomationStatsEventsDto>(
+      `/create-order/events?${query}&status=FAILED`,
+    );
+    const repeated = await stats<AutomationStatsEventsDto>(
+      `/create-order/events?${query}&status=FAILED`,
+    );
+    const second = await stats<AutomationStatsEventsDto>(
+      `/create-order/events?${query}&status=FAILED&cursor=${first.body.nextCursor}`,
+    );
+    expect(first.status).toBe(200);
+    expect(first.body).toMatchObject({
+      total: 21,
+      pageSize: 20,
+      until: until.toISOString(),
+    });
+    expect(first.body.nextCursor).toEqual(expect.any(String));
+    expect(second.body.nextCursor).toBeNull();
+    expect(first.body.items).toHaveLength(20);
+    expect(second.body.items).toHaveLength(1);
+    expect(first.body.items).toEqual(repeated.body.items);
+    const ids = [...first.body.items, ...second.body.items].map(
+      (item: { id: string }) => item.id,
+    );
+    expect(new Set(ids).size).toBe(21);
+    expect(JSON.stringify([first.body, second.body])).not.toMatch(
+      /PRIVATE_VALUE|private raw failure/,
+    );
+    const empty = await stats<AutomationStatsEventsDto>(
+      `/create-order/events?${query}&status=SUCCEEDED`,
+    );
+    expect(empty.body).toMatchObject({ total: 0, items: [] });
+    const cursor = first.body.nextCursor!;
+    for (const suffix of [
+      `/create-order/events?${query}&status=SUCCEEDED&cursor=${cursor}`,
+      `/create-order/events?days=30&until=${until.toISOString()}&status=FAILED&cursor=${cursor}`,
+      `/create-order/events?days=7&until=${new Date(until.getTime() - 1).toISOString()}&status=FAILED&cursor=${cursor}`,
+      `/another-rule/events?${query}&status=FAILED&cursor=${cursor}`,
+      `/create-order/events?days=7&status=FAILED&cursor=${cursor}`,
+    ])
+      expect((await stats(suffix)).status).toBe(400);
+    expect(
+      (
+        await api(
+          'get',
+          `${statsPath(f.rollbackObject.id)}/create-order/events?${query}&status=FAILED&cursor=${cursor}`,
+        )
+      ).status,
+    ).toBe(400);
+    const decoded = JSON.parse(
+      Buffer.from(cursor, 'base64url').toString('utf8'),
+    ) as Record<string, unknown>;
+    for (const value of [
+      null,
+      { ...decoded, at: 'not-a-date' },
+      { ...decoded, id: 'not-a-uuid' },
+      { ...decoded, status: 'PRIVATE_ERROR' },
+    ]) {
+      const invalid = Buffer.from(JSON.stringify(value)).toString('base64url');
+      expect(
+        (
+          await stats(
+            `/create-order/events?${query}&status=FAILED&cursor=${invalid}`,
+          )
+        ).status,
+      ).toBe(400);
+    }
+  });
   it('fires once on crossing, deduplicates across reset and republish, and preserves source snapshots', async () => {
     await rules();
     expect(

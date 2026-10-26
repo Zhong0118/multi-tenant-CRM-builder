@@ -682,7 +682,9 @@ model RecordActivity {
   tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   record             Record             @relation(fields: [tenantId, recordId], references: [tenantId, id], onDelete: Restrict)
   actor              TenantMember?      @relation("RecordActivityActor", fields: [tenantId, actorMemberId], references: [tenantId, id], onDelete: Restrict)
+  completedFollowUp  RecordFollowUp?     @relation("FollowUpCompletionActivity")
 
+  @@unique([tenantId, recordId, id], map: "record_activities_tenant_record_id_key")
   @@index([tenantId, recordId, createdAt(sort: Desc)])
   @@index([tenantId, actorMemberId, createdAt], map: "record_activities_tenant_actor_created_idx")
   @@map("record_activities")
@@ -719,12 +721,15 @@ model RecordFollowUp {
   status           String       @default("OPEN") @db.VarChar(16)
   version          Int          @default(1)
   completedAt      DateTime?    @map("completed_at") @db.Timestamptz(3)
+  completionActivityId String?  @map("completion_activity_id") @db.Uuid
   createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt        DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
   tenant           Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   record           Record       @relation(fields: [tenantId, recordId], references: [tenantId, id], onDelete: Restrict)
   assignee         TenantMember @relation(fields: [tenantId, assigneeMemberId], references: [tenantId, id], onDelete: Restrict)
+  completionActivity RecordActivity? @relation("FollowUpCompletionActivity", fields: [tenantId, recordId, completionActivityId], references: [tenantId, recordId, id], onDelete: Restrict, onUpdate: NoAction, map: "record_follow_ups_completion_activity_fkey")
 
+  @@unique([tenantId, recordId, completionActivityId], map: "record_follow_ups_completion_activity_key")
   @@unique([tenantId, recordId, id], map: "record_follow_ups_tenant_record_id_key")
   @@index([tenantId, assigneeMemberId, status, dueAt])
   @@map("record_follow_ups")

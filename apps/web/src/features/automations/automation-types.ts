@@ -70,6 +70,56 @@ export interface AutomationTable {
   name: string;
   fields: AutomationInputField[];
 }
+export interface AutomationStatsCounts {
+  succeeded: number;
+  failed: number;
+  deduplicated: number;
+}
+export interface AutomationRuleStats extends AutomationStatsCounts {
+  ruleKey: string;
+  ruleLabel: string;
+  targetObjectCode: string | null;
+  targetObjectName: string | null;
+  triggerType: "MANUAL" | "FIELD_CHANGED" | null;
+  current: boolean;
+  enabled: boolean;
+  lastExecutedAt: string | null;
+}
+export interface AutomationStats {
+  timezone: string;
+  days: number;
+  from: string;
+  until: string;
+  deduplicationCoverage: "SINCE_INSTRUMENTATION";
+  totals: AutomationStatsCounts;
+  items: AutomationRuleStats[];
+}
+export type AutomationStatsStatus =
+  "ALL" | "SUCCEEDED" | "FAILED" | "DEDUPLICATED";
+export interface AutomationStatsEvent {
+  id: string;
+  ruleKey: string;
+  ruleLabel: string;
+  status: Exclude<AutomationStatsStatus, "ALL">;
+  executedAt: string;
+  sourceRecordId: string | null;
+  sourceRecordNo: string | null;
+  sourceAvailable: boolean;
+  targetObjectCode: string | null;
+  targetObjectName: string | null;
+  targetRecordId: string | null;
+  targetRecordNo: string | null;
+  targetAvailable: boolean;
+  errorCode: string | null;
+  errorMessage: string | null;
+}
+export interface AutomationStatsEvents {
+  until: string;
+  nextCursor: string | null;
+  pageSize: number;
+  total: number;
+  items: AutomationStatsEvent[];
+}
 
 export function editableAutomationField(
   field: AutomationInputField,

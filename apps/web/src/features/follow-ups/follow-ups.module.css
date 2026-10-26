@@ -170,6 +170,92 @@
 .muted {
   color: #62717d;
 }
+.completionTask {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 20px;
+  overflow-wrap: anywhere;
+}
+.completionTask span,
+.completionHint,
+.completionMeta {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.completionFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.completionFields > *,
+.completionResult {
+  animation: resultEnter 160ms ease-out both;
+}
+.completionHint {
+  margin: 12px 0 0;
+  line-height: 1.6;
+}
+.completionResult {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--color-primary);
+  overflow-wrap: anywhere;
+}
+.completionResult p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+.completionMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+.completionDialog :global(.ant-btn) {
+  transition:
+    transform 150ms ease,
+    background-color 150ms ease;
+}
+.completionDialog :global(.ant-btn:not(:disabled):hover) {
+  transform: translateY(-1px);
+}
+.completionDialog :global(.ant-btn:not(:disabled):active) {
+  transform: scale(0.98);
+}
+@keyframes resultEnter {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (max-width: 560px) {
+  .completionFields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .completionDialog :global(.ant-btn) {
+    min-height: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .completionFields > *,
+  .completionResult {
+    animation: none;
+  }
+  .completionDialog :global(.ant-btn) {
+    transition: none;
+  }
+  .completionDialog :global(.ant-btn:not(:disabled):hover),
+  .completionDialog :global(.ant-btn:not(:disabled):active) {
+    transform: none;
+  }
+}
 .actions {
   display: flex;
   gap: 6px;

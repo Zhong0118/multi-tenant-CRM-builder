@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -6,6 +6,8 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsISO8601,
+  IsOptional,
   IsObject,
   IsString,
   IsUUID,
@@ -183,4 +185,95 @@ export class AutomationExecutionDto {
 export class AutomationHistoryDto {
   @ApiProperty({ type: AutomationExecutionDto, isArray: true })
   items!: AutomationExecutionDto[];
+}
+
+export class AutomationStatsQueryDto {
+  @ApiPropertyOptional({ enum: [7, 30, 90], default: 30 })
+  @Type(() => Number)
+  @IsIn([7, 30, 90])
+  days: number = 30;
+  @ApiPropertyOptional({
+    format: 'date-time',
+    description: 'Exclusive end of the rolling time window; defaults to now',
+  })
+  @IsOptional()
+  @IsISO8601({ strict: true })
+  @Matches(/T.*(?:Z|[+-]\d{2}:\d{2})$/)
+  until?: string;
+}
+export class AutomationStatsEventsQueryDto extends AutomationStatsQueryDto {
+  @ApiPropertyOptional({
+    enum: ['ALL', 'SUCCEEDED', 'FAILED', 'DEDUPLICATED'],
+    default: 'ALL',
+  })
+  @IsIn(['ALL', 'SUCCEEDED', 'FAILED', 'DEDUPLICATED'])
+  status: 'ALL' | 'SUCCEEDED' | 'FAILED' | 'DEDUPLICATED' = 'ALL';
+  @ApiPropertyOptional({
+    description:
+      'Opaque continuation cursor; retain the same until, days and status',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  @Matches(/^[A-Za-z0-9_-]+$/)
+  cursor?: string;
+}
+export class AutomationStatsCountsDto {
+  @ApiProperty() succeeded!: number;
+  @ApiProperty() failed!: number;
+  @ApiProperty() deduplicated!: number;
+}
+export class AutomationRuleStatsDto extends AutomationStatsCountsDto {
+  @ApiProperty() ruleKey!: string;
+  @ApiProperty() ruleLabel!: string;
+  @ApiProperty({ type: String, nullable: true }) targetObjectCode!:
+    string | null;
+  @ApiProperty({ type: String, nullable: true }) targetObjectName!:
+    string | null;
+  @ApiProperty({ enum: ['MANUAL', 'FIELD_CHANGED'], nullable: true })
+  triggerType!: 'MANUAL' | 'FIELD_CHANGED' | null;
+  @ApiProperty() current!: boolean;
+  @ApiProperty() enabled!: boolean;
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  lastExecutedAt!: string | null;
+}
+export class AutomationStatsDto {
+  @ApiProperty() timezone!: string;
+  @ApiProperty() days!: number;
+  @ApiProperty({ format: 'date-time' }) from!: string;
+  @ApiProperty({ format: 'date-time' }) until!: string;
+  @ApiProperty({ enum: ['SINCE_INSTRUMENTATION'] })
+  deduplicationCoverage!: 'SINCE_INSTRUMENTATION';
+  @ApiProperty({ type: AutomationStatsCountsDto })
+  totals!: AutomationStatsCountsDto;
+  @ApiProperty({ type: AutomationRuleStatsDto, isArray: true })
+  items!: AutomationRuleStatsDto[];
+}
+export class AutomationStatsEventDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() ruleKey!: string;
+  @ApiProperty() ruleLabel!: string;
+  @ApiProperty({ enum: ['SUCCEEDED', 'FAILED', 'DEDUPLICATED'] }) status!:
+    'SUCCEEDED' | 'FAILED' | 'DEDUPLICATED';
+  @ApiProperty({ format: 'date-time' }) executedAt!: string;
+  @ApiProperty({ type: String, nullable: true }) sourceRecordId!: string | null;
+  @ApiProperty({ type: String, nullable: true }) sourceRecordNo!: string | null;
+  @ApiProperty() sourceAvailable!: boolean;
+  @ApiProperty({ type: String, nullable: true }) targetObjectCode!:
+    string | null;
+  @ApiProperty({ type: String, nullable: true }) targetObjectName!:
+    string | null;
+  @ApiProperty({ type: String, nullable: true }) targetRecordId!: string | null;
+  @ApiProperty({ type: String, nullable: true }) targetRecordNo!: string | null;
+  @ApiProperty() targetAvailable!: boolean;
+  @ApiProperty({ type: String, nullable: true }) errorCode!: string | null;
+  @ApiProperty({ type: String, nullable: true }) errorMessage!: string | null;
+}
+export class AutomationStatsEventsDto {
+  @ApiProperty({ format: 'date-time' }) until!: string;
+  @ApiProperty({ type: String, nullable: true }) nextCursor!: string | null;
+  @ApiProperty({ enum: [20] }) pageSize!: number;
+  @ApiProperty() total!: number;
+  @ApiProperty({ type: AutomationStatsEventDto, isArray: true })
+  items!: AutomationStatsEventDto[];
 }

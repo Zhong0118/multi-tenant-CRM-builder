@@ -1300,6 +1300,38 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/automations/stats": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AutomationAdminController_stats"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/automations/stats/{ruleKey}/events": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AutomationAdminController_statsEvents"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/default-view": {
     parameters: {
       query?: never;
@@ -2065,6 +2097,66 @@ export interface components {
             type: "FIELD_CHANGED";
           };
     };
+    AutomationRuleStatsDto: {
+      current: boolean;
+      deduplicated: number;
+      enabled: boolean;
+      failed: number;
+      /** Format: date-time */
+      lastExecutedAt: string | null;
+      ruleKey: string;
+      ruleLabel: string;
+      succeeded: number;
+      targetObjectCode: string | null;
+      targetObjectName: string | null;
+      /** @enum {string|null} */
+      triggerType: "MANUAL" | "FIELD_CHANGED" | null;
+    };
+    AutomationStatsCountsDto: {
+      deduplicated: number;
+      failed: number;
+      succeeded: number;
+    };
+    AutomationStatsDto: {
+      days: number;
+      /** @enum {string} */
+      deduplicationCoverage: "SINCE_INSTRUMENTATION";
+      /** Format: date-time */
+      from: string;
+      items: components["schemas"]["AutomationRuleStatsDto"][];
+      timezone: string;
+      totals: components["schemas"]["AutomationStatsCountsDto"];
+      /** Format: date-time */
+      until: string;
+    };
+    AutomationStatsEventDto: {
+      errorCode: string | null;
+      errorMessage: string | null;
+      /** Format: date-time */
+      executedAt: string;
+      id: string;
+      ruleKey: string;
+      ruleLabel: string;
+      sourceAvailable: boolean;
+      sourceRecordId: string | null;
+      sourceRecordNo: string | null;
+      /** @enum {string} */
+      status: "SUCCEEDED" | "FAILED" | "DEDUPLICATED";
+      targetAvailable: boolean;
+      targetObjectCode: string | null;
+      targetObjectName: string | null;
+      targetRecordId: string | null;
+      targetRecordNo: string | null;
+    };
+    AutomationStatsEventsDto: {
+      items: components["schemas"]["AutomationStatsEventDto"][];
+      nextCursor: string | null;
+      /** @enum {number} */
+      pageSize: 20;
+      total: number;
+      /** Format: date-time */
+      until: string;
+    };
     BatchUpdateRecordItemDto: {
       /** Format: uuid */
       recordId: string;
@@ -2827,6 +2919,25 @@ export interface components {
       /** @example +8613800138000 */
       targetPhone: string;
     };
+    FollowUpCompletionResultDto: {
+      /** Format: uuid */
+      activityId: string;
+      /** @enum {string} */
+      activityType: "CALL" | "MESSAGE" | "MEETING" | "NOTE";
+      actorDisplayName: string | null;
+      /** Format: date-time */
+      completedAt: string;
+      content: string;
+      /** @enum {string|null} */
+      outcome: "NOT_REACHED" | "CONNECTED" | "WECHAT_ADDED" | null;
+    };
+    FollowUpCompletionResultInputDto: {
+      /** @enum {string} */
+      activityType: "CALL" | "MESSAGE" | "MEETING" | "NOTE";
+      content: string;
+      /** @enum {string} */
+      outcome?: "NOT_REACHED" | "CONNECTED" | "WECHAT_ADDED";
+    };
     FollowUpPageDto: {
       items: components["schemas"]["FollowUpResponseDto"][];
       limit: number;
@@ -2843,6 +2954,8 @@ export interface components {
       assigneeMemberId: string;
       assigneeName: string;
       canManage: boolean;
+      completionResult:
+        components["schemas"]["FollowUpCompletionResultDto"] | null;
       /** Format: date-time */
       dueAt: string;
       id: string;
@@ -4278,6 +4391,7 @@ export interface components {
     UpdateFollowUpDto: {
       /** Format: uuid */
       assigneeMemberId?: string;
+      completionResult?: components["schemas"]["FollowUpCompletionResultInputDto"];
       /** Format: date-time */
       dueAt?: string;
       /** @enum {string} */
@@ -6705,6 +6819,62 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AutomationPreviewDto"];
+        };
+      };
+    };
+  };
+  AutomationAdminController_stats: {
+    parameters: {
+      query?: {
+        days?: 7 | 30 | 90;
+        /** @description Exclusive end of the rolling time window; defaults to now */
+        until?: string;
+      };
+      header?: never;
+      path: {
+        objectId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationStatsDto"];
+        };
+      };
+    };
+  };
+  AutomationAdminController_statsEvents: {
+    parameters: {
+      query?: {
+        /** @description Opaque continuation cursor; retain the same until, days and status */
+        cursor?: string;
+        days?: 7 | 30 | 90;
+        status?: "ALL" | "SUCCEEDED" | "FAILED" | "DEDUPLICATED";
+        /** @description Exclusive end of the rolling time window; defaults to now */
+        until?: string;
+      };
+      header?: never;
+      path: {
+        objectId: string;
+        ruleKey: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AutomationStatsEventsDto"];
         };
       };
     };

@@ -51,13 +51,17 @@ describe("shared follow-up refresh", () => {
       fireEvent.click(screen.getByRole("button", { name: "保存时间" }));
       await waitFor(() => expect(api.update).toHaveBeenCalledWith("northwind", "task-1", { version: 7, dueAt: new Date("2026-10-05T10:30").toISOString() }));
     } else {
-      if (operation === "complete") fireEvent.click(within(panel).getByRole("button", { name: /完\s*成/ }));
+      if (operation === "complete") {
+        fireEvent.click(within(panel).getByRole("button", { name: /完\s*成/ }));
+        fireEvent.change(await screen.findByLabelText("完成结果"), { target: { value: "已确认反馈" } });
+        fireEvent.click(screen.getByRole("button", { name: "保存并完成" }));
+      }
       else {
         fireEvent.click(within(panel).getByRole("button", { name: /更多操作/ }));
         fireEvent.click(await screen.findByRole("menuitem", { name: "取消跟进" }));
       }
       if (operation === "cancel") fireEvent.click(await screen.findByRole("button", { name: "确认取消" }));
-      await waitFor(() => expect(api.update).toHaveBeenCalledWith("northwind", "task-1", { version: 7, status: operation === "complete" ? "DONE" : "CANCELLED" }));
+      await waitFor(() => expect(api.update).toHaveBeenCalledWith("northwind", "task-1", { version: 7, status: operation === "complete" ? "DONE" : "CANCELLED", ...(operation === "complete" ? { completionResult: { activityType: "NOTE", content: "已确认反馈" } } : {}) }));
     }
     await waitFor(() => expect(client.getQueryState(followUpQueryKeys.workbench("northwind"))?.fetchStatus).toBe("fetching"));
     // While both refetches are held, the task action must remain pending.

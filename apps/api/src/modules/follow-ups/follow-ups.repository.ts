@@ -1,11 +1,16 @@
 import { lockRuntimeObjectConfiguration } from '../objects/object-configuration-lock';
 import { resolveReadableObjectByIdInTransaction } from '../objects/published-object-transaction';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import type { Prisma } from '@crm/database';
 import { ApiException } from '../../common/errors/api.exception';
 import { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { AuditService } from '../audit/audit.service';
+import type { RecordsRepository } from '../records/records.repository';
+import { RECORDS_REPOSITORY } from '../records/records.service';
+import { createRecordActivityWithContactCommand } from '../records/record-command';
+import { lockRecordActivityTarget } from '../records/record-ownership-locks';
 import {
   appendFollowUpAudit,
   createFollowUpCommand,
@@ -53,6 +58,8 @@ export class FollowUpsRepository {
   constructor(
     private readonly runner: DatabaseContextRunner,
     private readonly audit: AuditService,
+    @Inject(RECORDS_REPOSITORY)
+    private readonly records: RecordsRepository,
   ) {}
   async visibleFollowUpIdsInTransaction(
     tx: Prisma.TransactionClient,
@@ -445,14 +452,15 @@ export class FollowUpsRepository {
     scope: FollowUpRecordScope,
     recipientScope?: FollowUpRecordScope,
   ) {
-    return this.runner.withTenant(context, async (tx) => {
-      await lockRuntimeObjectConfiguration(tx, context.tenantId);
-      const { access } = await resolveReadableObjectByIdInTransaction(
+    return this.records.withTenantTransaction(context, async (session) => {
+      const { tx, store } = session;
+      const resolved = await resolveReadableObjectByIdInTransaction(
         tx,
         context,
         scope.objectId,
         true,
       );
+      const { access } = resolved;
       scope = {
         ...scope,
         requiredOwnerMemberId:
@@ -460,24 +468,29 @@ export class FollowUpsRepository {
             ? context.memberId
             : undefined,
       };
-      for (const memberId of [
-        ...new Set(
-          [context.memberId, input.assigneeMemberId].filter(
-            (value): value is string => !!value,
+      const completionRecord = input.completionResult
+        ? await lockRecordActivityTarget(tx, context, resolved, scope.recordId)
+        : null;
+      if (!input.completionResult) {
+        for (const memberId of [
+          ...new Set(
+            [context.memberId, input.assigneeMemberId].filter(
+              (value): value is string => !!value,
+            ),
           ),
-        ),
-      ].sort()) {
-        const members = await tx.$queryRaw<
-          Array<{ id: string; role: string }>
-        >`SELECT m.id, m.role FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=${context.tenantId}::uuid AND m.id=${memberId}::uuid AND m.status='ACTIVE' AND u.status='ACTIVE' FOR NO KEY UPDATE OF m`;
-        if (
-          !members.length ||
-          members[0].role !==
-            (memberId === context.memberId
-              ? context.role
-              : recipientScope?.expectedRole)
-        )
-          throw new ApiException('WORKSPACE_FORBIDDEN', 403);
+        ].sort()) {
+          const members = await tx.$queryRaw<
+            Array<{ id: string; role: string }>
+          >`SELECT m.id, m.role FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=${context.tenantId}::uuid AND m.id=${memberId}::uuid AND m.status='ACTIVE' AND u.status='ACTIVE' FOR NO KEY UPDATE OF m`;
+          if (
+            !members.length ||
+            members[0].role !==
+              (memberId === context.memberId
+                ? context.role
+                : recipientScope?.expectedRole)
+          )
+            throw new ApiException('WORKSPACE_FORBIDDEN', 403);
+        }
       }
       await lockFollowUpRecord(tx, context, scope);
       if (recipientScope) await lockFollowUpRecord(tx, context, recipientScope);
@@ -491,6 +504,23 @@ export class FollowUpsRepository {
             context.role === 'TENANT_ADMIN' ? undefined : context.memberId,
         },
       });
+      if (
+        completionRecord &&
+        resolved.poolEnabled &&
+        resolved.poolLifecycleEnabled
+      ) {
+        if (
+          ['PENDING_CONTACT', 'FOLLOWING'].includes(
+            completionRecord.poolStage ?? '',
+          ) &&
+          (!completionRecord.ownershipExpiresAt ||
+            completionRecord.ownershipExpiresAt <= new Date())
+        )
+          throw new ApiException('RECORD_VERSION_CONFLICT', 409, {
+            message: '持有期限已到，请刷新记录。',
+          });
+      }
+      const completedAt = input.status === 'DONE' ? new Date() : null;
       const result = await tx.recordFollowUp.updateMany({
         where: {
           id,
@@ -509,13 +539,29 @@ export class FollowUpsRepository {
           ...(input.status
             ? {
                 status: input.status,
-                completedAt: input.status === 'DONE' ? new Date() : null,
+                completedAt,
               }
             : {}),
           version: { increment: 1 },
         },
       });
       if (result.count !== 1) return null;
+      if (input.completionResult) {
+        const { activity } = await createRecordActivityWithContactCommand(tx, {
+          store,
+          resolved,
+          context,
+          recordId: scope.recordId,
+          input: input.completionResult,
+          meta,
+          clock: () => completedAt!,
+          idGenerator: randomUUID,
+        });
+        await tx.recordFollowUp.update({
+          where: { id, tenantId: context.tenantId },
+          data: { completionActivityId: activity.id },
+        });
+      }
       const item = await tx.recordFollowUp.findFirstOrThrow({
         where: { id, tenantId: context.tenantId },
         include: followUpInclude,

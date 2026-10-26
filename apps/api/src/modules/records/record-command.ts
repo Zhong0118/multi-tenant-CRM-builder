@@ -1,4 +1,7 @@
 import type { PoolOrigin, PoolStage } from './record-ownership';
+import type { Prisma } from '@crm/database';
+import { applyOwnershipChange } from './record-ownership-command';
+import { lockRecordActivityTarget } from './record-ownership-locks';
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { AuditEvent, DomainAuditCorrelation } from '../audit/audit-event';
@@ -6,6 +9,7 @@ import type { ResolvedObjectSchema } from '../objects/published-object.service';
 import { projectVisibleValues } from './record-value-engine';
 import {
   MEMBER_ACTIVITY_TYPES,
+  CONTACT_OUTCOMES,
   OUTCOMES_BY_ACTIVITY_TYPE,
   type ActivityOutcome,
   type MemberActivityType,
@@ -187,6 +191,38 @@ export interface CreateRecordActivityCommandInput {
   meta: RecordRequestMeta;
   clock: () => Date;
   idGenerator: () => string;
+}
+
+/** A human-entered result uses the same contact transition and activity write
+ * whether submitted on the record or while completing its follow-up task.
+ * The caller owns the transaction and must acquire members/table before records.
+ */
+export async function createRecordActivityWithContactCommand(
+  tx: Prisma.TransactionClient,
+  command: CreateRecordActivityCommandInput,
+) {
+  const { store, resolved, context, recordId, input, meta, clock } = command;
+  validateRecordActivityInput(input);
+  if (
+    input.outcome &&
+    CONTACT_OUTCOMES.includes(input.outcome) &&
+    resolved.poolEnabled &&
+    resolved.poolLifecycleEnabled
+  ) {
+    await lockRecordActivityTarget(tx, context, resolved, recordId);
+    const current = await store.findRecord(resolved.schema.object.id, recordId);
+    if (current?.poolStage === 'PENDING_CONTACT')
+      await applyOwnershipChange(
+        tx,
+        { clock, appendAudit: (_tx, event) => store.appendAudit(event) },
+        context,
+        resolved.schema.object.code,
+        recordId,
+        { action: 'CONFIRM_CONTACT', version: current.version },
+        meta,
+      );
+  }
+  return createRecordActivityCommand(command);
 }
 
 /** Same validation and audit as the HTTP path; AI must supply literal NOTE. */

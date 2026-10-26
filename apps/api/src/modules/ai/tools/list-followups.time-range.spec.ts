@@ -61,6 +61,7 @@ describe('list_followups explicit company-calendar ranges', () => {
     const repository = new FollowUpsRepository(
       { withTenant } as unknown as DatabaseContextRunner,
       {} as AuditService,
+      {} as never,
     );
     const objects = {
       listAccessible: jest.fn().mockResolvedValue([{ code: 'leads' }]),
