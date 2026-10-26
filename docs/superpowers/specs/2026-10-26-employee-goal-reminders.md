@@ -41,3 +41,7 @@ type GoalRule = {id:string;metric:GoalMetric;target:number;remindAt:string;weekd
 ## 测试
 
 先写失败测试，再实现。覆盖真实 PostgreSQL 的权限隔离、同日并发去重、达到目标不提醒、配置/成员停用、工作日与非 UTC 日界、指定受众、重启后补当日而不补往日、旧通知不回归、统计口径一致、同日修改不二次提醒。API 覆盖员工越权、跨公司成员、无效指标/时刻/目标/版本、审计和进度。前端覆盖配置保存/冲突、真实计数展示、通知分组跳转和移动布局；隔离本地账号跑管理员配置→员工记录→进度更新→提醒→已读链路。
+
+## Final review clarification
+- Progress caches are scoped by verified member identity as well as tenant and mine/team; changing accounts must never display the prior account's progress, even if fresh fetching fails.
+- An existing rule may be disabled while preserving its exact stored audience/member set even when those members/accounts are no longer active. This narrow stop-only exception does not allow creating a disabled rule with inactive members, changing its audience to inactive members, or enabling a rule with inactive members. Same-tenant membership and expectedVersion checks remain enforced.
