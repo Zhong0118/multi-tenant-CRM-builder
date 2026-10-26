@@ -44,10 +44,10 @@ import styles from "./work-goals.module.css";
 
 type Props = {
   tenantCode: string;
+  memberId: string;
+  manage?: boolean;
   api?: WorkGoalsApi;
-} & (
-  { manage: true; memberId: string } | { manage?: false; memberId?: string }
-);
+};
 type GoalInput = Omit<SaveGoal, "target" | "expectedVersion"> & {
   target: string;
 };
@@ -66,7 +66,7 @@ const days = ["一", "二", "三", "四", "五", "六", "日"].map((label, index
 export function WorkGoalsPanel(props: Props) {
   return (
     <GoalPanel
-      key={`${props.tenantCode}:${props.memberId ?? ""}:${props.manage ?? false}`}
+      key={`${props.tenantCode}:${props.memberId}:${props.manage ?? false}`}
       {...props}
     />
   );
@@ -98,7 +98,11 @@ function GoalPanel({
   const request = useRef(0);
   const leave = useLeaveGuard(open && dirty);
   const progress = useQuery({
-    queryKey: [...goalKeys.progress(tenantCode), manage ? "team" : "mine"],
+    queryKey: [
+      ...goalKeys.progress(tenantCode),
+      manage ? "team" : "mine",
+      memberId,
+    ],
     queryFn: () => api.progress(tenantCode, manage ? "team" : "mine"),
     refetchInterval: 60_000,
   });
@@ -592,6 +596,11 @@ function GoalForm({
             mode="multiple"
             virtual={false}
             value={input.memberIds}
+            labelRender={({ value, label }) =>
+              settings.members.some((member) => member.id === value)
+                ? label
+                : `已停用或不可用员工（${value}）`
+            }
             disabled={busy}
             options={settings.members.map((member) => ({
               value: member.id,

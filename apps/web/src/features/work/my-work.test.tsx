@@ -122,7 +122,7 @@ function setup(
   } as unknown as WorkApi;
   render(
     <QueryClientProvider client={client}>
-      <MyWork tenantCode="northwind" api={api} />
+      <MyWork tenantCode="northwind" memberId="me" api={api} />
     </QueryClientProvider>,
   );
   return api;

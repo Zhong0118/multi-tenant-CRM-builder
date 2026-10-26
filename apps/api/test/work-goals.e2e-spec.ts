@@ -148,6 +148,99 @@ describe('employee work goals (HTTP + PostgreSQL)', () => {
       memberIds: [f.otherEmployee.memberId],
     }).expect(400);
   });
+  it.each(['member', 'account'] as const)(
+    'can stop an existing selection after %s disable without accepting inactive recipients elsewhere',
+    async (disabled) => {
+      const memberIds = [f.employee.memberId, f.otherEmployee.memberId];
+      const original = { ...input(), memberIds };
+      const created = json<WorkGoalDto>(
+        await save('calls', original).expect(200),
+      );
+      await save('tasksDone', {
+        ...input(),
+        audience: 'ALL_EMPLOYEES',
+        memberIds: [],
+      }).expect(200);
+      if (disabled === 'member') {
+        await h.adminDatabase.tenantMember.update({
+          where: { id: f.employee.memberId },
+          data: { status: 'DISABLED' },
+        });
+      } else {
+        await h.adminDatabase.user.update({
+          where: { id: f.employee.userId },
+          data: { status: 'DISABLED' },
+        });
+      }
+      expect(
+        json<WorkGoalSettingsDto>(
+          await get('/settings').expect(200),
+        ).members.map((m) => m.id),
+      ).not.toContain(f.employee.memberId);
+      const stopped = json<WorkGoalDto>(
+        await save('calls', {
+          ...original,
+          expectedVersion: 1,
+          enabled: false,
+          memberIds: [...memberIds].reverse(),
+        }).expect(200),
+      );
+      expect(stopped).toEqual({ ...created, version: 2, enabled: false });
+      await save('calls', {
+        ...original,
+        expectedVersion: 1,
+        enabled: false,
+      }).expect(409);
+      await save('calls', { ...original, expectedVersion: 2 }).expect(400);
+      // Stop-only preservation cannot be used for new rules, changed sets or audiences.
+      await save('connectedCalls', { ...original, enabled: false }).expect(400);
+      await save('calls', {
+        ...input(),
+        expectedVersion: 2,
+        enabled: false,
+      }).expect(400);
+      await save('tasksDone', {
+        ...original,
+        expectedVersion: 1,
+        enabled: false,
+      }).expect(400);
+      await save('calls', {
+        ...original,
+        expectedVersion: 2,
+        enabled: false,
+        memberIds: [f.tenantBAdmin.memberId],
+      }).expect(400);
+      const persisted = json<WorkGoalSettingsDto>(
+        await get('/settings').expect(200),
+      ).rules.find((r) => r.id === created.id);
+      expect(persisted).toEqual(stopped);
+      expect(
+        await h.adminDatabase.auditLog.count({
+          where: {
+            tenantId: f.tenantA.id,
+            action: 'work_goal.saved',
+            resourceId: created.id,
+          },
+        }),
+      ).toBe(2);
+      if (disabled === 'member') {
+        await h.adminDatabase.tenantMember.update({
+          where: { id: f.employee.memberId },
+          data: { status: 'ACTIVE' },
+        });
+      } else {
+        await h.adminDatabase.user.update({
+          where: { id: f.employee.userId },
+          data: { status: 'ACTIVE' },
+        });
+      }
+      expect(
+        json<WorkGoalDto>(
+          await save('calls', { ...original, expectedVersion: 2 }).expect(200),
+        ),
+      ).toEqual({ ...created, version: 3 });
+    },
+  );
   it('refuses a selected employee disabled while the save waits for the member lock', async () => {
     let pending!: Promise<request.Response>;
     await h.adminDatabase.$transaction(async (tx) => {

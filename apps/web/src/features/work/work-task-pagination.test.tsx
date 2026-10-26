@@ -150,7 +150,7 @@ function setup(view: "mine" | "team", total = 101) {
   render(
     <QueryClientProvider client={client}>
       {view === "mine" ? (
-        <MyWork tenantCode="northwind" />
+        <MyWork tenantCode="northwind" memberId="me" />
       ) : (
         <TeamActivity tenantCode="northwind" memberId="admin-1" />
       )}

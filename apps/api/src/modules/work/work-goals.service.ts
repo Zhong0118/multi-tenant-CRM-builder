@@ -68,17 +68,6 @@ export class WorkGoalsService {
     const ids = input.audience === 'SELECTED_MEMBERS' ? input.memberIds : [];
     return this.runner.withTenant(context, async (tx) => {
       await lockWorkMembers(tx, context, ids);
-      if (
-        ids.length !==
-        (await tx.tenantMember.count({
-          where: {
-            tenantId: context.tenantId,
-            id: { in: ids },
-            ...activeEmployees,
-          },
-        }))
-      )
-        throw invalidMembers();
       // Actor locks serialize this administrator; a tenant/metric advisory lock
       // also serializes first creation by different administrators.
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${context.tenantId + ':goal:' + metric},0))::text`;
@@ -89,6 +78,27 @@ export class WorkGoalsService {
       });
       if ((before?.version ?? 0) !== input.expectedVersion)
         throw new ApiException('RECORD_VERSION_CONFLICT', 409);
+      // Stopping a saved audience must remain possible after recipients leave.
+      // New/changed selections and re-enabling still require active employees.
+      const preservesAudience =
+        before &&
+        !input.enabled &&
+        before.audience === input.audience &&
+        before.recipients.length === ids.length &&
+        before.recipients.every((recipient) =>
+          ids.includes(recipient.memberId),
+        );
+      if (
+        ids.length !==
+        (await tx.tenantMember.count({
+          where: {
+            tenantId: context.tenantId,
+            id: { in: ids },
+            ...(preservesAudience ? {} : activeEmployees),
+          },
+        }))
+      )
+        throw invalidMembers();
       const data = {
         target: input.target,
         remindAt: input.remindAt,

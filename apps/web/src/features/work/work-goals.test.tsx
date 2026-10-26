@@ -11,7 +11,7 @@ import { useEffect, useState, type ReactNode } from "react";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 import { WorkGoalsPanel } from "./work-goals";
-import type { GoalRule, WorkGoalsApi } from "./work-goals-api";
+import { goalKeys, type GoalRule, type WorkGoalsApi } from "./work-goals-api";
 
 const rule: GoalRule = {
   id: "goal",
@@ -80,7 +80,10 @@ function setup(manage = false, history = false) {
       }),
   };
   const client = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    defaultOptions: {
+      queries: { retry: false, staleTime: 30_000 },
+      mutations: { retry: false },
+    },
   });
   const tree = (
     tenantCode = "demo",
@@ -126,6 +129,74 @@ describe("WorkGoalsPanel", () => {
     expect(api.settings).not.toHaveBeenCalled();
     expect(
       screen.queryByRole("button", { name: "配置目标" }),
+    ).not.toBeInTheDocument();
+  });
+  it.each([false, true])(
+    "isolates fresh progress when accounts change in the same tenant (manage=%s)",
+    async (manage) => {
+      const { api, client, changeIdentity } = setup(manage);
+      await screen.findByText("8 / 20");
+      let reject!: (error: Error) => void;
+      vi.mocked(api.progress).mockReturnValueOnce(
+        new Promise((_resolve, rejectRequest) => {
+          reject = rejectRequest;
+        }),
+      );
+      changeIdentity("demo", "member-2");
+      expect(screen.queryByText("8 / 20")).not.toBeInTheDocument();
+      await waitFor(() => expect(api.progress).toHaveBeenCalledTimes(2));
+      await act(async () => reject(new Error("new account offline")));
+      await screen.findByText(/目标进度读取失败/);
+      expect(screen.queryByText("8 / 20")).not.toBeInTheDocument();
+      // Existing task completion invalidates the tenant prefix, including this identity.
+      vi.mocked(api.progress).mockResolvedValue({
+        timezone: "Asia/Shanghai",
+        today: "2026-10-26",
+        items: [],
+      });
+      await act(async () => {
+        await client.invalidateQueries({ queryKey: goalKeys.progress("demo") });
+      });
+      await screen.findByText(
+        manage ? "尚未配置启用中的每日目标" : "目前没有分配给你的每日目标",
+      );
+      expect(api.progress).toHaveBeenCalledTimes(3);
+    },
+  );
+  it("labels unavailable stored recipients without offering them for new selection", async () => {
+    const { api } = setup(true);
+    vi.mocked(api.settings).mockResolvedValue({
+      timezone: "Asia/Shanghai",
+      rules: [
+        { ...rule, audience: "SELECTED_MEMBERS", memberIds: ["inactive"] },
+      ],
+      members: [{ id: "m1", name: "赵晨" }],
+    });
+    await edit();
+    expect(
+      screen.getByText("已停用或不可用员工（inactive）"),
+    ).toBeInTheDocument();
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "选择员工" }));
+    expect(
+      screen.queryByText("已停用或不可用员工（inactive）", {
+        selector: ".ant-select-item-option-content",
+      }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("switch", { name: "启用此目标" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存目标" }));
+    await screen.findByText("目标已保存");
+    expect(api.save).toHaveBeenCalledWith(
+      "demo",
+      "calls",
+      expect.objectContaining({ enabled: false, memberIds: ["inactive"] }),
+    );
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "选择员工" }), {
+      key: "Backspace",
+      code: "Backspace",
+      keyCode: 8,
+    });
+    expect(
+      screen.queryByText("已停用或不可用员工（inactive）"),
     ).not.toBeInTheDocument();
   });
   it("saves only the edited metric and sends its observed version", async () => {
