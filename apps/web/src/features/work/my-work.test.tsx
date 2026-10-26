@@ -1,3 +1,4 @@
+vi.mock("@/features/work/work-goals", () => ({ WorkGoalsPanel: () => null }));
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   act,

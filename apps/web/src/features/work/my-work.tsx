@@ -38,6 +38,8 @@ import {
 } from "./work-api";
 
 import styles from "./work.module.css";
+import { WorkGoalsPanel } from "./work-goals";
+import { goalKeys } from "./work-goals-api";
 
 /**
  * 任务与日报: the member's general tasks and their daily report. Tasks here are
@@ -57,6 +59,7 @@ export function MyWork({
         title="任务与日报"
         description="安排给你的工作和自己的计划，以及每天的工作日报。客户跟进请在「跟进待办」处理。"
       />
+      <WorkGoalsPanel tenantCode={tenantCode} />
       <div className={styles.columns}>
         <MyTasks tenantCode={tenantCode} api={api} />
         <ReportEditor tenantCode={tenantCode} api={api} />
@@ -298,6 +301,7 @@ export function TaskItem({
         queryClient.invalidateQueries({
           queryKey: ["workspace", tenantCode, "daily-report"],
         }),
+        queryClient.invalidateQueries({ queryKey: goalKeys.progress(tenantCode) }),
       ]);
     },
   });

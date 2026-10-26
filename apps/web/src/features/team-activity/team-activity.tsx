@@ -31,6 +31,7 @@ import {
 import { workApi, workKeys, type WorkApi } from "@/features/work/work-api";
 
 import styles from "./team-activity.module.css";
+import { WorkGoalsPanel } from "@/features/work/work-goals";
 
 type TeamActivityResponse = components["schemas"]["TeamActivityResponseDto"];
 type MemberRow = components["schemas"]["TeamActivityMemberDto"];
@@ -279,6 +280,7 @@ export function TeamActivity({
         title="团队动态"
         description="按成员统计系统里登记的沟通、客户、待办、任务和日报，可直接安排任务、查看日报。"
       />
+      <WorkGoalsPanel tenantCode={tenantCode} manage />
       <PageToolbar
         ariaLabel="统计期间"
         start={
