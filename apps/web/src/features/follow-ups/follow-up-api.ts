@@ -3,6 +3,26 @@ import type { components } from "@crm/contracts";
 import { relationRequest } from "@/lib/api/relation-request";
 import { dataOrThrow } from "@/features/objects/object-api";
 import { browserApiClient } from "@/lib/api/browser-client";
+import type {
+  ActivityOutcome,
+  MemberActivityType,
+} from "@/features/records/record-api";
+
+export interface FollowUpCompletionInput {
+  activityType: MemberActivityType;
+  content: string;
+  outcome?: ActivityOutcome;
+}
+
+export interface FollowUpCompletionResult {
+  activityId: string;
+  activityType: MemberActivityType;
+  content: string;
+  outcome: ActivityOutcome | null;
+  actorDisplayName: string | null;
+  completedAt: string;
+}
+
 export interface FollowUp {
   assigneeMemberId?: string;
   assigneeName?: string;
@@ -17,6 +37,7 @@ export interface FollowUp {
   version: number;
   overdue: boolean;
   canManage: boolean;
+  completionResult?: FollowUpCompletionResult | null;
 }
 export interface FollowUpPage {
   items: FollowUp[];
@@ -92,7 +113,7 @@ export const followUpApi = {
       dueAt: string;
       assigneeMemberId?: string;
     },
-  ) {
+  ): Promise<FollowUp> {
     return dataOrThrow(
       await browserApiClient.POST(PATH, {
         params: { path: { tenantCode } },
@@ -108,8 +129,9 @@ export const followUpApi = {
       assigneeMemberId?: string;
       status?: "DONE" | "CANCELLED";
       dueAt?: string;
+      completionResult?: FollowUpCompletionInput;
     },
-  ) {
+  ): Promise<FollowUp> {
     return dataOrThrow(
       await browserApiClient.PATCH(`${PATH}/{id}`, {
         params: { path: { tenantCode, id } },

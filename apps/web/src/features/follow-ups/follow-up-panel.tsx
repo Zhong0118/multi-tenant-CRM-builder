@@ -32,6 +32,7 @@ import { DueLabel } from "@/components/workbench/due-label";
 import { StatusTag } from "@/components/workbench/status-tag";
 import { useNow } from "@/lib/format/use-now";
 import { useTenantTimezone } from "./use-tenant-timezone";
+import { FollowUpCompletionDialog, FollowUpSavedResult } from "./follow-up-completion";
 
 export function FollowUpPanel({
   tenantCode,
@@ -42,6 +43,7 @@ export function FollowUpPanel({
   onListStateChange,
   beforeList,
   assignees,
+  onCompleted,
   api = followUpApi,
 }: {
   tenantCode: string;
@@ -54,6 +56,7 @@ export function FollowUpPanel({
   beforeList?: React.ReactNode;
   /** Company administrators may hand a new task to one of these members. */
   assignees?: Array<{ id: string; displayName?: string | null }>;
+  onCompleted?: () => void | Promise<void>;
   api?: typeof followUpApi;
 }) {
   const client = useQueryClient();
@@ -74,6 +77,7 @@ export function FollowUpPanel({
   const [title, setTitle] = useState("");
   const [dueAt, setDueAt] = useState("");
   const [newAssignee, setNewAssignee] = useState<string>();
+  const [completing, setCompleting] = useState<FollowUp>();
   const [cancelling, setCancelling] = useState<FollowUp>();
   const [rescheduling, setRescheduling] = useState<FollowUp>();
   const [reassigning, setReassigning] = useState<FollowUp>();
@@ -160,15 +164,11 @@ export function FollowUpPanel({
   };
   const fail = (caught: unknown) => {
     const failure = toApiError(caught);
-    setDone(undefined);
     setError(`${failure.message}（请求编号：${failure.requestId}）`);
   };
   const toast = useToast();
   const timeZone = useTenantTimezone(tenantCode, api);
   const now = useNow();
-  // The last follow-up completed here, so the member can go and log what came
-  // of it on the record (the follow-up itself has no result field).
-  const [done, setDone] = useState<FollowUp>();
   const create = useMutation({
     mutationFn: () =>
       api.create(tenantCode, {
@@ -196,16 +196,13 @@ export function FollowUpPanel({
     }: {
       task: FollowUp;
       assigneeMemberId?: string;
-      status?: "DONE" | "CANCELLED";
+      status?: "CANCELLED";
       dueAt?: string;
     }) => api.update(tenantCode, task.id, { version: task.version, ...change }),
     onSuccess: (_saved, { task, ...change }) => {
       setRescheduling(undefined);
       setReassigning(undefined);
-      if (change.status === "DONE") {
-        setDone(task);
-        toast.success(`已完成「${task.title}」`);
-      } else if (change.status === "CANCELLED") {
+      if (change.status === "CANCELLED") {
         toast.success(`已取消「${task.title}」`);
       } else if (change.dueAt) {
         toast.success(`「${task.title}」已改期`);
@@ -245,25 +242,6 @@ export function FollowUpPanel({
           onClose={() => setError(undefined)}
         />
       )}
-      {done && !record ? (
-        <Alert
-          type="success"
-          showIcon
-          closable
-          onClose={() => setDone(undefined)}
-          title={`已完成「${done.title}」`}
-          description={
-            <>
-              沟通结果（接通、见面、新加微信等）在记录的「动态」中登记，会计入日报和团队动态。
-              <Link
-                href={sourceRecordHref(tenantCode, done.objectCode, done.recordId, returnTo, done.id)}
-              >
-                去{done.recordTitle}登记结果
-              </Link>
-            </>
-          }
-        />
-      ) : null}
       {locating && <p role="status">正在查找跟进事项…</p>}
       {unavailable && (
         <Alert type="warning" title="该跟进事项不存在或当前无权查看。" />
@@ -396,6 +374,7 @@ export function FollowUpPanel({
                   事项负责人：{task.assigneeName ?? "成员"}
                 </span>
               )}
+              {task.status === "DONE" && task.completionResult ? <FollowUpSavedResult result={task.completionResult} timeZone={timeZone} /> : null}
               <DueLabel
                 dueAt={task.dueAt}
                 timeZone={timeZone}
@@ -409,8 +388,8 @@ export function FollowUpPanel({
                 <Button
                   size="small"
                   type="primary"
-                  disabled={update.isPending}
-                  onClick={() => update.mutate({ task, status: "DONE" })}
+                  disabled={update.isPending || !!completing}
+                  onClick={() => setCompleting(task)}
                 >
                   完成
                 </Button>
@@ -464,6 +443,7 @@ export function FollowUpPanel({
           onChange={(nextPage) => changeListState({ status, page: nextPage })}
         />
       )}
+      {completing ? <FollowUpCompletionDialog tenantCode={tenantCode} task={completing} api={api} onCompleted={onCompleted} onClose={() => setCompleting(undefined)} /> : null}
       <Modal
         open={Boolean(cancelling)}
         title="取消这项跟进？"

@@ -3,6 +3,8 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
+  Query,
   Post,
   Put,
   Req,
@@ -29,6 +31,10 @@ import {
   PreviewDraftAutomationDto,
   RuntimeAutomationsDto,
   SaveAutomationsDto,
+  AutomationStatsQueryDto,
+  AutomationStatsEventsQueryDto,
+  AutomationStatsDto,
+  AutomationStatsEventsDto,
 } from './automation.dto';
 import { AutomationsService } from './automations.service';
 
@@ -44,6 +50,26 @@ function meta(request: RequestWithId) {
 @UseGuards(SessionAuthGuard, WorkspaceGuard)
 export class AutomationAdminController {
   constructor(private readonly service: AutomationsService) {}
+  @Get('stats')
+  @ApiOkResponse({ type: AutomationStatsDto })
+  stats(
+    @CurrentTenant() context: TenantContext,
+    @Param('objectId', ParseUUIDPipe) id: string,
+    @Query() query: AutomationStatsQueryDto,
+  ) {
+    return this.service.stats(context, id, query);
+  }
+  @Get('stats/:ruleKey/events')
+  @ApiParam({ name: 'ruleKey', type: String })
+  @ApiOkResponse({ type: AutomationStatsEventsDto })
+  statsEvents(
+    @CurrentTenant() context: TenantContext,
+    @Param('objectId', ParseUUIDPipe) id: string,
+    @Param('ruleKey') ruleKey: string,
+    @Query() query: AutomationStatsEventsQueryDto,
+  ) {
+    return this.service.statsEvents(context, id, ruleKey, query);
+  }
   @Get()
   @ApiOkResponse({ type: AutomationConfigurationDto })
   get(@CurrentTenant() context: TenantContext, @Param('objectId') id: string) {

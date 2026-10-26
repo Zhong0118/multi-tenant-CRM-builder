@@ -1,6 +1,7 @@
 import { validateSync } from 'class-validator';
+import { plainToInstance } from 'class-transformer';
 import { CreateRecordRelationDto } from '../record-relations/record-relations.controller';
-import { CreateFollowUpDto } from './follow-ups.dto';
+import { CreateFollowUpDto, UpdateFollowUpDto } from './follow-ups.dto';
 import { validateProposalCandidate } from '../ai/ai-proposal.schema';
 
 const payload = {
@@ -8,6 +9,23 @@ const payload = {
   title: '回访需求',
   dueAt: '2026-10-27T10:00:00+08:00',
 };
+
+describe('follow-up completion result request', () => {
+  it('accepts a nested completion result through the strict HTTP whitelist', () => {
+    const dto = plainToInstance(UpdateFollowUpDto, {
+      version: 1,
+      status: 'DONE',
+      completionResult: {
+        activityType: 'MESSAGE',
+        content: '对方已通过',
+        outcome: 'WECHAT_ADDED',
+      },
+    });
+    expect(
+      validateSync(dto, { whitelist: true, forbidNonWhitelisted: true }),
+    ).toEqual([]);
+  });
+});
 
 describe('follow-up object reference validation', () => {
   it.each(['customers', 'sales-leads', 'legacy_leads', 'a' + 'b'.repeat(63)])(

@@ -627,6 +627,223 @@
         ],
         "type": "object"
       },
+      "AutomationRuleStatsDto": {
+        "properties": {
+          "current": {
+            "type": "boolean"
+          },
+          "deduplicated": {
+            "type": "number"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "failed": {
+            "type": "number"
+          },
+          "lastExecutedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "ruleKey": {
+            "type": "string"
+          },
+          "ruleLabel": {
+            "type": "string"
+          },
+          "succeeded": {
+            "type": "number"
+          },
+          "targetObjectCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "targetObjectName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "triggerType": {
+            "enum": ["MANUAL", "FIELD_CHANGED"],
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "succeeded",
+          "failed",
+          "deduplicated",
+          "ruleKey",
+          "ruleLabel",
+          "targetObjectCode",
+          "targetObjectName",
+          "triggerType",
+          "current",
+          "enabled",
+          "lastExecutedAt"
+        ],
+        "type": "object"
+      },
+      "AutomationStatsCountsDto": {
+        "properties": {
+          "deduplicated": {
+            "type": "number"
+          },
+          "failed": {
+            "type": "number"
+          },
+          "succeeded": {
+            "type": "number"
+          }
+        },
+        "required": ["succeeded", "failed", "deduplicated"],
+        "type": "object"
+      },
+      "AutomationStatsDto": {
+        "properties": {
+          "days": {
+            "type": "number"
+          },
+          "deduplicationCoverage": {
+            "enum": ["SINCE_INSTRUMENTATION"],
+            "type": "string"
+          },
+          "from": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AutomationRuleStatsDto"
+            },
+            "type": "array"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/AutomationStatsCountsDto"
+          },
+          "until": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "timezone",
+          "days",
+          "from",
+          "until",
+          "deduplicationCoverage",
+          "totals",
+          "items"
+        ],
+        "type": "object"
+      },
+      "AutomationStatsEventDto": {
+        "properties": {
+          "errorCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "errorMessage": {
+            "nullable": true,
+            "type": "string"
+          },
+          "executedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "ruleKey": {
+            "type": "string"
+          },
+          "ruleLabel": {
+            "type": "string"
+          },
+          "sourceAvailable": {
+            "type": "boolean"
+          },
+          "sourceRecordId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "sourceRecordNo": {
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "enum": ["SUCCEEDED", "FAILED", "DEDUPLICATED"],
+            "type": "string"
+          },
+          "targetAvailable": {
+            "type": "boolean"
+          },
+          "targetObjectCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "targetObjectName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "targetRecordId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "targetRecordNo": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ruleKey",
+          "ruleLabel",
+          "status",
+          "executedAt",
+          "sourceRecordId",
+          "sourceRecordNo",
+          "sourceAvailable",
+          "targetObjectCode",
+          "targetObjectName",
+          "targetRecordId",
+          "targetRecordNo",
+          "targetAvailable",
+          "errorCode",
+          "errorMessage"
+        ],
+        "type": "object"
+      },
+      "AutomationStatsEventsDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AutomationStatsEventDto"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "nullable": true,
+            "type": "string"
+          },
+          "pageSize": {
+            "enum": [20],
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          },
+          "until": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": ["until", "nextCursor", "pageSize", "total", "items"],
+        "type": "object"
+      },
       "BatchUpdateRecordItemDto": {
         "properties": {
           "recordId": {
@@ -2855,6 +3072,62 @@
         "required": ["id", "targetPhone", "role", "status", "expiresAt"],
         "type": "object"
       },
+      "FollowUpCompletionResultDto": {
+        "properties": {
+          "activityId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "activityType": {
+            "enum": ["CALL", "MESSAGE", "MEETING", "NOTE"],
+            "type": "string"
+          },
+          "actorDisplayName": {
+            "nullable": true,
+            "type": "string"
+          },
+          "completedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "outcome": {
+            "enum": ["NOT_REACHED", "CONNECTED", "WECHAT_ADDED"],
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "activityId",
+          "activityType",
+          "content",
+          "outcome",
+          "actorDisplayName",
+          "completedAt"
+        ],
+        "type": "object"
+      },
+      "FollowUpCompletionResultInputDto": {
+        "properties": {
+          "activityType": {
+            "enum": ["CALL", "MESSAGE", "MEETING", "NOTE"],
+            "type": "string"
+          },
+          "content": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "outcome": {
+            "enum": ["NOT_REACHED", "CONNECTED", "WECHAT_ADDED"],
+            "type": "string"
+          }
+        },
+        "required": ["activityType", "content"],
+        "type": "object"
+      },
       "FollowUpPageDto": {
         "properties": {
           "items": {
@@ -2912,6 +3185,15 @@
           "canManage": {
             "type": "boolean"
           },
+          "completionResult": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FollowUpCompletionResultDto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
           "dueAt": {
             "format": "date-time",
             "type": "string"
@@ -2946,6 +3228,7 @@
           }
         },
         "required": [
+          "completionResult",
           "assigneeName",
           "assigneeMemberId",
           "id",
@@ -7132,6 +7415,9 @@
           "assigneeMemberId": {
             "format": "uuid",
             "type": "string"
+          },
+          "completionResult": {
+            "$ref": "#/components/schemas/FollowUpCompletionResultInputDto"
           },
           "dueAt": {
             "format": "date-time",
@@ -11916,6 +12202,157 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AutomationPreviewDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["automations"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/automations/stats": {
+      "get": {
+        "operationId": "AutomationAdminController_stats",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "enum": [7, 30, 90],
+              "type": "number"
+            }
+          },
+          {
+            "description": "Exclusive end of the rolling time window; defaults to now",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationStatsDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["automations"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/{objectId}/automations/stats/{ruleKey}/events": {
+      "get": {
+        "operationId": "AutomationAdminController_statsEvents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ruleKey",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "enum": [7, 30, 90],
+              "type": "number"
+            }
+          },
+          {
+            "description": "Exclusive end of the rolling time window; defaults to now",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "ALL",
+              "enum": ["ALL", "SUCCEEDED", "FAILED", "DEDUPLICATED"],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque continuation cursor; retain the same until, days and status",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationStatsEventsDto"
                 }
               }
             },

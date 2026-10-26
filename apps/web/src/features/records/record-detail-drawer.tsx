@@ -304,6 +304,7 @@ export function RecordDetailDrawer({
           /> : null}
 
           {!poolPreview ? <FollowUpPanel
+            onCompleted={async () => { await onChanged(await api.detail(tenantCode, schema.object.code, record.id)); }}
             tenantCode={tenantCode}
             followUpId={followUpId}
             record={{

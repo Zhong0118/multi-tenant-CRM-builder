@@ -180,11 +180,14 @@ describe("PersonalFollowUpWorkbench", () => {
     const api = setup();
 
     fireEvent.click(await screen.findByTestId("workbench-complete-task-1"));
+    fireEvent.change(await screen.findByLabelText("完成结果"), { target: { value: "  已确认反馈  " } });
+    fireEvent.click(screen.getByRole("button", { name: "保存并完成" }));
 
     await waitFor(() =>
       expect(api.update).toHaveBeenCalledWith("northwind", "task-1", {
         version: 3,
         status: "DONE",
+        completionResult: { activityType: "NOTE", content: "已确认反馈" },
       }),
     );
     await waitFor(() => expect(api.workbench).toHaveBeenCalledTimes(2));

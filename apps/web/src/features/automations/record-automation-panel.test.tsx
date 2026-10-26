@@ -9,6 +9,8 @@ function setup(
   overrides: Partial<AutomationApi> = {},
 ) {
   const api: AutomationApi = {
+    stats: vi.fn(),
+    statsEvents: vi.fn(),
     configuration: vi.fn(),
     save: vi.fn(),
     previewDraft: vi.fn(),

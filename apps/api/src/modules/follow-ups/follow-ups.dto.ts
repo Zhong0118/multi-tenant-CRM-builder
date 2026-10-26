@@ -1,10 +1,17 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
+import {
+  ACTIVITY_OUTCOMES,
+  MEMBER_ACTIVITY_TYPES,
+  type ActivityOutcome,
+  type MemberActivityType,
+} from '../records/record-activity';
 import { OBJECT_CODE_REFERENCE_PATTERN } from '../objects/object-code';
 import {
   IsDateString,
   IsIn,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -12,6 +19,9 @@ import {
   Max,
   MaxLength,
   Min,
+  MinLength,
+  ValidateIf,
+  ValidateNested,
 } from 'class-validator';
 
 export class CreateFollowUpDto {
@@ -36,7 +46,34 @@ export class CreateFollowUpDto {
   @IsUUID()
   assigneeMemberId?: string;
 }
+export class FollowUpCompletionResultInputDto {
+  @ApiProperty({ enum: MEMBER_ACTIVITY_TYPES })
+  @IsIn(MEMBER_ACTIVITY_TYPES)
+  activityType!: MemberActivityType;
+
+  @ApiProperty({ minLength: 1, maxLength: 4000 })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @IsString()
+  @MinLength(1)
+  @MaxLength(4000)
+  content!: string;
+
+  @ApiPropertyOptional({ enum: ACTIVITY_OUTCOMES })
+  @ValidateIf((_object, value: unknown) => value !== undefined)
+  @IsIn(ACTIVITY_OUTCOMES)
+  outcome?: ActivityOutcome;
+}
+
 export class UpdateFollowUpDto {
+  @ApiPropertyOptional({ type: FollowUpCompletionResultInputDto })
+  @ValidateIf((_object, value: unknown) => value !== undefined)
+  @IsObject()
+  @ValidateNested()
+  @Type(() => FollowUpCompletionResultInputDto)
+  completionResult?: FollowUpCompletionResultInputDto;
+
   @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
   @IsUUID()
@@ -75,7 +112,21 @@ export class FollowUpQueryDto {
   @Max(50)
   limit?: number;
 }
+export class FollowUpCompletionResultDto {
+  @ApiProperty({ format: 'uuid' }) activityId!: string;
+  @ApiProperty({ enum: MEMBER_ACTIVITY_TYPES })
+  activityType!: MemberActivityType;
+  @ApiProperty() content!: string;
+  @ApiProperty({ enum: ACTIVITY_OUTCOMES, nullable: true })
+  outcome!: ActivityOutcome | null;
+  @ApiProperty({ type: String, nullable: true }) actorDisplayName!:
+    string | null;
+  @ApiProperty({ format: 'date-time' }) completedAt!: string;
+}
+
 export class FollowUpResponseDto {
+  @ApiProperty({ type: FollowUpCompletionResultDto, nullable: true })
+  completionResult!: FollowUpCompletionResultDto | null;
   @ApiProperty() assigneeName!: string;
   @ApiProperty() assigneeMemberId!: string;
   @ApiProperty() id!: string;

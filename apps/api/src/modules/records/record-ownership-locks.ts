@@ -1,4 +1,7 @@
-import { isReadable } from '../objects/published-object.service';
+import {
+  isReadable,
+  type ResolvedObjectSchema,
+} from '../objects/published-object.service';
 import { resolvePublishedObjectInTransaction } from '../objects/published-object-transaction';
 import type { Prisma } from '@crm/database';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
@@ -47,6 +50,60 @@ export async function lockMembers(
     )
       throw new ApiException('WORKSPACE_FORBIDDEN', 403);
   }
+}
+
+/** Activities may be entered by an administrator for somebody else's record.
+ * Lock that observed owner alongside the actor, before the table and record,
+ * because RecordsStore.lockRecord also locks the owner. A changed owner is a
+ * conflict; acquiring their member lock after the record would invert this order.
+ */
+export async function lockRecordActivityTarget(
+  tx: Prisma.TransactionClient,
+  context: TenantContext,
+  resolved: ResolvedObjectSchema,
+  recordId: string,
+) {
+  const observed = await tx.record.findFirst({
+    where: {
+      tenantId: context.tenantId,
+      objectId: resolved.schema.object.id,
+      id: recordId,
+      deletedAt: null,
+      ownerMemberId:
+        resolved.access.updateScope === 'OWN' ? context.memberId : undefined,
+    },
+    select: { ownerMemberId: true },
+  });
+  if (!observed) throw new ApiException('RECORD_NOT_FOUND', 404);
+  for (const memberId of [
+    ...new Set([
+      context.memberId,
+      ...(observed.ownerMemberId ? [observed.ownerMemberId] : []),
+    ]),
+  ].sort()) {
+    if (memberId === context.memberId) {
+      await lockMembers(tx, context);
+    } else {
+      // An administrator may log history on a disabled owner's private record.
+      // This is a serialization lock, not a new owner assignment.
+      await tx.$queryRaw`SELECT id FROM tenant_members WHERE tenant_id = ${context.tenantId}::uuid AND id = ${memberId}::uuid FOR NO KEY UPDATE`;
+    }
+  }
+  await lockObject(tx, context, resolved.schema.object.code);
+  const rows = await tx.$queryRaw<
+    Array<{
+      ownerMemberId: string | null;
+      poolStage: string | null;
+      ownershipExpiresAt: Date | null;
+    }>
+  >`
+    SELECT owner_member_id AS "ownerMemberId", pool_stage AS "poolStage", ownership_expires_at AS "ownershipExpiresAt"
+    FROM records WHERE tenant_id = ${context.tenantId}::uuid AND object_id = ${resolved.schema.object.id}::uuid
+      AND id = ${recordId}::uuid AND deleted_at IS NULL FOR UPDATE`;
+  if (!rows.length) throw new ApiException('RECORD_NOT_FOUND', 404);
+  if (rows[0].ownerMemberId !== observed.ownerMemberId)
+    throw new ApiException('RECORD_VERSION_CONFLICT', 409);
+  return rows[0];
 }
 
 export async function assertAssignableOwner(

@@ -23,7 +23,7 @@ import { PublishedObjectService } from '../objects/published-object.service';
 import {
   assertRecordMutation,
   createRecordCommand,
-  createRecordActivityCommand,
+  createRecordActivityWithContactCommand,
   projectActivity,
   projectRecord,
   recordAudit,
@@ -33,11 +33,9 @@ import {
   type RecordRequestMeta,
 } from './record-command';
 import {
-  CONTACT_OUTCOMES,
   type ActivityOutcome,
   type MemberActivityType,
 } from './record-activity';
-import { applyOwnershipChange } from './record-ownership-command';
 import { projectVisibleValues } from './record-value-engine';
 import {
   RECORD_EXPORT_MAX_ROWS,
@@ -984,34 +982,7 @@ export class RecordsService {
       context,
       async ({ tx, store }) => {
         resolved = await store.resolveCurrentObject(resolved);
-        // A successful contact on a lead waiting for it is the same state change
-        // as 确认联系, made by the same function before the activity is written,
-        // so its locks (members, table, record) come in the usual order.
-        if (
-          input.outcome &&
-          CONTACT_OUTCOMES.includes(input.outcome) &&
-          resolved.poolEnabled &&
-          resolved.poolLifecycleEnabled
-        ) {
-          const current = await store.findRecord(
-            resolved.schema.object.id,
-            recordId,
-          );
-          if (current?.poolStage === 'PENDING_CONTACT')
-            await applyOwnershipChange(
-              tx,
-              {
-                clock: this.clock,
-                appendAudit: (_tx, event) => store.appendAudit(event),
-              },
-              context,
-              objectCode,
-              recordId,
-              { action: 'CONFIRM_CONTACT', version: current.version },
-              meta,
-            );
-        }
-        const { activity } = await createRecordActivityCommand({
+        const { activity } = await createRecordActivityWithContactCommand(tx, {
           store,
           resolved,
           context,

@@ -7,6 +7,9 @@ import type {
   AutomationRule,
   AutomationValue,
   RuntimeAutomation,
+  AutomationStats,
+  AutomationStatsEvents,
+  AutomationStatsStatus,
 } from "./automation-types";
 
 const base = (tenant: string) =>
@@ -16,6 +19,24 @@ const admin = (tenant: string, objectId: string) =>
 const runtime = (tenant: string, code: string, recordId: string) =>
   `${base(tenant)}/objects/${encodeURIComponent(code)}/records/${encodeURIComponent(recordId)}/automations`;
 export const automationApi = {
+  stats: (tenant: string, objectId: string, days = 30) =>
+    relationRequest<AutomationStats>(
+      `${admin(tenant, objectId)}/stats?days=${days}`,
+    ),
+  statsEvents: (
+    tenant: string,
+    objectId: string,
+    ruleKey: string,
+    query: {
+      days: number;
+      until: string;
+      cursor?: string;
+      status: AutomationStatsStatus;
+    },
+  ) =>
+    relationRequest<AutomationStatsEvents>(
+      `${admin(tenant, objectId)}/stats/${encodeURIComponent(ruleKey)}/events?${new URLSearchParams({ days: String(query.days), until: query.until, ...(query.cursor ? { cursor: query.cursor } : {}), status: query.status })}`,
+    ),
   configuration: (tenant: string, objectId: string) =>
     relationRequest<AutomationConfiguration>(admin(tenant, objectId)),
   save: (

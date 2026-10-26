@@ -57,6 +57,56 @@ function setup(onDirtyChange = vi.fn()) {
       rules,
       publishedRules: [],
     })),
+    stats: vi.fn().mockResolvedValue({
+      days: 30,
+      timezone: "America/New_York",
+      from: "2026-09-01T12:00:00.000Z",
+      until: "2026-10-01T12:00:00.000Z",
+      deduplicationCoverage: "SINCE_INSTRUMENTATION",
+      totals: { succeeded: 2, failed: 1, deduplicated: 3 },
+      items: [
+        {
+          ruleKey: "removed",
+          ruleLabel: "历史开单规则",
+          targetObjectCode: "orders",
+          targetObjectName: "开单",
+          triggerType: "MANUAL",
+          current: false,
+          enabled: false,
+          succeeded: 2,
+          failed: 1,
+          deduplicated: 3,
+          lastExecutedAt: "2026-09-30T12:00:00.000Z",
+        },
+      ],
+    }),
+    statsEvents: vi
+      .fn()
+      .mockImplementation(async (_tenant, _object, _rule, query) => ({
+        nextCursor: query.cursor ? null : "cursor-page-2",
+        until: query.until,
+        pageSize: 20,
+        total: 21,
+        items: [
+          {
+            id: `event-${query.cursor ?? "first"}`,
+            ruleKey: "removed",
+            ruleLabel: "历史开单规则",
+            status: "FAILED",
+            executedAt: "2026-09-30T12:00:00.000Z",
+            sourceRecordId: "source-record",
+            sourceRecordNo: "LEAD-001",
+            sourceAvailable: false,
+            targetObjectCode: null,
+            targetObjectName: null,
+            targetRecordId: null,
+            targetRecordNo: null,
+            targetAvailable: false,
+            errorCode: "FIELD_REQUIRED",
+            errorMessage: "必填字段不能为空",
+          },
+        ],
+      })),
   } as unknown as AutomationApi;
   const objects = {
     listDrafts: vi.fn().mockResolvedValue([
@@ -108,6 +158,81 @@ function setup(onDirtyChange = vi.fn()) {
   };
 }
 describe("AutomationDesigner", () => {
+  it("shows historical rule statistics for archived tables and paginates filtered events without editing", async () => {
+    const { api, rerender } = setup();
+    rerender({ ...draft, object: { ...draft.object, status: "ARCHIVED" } });
+    fireEvent.click(await screen.findByText("执行统计"));
+    expect(await screen.findByText("历史开单规则")).toBeInTheDocument();
+    expect(screen.getByText("2026/9/30 08:00:00")).toBeInTheDocument();
+    expect(screen.getByText(/早期未记录的数据不补算/)).toBeInTheDocument();
+    expect(screen.getByText("已移除")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "新建规则" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "查看明细 历史开单规则" }),
+    );
+    expect(await screen.findByText("必填字段不能为空")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "LEAD-001" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "失败" }));
+    await waitFor(() =>
+      expect(api.statsEvents).toHaveBeenLastCalledWith(
+        "demo",
+        "source",
+        "removed",
+        expect.objectContaining({
+          days: 30,
+          until: "2026-10-01T12:00:00.000Z",
+          cursor: undefined,
+          status: "FAILED",
+        }),
+      ),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "下一页" }));
+    await waitFor(() =>
+      expect(api.statsEvents).toHaveBeenLastCalledWith(
+        "demo",
+        "source",
+        "removed",
+        expect.objectContaining({ cursor: "cursor-page-2", status: "FAILED" }),
+      ),
+    );
+    expect(
+      await screen.findByText("共 21 条 · 每页 20 条 · 第 2 页"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "上一页" }));
+    expect(
+      await screen.findByText("共 21 条 · 每页 20 条 · 第 1 页"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "成功" }));
+    await waitFor(() =>
+      expect(api.statsEvents).toHaveBeenLastCalledWith(
+        "demo",
+        "source",
+        "removed",
+        expect.objectContaining({ cursor: undefined, status: "SUCCEEDED" }),
+      ),
+    );
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it("shows statistics permission errors instead of an empty history and retries explicitly", async () => {
+    const { api } = setup();
+    vi.mocked(api.stats).mockRejectedValue({
+      code: "OBJECT_ACTION_FORBIDDEN",
+      message: "无权查看执行统计",
+      fieldErrors: {},
+      requestId: "test",
+      status: 403,
+    });
+    fireEvent.click(await screen.findByText("执行统计"));
+    expect(await screen.findByText("无权查看执行统计")).toBeInTheDocument();
+    expect(screen.queryByText("暂无执行记录")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "重新加载统计" }));
+    await waitFor(() => expect(api.stats).toHaveBeenCalledTimes(2));
+  });
   it("shows draft versus published and explicitly tells admin to publish after saving", async () => {
     const { api, changed } = setup();
     await screen.findByText("有待发布的规则修改");

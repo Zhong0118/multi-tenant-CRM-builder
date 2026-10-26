@@ -32,6 +32,7 @@ import {
   type AutomationTable,
 } from "./automation-types";
 import { AutomationRuleEditor } from "./automation-rule-editor";
+import { AutomationStatistics } from "./automation-statistics";
 import { automationError, DraftAutomationPreview } from "./automation-preview";
 import { ruleResult } from "./relationship-overview";
 import styles from "./automations.module.css";
@@ -176,6 +177,33 @@ export function AutomationDesigner({
       setSaving(false);
     }
   }
+  const viewSelector = (
+    <Segmented
+      aria-label="规则版本与统计"
+      value={view}
+      onChange={setView}
+      options={[
+        { label: "待发布草稿", value: "draft" },
+        { label: "当前生效", value: "published" },
+        { label: "执行统计", value: "stats" },
+      ]}
+    />
+  );
+  if (view === "stats")
+    return (
+      <section className={styles.panel}>
+        <div className={styles.heading}>
+          <h2>跨表关联与自动化</h2>
+        </div>
+        {viewSelector}
+        <AutomationStatistics
+          tenantCode={tenantCode}
+          objectId={draft.object.id}
+          sourceCode={draft.object.code}
+          api={api}
+        />
+      </section>
+    );
   if (config.isPending || targets.isPending)
     return <Spin aria-label="加载跨表规则" />;
   if (config.isError || targets.isError)
@@ -243,15 +271,7 @@ export function AutomationDesigner({
         />
       )}
       <div className={styles.heading}>
-        <Segmented
-          aria-label="规则版本"
-          value={view}
-          onChange={setView}
-          options={[
-            { label: "待发布草稿", value: "draft" },
-            { label: "当前生效", value: "published" },
-          ]}
-        />
+        {viewSelector}
         <Button
           icon={<PlusOutlined />}
           disabled={

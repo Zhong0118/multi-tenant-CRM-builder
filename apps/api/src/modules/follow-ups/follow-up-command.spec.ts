@@ -194,6 +194,7 @@ describe('createFollowUpCommand', () => {
       version: 1,
       overdue: false,
       canManage: true,
+      completionResult: null,
     });
   });
 

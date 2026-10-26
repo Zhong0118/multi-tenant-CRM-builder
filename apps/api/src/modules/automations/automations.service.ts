@@ -13,6 +13,7 @@ import {
 import { resolveReadablePublishedObjectInTransaction } from '../objects/published-object-transaction';
 import {
   automationTarget,
+  auditAutomationDeduplication,
   assertAutomationRole,
   executeAutomation,
   findAutomationExecution,
@@ -31,7 +32,13 @@ import type {
   PreviewDraftAutomationDto,
   RuntimeAutomationDto,
   SaveAutomationsDto,
+  AutomationStatsQueryDto,
+  AutomationStatsEventsQueryDto,
 } from './automation.dto';
+import {
+  readAutomationStats,
+  readAutomationStatsEvents,
+} from './automation-stats';
 
 @Injectable()
 export class AutomationsService {
@@ -52,6 +59,29 @@ export class AutomationsService {
         rules: draft.automations ?? [],
       };
     });
+  }
+  stats(
+    context: TenantContext,
+    objectId: string,
+    query: AutomationStatsQueryDto,
+  ) {
+    admin(context);
+    return this.records.withTenantTransaction(context, ({ tx }) =>
+      readAutomationStats(tx, context, objectId, query),
+    );
+  }
+  statsEvents(
+    context: TenantContext,
+    objectId: string,
+    ruleKey: string,
+    query: AutomationStatsEventsQueryDto,
+  ) {
+    admin(context);
+    if (!/^[a-z][a-z0-9-]{0,63}$/.test(ruleKey))
+      throw new ApiException('VALIDATION_FAILED', 400);
+    return this.records.withTenantTransaction(context, ({ tx }) =>
+      readAutomationStatsEvents(tx, context, objectId, ruleKey, query),
+    );
   }
   save(
     context: TenantContext,
@@ -241,6 +271,7 @@ export class AutomationsService {
           existing.targetRecordId,
           'READ',
         );
+        await auditAutomationDeduplication(session, rule, meta);
         return existing;
       }
       if (session.source.version !== input.expectedVersion)

@@ -3,6 +3,7 @@ import { isISO8601 } from 'class-validator';
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { PublishedObjectService } from '../objects/published-object.service';
+import { validateRecordActivityInput } from '../records/record-command';
 import type {
   CreateFollowUpDto,
   FollowUpQueryDto,
@@ -257,6 +258,11 @@ export class FollowUpsService {
       task.objectCode,
       task.recordId,
     );
+    if (input.completionResult !== undefined) {
+      if (input.status !== 'DONE' || input.dueAt || input.assigneeMemberId)
+        throw new ApiException('VALIDATION_FAILED', 400);
+      validateRecordActivityInput(input.completionResult);
+    }
     if (
       (input.status !== undefined &&
         !['DONE', 'CANCELLED'].includes(input.status)) ||

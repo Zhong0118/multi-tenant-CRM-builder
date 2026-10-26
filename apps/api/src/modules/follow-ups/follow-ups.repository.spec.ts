@@ -33,7 +33,11 @@ describe('proposal history follow-up visibility', () => {
     const runner = {
       withTenant: jest.fn(),
     } as unknown as DatabaseContextRunner;
-    const repo = new FollowUpsRepository(runner, {} as AuditService);
+    const repo = new FollowUpsRepository(
+      runner,
+      {} as AuditService,
+      {} as never,
+    );
     const tx = { recordFollowUp: { findMany } };
     expect(
       await repo.visibleFollowUpIdsInTransaction(tx as never, context, [
@@ -158,6 +162,15 @@ function harness(options: HarnessOptions = {}) {
     repository: new FollowUpsRepository(
       { withTenant } as unknown as DatabaseContextRunner,
       { append } as unknown as AuditService,
+      {
+        withTenantTransaction: (
+          _ctx: TenantContext,
+          work: (session: unknown) => Promise<unknown>,
+        ) =>
+          withTenant(_ctx, (transaction) =>
+            work({ tx: transaction, store: {} }),
+          ),
+      } as never,
     ),
   };
 }
