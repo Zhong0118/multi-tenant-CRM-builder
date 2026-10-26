@@ -5,7 +5,7 @@ import {
   ReloadOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   Button,
@@ -22,7 +22,7 @@ import {
   Table,
   Tooltip,
 } from "antd";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { MemberIdentity } from "@/components/identity/member-identity";
 import { PageSection } from "@/components/layout/page";
@@ -42,7 +42,20 @@ import {
 } from "./work-goals-api";
 import styles from "./work-goals.module.css";
 
-type Props = { tenantCode: string; manage?: boolean; api?: WorkGoalsApi };
+type Props = {
+  tenantCode: string;
+  api?: WorkGoalsApi;
+} & (
+  { manage: true; memberId: string } | { manage?: false; memberId?: string }
+);
+type GoalInput = Omit<SaveGoal, "target" | "expectedVersion"> & {
+  target: string;
+};
+type GoalRecovery = {
+  metric: GoalMetric;
+  input: GoalInput;
+  expectedVersion: number;
+};
 const metricLabel = (metric: GoalMetric) =>
   GOAL_METRICS.find((item) => item.value === metric)!;
 const days = ["一", "二", "三", "四", "五", "六", "日"].map((label, index) => ({
@@ -53,46 +66,76 @@ const days = ["一", "二", "三", "四", "五", "六", "日"].map((label, index
 export function WorkGoalsPanel(props: Props) {
   return (
     <GoalPanel
-      key={`${props.tenantCode}:${props.manage ?? false}`}
+      key={`${props.tenantCode}:${props.memberId ?? ""}:${props.manage ?? false}`}
       {...props}
     />
   );
 }
-function GoalPanel({ tenantCode, manage = false, api = workGoalsApi }: Props) {
-  const [open, setOpen] = useState(false);
+function GoalPanel({
+  tenantCode,
+  memberId,
+  manage = false,
+  api = workGoalsApi,
+}: Props) {
+  const queryClient = useQueryClient();
+  const recoveryKey =
+    manage && memberId
+      ? ["goal-editor-recovery", tenantCode, memberId]
+      : undefined;
+  const [recovery, setRecovery] = useState(() =>
+    recoveryKey
+      ? queryClient.getQueryData<GoalRecovery>(recoveryKey)
+      : undefined,
+  );
+  const [open, setOpen] = useState(Boolean(recovery));
   const [settings, setSettings] = useState<GoalSettings>();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(Boolean(recovery));
   const [loadError, setLoadError] = useState("");
-  const [metric, setMetric] = useState<GoalMetric>("calls");
-  const [dirty, setDirty] = useState(false);
+  const [metric, setMetric] = useState<GoalMetric>(recovery?.metric ?? "calls");
+  const [dirty, setDirty] = useState(Boolean(recovery));
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<GoalMetric | "close" | null>(null);
   const request = useRef(0);
   const leave = useLeaveGuard(open && dirty);
-  useEffect(
-    () => () => {
-      request.current += 1;
-    },
-    [],
-  );
   const progress = useQuery({
     queryKey: [...goalKeys.progress(tenantCode), manage ? "team" : "mine"],
     queryFn: () => api.progress(tenantCode, manage ? "team" : "mine"),
     refetchInterval: 60_000,
   });
-  async function loadSettings() {
+  const readSettings = useCallback(() => {
     const sequence = ++request.current;
+    return api.settings(tenantCode).then(
+      (data) => {
+        if (sequence === request.current) {
+          setSettings(data);
+          setLoading(false);
+        }
+      },
+      (error) => {
+        if (sequence === request.current) {
+          setLoadError(toApiError(error).message);
+          setLoading(false);
+        }
+      },
+    );
+  }, [api, tenantCode]);
+  useEffect(() => {
+    // Revalidate access and employee choices before showing recovered inputs.
+    if (recovery) void readSettings();
+    return () => {
+      request.current += 1;
+    };
+  }, [recovery, readSettings]);
+  function loadSettings() {
     setLoading(true);
     setLoadError("");
     setSettings(undefined);
-    try {
-      const data = await api.settings(tenantCode);
-      if (sequence === request.current) setSettings(data);
-    } catch (error) {
-      if (sequence === request.current) setLoadError(toApiError(error).message);
-    } finally {
-      if (sequence === request.current) setLoading(false);
-    }
+    void readSettings();
+  }
+  function clearRecovery() {
+    if (recoveryKey)
+      queryClient.removeQueries({ queryKey: recoveryKey, exact: true });
+    setRecovery(undefined);
   }
   function change(next: GoalMetric | "close") {
     if (busy) return;
@@ -103,6 +146,7 @@ function GoalPanel({ tenantCode, manage = false, api = workGoalsApi }: Props) {
     applyChange(next);
   }
   function applyChange(next: GoalMetric | "close") {
+    clearRecovery();
     setDirty(false);
     setPending(null);
     if (next === "close") {
@@ -282,6 +326,14 @@ function GoalPanel({ tenantCode, manage = false, api = workGoalsApi }: Props) {
         )}
         {open && settings && (
           <>
+            {recovery && (
+              <Alert
+                type="info"
+                showIcon
+                title="已恢复本标签页未保存的目标修改"
+                description="请核对后保存 草稿保留原配置版本 其他管理员的更新仍会触发冲突检查"
+              />
+            )}
             <label className={styles.metricPicker}>
               <span>工作指标</span>
               <Select
@@ -299,12 +351,15 @@ function GoalPanel({ tenantCode, manage = false, api = workGoalsApi }: Props) {
               key={metric}
               metric={metric}
               initial={settings.rules.find((r) => r.metric === metric)}
+              recovery={recovery}
+              recoveryKey={recoveryKey}
               settings={settings}
               tenantCode={tenantCode}
               api={api}
               onDirty={setDirty}
               onBusy={setBusy}
               onSaved={(saved) => {
+                setRecovery(undefined);
                 setSettings(
                   (current) =>
                     current && {
@@ -334,6 +389,7 @@ function GoalPanel({ tenantCode, manage = false, api = workGoalsApi }: Props) {
         }}
         onOk={() => {
           if (leave.pending) {
+            clearRecovery();
             setDirty(false);
             leave.leave();
           } else if (pending) applyChange(pending);
@@ -362,6 +418,8 @@ function GoalMeter({ item }: { item: GoalProgressItem }) {
 function GoalForm({
   metric,
   initial,
+  recovery,
+  recoveryKey,
   settings,
   tenantCode,
   api,
@@ -371,6 +429,8 @@ function GoalForm({
 }: {
   metric: GoalMetric;
   initial?: GoalRule;
+  recovery?: GoalRecovery;
+  recoveryKey?: string[];
   settings: GoalSettings;
   tenantCode: string;
   api: WorkGoalsApi;
@@ -378,15 +438,20 @@ function GoalForm({
   onBusy: (value: boolean) => void;
   onSaved: (rule: GoalRule) => void;
 }) {
-  const [input, setInput] = useState({
-    target: initial ? String(initial.target) : "",
-    remindAt: initial?.remindAt ?? "17:00",
-    weekdays: initial?.weekdays ?? [1, 2, 3, 4, 5],
-    audience: initial?.audience ?? "ALL_EMPLOYEES",
-    memberIds: initial?.memberIds ?? [],
-    enabled: initial?.enabled ?? true,
-  });
-  const [version, setVersion] = useState(initial?.version ?? 0);
+  const queryClient = useQueryClient();
+  const [input, setInput] = useState<GoalInput>(
+    recovery?.input ?? {
+      target: initial ? String(initial.target) : "",
+      remindAt: initial?.remindAt ?? "17:00",
+      weekdays: initial?.weekdays ?? [1, 2, 3, 4, 5],
+      audience: initial?.audience ?? "ALL_EMPLOYEES",
+      memberIds: initial?.memberIds ?? [],
+      enabled: initial?.enabled ?? true,
+    },
+  );
+  const [version, setVersion] = useState(
+    recovery?.expectedVersion ?? initial?.version ?? 0,
+  );
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -399,7 +464,17 @@ function GoalForm({
     };
   }, []);
   function edit(patch: Partial<typeof input>) {
-    setInput((current) => ({ ...current, ...patch }));
+    const next = { ...input, ...patch };
+    setInput(next);
+    if (recoveryKey) {
+      // Like template recovery, keep drafts only in this tab's root QueryClient.
+      queryClient.setQueryDefaults(recoveryKey, { gcTime: Infinity });
+      queryClient.setQueryData<GoalRecovery>(recoveryKey, {
+        metric,
+        input: next,
+        expectedVersion: version,
+      });
+    }
     onDirty(true);
     setSaved(false);
     setError("");
@@ -429,6 +504,9 @@ function GoalForm({
       memberIds: input.audience === "ALL_EMPLOYEES" ? [] : input.memberIds,
       expectedVersion: version,
     };
+    const savingDraft = recoveryKey
+      ? queryClient.getQueryData(recoveryKey)
+      : undefined;
     submitting.current = true;
     setBusy(true);
     onBusy(true);
@@ -436,6 +514,13 @@ function GoalForm({
     setSaved(false);
     try {
       const result = await api.save(tenantCode, metric, body);
+      // A save may finish after history navigation; do not erase newer edits.
+      if (
+        recoveryKey &&
+        queryClient.getQueryData(recoveryKey) === savingDraft
+      ) {
+        queryClient.removeQueries({ queryKey: recoveryKey, exact: true });
+      }
       if (!alive.current) return;
       setVersion(result.version);
       setSaved(true);

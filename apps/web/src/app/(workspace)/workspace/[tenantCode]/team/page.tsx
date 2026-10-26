@@ -11,5 +11,5 @@ export default async function TeamActivityPage({
   const { tenantCode } = await params;
   const workspace = await requireWorkspace(tenantCode);
   if (workspace.role !== "TENANT_ADMIN") notFound();
-  return <TeamActivity tenantCode={tenantCode} />;
+  return <TeamActivity tenantCode={tenantCode} memberId={workspace.memberId} />;
 }

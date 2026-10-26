@@ -152,7 +152,7 @@ function setup(view: "mine" | "team", total = 101) {
       {view === "mine" ? (
         <MyWork tenantCode="northwind" />
       ) : (
-        <TeamActivity tenantCode="northwind" />
+        <TeamActivity tenantCode="northwind" memberId="admin-1" />
       )}
     </QueryClientProvider>,
   );

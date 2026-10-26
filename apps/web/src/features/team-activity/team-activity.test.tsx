@@ -115,6 +115,7 @@ function setup() {
     <QueryClientProvider client={client}>
       <TeamActivity
         tenantCode="northwind"
+        memberId="admin-1"
         api={{ ...teamActivityApi, summarize }}
         work={work}
       />

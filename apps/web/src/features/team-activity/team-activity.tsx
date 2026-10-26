@@ -158,10 +158,12 @@ const METRICS = GROUPS.flatMap((group) => group.metrics);
  */
 export function TeamActivity({
   tenantCode,
+  memberId,
   api = teamActivityApi,
   work = workApi,
 }: {
   tenantCode: string;
+  memberId: string;
   api?: typeof teamActivityApi;
   work?: WorkApi;
 }) {
@@ -280,7 +282,7 @@ export function TeamActivity({
         title="团队动态"
         description="按成员统计系统里登记的沟通、客户、待办、任务和日报，可直接安排任务、查看日报。"
       />
-      <WorkGoalsPanel tenantCode={tenantCode} manage />
+      <WorkGoalsPanel tenantCode={tenantCode} memberId={memberId} manage />
       <PageToolbar
         ariaLabel="统计期间"
         start={
