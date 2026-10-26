@@ -26,6 +26,11 @@ export function isTemplateObjectCode(value: string): boolean {
   return TEMPLATE_OBJECT_CODE_PATTERN.test(value);
 }
 
+// Published legacy tables can contain underscores; keep their stable references.
+export function isTemplateObjectReference(value: string): boolean {
+  return /^[a-z][a-z0-9_-]{0,63}$/.test(value);
+}
+
 export interface TemplateFieldView extends ConfigurableFieldView {
   publishedFieldKey: string | null;
 }
@@ -36,11 +41,16 @@ export interface TemplateObjectView extends ConfigurableObjectView {
     status: "ACTIVE" | "INACTIVE";
   };
   fields: TemplateFieldView[];
+  workflow?: SaveTemplateDraftInput["configuration"]["objects"][number]["workflow"];
+  automations?: SaveTemplateDraftInput["configuration"]["objects"][number]["automations"];
+  pool?: SaveTemplateDraftInput["configuration"]["objects"][number]["pool"];
 }
 
 export interface TemplateDraft {
   schemaVersion: 1;
   objects: TemplateObjectView[];
+  dashboard?: SaveTemplateDraftInput["configuration"]["dashboard"];
+  goalRules?: SaveTemplateDraftInput["configuration"]["goalRules"];
 }
 
 export interface NewTemplateObject {
@@ -100,7 +110,12 @@ export function templateDraftFromDetail(
 ): TemplateDraft {
   return {
     schemaVersion: 1,
+    ...(detail.configuration.dashboard === undefined ? {} : { dashboard: detail.configuration.dashboard }),
+    ...(detail.configuration.goalRules === undefined ? {} : { goalRules: detail.configuration.goalRules }),
     objects: detail.configuration.objects.map((object) => ({
+      ...(object.workflow === undefined ? {} : { workflow: object.workflow }),
+      ...(object.automations === undefined ? {} : { automations: object.automations }),
+      ...(object.pool === undefined ? {} : { pool: object.pool }),
       object: {
         id: object.id,
         code: object.code,
@@ -440,7 +455,12 @@ export function toTemplateConfiguration(
 ): SaveTemplateDraftInput["configuration"] {
   return {
     schemaVersion: 1,
+    ...(draft.dashboard === undefined ? {} : { dashboard: draft.dashboard }),
+    ...(draft.goalRules === undefined ? {} : { goalRules: draft.goalRules }),
     objects: draft.objects.map((object) => ({
+      ...(object.workflow === undefined ? {} : { workflow: object.workflow }),
+      ...(object.automations === undefined ? {} : { automations: object.automations }),
+      ...(object.pool === undefined ? {} : { pool: object.pool }),
       id: object.object.id,
       code: object.object.code,
       name: object.object.name,

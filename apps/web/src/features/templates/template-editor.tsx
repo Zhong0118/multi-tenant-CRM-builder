@@ -13,6 +13,7 @@ import { browserTemplateApi, type TemplateApi } from "./template-api";
 import {
   addObject,
   isTemplateObjectCode,
+  isTemplateObjectReference,
   reorderObjects,
   TEMPLATE_OBJECT_CODE_MESSAGE,
   templateDraftFromDetail,
@@ -20,6 +21,7 @@ import {
   type TemplateDraft,
 } from "./template-draft";
 import { TemplateObjectEditor } from "./template-object-editor";
+import { TemplateCapture } from "./template-capture";
 import { TemplatePublicationPanel } from "./template-publication-panel";
 import type {
   BusinessTemplateDetail,
@@ -79,6 +81,7 @@ export function TemplateEditor({
   const [publishing, setPublishing] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [creatorOpen, setCreatorOpen] = useState(false);
+  const [captureOpen, setCaptureOpen] = useState(false);
   const [newObjectName, setNewObjectName] = useState("");
   const [newObjectCode, setNewObjectCode] = useState("");
   const [newObjectDescription, setNewObjectDescription] = useState("");
@@ -92,7 +95,7 @@ export function TemplateEditor({
 
   const archived = template.status === "ARCHIVED";
   const hasInvalidObjectCode = draft.objects.some(
-    (item) => !isTemplateObjectCode(item.object.code),
+    (item) => !isTemplateObjectReference(item.object.code),
   );
 
   function changeDraft(next: TemplateDraft) {
@@ -325,6 +328,11 @@ export function TemplateEditor({
         </div>
         <div className={styles.editorActions}>
           <Button
+            disabled={dirty || archived || saving || analyzing || publishing || refreshing || publicationRefreshRequired}
+            title={dirty ? "请先保存当前修改，再复制公司流程" : undefined}
+            onClick={() => setCaptureOpen(true)}
+          >从公司复制流程</Button>
+          <Button
             aria-label="保存草稿"
             disabled={!dirty || archived || hasInvalidObjectCode}
             loading={saving}
@@ -382,6 +390,27 @@ export function TemplateEditor({
           }
         />
       ) : null}
+
+      {captureOpen ? <TemplateCapture
+        templateId={template.id}
+        expectedVersion={template.draftVersion}
+        api={api}
+        onClose={() => setCaptureOpen(false)}
+        onApply={(configuration) => {
+          if (dirty || saving || publishing || refreshing) return;
+          const next = templateDraftFromDetail({ configuration });
+          changeDraft(next);
+          const selectedId = next.objects[0]?.object.id;
+          setActiveObjectId(selectedId);
+          queryClient.setQueryData<TemplateRecovery>(recoveryKey, (current) => current ? { ...current, activeObjectId: selectedId } : current);
+          setCaptureOpen(false);
+        }}
+      /> : null}
+
+      {draft.objects.some((item) => item.workflow || item.automations?.length || item.pool?.enabled) || draft.goalRules?.length ? <Alert
+        type="info" showIcon title="此模板包含完整业务流程"
+        description={`${draft.objects.filter((item) => item.workflow).length} 张表含状态流程 · ${draft.objects.reduce((count, item) => count + (item.automations?.length ?? 0), 0)} 条跨表规则 · ${draft.objects.filter((item) => item.pool?.enabled).length} 个公海 · ${draft.goalRules?.length ?? 0} 项员工目标。保存字段修改时会保留这些配置；需要调整流程时，可在来源公司配置并发布后重新复制。`}
+      /> : null}
 
       <div className={styles.templateDesigner}>
         <aside className={styles.manifestRail} aria-label="模板业务表清单">

@@ -788,6 +788,59 @@ function templateDraftFromFixture() {
   return templateDraftFromDetail(detail());
 }
 
+describe("portable template draft roundtrip", () => {
+  it("names goal changes and shows configuration paths in publication blockers", async () => {
+    const result = analysis();
+    result.changes = [{ entity: "GOAL_RULES", kind: "UPDATED", objectId: "" }];
+    result.blocking = [{ code: "GOAL_INVALID", objectId: "", message: "目标配置需要调整", path: "goalRules[0].target" }];
+    renderEditor(detail(), editorApi({ analyzePublication: vi.fn().mockResolvedValue(result) }));
+    fireEvent.click(screen.getByRole("button", { name: "发布模板" }));
+    expect(await screen.findByText("员工目标规则")).toBeInTheDocument();
+    expect(screen.getByText("goalRules[0].target")).toBeInTheDocument();
+  });
+
+  it("protects unsaved edits from capture and accepts a captured legacy object code", async () => {
+    const fixture = detail();
+    fixture.configuration.objects[0]!.code = "legacy_customers";
+    fixture.configuration.objects[0]!.publishedCode = "legacy_customers";
+    const api = editorApi();
+    renderEditor(fixture, api);
+    expect(screen.getByRole("button", { name: "从公司复制流程" })).toBeEnabled();
+    fireEvent.change(screen.getByLabelText("业务表名称"), { target: { value: "客户资料" } });
+    expect(screen.getByRole("button", { name: "从公司复制流程" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
+    await waitFor(() => expect(api.saveDraft).toHaveBeenCalledWith(fixture.id, expect.objectContaining({ configuration: expect.objectContaining({ objects: [expect.objectContaining({ code: "legacy_customers", name: "客户资料" })] }) })));
+  });
+
+  it("preserves workflow, automation, pool, goals and dashboard when editing ordinary fields", () => {
+    const base = detail();
+    const extensions: Pick<BusinessTemplateDetail["configuration"]["objects"][number], "workflow" | "automations" | "pool"> = {
+      workflow: { isEnabled: true, initialStateKey: "pending", states: [{ key: "pending", label: "待确认", sortOrder: 1, isTerminal: false }], transitions: [] },
+      automations: [{ key: "generate-order", label: "确认开单", enabled: true, trigger: { type: "MANUAL" }, targetObjectCode: "orders", owner: "SOURCE_OWNER", allowedRoles: ["TENANT_ADMIN"], mappings: { name: { source: "SOURCE_FIELD", fieldKey: "name" } } }],
+      pool: { enabled: true, lifecycleEnabled: true, followUpTtlHours: 720, ownershipTtlHours: null },
+    };
+    const configuration: BusinessTemplateDetail["configuration"] = {
+      ...base.configuration,
+      dashboard: { schemaVersion: 2, widgets: [], layout: [] },
+      goalRules: [{ metric: "calls", target: 10, remindAt: "17:00", audience: "ALL_EMPLOYEES", weekdays: [1, 2, 3, 4, 5], enabled: true }],
+      objects: base.configuration.objects.map((object) => ({ ...object, ...extensions, code: "legacy_customers" })),
+    };
+    const next = updateObject(templateDraftFromDetail({ configuration }), configuration.objects[0]!.id, { name: "客户资料" });
+    const saved = toTemplateConfiguration(next);
+    expect(saved).toMatchObject({ dashboard: configuration.dashboard, goalRules: configuration.goalRules });
+    expect(saved.objects[0]).toMatchObject({ ...extensions, code: "legacy_customers", name: "客户资料" });
+    expect(saved.objects[0]).not.toHaveProperty("publishedCode");
+    expect(saved.objects[0]!.fields[0]).not.toHaveProperty("publishedType");
+  });
+
+  it("does not add absent extensions to a legacy template", () => {
+    const saved = toTemplateConfiguration(templateDraftFromDetail(detail()));
+    expect(saved).not.toHaveProperty("goalRules");
+    expect(saved).not.toHaveProperty("dashboard");
+    for (const key of ["workflow", "automations", "pool"]) expect(saved.objects[0]).not.toHaveProperty(key);
+  });
+});
+
 function editorValues(overrides: Record<string, unknown> = {}) {
   return {
     fieldKey: "name",
