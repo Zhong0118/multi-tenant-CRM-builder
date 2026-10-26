@@ -31,6 +31,7 @@ export function TemplateInitialization({
   const groups = useQuery({ queryKey, queryFn: () => api.list(tenantCode) });
   const [selected, setSelected] = useState<Group>();
   const [error, setError] = useState<ApiError>();
+  const [refreshRequired, setRefreshRequired] = useState(false);
   const [notice, setNotice] = useState<string>();
   const publish = useMutation({
     mutationFn: (group: Group) =>
@@ -61,7 +62,10 @@ export function TemplateInitialization({
       void queryClient.invalidateQueries({ queryKey });
       onPublished();
     },
-    onError: (caught) => setError(toApiError(caught)),
+    onError: (caught) => {
+      setError(toApiError(caught));
+      setRefreshRequired(true);
+    },
   });
 
   return (
@@ -99,13 +103,7 @@ export function TemplateInitialization({
             <p>{group.objects.map((object) => object.name).join("、")}</p>
             <small>一并检查并发布关联流程，已发布业务表保持现状</small>
           </div>
-          <Button
-            type="primary"
-            onClick={() => {
-              setSelected(group);
-              setError(undefined);
-            }}
-          >
+          <Button type="primary" onClick={() => setSelected(group)}>
             发布初始化流程
           </Button>
         </section>
@@ -124,9 +122,16 @@ export function TemplateInitialization({
         cancelText="取消"
         confirmLoading={publish.isPending}
         cancelButtonProps={{ disabled: publish.isPending }}
-        okButtonProps={{ disabled: !selected || Boolean(error) }}
+        okButtonProps={{
+          disabled: !selected || refreshRequired || groups.isFetching,
+        }}
         onOk={() => {
-          if (selected && !error && !publish.isPending)
+          if (
+            selected &&
+            !refreshRequired &&
+            !groups.isFetching &&
+            !publish.isPending
+          )
             publish.mutate(selected);
         }}
       >
@@ -164,10 +169,15 @@ export function TemplateInitialization({
                     </p>
                   ))}
                   <Button
-                    onClick={() => {
+                    loading={groups.isFetching}
+                    onClick={async () => {
                       setSelected(undefined);
-                      setError(undefined);
-                      void groups.refetch();
+                      const result = await groups.refetch();
+                      if (result.isSuccess) {
+                        setSelected(undefined);
+                        setError(undefined);
+                        setRefreshRequired(false);
+                      }
                     }}
                   >
                     重新读取配置
