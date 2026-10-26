@@ -1,3 +1,4 @@
+vi.mock("@/features/work/work-goals", () => ({ WorkGoalsPanel: () => null }));
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -149,9 +150,9 @@ function setup(view: "mine" | "team", total = 101) {
   render(
     <QueryClientProvider client={client}>
       {view === "mine" ? (
-        <MyWork tenantCode="northwind" />
+        <MyWork tenantCode="northwind" memberId="me" />
       ) : (
-        <TeamActivity tenantCode="northwind" />
+        <TeamActivity tenantCode="northwind" memberId="admin-1" />
       )}
     </QueryClientProvider>,
   );

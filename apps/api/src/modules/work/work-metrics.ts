@@ -57,48 +57,22 @@ export async function countMemberWork(
   const { fromAt, toAt, fromDay, toDay } = period;
   const only = memberIds ?? null;
   type Row = { memberId: string; count: number };
-  const [
-    activities,
-    wechat,
-    followed,
-    pool,
-    created,
-    followUps,
-    tasks,
-    reports,
-  ] = await Promise.all([
-    tx.$queryRaw<Array<Row & { type: string; outcome: string | null }>>`
+  const [activities, goals, pool, created, followUps, tasks, reports] =
+    await Promise.all([
+      tx.$queryRaw<Array<Row & { type: string }>>`
       SELECT actor_member_id AS "memberId", activity_type::text AS type,
-        result_key AS outcome, count(*)::int AS count
+        count(*)::int AS count
       FROM record_activities
       WHERE tenant_id = ${tenantId}::uuid AND actor_member_id IS NOT NULL
         AND (${only}::uuid[] IS NULL OR actor_member_id = ANY(${only}::uuid[]))
         AND created_at >= ${fromAt} AND created_at < ${toAt}
-        AND activity_type IN ('CALL', 'MESSAGE', 'MEETING', 'NOTE')
-      GROUP BY 1, 2, 3`,
-    tx.$queryRaw<Row[]>`
-      SELECT "memberId", count(*)::int AS count FROM (
-        SELECT actor_member_id AS "memberId", record_id, min(created_at) AS first_at
-        FROM record_activities
-        WHERE tenant_id = ${tenantId}::uuid AND actor_member_id IS NOT NULL
-          AND result_key = 'WECHAT_ADDED'
-          AND (${only}::uuid[] IS NULL OR actor_member_id = ANY(${only}::uuid[]))
-        GROUP BY 1, 2
-      ) pairs
-      WHERE first_at >= ${fromAt} AND first_at < ${toAt}
-      GROUP BY 1`,
-    tx.$queryRaw<Row[]>`
-      SELECT a.actor_member_id AS "memberId", count(DISTINCT a.record_id)::int AS count
-      FROM record_activities a
-      JOIN records r ON r.tenant_id = a.tenant_id AND r.id = a.record_id
-      JOIN object_definitions o ON o.tenant_id = r.tenant_id AND o.id = r.object_id
-      WHERE a.tenant_id = ${tenantId}::uuid AND a.actor_member_id IS NOT NULL
-        AND (${only}::uuid[] IS NULL OR a.actor_member_id = ANY(${only}::uuid[]))
-        AND a.created_at >= ${fromAt} AND a.created_at < ${toAt}
-        AND a.activity_type IN ('CALL', 'MESSAGE', 'MEETING')
-        AND o.pool_enabled
-      GROUP BY 1`,
-    tx.$queryRaw<Array<Row & { action: string }>>`
+        AND activity_type IN ('MESSAGE', 'MEETING', 'NOTE')
+      GROUP BY 1, 2`,
+      tx.$queryRaw<
+        Array<{ member_id: string; metric: WorkCounter; actual: number }>
+      >`
+      SELECT * FROM count_member_goal_work(${tenantId}::uuid, ${fromAt}, ${toAt}, ${only}::uuid[])`,
+      tx.$queryRaw<Array<Row & { action: string }>>`
       SELECT m.id AS "memberId", a.action, count(*)::int AS count
       FROM audit_logs a
       JOIN tenant_members m ON m.tenant_id = a.tenant_id AND m.user_id = a.actor_id
@@ -107,23 +81,23 @@ export async function countMemberWork(
         AND a.action IN ('record.ownership_confirm_contact', 'record.ownership_claim')
         AND a.created_at >= ${fromAt} AND a.created_at < ${toAt}
       GROUP BY 1, 2`,
-    tx.$queryRaw<Row[]>`
+      tx.$queryRaw<Row[]>`
       SELECT created_by_member_id AS "memberId", count(*)::int AS count
       FROM records
       WHERE tenant_id = ${tenantId}::uuid AND created_by_member_id IS NOT NULL
         AND (${only}::uuid[] IS NULL OR created_by_member_id = ANY(${only}::uuid[]))
         AND deleted_at IS NULL AND created_at >= ${fromAt} AND created_at < ${toAt}
       GROUP BY 1`,
-    taskCounts(tx, 'record_follow_ups', tenantId, only, fromAt, toAt),
-    taskCounts(tx, 'work_tasks', tenantId, only, fromAt, toAt),
-    tx.$queryRaw<Row[]>`
+      taskCounts(tx, 'record_follow_ups', tenantId, only, fromAt, toAt),
+      taskCounts(tx, 'work_tasks', tenantId, only, fromAt, toAt),
+      tx.$queryRaw<Row[]>`
       SELECT member_id AS "memberId", count(*)::int AS count
       FROM daily_reports
       WHERE tenant_id = ${tenantId}::uuid
         AND (${only}::uuid[] IS NULL OR member_id = ANY(${only}::uuid[]))
         AND work_date BETWEEN ${fromDay}::date AND ${toDay}::date
       GROUP BY 1`,
-  ]);
+    ]);
 
   const result = new Map<string, WorkCounts>();
   const add = (memberId: string, key: WorkCounter, count: number) => {
@@ -132,18 +106,14 @@ export async function countMemberWork(
     result.set(memberId, row);
   };
   const byType: Record<string, WorkCounter> = {
-    CALL: 'calls',
     MESSAGE: 'messages',
     MEETING: 'visits',
     NOTE: 'notes',
   };
   for (const row of activities) {
     add(row.memberId, byType[row.type], row.count);
-    if (row.type === 'CALL' && row.outcome === 'CONNECTED')
-      add(row.memberId, 'connectedCalls', row.count);
   }
-  for (const row of wechat) add(row.memberId, 'wechatAdded', row.count);
-  for (const row of followed) add(row.memberId, 'customersFollowed', row.count);
+  for (const row of goals) add(row.member_id, row.metric, row.actual);
   for (const row of pool)
     add(
       row.memberId,
@@ -154,12 +124,10 @@ export async function countMemberWork(
     );
   for (const row of created) add(row.memberId, 'recordsCreated', row.count);
   for (const row of followUps) {
-    add(row.memberId, 'followUpsDone', row.done);
     add(row.memberId, 'followUpsOverdue', row.overdue);
     add(row.memberId, 'followUpsOverdueInPeriod', row.overdueInPeriod);
   }
   for (const row of tasks) {
-    add(row.memberId, 'tasksDone', row.done);
     add(row.memberId, 'tasksOverdue', row.overdue);
     add(row.memberId, 'tasksOverdueInPeriod', row.overdueInPeriod);
   }
@@ -181,12 +149,10 @@ function taskCounts(
 ) {
   type Row = {
     memberId: string;
-    done: number;
     overdue: number;
     overdueInPeriod: number;
   };
   const measures = (alias: string) => `
-    count(*) FILTER (WHERE ${alias}.status = 'DONE' AND ${alias}.completed_at >= $2 AND ${alias}.completed_at < $3)::int AS done,
     count(*) FILTER (WHERE ${alias}.status = 'OPEN' AND ${alias}.due_at < now())::int AS overdue,
     count(*) FILTER (WHERE ${alias}.due_at >= $2 AND ${alias}.due_at < $3 AND ${alias}.due_at < now()
       AND ${alias}.status <> 'CANCELLED'

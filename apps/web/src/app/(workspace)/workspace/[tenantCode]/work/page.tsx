@@ -7,6 +7,6 @@ export default async function WorkPage({
   params: Promise<{ tenantCode: string }>;
 }) {
   const { tenantCode } = await params;
-  await requireWorkspace(tenantCode);
-  return <MyWork tenantCode={tenantCode} />;
+  const workspace = await requireWorkspace(tenantCode);
+  return <MyWork tenantCode={tenantCode} memberId={workspace.memberId} />;
 }

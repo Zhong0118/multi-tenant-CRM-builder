@@ -15,6 +15,18 @@ function createApi(): NotificationsApi {
 async function open() { fireEvent.click(screen.getByLabelText(/打开消息/)); await screen.findByText("请及时处理待办"); }
 
 describe("NotificationBell", () => {
+  it("shows daily goal reminders and opens the member's progress", async () => {
+    const api = createApi();
+    vi.mocked(api.list).mockResolvedValue({ ...snapshot, items: [{ ...snapshot.items[0], kind: "WORK_GOAL_BEHIND", title: "电话目标未达成", message: "今日已完成 2 / 10" }] });
+    vi.mocked(api.target).mockResolvedValue({ href: "/workspace/a/work" });
+    const onNavigate = vi.fn();
+    render(<NotificationBell tenantCode="a" api={api} onNavigate={onNavigate} />);
+    fireEvent.click(await screen.findByLabelText("打开消息，3 条未读"));
+    await screen.findByText("今日已完成 2 / 10");
+    expect(screen.getByText("目标提醒")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("查看目标"));
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith("/workspace/a/work"));
+  });
   it("shows unread count and opens grouped notifications", async () => {
     render(<NotificationBell tenantCode="a" api={createApi()} />);
     await screen.findByLabelText("打开消息，3 条未读");

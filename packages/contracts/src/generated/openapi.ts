@@ -1876,6 +1876,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/work-goals/{metric}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put: operations["WorkGoalsController_save"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/work-goals/progress": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorkGoalsController_progress"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/work-goals/settings": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorkGoalsController_settings"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/work-tasks": {
     parameters: {
       query?: never;
@@ -3170,7 +3218,8 @@ export interface components {
         | "FOLLOW_UP_DUE"
         | "TASK_OVERDUE"
         | "POOL_RECLAIMED"
-        | "PROTECTION_REVIEW";
+        | "PROTECTION_REVIEW"
+        | "WORK_GOAL_BEHIND";
       message: string;
       /** Format: date-time */
       readAt: string | null;
@@ -3927,6 +3976,17 @@ export interface components {
       states: components["schemas"]["WorkflowStateDraftDto"][];
       transitions: components["schemas"]["WorkflowTransitionDraftDto"][];
     };
+    SaveWorkGoalDto: {
+      /** @enum {string} */
+      audience: "ALL_EMPLOYEES" | "SELECTED_MEMBERS";
+      enabled: boolean;
+      expectedVersion: number;
+      memberIds: string[];
+      /** @example 17:00 */
+      remindAt: string;
+      target: number;
+      weekdays: number[];
+    };
     SelectOptionDto: {
       /**
        * @default GRAY
@@ -4534,6 +4594,57 @@ export interface components {
       requiredFieldKeys: string[];
       sortOrder: number;
       toStateKey: string;
+    };
+    WorkGoalDto: {
+      /** @enum {string} */
+      audience: "ALL_EMPLOYEES" | "SELECTED_MEMBERS";
+      enabled: boolean;
+      /** Format: uuid */
+      id: string;
+      memberIds: string[];
+      /** @enum {string} */
+      metric:
+        | "calls"
+        | "connectedCalls"
+        | "wechatAdded"
+        | "customersFollowed"
+        | "followUpsDone"
+        | "tasksDone";
+      remindAt: string;
+      target: number;
+      version: number;
+      weekdays: number[];
+    };
+    WorkGoalMemberDto: {
+      id: string;
+      name: string;
+    };
+    WorkGoalProgressDto: {
+      items: components["schemas"]["WorkGoalProgressItemDto"][];
+      timezone: string;
+      today: string;
+    };
+    WorkGoalProgressItemDto: {
+      actual: number;
+      memberId: string;
+      memberName: string;
+      /** @enum {string} */
+      metric:
+        | "calls"
+        | "connectedCalls"
+        | "wechatAdded"
+        | "customersFollowed"
+        | "followUpsDone"
+        | "tasksDone";
+      remindAt: string;
+      ruleId: string;
+      scheduledToday: boolean;
+      target: number;
+    };
+    WorkGoalSettingsDto: {
+      members: components["schemas"]["WorkGoalMemberDto"][];
+      rules: components["schemas"]["WorkGoalDto"][];
+      timezone: string;
     };
     WorkspaceSummaryResponseDto: {
       /** Format: uuid */
@@ -8020,6 +8131,82 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["TeamActivityResponseDto"];
+        };
+      };
+    };
+  };
+  WorkGoalsController_save: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        metric:
+          | "calls"
+          | "connectedCalls"
+          | "wechatAdded"
+          | "customersFollowed"
+          | "followUpsDone"
+          | "tasksDone";
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SaveWorkGoalDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkGoalDto"];
+        };
+      };
+    };
+  };
+  WorkGoalsController_progress: {
+    parameters: {
+      query?: {
+        scope?: "mine" | "team";
+      };
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkGoalProgressDto"];
+        };
+      };
+    };
+  };
+  WorkGoalsController_settings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WorkGoalSettingsDto"];
         };
       };
     };

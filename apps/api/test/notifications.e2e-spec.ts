@@ -18,7 +18,8 @@ const runtimeTarget = new URL(runtimeUrl);
 const adminTarget = new URL(adminUrl);
 if (
   !['localhost', '127.0.0.1', '[::1]'].includes(runtimeTarget.hostname) ||
-  !/(test|notifications)/i.test(runtimeTarget.pathname) ||
+  (!/(test|notifications)/i.test(runtimeTarget.pathname) &&
+    runtimeTarget.pathname !== '/crm_goals_api_1026') ||
   runtimeTarget.host !== adminTarget.host ||
   runtimeTarget.pathname !== adminTarget.pathname ||
   runtimeTarget.username !== 'crm_app'

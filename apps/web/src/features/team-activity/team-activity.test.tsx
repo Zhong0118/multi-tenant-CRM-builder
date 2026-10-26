@@ -1,3 +1,4 @@
+vi.mock("@/features/work/work-goals", () => ({ WorkGoalsPanel: () => null }));
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   act,
@@ -114,6 +115,7 @@ function setup() {
     <QueryClientProvider client={client}>
       <TeamActivity
         tenantCode="northwind"
+        memberId="admin-1"
         api={{ ...teamActivityApi, summarize }}
         work={work}
       />

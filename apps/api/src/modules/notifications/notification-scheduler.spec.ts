@@ -21,6 +21,11 @@ describe('NotificationScheduler', () => {
     scheduler.onModuleInit();
     await jest.advanceTimersByTimeAsync(60_000);
     expect(query).toHaveBeenCalledTimes(1);
+    expect(query).toHaveBeenCalledWith([
+      expect.stringMatching(
+        /sweep_member_notifications.*sweep_work_goal_notifications/,
+      ),
+    ]);
     await jest.advanceTimersByTimeAsync(60_000);
     expect(query).toHaveBeenCalledTimes(1);
     finish([{ count: 1 }]);

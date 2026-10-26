@@ -1,0 +1,142 @@
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.loading {
+  min-height: 80px;
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: 12px;
+}
+.card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--bg-surface);
+  animation: goal-enter 180ms ease both;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+.card:hover {
+  border-color: var(--color-primary);
+}
+.cardHeading {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.cardHeading h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+.cardHeading h3 :global(.anticon) {
+  color: var(--color-primary);
+}
+.card p,
+.help {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.reminder {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+.meter strong {
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  font-weight: 600;
+}
+.meter :global(.ant-progress) {
+  display: block;
+  margin: 0 0 4px;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: goal-enter 150ms ease both;
+}
+.metricPicker,
+.formRow {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+.metricPicker {
+  margin-bottom: 12px;
+}
+.metricPicker > span,
+.formRow > label,
+.formRow > span:first-child,
+.toggle > span {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+}
+.formRow :global(.ant-checkbox-group) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-hairline);
+}
+.formFooter {
+  display: flex;
+  justify-content: flex-end;
+}
+.actions :global(.ant-btn),
+.formFooter :global(.ant-btn) {
+  transition:
+    transform 120ms ease,
+    background 120ms ease;
+}
+.actions :global(.ant-btn:active),
+.formFooter :global(.ant-btn:active) {
+  transform: scale(0.97);
+}
+.drawer :global(.ant-drawer-body) {
+  overflow-x: hidden;
+}
+@keyframes goal-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .form {
+    animation: none;
+  }
+  .card,
+  .actions :global(.ant-btn),
+  .formFooter :global(.ant-btn) {
+    transition: none;
+  }
+}

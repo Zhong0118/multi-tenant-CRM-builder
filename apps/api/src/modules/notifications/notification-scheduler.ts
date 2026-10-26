@@ -27,7 +27,8 @@ export class NotificationScheduler implements OnModuleInit, OnModuleDestroy {
     this.running = true;
     try {
       await this.database.transaction(
-        (tx) => tx.$queryRaw`SELECT public.sweep_member_notifications(500)`,
+        (tx) =>
+          tx.$queryRaw`SELECT public.sweep_member_notifications(500), public.sweep_work_goal_notifications(500)`,
       );
     } catch (error) {
       this.logger.error(

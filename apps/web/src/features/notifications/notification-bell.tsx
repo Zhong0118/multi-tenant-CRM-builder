@@ -1,6 +1,6 @@
 "use client";
 
-import { BellOutlined, CheckOutlined, ClockCircleOutlined, InboxOutlined, PhoneOutlined, SafetyCertificateOutlined, ScheduleOutlined, ReloadOutlined } from "@ant-design/icons";
+import { AimOutlined, BellOutlined, CheckOutlined, ClockCircleOutlined, InboxOutlined, PhoneOutlined, SafetyCertificateOutlined, ScheduleOutlined, ReloadOutlined } from "@ant-design/icons";
 import { Alert, Badge, Button, Drawer, Empty, Pagination, Popover, Segmented, Spin, Tooltip } from "antd";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -18,6 +18,7 @@ interface Props {
   nav?: NavItemRenderState;
 }
 const groups = {
+  WORK_GOAL_BEHIND: { label: "目标提醒", icon: <AimOutlined /> },
   CONTACT_DUE: { label: "联系提醒", icon: <PhoneOutlined /> },
   FOLLOW_UP_DUE: { label: "跟进提醒", icon: <ScheduleOutlined /> },
   TASK_OVERDUE: { label: "待办提醒", icon: <ClockCircleOutlined /> },
@@ -101,7 +102,7 @@ function CompanyNotifications({ tenantCode, api = notificationsApi, onNavigate, 
         if (target.href && target.href.startsWith(`/workspace/${encodeURIComponent(tenantCode)}/`)) {
           setOpen(false);
           (onNavigate ?? router.push)(target.href);
-        } else setNotice("相关记录已失效或你已无权访问");
+        } else setNotice(item.kind === "WORK_GOAL_BEHIND" ? "目标已失效或你已无权访问" : "相关记录已失效或你已无权访问");
       }
     });
   }
@@ -129,7 +130,7 @@ function CompanyNotifications({ tenantCode, api = notificationsApi, onNavigate, 
               <div className={styles.itemMeta}><time dateTime={item.createdAt}>{dateLabel(item.createdAt)}</time>{item.dueAt && <span>到期 {dateLabel(item.dueAt)}</span>}</div>
               <div className={styles.itemActions}>
                 {!item.readAt && <Button size="small" type="text" disabled={busy} onClick={() => void read(item, false)}>标为已读</Button>}
-                {item.canOpen ? <Button size="small" type="link" disabled={busy} onClick={() => void read(item, true)}>查看记录</Button> : <span className={styles.unavailable}>相关记录不可访问</span>}
+                {item.canOpen ? <Button size="small" type="link" disabled={busy} onClick={() => void read(item, true)}>{item.kind === "WORK_GOAL_BEHIND" ? "查看目标" : "查看记录"}</Button> : <span className={styles.unavailable}>{item.kind === "WORK_GOAL_BEHIND" ? "目标不可访问" : "相关记录不可访问"}</span>}
               </div>
             </article>)}
           </section> : null;
