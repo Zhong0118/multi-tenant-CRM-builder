@@ -80,18 +80,25 @@ export function formatExportValue(
     case 'BOOLEAN':
       return value === true ? '是' : value === false ? '否' : '';
     case 'SINGLE_SELECT':
-      return optionLabel(field, String(value));
+      return optionLabel(field, exportText(value));
     case 'MULTI_SELECT':
       return (Array.isArray(value) ? value : [])
-        .map((key) => optionLabel(field, String(key)))
+        .map((key: unknown) => optionLabel(field, exportText(key)))
         .join('；');
     case 'MEMBER':
       return typeof value === 'string' ? (memberNames.get(value) ?? value) : '';
     case 'DATETIME':
-      return formatDateTime(String(value));
+      return formatDateTime(exportText(value));
     default:
-      return String(value);
+      return exportText(value);
   }
+}
+
+function exportText(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean')
+    return String(value);
+  return JSON.stringify(value) ?? '';
 }
 
 function optionLabel(field: ExportField, key: string): string {

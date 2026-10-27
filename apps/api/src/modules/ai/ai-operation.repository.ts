@@ -138,7 +138,7 @@ export class AiOperationRepository {
     context: TenantContext,
     row: AiOperationRow,
   ): Promise<AiProposalView> {
-    return (await this.projectRowsInTransaction(tx, context, [row]))[0]!;
+    return (await this.projectRowsInTransaction(tx, context, [row]))[0];
   }
 
   private async projectRowsInTransaction(
@@ -232,7 +232,7 @@ export class AiOperationRepository {
         : [],
     );
     return rows.map((row, index) => {
-      const target = targets[index]!;
+      const target = targets[index];
       const visible = target.objectCode
         ? visibility.get(target.objectCode)
         : undefined;
@@ -380,7 +380,7 @@ export class AiOperationRepository {
     );
     return rows.map((row, index) => ({
       turnId: row.turnId,
-      view: views[index]!,
+      view: views[index],
     }));
   }
 
@@ -524,7 +524,7 @@ export class AiOperationRepository {
                   changes: display.changes,
                   validationWarnings: display.validationWarnings,
                   failureFieldCodes: safeCodes,
-                } as Prisma.InputJsonObject,
+                },
               }
             : {}),
           confirmedByMemberId: context.memberId,

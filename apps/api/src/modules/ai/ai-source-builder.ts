@@ -50,7 +50,11 @@ function objectCodeFrom(input: unknown, result: unknown): string | undefined {
   if (isRecord(input) && typeof input.objectCode === 'string') {
     return input.objectCode;
   }
-  if (Array.isArray(result) && isRecord(result[0]) && typeof result[0].objectCode === 'string') {
+  if (
+    Array.isArray(result) &&
+    isRecord(result[0]) &&
+    typeof result[0].objectCode === 'string'
+  ) {
     return result[0].objectCode;
   }
   return undefined;
@@ -69,7 +73,8 @@ function recordCount(toolName: string, result: unknown): number {
 
 function listCount(result: unknown): number {
   if (Array.isArray(result)) return result.length;
-  if (isRecord(result) && Array.isArray(result.items)) return result.items.length;
+  if (isRecord(result) && Array.isArray(result.items))
+    return result.items.length;
   if (isRecord(result) && typeof result.total === 'number') return result.total;
   return 0;
 }
@@ -83,7 +88,8 @@ function aggregateLabel(input: unknown): string {
 
 function aggregateValue(result: unknown): string {
   if (isRecord(result) && typeof result.value === 'string') return result.value;
-  if (isRecord(result) && typeof result.value === 'number') return String(result.value);
+  if (isRecord(result) && typeof result.value === 'number')
+    return String(result.value);
   return '0';
 }
 
@@ -95,7 +101,11 @@ function publishedObjectName(result: unknown): string | undefined {
   if (typeof result.objectName === 'string' && result.objectName) {
     return result.objectName;
   }
-  if (isRecord(result.object) && typeof result.object.name === 'string' && result.object.name) {
+  if (
+    isRecord(result.object) &&
+    typeof result.object.name === 'string' &&
+    result.object.name
+  ) {
     return result.object.name;
   }
   if (Array.isArray(result.items)) {

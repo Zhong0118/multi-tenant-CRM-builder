@@ -132,7 +132,7 @@ export class AiProposalService {
         conversationId: await this.conversationForTurn(context, turnId),
         operationType: candidate.operationType,
         requestText: requestText.slice(0, 4000),
-        proposal: candidate as Prisma.InputJsonObject,
+        proposal: candidate,
         targetRef: {
           objectCode: candidate.objectCode,
           recordId: candidate.recordId,
@@ -190,7 +190,7 @@ export class AiProposalService {
             conversationId: turn.conversationId,
             operationType: candidate.operationType,
             requestText: requestText.slice(0, 4000),
-            proposal: candidate as Prisma.InputJsonObject,
+            proposal: candidate,
             targetRef: {
               objectCode: candidate.objectCode,
               recordId: candidate.recordId,

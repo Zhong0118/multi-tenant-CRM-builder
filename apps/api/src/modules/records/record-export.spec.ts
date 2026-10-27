@@ -61,6 +61,74 @@ describe('record export CSV', () => {
   it('strips characters that would break a download file name', () => {
     expect(exportFileName('销售/线索', 'leads')).toBe('销售_线索.csv');
   });
+
+  it.each(['TEXT', 'TEXTAREA', 'SINGLE_SELECT', 'DATETIME'])(
+    'preserves unexpected JSON objects in %s exports instead of [object Object]',
+    (type) => {
+      const value = { label: '旧数据,待核对', code: 'legacy' };
+      expect(
+        formatExportValue(
+          { fieldKey: 'value', label: '内容', type, config: {} },
+          value,
+          new Map(),
+        ),
+      ).toBe(JSON.stringify(value));
+    },
+  );
+
+  it('preserves unexpected option values alongside valid multi-select labels', () => {
+    expect(
+      formatExportValue(
+        {
+          fieldKey: 'status',
+          label: '状态',
+          type: 'MULTI_SELECT',
+          config: { options: [{ key: 'new', label: '待联系' }] },
+        },
+        ['new', { label: '旧选项' }],
+        new Map(),
+      ),
+    ).toBe('待联系；{"label":"旧选项"}');
+  });
+
+  it.each<[string, unknown, string]>([
+    ['TEXT', '张三', '张三'],
+    ['NUMBER', 0, '0'],
+    ['NUMBER', 123.45, '123.45'],
+    ['BOOLEAN', false, '否'],
+    ['DATETIME', '2026-10-27T08:30:00.000Z', '2026-10-27 08:30'],
+    ['TEXT', null, ''],
+    ['TEXT', undefined, ''],
+    ['TEXT', '', ''],
+  ])('keeps %s value %s readable', (type, value, expected) => {
+    expect(
+      formatExportValue(
+        { fieldKey: 'value', label: '内容', type, config: {} },
+        value,
+        new Map(),
+      ),
+    ).toBe(expected);
+  });
+
+  it('escapes preserved JSON content as a single CSV cell', () => {
+    const csv = buildRecordExportCsv({
+      fields: [
+        { fieldKey: 'note', label: '备注', type: 'TEXTAREA', config: {} },
+      ],
+      records: [
+        {
+          recordNo: '1',
+          ownerMemberId: null,
+          values: { note: { label: '旧数据,待核对' } },
+          createdAt: '',
+          updatedAt: '',
+        },
+      ],
+      memberNames: new Map(),
+    });
+    expect(csv).toContain('1,未指定,"{""label"":""旧数据,待核对""}",,\r\n');
+    expect(csv).not.toContain('[object Object]');
+  });
 });
 
 it.each(['=1+1', '+cmd', '-cmd', '@SUM(A1)', '\t=1', '  =1'])(

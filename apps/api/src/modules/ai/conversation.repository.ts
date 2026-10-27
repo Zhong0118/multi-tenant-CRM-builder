@@ -48,10 +48,13 @@ export function decodeConversationCursor(value: string): {
   id: string;
 } {
   try {
-    const parsed = JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+    const parsed: unknown = JSON.parse(
+      Buffer.from(value, 'base64url').toString('utf8'),
+    );
     if (
-      typeof parsed?.lastMessageAt !== 'string' ||
-      typeof parsed?.id !== 'string'
+      !isPlainObject(parsed) ||
+      typeof parsed.lastMessageAt !== 'string' ||
+      typeof parsed.id !== 'string'
     ) {
       throw new ApiException('AI_CURSOR_INVALID', 400);
     }
@@ -61,7 +64,7 @@ export function decodeConversationCursor(value: string): {
     if (!UUID_RE.test(parsed.id)) {
       throw new ApiException('AI_CURSOR_INVALID', 400);
     }
-    return parsed;
+    return { lastMessageAt: parsed.lastMessageAt, id: parsed.id };
   } catch (error) {
     if (error instanceof ApiException) throw error;
     throw new ApiException('AI_CURSOR_INVALID', 400);
@@ -258,7 +261,7 @@ function withProviderAttempts(
       : {};
   delete base.providerKey;
   delete base.modelKey;
-  return { ...base, providerAttempts } as Prisma.InputJsonValue;
+  return { ...base, providerAttempts };
 }
 
 async function enforceMemberTurnBudget(

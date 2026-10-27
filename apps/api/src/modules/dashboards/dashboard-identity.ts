@@ -14,7 +14,9 @@ export function slugDashboardCode(name: string): string {
 }
 
 export function nextDashboardCode(base: string, taken: Set<string>): string {
-  const root = DASHBOARD_CODE_PATTERN.test(base) ? base : DEFAULT_DASHBOARD_CODE;
+  const root = DASHBOARD_CODE_PATTERN.test(base)
+    ? base
+    : DEFAULT_DASHBOARD_CODE;
   if (!taken.has(root)) return root;
   for (let index = 2; index < 1000; index += 1) {
     const candidate = `${root.slice(0, 60)}-${index}`.slice(0, 64);
@@ -26,7 +28,10 @@ export function nextDashboardCode(base: string, taken: Set<string>): string {
 }
 
 export function isDashboardVisibleTo(
-  dashboard: { status: 'ACTIVE' | 'ARCHIVED'; audience: 'ALL' | 'TENANT_ADMIN' | 'EMPLOYEE' },
+  dashboard: {
+    status: 'ACTIVE' | 'ARCHIVED';
+    audience: 'ALL' | 'TENANT_ADMIN' | 'EMPLOYEE';
+  },
   role: 'TENANT_ADMIN' | 'EMPLOYEE',
 ): boolean {
   if (dashboard.status !== 'ACTIVE') return false;
