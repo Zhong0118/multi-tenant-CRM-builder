@@ -196,3 +196,41 @@ describe('member field exceptions', () => {
     ).toEqual({ name: 'EDIT', phone: 'EDIT' });
   });
 });
+
+describe('member GROUP read authorization', () => {
+  const policy = {
+    canCreate: true,
+    canRead: true,
+    canUpdate: true,
+    canDelete: false,
+    readScope: 'GROUP',
+    updateScope: 'OWN',
+  } as unknown as ObjectAccessPolicy;
+
+  it('falls back to OWN when the member no longer leads an active group', () => {
+    const access = resolveEffectiveAccess({
+      schema: schema(),
+      role: 'EMPLOYEE',
+      memberOverride: policy,
+    });
+    expect(access.readScope).toBe('OWN');
+    expect(access.updateScope).toBe('OWN');
+  });
+
+  it('preserves field and update limits while attaching current team owners', () => {
+    const input = {
+      schema: schema(),
+      role: 'EMPLOYEE' as const,
+      memberOverride: policy,
+      groupOwnerMemberIds: ['leader', 'member'],
+    };
+    const access = resolveEffectiveAccess(input);
+    expect(access).toMatchObject({
+      readScope: 'GROUP',
+      groupOwnerMemberIds: ['leader', 'member'],
+      updateScope: 'OWN',
+      canDelete: false,
+      fields: { phone: 'READ_ONLY' },
+    });
+  });
+});

@@ -68,7 +68,51 @@ describe("runtime record pool requests", () => {
     });
   });
   it("never requests the tenant roster for an employee", async () => {
-    mocks.get.mockResolvedValueOnce(ok({ object: { code: "customers" } }));
+    mocks.get.mockResolvedValueOnce(
+      ok({
+        object: { code: "customers" },
+        scopes: { read: "OWN", update: "OWN" },
+      }),
+    );
+    const result = await loadRuntimeObject(
+      "northwind",
+      "customers",
+      "EMPLOYEE",
+    );
+    expect(result.members).toEqual([]);
+    expect(mocks.get).toHaveBeenCalledTimes(1);
+  });
+  it("labels GROUP owners from scoped names without requesting the tenant roster", async () => {
+    const ownerMembers = [
+      { id: "leader", displayName: "组长", status: "ACTIVE" },
+      { id: "teammate", displayName: "钱宇", status: "DISABLED" },
+    ];
+    mocks.get.mockResolvedValueOnce(
+      ok({
+        object: { code: "customers" },
+        scopes: { read: "GROUP", update: "OWN" },
+        ownerMembers,
+      }),
+    );
+    const result = await loadRuntimeObject(
+      "northwind",
+      "customers",
+      "EMPLOYEE",
+    );
+    expect(result.members).toEqual(ownerMembers);
+    expect(result.isAdmin).toBe(false);
+    expect(mocks.get).toHaveBeenCalledTimes(1);
+  });
+  it("discards scoped names when the effective read scope has fallen back to OWN", async () => {
+    mocks.get.mockResolvedValueOnce(
+      ok({
+        object: { code: "customers" },
+        scopes: { read: "OWN", update: "OWN" },
+        ownerMembers: [
+          { id: "former-teammate", displayName: "钱宇", status: "ACTIVE" },
+        ],
+      }),
+    );
     const result = await loadRuntimeObject(
       "northwind",
       "customers",

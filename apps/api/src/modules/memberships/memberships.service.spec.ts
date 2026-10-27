@@ -17,6 +17,10 @@ const admin: TenantContext = {
 };
 
 class MemoryMembershipStore implements MembershipStore {
+  groupLeader = false;
+  isGroupLeader() {
+    return Promise.resolve(this.groupLeader);
+  }
   disabledUsers = new Set<string>();
   async isUsableMember(id: string) {
     return (
@@ -584,5 +588,67 @@ describe('bulk member field access', () => {
     ).rejects.toBeDefined();
     expect(store.objectAccess[0].fields[0].override).toBeNull();
     expect(store.audits).toEqual([]);
+  });
+});
+
+describe('group read permission grants', () => {
+  const policy = {
+    mode: 'OVERRIDE' as const,
+    canCreate: true,
+    canRead: true,
+    canUpdate: true,
+    readScope: 'GROUP' as const,
+    updateScope: 'OWN' as const,
+  };
+  it('rejects grants to non-leaders, accepts leaders without broadening writes, and falls back after leadership ends', async () => {
+    const { service, store } = serviceFor();
+    await expect(
+      service.setMemberObjectAccess(
+        admin,
+        'member-employee',
+        'object-leads',
+        policy,
+        { requestId: 'group' },
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    expect(store.objectAccess[0].override).toBeNull();
+    store.groupLeader = true;
+    const granted = await service.setMemberObjectAccess(
+      admin,
+      'member-employee',
+      'object-leads',
+      policy,
+      { requestId: 'group' },
+    );
+    expect(granted.effective).toMatchObject({
+      readScope: 'GROUP',
+      updateScope: 'OWN',
+    });
+    store.groupLeader = false;
+    const listed = await service.listMemberObjectAccess(
+      admin,
+      'member-employee',
+    );
+    expect(listed[0]).toMatchObject({
+      override: { readScope: 'GROUP' },
+      effective: { readScope: 'OWN', updateScope: 'OWN' },
+    });
+  });
+  it('rejects a batch GROUP grant before writing any member or field policy', async () => {
+    const { service, store } = serviceFor();
+    await expect(
+      service.bulkMemberAccess(
+        admin,
+        'object-leads',
+        {
+          memberIds: ['member-employee'],
+          objectAccess: policy,
+          fields: [{ fieldId: 'field-secret', access: 'EDIT' }],
+        },
+        { requestId: 'group-bulk' },
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    expect(store.objectAccess[0].override).toBeNull();
+    expect(store.objectAccess[0].fields[0].override).toBeNull();
   });
 });

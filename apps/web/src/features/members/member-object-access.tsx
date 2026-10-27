@@ -23,6 +23,7 @@ export type {
 export { memberAccessApi } from "./member-access-api";
 import {
   memberAccessApi,
+  MEMBER_READ_SCOPE_LABELS,
   type MemberAccessApi,
   type MemberObjectAccessRow,
   type MemberObjectPolicy,
@@ -33,6 +34,8 @@ export interface MemberObjectAccessProps {
   tenantCode: string;
   memberId: string;
   memberName: string;
+  isGroupLeader?: boolean;
+  groupName?: string | null;
   initialRows: MemberObjectAccessRow[];
   api?: MemberAccessApi;
 }
@@ -56,6 +59,8 @@ export function MemberObjectAccess({
   tenantCode,
   memberId,
   memberName,
+  isGroupLeader = false,
+  groupName,
   initialRows,
   api = memberAccessApi,
 }: MemberObjectAccessProps) {
@@ -125,6 +130,14 @@ export function MemberObjectAccess({
 
   return (
     <div className={styles.accessList}>
+      {isGroupLeader ? (
+        <Alert
+          type="info"
+          showIcon
+          title={`${groupName ?? "本组"} · 组长`}
+          description="公司管理员可按业务表授予查看本组成员名下记录的权限。修改范围和列权限保持各自设置。"
+        />
+      ) : null}
       <div className={styles.accessSources} aria-label="权限来源">
         <section>
           <h2>
@@ -173,6 +186,7 @@ export function MemberObjectAccess({
                 row={row}
                 tenantCode={tenantCode}
                 memberName={memberName}
+                isGroupLeader={isGroupLeader}
                 saving={save.isPending}
                 feedback={
                   feedback?.objectId === row.objectId ? feedback : undefined
@@ -236,6 +250,7 @@ function ObjectAccessRow({
   row,
   tenantCode,
   memberName,
+  isGroupLeader,
   saving,
   feedback,
   columnEditor,
@@ -245,6 +260,7 @@ function ObjectAccessRow({
   row: MemberObjectAccessRow;
   tenantCode: string;
   memberName: string;
+  isGroupLeader: boolean;
   saving: boolean;
   feedback?: Feedback;
   columnEditor: React.ReactNode;
@@ -310,6 +326,15 @@ function ObjectAccessRow({
           onClose={onDismissFeedback}
         />
       ) : null}
+      {row.override?.readScope === "GROUP" && !isGroupLeader ? (
+        <Alert
+          className={styles.accessFeedback}
+          type="warning"
+          showIcon
+          title="已不再是有效组长，本组查看授权暂不生效，回退为仅本人负责"
+          description="修改例外时，请改选其他查看范围后保存，或恢复为员工默认。"
+        />
+      ) : null}
 
       {open || editing ? (
         <div id={bodyId} className={styles.accessBody}>
@@ -319,6 +344,7 @@ function ObjectAccessRow({
                 objectId={row.objectId}
                 draft={draft}
                 saving={saving}
+                isGroupLeader={isGroupLeader}
                 onChange={setDraft}
               />
             ) : (
@@ -330,7 +356,9 @@ function ObjectAccessRow({
                   <Button
                     type="primary"
                     loading={saving}
-                    disabled={saving}
+                    disabled={
+                      saving || (draft.readScope === "GROUP" && !isGroupLeader)
+                    }
                     onClick={() =>
                       onSave({
                         mode: "OVERRIDE",
@@ -439,7 +467,7 @@ const POLICY_ROWS: Array<
     "查看",
     (policy) =>
       policy.canRead && policy.readScope !== "NONE"
-        ? { text: DATA_SCOPE_LABELS[policy.readScope], denied: false }
+        ? { text: MEMBER_READ_SCOPE_LABELS[policy.readScope], denied: false }
         : { text: "不可以", denied: true },
   ],
   [
@@ -517,11 +545,13 @@ function PolicyEditor({
   objectId,
   draft,
   saving,
+  isGroupLeader,
   onChange,
 }: {
   objectId: string;
   draft: MemberObjectPolicy;
   saving: boolean;
+  isGroupLeader: boolean;
   onChange: (draft: MemberObjectPolicy) => void;
 }) {
   const switches = [
@@ -556,9 +586,20 @@ function PolicyEditor({
             value={draft[key]}
             disabled={saving}
             onChange={(value) => onChange({ ...draft, [key]: value })}
-            options={(["ALL", "OWN", "NONE"] as const).map((scope) => ({
+            options={(
+              [
+                "ALL",
+                "OWN",
+                ...(key === "readScope" &&
+                (isGroupLeader || draft.readScope === "GROUP")
+                  ? ["GROUP" as const]
+                  : []),
+                "NONE",
+              ] as const
+            ).map((scope) => ({
               value: scope,
-              label: DATA_SCOPE_LABELS[scope],
+              label: MEMBER_READ_SCOPE_LABELS[scope],
+              disabled: scope === "GROUP" && !isGroupLeader,
             }))}
           />
         </div>

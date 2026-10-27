@@ -9,6 +9,7 @@ import type {
 import { ApiException } from '../../common/errors/api.exception';
 import { DatabaseService } from '../../infrastructure/database/database.service';
 import { AuditService } from '../audit/audit.service';
+import { lockObjectConfiguration } from '../objects/object-configuration-lock';
 import { parsePublishedObjectSchema } from '../objects/published-object.service';
 import type {
   InvitationPage,
@@ -119,6 +120,7 @@ class PrismaMembershipStore implements MembershipStore {
   ) {}
 
   async lockAdminRoster(): Promise<void> {
+    await lockObjectConfiguration(this.transaction, this.tenantId);
     await this.transaction.$queryRaw`
       SELECT pg_advisory_xact_lock(hashtextextended(${this.tenantId}, 0))::text
     `;
@@ -137,6 +139,21 @@ class PrismaMembershipStore implements MembershipStore {
     );
   }
 
+  async isGroupLeader(id: string): Promise<boolean> {
+    return (
+      (await this.transaction.tenantMember.count({
+        where: {
+          id,
+          tenantId: this.tenantId,
+          role: 'EMPLOYEE',
+          status: 'ACTIVE',
+          user: { status: 'ACTIVE' },
+          group: { leaderMemberId: id },
+        },
+      })) === 1
+    );
+  }
+
   async lockMembers(ids: string[]) {
     for (const id of ids)
       await this.transaction
@@ -144,6 +161,29 @@ class PrismaMembershipStore implements MembershipStore {
   }
 
   async updateMemberRole(id: string, role: 'TENANT_ADMIN' | 'EMPLOYEE') {
+    if (role === 'TENANT_ADMIN') {
+      const previous = await this.transaction.tenantMember.findFirst({
+        where: { id, tenantId: this.tenantId },
+      });
+      if (previous?.groupId) {
+        await this.transaction.memberGroup.updateMany({
+          where: { id: previous.groupId, tenantId: this.tenantId },
+          data: { version: { increment: 1 } },
+        });
+        await this.transaction.memberGroup.updateMany({
+          where: {
+            id: previous.groupId,
+            tenantId: this.tenantId,
+            leaderMemberId: id,
+          },
+          data: { leaderMemberId: null },
+        });
+        await this.transaction.tenantMember.update({
+          where: { id, tenantId: this.tenantId },
+          data: { groupId: null },
+        });
+      }
+    }
     const member = await this.transaction.tenantMember.update({
       where: { id, tenantId: this.tenantId },
       data: { role },
@@ -213,6 +253,7 @@ class PrismaMembershipStore implements MembershipStore {
       tenantId: this.tenantId,
       role: page.role,
       status: page.status,
+      groupId: page.groupId === 'NONE' ? null : page.groupId,
       ...(query
         ? {
             OR: [
@@ -229,7 +270,10 @@ class PrismaMembershipStore implements MembershipStore {
     const [members, total, activeAdminCount] = await Promise.all([
       this.transaction.tenantMember.findMany({
         where,
-        include: { user: { select: { displayName: true, phone: true } } },
+        include: {
+          user: { select: { displayName: true, phone: true, status: true } },
+          group: { select: { name: true, leaderMemberId: true } },
+        },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
         skip: (page.page - 1) * page.limit,
         take: page.limit,
@@ -246,6 +290,13 @@ class PrismaMembershipStore implements MembershipStore {
         status: member.status,
         displayName: member.displayName ?? member.user.displayName,
         phone: member.user.phone,
+        groupId: member.groupId,
+        groupName: member.group?.name ?? null,
+        isGroupLeader:
+          member.role === 'EMPLOYEE' &&
+          member.status === 'ACTIVE' &&
+          member.user.status === 'ACTIVE' &&
+          member.group?.leaderMemberId === member.id,
       })),
       page: page.page,
       limit: page.limit,
@@ -439,7 +490,10 @@ class PrismaMembershipStore implements MembershipStore {
               canUpdate: override.canUpdate,
               canDelete: false,
               readScope: override.readScope,
-              updateScope: override.updateScope,
+              updateScope:
+                override.updateScope === 'GROUP'
+                  ? 'NONE'
+                  : override.updateScope,
             }
           : null,
       };

@@ -1,3 +1,8 @@
+import {
+  recordOwnerFilter,
+  recordOwnerIds,
+  type RecordOwnerFilter,
+} from '../objects/record-read-scope';
 import { lockRuntimeObjectConfiguration } from '../objects/object-configuration-lock';
 import { resolveReadableObjectByIdInTransaction } from '../objects/published-object-transaction';
 import { Injectable } from '@nestjs/common';
@@ -16,7 +21,7 @@ import { AuditService } from '../audit/audit.service';
 export interface AttachmentScope {
   objectId: string;
   recordId: string;
-  ownerId?: string;
+  ownerId?: RecordOwnerFilter;
 }
 export interface AttachmentRow {
   id: string;
@@ -57,10 +62,9 @@ export class AttachmentsRepository {
       s.objectId,
       write,
     );
-    const ownerId =
-      access.readScope === 'OWN' || (write && access.updateScope === 'OWN')
-        ? c.memberId
-        : undefined;
+    const ownerIds = recordOwnerIds(
+      recordOwnerFilter(access, c.memberId, write),
+    );
     const actors = await tx.$queryRaw<
       Array<{ role: string }>
     >`SELECT m.role FROM tenant_members m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=${c.tenantId}::uuid AND m.id=${c.memberId}::uuid AND m.status='ACTIVE' AND u.status='ACTIVE' FOR NO KEY UPDATE OF m`;
@@ -68,7 +72,7 @@ export class AttachmentsRepository {
       throw new ApiException('WORKSPACE_FORBIDDEN', 403);
     const rows = await tx.$queryRaw<
       Array<{ id: string; inPublicPool: boolean }>
-    >`SELECT id, in_public_pool AS "inPublicPool" FROM records WHERE tenant_id=${c.tenantId}::uuid AND object_id=${s.objectId}::uuid AND id=${s.recordId}::uuid AND deleted_at IS NULL AND (${ownerId ?? null}::uuid IS NULL OR owner_member_id=${ownerId ?? null}::uuid) FOR UPDATE`;
+    >`SELECT id, in_public_pool AS "inPublicPool" FROM records WHERE tenant_id=${c.tenantId}::uuid AND object_id=${s.objectId}::uuid AND id=${s.recordId}::uuid AND deleted_at IS NULL AND (${ownerIds}::uuid[] IS NULL OR owner_member_id=ANY(${ownerIds}::uuid[])) FOR UPDATE`;
     if (!rows.length) throw new ApiException('RECORD_NOT_FOUND', 404);
     if (write && rows[0].inPublicPool && c.role !== 'TENANT_ADMIN')
       throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);

@@ -1,5 +1,6 @@
 import type {
   PublishedDataScope,
+  MemberReadScope,
   PublishedField,
   PublishedFieldAccess,
   PublishedObjectSchema,
@@ -10,11 +11,13 @@ export interface ObjectAccessPolicy {
   canRead: boolean;
   canUpdate: boolean;
   canDelete: boolean;
-  readScope: PublishedDataScope;
+  readScope: MemberReadScope;
   updateScope: PublishedDataScope;
 }
 
 export interface EffectiveObjectAccess extends ObjectAccessPolicy {
+  /** Resolved from live membership; never supplied by a client. */
+  groupOwnerMemberIds?: string[];
   fields: Record<string, PublishedFieldAccess>;
 }
 
@@ -34,6 +37,7 @@ export function resolveEffectiveAccess(input: {
   schema: AccessibleObjectSchema;
   role: 'TENANT_ADMIN' | 'EMPLOYEE';
   memberOverride?: ObjectAccessPolicy;
+  groupOwnerMemberIds?: string[];
   memberFieldOverrides?: Record<string, PublishedFieldAccess>;
 }): EffectiveObjectAccess {
   const fieldKeys = input.schema.fields.map((field) => field.fieldKey);
@@ -74,7 +78,13 @@ export function resolveEffectiveAccess(input: {
     canRead: objectPolicy.canRead,
     canUpdate: objectPolicy.canUpdate,
     canDelete: false,
-    readScope: objectPolicy.readScope,
+    readScope:
+      objectPolicy.readScope === 'GROUP' && !input.groupOwnerMemberIds
+        ? 'OWN'
+        : objectPolicy.readScope,
+    ...(objectPolicy.readScope === 'GROUP' && input.groupOwnerMemberIds
+      ? { groupOwnerMemberIds: input.groupOwnerMemberIds }
+      : {}),
     updateScope: objectPolicy.updateScope,
     fields: Object.fromEntries(
       input.schema.fields.map((field) => [

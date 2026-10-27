@@ -1764,3 +1764,111 @@ describe("RecordList personal display settings", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("GROUP record scope controls", () => {
+  const groupSchema: RuntimeObjectSchema = {
+    ...schema,
+    scopes: { read: "GROUP", update: "OWN" },
+  };
+  const legacyPool = { enabled: true, ownershipTtlHours: null, version: 1 };
+
+  it("shows the authorized teammate name on GROUP records without admin owner controls", () => {
+    renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+      schema: groupSchema,
+      page: { ...page, items: [{ ...page.items[0], ownerMemberId: "teammate" }] },
+      members: [{ id: "teammate", displayName: "钱宇" }],
+      currentMemberId: "leader",
+      canFilterByOwner: false,
+    });
+    expect(screen.getAllByText("钱宇").length).toBeGreaterThan(0);
+    expect(screen.queryByText("其他成员")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("combobox", { name: "按负责人筛选" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("selects 本组记录 by default and fetches the authorized group without an all scope", async () => {
+    const list = vi.fn().mockResolvedValue(page);
+    renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+      schema: groupSchema,
+      poolConfig: legacyPool,
+      api: { list } as unknown as RecordApi,
+    });
+    expect(screen.getByRole("radio", { name: "本组记录" })).toBeChecked();
+    expect(
+      screen.queryByRole("radio", { name: "全部记录" }),
+    ).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(list).toHaveBeenCalledWith(
+        "northwind",
+        "customers",
+        DEFAULT_RECORD_QUERY,
+      ),
+    );
+  });
+
+  it("returns from the public pool to 本组记录 without sending an elevated scope", () => {
+    const navigate = vi.fn();
+    renderList(
+      navigate,
+      {
+        ...DEFAULT_RECORD_QUERY,
+        scope: "pool",
+        page: 3,
+        ownerMemberId: "member-2",
+        search: "测试",
+        filters: { lead_status: ["new"] },
+      },
+      { schema: groupSchema, poolConfig: legacyPool },
+    );
+    fireEvent.click(screen.getByRole("radio", { name: "本组记录" }));
+    const params = new URL(navigate.mock.calls.at(-1)![0], "http://test")
+      .searchParams;
+    expect(params.has("scope")).toBe(false);
+    expect(params.has("page")).toBe(false);
+    expect(params.has("ownerMemberId")).toBe(false);
+    expect(params.get("search")).toBe("测试");
+    expect(params.get("filters")).toContain("new");
+  });
+
+  it("keeps private lifecycle stages and their counts on GROUP visibility", async () => {
+    const navigate = vi.fn();
+    const groupPage = {
+      ...page,
+      poolCounts: {
+        LEAD_POOL: 2,
+        CUSTOMER_POOL: 1,
+        PENDING_CONTACT: 3,
+        FOLLOWING: 4,
+        PROTECTED: 5,
+        LEGACY: 9,
+      },
+    };
+    const list = vi.fn().mockResolvedValue(groupPage);
+    renderList(navigate, DEFAULT_RECORD_QUERY, {
+      schema: groupSchema,
+      poolConfig: { ...legacyPool, lifecycleEnabled: true },
+      page: groupPage,
+      api: { list } as unknown as RecordApi,
+    });
+    expect(screen.getByRole("radio", { name: "全部可见记录" })).toBeChecked();
+    await waitFor(() =>
+      expect(list).toHaveBeenCalledWith(
+        "northwind",
+        "customers",
+        DEFAULT_RECORD_QUERY,
+      ),
+    );
+    for (const [label, stage] of [
+      ["待联系 3", "PENDING_CONTACT"],
+      ["跟进中 4", "FOLLOWING"],
+      ["受保护 5", "PROTECTED"],
+    ]) {
+      fireEvent.click(screen.getByRole("radio", { name: label }));
+      const params = new URL(navigate.mock.calls.at(-1)![0], "http://test")
+        .searchParams;
+      expect(params.get("poolStage")).toBe(stage);
+      expect(params.has("scope")).toBe(false);
+    }
+  });
+});

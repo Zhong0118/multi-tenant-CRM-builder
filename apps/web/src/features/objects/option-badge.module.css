@@ -42,6 +42,22 @@
   --option-ink: #7e22ce;
   --option-bg: #faf5ff;
 }
+.badge[data-option-color="PINK"] {
+  --option-ink: #be185d;
+  --option-bg: #fdf2f8;
+}
+.badge[data-option-color="INDIGO"] {
+  --option-ink: #4338ca;
+  --option-bg: #eef2ff;
+}
+.badge[data-option-color="TEAL"] {
+  --option-ink: #0f766e;
+  --option-bg: #f0fdfa;
+}
+.badge[data-option-color="BROWN"] {
+  --option-ink: #7c4a2d;
+  --option-bg: #f7efe8;
+}
 
 .badge[data-inactive="true"] {
   filter: grayscale(0.75);

@@ -569,3 +569,27 @@ it("makes a stale pool settings drawer read-only when the table was stopped", as
   expect(screen.getByRole("button", { name: "保存设置" })).toBeDisabled();
   expect(screen.getByRole("switch", { name: "启用公共池" })).toBeDisabled();
 });
+
+it("labels GROUP read permissions while retaining the OWN update label", () => {
+  wrap(
+    <RecordPoolSettings
+      tenantCode="northwind"
+      objectCode="customers"
+      config={{
+        ...config,
+        permissions: {
+          canRead: true,
+          canUpdate: true,
+          readScope: "GROUP",
+          updateScope: "OWN",
+        },
+      }}
+      api={api()}
+      onSaved={vi.fn()}
+      onClose={vi.fn()}
+    />,
+  );
+  expect(screen.getByText(/默认员工读取范围 本组记录/)).toHaveTextContent(
+    "处理范围 仅本人负责",
+  );
+});

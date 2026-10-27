@@ -32,9 +32,13 @@ export interface TenantMemberSummary {
   status: 'ACTIVE' | 'DISABLED';
   displayName?: string;
   phone?: string;
+  groupId?: string | null;
+  groupName?: string | null;
+  isGroupLeader?: boolean;
 }
 
 export interface MemberPageQuery {
+  groupId?: string;
   q?: string;
   role?: MemberRole;
   status?: 'ACTIVE' | 'DISABLED';
@@ -55,7 +59,7 @@ export interface MemberObjectPolicy {
   canRead: boolean;
   canUpdate: boolean;
   canDelete: false;
-  readScope: 'ALL' | 'OWN' | 'NONE';
+  readScope: 'ALL' | 'OWN' | 'NONE' | 'GROUP';
   updateScope: 'ALL' | 'OWN' | 'NONE';
 }
 
@@ -95,7 +99,7 @@ export type MemberObjectAccessInput =
       canCreate: boolean;
       canRead: boolean;
       canUpdate: boolean;
-      readScope: 'ALL' | 'OWN' | 'NONE';
+      readScope: 'ALL' | 'OWN' | 'NONE' | 'GROUP';
       updateScope: 'ALL' | 'OWN' | 'NONE';
     };
 
@@ -123,6 +127,7 @@ export interface InvitationPage {
 export interface MembershipStore {
   lockMembers(ids: string[]): Promise<void>;
   isUsableMember(id: string): Promise<boolean>;
+  isGroupLeader(id: string): Promise<boolean>;
   updateMemberName(
     id: string,
     displayName: string,
@@ -475,7 +480,10 @@ export class MembershipsService {
       await this.requireCurrentAdmin(store, context, [memberId]);
       await requireActiveEmployee(store, memberId);
       const objects = await store.listPublishedObjectAccess(memberId);
-      return objects.map(resolveMemberObjectAccess);
+      const isLeader = await store.isGroupLeader(memberId);
+      return objects.map((object) =>
+        resolveMemberObjectAccess(object, isLeader),
+      );
     });
   }
 
@@ -496,7 +504,12 @@ export class MembershipsService {
         (candidate) => candidate.objectId === objectId,
       );
       if (!object) throw new ApiException('OBJECT_NOT_FOUND', 404);
-      const before = resolveMemberObjectAccess(object);
+      const isLeader = await store.isGroupLeader(memberId);
+      if (input.mode === 'OVERRIDE' && input.readScope === 'GROUP' && !isLeader)
+        throw new ApiException('VALIDATION_FAILED', 400, {
+          message: '请先将该员工设为在职小组组长，再授予本组数据查看权限。',
+        });
+      const before = resolveMemberObjectAccess(object, isLeader);
 
       if (input.mode === 'INHERIT') {
         await store.deleteMemberObjectAccess(memberId, objectId);
@@ -514,7 +527,7 @@ export class MembershipsService {
         object.override = override;
       }
 
-      const after = resolveMemberObjectAccess(object);
+      const after = resolveMemberObjectAccess(object, isLeader);
       await store.appendAudit({
         tenantId: context.tenantId,
         actorType: 'USER',
@@ -542,6 +555,13 @@ export class MembershipsService {
     meta: { requestId: string; ip?: string },
   ): Promise<{ updated: number }> {
     this.assertAdmin(context);
+    if (
+      input.objectAccess?.mode === 'OVERRIDE' &&
+      input.objectAccess.readScope === 'GROUP'
+    )
+      throw new ApiException('VALIDATION_FAILED', 400, {
+        message: '请在组长的个人访问权限中逐表授予本组数据查看权限。',
+      });
     if (
       !input.memberIds.length ||
       input.memberIds.length > 100 ||
@@ -718,11 +738,16 @@ async function requireActiveEmployee(
 
 function resolveMemberObjectAccess(
   source: MemberObjectAccessSource,
+  isLeader = false,
 ): MemberObjectAccess {
+  const policy = source.override ?? source.inherited;
   return {
     ...source,
     mode: source.override ? 'OVERRIDE' : 'INHERIT',
-    effective: source.override ?? source.inherited,
+    effective:
+      policy.readScope === 'GROUP' && !isLeader
+        ? { ...policy, readScope: 'OWN' }
+        : policy,
   };
 }
 

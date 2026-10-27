@@ -1,3 +1,7 @@
+import {
+  recordOwnerFilter,
+  recordOwnerMatches,
+} from '../objects/record-read-scope';
 import { randomUUID } from 'node:crypto';
 import type { Prisma } from '@crm/database';
 import { ApiException } from '../../common/errors/api.exception';
@@ -153,8 +157,11 @@ export async function previewAutomation(
   const scope = recordRelationScope(resolved, context, source.id, true);
   if (
     !isReadable(resolved.schema, resolved.access) ||
-    (scope.owner && scope.owner !== source.ownerMemberId) ||
-    (target.access.readScope === 'OWN' && ownerMemberId !== context.memberId)
+    !recordOwnerMatches(scope.owner, source.ownerMemberId) ||
+    !recordOwnerMatches(
+      recordOwnerFilter(target.access, context.memberId),
+      ownerMemberId,
+    )
   )
     throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
   const normalized = await assertRecordMutation({

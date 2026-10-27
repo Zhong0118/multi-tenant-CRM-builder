@@ -566,6 +566,17 @@ async function cleanupCriticalData(database: PrismaClient): Promise<void> {
     await database.tenantInvitation.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });
+    await database.memberGroup.updateMany({
+      where: { tenantId: { in: tenantIds } },
+      data: { leaderMemberId: null },
+    });
+    await database.tenantMember.updateMany({
+      where: { tenantId: { in: tenantIds } },
+      data: { groupId: null },
+    });
+    await database.memberGroup.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
     await database.tenantMember.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });

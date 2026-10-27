@@ -8,6 +8,7 @@ import { browserApiClient } from "@/lib/api/browser-client";
 import { DATA_SCOPE_LABELS } from "@/features/objects/object-types";
 import {
   memberAccessApi,
+  MEMBER_READ_SCOPE_LABELS,
   type MemberObjectAccessRow,
   type MemberObjectPolicy,
 } from "./member-access-api";
@@ -259,7 +260,7 @@ export function BulkMemberAccess({
                   员工默认：{row.inherited.canCreate ? "可新建" : "不可新建"} ·{" "}
                   {row.inherited.canRead ? "可查看" : "不可查看"} ·{" "}
                   {row.inherited.canUpdate ? "可修改" : "不可修改"} · 查看
-                  {DATA_SCOPE_LABELS[row.inherited.readScope]} · 修改
+                  {MEMBER_READ_SCOPE_LABELS[row.inherited.readScope]} · 修改
                   {DATA_SCOPE_LABELS[row.inherited.updateScope]}
                 </p>
                 {objectMode === "OVERRIDE" && policy && (

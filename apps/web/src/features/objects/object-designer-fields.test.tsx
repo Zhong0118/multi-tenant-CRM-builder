@@ -165,6 +165,55 @@ describe("field list and editor", () => {
     expect(within(editor("最终评级")).getByText(/尚未发布/)).toBeInTheDocument();
   });
 
+  it.each([
+    { color: "BROWN", label: "棕色", upPresses: 2 },
+    { color: "TEAL", label: "蓝绿", upPresses: 3 },
+    { color: "INDIGO", label: "靛蓝", upPresses: 4 },
+    { color: "PINK", label: "粉色", upPresses: 5 },
+  ])(
+    "offers $color and saves it to the field draft",
+    async ({ color, label, upPresses }) => {
+      const api = objectApi();
+      renderDesigner(draft(), api);
+      fireEvent.click(row("最终评级"));
+      const colorInput = screen.getByRole("combobox", {
+        name: "选项颜色 gold",
+      });
+      fireEvent.mouseDown(colorInput);
+
+      // Select through the virtual list, including colors outside its first page.
+      for (let index = 0; index < upPresses; index += 1) {
+        fireEvent.keyDown(colorInput, {
+          key: "ArrowUp",
+          keyCode: 38,
+          which: 38,
+        });
+      }
+      fireEvent.keyDown(colorInput, { key: "Enter", keyCode: 13, which: 13 });
+      expect(within(editor("最终评级")).getByText(label)).toHaveAttribute(
+        "data-option-color",
+        color,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "保存字段" }));
+
+      await waitFor(() =>
+        expect(api.updateField).toHaveBeenCalledWith(
+          "northwind",
+          "object-1",
+          "field-rating",
+          expect.objectContaining({
+            config: {
+              options: [
+                { key: "gold", label: "金牌", status: "ACTIVE", color },
+              ],
+            },
+          }),
+        ),
+      );
+      expect(api.publish).not.toHaveBeenCalled();
+    },
+  );
+
   it("offers save and restore only while there is something to save", () => {
     renderDesigner(draft(), objectApi());
     expect(screen.getByRole("button", { name: "保存字段" })).toBeDisabled();

@@ -1,3 +1,4 @@
+import { recordOwnerFilter } from '../objects/record-read-scope';
 import {
   isReadable,
   type ResolvedObjectSchema,
@@ -69,8 +70,7 @@ export async function lockRecordActivityTarget(
       objectId: resolved.schema.object.id,
       id: recordId,
       deletedAt: null,
-      ownerMemberId:
-        resolved.access.updateScope === 'OWN' ? context.memberId : undefined,
+      ownerMemberId: recordOwnerFilter(resolved.access, context.memberId, true),
     },
     select: { ownerMemberId: true },
   });

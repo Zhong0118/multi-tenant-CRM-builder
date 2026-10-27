@@ -74,10 +74,10 @@ export class MemberObjectAccessDto {
   @IsBoolean()
   canUpdate?: boolean;
 
-  @ApiPropertyOptional({ enum: ['ALL', 'OWN', 'NONE'] })
+  @ApiPropertyOptional({ enum: ['ALL', 'OWN', 'NONE', 'GROUP'] })
   @ValidateIf((value: MemberObjectAccessDto) => value.mode === 'OVERRIDE')
-  @IsIn(['ALL', 'OWN', 'NONE'])
-  readScope?: 'ALL' | 'OWN' | 'NONE';
+  @IsIn(['ALL', 'OWN', 'NONE', 'GROUP'])
+  readScope?: 'ALL' | 'OWN' | 'NONE' | 'GROUP';
 
   @ApiPropertyOptional({ enum: ['ALL', 'OWN', 'NONE'] })
   @ValidateIf((value: MemberObjectAccessDto) => value.mode === 'OVERRIDE')
@@ -158,6 +158,13 @@ export class InvitationPageQueryDto {
 }
 
 export class MemberPageQueryDto {
+  @ApiPropertyOptional({ description: '小组 ID，NONE 表示未分组' })
+  @ValidateIf(
+    (_object, value: unknown) => value !== undefined && value !== 'NONE',
+  )
+  @IsUUID()
+  groupId?: string;
+
   @ApiPropertyOptional({
     maxLength: 100,
     description: '按成员展示姓名或手机号搜索',
@@ -210,6 +217,12 @@ export class WorkspaceSummaryResponseDto {
 }
 
 export class TenantMemberResponseDto {
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
+  groupId?: string | null;
+  @ApiPropertyOptional({ type: String, nullable: true }) groupName?:
+    string | null;
+  @ApiPropertyOptional() isGroupLeader?: boolean;
+
   @ApiProperty({ format: 'uuid' }) id!: string;
   @ApiProperty({ format: 'uuid' }) userId!: string;
   @ApiProperty({ format: 'uuid' }) tenantId!: string;
@@ -235,8 +248,8 @@ export class MemberObjectPolicyResponseDto {
   @ApiProperty() canRead!: boolean;
   @ApiProperty() canUpdate!: boolean;
   @ApiProperty({ enum: [false] }) canDelete!: false;
-  @ApiProperty({ enum: ['ALL', 'OWN', 'NONE'] })
-  readScope!: 'ALL' | 'OWN' | 'NONE';
+  @ApiProperty({ enum: ['ALL', 'OWN', 'NONE', 'GROUP'] })
+  readScope!: 'ALL' | 'OWN' | 'NONE' | 'GROUP';
   @ApiProperty({ enum: ['ALL', 'OWN', 'NONE'] })
   updateScope!: 'ALL' | 'OWN' | 'NONE';
 }

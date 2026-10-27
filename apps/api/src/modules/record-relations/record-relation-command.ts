@@ -1,3 +1,8 @@
+import {
+  recordOwnerFilter,
+  recordOwnerIds,
+  type RecordOwnerFilter,
+} from '../objects/record-read-scope';
 import { randomUUID } from 'node:crypto';
 
 import type { Prisma } from '@crm/database';
@@ -25,7 +30,7 @@ import type { ResolvedObjectSchema } from '../objects/published-object.service';
 export interface RecordRelationScope {
   id: string;
   objectId: string;
-  owner?: string;
+  owner?: RecordOwnerFilter;
 }
 
 export interface RecordRelationMeta {
@@ -63,10 +68,7 @@ export function recordRelationScope(
   return {
     id: id.toLowerCase(),
     objectId: schema.object.id,
-    owner:
-      access.readScope === 'OWN' || (write && access.updateScope === 'OWN')
-        ? context.memberId
-        : undefined,
+    owner: recordOwnerFilter(access, context.memberId, write),
   };
 }
 
@@ -115,9 +117,10 @@ export async function checkRelationRecord(
   lock = false,
 ) {
   if (lock) {
+    const ownerIds = recordOwnerIds(scope.owner);
     const rows = await tx.$queryRaw<
       Array<{ id: string }>
-    >`SELECT id FROM records WHERE tenant_id=${context.tenantId}::uuid AND id=${scope.id}::uuid AND object_id=${scope.objectId}::uuid AND deleted_at IS NULL AND (${scope.owner ?? null}::uuid IS NULL OR owner_member_id=${scope.owner ?? null}::uuid) FOR UPDATE`;
+    >`SELECT id FROM records WHERE tenant_id=${context.tenantId}::uuid AND id=${scope.id}::uuid AND object_id=${scope.objectId}::uuid AND deleted_at IS NULL AND (${ownerIds}::uuid[] IS NULL OR owner_member_id=ANY(${ownerIds}::uuid[])) FOR UPDATE`;
     if (!rows.length) throw new ApiException('RECORD_NOT_FOUND', 404);
   }
   const record = await tx.record.findFirst({

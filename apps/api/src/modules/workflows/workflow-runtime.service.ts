@@ -1,6 +1,11 @@
+import {
+  recordOwnerFilter,
+  recordOwnerMatches,
+} from '../objects/record-read-scope';
 import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 
+import type { EffectiveObjectAccess } from '../objects/effective-access';
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { isWriteConflict } from '../../infrastructure/database/write-conflict';
@@ -89,12 +94,19 @@ export class WorkflowRuntimeService {
         resolved.schema.object.id,
         recordId,
         context,
-        resolved.access.readScope,
-        resolved.access.canRead,
+        resolved.access,
       );
       return runtimeWorkflowView({
         schema: resolved.schema,
-        access: resolved.access,
+        access: {
+          ...resolved.access,
+          canUpdate:
+            resolved.access.canUpdate &&
+            recordOwnerMatches(
+              recordOwnerFilter(resolved.access, context.memberId, true),
+              record.ownerMemberId,
+            ),
+        },
         role: context.role,
         record,
       });
@@ -221,6 +233,14 @@ export class WorkflowRuntimeService {
         if (snapshot.inPublicPool && context.role !== 'TENANT_ADMIN') {
           throw new ApiException('WORKFLOW_TRANSITION_FORBIDDEN', 403);
         }
+
+        if (
+          !recordOwnerMatches(
+            recordOwnerFilter(resolved.access, context.memberId, true),
+            snapshot.ownerMemberId,
+          )
+        )
+          throw new ApiException('RECORD_NOT_FOUND', 404);
 
         // §23 step 8 / §29: the optimistic check runs BEFORE any Action, so a
         // duplicate submit creates nothing downstream.
@@ -385,8 +405,7 @@ export class WorkflowRuntimeService {
         resolved.schema.object.id,
         recordId,
         context,
-        resolved.access.readScope,
-        resolved.access.canRead,
+        resolved.access,
       );
       return store.listTransitionHistory(recordId, query);
     });
@@ -408,16 +427,18 @@ async function requireReadableRecord(
   objectId: string,
   recordId: string,
   context: TenantContext,
-  scope: 'ALL' | 'OWN' | 'NONE',
-  allowed: boolean,
+  access: EffectiveObjectAccess,
 ): Promise<DynamicRecord> {
-  if (!allowed || scope === 'NONE') {
+  if (!access.canRead || access.readScope === 'NONE') {
     throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
   }
   const record = await store.findRecord(objectId, recordId);
   if (
     !record ||
-    (scope === 'OWN' && record.ownerMemberId !== context.memberId)
+    !recordOwnerMatches(
+      recordOwnerFilter(access, context.memberId),
+      record.ownerMemberId,
+    )
   ) {
     throw new ApiException('RECORD_NOT_FOUND', 404);
   }

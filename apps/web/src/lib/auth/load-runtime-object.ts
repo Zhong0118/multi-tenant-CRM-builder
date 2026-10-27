@@ -24,8 +24,8 @@ export interface RuntimeObjectContext {
  * Loads the authorized published schema. Inaccessible/unpublished tables stay
  * private; only an explicit authorized OBJECT_ARCHIVED response is explained.
  *
- * Member names are only fetched for administrators, since the member roster is
- * an administrator capability.
+ * Administrators load the roster; GROUP readers receive only their authorized
+ * group owner labels from the schema response.
  */
 export async function loadRuntimeObject(
   tenantCode: string,
@@ -47,8 +47,16 @@ export async function loadRuntimeObject(
     throw asError(result.error, result.response.status);
   }
 
+  const schema = parseRuntimeObjectSchema(result.data);
   const isAdmin = role === "TENANT_ADMIN";
-  const members: DynamicFieldMember[] = [];
+  const members: DynamicFieldMember[] =
+    !isAdmin && schema.scopes.read === "GROUP"
+      ? (result.data.ownerMembers ?? []).map(({ id, displayName, status }) => ({
+          id,
+          displayName,
+          status,
+        }))
+      : [];
   if (isAdmin) {
     let page = 1;
     let loaded = 0;
@@ -76,7 +84,7 @@ export async function loadRuntimeObject(
   }
 
   return {
-    schema: parseRuntimeObjectSchema(result.data),
+    schema,
     members,
     isAdmin,
   };

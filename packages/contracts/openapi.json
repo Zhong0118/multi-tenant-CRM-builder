@@ -1710,6 +1710,29 @@
         "required": ["phone", "role"],
         "type": "object"
       },
+      "CreateMemberGroupDto": {
+        "properties": {
+          "leaderMemberId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "memberIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 100,
+            "type": "string"
+          }
+        },
+        "required": ["name", "leaderMemberId", "memberIds"],
+        "type": "object"
+      },
       "CreateObjectDefinitionDto": {
         "properties": {
           "code": {
@@ -2903,6 +2926,25 @@
         "required": ["field", "direction"],
         "type": "object"
       },
+      "DeleteMemberGroupDto": {
+        "properties": {
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "required": ["expectedVersion"],
+        "type": "object"
+      },
+      "DeleteMemberGroupResponseDto": {
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": ["ok"],
+        "type": "object"
+      },
       "DeleteObjectDraftResponseDto": {
         "properties": {
           "deleted": {
@@ -3431,6 +3473,32 @@
         "required": ["phone", "deviceKey"],
         "type": "object"
       },
+      "GroupMemberOptionDto": {
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "groupId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "role": {
+            "enum": ["TENANT_ADMIN", "EMPLOYEE"],
+            "type": "string"
+          },
+          "status": {
+            "enum": ["ACTIVE", "DISABLED"],
+            "type": "string"
+          }
+        },
+        "required": ["id", "displayName", "status", "role", "groupId"],
+        "type": "object"
+      },
       "ImportRecordRowDto": {
         "properties": {
           "rowNumber": {
@@ -3687,6 +3755,52 @@
         ],
         "type": "object"
       },
+      "MemberGroupDto": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "leaderMemberId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "memberIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": ["id", "name", "version", "leaderMemberId", "memberIds"],
+        "type": "object"
+      },
+      "MemberGroupListDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MemberGroupDto"
+            },
+            "type": "array"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/GroupMemberOptionDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["items", "members"],
+        "type": "object"
+      },
       "MemberObjectAccessDto": {
         "properties": {
           "canCreate": {
@@ -3703,7 +3817,7 @@
             "type": "string"
           },
           "readScope": {
-            "enum": ["ALL", "OWN", "NONE"],
+            "enum": ["ALL", "OWN", "NONE", "GROUP"],
             "type": "string"
           },
           "updateScope": {
@@ -3780,7 +3894,7 @@
             "type": "boolean"
           },
           "readScope": {
-            "enum": ["ALL", "OWN", "NONE"],
+            "enum": ["ALL", "OWN", "NONE", "GROUP"],
             "type": "string"
           },
           "updateScope": {
@@ -4834,7 +4948,7 @@
             "type": "boolean"
           },
           "readScope": {
-            "enum": ["ALL", "OWN", "NONE"],
+            "enum": ["ALL", "OWN", "GROUP", "NONE"],
             "type": "string"
           },
           "updateScope": {
@@ -5238,6 +5352,12 @@
             "additionalProperties": true,
             "type": "object"
           },
+          "ownerMembers": {
+            "items": {
+              "$ref": "#/components/schemas/RecordOwnerMemberResponseDto"
+            },
+            "type": "array"
+          },
           "publication": {
             "additionalProperties": true,
             "type": "object"
@@ -5454,6 +5574,23 @@
           }
         },
         "required": ["rowNumber", "status"],
+        "type": "object"
+      },
+      "RecordOwnerMemberResponseDto": {
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "status": {
+            "enum": ["ACTIVE", "DISABLED"],
+            "type": "string"
+          }
+        },
+        "required": ["id", "displayName", "status"],
         "type": "object"
       },
       "RecordOwnershipDto": {
@@ -6236,7 +6373,11 @@
               "YELLOW",
               "ORANGE",
               "RED",
-              "PURPLE"
+              "PURPLE",
+              "PINK",
+              "INDIGO",
+              "TEAL",
+              "BROWN"
             ],
             "type": "string"
           },
@@ -7651,9 +7792,21 @@
           "displayName": {
             "type": "string"
           },
+          "groupId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "groupName": {
+            "nullable": true,
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "type": "string"
+          },
+          "isGroupLeader": {
+            "type": "boolean"
           },
           "phone": {
             "example": "+8613800138000",
@@ -7894,6 +8047,33 @@
           }
         },
         "required": ["version"],
+        "type": "object"
+      },
+      "UpdateMemberGroupDto": {
+        "properties": {
+          "expectedVersion": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "leaderMemberId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "memberIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 100,
+            "type": "string"
+          }
+        },
+        "required": ["name", "leaderMemberId", "memberIds", "expectedVersion"],
         "type": "object"
       },
       "UpdateObjectDefinitionDto": {
@@ -11753,10 +11933,195 @@
         "tags": ["memberships"]
       }
     },
+    "/api/v1/workspaces/{tenantCode}/member-groups": {
+      "get": {
+        "operationId": "MemberGroupsController_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberGroupListDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["memberships"]
+      },
+      "post": {
+        "operationId": "MemberGroupsController_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMemberGroupDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberGroupDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["memberships"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/member-groups/{groupId}": {
+      "delete": {
+        "operationId": "MemberGroupsController_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteMemberGroupDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteMemberGroupResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["memberships"]
+      },
+      "patch": {
+        "operationId": "MemberGroupsController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberGroupDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberGroupDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["memberships"]
+      }
+    },
     "/api/v1/workspaces/{tenantCode}/members": {
       "get": {
         "operationId": "MembershipsController_members",
         "parameters": [
+          {
+            "description": "小组 ID，NONE 表示未分组",
+            "in": "query",
+            "name": "groupId",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "description": "按成员展示姓名或手机号搜索",
             "in": "query",

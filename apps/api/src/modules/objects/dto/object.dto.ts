@@ -208,13 +208,41 @@ export class SelectOptionDto {
       'ORANGE',
       'RED',
       'PURPLE',
+      'PINK',
+      'INDIGO',
+      'TEAL',
+      'BROWN',
     ],
     default: 'GRAY',
   })
   @IsOptional()
-  @IsIn(['GRAY', 'BLUE', 'CYAN', 'GREEN', 'YELLOW', 'ORANGE', 'RED', 'PURPLE'])
+  @IsIn([
+    'GRAY',
+    'BLUE',
+    'CYAN',
+    'GREEN',
+    'YELLOW',
+    'ORANGE',
+    'RED',
+    'PURPLE',
+    'PINK',
+    'INDIGO',
+    'TEAL',
+    'BROWN',
+  ])
   color?:
-    'GRAY' | 'BLUE' | 'CYAN' | 'GREEN' | 'YELLOW' | 'ORANGE' | 'RED' | 'PURPLE';
+    | 'GRAY'
+    | 'BLUE'
+    | 'CYAN'
+    | 'GREEN'
+    | 'YELLOW'
+    | 'ORANGE'
+    | 'RED'
+    | 'PURPLE'
+    | 'PINK'
+    | 'INDIGO'
+    | 'TEAL'
+    | 'BROWN';
 }
 
 export class FieldConfigDto {
@@ -483,6 +511,12 @@ export class PublishedFieldResponseDto {
   @ApiProperty({ enum: ['EDIT', 'READ_ONLY'] }) access!: 'EDIT' | 'READ_ONLY';
 }
 
+export class RecordOwnerMemberResponseDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiProperty() displayName!: string;
+  @ApiProperty({ enum: ['ACTIVE', 'DISABLED'] }) status!: 'ACTIVE' | 'DISABLED';
+}
+
 export class PublishedObjectSchemaResponseDto {
   @ApiProperty({ type: 'object', additionalProperties: true })
   publication!: object;
@@ -493,6 +527,8 @@ export class PublishedObjectSchemaResponseDto {
   defaultView!: object;
   @ApiProperty({ type: 'object', additionalProperties: true }) actions!: object;
   @ApiProperty({ type: 'object', additionalProperties: true }) scopes!: object;
+  @ApiPropertyOptional({ type: RecordOwnerMemberResponseDto, isArray: true })
+  ownerMembers?: RecordOwnerMemberResponseDto[];
 }
 
 /**

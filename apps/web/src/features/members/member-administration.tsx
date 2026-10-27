@@ -1,11 +1,13 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Page } from "@/components/layout/page";
 
 import { BulkInviteMembers } from "./bulk-invite-members";
 import { InviteMemberForm } from "./invite-member-form";
+import { MemberGroups } from "./member-groups";
+import { memberGroupsApi } from "./member-groups-api";
 import {
   memberApi,
   MemberTable,
@@ -30,6 +32,12 @@ export function MemberAdministration({
   initialInvitationPage: InvitationPage;
 }) {
   const queryClient = useQueryClient();
+  const groups = useQuery({
+    queryKey: ["workspace", tenantCode, "member-groups"],
+    queryFn: () => memberGroupsApi.list(tenantCode),
+    staleTime: 30_000,
+    enabled: viewerRole === "TENANT_ADMIN",
+  });
   // Refresh the invitations in place. Remounting the table here would also
   // remount the invite dialog and drawer in its header, closing them before
   // they show the registration link and per-row results.
@@ -63,6 +71,12 @@ export function MemberAdministration({
         initialMemberPage={initialMemberPage}
         initialFilters={initialFilters}
         initialInvitationPage={initialInvitationPage}
+        groups={groups.data?.items}
+        groupManagement={
+          viewerRole === "TENANT_ADMIN" ? (
+            <MemberGroups tenantCode={tenantCode} />
+          ) : undefined
+        }
       />
     </Page>
   );

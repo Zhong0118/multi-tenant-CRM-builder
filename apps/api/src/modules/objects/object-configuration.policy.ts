@@ -527,6 +527,10 @@ function hasInvalidConfig(field: PublicationDraftField): boolean {
           'ORANGE',
           'RED',
           'PURPLE',
+          'PINK',
+          'INDIGO',
+          'TEAL',
+          'BROWN',
         ].includes(option.color as string)),
   );
 }

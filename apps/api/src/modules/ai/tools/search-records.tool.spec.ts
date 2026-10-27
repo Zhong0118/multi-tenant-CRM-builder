@@ -4,6 +4,7 @@ import {
   admin,
   employee,
   otherRecordId,
+  otherMemberId,
   ownRecordId,
   recordToolFixture,
 } from './record-read-tools.fixture';
@@ -176,5 +177,46 @@ describe('search_records', () => {
     ).rejects.toMatchObject({
       code: 'OBJECT_ACTION_FORBIDDEN',
     });
+  });
+});
+
+describe('search_records GROUP visibility', () => {
+  it('uses live group membership and retains hidden-field projection', async () => {
+    const { records, store, publishedRepository } = recordToolFixture();
+    publishedRepository.record.memberOverride = {
+      canCreate: true,
+      canRead: true,
+      canUpdate: true,
+      canDelete: false,
+      readScope: 'GROUP',
+      updateScope: 'OWN',
+    };
+    publishedRepository.record.groupOwnerMemberIds = [
+      employee.memberId,
+      otherMemberId,
+    ];
+    store.records.push({
+      ...store.records[0],
+      id: 'unassigned',
+      ownerMemberId: null,
+      title: '未分配',
+    });
+    store.records.push({
+      ...store.records[0],
+      id: 'outside-group',
+      ownerMemberId: admin.memberId,
+      title: '其他组',
+    });
+    const tool = createSearchRecordsTool(records, employee);
+    const result = await tool.execute({ objectCode: 'leads' }, 'group-call');
+    expect(result).toMatchObject({
+      total: 2,
+      items: [{ id: ownRecordId }, { id: otherRecordId }],
+    });
+    expect(JSON.stringify(result)).not.toContain('别人的机密');
+    publishedRepository.record.groupOwnerMemberIds = [employee.memberId];
+    expect(
+      await tool.execute({ objectCode: 'leads' }, 'moved-call'),
+    ).toMatchObject({ total: 1, items: [{ id: ownRecordId }] });
   });
 });

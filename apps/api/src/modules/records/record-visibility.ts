@@ -1,3 +1,4 @@
+import { type RecordOwnerFilter } from '../objects/record-read-scope';
 import type { Prisma } from '@crm/database';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 
@@ -7,7 +8,7 @@ export async function visibleRecordIdsInTransaction(
   context: TenantContext,
   objectId: string,
   ids: string[],
-  ownerMemberId?: string,
+  ownerMemberId?: RecordOwnerFilter,
 ): Promise<string[]> {
   const rows = await tx.record.findMany({
     where: {

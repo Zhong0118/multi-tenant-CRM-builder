@@ -1,3 +1,7 @@
+import {
+  recordOwnerFilter,
+  recordOwnerIds,
+} from '../objects/record-read-scope';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
 import { ApiException } from '../../common/errors/api.exception';
@@ -33,7 +37,7 @@ type NotificationRow = {
     target: number;
   } | null;
 };
-const READABLE = `(n.object_id=ANY($3::uuid[]) OR (n.object_id=ANY($4::uuid[]) AND (n.record_owner_member_id=$2::uuid OR EXISTS (SELECT 1 FROM records pr JOIN object_definitions po ON po.id=pr.object_id AND po.tenant_id=pr.tenant_id WHERE pr.tenant_id=n.tenant_id AND pr.id=n.record_id AND pr.in_public_pool AND po.pool_enabled))))`;
+const READABLE = `(n.object_id=ANY($3::uuid[]) OR (EXISTS (SELECT 1 FROM jsonb_each($4::jsonb) scope WHERE scope.key=n.object_id::text AND (scope.value ? n.record_owner_member_id::text OR EXISTS (SELECT 1 FROM records pr JOIN object_definitions po ON po.id=pr.object_id AND po.tenant_id=pr.tenant_id WHERE pr.tenant_id=n.tenant_id AND pr.id=n.record_id AND pr.in_public_pool AND po.pool_enabled)))))`;
 const VISIBLE = `n.tenant_id=$1::uuid AND n.recipient_member_id=$2::uuid AND (n.kind IN ('POOL_RECLAIMED','WORK_GOAL_BEHIND') OR ${READABLE})`;
 const CAN_OPEN = `(n.kind='WORK_GOAL_BEHIND' OR (${READABLE} AND EXISTS (SELECT 1 FROM records r WHERE r.tenant_id=n.tenant_id AND r.id=n.record_id AND r.deleted_at IS NULL)))`;
 const GOAL_NAMES: Record<string, string> = {
@@ -210,7 +214,7 @@ export class NotificationsService {
       context.memberId,
     );
     const all: string[] = [];
-    const own: string[] = [];
+    const bounded: Record<string, string[]> = {};
     for (const object of objects) {
       try {
         const resolved = await resolvePublishedObjectInTransaction(
@@ -219,9 +223,11 @@ export class NotificationsService {
           object.object_code,
         );
         if (!isReadable(resolved.schema, resolved.access)) continue;
-        (resolved.access.readScope === 'ALL' ? all : own).push(
-          object.object_id,
+        const ownerIds = recordOwnerIds(
+          recordOwnerFilter(resolved.access, context.memberId),
         );
+        if (ownerIds === null) all.push(object.object_id);
+        else bounded[object.object_id] = ownerIds;
       } catch (error) {
         if (!(
           error instanceof ApiException &&
@@ -230,7 +236,12 @@ export class NotificationsService {
           throw error;
       }
     }
-    return [context.tenantId, context.memberId, all, own] as const;
+    return [
+      context.tenantId,
+      context.memberId,
+      all,
+      JSON.stringify(bounded),
+    ] as const;
   }
 }
 function toItem(row: NotificationRow): NotificationItemDto {

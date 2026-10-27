@@ -1,6 +1,7 @@
 "use client";
 
 import type { components } from "@crm/contracts";
+import { DATA_SCOPE_LABELS } from "@/features/objects/object-types";
 import { toApiError } from "@/lib/api/api-error";
 import { browserApiClient } from "@/lib/api/browser-client";
 
@@ -8,6 +9,10 @@ type Schemas = components["schemas"];
 export type MemberObjectAccessRow = Schemas["MemberObjectAccessResponseDto"];
 export type MemberObjectPolicy = Schemas["MemberObjectPolicyResponseDto"];
 export type MemberObjectAccessInput = Schemas["MemberObjectAccessDto"];
+export const MEMBER_READ_SCOPE_LABELS = {
+  ...DATA_SCOPE_LABELS,
+  GROUP: "本组成员名下",
+};
 
 export interface MemberAccessApi {
   list(tenantCode: string, memberId: string): Promise<MemberObjectAccessRow[]>;

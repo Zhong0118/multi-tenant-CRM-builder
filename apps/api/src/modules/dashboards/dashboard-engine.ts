@@ -1,3 +1,7 @@
+import {
+  recordOwnerFilter,
+  type RecordOwnerFilter,
+} from '../objects/record-read-scope';
 import { ApiException } from '../../common/errors/api.exception';
 import { Inject, Injectable } from '@nestjs/common';
 
@@ -38,7 +42,7 @@ export interface DashboardQueryPlan {
   widget: PublishedDashboardWidgetV2;
   object: PublishedObjectSchema;
   period: DashboardPeriod;
-  ownerMemberId?: string;
+  ownerMemberId?: RecordOwnerFilter;
   visibleFieldKeys: string[];
   canReadTitle: boolean;
 }
@@ -102,12 +106,13 @@ export class DashboardEngine {
         continue;
       }
       const ownerMemberId =
-        input.context.role === 'EMPLOYEE' && resolved.access.readScope === 'OWN'
-          ? input.context.memberId
+        input.context.role === 'EMPLOYEE'
+          ? recordOwnerFilter(resolved.access, input.context.memberId)
           : undefined;
-      const plannedWidget = ownerMemberId
-        ? collapseOwnLeaderboard(widget)
-        : widget;
+      const plannedWidget =
+        input.context.role === 'EMPLOYEE' && resolved.access.readScope === 'OWN'
+          ? collapseOwnLeaderboard(widget)
+          : widget;
       const projection = projectFields(plannedWidget, resolved.access);
       if (!projection) {
         omissions.set(widget.id, 'FIELD_HIDDEN');

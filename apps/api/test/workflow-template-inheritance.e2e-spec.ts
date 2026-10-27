@@ -401,7 +401,12 @@ describe('portable workflow templates (HTTP + PostgreSQL)', () => {
       url.port === '5432' &&
       url.pathname === '/crm' &&
       url.username === 'crm';
-    if (!local && !ci) throw new Error('Use isolated template API database');
+    const localTest =
+      ['localhost', '127.0.0.1'].includes(url.hostname) &&
+      url.port === '5432' &&
+      /^\/crm_[a-z0-9_]*_test_[0-9]+$/.test(url.pathname);
+    if (!local && !localTest && !ci)
+      throw new Error('Use isolated template API database');
     h = await createCriticalHarness();
     await h.app.listen(0, '127.0.0.1');
   });

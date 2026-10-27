@@ -114,10 +114,15 @@ export const SELECT_OPTION_COLORS = [
   "ORANGE",
   "RED",
   "PURPLE",
+  "PINK",
+  "INDIGO",
+  "TEAL",
+  "BROWN",
 ] as const;
 
 export type SelectOptionColor = (typeof SELECT_OPTION_COLORS)[number];
 
+// Keep the legacy cycle stable when adding explicitly selectable colors.
 const DEFAULT_SELECT_OPTION_COLORS: readonly SelectOptionColor[] = [
   "BLUE",
   "GREEN",
@@ -143,6 +148,10 @@ export const SELECT_OPTION_COLOR_LABELS: Record<SelectOptionColor, string> = {
   ORANGE: "橙色",
   RED: "红色",
   PURPLE: "紫色",
+  PINK: "粉色",
+  INDIGO: "靛蓝",
+  TEAL: "蓝绿",
+  BROWN: "棕色",
 };
 
 export interface RuntimeObjectSchema {
@@ -169,7 +178,7 @@ export interface RuntimeObjectSchema {
     canUpdate: boolean;
     canDelete: boolean;
   };
-  scopes: { read: PublishedDataScope; update: PublishedDataScope };
+  scopes: { read: PublishedDataScope | "GROUP"; update: PublishedDataScope };
 }
 
 export type RuntimeObjectNavigation =
@@ -304,7 +313,10 @@ export function parseRuntimeObjectSchema(
   const searchFieldKeys =
     defaultView.searchFieldKeys === undefined
       ? undefined
-      : asStringArray(defaultView.searchFieldKeys, "defaultView.searchFieldKeys");
+      : asStringArray(
+          defaultView.searchFieldKeys,
+          "defaultView.searchFieldKeys",
+        );
   if (searchFieldKeys) {
     for (const fieldKey of searchFieldKeys) {
       if (!fieldKeys.has(fieldKey)) {
@@ -352,7 +364,7 @@ export function parseRuntimeObjectSchema(
       canDelete: asBoolean(actions.canDelete, "actions.canDelete"),
     },
     scopes: {
-      read: asMember(scopes.read, SCOPES, "scopes.read"),
+      read: asMember(scopes.read, [...SCOPES, "GROUP"] as const, "scopes.read"),
       update: asMember(scopes.update, SCOPES, "scopes.update"),
     },
   };

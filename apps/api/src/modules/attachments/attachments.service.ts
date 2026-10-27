@@ -1,3 +1,4 @@
+import { recordOwnerFilter } from '../objects/record-read-scope';
 import { Injectable } from '@nestjs/common';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { ApiException } from '../../common/errors/api.exception';
@@ -29,10 +30,7 @@ export class AttachmentsService {
     return {
       objectId: schema.object.id,
       recordId,
-      ownerId:
-        access.readScope === 'OWN' || (write && access.updateScope === 'OWN')
-          ? c.memberId
-          : undefined,
+      ownerId: recordOwnerFilter(access, c.memberId, write),
     };
   }
   async list(c: TenantContext, code: string, r: string) {

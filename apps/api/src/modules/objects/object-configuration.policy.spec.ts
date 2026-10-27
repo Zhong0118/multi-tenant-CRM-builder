@@ -590,13 +590,26 @@ describe('object configuration policy', () => {
     ).toEqual([]);
   });
 
-  it('accepts supported select-option colors and rejects unknown colors', () => {
+  it.each([
+    'GRAY',
+    'BLUE',
+    'CYAN',
+    'GREEN',
+    'YELLOW',
+    'ORANGE',
+    'RED',
+    'PURPLE',
+    'PINK',
+    'INDIGO',
+    'TEAL',
+    'BROWN',
+  ])('accepts and compiles select-option color %s', (color) => {
     const input = validObjectConfiguration();
     input.fields[1] = {
       ...input.fields[1],
       type: 'SINGLE_SELECT',
       config: {
-        options: [{ key: 'vip', label: '重点客户', color: 'ORANGE' }],
+        options: [{ key: 'vip', label: '重点客户', color }],
       },
     };
 
@@ -606,8 +619,24 @@ describe('object configuration policy', () => {
       ),
     ).toEqual([]);
 
-    input.fields[1].config = {
-      options: [{ key: 'vip', label: '重点客户', color: 'MAGENTA' }],
+    const snapshot = compileObjectConfiguration({
+      ...input,
+      defaultView: input.defaultView!,
+      employeeAccess: input.employeeAccess!,
+    });
+    expect(snapshot.fields[1].config.options).toEqual([
+      { key: 'vip', label: '重点客户', color },
+    ]);
+  });
+
+  it('rejects unknown select-option colors', () => {
+    const input = validObjectConfiguration();
+    input.fields[1] = {
+      ...input.fields[1],
+      type: 'SINGLE_SELECT',
+      config: {
+        options: [{ key: 'vip', label: '重点客户', color: 'MAGENTA' }],
+      },
     };
     expect(analyzeObjectConfiguration(input).blocking).toContainEqual({
       code: 'FIELD_CONFIG_INVALID',

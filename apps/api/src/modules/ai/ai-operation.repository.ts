@@ -1,3 +1,4 @@
+import { recordOwnerFilter } from '../objects/record-read-scope';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
 
@@ -191,7 +192,7 @@ export class AiOperationRepository {
         context,
         resolved.schema.object.id,
         ids,
-        resolved.access.readScope === 'OWN' ? context.memberId : undefined,
+        recordOwnerFilter(resolved.access, context.memberId),
       );
       const editableIds =
         !resolved.access.canUpdate || resolved.access.updateScope === 'NONE'

@@ -1,4 +1,10 @@
 import {
+  recordOwnerFilter,
+  recordOwnerMatches,
+  type RecordOwnerFilter,
+} from '../objects/record-read-scope';
+import { recordOwnerSql } from '../objects/record-read-scope.sql';
+import {
   runFieldAutomations,
   automationFailureAudit,
 } from '../automations/automation-runner';
@@ -120,7 +126,7 @@ export interface RecordListQuery {
   limit: number;
   search?: string;
   searchFieldKeys: string[];
-  ownerMemberId?: string | null;
+  ownerMemberId?: RecordOwnerFilter | null;
   filters: RecordListFilter[];
   sort: RecordListSystemSort | RecordListFieldSort;
   direction: 'asc' | 'desc';
@@ -140,7 +146,7 @@ export type RecordReadPredicate = Pick<
 
 export interface RecordAggregateQuery {
   objectId: string;
-  ownerMemberId?: string | null;
+  ownerMemberId?: RecordOwnerFilter | null;
   filters: RecordListFilter[];
   aggregation: 'COUNT' | 'SUM' | 'AVG';
   valueFieldKey?: string;
@@ -189,7 +195,7 @@ export interface ApplySourceRecordPatchStoreInput {
 
 export interface ImportDuplicateQuery {
   objectId: string;
-  ownerMemberId?: string | null;
+  ownerMemberId?: RecordOwnerFilter | null;
   values: Record<string, string | number | boolean>;
 }
 
@@ -248,7 +254,7 @@ export interface RecordsStore {
   lockRecord(input: {
     objectId: string;
     recordId: string;
-    ownerMemberId: string | null;
+    ownerMemberId: RecordOwnerFilter | null;
   }): Promise<DynamicRecord | null>;
   /**
    * Superseded by `applyRecordPatch` and no longer called by any production
@@ -854,7 +860,7 @@ class PrismaRecordsStore implements RecordsStore {
   async lockRecord(input: {
     objectId: string;
     recordId: string;
-    ownerMemberId: string | null;
+    ownerMemberId: RecordOwnerFilter | null;
   }): Promise<DynamicRecord | null> {
     await this.transaction.$queryRaw`
       SELECT m.id FROM tenant_members m
@@ -863,7 +869,7 @@ class PrismaRecordsStore implements RecordsStore {
         AND r.object_id = ${input.objectId}::uuid
         AND r.id = ${input.recordId}::uuid
         AND r.deleted_at IS NULL
-        AND (${input.ownerMemberId}::uuid IS NULL OR r.owner_member_id = ${input.ownerMemberId}::uuid)
+        AND ${recordOwnerSql(input.ownerMemberId ?? undefined, Prisma.sql`r.owner_member_id`)}
       FOR NO KEY UPDATE OF m
     `;
     const rows = await this.transaction.$queryRaw<Array<{ id: string }>>`
@@ -872,7 +878,7 @@ class PrismaRecordsStore implements RecordsStore {
         AND object_id = ${input.objectId}::uuid
         AND id = ${input.recordId}::uuid
         AND deleted_at IS NULL
-        AND (${input.ownerMemberId}::uuid IS NULL OR owner_member_id = ${input.ownerMemberId}::uuid)
+        AND ${recordOwnerSql(input.ownerMemberId ?? undefined)}
       FOR UPDATE
     `;
     if (rows.length === 0) return null;
@@ -1110,6 +1116,10 @@ class PrismaRecordsStore implements RecordsStore {
       !resolved.access.canUpdate ||
       resolved.access.readScope === 'NONE' ||
       resolved.access.updateScope === 'NONE' ||
+      !recordOwnerMatches(
+        recordOwnerFilter(resolved.access, this.context.memberId, true),
+        record.ownerMemberId,
+      ) ||
       (this.context.role !== 'TENANT_ADMIN' &&
         record.poolStage &&
         record.ownerMemberId !== this.context.memberId)
@@ -1352,15 +1362,13 @@ function listWhereSql(
     Prisma.sql`${qualified ? Prisma.sql`r.object_id` : Prisma.sql`object_id`} = ${query.objectId}::uuid`,
     Prisma.sql`${qualified ? Prisma.sql`r.deleted_at` : Prisma.sql`deleted_at`} IS NULL`,
   ];
-  if (query.ownerMemberId === null) {
+  if (query.ownerMemberId !== undefined)
     parts.push(
-      Prisma.sql`${qualified ? Prisma.sql`r.owner_member_id` : Prisma.sql`owner_member_id`} IS NULL`,
+      recordOwnerSql(
+        query.ownerMemberId,
+        qualified ? Prisma.sql`r.owner_member_id` : Prisma.sql`owner_member_id`,
+      ),
     );
-  } else if (query.ownerMemberId !== undefined) {
-    parts.push(
-      Prisma.sql`${qualified ? Prisma.sql`r.owner_member_id` : Prisma.sql`owner_member_id`} = ${query.ownerMemberId}::uuid`,
-    );
-  }
   if (query.inPublicPool !== undefined) {
     parts.push(
       Prisma.sql`${qualified ? Prisma.sql`r.in_public_pool` : Prisma.sql`in_public_pool`} = ${query.inPublicPool}`,

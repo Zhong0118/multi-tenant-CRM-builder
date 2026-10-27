@@ -1,3 +1,4 @@
+import { recordOwnerFilter } from '../objects/record-read-scope';
 import type { Prisma } from '@crm/database';
 
 import { initialPoolPlacement } from '../records/record-pool-placement';
@@ -537,10 +538,11 @@ export async function executeActions(
             objectId: resolvedObject.schema.object.id,
             recordId: target.recordId,
             expectedRole: context.role,
-            requiredOwnerMemberId:
-              access.readScope === 'OWN' || access.updateScope === 'OWN'
-                ? context.memberId
-                : undefined,
+            requiredOwnerMemberId: recordOwnerFilter(
+              access,
+              context.memberId,
+              true,
+            ),
           };
           const title = normalizeFollowUpTitle(
             resolveField('title', () =>

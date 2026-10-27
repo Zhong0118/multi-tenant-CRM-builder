@@ -433,8 +433,10 @@ class PrismaObjectsStore implements ObjectsStore {
             canRead: employee.canRead,
             canUpdate: employee.canUpdate,
             canDelete: false,
-            readScope: employee.readScope,
-            updateScope: employee.updateScope,
+            readScope:
+              employee.readScope === 'GROUP' ? 'NONE' : employee.readScope,
+            updateScope:
+              employee.updateScope === 'GROUP' ? 'NONE' : employee.updateScope,
             fields: Object.fromEntries(
               object.fields.map((field) => [
                 field.fieldKey,

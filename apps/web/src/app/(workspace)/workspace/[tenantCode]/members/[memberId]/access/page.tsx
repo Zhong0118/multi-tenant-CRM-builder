@@ -23,13 +23,13 @@ export default async function MemberAccessPage({
   if (workspace.role !== "TENANT_ADMIN") notFound();
 
   const client = await createServerApiClient();
-  const [accessResult, memberResult] = await Promise.all([
+  const [accessResult, groupResult] = await Promise.all([
     client.GET(
       "/api/v1/workspaces/{tenantCode}/members/{memberId}/object-access",
       { params: { path: { tenantCode, memberId } } },
     ),
-    client.GET("/api/v1/workspaces/{tenantCode}/members", {
-      params: { path: { tenantCode }, query: { page: 1, limit: 100 } },
+    client.GET("/api/v1/workspaces/{tenantCode}/member-groups", {
+      params: { path: { tenantCode } },
     }),
   ]);
 
@@ -44,10 +44,18 @@ export default async function MemberAccessPage({
     throw Object.assign(new Error(apiError.message), apiError);
   }
 
-  const member = memberResult.data?.items.find(
+  if (!groupResult.data) {
+    const apiError = toApiError(groupResult.error, groupResult.response.status);
+    throw Object.assign(new Error(apiError.message), apiError);
+  }
+  const groups = groupResult.data;
+  const groupMember = groups.members.find(
     (candidate) => candidate.id === memberId,
   );
-  const memberName = member?.displayName ?? "该成员";
+  const ledGroup = groups.items.find(
+    (group) => group.leaderMemberId === memberId,
+  );
+  const memberName = groupMember?.displayName ?? "该成员";
 
   return (
     <Page width="settings">
@@ -60,6 +68,12 @@ export default async function MemberAccessPage({
         tenantCode={tenantCode}
         memberId={memberId}
         memberName={memberName}
+        isGroupLeader={Boolean(
+          ledGroup &&
+          groupMember?.status === "ACTIVE" &&
+          groupMember.role === "EMPLOYEE",
+        )}
+        groupName={ledGroup?.name}
         initialRows={accessResult.data as MemberObjectAccessRow[]}
       />
     </Page>

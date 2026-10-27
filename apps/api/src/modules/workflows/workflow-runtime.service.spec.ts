@@ -1637,3 +1637,30 @@ describe('WorkflowRuntimeService read paths', () => {
     ]);
   });
 });
+
+describe('GROUP workflow reads', () => {
+  it('shows the teammate workflow with no actionable transitions for an OWN writer', async () => {
+    const { service, published } = fixture({
+      record: { ownerMemberId: 'teammate' },
+    });
+    published.record.memberOverride = {
+      canCreate: true,
+      canRead: true,
+      canUpdate: true,
+      canDelete: false,
+      readScope: 'GROUP',
+      updateScope: 'OWN',
+    };
+    published.record.groupOwnerMemberIds = [employee.memberId, 'teammate'];
+    const view = await service.get(employee, 'leads', 'record-1');
+    expect(view.currentState?.key).toBe('new');
+    expect(view.availableTransitions).toEqual([]);
+    published.record.groupOwnerMemberIds = [employee.memberId];
+    await expect(
+      service.get(employee, 'leads', 'record-1'),
+    ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+    await expect(
+      service.history(employee, 'leads', 'record-1', { page: 1, limit: 20 }),
+    ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+  });
+});

@@ -23,6 +23,7 @@ export const PUBLISHED_FIELD_TYPES = [
 export type PublishedFieldType = (typeof PUBLISHED_FIELD_TYPES)[number];
 export type PublishedFieldAccess = 'EDIT' | 'READ_ONLY' | 'HIDDEN';
 export type PublishedDataScope = 'ALL' | 'OWN' | 'NONE';
+export type MemberReadScope = PublishedDataScope | 'GROUP';
 
 export const SEARCHABLE_FIELD_TYPES = [
   'TEXT',

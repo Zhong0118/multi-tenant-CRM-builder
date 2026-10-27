@@ -282,6 +282,7 @@ export function RecordList({
   );
   const currentSelectedRowKeys = selectedRecords.map((item) => item.id);
   const owned = schema.scopes.read === "OWN";
+  const groupRead = schema.scopes.read === "GROUP";
   const showOwner = !owned && display.prefs.ownerVisible;
   const visibleColumns = resolveRecordColumnKeys(schema, columnFieldKeys)
     .map((fieldKey) =>
@@ -738,14 +739,18 @@ export function RecordList({
                 value={
                   poolConfig.lifecycleEnabled
                     ? (query.poolStage ?? "all")
-                    : (query.scope ?? (owned ? "mine" : "all"))
+                    : (query.scope ??
+                      (owned ? "mine" : groupRead ? "group" : "all"))
                 }
                 onChange={(value) => {
                   const view = String(value);
                   if (!poolConfig.lifecycleEnabled)
                     return apply({
                       ...query,
-                      scope: view as "mine" | "pool" | "all",
+                      scope:
+                        view === "group"
+                          ? undefined
+                          : (view as "mine" | "pool" | "all"),
                       poolStage: undefined,
                       page: 1,
                       ownerMemberId: undefined,
@@ -760,7 +765,9 @@ export function RecordList({
                     poolStage:
                       view === "all" ? undefined : (view as PoolStageFilter),
                     scope:
-                      privateStage && !canFilterByOwner ? "mine" : undefined,
+                      privateStage && !canFilterByOwner && !groupRead
+                        ? "mine"
+                        : undefined,
                     page: 1,
                     ownerMemberId: undefined,
                   });
@@ -814,6 +821,9 @@ export function RecordList({
                     : [
                         { value: "mine", label: "我的记录" },
                         { value: "pool", label: "公共池" },
+                        ...(groupRead
+                          ? [{ value: "group", label: "本组记录" }]
+                          : []),
                         ...(schema.scopes.read === "ALL"
                           ? [{ value: "all", label: "全部记录" }]
                           : []),
