@@ -43,6 +43,7 @@ export interface RuntimeObjectNavigation {
 }
 
 export interface RuntimeObjectSchema {
+  workflowEnabled?: boolean;
   publication: { number: number; publishedAt: string };
   object: {
     code: string;
@@ -230,6 +231,7 @@ function projectRuntimeSchema(
   });
   const visibleKeys = new Set(fields.map((field) => field.fieldKey));
   return {
+    workflowEnabled: schema.workflow !== undefined,
     publication: {
       number: schema.publication.number,
       publishedAt: schema.publication.publishedAt,

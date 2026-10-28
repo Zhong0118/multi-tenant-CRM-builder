@@ -60,10 +60,13 @@ export function RecordWorkflowPanel({
   const runtime = useQuery({
     queryKey: runtimeKey,
     queryFn: () => api.getRuntime(tenantCode, objectCode, recordId),
+    retry: (failureCount, error) =>
+      toApiError(error).code !== "WORKFLOW_NOT_PUBLISHED" && failureCount < 3,
   });
   const history = useQuery({
     queryKey: historyKey,
     queryFn: () => api.history(tenantCode, objectCode, recordId),
+    enabled: runtime.isSuccess && !runtime.isFetching,
   });
 
   const execute = useMutation({

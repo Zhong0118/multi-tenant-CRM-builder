@@ -55,6 +55,11 @@ function schemaResponse(overrides: Partial<SchemaResponse> = {}) {
 }
 
 describe("parseRuntimeObjectSchema", () => {
+  it.each([true, false, undefined])("preserves the published workflow capability (%s)", (workflowEnabled) => {
+    const response = { ...schemaResponse(), workflowEnabled };
+    expect(parseRuntimeObjectSchema(response)).toHaveProperty("workflowEnabled", workflowEnabled);
+  });
+
   it("accepts authorized GROUP reads while refusing GROUP writes", () => {
     expect(
       parseRuntimeObjectSchema(

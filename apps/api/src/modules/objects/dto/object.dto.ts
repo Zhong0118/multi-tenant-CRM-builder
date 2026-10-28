@@ -518,6 +518,7 @@ export class RecordOwnerMemberResponseDto {
 }
 
 export class PublishedObjectSchemaResponseDto {
+  @ApiPropertyOptional({ type: Boolean }) workflowEnabled?: boolean;
   @ApiProperty({ type: 'object', additionalProperties: true })
   publication!: object;
   @ApiProperty({ type: 'object', additionalProperties: true }) object!: object;

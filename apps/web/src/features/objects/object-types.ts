@@ -155,6 +155,7 @@ export const SELECT_OPTION_COLOR_LABELS: Record<SelectOptionColor, string> = {
 };
 
 export interface RuntimeObjectSchema {
+  workflowEnabled?: boolean;
   publication: { number: number; publishedAt: string };
   object: {
     code: string;
@@ -330,6 +331,10 @@ export function parseRuntimeObjectSchema(
       number: asInteger(publication.number, "publication.number"),
       publishedAt: asString(publication.publishedAt, "publication.publishedAt"),
     },
+    workflowEnabled:
+      response.workflowEnabled === undefined
+        ? undefined
+        : asBoolean(response.workflowEnabled, "workflowEnabled"),
     object: {
       code: asString(object.code, "object.code"),
       name: asString(object.name, "object.name"),

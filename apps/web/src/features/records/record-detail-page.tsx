@@ -613,7 +613,7 @@ export function RecordDetailPage({
 
         <aside className={styles.rail} aria-label="归属与流程">
           {ownership}
-          {!deleted && !poolPreview ? (
+          {!deleted && !poolPreview && schema.workflowEnabled !== false ? (
             <div className={styles.railCard} data-slot="workflow">
               <RecordWorkflowPanel
                 tenantCode={tenantCode}

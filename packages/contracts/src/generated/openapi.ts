@@ -3793,6 +3793,7 @@ export interface components {
       scopes: {
         [key: string]: unknown;
       };
+      workflowEnabled?: boolean;
     };
     PublishTemplateInitializationDto: {
       objects: components["schemas"]["TemplateInitializationExpectedObjectDto"][];

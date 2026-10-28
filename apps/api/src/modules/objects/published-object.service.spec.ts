@@ -308,6 +308,34 @@ describe('PublishedObjectService', () => {
     }
   });
 
+  it.each([false, true])(
+    'exposes only whether a workflow is published (%s)',
+    async (enabled) => {
+      const { service, repository } = fixture();
+      const configuration = schema({
+        code: 'leads',
+        name: '线索',
+        sortOrder: 10,
+      });
+      if (enabled) {
+        configuration.workflow = {
+          initialStateKey: 'new',
+          states: [
+            { key: 'new', label: '新建', sortOrder: 10, isTerminal: false },
+          ],
+          transitions: [],
+        };
+      }
+      repository.rows = [row(configuration)];
+      const { visibleSchema } = await service.resolveRuntimeSchema(
+        employee,
+        'leads',
+      );
+      expect(visibleSchema).toHaveProperty('workflowEnabled', enabled);
+      expect(visibleSchema).not.toHaveProperty('workflow');
+    },
+  );
+
   it('parses snapshots without workflow and snapshots that include one', () => {
     const base = schema({ code: 'leads', name: '销售线索', sortOrder: 10 });
     expect(parsePublishedObjectSchema(base).workflow).toBeUndefined();

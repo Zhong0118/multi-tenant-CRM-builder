@@ -5365,6 +5365,9 @@
           "scopes": {
             "additionalProperties": true,
             "type": "object"
+          },
+          "workflowEnabled": {
+            "type": "boolean"
           }
         },
         "required": [
