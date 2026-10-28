@@ -213,6 +213,201 @@ describe('GROUP read boundaries over HTTP', () => {
     expect(row.version).toBe(f.otherRecord.version);
   });
 
+  describe('GROUP pool protection', () => {
+    afterEach(async () => {
+      if (!f) return;
+      await h.adminDatabase
+        .$executeRaw`DELETE FROM record_relations WHERE tenant_id = ${f.tenantA.id}::uuid`;
+      await h.adminDatabase.memberFieldPermission.deleteMany({
+        where: { tenantId: f.tenantA.id },
+      });
+    });
+    const permissionWhere = () => ({
+      tenantId: f.tenantA.id,
+      objectId: f.object.id,
+      subjectMemberId: f.employee.memberId,
+    });
+    const protectionAccess = async (actor: CriticalActor = f.employee) =>
+      h.runtimeDatabase.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT set_config('app.tenant_id', ${f.tenantA.id}, true), set_config('app.user_id', ${actor.userId}, true)`;
+        const rows = await tx.$queryRaw<
+          Array<{ id: string; allowed: boolean }>
+        >`
+          SELECT r.id, public.record_pool_can_protect(r) AS allowed
+          FROM public.records r WHERE r.tenant_id = ${f.tenantA.id}::uuid
+            AND r.id IN (${f.ownedRecord.id}::uuid, ${f.otherRecord.id}::uuid,
+              ${outsideId}::uuid, ${unassignedId}::uuid)`;
+        const byId = new Map(rows.map((row) => [row.id, row.allowed]));
+        return [
+          f.ownedRecord.id,
+          f.otherRecord.id,
+          outsideId,
+          unassignedId,
+        ].map((id) => byId.get(id));
+      });
+
+    it('protects an owned customer when a GROUP reader links qualifying evidence', async () => {
+      await h.adminDatabase.record.update({
+        where: { id: f.workflowRecord.id },
+        data: { statusKey: 'qualified' },
+      });
+      await h.adminDatabase.objectDefinition.update({
+        where: { id: f.object.id },
+        data: {
+          poolEnabled: true,
+          poolLifecycleEnabled: true,
+          poolProtectionRules: [
+            { sourceObjectCode: f.object.code, statusKeys: ['qualified'] },
+          ],
+        },
+      });
+      await request(h.app.getHttpServer())
+        .post(`${records()}/${f.ownedRecord.id}/relations`)
+        .set('Cookie', f.employee.cookie)
+        .set('Origin', origin)
+        .send({ objectCode: f.object.code, recordId: f.workflowRecord.id })
+        .expect(201);
+      const protectedRecord = await h.adminDatabase.record.findUniqueOrThrow({
+        where: { id: f.ownedRecord.id },
+      });
+      expect(protectedRecord).toMatchObject({
+        poolStage: 'PROTECTED',
+        ownershipExpiresAt: null,
+        ownerMemberId: f.employee.memberId,
+      });
+      expect(protectedRecord.poolProtectedAt).toBeInstanceOf(Date);
+    });
+
+    it.each([
+      ['OWN', [true, false, false, false]],
+      ['ALL', [true, true, false, false]],
+      ['NONE', [false, false, false, false]],
+    ] as const)(
+      'intersects GROUP reads with %s writes in the database guard',
+      async (updateScope, expected) => {
+        await h.adminDatabase.objectPermission.updateMany({
+          where: permissionWhere(),
+          data: { updateScope },
+        });
+        expect(await protectionAccess()).toEqual(expected);
+      },
+    );
+
+    it.each(['replaced', 'outside own group'] as const)(
+      'falls back to OWN protection when the stored leader is %s',
+      async (kind) => {
+        await h.adminDatabase.objectPermission.updateMany({
+          where: permissionWhere(),
+          data: { updateScope: 'ALL' },
+        });
+        if (kind === 'replaced')
+          await h.adminDatabase.memberGroup.update({
+            where: { id: groupId },
+            data: { leaderMemberId: f.otherEmployee.memberId },
+          });
+        else
+          await h.adminDatabase.tenantMember.update({
+            where: { id: f.employee.memberId },
+            data: { groupId: null },
+          });
+        expect(await protectionAccess()).toEqual([true, false, false, false]);
+      },
+    );
+
+    it.each(['member', 'account'] as const)(
+      'denies protection when the acting %s is disabled',
+      async (kind) => {
+        if (kind === 'member')
+          await h.adminDatabase.tenantMember.update({
+            where: { id: f.employee.memberId },
+            data: { status: 'DISABLED' },
+          });
+        else
+          await h.adminDatabase.user.update({
+            where: { id: f.employee.userId },
+            data: { status: 'DISABLED' },
+          });
+        expect(await protectionAccess()).toEqual([false, false, false, false]);
+      },
+    );
+
+    it.each(['canRead', 'canUpdate'] as const)(
+      'does not let GROUP bypass %s=false',
+      async (permission) => {
+        await h.adminDatabase.objectPermission.updateMany({
+          where: permissionWhere(),
+          data: { updateScope: 'ALL', [permission]: false },
+        });
+        expect(await protectionAccess()).toEqual([false, false, false, false]);
+      },
+    );
+
+    it.each(['member', 'account'] as const)(
+      'preserves explicit ALL writes to records of a disabled group owner %s',
+      async (kind) => {
+        await h.adminDatabase.objectPermission.updateMany({
+          where: permissionWhere(),
+          data: { updateScope: 'ALL' },
+        });
+        if (kind === 'member')
+          await h.adminDatabase.tenantMember.update({
+            where: { id: f.otherEmployee.memberId },
+            data: { status: 'DISABLED' },
+          });
+        else
+          await h.adminDatabase.user.update({
+            where: { id: f.otherEmployee.userId },
+            data: { status: 'DISABLED' },
+          });
+        expect(await protectionAccess()).toEqual([true, true, false, false]);
+      },
+    );
+
+    it('revokes protection of a moved owner immediately', async () => {
+      await h.adminDatabase.objectPermission.updateMany({
+        where: permissionWhere(),
+        data: { updateScope: 'ALL' },
+      });
+      expect(await protectionAccess()).toEqual([true, true, false, false]);
+      await h.adminDatabase.tenantMember.update({
+        where: { id: f.otherEmployee.memberId },
+        data: { groupId: null },
+      });
+      expect(await protectionAccess()).toEqual([true, false, false, false]);
+    });
+
+    it('denies protection when the title is hidden', async () => {
+      const title = await h.adminDatabase.fieldDefinition.create({
+        data: {
+          tenantId: f.tenantA.id,
+          objectId: f.object.id,
+          fieldKey: 'name',
+          label: '姓名',
+          type: 'TEXT',
+        },
+      });
+      await h.adminDatabase.memberFieldPermission.create({
+        data: {
+          tenantId: f.tenantA.id,
+          objectId: f.object.id,
+          fieldId: title.id,
+          memberId: f.employee.memberId,
+          access: 'HIDDEN',
+        },
+      });
+      expect(await protectionAccess()).toEqual([false, false, false, false]);
+    });
+
+    it('rejects an actor from another tenant even with the target tenant context', async () => {
+      expect(await protectionAccess(f.tenantBAdmin)).toEqual([
+        false,
+        false,
+        false,
+        false,
+      ]);
+    });
+  });
+
   it('removes moved members immediately and restores visibility when moved back', async () => {
     await get(`${records()}/${f.otherRecord.id}`).expect(200);
     await h.adminDatabase.tenantMember.update({

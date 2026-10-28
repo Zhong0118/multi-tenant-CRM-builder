@@ -156,6 +156,11 @@ export class RuntimeAutomationsDto {
   items!: RuntimeAutomationDto[];
 }
 export class AutomationPreviewDto {
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: { type: 'string' },
+  })
+  valueLabels?: Record<string, string>;
   @ApiProperty({ type: 'object', additionalProperties: { type: 'string' } })
   fieldLabels!: Record<string, string>;
   @ApiProperty() ruleKey!: string;

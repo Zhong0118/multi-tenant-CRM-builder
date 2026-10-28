@@ -2,6 +2,18 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
+test("automation preview choice labels are an optional string map", async () => {
+  const document = JSON.parse(
+    await readFile(new URL("./openapi.json", import.meta.url), "utf8"),
+  );
+  const schema = document.components.schemas.AutomationPreviewDto;
+  assert.deepEqual(schema.properties.valueLabels, {
+    additionalProperties: { type: "string" },
+    type: "object",
+  });
+  assert.ok(!schema.required.includes("valueLabels"));
+});
+
 test("contains the first account and workspace routes", async () => {
   const document = JSON.parse(
     await readFile(new URL("./openapi.json", import.meta.url), "utf8"),

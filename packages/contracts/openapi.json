@@ -466,6 +466,12 @@
           "targetObjectName": {
             "type": "string"
           },
+          "valueLabels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
           "values": {
             "additionalProperties": true,
             "type": "object"

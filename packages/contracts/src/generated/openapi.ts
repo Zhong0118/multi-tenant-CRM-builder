@@ -2168,6 +2168,9 @@ export interface components {
       sourceRecordId: string;
       targetObjectCode: string;
       targetObjectName: string;
+      valueLabels?: {
+        [key: string]: string;
+      };
       values: {
         [key: string]: unknown;
       };

@@ -26,6 +26,7 @@ import {
   type RecordRequestMeta,
 } from '../records/record-command';
 import { projectVisibleValues } from '../records/record-value-engine';
+import { formatExportValue } from '../records/record-export';
 import type {
   DynamicRecord,
   RecordsStore,
@@ -175,15 +176,28 @@ export async function previewAutomation(
     target.access,
     normalized.values,
   );
+  const visibleFields = target.schema.fields.filter((field) =>
+    Object.hasOwn(visibleValues, field.fieldKey),
+  );
   return {
     ruleKey: rule.key,
     targetObjectCode: target.schema.object.code,
     targetObjectName: target.schema.object.name,
     values: visibleValues,
     fieldLabels: Object.fromEntries(
-      target.schema.fields
-        .filter((field) => Object.hasOwn(visibleValues, field.fieldKey))
-        .map((field) => [field.fieldKey, field.label]),
+      visibleFields.map((field) => [field.fieldKey, field.label]),
+    ),
+    valueLabels: Object.fromEntries(
+      visibleFields
+        .filter(
+          (field) =>
+            ['SINGLE_SELECT', 'MULTI_SELECT'].includes(field.type) &&
+            visibleValues[field.fieldKey] != null,
+        )
+        .map((field) => [
+          field.fieldKey,
+          formatExportValue(field, visibleValues[field.fieldKey], new Map()),
+        ]),
     ),
     ownerMemberId,
     sourceRecordId: source.id,
