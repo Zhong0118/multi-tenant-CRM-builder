@@ -8,7 +8,7 @@
 
 PR #66 的 Critical API E2E 在 c5a5dea 失败：member-group-access 的测试安全检查要求库名包含 test，CI 使用 crm，导致该文件 15 项测试在 beforeAll 失败。该检查用于避免误删正常库，应保留。
 
-CI 现在创建 crm_api_test，迁移和测试的管理员/运行时 URL 都指向该库。没有放宽安全检查，也没有改变其他任务或开发默认数据库。
+CI 现在创建 crm_api_test_1，迁移和测试的管理员/运行时 URL 都指向该库。同时满足分组测试的 test 标记要求和模板测试的 crm_*_test_数字 格式。首次远端复跑暴露模板测试的更严格命名约束后，已统一库名；没有放宽安全检查，也没有改变其他任务或开发默认数据库。
 
 ### 未启用工作流的无效请求
 
@@ -65,7 +65,7 @@ CI 现在创建 crm_api_test，迁移和测试的管理员/运行时 URL 都指�
 
 - API 单测：114 suites，1,695 项通过；3 项 Redis 集成默认跳过。上一轮隔离 Redis 复核的 3 项已通过，本次未重复运行。
 - Web 完整单测：132 files，1,212 项通过；随后补充缓存成功→撤下流程场景，最终相关回归 5 files / 59 项通过；架构测试 3 项通过。
-- HTTP + PostgreSQL：6 suites，70 项通过；使用 crm_safety_test_20261028，不使用公司或其他 agent 的数据库。
+- HTTP + PostgreSQL：6 suites，70 项通过；先使用 crm_safety_test_20261028，随后新建空库 crm_api_test_1 并以 CI=true 再次验证 70 项全通过；不使用公司或其他 agent 的数据库。
 - API、Web typecheck 通过；API 生产源码 lint 无错误/警告；Web lint 无错误，保留 dashboard-builder.tsx 的 1 条既有导航警告。
 - Monorepo build 通过；运行时 schema 和 OpenAPI 同步更新。
 - API 测试代码自身的历史 lint 待独立处理，本次没有扩展清理范围。
