@@ -1,3 +1,8 @@
+import {
+  recordOwnerFilter,
+  recordOwnerMatches,
+  type RecordOwnerFilter,
+} from '../objects/record-read-scope';
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
@@ -46,11 +51,8 @@ function requireUpdatable(resolved: ResolvedObjectSchema): void {
 function ownerFor(
   resolved: ResolvedObjectSchema,
   context: TenantContext,
-): string | null {
-  return resolved.access.readScope === 'OWN' ||
-    resolved.access.updateScope === 'OWN'
-    ? context.memberId
-    : null;
+): RecordOwnerFilter | null {
+  return recordOwnerFilter(resolved.access, context.memberId, true) ?? null;
 }
 async function lockActor(tx: Tx, context: TenantContext): Promise<void> {
   const members = await tx.$queryRaw<
@@ -130,7 +132,7 @@ export class AiProposalService {
         conversationId: await this.conversationForTurn(context, turnId),
         operationType: candidate.operationType,
         requestText: requestText.slice(0, 4000),
-        proposal: candidate as Prisma.InputJsonObject,
+        proposal: candidate,
         targetRef: {
           objectCode: candidate.objectCode,
           recordId: candidate.recordId,
@@ -188,7 +190,7 @@ export class AiProposalService {
             conversationId: turn.conversationId,
             operationType: candidate.operationType,
             requestText: requestText.slice(0, 4000),
-            proposal: candidate as Prisma.InputJsonObject,
+            proposal: candidate,
             targetRef: {
               objectCode: candidate.objectCode,
               recordId: candidate.recordId,
@@ -227,7 +229,10 @@ export class AiProposalService {
     });
     if (
       !record ||
-      (ownerFor(resolved, context) && record.ownerMemberId !== context.memberId)
+      !recordOwnerMatches(
+        ownerFor(resolved, context) ?? undefined,
+        record.ownerMemberId,
+      )
     )
       throw new ApiException('RECORD_NOT_FOUND', 404);
     const display: StoredAiProposalDisplay = {
@@ -401,7 +406,10 @@ export class AiProposalService {
           });
           if (
             !record ||
-            (ownerMemberId && record.ownerMemberId !== context.memberId)
+            !recordOwnerMatches(
+              ownerMemberId ?? undefined,
+              record.ownerMemberId,
+            )
           )
             throw new ApiException('RECORD_NOT_FOUND', 404);
           if (record.version !== row.expectedVersion)

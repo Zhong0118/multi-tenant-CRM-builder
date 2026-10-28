@@ -49,6 +49,7 @@ export interface AutomationPreview {
   targetObjectName: string;
   values: Record<string, unknown>;
   fieldLabels?: Record<string, string>;
+  valueLabels?: Record<string, string>;
   ownerMemberId: string;
   sourceRecordId: string;
 }

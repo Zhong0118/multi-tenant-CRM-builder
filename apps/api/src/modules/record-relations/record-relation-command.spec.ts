@@ -289,7 +289,7 @@ describe('createRecordRelationCommand', () => {
       /^SELECT id FROM records/.test(call.sql),
     );
     // Target is locked first because its id sorts lower.
-    expect(targetLock.values).toContain(context.memberId);
+    expect(targetLock.values).toContainEqual([context.memberId]);
     // The source keeps readScope ALL, so its owner arm is NULL.
     expect(sourceLock.values).toContain(null);
     expect(fixture.recordReads.map((row) => row.id)).toEqual([

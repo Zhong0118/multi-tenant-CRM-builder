@@ -110,6 +110,70 @@ function buttonByText(label: string): HTMLElement {
 }
 
 describe("MemberTable", () => {
+  it("combines group filtering with search and resets pagination and selection", async () => {
+    const api = memberApi();
+    const navigate = vi.fn();
+    vi.mocked(api.listMembers).mockResolvedValue({
+      ...initialMemberPage,
+      items: [members[1]],
+      total: 1,
+    });
+    renderWithQuery(
+      <MemberTable
+        tenantCode="northwind"
+        viewerRole="TENANT_ADMIN"
+        viewerMemberId="member-admin"
+        initialFilters={{ q: "林", role: "EMPLOYEE", status: "ACTIVE" }}
+        initialMemberPage={{
+          ...initialMemberPage,
+          page: 2,
+          total: 40,
+          items: [
+            {
+              ...members[1],
+              groupId: "group-a",
+              groupName: "销售一组",
+              isGroupLeader: true,
+            },
+          ],
+        }}
+        initialInvitationPage={{ items: [] }}
+        groups={[
+          {
+            id: "group-a",
+            name: "销售一组",
+            version: 1,
+            leaderMemberId: members[1].id,
+            memberIds: [members[1].id],
+          },
+        ]}
+        api={api}
+        navigate={navigate}
+      />,
+    );
+    expect(screen.getByText("组长")).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("选择 林员工"));
+    expect(screen.getByText("已选 1 人")).toBeInTheDocument();
+    fireEvent.mouseDown(screen.getByLabelText("小组筛选"));
+    fireEvent.click(
+      screen.getByText("销售一组", {
+        selector: ".ant-select-item-option-content",
+      }),
+    );
+    await waitFor(() =>
+      expect(api.listMembers).toHaveBeenCalledWith("northwind", 1, 20, {
+        q: "林",
+        role: "EMPLOYEE",
+        status: "ACTIVE",
+        groupId: "group-a",
+      }),
+    );
+    expect(screen.queryByText("已选 1 人")).not.toBeInTheDocument();
+    expect(navigate).toHaveBeenLastCalledWith(
+      "/workspace/northwind/members?page=1&q=%E6%9E%97&role=EMPLOYEE&status=ACTIVE&groupId=group-a",
+    );
+  });
+
   it("shows a no-access result to employees", () => {
     renderWithQuery(
       <MemberTable

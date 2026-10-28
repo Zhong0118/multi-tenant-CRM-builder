@@ -43,10 +43,12 @@ export function PreviewValues({
                 key}
             </dt>
             <dd>
-              {automationValueLabel(
-                value,
-                target?.fields.find((field) => field.fieldKey === key),
-              )}
+              {preview.valueLabels && Object.hasOwn(preview.valueLabels, key)
+                ? preview.valueLabels[key]
+                : automationValueLabel(
+                    value,
+                    target?.fields.find((field) => field.fieldKey === key),
+                  )}
             </dd>
           </div>
         ))}

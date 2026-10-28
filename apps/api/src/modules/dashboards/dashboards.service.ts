@@ -185,8 +185,7 @@ export class DashboardsService {
       ]);
     return {
       timezone,
-      dashboard:
-        dashboards.find((item) => item.code === dashboardCode) ?? null,
+      dashboard: dashboards.find((item) => item.code === dashboardCode) ?? null,
       dashboards,
       draft,
       activePublication: activePublication

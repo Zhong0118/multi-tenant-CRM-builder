@@ -148,7 +148,11 @@ class MemoryRecordsStore {
       (record) =>
         record.objectId === query.objectId &&
         record.deletedAt === null &&
-        (!query.ownerMemberId || record.ownerMemberId === query.ownerMemberId),
+        (query.ownerMemberId === undefined ||
+          (typeof query.ownerMemberId === 'object' &&
+          query.ownerMemberId !== null
+            ? query.ownerMemberId.in.includes(record.ownerMemberId ?? '')
+            : record.ownerMemberId === query.ownerMemberId)),
     );
     return Promise.resolve({
       items: structuredClone(filtered),

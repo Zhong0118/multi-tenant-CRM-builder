@@ -1044,6 +1044,38 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/member-groups": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["MemberGroupsController_list"];
+    put?: never;
+    post: operations["MemberGroupsController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/member-groups/{groupId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations["MemberGroupsController_delete"];
+    options?: never;
+    head?: never;
+    patch: operations["MemberGroupsController_update"];
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/members": {
     parameters: {
       query?: never;
@@ -2136,6 +2168,9 @@ export interface components {
       sourceRecordId: string;
       targetObjectCode: string;
       targetObjectName: string;
+      valueLabels?: {
+        [key: string]: string;
+      };
       values: {
         [key: string]: unknown;
       };
@@ -2537,6 +2572,12 @@ export interface components {
       phone: string;
       /** @enum {string} */
       role: "TENANT_ADMIN" | "EMPLOYEE";
+    };
+    CreateMemberGroupDto: {
+      /** Format: uuid */
+      leaderMemberId: string | null;
+      memberIds: string[];
+      name: string;
     };
     CreateObjectDefinitionDto: {
       /** @example leads */
@@ -2943,6 +2984,12 @@ export interface components {
       /** @enum {string} */
       field: "updatedAt" | "createdAt" | "recordNo";
     };
+    DeleteMemberGroupDto: {
+      expectedVersion: number;
+    };
+    DeleteMemberGroupResponseDto: {
+      ok: boolean;
+    };
     DeleteObjectDraftResponseDto: {
       /** @enum {boolean} */
       deleted: true;
@@ -3099,6 +3146,17 @@ export interface components {
       /** @example 13800138000 */
       phone: string;
     };
+    GroupMemberOptionDto: {
+      displayName: string;
+      /** Format: uuid */
+      groupId: string | null;
+      /** Format: uuid */
+      id: string;
+      /** @enum {string} */
+      role: "TENANT_ADMIN" | "EMPLOYEE";
+      /** @enum {string} */
+      status: "ACTIVE" | "DISABLED";
+    };
     ImportRecordRowDto: {
       /** @description CSV 行号，表头为第 1 行。 */
       rowNumber: number;
@@ -3209,6 +3267,19 @@ export interface components {
       /** @enum {string|null} */
       override: "EDIT" | "READ_ONLY" | "HIDDEN" | null;
     };
+    MemberGroupDto: {
+      /** Format: uuid */
+      id: string;
+      /** Format: uuid */
+      leaderMemberId: string | null;
+      memberIds: string[];
+      name: string;
+      version: number;
+    };
+    MemberGroupListDto: {
+      items: components["schemas"]["MemberGroupDto"][];
+      members: components["schemas"]["GroupMemberOptionDto"][];
+    };
     MemberObjectAccessDto: {
       canCreate?: boolean;
       canRead?: boolean;
@@ -3216,7 +3287,7 @@ export interface components {
       /** @enum {string} */
       mode: "INHERIT" | "OVERRIDE";
       /** @enum {string} */
-      readScope?: "ALL" | "OWN" | "NONE";
+      readScope?: "ALL" | "OWN" | "NONE" | "GROUP";
       /** @enum {string} */
       updateScope?: "ALL" | "OWN" | "NONE";
     };
@@ -3239,7 +3310,7 @@ export interface components {
       canRead: boolean;
       canUpdate: boolean;
       /** @enum {string} */
-      readScope: "ALL" | "OWN" | "NONE";
+      readScope: "ALL" | "OWN" | "NONE" | "GROUP";
       /** @enum {string} */
       updateScope: "ALL" | "OWN" | "NONE";
     };
@@ -3589,7 +3660,7 @@ export interface components {
       canRead: boolean;
       canUpdate: boolean;
       /** @enum {string} */
-      readScope: "ALL" | "OWN" | "NONE";
+      readScope: "ALL" | "OWN" | "GROUP" | "NONE";
       /** @enum {string} */
       updateScope: "ALL" | "OWN" | "NONE";
     };
@@ -3718,12 +3789,14 @@ export interface components {
       object: {
         [key: string]: unknown;
       };
+      ownerMembers?: components["schemas"]["RecordOwnerMemberResponseDto"][];
       publication: {
         [key: string]: unknown;
       };
       scopes: {
         [key: string]: unknown;
       };
+      workflowEnabled?: boolean;
     };
     PublishTemplateInitializationDto: {
       objects: components["schemas"]["TemplateInitializationExpectedObjectDto"][];
@@ -3795,6 +3868,13 @@ export interface components {
       rowNumber: number;
       /** @enum {string} */
       status: "READY" | "CREATED" | "SKIPPED" | "FAILED";
+    };
+    RecordOwnerMemberResponseDto: {
+      displayName: string;
+      /** Format: uuid */
+      id: string;
+      /** @enum {string} */
+      status: "ACTIVE" | "DISABLED";
     };
     RecordOwnershipDto: {
       /** @enum {string} */
@@ -4052,7 +4132,11 @@ export interface components {
         | "YELLOW"
         | "ORANGE"
         | "RED"
-        | "PURPLE";
+        | "PURPLE"
+        | "PINK"
+        | "INDIGO"
+        | "TEAL"
+        | "BROWN";
       key: string;
       label: string;
       /**
@@ -4515,7 +4599,11 @@ export interface components {
     TenantMemberResponseDto: {
       displayName?: string;
       /** Format: uuid */
+      groupId?: string | null;
+      groupName?: string | null;
+      /** Format: uuid */
       id: string;
+      isGroupLeader?: boolean;
       /** @example +8613800138000 */
       phone?: string;
       /** @enum {string} */
@@ -4610,6 +4698,13 @@ export interface components {
       /** @enum {string} */
       status?: "DONE" | "CANCELLED";
       version: number;
+    };
+    UpdateMemberGroupDto: {
+      expectedVersion: number;
+      /** Format: uuid */
+      leaderMemberId: string | null;
+      memberIds: string[];
+      name: string;
     };
     UpdateObjectDefinitionDto: {
       code?: string;
@@ -6570,9 +6665,109 @@ export interface operations {
       };
     };
   };
+  MemberGroupsController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MemberGroupListDto"];
+        };
+      };
+    };
+  };
+  MemberGroupsController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateMemberGroupDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MemberGroupDto"];
+        };
+      };
+    };
+  };
+  MemberGroupsController_delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        groupId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["DeleteMemberGroupDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DeleteMemberGroupResponseDto"];
+        };
+      };
+    };
+  };
+  MemberGroupsController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        groupId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateMemberGroupDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MemberGroupDto"];
+        };
+      };
+    };
+  };
   MembershipsController_members: {
     parameters: {
       query?: {
+        /** @description 小组 ID，NONE 表示未分组 */
+        groupId?: string;
         limit?: number;
         page?: number;
         /** @description 按成员展示姓名或手机号搜索 */

@@ -284,7 +284,7 @@ export function RecordDetailDrawer({
             </div>
           </section>
 
-          {!poolPreview ? <RecordWorkflowPanel
+          {!poolPreview && schema.workflowEnabled !== false ? <RecordWorkflowPanel
             tenantCode={tenantCode}
             objectCode={schema.object.code}
             recordId={record.id}

@@ -1,3 +1,7 @@
+import {
+  recordOwnerFilter,
+  type RecordOwnerFilter,
+} from '../objects/record-read-scope';
 import { Inject, Injectable } from '@nestjs/common';
 
 import { initialPoolPlacement } from './record-pool-placement';
@@ -1433,7 +1437,7 @@ async function resolveListOwner(
   store: RecordsStore,
   requested: string | undefined,
   scope?: 'mine' | 'pool' | 'all',
-): Promise<string | null | undefined> {
+): Promise<RecordOwnerFilter | null | undefined> {
   if (scope !== undefined && !['mine', 'pool', 'all'].includes(scope))
     throw new ApiException('VALIDATION_FAILED', 400);
   if (scope === 'pool') {
@@ -1448,7 +1452,11 @@ async function resolveListOwner(
   if (scope === 'all' && resolved.access.readScope !== 'ALL')
     throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
   if (scope === 'mine') return context.memberId;
-  if (resolved.access.readScope === 'OWN') return context.memberId;
+  if (
+    resolved.access.readScope === 'OWN' ||
+    resolved.access.readScope === 'GROUP'
+  )
+    return recordOwnerFilter(resolved.access, context.memberId);
   if (resolved.access.readScope === 'NONE') {
     throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
   }

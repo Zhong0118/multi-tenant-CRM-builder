@@ -1021,6 +1021,93 @@ describe('ObjectsService', () => {
     );
   });
 
+  it('keeps new option colors in the draft until publication and preserves older snapshots', async () => {
+    const { service } = fixture();
+    let draft = await createPublishableDraft(service);
+    const newOptions = ['PINK', 'INDIGO', 'TEAL', 'BROWN'].map((color) => ({
+      key: color.toLowerCase(),
+      label: color,
+      color,
+    }));
+    const originalOptions = newOptions.map((option) => ({
+      ...option,
+      color: 'BLUE' as const,
+    }));
+    draft = await service.createField(
+      admin,
+      draft.object.id,
+      {
+        expectedVersion: draft.object.version,
+        fieldKey: 'tags',
+        label: '客户标签',
+        type: 'MULTI_SELECT',
+        required: false,
+        defaultValue: null,
+        validation: {},
+        config: { options: originalOptions },
+        isSystem: false,
+      },
+      meta,
+    );
+    const fieldId = draft.fields.find((field) => field.fieldKey === 'tags')!.id;
+    draft = await service.updatePermissions(
+      admin,
+      draft.object.id,
+      {
+        expectedVersion: draft.object.version,
+        canCreate: true,
+        canRead: true,
+        canUpdate: true,
+        canDelete: false,
+        readScope: 'ALL',
+        updateScope: 'OWN',
+        fields: { name: 'EDIT', tags: 'EDIT' },
+      },
+      meta,
+    );
+    await service.publish(
+      admin,
+      draft.object.id,
+      { expectedVersion: draft.object.version },
+      meta,
+    );
+
+    draft = await service.updateField(
+      admin,
+      draft.object.id,
+      fieldId,
+      {
+        expectedVersion: draft.object.version,
+        config: { options: newOptions },
+      },
+      meta,
+    );
+    expect(
+      draft.fields.find((field) => field.id === fieldId)?.config.options,
+    ).toEqual(newOptions);
+    expect(
+      draft.activeSchema!.fields.find((field) => field.id === fieldId)?.config
+        .options,
+    ).toEqual(originalOptions);
+
+    await service.publish(
+      admin,
+      draft.object.id,
+      { expectedVersion: draft.object.version },
+      meta,
+    );
+    const published = await service.detail(admin, draft.object.id);
+    expect(
+      published.activeSchema!.fields.find((field) => field.id === fieldId)
+        ?.config.options,
+    ).toEqual(newOptions);
+    const history = await service.listPublications(admin, draft.object.id);
+    expect(
+      history[1].configuration.fields.find((field) => field.id === fieldId)
+        ?.config.options,
+    ).toEqual(originalOptions);
+  });
+
   it('locks and reloads the draft before publication analysis', async () => {
     const { service, store } = fixture();
     const draft = await createPublishableDraft(service);
@@ -1066,7 +1153,7 @@ describe('ObjectsService', () => {
     ).rejects.toMatchObject({
       code: 'VALIDATION_FAILED',
       status: 400,
-      fieldErrors: { readScope: expect.any(Array) },
+      fieldErrors: { readScope: expect.any(Array) as unknown },
     });
   });
 

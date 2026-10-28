@@ -12,6 +12,7 @@ import {
   createRecordActivityCommand,
   prepareSourceRecordPatch,
   updateRecordCommand,
+  requireVisibleRecord,
 } from './record-command';
 import type { DynamicRecord, RecordsStore } from './records.repository';
 
@@ -1168,5 +1169,60 @@ describe('shared ordinary, batch and AI automation seam', () => {
       }),
     ).rejects.toThrow('target required value missing');
     expect(snapshots).toEqual({ before: '原始线索', after: 'new' });
+  });
+});
+
+describe('GROUP record boundaries', () => {
+  const group = () =>
+    resolved({
+      access: access({
+        readScope: 'GROUP',
+        groupOwnerMemberIds: [employee.memberId, activeMemberId],
+        updateScope: 'OWN',
+      }),
+    });
+  it.each([admin.memberId, null])(
+    'denies another group or an unassigned record (%s)',
+    async (ownerMemberId) => {
+      const store = new MemoryStore();
+      await seed(store, { ownerMemberId });
+      await expect(
+        requireVisibleRecord(store, group(), employee, 'record-seed', 'READ'),
+      ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+    },
+  );
+  it('shows a current teammate but does not grant updates', async () => {
+    const store = new MemoryStore();
+    await seed(store, { ownerMemberId: activeMemberId });
+    await expect(
+      requireVisibleRecord(store, group(), employee, 'record-seed', 'READ'),
+    ).resolves.toMatchObject({ ownerMemberId: activeMemberId });
+    await expect(
+      requireVisibleRecord(store, group(), employee, 'record-seed', 'UPDATE'),
+    ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+  });
+  it('applies the read boundary even with an existing ALL update permission', async () => {
+    const store = new MemoryStore();
+    await seed(store, { ownerMemberId: admin.memberId });
+    const resolution = group();
+    resolution.access.updateScope = 'ALL';
+    await expect(
+      requireVisibleRecord(
+        store,
+        resolution,
+        employee,
+        'record-seed',
+        'UPDATE',
+      ),
+    ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+  });
+  it('denies every private record for an empty team owner set', async () => {
+    const store = new MemoryStore();
+    await seed(store, { ownerMemberId: employee.memberId });
+    const resolution = group();
+    resolution.access.groupOwnerMemberIds = [];
+    await expect(
+      requireVisibleRecord(store, resolution, employee, 'record-seed', 'READ'),
+    ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
   });
 });

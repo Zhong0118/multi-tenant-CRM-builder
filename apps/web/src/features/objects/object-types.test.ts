@@ -55,6 +55,24 @@ function schemaResponse(overrides: Partial<SchemaResponse> = {}) {
 }
 
 describe("parseRuntimeObjectSchema", () => {
+  it.each([true, false, undefined])("preserves the published workflow capability (%s)", (workflowEnabled) => {
+    const response = { ...schemaResponse(), workflowEnabled };
+    expect(parseRuntimeObjectSchema(response)).toHaveProperty("workflowEnabled", workflowEnabled);
+  });
+
+  it("accepts authorized GROUP reads while refusing GROUP writes", () => {
+    expect(
+      parseRuntimeObjectSchema(
+        schemaResponse({ scopes: { read: "GROUP", update: "OWN" } }),
+      ).scopes,
+    ).toEqual({ read: "GROUP", update: "OWN" });
+    expect(() =>
+      parseRuntimeObjectSchema(
+        schemaResponse({ scopes: { read: "OWN", update: "GROUP" } }),
+      ),
+    ).toThrow();
+  });
+
   it("narrows the loose contract response into typed runtime values", () => {
     const schema = parseRuntimeObjectSchema(schemaResponse());
 
@@ -113,6 +131,61 @@ describe("parseRuntimeObjectSchema", () => {
 });
 
 describe("selectOptions", () => {
+  it.each([
+    "GRAY",
+    "BLUE",
+    "CYAN",
+    "GREEN",
+    "YELLOW",
+    "ORANGE",
+    "RED",
+    "PURPLE",
+    "PINK",
+    "INDIGO",
+    "TEAL",
+    "BROWN",
+  ])("preserves published option color %s", (color) => {
+    const response = schemaResponse();
+    response.fields[0].type = "SINGLE_SELECT";
+    response.fields[0].config = {
+      options: [{ key: "saved", label: "已保存", color }],
+    };
+    const schema = parseRuntimeObjectSchema(response);
+
+    expect(selectOptions(schema.fields[0])).toEqual([
+      { key: "saved", label: "已保存", status: "ACTIVE", color },
+    ]);
+  });
+
+  it("keeps the legacy fallback cycle for missing or unknown colors", () => {
+    const field = {
+      config: {
+        options: Array.from({ length: 14 }, (_, index) => ({
+          key: `option_${index}`,
+          label: `选项 ${index}`,
+          ...(index % 2 === 0 ? {} : { color: "MAGENTA" }),
+        })),
+      },
+    } as unknown as PublishedFieldView;
+
+    expect(selectOptions(field).map((option) => option.color)).toEqual([
+      "BLUE",
+      "GREEN",
+      "ORANGE",
+      "PURPLE",
+      "CYAN",
+      "YELLOW",
+      "RED",
+      "BLUE",
+      "GREEN",
+      "ORANGE",
+      "PURPLE",
+      "CYAN",
+      "YELLOW",
+      "RED",
+    ]);
+  });
+
   it("gives legacy options distinct visible colors when none were saved", () => {
     const field = {
       config: {

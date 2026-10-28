@@ -16,6 +16,7 @@ export interface MembersPageProps {
     q?: string | string[];
     role?: string | string[];
     status?: string | string[];
+    groupId?: string | string[];
   }>;
 }
 
@@ -39,6 +40,13 @@ export default async function MembersPage({
       : {}),
     ...(query.status === "ACTIVE" || query.status === "DISABLED"
       ? { status: query.status }
+      : {}),
+    ...(typeof query.groupId === "string" &&
+    (query.groupId === "NONE" ||
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        query.groupId,
+      ))
+      ? { groupId: query.groupId }
       : {}),
   };
   const workspace = await requireWorkspace(tenantCode);

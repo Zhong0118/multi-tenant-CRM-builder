@@ -36,6 +36,7 @@ describe("member directory server page", () => {
         q: " 林 ",
         role: "EMPLOYEE",
         status: "ACTIVE",
+        groupId: "NONE",
       }),
     });
     expect(get).toHaveBeenCalledWith(
@@ -49,6 +50,7 @@ describe("member directory server page", () => {
             q: "林",
             role: "EMPLOYEE",
             status: "ACTIVE",
+            groupId: "NONE",
           },
         },
       },
@@ -57,6 +59,7 @@ describe("member directory server page", () => {
       q: "林",
       role: "EMPLOYEE",
       status: "ACTIVE",
+      groupId: "NONE",
     });
   });
 
@@ -69,6 +72,7 @@ describe("member directory server page", () => {
         page: "-1",
         role: "ROOT",
         status: "UNKNOWN",
+        groupId: ["NONE"],
       }),
     });
     expect(result.props.initialFilters).toEqual({});

@@ -401,7 +401,12 @@ describe('portable workflow templates (HTTP + PostgreSQL)', () => {
       url.port === '5432' &&
       url.pathname === '/crm' &&
       url.username === 'crm';
-    if (!local && !ci) throw new Error('Use isolated template API database');
+    const localTest =
+      ['localhost', '127.0.0.1'].includes(url.hostname) &&
+      url.port === '5432' &&
+      /^\/crm_[a-z0-9_]*_test_[0-9]+$/.test(url.pathname);
+    if (!local && !localTest && !ci)
+      throw new Error('Use isolated template API database');
     h = await createCriticalHarness();
     await h.app.listen(0, '127.0.0.1');
   });
@@ -660,8 +665,19 @@ describe('portable workflow templates (HTTP + PostgreSQL)', () => {
       });
     }
   });
-  it('inherits into a memberless company then atomically publishes cyclic targets with real publisher audit', async () => {
-    const f = await fixture();
+  it.each([false, true])('inherits and publishes cyclic targets with publisher audit (admin-only confirmation: %s)', async (adminOnly) => {
+    const f = await fixture((published) => {
+      if (adminOnly && published.object.code === 'legacy_orders') {
+        published.workflow!.states[0].label = '待确认';
+        published.workflow!.transitions[0].allowedRoles = ['TENANT_ADMIN'];
+      }
+    });
+    if (adminOnly) {
+      await h.adminDatabase.objectDefinition.updateMany({
+        where: { tenantId: f.source.id, code: 'legacy_customers' },
+        data: { poolContactTtlHours: 24, poolFollowUpTtlHours: 720 },
+      });
+    }
     await apply(f);
     expect(
       await h.adminDatabase.tenantMember.count({
@@ -694,6 +710,26 @@ describe('portable workflow templates (HTTP + PostgreSQL)', () => {
     await api('post', i.path, i.administrator.cookie, initBody(i.group)).expect(
       200,
     );
+    // Initialization deliberately rejects companies containing business data.
+    // Seed legacy records after publication to exercise ongoing pool behavior.
+    const legacyRecords = adminOnly
+      ? await Promise.all(
+          [null, i.employee.memberId].map((ownerMemberId, index) =>
+            h.adminDatabase.record.create({
+              data: {
+                tenantId: f.target.id,
+                objectId: i.group.objects.find(
+                  (object) => object.code === 'legacy_customers',
+                )!.id,
+                recordNo: BigInt(9001 + index),
+                title: 'Portable customer',
+                data: { name: 'Portable customer' },
+                ownerMemberId,
+              },
+            }),
+          ),
+        )
+      : [];
     expect(
       await h.adminDatabase.objectPublication.count({
         where: {
@@ -746,6 +782,15 @@ describe('portable workflow templates (HTTP + PostgreSQL)', () => {
         { action: 'CLAIM', version: customer.version },
       ).expect(201),
     );
+    const claimedRecord = await h.adminDatabase.record.findUniqueOrThrow({
+      where: { id: customerId },
+    });
+    expect(claimedRecord.ownershipExpiresAt).not.toBeNull();
+    if (adminOnly) {
+      expect(claimedRecord.ownershipExpiresAt!.getTime()).toBe(
+        claimedRecord.poolClaimedAt!.getTime() + 24 * 60 * 60 * 1000,
+      );
+    }
     const updated = response<RecordResponseDto>(
       await api(
         'patch',
@@ -755,6 +800,9 @@ describe('portable workflow templates (HTTP + PostgreSQL)', () => {
       ).expect(200),
     );
     expect(updated.poolStage).not.toBe('PROTECTED');
+    expect(updated.ownershipExpiresAt).toBe(
+      claimedRecord.ownershipExpiresAt!.toISOString(),
+    );
     const followUpPath = '/workspaces/' + f.target.code + '/follow-ups';
     const followUp = response<FollowUpResponseDto>(
       await api('post', followUpPath, i.employee.cookie, {
@@ -777,6 +825,13 @@ describe('portable workflow templates (HTTP + PostgreSQL)', () => {
       where: { id: customerId },
     });
     expect(following.poolStage).toBe('FOLLOWING');
+    expect(following.poolProtectedAt).toBeNull();
+    expect(following.ownershipExpiresAt).not.toBeNull();
+    if (adminOnly) {
+      expect(following.ownershipExpiresAt!.getTime()).toBe(
+        following.poolLastFollowUpAt!.getTime() + 720 * 60 * 60 * 1000,
+      );
+    }
     const order = response<AutomationExecution>(
       await api(
         'post',
@@ -796,23 +851,67 @@ describe('portable workflow templates (HTTP + PostgreSQL)', () => {
     const beforeConfirm = await h.adminDatabase.record.findUniqueOrThrow({
       where: { id: customerId },
     });
-    expect(beforeConfirm.poolStage).not.toBe('PROTECTED');
+    expect(beforeConfirm).toMatchObject({
+      poolStage: 'FOLLOWING',
+      poolProtectedAt: null,
+      ownershipExpiresAt: following.ownershipExpiresAt,
+      ownerMemberId: i.employee.memberId,
+      inPublicPool: false,
+    });
     const orderRecord = await h.adminDatabase.record.findUniqueOrThrow({
       where: { id: targetId },
     });
+    expect(orderRecord).toMatchObject({
+      statusKey: 'new',
+      ownerMemberId: i.employee.memberId,
+      createdByMemberId: i.employee.memberId,
+    });
+    const confirmationPath =
+      runtime +
+      'legacy_orders/records/' +
+      targetId +
+      '/workflow/transitions/confirm';
+    if (adminOnly) {
+      await api('post', confirmationPath, i.employee.cookie, {
+        expectedVersion: orderRecord.version,
+      }).expect(403);
+      expect(
+        await h.adminDatabase.record.findUniqueOrThrow({
+          where: { id: targetId },
+        }),
+      ).toEqual(orderRecord);
+      expect(
+        await h.adminDatabase.record.findUniqueOrThrow({
+          where: { id: customerId },
+        }),
+      ).toEqual(beforeConfirm);
+    }
     await api(
       'post',
-      runtime +
-        'legacy_orders/records/' +
-        targetId +
-        '/workflow/transitions/confirm',
-      i.employee.cookie,
+      confirmationPath,
+      adminOnly ? i.administrator.cookie : i.employee.cookie,
       { expectedVersion: orderRecord.version },
     ).expect(201);
+    expect(
+      await h.adminDatabase.record.findUniqueOrThrow({ where: { id: targetId } }),
+    ).toMatchObject({ statusKey: 'confirmed' });
     const protectedCustomer = await h.adminDatabase.record.findUniqueOrThrow({
       where: { id: customerId },
     });
-    expect(protectedCustomer.poolStage).toBe('PROTECTED');
+    expect(protectedCustomer).toMatchObject({
+      poolStage: 'PROTECTED',
+      ownershipExpiresAt: null,
+      ownerMemberId: i.employee.memberId,
+      inPublicPool: false,
+    });
+    expect(protectedCustomer.poolProtectedAt).not.toBeNull();
+    for (const legacyRecord of legacyRecords) {
+      expect(
+        await h.adminDatabase.record.findUniqueOrThrow({
+          where: { id: legacyRecord.id },
+        }),
+      ).toEqual(legacyRecord);
+    }
   });
   it('rejects incomplete/duplicate/stale object or pool confirmations before any publication', async () => {
     const f = await fixture();

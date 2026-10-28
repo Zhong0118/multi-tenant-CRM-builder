@@ -1,3 +1,8 @@
+import {
+  recordOwnerFilter,
+  recordOwnerMatches,
+  type RecordOwnerFilter,
+} from '../objects/record-read-scope';
 import { Injectable } from '@nestjs/common';
 import { isISO8601 } from 'class-validator';
 import { ApiException } from '../../common/errors/api.exception';
@@ -20,7 +25,7 @@ import {
 export type { FollowUpMeta, FollowUpRecordScope } from './follow-up-command';
 export interface FollowUpScope {
   objectId: string;
-  ownerMemberId?: string;
+  ownerMemberId?: RecordOwnerFilter;
   updateOwnerMemberId?: string;
   canUpdate: boolean;
 }
@@ -143,8 +148,7 @@ export class FollowUpsService {
         );
         scopes.push({
           objectId: resolved.schema.object.id,
-          ownerMemberId:
-            resolved.access.readScope === 'OWN' ? context.memberId : undefined,
+          ownerMemberId: recordOwnerFilter(resolved.access, context.memberId),
           canUpdate:
             resolved.access.canUpdate && resolved.access.updateScope !== 'NONE',
           updateOwnerMemberId:
@@ -333,8 +337,10 @@ export class FollowUpsService {
     );
     if (
       !record ||
-      ((access.readScope === 'OWN' || access.updateScope === 'OWN') &&
-        record.ownerMemberId !== context.memberId)
+      !recordOwnerMatches(
+        recordOwnerFilter(access, context.memberId, true),
+        record.ownerMemberId,
+      )
     ) {
       throw new ApiException('RECORD_NOT_FOUND', 404);
     }
@@ -344,10 +350,7 @@ export class FollowUpsService {
       objectId: resolved.schema.object.id,
       expectedRole: context.role,
       recordId,
-      requiredOwnerMemberId:
-        access.readScope === 'OWN' || access.updateScope === 'OWN'
-          ? context.memberId
-          : undefined,
+      requiredOwnerMemberId: recordOwnerFilter(access, context.memberId, true),
     };
   }
 }

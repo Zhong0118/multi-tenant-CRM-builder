@@ -1,9 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
+import {
+  resolveGroupOwnerMemberIds,
+  resolveGroupOwnerMembers,
+  type GroupOwnerMember,
+} from './record-read-scope';
 
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
-import type { PublishedFieldAccess } from './object-schema';
+import type { MemberReadScope, PublishedFieldAccess } from './object-schema';
 import type { ObjectAccessPolicy } from './effective-access';
 
 export interface PublishedObjectRecord {
@@ -15,6 +20,8 @@ export interface PublishedObjectRecord {
   sortOrder: number;
   configuration: unknown;
   memberOverride?: ObjectAccessPolicy;
+  groupOwnerMemberIds?: string[];
+  groupOwnerMembers?: GroupOwnerMember[];
   memberFieldOverrides?: Record<string, PublishedFieldAccess>;
 }
 
@@ -54,7 +61,17 @@ export class PrismaPublishedObjectRepository implements PublishedObjectRepositor
         },
         orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
       });
-      return objects.map(toPublishedRecord);
+      const groupOwnerMemberIds = objects.some((object) =>
+        object.permissions.some(
+          (permission) => permission.readScope === 'GROUP',
+        ),
+      )
+        ? await resolveGroupOwnerMemberIds(transaction, context)
+        : undefined;
+      return objects.map((object) => ({
+        ...toPublishedRecord(object),
+        groupOwnerMemberIds,
+      }));
     });
   }
 
@@ -97,7 +114,18 @@ export async function findPublishedObjectInTransaction(
       },
     },
   });
-  return object ? toPublishedRecord(object) : null;
+  if (!object) return null;
+  const record = toPublishedRecord(object);
+  if (record.memberOverride?.readScope === 'GROUP') {
+    record.groupOwnerMembers = await resolveGroupOwnerMembers(
+      transaction,
+      context,
+    );
+    record.groupOwnerMemberIds = record.groupOwnerMembers?.map(
+      (member) => member.id,
+    );
+  }
+  return record;
 }
 
 function toPublishedRecord(object: {
@@ -117,8 +145,8 @@ function toPublishedRecord(object: {
     canRead: boolean;
     canUpdate: boolean;
     canDelete: boolean;
-    readScope: 'ALL' | 'OWN' | 'NONE';
-    updateScope: 'ALL' | 'OWN' | 'NONE';
+    readScope: MemberReadScope;
+    updateScope: MemberReadScope;
   }>;
 }): PublishedObjectRecord {
   const override = object.permissions[0];
@@ -143,7 +171,8 @@ function toPublishedRecord(object: {
           canUpdate: override.canUpdate,
           canDelete: false,
           readScope: override.readScope,
-          updateScope: override.updateScope,
+          updateScope:
+            override.updateScope === 'GROUP' ? 'NONE' : override.updateScope,
         }
       : undefined,
   };

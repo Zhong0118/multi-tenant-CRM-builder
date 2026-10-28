@@ -669,7 +669,10 @@ export function RecordPoolSettings({
           ) : null}
           {config.permissions ? (
             <p>
-              默认员工读取范围 {DATA_SCOPE_LABELS[config.permissions.readScope]}{" "}
+              默认员工读取范围{" "}
+              {config.permissions.readScope === "GROUP"
+                ? "本组记录"
+                : DATA_SCOPE_LABELS[config.permissions.readScope]}{" "}
               · 处理范围 {DATA_SCOPE_LABELS[config.permissions.updateScope]} ·
               启用不会改动员工权限
             </p>

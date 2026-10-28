@@ -1,3 +1,7 @@
+import {
+  recordOwnerFilter,
+  recordOwnerMatches,
+} from '../objects/record-read-scope';
 import type { PoolOrigin, PoolStage } from './record-ownership';
 import type { Prisma } from '@crm/database';
 import { applyOwnershipChange } from './record-ownership-command';
@@ -335,8 +339,18 @@ export async function requireVisibleRecord(
     action === 'READ' ? resolved.access.canRead : resolved.access.canUpdate;
   const scope =
     action === 'READ' ? resolved.access.readScope : resolved.access.updateScope;
-  if (!accessAllowed || scope === 'NONE')
+  if (
+    !accessAllowed ||
+    scope === 'NONE' ||
+    !resolved.access.canRead ||
+    resolved.access.readScope === 'NONE'
+  )
     throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+  const ownerFilter = recordOwnerFilter(
+    resolved.access,
+    context.memberId,
+    action === 'UPDATE',
+  );
   const record = lock
     ? await store.lockRecord({
         objectId: resolved.schema.object.id,
@@ -344,21 +358,20 @@ export async function requireVisibleRecord(
         ownerMemberId: scope === 'OWN' ? context.memberId : null,
       })
     : await store.findRecord(resolved.schema.object.id, recordId);
-  const poolReadable =
-    action === 'READ' && resolved.poolEnabled && record?.inPublicPool;
   if (
-    !record ||
-    (!poolReadable &&
-      scope === 'OWN' &&
-      record.ownerMemberId !== context.memberId)
-  )
-    throw new ApiException('RECORD_NOT_FOUND', 404);
-  if (
+    record &&
     action === 'UPDATE' &&
     record.inPublicPool &&
     context.role !== 'TENANT_ADMIN'
   )
     throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+  const poolReadable =
+    action === 'READ' && resolved.poolEnabled && record?.inPublicPool;
+  if (
+    !record ||
+    (!poolReadable && !recordOwnerMatches(ownerFilter, record.ownerMemberId))
+  )
+    throw new ApiException('RECORD_NOT_FOUND', 404);
   return record;
 }
 

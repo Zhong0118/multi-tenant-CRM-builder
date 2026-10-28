@@ -245,8 +245,8 @@ describe('createFollowUpCommand', () => {
       'tenant-a',
       'object-leads',
       RECORD_ID,
-      'member-actor',
-      'member-actor',
+      ['member-actor'],
+      ['member-actor'],
     ]);
     expect(thirdLock.sql).toContain('FROM tenant_members');
     expect(fourthLock.values).toEqual([

@@ -8,6 +8,8 @@ import {
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { MembershipsController } from './memberships.controller';
+import { MemberGroupsController } from './member-groups.controller';
+import { MemberGroupsService } from './member-groups.service';
 import { PrismaMembershipsRepository } from './memberships.repository';
 import {
   MEMBERSHIP_INVITATION_TOKEN,
@@ -18,9 +20,10 @@ import {
 
 @Module({
   imports: [AuditModule, AuthModule],
-  controllers: [MembershipsController],
+  controllers: [MembershipsController, MemberGroupsController],
   providers: [
     MembershipsService,
+    MemberGroupsService,
     WorkspaceGuard,
     PrismaMembershipsRepository,
     {

@@ -1,3 +1,4 @@
+import { recordOwnerFilter } from '../objects/record-read-scope';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
 
@@ -137,7 +138,7 @@ export class AiOperationRepository {
     context: TenantContext,
     row: AiOperationRow,
   ): Promise<AiProposalView> {
-    return (await this.projectRowsInTransaction(tx, context, [row]))[0]!;
+    return (await this.projectRowsInTransaction(tx, context, [row]))[0];
   }
 
   private async projectRowsInTransaction(
@@ -191,7 +192,7 @@ export class AiOperationRepository {
         context,
         resolved.schema.object.id,
         ids,
-        resolved.access.readScope === 'OWN' ? context.memberId : undefined,
+        recordOwnerFilter(resolved.access, context.memberId),
       );
       const editableIds =
         !resolved.access.canUpdate || resolved.access.updateScope === 'NONE'
@@ -231,7 +232,7 @@ export class AiOperationRepository {
         : [],
     );
     return rows.map((row, index) => {
-      const target = targets[index]!;
+      const target = targets[index];
       const visible = target.objectCode
         ? visibility.get(target.objectCode)
         : undefined;
@@ -379,7 +380,7 @@ export class AiOperationRepository {
     );
     return rows.map((row, index) => ({
       turnId: row.turnId,
-      view: views[index]!,
+      view: views[index],
     }));
   }
 
@@ -523,7 +524,7 @@ export class AiOperationRepository {
                   changes: display.changes,
                   validationWarnings: display.validationWarnings,
                   failureFieldCodes: safeCodes,
-                } as Prisma.InputJsonObject,
+                },
               }
             : {}),
           confirmedByMemberId: context.memberId,

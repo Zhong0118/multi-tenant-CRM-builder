@@ -268,19 +268,22 @@ jobs:
       - name: Start PostgreSQL
         run: docker compose up -d --wait postgres
 
+      - name: Create isolated API test database
+        run: docker compose exec -T postgres createdb -U crm -O crm crm_api_test_1
+
       - name: Build internal prerequisites
         run: pnpm --filter @crm/contracts --filter @crm/database build
 
       - name: Deploy migrations
         env:
-          DATABASE_ADMIN_URL: postgresql://crm:crm@localhost:5432/crm?schema=public
+          DATABASE_ADMIN_URL: postgresql://crm:crm@localhost:5432/crm_api_test_1?schema=public
         run: pnpm --filter @crm/database prisma:migrate:deploy
 
       - name: Run Critical API E2E
         env:
-          DATABASE_ADMIN_URL: postgresql://crm:crm@localhost:5432/crm?schema=public
-          TEST_DATABASE_ADMIN_URL: postgresql://crm:crm@localhost:5432/crm?schema=public
-          TEST_DATABASE_URL: postgresql://crm_app:crm_app@localhost:5432/crm?schema=public
+          DATABASE_ADMIN_URL: postgresql://crm:crm@localhost:5432/crm_api_test_1?schema=public
+          TEST_DATABASE_ADMIN_URL: postgresql://crm:crm@localhost:5432/crm_api_test_1?schema=public
+          TEST_DATABASE_URL: postgresql://crm_app:crm_app@localhost:5432/crm_api_test_1?schema=public
         run: pnpm --filter @crm/api test:e2e:critical
 
       - name: Show PostgreSQL logs on failure

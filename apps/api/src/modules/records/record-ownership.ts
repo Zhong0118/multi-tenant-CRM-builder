@@ -1,3 +1,7 @@
+import {
+  recordOwnerFilter,
+  recordOwnerMatches,
+} from '../objects/record-read-scope';
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { EffectiveObjectAccess } from '../objects/effective-access';
@@ -96,9 +100,11 @@ export function ownershipChange(
   }
   if (
     !admin &&
-    access.readScope === 'OWN' &&
     !record.inPublicPool &&
-    record.ownerMemberId !== context.memberId
+    !recordOwnerMatches(
+      recordOwnerFilter(access, context.memberId),
+      record.ownerMemberId,
+    )
   ) {
     throw new ApiException('RECORD_NOT_FOUND', 404);
   }

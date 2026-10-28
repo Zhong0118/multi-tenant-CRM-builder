@@ -562,6 +562,51 @@
   width: 132px;
 }
 
+.groupPanel {
+  animation: access-appear var(--motion-base) var(--ease-standard);
+}
+
+.groupHeader,
+.groupActions,
+.groupIdentity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.groupHeader {
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.groupHeader p {
+  flex: 1 1 300px;
+  margin: 0;
+}
+
+.groupActions {
+  font-size: 13px;
+}
+
+.groupPanel :global(.ant-btn),
+.groupPanel a {
+  transition:
+    transform var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard);
+}
+
+.groupPanel :global(.ant-btn:not(:disabled):hover),
+.groupPanel a:hover {
+  transform: scale(1.02);
+}
+
+.groupPanel :global(.ant-btn:not(:disabled):active),
+.groupPanel a:active {
+  transform: scale(0.98);
+}
+
 @media (max-width: 900px) {
   .accessRowHead {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -612,6 +657,15 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .groupPanel {
+    animation: none;
+  }
+
+  .groupPanel :global(.ant-btn),
+  .groupPanel a {
+    transition: none;
+  }
+
   .accessFeedback {
     margin: 0 16px 12px 36px;
   }

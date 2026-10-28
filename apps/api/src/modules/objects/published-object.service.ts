@@ -26,6 +26,7 @@ import type {
   PublishedObjectRecord,
   PublishedObjectRepository,
 } from './published-object.repository';
+import type { GroupOwnerMember } from './record-read-scope';
 
 export const PUBLISHED_OBJECT_REPOSITORY = Symbol(
   'PUBLISHED_OBJECT_REPOSITORY',
@@ -42,6 +43,7 @@ export interface RuntimeObjectNavigation {
 }
 
 export interface RuntimeObjectSchema {
+  workflowEnabled?: boolean;
   publication: { number: number; publishedAt: string };
   object: {
     code: string;
@@ -63,6 +65,7 @@ export interface RuntimeObjectSchema {
     read: EffectiveObjectAccess['readScope'];
     update: EffectiveObjectAccess['updateScope'];
   };
+  ownerMembers?: GroupOwnerMember[];
 }
 
 export interface ResolvedObjectSchema {
@@ -93,6 +96,7 @@ export class PublishedObjectService {
           schema,
           role: context.role,
           memberOverride: record.memberOverride,
+          groupOwnerMemberIds: record.groupOwnerMemberIds,
           memberFieldOverrides: record.memberFieldOverrides,
         });
         if (!isReadable(schema, access)) return [];
@@ -179,6 +183,7 @@ export function resolvePublishedObjectRecord(
     schema,
     role,
     memberOverride: record.memberOverride,
+    groupOwnerMemberIds: record.groupOwnerMemberIds,
     memberFieldOverrides: record.memberFieldOverrides,
   });
   if (record.status === 'ARCHIVED') {
@@ -191,7 +196,12 @@ export function resolvePublishedObjectRecord(
     access,
     poolEnabled: record.poolEnabled ?? false,
     poolLifecycleEnabled: record.poolLifecycleEnabled ?? false,
-    visibleSchema: projectRuntimeSchema(schema, access),
+    visibleSchema: {
+      ...projectRuntimeSchema(schema, access),
+      ...(access.readScope === 'GROUP'
+        ? { ownerMembers: record.groupOwnerMembers ?? [] }
+        : {}),
+    },
   };
 }
 
@@ -221,6 +231,7 @@ function projectRuntimeSchema(
   });
   const visibleKeys = new Set(fields.map((field) => field.fieldKey));
   return {
+    workflowEnabled: schema.workflow !== undefined,
     publication: {
       number: schema.publication.number,
       publishedAt: schema.publication.publishedAt,

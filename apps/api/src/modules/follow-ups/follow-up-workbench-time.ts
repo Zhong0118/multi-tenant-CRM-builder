@@ -31,9 +31,7 @@ interface WallClock {
 
 const HOUR = 60 * 60 * 1000;
 
-export function isValidFollowUpTimeZone(
-  value: string | null,
-): value is string {
+export function isValidFollowUpTimeZone(value: string | null): value is string {
   if (!value) return false;
   try {
     new Intl.DateTimeFormat('en-US', { timeZone: value }).format(0);

@@ -126,6 +126,88 @@ function fieldRow(scope: HTMLElement, label: string) {
 }
 
 describe("MemberObjectAccess", () => {
+  it("lets an active group leader receive group viewing without adding group editing", async () => {
+    const api = accessApi();
+    renderAccess(
+      <MemberObjectAccess
+        tenantCode="northwind"
+        memberId="member-lin"
+        memberName="林员工"
+        isGroupLeader
+        groupName="销售一组"
+        initialRows={[row()]}
+        api={api}
+      />,
+    );
+    expect(screen.getByText(/销售一组.*组长/)).toBeInTheDocument();
+    startException("客户资料");
+    fireEvent.mouseDown(screen.getByLabelText("修改范围"));
+    expect(
+      screen.queryByText("本组成员名下", {
+        selector: ".ant-select-item-option-content",
+      }),
+    ).not.toBeInTheDocument();
+    fireEvent.mouseDown(screen.getByLabelText("查看范围"));
+    fireEvent.click(
+      await screen.findByText("本组成员名下", {
+        selector: ".ant-select-item-option-content",
+      }),
+    );
+    fireEvent.click(
+      within(panel("客户资料")).getByText("保存例外").closest("button")!,
+    );
+    await waitFor(() =>
+      expect(api.set).toHaveBeenCalledWith(
+        "northwind",
+        "member-lin",
+        "object-customers",
+        expect.objectContaining({ readScope: "GROUP", updateScope: "OWN" }),
+      ),
+    );
+  });
+
+  it("does not offer group access to an employee who is not a leader", () => {
+    renderAccess(
+      <MemberObjectAccess
+        tenantCode="northwind"
+        memberId="member-lin"
+        memberName="林员工"
+        initialRows={[row()]}
+        api={accessApi()}
+      />,
+    );
+    startException("客户资料");
+    fireEvent.mouseDown(screen.getByLabelText("查看范围"));
+    expect(
+      screen.queryByText("本组成员名下", {
+        selector: ".ant-select-item-option-content",
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("explains an inactive group grant while showing the server's own-only effective scope", () => {
+    renderAccess(
+      <MemberObjectAccess
+        tenantCode="northwind"
+        memberId="member-lin"
+        memberName="林员工"
+        initialRows={[
+          row({
+            mode: "OVERRIDE",
+            override: { ...row().effective, readScope: "GROUP" },
+          }),
+        ]}
+        api={accessApi()}
+      />,
+    );
+    expect(
+      screen.getByText(/已不再是有效组长.*仅本人负责/),
+    ).toBeInTheDocument();
+    expect(
+      within(panel("客户资料")).getByLabelText("当前生效"),
+    ).toHaveTextContent("查看仅本人负责");
+  });
+
   it("compares each column with the employee default and opens the shared editor for one employee", async () => {
     renderAccess(
       <MemberObjectAccess

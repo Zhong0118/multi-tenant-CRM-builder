@@ -1,3 +1,4 @@
+import { recordOwnerSql } from '../objects/record-read-scope.sql';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@crm/database';
 
@@ -820,7 +821,7 @@ function commonPredicates(
   plan: DashboardQueryPlan,
 ): Prisma.Sql {
   const owner = plan.ownerMemberId
-    ? Prisma.sql`AND r.owner_member_id = ${plan.ownerMemberId}::uuid`
+    ? Prisma.sql`AND ${recordOwnerSql(plan.ownerMemberId, Prisma.sql`r.owner_member_id`)}`
     : Prisma.empty;
   const filters = plan.widget.filters.map((filter) =>
     filterPredicate(plan, context, filter),

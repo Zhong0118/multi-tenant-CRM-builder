@@ -40,8 +40,8 @@ export class PoolPreviewDto {
 export class PoolPermissionsDto {
   @ApiProperty() canRead!: boolean;
   @ApiProperty() canUpdate!: boolean;
-  @ApiProperty({ enum: ['ALL', 'OWN', 'NONE'] }) readScope!:
-    'ALL' | 'OWN' | 'NONE';
+  @ApiProperty({ enum: ['ALL', 'OWN', 'GROUP', 'NONE'] }) readScope!:
+    'ALL' | 'OWN' | 'GROUP' | 'NONE';
   @ApiProperty({ enum: ['ALL', 'OWN', 'NONE'] }) updateScope!:
     'ALL' | 'OWN' | 'NONE';
 }

@@ -1,3 +1,8 @@
+import {
+  recordOwnerFilter,
+  recordOwnerMatches,
+  type RecordOwnerFilter,
+} from '../objects/record-read-scope';
 import { lockRuntimeObjectConfiguration } from '../objects/object-configuration-lock';
 import { resolveReadableObjectByIdInTransaction } from '../objects/published-object-transaction';
 import { Inject, Injectable } from '@nestjs/common';
@@ -49,6 +54,7 @@ function canManageRecord(
   const scope = scopes.find((entry) => entry.objectId === objectId);
   return (
     !!scope?.canUpdate &&
+    recordOwnerMatches(scope.ownerMemberId, ownerMemberId) &&
     (!scope.updateOwnerMemberId || scope.updateOwnerMemberId === ownerMemberId)
   );
 }
@@ -432,10 +438,11 @@ export class FollowUpsRepository {
       );
       const currentScope = {
         ...scope,
-        requiredOwnerMemberId:
-          access.readScope === 'OWN' || access.updateScope === 'OWN'
-            ? context.memberId
-            : undefined,
+        requiredOwnerMemberId: recordOwnerFilter(
+          access,
+          context.memberId,
+          true,
+        ),
       };
       if (input.assigneeMemberId && input.assigneeMemberId !== context.memberId)
         await lockFollowUpRecipient(tx, context, input.assigneeMemberId, scope);
@@ -463,10 +470,11 @@ export class FollowUpsRepository {
       const { access } = resolved;
       scope = {
         ...scope,
-        requiredOwnerMemberId:
-          access.readScope === 'OWN' || access.updateScope === 'OWN'
-            ? context.memberId
-            : undefined,
+        requiredOwnerMemberId: recordOwnerFilter(
+          access,
+          context.memberId,
+          true,
+        ),
       };
       const completionRecord = input.completionResult
         ? await lockRecordActivityTarget(tx, context, resolved, scope.recordId)
@@ -636,7 +644,7 @@ async function lockFollowUpRecipient(
     userId: rows[0].userId,
     role: rows[0].role,
   };
-  let ownScope: boolean;
+  let ownerFilter: RecordOwnerFilter | undefined;
   try {
     const { access } = await resolveReadableObjectByIdInTransaction(
       tx,
@@ -644,7 +652,7 @@ async function lockFollowUpRecipient(
       scope.objectId,
       true,
     );
-    ownScope = access.readScope === 'OWN' || access.updateScope === 'OWN';
+    ownerFilter = recordOwnerFilter(access, recipientMemberId, true);
   } catch {
     throw new ApiException('VALIDATION_FAILED', 400, {
       message: '该成员没有这张表的处理权限，不能接收这条跟进。',
@@ -653,7 +661,7 @@ async function lockFollowUpRecipient(
   try {
     await lockFollowUpRecord(tx, recipient, {
       ...scope,
-      requiredOwnerMemberId: ownScope ? recipientMemberId : undefined,
+      requiredOwnerMemberId: ownerFilter,
     });
   } catch {
     throw new ApiException('VALIDATION_FAILED', 400, {

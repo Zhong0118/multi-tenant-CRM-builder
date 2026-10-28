@@ -17,6 +17,7 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 
 import { RouteForbidden } from "@/components/feedback/route-states";
 import { useToast } from "@/components/feedback/use-toast";
@@ -29,6 +30,7 @@ import { browserApiClient } from "@/lib/api/browser-client";
 import { BulkMemberAccess } from "./bulk-member-access";
 import { BulkMemberActions } from "./member-edit-actions";
 import { MemberRowMenu } from "./member-row-menu";
+import type { MemberGroup } from "./member-groups-api";
 import styles from "./members.module.css";
 import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
 
@@ -43,6 +45,7 @@ export interface MemberListFilters {
   q?: string;
   role?: TenantMember["role"];
   status?: TenantMember["status"];
+  groupId?: string;
 }
 
 type MemberCriteria = MemberListFilters & { page: number; limit: number };
@@ -162,6 +165,7 @@ function memberCriteriaPath(tenantCode: string, criteria: MemberCriteria) {
   if (criteria.q) params.set("q", criteria.q);
   if (criteria.role) params.set("role", criteria.role);
   if (criteria.status) params.set("status", criteria.status);
+  if (criteria.groupId) params.set("groupId", criteria.groupId);
   return `/workspace/${tenantCode}/members?${params}`;
 }
 
@@ -173,6 +177,8 @@ export function MemberTable({
   initialFilters = {},
   initialInvitationPage,
   headerActions,
+  groups = [],
+  groupManagement,
   api = memberApi,
   navigate,
 }: {
@@ -184,6 +190,8 @@ export function MemberTable({
   initialInvitationPage: InvitationPage;
   /** 邀请成员 and 批量邀请, rendered in the page header beside the count. */
   headerActions?: ReactNode;
+  groups?: MemberGroup[];
+  groupManagement?: ReactNode;
   api?: MemberApi;
   navigate?: (path: string) => void;
 }) {
@@ -200,12 +208,16 @@ export function MemberTable({
     undefined,
   ]);
   const [error, setError] = useState<string>();
-  const [tab, setTab] = useState<"members" | "invitations">("members");
+  const [tab, setTab] = useState<"members" | "invitations" | "groups">(
+    "members",
+  );
   const [revoking, setRevoking] = useState<TenantInvitation>();
   const [query, setQuery] = useState(initialFilters.q ?? "");
   const search = query.trim();
   const searchPending = search !== (criteria.q ?? "");
-  const filtering = Boolean(criteria.q || criteria.role || criteria.status);
+  const filtering = Boolean(
+    criteria.q || criteria.role || criteria.status || criteria.groupId,
+  );
   const cursor = cursors[page - 1];
   const membersQueryKey = ["workspace", tenantCode, "members"] as const;
   const invitationsQueryKey = ["workspace", tenantCode, "invitations"] as const;
@@ -219,7 +231,8 @@ export function MemberTable({
       limit === initialMemberPage.limit &&
       criteria.q === initialFilters.q &&
       criteria.role === initialFilters.role &&
-      criteria.status === initialFilters.status
+      criteria.status === initialFilters.status &&
+      criteria.groupId === initialFilters.groupId
         ? initialMemberPage
         : undefined,
     staleTime: Number.POSITIVE_INFINITY,
@@ -279,11 +292,17 @@ export function MemberTable({
     staleTime: Number.POSITIVE_INFINITY,
     enabled: viewerRole === "TENANT_ADMIN",
   });
-  const refresh = (scope: "members" | "invitations") =>
-    queryClient.invalidateQueries({
+  const refresh = (scope: "members" | "invitations") => {
+    if (scope === "members") {
+      void queryClient.invalidateQueries({
+        queryKey: ["workspace", tenantCode, "member-groups"],
+      });
+    }
+    return queryClient.invalidateQueries({
       queryKey: ["workspace", tenantCode, scope],
       exact: false,
     });
+  };
   const invitationMutation = useMutation({
     mutationFn: ({
       action,
@@ -379,6 +398,24 @@ export function MemberTable({
       width: 140,
       responsive: ["md"],
       render: (role: TenantMember["role"]) => ROLE_TEXT[role],
+    },
+    {
+      title: "小组",
+      key: "group",
+      width: 156,
+      render: (_, member) =>
+        member.groupName ? (
+          <span className={styles.groupIdentity}>
+            <span>{member.groupName}</span>
+            {member.isGroupLeader ? (
+              <StatusTag tone="info">
+                组长{member.status !== "ACTIVE" ? "（已停用）" : ""}
+              </StatusTag>
+            ) : null}
+          </span>
+        ) : (
+          <span className={styles.muted}>未分组</span>
+        ),
     },
     {
       title: "访问权限",
@@ -531,11 +568,21 @@ export function MemberTable({
       />
       <div className={styles.toolbar}>
         <Segmented
-          aria-label="成员与邀请"
+          aria-label="成员、邀请与小组"
           value={tab}
-          onChange={(value) => setTab(value as "members" | "invitations")}
+          onChange={(value) => {
+            const change = () =>
+              setTab(value as "members" | "invitations" | "groups");
+            if (
+              typeof document.startViewTransition === "function" &&
+              !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+            ) {
+              document.startViewTransition(() => flushSync(change));
+            } else change();
+          }}
           options={[
             { value: "members", label: "成员" },
+            ...(groupManagement ? [{ value: "groups", label: "小组" }] : []),
             {
               value: "invitations",
               label: (
@@ -563,6 +610,23 @@ export function MemberTable({
                 setQuery(event.target.value);
                 setSelectedIds([]);
               }}
+            />
+            <Select
+              aria-label="小组筛选"
+              value={criteria.groupId ?? "ALL"}
+              className={styles.filter}
+              popupMatchSelectWidth={false}
+              onChange={(value: string) =>
+                changeCriteria({ groupId: value === "ALL" ? undefined : value })
+              }
+              options={[
+                { value: "ALL", label: "全部小组" },
+                { value: "NONE", label: "未分组" },
+                ...groups.map((group) => ({
+                  value: group.id,
+                  label: group.name,
+                })),
+              ]}
             />
             <Select
               aria-label="角色"
@@ -740,6 +804,8 @@ export function MemberTable({
               : false
           }
         />
+      ) : tab === "groups" ? (
+        groupManagement
       ) : (
         <>
           {invitationsQuery.error ? (

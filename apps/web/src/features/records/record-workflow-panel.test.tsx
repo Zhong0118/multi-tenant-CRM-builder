@@ -23,6 +23,52 @@ function renderPanel(api: WorkflowApi) {
 }
 
 describe("RecordWorkflowPanel", () => {
+  it("revalidates a cached workflow before loading history after unpublishing", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retryDelay: 1 } } });
+    client.setQueryData(["workspace", "northwind", "record-workflow", "leads", "record-1"], {
+      currentState: { key: "new", label: "新建", isTerminal: false }, availableTransitions: [], recordVersion: 7,
+    });
+    const api: WorkflowApi = {
+      getDraft: vi.fn(), saveDraft: vi.fn(), executeTransition: vi.fn(),
+      getRuntime: vi.fn().mockRejectedValue({ code: "WORKFLOW_NOT_PUBLISHED", message: "尚未发布工作流", status: 409, requestId: "test" }),
+      history: vi.fn().mockResolvedValue({ items: [], page: 1, limit: 20, total: 0 }),
+    };
+    const view = render(<QueryClientProvider client={client}><RecordWorkflowPanel tenantCode="northwind" objectCode="leads" recordId="record-1" recordVersion={7} api={api} /></QueryClientProvider>);
+    await waitFor(() => expect(client.getQueryState(["workspace", "northwind", "record-workflow", "leads", "record-1"])?.status).toBe("error"));
+    expect(api.getRuntime).toHaveBeenCalledTimes(1);
+    expect(api.history).not.toHaveBeenCalled();
+    view.unmount(); client.clear();
+  });
+
+  it("does not retry an unpublished workflow or load its history with default retries enabled", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retryDelay: 1 } } });
+    const api: WorkflowApi = {
+      getDraft: vi.fn(), saveDraft: vi.fn(), executeTransition: vi.fn(),
+      getRuntime: vi.fn().mockRejectedValue({ code: "WORKFLOW_NOT_PUBLISHED", message: "尚未发布工作流", status: 409, requestId: "test" }),
+      history: vi.fn().mockResolvedValue({ items: [], page: 1, limit: 20, total: 0 }),
+    };
+    const view = render(<QueryClientProvider client={client}><RecordWorkflowPanel tenantCode="northwind" objectCode="leads" recordId="record-1" recordVersion={7} api={api} /></QueryClientProvider>);
+    await waitFor(() => expect(client.getQueryState(["workspace", "northwind", "record-workflow", "leads", "record-1"])?.status).toBe("error"));
+    expect(api.getRuntime).toHaveBeenCalledTimes(1);
+    expect(api.history).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    view.unmount(); client.clear();
+  });
+
+  it("still retries a temporary workflow service failure before loading history", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retryDelay: 1 } } });
+    const api: WorkflowApi = {
+      getDraft: vi.fn(), saveDraft: vi.fn(), executeTransition: vi.fn(),
+      getRuntime: vi.fn().mockRejectedValueOnce({ code: "INTERNAL_ERROR", message: "暂时不可用", status: 503, requestId: "test" }).mockResolvedValue({ currentState: { key: "new", label: "新建", isTerminal: false }, availableTransitions: [], recordVersion: 7 }),
+      history: vi.fn().mockResolvedValue({ items: [], page: 1, limit: 20, total: 0 }),
+    };
+    const view = render(<QueryClientProvider client={client}><RecordWorkflowPanel tenantCode="northwind" objectCode="leads" recordId="record-1" recordVersion={7} api={api} /></QueryClientProvider>);
+    expect(await screen.findByText("新建")).toBeInTheDocument();
+    expect(api.getRuntime).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(api.history).toHaveBeenCalledTimes(1));
+    view.unmount(); client.clear();
+  });
+
   it("reports a detail refresh failure without misreporting a committed transition", async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
     const api: WorkflowApi = {

@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { RecordAutomationPanel } from "./record-automation-panel";
 import type { AutomationApi } from "./automation-api";
+import { PreviewValues } from "./automation-preview";
 function setup(
   execute: AutomationApi["execute"],
   onChanged = vi.fn().mockResolvedValue(undefined),
@@ -68,6 +69,37 @@ const result = {
   publicationId: "p1",
 };
 describe("RecordAutomationPanel", () => {
+  it("displays choice labels from runtime previews without requesting target metadata", async () => {
+    const api = setup(vi.fn(), undefined, {
+      preview: vi.fn().mockResolvedValue({
+        ruleKey: "confirm",
+        targetObjectCode: "orders",
+        targetObjectName: "开单",
+        values: {
+          status: "option_1",
+          tags: ["option_2", "option_3"],
+          empty: null,
+          count: 0,
+          enabled: false,
+          constructor: "保留正文",
+        },
+        fieldLabels: { status: "状态跟踪", tags: "阶段", constructor: "备注" },
+        valueLabels: { status: "选题", tags: "投稿；返修" },
+        ownerMemberId: "m1",
+        sourceRecordId: "r1",
+      }),
+    });
+    fireEvent.click(await screen.findByText("确认开单"));
+    fireEvent.click(screen.getByLabelText("预览"));
+    expect(await screen.findByText("选题")).toBeInTheDocument();
+    expect(screen.getByText("投稿；返修")).toBeInTheDocument();
+    expect(screen.queryByText("option_1")).not.toBeInTheDocument();
+    expect(screen.getByText("—")).toBeInTheDocument();
+    expect(screen.getByText("0")).toBeInTheDocument();
+    expect(screen.getByText("否")).toBeInTheDocument();
+    expect(screen.getByText("保留正文")).toBeInTheDocument();
+    expect(api.execute).not.toHaveBeenCalled();
+  });
   it("previews before execution and preserves success when refreshing the source fails", async () => {
     const api = setup(
       vi.fn().mockResolvedValue(result),
@@ -114,3 +146,49 @@ it("preserves readable history when the separate action list fails", async () =>
   ).toBeInTheDocument();
   expect(await screen.findByText("跨表动作加载失败")).toBeInTheDocument();
 });
+
+it.each([false, true])(
+  "preserves older preview responses (target metadata: %s)",
+  (withMetadata) => {
+    render(
+      <PreviewValues
+        preview={{
+          ruleKey: "confirm",
+          targetObjectCode: "orders",
+          targetObjectName: "开单",
+          values: { status: "option_1", tags: ["option_2", "unknown"] },
+          ownerMemberId: "m1",
+          sourceRecordId: "r1",
+        }}
+        target={
+          withMetadata
+            ? {
+                code: "orders",
+                name: "开单",
+                fields: ["status", "tags"].map((fieldKey) => ({
+                  fieldKey,
+                  label: fieldKey,
+                  type:
+                    fieldKey === "status" ? "SINGLE_SELECT" : "MULTI_SELECT",
+                  required: false,
+                  defaultValue: null,
+                  config: {
+                    options: [
+                      { key: "option_1", label: "选题" },
+                      { key: "option_2", label: "投稿" },
+                    ],
+                  },
+                })),
+              }
+            : undefined
+        }
+      />,
+    );
+    expect(
+      screen.getByText(withMetadata ? "选题" : "option_1"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(withMetadata ? "投稿、unknown" : "option_2、unknown"),
+    ).toBeInTheDocument();
+  },
+);

@@ -54,7 +54,10 @@ export class UnavailableAiProvider implements AiProvider {
   readonly modelKey = null;
 
   async *streamTurn(): AsyncIterable<AiProviderEvent> {
-    yield { type: 'FAILED', code: 'AI_PROVIDER_UNAVAILABLE' };
+    yield Promise.resolve<AiProviderEvent>({
+      type: 'FAILED',
+      code: 'AI_PROVIDER_UNAVAILABLE',
+    });
   }
 }
 

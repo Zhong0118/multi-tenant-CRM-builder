@@ -6,6 +6,7 @@ import {
   CreateObjectDefinitionDto,
   EmployeePermissionsDto,
   ExpectedVersionDto,
+  UpdateFieldDefinitionDto,
 } from './object.dto';
 
 describe('object configuration DTOs', () => {
@@ -88,6 +89,47 @@ describe('object configuration DTOs', () => {
     const dto = Object.assign(new ExpectedVersionDto(), { expectedVersion: 0 });
     const errors = await validate(dto);
     expect(errors.map((error) => error.property)).toContain('expectedVersion');
+  });
+
+  it.each([
+    'GRAY',
+    'BLUE',
+    'CYAN',
+    'GREEN',
+    'YELLOW',
+    'ORANGE',
+    'RED',
+    'PURPLE',
+    'PINK',
+    'INDIGO',
+    'TEAL',
+    'BROWN',
+  ])('accepts nested option color %s when updating a field', async (color) => {
+    const dto = plainToInstance(UpdateFieldDefinitionDto, {
+      expectedVersion: 1,
+      config: { options: [{ key: 'saved', label: '已保存', color }] },
+    });
+
+    expect(
+      await validate(dto, { whitelist: true, forbidNonWhitelisted: true }),
+    ).toEqual([]);
+  });
+
+  it('rejects unknown nested option colors', async () => {
+    const dto = plainToInstance(UpdateFieldDefinitionDto, {
+      expectedVersion: 1,
+      config: {
+        options: [{ key: 'saved', label: '已保存', color: 'MAGENTA' }],
+      },
+    });
+
+    const errors = await validate(dto, {
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    });
+    const colorError = errors[0]?.children?.[0]?.children?.[0]?.children?.[0];
+    expect(colorError?.property).toBe('color');
+    expect(colorError?.constraints).toHaveProperty('isIn');
   });
 
   it('rejects field types outside the second-slice contract', async () => {

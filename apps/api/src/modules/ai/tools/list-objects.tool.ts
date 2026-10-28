@@ -18,7 +18,10 @@ export function createListObjectsTool(
     async execute(input) {
       listObjectsInput.parse(input);
       const objects = await publishedObjects.listAccessible(context);
-      return objects.map((object) => ({ code: object.code, name: object.name }));
+      return objects.map((object) => ({
+        code: object.code,
+        name: object.name,
+      }));
     },
   };
 }

@@ -17,8 +17,7 @@ export interface WorkflowActionAuditMetadata {
 }
 
 export type DomainAuditCorrelation =
-  | WorkflowActionAuditMetadata
-  | { aiOperationId: string };
+  WorkflowActionAuditMetadata | { aiOperationId: string };
 
 export interface AuditEvent {
   tenantId?: string;

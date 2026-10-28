@@ -1,3 +1,4 @@
+import type { RecordOwnerFilter } from '../objects/record-read-scope';
 import type { Prisma } from '@crm/database';
 
 import { ApiException } from '../../common/errors/api.exception';
@@ -249,7 +250,7 @@ class MemoryRecordsStore implements RecordsStore {
   async lockImportMatching() {}
   findImportDuplicate(query: {
     objectId: string;
-    ownerMemberId?: string | null;
+    ownerMemberId?: RecordOwnerFilter | null;
     values: Record<string, unknown>;
   }) {
     return Promise.resolve(
@@ -258,7 +259,10 @@ class MemoryRecordsStore implements RecordsStore {
           record.objectId === query.objectId &&
           !record.deletedAt &&
           (query.ownerMemberId === undefined ||
-            record.ownerMemberId === query.ownerMemberId) &&
+            (typeof query.ownerMemberId === 'object' &&
+            query.ownerMemberId !== null
+              ? query.ownerMemberId.in.includes(record.ownerMemberId ?? '')
+              : record.ownerMemberId === query.ownerMemberId)) &&
           Object.entries(query.values).every(
             ([key, value]) => record.values[key] === value,
           ),
@@ -320,7 +324,10 @@ class MemoryRecordsStore implements RecordsStore {
           record.objectId === query.objectId &&
           record.deletedAt === null &&
           (query.ownerMemberId === undefined ||
-            record.ownerMemberId === query.ownerMemberId) &&
+            (typeof query.ownerMemberId === 'object' &&
+            query.ownerMemberId !== null
+              ? query.ownerMemberId.in.includes(record.ownerMemberId ?? '')
+              : record.ownerMemberId === query.ownerMemberId)) &&
           (!('inPublicPool' in query) ||
             query.inPublicPool === undefined ||
             (record.inPublicPool ?? false) === query.inPublicPool) &&
@@ -348,7 +355,10 @@ class MemoryRecordsStore implements RecordsStore {
         record.objectId === query.objectId &&
         record.deletedAt === null &&
         (query.ownerMemberId === undefined ||
-          record.ownerMemberId === query.ownerMemberId) &&
+          (typeof query.ownerMemberId === 'object' &&
+          query.ownerMemberId !== null
+            ? query.ownerMemberId.in.includes(record.ownerMemberId ?? '')
+            : record.ownerMemberId === query.ownerMemberId)) &&
         query.filters.every((filter) => matchesListFilter(record, filter)),
     );
     const numericOf = (record: DynamicRecord): number | null => {
@@ -2783,4 +2793,81 @@ describe('aggregate transaction permission refresh', () => {
       ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
     },
   );
+});
+
+describe('GROUP list, aggregate, export and membership changes', () => {
+  const query = {
+    page: 1,
+    limit: 20,
+    sort: 'recordNo',
+    direction: 'asc' as const,
+  };
+  async function teamFixture() {
+    const f = fixture();
+    const mine = await create(f.service, employee, '组长记录');
+    const teammate = await create(f.service, admin, '组员记录', otherMemberId);
+    await create(f.service, admin, '其他组记录', admin.memberId);
+    await create(f.service, admin, '未分配记录');
+    f.publishedRepository.record.memberOverride = {
+      canCreate: true,
+      canRead: true,
+      canUpdate: true,
+      canDelete: false,
+      readScope: 'GROUP',
+      updateScope: 'OWN',
+    };
+    f.publishedRepository.record.groupOwnerMemberIds = [
+      employee.memberId,
+      otherMemberId,
+    ];
+    return { ...f, mine, teammate };
+  }
+  it('returns only current group owners through list, search, aggregate and export', async () => {
+    const { service, mine, teammate } = await teamFixture();
+    const page = await service.list(employee, 'leads', query);
+    expect(page.items.map((item) => item.id)).toEqual([mine.id, teammate.id]);
+    expect(page.total).toBe(2);
+    const searched = await service.list(employee, 'leads', {
+      ...query,
+      search: '组员',
+    });
+    expect(searched.items.map((item) => item.id)).toEqual([teammate.id]);
+    expect(
+      await service.aggregate(employee, 'leads', {
+        aggregation: 'COUNT',
+        limit: 10,
+      }),
+    ).toMatchObject({ value: '2' });
+    const file = await service.exportCsv(employee, 'leads', query, meta);
+    expect(file.rowCount).toBe(2);
+    expect(file.csv).toContain('组员记录');
+    expect(file.csv).not.toContain('其他组记录');
+    expect(file.csv).not.toContain('未分配记录');
+  });
+  it('removes a moved member immediately without touching any records', async () => {
+    const { service, store, publishedRepository, mine, teammate } =
+      await teamFixture();
+    const before = structuredClone(store.records);
+    publishedRepository.record.groupOwnerMemberIds = [employee.memberId];
+    expect(
+      (await service.list(employee, 'leads', query)).items.map(
+        (item) => item.id,
+      ),
+    ).toEqual([mine.id]);
+    await expect(
+      service.detail(employee, 'leads', teammate.id),
+    ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+    expect(store.records).toEqual(before);
+  });
+  it('falls back to own records after leadership is removed and denies an empty team', async () => {
+    const { service, publishedRepository, mine } = await teamFixture();
+    publishedRepository.record.groupOwnerMemberIds = undefined;
+    expect(
+      (await service.list(employee, 'leads', query)).items.map(
+        (item) => item.id,
+      ),
+    ).toEqual([mine.id]);
+    publishedRepository.record.groupOwnerMemberIds = [];
+    expect((await service.list(employee, 'leads', query)).items).toEqual([]);
+  });
 });

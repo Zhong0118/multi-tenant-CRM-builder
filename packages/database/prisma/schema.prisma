@@ -104,6 +104,7 @@ enum DataScope {
   ALL
   OWN
   NONE
+  GROUP
 }
 
 enum FieldAccess {
@@ -198,6 +199,7 @@ model User {
 }
 
 model Tenant {
+  memberGroups MemberGroup[]
   workGoalRules WorkGoalRule[]
   automationExecutions RecordAutomationExecution[]
   notifications MemberNotification[]
@@ -293,6 +295,9 @@ model TenantDashboardPublication {
 }
 
 model TenantMember {
+  groupId String? @map("group_id") @db.Uuid
+  group MemberGroup? @relation("GroupMembers", fields: [tenantId, groupId], references: [tenantId, id], onDelete: Restrict)
+  ledGroups MemberGroup[] @relation("GroupLeader")
   workGoalRecipients WorkGoalRecipient[]
   automationExecutions RecordAutomationExecution[]
   notifications MemberNotification[]
@@ -330,7 +335,25 @@ model TenantMember {
   @@unique([tenantId, id])
   @@unique([tenantId, employeeNo])
   @@index([tenantId, status])
+  @@index([tenantId, groupId])
   @@map("tenant_members")
+}
+
+model MemberGroup {
+  id String @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  name String @db.VarChar(100)
+  leaderMemberId String? @map("leader_member_id") @db.Uuid
+  version Int @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  leader TenantMember? @relation("GroupLeader", fields: [tenantId, leaderMemberId], references: [tenantId, id], onDelete: Restrict)
+  members TenantMember[] @relation("GroupMembers")
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, name])
+  @@map("member_groups")
 }
 
 model TenantInvitation {
