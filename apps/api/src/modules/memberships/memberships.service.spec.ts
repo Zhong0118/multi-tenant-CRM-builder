@@ -600,6 +600,62 @@ describe('group read permission grants', () => {
     readScope: 'GROUP' as const,
     updateScope: 'OWN' as const,
   };
+  it('persists independent group fields, preserves omitted settings and clears explicit null', async () => {
+    const { service, store } = serviceFor();
+    store.groupLeader = true;
+    const save = (
+      input: typeof policy & {
+        groupFieldAccess?: Record<string, 'EDIT' | 'HIDDEN'> | null;
+      },
+    ) =>
+      service.setMemberObjectAccess(
+        admin,
+        'member-employee',
+        'object-leads',
+        input,
+        { requestId: 'fields' },
+      );
+    const configured = await save({
+      ...policy,
+      groupFieldAccess: { secret: 'EDIT' },
+    });
+    expect(configured.override?.groupFieldAccess).toEqual({ secret: 'EDIT' });
+    expect(configured.fields[0].groupEffective).toBe('EDIT');
+    expect((await save(policy)).override?.groupFieldAccess).toEqual({
+      secret: 'EDIT',
+    });
+    expect(
+      (await save({ ...policy, canUpdate: false })).fields[0].groupEffective,
+    ).toBe('READ_ONLY');
+    expect(
+      (await save({ ...policy, groupFieldAccess: null })).override
+        ?.groupFieldAccess,
+    ).toBeNull();
+  });
+  it('rejects unknown keys, invalid access and system EDIT in group settings', async () => {
+    const { service, store } = serviceFor();
+    store.groupLeader = true;
+    for (const groupFieldAccess of [{ unknown: 'EDIT' }, { secret: 'INVALID' }])
+      await expect(
+        service.setMemberObjectAccess(
+          admin,
+          'member-employee',
+          'object-leads',
+          { ...policy, groupFieldAccess } as never,
+          { requestId: 'invalid' },
+        ),
+      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    store.objectAccess[0].fields[0].isSystem = true;
+    await expect(
+      service.setMemberObjectAccess(
+        admin,
+        'member-employee',
+        'object-leads',
+        { ...policy, groupFieldAccess: { secret: 'EDIT' } },
+        { requestId: 'invalid' },
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
   it('rejects grants to non-leaders, accepts leaders without broadening writes, and falls back after leadership ends', async () => {
     const { service, store } = serviceFor();
     await expect(

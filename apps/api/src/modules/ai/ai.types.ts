@@ -23,6 +23,8 @@ export interface BeginTurnInput {
 }
 
 export interface AssistantFinalizeOutcome {
+  /** Server-issued attempt; omitted legacy callers can finalize attempt one only. */
+  providerAttempt?: number;
   status: 'COMPLETED' | 'FAILED' | 'CANCELLED';
   content: string;
   usage?: Record<string, unknown>;

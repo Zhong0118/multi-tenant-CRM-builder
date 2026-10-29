@@ -7,6 +7,7 @@ import type {
 } from './object-schema';
 
 export interface ObjectAccessPolicy {
+  groupFieldAccess?: Record<string, PublishedFieldAccess> | null;
   canCreate: boolean;
   canRead: boolean;
   canUpdate: boolean;
@@ -18,6 +19,9 @@ export interface ObjectAccessPolicy {
 export interface EffectiveObjectAccess extends ObjectAccessPolicy {
   /** Resolved from live membership; never supplied by a client. */
   groupOwnerMemberIds?: string[];
+  memberId?: string;
+  groupTitleHidden?: boolean;
+  ownTitleHidden?: boolean;
   fields: Record<string, PublishedFieldAccess>;
 }
 
@@ -36,6 +40,7 @@ export interface AccessibleObjectSchema {
 export function resolveEffectiveAccess(input: {
   schema: AccessibleObjectSchema;
   role: 'TENANT_ADMIN' | 'EMPLOYEE';
+  memberId?: string;
   memberOverride?: ObjectAccessPolicy;
   groupOwnerMemberIds?: string[];
   memberFieldOverrides?: Record<string, PublishedFieldAccess>;
@@ -73,7 +78,7 @@ export function resolveEffectiveAccess(input: {
   }
 
   const objectPolicy = input.memberOverride ?? employeeAccess;
-  return {
+  const access: EffectiveObjectAccess = {
     canCreate: objectPolicy.canCreate,
     canRead: objectPolicy.canRead,
     canUpdate: objectPolicy.canUpdate,
@@ -97,4 +102,69 @@ export function resolveEffectiveAccess(input: {
       ]),
     ),
   };
+  if (
+    objectPolicy.readScope === 'GROUP' &&
+    input.groupOwnerMemberIds &&
+    objectPolicy.groupFieldAccess != null
+  ) {
+    access.memberId = input.memberId;
+    access.groupFieldAccess = Object.fromEntries(
+      input.schema.fields.map((field) => {
+        const configured = Object.hasOwn(
+          objectPolicy.groupFieldAccess!,
+          field.fieldKey,
+        )
+          ? objectPolicy.groupFieldAccess![field.fieldKey]
+          : undefined;
+        const fallback =
+          access.fields[field.fieldKey] === 'HIDDEN' ? 'HIDDEN' : 'READ_ONLY';
+        const value = configured ?? fallback;
+        return [
+          field.fieldKey,
+          value === 'EDIT' && (field.isSystem || !access.canUpdate)
+            ? 'READ_ONLY'
+            : value,
+        ];
+      }),
+    );
+  }
+  return access;
+}
+
+export function isGroupPeer(
+  access: EffectiveObjectAccess,
+  record: { ownerMemberId: string | null; inPublicPool?: boolean },
+): boolean {
+  return (
+    !!access.groupFieldAccess &&
+    !!access.memberId &&
+    access.readScope === 'GROUP' &&
+    !record.inPublicPool &&
+    record.ownerMemberId !== null &&
+    record.ownerMemberId !== access.memberId &&
+    !!access.groupOwnerMemberIds?.includes(record.ownerMemberId)
+  );
+}
+
+export function recordFieldAccess(
+  access: EffectiveObjectAccess,
+  record: { ownerMemberId: string | null; inPublicPool?: boolean },
+): Record<string, PublishedFieldAccess> {
+  return isGroupPeer(access, record) ? access.groupFieldAccess! : access.fields;
+}
+
+/** Mixed-scope queries must never inspect a field hidden in either scope. */
+export function queryFieldAccess(
+  access: EffectiveObjectAccess,
+): Record<string, PublishedFieldAccess> {
+  if (!access.groupFieldAccess || access.groupTitleHidden) return access.fields;
+  if (access.ownTitleHidden) return access.groupFieldAccess;
+  return Object.fromEntries(
+    Object.entries(access.fields).map(([key, value]) => [
+      key,
+      (access.groupFieldAccess?.[key] ?? 'HIDDEN') === 'HIDDEN'
+        ? 'HIDDEN'
+        : value,
+    ]),
+  );
 }

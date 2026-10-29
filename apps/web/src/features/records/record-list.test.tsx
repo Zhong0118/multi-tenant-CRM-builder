@@ -1872,3 +1872,78 @@ describe("GROUP record scope controls", () => {
     }
   });
 });
+
+it("offers only common query fields and disables search when none are searchable", async () => {
+  renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+    schema: {
+      ...schema,
+      scopes: { read: "GROUP", update: "OWN" },
+      queryFieldKeys: [],
+      groupFieldAccess: {
+        name: "READ_ONLY",
+        lead_status: "HIDDEN",
+        phone: "HIDDEN",
+        score: "HIDDEN",
+      },
+    },
+  });
+  expect(screen.getByRole("textbox", { name: /搜索/ })).toBeDisabled();
+  expect(
+    screen.queryByRole("combobox", { name: "按线索状态筛选" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen
+      .getByRole("columnheader", { name: "手机号" })
+      .querySelector(".ant-table-column-sorters"),
+  ).toBeNull();
+  fireEvent.mouseDown(screen.getByRole("combobox", { name: "卡片排序字段" }));
+  expect(
+    screen.queryByText("手机号", {
+      selector: ".ant-select-item-option-content",
+    }),
+  ).not.toBeInTheDocument();
+});
+
+it("renders hidden cells per row while allowing an explicitly editable teammate row", async () => {
+  const mixed = {
+    ...page,
+    total: 2,
+    items: [
+      {
+        ...page.items[0],
+        id: "own",
+        ownerMemberId: "leader",
+        title: "本人客户",
+        values: { name: "本人客户", phone: "13800138000" },
+        fieldAccess: { name: "EDIT", phone: "EDIT" },
+        canEditFields: true,
+      },
+      {
+        ...page.items[0],
+        id: "team",
+        ownerMemberId: "teammate",
+        title: "组员客户",
+        values: { name: "组员客户", phone: "13900139000" },
+        fieldAccess: { name: "EDIT", phone: "HIDDEN" },
+        canEditFields: true,
+      },
+    ],
+  } as RecordPage;
+  renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+    page: mixed,
+    currentMemberId: "leader",
+    schema: {
+      ...schema,
+      scopes: { read: "GROUP", update: "OWN" },
+      groupFieldAccess: { name: "EDIT", phone: "HIDDEN" },
+    },
+  });
+  expect(screen.getAllByText("13800138000").length).toBeGreaterThan(0);
+  expect(screen.queryByText("13900139000")).not.toBeInTheDocument();
+  fireEvent.click(
+    screen.getAllByRole("button", { name: "更多操作 组员客户" })[0],
+  );
+  expect(await screen.findByRole("menuitem", { name: "编辑" })).not.toHaveClass(
+    "ant-dropdown-menu-item-disabled",
+  );
+});

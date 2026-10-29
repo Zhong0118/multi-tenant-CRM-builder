@@ -3734,6 +3734,10 @@
           "fieldKey": {
             "type": "string"
           },
+          "groupEffective": {
+            "enum": ["EDIT", "READ_ONLY", "HIDDEN"],
+            "type": "string"
+          },
           "inherited": {
             "enum": ["EDIT", "READ_ONLY", "HIDDEN"],
             "type": "string"
@@ -3818,6 +3822,14 @@
           "canUpdate": {
             "type": "boolean"
           },
+          "groupFieldAccess": {
+            "additionalProperties": {
+              "enum": ["EDIT", "READ_ONLY", "HIDDEN"],
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "object"
+          },
           "mode": {
             "enum": ["INHERIT", "OVERRIDE"],
             "type": "string"
@@ -3870,6 +3882,9 @@
             ],
             "nullable": true,
             "type": "object"
+          },
+          "titleFieldKey": {
+            "type": "string"
           }
         },
         "required": [
@@ -3898,6 +3913,14 @@
           },
           "canUpdate": {
             "type": "boolean"
+          },
+          "groupFieldAccess": {
+            "additionalProperties": {
+              "enum": ["EDIT", "READ_ONLY", "HIDDEN"],
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "object"
           },
           "readScope": {
             "enum": ["ALL", "OWN", "NONE", "GROUP"],
@@ -5354,6 +5377,13 @@
             },
             "type": "array"
           },
+          "groupFieldAccess": {
+            "additionalProperties": {
+              "enum": ["EDIT", "READ_ONLY", "HIDDEN"],
+              "type": "string"
+            },
+            "type": "object"
+          },
           "object": {
             "additionalProperties": true,
             "type": "object"
@@ -5367,6 +5397,12 @@
           "publication": {
             "additionalProperties": true,
             "type": "object"
+          },
+          "queryFieldKeys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "scopes": {
             "additionalProperties": true,
@@ -5758,9 +5794,19 @@
       },
       "RecordResponseDto": {
         "properties": {
+          "canEditFields": {
+            "type": "boolean"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
+          },
+          "fieldAccess": {
+            "additionalProperties": {
+              "enum": ["EDIT", "READ_ONLY", "HIDDEN"],
+              "type": "string"
+            },
+            "type": "object"
           },
           "id": {
             "format": "uuid",

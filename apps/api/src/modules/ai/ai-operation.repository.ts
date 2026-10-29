@@ -1,4 +1,8 @@
-import { recordOwnerFilter } from '../objects/record-read-scope';
+import { recordFieldAccess } from '../objects/effective-access';
+import {
+  recordOwnerFilter,
+  recordOwnerMatches,
+} from '../objects/record-read-scope';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
 
@@ -159,6 +163,7 @@ export class AiOperationRepository {
         resolved: ResolvedObjectSchema;
         recordIds: Set<string>;
         editableIds: Set<string>;
+        recordAccess: Map<string, ResolvedObjectSchema>;
       }
     >();
     for (const objectCode of new Set(
@@ -187,13 +192,44 @@ export class AiOperationRepository {
         .filter((target) => target.objectCode === objectCode)
         .map((target) => target.recordId)
         .filter((id): id is string => typeof id === 'string');
-      const recordIds = await visibleRecordIdsInTransaction(
-        tx,
-        context,
-        resolved.schema.object.id,
-        ids,
-        recordOwnerFilter(resolved.access, context.memberId),
-      );
+      const recordAccess = new Map<string, ResolvedObjectSchema>();
+      let recordIds: string[];
+      if (resolved.access.groupFieldAccess) {
+        const ownerFilter = recordOwnerFilter(
+          resolved.access,
+          context.memberId,
+        );
+        const records = await tx.record.findMany({
+          where: {
+            tenantId: context.tenantId,
+            objectId: resolved.schema.object.id,
+            id: { in: ids },
+            ownerMemberId: ownerFilter,
+            deletedAt: null,
+          },
+          select: { id: true, ownerMemberId: true, inPublicPool: true },
+        });
+        recordIds = [];
+        for (const record of records) {
+          if (!recordOwnerMatches(ownerFilter, record.ownerMemberId)) continue;
+          recordIds.push(record.id);
+          recordAccess.set(record.id, {
+            ...resolved,
+            access: {
+              ...resolved.access,
+              fields: recordFieldAccess(resolved.access, record),
+            },
+          });
+        }
+      } else {
+        recordIds = await visibleRecordIdsInTransaction(
+          tx,
+          context,
+          resolved.schema.object.id,
+          ids,
+          recordOwnerFilter(resolved.access, context.memberId),
+        );
+      }
       const editableIds =
         !resolved.access.canUpdate || resolved.access.updateScope === 'NONE'
           ? []
@@ -208,6 +244,7 @@ export class AiOperationRepository {
               )
             : recordIds;
       visibility.set(objectCode, {
+        recordAccess,
         resolved,
         recordIds: new Set(recordIds),
         editableIds: new Set(editableIds),
@@ -238,7 +275,11 @@ export class AiOperationRepository {
         : undefined;
       return toView(
         row,
-        visible?.resolved ?? null,
+        (target.recordId
+          ? visible?.recordAccess.get(target.recordId)
+          : undefined) ??
+          visible?.resolved ??
+          null,
         !!visible &&
           typeof target.recordId === 'string' &&
           visible.recordIds.has(target.recordId),

@@ -24,6 +24,31 @@ const period: DashboardPeriod = {
 };
 
 describe('DashboardEngine', () => {
+  it('does not aggregate a field hidden on peer records', async () => {
+    const f = setup(
+      [
+        {
+          ...widgetBase('amount', 'ALL'),
+          type: 'METRIC',
+          aggregation: 'SUM',
+          valueFieldKey: 'amount',
+        },
+      ],
+      {
+        readScope: 'GROUP',
+        groupOwnerMemberIds: ['leader', 'peer'],
+        groupFieldAccess: { name: 'READ_ONLY', amount: 'HIDDEN' },
+      },
+    );
+    const result = await f.engine.evaluate({
+      publication: f.publication,
+      catalog: f.catalog,
+      context: employeeContext(),
+      period,
+    });
+    expect(result.widgets).toEqual([]);
+    expect(f.executor.plans).toEqual([]);
+  });
   it('retains an unavailable archived-table widget without failing other widgets', async () => {
     const fixture = setup([metric('stopped', 'ALL')]);
     fixture.resolver.resolveRuntimeSchema.mockRejectedValue(

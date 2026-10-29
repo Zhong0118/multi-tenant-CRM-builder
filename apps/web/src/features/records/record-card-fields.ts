@@ -3,6 +3,8 @@ import type {
   RuntimeObjectSchema,
 } from "@/features/objects/object-types";
 
+import { visibleFields } from "./record-access";
+
 export interface RecordCardFields {
   status?: PublishedFieldView;
   extras: PublishedFieldView[];
@@ -13,11 +15,10 @@ export function recordCardFields(
   columnFieldKeys: string[] = schema.defaultView.columnFieldKeys,
 ): RecordCardFields {
   const visible = columnFieldKeys
-    .map((fieldKey) => schema.fields.find((field) => field.fieldKey === fieldKey))
-    .filter(
-      (field): field is PublishedFieldView =>
-        field !== undefined && field.access !== "HIDDEN",
-    );
+    .map((fieldKey) =>
+      visibleFields(schema).find((field) => field.fieldKey === fieldKey),
+    )
+    .filter((field): field is PublishedFieldView => field !== undefined);
 
   const status = visible.find((field) => field.type === "SINGLE_SELECT");
   const extras = visible

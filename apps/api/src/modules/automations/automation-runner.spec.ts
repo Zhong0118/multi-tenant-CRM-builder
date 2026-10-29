@@ -4,7 +4,12 @@ import type {
 } from '../objects/object-schema';
 import { resolvePublishedObjectRecord } from '../objects/published-object.service';
 import { resolvePublishedObjectInTransaction } from '../objects/published-object-transaction';
-import { previewAutomation, type AutomationSession } from './automation-runner';
+import {
+  runFieldAutomations,
+  automationTarget,
+  previewAutomation,
+  type AutomationSession,
+} from './automation-runner';
 import type { AutomationRule } from './automation.types';
 
 jest.mock('../objects/published-object-transaction', () => ({
@@ -162,6 +167,53 @@ describe('automation preview choice labels', () => {
     },
   );
 
+  it.each([{ rows: [] }, { rows: [{ result: { id: 'already-executed' } }] }])(
+    'blocks a matching implicit business automation consistently before deduplication',
+    async ({ rows }) => {
+      const { session, rule } = fixture();
+      session.source.ownerMemberId = 'peer';
+      session.resolved.access = {
+        ...session.resolved.access,
+        memberId: 'employee',
+        readScope: 'GROUP',
+        updateScope: 'OWN',
+        groupOwnerMemberIds: ['employee', 'peer'],
+        groupFieldAccess: { name: 'READ_ONLY', status: 'EDIT' },
+      };
+      rule.trigger = {
+        type: 'FIELD_CHANGED',
+        fieldKey: 'status',
+        equals: 'option_1',
+      };
+      session.resolved.schema.automations = [rule];
+      session.tx = { $queryRaw: jest.fn().mockResolvedValue(rows) } as never;
+      await expect(
+        runFieldAutomations(
+          session,
+          { ...session.source, values: { status: 'option_2' } },
+          { requestId: 'automation' },
+        ),
+      ).rejects.toMatchObject({
+        code: 'VALIDATION_FAILED',
+        message: expect.stringContaining('自动化') as unknown,
+      });
+    },
+  );
+  it('rejects source mappings hidden only on the peer row', async () => {
+    const { session, rule } = fixture();
+    session.source.ownerMemberId = 'peer';
+    session.resolved.access = {
+      ...session.resolved.access,
+      memberId: 'employee',
+      readScope: 'GROUP',
+      groupOwnerMemberIds: ['employee', 'peer'],
+      groupFieldAccess: { name: 'READ_ONLY', status: 'HIDDEN' },
+    };
+    rule.mappings.status = { source: 'SOURCE_FIELD', fieldKey: 'status' };
+    await expect(automationTarget(session, rule)).rejects.toMatchObject({
+      code: 'FIELD_HIDDEN',
+    });
+  });
   it('keeps empty choices available for the existing display fallback', async () => {
     const { session, rule } = fixture();
     rule.mappings = { status: { source: 'INPUT' }, tags: { source: 'INPUT' } };

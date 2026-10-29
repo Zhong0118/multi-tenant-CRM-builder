@@ -55,6 +55,7 @@ export interface TenantMemberPage {
 }
 
 export interface MemberObjectPolicy {
+  groupFieldAccess?: Record<string, PublishedFieldAccess> | null;
   canCreate: boolean;
   canRead: boolean;
   canUpdate: boolean;
@@ -64,6 +65,7 @@ export interface MemberObjectPolicy {
 }
 
 export interface MemberFieldAccess {
+  groupEffective?: PublishedFieldAccess;
   fieldId: string;
   fieldKey: string;
   label: string;
@@ -79,6 +81,7 @@ export interface MemberFieldAccessChange {
 }
 
 export interface MemberObjectAccessSource {
+  titleFieldKey?: string;
   fields: MemberFieldAccess[];
   objectId: string;
   objectCode: string;
@@ -93,9 +96,13 @@ export interface MemberObjectAccess extends MemberObjectAccessSource {
 }
 
 export type MemberObjectAccessInput =
-  | { mode: 'INHERIT' }
+  | {
+      mode: 'INHERIT';
+      groupFieldAccess?: Record<string, PublishedFieldAccess> | null;
+    }
   | {
       mode: 'OVERRIDE';
+      groupFieldAccess?: Record<string, PublishedFieldAccess> | null;
       canCreate: boolean;
       canRead: boolean;
       canUpdate: boolean;
@@ -509,6 +516,15 @@ export class MembershipsService {
         throw new ApiException('VALIDATION_FAILED', 400, {
           message: '请先将该员工设为在职小组组长，再授予本组数据查看权限。',
         });
+      if (input.groupFieldAccess != null) {
+        if (
+          input.mode !== 'OVERRIDE' ||
+          input.readScope !== 'GROUP' ||
+          !isLeader
+        )
+          throw new ApiException('VALIDATION_FAILED', 400);
+        validateGroupFieldAccess(input.groupFieldAccess, object.fields);
+      }
       const before = resolveMemberObjectAccess(object, isLeader);
 
       if (input.mode === 'INHERIT') {
@@ -516,6 +532,11 @@ export class MembershipsService {
         object.override = null;
       } else {
         const override: MemberObjectPolicy = {
+          ...(input.groupFieldAccess !== undefined
+            ? { groupFieldAccess: input.groupFieldAccess }
+            : object.override?.groupFieldAccess !== undefined
+              ? { groupFieldAccess: object.override.groupFieldAccess }
+              : {}),
           canCreate: input.canCreate,
           canRead: input.canRead,
           canUpdate: input.canUpdate,
@@ -557,7 +578,8 @@ export class MembershipsService {
     this.assertAdmin(context);
     if (
       input.objectAccess?.mode === 'OVERRIDE' &&
-      input.objectAccess.readScope === 'GROUP'
+      (input.objectAccess.readScope === 'GROUP' ||
+        input.objectAccess.groupFieldAccess != null)
     )
       throw new ApiException('VALIDATION_FAILED', 400, {
         message: '请在组长的个人访问权限中逐表授予本组数据查看权限。',
@@ -608,6 +630,11 @@ export class MembershipsService {
         } else if (input.objectAccess?.mode === 'OVERRIDE') {
           const policy = input.objectAccess;
           object.override = {
+            ...(policy.groupFieldAccess !== undefined
+              ? { groupFieldAccess: policy.groupFieldAccess }
+              : object.override?.groupFieldAccess !== undefined
+                ? { groupFieldAccess: object.override.groupFieldAccess }
+                : {}),
             canCreate: policy.canCreate,
             canRead: policy.canRead,
             canUpdate: policy.canUpdate,
@@ -743,6 +770,32 @@ function resolveMemberObjectAccess(
   const policy = source.override ?? source.inherited;
   return {
     ...source,
+    ...(isLeader && policy.readScope === 'GROUP'
+      ? {
+          fields: source.fields.map((field) => {
+            const configured =
+              policy.groupFieldAccess &&
+              Object.hasOwn(policy.groupFieldAccess, field.fieldKey)
+                ? policy.groupFieldAccess[field.fieldKey]
+                : undefined;
+            const fallback =
+              field.effective === 'HIDDEN' ? 'HIDDEN' : 'READ_ONLY';
+            let groupEffective =
+              policy.groupFieldAccess != null
+                ? (configured ?? fallback)
+                : field.effective;
+            if (
+              groupEffective === 'EDIT' &&
+              (field.isSystem ||
+                !policy.canUpdate ||
+                (policy.groupFieldAccess == null &&
+                  policy.updateScope !== 'ALL'))
+            )
+              groupEffective = 'READ_ONLY';
+            return { ...field, groupEffective };
+          }),
+        }
+      : {}),
     mode: source.override ? 'OVERRIDE' : 'INHERIT',
     effective:
       policy.readScope === 'GROUP' && !isLeader
@@ -768,4 +821,23 @@ function accessAuditValue(
       }),
     ),
   };
+}
+
+function validateGroupFieldAccess(
+  value: Record<string, PublishedFieldAccess>,
+  fields: MemberFieldAccess[],
+): void {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new ApiException('VALIDATION_FAILED', 400);
+  for (const [key, access] of Object.entries(value)) {
+    const field = fields.find((item) => item.fieldKey === key);
+    if (
+      !field ||
+      !['EDIT', 'READ_ONLY', 'HIDDEN'].includes(access) ||
+      (field.isSystem && access === 'EDIT')
+    )
+      throw new ApiException('VALIDATION_FAILED', 400, {
+        message: '请选择当前已发布的字段，系统字段不可编辑。',
+      });
+  }
 }

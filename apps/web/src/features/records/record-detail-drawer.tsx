@@ -23,6 +23,7 @@ import { displayRecordOwner, formatDateTime } from "./record-display-value";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
 import { defaultRecordColumnKeys } from "./record-columns";
 import { RecordForm } from "./record-form";
+import { canEditRecord, canEditRecordFields, recordFields } from "./record-access";
 
 import { RecordOwnershipActions, RecordPoolStatus } from "./record-pool";
 import type { RecordPoolConfig } from "./record-pool-api";
@@ -66,7 +67,13 @@ export function RecordDetailDrawer({
   onChanged,
 }: RecordDetailDrawerProps) {
   const poolPreview = record.inPublicPool && !canChooseOwner;
-  const canEdit = schema.actions.canUpdate && !poolPreview;
+  const canOperate = canEditRecord(schema, record, currentMemberId, canChooseOwner);
+  const canEdit = canEditRecordFields(
+    schema,
+    record,
+    currentMemberId,
+    canChooseOwner,
+  );
   const [editing, setEditing] = useState(initialEditing && canEdit);
   const [editingRecord, setEditingRecord] = useState<RecordSummary | undefined>(
     initialEditing && canEdit ? record : undefined,
@@ -77,7 +84,7 @@ export function RecordDetailDrawer({
   const [error, setError] = useState<string>();
   const [refreshWarning, setRefreshWarning] = useState<string>();
   const [deleted, setDeleted] = useState(false);
-  const fields = schema.fields.filter((field) => field.access !== "HIDDEN");
+  const fields = recordFields(schema, record);
   const summaryKeys = new Set([
     schema.object.titleFieldKey,
     ...defaultRecordColumnKeys(schema),
@@ -99,7 +106,7 @@ export function RecordDetailDrawer({
           <dt>
             {field.label}
             {field.access === "READ_ONLY" ? (
-              <span className={styles.detailLock}>仅管理员可编辑</span>
+              <span className={styles.detailLock}>只读</span>
             ) : null}
           </dt>
           <dd>{displayValue(field, record.values[field.fieldKey], members)}</dd>
@@ -310,7 +317,7 @@ export function RecordDetailDrawer({
             record={{
               id: record.id,
               objectCode: schema.object.code,
-              canCreate: canEdit,
+              canCreate: canOperate,
             }}
           /> : null}
 
@@ -319,7 +326,7 @@ export function RecordDetailDrawer({
             tenantCode={tenantCode}
             objectCode={schema.object.code}
             recordId={record.id}
-            canCreate={canEdit}
+            canCreate={canOperate}
             api={api}
           /> : null}
           <details className={styles.detailDisclosure}>
@@ -337,7 +344,7 @@ export function RecordDetailDrawer({
               tenantCode={tenantCode}
               objectCode={schema.object.code}
               recordId={record.id}
-              canUpdate={canEdit}
+              canUpdate={canOperate}
             />
           </details> : null}
           {!poolPreview ? <details className={styles.detailDisclosure}>
@@ -351,7 +358,7 @@ export function RecordDetailDrawer({
               tenantCode={tenantCode}
               objectCode={schema.object.code}
               recordId={record.id}
-              canUpdate={canEdit}
+              canUpdate={canOperate}
             />
           </details> : null}
         </>

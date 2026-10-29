@@ -1,5 +1,8 @@
+import { recordFieldAccess } from '../objects/effective-access';
+import type { PublishedFieldAccess } from '../objects/object-schema';
 import {
   recordOwnerFilter,
+  recordOwnerMatches,
   type RecordOwnerFilter,
 } from '../objects/record-read-scope';
 import { Inject, Injectable } from '@nestjs/common';
@@ -63,6 +66,8 @@ export const RECORDS_ID_GENERATOR = Symbol('RECORDS_ID_GENERATOR');
 type RequestMeta = RecordRequestMeta;
 
 export interface RecordResponse {
+  fieldAccess?: Record<string, PublishedFieldAccess>;
+  canEditFields?: boolean;
   poolStage?: PoolStage | null;
   poolOrigin?: PoolOrigin | null;
   poolClaimedAt?: string | null;
@@ -234,6 +239,8 @@ export class RecordsService {
                     : input.scope === 'pool'
                       ? undefined
                       : input.scope;
+                if (stageScope === 'pool' && resolved.access.ownTitleHidden)
+                  return [stage, 0];
                 const stageOwner = await resolveListOwner(
                   context,
                   resolved,
@@ -405,7 +412,10 @@ export class RecordsService {
           ownerMemberId: record.ownerMemberId,
           values: projectVisibleValues(
             resolved.schema,
-            resolved.access,
+            {
+              ...resolved.access,
+              fields: recordFieldAccess(resolved.access, record),
+            },
             record.values,
           ),
           createdAt: record.createdAt,
@@ -531,6 +541,9 @@ export class RecordsService {
         return (
           !field ||
           resolved.access.fields[key] !== 'EDIT' ||
+          !queryFields(resolved).some(
+            (candidate) => candidate.fieldKey === key,
+          ) ||
           field.type === 'MEMBER' ||
           field.type === 'MULTI_SELECT' ||
           input.rows.some(
@@ -552,6 +565,14 @@ export class RecordsService {
       context,
       async ({ store, tx }) => {
         resolved = await store.resolveCurrentObject(resolved);
+        if (
+          matchFields.some(
+            (key) =>
+              resolved.access.fields[key] !== 'EDIT' ||
+              !queryFields(resolved).some((field) => field.fieldKey === key),
+          )
+        )
+          throw new ApiException('RECORD_IMPORT_INVALID', 400);
         const objectId = resolved.schema.object.id;
         // Acquire member locks before import advisory locks and record counters,
         // matching ordinary creates and ownership assignment.
@@ -1009,7 +1030,7 @@ function searchableFieldKeys(resolved: ResolvedObjectSchema): string[] {
     resolved.visibleSchema.defaultView.columnFieldKeys;
   return [
     ...new Set(
-      resolved.visibleSchema.fields
+      queryFields(resolved)
         .filter(
           (field) =>
             isSearchableFieldType(field.type) &&
@@ -1038,7 +1059,7 @@ function parseListFilters(
   if (entries.length > 8) throw invalidRecordFilter();
 
   const visibleFields = new Map(
-    resolved.visibleSchema.fields.map((field) => [field.fieldKey, field]),
+    queryFields(resolved).map((field) => [field.fieldKey, field]),
   );
   const filters: RecordListFilter[] = [];
   for (const [fieldKey, rawValue] of entries) {
@@ -1305,7 +1326,7 @@ function parseListSort(
   if (SYSTEM_SORTS.has(sort as RecordListSystemSort)) {
     return sort as RecordListSystemSort;
   }
-  const field = resolved.visibleSchema.fields.find(
+  const field = queryFields(resolved).find(
     (candidate) => candidate.fieldKey === sort,
   );
   const kind = field ? SORTABLE_FIELD_KINDS[field.type] : undefined;
@@ -1358,9 +1379,7 @@ function visibleAggregateField(
   fieldKey: string | undefined,
 ) {
   if (!fieldKey) return undefined;
-  return resolved.visibleSchema.fields.find(
-    (field) => field.fieldKey === fieldKey,
-  );
+  return queryFields(resolved).find((field) => field.fieldKey === fieldKey);
 }
 
 function resolveAggregateValueField(
@@ -1443,6 +1462,7 @@ async function resolveListOwner(
   if (scope === 'pool') {
     if (
       !resolved.poolEnabled ||
+      resolved.access.ownTitleHidden ||
       !resolved.access.canRead ||
       resolved.access.readScope === 'NONE'
     )
@@ -1451,7 +1471,13 @@ async function resolveListOwner(
   }
   if (scope === 'all' && resolved.access.readScope !== 'ALL')
     throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
-  if (scope === 'mine') return context.memberId;
+  if (scope === 'mine')
+    return recordOwnerMatches(
+      recordOwnerFilter(resolved.access, context.memberId),
+      context.memberId,
+    )
+      ? context.memberId
+      : { in: [] };
   if (
     resolved.access.readScope === 'OWN' ||
     resolved.access.readScope === 'GROUP'
@@ -1495,4 +1521,12 @@ function poolQueryScope(
   if (stage !== undefined && stage !== 'LEGACY' && !POOL_STAGES.includes(stage))
     throw new ApiException('VALIDATION_FAILED', 400);
   return stage === 'LEAD_POOL' || stage === 'CUSTOMER_POOL' ? 'pool' : scope;
+}
+
+function queryFields(resolved: ResolvedObjectSchema) {
+  return resolved.visibleSchema.fields.filter(
+    (field) =>
+      resolved.visibleSchema.queryFieldKeys === undefined ||
+      resolved.visibleSchema.queryFieldKeys.includes(field.fieldKey),
+  );
 }

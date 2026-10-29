@@ -3,7 +3,10 @@ import type {
   RecordSortDirection,
   RuntimeObjectSchema,
 } from "@/features/objects/object-types";
-import { SYSTEM_RECORD_SORT_FIELDS } from "@/features/objects/object-types";
+import {
+  isSearchableFieldType,
+  SYSTEM_RECORD_SORT_FIELDS,
+} from "@/features/objects/object-types";
 
 import { POOL_STAGES, type PoolStageFilter, type PoolQuality } from "./record-pool-types";
 
@@ -118,6 +121,33 @@ export function parseRecordQuery(
     sort: member(single(params.sort), allowedSorts) ?? defaults.sort,
     direction:
       member(single(params.direction), DIRECTIONS) ?? defaults.direction,
+  };
+}
+
+/** Reopening a saved view or URL must respect the current shared query scope. */
+export function restrictRecordQuery(
+  query: RecordQuery,
+  schema: RuntimeObjectSchema,
+): RecordQuery {
+  if (schema.queryFieldKeys === undefined) return query;
+  const allowed = new Set(schema.queryFieldKeys);
+  const searchable = schema.fields.some(
+    (field) =>
+      allowed.has(field.fieldKey) &&
+      (field.fieldKey === schema.object.titleFieldKey ||
+        isSearchableFieldType(field.type)),
+  );
+  return {
+    ...query,
+    search: searchable ? query.search : undefined,
+    filters: Object.fromEntries(
+      Object.entries(query.filters).filter(([key]) => allowed.has(key)),
+    ),
+    sort:
+      allowed.has(query.sort) ||
+      (SYSTEM_RECORD_SORT_FIELDS as readonly string[]).includes(query.sort)
+        ? query.sort
+        : schema.defaultView.sort.field,
   };
 }
 

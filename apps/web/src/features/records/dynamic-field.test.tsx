@@ -369,7 +369,7 @@ describe("DynamicField access levels", () => {
 
     expect(screen.getByText("客户评级")).toBeInTheDocument();
     expect(screen.getByText("金牌")).toBeInTheDocument();
-    expect(screen.getByText("仅管理员可编辑")).toBeInTheDocument();
+    expect(screen.getByText("当前只读")).toBeInTheDocument();
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });

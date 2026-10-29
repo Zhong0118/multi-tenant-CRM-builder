@@ -224,3 +224,34 @@ describe("identifier patterns", () => {
     expect(FIELD_KEY_PATTERN.test("customer-name")).toBe(false);
   });
 });
+
+it("preserves optional group and common query policies without changing own field access", () => {
+  const response = schemaResponse({
+    groupFieldAccess: { customer_name: "READ_ONLY" },
+    queryFieldKeys: ["customer_name"],
+  } as Partial<SchemaResponse>);
+  const parsed = parseRuntimeObjectSchema(response);
+  expect(parsed.groupFieldAccess).toEqual({ customer_name: "READ_ONLY" });
+  expect(parsed.queryFieldKeys).toEqual(["customer_name"]);
+  expect(parsed.fields[0].access).toBe("EDIT");
+  expect(
+    parseRuntimeObjectSchema(schemaResponse()).groupFieldAccess,
+  ).toBeUndefined();
+  expect(
+    parseRuntimeObjectSchema(schemaResponse()).queryFieldKeys,
+  ).toBeUndefined();
+});
+it("rejects invalid group access values and unknown query fields", () => {
+  expect(() =>
+    parseRuntimeObjectSchema(
+      schemaResponse({
+        groupFieldAccess: { customer_name: "WRITE" },
+      } as unknown as Partial<SchemaResponse>),
+    ),
+  ).toThrow();
+  expect(() =>
+    parseRuntimeObjectSchema(
+      schemaResponse({ queryFieldKeys: ["secret"] } as Partial<SchemaResponse>),
+    ),
+  ).toThrow();
+});

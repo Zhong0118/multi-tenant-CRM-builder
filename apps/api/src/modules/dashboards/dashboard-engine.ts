@@ -1,3 +1,4 @@
+import { queryFieldAccess } from '../objects/effective-access';
 import {
   recordOwnerFilter,
   type RecordOwnerFilter,
@@ -280,7 +281,7 @@ function projectFields(
 }
 
 function isFieldVisible(access: EffectiveObjectAccess, fieldKey: string) {
-  const fieldAccess = access.fields[fieldKey];
+  const fieldAccess = queryFieldAccess(access)[fieldKey];
   return fieldAccess !== undefined && fieldAccess !== 'HIDDEN';
 }
 

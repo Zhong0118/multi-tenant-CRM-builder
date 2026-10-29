@@ -1,3 +1,4 @@
+import { isGroupPeer, recordFieldAccess } from '../objects/effective-access';
 import {
   recordOwnerFilter,
   recordOwnerMatches,
@@ -79,7 +80,9 @@ export async function automationTarget(
     if (
       mapping.source === 'SOURCE_FIELD' &&
       !['EDIT', 'READ_ONLY'].includes(
-        session.resolved.access.fields[mapping.fieldKey] ?? 'HIDDEN',
+        recordFieldAccess(session.resolved.access, session.source)[
+          mapping.fieldKey
+        ] ?? 'HIDDEN',
       )
     )
       throw new ApiException('FIELD_HIDDEN', 403);
@@ -364,13 +367,31 @@ export async function runFieldAutomations(
   for (const rule of session.resolved.schema.automations ?? []) {
     if (!matchesFieldChange(rule, before.values, session.source.values))
       continue;
+    if (
+      isGroupPeer(session.resolved.access, session.source) &&
+      !recordOwnerMatches(
+        recordOwnerFilter(
+          session.resolved.access,
+          session.context.memberId,
+          true,
+        ),
+        session.source.ownerMemberId,
+      )
+    ) {
+      throw new ApiException('VALIDATION_FAILED', 400, {
+        message:
+          '该字段变更会触发自动化，但当前权限仅允许修改组员字段。请联系管理员调整原记录操作范围或自动化规则。',
+      });
+    }
     if (await findAutomationExecution(session, rule.key, 'field:first')) {
       await auditAutomationDeduplication(session, rule, meta);
       continue;
     }
     if (
       rule.trigger.type === 'FIELD_CHANGED' &&
-      session.resolved.access.fields[rule.trigger.fieldKey] === 'HIDDEN'
+      recordFieldAccess(session.resolved.access, session.source)[
+        rule.trigger.fieldKey
+      ] === 'HIDDEN'
     )
       throw new ApiException('FIELD_HIDDEN', 403);
     await executeAutomation(session, rule, {}, 'field:first', meta);

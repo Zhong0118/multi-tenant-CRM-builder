@@ -1,3 +1,4 @@
+import type { PublishedFieldAccess } from '../objects/object-schema';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
 
@@ -436,6 +437,7 @@ class PrismaMembershipStore implements MembershipStore {
       },
       include: {
         activePublication: { select: { configuration: true } },
+        fields: { where: { status: 'ACTIVE' }, select: { id: true } },
         memberFieldPermissions: { where: { memberId } },
         permissions: {
           where: {
@@ -453,25 +455,28 @@ class PrismaMembershipStore implements MembershipStore {
       );
       const override = object.permissions[0];
       return {
-        fields: schema.fields.map((field) => {
-          const inherited = field.isSystem
-            ? ('READ_ONLY' as const)
-            : (schema.employeeAccess.fields[field.fieldKey] ?? 'EDIT');
-          const override = field.isSystem
-            ? null
-            : (object.memberFieldPermissions.find(
-                (permission) => permission.fieldId === field.id,
-              )?.access ?? null);
-          return {
-            fieldId: field.id,
-            fieldKey: field.fieldKey,
-            label: field.label,
-            isSystem: field.isSystem,
-            inherited,
-            override,
-            effective: override ?? inherited,
-          };
-        }),
+        fields: schema.fields
+          .filter((field) => object.fields.some((live) => live.id === field.id))
+          .map((field) => {
+            const inherited = field.isSystem
+              ? ('READ_ONLY' as const)
+              : (schema.employeeAccess.fields[field.fieldKey] ?? 'EDIT');
+            const override = field.isSystem
+              ? null
+              : (object.memberFieldPermissions.find(
+                  (permission) => permission.fieldId === field.id,
+                )?.access ?? null);
+            return {
+              fieldId: field.id,
+              fieldKey: field.fieldKey,
+              label: field.label,
+              isSystem: field.isSystem,
+              inherited,
+              override,
+              effective: override ?? inherited,
+            };
+          }),
+        titleFieldKey: schema.object.titleFieldKey,
         objectId: object.id,
         objectCode: object.code,
         objectName: object.name,
@@ -485,6 +490,10 @@ class PrismaMembershipStore implements MembershipStore {
         },
         override: override
           ? {
+              groupFieldAccess: override.groupFieldAccess as Record<
+                string,
+                PublishedFieldAccess
+              > | null,
               canCreate: override.canCreate,
               canRead: override.canRead,
               canUpdate: override.canUpdate,
@@ -536,6 +545,9 @@ class PrismaMembershipStore implements MembershipStore {
         subjectType: 'MEMBER',
         subjectRole: null,
         subjectMemberId: memberId,
+        ...(policy.groupFieldAccess != null
+          ? { groupFieldAccess: policy.groupFieldAccess }
+          : {}),
         canCreate: policy.canCreate,
         canRead: policy.canRead,
         canUpdate: policy.canUpdate,

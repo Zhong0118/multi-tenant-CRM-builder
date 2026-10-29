@@ -19,7 +19,9 @@ export interface PublishedObjectRecord {
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
   sortOrder: number;
   configuration: unknown;
+  inactiveFieldKeys?: string[];
   memberOverride?: ObjectAccessPolicy;
+  memberId?: string;
   groupOwnerMemberIds?: string[];
   groupOwnerMembers?: GroupOwnerMember[];
   memberFieldOverrides?: Record<string, PublishedFieldAccess>;
@@ -47,6 +49,7 @@ export class PrismaPublishedObjectRepository implements PublishedObjectRepositor
         },
         include: {
           activePublication: { select: { configuration: true } },
+          fields: { where: { status: 'INACTIVE' }, select: { fieldKey: true } },
           memberFieldPermissions: {
             where: { memberId: context.memberId },
             select: { access: true, field: { select: { fieldKey: true } } },
@@ -71,6 +74,7 @@ export class PrismaPublishedObjectRepository implements PublishedObjectRepositor
       return objects.map((object) => ({
         ...toPublishedRecord(object),
         groupOwnerMemberIds,
+        memberId: context.memberId,
       }));
     });
   }
@@ -101,6 +105,7 @@ export async function findPublishedObjectInTransaction(
     where: { tenantId: context.tenantId, code },
     include: {
       activePublication: { select: { configuration: true } },
+      fields: { where: { status: 'INACTIVE' }, select: { fieldKey: true } },
       memberFieldPermissions: {
         where: { memberId: context.memberId },
         select: { access: true, field: { select: { fieldKey: true } } },
@@ -116,6 +121,7 @@ export async function findPublishedObjectInTransaction(
   });
   if (!object) return null;
   const record = toPublishedRecord(object);
+  record.memberId = context.memberId;
   if (record.memberOverride?.readScope === 'GROUP') {
     record.groupOwnerMembers = await resolveGroupOwnerMembers(
       transaction,
@@ -136,11 +142,13 @@ function toPublishedRecord(object: {
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
   sortOrder: number;
   activePublication: { configuration: unknown } | null;
+  fields?: { fieldKey: string }[];
   memberFieldPermissions: Array<{
     access: PublishedFieldAccess;
     field: { fieldKey: string };
   }>;
   permissions: Array<{
+    groupFieldAccess?: unknown;
     canCreate: boolean;
     canRead: boolean;
     canUpdate: boolean;
@@ -158,6 +166,7 @@ function toPublishedRecord(object: {
     status: object.status,
     sortOrder: object.sortOrder,
     configuration: object.activePublication?.configuration ?? null,
+    inactiveFieldKeys: object.fields?.map((field) => field.fieldKey),
     memberFieldOverrides: Object.fromEntries(
       object.memberFieldPermissions.map((permission) => [
         permission.field.fieldKey,
@@ -166,6 +175,10 @@ function toPublishedRecord(object: {
     ),
     memberOverride: override
       ? {
+          groupFieldAccess: override.groupFieldAccess as Record<
+            string,
+            PublishedFieldAccess
+          > | null,
           canCreate: override.canCreate,
           canRead: override.canRead,
           canUpdate: override.canUpdate,

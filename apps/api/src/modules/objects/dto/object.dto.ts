@@ -518,6 +518,16 @@ export class RecordOwnerMemberResponseDto {
 }
 
 export class PublishedObjectSchemaResponseDto {
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: {
+      type: 'string',
+      enum: ['EDIT', 'READ_ONLY', 'HIDDEN'],
+    },
+  })
+  groupFieldAccess?: Record<string, 'EDIT' | 'READ_ONLY' | 'HIDDEN'>;
+  @ApiPropertyOptional({ type: String, isArray: true })
+  queryFieldKeys?: string[];
   @ApiPropertyOptional({ type: Boolean }) workflowEnabled?: boolean;
   @ApiProperty({ type: 'object', additionalProperties: true })
   publication!: object;

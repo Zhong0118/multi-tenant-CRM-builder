@@ -159,3 +159,30 @@ describe("RecordBatchEditDrawer", () => {
     expect(screen.queryByText("内部备注")).not.toBeInTheDocument();
   });
 });
+
+it("only offers fields editable on every selected record", () => {
+  renderDrawer(
+    <RecordBatchEditDrawer
+      tenantCode="northwind"
+      schema={schema}
+      records={[
+        records[0],
+        {
+          ...records[1],
+          fieldAccess: { lead_status: "READ_ONLY", secret: "EDIT" },
+          canEditFields: true,
+        },
+      ]}
+      api={recordApi()}
+      onClose={vi.fn()}
+      onCompleted={vi.fn()}
+    />,
+  );
+  expect(
+    screen.queryByRole("checkbox", { name: "批量修改 线索状态" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("checkbox", { name: "批量修改 内部备注" }),
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "应用到选中记录" })).toBeDisabled();
+});

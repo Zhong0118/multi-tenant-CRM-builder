@@ -733,3 +733,213 @@ describe("MemberObjectAccess", () => {
     expect(screen.getByText("公司还没有已发布的业务表。")).toBeInTheDocument();
   });
 });
+
+describe("independent teammate column settings", () => {
+  const groupRow = () =>
+    row({
+      mode: "OVERRIDE",
+      override: { ...row().effective, readScope: "GROUP" },
+      effective: {
+        ...row().effective,
+        readScope: "GROUP",
+        groupFieldAccess: { name: "READ_ONLY", amount: "EDIT" },
+      },
+      fields: [
+        {
+          fieldId: "f-name",
+          fieldKey: "name",
+          label: "客户名称",
+          isSystem: false,
+          inherited: "EDIT",
+          override: null,
+          effective: "EDIT",
+          groupEffective: "READ_ONLY",
+        },
+        {
+          fieldId: "f-amount",
+          fieldKey: "amount",
+          label: "合同金额",
+          isSystem: false,
+          inherited: "READ_ONLY",
+          override: null,
+          effective: "READ_ONLY",
+          groupEffective: "EDIT",
+        },
+      ],
+    } as Partial<MemberObjectAccessRow>);
+  function showGroup(api: MemberAccessApi, initialRow = groupRow()) {
+    renderAccess(
+      <MemberObjectAccess
+        tenantCode="northwind"
+        memberId="leader"
+        memberName="组长"
+        isGroupLeader
+        initialRows={[initialRow]}
+        api={api}
+      />,
+    );
+    expand("客户资料");
+  }
+  it.each(["EDIT", "HIDDEN"] as const)(
+    "uses a safe default for constructor with an empty group map (own access: %s)",
+    async (ownAccess) => {
+      const current = groupRow();
+      const api = accessApi({ set: vi.fn().mockResolvedValue(current) });
+      showGroup(api, {
+        ...current,
+        effective: { ...current.effective, groupFieldAccess: {} },
+        fields: [
+          {
+            ...current.fields[0],
+            fieldKey: "constructor",
+            label: "构造说明",
+            effective: ownAccess,
+            groupEffective: undefined,
+          },
+        ],
+      });
+      fireEvent.click(screen.getByRole("button", { name: "设置组员列权限" }));
+      const expected = ownAccess === "HIDDEN" ? "HIDDEN" : "READ_ONLY";
+      expect(
+        screen.getByLabelText("组员列权限 构造说明").closest(".ant-select"),
+      ).toHaveTextContent(expected === "HIDDEN" ? "隐藏" : "只读");
+      fireEvent.click(screen.getByRole("button", { name: "保存组员列权限" }));
+      await waitFor(() =>
+        expect(api.set).toHaveBeenCalledWith(
+          "northwind",
+          "leader",
+          "object-customers",
+          expect.objectContaining({
+            groupFieldAccess: { constructor: expected },
+          }),
+        ),
+      );
+    },
+  );
+  it.each([true, false])(
+    "warns beside only the known hidden title field (metadata: %s)",
+    (hasTitleMetadata) => {
+      const current = groupRow();
+      showGroup(accessApi(), {
+        ...current,
+        ...(hasTitleMetadata ? { titleFieldKey: "name" } : {}),
+        effective: {
+          ...current.effective,
+          groupFieldAccess: { name: "HIDDEN", amount: "HIDDEN" },
+        },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "设置组员列权限" }));
+      const dialog = screen.getByRole("dialog", {
+        name: "客户资料 · 组员列权限",
+      });
+      expect(
+        within(dialog).getByText(
+          "隐藏标题列后无法查看对应组员记录，系统列不能设为可编辑。",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).queryByText(/若该列为标题列/),
+      ).not.toBeInTheDocument();
+      const titleRow = within(dialog)
+        .getByLabelText("组员列权限 客户名称")
+        .closest(".ant-select")!.parentElement!;
+      const amountRow = within(dialog)
+        .getByLabelText("组员列权限 合同金额")
+        .closest(".ant-select")!.parentElement!;
+      expect(
+        within(titleRow).queryByText("隐藏标题列后将无法查看对应组员记录") !==
+          null,
+      ).toBe(hasTitleMetadata);
+      expect(
+        within(amountRow).queryByText("隐藏标题列后将无法查看对应组员记录"),
+      ).not.toBeInTheDocument();
+    },
+  );
+  it("explains that restricted automation rules reject the entire field update", () => {
+    showGroup(accessApi());
+    expect(
+      screen.getByText(
+        /涉及额外记录操作的自动化仍需对应权限，命中无权执行的规则时本次修改整体失败/,
+      ),
+    ).toBeInTheDocument();
+  });
+  it("compares own and teammate access and saves a full independent map", async () => {
+    const api = accessApi({ set: vi.fn().mockResolvedValue(groupRow()) });
+    showGroup(api);
+    expect(
+      screen.getByRole("columnheader", { name: "本人记录" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "本组其他成员记录" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "设置组员列权限" }));
+    fireEvent.mouseDown(screen.getByLabelText("组员列权限 客户名称"));
+    fireEvent.click(
+      await screen.findByText("隐藏", {
+        selector: ".ant-select-item-option-content",
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "保存组员列权限" }));
+    await waitFor(() =>
+      expect(api.set).toHaveBeenCalledWith(
+        "northwind",
+        "leader",
+        "object-customers",
+        expect.objectContaining({
+          groupFieldAccess: { name: "HIDDEN", amount: "EDIT" },
+        }),
+      ),
+    );
+    const input = vi.mocked(api.set).mock.calls[0][3];
+    expect(input).not.toHaveProperty("fieldAccess");
+    expect(input).toMatchObject({
+      readScope: "GROUP",
+      updateScope: "OWN",
+      canUpdate: true,
+    });
+  });
+  it("retains failed drafts and cancel restores the saved independent map", async () => {
+    const api = accessApi({
+      set: vi
+        .fn()
+        .mockRejectedValue({
+          code: "PERMISSION_DENIED",
+          message: "权限保存失败",
+          requestId: "group-failure",
+          fieldErrors: {},
+          status: 403,
+        }),
+    });
+    showGroup(api);
+    fireEvent.click(screen.getByRole("button", { name: "设置组员列权限" }));
+    fireEvent.mouseDown(screen.getByLabelText("组员列权限 客户名称"));
+    fireEvent.click(
+      await screen.findByText("隐藏", {
+        selector: ".ant-select-item-option-content",
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "保存组员列权限" }));
+    expect(await screen.findByText(/权限保存失败/)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("组员列权限 客户名称").closest(".ant-select"),
+    ).toHaveTextContent("隐藏");
+    fireEvent.click(screen.getByRole("button", { name: "取消组员列权限" }));
+    fireEvent.click(screen.getByRole("button", { name: "设置组员列权限" }));
+    expect(
+      screen.getByLabelText("组员列权限 客户名称").closest(".ant-select"),
+    ).toHaveTextContent("只读");
+  });
+  it("restores legacy rules with null without clearing own columns", async () => {
+    const api = accessApi({ set: vi.fn().mockResolvedValue(groupRow()) });
+    showGroup(api);
+    fireEvent.click(screen.getByRole("button", { name: "恢复原有组员列规则" }));
+    await waitFor(() =>
+      expect(api.set).toHaveBeenCalledWith(
+        "northwind",
+        "leader",
+        "object-customers",
+        expect.objectContaining({ groupFieldAccess: null }),
+      ),
+    );
+  });
+});

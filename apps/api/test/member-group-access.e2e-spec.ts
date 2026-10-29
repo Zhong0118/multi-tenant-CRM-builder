@@ -1,3 +1,5 @@
+import { ConversationRepository } from '../src/modules/ai/conversation.repository';
+import { AiProposalService } from '../src/modules/ai/ai-proposal.service';
 import { RecordsService } from '../src/modules/records/records.service';
 import { PublishedObjectService } from '../src/modules/objects/published-object.service';
 import { DashboardEngine } from '../src/modules/dashboards/dashboard-engine';
@@ -211,6 +213,476 @@ describe('GROUP read boundaries over HTTP', () => {
     });
     expect(row.ownerMemberId).toBe(f.otherEmployee.memberId);
     expect(row.version).toBe(f.otherRecord.version);
+  });
+
+  describe('independent peer field policies', () => {
+    const policyPath = () =>
+      `${base()}/members/${f.employee.memberId}/object-access/${f.object.id}`;
+    const configure = (
+      groupFieldAccess: Record<string, string> | null,
+      canUpdate = true,
+    ) =>
+      request(h.app.getHttpServer())
+        .put(policyPath())
+        .set('Cookie', f.admin.cookie)
+        .set('Origin', origin)
+        .send({
+          mode: 'OVERRIDE',
+          canCreate: true,
+          canRead: true,
+          canUpdate,
+          readScope: 'GROUP',
+          updateScope: 'OWN',
+          groupFieldAccess,
+        });
+    beforeEach(async () => {
+      const publication =
+        await h.adminDatabase.objectPublication.findFirstOrThrow({
+          where: { objectId: f.object.id },
+        });
+      const schema = publication.configuration as unknown as {
+        fields: Array<{
+          id: string;
+          fieldKey: string;
+          label: string;
+          type: 'TEXT' | 'TEXTAREA';
+        }>;
+      };
+      for (const field of schema.fields)
+        await h.adminDatabase.fieldDefinition.create({
+          data: { ...field, tenantId: f.tenantA.id, objectId: f.object.id },
+        });
+    });
+    afterEach(async () => {
+      if (f)
+        await h.adminDatabase.memberFieldPermission.deleteMany({
+          where: { tenantId: f.tenantA.id },
+        });
+    });
+    it('saves the reviewed DTO and keeps own and peer values independent', async () => {
+      const configured = await configure({
+        name: 'READ_ONLY',
+        reviewCode: 'EDIT',
+        secret: 'HIDDEN',
+      }).expect(200);
+      expect(configured.body).toHaveProperty(
+        'effective.groupFieldAccess.reviewCode',
+        'EDIT',
+      );
+      const schema = await get(schemaPath()).expect(200);
+      expect(schema.body).toMatchObject({
+        groupFieldAccess: {
+          reviewCode: 'EDIT',
+          secret: 'HIDDEN',
+        },
+      });
+      expect(schema.body).toHaveProperty(
+        'queryFieldKeys',
+        expect.not.arrayContaining(['secret']),
+      );
+      await patch(`${records()}/${f.otherRecord.id}`, {
+        version: 1,
+        values: { reviewCode: 'group-edited' },
+      }).expect(200);
+      const detail = await get(`${records()}/${f.otherRecord.id}`).expect(200);
+      expect(detail.body).toMatchObject({
+        values: { reviewCode: 'group-edited' },
+        canEditFields: true,
+        fieldAccess: { name: 'READ_ONLY', secret: 'HIDDEN' },
+      });
+      await patch(`${records()}/${f.ownedRecord.id}`, {
+        version: 1,
+        values: { name: 'owner unchanged rules' },
+      }).expect(200);
+      await patch(`${records()}/${f.otherRecord.id}`, {
+        version: 2,
+        values: { reviewCode: 'rollback', secret: 'forbidden' },
+      }).expect(403);
+      expect(
+        (await get(`${records()}/${f.otherRecord.id}`).expect(200)).body,
+      ).toHaveProperty('values.reviewCode', 'group-edited');
+    });
+    it('hides peer title across read endpoints, queries, CSV and SQL protection', async () => {
+      await configure({ name: 'HIDDEN', reviewCode: 'EDIT' }).expect(200);
+      for (const suffix of [
+        '',
+        '/activities',
+        '/relations',
+        '/attachments',
+        '/workflow',
+        '/workflow/history',
+        '/automations/history',
+      ])
+        await get(`${records()}/${f.otherRecord.id}${suffix}`).expect(404);
+      const page = await get(records())
+        .query({ search: '他人线索' })
+        .expect(200);
+      expect(page.body).toHaveProperty('total', 0);
+      expect((await get(`${records()}/export`).expect(200)).text).not.toContain(
+        '他人线索',
+      );
+      await get(`${records()}/${f.ownedRecord.id}`).expect(200);
+      const result = await h.runtimeDatabase.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT set_config('app.user_id', ${f.employee.userId}, true)`;
+        await tx.$executeRaw`SELECT set_config('app.tenant_id', ${f.tenantA.id}, true)`;
+        return tx.$queryRaw<
+          Array<{ allowed: boolean }>
+        >`SELECT public.record_pool_can_protect(r) AS allowed FROM records r WHERE r.id=${f.otherRecord.id}::uuid`;
+      });
+      expect(result[0].allowed).toBe(false);
+    });
+    it('rejects empty peer patches without incrementing version or emitting automation', async () => {
+      await configure({ reviewCode: 'EDIT' }).expect(200);
+      for (const values of [undefined, {}])
+        await patch(`${records()}/${f.otherRecord.id}`, {
+          version: 1,
+          ...(values ? { values } : {}),
+        }).expect(403);
+      await configure({ reviewCode: 'READ_ONLY' }).expect(200);
+      await patch(`${records()}/${f.otherRecord.id}`, {
+        version: 1,
+        values: {},
+      }).expect(403);
+      expect(
+        (await get(`${records()}/${f.otherRecord.id}`).expect(200)).body,
+      ).toHaveProperty('version', 1);
+    });
+    it('rejects stale attempt output after a retry has captured changed permissions', async () => {
+      await configure({ reviewCode: 'EDIT' }).expect(200);
+      const context: TenantContext = {
+        ...f.employee,
+        role: 'EMPLOYEE',
+        tenantId: f.tenantA.id,
+        tenantCode: f.tenantA.code,
+      };
+      const conversations = h.app.get(ConversationRepository);
+      const turn = await conversations.beginTurn(context, {
+        content: 'attempt question',
+      });
+      await conversations.finalizeAssistant(context, turn.turnId, {
+        status: 'FAILED',
+        content: '',
+      });
+      await configure({ reviewCode: 'HIDDEN' }).expect(200);
+      await conversations.retryTurn(context, turn.turnId);
+      await expect(
+        conversations.finalizeAssistant(context, turn.turnId, {
+          providerAttempt: 1,
+          status: 'COMPLETED',
+          content: 'stale-attempt-secret',
+        }),
+      ).rejects.toMatchObject({ code: 'AI_TURN_NOT_RETRYABLE' });
+      await conversations.finalizeAssistant(context, turn.turnId, {
+        providerAttempt: 2,
+        status: 'COMPLETED',
+        content: 'current-attempt-answer',
+      });
+      const page = await get(
+        `${base()}/ai/conversations/${turn.conversationId}/messages`,
+      ).expect(200);
+      expect(page.text).not.toContain('stale-attempt-secret');
+      expect(page.text).toContain('current-attempt-answer');
+    });
+    it('revokes protected pool answers when the pool is disabled through its API', async () => {
+      await configure({ reviewCode: 'EDIT' }).expect(200);
+      await h.adminDatabase.objectDefinition.update({
+        where: { id: f.object.id },
+        data: { poolEnabled: true },
+      });
+      await h.adminDatabase.record.update({
+        where: { id: unassignedId },
+        data: { inPublicPool: true },
+      });
+      await get(`${records()}/${unassignedId}`).expect(200);
+      const context: TenantContext = {
+        ...f.employee,
+        role: 'EMPLOYEE',
+        tenantId: f.tenantA.id,
+        tenantCode: f.tenantA.code,
+      };
+      const conversations = h.app.get(ConversationRepository);
+      const turn = await conversations.beginTurn(context, {
+        content: 'pool question',
+      });
+      await conversations.finalizeAssistant(context, turn.turnId, {
+        status: 'COMPLETED',
+        content: 'protected-pool-answer',
+        sourceSummary: [
+          { recordId: unassignedId, summary: 'pool-source-secret' },
+        ],
+      });
+      const path = `${base()}/ai/conversations/${turn.conversationId}/messages`;
+      expect((await get(path).expect(200)).text).toContain(
+        'protected-pool-answer',
+      );
+      await request(h.app.getHttpServer())
+        .patch(`${base()}/objects/${f.object.code}/pool-config`)
+        .set('Cookie', f.admin.cookie)
+        .set('Origin', origin)
+        .send({ enabled: false, ownershipTtlHours: null, version: 1 })
+        .expect(200);
+      await get(`${records()}/${unassignedId}`).expect(404);
+      expect((await get(path).expect(200)).text).not.toMatch(
+        /protected-pool-answer|pool-source-secret/,
+      );
+      expect(
+        JSON.stringify(
+          await conversations.contextMessages(context, turn.conversationId),
+        ),
+      ).not.toMatch(/protected-pool-answer|pool-source-secret/);
+    });
+    it('invalidates protected assistant history and provider context only after security changes', async () => {
+      await configure({ reviewCode: 'EDIT' }).expect(200);
+      const context: TenantContext = {
+        ...f.employee,
+        role: 'EMPLOYEE',
+        tenantId: f.tenantA.id,
+        tenantCode: f.tenantA.code,
+      };
+      const conversations = h.app.get(ConversationRepository);
+      const turn = await conversations.beginTurn(context, {
+        content: '用户自己的问题',
+      });
+      await conversations.finalizeAssistant(context, turn.turnId, {
+        status: 'COMPLETED',
+        content: 'protected-peer-answer',
+        sourceSummary: [{ kind: 'AGGREGATE', value: '987654' }],
+      });
+      const path = `${base()}/ai/conversations/${turn.conversationId}/messages`;
+      expect((await get(path).expect(200)).text).toContain(
+        'protected-peer-answer',
+      );
+      await patch(`${records()}/${f.ownedRecord.id}`, {
+        version: 1,
+        values: { name: '普通值修改' },
+      }).expect(200);
+      expect((await get(path).expect(200)).text).toContain(
+        'protected-peer-answer',
+      );
+      await configure({ reviewCode: 'HIDDEN' }).expect(200);
+      expect((await get(path).expect(200)).text).not.toMatch(
+        /protected-peer-answer|987654/,
+      );
+      const providerContext = await conversations.contextMessages(
+        context,
+        turn.conversationId,
+      );
+      expect(JSON.stringify(providerContext)).not.toMatch(
+        /protected-peer-answer|987654/,
+      );
+      expect(providerContext.find((row) => row.role === 'USER')?.content).toBe(
+        '用户自己的问题',
+      );
+      await configure(null).expect(200);
+      expect((await get(path).expect(200)).text).not.toContain(
+        'protected-peer-answer',
+      );
+    });
+    it('previews and confirms explicit peer fields through AI while rechecking revocation', async () => {
+      await configure({ reviewCode: 'EDIT' }).expect(200);
+      const context: TenantContext = {
+        ...f.employee,
+        role: 'EMPLOYEE',
+        tenantId: f.tenantA.id,
+        tenantCode: f.tenantA.code,
+      };
+      const conversations = h.app.get(ConversationRepository);
+      const proposals = h.app.get(AiProposalService);
+      const turn = await conversations.beginTurn(context, {
+        content: '修改审核编号',
+      });
+      const proposal = await proposals.preview(
+        context,
+        turn.turnId,
+        {
+          operationType: 'UPDATE_RECORD',
+          objectCode: f.object.code,
+          recordId: f.otherRecord.id,
+          values: { reviewCode: 'ai-approved' },
+        },
+        '修改审核编号',
+      );
+      await conversations.finalizeAssistant(context, turn.turnId, {
+        status: 'COMPLETED',
+        content: '待确认',
+      });
+      expect(
+        await proposals.confirm(context, proposal.proposalId, randomUUID(), {
+          requestId: 'group-ai',
+        }),
+      ).toMatchObject({ status: 'EXECUTED' });
+      expect(
+        (await get(`${records()}/${f.otherRecord.id}`).expect(200)).body,
+      ).toHaveProperty('values.reviewCode', 'ai-approved');
+      const next = await conversations.beginTurn(context, {
+        conversationId: turn.conversationId,
+        content: '再次修改',
+      });
+      const pending = await proposals.preview(
+        context,
+        next.turnId,
+        {
+          operationType: 'UPDATE_RECORD',
+          objectCode: f.object.code,
+          recordId: f.otherRecord.id,
+          values: { reviewCode: 'must-not-write' },
+        },
+        '再次修改',
+      );
+      await conversations.finalizeAssistant(context, next.turnId, {
+        status: 'COMPLETED',
+        content: '待确认',
+      });
+      await configure({ reviewCode: 'READ_ONLY' }).expect(200);
+      expect(
+        await proposals.confirm(context, pending.proposalId, randomUUID(), {
+          requestId: 'group-ai-revoked',
+        }),
+      ).toMatchObject({ status: 'CONFLICTED' });
+      expect(
+        (await get(`${records()}/${f.otherRecord.id}`).expect(200)).body,
+      ).toHaveProperty('values.reviewCode', 'ai-approved');
+    });
+    it('keeps mine and export scopes inside own-title readability while returning peer lists with pool counts', async () => {
+      await configure({ name: 'READ_ONLY', reviewCode: 'EDIT' }).expect(200);
+      const title = await h.adminDatabase.fieldDefinition.findFirstOrThrow({
+        where: { objectId: f.object.id, fieldKey: 'name' },
+      });
+      await h.adminDatabase.memberFieldPermission.create({
+        data: {
+          tenantId: f.tenantA.id,
+          objectId: f.object.id,
+          fieldId: title.id,
+          memberId: f.employee.memberId,
+          access: 'HIDDEN',
+        },
+      });
+      await h.adminDatabase.objectDefinition.update({
+        where: { id: f.object.id },
+        data: { poolEnabled: true },
+      });
+      const page = await get(records()).expect(200);
+      expect(page.body).toHaveProperty(
+        'items',
+        expect.arrayContaining([
+          expect.objectContaining({ id: f.otherRecord.id }),
+        ]),
+      );
+      expect(page.body).toHaveProperty(
+        'items',
+        expect.not.arrayContaining([
+          expect.objectContaining({ id: f.ownedRecord.id }),
+        ]),
+      );
+      expect(page.body).toHaveProperty('poolCounts.LEAD_POOL', 0);
+      expect(
+        (await get(records()).query({ scope: 'mine' }).expect(200)).body,
+      ).toHaveProperty('total', 0);
+      expect(
+        (await get(`${records()}/export`).query({ scope: 'mine' }).expect(200))
+          .text,
+      ).not.toContain('员工自己的线索');
+      await get(records()).query({ scope: 'pool' }).expect(403);
+    });
+    it('does not grant ownership, activity, workflow, relation or attachment writes', async () => {
+      await configure({ reviewCode: 'EDIT' }).expect(200);
+      await patch(`${records()}/${f.otherRecord.id}`, {
+        version: 1,
+        ownerMemberId: f.employee.memberId,
+      }).expect(404);
+      for (const [suffix, data] of [
+        ['activities', { activityType: 'NOTE', content: 'blocked' }],
+        ['workflow/transitions/qualify', { expectedVersion: 1 }],
+        [
+          'relations',
+          { objectCode: f.object.code, recordId: f.ownedRecord.id },
+        ],
+      ] as const) {
+        const response = await request(h.app.getHttpServer())
+          .post(`${records()}/${f.otherRecord.id}/${suffix}`)
+          .set('Cookie', f.employee.cookie)
+          .set('Origin', origin)
+          .send(data);
+        expect([400, 403, 404]).toContain(response.status);
+      }
+      await patch(`${records()}/${outsideId}`, {
+        version: 1,
+        values: { reviewCode: 'blocked' },
+      }).expect(404);
+      await request(h.app.getHttpServer())
+        .patch(`${records()}/${f.otherRecord.id}`)
+        .set('Cookie', f.otherEmployee.cookie)
+        .set('Origin', origin)
+        .send({ version: 1, values: { reviewCode: 'blocked' } })
+        .expect(403);
+      await get(
+        `/api/v1/workspaces/${f.tenantB.code}/objects/leads/records`,
+      ).expect(403);
+    });
+    it('applies canUpdate, membership changes and field retirement immediately', async () => {
+      await configure({ reviewCode: 'EDIT' }, false).expect(200);
+      await patch(`${records()}/${f.otherRecord.id}`, {
+        version: 1,
+        values: { reviewCode: 'blocked' },
+      }).expect(403);
+      await configure({ reviewCode: 'EDIT' }).expect(200);
+      await h.adminDatabase.tenantMember.update({
+        where: { id: f.otherEmployee.memberId },
+        data: { groupId: null },
+      });
+      await patch(`${records()}/${f.otherRecord.id}`, {
+        version: 1,
+        values: { reviewCode: 'blocked' },
+      }).expect(404);
+      await h.adminDatabase.tenantMember.update({
+        where: { id: f.otherEmployee.memberId },
+        data: { groupId },
+      });
+      await h.adminDatabase.fieldDefinition.updateMany({
+        where: { objectId: f.object.id, fieldKey: 'reviewCode' },
+        data: { status: 'INACTIVE' },
+      });
+      await configure({ reviewCode: 'EDIT' }).expect(400);
+      expect((await get(schemaPath()).expect(200)).body).toHaveProperty(
+        'fields',
+        expect.not.arrayContaining([
+          expect.objectContaining({ fieldKey: 'reviewCode' }),
+        ]),
+      );
+      await patch(`${records()}/${f.otherRecord.id}`, {
+        version: 1,
+        values: { reviewCode: 'blocked' },
+      }).expect(400);
+      await h.adminDatabase.memberGroup.update({
+        where: { id: groupId },
+        data: { leaderMemberId: null },
+      });
+      await get(`${records()}/${f.otherRecord.id}`).expect(404);
+    });
+    it('rejects hidden-field filters and sorting and emits mixed batch outcomes', async () => {
+      await configure({ reviewCode: 'HIDDEN', secret: 'EDIT' }).expect(200);
+      await get(records())
+        .query({ filters: JSON.stringify({ reviewCode: { contains: 'x' } }) })
+        .expect(400);
+      await get(records()).query({ sort: 'reviewCode' }).expect(400);
+      const response = await request(h.app.getHttpServer())
+        .post(`${records()}/batch`)
+        .set('Cookie', f.employee.cookie)
+        .set('Origin', origin)
+        .send({
+          items: [
+            { recordId: f.ownedRecord.id, version: 1 },
+            { recordId: f.otherRecord.id, version: 1 },
+          ],
+          values: { secret: 'allowed-peer' },
+        });
+      expect(response.status).toBe(201);
+      expect(response.body).toMatchObject({ updated: 1, failed: 1 });
+      expect(response.body).toHaveProperty(
+        'items.1.record.values.secret',
+        'allowed-peer',
+      );
+    });
   });
 
   describe('GROUP pool protection', () => {
