@@ -14,6 +14,7 @@ import { toApiError } from "@/lib/api/api-error";
 import { DynamicField, type DynamicFieldMember } from "./dynamic-field";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
 
+import { recordFields } from "./record-access";
 import styles from "./records.module.css";
 import { memberSelectOptions } from "@/components/identity/member-identity";
 
@@ -52,7 +53,8 @@ export function RecordForm({
   ownerHint,
   onDirtyChange,
 }: RecordFormProps) {
-  const editable = schema.fields.filter((field) => field.access === "EDIT");
+  const fields = recordFields(schema, record);
+  const editable = fields.filter((field) => field.access === "EDIT");
   const [values, setValues] = useState<Record<string, unknown>>(() =>
     initialValues(schema, record),
   );
@@ -66,7 +68,9 @@ export function RecordForm({
   const [committed, setCommitted] = useState(false);
   const mode = record ? "UPDATE" : "CREATE";
   const objectCode = schema.object.code;
-  const canSave = record ? schema.actions.canUpdate : schema.actions.canCreate;
+  const canSave = record
+    ? schema.actions.canUpdate && (record.canEditFields ?? true)
+    : schema.actions.canCreate;
 
   const save = useMutation({
     mutationFn: () =>
@@ -193,7 +197,7 @@ export function RecordForm({
 
       <Form component={false} layout="vertical">
         <div className={styles.formGrid}>
-          {schema.fields.map((field) => (
+          {fields.map((field) => (
             <DynamicField
               key={field.id}
               field={field}

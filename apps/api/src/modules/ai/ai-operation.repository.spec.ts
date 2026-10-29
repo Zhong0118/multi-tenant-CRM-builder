@@ -108,6 +108,46 @@ function setup(
 }
 
 describe('AiOperationRepository', () => {
+  it('redacts cached peer changes against current row fields, preserving own history', async () => {
+    const { repo, tx } = setup({
+      ...row,
+      operationType: 'UPDATE_RECORD',
+      displayChangesJson: {
+        ...row.displayChangesJson,
+        changes: [
+          {
+            fieldKey: 'phone',
+            label: 'Phone',
+            before: 'sensitive',
+            after: 'sensitive',
+          },
+        ],
+      },
+    } as never);
+    jest.mocked(resolvePublishedObjectInTransaction).mockResolvedValue({
+      ...resolved,
+      access: {
+        ...resolved.access,
+        readScope: 'GROUP',
+        memberId: context.memberId,
+        groupOwnerMemberIds: [context.memberId, 'peer'],
+        fields: { name: 'EDIT', phone: 'EDIT' },
+        groupFieldAccess: { name: 'READ_ONLY', phone: 'HIDDEN' },
+      },
+    } as never);
+    tx.record.findMany.mockResolvedValue([
+      { id, ownerMemberId: 'peer', inPublicPool: false },
+    ] as never);
+    expect(JSON.stringify(await repo.getOwned(context, id))).not.toContain(
+      'sensitive',
+    );
+    tx.record.findMany.mockResolvedValue([
+      { id, ownerMemberId: context.memberId, inPublicPool: false },
+    ] as never);
+    expect(JSON.stringify(await repo.getOwned(context, id))).toContain(
+      'sensitive',
+    );
+  });
   it('hides revoked historical UPDATE values and never exposes internal field keys', async () => {
     const { repo, tx } = setup();
     tx.aiOperation.findFirst.mockResolvedValueOnce({

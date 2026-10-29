@@ -1,3 +1,4 @@
+import { isGroupPeer, recordFieldAccess } from '../objects/effective-access';
 import {
   recordOwnerFilter,
   recordOwnerMatches,
@@ -44,15 +45,29 @@ function requireReadable(resolved: ResolvedObjectSchema): void {
   if (!isReadable(resolved.schema, resolved.access))
     throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
 }
-function requireUpdatable(resolved: ResolvedObjectSchema): void {
-  if (!resolved.access.canUpdate || resolved.access.updateScope === 'NONE')
+function requireUpdatable(
+  resolved: ResolvedObjectSchema,
+  fieldsOnly = false,
+): void {
+  if (
+    !resolved.access.canUpdate ||
+    (resolved.access.updateScope === 'NONE' &&
+      !(fieldsOnly && resolved.access.groupFieldAccess))
+  )
     throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
 }
 function ownerFor(
   resolved: ResolvedObjectSchema,
   context: TenantContext,
+  fieldsOnly = false,
 ): RecordOwnerFilter | null {
-  return recordOwnerFilter(resolved.access, context.memberId, true) ?? null;
+  return (
+    recordOwnerFilter(
+      resolved.access,
+      context.memberId,
+      !(fieldsOnly && resolved.access.groupFieldAccess),
+    ) ?? null
+  );
 }
 async function lockActor(tx: Tx, context: TenantContext): Promise<void> {
   const members = await tx.$queryRaw<
@@ -221,20 +236,40 @@ export class AiProposalService {
       candidate.objectCode,
     );
     requireReadable(resolved);
-    requireUpdatable(resolved);
+    requireUpdatable(resolved, candidate.operationType === 'UPDATE_RECORD');
     const record = await store.lockRecord({
       objectId: resolved.schema.object.id,
       recordId: candidate.recordId,
-      ownerMemberId: ownerFor(resolved, context),
+      ownerMemberId: ownerFor(
+        resolved,
+        context,
+        candidate.operationType === 'UPDATE_RECORD',
+      ),
     });
     if (
       !record ||
       !recordOwnerMatches(
-        ownerFor(resolved, context) ?? undefined,
+        ownerFor(
+          resolved,
+          context,
+          candidate.operationType === 'UPDATE_RECORD',
+        ) ?? undefined,
         record.ownerMemberId,
       )
     )
       throw new ApiException('RECORD_NOT_FOUND', 404);
+    if (
+      !isGroupPeer(resolved.access, record) &&
+      !recordOwnerMatches(
+        recordOwnerFilter(resolved.access, context.memberId, true),
+        record.ownerMemberId,
+      )
+    )
+      throw new ApiException('RECORD_NOT_FOUND', 404);
+    resolved.access = {
+      ...resolved.access,
+      fields: recordFieldAccess(resolved.access, record),
+    };
     const display: StoredAiProposalDisplay = {
       title:
         candidate.operationType === 'UPDATE_RECORD'
@@ -395,10 +430,17 @@ export class AiProposalService {
             candidate.objectCode,
           );
           requireReadable(resolved);
-          requireUpdatable(resolved);
+          requireUpdatable(
+            resolved,
+            candidate.operationType === 'UPDATE_RECORD',
+          );
           if (resolved.schema.publication.id !== row.expectedPublicationId)
             throw new ApiException('RECORD_VERSION_CONFLICT', 409);
-          const ownerMemberId = ownerFor(resolved, context);
+          const ownerMemberId = ownerFor(
+            resolved,
+            context,
+            candidate.operationType === 'UPDATE_RECORD',
+          );
           const record = await store.lockRecord({
             objectId: resolved.schema.object.id,
             recordId: candidate.recordId,
@@ -412,6 +454,18 @@ export class AiProposalService {
             )
           )
             throw new ApiException('RECORD_NOT_FOUND', 404);
+          if (
+            !isGroupPeer(resolved.access, record) &&
+            !recordOwnerMatches(
+              recordOwnerFilter(resolved.access, context.memberId, true),
+              record.ownerMemberId,
+            )
+          )
+            throw new ApiException('RECORD_NOT_FOUND', 404);
+          resolved.access = {
+            ...resolved.access,
+            fields: recordFieldAccess(resolved.access, record),
+          };
           if (record.version !== row.expectedVersion)
             throw new ApiException('RECORD_VERSION_CONFLICT', 409);
           const meta = {

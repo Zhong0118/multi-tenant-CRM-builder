@@ -14,6 +14,7 @@ import { toApiError } from "@/lib/api/api-error";
 import { DynamicField, type DynamicFieldMember } from "./dynamic-field";
 import type { RecordApi, RecordBatchUpdateResult } from "./record-api";
 
+import { recordFields } from "./record-access";
 import styles from "./records.module.css";
 import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
 
@@ -36,7 +37,20 @@ export function RecordBatchEditDrawer({
   onClose,
   onCompleted,
 }: RecordBatchEditDrawerProps) {
-  const editable = schema.fields.filter((field) => field.access === "EDIT");
+  const editable = schema.fields.filter(
+    (field) =>
+      schema.actions.canUpdate &&
+      records.length > 0 &&
+      records.every(
+        (record) =>
+          record.canEditFields !== false &&
+          recordFields(schema, record).some(
+            (candidate) =>
+              candidate.fieldKey === field.fieldKey &&
+              candidate.access === "EDIT",
+          ),
+      ),
+  );
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [summary, setSummary] = useState<string>();
@@ -131,7 +145,7 @@ export function RecordBatchEditDrawer({
           {selectedFields.map((field) => (
             <DynamicField
               key={field.id}
-              field={field}
+              field={{ ...field, access: "EDIT" }}
               value={values[field.fieldKey] ?? null}
               members={members}
               onChange={(next) =>
@@ -155,7 +169,6 @@ export function RecordBatchEditDrawer({
             ))}
         </ul>
       ) : null}
-
     </Drawer>
   );
 }

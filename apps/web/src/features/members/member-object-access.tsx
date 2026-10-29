@@ -8,7 +8,10 @@ import { useId, useState } from "react";
 
 import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
 import { StatusTag } from "@/components/workbench/status-tag";
-import { DATA_SCOPE_LABELS } from "@/features/objects/object-types";
+import {
+  DATA_SCOPE_LABELS,
+  type PublishedFieldAccess,
+} from "@/features/objects/object-types";
 import { toApiError } from "@/lib/api/api-error";
 
 import { BulkMemberAccess, FIELD_ACCESS_LABELS } from "./bulk-member-access";
@@ -124,7 +127,10 @@ export function MemberObjectAccess({
   }
 
   const withExceptions = rows.filter(
-    (row) => row.mode === "OVERRIDE" || fieldExceptions(row) > 0,
+    (row) =>
+      row.mode === "OVERRIDE" ||
+      fieldExceptions(row) > 0 ||
+      Boolean(row.effective.groupFieldAccess),
   );
   const visible = show === "all" ? rows : withExceptions;
 
@@ -135,7 +141,7 @@ export function MemberObjectAccess({
           type="info"
           showIcon
           title={`${groupName ?? "本组"} · 组长`}
-          description="公司管理员可按业务表授予查看本组成员名下记录的权限。修改范围和列权限保持各自设置。"
+          description="公司管理员可按业务表授予查看本组成员名下记录的权限，并单独设置本组其他成员记录的列权限。本人记录保持原有列权限。"
         />
       ) : null}
       <div className={styles.accessSources} aria-label="权限来源">
@@ -273,6 +279,9 @@ function ObjectAccessRow({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const groupEnabled = isGroupLeader && row.effective.readScope === "GROUP";
+  const [groupEditing, setGroupEditing] = useState(false);
+  const [groupDraft, setGroupDraft] = useState(() => groupFieldDraft(row));
   const [draft, setDraft] = useState<MemberObjectPolicy>(
     () => row.override ?? row.effective,
   );
@@ -282,6 +291,8 @@ function ObjectAccessRow({
   if (savedRow !== row) {
     setSavedRow(row);
     setEditing(false);
+    setGroupEditing(false);
+    setGroupDraft(groupFieldDraft(row));
     setDraft(row.override ?? row.effective);
   }
 
@@ -316,7 +327,7 @@ function ObjectAccessRow({
         </span>
         <PolicySummary policy={row.effective} />
       </div>
-      {feedback ? (
+      {feedback && !groupEditing ? (
         <Alert
           className={styles.accessFeedback}
           type={feedback.tone}
@@ -388,7 +399,10 @@ function ObjectAccessRow({
                 </>
               ) : (
                 <>
-                  <Button disabled={saving} onClick={() => setEditing(true)}>
+                  <Button
+                    disabled={saving || groupEditing}
+                    onClick={() => setEditing(true)}
+                  >
                     {exception ? "修改表例外" : "设置表例外"}
                   </Button>
                   {exception ? (
@@ -410,8 +424,123 @@ function ObjectAccessRow({
             </div>
           </div>
           <div className={styles.accessBlock}>
-            {(row.fields ?? []).length ? <FieldComparison row={row} /> : null}
+            {(row.fields ?? []).length ? (
+              <FieldComparison row={row} groupEnabled={groupEnabled} />
+            ) : null}
             <div className={styles.accessActions}>{columnEditor}</div>
+            {groupEnabled ? (
+              <>
+                {!row.effective.canUpdate ? (
+                  <Alert
+                    type="info"
+                    showIcon
+                    title="可以修改记录已关闭，组员记录中的可编辑列实际只读"
+                  />
+                ) : null}
+                <p className={styles.accessHint}>
+                  原记录操作范围仍为
+                  {DATA_SCOPE_LABELS[row.effective.updateScope]}
+                  ，组员列授权仅用于普通字段修改，不授予负责人变更、跟进或附件操作。
+                  涉及额外记录操作的自动化仍需对应权限，命中无权执行的规则时本次修改整体失败。
+                </p>
+                <Modal
+                  open={groupEditing}
+                  title={`${row.objectName} · 组员列权限`}
+                  width={OVERLAY_SIZE.form}
+                  footer={null}
+                  closable={!saving}
+                  mask={{ closable: !saving }}
+                  keyboard={!saving}
+                  onCancel={() => {
+                    setGroupEditing(false);
+                    setGroupDraft(groupFieldDraft(row));
+                  }}
+                  destroyOnHidden
+                >
+                  {feedback?.tone === "error" ? (
+                    <Alert type="error" showIcon title={feedback.text} />
+                  ) : null}
+                  <fieldset className={styles.policyEditor} disabled={saving}>
+                    <legend>本组其他成员记录 · 保存后立即生效</legend>
+                    <p className={styles.accessHint}>
+                      隐藏标题列后无法查看对应组员记录，系统列不能设为可编辑。
+                    </p>
+                    {row.fields.map((field) => (
+                      <div key={field.fieldId} className={styles.policyField}>
+                        <label
+                          htmlFor={`${row.objectId}-group-${field.fieldKey}`}
+                        >
+                          {field.label}
+                        </label>
+                        <Select
+                          id={`${row.objectId}-group-${field.fieldKey}`}
+                          aria-label={`组员列权限 ${field.label}`}
+                          value={groupDraft[field.fieldKey]}
+                          disabled={saving}
+                          onChange={(access: PublishedFieldAccess) =>
+                            setGroupDraft((current) => ({
+                              ...current,
+                              [field.fieldKey]: access,
+                            }))
+                          }
+                          options={(
+                            ["EDIT", "READ_ONLY", "HIDDEN"] as const
+                          ).map((access) => ({
+                            value: access,
+                            label: FIELD_ACCESS_LABELS[access],
+                            disabled: field.isSystem && access === "EDIT",
+                          }))}
+                        />
+                        {field.fieldKey === row.titleFieldKey &&
+                        groupDraft[field.fieldKey] === "HIDDEN" ? (
+                          <span className={styles.fieldNote}>
+                            隐藏标题列后将无法查看对应组员记录
+                          </span>
+                        ) : null}
+                      </div>
+                    ))}
+                    <div className={styles.accessActions}>
+                      <Button
+                        type="primary"
+                        loading={saving}
+                        disabled={saving}
+                        onClick={() =>
+                          onSave(groupPolicyInput(row, groupDraft))
+                        }
+                      >
+                        保存组员列权限
+                      </Button>
+                      <Button
+                        aria-label="取消组员列权限"
+                        disabled={saving}
+                        onClick={() => {
+                          setGroupEditing(false);
+                          setGroupDraft(groupFieldDraft(row));
+                        }}
+                      >
+                        取消
+                      </Button>
+                    </div>
+                  </fieldset>
+                </Modal>
+                <div className={styles.accessActions}>
+                  <Button
+                    disabled={saving || editing || groupEditing}
+                    onClick={() => setGroupEditing(true)}
+                  >
+                    设置组员列权限
+                  </Button>
+                  {row.effective.groupFieldAccess ? (
+                    <Button
+                      disabled={saving || editing || groupEditing}
+                      onClick={() => onSave(groupPolicyInput(row, null))}
+                    >
+                      恢复原有组员列规则
+                    </Button>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -443,7 +572,11 @@ function PolicySummary({ policy }: { policy: MemberObjectPolicy }) {
     <dl className={styles.policySummary} aria-label="当前生效">
       {POLICY_ROWS.map(([label, describe]) => (
         <div key={label}>
-          <dt>{label}</dt>
+          <dt>
+            {label === "修改" && policy.readScope === "GROUP"
+              ? "原记录操作"
+              : label}
+          </dt>
           <dd data-denied={describe(policy).denied || undefined}>
             {describe(policy).text}
           </dd>
@@ -508,14 +641,21 @@ function PolicyComparison({ row }: { row: MemberObjectAccessRow }) {
   );
 }
 
-function FieldComparison({ row }: { row: MemberObjectAccessRow }) {
+function FieldComparison({
+  row,
+  groupEnabled,
+}: {
+  row: MemberObjectAccessRow;
+  groupEnabled: boolean;
+}) {
   return (
     <table className={styles.compareTable} aria-label="列权限对照">
       <thead>
         <tr>
           <th scope="col">列</th>
           <th scope="col">员工默认</th>
-          <th scope="col">当前生效</th>
+          <th scope="col">{groupEnabled ? "本人记录" : "当前生效"}</th>
+          {groupEnabled ? <th scope="col">本组其他成员记录</th> : null}
         </tr>
       </thead>
       <tbody>
@@ -534,6 +674,9 @@ function FieldComparison({ row }: { row: MemberObjectAccessRow }) {
             </th>
             <td>{FIELD_ACCESS_LABELS[field.inherited]}</td>
             <td>{FIELD_ACCESS_LABELS[field.effective]}</td>
+            {groupEnabled ? (
+              <td>{FIELD_ACCESS_LABELS[groupEffective(row, field)]}</td>
+            ) : null}
           </tr>
         ))}
       </tbody>
@@ -579,7 +722,11 @@ function PolicyEditor({
       ))}
       {scopes.map(([key, label]) => (
         <div key={key} className={styles.policyField}>
-          <label htmlFor={`${objectId}-${key}`}>{label}</label>
+          <label htmlFor={`${objectId}-${key}`}>
+            {key === "updateScope" && draft.readScope === "GROUP"
+              ? "原记录操作范围"
+              : label}
+          </label>
           <Select
             id={`${objectId}-${key}`}
             aria-label={label}
@@ -616,4 +763,47 @@ function describePolicy(policy: MemberObjectPolicy): string {
     read.denied ? "不能查看" : `查看${read.text}`,
     update.denied ? "不能修改" : `修改${update.text}`,
   ].join("，");
+}
+
+function groupEffective(
+  row: MemberObjectAccessRow,
+  field: Field,
+): PublishedFieldAccess {
+  if (field.groupEffective) return field.groupEffective;
+  if (!row.effective.canRead || field.effective === "HIDDEN") return "HIDDEN";
+  return row.effective.canUpdate && row.effective.updateScope === "ALL"
+    ? field.effective
+    : "READ_ONLY";
+}
+
+function groupFieldDraft(
+  row: MemberObjectAccessRow,
+): Record<string, PublishedFieldAccess> {
+  const configured = row.effective.groupFieldAccess;
+  return Object.fromEntries(
+    (row.fields ?? []).map((field) => [
+      field.fieldKey,
+      (configured && Object.hasOwn(configured, field.fieldKey)
+        ? configured[field.fieldKey]
+        : undefined) ??
+        (groupEffective(row, field) === "HIDDEN" ? "HIDDEN" : "READ_ONLY"),
+    ]),
+  );
+}
+
+function groupPolicyInput(
+  row: MemberObjectAccessRow,
+  groupFieldAccess: Record<string, PublishedFieldAccess> | null,
+): MemberObjectAccessInput {
+  const { canCreate, canRead, canUpdate, readScope, updateScope } =
+    row.effective;
+  return {
+    mode: "OVERRIDE",
+    canCreate,
+    canRead,
+    canUpdate,
+    readScope,
+    updateScope,
+    groupFieldAccess,
+  };
 }

@@ -2822,6 +2822,190 @@ describe('GROUP list, aggregate, export and membership changes', () => {
     ];
     return { ...f, mine, teammate };
   }
+  async function fieldsFixture() {
+    const f = await teamFixture();
+    f.publishedRepository.record.memberId = employee.memberId;
+    f.publishedRepository.record.memberOverride!.groupFieldAccess = {
+      email: 'HIDDEN',
+      lead_status: 'EDIT',
+    };
+    await f.service.update(
+      admin,
+      'leads',
+      f.mine.id,
+      { version: 1, values: { email: 'mine@example.com' } },
+      meta,
+    );
+    await f.service.update(
+      admin,
+      'leads',
+      f.teammate.id,
+      { version: 1, values: { email: 'peer@example.com' } },
+      meta,
+    );
+    return f;
+  }
+  it('does not use hidden peer fields for import matching', async () => {
+    const { service } = await fieldsFixture();
+    await expect(
+      service.importRows(
+        employee,
+        'leads',
+        {
+          dryRun: true,
+          matchFields: ['email'],
+          rows: [
+            {
+              rowNumber: 1,
+              values: { name: 'import probe', email: 'peer@example.com' },
+            },
+          ],
+        },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'RECORD_IMPORT_INVALID' });
+  });
+  it('explicit peer EDIT works with NONE while own records and non-field writes remain denied', async () => {
+    const { service, publishedRepository, mine, teammate } =
+      await fieldsFixture();
+    publishedRepository.record.memberOverride!.updateScope = 'NONE';
+    expect(
+      (
+        await service.update(
+          employee,
+          'leads',
+          teammate.id,
+          { version: 2, values: { lead_status: 'following' } },
+          meta,
+        )
+      ).values.lead_status,
+    ).toBe('following');
+    await expect(
+      service.update(
+        employee,
+        'leads',
+        mine.id,
+        { version: 2, values: { name: 'blocked' } },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
+    publishedRepository.record.memberOverride!.canUpdate = false;
+    await expect(
+      service.update(
+        employee,
+        'leads',
+        teammate.id,
+        { version: 3, values: { lead_status: 'new' } },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
+  });
+  it('can read peer records when only the own title is hidden', async () => {
+    const { service, publishedRepository, mine, teammate } =
+      await fieldsFixture();
+    publishedRepository.record.memberFieldOverrides = { name: 'HIDDEN' };
+    publishedRepository.record.memberOverride!.groupFieldAccess = {
+      name: 'READ_ONLY',
+    };
+    expect(
+      (await service.list(employee, 'leads', query)).items.map((r) => r.id),
+    ).toEqual([teammate.id]);
+    await expect(
+      service.detail(employee, 'leads', mine.id),
+    ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+  });
+  it('does not recover hidden own titles through mine scope or block readable peers with pool counters', async () => {
+    const { service, publishedRepository, teammate } = await fieldsFixture();
+    publishedRepository.record.memberFieldOverrides = { name: 'HIDDEN' };
+    publishedRepository.record.memberOverride!.groupFieldAccess = {
+      name: 'READ_ONLY',
+    };
+    expect(
+      (await service.list(employee, 'leads', { ...query, scope: 'mine' }))
+        .items,
+    ).toEqual([]);
+    publishedRepository.record.poolEnabled = true;
+    const page = await service.list(employee, 'leads', query);
+    expect(page.items.map((row) => row.id)).toEqual([teammate.id]);
+    expect(page.poolCounts?.LEAD_POOL).toBe(0);
+    expect(page.poolCounts?.CUSTOMER_POOL).toBe(0);
+    await expect(
+      service.list(employee, 'leads', { ...query, scope: 'pool' }),
+    ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
+  });
+  it('projects each row and CSV with its own field permissions', async () => {
+    const { service, mine, teammate } = await fieldsFixture();
+    const page = await service.list(employee, 'leads', query);
+    expect(page.items.find((r) => r.id === mine.id)?.values.email).toBe(
+      'mine@example.com',
+    );
+    expect(
+      page.items.find((r) => r.id === teammate.id)?.values,
+    ).not.toHaveProperty('email');
+    expect(
+      (await service.detail(employee, 'leads', teammate.id)).fieldAccess?.email,
+    ).toBe('HIDDEN');
+    const csv = await service.exportCsv(employee, 'leads', query, meta);
+    expect(csv.csv).toContain('mine@example.com');
+    expect(csv.csv).not.toContain('peer@example.com');
+  });
+  it('grants only explicitly editable peer values under OWN update scope', async () => {
+    const { service, teammate, store } = await fieldsFixture();
+    const changed = await service.update(
+      employee,
+      'leads',
+      teammate.id,
+      { version: 2, values: { lead_status: 'following' } },
+      meta,
+    );
+    expect(changed.values.lead_status).toBe('following');
+    await expect(
+      service.update(
+        employee,
+        'leads',
+        teammate.id,
+        {
+          version: 3,
+          values: { lead_status: 'new', email: 'bad@example.com' },
+        },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'FIELD_HIDDEN' });
+    expect(
+      store.records.find((r) => r.id === teammate.id)?.values.lead_status,
+    ).toBe('following');
+    await expect(
+      service.update(
+        employee,
+        'leads',
+        teammate.id,
+        { version: 3, ownerMemberId: employee.memberId },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+  });
+  it('rejects queries over fields hidden in either scope and excludes hidden-title peers', async () => {
+    const { service, publishedRepository, mine, teammate } =
+      await fieldsFixture();
+    await expect(
+      service.list(employee, 'leads', {
+        ...query,
+        filters: JSON.stringify({ email: { contains: 'peer' } }),
+      }),
+    ).rejects.toBeDefined();
+    await expect(
+      service.list(employee, 'leads', { ...query, sort: 'email' }),
+    ).rejects.toBeDefined();
+    publishedRepository.record.memberOverride!.groupFieldAccess = {
+      name: 'HIDDEN',
+    };
+    expect(
+      (await service.list(employee, 'leads', query)).items.map((r) => r.id),
+    ).toEqual([mine.id]);
+    await expect(
+      service.detail(employee, 'leads', teammate.id),
+    ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+  });
   it('returns only current group owners through list, search, aggregate and export', async () => {
     const { service, mine, teammate } = await teamFixture();
     const page = await service.list(employee, 'leads', query);

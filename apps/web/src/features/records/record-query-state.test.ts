@@ -307,3 +307,30 @@ it("round trips resource quality filters and drops invalid quality", () => {
   expect(new URLSearchParams(recordQuerySearch(query)).get("poolQuality")).toBe("INVALID");
   expect(parseRecordQuery({ poolQuality: "unknown" })).not.toHaveProperty("poolQuality", "unknown");
 });
+
+it("removes stale query fields after a group column permission change", async () => {
+  const { restrictRecordQuery } = await import("./record-query-state");
+  const query = {
+    ...DEFAULT_RECORD_QUERY,
+    search: "机密",
+    sort: "secret",
+    filters: { secret: ["yes"], name: { contains: "公开" } },
+  };
+  const schema = {
+    queryFieldKeys: ["name"],
+    fields: [{ fieldKey: "name", type: "TEXT" }],
+    object: { titleFieldKey: "name" },
+    defaultView: { sort: { field: "updatedAt", direction: "desc" } },
+  } as unknown as import("@/features/objects/object-types").RuntimeObjectSchema;
+  expect(restrictRecordQuery(query, schema)).toEqual({
+    ...query,
+    sort: "updatedAt",
+    filters: { name: { contains: "公开" } },
+  });
+  expect(
+    restrictRecordQuery(query, { ...schema, queryFieldKeys: [] }),
+  ).toMatchObject({ search: undefined, sort: "updatedAt", filters: {} });
+  expect(
+    restrictRecordQuery(query, { ...schema, queryFieldKeys: undefined }),
+  ).toBe(query);
+});

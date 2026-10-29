@@ -48,7 +48,11 @@ export async function resolveGroupOwnerMemberIds(
 export function recordOwnerFilter(
   access: Pick<
     EffectiveObjectAccess,
-    'readScope' | 'updateScope' | 'groupOwnerMemberIds'
+    | 'readScope'
+    | 'updateScope'
+    | 'groupOwnerMemberIds'
+    | 'groupTitleHidden'
+    | 'ownTitleHidden'
   >,
   memberId: string,
   write = false,
@@ -62,7 +66,10 @@ export function recordOwnerFilter(
       ids = [memberId];
       break;
     case 'GROUP':
-      ids = access.groupOwnerMemberIds ?? [];
+      ids = access.groupTitleHidden
+        ? [memberId]
+        : (access.groupOwnerMemberIds ?? []);
+      if (access.ownTitleHidden) ids = ids.filter((id) => id !== memberId);
       break;
     default:
       ids = [];

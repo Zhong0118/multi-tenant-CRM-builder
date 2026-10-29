@@ -317,7 +317,8 @@ function requestMeta(request: RequestWithId) {
 function toMemberObjectAccessInput(
   dto: MemberObjectAccessDto,
 ): MemberObjectAccessInput {
-  if (dto.mode === 'INHERIT') return { mode: 'INHERIT' };
+  if (dto.mode === 'INHERIT')
+    return { mode: 'INHERIT', groupFieldAccess: dto.groupFieldAccess };
   if (
     dto.canCreate === undefined ||
     dto.canRead === undefined ||
@@ -329,6 +330,9 @@ function toMemberObjectAccessInput(
   }
   return {
     mode: 'OVERRIDE',
+    ...(dto.groupFieldAccess === undefined
+      ? {}
+      : { groupFieldAccess: dto.groupFieldAccess }),
     canCreate: dto.canCreate,
     canRead: dto.canRead,
     canUpdate: dto.canUpdate,

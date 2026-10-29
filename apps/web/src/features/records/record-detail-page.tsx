@@ -36,7 +36,7 @@ import {
   RecordOwner,
 } from "./record-display-value";
 import { RecordForm } from "./record-form";
-import { canEditRecord } from "./record-access";
+import { canEditRecord, canEditRecordFields, recordFields } from "./record-access";
 import { RecordOwnershipActions, RecordPoolStatus } from "./record-pool";
 import type { RecordPoolConfig } from "./record-pool-api";
 import { RecordRelationsPanel } from "./record-relations-panel";
@@ -101,7 +101,13 @@ export function RecordDetailPage({
       ],
     }) > 0;
   const poolPreview = record.inPublicPool && !canChooseOwner;
-  const canEdit = canEditRecord(
+  const canOperate = canEditRecord(
+    schema,
+    record,
+    currentMemberId,
+    canChooseOwner,
+  );
+  const canEdit = canEditRecordFields(
     schema,
     record,
     currentMemberId,
@@ -131,7 +137,7 @@ export function RecordDetailPage({
       onOk: go,
     });
   };
-  const fields = schema.fields.filter((field) => field.access !== "HIDDEN");
+  const fields = recordFields(schema, record);
   // Observe the relations and attachments caches so the tab labels can show
   // counts without fetching — the panels below own the actual requests.
   const relations = useQuery<unknown[]>({
@@ -234,7 +240,7 @@ export function RecordDetailPage({
           record={{
             id: record.id,
             objectCode: schema.object.code,
-            canCreate: canEdit,
+            canCreate: canOperate,
           }}
           assignees={canChooseOwner ? activeMembers : undefined}
         />
@@ -255,7 +261,7 @@ export function RecordDetailPage({
           tenantCode={tenantCode}
           objectCode={schema.object.code}
           recordId={record.id}
-          canCreate={canEdit}
+          canCreate={canOperate}
           api={api}
         />
       ),
@@ -268,7 +274,7 @@ export function RecordDetailPage({
           tenantCode={tenantCode}
           objectCode={schema.object.code}
           recordId={record.id}
-          canUpdate={canEdit}
+          canUpdate={canOperate}
         />
       ),
     },
@@ -280,7 +286,7 @@ export function RecordDetailPage({
           tenantCode={tenantCode}
           objectCode={schema.object.code}
           recordId={record.id}
-          canUpdate={canEdit}
+          canUpdate={canOperate}
         />
       ),
     },
@@ -566,10 +572,10 @@ export function RecordDetailPage({
                       <dt>
                         {field.label}
                         {field.access === "READ_ONLY" ? (
-                          <Tooltip title="仅管理员可编辑">
+                          <Tooltip title="只读">
                             <LockOutlined
                               className={styles.fieldLock}
-                              aria-label="仅管理员可编辑"
+                              aria-label="只读"
                             />
                           </Tooltip>
                         ) : null}

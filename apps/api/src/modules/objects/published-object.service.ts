@@ -13,6 +13,7 @@ import type {
 } from '../workflows/workflow.types';
 import {
   resolveEffectiveAccess,
+  queryFieldAccess,
   type EffectiveObjectAccess,
 } from './effective-access';
 import {
@@ -43,6 +44,8 @@ export interface RuntimeObjectNavigation {
 }
 
 export interface RuntimeObjectSchema {
+  groupFieldAccess?: Record<string, PublishedFieldAccess>;
+  queryFieldKeys?: string[];
   workflowEnabled?: boolean;
   publication: { number: number; publishedAt: string };
   object: {
@@ -94,6 +97,7 @@ export class PublishedObjectService {
         const schema = parsePublishedObjectRecord(record);
         const access = resolveEffectiveAccess({
           schema,
+          memberId: context.memberId,
           role: context.role,
           memberOverride: record.memberOverride,
           groupOwnerMemberIds: record.groupOwnerMemberIds,
@@ -152,6 +156,10 @@ export function parsePublishedObjectRecord(
     if (schema.object.id !== record.id || schema.object.code !== record.code) {
       throw new Error('Published snapshot does not match active object');
     }
+    if (record.inactiveFieldKeys)
+      schema.fields = schema.fields.filter(
+        (field) => !record.inactiveFieldKeys!.includes(field.fieldKey),
+      );
     return schema;
   } catch {
     logger.error(
@@ -181,11 +189,19 @@ export function resolvePublishedObjectRecord(
   const schema = parsePublishedObjectRecord(record);
   const access = resolveEffectiveAccess({
     schema,
+    memberId: record.memberId,
     role,
     memberOverride: record.memberOverride,
     groupOwnerMemberIds: record.groupOwnerMemberIds,
     memberFieldOverrides: record.memberFieldOverrides,
   });
+  if (access.groupFieldAccess) {
+    access.groupTitleHidden =
+      (access.groupFieldAccess[schema.object.titleFieldKey] ?? 'HIDDEN') ===
+      'HIDDEN';
+    access.ownTitleHidden =
+      (access.fields[schema.object.titleFieldKey] ?? 'HIDDEN') === 'HIDDEN';
+  }
   if (record.status === 'ARCHIVED') {
     if (!isReadable(schema, access))
       throw new ApiException('OBJECT_NOT_FOUND', 404);
@@ -217,7 +233,10 @@ export function isReadable(
   return (
     access.canRead &&
     access.readScope !== 'NONE' &&
-    (access.fields[schema.object.titleFieldKey] ?? 'HIDDEN') !== 'HIDDEN'
+    ((access.fields[schema.object.titleFieldKey] ?? 'HIDDEN') !== 'HIDDEN' ||
+      (access.groupFieldAccess != null &&
+        (access.groupFieldAccess[schema.object.titleFieldKey] ?? 'HIDDEN') !==
+          'HIDDEN'))
   );
 }
 
@@ -227,10 +246,22 @@ function projectRuntimeSchema(
 ): RuntimeObjectSchema {
   const fields = schema.fields.flatMap((field) => {
     const fieldAccess = access.fields[field.fieldKey] ?? 'HIDDEN';
-    return fieldAccess === 'HIDDEN' ? [] : [{ ...field, access: fieldAccess }];
+    return fieldAccess === 'HIDDEN' &&
+      (!access.groupFieldAccess ||
+        access.groupFieldAccess[field.fieldKey] === 'HIDDEN')
+      ? []
+      : [{ ...field, access: fieldAccess }];
   });
   const visibleKeys = new Set(fields.map((field) => field.fieldKey));
   return {
+    ...(access.groupFieldAccess
+      ? {
+          groupFieldAccess: access.groupFieldAccess,
+          queryFieldKeys: Object.keys(queryFieldAccess(access)).filter(
+            (key) => queryFieldAccess(access)[key] !== 'HIDDEN',
+          ),
+        }
+      : {}),
     workflowEnabled: schema.workflow !== undefined,
     publication: {
       number: schema.publication.number,

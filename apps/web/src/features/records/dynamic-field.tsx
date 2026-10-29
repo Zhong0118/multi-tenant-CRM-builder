@@ -309,7 +309,7 @@ function ReadOnlyValue({
         {displayValue(field, value, members)}
       </div>
       <Typography.Text type="secondary" className={styles.readOnlyReason}>
-        仅管理员可编辑
+        当前只读
       </Typography.Text>
     </div>
   );

@@ -79,6 +79,8 @@ function matchScalar(actual: unknown, expected: unknown): boolean {
   }
   if (typeof expected === 'object' && expected !== null && !(expected instanceof Date)) {
     const filter = expected as Record<string, unknown>;
+    if ('equals' in filter)
+      return JSON.stringify(actual) === JSON.stringify(filter.equals);
     if ('in' in filter && Array.isArray(filter.in)) {
       return filter.in.includes(actual);
     }
@@ -183,7 +185,13 @@ function createService() {
   let ids = 0;
   const nextId = () => `00000000-0000-7000-8000-${String(++ids).padStart(12, '0')}`;
   const tx = {
-    $queryRaw: jest.fn(() => Promise.resolve([{ id: context.memberId }])),
+    $queryRaw: jest.fn((strings: TemplateStringsArray) =>
+      Promise.resolve(
+        strings.join(' ').includes('AS configured')
+          ? [{ configured: false, revision: '0' }]
+          : [{ id: context.memberId }],
+      ),
+    ),
     aiConversation: {
       create: ({ data }: { data: Partial<ConversationRow> }) => {
         const now = new Date();

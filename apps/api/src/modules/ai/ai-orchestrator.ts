@@ -18,6 +18,7 @@ import {
 } from './ai-tool-wrapper';
 import type { BeginTurnResult, PublicAiMessage } from './ai.types';
 import { ConversationService } from './conversation.service';
+import { providerAttemptsOf } from './conversation.repository';
 import type { StartAiTurnDto } from './dto/ai-turn.dto';
 import { AiToolRegistry } from './tool-registry';
 
@@ -316,6 +317,7 @@ export class AiOrchestrator {
         return;
       }
       const outcome = {
+        providerAttempt: providerAttemptsOf(begun.assistant.providerUsage),
         status: 'COMPLETED' as const,
         content: buffer,
         usage,
@@ -420,7 +422,10 @@ export class AiOrchestrator {
       errorCode?: string | null;
     },
   ): Promise<void> {
-    await this.conversations.finalizeAssistant(context, begun.turnId, outcome);
+    await this.conversations.finalizeAssistant(context, begun.turnId, {
+      ...outcome,
+      providerAttempt: providerAttemptsOf(begun.assistant.providerUsage),
+    });
     this.logger.log({
       conversationId: begun.conversationId,
       turnId: begun.turnId,

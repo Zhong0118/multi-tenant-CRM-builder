@@ -80,7 +80,7 @@ export function RecordImportDrawer({
   const readRequest = useRef(0);
   const [source, setSource] = useState<ImportFile>();
   const [sheetName, setSheetName] = useState("");
-  const [matchFields, setMatchFields] = useState<string[]>([]);
+  const [selectedMatchFields, setMatchFields] = useState<string[]>([]);
   const [busy, setBusy] = useState<"check" | "import">();
   const [loadingFile, setLoadingFile] = useState(false);
   const [checked, setChecked] = useState<RecordImportResult>();
@@ -112,6 +112,16 @@ export function RecordImportDrawer({
             item.field !== undefined,
         ),
     [importable, mapping],
+  );
+
+  const matchableFields = mappedFields.filter(
+    ({ field }) =>
+      field.type !== "MULTI_SELECT" &&
+      (schema.queryFieldKeys === undefined ||
+        schema.queryFieldKeys.includes(field.fieldKey)),
+  );
+  const matchFields = selectedMatchFields.filter((key) =>
+    matchableFields.some(({ field }) => field.fieldKey === key),
   );
 
   const duplicateFields = mappedFields.filter(
@@ -593,12 +603,10 @@ export function RecordImportDrawer({
               maxCount={3}
               disabled={!!busy || loadingFile || importStarted}
               placeholder="选择手机号、编号等业务唯一标识"
-              options={mappedFields
-                .filter(({ field }) => field.type !== "MULTI_SELECT")
-                .map(({ field }) => ({
-                  value: field.fieldKey,
-                  label: field.label,
-                }))}
+              options={matchableFields.map(({ field }) => ({
+                value: field.fieldKey,
+                label: field.label,
+              }))}
               onChange={(fields) => {
                 setMatchFields(fields);
                 resetResult();

@@ -1,3 +1,4 @@
+import { isGroupPeer, recordFieldAccess } from '../objects/effective-access';
 import {
   recordOwnerFilter,
   recordOwnerMatches,
@@ -156,8 +157,24 @@ export async function updateRecordCommand({
     resolved,
     context,
     recordId,
-    'UPDATE',
+    input.ownerMemberId === undefined && resolved.access.groupFieldAccess
+      ? 'READ'
+      : 'UPDATE',
   );
+  if (
+    input.ownerMemberId === undefined &&
+    isGroupPeer(resolved.access, current)
+  ) {
+    if (
+      !resolved.access.canUpdate ||
+      current.inPublicPool ||
+      !input.values ||
+      Object.keys(input.values).length === 0
+    )
+      throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+  } else {
+    await requireVisibleRecord(store, resolved, context, recordId, 'UPDATE');
+  }
   if (current.version !== input.version)
     throw new ApiException('RECORD_VERSION_CONFLICT', 409);
   const patch = await prepareSourceRecordPatch({
@@ -366,7 +383,10 @@ export async function requireVisibleRecord(
   )
     throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
   const poolReadable =
-    action === 'READ' && resolved.poolEnabled && record?.inPublicPool;
+    action === 'READ' &&
+    !resolved.access.ownTitleHidden &&
+    resolved.poolEnabled &&
+    record?.inPublicPool;
   if (
     !record ||
     (!poolReadable && !recordOwnerMatches(ownerFilter, record.ownerMemberId))
@@ -379,7 +399,26 @@ export function projectRecord(
   record: DynamicRecord,
   resolved: ResolvedObjectSchema,
 ): RecordResponse {
+  const fields = recordFieldAccess(resolved.access, record);
   return {
+    ...(resolved.access.groupFieldAccess
+      ? {
+          fieldAccess: fields,
+          canEditFields:
+            resolved.access.canUpdate &&
+            !record.inPublicPool &&
+            Object.values(fields).includes('EDIT') &&
+            (isGroupPeer(resolved.access, record) ||
+              recordOwnerMatches(
+                recordOwnerFilter(
+                  resolved.access,
+                  resolved.access.memberId!,
+                  true,
+                ),
+                record.ownerMemberId,
+              )),
+        }
+      : {}),
     id: record.id,
     recordNo: record.recordNo.toString(),
     ownerMemberId: record.ownerMemberId,
@@ -400,7 +439,7 @@ export function projectRecord(
     title: record.title,
     values: projectVisibleValues(
       resolved.schema,
-      resolved.access,
+      { ...resolved.access, fields },
       record.values,
     ),
     version: record.version,
@@ -476,7 +515,13 @@ export async function prepareSourceRecordPatch(
   }
   const normalized = await assertRecordMutation({
     mode: 'UPDATE',
-    resolved: input.resolved,
+    resolved: {
+      ...input.resolved,
+      access: {
+        ...input.resolved.access,
+        fields: recordFieldAccess(input.resolved.access, input.current),
+      },
+    },
     submitted: input.values ?? {},
     current: input.current.values,
     memberExists: (memberId) => input.store.memberExists(memberId),

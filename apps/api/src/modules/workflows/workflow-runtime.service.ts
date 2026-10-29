@@ -1,3 +1,4 @@
+import { recordFieldAccess } from '../objects/effective-access';
 import {
   recordOwnerFilter,
   recordOwnerMatches,
@@ -100,6 +101,7 @@ export class WorkflowRuntimeService {
         schema: resolved.schema,
         access: {
           ...resolved.access,
+          fields: recordFieldAccess(resolved.access, record),
           canUpdate:
             resolved.access.canUpdate &&
             recordOwnerMatches(
@@ -253,7 +255,10 @@ export class WorkflowRuntimeService {
         // steps come from that same snapshot.
         const transition = resolveExecutableTransition({
           schema: resolved.schema,
-          access: resolved.access,
+          access: {
+            ...resolved.access,
+            fields: recordFieldAccess(resolved.access, snapshot),
+          },
           role: context.role,
           record: snapshot,
           transitionKey,
@@ -369,7 +374,10 @@ export class WorkflowRuntimeService {
         return {
           ...runtimeWorkflowView({
             schema: resolved.schema,
-            access: resolved.access,
+            access: {
+              ...resolved.access,
+              fields: recordFieldAccess(resolved.access, updated),
+            },
             role: context.role,
             record: updated,
           }),

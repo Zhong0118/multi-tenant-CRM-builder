@@ -1,3 +1,4 @@
+import { recordFieldAccess } from '../objects/effective-access';
 import { recordOwnerFilter } from '../objects/record-read-scope';
 import type { Prisma } from '@crm/database';
 
@@ -192,8 +193,18 @@ export async function executeActions(
 
   /** §14: at most one write per source field and one owner change. */
   const writtenSourceFields = new Set<string>();
+  const sourceAccess = recordFieldAccess(
+    source.resolved.access,
+    source.snapshot,
+  );
   const sourceFields = new Map(
-    source.resolved.schema.fields.map((field) => [field.fieldKey, field]),
+    source.resolved.schema.fields
+      .filter(
+        (field) =>
+          !source.resolved.access.groupFieldAccess ||
+          sourceAccess[field.fieldKey] !== 'HIDDEN',
+      )
+      .map((field) => [field.fieldKey, field]),
   );
   let sourceValues: Record<string, unknown> = {};
   let pendingOwnerMemberId: string | undefined;
@@ -211,7 +222,13 @@ export async function executeActions(
       recordId: source.snapshot.id,
       title: source.snapshot.title,
       ownerMemberId: source.snapshot.ownerMemberId,
-      values: source.snapshot.values,
+      values: source.resolved.access.groupFieldAccess
+        ? Object.fromEntries(
+            Object.entries(source.snapshot.values).filter(
+              ([key]) => sourceAccess[key] && sourceAccess[key] !== 'HIDDEN',
+            ),
+          )
+        : source.snapshot.values,
       fields: sourceFields,
     },
     outputs,

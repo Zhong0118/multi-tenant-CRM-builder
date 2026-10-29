@@ -257,7 +257,7 @@ describe("RecordForm creating a record", () => {
 
     expect(screen.getByText("客户评级")).toBeInTheDocument();
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
-    expect(screen.getAllByText("仅管理员可编辑").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("当前只读").length).toBeGreaterThan(0);
   });
 
   it("reports a required field instead of sending an invalid payload", async () => {
@@ -483,5 +483,51 @@ describe("RecordForm unsaved changes", () => {
     const dirty = new Event("beforeunload", { cancelable: true });
     window.dispatchEvent(dirty);
     expect(dirty.defaultPrevented).toBe(true);
+  });
+});
+
+describe("record-specific field access", () => {
+  it("renders teammate fields and sends only explicitly editable values", async () => {
+    const api = recordApi();
+    renderForm(
+      <RecordForm
+        tenantCode="northwind"
+        schema={schema()}
+        record={{
+          ...savedRecord,
+          ownerMemberId: "teammate",
+          canEditFields: true,
+          fieldAccess: { name: "READ_ONLY", amount: "HIDDEN", rating: "EDIT" },
+          values: { name: "组员客户", amount: "9988", rating: "gold" },
+        }}
+        api={api}
+        onSaved={vi.fn()}
+      />,
+    );
+    expect(screen.queryByLabelText("合同金额")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("textbox", { name: "客户名称" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "客户评级" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "保存修改" }));
+    await waitFor(() =>
+      expect(api.update).toHaveBeenCalledWith(
+        "northwind",
+        "customers",
+        "record-1",
+        { version: 4, values: { rating: "gold" } },
+      ),
+    );
+  });
+  it("blocks a denied record even when table updates are enabled", () => {
+    renderForm(
+      <RecordForm
+        tenantCode="northwind"
+        schema={schema()}
+        record={{ ...savedRecord, canEditFields: false }}
+        onSaved={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "保存修改" })).toBeDisabled();
   });
 });

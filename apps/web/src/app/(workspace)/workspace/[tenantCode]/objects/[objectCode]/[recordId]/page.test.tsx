@@ -1,16 +1,21 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import RecordDetailPage from "./page";
+import ObjectRecordsPage from "../page";
+const runtime = vi.hoisted(() => ({
+  schema: {
+    defaultView: { sort: { field: "updatedAt", direction: "desc" } },
+    fields: [] as { fieldKey: string; type: string; access: string }[],
+    queryFieldKeys: undefined as string[] | undefined,
+  },
+}));
 
 vi.mock("@/lib/auth/require-workspace", () => ({
   requireWorkspace: async () => ({ role: "EMPLOYEE", memberId: "member-1" }),
 }));
 vi.mock("@/lib/auth/load-runtime-object", () => ({
   loadRuntimeObject: async () => ({
-    schema: {
-      defaultView: { sort: { field: "updatedAt", direction: "desc" } },
-      fields: [],
-    },
+    schema: runtime.schema,
     members: [],
     isAdmin: false,
   }),
@@ -18,8 +23,17 @@ vi.mock("@/lib/auth/load-runtime-object", () => ({
   loadRecord: async () => ({ id: "record-1", title: "客户 A" }),
 }));
 vi.mock("@/features/records/record-workspace", () => ({
-  RecordWorkspace: ({ followUpId }: { followUpId?: string }) => (
-    <div>跟进目标：{followUpId ?? "无"}</div>
+  RecordWorkspace: ({
+    followUpId,
+    query,
+  }: {
+    followUpId?: string;
+    query: { sort: string };
+  }) => (
+    <div>
+      跟进目标：{followUpId ?? "无"}
+      <span>排序：{query.sort}</span>
+    </div>
   ),
 }));
 
@@ -38,3 +52,26 @@ describe("record detail deep link", () => {
     expect(screen.getByText("跟进目标：task-1")).toBeInTheDocument();
   });
 });
+
+it.each([ObjectRecordsPage, RecordDetailPage])(
+  "drops URL sorting on a field hidden in part of the record scope",
+  async (Page) => {
+    runtime.schema.fields = [
+      { fieldKey: "secret", type: "TEXT", access: "EDIT" },
+    ];
+    runtime.schema.queryFieldKeys = [];
+    render(
+      await Page({
+        params: Promise.resolve({
+          tenantCode: "northwind",
+          objectCode: "customers",
+          recordId: "record-1",
+        }),
+        searchParams: Promise.resolve({ sort: "secret" }),
+      }),
+    );
+    expect(screen.getByText("排序：updatedAt")).toBeInTheDocument();
+    runtime.schema.fields = [];
+    runtime.schema.queryFieldKeys = undefined;
+  },
+);

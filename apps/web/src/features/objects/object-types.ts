@@ -155,6 +155,8 @@ export const SELECT_OPTION_COLOR_LABELS: Record<SelectOptionColor, string> = {
 };
 
 export interface RuntimeObjectSchema {
+  groupFieldAccess?: Record<string, PublishedFieldAccess> | null;
+  queryFieldKeys?: string[];
   workflowEnabled?: boolean;
   publication: { number: number; publishedAt: string };
   object: {
@@ -326,7 +328,26 @@ export function parseRuntimeObjectSchema(
     }
   }
 
+  const groupFieldAccess =
+    response.groupFieldAccess === undefined || response.groupFieldAccess === null
+      ? response.groupFieldAccess
+      : Object.fromEntries(
+          Object.entries(asObject(response.groupFieldAccess, "groupFieldAccess"))
+            .map(([key, access]) => [
+              key,
+              asMember(access, FIELD_ACCESS, `groupFieldAccess.${key}`),
+            ]),
+        );
+  const queryFieldKeys = response.queryFieldKeys === undefined
+    ? undefined
+    : asStringArray(response.queryFieldKeys, "queryFieldKeys");
+  if (queryFieldKeys?.some((key) => !fieldKeys.has(key))) {
+    invalid("queryFieldKeys 引用了未发布字段");
+  }
+
   return {
+    ...(groupFieldAccess === undefined ? {} : { groupFieldAccess }),
+    ...(queryFieldKeys === undefined ? {} : { queryFieldKeys }),
     publication: {
       number: asInteger(publication.number, "publication.number"),
       publishedAt: asString(publication.publishedAt, "publication.publishedAt"),

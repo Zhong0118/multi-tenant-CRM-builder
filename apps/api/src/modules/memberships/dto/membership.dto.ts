@@ -5,6 +5,7 @@ import {
   ArrayMinSize,
   ArrayUnique,
   IsArray,
+  IsObject,
   ValidateNested,
   IsIn,
   Length,
@@ -55,6 +56,18 @@ export class ChangeMemberStatusDto {
 }
 
 export class MemberObjectAccessDto {
+  @ApiPropertyOptional({
+    type: 'object',
+    nullable: true,
+    additionalProperties: {
+      type: 'string',
+      enum: ['EDIT', 'READ_ONLY', 'HIDDEN'],
+    },
+  })
+  @IsOptional()
+  @IsObject()
+  groupFieldAccess?: Record<string, 'EDIT' | 'READ_ONLY' | 'HIDDEN'> | null;
+
   @ApiProperty({ enum: ['INHERIT', 'OVERRIDE'] })
   @IsIn(['INHERIT', 'OVERRIDE'])
   mode!: 'INHERIT' | 'OVERRIDE';
@@ -131,6 +144,8 @@ export class BulkMemberAccessResponseDto {
 }
 
 export class MemberFieldAccessResponseDto {
+  @ApiPropertyOptional({ enum: ['EDIT', 'READ_ONLY', 'HIDDEN'] })
+  groupEffective?: 'EDIT' | 'READ_ONLY' | 'HIDDEN';
   @ApiProperty({ format: 'uuid' }) fieldId!: string;
   @ApiProperty() fieldKey!: string;
   @ApiProperty() label!: string;
@@ -244,6 +259,18 @@ export class TenantMemberPageResponseDto {
 }
 
 export class MemberObjectPolicyResponseDto {
+  @ApiPropertyOptional({
+    type: 'object',
+    nullable: true,
+    additionalProperties: {
+      type: 'string',
+      enum: ['EDIT', 'READ_ONLY', 'HIDDEN'],
+    },
+  })
+  @IsOptional()
+  @IsObject()
+  groupFieldAccess?: Record<string, 'EDIT' | 'READ_ONLY' | 'HIDDEN'> | null;
+
   @ApiProperty() canCreate!: boolean;
   @ApiProperty() canRead!: boolean;
   @ApiProperty() canUpdate!: boolean;
@@ -255,6 +282,7 @@ export class MemberObjectPolicyResponseDto {
 }
 
 export class MemberObjectAccessResponseDto {
+  @ApiPropertyOptional() titleFieldKey?: string;
   @ApiProperty({ type: MemberFieldAccessResponseDto, isArray: true })
   fields!: MemberFieldAccessResponseDto[];
   @ApiProperty({ format: 'uuid' }) objectId!: string;

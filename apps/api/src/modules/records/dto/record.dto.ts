@@ -182,6 +182,15 @@ export class DeleteRecordDto {
 }
 
 export class RecordResponseDto {
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: {
+      type: 'string',
+      enum: ['EDIT', 'READ_ONLY', 'HIDDEN'],
+    },
+  })
+  fieldAccess?: Record<string, 'EDIT' | 'READ_ONLY' | 'HIDDEN'>;
+  @ApiPropertyOptional() canEditFields?: boolean;
   @ApiPropertyOptional({ enum: POOL_STAGES, nullable: true })
   poolStage?: PoolStage | null;
   @ApiPropertyOptional({ enum: ['LEAD_POOL', 'CUSTOMER_POOL'], nullable: true })

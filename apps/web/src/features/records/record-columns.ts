@@ -1,11 +1,10 @@
+import { visibleFields } from "./record-access";
 import { FIELD_KEY_PATTERN } from "@/features/objects/object-types";
 import type { RuntimeObjectSchema } from "@/features/objects/object-types";
 
 export function defaultRecordColumnKeys(schema: RuntimeObjectSchema): string[] {
   return schema.defaultView.columnFieldKeys.filter((fieldKey) =>
-    schema.fields.some(
-      (field) => field.fieldKey === fieldKey && field.access !== "HIDDEN",
-    ),
+    visibleFields(schema).some((field) => field.fieldKey === fieldKey),
   );
 }
 
@@ -13,11 +12,7 @@ export function resolveRecordColumnKeys(
   schema: RuntimeObjectSchema,
   requested: string[] | undefined,
 ): string[] {
-  const visible = new Set(
-    schema.fields
-      .filter((field) => field.access !== "HIDDEN")
-      .map((field) => field.fieldKey),
-  );
+  const visible = new Set(visibleFields(schema).map((field) => field.fieldKey));
   const selected = (requested ?? []).filter((fieldKey) =>
     visible.has(fieldKey),
   );

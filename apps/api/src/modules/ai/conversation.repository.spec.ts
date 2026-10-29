@@ -96,6 +96,8 @@ function matchScalar(actual: unknown, expected: unknown): boolean {
     !(expected instanceof Date)
   ) {
     const filter = expected as Record<string, unknown>;
+    if ('equals' in filter)
+      return JSON.stringify(actual) === JSON.stringify(filter.equals);
     if ('in' in filter && Array.isArray(filter.in)) {
       return filter.in.includes(actual);
     }
@@ -208,6 +210,7 @@ function harness(options: { lockedMembers?: Array<{ id: string }> } = {}) {
     resultJson: null;
   }> = [];
   const sqlCalls: string[] = [];
+  const security = { revision: 0, configured: true };
   let ids = 0;
   const nextId = () =>
     `00000000-0000-7000-8000-${String(++ids).padStart(12, '0')}`;
@@ -216,6 +219,13 @@ function harness(options: { lockedMembers?: Array<{ id: string }> } = {}) {
     $queryRaw: jest.fn((strings: TemplateStringsArray) => {
       const sql = strings.join('$').replace(/\s+/g, ' ').trim();
       sqlCalls.push(sql);
+      if (sql.includes('AS configured'))
+        return Promise.resolve([
+          {
+            configured: security.configured,
+            revision: String(security.revision),
+          },
+        ]);
       if (/FROM tenant_members/.test(sql)) {
         return Promise.resolve(
           options.lockedMembers ?? [{ id: context.memberId }],
@@ -457,6 +467,7 @@ function harness(options: { lockedMembers?: Array<{ id: string }> } = {}) {
     tx,
     withTenant,
     sqlCalls,
+    security,
     conversations,
     messages,
     operations,
@@ -471,6 +482,171 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     delete process.env.AI_TIMEOUT_MS;
   });
 
+  it.each(['COMPLETED', 'FAILED', 'CANCELLED'] as const)(
+    'redacts %s cached answers and aggregate summaries after a security revision in UI and provider history',
+    async (status) => {
+      const f = harness();
+      const begun = await f.repository.beginTurn(context, {
+        content: 'user-authored message',
+      });
+      await f.repository.finalizeAssistant(context, begun.turnId, {
+        status,
+        content: 'sensitive-peer-value',
+        sourceSummary: [{ kind: 'AGGREGATE', value: '987654' }],
+      });
+      expect(
+        JSON.stringify(
+          await f.repository.contextMessages(context, begun.conversationId),
+        ),
+      ).toContain('sensitive-peer-value');
+      f.security.revision++;
+      for (const rows of [
+        (await f.repository.messages(context, begun.conversationId, {})).items,
+        await f.repository.contextMessages(context, begun.conversationId),
+      ]) {
+        expect(JSON.stringify(rows)).not.toMatch(/sensitive-peer-value|987654/);
+        expect(rows.find((row) => row.role === 'ASSISTANT')).toMatchObject({
+          content:
+            '数据权限已变化，这条历史回答已隐藏。请重新提问获取当前可见的数据。',
+          toolSummary: [],
+          sourceSummary: [],
+        });
+        expect(rows.find((row) => row.role === 'USER')?.content).toBe(
+          'user-authored message',
+        );
+      }
+    },
+  );
+  it('preserves unprotected employee and administrator legacy history', async () => {
+    const f = harness();
+    f.security.configured = false;
+    const turn = await f.repository.beginTurn(context, {
+      content: 'normal-user-question',
+    });
+    await f.repository.finalizeAssistant(context, turn.turnId, {
+      status: 'COMPLETED',
+      content: 'normal-answer',
+    });
+    f.security.revision++;
+    expect(
+      JSON.stringify(
+        await f.repository.contextMessages(context, turn.conversationId),
+      ),
+    ).toContain('normal-answer');
+    const adminContext = { ...context, role: 'TENANT_ADMIN' as const };
+    expect(
+      JSON.stringify(
+        await f.repository.contextMessages(adminContext, turn.conversationId),
+      ),
+    ).toContain('normal-answer');
+    f.security.configured = true;
+    expect(
+      JSON.stringify(
+        await f.repository.contextMessages(context, turn.conversationId),
+      ),
+    ).not.toContain('normal-answer');
+  });
+  it('keeps new unprotected answers on mixed history pages after policy removal', async () => {
+    const f = harness();
+    const protectedTurn = await f.repository.beginTurn(context, {
+      content: 'protected question',
+    });
+    await f.repository.finalizeAssistant(context, protectedTurn.turnId, {
+      status: 'COMPLETED',
+      content: 'old-protected-answer',
+    });
+    f.security.configured = false;
+    f.security.revision++;
+    const normalTurn = await f.repository.beginTurn(context, {
+      conversationId: protectedTurn.conversationId,
+      content: 'normal question',
+    });
+    await f.repository.finalizeAssistant(context, normalTurn.turnId, {
+      status: 'COMPLETED',
+      content: 'new-normal-answer',
+    });
+    for (const rows of [
+      (
+        await f.repository.messages(context, normalTurn.conversationId, {
+          limit: 3,
+        })
+      ).items,
+      await f.repository.contextMessages(context, normalTurn.conversationId),
+    ]) {
+      expect(JSON.stringify(rows)).not.toContain('old-protected-answer');
+      expect(JSON.stringify(rows)).toContain('new-normal-answer');
+    }
+  });
+  it('rejects late finalization from an expired attempt after retry captures a new revision', async () => {
+    jest.useFakeTimers({ now: new Date('2026-10-29T00:00:00Z') });
+    const f = harness();
+    const first = await f.repository.beginTurn(context, {
+      content: 'question',
+    });
+    f.security.revision++;
+    jest.advanceTimersByTime(120_000);
+    const second = await f.repository.retryTurn(context, first.turnId);
+    await expect(
+      f.repository.finalizeAssistant(context, first.turnId, {
+        providerAttempt: 1,
+        status: 'CANCELLED',
+        content: 'stale-sensitive-answer',
+      }),
+    ).rejects.toMatchObject({ code: 'AI_TURN_NOT_RETRYABLE' });
+    expect(
+      f.messages.find((row) => row.id === second.assistant.id)?.status,
+    ).toBe('GENERATING');
+    await f.repository.finalizeAssistant(context, second.turnId, {
+      providerAttempt: 2,
+      status: 'COMPLETED',
+      content: 'current-answer',
+    });
+    const rows = await f.repository.contextMessages(
+      context,
+      second.conversationId,
+    );
+    expect(JSON.stringify(rows)).not.toContain('stale-sensitive-answer');
+    expect(JSON.stringify(rows)).toContain('current-answer');
+  });
+  it('atomically rejects a retry that wins between finalization read and write', async () => {
+    const f = harness();
+    const first = await f.repository.beginTurn(context, {
+      content: 'question',
+    });
+    const apply = f.tx.aiMessage.updateMany.getMockImplementation()!;
+    f.tx.aiMessage.updateMany.mockImplementationOnce((input) => {
+      const row = f.messages.find((item) => item.id === first.assistant.id)!;
+      row.providerUsage = { providerAttempts: 2, authorizationRevision: '1' };
+      return apply(input);
+    });
+    await expect(
+      f.repository.finalizeAssistant(context, first.turnId, {
+        providerAttempt: 1,
+        status: 'COMPLETED',
+        content: 'stale-sensitive-answer',
+      }),
+    ).rejects.toMatchObject({ code: 'AI_TURN_NOT_RETRYABLE' });
+    expect(
+      f.messages.find((row) => row.id === first.assistant.id)?.content,
+    ).toBe('');
+  });
+  it('does not bless stale values when a security change happens before finalization', async () => {
+    const f = harness();
+    const begun = await f.repository.beginTurn(context, {
+      content: 'question',
+    });
+    f.security.revision++;
+    await f.repository.finalizeAssistant(context, begun.turnId, {
+      status: 'COMPLETED',
+      content: 'stale-value',
+      usage: { authorizationRevision: String(f.security.revision) },
+    });
+    expect(
+      JSON.stringify(
+        await f.repository.contextMessages(context, begun.conversationId),
+      ),
+    ).not.toContain('stale-value');
+  });
   it('locks the active tenant member with FOR UPDATE inside one tenant transaction', async () => {
     const fixture = harness();
     await fixture.repository.beginTurn(context, { content: '你好' });
@@ -675,6 +851,7 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
         .providerAttempts,
     ).toBe(2);
     await fixture.repository.finalizeAssistant(context, retried.turnId, {
+      providerAttempt: 2,
       status: 'COMPLETED',
       content: '重试完成',
     });
@@ -703,7 +880,10 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     expect(retried.assistant.content).toBe('');
     expect(retried.assistant.toolSummary).toEqual([]);
     expect(retried.assistant.sourceSummary).toEqual([]);
-    expect(retried.assistant.providerUsage).toEqual({ providerAttempts: 2 });
+    expect(retried.assistant.providerUsage).toEqual({
+      providerAttempts: 2,
+      authorizationRevision: '0',
+    });
     expect(retried.assistant.errorCode).toBeNull();
     expect(retried.assistant.completedAt).toBeNull();
     expect(fixture.messages.filter((row) => row.role === 'USER')).toHaveLength(
@@ -755,7 +935,7 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
       expect(
         fixture.messages.find((row) => row.id === begun.assistant.id),
       ).toMatchObject({ status: assistantStatus, content: 'original answer' });
-      expect(fixture.tx.aiMessage.update).toHaveBeenCalledTimes(1);
+      expect(fixture.tx.aiMessage.update).not.toHaveBeenCalled();
     },
   );
 
@@ -1005,6 +1185,7 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     expect(assistant?.providerKey).toBe('openai');
     expect(assistant?.modelKey).toBe('gpt-4.1');
     expect(assistant?.providerUsage).toEqual({
+      authorizationRevision: '0',
       inputTokens: 3,
       outputTokens: 5,
       latencyMs: 12,
@@ -1136,6 +1317,13 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     fixture.tx.$queryRaw.mockImplementation((strings: TemplateStringsArray) => {
       const sql = strings.join('$');
       fixture.sqlCalls.push(sql);
+      if (sql.includes('AS configured'))
+        return Promise.resolve([
+          {
+            configured: fixture.security.configured,
+            revision: String(fixture.security.revision),
+          },
+        ]);
       return Promise.resolve([]);
     });
     await expect(

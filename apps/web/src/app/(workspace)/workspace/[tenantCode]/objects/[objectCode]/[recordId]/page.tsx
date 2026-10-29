@@ -1,7 +1,11 @@
 import { renderRuntimeObjectPage } from "@/features/objects/runtime-object-state";
 import { SORTABLE_FIELD_TYPES } from "@/features/objects/object-types";
+import { queryFields } from "@/features/records/record-access";
 import { RecordWorkspace } from "@/features/records/record-workspace";
-import { parseRecordQuery } from "@/features/records/record-query-state";
+import {
+  parseRecordQuery,
+  restrictRecordQuery,
+} from "@/features/records/record-query-state";
 import { validatedReturnTo } from "@/features/records/source-navigation";
 import {
   loadRecord,
@@ -36,15 +40,16 @@ export default async function RecordDetailPage({
       workspace.role,
     );
     const rawSearchParams = await searchParams;
-    const query = parseRecordQuery(
+    const parsedQuery = parseRecordQuery(
       rawSearchParams,
       schema.defaultView.sort,
-      schema.fields
+      queryFields(schema)
         .filter((field) =>
           (SORTABLE_FIELD_TYPES as readonly string[]).includes(field.type),
         )
         .map((field) => field.fieldKey),
     );
+    const query = restrictRecordQuery(parsedQuery, schema);
     const initialEditing = rawSearchParams.mode === "edit";
     const followUpId =
       typeof rawSearchParams.followUp === "string" &&

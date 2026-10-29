@@ -596,6 +596,7 @@ model ViewDefinition {
 }
 
 model ObjectPermission {
+  groupFieldAccess Json?                 @map("group_field_access") @db.JsonB
   id              String                @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId        String                @map("tenant_id") @db.Uuid
   objectId        String                @map("object_id") @db.Uuid

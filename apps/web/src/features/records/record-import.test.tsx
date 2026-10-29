@@ -108,7 +108,7 @@ function setup(
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  render(
+  const rendered = render(
     <QueryClientProvider client={client}>
       <RecordImportDrawer
         tenantCode="northwind"
@@ -125,7 +125,7 @@ function setup(
       />
     </QueryClientProvider>,
   );
-  return { api, onCompleted, onClose };
+  return { ...rendered, client, api, onCompleted, onClose };
 }
 function chooseFile(content: BlobPart, name = "records.csv") {
   fireEvent.change(screen.getByLabelText("选择 Excel 或 CSV 文件"), {
@@ -400,4 +400,74 @@ it("imports into the initial pool only after explicit selection and excludes own
   const input = vi.mocked(api.importRows).mock.calls.at(-1)![2];
   expect(input.importToPool).toBe(true);
   expect(input).not.toHaveProperty("ownerMemberId");
+});
+
+it.each([{ queryFieldKeys: undefined }, { queryFieldKeys: ["name"] }])(
+  "limits duplicate matching to shared fields while retaining own import mapping ($queryFieldKeys)",
+  async ({ queryFieldKeys }) => {
+    const { api } = setup(recordApi(), { ...schema, queryFieldKeys });
+    chooseFile("姓名,线索状态\n张三,待联系");
+    await screen.findByText("1 行 · 2 列");
+    expect(
+      screen.getByLabelText("映射 线索状态").closest(".ant-select"),
+    ).toHaveTextContent("线索状态 · 单选");
+    fireEvent.mouseDown(screen.getByLabelText("查重字段"));
+    expect(
+      screen.getByText("姓名", { selector: ".ant-select-item-option-content" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("线索状态", {
+        selector: ".ant-select-item-option-content",
+      }) !== null,
+    ).toBe(queryFieldKeys === undefined);
+    fireEvent.click(
+      screen.getByText("姓名", { selector: ".ant-select-item-option-content" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "检查数据" }));
+    await waitFor(() =>
+      expect(api.importRows).toHaveBeenCalledWith(
+        "northwind",
+        "customers",
+        expect.objectContaining({
+          matchFields: ["name"],
+          rows: [
+            { rowNumber: 2, values: { name: "张三", lead_status: "new" } },
+          ],
+        }),
+      ),
+    );
+  },
+);
+it("drops retained duplicate fields when shared query permission is removed", async () => {
+  const { api, client, rerender, onCompleted, onClose } = setup();
+  chooseFile("姓名,线索状态\n张三,待联系");
+  await screen.findByText("1 行 · 2 列");
+  fireEvent.mouseDown(screen.getByLabelText("查重字段"));
+  fireEvent.click(
+    screen.getByText("线索状态", {
+      selector: ".ant-select-item-option-content",
+    }),
+  );
+  rerender(
+    <QueryClientProvider client={client}>
+      <RecordImportDrawer
+        tenantCode="northwind"
+        schema={{ ...schema, queryFieldKeys: ["name"] }}
+        api={api}
+        onClose={onClose}
+        onCompleted={onCompleted}
+      />
+    </QueryClientProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "检查数据" }));
+  await waitFor(() =>
+    expect(api.importRows).toHaveBeenCalledWith(
+      "northwind",
+      "customers",
+      expect.objectContaining({
+        matchFields: [],
+        rows: [{ rowNumber: 2, values: { name: "张三", lead_status: "new" } }],
+      }),
+    ),
+  );
 });

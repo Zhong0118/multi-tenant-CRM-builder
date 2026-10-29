@@ -53,7 +53,7 @@ import {
 import { toApiError } from "@/lib/api/api-error";
 
 import type { DynamicFieldMember } from "./dynamic-field";
-import { canEditRecord } from "./record-access";
+import { canEditRecordFields, queryFields, recordFields, visibleFields } from "./record-access";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
 import {
   MAX_OWNER_ASSIGNMENT_RECORDS,
@@ -104,6 +104,7 @@ import {
 import {
   DEFAULT_RECORD_QUERY,
   recordQuerySearch,
+  restrictRecordQuery,
   withFilter,
   type RecordFilterValue,
   type RecordQuery,
@@ -143,7 +144,7 @@ export function RecordList({
   tenantCode,
   currentMemberId,
   schema,
-  query,
+  query: requestedQuery,
   initialPage,
   members = [],
   canFilterByOwner = false,
@@ -154,6 +155,7 @@ export function RecordList({
 }: RecordListProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const query = restrictRecordQuery(requestedQuery, schema);
   const objectCode = schema.object.code;
   const listPath = `/workspace/${tenantCode}/objects/${objectCode}`;
   const queryDefaults: RecordQuery = {
@@ -242,7 +244,7 @@ export function RecordList({
   const [navigation, setNavigation] = useState(0);
   function apply(next: RecordQuery, fromSearch = false) {
     if (!fromSearch) setNavigation((count) => count + 1);
-    const search = recordQuerySearch(next, queryDefaults);
+    const search = recordQuerySearch(restrictRecordQuery(next, schema), queryDefaults);
     go(search === "" ? listPath : `${listPath}?${search}`);
   }
 
@@ -273,7 +275,7 @@ export function RecordList({
     () => false,
   );
   const editableRecord = (row: RecordSummary) =>
-    canEditRecord(schema, row, currentMemberId, canFilterByOwner);
+    canEditRecordFields(schema, row, currentMemberId, canFilterByOwner);
   const canSelect = schema.actions.canUpdate || schema.actions.canDelete;
   const selectableRecord = (row: RecordSummary) =>
     schema.actions.canDelete || editableRecord(row);
@@ -289,16 +291,16 @@ export function RecordList({
       schema.fields.find((field) => field.fieldKey === fieldKey),
     )
     .filter((field): field is PublishedFieldView => field !== undefined);
-  const choosableFields = schema.fields.filter(
-    (field) => field.access !== "HIDDEN",
-  );
-  const cardFields = recordCardFields(schema, columnFieldKeys);
-  const optionFilterFields = schema.fields.filter(
+  const choosableFields = visibleFields(schema);
+  const queryableFields = queryFields(schema);
+  const canQueryField = (key: string) =>
+    queryableFields.some((field) => field.fieldKey === key);
+  const optionFilterFields = queryableFields.filter(
     (field) =>
       (field.type === "SINGLE_SELECT" || field.type === "MULTI_SELECT") &&
       selectOptions(field).length > 0,
   );
-  const searchFieldLabels = schema.fields
+  const searchFieldLabels = queryableFields
     .filter(
       (field) =>
         field.fieldKey === schema.object.titleFieldKey ||
@@ -331,9 +333,8 @@ export function RecordList({
     display.prefs.columnDensity[key] ?? display.prefs.density;
 
   const fieldColumn = (field: PublishedFieldView): RecordColumn => {
-    const sortable = (SORTABLE_FIELD_TYPES as readonly string[]).includes(
-      field.type,
-    );
+    const sortable = canQueryField(field.fieldKey) &&
+      (SORTABLE_FIELD_TYPES as readonly string[]).includes(field.type);
     const sortOrder: "ascend" | "descend" | null =
       sortable && query.sort === field.fieldKey
         ? query.direction === "asc"
@@ -356,7 +357,9 @@ export function RecordList({
         ? (["ascend", "descend"] as ("ascend" | "descend")[])
         : undefined,
       render: (_: unknown, row: RecordSummary) =>
-        field.fieldKey === schema.object.titleFieldKey ? (
+        !recordFields(schema, row).some(
+          (candidate) => candidate.fieldKey === field.fieldKey,
+        ) ? null : field.fieldKey === schema.object.titleFieldKey ? (
           <a
             className={`${styles.recordTitle} ${rl.titleLink}`}
             data-density={density}
@@ -496,6 +499,7 @@ export function RecordList({
       "updatedAt",
       ...visibleColumns
         .filter((field) =>
+          canQueryField(field.fieldKey) &&
           (SORTABLE_FIELD_TYPES as readonly string[]).includes(field.type),
         )
         .map((field) => field.fieldKey),
@@ -577,7 +581,7 @@ export function RecordList({
 
   const quickFilterFields = optionFilterFields.slice(0, 3);
   const conditionFields = filterableFields(
-    schema.fields,
+    queryableFields,
     schema.object.titleFieldKey,
   );
   const chipFilterKeys = Object.keys(query.filters).filter(
@@ -845,6 +849,7 @@ export function RecordList({
           </div>
           <div className={rl.rowEnd}>
             <RecordSearch
+              disabled={schema.queryFieldKeys !== undefined && searchFieldLabels.length === 0}
               label={searchLabel}
               placeholder={`搜索${schema.object.name}`}
               value={query.search ?? ""}
@@ -1017,7 +1022,7 @@ export function RecordList({
               { value: "recordNo", label: "业务编号" },
               { value: "createdAt", label: "创建时间" },
               { value: "updatedAt", label: "更新时间" },
-              ...schema.fields
+              ...queryableFields
                 .filter((field) =>
                   (SORTABLE_FIELD_TYPES as readonly string[]).includes(
                     field.type,
@@ -1072,6 +1077,10 @@ export function RecordList({
               aria-label={`${schema.object.name}记录卡片`}
             >
               {page.items.map((row) => {
+                const cardFields = recordCardFields(
+                  { ...schema, fields: recordFields(schema, row), groupFieldAccess: undefined },
+                  columnFieldKeys,
+                );
                 const ownerName = (
                   <RecordOwner
                     ownerMemberId={row.ownerMemberId}
@@ -1368,12 +1377,14 @@ export function RecordList({
  * this input rather than every row; the list query changes after a pause.
  */
 function RecordSearch({
+  disabled,
   label,
   placeholder,
   value,
   resetSignal,
   onSearch,
 }: {
+  disabled?: boolean;
   label: string;
   placeholder: string;
   value: string;
@@ -1400,6 +1411,7 @@ function RecordSearch({
   };
   return (
     <Input
+      disabled={disabled}
       aria-label={label}
       title={label}
       placeholder={placeholder}

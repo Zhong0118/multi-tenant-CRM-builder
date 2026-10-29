@@ -237,6 +237,40 @@ describe('atomic proposal and assistant completion', () => {
 });
 
 describe('safe preview at the transaction seam', () => {
+  it('previews only explicit peer UPDATE fields under OWN while activity and follow-up stay denied', async () => {
+    const { service, store } = setup();
+    jest
+      .mocked(publication.resolvePublishedObjectInTransaction)
+      .mockResolvedValue({
+        ...resolved,
+        access: {
+          ...resolved.access,
+          memberId: context.memberId,
+          readScope: 'GROUP',
+          updateScope: 'OWN',
+          groupOwnerMemberIds: [context.memberId, 'peer'],
+          groupFieldAccess: { name: 'EDIT', secret: 'HIDDEN' },
+        },
+      } as never);
+    store.lockRecord.mockResolvedValue({ ...record, ownerMemberId: 'peer' });
+    await expect(
+      service.preview(context, id, update, 'update'),
+    ).resolves.toMatchObject({ status: 'PROPOSED' });
+    await expect(
+      service.preview(
+        context,
+        id,
+        { ...update, values: { name: 'fine', secret: 'blocked' } },
+        'update',
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    await expect(
+      service.preview(context, id, note, 'note'),
+    ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+    await expect(
+      service.preview(context, id, followUp, 'task'),
+    ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
+  });
   it.each(['preview', 'completeWithProposal'] as const)(
     '%s exposes complete validated UPDATE text, including impact after character 200',
     async (method) => {

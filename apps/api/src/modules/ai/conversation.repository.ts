@@ -88,29 +88,40 @@ export function deriveConversationTitle(content: string): string {
   return title.length > 0 ? title : '新对话';
 }
 
-function toPublicMessage(row: {
-  id: string;
-  conversationId: string;
-  turnId: string;
-  role: 'USER' | 'ASSISTANT';
-  status: 'GENERATING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
-  content: string;
-  toolSummary: unknown;
-  sourceSummary: unknown;
-  errorCode: string | null;
-  createdAt: Date;
-  completedAt: Date | null;
-  providerUsage?: unknown;
-}): PublicAiMessage {
+function toPublicMessage(
+  row: {
+    id: string;
+    conversationId: string;
+    turnId: string;
+    role: 'USER' | 'ASSISTANT';
+    status: 'GENERATING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+    content: string;
+    toolSummary: unknown;
+    sourceSummary: unknown;
+    errorCode: string | null;
+    createdAt: Date;
+    completedAt: Date | null;
+    providerUsage?: unknown;
+  },
+  authorization?: { configured: boolean; revision: string },
+): PublicAiMessage {
+  const storedRevision = authorizationRevisionOf(row.providerUsage);
+  const reusable =
+    row.role === 'USER' ||
+    (storedRevision === undefined
+      ? !authorization?.configured
+      : storedRevision === authorization?.revision);
   return {
     id: row.id,
     conversationId: row.conversationId,
     turnId: row.turnId,
     role: row.role,
     status: row.status,
-    content: row.content,
-    toolSummary: row.toolSummary,
-    sourceSummary: row.sourceSummary,
+    content: reusable
+      ? row.content
+      : '数据权限已变化，这条历史回答已隐藏。请重新提问获取当前可见的数据。',
+    toolSummary: reusable ? row.toolSummary : [],
+    sourceSummary: reusable ? row.sourceSummary : [],
     errorCode: row.errorCode,
     createdAt: row.createdAt.toISOString(),
     completedAt: row.completedAt?.toISOString() ?? null,
@@ -236,7 +247,7 @@ async function rejectInProgress(
   }
 }
 
-function providerAttemptsOf(usage: unknown): number {
+export function providerAttemptsOf(usage: unknown): number {
   if (
     usage &&
     typeof usage === 'object' &&
@@ -459,12 +470,19 @@ export class ConversationRepository {
             )
             .map((row) => row.turnId),
         )) ?? [];
+      const authorizationRevision = await currentAuthorizationState(
+        tx,
+        context,
+        chronological.some(
+          (row) => authorizationRevisionOf(row.providerUsage) !== undefined,
+        ),
+      );
       const proposals = new Map(
         operations.map(({ turnId, view }) => [turnId, view]),
       );
       return {
         items: chronological.map((row) => ({
-          ...toPublicMessage(row),
+          ...toPublicMessage(row, authorizationRevision),
           ...(row.role === 'ASSISTANT' && proposals.has(row.turnId)
             ? { proposal: proposals.get(row.turnId) }
             : {}),
@@ -571,7 +589,13 @@ export class ConversationRepository {
           content: '',
           toolSummary: emptyJsonArray(),
           sourceSummary: emptyJsonArray(),
-          providerUsage: withProviderAttempts({}, 1),
+          providerUsage: withProviderAttempts(
+            usageWithAuthorization(
+              {},
+              (await currentAuthorizationState(tx, context))?.revision,
+            ),
+            1,
+          ),
         },
       });
       if (existing) {
@@ -649,7 +673,13 @@ export class ConversationRepository {
           content: '',
           toolSummary: emptyJsonArray(),
           sourceSummary: emptyJsonArray(),
-          providerUsage: withProviderAttempts({}, nextAttempts),
+          providerUsage: withProviderAttempts(
+            usageWithAuthorization(
+              {},
+              (await currentAuthorizationState(tx, context))?.revision,
+            ),
+            nextAttempts,
+          ),
           errorCode: null,
           completedAt: null,
         },
@@ -697,8 +727,19 @@ export class ConversationRepository {
     if (!assistant) {
       throw new ApiException('AI_TURN_NOT_FOUND', 404);
     }
-    await tx.aiMessage.update({
-      where: { id: assistant.id },
+    const attempt = outcome.providerAttempt ?? 1;
+    if (providerAttemptsOf(assistant.providerUsage) !== attempt) {
+      throw new ApiException('AI_TURN_NOT_RETRYABLE', 409);
+    }
+    // Compare the captured row metadata atomically: retry may reset this row
+    // after our read, and an earlier producer must never adopt its new revision.
+    const updated = await tx.aiMessage.updateMany({
+      where: {
+        id: assistant.id,
+        providerUsage: {
+          equals: assistant.providerUsage as Prisma.InputJsonValue,
+        },
+      },
       data: {
         status: outcome.status,
         content: outcome.content,
@@ -711,7 +752,10 @@ export class ConversationRepository {
               sourceSummary: outcome.sourceSummary as Prisma.InputJsonValue,
             }),
         providerUsage: withProviderAttempts(
-          outcome.usage ?? {},
+          usageWithAuthorization(
+            outcome.usage ?? {},
+            authorizationRevisionOf(assistant.providerUsage),
+          ),
           providerAttemptsOf(assistant.providerUsage),
         ),
         providerKey: outcome.providerKey ?? assistant.providerKey,
@@ -720,6 +764,8 @@ export class ConversationRepository {
         completedAt: new Date(),
       },
     });
+    if (updated.count !== 1)
+      throw new ApiException('AI_TURN_NOT_RETRYABLE', 409);
   }
 
   contextMessages(
@@ -744,11 +790,75 @@ export class ConversationRepository {
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: 20,
       });
-      return [...rows].reverse().map(toPublicMessage);
+      const revision = await currentAuthorizationState(
+        tx,
+        context,
+        rows.some(
+          (row) => authorizationRevisionOf(row.providerUsage) !== undefined,
+        ),
+      );
+      return [...rows].reverse().map((row) => toPublicMessage(row, revision));
     });
   }
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** Only independent group-field conversations opt into replay protection.
+ * Revisions count atomic security audits rather than timestamps: concurrent
+ * transactions may commit out of timestamp order. Ordinary value changes do
+ * not invalidate history; ownership/pool changes can change the row's policy.
+ */
+async function currentAuthorizationState(
+  tx: Tx,
+  context: TenantContext,
+  previouslyProtected = false,
+): Promise<{ configured: boolean; revision: string } | undefined> {
+  if (context.role !== 'EMPLOYEE' && !previouslyProtected) return undefined;
+  const rows = await tx.$queryRaw<
+    Array<{ configured: boolean; revision: string }>
+  >`
+    SELECT EXISTS (
+      SELECT 1 FROM object_permissions p
+      JOIN object_definitions o ON o.id=p.object_id AND o.tenant_id=p.tenant_id
+      JOIN tenant_members m ON m.id=p.subject_member_id AND m.tenant_id=p.tenant_id
+      JOIN member_groups g ON g.id=m.group_id AND g.tenant_id=m.tenant_id AND g.leader_member_id=m.id
+      JOIN users u ON u.id=m.user_id
+      WHERE p.tenant_id=${context.tenantId}::uuid AND m.id=${context.memberId}::uuid
+        AND m.user_id=${context.userId}::uuid AND m.role='EMPLOYEE' AND m.status='ACTIVE' AND u.status='ACTIVE'
+        AND p.subject_type='MEMBER' AND p.read_scope='GROUP' AND p.group_field_access IS NOT NULL
+        AND o.status='ACTIVE' AND o.deleted_at IS NULL AND o.active_publication_id IS NOT NULL
+    ) AS configured,
+    (SELECT count(*)::text FROM audit_logs a WHERE a.tenant_id=${context.tenantId}::uuid AND (
+      a.action IN ('membership.status_changed', 'membership.role_changed', 'membership.admin_handoff', 'membership.offboarded', 'membership.object_access_changed',
+        'object.field_updated', 'object.permissions_updated', 'object.pool_config_updated', 'object.published', 'object.archived', 'object.restored', 'object.draft_deleted', 'record.deleted', 'platform.template.applied', 'platform.tenant.status_changed')
+      OR a.action LIKE 'member_group.%'
+      OR ((a.action IN ('record.updated', 'record.owner_assigned') OR a.action LIKE 'record.ownership_%') AND (
+        (a.after ? 'ownerMemberId' AND a.before->'ownerMemberId' IS DISTINCT FROM a.after->'ownerMemberId')
+        OR (a.after ? 'inPublicPool' AND a.before->'inPublicPool' IS DISTINCT FROM a.after->'inPublicPool')
+      ))
+    )) AS revision`;
+  const state = rows[0];
+  if (!state) throw new ApiException('INTERNAL_ERROR', 500);
+  return state.configured || previouslyProtected ? state : undefined;
+}
+
+function authorizationRevisionOf(usage: unknown): string | undefined {
+  return isPlainObject(usage) && typeof usage.authorizationRevision === 'string'
+    ? usage.authorizationRevision
+    : undefined;
+}
+
+function usageWithAuthorization(
+  usage: Record<string, unknown>,
+  revision: string | undefined,
+): Record<string, unknown> {
+  const value = { ...usage };
+  delete value.authorizationRevision;
+  return {
+    ...value,
+    ...(revision === undefined ? {} : { authorizationRevision: revision }),
+  };
 }

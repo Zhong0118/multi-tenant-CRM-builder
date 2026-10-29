@@ -3261,6 +3261,8 @@ export interface components {
       fieldId: string;
       fieldKey: string;
       /** @enum {string} */
+      groupEffective?: "EDIT" | "READ_ONLY" | "HIDDEN";
+      /** @enum {string} */
       inherited: "EDIT" | "READ_ONLY" | "HIDDEN";
       isSystem: boolean;
       label: string;
@@ -3284,6 +3286,9 @@ export interface components {
       canCreate?: boolean;
       canRead?: boolean;
       canUpdate?: boolean;
+      groupFieldAccess?: {
+        [key: string]: "EDIT" | "READ_ONLY" | "HIDDEN";
+      } | null;
       /** @enum {string} */
       mode: "INHERIT" | "OVERRIDE";
       /** @enum {string} */
@@ -3302,6 +3307,7 @@ export interface components {
       objectId: string;
       objectName: string;
       override: components["schemas"]["MemberObjectPolicyResponseDto"] | null;
+      titleFieldKey?: string;
     };
     MemberObjectPolicyResponseDto: {
       canCreate: boolean;
@@ -3309,6 +3315,9 @@ export interface components {
       canDelete: false;
       canRead: boolean;
       canUpdate: boolean;
+      groupFieldAccess?: {
+        [key: string]: "EDIT" | "READ_ONLY" | "HIDDEN";
+      } | null;
       /** @enum {string} */
       readScope: "ALL" | "OWN" | "NONE" | "GROUP";
       /** @enum {string} */
@@ -3786,6 +3795,9 @@ export interface components {
         [key: string]: unknown;
       };
       fields: components["schemas"]["PublishedFieldResponseDto"][];
+      groupFieldAccess?: {
+        [key: string]: "EDIT" | "READ_ONLY" | "HIDDEN";
+      };
       object: {
         [key: string]: unknown;
       };
@@ -3793,6 +3805,7 @@ export interface components {
       publication: {
         [key: string]: unknown;
       };
+      queryFieldKeys?: string[];
       scopes: {
         [key: string]: unknown;
       };
@@ -3931,8 +3944,12 @@ export interface components {
       title: string;
     };
     RecordResponseDto: {
+      canEditFields?: boolean;
       /** Format: date-time */
       createdAt: string;
+      fieldAccess?: {
+        [key: string]: "EDIT" | "READ_ONLY" | "HIDDEN";
+      };
       /** Format: uuid */
       id: string;
       inPublicPool: boolean;
