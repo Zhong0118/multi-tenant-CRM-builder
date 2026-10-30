@@ -178,6 +178,87 @@ describe('GROUP read boundaries over HTTP', () => {
     ).expect(403);
   });
 
+  it('filters one authorized group owner in lists and exports instead of returning the entire group', async () => {
+    for (const [memberId, recordIds] of [
+      [f.employee.memberId, [f.ownedRecord.id, f.workflowRecord.id]],
+      [f.otherEmployee.memberId, [f.otherRecord.id]],
+    ] as const) {
+      const response = await get(records())
+        .query({ ownerMemberId: memberId })
+        .expect(200);
+      const page = response.body as {
+        items: Array<{ id: string }>;
+        total: number;
+      };
+      expect(page.items.map((item) => item.id).sort()).toEqual(
+        [...recordIds].sort(),
+      );
+      expect(page.total).toBe(recordIds.length);
+    }
+    const csv = await get(`${records()}/export`)
+      .query({ ownerMemberId: f.otherEmployee.memberId })
+      .expect(200);
+    expect(csv.text).toContain('他人线索');
+    expect(csv.text).not.toContain('员工自己的线索');
+    expect(csv.text).not.toContain('hidden-other');
+    for (const ownerMemberId of [
+      f.admin.memberId,
+      f.tenantBAdmin.memberId,
+      'unassigned',
+    ]) {
+      await get(records()).query({ ownerMemberId }).expect(400);
+      await get(`${records()}/export`).query({ ownerMemberId }).expect(400);
+    }
+  });
+
+  it('keeps private counts in the selected own scope while showing the public pool', async () => {
+    await h.adminDatabase.objectDefinition.update({
+      where: { id: f.object.id },
+      data: { poolEnabled: true, poolLifecycleEnabled: true },
+    });
+    await h.adminDatabase.record.update({
+      where: { id: unassignedId },
+      data: { inPublicPool: true, poolStage: 'LEAD_POOL' },
+    });
+    const pool = await get(records())
+      .query({ scope: 'mine', poolStage: 'LEAD_POOL' })
+      .expect(200);
+    expect(pool.body).toHaveProperty('items', [
+      expect.objectContaining({ id: unassignedId }),
+    ]);
+    expect(pool.body).toHaveProperty('poolCounts.LEGACY', 2);
+    const mine = await get(records())
+      .query({ scope: 'mine', poolStage: 'LEGACY' })
+      .expect(200);
+    expect(mine.body).toHaveProperty('total', 2);
+    const group = await get(records())
+      .query({ scope: 'group', poolStage: 'LEGACY' })
+      .expect(200);
+    expect(group.body).toHaveProperty('total', 3);
+  });
+
+  it('offers an explicit group scope without granting company-wide access or retaining revoked membership', async () => {
+    const response = await get(records()).query({ scope: 'group' }).expect(200);
+    const page = response.body as { items: Array<{ id: string }> };
+    expect(page.items.map((item) => item.id).sort()).toEqual(
+      [f.ownedRecord.id, f.workflowRecord.id, f.otherRecord.id].sort(),
+    );
+    await get(records()).query({ scope: 'all' }).expect(403);
+    await get(records(), f.otherEmployee).query({ scope: 'group' }).expect(403);
+    await h.adminDatabase.tenantMember.update({
+      where: { id: f.otherEmployee.memberId },
+      data: { groupId: null },
+    });
+    await get(records())
+      .query({ scope: 'group', ownerMemberId: f.otherEmployee.memberId })
+      .expect(400);
+    await h.adminDatabase.memberGroup.update({
+      where: { id: groupId },
+      data: { leaderMemberId: null },
+    });
+    await get(records()).query({ scope: 'group' }).expect(403);
+  });
+
   it.each([
     '',
     '/activities',
@@ -318,6 +399,20 @@ describe('GROUP read boundaries over HTTP', () => {
         .query({ search: '他人线索' })
         .expect(200);
       expect(page.body).toHaveProperty('total', 0);
+      expect(
+        (
+          await get(records())
+            .query({ scope: 'group', ownerMemberId: f.otherEmployee.memberId })
+            .expect(200)
+        ).body,
+      ).toHaveProperty('total', 0);
+      expect(
+        (
+          await get(`${records()}/export`)
+            .query({ scope: 'group', ownerMemberId: f.otherEmployee.memberId })
+            .expect(200)
+        ).text,
+      ).not.toContain('他人线索');
       expect((await get(`${records()}/export`).expect(200)).text).not.toContain(
         '他人线索',
       );
@@ -575,6 +670,20 @@ describe('GROUP read boundaries over HTTP', () => {
         ]),
       );
       expect(page.body).toHaveProperty('poolCounts.LEAD_POOL', 0);
+      expect(
+        (
+          await get(records())
+            .query({ scope: 'group', ownerMemberId: f.employee.memberId })
+            .expect(200)
+        ).body,
+      ).toHaveProperty('total', 0);
+      expect(
+        (
+          await get(`${records()}/export`)
+            .query({ ownerMemberId: f.employee.memberId })
+            .expect(200)
+        ).text,
+      ).not.toContain('员工自己的线索');
       expect(
         (await get(records()).query({ scope: 'mine' }).expect(200)).body,
       ).toHaveProperty('total', 0);

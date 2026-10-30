@@ -14282,7 +14282,7 @@
             "name": "scope",
             "required": false,
             "schema": {
-              "enum": ["mine", "pool", "all"],
+              "enum": ["mine", "pool", "group", "all"],
               "type": "string"
             }
           },
@@ -14317,7 +14317,7 @@
             }
           },
           {
-            "description": "按负责人筛选；unassigned 表示未指定负责人，仅管理员可筛选。",
+            "description": "按负责人筛选；管理员可选公司成员，拥有本组查看权限的组长仅可选本组成员。unassigned 表示未指定负责人，仅管理员可选。",
             "in": "query",
             "name": "ownerMemberId",
             "required": false,
@@ -14549,7 +14549,7 @@
             "name": "scope",
             "required": false,
             "schema": {
-              "enum": ["mine", "pool", "all"],
+              "enum": ["mine", "pool", "group", "all"],
               "type": "string"
             }
           },
@@ -14584,7 +14584,7 @@
             }
           },
           {
-            "description": "按负责人筛选；unassigned 表示未指定负责人，仅管理员可筛选。",
+            "description": "按负责人筛选；管理员可选公司成员，拥有本组查看权限的组长仅可选本组成员。unassigned 表示未指定负责人，仅管理员可选。",
             "in": "query",
             "name": "ownerMemberId",
             "required": false,

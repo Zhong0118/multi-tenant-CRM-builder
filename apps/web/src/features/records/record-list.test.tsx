@@ -1772,6 +1772,68 @@ describe("GROUP record scope controls", () => {
   };
   const legacyPool = { enabled: true, ownershipTtlHours: null, version: 1 };
 
+  it("selects a teammate by name, resets paging and keeps the other filters", async () => {
+    const navigate = vi.fn();
+    renderList(navigate, { ...DEFAULT_RECORD_QUERY, page: 3, search: "客户", filters: { lead_status: ["new"] } }, {
+      schema: groupSchema, currentMemberId: "leader",
+      members: [{ id: "leader", displayName: "刘情" }, { id: "teammate", displayName: "钱宇" }],
+    });
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "按小组成员筛选" }));
+    fireEvent.click(await screen.findByText("钱宇"));
+    const params = new URL(navigate.mock.calls.at(-1)![0], "http://test").searchParams;
+    expect(params.get("ownerMemberId")).toBe("teammate");
+    expect(params.get("scope")).toBe("group");
+    expect(params.has("page")).toBe(false);
+    expect(params.get("search")).toBe("客户");
+    expect(params.get("filters")).toContain("new");
+    expect(screen.queryByText("未指定负责人")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["刘情", "mine"],
+    ["全部本组", "group"],
+  ])("switches a teammate selection to %s without retaining the previous owner", async (label, scope) => {
+    const navigate = vi.fn();
+    renderList(navigate, { ...DEFAULT_RECORD_QUERY, scope: "group", ownerMemberId: "teammate", page: 3 }, {
+      schema: groupSchema, currentMemberId: "leader",
+      members: [{ id: "leader", displayName: "刘情" }, { id: "teammate", displayName: "钱宇" }],
+    });
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "按小组成员筛选" }));
+    fireEvent.click(await screen.findByText(label, { selector: label === "全部本组" ? ".ant-select-item-option-content" : ".ant-select-item-option-content *" }));
+    const params = new URL(navigate.mock.calls.at(-1)![0], "http://test").searchParams;
+    expect(params.get("scope")).toBe(scope);
+    expect(params.has("ownerMemberId")).toBe(false);
+    expect(params.has("page")).toBe(false);
+  });
+
+  it("keeps a selected teammate across private stages but clears the owner in public pools", () => {
+    const navigate = vi.fn();
+    renderList(navigate, { ...DEFAULT_RECORD_QUERY, scope: "group", ownerMemberId: "teammate", page: 3 }, {
+      schema: groupSchema, currentMemberId: "leader",
+      poolConfig: { ...legacyPool, lifecycleEnabled: true },
+      members: [{ id: "leader", displayName: "刘情" }, { id: "teammate", displayName: "钱宇" }],
+    });
+    fireEvent.click(screen.getByRole("radio", { name: "跟进中" }));
+    let params = new URL(navigate.mock.calls.at(-1)![0], "http://test").searchParams;
+    expect(params.get("ownerMemberId")).toBe("teammate");
+    expect(params.get("scope")).toBe("group");
+    expect(params.get("poolStage")).toBe("FOLLOWING");
+    fireEvent.click(screen.getByRole("radio", { name: "初始公共池" }));
+    params = new URL(navigate.mock.calls.at(-1)![0], "http://test").searchParams;
+    expect(params.has("ownerMemberId")).toBe(false);
+    expect(params.get("scope")).toBe("mine");
+    expect(params.get("poolStage")).toBe("LEAD_POOL");
+  });
+
+  it("hides the member picker in public pool views", () => {
+    renderList(vi.fn(), { ...DEFAULT_RECORD_QUERY, poolStage: "LEAD_POOL" }, {
+      schema: groupSchema, currentMemberId: "leader",
+      members: [{ id: "leader", displayName: "刘情" }],
+      poolConfig: { ...legacyPool, lifecycleEnabled: true },
+    });
+    expect(screen.queryByRole("combobox", { name: "按小组成员筛选" })).not.toBeInTheDocument();
+  });
+
   it("shows the authorized teammate name on GROUP records without admin owner controls", () => {
     renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
       schema: groupSchema,
@@ -1787,14 +1849,14 @@ describe("GROUP record scope controls", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("selects 本组记录 by default and fetches the authorized group without an all scope", async () => {
+  it("defaults to own records and preserves explicit group navigation", async () => {
     const list = vi.fn().mockResolvedValue(page);
     renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
       schema: groupSchema,
       poolConfig: legacyPool,
       api: { list } as unknown as RecordApi,
     });
-    expect(screen.getByRole("radio", { name: "本组记录" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "我的记录" })).toBeChecked();
     expect(
       screen.queryByRole("radio", { name: "全部记录" }),
     ).not.toBeInTheDocument();
@@ -1802,7 +1864,7 @@ describe("GROUP record scope controls", () => {
       expect(list).toHaveBeenCalledWith(
         "northwind",
         "customers",
-        DEFAULT_RECORD_QUERY,
+        { ...DEFAULT_RECORD_QUERY, scope: "mine" },
       ),
     );
   });
@@ -1824,14 +1886,14 @@ describe("GROUP record scope controls", () => {
     fireEvent.click(screen.getByRole("radio", { name: "本组记录" }));
     const params = new URL(navigate.mock.calls.at(-1)![0], "http://test")
       .searchParams;
-    expect(params.has("scope")).toBe(false);
+    expect(params.get("scope")).toBe("group");
     expect(params.has("page")).toBe(false);
     expect(params.has("ownerMemberId")).toBe(false);
     expect(params.get("search")).toBe("测试");
     expect(params.get("filters")).toContain("new");
   });
 
-  it("keeps private lifecycle stages and their counts on GROUP visibility", async () => {
+  it("keeps the default own-owner selection across private lifecycle stages", async () => {
     const navigate = vi.fn();
     const groupPage = {
       ...page,
@@ -1856,7 +1918,7 @@ describe("GROUP record scope controls", () => {
       expect(list).toHaveBeenCalledWith(
         "northwind",
         "customers",
-        DEFAULT_RECORD_QUERY,
+        { ...DEFAULT_RECORD_QUERY, scope: "mine" },
       ),
     );
     for (const [label, stage] of [
@@ -1868,7 +1930,7 @@ describe("GROUP record scope controls", () => {
       const params = new URL(navigate.mock.calls.at(-1)![0], "http://test")
         .searchParams;
       expect(params.get("poolStage")).toBe(stage);
-      expect(params.has("scope")).toBe(false);
+      expect(params.get("scope")).toBe("mine");
     }
   });
 });
