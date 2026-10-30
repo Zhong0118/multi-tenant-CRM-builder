@@ -6,6 +6,8 @@ import {
   createCriticalHarness,
   provisionCriticalFixture,
   closeCriticalHarness,
+  CRITICAL_TENANT_A,
+  CRITICAL_TENANT_B,
   type CriticalHarness,
   type CriticalFixture,
 } from './helpers/critical-fixture';
@@ -26,6 +28,24 @@ describe('tenant telephony', () => {
   let h: CriticalHarness;
   let f: CriticalFixture;
   let outbound: jest.SpyInstance;
+  let unrelatedActivitySnapshot: unknown;
+  const unrelatedActivities = () =>
+    h.adminDatabase.recordActivity.findMany({
+      where: {
+        tenant: { code: { notIn: [CRITICAL_TENANT_A, CRITICAL_TENANT_B] } },
+      },
+      orderBy: { id: 'asc' },
+    });
+  async function cleanupTelephonyFixture() {
+    const tenants = await h.adminDatabase.tenant.findMany({
+      where: { code: { in: [CRITICAL_TENANT_A, CRITICAL_TENANT_B] } },
+      select: { id: true },
+    });
+    const where = { tenantId: { in: tenants.map(({ id }) => id) } };
+    await h.adminDatabase.telephonyCall.deleteMany({ where });
+    await h.adminDatabase.telephonyMemberBinding.deleteMany({ where });
+    await h.adminDatabase.telephonySettings.deleteMany({ where });
+  }
   const base = () => `/api/v1/workspaces/${f.tenantA.code}/telephony`;
   const get = (path: string, cookie = f.admin.cookie) =>
     request(h.app.getHttpServer()).get(path).set('Cookie', cookie);
@@ -80,18 +100,10 @@ describe('tenant telephony', () => {
     h.app.get(ConfigService).set('TELEPHONY_ENCRYPTION_KEY', 'ab'.repeat(32));
     h.app.get(ConfigService).set('TELEPHONY_LIVE_ENABLED', 'false');
     await h.app.listen(0, '127.0.0.1');
+    unrelatedActivitySnapshot = await unrelatedActivities();
   });
   beforeEach(async () => {
-    // Keep cleanup local to this new test database and tolerate the initial red run.
-    await h.adminDatabase
-      .$executeRawUnsafe('DELETE FROM telephony_calls')
-      .catch(() => undefined);
-    await h.adminDatabase
-      .$executeRawUnsafe('DELETE FROM telephony_member_bindings')
-      .catch(() => undefined);
-    await h.adminDatabase
-      .$executeRawUnsafe('DELETE FROM telephony_settings')
-      .catch(() => undefined);
+    await cleanupTelephonyFixture();
     f = await provisionCriticalFixture(h);
     await h.adminDatabase.record.update({
       where: { id: f.ownedRecord.id },
@@ -105,15 +117,8 @@ describe('tenant telephony', () => {
     });
   });
   afterAll(async () => {
-    await h.adminDatabase
-      .$executeRawUnsafe('DELETE FROM telephony_calls')
-      .catch(() => undefined);
-    await h.adminDatabase
-      .$executeRawUnsafe('DELETE FROM telephony_member_bindings')
-      .catch(() => undefined);
-    await h.adminDatabase
-      .$executeRawUnsafe('DELETE FROM telephony_settings')
-      .catch(() => undefined);
+    await cleanupTelephonyFixture();
+    expect(await unrelatedActivities()).toEqual(unrelatedActivitySnapshot);
     await closeCriticalHarness(h);
     outbound.mockRestore();
   });
@@ -207,11 +212,13 @@ describe('tenant telephony', () => {
     ).toEqual(before);
     expect(
       await h.adminDatabase.recordActivity.count({
-        where: { recordId: f.ownedRecord.id },
+        where: { tenantId: f.tenantA.id, recordId: f.ownedRecord.id },
       }),
     ).toBe(0);
     expect(
-      await h.adminDatabase.$queryRawUnsafe('SELECT id FROM telephony_calls'),
+      await h.adminDatabase.telephonyCall.findMany({
+        where: { tenantId: f.tenantA.id },
+      }),
     ).toHaveLength(1);
   });
   it('blocks cross tenant, other-owned, hidden fields, disabled members and archived objects', async () => {
@@ -248,7 +255,9 @@ describe('tenant telephony', () => {
     expect((await dial()).status).toBe(503);
     expect(outbound).not.toHaveBeenCalled();
     expect(
-      await h.adminDatabase.$queryRawUnsafe('SELECT id FROM telephony_calls'),
+      await h.adminDatabase.telephonyCall.findMany({
+        where: { tenantId: f.tenantA.id },
+      }),
     ).toHaveLength(0);
   });
   it('restricts global history to own calls and redacts record metadata after read permission revocation', async () => {
@@ -354,7 +363,11 @@ describe('tenant telephony', () => {
     expect(
       (await callback(call.providerBindId!, { status: 'End' })).status,
     ).toBe(200);
-    expect(await h.adminDatabase.recordActivity.count()).toBe(0);
+    expect(
+      await h.adminDatabase.recordActivity.count({
+        where: { tenantId: f.tenantA.id, recordId: f.ownedRecord.id },
+      }),
+    ).toBe(0);
     const responses = await Promise.all([
       callback(call.providerBindId!),
       callback(call.providerBindId!),
@@ -384,7 +397,7 @@ describe('tenant telephony', () => {
       durationSeconds: 60,
     });
     const activities = await h.adminDatabase.recordActivity.findMany({
-      where: { recordId: f.ownedRecord.id },
+      where: { tenantId: f.tenantA.id, recordId: f.ownedRecord.id },
     });
     expect(activities).toHaveLength(1);
     expect(activities[0]).toMatchObject({
@@ -430,7 +443,11 @@ describe('tenant telephony', () => {
           .send({})
       ).status,
     ).toBe(401);
-    expect(await h.adminDatabase.recordActivity.count()).toBe(0);
+    expect(
+      await h.adminDatabase.recordActivity.count({
+        where: { tenantId: f.tenantA.id, recordId: f.ownedRecord.id },
+      }),
+    ).toBe(0);
   });
   it('accepts authoritative outcomes after member disable and record access revocation without leaking protected metadata', async () => {
     await setup();
@@ -444,7 +461,11 @@ describe('tenant telephony', () => {
       data: { status: 'ARCHIVED' },
     });
     expect((await callback(call.providerBindId!)).status).toBe(200);
-    expect(await h.adminDatabase.recordActivity.count()).toBe(1);
+    expect(
+      await h.adminDatabase.recordActivity.count({
+        where: { tenantId: f.tenantA.id, recordId: f.ownedRecord.id },
+      }),
+    ).toBe(1);
     const response = await get(`${base()}/calls/${call.id}`);
     expect(response.body).toMatchObject({
       status: 'CONNECTED',
@@ -556,7 +577,7 @@ describe('tenant telephony', () => {
     );
     expect(
       await h.adminDatabase.recordActivity.findMany({
-        where: { recordId: f.ownedRecord.id },
+        where: { tenantId: f.tenantA.id, recordId: f.ownedRecord.id },
         select: { resultKey: true },
       }),
     ).toEqual([{ resultKey: 'NOT_REACHED' }]);
@@ -599,7 +620,11 @@ describe('tenant telephony', () => {
       expect(json(await dial({ requestId })).status).toBe('UNKNOWN');
       expect(attempts).toBe(1);
       expect((await dial()).status).toBe(409);
-      expect(await h.adminDatabase.recordActivity.count()).toBe(0);
+      expect(
+        await h.adminDatabase.recordActivity.count({
+          where: { tenantId: f.tenantA.id, recordId: f.ownedRecord.id },
+        }),
+      ).toBe(0);
       config.set('NODE_ENV', 'production');
       expect(
         (await patch(`${base()}/settings`, { version: 1, mode: 'MOCK' }))
