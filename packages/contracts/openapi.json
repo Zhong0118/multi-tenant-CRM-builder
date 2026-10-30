@@ -1857,6 +1857,26 @@
         "required": ["objectCode", "recordId"],
         "type": "object"
       },
+      "CreateTelephonyCallDto": {
+        "properties": {
+          "fieldKey": {
+            "type": "string"
+          },
+          "objectCode": {
+            "type": "string"
+          },
+          "recordId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "requestId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["requestId", "objectCode", "recordId", "fieldKey"],
+        "type": "object"
+      },
       "CreateWorkTaskDto": {
         "properties": {
           "assigneeMemberId": {
@@ -6747,6 +6767,322 @@
         "required": ["timezone", "today", "from", "to", "members", "totals"],
         "type": "object"
       },
+      "TelephonyBindingResponseDto": {
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "memberId": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "seatId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "memberId",
+          "displayName",
+          "status",
+          "version",
+          "enabled",
+          "seatId",
+          "phone"
+        ],
+        "type": "object"
+      },
+      "TelephonyBindingsResponseDto": {
+        "properties": {
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/TelephonyBindingResponseDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["members"],
+        "type": "object"
+      },
+      "TelephonyCallPageResponseDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TelephonyCallResponseDto"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": ["items", "page", "limit", "total"],
+        "type": "object"
+      },
+      "TelephonyCallResponseDto": {
+        "properties": {
+          "actorMemberId": {
+            "type": "string"
+          },
+          "beganAt": {
+            "nullable": true,
+            "type": "string"
+          },
+          "calleePhone": {
+            "nullable": true,
+            "type": "string"
+          },
+          "callerPhone": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "durationSeconds": {
+            "nullable": true,
+            "type": "number"
+          },
+          "endedAt": {
+            "nullable": true,
+            "type": "string"
+          },
+          "fieldKey": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "mode": {
+            "enum": ["MOCK", "KUAIMA"],
+            "type": "string"
+          },
+          "objectCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "recordId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "recordTitle": {
+            "nullable": true,
+            "type": "string"
+          },
+          "recordingUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "REQUESTED",
+              "ACCEPTED",
+              "UNKNOWN",
+              "CONNECTED",
+              "NOT_CONNECTED",
+              "ENDED",
+              "FAILED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "requestId",
+          "actorMemberId",
+          "mode",
+          "status",
+          "callerPhone",
+          "calleePhone",
+          "objectCode",
+          "recordId",
+          "recordTitle",
+          "fieldKey",
+          "recordingUrl",
+          "durationSeconds",
+          "beganAt",
+          "endedAt",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "TelephonyHookDto": {
+        "properties": {
+          "audio_url": {
+            "type": "string"
+          },
+          "begin_time": {
+            "type": "string"
+          },
+          "bind_id": {
+            "type": "string"
+          },
+          "duration": {
+            "type": "number"
+          },
+          "end_time": {
+            "type": "string"
+          },
+          "push_type": {
+            "enum": [1, 2],
+            "type": "number"
+          },
+          "seats_id": {
+            "type": "string"
+          },
+          "status": {
+            "enum": ["1", "0", "End"],
+            "type": "string"
+          },
+          "telA": {
+            "type": "string"
+          },
+          "telB": {
+            "type": "string"
+          },
+          "telX": {
+            "type": "string"
+          }
+        },
+        "required": ["push_type", "bind_id", "seats_id", "telA", "telB"],
+        "type": "object"
+      },
+      "TelephonyHookResponseDto": {
+        "properties": {
+          "code": {
+            "enum": [0],
+            "type": "number"
+          }
+        },
+        "required": ["code"],
+        "type": "object"
+      },
+      "TelephonyPhoneFieldsDto": {
+        "properties": {
+          "fieldKeys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "objectCode": {
+            "type": "string"
+          }
+        },
+        "required": ["objectCode", "fieldKeys"],
+        "type": "object"
+      },
+      "TelephonyRuntimeFieldDto": {
+        "properties": {
+          "fieldKey": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": ["fieldKey", "label"],
+        "type": "object"
+      },
+      "TelephonyRuntimeResponseDto": {
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "callerPhone": {
+            "nullable": true,
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/TelephonyRuntimeFieldDto"
+            },
+            "type": "array"
+          },
+          "liveEnabled": {
+            "type": "boolean"
+          },
+          "mode": {
+            "enum": ["MOCK", "KUAIMA"],
+            "type": "string"
+          },
+          "reason": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "mode",
+          "available",
+          "reason",
+          "callerPhone",
+          "liveEnabled",
+          "fields"
+        ],
+        "type": "object"
+      },
+      "TelephonySettingsResponseDto": {
+        "properties": {
+          "companyId": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "hasAppSecret": {
+            "type": "boolean"
+          },
+          "hasCallbackToken": {
+            "type": "boolean"
+          },
+          "mode": {
+            "enum": ["MOCK", "KUAIMA"],
+            "type": "string"
+          },
+          "phoneFields": {
+            "items": {
+              "$ref": "#/components/schemas/TelephonyPhoneFieldsDto"
+            },
+            "type": "array"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "version",
+          "enabled",
+          "mode",
+          "companyId",
+          "hasAppSecret",
+          "hasCallbackToken",
+          "phoneFields"
+        ],
+        "type": "object"
+      },
       "TemplateApplicationObjectResponseDto": {
         "properties": {
           "code": {
@@ -8216,6 +8552,57 @@
           }
         },
         "required": ["enabled", "ownershipTtlHours", "version"],
+        "type": "object"
+      },
+      "UpdateTelephonyBindingDto": {
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "seatId": {
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": ["version", "enabled", "seatId", "phone"],
+        "type": "object"
+      },
+      "UpdateTelephonySettingsDto": {
+        "properties": {
+          "appSecret": {
+            "type": "string",
+            "writeOnly": true
+          },
+          "callbackToken": {
+            "type": "string",
+            "writeOnly": true
+          },
+          "companyId": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "mode": {
+            "enum": ["MOCK", "KUAIMA"],
+            "type": "string"
+          },
+          "phoneFields": {
+            "items": {
+              "$ref": "#/components/schemas/TelephonyPhoneFieldsDto"
+            },
+            "type": "array"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": ["version"],
         "type": "object"
       },
       "UpdateWorkTaskDto": {
@@ -10273,6 +10660,54 @@
           }
         ],
         "tags": ["platform-tenants"]
+      }
+    },
+    "/api/v1/telephony/hooks/{tenantId}": {
+      "post": {
+        "operationId": "TelephonyHookController_hook",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Bearer tenant callbackToken — proposed contract pending supplier verification",
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TelephonyHookDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelephonyHookResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": ["telephony"]
       }
     },
     "/api/v1/workspaces/{tenantCode}": {
@@ -16047,6 +16482,406 @@
           }
         ],
         "tags": ["team-activity"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/telephony/calls": {
+      "get": {
+        "operationId": "TelephonyController_calls",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "objectCode",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "recordId",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "REQUESTED",
+                "ACCEPTED",
+                "UNKNOWN",
+                "CONNECTED",
+                "NOT_CONNECTED",
+                "ENDED",
+                "FAILED"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "memberId",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dateFrom",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dateTo",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelephonyCallPageResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["telephony"]
+      },
+      "post": {
+        "operationId": "TelephonyController_createCall",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTelephonyCallDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelephonyCallResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["telephony"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/telephony/calls/{callId}": {
+      "get": {
+        "operationId": "TelephonyController_call",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "callId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelephonyCallResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["telephony"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/telephony/members": {
+      "get": {
+        "operationId": "TelephonyController_members",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelephonyBindingsResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["telephony"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/telephony/members/{memberId}": {
+      "patch": {
+        "operationId": "TelephonyController_updateMember",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memberId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTelephonyBindingDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelephonyBindingResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["telephony"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/telephony/runtime": {
+      "get": {
+        "operationId": "TelephonyController_runtime",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "objectCode",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "recordId",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelephonyRuntimeResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["telephony"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/telephony/settings": {
+      "get": {
+        "operationId": "TelephonyController_settings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelephonySettingsResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["telephony"]
+      },
+      "patch": {
+        "operationId": "TelephonyController_updateSettings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTelephonySettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelephonySettingsResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["telephony"]
       }
     },
     "/api/v1/workspaces/{tenantCode}/work-goals/progress": {

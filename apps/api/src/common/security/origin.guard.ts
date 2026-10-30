@@ -21,6 +21,18 @@ export class OriginGuard implements CanActivate {
       return true;
     }
 
+    // Only this marked integration handler has a separate, mandatory Bearer auth guard.
+    // The marker never exempts any session-authenticated workspace route.
+    if (
+      request.method.toUpperCase() === 'POST' &&
+      context.getHandler?.() &&
+      Reflect.getMetadata(
+        'telephony:authenticated-hook',
+        context.getHandler(),
+      ) === true
+    )
+      return true;
+
     const allowedOrigins = this.config
       .get<string>('WEB_ORIGIN', 'http://localhost:3000,http://127.0.0.1:3000')
       .split(',')

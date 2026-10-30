@@ -580,6 +580,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/telephony/hooks/{tenantId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["TelephonyHookController_hook"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}": {
     parameters: {
       query?: never;
@@ -1940,6 +1956,102 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/telephony/calls": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["TelephonyController_calls"];
+    put?: never;
+    post: operations["TelephonyController_createCall"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/telephony/calls/{callId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["TelephonyController_call"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/telephony/members": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["TelephonyController_members"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/telephony/members/{memberId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["TelephonyController_updateMember"];
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/telephony/runtime": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["TelephonyController_runtime"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/telephony/settings": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["TelephonyController_settings"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["TelephonyController_updateSettings"];
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/work-goals/{metric}": {
     parameters: {
       query?: never;
@@ -2631,6 +2743,14 @@ export interface components {
       objectCode: string;
       /** Format: uuid */
       recordId: string;
+    };
+    CreateTelephonyCallDto: {
+      fieldKey: string;
+      objectCode: string;
+      /** Format: uuid */
+      recordId: string;
+      /** Format: uuid */
+      requestId: string;
     };
     CreateWorkTaskDto: {
       /**
@@ -4266,6 +4386,98 @@ export interface components {
       today: string;
       totals: components["schemas"]["TeamActivityCountsDto"];
     };
+    TelephonyBindingResponseDto: {
+      displayName: string;
+      enabled: boolean;
+      memberId: string;
+      phone: string;
+      seatId: string;
+      status: string;
+      version: number;
+    };
+    TelephonyBindingsResponseDto: {
+      members: components["schemas"]["TelephonyBindingResponseDto"][];
+    };
+    TelephonyCallPageResponseDto: {
+      items: components["schemas"]["TelephonyCallResponseDto"][];
+      limit: number;
+      page: number;
+      total: number;
+    };
+    TelephonyCallResponseDto: {
+      actorMemberId: string;
+      beganAt: string | null;
+      calleePhone: string | null;
+      callerPhone: string;
+      createdAt: string;
+      durationSeconds: number | null;
+      endedAt: string | null;
+      fieldKey: string | null;
+      id: string;
+      /** @enum {string} */
+      mode: "MOCK" | "KUAIMA";
+      objectCode: string | null;
+      recordId: string | null;
+      recordingUrl: string | null;
+      recordTitle: string | null;
+      requestId: string;
+      /** @enum {string} */
+      status:
+        | "REQUESTED"
+        | "ACCEPTED"
+        | "UNKNOWN"
+        | "CONNECTED"
+        | "NOT_CONNECTED"
+        | "ENDED"
+        | "FAILED";
+    };
+    TelephonyHookDto: {
+      audio_url?: string;
+      begin_time?: string;
+      bind_id: string;
+      duration?: number;
+      end_time?: string;
+      /** @enum {number} */
+      push_type: 1 | 2;
+      seats_id: string;
+      /** @enum {string} */
+      status?: "1" | "0" | "End";
+      telA: string;
+      telB: string;
+      telX?: string;
+    };
+    TelephonyHookResponseDto: {
+      /** @enum {number} */
+      code: 0;
+    };
+    TelephonyPhoneFieldsDto: {
+      fieldKeys: string[];
+      objectCode: string;
+    };
+    TelephonyRuntimeFieldDto: {
+      fieldKey: string;
+      label: string;
+    };
+    TelephonyRuntimeResponseDto: {
+      available: boolean;
+      callerPhone: string | null;
+      enabled: boolean;
+      fields: components["schemas"]["TelephonyRuntimeFieldDto"][];
+      liveEnabled: boolean;
+      /** @enum {string} */
+      mode: "MOCK" | "KUAIMA";
+      reason: string | null;
+    };
+    TelephonySettingsResponseDto: {
+      companyId: string;
+      enabled: boolean;
+      hasAppSecret: boolean;
+      hasCallbackToken: boolean;
+      /** @enum {string} */
+      mode: "MOCK" | "KUAIMA";
+      phoneFields: components["schemas"]["TelephonyPhoneFieldsDto"][];
+      version: number;
+    };
     TemplateApplicationObjectResponseDto: {
       code: string;
       name: string;
@@ -4747,6 +4959,22 @@ export interface components {
       lifecycleEnabled?: boolean;
       ownershipTtlHours: number | null;
       protectionRules?: components["schemas"]["PoolProtectionRuleDto"][];
+      version: number;
+    };
+    UpdateTelephonyBindingDto: {
+      enabled: boolean;
+      phone: string;
+      seatId: string;
+      version: number;
+    };
+    UpdateTelephonySettingsDto: {
+      appSecret?: string;
+      callbackToken?: string;
+      companyId?: string;
+      enabled?: boolean;
+      /** @enum {string} */
+      mode?: "MOCK" | "KUAIMA";
+      phoneFields?: components["schemas"]["TelephonyPhoneFieldsDto"][];
       version: number;
     };
     UpdateWorkTaskDto: {
@@ -5829,6 +6057,34 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["PlatformTenantSummaryDto"];
+        };
+      };
+    };
+  };
+  TelephonyHookController_hook: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Bearer tenant callbackToken — proposed contract pending supplier verification */
+        Authorization: string;
+      };
+      path: {
+        tenantId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TelephonyHookDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TelephonyHookResponseDto"];
         };
       };
     };
@@ -8567,6 +8823,207 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["TeamActivityResponseDto"];
+        };
+      };
+    };
+  };
+  TelephonyController_calls: {
+    parameters: {
+      query?: {
+        dateFrom?: string;
+        dateTo?: string;
+        limit?: number;
+        memberId?: string;
+        objectCode?: string;
+        page?: number;
+        recordId?: string;
+        status?:
+          | "REQUESTED"
+          | "ACCEPTED"
+          | "UNKNOWN"
+          | "CONNECTED"
+          | "NOT_CONNECTED"
+          | "ENDED"
+          | "FAILED";
+      };
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TelephonyCallPageResponseDto"];
+        };
+      };
+    };
+  };
+  TelephonyController_createCall: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateTelephonyCallDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TelephonyCallResponseDto"];
+        };
+      };
+    };
+  };
+  TelephonyController_call: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        callId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TelephonyCallResponseDto"];
+        };
+      };
+    };
+  };
+  TelephonyController_members: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TelephonyBindingsResponseDto"];
+        };
+      };
+    };
+  };
+  TelephonyController_updateMember: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        memberId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateTelephonyBindingDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TelephonyBindingResponseDto"];
+        };
+      };
+    };
+  };
+  TelephonyController_runtime: {
+    parameters: {
+      query?: {
+        objectCode?: string;
+        recordId?: string;
+      };
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TelephonyRuntimeResponseDto"];
+        };
+      };
+    };
+  };
+  TelephonyController_settings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TelephonySettingsResponseDto"];
+        };
+      };
+    };
+  };
+  TelephonyController_updateSettings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateTelephonySettingsDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TelephonySettingsResponseDto"];
         };
       };
     };
