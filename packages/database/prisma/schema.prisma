@@ -199,6 +199,9 @@ model User {
 }
 
 model Tenant {
+  telephonySettings TelephonySettings?
+  telephonyBindings TelephonyMemberBinding[]
+  telephonyCalls TelephonyCall[]
   memberGroups MemberGroup[]
   workGoalRules WorkGoalRule[]
   automationExecutions RecordAutomationExecution[]
@@ -295,6 +298,8 @@ model TenantDashboardPublication {
 }
 
 model TenantMember {
+  telephonyBindings TelephonyMemberBinding[]
+  telephonyCalls TelephonyCall[]
   groupId String? @map("group_id") @db.Uuid
   group MemberGroup? @relation("GroupMembers", fields: [tenantId, groupId], references: [tenantId, id], onDelete: Restrict)
   ledGroups MemberGroup[] @relation("GroupLeader")
@@ -649,6 +654,7 @@ model RecordCounter {
 }
 
 model Record {
+  telephonyCalls TelephonyCall[]
   sourceAutomations RecordAutomationExecution[] @relation("AutomationSource")
   targetAutomations RecordAutomationExecution[] @relation("AutomationTarget")
   notifications MemberNotification[]
@@ -695,6 +701,7 @@ model Record {
 }
 
 model RecordActivity {
+  telephonyCalls TelephonyCall[]
   id                 String             @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId           String             @map("tenant_id") @db.Uuid
   recordId           String             @map("record_id") @db.Uuid
@@ -1076,4 +1083,66 @@ model WorkGoalRecipient {
   member TenantMember @relation(fields: [tenantId, memberId], references: [tenantId, id], onDelete: Cascade)
   @@id([tenantId, ruleId, memberId])
   @@map("work_goal_recipients")
+}
+
+// Migration 0045 additionally enforces one open call per actor and a deferred activity FK.
+model TelephonySettings {
+  tenantId String @id @map("tenant_id") @db.Uuid
+  version Int @default(1)
+  enabled Boolean @default(false)
+  mode String @default("MOCK") @db.VarChar(16)
+  companyId String @default("") @map("company_id") @db.VarChar(100)
+  appSecretEncrypted String? @map("app_secret_encrypted")
+  callbackTokenEncrypted String? @map("callback_token_encrypted")
+  phoneFields Json @default("[]") @map("phone_fields") @db.JsonB
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  @@map("telephony_settings")
+}
+
+model TelephonyMemberBinding {
+  tenantId String @map("tenant_id") @db.Uuid
+  memberId String @map("member_id") @db.Uuid
+  version Int @default(1)
+  enabled Boolean @default(false)
+  seatId String @default("") @map("seat_id") @db.VarChar(100)
+  phone String @default("") @db.VarChar(20)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  member TenantMember @relation(fields: [tenantId, memberId], references: [tenantId, id], onDelete: Cascade, onUpdate: NoAction)
+  @@id([tenantId, memberId])
+  @@map("telephony_member_bindings")
+}
+
+model TelephonyCall {
+  id String @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  actorMemberId String @map("actor_member_id") @db.Uuid
+  requestId String @map("request_id") @db.Uuid
+  objectId String @map("object_id") @db.Uuid
+  objectCode String @map("object_code") @db.VarChar(64)
+  recordId String @map("record_id") @db.Uuid
+  fieldKey String @map("field_key") @db.VarChar(64)
+  mode String @db.VarChar(16)
+  status String @default("REQUESTED") @db.VarChar(32)
+  callerPhone String @map("caller_phone") @db.VarChar(20)
+  calleePhone String @map("callee_phone") @db.VarChar(20)
+  seatId String @map("seat_id") @db.VarChar(100)
+  providerBindId String? @map("provider_bind_id") @db.VarChar(200)
+  recordingUrl String? @map("recording_url")
+  beganAt DateTime? @map("began_at") @db.Timestamptz(3)
+  endedAt DateTime? @map("ended_at") @db.Timestamptz(3)
+  durationSeconds Int? @map("duration_seconds")
+  activityId String? @map("activity_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  actor TenantMember @relation(fields: [tenantId, actorMemberId], references: [tenantId, id], onDelete: Restrict, onUpdate: NoAction)
+  record Record @relation(fields: [tenantId, objectId, recordId], references: [tenantId, objectId, id], onDelete: Restrict, onUpdate: NoAction)
+  activity RecordActivity? @relation(fields: [tenantId, recordId, activityId], references: [tenantId, recordId, id], onDelete: NoAction, onUpdate: NoAction)
+  @@unique([tenantId, actorMemberId, requestId])
+  @@unique([tenantId, providerBindId])
+  @@index([tenantId, actorMemberId, createdAt(sort: Desc)])
+  @@index([tenantId, recordId, createdAt(sort: Desc)])
+  @@map("telephony_calls")
 }

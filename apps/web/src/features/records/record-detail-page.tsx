@@ -16,6 +16,8 @@ import { Alert, Button, Dropdown, Modal, Tabs, Tooltip } from "antd";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { RecordCallAction } from "@/features/telephony/record-call-drawer";
+import { CallHistory } from "@/features/telephony/call-history";
 import { ObjectIcon } from "@/components/navigation/object-icon";
 import type {
   RecordSummary,
@@ -247,6 +249,11 @@ export function RecordDetailPage({
       ),
     },
     {
+      key: "calls",
+      label: "通话",
+      children: <CallHistory tenantCode={tenantCode} objectCode={schema.object.code} recordId={record.id} currentMemberId={currentMemberId} isAdmin={canChooseOwner} />,
+    },
+    {
       key: "activity",
       label: "动态",
       children: (
@@ -407,6 +414,7 @@ export function RecordDetailPage({
           <span className={styles.crumbCurrent}>#{record.recordNo}</span>
         </nav>
         <div className={styles.topActions}>
+          {!deleted ? <RecordCallAction tenantCode={tenantCode} schema={schema} record={record} currentMemberName={members.find(member => member.id === currentMemberId)?.displayName ?? undefined} /> : null}
           {position && position.total > 1 ? (
             <div className={styles.pager} role="group" aria-label="逐条查看">
               <Tooltip title="上一条">
@@ -657,6 +665,7 @@ const DEFAULT_TAB = "followups";
 const TAB_KEYS = new Set([
   "followups",
   "activity",
+  "calls",
   "relations",
   "attachments",
   "automations",

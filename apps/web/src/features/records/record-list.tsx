@@ -40,6 +40,7 @@ import {
   useSyncExternalStore,
 } from "react";
 
+import { RecordCallAction } from "@/features/telephony/record-call-drawer";
 import { PageHeader } from "@/components/layout/page-header";
 import { ObjectIcon } from "@/components/navigation/object-icon";
 import {
@@ -468,10 +469,10 @@ export function RecordList({
       // The header is read by assistive technology only; the menu button is self-explanatory.
       title: <span className={styles.visuallyHidden}>操作</span>,
       key: "actions",
-      width: 56,
+      width: 88,
       fixed: "right",
       align: "center",
-      render: (_, row) => rowMenu(row),
+      render: (_, row) => <><RecordCallAction tenantCode={tenantCode} schema={schema} record={row} currentMemberName={members.find(member => member.id === currentMemberId)?.displayName ?? undefined} />{rowMenu(row)}</>,
     },
   ];
 
@@ -1166,7 +1167,7 @@ export function RecordList({
                             members,
                           )
                         : null}
-                      <span className={rl.cardMenu}>{rowMenu(row)}</span>
+                      <span className={rl.cardMenu}><RecordCallAction tenantCode={tenantCode} schema={schema} record={row} currentMemberName={members.find(member => member.id === currentMemberId)?.displayName ?? undefined} />{rowMenu(row)}</span>
                     </div>
                     <dl className={rl.cardMeta}>
                       <div>
