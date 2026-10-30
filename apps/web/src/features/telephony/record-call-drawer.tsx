@@ -143,10 +143,8 @@ export function RecordCallDrawer({
   const [error, setError] = useState<string>();
   const [result, setResult] = useState<TelephonyCall>();
   const [callId, setCallId] = useState<string>();
-  const [attempt, setAttempt] = useState<{
-    requestId: string;
-    fieldKey: string;
-  }>();
+  const [attempt, setAttempt] =
+    useState<Parameters<TelephonyApi["createCall"]>[1]>();
   const submitting = useRef(false);
   const data =
     !context.isFetching && !context.isError ? context.data : undefined;
@@ -174,8 +172,8 @@ export function RecordCallDrawer({
       : undefined;
   const confirmed = Boolean(reviewKey && confirmation === reviewKey);
   const submit = useMutation({
-    mutationFn: (target: { requestId: string; fieldKey: string }) =>
-      api.createCall(tenantCode, { ...target, objectCode, recordId }),
+    mutationFn: (target: Parameters<TelephonyApi["createCall"]>[1]) =>
+      api.createCall(tenantCode, target),
     retry: false,
     onSuccess: (call) => {
       setResult(call);
@@ -187,6 +185,19 @@ export function RecordCallDrawer({
     },
     onError: (caught) => {
       const parsed = toApiError(caught);
+      if (
+        parsed.status === 409 &&
+        parsed.code === "CONFIG_VERSION_CONFLICT" &&
+        parsed.fieldErrors.confirmation?.includes(
+          "TELEPHONY_CONFIRMATION_CHANGED",
+        )
+      ) {
+        // This request was not persisted. Refresh before permitting a new review;
+        // all other failures retain the exact attempt for safe reconciliation.
+        void context.refetch();
+        setAttempt(undefined);
+        setConfirmation(undefined);
+      }
       setError(
         parsed.requestId === "req_unknown"
           ? "请求结果暂未收到，重试会核对同一次请求，不会创建另一通电话"
@@ -218,6 +229,13 @@ export function RecordCallDrawer({
     const target = attempt ?? {
       requestId: crypto.randomUUID(),
       fieldKey: fieldKey!,
+      objectCode,
+      recordId,
+      confirmation: {
+        mode: data!.runtime.mode,
+        callerPhone: data!.runtime.callerPhone!,
+        calleePhone: String(phone),
+      },
     };
     submitting.current = true;
     setAttempt(target);

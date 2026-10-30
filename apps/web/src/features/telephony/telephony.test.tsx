@@ -258,7 +258,7 @@ beforeEach(() => {
   vi.spyOn(objectApi, "listAccessible").mockResolvedValue([]);
 });
 
-it("requires explicit caller/callee confirmation and sends only authorized field identity", async () => {
+it("requires explicit caller/callee confirmation and sends its snapshot with authorized field identity", async () => {
   const api = apiStub();
   drawer(api);
   await screen.findByText("13600000001");
@@ -274,6 +274,11 @@ it("requires explicit caller/callee confirmation and sends only authorized field
     objectCode: "customers",
     recordId: "record-1",
     fieldKey: "phone",
+    confirmation: {
+      mode: "MOCK",
+      callerPhone: "13600000001",
+      calleePhone: "13800000001",
+    },
   });
   expect(screen.getByText(/不计入真实通话统计/)).toBeInTheDocument();
 });
@@ -324,6 +329,76 @@ it("reuses the same requestId and target for an explicit transport retry", async
   expect(vi.mocked(api.createCall).mock.calls[1]).toEqual(
     vi.mocked(api.createCall).mock.calls[0],
   );
+});
+
+it("refreshes a definitive confirmation mismatch and requires a newly confirmed attempt", async () => {
+  const api = apiStub();
+  vi.mocked(api.createCall)
+    .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+    .mockRejectedValueOnce({
+      code: "CONFIG_VERSION_CONFLICT",
+      status: 409,
+      requestId: "req-mismatch",
+      message: "拨打信息已变化，请重新核对后确认。",
+      fieldErrors: { confirmation: ["TELEPHONY_CONFIRMATION_CHANGED"] },
+    })
+    .mockResolvedValue(call);
+  drawer(api);
+  await screen.findByText("13800000001");
+  fireEvent.click(screen.getByLabelText("我已核对主叫和被叫号码"));
+  fireEvent.click(screen.getByText("确认模拟拨打"));
+  await screen.findByText("重试本次请求");
+  const original = vi.mocked(api.createCall).mock.calls[0][1];
+  vi.mocked(api.runtime).mockResolvedValue({
+    ...runtime,
+    mode: "KUAIMA",
+    callerPhone: "13500000002",
+  });
+  vi.mocked(recordApi.detail).mockResolvedValue({
+    ...record,
+    values: { ...record.values, phone: "13900000002" },
+  });
+  fireEvent.click(screen.getByText("重试本次请求"));
+  await screen.findByText("13900000002");
+  expect(screen.getByText("13500000002")).toBeInTheDocument();
+  expect(screen.getByLabelText("我已核对主叫和被叫号码")).not.toBeChecked();
+  expect(screen.getByText("确认拨打").closest("button")).toBeDisabled();
+  expect(vi.mocked(api.createCall).mock.calls[1][1]).toEqual(original);
+  fireEvent.click(screen.getByText("确认拨打"));
+  expect(api.createCall).toHaveBeenCalledTimes(2);
+  fireEvent.click(screen.getByLabelText("我已核对主叫和被叫号码"));
+  fireEvent.click(screen.getByText("确认拨打"));
+  await screen.findByText("模拟通话已完成");
+  const next = vi.mocked(api.createCall).mock.calls[2][1];
+  expect(next.requestId).not.toBe(original.requestId);
+  expect(next).toMatchObject({
+    confirmation: {
+      mode: "KUAIMA",
+      callerPhone: "13500000002",
+      calleePhone: "13900000002",
+    },
+  });
+});
+
+it("does not reveal cached numbers when context is revoked after a confirmation mismatch", async () => {
+  const api = apiStub();
+  vi.mocked(api.createCall).mockRejectedValueOnce({
+    code: "CONFIG_VERSION_CONFLICT",
+    status: 409,
+    requestId: "req-mismatch",
+    message: "拨打信息已变化，请重新核对后确认。",
+    fieldErrors: { confirmation: ["TELEPHONY_CONFIRMATION_CHANGED"] },
+  });
+  drawer(api);
+  await screen.findByText("13800000001");
+  vi.mocked(recordApi.detail).mockRejectedValue(new Error("revoked"));
+  fireEvent.click(screen.getByLabelText("我已核对主叫和被叫号码"));
+  fireEvent.click(screen.getByText("确认模拟拨打"));
+  await screen.findByText("无法读取当前拨打信息");
+  expect(screen.queryByText("13800000001")).not.toBeInTheDocument();
+  expect(screen.queryByText("13600000001")).not.toBeInTheDocument();
+  expect(screen.queryByText("重试本次请求")).not.toBeInTheDocument();
+  expect(api.createCall).toHaveBeenCalledTimes(1);
 });
 
 it("does not offer redial when submission is UNKNOWN and never fabricates ringing", async () => {
@@ -738,6 +813,13 @@ it("keeps an existing ambiguous attempt's original field and requestId after con
   fireEvent.click(screen.getByText("确认模拟拨打"));
   await screen.findByText("重试本次请求");
   const original = vi.mocked(api.createCall).mock.calls[0];
+  expect(original[1]).toMatchObject({
+    confirmation: {
+      mode: "MOCK",
+      callerPhone: "13600000001",
+      calleePhone: "13800000001",
+    },
+  });
   vi.mocked(api.runtime).mockResolvedValue({
     ...runtime,
     callerPhone: "13500000002",

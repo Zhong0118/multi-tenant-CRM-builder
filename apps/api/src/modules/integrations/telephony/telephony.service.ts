@@ -410,8 +410,8 @@ export class TelephonyService {
           }),
         ]);
         const reason = this.reason(settings, binding);
-        if (reason) unavailable(reason);
-        if (!settings || !binding) unavailable('DISABLED');
+        if (!settings || !binding || !binding.phone)
+          unavailable(reason ?? 'MEMBER_NOT_CONFIGURED');
         if (
           !fieldsOf(settings).some(
             (entry) =>
@@ -420,6 +420,20 @@ export class TelephonyService {
           )
         )
           throw new ApiException('FIELD_HIDDEN', 403);
+        // A replay above returns its durable target. Only a missing request must
+        // still match the tuple explicitly reviewed by the client.
+        const callerPhone = normalizePhone(binding.phone);
+        const calleePhone = normalizePhone(record.values[input.fieldKey]);
+        if (
+          input.confirmation.mode !== settings.mode ||
+          normalizePhone(input.confirmation.callerPhone) !== callerPhone ||
+          normalizePhone(input.confirmation.calleePhone) !== calleePhone
+        )
+          throw new ApiException('CONFIG_VERSION_CONFLICT', 409, {
+            message: '拨打信息已变化，请重新核对后确认。',
+            fieldErrors: { confirmation: ['TELEPHONY_CONFIRMATION_CHANGED'] },
+          });
+        if (reason) unavailable(reason);
         if (
           await tx.telephonyCall.findFirst({
             where: {
@@ -442,8 +456,8 @@ export class TelephonyService {
             recordId: input.recordId,
             fieldKey: input.fieldKey,
             mode: settings.mode,
-            callerPhone: normalizePhone(binding.phone),
-            calleePhone: normalizePhone(record.values[input.fieldKey]),
+            callerPhone,
+            calleePhone,
             seatId: binding.seatId,
           },
         });

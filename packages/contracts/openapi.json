@@ -1859,6 +1859,9 @@
       },
       "CreateTelephonyCallDto": {
         "properties": {
+          "confirmation": {
+            "$ref": "#/components/schemas/TelephonyCallConfirmationDto"
+          },
           "fieldKey": {
             "type": "string"
           },
@@ -1874,7 +1877,13 @@
             "type": "string"
           }
         },
-        "required": ["requestId", "objectCode", "recordId", "fieldKey"],
+        "required": [
+          "requestId",
+          "objectCode",
+          "recordId",
+          "fieldKey",
+          "confirmation"
+        ],
         "type": "object"
       },
       "CreateWorkTaskDto": {
@@ -6812,6 +6821,22 @@
           }
         },
         "required": ["members"],
+        "type": "object"
+      },
+      "TelephonyCallConfirmationDto": {
+        "properties": {
+          "calleePhone": {
+            "type": "string"
+          },
+          "callerPhone": {
+            "type": "string"
+          },
+          "mode": {
+            "enum": ["MOCK", "KUAIMA"],
+            "type": "string"
+          }
+        },
+        "required": ["mode", "callerPhone", "calleePhone"],
         "type": "object"
       },
       "TelephonyCallPageResponseDto": {

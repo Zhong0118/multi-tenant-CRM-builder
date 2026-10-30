@@ -2745,6 +2745,7 @@ export interface components {
       recordId: string;
     };
     CreateTelephonyCallDto: {
+      confirmation: components["schemas"]["TelephonyCallConfirmationDto"];
       fieldKey: string;
       objectCode: string;
       /** Format: uuid */
@@ -4397,6 +4398,12 @@ export interface components {
     };
     TelephonyBindingsResponseDto: {
       members: components["schemas"]["TelephonyBindingResponseDto"][];
+    };
+    TelephonyCallConfirmationDto: {
+      calleePhone: string;
+      callerPhone: string;
+      /** @enum {string} */
+      mode: "MOCK" | "KUAIMA";
     };
     TelephonyCallPageResponseDto: {
       items: components["schemas"]["TelephonyCallResponseDto"][];

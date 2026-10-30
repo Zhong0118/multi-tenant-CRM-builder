@@ -28,6 +28,7 @@ describe('tenant telephony', () => {
   let h: CriticalHarness;
   let f: CriticalFixture;
   let outbound: jest.SpyInstance;
+  let confirmedMode = 'MOCK';
   let unrelatedActivitySnapshot: unknown;
   const unrelatedActivities = () =>
     h.adminDatabase.recordActivity.findMany({
@@ -65,6 +66,11 @@ describe('tenant telephony', () => {
         objectCode: 'leads',
         recordId: f.ownedRecord.id,
         fieldKey: 'reviewCode',
+        confirmation: {
+          mode: confirmedMode,
+          callerPhone: '13911113002',
+          calleePhone: '13812345678',
+        },
         ...body,
       });
   beforeAll(async () => {
@@ -123,6 +129,7 @@ describe('tenant telephony', () => {
     outbound.mockRestore();
   });
   async function setup(mode = 'MOCK') {
+    confirmedMode = mode;
     const setting = await patch(`${base()}/settings`, {
       version: 0,
       enabled: true,
@@ -220,6 +227,125 @@ describe('tenant telephony', () => {
         where: { tenantId: f.tenantA.id },
       }),
     ).toHaveLength(1);
+  });
+  it('requires a complete confirmation snapshot before creating a call', async () => {
+    await setup();
+    for (const confirmation of [
+      undefined,
+      null,
+      [],
+      {},
+      { mode: 'MOCK', callerPhone: '13911113002' },
+    ]) {
+      expect((await dial({ confirmation })).status).toBe(400);
+    }
+    expect(
+      await h.adminDatabase.telephonyCall.count({
+        where: { tenantId: f.tenantA.id },
+      }),
+    ).toBe(0);
+  });
+  it.each(['caller', 'callee', 'mode'])(
+    'rejects an unpersisted retry after confirmed %s changes without dialing',
+    async (changed) => {
+      await setup();
+      const requestId = randomUUID();
+      await patch(`${base()}/settings`, { version: 1, enabled: false });
+      expect((await dial({ requestId })).status).toBe(503);
+      expect(
+        await h.adminDatabase.telephonyCall.count({
+          where: { tenantId: f.tenantA.id },
+        }),
+      ).toBe(0);
+      await patch(`${base()}/settings`, {
+        version: 2,
+        enabled: true,
+        ...(changed === 'mode' ? { mode: 'KUAIMA' } : {}),
+      });
+      if (changed === 'caller')
+        await patch(`${base()}/members/${f.employee.memberId}`, {
+          version: 1,
+          enabled: true,
+          seatId: 'seat-1',
+          phone: '13911113003',
+        });
+      if (changed === 'callee')
+        await h.adminDatabase.record.update({
+          where: { id: f.ownedRecord.id },
+          data: { data: { name: '客户', reviewCode: '13812345679' } },
+        });
+      const provider = jest.spyOn(h.app.get(KuaimaProvider), 'dial');
+      try {
+        const retry = await dial({ requestId });
+        expect(retry.status).toBe(409);
+        expect(retry.body).toMatchObject({
+          code: 'CONFIG_VERSION_CONFLICT',
+          fieldErrors: { confirmation: ['TELEPHONY_CONFIRMATION_CHANGED'] },
+        });
+        expect(JSON.stringify(retry.body)).not.toMatch(
+          /13911113003|13812345679/,
+        );
+        expect(
+          await h.adminDatabase.telephonyCall.count({
+            where: { tenantId: f.tenantA.id },
+          }),
+        ).toBe(0);
+        expect(provider).not.toHaveBeenCalled();
+      } finally {
+        provider.mockRestore();
+      }
+    },
+  );
+  it('checks confirmation on the initial POST and normalizes equivalent phone prefixes', async () => {
+    await setup();
+    const stale = await dial({
+      confirmation: {
+        mode: 'MOCK',
+        callerPhone: '13911113002',
+        calleePhone: '13812345679',
+      },
+    });
+    expect(stale.status).toBe(409);
+    expect(
+      await h.adminDatabase.telephonyCall.count({
+        where: { tenantId: f.tenantA.id },
+      }),
+    ).toBe(0);
+    expect(
+      (
+        await dial({
+          confirmation: {
+            mode: 'MOCK',
+            callerPhone: '+8613911113002',
+            calleePhone: '+8613812345678',
+          },
+        })
+      ).status,
+    ).toBe(201);
+  });
+  it('returns a persisted request before comparing confirmation with changed settings or numbers', async () => {
+    await setup();
+    const requestId = randomUUID();
+    const original = await dial({ requestId });
+    expect(original.status).toBe(201);
+    await patch(`${base()}/settings`, {
+      version: 1,
+      enabled: false,
+      mode: 'KUAIMA',
+    });
+    await patch(`${base()}/members/${f.employee.memberId}`, {
+      version: 1,
+      enabled: true,
+      seatId: 'seat-2',
+      phone: '13911113003',
+    });
+    await h.adminDatabase.record.update({
+      where: { id: f.ownedRecord.id },
+      data: { data: { name: '客户', reviewCode: '13812345679' } },
+    });
+    const retry = await dial({ requestId });
+    expect(retry.status).toBe(201);
+    expect(retry.body).toEqual(original.body);
   });
   it('blocks cross tenant, other-owned, hidden fields, disabled members and archived objects', async () => {
     await setup();

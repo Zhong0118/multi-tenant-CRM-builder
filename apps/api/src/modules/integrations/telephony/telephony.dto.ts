@@ -5,8 +5,10 @@ import {
   IsArray,
   IsBoolean,
   IsDateString,
+  IsDefined,
   IsIn,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -119,11 +121,24 @@ export class TelephonyRuntimeResponseDto {
   @ApiProperty({ type: [TelephonyRuntimeFieldDto] })
   fields!: TelephonyRuntimeFieldDto[];
 }
+export class TelephonyCallConfirmationDto {
+  @ApiProperty({ enum: TELEPHONY_MODES })
+  @IsIn(TELEPHONY_MODES)
+  mode!: 'MOCK' | 'KUAIMA';
+  @ApiProperty() @IsString() @MinLength(1) @MaxLength(20) callerPhone!: string;
+  @ApiProperty() @IsString() @MinLength(1) @MaxLength(20) calleePhone!: string;
+}
 export class CreateTelephonyCallDto {
   @ApiProperty({ format: 'uuid' }) @IsUUID() requestId!: string;
   @ApiProperty() @IsString() @MinLength(1) @MaxLength(64) objectCode!: string;
   @ApiProperty({ format: 'uuid' }) @IsUUID() recordId!: string;
   @ApiProperty() @IsString() @MinLength(1) @MaxLength(64) fieldKey!: string;
+  @ApiProperty({ type: TelephonyCallConfirmationDto })
+  @IsDefined()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => TelephonyCallConfirmationDto)
+  confirmation!: TelephonyCallConfirmationDto;
 }
 export class TelephonyCallQueryDto {
   @ApiPropertyOptional({ default: 1 })
