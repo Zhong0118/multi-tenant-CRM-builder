@@ -501,7 +501,48 @@ function PhoneFields({
     },
   });
   const [notice, setNotice] = useState<string>();
-  if (tables.isPending) return <Spin aria-label="加载已发布业务表" />;
+  const published = new Map(
+    (tables.data ?? []).map((schema) => [
+      schema.object.code,
+      {
+        name: schema.object.name,
+        keys: new Set(
+          schema.fields
+            .filter((field) => field.type === "PHONE" || field.type === "TEXT")
+            .map((field) => field.fieldKey),
+        ),
+      },
+    ]),
+  );
+  const stale = settings.phoneFields.flatMap((table) => {
+    const current = published.get(table.objectCode);
+    const fieldKeys = table.fieldKeys.filter((key) => !current?.keys.has(key));
+    return !current || fieldKeys.length
+      ? [{ objectCode: table.objectCode, name: current?.name, fieldKeys }]
+      : [];
+  });
+  const cleanup = useMutation({
+    mutationFn: () =>
+      api.updateSettings(tenantCode, {
+        version: settings.version,
+        phoneFields: settings.phoneFields.flatMap((table) => {
+          const current = published.get(table.objectCode);
+          return current
+            ? [
+                {
+                  ...table,
+                  fieldKeys: table.fieldKeys.filter((key) =>
+                    current.keys.has(key),
+                  ),
+                },
+              ]
+            : [];
+        }),
+      }),
+    onSuccess: onSaved,
+  });
+  if (tables.isPending || tables.isFetching)
+    return <Spin aria-label="加载已发布业务表" />;
   if (tables.isError)
     return (
       <Alert
@@ -516,6 +557,35 @@ function PhoneFields({
         选择已发布业务表中的电话或文本字段，成员只能拨打自己有权读取的号码
       </p>
       {notice ? <Alert type="success" title={notice} showIcon /> : null}
+      {stale.length ? (
+        <section className={styles.panel} aria-label="失效外呼配置">
+          <h3>保存电话字段前，请先清理以下失效配置</h3>
+          <p className={styles.hint}>
+            仅移除下面列出的业务表和字段，其他有效配置保持不变
+          </p>
+          <ul>
+            {stale.map((table) => (
+              <li key={table.objectCode}>
+                {table.name
+                  ? `${table.name}（${table.objectCode}）`
+                  : table.objectCode}
+                ：{table.fieldKeys.join("、") || "无电话字段"}（
+                {table.name ? "字段已失效" : "业务表当前不可用"}）
+              </li>
+            ))}
+          </ul>
+          {cleanup.isError ? (
+            <Alert
+              type="error"
+              title="清理失败，请重新加载配置后重试"
+              action={<Button onClick={onReload}>重新加载配置</Button>}
+            />
+          ) : null}
+          <Button loading={cleanup.isPending} onClick={() => cleanup.mutate()}>
+            清理失效外呼配置
+          </Button>
+        </section>
+      ) : null}
       {!tables.data.length ? (
         <Empty description="暂无已发布业务表，请先发布业务表" />
       ) : (
@@ -523,6 +593,7 @@ function PhoneFields({
           <TablePhoneFields
             key={`${schema.object.code}:${settings.version}`}
             schema={schema}
+            blocked={stale.length > 0 || cleanup.isPending}
             settings={settings}
             tenantCode={tenantCode}
             api={api}
@@ -539,6 +610,7 @@ function PhoneFields({
 }
 function TablePhoneFields({
   schema,
+  blocked,
   settings,
   tenantCode,
   api,
@@ -546,20 +618,23 @@ function TablePhoneFields({
   onReload,
 }: {
   schema: RuntimeObjectSchema;
+  blocked: boolean;
   settings: TelephonySettingsData;
   tenantCode: string;
   api: TelephonyApi;
   onSaved: (settings: TelephonySettingsData) => void;
   onReload: () => void;
 }) {
-  const initial =
-    settings.phoneFields.find(
-      (table) => table.objectCode === schema.object.code,
-    )?.fieldKeys ?? [];
-  const [selected, setSelected] = useState(initial);
   const fields = schema.fields.filter(
     (field) => field.type === "PHONE" || field.type === "TEXT",
   );
+  const eligibleKeys = new Set(fields.map((field) => field.fieldKey));
+  const initial = (
+    settings.phoneFields.find(
+      (table) => table.objectCode === schema.object.code,
+    )?.fieldKeys ?? []
+  ).filter((key) => eligibleKeys.has(key));
+  const [selected, setSelected] = useState(initial);
   const save = useMutation({
     mutationFn: () =>
       api.updateSettings(tenantCode, {
@@ -568,7 +643,10 @@ function TablePhoneFields({
           ...settings.phoneFields.filter(
             (table) => table.objectCode !== schema.object.code,
           ),
-          { objectCode: schema.object.code, fieldKeys: selected },
+          {
+            objectCode: schema.object.code,
+            fieldKeys: selected.filter((key) => eligibleKeys.has(key)),
+          },
         ],
       }),
     onSuccess: onSaved,
@@ -611,7 +689,11 @@ function TablePhoneFields({
         />
       ) : null}
       <div className={styles.actions}>
-        <Button loading={save.isPending} onClick={() => save.mutate()}>
+        <Button
+          disabled={blocked}
+          loading={save.isPending}
+          onClick={() => save.mutate()}
+        >
           保存电话字段
         </Button>
       </div>

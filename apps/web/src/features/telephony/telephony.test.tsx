@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -8,7 +9,10 @@ import {
 } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import type { RecordSummary } from "@/features/objects/object-types";
+import type {
+  RecordSummary,
+  RuntimeObjectSchema,
+} from "@/features/objects/object-types";
 import { objectApi } from "@/features/objects/object-api";
 import { recordApi } from "@/features/records/record-api";
 import { RecordCallDrawer } from "./record-call-drawer";
@@ -77,6 +81,111 @@ const settings: TelephonySettingsData = {
   hasCallbackToken: true,
   phoneFields: [{ objectCode: "customers", fieldKeys: ["phone"] }],
 };
+const publishedPhoneSchema: RuntimeObjectSchema = {
+  publication: { number: 2, publishedAt: "2026-10-30T00:00:00Z" },
+  object: {
+    code: "customers",
+    name: "客户",
+    description: null,
+    titleFieldKey: "name",
+    icon: null,
+    sortOrder: 1,
+  },
+  fields: [
+    {
+      id: "phone",
+      fieldKey: "phone",
+      label: "联系电话",
+      type: "PHONE",
+      access: "EDIT",
+      required: false,
+      defaultValue: null,
+      validation: {},
+      config: {},
+      sortOrder: 1,
+      isSystem: false,
+    },
+    {
+      id: "alternate",
+      fieldKey: "alternate",
+      label: "备用号码",
+      type: "TEXT",
+      access: "EDIT",
+      required: false,
+      defaultValue: null,
+      validation: {},
+      config: {},
+      sortOrder: 2,
+      isSystem: false,
+    },
+    {
+      id: "amount",
+      fieldKey: "amount",
+      label: "金额",
+      type: "NUMBER",
+      access: "EDIT",
+      required: false,
+      defaultValue: null,
+      validation: {},
+      config: {},
+      sortOrder: 3,
+      isSystem: false,
+    },
+  ],
+  defaultView: {
+    code: "default",
+    name: "默认",
+    columnFieldKeys: [],
+    sort: { field: "updatedAt", direction: "desc" },
+  },
+  scopes: { read: "ALL", update: "ALL" },
+  actions: {
+    canRead: true,
+    canCreate: true,
+    canUpdate: true,
+    canDelete: true,
+  },
+};
+const otherPhoneSchema: RuntimeObjectSchema = {
+  ...publishedPhoneSchema,
+  object: {
+    ...publishedPhoneSchema.object,
+    code: "other-table",
+    name: "其他业务表",
+  },
+  fields: [
+    {
+      ...publishedPhoneSchema.fields[0],
+      fieldKey: "mobile",
+      label: "其他电话",
+    },
+  ],
+};
+function publishedPhoneTables() {
+  vi.spyOn(objectApi, "listAccessible").mockResolvedValue([
+    {
+      code: "customers",
+      name: "客户",
+      canRead: true,
+      canCreate: true,
+      canUpdate: true,
+      sortOrder: 1,
+    },
+    {
+      code: "other-table",
+      name: "其他业务表",
+      canRead: true,
+      canCreate: true,
+      canUpdate: true,
+      sortOrder: 2,
+    },
+  ]);
+  vi.spyOn(objectApi, "runtimeSchema").mockImplementation(
+    async (_tenant, code) =>
+      code === "customers" ? publishedPhoneSchema : otherPhoneSchema,
+  );
+}
+
 function apiStub(): TelephonyApi {
   return {
     settings: vi.fn().mockResolvedValue(settings),
@@ -124,9 +233,12 @@ function mount(children: ReactNode) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  return render(
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>,
-  );
+  return {
+    ...render(
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+    ),
+    client,
+  };
 }
 function drawer(api: TelephonyApi) {
   return mount(
@@ -186,7 +298,7 @@ it("selects a second configured phone and prevents duplicate submission while in
   fireEvent.click(button);
   fireEvent.click(button);
   await waitFor(() => expect(api.createCall).toHaveBeenCalledTimes(1));
-  expect(button).toBeDisabled();
+  expect(screen.getByText("重试本次请求").closest("button")).toBeDisabled();
   expect(api.createCall).toHaveBeenCalledWith(
     "northwind",
     expect.objectContaining({ fieldKey: "alternate" }),
@@ -476,96 +588,26 @@ it("saves only published phone/text selections while preserving other tables", a
   vi.mocked(api.settings).mockResolvedValue({
     ...settings,
     phoneFields: [
-      ...settings.phoneFields,
-      { objectCode: "unseen-table", fieldKeys: ["mobile"] },
+      { objectCode: "customers", fieldKeys: ["phone"] },
+      { objectCode: "other-table", fieldKeys: ["mobile"] },
     ],
   });
-  vi.spyOn(objectApi, "listAccessible").mockResolvedValue([
-    {
-      code: "customers",
-      name: "客户",
-      canCreate: true,
-      canRead: true,
-      canUpdate: true,
-      sortOrder: 1,
-    },
-  ]);
-  vi.spyOn(objectApi, "runtimeSchema").mockResolvedValue({
-    publication: { number: 2, publishedAt: "2026-10-30T00:00:00Z" },
-    object: {
-      code: "customers",
-      name: "客户",
-      description: null,
-      titleFieldKey: "name",
-      icon: null,
-      sortOrder: 1,
-    },
-    fields: [
-      {
-        id: "phone",
-        fieldKey: "phone",
-        label: "联系电话",
-        type: "PHONE",
-        access: "EDIT",
-        required: false,
-        defaultValue: null,
-        validation: {},
-        config: {},
-        sortOrder: 1,
-        isSystem: false,
-      },
-      {
-        id: "alternate",
-        fieldKey: "alternate",
-        label: "备用号码",
-        type: "TEXT",
-        access: "EDIT",
-        required: false,
-        defaultValue: null,
-        validation: {},
-        config: {},
-        sortOrder: 2,
-        isSystem: false,
-      },
-      {
-        id: "amount",
-        fieldKey: "amount",
-        label: "金额",
-        type: "NUMBER",
-        access: "EDIT",
-        required: false,
-        defaultValue: null,
-        validation: {},
-        config: {},
-        sortOrder: 3,
-        isSystem: false,
-      },
-    ],
-    defaultView: {
-      code: "default",
-      name: "默认",
-      columnFieldKeys: [],
-      sort: { field: "updatedAt", direction: "desc" },
-    },
-    scopes: { read: "ALL", update: "ALL" },
-    actions: {
-      canRead: true,
-      canCreate: true,
-      canUpdate: true,
-      canDelete: true,
-    },
-  });
+  publishedPhoneTables();
   mount(<TelephonySettings tenantCode="northwind" api={api} />);
   await screen.findByLabelText("企业 ID");
   fireEvent.click(screen.getByText("业务表字段"));
   fireEvent.click(await screen.findByLabelText("备用号码"));
   expect(screen.queryByLabelText("金额")).not.toBeInTheDocument();
-  fireEvent.click(screen.getByText("保存电话字段"));
+  fireEvent.click(
+    within(screen.getByRole("region", { name: "客户电话字段" })).getByText(
+      "保存电话字段",
+    ),
+  );
   await screen.findByText("电话字段已保存");
   expect(api.updateSettings).toHaveBeenCalledWith("northwind", {
     version: 4,
     phoneFields: [
-      { objectCode: "unseen-table", fieldKeys: ["mobile"] },
+      { objectCode: "other-table", fieldKeys: ["mobile"] },
       { objectCode: "customers", fieldKeys: ["phone", "alternate"] },
     ],
   });
@@ -608,4 +650,237 @@ it("filters global history by an accessible business table and an admin-selected
       }),
     ),
   );
+});
+
+it.each(["caller", "callee", "field"])(
+  "requires fresh confirmation after the reviewed %s changes on context refetch",
+  async (change) => {
+    const api = apiStub();
+    const { client } = drawer(api);
+    await screen.findByText("13800000001");
+    fireEvent.click(screen.getByLabelText("我已核对主叫和被叫号码"));
+    expect(screen.getByText("确认模拟拨打").closest("button")).toBeEnabled();
+    if (change === "caller")
+      vi.mocked(api.runtime).mockResolvedValue({
+        ...runtime,
+        callerPhone: "13500000002",
+      });
+    if (change === "callee")
+      vi.mocked(recordApi.detail).mockResolvedValue({
+        ...record,
+        values: { ...record.values, phone: "13800000002" },
+      });
+    if (change === "field")
+      vi.mocked(api.runtime).mockResolvedValue({
+        ...runtime,
+        fields: [{ fieldKey: "alternate", label: "备用电话" }],
+      });
+    await act(async () => {
+      await client.refetchQueries({
+        queryKey: [
+          "telephony",
+          "northwind",
+          "dial-context",
+          "customers",
+          "record-1",
+        ],
+      });
+    });
+    if (change === "caller") await screen.findByText("13500000002");
+    if (change === "callee") await screen.findByText("13800000002");
+    if (change === "field")
+      await waitFor(() =>
+        expect(screen.getByLabelText("拨打字段")).toHaveValue("alternate"),
+      );
+    expect(screen.getByLabelText("我已核对主叫和被叫号码")).not.toBeChecked();
+    expect(screen.getByText("确认模拟拨打").closest("button")).toBeDisabled();
+    expect(api.createCall).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByLabelText("我已核对主叫和被叫号码"));
+    fireEvent.click(screen.getByText("确认模拟拨打"));
+    await screen.findByText("模拟通话已完成");
+    expect(api.createCall).toHaveBeenCalledWith(
+      "northwind",
+      expect.objectContaining({
+        fieldKey: change === "field" ? "alternate" : "phone",
+      }),
+    );
+  },
+);
+
+it("retains confirmation if a refetch keeps the reviewed call target unchanged", async () => {
+  const api = apiStub();
+  const { client } = drawer(api);
+  await screen.findByText("13800000001");
+  fireEvent.click(screen.getByLabelText("我已核对主叫和被叫号码"));
+  await act(async () => {
+    await client.refetchQueries({
+      queryKey: [
+        "telephony",
+        "northwind",
+        "dial-context",
+        "customers",
+        "record-1",
+      ],
+    });
+  });
+  expect(screen.getByLabelText("我已核对主叫和被叫号码")).toBeChecked();
+  expect(screen.getByText("确认模拟拨打").closest("button")).toBeEnabled();
+});
+
+it("keeps an existing ambiguous attempt's original field and requestId after context changes", async () => {
+  const api = apiStub();
+  vi.mocked(api.createCall)
+    .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+    .mockResolvedValue(call);
+  const { client } = drawer(api);
+  await screen.findByText("13800000001");
+  fireEvent.click(screen.getByLabelText("我已核对主叫和被叫号码"));
+  fireEvent.click(screen.getByText("确认模拟拨打"));
+  await screen.findByText("重试本次请求");
+  const original = vi.mocked(api.createCall).mock.calls[0];
+  vi.mocked(api.runtime).mockResolvedValue({
+    ...runtime,
+    callerPhone: "13500000002",
+    fields: [{ fieldKey: "alternate", label: "备用电话" }],
+  });
+  vi.mocked(recordApi.detail).mockResolvedValue({
+    ...record,
+    values: { alternate: "13900000002" },
+    fieldAccess: { alternate: "READ_ONLY" },
+  });
+  await act(async () => {
+    await client.refetchQueries({
+      queryKey: [
+        "telephony",
+        "northwind",
+        "dial-context",
+        "customers",
+        "record-1",
+      ],
+    });
+  });
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  expect(screen.queryByText("13900000002")).not.toBeInTheDocument();
+  expect(screen.queryByText("13500000002")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByText("重试本次请求"));
+  await screen.findByText("模拟通话已完成");
+  expect(vi.mocked(api.createCall).mock.calls[1]).toEqual(original);
+});
+
+it("clears a business-table-only history filter and resets its page", async () => {
+  const api = apiStub();
+  vi.spyOn(objectApi, "listAccessible").mockResolvedValue([
+    {
+      code: "customers",
+      name: "客户",
+      canRead: true,
+      canCreate: true,
+      canUpdate: true,
+      sortOrder: 1,
+    },
+  ]);
+  mount(<CallHistory tenantCode="northwind" api={api} />);
+  await screen.findByText("客户甲");
+  fireEvent.change(screen.getByLabelText("业务表"), {
+    target: { value: "customers" },
+  });
+  fireEvent.click(await screen.findByText("清除筛选"));
+  await waitFor(() =>
+    expect(api.calls).toHaveBeenLastCalledWith("northwind", {
+      page: 1,
+      limit: 20,
+    }),
+  );
+  expect(screen.getByLabelText("业务表")).toHaveValue("");
+});
+
+it("atomically cleans all unavailable tables and obsolete fields while preserving every valid setting", async () => {
+  const api = apiStub();
+  publishedPhoneTables();
+  const configured = {
+    ...settings,
+    phoneFields: [
+      {
+        objectCode: "customers",
+        fieldKeys: ["phone", "removed_phone", "amount"],
+      },
+      { objectCode: "other-table", fieldKeys: ["mobile"] },
+      { objectCode: "archived-a", fieldKeys: ["old_phone"] },
+      { objectCode: "archived-b", fieldKeys: ["contact"] },
+    ],
+  };
+  const validFields = [
+    { objectCode: "customers", fieldKeys: ["phone"] },
+    { objectCode: "other-table", fieldKeys: ["mobile"] },
+  ];
+  vi.mocked(api.settings).mockResolvedValue(configured);
+  vi.mocked(api.updateSettings).mockResolvedValue({
+    ...settings,
+    version: 5,
+    phoneFields: validFields,
+  });
+  mount(<TelephonySettings tenantCode="northwind" api={api} />);
+  await screen.findByLabelText("企业 ID");
+  fireEvent.click(screen.getByText("业务表字段"));
+  const cleanup = await screen.findByRole("region", { name: "失效外呼配置" });
+  expect(cleanup).toHaveTextContent("removed_phone");
+  expect(cleanup).toHaveTextContent("amount");
+  expect(cleanup).toHaveTextContent("archived-a");
+  expect(cleanup).toHaveTextContent("old_phone");
+  expect(cleanup).toHaveTextContent("archived-b");
+  expect(cleanup).toHaveTextContent("contact");
+  expect(cleanup).not.toHaveTextContent("mobile");
+  expect(
+    within(screen.getByRole("region", { name: "客户电话字段" }))
+      .getByText("保存电话字段")
+      .closest("button"),
+  ).toBeDisabled();
+  fireEvent.click(within(cleanup).getByText("清理失效外呼配置"));
+  await screen.findByText("电话字段已保存");
+  expect(api.updateSettings).toHaveBeenCalledExactlyOnceWith("northwind", {
+    version: 4,
+    phoneFields: validFields,
+  });
+  expect(
+    screen.queryByRole("region", { name: "失效外呼配置" }),
+  ).not.toBeInTheDocument();
+  const table = await screen.findByRole("region", { name: "客户电话字段" });
+  fireEvent.click(within(table).getByLabelText("备用号码"));
+  fireEvent.click(within(table).getByText("保存电话字段"));
+  await waitFor(() =>
+    expect(api.updateSettings).toHaveBeenLastCalledWith("northwind", {
+      version: 5,
+      phoneFields: [
+        { objectCode: "other-table", fieldKeys: ["mobile"] },
+        { objectCode: "customers", fieldKeys: ["phone", "alternate"] },
+      ],
+    }),
+  );
+});
+
+it("never treats a failed schema request as an unavailable configured table", async () => {
+  const api = apiStub();
+  publishedPhoneTables();
+  vi.mocked(api.settings).mockResolvedValue({
+    ...settings,
+    phoneFields: [
+      ...settings.phoneFields,
+      { objectCode: "other-table", fieldKeys: ["mobile"] },
+    ],
+  });
+  vi.mocked(objectApi.runtimeSchema).mockImplementation(
+    async (_tenant, code) => {
+      if (code === "other-table")
+        throw new TypeError("temporary network error");
+      return publishedPhoneSchema;
+    },
+  );
+  mount(<TelephonySettings tenantCode="northwind" api={api} />);
+  await screen.findByLabelText("企业 ID");
+  fireEvent.click(screen.getByText("业务表字段"));
+  await screen.findByText("业务表字段加载失败", {}, { timeout: 5000 });
+  expect(screen.queryByText("清理失效外呼配置")).not.toBeInTheDocument();
+  expect(api.updateSettings).not.toHaveBeenCalled();
 });

@@ -209,7 +209,8 @@ export function CallHistory({
         {filters.status ||
         filters.dateFrom ||
         filters.dateTo ||
-        filters.memberId ? (
+        filters.memberId ||
+        filters.objectCode ? (
           <Button
             type="text"
             onClick={() => setFilters({ page: 1, limit: 20 })}

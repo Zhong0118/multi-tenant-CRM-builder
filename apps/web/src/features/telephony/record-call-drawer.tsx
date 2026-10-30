@@ -51,6 +51,12 @@ export function RecordCallAction({
   currentMemberName?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const identity = `${tenantCode}:${schema.object.code}:${record.id}`;
+  const trigger = useRef<{
+    element: HTMLElement;
+    href: string;
+    identity: string;
+  } | null>(null);
   if (
     !recordFields(schema, record).some(
       (field) =>
@@ -70,6 +76,11 @@ export function RecordCallAction({
         title="电话外呼"
         onClick={(event) => {
           event.stopPropagation();
+          trigger.current = {
+            element: event.currentTarget,
+            href: window.location.href,
+            identity,
+          };
           setOpen(true);
         }}
       />
@@ -80,7 +91,17 @@ export function RecordCallAction({
           objectCode={schema.object.code}
           recordId={record.id}
           currentMemberName={currentMemberName}
-          onClose={() => setOpen(false)}
+          onClose={(restoreFocus = true) => {
+            setOpen(false);
+            const source = trigger.current;
+            if (
+              restoreFocus &&
+              source?.element.isConnected &&
+              source.href === window.location.href &&
+              source.identity === identity
+            )
+              source.element.focus({ preventScroll: true });
+          }}
         />
       ) : null}
     </>
@@ -99,7 +120,7 @@ export function RecordCallDrawer({
   objectCode: string;
   recordId: string;
   currentMemberName?: string;
-  onClose: () => void;
+  onClose: (restoreFocus?: boolean) => void;
   api?: TelephonyApi;
 }) {
   const client = useQueryClient();
@@ -116,8 +137,9 @@ export function RecordCallDrawer({
     gcTime: 0,
     retry: false,
   });
+  const [open, setOpen] = useState(true);
   const [selected, setSelected] = useState("");
-  const [confirmed, setConfirmed] = useState(false);
+  const [confirmation, setConfirmation] = useState<string>();
   const [error, setError] = useState<string>();
   const [result, setResult] = useState<TelephonyCall>();
   const [callId, setCallId] = useState<string>();
@@ -141,6 +163,16 @@ export function RecordCallDrawer({
     ? selected
     : fields[0]?.fieldKey;
   const phone = fieldKey ? data?.record.values[fieldKey] : undefined;
+  const reviewKey =
+    data && fieldKey
+      ? JSON.stringify([
+          data.runtime.mode,
+          data.runtime.callerPhone,
+          fieldKey,
+          phone,
+        ])
+      : undefined;
+  const confirmed = Boolean(reviewKey && confirmation === reviewKey);
   const submit = useMutation({
     mutationFn: (target: { requestId: string; fieldKey: string }) =>
       api.createCall(tenantCode, { ...target, objectCode, recordId }),
@@ -180,15 +212,13 @@ export function RecordCallDrawer({
     onError: (caught) => setError(toApiError(caught).message),
   });
   const dial = () => {
-    if (
-      submitting.current ||
-      callId ||
-      !fieldKey ||
-      !confirmed ||
-      !data?.runtime.available
-    )
+    if (submitting.current || callId) return;
+    if (!attempt && (!fieldKey || !confirmed || !data?.runtime.available))
       return;
-    const target = attempt ?? { requestId: crypto.randomUUID(), fieldKey };
+    const target = attempt ?? {
+      requestId: crypto.randomUUID(),
+      fieldKey: fieldKey!,
+    };
     submitting.current = true;
     setAttempt(target);
     setError(undefined);
@@ -197,10 +227,17 @@ export function RecordCallDrawer({
   const href = result ? callRecordHref(tenantCode, result) : null;
   return (
     <Drawer
-      open
+      open={open}
       title="电话外呼"
       size={OVERLAY_SIZE.narrow}
-      onClose={onClose}
+      onClose={() => {
+        setOpen(false);
+      }}
+      afterOpenChange={(visible) => {
+        if (!visible) onClose();
+      }}
+      focusable={{ focusTriggerAfterClose: false }}
+      forceRender
       destroyOnHidden
       className={styles.surface}
     >
@@ -277,7 +314,7 @@ export function RecordCallDrawer({
                 刷新结果
               </Button>
               {href ? (
-                <Link href={href} onClick={onClose}>
+                <Link href={href} onClick={() => onClose(false)}>
                   返回记录继续跟进
                 </Link>
               ) : null}
@@ -287,7 +324,7 @@ export function RecordCallDrawer({
                     setCallId(undefined);
                     setResult(undefined);
                     setAttempt(undefined);
-                    setConfirmed(false);
+                    setConfirmation(undefined);
                     setError(undefined);
                     void context.refetch();
                   }}
@@ -296,6 +333,32 @@ export function RecordCallDrawer({
                 </Button>
               ) : null}
             </div>
+          </>
+        ) : attempt ? (
+          <>
+            <p className={styles.hint}>
+              本次请求的拨打目标已锁定，重试只核对同一次请求，不会改拨其他号码
+            </p>
+            <label className={styles.control}>
+              拨打字段
+              <select
+                className={styles.select}
+                aria-label="拨打字段"
+                value={attempt.fieldKey}
+                disabled
+              >
+                <option value={attempt.fieldKey}>本次请求的电话字段</option>
+              </select>
+            </label>
+            <Button
+              type="primary"
+              icon={<PhoneOutlined aria-hidden />}
+              loading={submit.isPending}
+              disabled={submit.isPending}
+              onClick={dial}
+            >
+              重试本次请求
+            </Button>
           </>
         ) : context.isError ? (
           <Alert
@@ -350,7 +413,7 @@ export function RecordCallDrawer({
                     disabled={Boolean(attempt) || submit.isPending}
                     onChange={(event) => {
                       setSelected(event.target.value);
-                      setConfirmed(false);
+                      setConfirmation(undefined);
                     }}
                   >
                     {fields.map((field) => (
@@ -376,7 +439,11 @@ export function RecordCallDrawer({
                 <Checkbox
                   checked={confirmed}
                   disabled={Boolean(attempt) || !data.runtime.available}
-                  onChange={(event) => setConfirmed(event.target.checked)}
+                  onChange={(event) =>
+                    setConfirmation(
+                      event.target.checked ? reviewKey : undefined,
+                    )
+                  }
                 >
                   我已核对主叫和被叫号码
                 </Checkbox>

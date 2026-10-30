@@ -1,5 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { RecordList } from "@/features/records/record-list";
 import { RecordDetailPage } from "@/features/records/record-detail-page";
@@ -174,4 +180,61 @@ it("hides the call entry when actual record access hides its phone", () => {
   );
   expect(screen.queryByLabelText("拨打 组员客户")).not.toBeInTheDocument();
   expect(telephonyApi.runtime).not.toHaveBeenCalled();
+});
+
+it("restores focus to the originating mobile card call button after Escape closes the drawer", async () => {
+  render(
+    provider(
+      <RecordList
+        tenantCode="northwind"
+        schema={schema}
+        query={{ ...DEFAULT_RECORD_QUERY, scope: "group" }}
+        initialPage={{ items: [record], page: 1, limit: 20, total: 1 }}
+        currentMemberId="me"
+      />,
+    ),
+  );
+  const card = screen.getByLabelText("客户记录卡片");
+  const trigger = within(card).getByLabelText("拨打 组员客户");
+  fireEvent.click(trigger);
+  await screen.findByText("13900000001");
+  const dialog = screen.getByRole("dialog");
+  dialog.focus();
+  fireEvent.keyDown(dialog, { key: "Escape", keyCode: 27 });
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  await waitFor(() => expect(trigger).toHaveFocus());
+});
+
+it("does not restore focus to a mounted trigger after navigation changes the page", async () => {
+  render(
+    provider(
+      <RecordList
+        tenantCode="northwind"
+        schema={schema}
+        query={{ ...DEFAULT_RECORD_QUERY, scope: "group" }}
+        initialPage={{ items: [record], page: 1, limit: 20, total: 1 }}
+        currentMemberId="me"
+      />,
+    ),
+  );
+  const trigger = within(screen.getByLabelText("客户记录卡片")).getByLabelText(
+    "拨打 组员客户",
+  );
+  fireEvent.click(trigger);
+  await screen.findByText("13900000001");
+  const dialog = screen.getByRole("dialog");
+  dialog.focus();
+  const previousUrl = window.location.href;
+  window.history.pushState({}, "", "/workspace/northwind/calls");
+  try {
+    fireEvent.keyDown(dialog, { key: "Escape", keyCode: 27 });
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(trigger).not.toHaveFocus();
+  } finally {
+    window.history.replaceState({}, "", previousUrl);
+  }
 });
