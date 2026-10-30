@@ -23,7 +23,7 @@ export interface RecordListQuery {
   limit: number;
   search?: string;
   ownerMemberId?: string;
-  scope?: "mine" | "pool" | "all";
+  scope?: "mine" | "pool" | "group" | "all";
   filters?: RecordFilters;
   sort?: RecordListSortField;
   direction?: RecordSortDirection;

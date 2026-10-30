@@ -751,10 +751,7 @@ export function RecordList({
                   if (!poolConfig.lifecycleEnabled)
                     return apply({
                       ...query,
-                      scope:
-                        view === "group"
-                          ? undefined
-                          : (view as "mine" | "pool" | "all"),
+                      scope: view as RecordQuery["scope"],
                       poolStage: undefined,
                       page: 1,
                       ownerMemberId: undefined,
@@ -764,16 +761,22 @@ export function RecordList({
                     "FOLLOWING",
                     "PROTECTED",
                   ].includes(view);
+                  const publicStage =
+                    view === "LEAD_POOL" || view === "CUSTOMER_POOL";
                   apply({
                     ...query,
                     poolStage:
                       view === "all" ? undefined : (view as PoolStageFilter),
-                    scope:
-                      privateStage && !canFilterByOwner && !groupRead
+                    scope: groupRead
+                      ? !publicStage && query.scope === "group"
+                        ? "group"
+                        : "mine"
+                      : privateStage && !canFilterByOwner
                         ? "mine"
                         : undefined,
                     page: 1,
-                    ownerMemberId: undefined,
+                    ownerMemberId:
+                      groupRead && !publicStage ? query.ownerMemberId : undefined,
                   });
                 }}
                 options={
@@ -882,6 +885,47 @@ export function RecordList({
           aria-label={`${schema.object.name}筛选`}
         >
           <div className={rl.rowStart}>
+            {groupRead &&
+            currentMemberId &&
+            query.scope !== "pool" &&
+            query.poolStage !== "LEAD_POOL" &&
+            query.poolStage !== "CUSTOMER_POOL" ? (
+              <Select
+                aria-label="按小组成员筛选"
+                prefix="小组成员"
+                variant="borderless"
+                showSearch
+                optionFilterProp="searchText"
+                popupMatchSelectWidth={false}
+                className={rl.quickFilter}
+                value={
+                  query.scope === "mine"
+                    ? currentMemberId
+                    : (query.ownerMemberId ?? "group")
+                }
+                onChange={(memberId: string) =>
+                  apply({
+                    ...query,
+                    scope: memberId === currentMemberId ? "mine" : "group",
+                    ownerMemberId:
+                      memberId === currentMemberId || memberId === "group"
+                        ? undefined
+                        : memberId,
+                    page: 1,
+                  })
+                }
+                options={[
+                  {
+                    label: "小组成员",
+                    options: memberSelectOptions(members, {
+                      includeDisabled: true,
+                      currentMemberId,
+                    }),
+                  },
+                  { value: "group", label: "全部本组", searchText: "全部本组" },
+                ]}
+              />
+            ) : null}
             {canFilterByOwner &&
             query.scope !== "pool" &&
             query.scope !== "mine" ? (

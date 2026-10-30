@@ -17,7 +17,7 @@ export interface RecordQuery {
   limit: number;
   search?: string;
   ownerMemberId?: string;
-  scope?: "mine" | "pool" | "all";
+  scope?: "mine" | "pool" | "group" | "all";
   filters: RecordFilters;
   sort: RecordListSortField;
   direction: RecordSortDirection;
@@ -117,7 +117,7 @@ export function parseRecordQuery(
     filters,
     poolStage: member(single(params.poolStage), [...POOL_STAGES, "LEGACY"] as PoolStageFilter[]),
     poolQuality: member(single(params.poolQuality), ["INVALID", "DUPLICATE", "LOST"] as const),
-    scope: member(single(params.scope), ["mine", "pool", "all"] as const),
+    scope: member(single(params.scope), ["mine", "pool", "group", "all"] as const),
     sort: member(single(params.sort), allowedSorts) ?? defaults.sort,
     direction:
       member(single(params.direction), DIRECTIONS) ?? defaults.direction,
@@ -129,6 +129,14 @@ export function restrictRecordQuery(
   query: RecordQuery,
   schema: RuntimeObjectSchema,
 ): RecordQuery {
+  // GROUP is an access ceiling; opening a table still starts with the leader's own records.
+  if (
+    schema.scopes.read === "GROUP" &&
+    !query.scope &&
+    !query.ownerMemberId
+  ) {
+    query = { ...query, scope: "mine" };
+  }
   if (schema.queryFieldKeys === undefined) return query;
   const allowed = new Set(schema.queryFieldKeys);
   const searchable = schema.fields.some(

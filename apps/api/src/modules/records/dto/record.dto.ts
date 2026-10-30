@@ -36,10 +36,10 @@ export class RecordListQueryDto {
   @IsOptional()
   @IsIn(['INVALID', 'DUPLICATE', 'LOST'])
   poolQuality?: PoolQuality;
-  @ApiPropertyOptional({ enum: ['mine', 'pool', 'all'] })
+  @ApiPropertyOptional({ enum: ['mine', 'pool', 'group', 'all'] })
   @IsOptional()
-  @IsIn(['mine', 'pool', 'all'])
-  scope?: 'mine' | 'pool' | 'all';
+  @IsIn(['mine', 'pool', 'group', 'all'])
+  scope?: 'mine' | 'pool' | 'group' | 'all';
 
   @ApiPropertyOptional({ type: Number, minimum: 1, default: 1 })
   @IsOptional()
@@ -67,7 +67,8 @@ export class RecordListQueryDto {
       { type: 'string', format: 'uuid' },
       { type: 'string', enum: ['unassigned'] },
     ],
-    description: '按负责人筛选；unassigned 表示未指定负责人，仅管理员可筛选。',
+    description:
+      '按负责人筛选；管理员可选公司成员，拥有本组查看权限的组长仅可选本组成员。unassigned 表示未指定负责人，仅管理员可选。',
   })
   @IsOptional()
   @ValidateIf((_object, value: unknown) => value !== 'unassigned')

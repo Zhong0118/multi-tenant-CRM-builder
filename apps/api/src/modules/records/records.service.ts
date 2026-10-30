@@ -187,7 +187,7 @@ export class RecordsService {
       page: number;
       limit: number;
       search?: string;
-      scope?: 'mine' | 'pool' | 'all';
+      scope?: 'mine' | 'pool' | 'group' | 'all';
       poolStage?: PoolStage | 'LEGACY';
       poolQuality?: PoolQuality;
       ownerMemberId?: string;
@@ -334,7 +334,7 @@ export class RecordsService {
     objectCode: string,
     input: {
       search?: string;
-      scope?: 'mine' | 'pool' | 'all';
+      scope?: 'mine' | 'pool' | 'group' | 'all';
       poolStage?: PoolStage | 'LEGACY';
       poolQuality?: PoolQuality;
       ownerMemberId?: string;
@@ -1455,9 +1455,9 @@ async function resolveListOwner(
   resolved: ResolvedObjectSchema,
   store: RecordsStore,
   requested: string | undefined,
-  scope?: 'mine' | 'pool' | 'all',
+  scope?: 'mine' | 'pool' | 'group' | 'all',
 ): Promise<RecordOwnerFilter | null | undefined> {
-  if (scope !== undefined && !['mine', 'pool', 'all'].includes(scope))
+  if (scope !== undefined && !['mine', 'pool', 'group', 'all'].includes(scope))
     throw new ApiException('VALIDATION_FAILED', 400);
   if (scope === 'pool') {
     if (
@@ -1471,6 +1471,8 @@ async function resolveListOwner(
   }
   if (scope === 'all' && resolved.access.readScope !== 'ALL')
     throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+  if (scope === 'group' && resolved.access.readScope !== 'GROUP')
+    throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
   if (scope === 'mine')
     return recordOwnerMatches(
       recordOwnerFilter(resolved.access, context.memberId),
@@ -1478,10 +1480,14 @@ async function resolveListOwner(
     )
       ? context.memberId
       : { in: [] };
-  if (
-    resolved.access.readScope === 'OWN' ||
-    resolved.access.readScope === 'GROUP'
-  )
+  if (resolved.access.readScope === 'GROUP') {
+    const owners = recordOwnerFilter(resolved.access, context.memberId);
+    if (!requested) return owners;
+    if (!resolved.access.groupOwnerMemberIds?.includes(requested))
+      throw new ApiException('OWNER_INVALID', 400);
+    return recordOwnerMatches(owners, requested) ? requested : { in: [] };
+  }
+  if (resolved.access.readScope === 'OWN')
     return recordOwnerFilter(resolved.access, context.memberId);
   if (resolved.access.readScope === 'NONE') {
     throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
@@ -1516,7 +1522,7 @@ function resolveExportFields(
 
 function poolQueryScope(
   stage: PoolStage | 'LEGACY' | undefined,
-  scope?: 'mine' | 'pool' | 'all',
+  scope?: 'mine' | 'pool' | 'group' | 'all',
 ) {
   if (stage !== undefined && stage !== 'LEGACY' && !POOL_STAGES.includes(stage))
     throw new ApiException('VALIDATION_FAILED', 400);

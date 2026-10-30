@@ -7830,7 +7830,7 @@ export interface operations {
         /** @description 按已发布字段筛选的 JSON 对象，支持选项、日期范围或相对时间、数值区间、是否、成员、文本包含，以及有值/空值。 */
         filters?: string;
         limit?: number;
-        /** @description 按负责人筛选；unassigned 表示未指定负责人，仅管理员可筛选。 */
+        /** @description 按负责人筛选；管理员可选公司成员，拥有本组查看权限的组长仅可选本组成员。unassigned 表示未指定负责人，仅管理员可选。 */
         ownerMemberId?: string & (string | "unassigned");
         page?: number;
         poolQuality?: "INVALID" | "DUPLICATE" | "LOST";
@@ -7841,7 +7841,7 @@ export interface operations {
           | "FOLLOWING"
           | "PROTECTED"
           | "LEGACY";
-        scope?: "mine" | "pool" | "all";
+        scope?: "mine" | "pool" | "group" | "all";
         search?: string;
         /** @description updatedAt、createdAt、recordNo，或当前业务表中可排序的已发布字段键。 */
         sort?: string;
@@ -8435,7 +8435,7 @@ export interface operations {
         /** @description 按已发布字段筛选的 JSON 对象，支持选项、日期范围或相对时间、数值区间、是否、成员、文本包含，以及有值/空值。 */
         filters?: string;
         limit?: number;
-        /** @description 按负责人筛选；unassigned 表示未指定负责人，仅管理员可筛选。 */
+        /** @description 按负责人筛选；管理员可选公司成员，拥有本组查看权限的组长仅可选本组成员。unassigned 表示未指定负责人，仅管理员可选。 */
         ownerMemberId?: string & (string | "unassigned");
         page?: number;
         poolQuality?: "INVALID" | "DUPLICATE" | "LOST";
@@ -8446,7 +8446,7 @@ export interface operations {
           | "FOLLOWING"
           | "PROTECTED"
           | "LEGACY";
-        scope?: "mine" | "pool" | "all";
+        scope?: "mine" | "pool" | "group" | "all";
         search?: string;
         /** @description updatedAt、createdAt、recordNo，或当前业务表中可排序的已发布字段键。 */
         sort?: string;

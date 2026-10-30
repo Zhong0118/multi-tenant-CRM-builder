@@ -317,6 +317,7 @@ it("removes stale query fields after a group column permission change", async ()
     filters: { secret: ["yes"], name: { contains: "公开" } },
   };
   const schema = {
+    scopes: { read: "ALL", update: "ALL" },
     queryFieldKeys: ["name"],
     fields: [{ fieldKey: "name", type: "TEXT" }],
     object: { titleFieldKey: "name" },
