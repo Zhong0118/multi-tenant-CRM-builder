@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayUnique,
@@ -184,11 +184,30 @@ export class TelephonyHookDto {
   @IsIn([1, 2])
   push_type!: number;
   @ApiProperty() @IsString() @MinLength(1) @MaxLength(200) bind_id!: string;
-  @ApiProperty() @IsString() @MinLength(1) @MaxLength(100) seats_id!: string;
+  @ApiProperty({
+    oneOf: [
+      { type: 'string', minLength: 1, maxLength: 100 },
+      { type: 'integer', minimum: 0, maximum: Number.MAX_SAFE_INTEGER },
+    ],
+  })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+      ? String(value)
+      : value,
+  )
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  seats_id!: string;
   @ApiProperty() @IsString() @MaxLength(20) telA!: string;
   @ApiProperty() @IsString() @MaxLength(20) telB!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) telX?: string;
-  @ApiPropertyOptional({ enum: ['1', '0', 'End'] })
+  @ApiPropertyOptional({
+    oneOf: [
+      { type: 'string', enum: ['1', '0', 'End'] },
+      { type: 'integer', enum: [1, 0] },
+    ],
+  })
   @IsOptional()
   @Type(() => String)
   @IsIn(['1', '0', 'End'])

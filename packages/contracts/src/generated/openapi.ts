@@ -4439,9 +4439,8 @@ export interface components {
       end_time?: string;
       /** @enum {number} */
       push_type: 1 | 2;
-      seats_id: string;
-      /** @enum {string} */
-      status?: "1" | "0" | "End";
+      seats_id: string | number;
+      status?: ("1" | "0" | "End") | (1 | 0);
       telA: string;
       telB: string;
       telX?: string;

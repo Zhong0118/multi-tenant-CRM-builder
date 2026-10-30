@@ -697,4 +697,53 @@ describe('tenant telephony', () => {
       config.set('TELEPHONY_LIVE_ENABLED', 'false');
     }
   });
+  it('accepts supplier numeric seat, push type and status while rejecting non-scalar or unsafe seat identifiers', async () => {
+    await setup();
+    const call = await acceptedCall({ seatId: '111' });
+    const response = await callback(call.providerBindId!, {
+      seats_id: 111,
+      push_type: 1,
+      status: 1,
+    });
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ code: 0 });
+    for (const seats_id of [
+      { id: 111 },
+      [111],
+      true,
+      null,
+      111.5,
+      -111,
+      Number.MAX_SAFE_INTEGER + 1,
+    ]) {
+      expect(
+        (
+          await callback(call.providerBindId!, {
+            seats_id,
+            push_type: 1,
+            status: 1,
+          })
+        ).status,
+      ).toBe(400);
+    }
+    expect(
+      (
+        await callback(call.providerBindId!, {
+          seats_id: 112,
+          push_type: 1,
+          status: 1,
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      await h.adminDatabase.telephonyCall.findUniqueOrThrow({
+        where: { id: call.id },
+      }),
+    ).toMatchObject({ seatId: '111', status: 'CONNECTED' });
+    expect(
+      await h.adminDatabase.recordActivity.count({
+        where: { tenantId: f.tenantA.id, recordId: f.ownedRecord.id },
+      }),
+    ).toBe(1);
+  });
 });

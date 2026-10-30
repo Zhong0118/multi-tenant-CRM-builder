@@ -6947,11 +6947,30 @@
             "type": "number"
           },
           "seats_id": {
-            "type": "string"
+            "oneOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              }
+            ]
           },
           "status": {
-            "enum": ["1", "0", "End"],
-            "type": "string"
+            "oneOf": [
+              {
+                "enum": ["1", "0", "End"],
+                "type": "string"
+              },
+              {
+                "enum": [1, 0],
+                "type": "integer"
+              }
+            ]
           },
           "telA": {
             "type": "string"
