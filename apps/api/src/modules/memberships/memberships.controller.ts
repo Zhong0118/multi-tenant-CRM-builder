@@ -1,3 +1,4 @@
+import { transferSettings } from '../objects/effective-access';
 import {
   Body,
   Controller,
@@ -333,6 +334,7 @@ function toMemberObjectAccessInput(
     ...(dto.groupFieldAccess === undefined
       ? {}
       : { groupFieldAccess: dto.groupFieldAccess }),
+    ...transferSettings(dto),
     canCreate: dto.canCreate,
     canRead: dto.canRead,
     canUpdate: dto.canUpdate,

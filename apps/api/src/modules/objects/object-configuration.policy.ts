@@ -1,3 +1,4 @@
+import { transferSettings } from './effective-access';
 import { OBJECT_CODE_REFERENCE_PATTERN } from './object-code';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -299,6 +300,7 @@ export function compileObjectConfiguration(
       sort: { ...input.defaultView.sort },
     },
     employeeAccess: {
+      ...transferSettings(input.employeeAccess),
       canCreate: input.employeeAccess.canCreate,
       canRead: input.employeeAccess.canRead,
       canUpdate: input.employeeAccess.canUpdate,

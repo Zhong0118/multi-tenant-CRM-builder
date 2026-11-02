@@ -367,6 +367,36 @@ describe("MemberObjectAccess", () => {
     expect(summary).toHaveTextContent("修改不可以");
   });
 
+  it("saves download separately without taking away manual reading or import", async () => {
+    const api = accessApi();
+    renderAccess(
+      <MemberObjectAccess
+        tenantCode="northwind"
+        memberId="member-lin"
+        memberName="林员工"
+        initialRows={[row()]}
+        api={api}
+      />,
+    );
+    const scope = panel("客户资料");
+    startException("客户资料");
+    expect(within(scope).getByLabelText("导入记录")).toBeChecked();
+    fireEvent.click(within(scope).getByLabelText("下载数据（导出）"));
+    fireEvent.click(within(scope).getByRole("button", { name: "保存例外" }));
+    await waitFor(() =>
+      expect(api.set).toHaveBeenCalledWith(
+        "northwind",
+        "member-lin",
+        row().objectId,
+        expect.objectContaining({
+          canExport: false,
+          canRead: true,
+          canCreate: true,
+        }),
+      ),
+    );
+  });
+
   it("keeps the exception when restoring the default fails", async () => {
     const api = accessApi({
       set: vi.fn().mockRejectedValue({

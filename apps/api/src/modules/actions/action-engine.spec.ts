@@ -1,3 +1,4 @@
+import { recordTransferActions } from '../objects/effective-access';
 import type { Prisma } from '@crm/database';
 
 import type { TenantContext } from '../../common/tenancy/tenant-context';
@@ -200,6 +201,7 @@ function resolved(
       })),
       defaultView: { ...published.defaultView, columnFieldKeys: [] },
       actions: {
+        ...recordTransferActions(effective),
         canCreate: effective.canCreate,
         canRead: effective.canRead,
         canUpdate: effective.canUpdate,

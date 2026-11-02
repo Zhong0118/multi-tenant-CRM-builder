@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  transferLabels,
+  transferKeys,
+  type TransferKey,
+} from "@/features/objects/record-transfer-permissions";
 import { Alert, Button, Drawer, Form, Select, Space, Switch } from "antd";
 import type { components } from "@crm/contracts";
 import { useRef, useState } from "react";
@@ -82,6 +87,9 @@ export function BulkMemberAccess({
     "KEEP",
   );
   const [policy, setPolicy] = useState<MemberObjectPolicy>();
+  const [transfers, setTransfers] = useState<
+    Partial<Record<TransferKey, boolean>>
+  >({});
   const [fields, setFields] = useState<Record<string, FieldChange>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -93,6 +101,7 @@ export function BulkMemberAccess({
 
   function chooseObject(nextId: string, nextObjects = objects) {
     setObjectId(nextId);
+    setTransfers({});
     setObjectMode("KEEP");
     setFields({});
     setPolicy(
@@ -135,6 +144,7 @@ export function BulkMemberAccess({
     if (objectMode === "OVERRIDE" && policy)
       input.objectAccess = {
         mode: "OVERRIDE",
+        ...transfers,
         canCreate: policy.canCreate,
         canRead: policy.canRead,
         canUpdate: policy.canUpdate,
@@ -279,6 +289,35 @@ export function BulkMemberAccess({
                           disabled={saving}
                           onChange={(checked) =>
                             setPolicy({ ...policy, [key]: checked })
+                          }
+                        />
+                      </Form.Item>
+                    ))}
+                    {transferKeys.map((key) => (
+                      <Form.Item key={key} label={transferLabels[key]}>
+                        <Select
+                          aria-label={transferLabels[key]}
+                          disabled={saving}
+                          value={
+                            transfers[key] === undefined
+                              ? "keep"
+                              : transfers[key]
+                                ? "allow"
+                                : "deny"
+                          }
+                          options={[
+                            { value: "keep", label: "保留各成员设置" },
+                            { value: "allow", label: "允许" },
+                            { value: "deny", label: "禁止" },
+                          ]}
+                          onChange={(value) =>
+                            setTransfers({
+                              ...transfers,
+                              [key]:
+                                value === "keep"
+                                  ? undefined
+                                  : value === "allow",
+                            })
                           }
                         />
                       </Form.Item>

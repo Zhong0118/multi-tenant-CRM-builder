@@ -157,6 +157,8 @@ export function templateDraftFromDetail(
         : null,
       employeeAccess: object.employeeAccess
         ? {
+            canImport: object.employeeAccess.canImport,
+            canExport: object.employeeAccess.canExport,
             canCreate: object.employeeAccess.canCreate,
             canRead: object.employeeAccess.canRead,
             canUpdate: object.employeeAccess.canUpdate,
@@ -422,6 +424,8 @@ export function setEmployeeAccess(
   draft: TemplateDraft,
   objectId: string,
   access: {
+    canImport?: boolean;
+    canExport?: boolean;
     canCreate: boolean;
     canRead: boolean;
     canUpdate: boolean;
@@ -435,6 +439,8 @@ export function setEmployeeAccess(
     ...object,
     employeeAccess: access
       ? {
+          canImport: access.canImport,
+          canExport: access.canExport,
           canCreate: access.canCreate,
           canRead: access.canRead,
           canUpdate: access.canUpdate,

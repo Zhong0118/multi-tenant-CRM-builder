@@ -86,6 +86,8 @@ export interface PublishedObjectSchema {
     };
   };
   employeeAccess: {
+    canImport?: boolean;
+    canExport?: boolean;
     canCreate: boolean;
     canRead: boolean;
     canUpdate: boolean;

@@ -36,6 +36,8 @@ export interface TemplateDefaultView {
 }
 
 export interface TemplateEmployeeAccess {
+  canImport?: boolean;
+  canExport?: boolean;
   canCreate: boolean;
   canRead: boolean;
   canUpdate: boolean;

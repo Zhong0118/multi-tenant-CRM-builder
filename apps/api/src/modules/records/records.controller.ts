@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  Header,
   Param,
   Patch,
   Post,
@@ -73,7 +72,6 @@ export class RecordsController {
   @ApiParam({ name: 'objectCode' })
   @ApiProduces('text/csv')
   @ApiOkResponse({ description: '当前筛选结果的 CSV 文件。' })
-  @Header('Content-Type', 'text/csv; charset=utf-8')
   async exportCsv(
     @CurrentTenant() context: TenantContext,
     @Param('objectCode') objectCode: string,
@@ -91,7 +89,9 @@ export class RecordsController {
       'Content-Disposition',
       `attachment; filename*=UTF-8''${encodeURIComponent(file.fileName)}`,
     );
-    return new StreamableFile(Buffer.from(file.csv, 'utf8'));
+    return new StreamableFile(Buffer.from(file.csv, 'utf8'), {
+      type: 'text/csv; charset=utf-8',
+    });
   }
 
   @Post()

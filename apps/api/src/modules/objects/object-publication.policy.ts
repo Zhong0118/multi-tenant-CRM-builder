@@ -70,6 +70,8 @@ export interface PublicationDraft {
     updatedAt?: string;
   } | null;
   employeeAccess: {
+    canImport?: boolean;
+    canExport?: boolean;
     canCreate: boolean;
     canRead: boolean;
     canUpdate: boolean;

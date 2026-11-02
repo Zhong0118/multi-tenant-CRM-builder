@@ -122,6 +122,187 @@ describe('GROUP read boundaries over HTTP', () => {
     if (h) await closeCriticalHarness(h);
   });
 
+  it('restricts file transfers independently of viewing and manual creation, including dry runs', async () => {
+    const accessPath = `${base()}/members/${f.employee.memberId}/object-access/${f.object.id}`;
+    const setAccess = (canImport: boolean, canExport: boolean) =>
+      request(h.app.getHttpServer())
+        .put(accessPath)
+        .set('Cookie', f.admin.cookie)
+        .set('Origin', origin)
+        .send({
+          mode: 'OVERRIDE',
+          canCreate: true,
+          canRead: true,
+          canUpdate: false,
+          readScope: 'GROUP',
+          updateScope: 'NONE',
+          canImport,
+          canExport,
+        });
+    const importFile = (dryRun: boolean) =>
+      request(h.app.getHttpServer())
+        .post(`${records()}/import`)
+        .set('Cookie', f.employee.cookie)
+        .set('Origin', origin)
+        .send({
+          dryRun,
+          rows: [{ rowNumber: 2, values: { name: '受权限控制的导入' } }],
+        });
+    await get(`${records()}/export`).expect(200);
+    await setAccess(false, true).expect(200);
+    await get(schemaPath())
+      .expect(200)
+      .expect(({ body }) =>
+        expect((body as { actions: unknown }).actions).toMatchObject({
+          canCreate: true,
+          canRead: true,
+          canImport: false,
+          canExport: true,
+        }),
+      );
+    const before = await h.adminDatabase.record.count();
+    await importFile(true).expect(403);
+    await importFile(false).expect(403);
+    expect(await h.adminDatabase.record.count()).toBe(before);
+    const csv = await get(`${records()}/export`).expect(200);
+    expect(csv.text).not.toContain('hidden-other');
+    await setAccess(true, false).expect(200);
+    await get(records()).expect(200);
+    await get(`${records()}/export`).expect(403);
+    await get(`${records()}/export`, f.admin).expect(200);
+    await importFile(true).expect(201);
+    await importFile(false).expect(201);
+    expect(await h.adminDatabase.record.count()).toBe(before + 1);
+    await setAccess(false, false).expect(200);
+    await importFile(false).expect(403);
+    await get(`${records()}/export`).expect(403);
+    await request(h.app.getHttpServer())
+      .post(records())
+      .set('Cookie', f.employee.cookie)
+      .set('Origin', origin)
+      .send({ values: { name: '仍可手动创建' } })
+      .expect(201);
+    await request(h.app.getHttpServer())
+      .put(accessPath)
+      .set('Cookie', f.admin.cookie)
+      .set('Origin', origin)
+      .send({ mode: 'INHERIT' })
+      .expect(200);
+    await get(`${records()}/export`).expect(200);
+  });
+
+  it('keeps table transfer settings in the draft until publication and honors explicit member exceptions', async () => {
+    const adminRequest = (method: 'post' | 'put', path: string, body: object) =>
+      request(h.app.getHttpServer())
+        [method](path)
+        .set('Cookie', f.admin.cookie)
+        .set('Origin', origin)
+        .send(body);
+    const created = await adminRequest('post', `${base()}/object-definitions`, {
+      name: '导入权限验收',
+      code: 'transfer',
+    }).expect(201);
+    const objectMeta = (response: { body: unknown }) =>
+      (response.body as { object: { id: string; version: number } }).object;
+    const { id: objectId } = objectMeta(created);
+    const def = `${base()}/object-definitions/${objectId}`;
+    const data = `${base()}/objects/transfer/records`;
+    const added = await adminRequest('post', def + '/fields', {
+      expectedVersion: objectMeta(created).version,
+      fieldKey: 'name',
+      label: '名称',
+      type: 'TEXT',
+      required: true,
+    }).expect(201);
+    const view = await adminRequest('put', def + '/default-view', {
+      expectedVersion: objectMeta(added).version,
+      name: '默认',
+      columnFieldKeys: ['name'],
+      sort: { field: 'updatedAt', direction: 'desc' },
+    }).expect(200);
+    const basePolicy = {
+      canCreate: true,
+      canRead: true,
+      canUpdate: false,
+      canDelete: false,
+      readScope: 'OWN',
+      updateScope: 'NONE',
+      fields: { name: 'EDIT' },
+    };
+    const initial = await adminRequest('put', def + '/permissions', {
+      ...basePolicy,
+      expectedVersion: objectMeta(view).version,
+    }).expect(200);
+    await adminRequest('post', def + '/publications', {
+      expectedVersion: objectMeta(initial).version,
+    }).expect(201);
+    const draft = await adminRequest('put', def + '/permissions', {
+      ...basePolicy,
+      expectedVersion: objectMeta(initial).version,
+      canImport: false,
+      canExport: false,
+    }).expect(200);
+    expect(draft.body).toHaveProperty('employeeAccess.canExport', false);
+    await get(data + '/export').expect(200);
+    await adminRequest('post', def + '/publications', {
+      expectedVersion: objectMeta(draft).version,
+    }).expect(201);
+    await get(data + '/export')
+      .expect(403)
+      .expect('Content-Type', /json/);
+    await get(data + '/export', f.admin).expect(200);
+    const memberPath = `${base()}/members/${f.employee.memberId}/object-access/${objectId}`;
+    const member = {
+      mode: 'OVERRIDE',
+      canCreate: true,
+      canRead: true,
+      canUpdate: false,
+      readScope: 'OWN',
+      updateScope: 'NONE',
+    };
+    await adminRequest('put', memberPath, member).expect(200);
+    await get(data + '/export').expect(403);
+    await adminRequest('put', memberPath, {
+      ...member,
+      canExport: true,
+    }).expect(200);
+    await get(data + '/export').expect(200);
+    await get(data + '/export', f.otherEmployee).expect(403);
+    await get(`${base()}/objects/transfer/schema`)
+      .expect(200)
+      .expect(({ body }) =>
+        expect((body as { actions: unknown }).actions).toMatchObject({
+          canImport: false,
+          canExport: true,
+        }),
+      );
+    // Editing other actions in bulk must not copy one employee's export grant to their peers.
+    const batch = (access: object) =>
+      request(h.app.getHttpServer())
+        .patch(`${base()}/objects/${objectId}/member-access`)
+        .set('Cookie', f.admin.cookie)
+        .set('Origin', origin)
+        .send({
+          memberIds: [f.employee.memberId, f.otherEmployee.memberId],
+          objectAccess: access,
+        });
+    await batch({ ...member, canImport: true }).expect(200);
+    await get(data + '/export').expect(200);
+    await get(data + '/export', f.otherEmployee).expect(403);
+    await batch({ ...member, canImport: true, canCreate: false }).expect(200);
+    await get(`${base()}/objects/transfer/schema`)
+      .expect(200)
+      .expect(({ body }) =>
+        expect((body as { actions: unknown }).actions).toMatchObject({
+          canImport: false,
+          canCreate: false,
+          canExport: true,
+        }),
+      );
+    await adminRequest('put', memberPath, { mode: 'INHERIT' }).expect(200);
+    await get(data + '/export').expect(403);
+  });
+
   it('labels only current GROUP owners without exposing roster details', async () => {
     await h.adminDatabase.tenantMember.update({
       where: { id: f.otherEmployee.memberId },

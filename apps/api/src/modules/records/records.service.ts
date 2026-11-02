@@ -1,4 +1,7 @@
-import { recordFieldAccess } from '../objects/effective-access';
+import {
+  recordFieldAccess,
+  recordTransferActions,
+} from '../objects/effective-access';
 import type { PublishedFieldAccess } from '../objects/object-schema';
 import {
   recordOwnerFilter,
@@ -351,6 +354,10 @@ export class RecordsService {
     );
     return this.repository.withTenant(context, async (store) => {
       resolved = await store.resolveCurrentObject(resolved);
+      if (!recordTransferActions(resolved.access).canExport)
+        throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403, {
+          message: '没有下载此业务表数据的权限。',
+        });
       const ownerMemberId = await resolveListOwner(
         context,
         resolved,
@@ -520,8 +527,10 @@ export class RecordsService {
       context,
       objectCode,
     );
-    if (!resolved.access.canCreate) {
-      throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+    if (!recordTransferActions(resolved.access).canImport) {
+      throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403, {
+        message: '没有导入此业务表数据的权限。',
+      });
     }
     if (input.rows.length === 0 || input.rows.length > RECORD_IMPORT_MAX_ROWS) {
       throw new ApiException('RECORD_IMPORT_INVALID', 400, {
@@ -565,6 +574,10 @@ export class RecordsService {
       context,
       async ({ store, tx }) => {
         resolved = await store.resolveCurrentObject(resolved);
+        if (!recordTransferActions(resolved.access).canImport)
+          throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403, {
+            message: '没有导入此业务表数据的权限。',
+          });
         if (
           matchFields.some(
             (key) =>

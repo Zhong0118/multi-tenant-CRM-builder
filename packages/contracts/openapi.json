@@ -2990,6 +2990,12 @@
             "enum": [false],
             "type": "boolean"
           },
+          "canExport": {
+            "type": "boolean"
+          },
+          "canImport": {
+            "type": "boolean"
+          },
           "canRead": {
             "type": "boolean"
           },
@@ -3816,6 +3822,12 @@
           "canCreate": {
             "type": "boolean"
           },
+          "canExport": {
+            "type": "boolean"
+          },
+          "canImport": {
+            "type": "boolean"
+          },
           "canRead": {
             "type": "boolean"
           },
@@ -3906,6 +3918,12 @@
           },
           "canDelete": {
             "enum": [false],
+            "type": "boolean"
+          },
+          "canExport": {
+            "type": "boolean"
+          },
+          "canImport": {
             "type": "boolean"
           },
           "canRead": {
@@ -4104,6 +4122,12 @@
           },
           "canDelete": {
             "enum": [false],
+            "type": "boolean"
+          },
+          "canExport": {
+            "type": "boolean"
+          },
+          "canImport": {
             "type": "boolean"
           },
           "canRead": {
@@ -5226,6 +5250,12 @@
             "enum": [false],
             "type": "boolean"
           },
+          "canExport": {
+            "type": "boolean"
+          },
+          "canImport": {
+            "type": "boolean"
+          },
           "canRead": {
             "type": "boolean"
           },
@@ -5364,8 +5394,7 @@
       "PublishedObjectSchemaResponseDto": {
         "properties": {
           "actions": {
-            "additionalProperties": true,
-            "type": "object"
+            "$ref": "#/components/schemas/RuntimeRecordActionsDto"
           },
           "defaultView": {
             "additionalProperties": true,
@@ -6138,6 +6167,37 @@
           "sessionHistoryRetentionDays",
           "verificationTtlMinutes",
           "verificationRetentionDays"
+        ],
+        "type": "object"
+      },
+      "RuntimeRecordActionsDto": {
+        "properties": {
+          "canCreate": {
+            "type": "boolean"
+          },
+          "canDelete": {
+            "type": "boolean"
+          },
+          "canExport": {
+            "type": "boolean"
+          },
+          "canImport": {
+            "type": "boolean"
+          },
+          "canRead": {
+            "type": "boolean"
+          },
+          "canUpdate": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "canCreate",
+          "canRead",
+          "canUpdate",
+          "canDelete",
+          "canImport",
+          "canExport"
         ],
         "type": "object"
       },
@@ -6996,6 +7056,12 @@
           },
           "canDelete": {
             "enum": [false],
+            "type": "boolean"
+          },
+          "canExport": {
+            "type": "boolean"
+          },
+          "canImport": {
             "type": "boolean"
           },
           "canRead": {

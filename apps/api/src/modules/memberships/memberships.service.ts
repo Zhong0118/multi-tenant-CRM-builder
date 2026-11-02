@@ -1,3 +1,4 @@
+import { transferSettings } from '../objects/effective-access';
 import { Inject, Injectable } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 
@@ -56,6 +57,8 @@ export interface TenantMemberPage {
 
 export interface MemberObjectPolicy {
   groupFieldAccess?: Record<string, PublishedFieldAccess> | null;
+  canImport?: boolean;
+  canExport?: boolean;
   canCreate: boolean;
   canRead: boolean;
   canUpdate: boolean;
@@ -103,6 +106,8 @@ export type MemberObjectAccessInput =
   | {
       mode: 'OVERRIDE';
       groupFieldAccess?: Record<string, PublishedFieldAccess> | null;
+      canImport?: boolean;
+      canExport?: boolean;
       canCreate: boolean;
       canRead: boolean;
       canUpdate: boolean;
@@ -537,6 +542,7 @@ export class MembershipsService {
             : object.override?.groupFieldAccess !== undefined
               ? { groupFieldAccess: object.override.groupFieldAccess }
               : {}),
+          ...transferSettings(input, object.override),
           canCreate: input.canCreate,
           canRead: input.canRead,
           canUpdate: input.canUpdate,
@@ -635,6 +641,7 @@ export class MembershipsService {
               : object.override?.groupFieldAccess !== undefined
                 ? { groupFieldAccess: object.override.groupFieldAccess }
                 : {}),
+            ...transferSettings(policy, object.override),
             canCreate: policy.canCreate,
             canRead: policy.canRead,
             canUpdate: policy.canUpdate,
@@ -767,7 +774,12 @@ function resolveMemberObjectAccess(
   source: MemberObjectAccessSource,
   isLeader = false,
 ): MemberObjectAccess {
-  const policy = source.override ?? source.inherited;
+  const policy = source.override
+    ? {
+        ...source.override,
+        ...transferSettings(source.override, source.inherited),
+      }
+    : source.inherited;
   return {
     ...source,
     ...(isLeader && policy.readScope === 'GROUP'

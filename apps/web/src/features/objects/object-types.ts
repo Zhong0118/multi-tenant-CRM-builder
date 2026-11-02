@@ -176,6 +176,8 @@ export interface RuntimeObjectSchema {
     sort: { field: RecordSortField; direction: RecordSortDirection };
   };
   actions: {
+    canImport?: boolean;
+    canExport?: boolean;
     canCreate: boolean;
     canRead: boolean;
     canUpdate: boolean;
@@ -384,6 +386,14 @@ export function parseRuntimeObjectSchema(
       },
     },
     actions: {
+      canImport: asBoolean(
+        actions.canImport ?? actions.canCreate,
+        "actions.canImport",
+      ),
+      canExport: asBoolean(
+        actions.canExport ?? actions.canRead,
+        "actions.canExport",
+      ),
       canCreate: asBoolean(actions.canCreate, "actions.canCreate"),
       canRead: asBoolean(actions.canRead, "actions.canRead"),
       canUpdate: asBoolean(actions.canUpdate, "actions.canUpdate"),

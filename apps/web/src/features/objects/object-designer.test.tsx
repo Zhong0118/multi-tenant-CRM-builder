@@ -800,6 +800,21 @@ describe("employee permissions publication status", () => {
     expect(api.updatePermissions).not.toHaveBeenCalled();
   });
 
+  it("can turn off importing without turning off manual creation", async () => {
+    const api = objectApi();
+    renderDesigner(draft(), api);
+    fireEvent.click(screen.getByRole("button", { name: "员工权限" }));
+    fireEvent.click(screen.getByRole("switch", { name: "导入记录" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存员工权限" }));
+    await waitFor(() =>
+      expect(api.updatePermissions).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.objectContaining({ canImport: false, canCreate: true }),
+      ),
+    );
+  });
+
   it("keeps live defaults on save, explains publication, and refreshes them after publishing", async () => {
     const saved = draft({
       object: { ...draft().object, version: 5, hasUnpublishedChanges: true },

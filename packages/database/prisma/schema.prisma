@@ -603,6 +603,8 @@ model ObjectPermission {
   subjectType     PermissionSubjectType @map("subject_type")
   subjectRole     MemberRole?           @map("subject_role")
   subjectMemberId String?               @map("subject_member_id") @db.Uuid
+  canImport       Boolean?              @map("can_import")
+  canExport       Boolean?              @map("can_export")
   canCreate       Boolean               @default(false) @map("can_create")
   canRead         Boolean               @default(false) @map("can_read")
   canUpdate       Boolean               @default(false) @map("can_update")

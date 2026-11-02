@@ -155,6 +155,8 @@ function resolvedSchema(): ResolvedObjectSchema {
         sort: { field: 'updatedAt', direction: 'desc' },
       },
       actions: {
+        canImport: true,
+        canExport: true,
         canCreate: true,
         canRead: true,
         canUpdate: true,
