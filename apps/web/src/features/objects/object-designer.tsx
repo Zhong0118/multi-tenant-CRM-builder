@@ -1,6 +1,11 @@
 "use client";
 
 import {
+  canTransfer,
+  transferKeys,
+  transferLabels,
+} from "@/features/objects/record-transfer-permissions";
+import {
   ArrowDownOutlined,
   ArrowUpOutlined,
   EyeOutlined,
@@ -1603,6 +1608,8 @@ function DefaultViewSection({
 }
 
 type EmployeePolicyInput = {
+  canImport?: boolean;
+  canExport?: boolean;
   canCreate: boolean;
   canRead: boolean;
   canUpdate: boolean;
@@ -1641,6 +1648,10 @@ function PermissionsSection({
   const activeFields = draft.fields.filter(
     (field) => field.status === "ACTIVE",
   );
+  const [transfers, setTransfers] = useState({
+    canImport: current?.canImport,
+    canExport: current?.canExport,
+  });
   const [canCreate, setCanCreate] = useState(current?.canCreate ?? false);
   const [canRead, setCanRead] = useState(current?.canRead ?? false);
   const [canUpdate, setCanUpdate] = useState(current?.canUpdate ?? false);
@@ -1662,6 +1673,9 @@ function PermissionsSection({
     (field) => fieldAccess[field.fieldKey] !== field.employeeAccess,
   );
   const dirty =
+    transferKeys.some(
+      (key) => (transfers[key] ?? true) !== (current?.[key] ?? true),
+    ) ||
     canCreate !== (current?.canCreate ?? false) ||
     canRead !== (current?.canRead ?? false) ||
     canUpdate !== (current?.canUpdate ?? false) ||
@@ -1710,6 +1724,9 @@ function PermissionsSection({
   const liveFields = published?.fields ?? [];
   const pending =
     !published ||
+    transferKeys.some(
+      (key) => canTransfer(current, key) !== canTransfer(published, key),
+    ) ||
     (["create", "read", "update"] as const).some(
       (key) => liveRows[key] !== savedRows[key],
     ) ||
@@ -1786,7 +1803,7 @@ function PermissionsSection({
               <th scope="rowgroup" colSpan={4}>
                 记录
                 <span>
-                  字段权限还受这里的新建、查看、修改限制；「仅本人负责」指负责人是该员工的记录。
+                  导入需要查看和新建权限；下载仅包含员工可见的记录和列。「仅本人负责」指负责人是该员工的记录。
                 </span>
               </th>
             </tr>
@@ -1877,6 +1894,40 @@ function PermissionsSection({
                 </td>
               </tr>
             ))}
+            {transferKeys.map((key) => {
+              const edited = { canRead, canCreate, readScope, ...transfers };
+              const live = canTransfer(published, key) ? "允许" : "禁止";
+              const saved = canTransfer(current, key) ? "允许" : "禁止";
+              const next = canTransfer(edited, key) ? "允许" : "禁止";
+              return (
+                <tr key={key}>
+                  <th scope="row">{transferLabels[key]}</th>
+                  <td>{published ? live : "—"}</td>
+                  <td>
+                    {saved}
+                    {marker(live, saved, saved)}
+                  </td>
+                  <td>
+                    <span className={designer.matrixControl}>
+                      <Switch
+                        size="small"
+                        aria-label={transferLabels[key]}
+                        disabled={
+                          locked ||
+                          !canTransfer({ ...edited, [key]: true }, key)
+                        }
+                        checked={canTransfer(edited, key)}
+                        onChange={(enabled) =>
+                          setTransfers({ ...transfers, [key]: enabled })
+                        }
+                      />
+                      {next}
+                      {marker(live, saved, next)}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
             <tr className={designer.matrixGroup}>
               <th scope="rowgroup" colSpan={4}>
                 列
@@ -1970,6 +2021,7 @@ function PermissionsSection({
           disabled={archived}
           onClick={() =>
             onSave({
+              ...transfers,
               canCreate,
               canRead,
               canUpdate,

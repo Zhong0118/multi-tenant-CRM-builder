@@ -3005,6 +3005,8 @@ export interface components {
       canCreate: boolean;
       /** @enum {boolean} */
       canDelete: false;
+      canExport?: boolean;
+      canImport?: boolean;
       canRead: boolean;
       canUpdate: boolean;
       expectedVersion: number;
@@ -3284,6 +3286,8 @@ export interface components {
     };
     MemberObjectAccessDto: {
       canCreate?: boolean;
+      canExport?: boolean;
+      canImport?: boolean;
       canRead?: boolean;
       canUpdate?: boolean;
       groupFieldAccess?: {
@@ -3313,6 +3317,8 @@ export interface components {
       canCreate: boolean;
       /** @enum {boolean} */
       canDelete: false;
+      canExport?: boolean;
+      canImport?: boolean;
       canRead: boolean;
       canUpdate: boolean;
       groupFieldAccess?: {
@@ -3379,6 +3385,8 @@ export interface components {
       canCreate: boolean;
       /** @enum {boolean} */
       canDelete: false;
+      canExport?: boolean;
+      canImport?: boolean;
       canRead: boolean;
       canUpdate: boolean;
       /** @enum {string} */
@@ -3732,6 +3740,8 @@ export interface components {
       canCreate: boolean;
       /** @enum {boolean} */
       canDelete: false;
+      canExport?: boolean;
+      canImport?: boolean;
       canRead: boolean;
       canUpdate: boolean;
       fields: components["schemas"]["PublishedEmployeeFieldAccessResponseDto"][];
@@ -3788,9 +3798,7 @@ export interface components {
       };
     };
     PublishedObjectSchemaResponseDto: {
-      actions: {
-        [key: string]: unknown;
-      };
+      actions: components["schemas"]["RuntimeRecordActionsDto"];
       defaultView: {
         [key: string]: unknown;
       };
@@ -4053,6 +4061,14 @@ export interface components {
       sessionTtlDays: number;
       verificationRetentionDays: number;
       verificationTtlMinutes: number;
+    };
+    RuntimeRecordActionsDto: {
+      canCreate: boolean;
+      canDelete: boolean;
+      canExport: boolean;
+      canImport: boolean;
+      canRead: boolean;
+      canUpdate: boolean;
     };
     RuntimeServiceStatusDto: {
       detail: string;
@@ -4345,6 +4361,8 @@ export interface components {
       canCreate: boolean;
       /** @enum {boolean} */
       canDelete: false;
+      canExport?: boolean;
+      canImport?: boolean;
       canRead: boolean;
       canUpdate: boolean;
       fields: {

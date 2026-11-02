@@ -1005,6 +1005,28 @@ describe("RecordList table sorting", () => {
     );
   });
 
+  it.each([
+    [true, false],
+    [false, true],
+  ])(
+    "shows the granted file actions: import %s, export %s",
+    async (canImport, canExport) => {
+      const actions = { ...schema.actions, canImport, canExport };
+      renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+        schema: { ...schema, actions },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
+      const allowed = canImport ? "导入 Excel / CSV" : "导出当前结果";
+      const denied = canImport ? "导出当前结果" : "导入 Excel / CSV";
+      expect(
+        await screen.findByRole("menuitem", { name: allowed }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("menuitem", { name: denied }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
   it("opens mapped CSV import from the toolbar", async () => {
     const navigate = vi.fn();
     const api = {

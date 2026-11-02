@@ -1,3 +1,4 @@
+import { transferSettings } from './effective-access';
 import { configOf } from '../records/record-pool-config';
 import type { PoolConfig } from '../records/record-ownership';
 import { Injectable } from '@nestjs/common';
@@ -429,6 +430,7 @@ class PrismaObjectsStore implements ObjectsStore {
         : null,
       employeeAccess: employee
         ? {
+            ...transferSettings(employee),
             canCreate: employee.canCreate,
             canRead: employee.canRead,
             canUpdate: employee.canUpdate,
@@ -590,6 +592,7 @@ class PrismaObjectsStore implements ObjectsStore {
         select: { id: true },
       });
       const permissionData = {
+        ...transferSettings(draft.employeeAccess),
         canCreate: draft.employeeAccess.canCreate,
         canRead: draft.employeeAccess.canRead,
         canUpdate: draft.employeeAccess.canUpdate,

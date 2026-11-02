@@ -190,6 +190,14 @@ export class TemplateDefaultViewDto {
 }
 
 export class TemplateEmployeeAccessDto {
+  @ApiPropertyOptional({ type: Boolean })
+  @ValidateIf((_, value) => value !== undefined)
+  @IsBoolean()
+  canImport?: boolean;
+  @ApiPropertyOptional({ type: Boolean })
+  @ValidateIf((_, value) => value !== undefined)
+  @IsBoolean()
+  canExport?: boolean;
   @ApiProperty({ type: Boolean }) @IsBoolean() canCreate!: boolean;
   @ApiProperty({ type: Boolean }) @IsBoolean() canRead!: boolean;
   @ApiProperty({ type: Boolean }) @IsBoolean() canUpdate!: boolean;

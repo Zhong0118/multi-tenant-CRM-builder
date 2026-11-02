@@ -465,6 +465,14 @@ export class DefaultViewDto extends ExpectedVersionDto {
 }
 
 export class EmployeePermissionsDto extends ExpectedVersionDto {
+  @ApiPropertyOptional({ type: Boolean })
+  @ValidateIf((_, value) => value !== undefined)
+  @IsBoolean()
+  canImport?: boolean;
+  @ApiPropertyOptional({ type: Boolean })
+  @ValidateIf((_, value) => value !== undefined)
+  @IsBoolean()
+  canExport?: boolean;
   @ApiProperty() @IsBoolean() canCreate!: boolean;
   @ApiProperty() @IsBoolean() canRead!: boolean;
   @ApiProperty() @IsBoolean() canUpdate!: boolean;
@@ -517,6 +525,15 @@ export class RecordOwnerMemberResponseDto {
   @ApiProperty({ enum: ['ACTIVE', 'DISABLED'] }) status!: 'ACTIVE' | 'DISABLED';
 }
 
+export class RuntimeRecordActionsDto {
+  @ApiProperty() canCreate!: boolean;
+  @ApiProperty() canRead!: boolean;
+  @ApiProperty() canUpdate!: boolean;
+  @ApiProperty() canDelete!: boolean;
+  @ApiProperty() canImport!: boolean;
+  @ApiProperty() canExport!: boolean;
+}
+
 export class PublishedObjectSchemaResponseDto {
   @ApiPropertyOptional({
     type: 'object',
@@ -536,7 +553,8 @@ export class PublishedObjectSchemaResponseDto {
   fields!: PublishedFieldResponseDto[];
   @ApiProperty({ type: 'object', additionalProperties: true })
   defaultView!: object;
-  @ApiProperty({ type: 'object', additionalProperties: true }) actions!: object;
+  @ApiProperty({ type: RuntimeRecordActionsDto })
+  actions!: RuntimeRecordActionsDto;
   @ApiProperty({ type: 'object', additionalProperties: true }) scopes!: object;
   @ApiPropertyOptional({ type: RecordOwnerMemberResponseDto, isArray: true })
   ownerMembers?: RecordOwnerMemberResponseDto[];
@@ -599,6 +617,8 @@ export class ObjectDraftDefaultViewResponseDto {
 }
 
 export class ObjectDraftEmployeeAccessResponseDto {
+  @ApiPropertyOptional({ type: Boolean }) canImport?: boolean;
+  @ApiPropertyOptional({ type: Boolean }) canExport?: boolean;
   @ApiProperty() canCreate!: boolean;
   @ApiProperty() canRead!: boolean;
   @ApiProperty() canUpdate!: boolean;

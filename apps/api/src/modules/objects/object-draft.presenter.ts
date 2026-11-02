@@ -1,3 +1,4 @@
+import { transferSettings } from './effective-access';
 import type { PublicationDraftField } from './object-publication.policy';
 import type { JsonValue, PublishedDataScope } from './object-schema';
 import type {
@@ -54,6 +55,8 @@ export interface ObjectDraftResponse {
     };
   } | null;
   employeeAccess: {
+    canImport?: boolean;
+    canExport?: boolean;
     canCreate: boolean;
     canRead: boolean;
     canUpdate: boolean;
@@ -152,6 +155,7 @@ export function toObjectDraftResponse(draft: ObjectDraft): ObjectDraftResponse {
       : null,
     employeeAccess: draft.employeeAccess
       ? {
+          ...transferSettings(draft.employeeAccess),
           canCreate: draft.employeeAccess.canCreate,
           canRead: draft.employeeAccess.canRead,
           canUpdate: draft.employeeAccess.canUpdate,
@@ -162,6 +166,7 @@ export function toObjectDraftResponse(draft: ObjectDraft): ObjectDraftResponse {
       : null,
     publishedEmployeeAccess: active
       ? {
+          ...transferSettings(active.employeeAccess),
           canCreate: active.employeeAccess.canCreate,
           canRead: active.employeeAccess.canRead,
           canUpdate: active.employeeAccess.canUpdate,

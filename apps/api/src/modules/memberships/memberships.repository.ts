@@ -1,3 +1,4 @@
+import { transferSettings } from '../objects/effective-access';
 import type { PublishedFieldAccess } from '../objects/object-schema';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
@@ -481,6 +482,7 @@ class PrismaMembershipStore implements MembershipStore {
         objectCode: object.code,
         objectName: object.name,
         inherited: {
+          ...transferSettings(schema.employeeAccess),
           canCreate: schema.employeeAccess.canCreate,
           canRead: schema.employeeAccess.canRead,
           canUpdate: schema.employeeAccess.canUpdate,
@@ -494,6 +496,7 @@ class PrismaMembershipStore implements MembershipStore {
                 string,
                 PublishedFieldAccess
               > | null,
+              ...transferSettings(override),
               canCreate: override.canCreate,
               canRead: override.canRead,
               canUpdate: override.canUpdate,
@@ -548,6 +551,7 @@ class PrismaMembershipStore implements MembershipStore {
         ...(policy.groupFieldAccess != null
           ? { groupFieldAccess: policy.groupFieldAccess }
           : {}),
+        ...transferSettings(policy),
         canCreate: policy.canCreate,
         canRead: policy.canRead,
         canUpdate: policy.canUpdate,

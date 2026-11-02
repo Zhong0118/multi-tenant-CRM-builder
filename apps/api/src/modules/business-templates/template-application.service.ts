@@ -1,3 +1,4 @@
+import { transferSettings } from '../objects/effective-access';
 import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
 
@@ -335,6 +336,7 @@ export function hydrateTenantConfiguration(
       subjectType: 'ROLE',
       subjectRole: 'EMPLOYEE',
       subjectMemberId: null,
+      ...transferSettings(sourceObject.employeeAccess),
       canCreate: sourceObject.employeeAccess.canCreate,
       canRead: sourceObject.employeeAccess.canRead,
       canUpdate: sourceObject.employeeAccess.canUpdate,

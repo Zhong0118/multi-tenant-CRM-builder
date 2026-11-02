@@ -8,12 +8,35 @@ import type {
 
 export interface ObjectAccessPolicy {
   groupFieldAccess?: Record<string, PublishedFieldAccess> | null;
+  canImport?: boolean;
+  canExport?: boolean;
   canCreate: boolean;
   canRead: boolean;
   canUpdate: boolean;
   canDelete: boolean;
   readScope: MemberReadScope;
   updateScope: PublishedDataScope;
+}
+
+// Missing settings in historical publications retain the original create/read behavior.
+export function transferSettings(
+  policy: { canImport?: boolean | null; canExport?: boolean | null },
+  fallback?: { canImport?: boolean | null; canExport?: boolean | null } | null,
+): Pick<ObjectAccessPolicy, 'canImport' | 'canExport'> {
+  const canImport = policy.canImport ?? fallback?.canImport;
+  const canExport = policy.canExport ?? fallback?.canExport;
+  return {
+    ...(canImport == null ? {} : { canImport }),
+    ...(canExport == null ? {} : { canExport }),
+  };
+}
+
+export function recordTransferActions(policy: ObjectAccessPolicy) {
+  const readable = policy.canRead && policy.readScope !== 'NONE';
+  return {
+    canImport: readable && policy.canCreate && (policy.canImport ?? true),
+    canExport: readable && (policy.canExport ?? true),
+  };
 }
 
 export interface EffectiveObjectAccess extends ObjectAccessPolicy {
@@ -79,6 +102,7 @@ export function resolveEffectiveAccess(input: {
 
   const objectPolicy = input.memberOverride ?? employeeAccess;
   const access: EffectiveObjectAccess = {
+    ...transferSettings(objectPolicy, employeeAccess),
     canCreate: objectPolicy.canCreate,
     canRead: objectPolicy.canRead,
     canUpdate: objectPolicy.canUpdate,

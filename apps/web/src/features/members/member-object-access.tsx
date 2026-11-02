@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  canTransfer,
+  transferLabels,
+  transferKeys,
+} from "@/features/objects/record-transfer-permissions";
 import { DownOutlined } from "@ant-design/icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Modal, Segmented, Select, Switch } from "antd";
@@ -282,9 +287,7 @@ function ObjectAccessRow({
   const groupEnabled = isGroupLeader && row.effective.readScope === "GROUP";
   const [groupEditing, setGroupEditing] = useState(false);
   const [groupDraft, setGroupDraft] = useState(() => groupFieldDraft(row));
-  const [draft, setDraft] = useState<MemberObjectPolicy>(
-    () => row.override ?? row.effective,
-  );
+  const [draft, setDraft] = useState(() => editablePolicy(row));
   // A saved row from the server replaces local state: the editor closes and
   // the next edit starts from what is now stored. A failed save keeps both.
   const [savedRow, setSavedRow] = useState(row);
@@ -293,7 +296,7 @@ function ObjectAccessRow({
     setEditing(false);
     setGroupEditing(false);
     setGroupDraft(groupFieldDraft(row));
-    setDraft(row.override ?? row.effective);
+    setDraft(editablePolicy(row));
   }
 
   return (
@@ -354,6 +357,7 @@ function ObjectAccessRow({
               <PolicyEditor
                 objectId={row.objectId}
                 draft={draft}
+                inherited={row.inherited}
                 saving={saving}
                 isGroupLeader={isGroupLeader}
                 onChange={setDraft}
@@ -373,6 +377,8 @@ function ObjectAccessRow({
                     onClick={() =>
                       onSave({
                         mode: "OVERRIDE",
+                        canImport: draft.canImport,
+                        canExport: draft.canExport,
                         canCreate: draft.canCreate,
                         canRead: draft.canRead,
                         canUpdate: draft.canUpdate,
@@ -387,7 +393,7 @@ function ObjectAccessRow({
                     disabled={saving}
                     onClick={() => {
                       setEditing(false);
-                      setDraft(row.override ?? row.effective);
+                      setDraft(editablePolicy(row));
                     }}
                   >
                     取消
@@ -610,6 +616,15 @@ const POLICY_ROWS: Array<
         ? { text: DATA_SCOPE_LABELS[policy.updateScope], denied: false }
         : { text: "不可以", denied: true },
   ],
+  ...transferKeys.map<
+    [string, (policy: MemberObjectPolicy) => { text: string; denied: boolean }]
+  >((key) => [
+    transferLabels[key],
+    (policy: MemberObjectPolicy) => ({
+      text: canTransfer(policy, key) ? "可以" : "不可以",
+      denied: !canTransfer(policy, key),
+    }),
+  ]),
 ];
 
 function PolicyComparison({ row }: { row: MemberObjectAccessRow }) {
@@ -684,15 +699,25 @@ function FieldComparison({
   );
 }
 
+function editablePolicy(row: MemberObjectAccessRow): MemberObjectPolicy {
+  return {
+    ...(row.override ?? row.effective),
+    canImport: row.override?.canImport,
+    canExport: row.override?.canExport,
+  };
+}
+
 function PolicyEditor({
   objectId,
   draft,
+  inherited,
   saving,
   isGroupLeader,
   onChange,
 }: {
   objectId: string;
   draft: MemberObjectPolicy;
+  inherited: MemberObjectPolicy;
   saving: boolean;
   isGroupLeader: boolean;
   onChange: (draft: MemberObjectPolicy) => void;
@@ -720,6 +745,21 @@ function PolicyEditor({
           />
         </label>
       ))}
+      {transferKeys.map((key) => (
+        <label key={key} className={styles.policyField}>
+          <span>{transferLabels[key]}</span>
+          <Switch
+            aria-label={transferLabels[key]}
+            checked={canTransfer(
+              { ...draft, [key]: draft[key] ?? inherited[key] },
+              key,
+            )}
+            disabled={saving || !canTransfer({ ...draft, [key]: true }, key)}
+            onChange={(checked) => onChange({ ...draft, [key]: checked })}
+          />
+        </label>
+      ))}
+      <span>导入需有查看和新建权限；下载仅包含可见范围内的数据。</span>
       {scopes.map(([key, label]) => (
         <div key={key} className={styles.policyField}>
           <label htmlFor={`${objectId}-${key}`}>

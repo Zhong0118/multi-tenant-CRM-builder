@@ -1,3 +1,4 @@
+import { transferSettings } from './effective-access';
 import { analyzePoolProtectionSources } from '../records/record-pool-config';
 import type { ActionPublicationTarget } from '../actions/action-publication.policy';
 import type { PublishTemplateInitializationDto } from './dto/template-initialization.dto';
@@ -100,6 +101,8 @@ interface DefaultViewInput {
 
 interface EmployeePermissionInput {
   expectedVersion: number;
+  canImport?: boolean;
+  canExport?: boolean;
   canCreate: boolean;
   canRead: boolean;
   canUpdate: boolean;
@@ -709,6 +712,7 @@ export class ObjectsService {
             },
           });
         draft.employeeAccess = {
+          ...transferSettings(input, draft.employeeAccess),
           canCreate: input.canCreate,
           canRead: input.canRead,
           canUpdate: input.canUpdate,

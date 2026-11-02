@@ -72,6 +72,14 @@ export class MemberObjectAccessDto {
   @IsIn(['INHERIT', 'OVERRIDE'])
   mode!: 'INHERIT' | 'OVERRIDE';
 
+  @ApiPropertyOptional({ type: Boolean })
+  @ValidateIf((_, value) => value !== undefined)
+  @IsBoolean()
+  canImport?: boolean;
+  @ApiPropertyOptional({ type: Boolean })
+  @ValidateIf((_, value) => value !== undefined)
+  @IsBoolean()
+  canExport?: boolean;
   @ApiPropertyOptional()
   @ValidateIf((value: MemberObjectAccessDto) => value.mode === 'OVERRIDE')
   @IsBoolean()
@@ -271,6 +279,8 @@ export class MemberObjectPolicyResponseDto {
   @IsObject()
   groupFieldAccess?: Record<string, 'EDIT' | 'READ_ONLY' | 'HIDDEN'> | null;
 
+  @ApiPropertyOptional({ type: Boolean }) canImport?: boolean;
+  @ApiPropertyOptional({ type: Boolean }) canExport?: boolean;
   @ApiProperty() canCreate!: boolean;
   @ApiProperty() canRead!: boolean;
   @ApiProperty() canUpdate!: boolean;

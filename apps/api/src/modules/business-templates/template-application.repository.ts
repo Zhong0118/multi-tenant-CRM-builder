@@ -174,6 +174,8 @@ export interface HydratedTenantConfiguration {
     subjectType: 'ROLE';
     subjectRole: 'EMPLOYEE';
     subjectMemberId: null;
+    canImport?: boolean;
+    canExport?: boolean;
     canCreate: boolean;
     canRead: boolean;
     canUpdate: boolean;

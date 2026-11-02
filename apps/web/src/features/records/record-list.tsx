@@ -1,5 +1,6 @@
 "use client";
 
+import { canTransfer } from "@/features/objects/record-transfer-permissions";
 import {
   CloseOutlined,
   DeleteOutlined,
@@ -639,8 +640,11 @@ export function RecordList({
       0,
     ) + (canSelect ? 40 : 0);
 
+  const policy = { ...schema.actions, readScope: schema.scopes.read };
+  const canImport = canTransfer(policy, "canImport");
+  const canExport = canTransfer(policy, "canExport");
   const overflowItems: MenuProps["items"] = [
-    ...(schema.actions.canCreate
+    ...(canImport
       ? [
           {
             key: "import",
@@ -650,14 +654,17 @@ export function RecordList({
           },
         ]
       : []),
-    {
-      key: "export",
-      label: "导出当前结果",
-      icon: <DownloadOutlined aria-hidden />,
-      disabled:
-        !schema.actions.canRead || page.total === 0 || exporting.isPending,
-      onClick: () => exporting.mutate(),
-    },
+    ...(canExport
+      ? [
+          {
+            key: "export",
+            label: "导出当前结果",
+            icon: <DownloadOutlined aria-hidden />,
+            disabled: page.total === 0 || exporting.isPending,
+            onClick: () => exporting.mutate(),
+          },
+        ]
+      : []),
     ...(canFilterByOwner && onPoolSettings
       ? [
           { type: "divider" as const },
@@ -710,17 +717,19 @@ export function RecordList({
           description={schema.object.description}
           extra={
             <>
-              <Dropdown
-                trigger={["click"]}
-                placement="bottomRight"
-                menu={{ items: overflowItems }}
-              >
-                <Button
-                  aria-label="更多操作"
-                  icon={<EllipsisOutlined aria-hidden />}
-                  loading={exporting.isPending}
-                />
-              </Dropdown>
+              {overflowItems.length > 0 && (
+                <Dropdown
+                  trigger={["click"]}
+                  placement="bottomRight"
+                  menu={{ items: overflowItems }}
+                >
+                  <Button
+                    aria-label="更多操作"
+                    icon={<EllipsisOutlined aria-hidden />}
+                    loading={exporting.isPending}
+                  />
+                </Dropdown>
+              )}
               {schema.actions.canCreate ? (
                 <Button
                   type="primary"
@@ -1340,7 +1349,7 @@ export function RecordList({
           </div>
         </footer>
 
-        {importOpen ? (
+        {canImport && importOpen ? (
           <RecordImportDrawer
             tenantCode={tenantCode}
             schema={schema}

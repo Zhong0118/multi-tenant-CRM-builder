@@ -1,6 +1,11 @@
 "use client";
 
 import {
+  canTransfer,
+  transferKeys,
+  transferLabels,
+} from "@/features/objects/record-transfer-permissions";
+import {
   Button,
   Drawer,
   Form,
@@ -533,6 +538,17 @@ export function TemplateObjectEditor({
                   checked={permissions.canUpdate}
                   onChange={(canUpdate) => patchPermissions({ canUpdate })}
                 />
+                {transferKeys.map((key) => (
+                  <SwitchRow
+                    key={key}
+                    label={transferLabels[key]}
+                    checked={canTransfer(permissions, key)}
+                    disabled={
+                      !canTransfer({ ...permissions, [key]: true }, key)
+                    }
+                    onChange={(value) => patchPermissions({ [key]: value })}
+                  />
+                ))}
                 <Typography.Text type="secondary">
                   删除权限固定关闭；公司管理员可在对象草稿中继续调整。
                 </Typography.Text>
@@ -602,15 +618,22 @@ export function TemplateObjectEditor({
 function SwitchRow({
   label,
   checked,
+  disabled,
   onChange,
 }: {
   label: string;
   checked: boolean;
+  disabled?: boolean;
   onChange: (value: boolean) => void;
 }) {
   return (
     <Space>
-      <Switch aria-label={label} checked={checked} onChange={onChange} />
+      <Switch
+        aria-label={label}
+        disabled={disabled}
+        checked={checked}
+        onChange={onChange}
+      />
       <span>{label}</span>
     </Space>
   );

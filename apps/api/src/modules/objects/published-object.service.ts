@@ -12,6 +12,7 @@ import type {
   WorkflowRole,
 } from '../workflows/workflow.types';
 import {
+  recordTransferActions,
   resolveEffectiveAccess,
   queryFieldAccess,
   type EffectiveObjectAccess,
@@ -59,6 +60,8 @@ export interface RuntimeObjectSchema {
   fields: Array<PublishedField & { access: PublishedFieldAccess }>;
   defaultView: PublishedObjectSchema['defaultView'];
   actions: {
+    canImport: boolean;
+    canExport: boolean;
     canCreate: boolean;
     canRead: boolean;
     canUpdate: boolean;
@@ -290,6 +293,7 @@ function projectRuntimeSchema(
           }),
     },
     actions: {
+      ...recordTransferActions(access),
       canCreate: access.canCreate,
       canRead: access.canRead,
       canUpdate: access.canUpdate,
@@ -324,15 +328,19 @@ export function parsePublishedObjectSchema(
   ]);
   const defaultView = parseDefaultView(root.defaultView);
   const sort = strictObject(defaultView.sort, ['field', 'direction']);
-  const employeeAccess = strictObject(root.employeeAccess, [
-    'canCreate',
-    'canRead',
-    'canUpdate',
-    'canDelete',
-    'readScope',
-    'updateScope',
-    'fields',
-  ]);
+  const employeeAccess = keyedObject(
+    root.employeeAccess,
+    [
+      'canCreate',
+      'canRead',
+      'canUpdate',
+      'canDelete',
+      'readScope',
+      'updateScope',
+      'fields',
+    ],
+    ['canImport', 'canExport'],
+  );
 
   assertString(publication.id);
   assertPositiveInteger(publication.number);
@@ -371,6 +379,10 @@ export function parsePublishedObjectSchema(
     invalidSnapshot();
   }
   if (sort.direction !== 'asc' && sort.direction !== 'desc') invalidSnapshot();
+  if (employeeAccess.canImport !== undefined)
+    assertBoolean(employeeAccess.canImport);
+  if (employeeAccess.canExport !== undefined)
+    assertBoolean(employeeAccess.canExport);
   assertBoolean(employeeAccess.canCreate);
   assertBoolean(employeeAccess.canRead);
   assertBoolean(employeeAccess.canUpdate);

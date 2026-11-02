@@ -49,6 +49,8 @@ export interface ConfigurableObjectView {
     sort: { field: RecordSortField; direction: RecordSortDirection };
   } | null;
   employeeAccess: {
+    canImport?: boolean;
+    canExport?: boolean;
     canCreate: boolean;
     canRead: boolean;
     canUpdate: boolean;

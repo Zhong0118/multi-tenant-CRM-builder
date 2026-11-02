@@ -1,3 +1,4 @@
+import { transferSettings } from './effective-access';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
 import {
@@ -149,6 +150,8 @@ function toPublishedRecord(object: {
   }>;
   permissions: Array<{
     groupFieldAccess?: unknown;
+    canImport?: boolean | null;
+    canExport?: boolean | null;
     canCreate: boolean;
     canRead: boolean;
     canUpdate: boolean;
@@ -179,6 +182,7 @@ function toPublishedRecord(object: {
             string,
             PublishedFieldAccess
           > | null,
+          ...transferSettings(override),
           canCreate: override.canCreate,
           canRead: override.canRead,
           canUpdate: override.canUpdate,

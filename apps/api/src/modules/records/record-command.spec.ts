@@ -1,3 +1,4 @@
+import { recordTransferActions } from '../objects/effective-access';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { AuditEvent } from '../audit/audit-event';
 import type { EffectiveObjectAccess } from '../objects/effective-access';
@@ -179,6 +180,7 @@ function resolved(
       })),
       defaultView: { ...schema.defaultView, columnFieldKeys: [] },
       actions: {
+        ...recordTransferActions(effectiveAccess),
         canCreate: effectiveAccess.canCreate,
         canRead: effectiveAccess.canRead,
         canUpdate: effectiveAccess.canUpdate,
