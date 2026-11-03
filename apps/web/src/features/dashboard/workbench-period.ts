@@ -66,8 +66,10 @@ export function workbenchPeriodPreset(
   if (localFrom.endsWith("T00:00:00.000")) {
     // Within a month that begins on a Monday, "本周" and "本月" name the very
     // same range. Nothing in the URL separates them, so prefer the narrower one.
-    if (isoWeekdayMondayZero(from, timeZone) === 0) return "this_week";
-    if (localFrom.slice(8, 10) === "01") return "this_month";
+    const localTo = utcIsoToDatetimeLocal(range.to, timeZone);
+    const days = (Date.parse(localTo.slice(0, 10)) - Date.parse(localFrom.slice(0, 10))) / DAY_MS;
+    if (days >= 0 && days < 7 && isoWeekdayMondayZero(from, timeZone) === 0) return "this_week";
+    if (localFrom.slice(8, 10) === "01" && localFrom.slice(0, 7) === localTo.slice(0, 7)) return "this_month";
   }
   const span = to.getTime() - from.getTime();
   if (span === 7 * DAY_MS) return "past_7_days";

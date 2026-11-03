@@ -117,7 +117,7 @@ export function PeriodLabel({
   return (
     <StatusTag tone="neutral">
       {formatDate(period.from, period.timezone)} 至{" "}
-      {formatDate(period.to, period.timezone)}
+      {formatDate(Date.parse(period.to) - 1, period.timezone)}
       {publication
         ? ` · 工作台于 ${formatDate(publication.publishedAt, period.timezone)}发布`
         : null}
@@ -125,7 +125,7 @@ export function PeriodLabel({
   );
 }
 
-function formatDate(value: string, timeZone: string) {
+function formatDate(value: string | number, timeZone: string) {
   return new Intl.DateTimeFormat("zh-CN", {
     timeZone,
     month: "long",

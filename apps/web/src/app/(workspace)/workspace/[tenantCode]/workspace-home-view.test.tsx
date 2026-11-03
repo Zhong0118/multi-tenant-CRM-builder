@@ -54,6 +54,13 @@ beforeEach(() => {
 });
 
 describe("WorkspaceHomeView", () => {
+  it("shows only the included calendar days when the range ends at company midnight", () => {
+    render(<WorkspaceHomeView tenantCode="northwind" tenantName="百杰" userName="张三"
+      role="TENANT_ADMIN" businessObjects={objects} overview={{ ...readyOverview,
+        period: { from: "2026-11-01T16:00:00.000Z", to: "2026-11-02T16:00:00.000Z", timezone: "Asia/Shanghai" },
+      }} />);
+    expect(screen.getByRole("navigation", { name: "工作台统计时段" })).toHaveTextContent("11月2日 至 11月2日");
+  });
   it.each(["READY", "UNCONFIGURED", "FAILURE"] as const)("returns DOM focus once to the %s source heading, including a named dashboard", (state) => {
     location.path = "/workspace/northwind/dashboards/sales";
     location.search = "from=2026-10-01&to=2026-10-04";

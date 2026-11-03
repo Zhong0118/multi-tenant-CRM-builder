@@ -62,6 +62,11 @@ describe("workbenchPeriodPreset", () => {
     expect(workbenchPeriodPreset(month, "Asia/Shanghai")).toBe("this_week");
   });
 
+  it("does not label the third week of a month as a one-week range", () => {
+    const month = workbenchPeriodRange("this_month", "Asia/Shanghai", new Date("2026-06-18T05:00:00Z"));
+    expect(workbenchPeriodPreset(month, "Asia/Shanghai")).toBe("this_month");
+  });
+
   it("returns null for a range no preset produces", () => {
     expect(
       workbenchPeriodPreset(
