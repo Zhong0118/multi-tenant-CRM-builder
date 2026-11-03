@@ -502,6 +502,21 @@ async function cleanupCriticalData(database: PrismaClient): Promise<void> {
   const userIds = users.map(({ id }) => id);
 
   if (tenantIds.length > 0) {
+    const dashboardScope = { tenantId: { in: tenantIds } };
+    await database.tenant.updateMany({
+      where: { id: { in: tenantIds } },
+      data: { defaultAdminDashboardId: null, defaultEmployeeDashboardId: null },
+    });
+    await database.tenantDashboardConfiguration.updateMany({
+      where: dashboardScope,
+      data: { activePublicationId: null },
+    });
+    await database.tenantDashboardPublication.deleteMany({
+      where: dashboardScope,
+    });
+    await database.tenantDashboardConfiguration.deleteMany({
+      where: dashboardScope,
+    });
     await database.workTask.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });
@@ -594,7 +609,7 @@ async function cleanupCriticalData(database: PrismaClient): Promise<void> {
   }
 }
 
-async function publishObject(
+export async function publishObject(
   database: PrismaClient,
   input: {
     tenantId: string;

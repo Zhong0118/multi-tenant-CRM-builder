@@ -32,6 +32,7 @@ export interface DashboardFilter {
     | "LT"
     | "LTE"
     | "BETWEEN"
+    | "DASHBOARD_PERIOD"
     | "TODAY"
     | "THIS_WEEK"
     | "THIS_MONTH"
@@ -102,6 +103,13 @@ export interface DashboardCandidateOption {
   color: string;
   status: "ACTIVE" | "INACTIVE";
 }
+export const DASHBOARD_CREATED_AT = {
+  fieldKey: "$createdAt",
+  label: "记录创建时间（系统）",
+  type: "DATETIME",
+  config: {},
+} satisfies DashboardCandidateField;
+
 export interface DashboardCandidateField {
   fieldKey: string;
   label: string;
@@ -476,6 +484,7 @@ export function parseDashboardFilter(value: unknown): DashboardFilter {
     "LT",
     "LTE",
     "BETWEEN",
+    "DASHBOARD_PERIOD",
     "TODAY",
     "THIS_WEEK",
     "THIS_MONTH",
@@ -515,6 +524,7 @@ function validateFilterValueShape(filter: DashboardFilter) {
   const hasValue = filter.value !== undefined;
   if (
     [
+      "DASHBOARD_PERIOD",
       "TODAY",
       "THIS_WEEK",
       "THIS_MONTH",

@@ -1,5 +1,12 @@
 import type { PublishedObjectSchema } from '../objects/object-schema';
 
+// Business field keys cannot contain '$'; a custom field can never shadow this source.
+export const DASHBOARD_CREATED_AT = {
+  fieldKey: '$createdAt',
+  label: '记录创建时间（系统）',
+  type: 'DATETIME',
+} as const;
+
 export interface DashboardConfigurationIssue {
   code: string;
   path: string;
@@ -24,6 +31,7 @@ export type DashboardFilterOperator =
   | 'LT'
   | 'LTE'
   | 'BETWEEN'
+  | 'DASHBOARD_PERIOD'
   | 'TODAY'
   | 'THIS_WEEK'
   | 'THIS_MONTH'

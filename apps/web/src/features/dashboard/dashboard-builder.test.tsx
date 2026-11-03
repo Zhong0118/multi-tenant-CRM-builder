@@ -866,6 +866,54 @@ describe("DashboardBuilder", () => {
     ).toBeDisabled();
   });
 
+  it("saves a period-bound count and a trend on system creation time without a custom date field", async () => {
+    render(
+      <DashboardBuilder
+        tenantCode="northwind"
+        dashboardCode="home"
+        initial={initial}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "添加指标卡" }));
+    fireEvent.change(screen.getByLabelText("业务表"), {
+      target: { value: "deals" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "添加筛选条件" }));
+    const source = screen.getByLabelText("筛选字段 1");
+    const created = within(source).getByRole("option", {
+      name: "记录创建时间（系统）",
+    }) as HTMLOptionElement;
+    fireEvent.change(source, { target: { value: created.value } });
+    expect(
+      within(screen.getByLabelText("筛选操作符 1")).getByRole("option", {
+        selected: true,
+      }),
+    ).toHaveTextContent("跟随工作台时段");
+    expect(screen.queryByLabelText("筛选值 1")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "添加趋势图" }));
+    fireEvent.change(screen.getByLabelText("业务表"), {
+      target: { value: "deals" },
+    });
+    fireEvent.change(screen.getByLabelText("日期字段"), {
+      target: { value: created.value },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存草稿" }));
+    await waitFor(() => expect(saveDashboardDraft).toHaveBeenCalled());
+    const draft = vi.mocked(saveDashboardDraft).mock.calls[0][2].configuration;
+    expect(draft.widgets).toMatchObject([
+      {
+        aggregation: "COUNT",
+        filters: [
+          parseDashboardFilter({
+            fieldKey: "$createdAt",
+            operator: "DASHBOARD_PERIOD",
+          }),
+        ],
+      },
+      { type: "TREND", dateFieldKey: "$createdAt" },
+    ]);
+  });
+
   it("serializes each operator-specific filter value shape", async () => {
     render(
       <DashboardBuilder

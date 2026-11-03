@@ -54,6 +54,13 @@ beforeEach(() => {
 });
 
 describe("WorkspaceHomeView", () => {
+  it("shows only the included calendar days when the range ends at company midnight", () => {
+    render(<WorkspaceHomeView tenantCode="northwind" tenantName="百杰" userName="张三"
+      role="TENANT_ADMIN" businessObjects={objects} overview={{ ...readyOverview,
+        period: { from: "2026-11-01T16:00:00.000Z", to: "2026-11-02T16:00:00.000Z", timezone: "Asia/Shanghai" },
+      }} />);
+    expect(screen.getByRole("navigation", { name: "工作台统计时段" })).toHaveTextContent("11月2日 至 11月2日");
+  });
   it.each(["READY", "UNCONFIGURED", "FAILURE"] as const)("returns DOM focus once to the %s source heading, including a named dashboard", (state) => {
     location.path = "/workspace/northwind/dashboards/sales";
     location.search = "from=2026-10-01&to=2026-10-04";
@@ -114,7 +121,7 @@ describe("WorkspaceHomeView", () => {
       />,
     );
     const tasks = screen.getByTestId("personal-follow-up-workbench");
-    const dates = screen.getByRole("navigation", { name: "趋势时间范围" });
+    const dates = screen.getByRole("navigation", { name: "工作台统计时段" });
     expect(
       tasks.compareDocumentPosition(dates) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
@@ -152,7 +159,7 @@ describe("WorkspaceHomeView", () => {
     expect(screen.getByText(/req_dashboard/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "新建订单" })).toBeInTheDocument();
     expect(
-      screen.queryByRole("navigation", { name: "趋势时间范围" }),
+      screen.queryByRole("navigation", { name: "工作台统计时段" }),
     ).not.toBeInTheDocument();
     rerender(
       <WorkspaceHomeView
@@ -543,7 +550,7 @@ describe("WorkspaceHomeView", () => {
       />,
     );
 
-    const period = screen.getByRole("navigation", { name: "趋势时间范围" });
+    const period = screen.getByRole("navigation", { name: "工作台统计时段" });
     expect(period).toHaveTextContent("8月1日");
     expect(period).toHaveTextContent("8月31日");
     expect(screen.getByRole("link", { name: "本月" })).toHaveAttribute(
