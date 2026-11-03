@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { FilingLinks } from "@/components/legal/filing-links";
 import { WorkspaceThemeScope } from "@/components/theme/workspace-theme-scope";
 import { LogoutButton } from "@/features/auth/logout-button";
 import { LogoMark } from "@/features/landing/logo-mark";
@@ -42,6 +43,7 @@ export function AccountShell({
         </nav>
       </header>
       <main className={styles.main}>{children}</main>
+      <footer className={styles.filing}><FilingLinks /></footer>
     </WorkspaceThemeScope>
   );
 }

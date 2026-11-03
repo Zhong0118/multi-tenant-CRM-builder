@@ -5,11 +5,6 @@
 
 export const PUBLIC_ORIGIN = "https://crm.baijiehub.com";
 
-export const ICP_RECORD = {
-  number: "鲁ICP备2026063095号-1",
-  lookup: "https://beian.miit.gov.cn/",
-} as const;
-
 export const COMPANY = "山东百杰网络科技有限公司";
 
 export const NAV_LINKS = [

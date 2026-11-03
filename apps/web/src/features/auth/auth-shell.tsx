@@ -4,6 +4,8 @@ import { SafetyCertificateOutlined } from "@ant-design/icons";
 import { Typography } from "antd";
 import type { ReactNode } from "react";
 
+import { FilingLinks } from "@/components/legal/filing-links";
+
 import styles from "./auth.module.css";
 
 export function AuthShell({
@@ -45,6 +47,7 @@ export function AuthShell({
           </Typography.Paragraph>
           {children}
           <div className={styles.formFooter}>{footer}</div>
+          <footer className={styles.filing}><FilingLinks /></footer>
         </div>
       </section>
     </main>

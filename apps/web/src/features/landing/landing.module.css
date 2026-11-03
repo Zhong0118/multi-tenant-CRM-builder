@@ -1267,28 +1267,23 @@
   padding: 4px 0;
   color: var(--muted);
 }
-.footerNav a:hover,
-.icp:hover {
+.footerNav a:hover {
   color: var(--blue);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 .footerBottom {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 8px 18px;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
   padding-top: 18px;
   padding-bottom: 24px;
   border-top: 1px solid #d3dff3;
   color: var(--muted);
+  text-align: center;
 }
-.footerBottom small,
-.icp {
+.footerBottom small {
   font-size: 12px;
-}
-.icp {
-  color: var(--muted);
 }
 @media (max-width: 800px) {
   .teamLayout,
@@ -1339,9 +1334,6 @@
   }
   .footerNav {
     gap: 8px 18px;
-  }
-  .footerBottom {
-    flex-direction: column;
   }
 }
 @media (prefers-reduced-motion: reduce) {

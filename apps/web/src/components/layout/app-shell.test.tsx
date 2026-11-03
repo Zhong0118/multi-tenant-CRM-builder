@@ -72,17 +72,23 @@ describe("AppShell", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("marks the current platform section and can collapse to icons", () => {
+  it("marks the current platform section and keeps filing links available after collapse", () => {
     mocks.pathname = "/platform/tenants/abc";
     renderShell();
     expect(screen.getByRole("link", { name: "公司管理" })).toHaveAttribute(
       "aria-current",
       "page",
     );
+    expect(screen.getByRole("link", { name: /鲁公网安备/ })).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "收起菜单" }));
     expect(
       screen.getByRole("navigation", { name: "平台导航" }),
     ).toHaveAttribute("data-collapsed", "true");
+    expect(screen.queryByRole("link", { name: /鲁公网安备/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "查看网站备案信息" }));
+    expect(screen.getByRole("link", { name: /鲁公网安备/ })).toHaveAttribute(
+      "href", "https://beian.mps.gov.cn/#/query/webSearch?code=37081102000896",
+    );
   });
 
   it("renders emptyLabel without a named navigation group", () => {
@@ -190,7 +196,7 @@ describe("AppShell", () => {
     renderShell();
     fireEvent.click(screen.getByRole("button", { name: "打开导航" }));
     const first = screen.getByRole("link", { name: "平台后台" });
-    const last = screen.getByRole("button", { name: /王明/ });
+    const last = screen.getByRole("link", { name: /鲁公网安备/ });
     first.focus();
     fireEvent.keyDown(first, { key: "Tab", shiftKey: true });
     expect(last).toHaveFocus();

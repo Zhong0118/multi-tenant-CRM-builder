@@ -324,6 +324,27 @@
   border-top: 1px solid var(--border-hairline);
 }
 
+.sidebarFiling {
+  padding: 0 4px;
+}
+.filingButton {
+  display: grid;
+  place-items: center;
+  align-self: center;
+  width: 32px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+.filingButton:hover,
+.filingButton:focus-visible {
+  color: var(--text-primary);
+  background: var(--bg-sidebar-active);
+}
 .footerNav {
   display: flex;
   flex-direction: column;
