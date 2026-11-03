@@ -1,9 +1,11 @@
 "use client";
 
-import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
-import { Tooltip } from "antd";
+import { InfoCircleOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
+import { Popover, Tooltip } from "antd";
 import Link from "next/link";
-import type { PointerEvent, ReactNode } from "react";
+import { useRef, useState, type PointerEvent, type ReactNode } from "react";
+
+import { FilingLinks } from "@/components/legal/filing-links";
 
 import styles from "./app-shell.module.css";
 import type { ShellNavGroup, ShellNavItem, ShellUser } from "./app-shell";
@@ -43,6 +45,42 @@ export interface NavItemRenderState {
   panelOffset: number;
   /** Closes the phone navigation drawer before a panel opens. */
   onNavigate: () => void;
+}
+
+function CompactFilingLinks() {
+  const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const links = useRef<HTMLDivElement>(null);
+
+  return (
+    <Popover
+      title="网站备案"
+      trigger="click"
+      placement="rightBottom"
+      open={open}
+      onOpenChange={setOpen}
+      afterOpenChange={(visible) => {
+        if (visible && document.activeElement === trigger.current) {
+          links.current?.querySelector("a")?.focus();
+        }
+      }}
+      content={
+        <div ref={links} onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            setOpen(false);
+            trigger.current?.focus();
+          }
+        }}>
+          <FilingLinks stacked />
+        </div>
+      }
+    >
+      <button ref={trigger} type="button" className={styles.filingButton}
+        aria-expanded={open} aria-label="查看网站备案信息" title="网站备案信息">
+        <InfoCircleOutlined aria-hidden />
+      </button>
+    </Popover>
+  );
 }
 
 export function Sidebar({
@@ -228,6 +266,11 @@ export function Sidebar({
           showWorkspaceSwitch={showWorkspaceSwitch}
           collapsed={collapsed}
         />
+        {collapsed ? (
+          <CompactFilingLinks />
+        ) : (
+          <div className={styles.sidebarFiling}><FilingLinks stacked /></div>
+        )}
       </div>
     </aside>
   );

@@ -1,7 +1,6 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ICP_RECORD } from "./content";
 import { ProductDemo } from "./demo/product-demo";
 import { LandingPage } from "./landing-page";
 
@@ -11,9 +10,13 @@ afterEach(() => {
 
 const panel = (id: string) => document.getElementById(`scenario-panel-${id}`)!;
 const tab = (id: string) => document.getElementById(`scenario-tab-${id}`)!;
+const filings = {
+  "鲁ICP备2026063095号-1": "https://beian.miit.gov.cn/",
+  "鲁公网安备37081102000896号": "https://beian.mps.gov.cn/#/query/webSearch?code=37081102000896",
+};
 
 describe("LandingPage", () => {
-  it("links only to its own sections, sign-in, registration and the ICP lookup", () => {
+  it("links only to its own sections, sign-in, registration and the official filing lookups", () => {
     const { container } = render(<LandingPage />);
 
     for (const link of container.querySelectorAll("a[href]")) {
@@ -21,7 +24,7 @@ describe("LandingPage", () => {
       if (href.startsWith("#")) {
         expect(document.getElementById(href.slice(1)), href).not.toBeNull();
       } else if (href.startsWith("https://")) {
-        expect(href).toBe(ICP_RECORD.lookup);
+        expect(Object.values(filings)).toContain(href);
         expect(link).toHaveAttribute("target", "_blank");
         expect(link.getAttribute("rel")).toContain("noopener");
       } else {
@@ -56,11 +59,13 @@ describe("LandingPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the filing number in the footer, linked to the official lookup", () => {
+  it("links each filing in the footer to the authority that issued it", () => {
     render(<LandingPage />);
-    const icp = screen.getByRole("link", { name: ICP_RECORD.number });
-    expect(icp).toHaveAttribute("href", "https://beian.miit.gov.cn/");
-    expect(icp.closest("footer")).not.toBeNull();
+    const filingsGroup = screen.getByRole("group", { name: "网站备案" });
+    expect(filingsGroup.closest("footer")).not.toBeNull();
+    for (const [name, href] of Object.entries(filings)) {
+      expect(within(filingsGroup).getByRole("link", { name })).toHaveAttribute("href", href);
+    }
   });
 
   it("presents released work as available and carries no roadmap or build labels", () => {
