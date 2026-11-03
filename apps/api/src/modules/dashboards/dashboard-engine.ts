@@ -1,3 +1,4 @@
+import { DASHBOARD_CREATED_AT } from './dashboard.types';
 import { queryFieldAccess } from '../objects/effective-access';
 import {
   recordOwnerFilter,
@@ -286,7 +287,9 @@ function isFieldVisible(access: EffectiveObjectAccess, fieldKey: string) {
 }
 
 function requiredFieldKeys(widget: PublishedDashboardWidgetV2): string[] {
-  const keys = widget.filters.map((filter) => filter.fieldKey);
+  const keys = widget.filters
+    .map((filter) => filter.fieldKey)
+    .filter((key) => key !== DASHBOARD_CREATED_AT.fieldKey);
   switch (widget.type) {
     case 'METRIC':
       if (widget.aggregation !== 'COUNT' && widget.valueFieldKey) {
@@ -300,7 +303,8 @@ function requiredFieldKeys(widget: PublishedDashboardWidgetV2): string[] {
       }
       break;
     case 'TREND':
-      keys.push(widget.dateFieldKey);
+      if (widget.dateFieldKey !== DASHBOARD_CREATED_AT.fieldKey)
+        keys.push(widget.dateFieldKey);
       if (widget.aggregation === 'SUM' && widget.valueFieldKey) {
         keys.push(widget.valueFieldKey);
       }

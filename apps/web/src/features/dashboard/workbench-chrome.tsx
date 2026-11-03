@@ -56,8 +56,12 @@ export function WorkbenchPeriodNav({
   const anchor = new Date(period.to);
   const current = workbenchPeriodPreset(period, period.timezone);
   return (
-    <nav className={styles.periodNav} aria-label="趋势时间范围" title="仅影响趋势图，其余指标按各组件筛选条件统计。">
-      <span>趋势</span>
+    <nav
+      className={styles.periodNav}
+      aria-label="工作台统计时段"
+      title="适用于趋势图和设置了“跟随工作台时段”的组件。"
+    >
+      <span>统计时段</span>
       <PeriodLabel period={period} publication={publication} />
       {WORKBENCH_PERIOD_PRESETS.map((preset) => (
         <Link
@@ -112,16 +116,18 @@ export function PeriodLabel({
 }) {
   return (
     <StatusTag tone="neutral">
-      {formatDate(period.from)} 至 {formatDate(period.to)}
+      {formatDate(period.from, period.timezone)} 至{" "}
+      {formatDate(period.to, period.timezone)}
       {publication
-        ? ` · 工作台于 ${formatDate(publication.publishedAt)}发布`
+        ? ` · 工作台于 ${formatDate(publication.publishedAt, period.timezone)}发布`
         : null}
     </StatusTag>
   );
 }
 
-function formatDate(value: string) {
+function formatDate(value: string, timeZone: string) {
   return new Intl.DateTimeFormat("zh-CN", {
+    timeZone,
     month: "long",
     day: "numeric",
   }).format(new Date(value));

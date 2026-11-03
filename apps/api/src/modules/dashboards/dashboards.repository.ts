@@ -1,3 +1,4 @@
+import { DASHBOARD_CREATED_AT } from './dashboard.types';
 import { recordOwnerSql } from '../objects/record-read-scope.sql';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@crm/database';
@@ -691,7 +692,7 @@ async function executeTrend(
       )} AS value
     FROM records r
     WHERE ${commonPredicates(context, plan)}
-      AND ${trendPeriodPredicate(date, dateType, plan)}
+      AND ${periodPredicate(date, dateType, plan)}
     GROUP BY 1
     ORDER BY 1 ASC
   `);
@@ -885,8 +886,11 @@ function filterPredicate(
     return comparisonPredicate(number, filter.operator, filter.value);
   }
   if (field.type === 'DATE' || field.type === 'DATETIME') {
+    const date = dashboardDateExpression(filter.fieldKey, field.type);
+    if (filter.operator === 'DASHBOARD_PERIOD')
+      return periodPredicate(date, field.type, plan);
     return dateFilterPredicate(
-      dashboardDateExpression(filter.fieldKey, field.type),
+      date,
       field.type,
       filter.operator,
       filter.value,
@@ -956,23 +960,35 @@ function dateFilterPredicate(
   if (type === 'DATE') {
     return calendarDateFilterPredicate(expression, operator, value, timezone);
   }
-  const today = Prisma.sql`date_trunc('day', NOW() AT TIME ZONE ${timezone}) AT TIME ZONE ${timezone}`;
+  // Advance calendar boundaries in company time before converting each endpoint
+  // to an instant. Adding one month in UTC to Shanghai March 1 ends on March 29.
+  const startOf = (unit: string) =>
+    Prisma.sql`date_trunc(${unit}::text, NOW() AT TIME ZONE ${timezone})`;
+  const window = (start: Prisma.Sql, end: Prisma.Sql) =>
+    Prisma.sql`${expression} >= (${start}) AT TIME ZONE ${timezone} AND ${expression} < (${end}) AT TIME ZONE ${timezone}`;
+  const today = startOf('day');
   const values = Array.isArray(value) ? value : [];
   switch (operator) {
     case 'TODAY':
-      return Prisma.sql`${expression} >= ${today} AND ${expression} < ${today} + INTERVAL '1 day'`;
+      return window(today, Prisma.sql`${today} + INTERVAL '1 day'`);
     case 'THIS_WEEK': {
-      const start = Prisma.sql`date_trunc('week', NOW() AT TIME ZONE ${timezone}) AT TIME ZONE ${timezone}`;
-      return Prisma.sql`${expression} >= ${start} AND ${expression} < ${start} + INTERVAL '1 week'`;
+      const start = startOf('week');
+      return window(start, Prisma.sql`${start} + INTERVAL '1 week'`);
     }
     case 'THIS_MONTH': {
-      const start = Prisma.sql`date_trunc('month', NOW() AT TIME ZONE ${timezone}) AT TIME ZONE ${timezone}`;
-      return Prisma.sql`${expression} >= ${start} AND ${expression} < ${start} + INTERVAL '1 month'`;
+      const start = startOf('month');
+      return window(start, Prisma.sql`${start} + INTERVAL '1 month'`);
     }
     case 'PAST_N_DAYS':
-      return Prisma.sql`${expression} >= ${today} - ${Number(value)} * INTERVAL '1 day' AND ${expression} < ${today} + INTERVAL '1 day'`;
+      return window(
+        Prisma.sql`${today} - ${Number(value)}::int * INTERVAL '1 day'`,
+        Prisma.sql`${today} + INTERVAL '1 day'`,
+      );
     case 'NEXT_N_DAYS':
-      return Prisma.sql`${expression} >= ${today} AND ${expression} < ${today} + (${Number(value)} + 1) * INTERVAL '1 day'`;
+      return window(
+        today,
+        Prisma.sql`${today} + (${Number(value)}::int + 1) * INTERVAL '1 day'`,
+      );
     default:
       return Prisma.sql`${expression} BETWEEN ${values[0]}::timestamptz AND ${values[1]}::timestamptz`;
   }
@@ -998,9 +1014,9 @@ function calendarDateFilterPredicate(
       return Prisma.sql`${expression} >= ${start} AND ${expression} < (${start} + INTERVAL '1 month')::date`;
     }
     case 'PAST_N_DAYS':
-      return Prisma.sql`${expression} >= ${today} - ${Number(value)} AND ${expression} <= ${today}`;
+      return Prisma.sql`${expression} >= ${today} - ${Number(value)}::int AND ${expression} <= ${today}`;
     case 'NEXT_N_DAYS':
-      return Prisma.sql`${expression} >= ${today} AND ${expression} <= ${today} + ${Number(value)}`;
+      return Prisma.sql`${expression} >= ${today} AND ${expression} <= ${today} + ${Number(value)}::int`;
     default:
       return Prisma.sql`${expression} BETWEEN ${values[0]}::date AND ${values[1]}::date`;
   }
@@ -1031,6 +1047,8 @@ function dashboardDateExpression(
   fieldKey: string,
   type: 'DATE' | 'DATETIME',
 ): Prisma.Sql {
+  if (fieldKey === DASHBOARD_CREATED_AT.fieldKey)
+    return Prisma.sql`r.created_at`;
   const value = Prisma.sql`r.data ->> ${fieldKey}`;
   const date = type === 'DATE' ? value : Prisma.sql`left(${value}, 10)`;
   const calendarDate = Prisma.sql`
@@ -1074,7 +1092,7 @@ function dashboardDateExpression(
   `;
 }
 
-function trendPeriodPredicate(
+function periodPredicate(
   expression: Prisma.Sql,
   type: 'DATE' | 'DATETIME',
   plan: DashboardQueryPlan,
@@ -1082,7 +1100,7 @@ function trendPeriodPredicate(
   return type === 'DATE'
     ? Prisma.sql`
         ${expression} >= (${plan.period.from}::timestamptz AT TIME ZONE ${plan.period.timezone})::date
-        AND ${expression} < (${plan.period.to}::timestamptz AT TIME ZONE ${plan.period.timezone})::date
+        AND ${expression} <= ((${plan.period.to}::timestamptz - interval '1 microsecond') AT TIME ZONE ${plan.period.timezone})::date
       `
     : Prisma.sql`
         ${expression} >= ${plan.period.from}::timestamptz

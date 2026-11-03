@@ -518,9 +518,11 @@ describe('PrismaDashboardQueryExecutor', () => {
 
     expect(queries[0]?.sql).toMatch(/= \(NOW\(\) AT TIME ZONE \?\)::date/);
     expect(queries[1]?.sql).toMatch(
-      />= date_trunc\('day', NOW\(\) AT TIME ZONE \?\) AT TIME ZONE \?/,
+      />= \(date_trunc\(\?::text, NOW\(\) AT TIME ZONE \?\)\) AT TIME ZONE \?/,
     );
-    expect(queries[1]?.sql).toMatch(/< [\s\S]*INTERVAL '1 day'/);
+    expect(queries[1]?.sql).toMatch(
+      /< [\s\S]*INTERVAL '1 day'\) AT TIME ZONE \?/,
+    );
   });
 
   it('clips a trend bucket label to the selected period instead of naming a date outside it', async () => {

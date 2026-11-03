@@ -1,3 +1,4 @@
+import { DASHBOARD_CREATED_AT } from './dashboard.types';
 import type {
   DashboardAggregation,
   DashboardCatalog,
@@ -29,6 +30,7 @@ const FILTER_OPERATORS = new Set<DashboardFilterOperator>([
   'LT',
   'LTE',
   'BETWEEN',
+  'DASHBOARD_PERIOD',
   'TODAY',
   'THIS_WEEK',
   'THIS_MONTH',
@@ -452,7 +454,7 @@ function validateFilters(
 ) {
   for (const [index, filter] of filters.entries()) {
     const filterPath = `${path}[${index}]`;
-    const field = findField(object, filter.fieldKey);
+    const field = findDateOrBusinessField(object, filter.fieldKey);
     if (!field) {
       issues.push(
         issue(
@@ -541,12 +543,15 @@ function validateWidget(
       break;
     }
     case 'TREND': {
-      const date = validateField(
-        widget.dateFieldKey,
-        object,
-        `${path}.dateFieldKey`,
-        issues,
-      );
+      const date =
+        widget.dateFieldKey === DASHBOARD_CREATED_AT.fieldKey
+          ? DASHBOARD_CREATED_AT
+          : validateField(
+              widget.dateFieldKey,
+              object,
+              `${path}.dateFieldKey`,
+              issues,
+            );
       if (date && !DATE_FIELD_TYPES.has(date.type))
         issues.push(
           issue(
@@ -654,7 +659,7 @@ function compileWidget(
     objectPublicationNumber: object.publication.number,
     objectName: object.object.name,
     filterFields: widget.filters.map((filter) =>
-      publishedField(findField(object, filter.fieldKey)!),
+      publishedField(findDateOrBusinessField(object, filter.fieldKey)!),
     ),
   };
   if (
@@ -674,7 +679,9 @@ function compileWidget(
     );
   }
   if (widget.type === 'TREND')
-    result.dateField = publishedField(findField(object, widget.dateFieldKey)!);
+    result.dateField = publishedField(
+      findDateOrBusinessField(object, widget.dateFieldKey)!,
+    );
   if (
     widget.type === 'LEADERBOARD' &&
     widget.memberSource === 'FIELD' &&
@@ -700,6 +707,7 @@ function operatorsFor(type: string): ReadonlySet<DashboardFilterOperator> {
     return new Set(['EQ', 'GT', 'GTE', 'LT', 'LTE', 'BETWEEN']);
   if (DATE_FIELD_TYPES.has(type))
     return new Set([
+      'DASHBOARD_PERIOD',
       'TODAY',
       'THIS_WEEK',
       'THIS_MONTH',
@@ -718,6 +726,7 @@ function validateFilterValueShape(filter: DashboardFilter) {
   const hasValue = filter.value !== undefined;
   if (
     [
+      'DASHBOARD_PERIOD',
       'TODAY',
       'THIS_WEEK',
       'THIS_MONTH',
@@ -761,6 +770,7 @@ function isValidFilterValue(
 ): boolean {
   if (
     [
+      'DASHBOARD_PERIOD',
       'TODAY',
       'THIS_WEEK',
       'THIS_MONTH',
@@ -863,6 +873,15 @@ function isStandardDateTime(value: unknown): value is string {
   );
 }
 
+function findDateOrBusinessField(
+  object: DashboardPublishedObject,
+  key: string,
+) {
+  return key === DASHBOARD_CREATED_AT.fieldKey
+    ? DASHBOARD_CREATED_AT
+    : findField(object, key);
+}
+
 function findField(object: DashboardPublishedObject, fieldKey: string) {
   return object.fields.find((field) => field.fieldKey === fieldKey);
 }
@@ -890,7 +909,7 @@ function validateOptionKeys(
 }
 
 function publishedField(
-  field: DashboardPublishedObject['fields'][number],
+  field: Pick<DashboardPublishedField, 'fieldKey' | 'label' | 'type'>,
 ): DashboardPublishedField {
   return { fieldKey: field.fieldKey, label: field.label, type: field.type };
 }

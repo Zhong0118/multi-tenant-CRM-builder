@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { DASHBOARD_CREATED_AT } from "./dashboard-types";
 import type {
   DashboardCandidate,
   DashboardCandidateField,
@@ -126,7 +127,7 @@ export function DashboardWidgetInspector({
       <WidgetControls widget={widget} fields={fields} onChange={onChange} />
       <FilterControls
         widget={widget}
-        fields={fields}
+        fields={candidate ? [DASHBOARD_CREATED_AT, ...fields] : fields}
         tenantTimezone={tenantTimezone}
         onChange={onChange}
       />
@@ -300,7 +301,7 @@ function WidgetControls({
               value={widget.dateFieldKey}
               onChange={(event) => set({ dateFieldKey: event.target.value })}
             >
-              {fieldOptions(dates)}
+              {fieldOptions(widget.objectCode ? [DASHBOARD_CREATED_AT, ...dates] : dates)}
             </select>
           </label>
           <label>
@@ -530,7 +531,7 @@ function FilterControls({
               fields.find((field) => field.fieldKey === filter.fieldKey)?.type,
             ).map((operator) => (
               <option key={operator} value={operator}>
-                {operator}
+                {operatorLabel[operator]}
               </option>
             ))}
           </select>
@@ -736,6 +737,27 @@ function replaceFilter(
     filters.map((item, itemIndex) => (itemIndex === index ? filter : item)),
   );
 }
+const operatorLabel: Record<DashboardFilter["operator"], string> = {
+  DASHBOARD_PERIOD: "跟随工作台时段",
+  TODAY: "今天",
+  THIS_WEEK: "本周",
+  THIS_MONTH: "本月",
+  PAST_N_DAYS: "过去 N 天",
+  NEXT_N_DAYS: "未来 N 天",
+  BETWEEN: "介于",
+  EQ: "等于",
+  IN: "包含任一选项",
+  NOT_IN: "不含所选项",
+  GT: "大于",
+  GTE: "大于或等于",
+  LT: "小于",
+  LTE: "小于或等于",
+  CONTAINS: "包含文字",
+  NOT_EMPTY: "不为空",
+  CURRENT_USER: "当前成员",
+  RECORD_OWNER: "记录负责人",
+};
+
 function operators(type?: string): DashboardFilter["operator"][] {
   if (type === "SINGLE_SELECT" || type === "MULTI_SELECT")
     return ["IN", "NOT_IN"];
@@ -744,6 +766,7 @@ function operators(type?: string): DashboardFilter["operator"][] {
   if (type === "DATE" || type === "DATETIME")
     return [
       "TODAY",
+      "DASHBOARD_PERIOD",
       "THIS_WEEK",
       "THIS_MONTH",
       "PAST_N_DAYS",
@@ -760,7 +783,7 @@ function defaultOperator(type?: string) {
 function defaultFilter(
   fieldKey = "",
   field?: DashboardCandidateField,
-  operator = defaultOperator(field?.type),
+  operator = fieldKey === DASHBOARD_CREATED_AT.fieldKey ? "DASHBOARD_PERIOD" : defaultOperator(field?.type),
 ): DashboardFilter {
   const filter: DashboardFilter = { fieldKey, operator };
   const value = defaultFilterValue(operator, field?.type);
@@ -818,6 +841,7 @@ function datetimeInputValue(
 }
 function needsValue(operator: DashboardFilter["operator"]) {
   return ![
+    "DASHBOARD_PERIOD",
     "TODAY",
     "THIS_WEEK",
     "THIS_MONTH",

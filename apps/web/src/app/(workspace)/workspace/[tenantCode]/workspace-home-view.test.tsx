@@ -114,7 +114,7 @@ describe("WorkspaceHomeView", () => {
       />,
     );
     const tasks = screen.getByTestId("personal-follow-up-workbench");
-    const dates = screen.getByRole("navigation", { name: "趋势时间范围" });
+    const dates = screen.getByRole("navigation", { name: "工作台统计时段" });
     expect(
       tasks.compareDocumentPosition(dates) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
@@ -152,7 +152,7 @@ describe("WorkspaceHomeView", () => {
     expect(screen.getByText(/req_dashboard/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "新建订单" })).toBeInTheDocument();
     expect(
-      screen.queryByRole("navigation", { name: "趋势时间范围" }),
+      screen.queryByRole("navigation", { name: "工作台统计时段" }),
     ).not.toBeInTheDocument();
     rerender(
       <WorkspaceHomeView
@@ -543,7 +543,7 @@ describe("WorkspaceHomeView", () => {
       />,
     );
 
-    const period = screen.getByRole("navigation", { name: "趋势时间范围" });
+    const period = screen.getByRole("navigation", { name: "工作台统计时段" });
     expect(period).toHaveTextContent("8月1日");
     expect(period).toHaveTextContent("8月31日");
     expect(screen.getByRole("link", { name: "本月" })).toHaveAttribute(
