@@ -1,6 +1,8 @@
 import Link from "next/link";
 
-import { COMPANY, FAQ, ICP_RECORD, NAV_LINKS, START_STEPS } from "./content";
+import { FilingLinks } from "@/components/legal/filing-links";
+
+import { COMPANY, FAQ, NAV_LINKS, START_STEPS } from "./content";
 import { ProductDemo } from "./demo/product-demo";
 import { LandingNav } from "./landing-nav";
 import { LogoMark } from "./logo-mark";
@@ -488,14 +490,7 @@ export function LandingPage() {
             <small>
               © {new Date().getFullYear()} {COMPANY}
             </small>
-            <a
-              href={ICP_RECORD.lookup}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.icp}
-            >
-              {ICP_RECORD.number}
-            </a>
+            <FilingLinks />
           </div>
         </footer>
       </div>

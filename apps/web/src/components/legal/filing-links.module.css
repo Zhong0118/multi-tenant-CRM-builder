@@ -1,0 +1,37 @@
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 2px 16px;
+  color: #526477;
+  font-size: 12px;
+  line-height: 20px;
+}
+.stacked {
+  flex-direction: column;
+  align-items: flex-start;
+}
+.links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: inherit;
+  font-weight: 400;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 160ms ease;
+}
+.links a:hover,
+.links a:focus-visible {
+  color: #1853b8;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.links a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .links a { transition: none; }
+}
