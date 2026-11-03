@@ -51,6 +51,7 @@ describe("workspaceNavigation", () => {
     expect(items.map((item) => item.href)).toEqual([
       "/workspace/northwind",
       "/workspace/northwind/follow-ups",
+      "/workspace/northwind/calls",
       "/workspace/northwind/work",
       "/workspace/northwind/team",
       "/workspace/northwind/ai",
@@ -60,6 +61,7 @@ describe("workspaceNavigation", () => {
       "/workspace/northwind/settings/objects",
       "/workspace/northwind/settings/relationships",
       "/workspace/northwind/settings/dashboards/home",
+      "/workspace/northwind/settings/telephony",
       "/workspace/northwind/audit",
     ]);
     expect(items.some((item) => item.href.includes("/objects/"))).toBe(false);
@@ -76,6 +78,11 @@ describe("workspaceNavigation", () => {
         href: "/workspace/northwind/follow-ups",
         label: "跟进待办",
         icon: "calendar",
+      },
+      {
+        href: "/workspace/northwind/calls",
+        label: "通话记录",
+        icon: "phone",
       },
       {
         href: "/workspace/northwind/work",

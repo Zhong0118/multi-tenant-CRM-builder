@@ -8,6 +8,8 @@ import type {
   RecordSummary,
   RuntimeObjectSchema,
 } from "@/features/objects/object-types";
+import { RecordCallAction } from "@/features/telephony/record-call-drawer";
+import { CallHistory } from "@/features/telephony/call-history";
 import { relationRequest } from "@/lib/api/relation-request";
 import { toApiError } from "@/lib/api/api-error";
 
@@ -84,6 +86,7 @@ export function RecordDetailDrawer({
   const [error, setError] = useState<string>();
   const [refreshWarning, setRefreshWarning] = useState<string>();
   const [deleted, setDeleted] = useState(false);
+  const [callsOpen, setCallsOpen] = useState(false);
   const fields = recordFields(schema, record);
   const summaryKeys = new Set([
     schema.object.titleFieldKey,
@@ -157,6 +160,7 @@ export function RecordDetailDrawer({
       }
       extra={
         <Space size={4}>
+          {!deleted ? <RecordCallAction tenantCode={tenantCode} schema={schema} record={record} currentMemberName={members.find(member => member.id === currentMemberId)?.displayName ?? undefined} /> : null}
           {canEdit && !editing && !deleted ? (
             <Button
               onClick={() => {
@@ -329,6 +333,10 @@ export function RecordDetailDrawer({
             canCreate={canOperate}
             api={api}
           /> : null}
+          <details className={styles.detailDisclosure} onToggle={event => { if (event.currentTarget.open) setCallsOpen(true); }}>
+            <summary>通话记录</summary>
+            {callsOpen ? <CallHistory tenantCode={tenantCode} objectCode={schema.object.code} recordId={record.id} currentMemberId={currentMemberId} isAdmin={canChooseOwner} /> : null}
+          </details>
           <details className={styles.detailDisclosure}>
             <summary>完整业务字段</summary>
             {renderFields(fields)}

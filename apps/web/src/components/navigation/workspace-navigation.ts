@@ -27,6 +27,7 @@ export function workspaceNavigationGroups(
       icon: "home",
     },
     { href: `${root}/follow-ups`, label: "跟进待办", icon: "calendar" },
+    { href: `${root}/calls`, label: "通话记录", icon: "phone" },
     // General tasks and the daily report; not tied to any business record.
     { href: `${root}/work`, label: "任务与日报", icon: "tasks" },
     // What each member did, from the work the system records; administrators only.
@@ -75,6 +76,10 @@ export function workspaceSettingsNavigation(
           icon: "stats",
         },
       ],
+    },
+    {
+      label: "集成",
+      items: [{ href: `${root}/settings/telephony`, label: "电话外呼", icon: "phone" }],
     },
     {
       label: "安全",
