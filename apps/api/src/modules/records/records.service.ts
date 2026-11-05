@@ -1086,8 +1086,21 @@ function parseListFilters(
       filters.push(parseOptionFilter(field, rawValue));
       continue;
     }
-    if (field.type === 'DATE' || field.type === 'DATETIME') {
-      filters.push(parseDateFilter(field.fieldKey, rawValue, field.type, now));
+    if (
+      field.type === 'DATE' ||
+      field.type === 'DATETIME' ||
+      (field.type === 'TEXT' &&
+        field.config.dateInterpretation === true &&
+        !(isPlainObject(rawValue) && typeof rawValue.contains === 'string'))
+    ) {
+      filters.push(
+        parseDateFilter(
+          field.fieldKey,
+          rawValue,
+          field.type === 'TEXT' ? 'DATE_TEXT' : field.type,
+          now,
+        ),
+      );
       continue;
     }
     if (field.type === 'NUMBER' || field.type === 'MONEY') {
@@ -1147,31 +1160,52 @@ function parseOptionFilter(
   };
 }
 
-const RELATIVE_DATE_PRESETS = new Set([
+const RECORD_DATE_PRESETS = new Set([
   'today',
+  'yesterday',
   'this_week',
   'this_month',
+  'last_month',
   'past_7_days',
   'past_30_days',
 ]);
 
+function isCalendarDate(value: unknown): value is string {
+  if (
+    typeof value !== 'string' ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+    value.startsWith('0000')
+  )
+    return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return (
+    Number.isFinite(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === value
+  );
+}
+
 function parseDateFilter(
   fieldKey: string,
   rawValue: unknown,
-  type: 'DATE' | 'DATETIME',
+  type: 'DATE' | 'DATETIME' | 'DATE_TEXT',
   now: Date,
 ): RecordListFilter {
   if (!isPlainObject(rawValue)) throw invalidRecordFilter();
   if (typeof rawValue.relative === 'string') {
     if (
-      !RELATIVE_DATE_PRESETS.has(rawValue.relative) ||
+      !RECORD_DATE_PRESETS.has(rawValue.relative) ||
       rawValue.from !== undefined ||
       rawValue.to !== undefined
     ) {
       throw invalidRecordFilter();
     }
-    const range = relativeDateRange(rawValue.relative, now);
-    return dateRangeFilter(fieldKey, range.from, range.to, type);
+    return {
+      fieldKey,
+      mode: 'DATE_RANGE',
+      dateType: type,
+      relative: rawValue.relative,
+      asOf: now.toISOString(),
+    };
   }
   const from = optionalDateBound(rawValue.from);
   const to = optionalDateBound(rawValue.to);
@@ -1184,52 +1218,15 @@ function dateRangeFilter(
   fieldKey: string,
   from: string | undefined,
   to: string | undefined,
-  type: 'DATE' | 'DATETIME',
+  type: 'DATE' | 'DATETIME' | 'DATE_TEXT',
 ): RecordListFilter {
   return {
     fieldKey,
     mode: 'DATE_RANGE',
+    dateType: type,
     ...(from ? { from } : {}),
-    ...(to ? { to: type === 'DATETIME' ? `${to}T23:59:59.999Z` : to } : {}),
+    ...(to ? { to } : {}),
   };
-}
-
-function relativeDateRange(
-  preset: string,
-  now: Date,
-): { from: string; to: string } {
-  const today = utcDateString(now);
-  if (preset === 'today') return { from: today, to: today };
-  if (preset === 'past_7_days') {
-    return { from: utcDateString(addUtcDays(now, -6)), to: today };
-  }
-  if (preset === 'past_30_days') {
-    return { from: utcDateString(addUtcDays(now, -29)), to: today };
-  }
-  if (preset === 'this_week') {
-    const monday = addUtcDays(now, -((now.getUTCDay() + 6) % 7));
-    return {
-      from: utcDateString(monday),
-      to: utcDateString(addUtcDays(monday, 6)),
-    };
-  }
-  const monthStart = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
-  );
-  const monthEnd = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0),
-  );
-  return { from: utcDateString(monthStart), to: utcDateString(monthEnd) };
-}
-
-function utcDateString(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-function addUtcDays(date: Date, days: number): Date {
-  const next = new Date(date.getTime());
-  next.setUTCDate(next.getUTCDate() + days);
-  return next;
 }
 
 function isPresenceFilterValue(
@@ -1328,7 +1325,7 @@ const SORTABLE_FIELD_KINDS: Record<string, RecordListFieldSort['kind']> = {
   NUMBER: 'NUMBER',
   MONEY: 'NUMBER',
   DATE: 'DATE',
-  DATETIME: 'DATE',
+  DATETIME: 'DATETIME',
   SINGLE_SELECT: 'OPTION',
 };
 
@@ -1342,7 +1339,12 @@ function parseListSort(
   const field = queryFields(resolved).find(
     (candidate) => candidate.fieldKey === sort,
   );
-  const kind = field ? SORTABLE_FIELD_KINDS[field.type] : undefined;
+  const kind =
+    field?.type === 'TEXT' && field.config.dateInterpretation === true
+      ? 'DATE_TEXT'
+      : field
+        ? SORTABLE_FIELD_KINDS[field.type]
+        : undefined;
   if (!field || !kind) {
     throw new ApiException('RECORD_SORT_INVALID', 400, {
       fieldErrors: { sort: ['请选择当前业务表中可排序的字段。'] },
@@ -1360,7 +1362,7 @@ function parseListSort(
 
 function optionalDateBound(value: unknown): string | undefined {
   if (value === undefined) return undefined;
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+  if (!isCalendarDate(value)) {
     throw invalidRecordFilter();
   }
   return value;
@@ -1376,7 +1378,7 @@ function optionalNumericBound(value: unknown): number | undefined {
 
 function invalidRecordFilter(): ApiException {
   return new ApiException('RECORD_FILTER_INVALID', 400, {
-    fieldErrors: { filters: ['请选择当前业务表中可见的选项。'] },
+    fieldErrors: { filters: ['请检查筛选条件、有效日期及字段权限。'] },
   });
 }
 

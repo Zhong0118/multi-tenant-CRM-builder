@@ -63,6 +63,54 @@ function validObjectConfiguration(): ObjectConfigurationDraft {
 }
 
 describe('object configuration policy', () => {
+  it('publishes a sortable business field and TEXT date interpretation unchanged', () => {
+    const input = validObjectConfiguration();
+    input.defaultView!.sort.field = 'name';
+    input.fields[0].config = { dateInterpretation: true };
+    expect(analyzeObjectConfiguration(input).blocking).toEqual([]);
+    const snapshot = compileObjectConfiguration(
+      input as Parameters<typeof compileObjectConfiguration>[0],
+    );
+    expect(snapshot.defaultView.sort).toEqual({
+      field: 'name',
+      direction: 'desc',
+    });
+    expect(snapshot.fields[0].config).toEqual({ dateInterpretation: true });
+  });
+
+  it.each(['missing', 'INACTIVE', 'TEXTAREA'])(
+    'blocks invalid default sort field %s',
+    (reason) => {
+      const input = validObjectConfiguration();
+      input.defaultView!.sort.field = 'email';
+      if (reason === 'missing') input.defaultView!.sort.field = 'missing';
+      if (reason === 'INACTIVE') input.fields[1].status = 'INACTIVE';
+      if (reason === 'TEXTAREA') input.fields[1].type = 'TEXTAREA';
+      expect(analyzeObjectConfiguration(input).blocking).toContainEqual(
+        expect.objectContaining({ code: 'DEFAULT_VIEW_SORT_INVALID' }),
+      );
+    },
+  );
+
+  it.each([
+    ['TEXT', 'true'],
+    ['DATE', true],
+    ['EMAIL', false],
+  ] as const)(
+    'rejects invalid date interpretation for %s',
+    (type, dateInterpretation) => {
+      const input = validObjectConfiguration();
+      input.fields[1].type = type;
+      input.fields[1].config = { dateInterpretation };
+      expect(analyzeObjectConfiguration(input).blocking).toContainEqual(
+        expect.objectContaining({
+          code: 'FIELD_CONFIG_INVALID',
+          fieldKey: 'email',
+        }),
+      );
+    },
+  );
+
   it('blocks a select whose options are all retired, whatever the field is called', () => {
     const input = validObjectConfiguration();
     input.fields.push({

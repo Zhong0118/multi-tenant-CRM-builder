@@ -40,6 +40,31 @@ export function isSearchableFieldType(
   return (SEARCHABLE_FIELD_TYPES as readonly string[]).includes(value);
 }
 
+export const SYSTEM_RECORD_SORT_FIELDS = [
+  'updatedAt',
+  'createdAt',
+  'recordNo',
+] as const;
+
+export const SORTABLE_FIELD_TYPES = [
+  'TEXT',
+  'PHONE',
+  'EMAIL',
+  'NUMBER',
+  'MONEY',
+  'DATE',
+  'DATETIME',
+  'SINGLE_SELECT',
+] as const satisfies readonly PublishedFieldType[];
+
+export function isSortableFieldType(value: string): boolean {
+  return (SORTABLE_FIELD_TYPES as readonly string[]).includes(value);
+}
+
+export function isSystemRecordSortField(value: string): boolean {
+  return (SYSTEM_RECORD_SORT_FIELDS as readonly string[]).includes(value);
+}
+
 export interface PublishedField {
   id: string;
   fieldKey: string;
@@ -81,7 +106,7 @@ export interface PublishedObjectSchema {
      */
     searchFieldKeys?: string[];
     sort: {
-      field: 'updatedAt' | 'createdAt' | 'recordNo';
+      field: string;
       direction: 'asc' | 'desc';
     };
   };

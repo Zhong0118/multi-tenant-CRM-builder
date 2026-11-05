@@ -113,6 +113,20 @@ describe("parseRecordQuery", () => {
     ).toEqual(query);
   });
 
+  it("rejects impossible calendar bounds and preserves new date shortcuts", () => {
+    expect(
+      parseRecordQuery({
+        filters: JSON.stringify({ date: { from: "2026-02-31" } }),
+      }).filters,
+    ).toEqual({});
+    for (const relative of ["yesterday", "last_month"]) {
+      expect(
+        parseRecordQuery({ filters: JSON.stringify({ date: { relative } }) })
+          .filters,
+      ).toEqual({ date: { relative } });
+    }
+  });
+
   it("keeps camelCase published field keys used by existing templates", () => {
     const query = {
       ...DEFAULT_RECORD_QUERY,

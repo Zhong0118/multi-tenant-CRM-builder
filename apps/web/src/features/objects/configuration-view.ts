@@ -5,7 +5,7 @@ import type {
   PublishedFieldAccess,
   PublishedFieldType,
   RecordSortDirection,
-  RecordSortField,
+  RecordListSortField,
 } from "./object-types";
 
 /**
@@ -46,7 +46,7 @@ export interface ConfigurableObjectView {
     name: string;
     columnFieldKeys: string[];
     searchFieldKeys?: string[];
-    sort: { field: RecordSortField; direction: RecordSortDirection };
+    sort: { field: RecordListSortField; direction: RecordSortDirection };
   } | null;
   employeeAccess: {
     canImport?: boolean;

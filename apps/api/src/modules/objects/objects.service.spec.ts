@@ -875,6 +875,30 @@ describe('ObjectsService', () => {
     ]);
   });
 
+  it('stores a business default sort and rejects an unknown field', async () => {
+    const { service } = fixture();
+    const draft = await createPublishableDraft(service);
+    const input = {
+      expectedVersion: draft.object.version,
+      name: '全部线索',
+      columnFieldKeys: ['name'],
+      sort: { field: 'missing', direction: 'asc' as const },
+    };
+    await expect(
+      service.updateDefaultView(admin, draft.object.id, input, meta),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    const updated = await service.updateDefaultView(
+      admin,
+      draft.object.id,
+      { ...input, sort: { field: 'name', direction: 'asc' } },
+      meta,
+    );
+    expect(updated.defaultView!.sort).toEqual({
+      field: 'name',
+      direction: 'asc',
+    });
+  });
+
   it('stores explicit extra search fields on the default view', async () => {
     const { service } = fixture();
     let draft = await createPublishableDraft(service);

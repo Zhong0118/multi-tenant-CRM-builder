@@ -1,9 +1,26 @@
 import { plainToInstance } from 'class-transformer';
 import { validate, type ValidationError } from 'class-validator';
 
-import { SaveBusinessTemplateDraftDto } from './business-template.dto';
+import {
+  SaveBusinessTemplateDraftDto,
+  TemplateDefaultViewSortDto,
+} from './business-template.dto';
 
 describe('business template DTOs', () => {
+  it.each(['business_date', 'signDate'])(
+    'accepts business field %s as template default sort',
+    async (field) => {
+      expect(
+        await validate(
+          plainToInstance(TemplateDefaultViewSortDto, {
+            field,
+            direction: 'desc',
+          }),
+        ),
+      ).toEqual([]);
+    },
+  );
+
   it.each(['workflow', 'automations', 'pool', 'goalRules'])(
     'rejects explicit null %s while extensions may be absent',
     async (key) => {

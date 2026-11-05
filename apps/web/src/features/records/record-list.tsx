@@ -89,6 +89,8 @@ import {
 } from "./record-display-value";
 import {
   describeFilter,
+  DateQuickFilter,
+  isDateFilterField,
   filterableFields,
   OptionQuickFilter,
   RecordFilterPopover,
@@ -585,8 +587,16 @@ export function RecordList({
     queryableFields,
     schema.object.titleFieldKey,
   );
+  const dateQuickField =
+    conditionFields.find(
+      (field) =>
+        field.fieldKey === schema.defaultView.sort.field &&
+        isDateFilterField(field),
+    ) ?? conditionFields.find(isDateFilterField);
   const chipFilterKeys = Object.keys(query.filters).filter(
-    (key) => !quickFilterFields.some((field) => field.fieldKey === key),
+    (key) =>
+      key !== dateQuickField?.fieldKey &&
+      !quickFilterFields.some((field) => field.fieldKey === key),
   );
   const conditionCount = Object.keys(query.filters).length;
   const anyCondition = Boolean(
@@ -992,6 +1002,13 @@ export function RecordList({
                 onChange={applyFieldFilter}
               />
             ))}
+            {dateQuickField ? (
+              <DateQuickFilter
+                field={dateQuickField}
+                filters={query.filters}
+                onChange={applyFieldFilter}
+              />
+            ) : null}
             {chipFilterKeys.map((key) => {
               const field = schema.fields.find(
                 (candidate) => candidate.fieldKey === key,

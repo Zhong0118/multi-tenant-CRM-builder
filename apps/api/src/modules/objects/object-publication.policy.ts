@@ -64,7 +64,7 @@ export interface PublicationDraft {
      */
     searchFieldKeys?: string[];
     sort: {
-      field: 'updatedAt' | 'createdAt' | 'recordNo';
+      field: string;
       direction: 'asc' | 'desc';
     };
     updatedAt?: string;

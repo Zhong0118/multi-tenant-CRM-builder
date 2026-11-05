@@ -363,6 +363,21 @@ function normalizeDateTime(field: RecordValueField, value: unknown): string {
   ) {
     invalid(field);
   }
+  // Validate the local calendar date before applying the timezone offset.
+  // Date.parse otherwise rolls values such as February 31 into March.
+  const year = Number(value.slice(0, 4));
+  const month = Number(value.slice(5, 7));
+  const day = Number(value.slice(8, 10));
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day ||
+    Number(value.slice(11, 13)) > 23
+  ) {
+    invalid(field);
+  }
   const timestamp = Date.parse(value);
   if (!Number.isFinite(timestamp)) invalid(field);
   return new Date(timestamp).toISOString();

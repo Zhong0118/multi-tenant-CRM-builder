@@ -34,6 +34,36 @@ describe("suggestFieldKey", () => {
 });
 
 describe("coerceImportValue", () => {
+  it.each([
+    ["2026.11.5", "2026-11-05"],
+    ["2026/11/5", "2026-11-05"],
+    ["2026-11-5", "2026-11-05"],
+    ["26.11.2", "2026-11-02"],
+    ["26/11/2", "2026-11-02"],
+    ["26-11-2", "2026-11-02"],
+    ["00.2.29", "2000-02-29"],
+    ["99.12.31", "2099-12-31"],
+  ])("normalizes year-first date %s for date fields", (raw, expected) => {
+    expect(coerceImportValue("DATE", raw, [])).toBe(expected);
+    expect(coerceImportValue("DATETIME", raw, [])).toBe(
+      `${expected}T00:00:00.000Z`,
+    );
+  });
+
+  it.each([
+    "2026/2/31",
+    "2026-02-31",
+    "2026.2.29",
+    "26.13.1",
+    "2026/11-5",
+    "11.2",
+    "11/2/2026",
+    "预计2026.11.5",
+  ])("leaves invalid or ambiguous date %s for validation", (raw) => {
+    expect(coerceImportValue("DATE", raw, [])).toBe(raw);
+    expect(coerceImportValue("DATETIME", raw, [])).toBe(raw);
+  });
+
   it("turns Excel-facing labels into published values", () => {
     expect(coerceImportValue("BOOLEAN", "是", [])).toBe(true);
     expect(coerceImportValue("NUMBER", "12", [])).toBe(12);

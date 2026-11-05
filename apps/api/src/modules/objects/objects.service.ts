@@ -24,6 +24,8 @@ import {
 } from './object-publication.policy';
 import {
   isSearchableFieldType,
+  isSortableFieldType,
+  isSystemRecordSortField,
   isPublishedFieldType,
   type JsonValue,
   type PublishedDataScope,
@@ -94,7 +96,7 @@ interface DefaultViewInput {
   columnFieldKeys: string[];
   searchFieldKeys?: string[];
   sort: {
-    field: 'updatedAt' | 'createdAt' | 'recordNo';
+    field: string;
     direction: 'asc' | 'desc';
   };
 }
@@ -662,6 +664,20 @@ export class ObjectsService {
       meta,
       'object.default_view_updated',
       (draft) => {
+        if (
+          !isSystemRecordSortField(input.sort.field) &&
+          !draft.fields.some(
+            (field) =>
+              field.fieldKey === input.sort.field &&
+              field.status === 'ACTIVE' &&
+              isSortableFieldType(field.type),
+          )
+        ) {
+          throw validationError(
+            'sort.field',
+            '默认排序必须使用系统字段或已启用的可排序业务字段。',
+          );
+        }
         draft.defaultView = {
           code: 'default',
           name: input.name.trim(),

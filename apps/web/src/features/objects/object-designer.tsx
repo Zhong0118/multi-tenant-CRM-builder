@@ -64,7 +64,8 @@ import {
   type PublishedFieldAccess,
   type PublishedFieldType,
   type RecordSortDirection,
-  type RecordSortField,
+  SORTABLE_FIELD_TYPES,
+  type RecordListSortField,
 } from "./object-types";
 import { PublicationPanel } from "./publication-panel";
 import { AutomationDesigner } from "@/features/automations/automation-designer";
@@ -454,7 +455,7 @@ export function ObjectDesigner({
       name: string;
       columnFieldKeys: string[];
       searchFieldKeys: string[];
-      sort: { field: RecordSortField; direction: RecordSortDirection };
+      sort: { field: RecordListSortField; direction: RecordSortDirection };
     }) =>
       api.updateDefaultView(tenantCode, objectId, {
         expectedVersion: draft.object.version,
@@ -1310,7 +1311,7 @@ function DefaultViewSection({
     name: string;
     columnFieldKeys: string[];
     searchFieldKeys: string[];
-    sort: { field: RecordSortField; direction: RecordSortDirection };
+    sort: { field: RecordListSortField; direction: RecordSortDirection };
   }) => void;
 }) {
   const activeFields = draft.fields.filter(
@@ -1330,7 +1331,7 @@ function DefaultViewSection({
         searchableFields.some((field) => field.fieldKey === fieldKey),
       ),
   );
-  const [sortField, setSortField] = useState<RecordSortField>(
+  const [sortField, setSortField] = useState<RecordListSortField>(
     draft.defaultView?.sort.field ?? "updatedAt",
   );
   const [sortDirection, setSortDirection] = useState<RecordSortDirection>(
@@ -1391,11 +1392,14 @@ function DefaultViewSection({
   const labelOf = (fieldKey: string) =>
     activeFields.find((field) => field.fieldKey === fieldKey)?.label ??
     fieldKey;
-  const sortLabel = {
-    updatedAt: "最近更新时间",
-    createdAt: "创建时间",
-    recordNo: "记录编号",
-  }[sortField];
+  const sortLabel =
+    (
+      {
+        updatedAt: "最近更新时间",
+        createdAt: "创建时间",
+        recordNo: "记录编号",
+      } as Record<string, string>
+    )[sortField] ?? labelOf(sortField);
 
   return (
     <section className={styles.panel} aria-label="列表展示与搜索">
@@ -1560,6 +1564,16 @@ function DefaultViewSection({
                     { value: "updatedAt", label: "最近更新时间" },
                     { value: "createdAt", label: "创建时间" },
                     { value: "recordNo", label: "记录编号" },
+                    ...activeFields
+                      .filter((field) =>
+                        (SORTABLE_FIELD_TYPES as readonly string[]).includes(
+                          field.type,
+                        ),
+                      )
+                      .map((field) => ({
+                        value: field.fieldKey,
+                        label: field.label,
+                      })),
                   ]}
                 />
               </Form.Item>

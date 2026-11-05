@@ -23,6 +23,29 @@ const option = (key: string, status: "ACTIVE" | "INACTIVE" = "ACTIVE") => ({
 });
 
 describe("fieldSavePayload", () => {
+  it("saves date interpretation only for TEXT and allows disabling it", () => {
+    const enabled = values({ type: "TEXT", dateInterpretation: true });
+    expect(
+      fieldSavePayload(enabled, {
+        validation: {},
+        config: { placeholder: "日期" },
+      }).config,
+    ).toEqual({ placeholder: "日期", dateInterpretation: true });
+    const disabled = values({ type: "TEXT", dateInterpretation: false });
+    expect(
+      fieldSavePayload(disabled, {
+        validation: {},
+        config: { dateInterpretation: true },
+      }).config,
+    ).not.toHaveProperty("dateInterpretation");
+    expect(
+      fieldSavePayload(
+        { ...enabled, type: "DATE" },
+        { validation: {}, config: { dateInterpretation: true } },
+      ).config,
+    ).not.toHaveProperty("dateInterpretation");
+  });
+
   it("drops options left over after switching a select to text", () => {
     const payload = fieldSavePayload(values({ type: "TEXT", options: [option("a")], maxLength: 20 }), {
       validation: {},

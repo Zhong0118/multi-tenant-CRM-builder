@@ -162,7 +162,7 @@ export interface HydratedTenantConfiguration {
     /** Keyword search fields; stored beside the columns as the designer does. */
     searchFieldKeys?: string[];
     sort: {
-      field: 'updatedAt' | 'createdAt' | 'recordNo';
+      field: string;
       direction: 'asc' | 'desc';
     };
     status: 'ACTIVE';

@@ -1998,24 +1998,25 @@ describe('RecordsService', () => {
     expect(empty.items.map((record) => record.title)).toEqual(['无邮箱']);
   });
 
-  it('filters records by a published relative date window', async () => {
-    const { service } = fixture();
-    await create(service, admin, '上周跟进', employee.memberId, {
-      follow_up_on: '2026-08-10',
-    });
-    await create(service, admin, '本周跟进', employee.memberId, {
-      follow_up_on: '2026-08-20',
-    });
-
-    const page = await service.list(admin, 'leads', {
+  it('delegates relative calendar windows with a fixed instant to the tenant-aware repository', async () => {
+    const { service, store } = fixture();
+    const listed = jest.spyOn(store, 'listRecords');
+    await service.list(admin, 'leads', {
       page: 1,
       limit: 20,
       filters: '{"follow_up_on":{"relative":"past_7_days"}}',
       sort: 'updatedAt',
       direction: 'desc',
     });
-
-    expect(page.items.map((record) => record.title)).toEqual(['本周跟进']);
+    expect(listed.mock.calls[0][0].filters).toEqual([
+      {
+        fieldKey: 'follow_up_on',
+        mode: 'DATE_RANGE',
+        dateType: 'DATE',
+        relative: 'past_7_days',
+        asOf: '2026-08-21T10:30:00.000Z',
+      },
+    ]);
   });
 
   it('applies published filters while sorting by a typed field', async () => {

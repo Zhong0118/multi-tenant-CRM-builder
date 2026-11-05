@@ -993,3 +993,30 @@ th[data-resizing="true"] .columnResizer::after {
 .displayFooter :global(.ant-btn) {
   flex: none;
 }
+
+.dateQuickPanel {
+  display: grid;
+  gap: 12px;
+  width: min(360px, calc(100vw - 48px));
+}
+.dateQuickPanel .conditionRange {
+  flex-wrap: wrap;
+}
+
+.dateQuickButton {
+  max-width: 100%;
+}
+.dateQuickButton > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 640px) {
+  .dateRangePopup :global(.ant-picker-panels) {
+    flex-direction: column;
+  }
+  .dateRangePopup :global(.ant-picker-panel-container) {
+    max-height: 50dvh;
+    overflow-y: auto;
+  }
+}

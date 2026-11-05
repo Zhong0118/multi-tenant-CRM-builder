@@ -1274,6 +1274,30 @@ describe("RecordList table sorting", () => {
     );
   });
 
+  it("offers a date shortcut that resets pagination while retaining the selected business-date sort", async () => {
+    const navigate = vi.fn();
+    renderList(navigate, {
+      ...DEFAULT_RECORD_QUERY,
+      page: 2,
+      sort: "signed_on",
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "按签约日选择日期范围" }),
+    );
+    fireEvent.mouseDown(
+      await screen.findByRole("combobox", { name: "按签约日快捷筛选" }),
+    );
+    fireEvent.click(await screen.findByText("昨天"));
+    const query = new URLSearchParams(
+      navigate.mock.lastCall?.[0].split("?")[1],
+    );
+    expect(query.get("page")).toBeNull();
+    expect(query.get("sort")).toBe("signed_on");
+    expect(JSON.parse(query.get("filters")!)).toEqual({
+      signed_on: { relative: "yesterday" },
+    });
+  });
+
   it("keeps every selected status visible instead of collapsing selections", () => {
     renderList(vi.fn(), {
       ...DEFAULT_RECORD_QUERY,

@@ -223,6 +223,22 @@ describe("template draft aggregate", () => {
     ]);
   });
 
+  it("keeps a business default sort attached when an unpublished template field is renamed", () => {
+    const draft = templateDraftFromFixture();
+    const object = draft.objects[0]!;
+    const field = object.fields[0]!;
+    field.publishedFieldKey = null;
+    field.publishedType = null;
+    object.defaultView!.sort = { field: field.fieldKey, direction: "asc" };
+    const updated = updateField(draft, object.object.id, field.id, {
+      fieldKey: "business_date",
+    });
+    expect(updated.objects[0]!.defaultView!.sort).toEqual({
+      field: "business_date",
+      direction: "asc",
+    });
+  });
+
   it("ignores protected identity and ordering keys in editable patches", () => {
     const draft = templateDraftFromFixture();
     const object = draft.objects[0]!;
