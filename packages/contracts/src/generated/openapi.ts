@@ -2981,8 +2981,8 @@ export interface components {
     DefaultViewSortDto: {
       /** @enum {string} */
       direction: "asc" | "desc";
-      /** @enum {string} */
-      field: "updatedAt" | "createdAt" | "recordNo";
+      /** @description 系统排序字段或已启用的可排序业务字段键。 */
+      field: string;
     };
     DeleteMemberGroupDto: {
       expectedVersion: number;
@@ -3035,6 +3035,8 @@ export interface components {
       expectedVersion: number;
     };
     FieldConfigDto: {
+      /** @description 仅 TEXT 支持：保留原文，按日期排序和筛选；两位年份表示 2000–2099。 */
+      dateInterpretation?: boolean;
       help?: string;
       options?: components["schemas"]["SelectOptionDto"][];
       placeholder?: string;
@@ -4354,8 +4356,8 @@ export interface components {
     TemplateDefaultViewSortDto: {
       /** @enum {string} */
       direction: "asc" | "desc";
-      /** @enum {string} */
-      field: "updatedAt" | "createdAt" | "recordNo";
+      /** @description 系统排序字段或已启用的可排序业务字段键。 */
+      field: string;
     };
     TemplateEmployeeAccessDto: {
       canCreate: boolean;

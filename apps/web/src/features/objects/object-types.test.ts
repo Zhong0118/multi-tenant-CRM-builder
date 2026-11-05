@@ -55,10 +55,39 @@ function schemaResponse(overrides: Partial<SchemaResponse> = {}) {
 }
 
 describe("parseRuntimeObjectSchema", () => {
-  it.each([true, false, undefined])("preserves the published workflow capability (%s)", (workflowEnabled) => {
-    const response = { ...schemaResponse(), workflowEnabled };
-    expect(parseRuntimeObjectSchema(response)).toHaveProperty("workflowEnabled", workflowEnabled);
+  it("accepts a published business field as the default sort", () => {
+    const response = schemaResponse();
+    response.defaultView.sort = { field: "customer_name", direction: "asc" };
+    expect(parseRuntimeObjectSchema(response).defaultView.sort).toEqual({
+      field: "customer_name",
+      direction: "asc",
+    });
   });
+
+  it.each(["missing", "TEXTAREA", "not-queryable"])(
+    "rejects invalid business sorting: %s",
+    (reason) => {
+      const response = schemaResponse();
+      response.defaultView.sort = {
+        field: reason === "missing" ? "missing" : "customer_name",
+        direction: "asc",
+      };
+      if (reason === "TEXTAREA") response.fields[0].type = "TEXTAREA";
+      if (reason === "not-queryable") response.queryFieldKeys = [];
+      expect(() => parseRuntimeObjectSchema(response)).toThrow();
+    },
+  );
+
+  it.each([true, false, undefined])(
+    "preserves the published workflow capability (%s)",
+    (workflowEnabled) => {
+      const response = { ...schemaResponse(), workflowEnabled };
+      expect(parseRuntimeObjectSchema(response)).toHaveProperty(
+        "workflowEnabled",
+        workflowEnabled,
+      );
+    },
+  );
 
   it("accepts authorized GROUP reads while refusing GROUP writes", () => {
     expect(

@@ -2,6 +2,7 @@ import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 
 import {
+  DefaultViewSortDto,
   CreateFieldDefinitionDto,
   CreateObjectDefinitionDto,
   EmployeePermissionsDto,
@@ -10,6 +11,35 @@ import {
 } from './object.dto';
 
 describe('object configuration DTOs', () => {
+  it.each(['business_date', 'signDate'])(
+    'accepts business field %s sorting and a boolean date interpretation setting',
+    async (sortField) => {
+      const sort = plainToInstance(DefaultViewSortDto, {
+        field: sortField,
+        direction: 'asc',
+      });
+      expect(await validate(sort)).toEqual([]);
+      const field = plainToInstance(UpdateFieldDefinitionDto, {
+        expectedVersion: 1,
+        config: { dateInterpretation: true },
+      });
+      expect(
+        await validate(field, { whitelist: true, forbidNonWhitelisted: true }),
+      ).toEqual([]);
+    },
+  );
+
+  it('rejects a string date interpretation setting', async () => {
+    const field = plainToInstance(UpdateFieldDefinitionDto, {
+      expectedVersion: 1,
+      config: { dateInterpretation: 'true' },
+    });
+    expect(
+      (await validate(field, { whitelist: true, forbidNonWhitelisted: true }))
+        .length,
+    ).toBeGreaterThan(0);
+  });
+
   const initialField = {
     fieldKey: 'col_1',
     label: '名称',

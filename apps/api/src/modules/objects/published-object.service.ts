@@ -19,6 +19,8 @@ import {
 } from './effective-access';
 import {
   PUBLISHED_FIELD_TYPES,
+  isSortableFieldType,
+  isSystemRecordSortField,
   type JsonValue,
   type PublishedField,
   type PublishedFieldAccess,
@@ -281,6 +283,12 @@ function projectRuntimeSchema(
     fields,
     defaultView: {
       ...schema.defaultView,
+      sort:
+        isSystemRecordSortField(schema.defaultView.sort.field) ||
+        (queryFieldAccess(access)[schema.defaultView.sort.field] ??
+          'HIDDEN') !== 'HIDDEN'
+          ? { ...schema.defaultView.sort }
+          : { field: 'updatedAt', direction: 'desc' },
       columnFieldKeys: schema.defaultView.columnFieldKeys.filter((fieldKey) =>
         visibleKeys.has(fieldKey),
       ),
@@ -375,7 +383,14 @@ export function parsePublishedObjectSchema(
   if (searchFieldKeys?.some((fieldKey) => !fieldKeys.has(fieldKey))) {
     invalidSnapshot();
   }
-  if (!['updatedAt', 'createdAt', 'recordNo'].includes(String(sort.field))) {
+  assertString(sort.field);
+  if (
+    !isSystemRecordSortField(sort.field) &&
+    !fields.some(
+      (field) =>
+        field.fieldKey === sort.field && isSortableFieldType(field.type),
+    )
+  ) {
     invalidSnapshot();
   }
   if (sort.direction !== 'asc' && sort.direction !== 'desc') invalidSnapshot();

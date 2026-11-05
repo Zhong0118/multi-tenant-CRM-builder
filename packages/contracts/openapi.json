@@ -2925,7 +2925,7 @@
             "type": "string"
           },
           "field": {
-            "enum": ["updatedAt", "createdAt", "recordNo"],
+            "description": "系统排序字段或已启用的可排序业务字段键。",
             "type": "string"
           }
         },
@@ -3100,6 +3100,10 @@
       },
       "FieldConfigDto": {
         "properties": {
+          "dateInterpretation": {
+            "description": "仅 TEXT 支持：保留原文，按日期排序和筛选；两位年份表示 2000–2099。",
+            "type": "boolean"
+          },
           "help": {
             "maxLength": 1000,
             "type": "string"
@@ -7042,7 +7046,7 @@
             "type": "string"
           },
           "field": {
-            "enum": ["updatedAt", "createdAt", "recordNo"],
+            "description": "系统排序字段或已启用的可排序业务字段键。",
             "type": "string"
           }
         },

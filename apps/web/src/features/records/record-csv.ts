@@ -1,3 +1,5 @@
+import { parseImportDate } from "@/lib/import-date";
+
 export const RECORD_IMPORT_MAX_ROWS = 10000;
 export const RECORD_IMPORT_MAX_COLUMNS = 40;
 
@@ -90,7 +92,7 @@ export function coerceImportValue(
     case "DATETIME":
       return coerceDateTime(value);
     case "DATE":
-      return coerceDate(value);
+      return parseImportDate(value) ?? value;
     default:
       return value;
   }
@@ -105,15 +107,9 @@ function matchOption(
   )?.key;
 }
 
-function coerceDate(value: string): string {
-  const match = /^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/.exec(value);
-  if (!match) return value;
-  return `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`;
-}
-
 function coerceDateTime(value: string): string {
-  const dateOnly = coerceDate(value);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return `${dateOnly}T00:00:00.000Z`;
+  const dateOnly = parseImportDate(value);
+  if (dateOnly) return `${dateOnly}T00:00:00.000Z`;
   if (/^\d{4}-\d{2}-\d{2}T/.test(value)) return value;
   const match =
     /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/.exec(value);

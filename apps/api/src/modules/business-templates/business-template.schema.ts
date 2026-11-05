@@ -30,7 +30,7 @@ export interface TemplateDefaultView {
   columnFieldKeys: string[];
   searchFieldKeys?: string[];
   sort: {
-    field: 'updatedAt' | 'createdAt' | 'recordNo';
+    field: string;
     direction: 'asc' | 'desc';
   };
 }

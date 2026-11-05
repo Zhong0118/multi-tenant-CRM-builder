@@ -5,6 +5,8 @@ import { isDeepStrictEqual } from 'node:util';
 import {
   isPublishedFieldType,
   isSearchableFieldType,
+  isSortableFieldType,
+  isSystemRecordSortField,
   type PublishedField,
   type PublishedObjectSchema,
 } from './object-schema';
@@ -194,6 +196,17 @@ export function analyzeObjectConfiguration(
       message: '发布对象前必须配置默认视图。',
     });
   } else {
+    const sortField = input.defaultView.sort.field;
+    if (
+      !isSystemRecordSortField(sortField) &&
+      !isSortableFieldType(activeFieldByKey.get(sortField)?.type ?? '')
+    ) {
+      blocking.push({
+        code: 'DEFAULT_VIEW_SORT_INVALID',
+        message: '默认排序必须使用系统字段或已启用的可排序业务字段。',
+        fieldKey: sortField,
+      });
+    }
     for (const fieldKey of input.defaultView.columnFieldKeys) {
       if (!activeFieldByKey.has(fieldKey)) {
         blocking.push({
@@ -389,6 +402,14 @@ export function dropIncompatibleSettings(field: PublicationDraftField): void {
     delete config.options;
     field.config = config;
   }
+  if (
+    field.type !== 'TEXT' &&
+    isPlainRecord(field.config) &&
+    'dateInterpretation' in field.config
+  ) {
+    field.config = { ...field.config };
+    delete field.config.dateInterpretation;
+  }
   if (!hasValidDefault(field)) field.defaultValue = null;
 }
 
@@ -491,7 +512,8 @@ function hasInvalidConfig(field: PublicationDraftField): boolean {
   const config = field.config;
   if (
     Object.keys(config).some(
-      (key) => !['options', 'help', 'placeholder'].includes(key),
+      (key) =>
+        !['options', 'help', 'placeholder', 'dateInterpretation'].includes(key),
     ) ||
     !isOptionalDisplayText(config.help) ||
     !isOptionalDisplayText(config.placeholder)
@@ -499,6 +521,11 @@ function hasInvalidConfig(field: PublicationDraftField): boolean {
     return true;
   }
 
+  if (
+    config.dateInterpretation !== undefined &&
+    (field.type !== 'TEXT' || typeof config.dateInterpretation !== 'boolean')
+  )
+    return true;
   if (config.options === undefined) return false;
   if (field.type !== 'SINGLE_SELECT' && field.type !== 'MULTI_SELECT') {
     return true;

@@ -1,6 +1,10 @@
 "use client";
 
-import { CloseOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  CalendarOutlined,
+  CloseOutlined,
+  PlusOutlined,
+} from "@ant-design/icons";
 import {
   Button,
   ConfigProvider,
@@ -11,6 +15,8 @@ import {
   Select,
 } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
+import "dayjs/locale/zh-cn";
+import datePickerZhCN from "antd/es/date-picker/locale/zh_CN";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import {
@@ -54,6 +60,7 @@ export function filterableFields(
     if (field.type === "SINGLE_SELECT" || field.type === "MULTI_SELECT") {
       return selectOptions(field).length > 0;
     }
+    if (isDateFilterField(field)) return true;
     if (TEXT_TYPES.has(field.type)) return field.fieldKey !== titleFieldKey;
     return [
       "DATE",
@@ -144,6 +151,62 @@ export function OptionQuickFilter({
   );
 }
 
+export function isDateFilterField(field: PublishedFieldView): boolean {
+  return (
+    field.type === "DATE" ||
+    field.type === "DATETIME" ||
+    (field.type === "TEXT" && field.config.dateInterpretation === true)
+  );
+}
+
+export function DateQuickFilter({
+  field,
+  filters,
+  onChange,
+}: {
+  field: PublishedFieldView;
+  filters: RecordFilters;
+  onChange: (fieldKey: string, value: RecordFilterValue | undefined) => void;
+}) {
+  const value = filters[field.fieldKey];
+  return (
+    <Popover
+      trigger="click"
+      placement="bottomLeft"
+      content={
+        <div className={styles.dateQuickPanel}>
+          <strong>{field.label}</strong>
+          <ConditionValue
+            field={field}
+            filters={filters}
+            members={[]}
+            onChange={(next) => onChange(field.fieldKey, next)}
+          />
+          <Button
+            type="text"
+            size="small"
+            disabled={!value}
+            onClick={() => onChange(field.fieldKey, undefined)}
+          >
+            清除日期条件
+          </Button>
+        </div>
+      }
+    >
+      <Button
+        type="text"
+        size="small"
+        className={styles.dateQuickButton}
+        icon={<CalendarOutlined aria-hidden />}
+        aria-label={`按${field.label}选择日期范围`}
+      >
+        {field.label}
+        {value ? ` · ${describeFilter(field, value, [])}` : ""}
+      </Button>
+    </Popover>
+  );
+}
+
 type TextOperator = "contains" | "not_empty" | "empty";
 const CUSTOM_RANGE = "custom";
 
@@ -170,9 +233,8 @@ function ConditionValue({
   useEffect(() => () => clearTimeout(debounce.current), []);
   const relative = relativeDateFilterValue(filters, key);
   const range = dateRangeFilterValue(filters, key);
-  const [dateMode, setDateMode] = useState<string | undefined>(
-    relative ?? (range ? CUSTOM_RANGE : undefined),
-  );
+  const [customDate, setCustomDate] = useState(false);
+  const dateMode = relative ?? (range || customDate ? CUSTOM_RANGE : undefined);
 
   if (
     field.type === "SINGLE_SELECT" ||
@@ -268,7 +330,7 @@ function ConditionValue({
     );
   }
 
-  if (field.type === "DATE" || field.type === "DATETIME") {
+  if (isDateFilterField(field)) {
     return (
       <div
         role="group"
@@ -281,7 +343,7 @@ function ConditionValue({
           className={styles.conditionOperatorSelect}
           value={dateMode}
           onChange={(next: string) => {
-            setDateMode(next);
+            setCustomDate(next === CUSTOM_RANGE);
             if (next !== CUSTOM_RANGE)
               onChange({
                 relative: next as (typeof RELATIVE_DATE_PRESETS)[number],
@@ -298,14 +360,16 @@ function ConditionValue({
         />
         {dateMode === CUSTOM_RANGE ? (
           <DatePicker.RangePicker
+            locale={datePickerZhCN}
+            classNames={{ popup: { root: styles.dateRangePopup } }}
             allowEmpty={[true, true]}
             allowClear
             className={styles.conditionInput}
             separator="至"
             placeholder={["开始", "结束"]}
             value={[
-              range?.from ? dayjs(range.from) : null,
-              range?.to ? dayjs(range.to) : null,
+              range?.from ? dayjs(range.from).locale("zh-cn") : null,
+              range?.to ? dayjs(range.to).locale("zh-cn") : null,
             ]}
             onChange={(next: [Dayjs | null, Dayjs | null] | null) => {
               const from = next?.[0]?.isValid()

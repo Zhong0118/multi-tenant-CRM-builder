@@ -951,7 +951,7 @@ function viewSort(
   const field = object.field;
   const direction = object.direction;
   return {
-    field: field === 'createdAt' || field === 'recordNo' ? field : 'updatedAt',
+    field: typeof field === 'string' && field.length > 0 ? field : 'updatedAt',
     direction: direction === 'asc' ? 'asc' : 'desc',
   };
 }

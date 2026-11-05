@@ -246,6 +246,15 @@ export class SelectOptionDto {
 }
 
 export class FieldConfigDto {
+  @ApiPropertyOptional({
+    type: Boolean,
+    description:
+      '仅 TEXT 支持：保留原文，按日期排序和筛选；两位年份表示 2000–2099。',
+  })
+  @IsOptional()
+  @IsBoolean()
+  dateInterpretation?: boolean;
+
   @ApiPropertyOptional({ type: SelectOptionDto, isArray: true })
   @IsOptional()
   @IsArray()
@@ -424,9 +433,14 @@ export class FieldOrderDto extends ExpectedVersionDto {
 }
 
 export class DefaultViewSortDto {
-  @ApiProperty({ enum: ['updatedAt', 'createdAt', 'recordNo'] })
-  @IsIn(['updatedAt', 'createdAt', 'recordNo'])
-  field!: 'updatedAt' | 'createdAt' | 'recordNo';
+  @ApiProperty({
+    type: String,
+    description: '系统排序字段或已启用的可排序业务字段键。',
+  })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(64)
+  field!: string;
 
   @ApiProperty({ enum: ['asc', 'desc'] })
   @IsIn(['asc', 'desc'])

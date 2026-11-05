@@ -7,6 +7,45 @@ import {
 } from "./object-file-fields";
 
 describe("suggestObjectFields", () => {
+  it("recognizes valid full-year dotted dates using import normalization", () => {
+    const [field] = suggestObjectFields({
+      headers: ["日期"],
+      rows: [["2026.11.5"], ["2024.2.29"], ["2026/11/2"]],
+    });
+    expect(field.type).toBe("DATE");
+    expect(
+      field.values.map((value) => coerceImportValue(field.type, value, [])),
+    ).toEqual(["2026-11-05", "2024-02-29", "2026-11-02"]);
+  });
+
+  it("requires explicit type confirmation for two-digit years", () => {
+    const [field] = suggestObjectFields({
+      headers: ["日期"],
+      rows: [["26.11.2"], ["2026.11.5"]],
+    });
+    expect(field.type).toBe("TEXT");
+    expect(field.reason).toMatch(/两位年份/);
+    expect(field.reason).toMatch(/2000[–-]2099/);
+    const confirmed = changeFileFieldType(field, "DATE");
+    expect(
+      confirmed.values.map((value) =>
+        coerceImportValue(confirmed.type, value, []),
+      ),
+    ).toEqual(["2026-11-02", "2026-11-05"]);
+  });
+
+  it.each(["2026.2.29", "2026/11-5", "11.2", "预计2026.11.5"])(
+    "preserves mixed date columns containing %s as text",
+    (value) => {
+      expect(
+        suggestObjectFields({
+          headers: ["日期"],
+          rows: [["2026.11.5"], [value]],
+        })[0].type,
+      ).toBe("TEXT");
+    },
+  );
+
   it("keeps generated field keys from shadowing another source header during import", () => {
     const fields = suggestObjectFields({
       headers: ["名称", "col_1"],

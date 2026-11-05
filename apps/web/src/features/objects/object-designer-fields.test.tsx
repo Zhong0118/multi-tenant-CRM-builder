@@ -144,6 +144,77 @@ const editor = (label: string) => screen.getByRole("region", { name: `配置字�
 const nameInput = () => screen.getByRole("textbox", { name: "字段名称" });
 
 describe("field list and editor", () => {
+  it("keeps the enabled date setting when saving another field property", async () => {
+    const initial = draft();
+    initial.fields[0].config = {
+      dateInterpretation: true,
+      placeholder: "日期",
+    };
+    const api = objectApi();
+    renderDesigner(initial, api);
+    expect(
+      screen.getByRole("switch", { name: "按日期排序和筛选" }),
+    ).toBeChecked();
+    expect(screen.getByText(/两位年份表示 2000–2099/)).toBeInTheDocument();
+    fireEvent.change(nameInput(), { target: { value: "业务日期" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存字段" }));
+    await waitFor(() =>
+      expect(api.updateField).toHaveBeenCalledWith(
+        "northwind",
+        "object-1",
+        "field-name",
+        expect.objectContaining({
+          config: { dateInterpretation: true, placeholder: "日期" },
+        }),
+      ),
+    );
+  });
+
+  it("enables date interpretation for TEXT and hides the switch for PHONE", async () => {
+    const api = objectApi();
+    renderDesigner(draft(), api);
+    fireEvent.click(screen.getByRole("switch", { name: "按日期排序和筛选" }));
+    fireEvent.click(screen.getByRole("button", { name: "保存字段" }));
+    await waitFor(() =>
+      expect(api.updateField).toHaveBeenCalledWith(
+        "northwind",
+        "object-1",
+        "field-name",
+        expect.objectContaining({ config: { dateInterpretation: true } }),
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "保存字段" })).toBeDisabled(),
+    );
+    fireEvent.click(row("联系电话"));
+    expect(
+      screen.queryByRole("switch", { name: "按日期排序和筛选" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("selects and saves an active business field as the default sort", async () => {
+    const api = objectApi();
+    renderDesigner(draft(), api);
+    fireEvent.click(screen.getByRole("button", { name: "列表展示与搜索" }));
+    const select = screen.getByRole("combobox", { name: "默认排序字段" });
+    fireEvent.mouseDown(select);
+    fireEvent.click(
+      screen.getByText("联系电话", {
+        selector: ".ant-select-item-option-content",
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "保存列表设置" }));
+    await waitFor(() =>
+      expect(api.updateDefaultView).toHaveBeenCalledWith(
+        "northwind",
+        "object-1",
+        expect.objectContaining({
+          sort: { field: "contact_phone", direction: "desc" },
+        }),
+      ),
+    );
+  });
+
   it("opens the first field and marks which row is being edited", () => {
     renderDesigner(draft(), objectApi());
     expect(editor("客户名称")).toBeInTheDocument();

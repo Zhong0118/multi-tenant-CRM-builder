@@ -9,7 +9,7 @@ import type {
   PublishedFieldAccess,
   PublishedFieldType,
   RecordSortDirection,
-  RecordSortField,
+  RecordListSortField,
   SelectOptionView,
 } from "../objects/object-types";
 import { fieldSavePayload } from "../objects/field-editor-form";
@@ -98,6 +98,7 @@ export interface TemplateFieldEditorValues {
   employeeAccess: PublishedFieldAccess;
   options: SelectOptionView[];
   help: string;
+  dateInterpretation?: boolean;
   minLength?: number;
   maxLength?: number;
   min?: number;
@@ -297,6 +298,13 @@ export function updateField(
       defaultView: object.defaultView
         ? {
             ...object.defaultView,
+            sort: {
+              ...object.defaultView.sort,
+              field:
+                object.defaultView.sort.field === oldKey
+                  ? newKey
+                  : object.defaultView.sort.field,
+            },
             columnFieldKeys: object.defaultView.columnFieldKeys.map((key) =>
               key === oldKey ? newKey : key,
             ),
@@ -402,7 +410,7 @@ export function setDefaultView(
     name: string;
     columnFieldKeys: string[];
     searchFieldKeys?: string[];
-    sort: { field: RecordSortField; direction: RecordSortDirection };
+    sort: { field: RecordListSortField; direction: RecordSortDirection };
   } | null,
 ): TemplateDraft {
   return mapObject(draft, objectId, (object) => ({
@@ -582,4 +590,3 @@ function orderByIds<T>(
 function newStableId(): string {
   return globalThis.crypto.randomUUID();
 }
-

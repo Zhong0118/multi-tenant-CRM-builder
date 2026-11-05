@@ -26,6 +26,7 @@ import { ObjectPreview, type PreviewRole } from "../objects/object-preview";
 import {
   DATA_SCOPE_LABELS,
   isSearchableFieldType,
+  SORTABLE_FIELD_TYPES,
   TITLE_FIELD_TYPES,
   type PublishedDataScope,
 } from "../objects/object-types";
@@ -472,6 +473,18 @@ export function TemplateObjectEditor({
                         { value: "updatedAt", label: "更新时间" },
                         { value: "createdAt", label: "创建时间" },
                         { value: "recordNo", label: "记录编号" },
+                        ...object.fields
+                          .filter(
+                            (field) =>
+                              field.status === "ACTIVE" &&
+                              (
+                                SORTABLE_FIELD_TYPES as readonly string[]
+                              ).includes(field.type),
+                          )
+                          .map((field) => ({
+                            value: field.fieldKey,
+                            label: field.label,
+                          })),
                       ]}
                       onChange={(field) =>
                         onChange(

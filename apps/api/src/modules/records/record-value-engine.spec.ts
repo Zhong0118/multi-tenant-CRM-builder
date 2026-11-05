@@ -203,6 +203,29 @@ async function expectInvalid(
 }
 
 describe('dynamic record values', () => {
+  it.each([
+    '2026-02-31T00:00:00Z',
+    '2026-02-29T10:00:00+08:00',
+    '2026-04-31T23:00:00-02:00',
+    '2026-11-05T24:00:00Z',
+    '2026-11-05T12:60:00Z',
+    '2026-11-05T12:00:60Z',
+    '2026-11-05T12:00:00+24:00',
+  ])(
+    'rejects impossible datetime %s instead of rolling it forward',
+    async (value) => {
+      await expect(validate(field('DATETIME'), value)).rejects.toMatchObject({
+        code: 'FIELD_INVALID',
+      });
+    },
+  );
+
+  it('accepts leap days with offsets that cross a calendar boundary', async () => {
+    expect(
+      await validate(field('DATETIME'), '2024-02-29T23:30:00-02:00'),
+    ).toMatchObject({ value: '2024-03-01T01:30:00.000Z' });
+  });
+
   const cases: Array<{
     type: PublishedFieldType;
     field?: Partial<PublishedField>;

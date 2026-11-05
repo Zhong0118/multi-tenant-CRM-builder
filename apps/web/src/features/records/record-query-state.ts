@@ -1,3 +1,4 @@
+import { parseImportDate } from "@/lib/import-date";
 import type {
   RecordListSortField,
   RecordSortDirection,
@@ -30,6 +31,8 @@ export type RecordTextContainsFilter = { contains: string };
 export type RecordPresenceFilter = { presence: RecordPresence };
 export type RecordRelativeDatePreset =
   | "today"
+  | "yesterday"
+  | "last_month"
   | "this_week"
   | "this_month"
   | "past_7_days"
@@ -46,10 +49,12 @@ export type RecordFilterValue =
 
 export const RELATIVE_DATE_PRESETS: RecordRelativeDatePreset[] = [
   "today",
-  "this_week",
-  "this_month",
+  "yesterday",
   "past_7_days",
   "past_30_days",
+  "this_week",
+  "this_month",
+  "last_month",
 ];
 
 export const RELATIVE_DATE_PRESET_LABELS: Record<
@@ -57,6 +62,8 @@ export const RELATIVE_DATE_PRESET_LABELS: Record<
   string
 > = {
   today: "今天",
+  yesterday: "昨天",
+  last_month: "上月",
   this_week: "本周",
   this_month: "本月",
   past_7_days: "近 7 天",
@@ -292,7 +299,12 @@ function normalizeFilterValue(value: unknown): RecordFilterValue | undefined {
 
 function optionalDateBound(value: unknown): string | undefined | false {
   if (value === undefined) return undefined;
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  if (
+    typeof value !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+    parseImportDate(value) !== value
+  )
+    return false;
   return value;
 }
 

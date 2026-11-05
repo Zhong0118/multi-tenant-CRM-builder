@@ -150,9 +150,14 @@ export class CreateBusinessTemplateDto {
 }
 
 export class TemplateDefaultViewSortDto {
-  @ApiProperty({ type: String, enum: ['updatedAt', 'createdAt', 'recordNo'] })
-  @IsIn(['updatedAt', 'createdAt', 'recordNo'])
-  field!: 'updatedAt' | 'createdAt' | 'recordNo';
+  @ApiProperty({
+    type: String,
+    description: '系统排序字段或已启用的可排序业务字段键。',
+  })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(64)
+  field!: string;
 
   @ApiProperty({ type: String, enum: ['asc', 'desc'] })
   @IsIn(['asc', 'desc'])

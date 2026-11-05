@@ -1,4 +1,5 @@
 import type { ParsedCsv } from "@/lib/csv";
+import { parseImportDate } from "@/lib/import-date";
 import { TITLE_FIELD_TYPES, type PublishedFieldType } from "./object-types";
 
 export type FileFieldType = Exclude<PublishedFieldType, "MEMBER">;
@@ -62,9 +63,15 @@ function inferType(
     return { type: "TEXT", reason: "标识或联系电话，保留原始字符和前导零" };
   if (values.some((v) => v.length > 300 || v.includes("\n")))
     return { type: "TEXTAREA", reason: "包含较长文字或换行" };
-  if (values.every((v) => validDate(v, false)))
+  if (values.every((v) => parseImportDate(v))) {
+    if (values.some((v) => /^\d{2}[./-]/.test(v)))
+      return {
+        type: "TEXT",
+        reason: "包含两位年份，先保留为文本；确认设为日期后按 2000–2099 年导入",
+      };
     return { type: "DATE", reason: "所有非空值都是有效的年月日" };
-  if (values.every((v) => validDate(v, true)))
+  }
+  if (values.every(validDateTime))
     return { type: "DATETIME", reason: "所有非空值都是有效的日期时间" };
   if (
     values.every((v) =>
@@ -115,33 +122,22 @@ function inferType(
   return { type: "TEXT", reason: "保留为文本，避免混合内容被错误转换" };
 }
 
-function validDate(value: string, withTime: boolean): boolean {
-  if (
-    withTime &&
-    !(
-      /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})?$/.test(value) ||
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?Z$/.test(value)
-    )
-  )
+function validDateTime(value: string): boolean {
+  if (!(
+    /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})?$/.test(value) ||
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?Z$/.test(value)
+  ))
     return false;
-  const match = (
-    withTime
-      ? /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,3})?)?(Z)?$/
-      : /^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/
-  ).exec(value);
+  const match =
+    /^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,3})?)?Z?$/.exec(
+      value,
+    );
   if (!match) return false;
-  const [year, month, day] = match.slice(1, 4).map(Number);
-  const date = new Date(0);
-  date.setUTCFullYear(year, month - 1, day);
   return (
-    year >= 1000 &&
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day &&
-    (!withTime ||
-      (Number(match[4]) < 24 &&
-        Number(match[5]) < 60 &&
-        Number(match[6] ?? 0) < 60))
+    parseImportDate(match[1]) !== null &&
+    Number(match[2]) < 24 &&
+    Number(match[3]) < 60 &&
+    Number(match[4] ?? 0) < 60
   );
 }
 

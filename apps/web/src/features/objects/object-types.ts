@@ -84,6 +84,7 @@ export interface FieldValidationView {
 }
 
 export interface FieldConfigView {
+  dateInterpretation?: boolean;
   options?: SelectOptionConfig[];
   help?: string;
   placeholder?: string;
@@ -173,7 +174,7 @@ export interface RuntimeObjectSchema {
     name: string;
     columnFieldKeys: string[];
     searchFieldKeys?: string[];
-    sort: { field: RecordSortField; direction: RecordSortDirection };
+    sort: { field: RecordListSortField; direction: RecordSortDirection };
   };
   actions: {
     canImport?: boolean;
@@ -347,6 +348,21 @@ export function parseRuntimeObjectSchema(
     invalid("queryFieldKeys 引用了未发布字段");
   }
 
+  const sortField = asString(sort.field, "defaultView.sort.field");
+  if (
+    !(SYSTEM_RECORD_SORT_FIELDS as readonly string[]).includes(sortField) &&
+    !fields.some(
+      (field) =>
+        field.fieldKey === sortField &&
+        (SORTABLE_FIELD_TYPES as readonly string[]).includes(field.type) &&
+        (queryFieldKeys
+          ? queryFieldKeys.includes(sortField)
+          : field.access !== "HIDDEN"),
+    )
+  ) {
+    invalid("defaultView.sort.field 必须引用可查询的排序字段");
+  }
+
   return {
     ...(groupFieldAccess === undefined ? {} : { groupFieldAccess }),
     ...(queryFieldKeys === undefined ? {} : { queryFieldKeys }),
@@ -373,11 +389,7 @@ export function parseRuntimeObjectSchema(
       columnFieldKeys,
       ...(searchFieldKeys === undefined ? {} : { searchFieldKeys }),
       sort: {
-        field: asMember(
-          sort.field,
-          ["updatedAt", "createdAt", "recordNo"] as const,
-          "defaultView.sort.field",
-        ),
+        field: sortField,
         direction: asMember(
           sort.direction,
           ["asc", "desc"] as const,

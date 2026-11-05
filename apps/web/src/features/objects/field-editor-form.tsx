@@ -36,6 +36,7 @@ export interface FieldDraftValues {
   employeeAccess: PublishedFieldAccess;
   options: SelectOptionView[];
   help: string;
+  dateInterpretation?: boolean;
   minLength?: number;
   maxLength?: number;
   min?: number;
@@ -100,6 +101,9 @@ export function fieldSavePayload(
   const config = { ...((current.config ?? {}) as Record<string, unknown>) };
   if (isSelectType(values.type)) config.options = values.options;
   else delete config.options;
+  if (values.type === "TEXT" && values.dateInterpretation)
+    config.dateInterpretation = true;
+  else delete config.dateInterpretation;
   if (values.help.trim()) config.help = values.help.trim();
   else delete config.help;
   return { validation, config };
@@ -237,6 +241,21 @@ export function FieldEditorSections({
         <p className={styles.fieldTypeDescription}>
           {fieldTypeDescription(values.type)}
         </p>
+        {values.type === "TEXT" ? (
+          <Form.Item
+            label="按日期排序和筛选"
+            htmlFor="field-date-interpretation"
+            extra="保留原始文本 按年/月/日识别日期 两位年份表示 2000–2099 未识别日期和空值排在最后"
+          >
+            <Switch
+              id="field-date-interpretation"
+              aria-label="按日期排序和筛选"
+              checked={values.dateInterpretation ?? false}
+              disabled={readOnly}
+              onChange={(dateInterpretation) => patch({ dateInterpretation })}
+            />
+          </Form.Item>
+        ) : null}
         {typeLocked ? (
           <p className={styles.lockNote}>字段发布后不能更改数据类型。</p>
         ) : null}
@@ -558,6 +577,7 @@ export function initialValues(field: ConfigurableFieldView): FieldDraftValues {
     required: field.required,
     employeeAccess: field.employeeAccess as PublishedFieldAccess,
     options: selectOptions({ config: field.config as never }),
+    dateInterpretation: field.config.dateInterpretation === true,
     help: readString(field.config as Record<string, unknown>, "help") ?? "",
     minLength: readNumber(validation, "minLength"),
     maxLength: readNumber(validation, "maxLength"),

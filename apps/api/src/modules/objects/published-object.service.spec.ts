@@ -133,6 +133,69 @@ function fixture() {
 }
 
 describe('PublishedObjectService', () => {
+  it('falls back when a visible field is hidden from GROUP queries', async () => {
+    const { service, repository } = fixture();
+    const published = schema({ code: 'leads', name: '线索', sortOrder: 10 });
+    published.defaultView.sort = { field: 'phone', direction: 'asc' };
+    repository.rows = [
+      row(published, {
+        memberId: employee.memberId,
+        groupOwnerMemberIds: [employee.memberId, 'peer'],
+        memberOverride: {
+          canCreate: true,
+          canRead: true,
+          canUpdate: true,
+          canDelete: false,
+          readScope: 'GROUP',
+          updateScope: 'OWN',
+          groupFieldAccess: { name: 'READ_ONLY', phone: 'HIDDEN' },
+        },
+      }),
+    ];
+    const resolved = await service.resolveRuntimeSchema(employee, 'leads');
+    expect(
+      resolved.visibleSchema.fields.map((field) => field.fieldKey),
+    ).toContain('phone');
+    expect(resolved.visibleSchema.queryFieldKeys).not.toContain('phone');
+    expect(resolved.visibleSchema.defaultView.sort).toEqual({
+      field: 'updatedAt',
+      direction: 'desc',
+    });
+  });
+
+  it.each([false, true])(
+    'only exposes a queryable default business sort (hidden=%s)',
+    async (hiddenPhone) => {
+      const { service, repository } = fixture();
+      const published = schema({
+        code: 'leads',
+        name: '线索',
+        sortOrder: 10,
+        hiddenPhone,
+      });
+      published.defaultView.sort = { field: 'phone', direction: 'asc' };
+      repository.rows = [row(published)];
+      const resolved = await service.resolveRuntimeSchema(employee, 'leads');
+      expect(resolved.visibleSchema.defaultView.sort).toEqual(
+        hiddenPhone
+          ? { field: 'updatedAt', direction: 'desc' }
+          : { field: 'phone', direction: 'asc' },
+      );
+      expect(resolved.schema.defaultView.sort.field).toBe('phone');
+    },
+  );
+
+  it.each(['missing', 'TEXTAREA'])(
+    'rejects invalid business sort in a snapshot: %s',
+    (reason) => {
+      const published = schema({ code: 'leads', name: '线索', sortOrder: 10 });
+      published.defaultView.sort.field =
+        reason === 'missing' ? 'missing' : 'phone';
+      if (reason === 'TEXTAREA') published.fields[1].type = 'TEXTAREA';
+      expect(() => parsePublishedObjectSchema(published)).toThrow();
+    },
+  );
+
   it.each([admin, employee])(
     'keeps published navigation and runtime readable after draft reordering for $role',
     async (context) => {

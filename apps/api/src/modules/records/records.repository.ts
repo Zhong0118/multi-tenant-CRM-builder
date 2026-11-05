@@ -1,3 +1,4 @@
+import { recordDateExpression, recordDatePredicate } from './record-date-query';
 import {
   recordOwnerFilter,
   recordOwnerMatches,
@@ -66,6 +67,9 @@ export type RecordListOptionFilter = {
 export type RecordListDateFilter = {
   fieldKey: string;
   mode: 'DATE_RANGE';
+  dateType?: 'DATE' | 'DATETIME' | 'DATE_TEXT';
+  relative?: string;
+  asOf?: string;
   from?: string;
   to?: string;
 };
@@ -110,7 +114,8 @@ export type RecordListFilter =
   | RecordListPresenceFilter;
 
 export type RecordListSystemSort = 'updatedAt' | 'createdAt' | 'recordNo';
-export type RecordListFieldSortKind = 'TEXT' | 'NUMBER' | 'DATE' | 'OPTION';
+export type RecordListFieldSortKind =
+  'TEXT' | 'NUMBER' | 'DATE' | 'DATETIME' | 'DATE_TEXT' | 'OPTION';
 export type RecordListFieldSort = {
   fieldKey: string;
   kind: RecordListFieldSortKind;
@@ -687,6 +692,7 @@ class PrismaRecordsStore implements RecordsStore {
       typeof query.sort === 'string' &&
       !query.filters.some(
         (filter) =>
+          filter.mode === 'DATE_RANGE' ||
           filter.mode === 'NUMBER_RANGE' ||
           filter.mode === 'EMPTY' ||
           filter.mode === 'NOT_EMPTY',
@@ -1292,14 +1298,7 @@ function listFilterCondition(
   filter: RecordListFilter,
 ): Prisma.RecordWhereInput {
   if (filter.mode === 'DATE_RANGE') {
-    const bounds: Prisma.JsonFilter[] = [];
-    if (filter.from) {
-      bounds.push({ path: [filter.fieldKey], gte: filter.from });
-    }
-    if (filter.to) {
-      bounds.push({ path: [filter.fieldKey], lte: filter.to });
-    }
-    return { AND: bounds.map((bound) => ({ data: bound })) };
+    throw new Error('Date filters require the SQL record query');
   }
   if (filter.mode === 'NUMBER_RANGE') {
     throw new Error('Numeric filters require the SQL record query');
@@ -1390,7 +1389,7 @@ function listWhereSql(
     parts.push(searchSql(query.search, query.searchFieldKeys, qualified));
   }
   for (const filter of query.filters) {
-    parts.push(filterSql(filter, qualified));
+    parts.push(filterSql(filter, qualified, tenantId));
   }
   return Prisma.join(parts, ' AND ');
 }
@@ -1411,14 +1410,15 @@ function searchSql(
   return Prisma.sql`(${Prisma.join(clauses, ' OR ')})`;
 }
 
-function filterSql(filter: RecordListFilter, qualified: boolean): Prisma.Sql {
+function filterSql(
+  filter: RecordListFilter,
+  qualified: boolean,
+  tenantId: string,
+): Prisma.Sql {
   const text = jsonText(filter.fieldKey, qualified);
   const json = jsonValue(filter.fieldKey, qualified);
   if (filter.mode === 'DATE_RANGE') {
-    const bounds: Prisma.Sql[] = [];
-    if (filter.from) bounds.push(Prisma.sql`${text} >= ${filter.from}`);
-    if (filter.to) bounds.push(Prisma.sql`${text} <= ${filter.to}`);
-    return Prisma.join(bounds, ' AND ');
+    return recordDatePredicate(text, filter, tenantId);
   }
   if (filter.mode === 'NUMBER_RANGE') {
     const bounds: Prisma.Sql[] = [
@@ -1504,13 +1504,12 @@ function recordSortExpression(sort: RecordListQuery['sort']): Prisma.Sql {
       END
     `;
   }
-  if (sort.kind === 'DATE') {
-    return Prisma.sql`
-      CASE
-        WHEN ${value} ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}' THEN ${value}
-        ELSE NULL
-      END
-    `;
+  if (
+    sort.kind === 'DATE' ||
+    sort.kind === 'DATETIME' ||
+    sort.kind === 'DATE_TEXT'
+  ) {
+    return recordDateExpression(value, sort.kind);
   }
   if (sort.kind === 'OPTION' && sort.optionKeys && sort.optionKeys.length > 0) {
     return Prisma.sql`

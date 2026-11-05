@@ -30,6 +30,39 @@ function repository(transaction: object) {
 }
 
 describe('PrismaObjectsRepository target lookup', () => {
+  it('keeps a saved business sort when reading the draft', async () => {
+    const updatedAt = new Date('2026-11-05T00:00:00Z');
+    const store = repository({
+      objectDefinition: {
+        findFirst: () =>
+          Promise.resolve({
+            id: 'object-1',
+            settings: {},
+            fields: [],
+            permissions: [],
+            fieldPermissions: [],
+            updatedAt,
+            views: [
+              {
+                name: '默认视图',
+                columnFieldKeys: [],
+                sort: { field: 'business_date', direction: 'asc' },
+                updatedAt,
+              },
+            ],
+          }),
+      },
+      record: { count: () => Promise.resolve(0) },
+    });
+    const result = await store.withTenant(admin, (objects) =>
+      objects.findObject('object-1'),
+    );
+    expect(result!.defaultView!.sort).toEqual({
+      field: 'business_date',
+      direction: 'asc',
+    });
+  });
+
   it('keeps the published type lock for a retired field using publication history', async () => {
     const updatedAt = new Date('2026-10-20T00:00:00Z');
     const historicalField = { id: 'old-field', fieldKey: 'note', type: 'TEXT' };
