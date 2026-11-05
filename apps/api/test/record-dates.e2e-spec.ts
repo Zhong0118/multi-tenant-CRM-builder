@@ -9,6 +9,10 @@ import {
 import { type RecordsRepository } from '../src/modules/records/records.repository';
 import { PublishedObjectService } from '../src/modules/objects/published-object.service';
 import {
+  recordDateExpression,
+  recordDatePredicate,
+} from '../src/modules/records/record-date-query';
+import {
   createCriticalHarness,
   closeCriticalHarness,
   provisionCriticalFixture,
@@ -126,6 +130,41 @@ describe('Business dates: legacy imports, sorting and calendar filters', () => {
   afterAll(async () => {
     if (h) await closeCriticalHarness(h);
   });
+
+  it('filters and sorts 15,000 text dates within a bounded statement time', async () => {
+    const { Prisma } = await import('@crm/database');
+    const value = Prisma.sql`value`;
+    const date = recordDateExpression(value, 'DATE_TEXT');
+    const predicate = recordDatePredicate(
+      value,
+      {
+        fieldKey: 'legacy',
+        mode: 'DATE_RANGE',
+        dateType: 'DATE_TEXT',
+        from: '2026-11-01',
+        to: '2026-11-30',
+      },
+      f.tenantA.id,
+    );
+    const query = Prisma.sql`
+      WITH dates AS MATERIALIZED (
+        SELECT (2025 + i % 2)::text || '.11.' || (1 + i % 27)::text AS value
+        FROM generate_series(1, 15000) AS i
+      )
+      SELECT value FROM dates WHERE ${predicate}
+      ORDER BY ${date} DESC NULLS LAST LIMIT 50`;
+    // The old correlated parser executed 90,001 subplans for this dataset.
+    // Bound the actual SQL execution without counting app/fixture startup.
+    const rows = await h.adminDatabase.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SET LOCAL statement_timeout = '5s'`;
+        return tx.$queryRaw<{ value: string }[]>(query);
+      },
+      { timeout: 15_000 },
+    );
+    expect(rows).toHaveLength(50);
+    expect(rows.every((row) => row.value === '2026.11.27')).toBe(true);
+  }, 20_000);
 
   it('orders mixed imported dates chronologically with invalid values last in both directions', async () => {
     const asc = await get({

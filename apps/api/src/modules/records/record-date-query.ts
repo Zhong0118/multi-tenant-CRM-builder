@@ -11,16 +11,18 @@ export function recordDateExpression(
     CASE WHEN ${value} ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}(:[0-9]{2}([.][0-9]{1,9})?)?(Z|[+-][0-9]{2}:[0-9]{2})$'
       AND pg_input_is_valid(${value}, 'timestamp with time zone')
       THEN (${value})::timestamptz ELSE NULL END`;
+  const raw = type === 'DATE' ? value : Prisma.sql`btrim(${value})`;
+  const format =
+    type === 'DATE'
+      ? Prisma.sql`${raw} ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'`
+      : Prisma.sql`${raw} ~ '^([0-9]{4}|[0-9]{2})([./-])([0-9]{1,2})\\2([0-9]{1,2})$'`;
+  // Scalar string operations avoid a correlated parser subplan per row and bound.
   const normalized =
     type === 'DATE'
-      ? value
-      : Prisma.sql`(
-    SELECT CASE WHEN p IS NOT NULL THEN
-      (CASE WHEN length(p[1]) = 2 THEN '20' || p[1] ELSE p[1] END)
-      || '-' || lpad(p[3], 2, '0') || '-' || lpad(p[4], 2, '0') END
-    FROM (SELECT regexp_match(btrim(${value}), '^([0-9]{4}|[0-9]{2})([./-])([0-9]{1,2})\\2([0-9]{1,2})$') AS p) parts
-  )`;
-  return Prisma.sql`CASE WHEN ${normalized} ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+      ? raw
+      : Prisma.sql`translate(CASE WHEN ${raw} ~ '^[0-9]{2}[./-]'
+        THEN '20' || ${raw} ELSE ${raw} END, './', '--')`;
+  return Prisma.sql`CASE WHEN ${format}
     AND pg_input_is_valid(${normalized}, 'date') THEN (${normalized})::date ELSE NULL END`;
 }
 
