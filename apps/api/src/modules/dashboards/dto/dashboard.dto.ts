@@ -229,7 +229,14 @@ export class DashboardOverviewQueryDto {
   dashboardCode?: string;
 }
 
+export class DashboardMetricMemberDto {
+  @ApiProperty({ format: 'uuid' }) memberId!: string;
+  @ApiProperty() value!: number;
+}
+
 export class DashboardMetricDataDto {
+  @ApiPropertyOptional({ type: DashboardMetricMemberDto, isArray: true })
+  members?: DashboardMetricMemberDto[];
   @ApiProperty({ type: Number, nullable: true }) value!: number | null;
   @ApiPropertyOptional({ enum: ['NUMBER', 'MONEY', 'PERCENT'] })
   format?: 'NUMBER' | 'MONEY' | 'PERCENT';

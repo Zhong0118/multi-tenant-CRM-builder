@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { DashboardsService } from '../dashboards/dashboards.service';
 
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
@@ -34,7 +35,10 @@ export type MemberActivity = WorkCounts & {
  */
 @Injectable()
 export class TeamActivityService {
-  constructor(private readonly runner: DatabaseContextRunner) {}
+  constructor(
+    private readonly runner: DatabaseContextRunner,
+    private readonly dashboards: DashboardsService,
+  ) {}
 
   async summarize(context: TenantContext, query: TeamActivityQuery) {
     if (context.role !== 'TENANT_ADMIN')
@@ -44,47 +48,70 @@ export class TeamActivityService {
         fieldErrors: { from: ['请选择 1 至 366 天内的日期范围。'] },
       });
 
-    return this.runner.withTenant(context, async (tx) => {
-      const period = await resolveCompanyPeriod(tx, context.tenantId, query);
-      const [members, counts] = await Promise.all([
-        tx.tenantMember.findMany({
-          where: { tenantId: context.tenantId },
-          select: {
-            id: true,
-            displayName: true,
-            role: true,
-            status: true,
-            user: { select: { displayName: true } },
-          },
-          orderBy: [{ status: 'asc' }, { createdAt: 'asc' }],
-        }),
-        countMemberWork(tx, context.tenantId, period),
-      ]);
-      const items: MemberActivity[] = members
-        .map((member) => ({
+    const { statisticsPeriod, ...summary } = await this.runner.withTenant(
+      context,
+      async (tx) => {
+        const period = await resolveCompanyPeriod(tx, context.tenantId, query);
+        const [members, counts] = await Promise.all([
+          tx.tenantMember.findMany({
+            where: { tenantId: context.tenantId },
+            select: {
+              id: true,
+              displayName: true,
+              role: true,
+              status: true,
+              user: { select: { displayName: true } },
+            },
+            orderBy: [{ status: 'asc' }, { createdAt: 'asc' }],
+          }),
+          countMemberWork(tx, context.tenantId, period),
+        ]);
+        const items: MemberActivity[] = members.map((member) => ({
           memberId: member.id,
           // The company name for the member, else the account name, as on 成员.
           name: member.displayName ?? member.user.displayName ?? '未设置姓名',
           role: member.role,
           status: member.status,
           ...(counts.get(member.id) ?? emptyCounts()),
-        }))
-        .filter(
-          (row) =>
-            row.status === 'ACTIVE' ||
-            WORK_COUNTERS.some((key) => row[key] > 0),
-        );
-      const totals = emptyCounts();
-      for (const row of items)
-        for (const key of WORK_COUNTERS) totals[key] += row[key];
-      return {
-        timezone: period.timezone,
-        today: period.today,
-        from: period.fromDay,
-        to: period.toDay,
-        members: items,
-        totals,
-      };
-    });
+        }));
+        const totals = emptyCounts();
+        for (const row of items)
+          for (const key of WORK_COUNTERS) totals[key] += row[key];
+        return {
+          statisticsPeriod: {
+            from: period.fromAt.toISOString(),
+            to: period.toAt.toISOString(),
+            timezone: period.timezone,
+          },
+          timezone: period.timezone,
+          today: period.today,
+          from: period.fromDay,
+          to: period.toDay,
+          members: items,
+          totals,
+        };
+      },
+    );
+    const businessMetrics = await this.dashboards.getWorkMetrics(
+      context,
+      statisticsPeriod,
+    );
+    const withBusiness = new Set(
+      businessMetrics.widgets.flatMap((widget) =>
+        widget.state === 'READY' && widget.type === 'METRIC'
+          ? (widget.data.members ?? []).map((row) => row.memberId)
+          : [],
+      ),
+    );
+    return {
+      ...summary,
+      businessMetrics,
+      members: summary.members.filter(
+        (row) =>
+          row.status === 'ACTIVE' ||
+          WORK_COUNTERS.some((key) => row[key] > 0) ||
+          withBusiness.has(row.memberId),
+      ),
+    };
   }
 }

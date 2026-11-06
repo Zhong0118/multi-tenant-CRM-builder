@@ -18,6 +18,80 @@ const period = {
 };
 
 describe('DashboardsService', () => {
+  it('uses the employee default for work statistics even when an administrator views a report', async () => {
+    const { service, repository, engine } = setup();
+    repository.listDashboards.mockResolvedValue([
+      listedDashboard('admin', { audience: 'TENANT_ADMIN' }),
+      listedDashboard('staff', { audience: 'EMPLOYEE' }),
+    ]);
+    repository.getDefaults.mockResolvedValue({
+      adminDashboardCode: 'admin',
+      employeeDashboardCode: 'staff',
+    });
+    await service.getWorkMetrics(
+      adminContext(),
+      {
+        from: period.from.toISOString(),
+        to: period.to.toISOString(),
+        timezone: period.timezone,
+      },
+      'employee-target',
+    );
+    expect(repository.getActivePublication).toHaveBeenCalledWith(
+      adminContext(),
+      'staff',
+    );
+    expect(engine.evaluate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workReport: { memberId: 'employee-target' },
+        publication: publication('published-2').configuration,
+      }),
+    );
+  });
+
+  it('falls back only to an active published employee-visible workbench', async () => {
+    const { service, repository } = setup();
+    repository.listDashboards.mockResolvedValue([
+      listedDashboard('home', { status: 'ARCHIVED' }),
+      listedDashboard('private', { audience: 'TENANT_ADMIN' }),
+      listedDashboard('draft', { hasPublishedVersion: false }),
+      listedDashboard('staff'),
+    ]);
+    await service.getWorkMetrics(
+      employeeContext(),
+      {
+        from: period.from.toISOString(),
+        to: period.to.toISOString(),
+        timezone: period.timezone,
+      },
+      'member-employee',
+    );
+    expect(repository.getActivePublication).toHaveBeenCalledWith(
+      employeeContext(),
+      'staff',
+    );
+  });
+
+  it('leaves legacy dashboards without report metrics rather than trying to evaluate them as V2', async () => {
+    const { service, repository, engine } = setup();
+    repository.getActivePublication.mockResolvedValue({
+      ...publication('legacy'),
+      configuration: { kind: 'LEGACY' },
+    });
+    await expect(
+      service.getWorkMetrics(
+        employeeContext(),
+        {
+          from: period.from.toISOString(),
+          to: period.to.toISOString(),
+          timezone: period.timezone,
+        },
+        'member-employee',
+      ),
+    ).resolves.toMatchObject({ widgets: [] });
+    expect(engine.evaluate).not.toHaveBeenCalled();
+  });
+
   it('includes the persisted tenant timezone in the configuration envelope', async () => {
     const { service, repository } = setup();
     repository.getTenantTimezone.mockResolvedValue('America/New_York');
@@ -304,7 +378,10 @@ describe('DashboardsService', () => {
     repository.getActivePublication.mockResolvedValue(null);
 
     await expect(
-      service.getOverview(adminContext(), { ...period, dashboardCode: 'sales' }),
+      service.getOverview(adminContext(), {
+        ...period,
+        dashboardCode: 'sales',
+      }),
     ).resolves.toEqual(
       expect.objectContaining({
         state: 'UNCONFIGURED',
@@ -328,7 +405,10 @@ describe('DashboardsService', () => {
   it('includes the workbenches the current role can open in the overview', async () => {
     const { service, repository } = setup();
     repository.listDashboards.mockResolvedValue([
-      listedDashboard('home', { isDefaultAdmin: true, isDefaultEmployee: true }),
+      listedDashboard('home', {
+        isDefaultAdmin: true,
+        isDefaultEmployee: true,
+      }),
       listedDashboard('sales', {
         audience: 'TENANT_ADMIN',
         hasPublishedVersion: true,

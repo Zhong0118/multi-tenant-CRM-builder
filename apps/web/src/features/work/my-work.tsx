@@ -1,5 +1,7 @@
 "use client";
 
+import { WorkBusinessMetrics } from "./work-business-metrics";
+
 import { PlusOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -303,7 +305,9 @@ export function TaskItem({
         queryClient.invalidateQueries({
           queryKey: ["workspace", tenantCode, "daily-report"],
         }),
-        queryClient.invalidateQueries({ queryKey: goalKeys.progress(tenantCode) }),
+        queryClient.invalidateQueries({
+          queryKey: goalKeys.progress(tenantCode),
+        }),
       ]);
     },
   });
@@ -519,6 +523,7 @@ function ReportEditor({
           />
           <ReportReference
             counts={loaded.reference.counts}
+            businessMetrics={loaded.reference.businessMetrics}
             tasks={loaded.reference.tasks}
           />
         </div>
@@ -902,14 +907,19 @@ function ReportForm({
 export function ReportReference({
   counts,
   tasks,
+  businessMetrics,
 }: {
   counts: WorkCounts;
   tasks: DailyReportView["reference"]["tasks"];
+  businessMetrics?: DailyReportView["reference"]["businessMetrics"];
 }) {
   const facts: Array<[string, string]> = [
     ["电话", `${counts.calls}（接通 ${counts.connectedCalls}）`],
     ["微信/消息", `${counts.messages}`],
-    ["新加微信", `${counts.wechatAdded}`],
+    [
+      businessMetrics?.widgets.length ? "新加微信（动态登记）" : "新加微信",
+      `${counts.wechatAdded}`,
+    ],
     ["拜访", `${counts.visits}`],
     ["跟进客户", `${counts.customersFollowed}`],
     ["完成的跟进待办", `${counts.followUpsDone}`],
@@ -917,7 +927,8 @@ export function ReportReference({
   ];
   return (
     <aside className={styles.reference} aria-label="当天记录">
-      <h3>当天记录</h3>
+      <WorkBusinessMetrics data={businessMetrics} />
+      <h3>{businessMetrics?.widgets.length ? "工作记录" : "当天记录"}</h3>
       <dl>
         {facts.map(([label, value]) => (
           <div key={label}>

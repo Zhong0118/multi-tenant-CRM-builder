@@ -1,3 +1,4 @@
+import { DashboardRuntimeDto } from '../../dashboards/dto/dashboard.dto';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -178,6 +179,8 @@ export class DailyReportTaskDto {
 }
 
 export class DailyReportReferenceDto {
+  @ApiPropertyOptional({ type: DashboardRuntimeDto })
+  businessMetrics?: DashboardRuntimeDto;
   @ApiProperty({ type: TeamActivityCountsDto }) counts!: TeamActivityCountsDto;
   @ApiProperty({ type: DailyReportTaskDto, isArray: true })
   tasks!: DailyReportTaskDto[];

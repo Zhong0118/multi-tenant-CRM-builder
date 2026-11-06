@@ -66,6 +66,7 @@ export interface DashboardMetricWidgetDraft extends DashboardWidgetBase {
   aggregation: DashboardAggregation;
   valueFieldKey?: string;
   displayFormat?: DashboardDisplayFormat;
+  workReport?: { memberSource: 'CREATOR' | 'RECORD_OWNER' };
 }
 
 export interface DashboardStatusDistributionWidgetDraft extends DashboardWidgetBase {
@@ -180,6 +181,7 @@ export interface DashboardMetricWidgetResult extends DashboardWidgetResultBase {
   data: {
     value: number | null;
     format?: DashboardDisplayFormat;
+    members?: Array<{ memberId: string; value: number }>;
   };
 }
 

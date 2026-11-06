@@ -263,6 +263,7 @@ function parseWidget(value: unknown): DashboardWidgetDraft {
       'aggregation',
       'valueFieldKey',
       'displayFormat',
+      'workReport',
       'groupByFieldKey',
       'optionKeys',
       'display',
@@ -294,10 +295,25 @@ function parseWidget(value: unknown): DashboardWidgetDraft {
 function parseMetric(value: unknown): DashboardMetricWidgetDraft {
   const root = exactObject(
     value,
-    baseKeys.concat(['aggregation', 'valueFieldKey', 'displayFormat']),
+    baseKeys.concat([
+      'aggregation',
+      'valueFieldKey',
+      'displayFormat',
+      'workReport',
+    ]),
   );
   return {
     ...parseBase(root, 'METRIC'),
+    ...(root.workReport === undefined
+      ? {}
+      : {
+          workReport: {
+            memberSource: enumValue(
+              exactObject(root.workReport, ['memberSource']).memberSource,
+              ['CREATOR', 'RECORD_OWNER'] as const,
+            ),
+          },
+        }),
     aggregation: enumValue(root.aggregation, ['COUNT', 'SUM', 'AVG']),
     ...(root.valueFieldKey === undefined
       ? {}
@@ -503,6 +519,30 @@ function validateWidget(
 ) {
   switch (widget.type) {
     case 'METRIC':
+      if (widget.workReport) {
+        const dateFilters = widget.filters.filter(
+          (filter) =>
+            filter.operator === 'DASHBOARD_PERIOD' ||
+            DATE_FIELD_TYPES.has(
+              findDateOrBusinessField(object, filter.fieldKey)?.type ?? '',
+            ),
+        );
+        if (
+          widget.aggregation === 'AVG' ||
+          widget.audience !== 'ALL' ||
+          dateFilters.length !== 1 ||
+          dateFilters[0]?.operator !== 'DASHBOARD_PERIOD' ||
+          widget.filters.some((filter) => filter.operator === 'CURRENT_USER')
+        ) {
+          issues.push(
+            issue(
+              'WORK_REPORT_INVALID',
+              `${path}.workReport`,
+              '日报指标需面向所有成员，选择记录数或求和，并设置一个跟随工作台时段的日期条件；不能使用当前用户筛选。',
+            ),
+          );
+        }
+      }
       validateAggregate(
         widget.aggregation,
         widget.valueFieldKey,
@@ -718,7 +758,12 @@ function operatorsFor(type: string): ReadonlySet<DashboardFilterOperator> {
   if (type === 'BOOLEAN') return new Set(['EQ']);
   if (type === 'MEMBER') return new Set(['IN', 'CURRENT_USER', 'RECORD_OWNER']);
   if (TEXT_FIELD_TYPES.has(type))
-    return new Set(['EQ', 'CONTAINS', 'NOT_EMPTY']);
+    return new Set([
+      'EQ',
+      'CONTAINS',
+      'NOT_EMPTY',
+      ...(type === 'TEXT' ? ['DASHBOARD_PERIOD' as const] : []),
+    ]);
   return new Set();
 }
 

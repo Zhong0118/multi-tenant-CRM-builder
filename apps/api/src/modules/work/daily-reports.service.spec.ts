@@ -1,3 +1,4 @@
+import type { DashboardsService } from '../dashboards/dashboards.service';
 import type { Prisma } from '@crm/database';
 
 import type { TenantContext } from '../../common/tenancy/tenant-context';
@@ -27,6 +28,7 @@ describe('DailyReportsService calendar dates', () => {
       ) => work(tx),
     } as unknown as DatabaseContextRunner,
     {} as AuditService,
+    {} as DashboardsService,
   );
 
   it.each(['2026-02-29', '2026-02-30', '2026-04-31', '0000-01-01'])(

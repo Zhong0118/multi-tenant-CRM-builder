@@ -1974,6 +1974,9 @@
       },
       "DailyReportReferenceDto": {
         "properties": {
+          "businessMetrics": {
+            "$ref": "#/components/schemas/DashboardRuntimeDto"
+          },
           "counts": {
             "$ref": "#/components/schemas/TeamActivityCountsDto"
           },
@@ -2402,12 +2405,31 @@
             "enum": ["NUMBER", "MONEY", "PERCENT"],
             "type": "string"
           },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardMetricMemberDto"
+            },
+            "type": "array"
+          },
           "value": {
             "nullable": true,
             "type": "number"
           }
         },
         "required": ["value"],
+        "type": "object"
+      },
+      "DashboardMetricMemberDto": {
+        "properties": {
+          "memberId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          }
+        },
+        "required": ["memberId", "value"],
         "type": "object"
       },
       "DashboardMetricWidgetDto": {
@@ -6785,6 +6807,9 @@
       },
       "TeamActivityResponseDto": {
         "properties": {
+          "businessMetrics": {
+            "$ref": "#/components/schemas/DashboardRuntimeDto"
+          },
           "from": {
             "type": "string"
           },

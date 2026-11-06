@@ -47,6 +47,7 @@ export interface DashboardQueryPlan {
   ownerMemberId?: RecordOwnerFilter;
   visibleFieldKeys: string[];
   canReadTitle: boolean;
+  workReport?: { memberId?: string };
 }
 
 export interface DashboardQueryExecutor {
@@ -63,6 +64,7 @@ export interface DashboardEvaluationInput {
   context: TenantContext;
   period: DashboardPeriod;
   preview?: boolean;
+  workReport?: { memberId?: string };
 }
 
 @Injectable()
@@ -78,6 +80,21 @@ export class DashboardEngine {
     input: DashboardEvaluationInput,
   ): Promise<DashboardRuntimeResult> {
     const publication = normalizePublication(input.publication, input.catalog);
+    if (input.workReport) {
+      if (
+        input.context.role === 'EMPLOYEE' &&
+        input.workReport.memberId &&
+        input.workReport.memberId !== input.context.memberId
+      ) {
+        throw new ApiException('WORKSPACE_FORBIDDEN', 403);
+      }
+      publication.widgets = publication.widgets.filter(
+        (widget) =>
+          widget.type === 'METRIC' &&
+          widget.workReport &&
+          widget.audience === 'ALL',
+      );
+    }
     const audienceWidgets = publication.widgets.filter((widget) =>
       matchesAudience(widget, input.context),
     );
@@ -130,6 +147,16 @@ export class DashboardEngine {
           resolved.access,
           resolved.schema.object.titleFieldKey,
         ),
+        ...(input.workReport
+          ? {
+              workReport: {
+                memberId:
+                  input.context.role === 'EMPLOYEE'
+                    ? input.context.memberId
+                    : input.workReport.memberId,
+              },
+            }
+          : {}),
       });
     }
 

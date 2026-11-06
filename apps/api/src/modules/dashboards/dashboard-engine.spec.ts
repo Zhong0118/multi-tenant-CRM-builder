@@ -24,6 +24,42 @@ const period: DashboardPeriod = {
 };
 
 describe('DashboardEngine', () => {
+  it('restricts work report mode to opted-in cards and the employee, even with ALL access', async () => {
+    const fixture = setup(
+      [
+        {
+          ...metric('daily', 'ALL'),
+          type: 'METRIC',
+          aggregation: 'COUNT',
+          filters: [{ fieldKey: '$createdAt', operator: 'DASHBOARD_PERIOD' }],
+          workReport: { memberSource: 'CREATOR' },
+        },
+        metric('unrelated', 'ALL'),
+      ],
+      { readScope: 'ALL' },
+    );
+    const result = await fixture.engine.evaluate({
+      publication: fixture.publication,
+      catalog: fixture.catalog,
+      context: employeeContext(),
+      period,
+      workReport: {},
+    });
+    expect(result.widgets.map((w) => w.id)).toEqual(['daily']);
+    expect(fixture.executor.plans[0].workReport).toEqual({
+      memberId: 'member-employee',
+    });
+    await expect(
+      fixture.engine.evaluate({
+        publication: fixture.publication,
+        catalog: fixture.catalog,
+        context: employeeContext(),
+        period,
+        workReport: { memberId: 'someone-else' },
+      }),
+    ).rejects.toMatchObject({ code: 'WORKSPACE_FORBIDDEN' });
+  });
+
   it('does not aggregate a field hidden on peer records', async () => {
     const f = setup(
       [

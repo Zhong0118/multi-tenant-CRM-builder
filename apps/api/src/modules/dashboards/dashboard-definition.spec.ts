@@ -136,6 +136,60 @@ const completeDraft = {
 } as const;
 
 describe('dashboard definition v2', () => {
+  const reportDraft = (patch: Record<string, unknown> = {}) => ({
+    schemaVersion: 2,
+    title: '日报指标',
+    widgets: [
+      {
+        ...completeDraft.widgets[0],
+        workReport: { memberSource: 'CREATOR' },
+        filters: [{ fieldKey: '$createdAt', operator: 'DASHBOARD_PERIOD' }],
+        ...patch,
+      },
+    ],
+  });
+
+  it('publishes a reusable report metric without requiring a public pool', () => {
+    const draft = parseDashboardDraft(reportDraft());
+    expect(validateDashboardDraft(draft, [opportunity])).toEqual([]);
+    expect(
+      compileDashboardPublication(draft, [opportunity]).widgets[0],
+    ).toMatchObject({ workReport: { memberSource: 'CREATOR' } });
+  });
+
+  it('accepts explicit calendar interpretation of legacy text dates without changing field types', () => {
+    const draft = parseDashboardDraft(
+      reportDraft({
+        filters: [{ fieldKey: 'name', operator: 'DASHBOARD_PERIOD' }],
+      }),
+    );
+    expect(validateDashboardDraft(draft, [opportunity])).toEqual([]);
+    expect(
+      compileDashboardPublication(draft, [opportunity]).widgets[0]
+        .filterFields[0].type,
+    ).toBe('TEXT');
+  });
+
+  it.each([
+    { filters: [] },
+    { aggregation: 'AVG', valueFieldKey: 'amount' },
+    { audience: 'TENANT_ADMIN' },
+    { filters: [{ fieldKey: '$createdAt', operator: 'TODAY' }] },
+    {
+      filters: [
+        { fieldKey: '$createdAt', operator: 'DASHBOARD_PERIOD' },
+        { fieldKey: 'owner', operator: 'CURRENT_USER' },
+      ],
+    },
+  ])('rejects ambiguous personal report configuration %j', (patch) => {
+    const draft = parseDashboardDraft(reportDraft(patch));
+    expect(validateDashboardDraft(draft, [opportunity])).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'WORK_REPORT_INVALID' }),
+      ]),
+    );
+  });
+
   it('parses one structurally valid widget of every supported type', () => {
     const parsed = parseDashboardDraft(completeDraft);
 

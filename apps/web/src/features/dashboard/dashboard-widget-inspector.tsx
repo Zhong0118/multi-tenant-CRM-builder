@@ -230,6 +230,51 @@ function WidgetControls({
               <option value="PERCENT">百分比</option>
             </select>
           </label>
+          <label className={styles.workReportToggle}>
+            <input
+              type="checkbox"
+              aria-label="用于任务与日报"
+              checked={!!widget.workReport}
+              onChange={(event) => {
+                if (event.target.checked)
+                  set({ workReport: { memberSource: "CREATOR" } });
+                else {
+                  const next = { ...widget };
+                  delete next.workReport;
+                  onChange(next);
+                }
+              }}
+            />
+            用于任务与日报
+          </label>
+          {widget.workReport ? (
+            <>
+              <label>
+                业绩归属
+                <select
+                  aria-label="业绩归属"
+                  value={widget.workReport.memberSource}
+                  onChange={(event) =>
+                    set({ workReport: { memberSource: event.target.value } })
+                  }
+                >
+                  <option value="CREATOR">创建人</option>
+                  <option value="RECORD_OWNER">当前负责人</option>
+                </select>
+              </label>
+              <p className={styles.inspectorEmpty}>
+                发布到员工默认工作台后，用同一规则统计个人日报和团队业务数据。请选择记录数或求和、所有成员，并设置一个日期条件为“跟随工作台时段”。
+              </p>
+              <p className={styles.inspectorEmpty}>
+                新增记录可按系统创建时间统计，导入创建也会计入。开单请选择确认日期和成交状态；只有状态不能判断何时开单。
+                文本日期可选择跟随时段，支持 2026.11.6、26.11.6
+                等年在前的日期；空白或无效日期不计入。
+                {widget.workReport.memberSource === "RECORD_OWNER"
+                  ? "按当前负责人归属，转交记录会改变统计。"
+                  : "按创建人归属，转交记录不会改变创建人。"}
+              </p>
+            </>
+          ) : null}
         </>
       );
     case "STATUS_DISTRIBUTION": {
@@ -301,7 +346,9 @@ function WidgetControls({
               value={widget.dateFieldKey}
               onChange={(event) => set({ dateFieldKey: event.target.value })}
             >
-              {fieldOptions(widget.objectCode ? [DASHBOARD_CREATED_AT, ...dates] : dates)}
+              {fieldOptions(
+                widget.objectCode ? [DASHBOARD_CREATED_AT, ...dates] : dates,
+              )}
             </select>
           </label>
           <label>
@@ -775,6 +822,8 @@ function operators(type?: string): DashboardFilter["operator"][] {
     ];
   if (type === "MEMBER") return ["IN", "CURRENT_USER", "RECORD_OWNER"];
   if (type === "BOOLEAN") return ["EQ"];
+  if (type === "TEXT")
+    return ["EQ", "CONTAINS", "NOT_EMPTY", "DASHBOARD_PERIOD"];
   return ["EQ", "CONTAINS", "NOT_EMPTY"];
 }
 function defaultOperator(type?: string) {
@@ -783,7 +832,9 @@ function defaultOperator(type?: string) {
 function defaultFilter(
   fieldKey = "",
   field?: DashboardCandidateField,
-  operator = fieldKey === DASHBOARD_CREATED_AT.fieldKey ? "DASHBOARD_PERIOD" : defaultOperator(field?.type),
+  operator = fieldKey === DASHBOARD_CREATED_AT.fieldKey
+    ? "DASHBOARD_PERIOD"
+    : defaultOperator(field?.type),
 ): DashboardFilter {
   const filter: DashboardFilter = { fieldKey, operator };
   const value = defaultFilterValue(operator, field?.type);

@@ -1,3 +1,4 @@
+import { DashboardRuntimeDto } from '../../dashboards/dto/dashboard.dto';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsIn,
@@ -99,6 +100,8 @@ export class TeamActivityMemberDto extends TeamActivityCountsDto {
 }
 
 export class TeamActivityResponseDto {
+  @ApiPropertyOptional({ type: DashboardRuntimeDto })
+  businessMetrics?: DashboardRuntimeDto;
   @ApiProperty() timezone!: string;
   @ApiProperty({ description: 'Today in the company calendar.' })
   today!: string;

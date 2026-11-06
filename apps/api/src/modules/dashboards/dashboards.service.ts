@@ -476,6 +476,40 @@ export class DashboardsService {
     };
   }
 
+  /** Shared published rules, always sourced from the employee default dashboard. */
+  async getWorkMetrics(
+    context: TenantContext,
+    period: DashboardPeriod,
+    memberId?: string,
+  ): Promise<DashboardRuntimeResult> {
+    const [dashboards, defaults] = await Promise.all([
+      this.repository.listDashboards(context),
+      this.repository.getDefaults(context),
+    ]);
+    const eligible = dashboards.filter(
+      (d) =>
+        d.status === 'ACTIVE' &&
+        d.hasPublishedVersion &&
+        isDashboardVisibleTo(d, 'EMPLOYEE'),
+    );
+    const selected =
+      eligible.find((d) => d.code === defaults.employeeDashboardCode) ??
+      eligible[0];
+    const publication =
+      selected &&
+      (await this.repository.getActivePublication(context, selected.code));
+    if (!publication || publication.configuration.kind === 'LEGACY') {
+      return { title: '业务数据', period, widgets: [] };
+    }
+    return this.engine.evaluate({
+      publication: publication.configuration,
+      catalog: await this.repository.listPublishedObjects(context),
+      context,
+      period,
+      workReport: { memberId },
+    });
+  }
+
   private async loadSavedDraft(
     context: TenantContext,
     dashboardCode: string,
