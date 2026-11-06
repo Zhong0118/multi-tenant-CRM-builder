@@ -154,23 +154,23 @@
   font-weight: 600;
 }
 
-.reference dl {
+.reference > dl {
   display: flex;
   flex-direction: column;
   gap: 6px;
   margin: 0;
 }
 
-.reference dl > div {
+.reference > dl > div {
   display: flex;
   justify-content: space-between;
 }
 
-.reference dt {
+.reference > dl dt {
   color: var(--text-secondary);
 }
 
-.reference dd {
+.reference > dl dd {
   margin: 0;
   font-variant-numeric: tabular-nums;
 }

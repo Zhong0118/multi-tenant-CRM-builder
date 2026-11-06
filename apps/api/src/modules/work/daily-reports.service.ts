@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { DashboardsService } from '../dashboards/dashboards.service';
 import type { Prisma } from '@crm/database';
 
 import { ApiException } from '../../common/errors/api.exception';
@@ -25,38 +26,62 @@ export class DailyReportsService {
   constructor(
     private readonly runner: DatabaseContextRunner,
     private readonly audit: AuditService,
+    private readonly dashboards: DashboardsService,
   ) {}
 
   /** A member's report for a day, or an empty draft, with that day's reference. */
-  get(context: TenantContext, workDate: string, memberId = context.memberId) {
+  async get(
+    context: TenantContext,
+    workDate: string,
+    memberId = context.memberId,
+  ) {
     if (memberId !== context.memberId && context.role !== 'TENANT_ADMIN')
       throw new ApiException('WORKSPACE_FORBIDDEN', 403);
-    return this.runner.withTenant(context, async (tx) => {
-      const day = await workDay(tx, context.tenantId, workDate);
-      const member = await tx.tenantMember.findFirst({
-        where: { tenantId: context.tenantId, id: memberId },
-        include: { user: { select: { displayName: true } } },
-      });
-      if (!member) throw new ApiException('RECORD_NOT_FOUND', 404);
-      const report = await tx.dailyReport.findUnique({
-        where: {
-          tenantId_memberId_workDate: {
-            tenantId: context.tenantId,
-            memberId,
-            workDate: new Date(`${day.fromDay}T00:00:00Z`),
+    const { statisticsPeriod, ...view } = await this.runner.withTenant(
+      context,
+      async (tx) => {
+        const day = await workDay(tx, context.tenantId, workDate);
+        const member = await tx.tenantMember.findFirst({
+          where: { tenantId: context.tenantId, id: memberId },
+          include: { user: { select: { displayName: true } } },
+        });
+        if (!member) throw new ApiException('RECORD_NOT_FOUND', 404);
+        const report = await tx.dailyReport.findUnique({
+          where: {
+            tenantId_memberId_workDate: {
+              tenantId: context.tenantId,
+              memberId,
+              workDate: new Date(`${day.fromDay}T00:00:00Z`),
+            },
           },
-        },
-      });
-      return {
-        workDate: day.fromDay,
-        today: day.today,
-        memberId,
-        memberName: member.displayName ?? member.user.displayName ?? '成员',
-        canEdit: memberId === context.memberId,
-        report: report ? presentReport(report) : null,
-        reference: await reference(tx, context.tenantId, memberId, day),
-      };
-    });
+        });
+        return {
+          statisticsPeriod: {
+            from: day.fromAt.toISOString(),
+            to: day.toAt.toISOString(),
+            timezone: day.timezone,
+          },
+          workDate: day.fromDay,
+          today: day.today,
+          memberId,
+          memberName: member.displayName ?? member.user.displayName ?? '成员',
+          canEdit: memberId === context.memberId,
+          report: report ? presentReport(report) : null,
+          reference: await reference(tx, context.tenantId, memberId, day),
+        };
+      },
+    );
+    return {
+      ...view,
+      reference: {
+        ...view.reference,
+        businessMetrics: await this.dashboards.getWorkMetrics(
+          context,
+          statisticsPeriod,
+          memberId,
+        ),
+      },
+    };
   }
 
   /** Who wrote a report for a work date; administrators only. */

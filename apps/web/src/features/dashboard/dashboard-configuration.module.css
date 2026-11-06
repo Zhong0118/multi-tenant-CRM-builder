@@ -796,3 +796,16 @@
     transition: none;
   }
 }
+
+.inspector .workReportToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.inspector .workReportToggle input {
+  width: 16px;
+  height: 16px;
+  min-height: 16px;
+  padding: 0;
+  accent-color: var(--brand-primary, #2563eb);
+}

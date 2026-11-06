@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import { WorkBusinessMetrics } from "@/features/work/work-business-metrics";
+
 import type { components } from "@crm/contracts";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -421,6 +424,17 @@ export function TeamActivity({
         电话、微信和拜访按员工在记录「动态」中登记的条目统计；只有结果记为已接通、已沟通、新加上微信或已见面才算联系成功。没有登记的沟通不会出现在这里，日报里的文字也不计数。
       </p>
 
+      <WorkBusinessMetrics
+        data={query.data?.businessMetrics}
+        members={query.data?.members}
+      />
+      <p className={styles.source}>
+        新客、开单等业务指标可以在
+        <Link href={`/workspace/${tenantCode}/settings/dashboards`}>
+          工作台配置
+        </Link>
+        中启用“用于任务与日报”，发布到员工默认工作台后生效。
+      </p>
       <TeamTasks
         tenantCode={tenantCode}
         api={work}
@@ -582,6 +596,7 @@ function MemberReport({
       )}
       <ReportReference
         counts={view.data.reference.counts}
+        businessMetrics={view.data.reference.businessMetrics}
         tasks={view.data.reference.tasks}
       />
     </div>

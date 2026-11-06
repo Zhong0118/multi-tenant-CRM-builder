@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { DashboardsModule } from '../dashboards/dashboards.module';
 
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
@@ -14,7 +15,7 @@ import { WorkTasksService } from './work-tasks.service';
 
 /** Members' everyday work: general tasks, daily reports and 团队动态. */
 @Module({
-  imports: [AuthModule, MembershipsModule, AuditModule],
+  imports: [AuthModule, MembershipsModule, AuditModule, DashboardsModule],
   controllers: [
     WorkGoalsController,
     WorkTasksController,

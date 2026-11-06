@@ -2666,6 +2666,7 @@ export interface components {
       report: components["schemas"]["DailyReportDto"] | null;
     };
     DailyReportReferenceDto: {
+      businessMetrics?: components["schemas"]["DashboardRuntimeDto"];
       counts: components["schemas"]["TeamActivityCountsDto"];
       tasks: components["schemas"]["DailyReportTaskDto"][];
     };
@@ -2796,7 +2797,13 @@ export interface components {
     DashboardMetricDataDto: {
       /** @enum {string} */
       format?: "NUMBER" | "MONEY" | "PERCENT";
+      members?: components["schemas"]["DashboardMetricMemberDto"][];
       value: number | null;
+    };
+    DashboardMetricMemberDto: {
+      /** Format: uuid */
+      memberId: string;
+      value: number;
     };
     DashboardMetricWidgetDto: {
       data: components["schemas"]["DashboardMetricDataDto"];
@@ -4276,6 +4283,7 @@ export interface components {
       wechatAdded: number;
     };
     TeamActivityResponseDto: {
+      businessMetrics?: components["schemas"]["DashboardRuntimeDto"];
       from: string;
       members: components["schemas"]["TeamActivityMemberDto"][];
       timezone: string;

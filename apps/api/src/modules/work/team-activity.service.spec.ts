@@ -1,3 +1,4 @@
+import type { DashboardsService } from '../dashboards/dashboards.service';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
 import { TeamActivityService } from './team-activity.service';
@@ -14,9 +15,12 @@ const admin: TenantContext = {
 // these cover who may ask and which ranges are refused before any query.
 describe('TeamActivityService', () => {
   const withTenant = jest.fn();
-  const service = new TeamActivityService({
-    withTenant,
-  } as unknown as DatabaseContextRunner);
+  const service = new TeamActivityService(
+    {
+      withTenant,
+    } as unknown as DatabaseContextRunner,
+    {} as DashboardsService,
+  );
 
   beforeEach(() => withTenant.mockReset());
 

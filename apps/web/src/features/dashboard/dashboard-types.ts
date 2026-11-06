@@ -62,6 +62,7 @@ export type DashboardWidgetDraft =
       aggregation: "COUNT" | "SUM" | "AVG";
       valueFieldKey?: string;
       displayFormat?: "NUMBER" | "MONEY" | "PERCENT";
+      workReport?: { memberSource: "CREATOR" | "RECORD_OWNER" };
     })
   | (Base & {
       type: "STATUS_DISTRIBUTION";
@@ -397,6 +398,16 @@ function widget(value: unknown): DashboardWidgetDraft {
       return {
         ...base,
         type: "METRIC",
+        ...(root.workReport === undefined
+          ? {}
+          : {
+              workReport: {
+                memberSource: one(object(root.workReport).memberSource, [
+                  "CREATOR",
+                  "RECORD_OWNER",
+                ] as const),
+              },
+            }),
         aggregation: one(root.aggregation, ["COUNT", "SUM", "AVG"] as const),
         ...(typeof root.valueFieldKey === "string"
           ? { valueFieldKey: root.valueFieldKey }

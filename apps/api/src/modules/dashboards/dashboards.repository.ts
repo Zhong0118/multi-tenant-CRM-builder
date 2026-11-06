@@ -1,4 +1,5 @@
 import { DASHBOARD_CREATED_AT } from './dashboard.types';
+import { recordDateExpression } from '../records/record-date-query';
 import { recordOwnerSql } from '../objects/record-read-scope.sql';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@crm/database';
@@ -584,6 +585,36 @@ async function executeMetric(
     widget: Extract<DashboardQueryPlan['widget'], { type: 'METRIC' }>;
   },
 ): Promise<DashboardMetricWidgetResult> {
+  if (plan.workReport && plan.widget.workReport) {
+    const member =
+      plan.widget.workReport.memberSource === 'CREATOR'
+        ? Prisma.sql`r.created_by_member_id`
+        : Prisma.sql`r.owner_member_id`;
+    const restriction = plan.workReport.memberId
+      ? Prisma.sql`AND ${member} = ${plan.workReport.memberId}::uuid`
+      : Prisma.empty;
+    const members = await transaction.$queryRaw<
+      Array<{ memberId: string; value: number }>
+    >(Prisma.sql`
+      SELECT ${member}::text AS "memberId",
+        ${aggregateExpression(plan.widget.aggregation, plan.widget.valueFieldKey)} AS value
+      FROM records r WHERE ${commonPredicates(context, plan)}
+        AND ${member} IS NOT NULL ${restriction}
+      GROUP BY 1 ORDER BY 1
+    `);
+    return {
+      ...resultPresentation(plan),
+      type: 'METRIC',
+      state: 'READY',
+      data: {
+        value: members.reduce((sum, row) => sum + (row.value ?? 0), 0),
+        members,
+        ...(plan.widget.displayFormat
+          ? { format: plan.widget.displayFormat }
+          : {}),
+      },
+    };
+  }
   const rows = await transaction.$queryRaw<Array<{ value: number | null }>>(
     Prisma.sql`
       SELECT ${aggregateExpression(
@@ -884,6 +915,13 @@ function filterPredicate(
       return Prisma.sql`${number} BETWEEN ${values[0]}::numeric AND ${values[1]}::numeric`;
     }
     return comparisonPredicate(number, filter.operator, filter.value);
+  }
+  if (field.type === 'TEXT' && filter.operator === 'DASHBOARD_PERIOD') {
+    return periodPredicate(
+      recordDateExpression(text, 'DATE_TEXT'),
+      'DATE',
+      plan,
+    );
   }
   if (field.type === 'DATE' || field.type === 'DATETIME') {
     const date = dashboardDateExpression(filter.fieldKey, field.type);

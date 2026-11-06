@@ -1,5 +1,7 @@
 "use client";
 
+import { formatDashboardValue as formatValue } from "./dashboard-value-format";
+
 import { displayValue } from "@/features/records/record-display-value";
 import type { PublishedFieldView } from "@/features/objects/object-types";
 import { Table } from "antd";
@@ -569,22 +571,6 @@ function unavailableTitle(
   if (kind === "query-failed") return "此组件暂时无法显示";
   if (kind === "no-permission") return "没有权限查看";
   return "此组件暂时无法显示";
-}
-
-function formatValue(
-  value: number | null,
-  format?: "NUMBER" | "MONEY" | "PERCENT",
-) {
-  if (value === null) return "—";
-  if (format === "MONEY") {
-    return new Intl.NumberFormat("zh-CN", {
-      style: "currency",
-      currency: "CNY",
-      maximumFractionDigits: 0,
-    }).format(value);
-  }
-  if (format === "PERCENT") return `${value.toFixed(1)}%`;
-  return new Intl.NumberFormat("zh-CN").format(value);
 }
 
 function optionColor(color: string) {
