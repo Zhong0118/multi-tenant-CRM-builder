@@ -469,7 +469,7 @@ function ReportEditor({
   return (
     <PageSection
       title="工作日报"
-      description="写给自己和管理员看；右侧的数字来自系统记录，不必重复填写。"
+      description="写下工作总结；旁边按所选日报日期展示业务表统计、已登记的沟通活动和任务完成情况。"
       extra={
         <span className={styles.reportDate}>
           {loaded ? <span>{weekdayOf(loaded.workDate)}</span> : null}
@@ -916,19 +916,20 @@ export function ReportReference({
   const facts: Array<[string, string]> = [
     ["电话", `${counts.calls}（接通 ${counts.connectedCalls}）`],
     ["微信/消息", `${counts.messages}`],
-    [
-      businessMetrics?.widgets.length ? "新加微信（动态登记）" : "新加微信",
-      `${counts.wechatAdded}`,
-    ],
+    ["新加微信", `${counts.wechatAdded}`],
     ["拜访", `${counts.visits}`],
     ["跟进客户", `${counts.customersFollowed}`],
-    ["完成的跟进待办", `${counts.followUpsDone}`],
-    ["完成的任务", `${counts.tasksDone}`],
   ];
   return (
     <aside className={styles.reference} aria-label="当天记录">
       <WorkBusinessMetrics data={businessMetrics} />
-      <h3>{businessMetrics?.widgets.length ? "工作记录" : "当天记录"}</h3>
+      <h3 className={styles.activityHeading}>
+        沟通活动 <span>手动登记</span>
+      </h3>
+      <p className={styles.activityHint}>
+        来自业务记录的「动态 → 追加活动」，按所选日报日期汇总。这里为 0
+        不代表业务表漏统计，无需重复登记。
+      </p>
       <dl>
         {facts.map(([label, value]) => (
           <div key={label}>
@@ -936,6 +937,18 @@ export function ReportReference({
             <dd>{value}</dd>
           </div>
         ))}
+      </dl>
+      <h3 className={styles.taskSummaryHeading}>任务完成情况</h3>
+      <p className={styles.activityHint}>完成跟进待办或任务后，按完成日期自动计入。</p>
+      <dl>
+        <div>
+          <dt>完成的跟进待办</dt>
+          <dd>{counts.followUpsDone}</dd>
+        </div>
+        <div>
+          <dt>完成的任务</dt>
+          <dd>{counts.tasksDone}</dd>
+        </div>
       </dl>
       {tasks.length > 0 ? (
         <ul>
@@ -961,7 +974,6 @@ export function ReportReference({
           ))}
         </ul>
       ) : null}
-      <p>按动态里登记的电话、微信和拜访统计；没有登记的沟通不会出现。</p>
     </aside>
   );
 }

@@ -20,15 +20,12 @@ export function WorkBusinessMetrics({
   const widgets = data.widgets.filter((w) => w.type === "METRIC");
   if (!widgets.length) return null;
   return (
-    <section className={styles.section} aria-label="业务数据自动统计">
+    <section className={styles.section} aria-label="业务表自动统计">
       <h3>
-        业务数据 <span>自动统计</span>
+        业务表 <span>自动统计</span>
       </h3>
       <p>
-        沿用管理员发布的工作台规则，无需重复登记
-        {members
-          ? "；按成员归属汇总，未指定归属的记录不计入"
-          : "；仅统计当前有权查看的数据"}
+        按所选{members ? "时段" : "日报日期"}和管理员配置，直接统计业务表记录，无需另记沟通活动。
       </p>
       <dl className={styles.metrics}>
         {widgets.map((widget) => (
@@ -88,7 +85,10 @@ export function WorkBusinessMetrics({
         />
       ) : null}
       <p>
-        按业务表当前数据计算；状态、业务日期或负责人改变时，历史日期的结果也可能变化。
+        {members
+          ? "按成员归属汇总，未指定归属的记录不计入。"
+          : "仅统计当前有权查看的数据。"}
+        状态、业务日期或负责人改变时，历史日期的结果也可能变化。
       </p>
     </section>
   );
