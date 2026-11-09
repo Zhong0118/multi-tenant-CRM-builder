@@ -409,7 +409,11 @@ export function parsePublishedObjectSchema(
     invalidSnapshot();
   }
   for (const accessValue of Object.values(fieldAccess)) {
-    if (!['EDIT', 'READ_ONLY', 'HIDDEN'].includes(String(accessValue))) {
+    if (
+      !['EDIT', 'CREATE_ONLY', 'READ_ONLY', 'HIDDEN'].includes(
+        String(accessValue),
+      )
+    ) {
       invalidSnapshot();
     }
   }

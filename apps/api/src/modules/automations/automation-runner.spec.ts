@@ -136,6 +136,15 @@ function fixture() {
 }
 
 describe('automation preview choice labels', () => {
+  it('maps a readable create-only source into a create-only target during record creation', async () => {
+    const { session, rule } = fixture();
+    session.resolved.access.fields.name = 'CREATE_ONLY';
+    session.source.values.name = '首次填写的客户';
+    rule.mappings.name = { source: 'SOURCE_FIELD', fieldKey: 'name' };
+    const preview = await previewAutomation(session, rule, {});
+    expect(preview.values.name).toBe('首次填写的客户');
+  });
+
   it.each(['INPUT', 'SOURCE_FIELD', 'LITERAL', 'DEFAULT'] as const)(
     'labels visible single/multi-select %s values without changing stored keys or exposing hidden fields',
     async (source) => {

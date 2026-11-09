@@ -502,10 +502,12 @@ export class EmployeePermissionsDto extends ExpectedVersionDto {
 
   @ApiProperty({
     type: 'object',
-    additionalProperties: { enum: ['EDIT', 'READ_ONLY', 'HIDDEN'] },
+    additionalProperties: {
+      enum: ['EDIT', 'CREATE_ONLY', 'READ_ONLY', 'HIDDEN'],
+    },
   })
   @IsObject()
-  fields!: Record<string, 'EDIT' | 'READ_ONLY' | 'HIDDEN'>;
+  fields!: Record<string, 'EDIT' | 'CREATE_ONLY' | 'READ_ONLY' | 'HIDDEN'>;
 }
 
 export class RuntimeObjectNavigationResponseDto {
@@ -530,7 +532,8 @@ export class PublishedFieldResponseDto {
   @ApiProperty({ type: 'object', additionalProperties: true }) config!: object;
   @ApiProperty() sortOrder!: number;
   @ApiProperty() isSystem!: boolean;
-  @ApiProperty({ enum: ['EDIT', 'READ_ONLY'] }) access!: 'EDIT' | 'READ_ONLY';
+  @ApiProperty({ enum: ['EDIT', 'CREATE_ONLY', 'READ_ONLY'] }) access!:
+    'EDIT' | 'CREATE_ONLY' | 'READ_ONLY';
 }
 
 export class RecordOwnerMemberResponseDto {
@@ -553,10 +556,13 @@ export class PublishedObjectSchemaResponseDto {
     type: 'object',
     additionalProperties: {
       type: 'string',
-      enum: ['EDIT', 'READ_ONLY', 'HIDDEN'],
+      enum: ['EDIT', 'CREATE_ONLY', 'READ_ONLY', 'HIDDEN'],
     },
   })
-  groupFieldAccess?: Record<string, 'EDIT' | 'READ_ONLY' | 'HIDDEN'>;
+  groupFieldAccess?: Record<
+    string,
+    'EDIT' | 'CREATE_ONLY' | 'READ_ONLY' | 'HIDDEN'
+  >;
   @ApiPropertyOptional({ type: String, isArray: true })
   queryFieldKeys?: string[];
   @ApiPropertyOptional({ type: Boolean }) workflowEnabled?: boolean;
@@ -618,8 +624,8 @@ export class ObjectDraftFieldResponseDto {
   status!: 'ACTIVE' | 'INACTIVE';
   @ApiProperty({ type: String, enum: FIELD_TYPES, nullable: true })
   publishedType!: string | null;
-  @ApiProperty({ enum: ['EDIT', 'READ_ONLY', 'HIDDEN'] })
-  employeeAccess!: 'EDIT' | 'READ_ONLY' | 'HIDDEN';
+  @ApiProperty({ enum: ['EDIT', 'CREATE_ONLY', 'READ_ONLY', 'HIDDEN'] })
+  employeeAccess!: 'EDIT' | 'CREATE_ONLY' | 'READ_ONLY' | 'HIDDEN';
 }
 
 export class ObjectDraftDefaultViewResponseDto {
@@ -646,8 +652,8 @@ export class ObjectDraftEmployeeAccessResponseDto {
 export class PublishedEmployeeFieldAccessResponseDto {
   @ApiProperty() fieldKey!: string;
   @ApiProperty() label!: string;
-  @ApiProperty({ enum: ['EDIT', 'READ_ONLY', 'HIDDEN'] })
-  access!: 'EDIT' | 'READ_ONLY' | 'HIDDEN';
+  @ApiProperty({ enum: ['EDIT', 'CREATE_ONLY', 'READ_ONLY', 'HIDDEN'] })
+  access!: 'EDIT' | 'CREATE_ONLY' | 'READ_ONLY' | 'HIDDEN';
 }
 
 export class PublishedEmployeeAccessResponseDto extends ObjectDraftEmployeeAccessResponseDto {

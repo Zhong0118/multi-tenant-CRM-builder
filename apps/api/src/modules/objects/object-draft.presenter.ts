@@ -24,7 +24,7 @@ export interface ObjectDraftFieldResponse {
    * designer reads the lock from here instead of guessing.
    */
   publishedType: PublicationDraftField['type'] | null;
-  employeeAccess: 'EDIT' | 'READ_ONLY' | 'HIDDEN';
+  employeeAccess: 'EDIT' | 'CREATE_ONLY' | 'READ_ONLY' | 'HIDDEN';
 }
 
 export interface ObjectDraftResponse {
@@ -69,7 +69,7 @@ export interface ObjectDraftResponse {
         fields: Array<{
           fieldKey: string;
           label: string;
-          access: 'EDIT' | 'READ_ONLY' | 'HIDDEN';
+          access: 'EDIT' | 'CREATE_ONLY' | 'READ_ONLY' | 'HIDDEN';
         }>;
       })
     | null;

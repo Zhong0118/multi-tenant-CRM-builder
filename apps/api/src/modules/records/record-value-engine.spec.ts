@@ -13,6 +13,84 @@ import {
 
 const ACTIVE_MEMBER_ID = '018f47a2-4b5c-7d8e-9f01-23456789abcd';
 
+describe('create-only field access', () => {
+  const testSchema = schema(field('TEXT', { required: true }));
+  const access = {
+    ...editableAccess(testSchema),
+    fields: { name: 'EDIT', value: 'CREATE_ONLY' },
+  } as EffectiveObjectAccess;
+  const input = {
+    schema: testSchema,
+    access,
+    memberExists: () => Promise.resolve(true),
+  };
+
+  it('allows initial input and keeps it visible', async () => {
+    const result = await validateRecordMutation({
+      ...input,
+      mode: 'CREATE',
+      submitted: { name: '客户', value: '初次录入' },
+    });
+    expect(projectVisibleValues(testSchema, access, result.values).value).toBe(
+      '初次录入',
+    );
+  });
+
+  it.each(['修改', null, '初次录入'])(
+    'rejects every submitted update, including clearing and same-value writes (%s)',
+    async (value) => {
+      await expect(
+        validateRecordMutation({
+          ...input,
+          mode: 'UPDATE',
+          current: { name: '客户', value: '初次录入' },
+          submitted: { value },
+        }),
+      ).rejects.toMatchObject({ code: 'FIELD_READ_ONLY', fieldKey: 'value' });
+    },
+  );
+
+  it('does not allow filling an optional blank after the record has been saved', async () => {
+    await expect(
+      validateRecordMutation({
+        ...input,
+        schema: schema(field('TEXT')),
+        mode: 'UPDATE',
+        current: { name: '客户' },
+        submitted: { value: '保存后补填' },
+      }),
+    ).rejects.toMatchObject({ code: 'FIELD_READ_ONLY', fieldKey: 'value' });
+  });
+
+  it('preserves the value while another field is edited', async () => {
+    const result = await validateRecordMutation({
+      ...input,
+      mode: 'UPDATE',
+      current: { name: '客户', value: '初次录入' },
+      submitted: { name: '新名称' },
+    });
+    expect(result.values).toEqual({ name: '新名称', value: '初次录入' });
+  });
+
+  it('still enforces required fields and table create permission', async () => {
+    await expect(
+      validateRecordMutation({
+        ...input,
+        mode: 'CREATE',
+        submitted: { name: '客户' },
+      }),
+    ).rejects.toMatchObject({ code: 'FIELD_REQUIRED' });
+    await expect(
+      validateRecordMutation({
+        ...input,
+        access: { ...access, canCreate: false },
+        mode: 'CREATE',
+        submitted: { name: '客户', value: '录入' },
+      }),
+    ).rejects.toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
+  });
+});
+
 function field(
   type: PublishedFieldType,
   overrides: Partial<PublishedField> = {},

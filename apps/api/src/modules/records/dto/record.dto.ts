@@ -187,10 +187,10 @@ export class RecordResponseDto {
     type: 'object',
     additionalProperties: {
       type: 'string',
-      enum: ['EDIT', 'READ_ONLY', 'HIDDEN'],
+      enum: ['EDIT', 'CREATE_ONLY', 'READ_ONLY', 'HIDDEN'],
     },
   })
-  fieldAccess?: Record<string, 'EDIT' | 'READ_ONLY' | 'HIDDEN'>;
+  fieldAccess?: Record<string, 'EDIT' | 'CREATE_ONLY' | 'READ_ONLY' | 'HIDDEN'>;
   @ApiPropertyOptional() canEditFields?: boolean;
   @ApiPropertyOptional({ enum: POOL_STAGES, nullable: true })
   poolStage?: PoolStage | null;

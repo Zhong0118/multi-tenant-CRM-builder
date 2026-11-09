@@ -269,7 +269,9 @@ function analyzeCreateRecord(
       }
       if (
         employeeAccess !== null &&
-        employeeFieldAccess(employeeAccess, fieldKey) !== 'EDIT'
+        !['EDIT', 'CREATE_ONLY'].includes(
+          employeeFieldAccess(employeeAccess, fieldKey),
+        )
       ) {
         issues.push(
           actionIssue(

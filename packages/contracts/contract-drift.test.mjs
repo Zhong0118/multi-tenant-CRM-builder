@@ -218,6 +218,7 @@ test("types every object configuration response the designer consumes", async ()
   assert.deepEqual(draftField.status.enum, ["ACTIVE", "INACTIVE"]);
   assert.deepEqual(draftField.employeeAccess.enum, [
     "EDIT",
+    "CREATE_ONLY",
     "READ_ONLY",
     "HIDDEN",
   ]);

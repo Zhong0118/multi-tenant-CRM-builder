@@ -23,6 +23,7 @@ import { OVERLAY_SIZE } from "@/components/feedback/overlay-size";
 
 export const FIELD_ACCESS_LABELS = {
   EDIT: "可编辑",
+  CREATE_ONLY: "仅新建时可填写",
   READ_ONLY: "只读",
   HIDDEN: "隐藏",
 };
@@ -348,6 +349,9 @@ export function BulkMemberAccess({
                   </div>
                 )}
                 <h3 className={styles.drawerHeading}>列权限</h3>
+                <p className={styles.secondary}>
+                  仅新建时可填写：创建记录时录入，首次保存后只读。原有只读权限在新建时也不能填写。管理员仍可修改。
+                </p>
                 {(row.fields ?? []).map((field) => (
                   <div className={styles.fieldAccessRow} key={field.fieldId}>
                     <div className={styles.fieldAccessName}>

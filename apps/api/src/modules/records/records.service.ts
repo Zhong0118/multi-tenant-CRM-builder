@@ -549,7 +549,7 @@ export class RecordsService {
         );
         return (
           !field ||
-          resolved.access.fields[key] !== 'EDIT' ||
+          !['EDIT', 'CREATE_ONLY'].includes(resolved.access.fields[key]) ||
           !queryFields(resolved).some(
             (candidate) => candidate.fieldKey === key,
           ) ||
@@ -563,7 +563,7 @@ export class RecordsService {
     ) {
       throw new ApiException('RECORD_IMPORT_INVALID', 400, {
         fieldErrors: {
-          matchFields: ['请选择最多三个已映射的可编辑标量字段。'],
+          matchFields: ['请选择最多三个已映射的新建时可填写的标量字段。'],
         },
       });
     }
@@ -581,7 +581,7 @@ export class RecordsService {
         if (
           matchFields.some(
             (key) =>
-              resolved.access.fields[key] !== 'EDIT' ||
+              !['EDIT', 'CREATE_ONLY'].includes(resolved.access.fields[key]) ||
               !queryFields(resolved).some((field) => field.fieldKey === key),
           )
         )

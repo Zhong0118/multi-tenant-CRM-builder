@@ -97,7 +97,7 @@ function IsTemplateFieldAccessRecord(
           Object.values(value).every(
             (access) =>
               typeof access === 'string' &&
-              ['EDIT', 'READ_ONLY', 'HIDDEN'].includes(access),
+              ['EDIT', 'CREATE_ONLY', 'READ_ONLY', 'HIDDEN'].includes(access),
           ),
       },
     });
@@ -220,11 +220,13 @@ export class TemplateEmployeeAccessDto {
 
   @ApiProperty({
     type: 'object',
-    additionalProperties: { enum: ['EDIT', 'READ_ONLY', 'HIDDEN'] },
+    additionalProperties: {
+      enum: ['EDIT', 'CREATE_ONLY', 'READ_ONLY', 'HIDDEN'],
+    },
   })
   @IsObject()
   @IsTemplateFieldAccessRecord()
-  fields!: Record<string, 'EDIT' | 'READ_ONLY' | 'HIDDEN'>;
+  fields!: Record<string, 'EDIT' | 'CREATE_ONLY' | 'READ_ONLY' | 'HIDDEN'>;
 }
 
 export class TemplateFieldDraftDto {

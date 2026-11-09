@@ -341,7 +341,7 @@ export function FieldEditorSections({
         <Form.Item
           label="员工访问级别"
           htmlFor="field-access"
-          extra="员工默认列权限发布后生效；可在成员访问权限中为指定员工设置立即生效的例外。"
+          extra="仅新建时可填写：首次保存后只读，未填写的内容也不能再补填。员工默认权限发布后生效；成员例外保存后立即生效。"
         >
           <Radio.Group
             id="field-access"
@@ -355,7 +355,12 @@ export function FieldEditorSections({
               })
             }
             options={(
-              ["EDIT", "READ_ONLY", "HIDDEN"] as PublishedFieldAccess[]
+              [
+                "EDIT",
+                "CREATE_ONLY",
+                "READ_ONLY",
+                "HIDDEN",
+              ] as PublishedFieldAccess[]
             ).map((access) => ({
               value: access,
               label: FIELD_ACCESS_LABELS[access],

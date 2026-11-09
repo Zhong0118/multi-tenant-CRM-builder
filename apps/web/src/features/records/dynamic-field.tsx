@@ -40,6 +40,7 @@ export interface DynamicFieldProps {
   members?: DynamicFieldMember[];
   error?: string;
   disabled?: boolean;
+  mode?: "CREATE" | "UPDATE";
 }
 
 /**
@@ -59,9 +60,13 @@ export function DynamicField({
   members = [],
   error,
   disabled = false,
+  mode = "UPDATE",
 }: DynamicFieldProps) {
   if (field.access === "HIDDEN") return null;
 
+  const writable =
+    field.access === "EDIT" ||
+    (field.access === "CREATE_ONLY" && mode === "CREATE");
   const controlId = `dynamic-field-${field.fieldKey}`;
   const errorId = `${controlId}-error`;
   const helpId = `${controlId}-help`;
@@ -75,10 +80,10 @@ export function DynamicField({
     <Form.Item
       label={field.label}
       htmlFor={controlId}
-      required={field.access === "EDIT" && field.required}
+      required={writable && field.required}
       validateStatus={error ? "error" : undefined}
     >
-      {field.access === "READ_ONLY" ? (
+      {!writable ? (
         <ReadOnlyValue field={field} value={value} members={members} />
       ) : (
         <EditableControl
@@ -92,6 +97,9 @@ export function DynamicField({
           disabled={disabled}
         />
       )}
+      {field.access === "CREATE_ONLY" && mode === "CREATE" ? (
+        <Typography.Text type="secondary">首次保存后仅可查看</Typography.Text>
+      ) : null}
       {error ? (
         <div id={errorId} className={styles.fieldError} role="alert">
           {error}

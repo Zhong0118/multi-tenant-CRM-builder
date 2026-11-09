@@ -75,11 +75,11 @@ export async function automationTarget(
   if (!target.access.canCreate || !isReadable(target.schema, target.access))
     throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
   for (const [key, mapping] of Object.entries(rule.mappings)) {
-    if (target.access.fields[key] !== 'EDIT')
+    if (!['EDIT', 'CREATE_ONLY'].includes(target.access.fields[key]))
       throw new ApiException('FIELD_READ_ONLY', 403);
     if (
       mapping.source === 'SOURCE_FIELD' &&
-      !['EDIT', 'READ_ONLY'].includes(
+      !['EDIT', 'CREATE_ONLY', 'READ_ONLY'].includes(
         recordFieldAccess(session.resolved.access, session.source)[
           mapping.fieldKey
         ] ?? 'HIDDEN',
