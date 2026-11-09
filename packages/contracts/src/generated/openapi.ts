@@ -3018,7 +3018,7 @@ export interface components {
       canUpdate: boolean;
       expectedVersion: number;
       fields: {
-        [key: string]: "EDIT" | "READ_ONLY" | "HIDDEN";
+        [key: string]: "EDIT" | "CREATE_ONLY" | "READ_ONLY" | "HIDDEN";
       };
       /** @enum {string} */
       readScope: "ALL" | "OWN" | "NONE";
@@ -3261,24 +3261,24 @@ export interface components {
     };
     MemberFieldAccessChangeDto: {
       /** @enum {string} */
-      access: "EDIT" | "READ_ONLY" | "HIDDEN" | "INHERIT";
+      access: "EDIT" | "CREATE_ONLY" | "READ_ONLY" | "HIDDEN" | "INHERIT";
       /** Format: uuid */
       fieldId: string;
     };
     MemberFieldAccessResponseDto: {
       /** @enum {string} */
-      effective: "EDIT" | "READ_ONLY" | "HIDDEN";
+      effective: "EDIT" | "CREATE_ONLY" | "READ_ONLY" | "HIDDEN";
       /** Format: uuid */
       fieldId: string;
       fieldKey: string;
       /** @enum {string} */
-      groupEffective?: "EDIT" | "READ_ONLY" | "HIDDEN";
+      groupEffective?: "EDIT" | "CREATE_ONLY" | "READ_ONLY" | "HIDDEN";
       /** @enum {string} */
-      inherited: "EDIT" | "READ_ONLY" | "HIDDEN";
+      inherited: "EDIT" | "CREATE_ONLY" | "READ_ONLY" | "HIDDEN";
       isSystem: boolean;
       label: string;
       /** @enum {string|null} */
-      override: "EDIT" | "READ_ONLY" | "HIDDEN" | null;
+      override: "EDIT" | "CREATE_ONLY" | "READ_ONLY" | "HIDDEN" | null;
     };
     MemberGroupDto: {
       /** Format: uuid */
@@ -3419,7 +3419,7 @@ export interface components {
           )
         | null;
       /** @enum {string} */
-      employeeAccess: "EDIT" | "READ_ONLY" | "HIDDEN";
+      employeeAccess: "EDIT" | "CREATE_ONLY" | "READ_ONLY" | "HIDDEN";
       fieldKey: string;
       /** Format: uuid */
       id: string;
@@ -3761,13 +3761,13 @@ export interface components {
     };
     PublishedEmployeeFieldAccessResponseDto: {
       /** @enum {string} */
-      access: "EDIT" | "READ_ONLY" | "HIDDEN";
+      access: "EDIT" | "CREATE_ONLY" | "READ_ONLY" | "HIDDEN";
       fieldKey: string;
       label: string;
     };
     PublishedFieldResponseDto: {
       /** @enum {string} */
-      access: "EDIT" | "READ_ONLY";
+      access: "EDIT" | "CREATE_ONLY" | "READ_ONLY";
       config: {
         [key: string]: unknown;
       };
@@ -3813,7 +3813,7 @@ export interface components {
       };
       fields: components["schemas"]["PublishedFieldResponseDto"][];
       groupFieldAccess?: {
-        [key: string]: "EDIT" | "READ_ONLY" | "HIDDEN";
+        [key: string]: "EDIT" | "CREATE_ONLY" | "READ_ONLY" | "HIDDEN";
       };
       object: {
         [key: string]: unknown;
@@ -3965,7 +3965,7 @@ export interface components {
       /** Format: date-time */
       createdAt: string;
       fieldAccess?: {
-        [key: string]: "EDIT" | "READ_ONLY" | "HIDDEN";
+        [key: string]: "EDIT" | "CREATE_ONLY" | "READ_ONLY" | "HIDDEN";
       };
       /** Format: uuid */
       id: string;
@@ -4376,7 +4376,7 @@ export interface components {
       canRead: boolean;
       canUpdate: boolean;
       fields: {
-        [key: string]: "EDIT" | "READ_ONLY" | "HIDDEN";
+        [key: string]: "EDIT" | "CREATE_ONLY" | "READ_ONLY" | "HIDDEN";
       };
       /** @enum {string} */
       readScope: "ALL" | "OWN" | "NONE";

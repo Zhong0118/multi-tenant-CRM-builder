@@ -189,7 +189,7 @@ export interface HydratedTenantConfiguration {
     objectId: string;
     fieldId: string;
     subjectRole: 'EMPLOYEE';
-    access: 'EDIT' | 'READ_ONLY' | 'HIDDEN';
+    access: 'EDIT' | 'CREATE_ONLY' | 'READ_ONLY' | 'HIDDEN';
   }>;
   objectsResult: TemplateApplicationObjectResult[];
 }

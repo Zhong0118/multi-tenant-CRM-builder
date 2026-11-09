@@ -2,7 +2,11 @@
 
 import { Button, Segmented, Typography } from "antd";
 
-import { DATA_SCOPE_LABELS, fieldTypeLabel } from "./object-types";
+import {
+  DATA_SCOPE_LABELS,
+  FIELD_ACCESS_LABELS,
+  fieldTypeLabel,
+} from "./object-types";
 import type { ConfigurableObjectView } from "./configuration-view";
 
 import styles from "./objects.module.css";
@@ -80,9 +84,10 @@ export function ObjectPreview({
                     <span className={styles.previewFieldRequired}>*</span>
                   ) : null}
                   {field.label}
-                  {!asEmployee && field.employeeAccess !== "EDIT" ? (
+                  {field.employeeAccess !== "EDIT" &&
+                  (!asEmployee || field.employeeAccess === "CREATE_ONLY") ? (
                     <span className={styles.previewFieldReason}>
-                      员工{field.employeeAccess === "HIDDEN" ? "隐藏" : "只读"}
+                      员工{FIELD_ACCESS_LABELS[field.employeeAccess]}
                     </span>
                   ) : null}
                 </span>

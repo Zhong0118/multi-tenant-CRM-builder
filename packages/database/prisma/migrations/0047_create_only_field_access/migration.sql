@@ -1,0 +1,1 @@
+ALTER TYPE "FieldAccess" ADD VALUE 'CREATE_ONLY';

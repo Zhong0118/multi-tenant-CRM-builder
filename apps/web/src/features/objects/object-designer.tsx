@@ -1986,12 +1986,17 @@ function PermissionsSection({
                             [field.fieldKey]: value as PublishedFieldAccess,
                           }))
                         }
-                        options={(["EDIT", "READ_ONLY", "HIDDEN"] as const).map(
-                          (access) => ({
-                            value: access,
-                            label: FIELD_ACCESS_LABELS[access],
-                          }),
-                        )}
+                        options={(
+                          [
+                            "EDIT",
+                            "CREATE_ONLY",
+                            "READ_ONLY",
+                            "HIDDEN",
+                          ] as const
+                        ).map((access) => ({
+                          value: access,
+                          label: FIELD_ACCESS_LABELS[access],
+                        }))}
                       />
                       {marker(liveText, savedText, FIELD_ACCESS_LABELS[edited])}
                     </span>

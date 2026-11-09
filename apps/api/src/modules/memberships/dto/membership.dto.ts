@@ -111,9 +111,11 @@ export class MemberFieldAccessChangeDto {
   @IsUUID()
   fieldId!: string;
 
-  @ApiProperty({ enum: ['EDIT', 'READ_ONLY', 'HIDDEN', 'INHERIT'] })
-  @IsIn(['EDIT', 'READ_ONLY', 'HIDDEN', 'INHERIT'])
-  access!: 'EDIT' | 'READ_ONLY' | 'HIDDEN' | 'INHERIT';
+  @ApiProperty({
+    enum: ['EDIT', 'CREATE_ONLY', 'READ_ONLY', 'HIDDEN', 'INHERIT'],
+  })
+  @IsIn(['EDIT', 'CREATE_ONLY', 'READ_ONLY', 'HIDDEN', 'INHERIT'])
+  access!: 'EDIT' | 'CREATE_ONLY' | 'READ_ONLY' | 'HIDDEN' | 'INHERIT';
 }
 
 export class BulkMemberAccessDto {
@@ -152,18 +154,21 @@ export class BulkMemberAccessResponseDto {
 }
 
 export class MemberFieldAccessResponseDto {
-  @ApiPropertyOptional({ enum: ['EDIT', 'READ_ONLY', 'HIDDEN'] })
-  groupEffective?: 'EDIT' | 'READ_ONLY' | 'HIDDEN';
+  @ApiPropertyOptional({ enum: ['EDIT', 'CREATE_ONLY', 'READ_ONLY', 'HIDDEN'] })
+  groupEffective?: 'EDIT' | 'CREATE_ONLY' | 'READ_ONLY' | 'HIDDEN';
   @ApiProperty({ format: 'uuid' }) fieldId!: string;
   @ApiProperty() fieldKey!: string;
   @ApiProperty() label!: string;
   @ApiProperty() isSystem!: boolean;
-  @ApiProperty({ enum: ['EDIT', 'READ_ONLY', 'HIDDEN'] }) inherited!:
-    'EDIT' | 'READ_ONLY' | 'HIDDEN';
-  @ApiProperty({ enum: ['EDIT', 'READ_ONLY', 'HIDDEN'] }) effective!:
-    'EDIT' | 'READ_ONLY' | 'HIDDEN';
-  @ApiProperty({ enum: ['EDIT', 'READ_ONLY', 'HIDDEN'], nullable: true })
-  override!: 'EDIT' | 'READ_ONLY' | 'HIDDEN' | null;
+  @ApiProperty({ enum: ['EDIT', 'CREATE_ONLY', 'READ_ONLY', 'HIDDEN'] })
+  inherited!: 'EDIT' | 'CREATE_ONLY' | 'READ_ONLY' | 'HIDDEN';
+  @ApiProperty({ enum: ['EDIT', 'CREATE_ONLY', 'READ_ONLY', 'HIDDEN'] })
+  effective!: 'EDIT' | 'CREATE_ONLY' | 'READ_ONLY' | 'HIDDEN';
+  @ApiProperty({
+    enum: ['EDIT', 'CREATE_ONLY', 'READ_ONLY', 'HIDDEN'],
+    nullable: true,
+  })
+  override!: 'EDIT' | 'CREATE_ONLY' | 'READ_ONLY' | 'HIDDEN' | null;
 }
 
 export class InvitationPageQueryDto {

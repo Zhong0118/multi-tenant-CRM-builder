@@ -60,7 +60,7 @@ export async function validateRecordMutation(input: {
     if (!fieldsByKey.has(fieldKey)) {
       throw new RecordValueError('FIELD_UNKNOWN', fieldKey);
     }
-    assertFieldWritable(fieldKey, input.access);
+    assertFieldWritable(fieldKey, input.access, input.mode);
   }
 
   const values: Record<string, unknown> =
@@ -184,12 +184,16 @@ function assertActionAllowed(
 function assertFieldWritable(
   fieldKey: string,
   access: EffectiveObjectAccess,
+  mode: 'CREATE' | 'UPDATE',
 ): void {
   const fieldAccess = access.fields[fieldKey] ?? 'HIDDEN';
   if (fieldAccess === 'HIDDEN') {
     throw new RecordValueError('FIELD_HIDDEN', fieldKey);
   }
-  if (fieldAccess === 'READ_ONLY') {
+  if (
+    fieldAccess !== 'EDIT' &&
+    !(mode === 'CREATE' && fieldAccess === 'CREATE_ONLY')
+  ) {
     throw new RecordValueError('FIELD_READ_ONLY', fieldKey);
   }
 }

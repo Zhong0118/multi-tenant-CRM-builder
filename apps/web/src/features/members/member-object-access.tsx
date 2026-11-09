@@ -483,7 +483,12 @@ function ObjectAccessRow({
                           aria-label={`组员列权限 ${field.label}`}
                           value={groupDraft[field.fieldKey]}
                           disabled={saving}
-                          onChange={(access: PublishedFieldAccess) =>
+                          onChange={(
+                            access: Exclude<
+                              PublishedFieldAccess,
+                              "CREATE_ONLY"
+                            >,
+                          ) =>
                             setGroupDraft((current) => ({
                               ...current,
                               [field.fieldKey]: access,
@@ -818,7 +823,7 @@ function groupEffective(
 
 function groupFieldDraft(
   row: MemberObjectAccessRow,
-): Record<string, PublishedFieldAccess> {
+): Record<string, Exclude<PublishedFieldAccess, "CREATE_ONLY">> {
   const configured = row.effective.groupFieldAccess;
   return Object.fromEntries(
     (row.fields ?? []).map((field) => [
@@ -833,7 +838,10 @@ function groupFieldDraft(
 
 function groupPolicyInput(
   row: MemberObjectAccessRow,
-  groupFieldAccess: Record<string, PublishedFieldAccess> | null,
+  groupFieldAccess: Record<
+    string,
+    Exclude<PublishedFieldAccess, "CREATE_ONLY">
+  > | null,
 ): MemberObjectAccessInput {
   const { canCreate, canRead, canUpdate, readScope, updateScope } =
     row.effective;

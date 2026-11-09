@@ -3,7 +3,7 @@ import type { components } from "@crm/contracts";
 type Schemas = components["schemas"];
 
 export type PublishedFieldType = Schemas["PublishedFieldResponseDto"]["type"];
-export type PublishedFieldAccess = "EDIT" | "READ_ONLY" | "HIDDEN";
+export type PublishedFieldAccess = "EDIT" | "CREATE_ONLY" | "READ_ONLY" | "HIDDEN";
 export type PublishedDataScope = "ALL" | "OWN" | "NONE";
 export type RecordSortField = "updatedAt" | "createdAt" | "recordNo";
 export type RecordListSortField = RecordSortField | string;
@@ -260,6 +260,7 @@ export const FIELD_TYPE_LABELS: Record<PublishedFieldType, string> = {
 
 export const FIELD_ACCESS_LABELS: Record<PublishedFieldAccess, string> = {
   EDIT: "可编辑",
+  CREATE_ONLY: "仅新建时可填写",
   READ_ONLY: "只读",
   HIDDEN: "隐藏",
 };
@@ -447,7 +448,7 @@ export function selectOptions(
 }
 
 const SCOPES = ["ALL", "OWN", "NONE"] as const;
-const FIELD_ACCESS = ["EDIT", "READ_ONLY", "HIDDEN"] as const;
+const FIELD_ACCESS = ["EDIT", "CREATE_ONLY", "READ_ONLY", "HIDDEN"] as const;
 
 function parseField(
   field: Schemas["PublishedFieldResponseDto"],

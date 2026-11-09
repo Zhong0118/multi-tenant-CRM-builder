@@ -130,6 +130,64 @@ const conflict = {
 };
 
 describe("RecordForm creating a record", () => {
+  it("submits create-only fields on creation while keeping read-only fields locked", async () => {
+    const testSchema = schema();
+    testSchema.fields[0].access =
+      "CREATE_ONLY" as (typeof testSchema.fields)[0]["access"];
+    const api = recordApi();
+    renderForm(
+      <RecordForm
+        tenantCode="northwind"
+        schema={testSchema}
+        api={api}
+        onSaved={vi.fn()}
+      />,
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "客户名称" }), {
+      target: { value: "首次名称" },
+    });
+    expect(
+      screen.queryByRole("combobox", { name: "客户评级" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "创建记录" }));
+    await waitFor(() =>
+      expect(api.create).toHaveBeenCalledWith("northwind", "customers", {
+        values: { name: "首次名称" },
+      }),
+    );
+  });
+
+  it("shows saved create-only values without including them in updates", async () => {
+    const testSchema = schema();
+    testSchema.fields[0].access =
+      "CREATE_ONLY" as (typeof testSchema.fields)[0]["access"];
+    const api = recordApi();
+    renderForm(
+      <RecordForm
+        tenantCode="northwind"
+        schema={testSchema}
+        record={savedRecord}
+        api={api}
+        onSaved={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole("textbox", { name: "客户名称" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("百杰")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("合同金额"), {
+      target: { value: "100" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "保存修改" }));
+    await waitFor(() =>
+      expect(api.update).toHaveBeenCalledWith(
+        "northwind",
+        "customers",
+        "record-1",
+        { version: 4, values: { amount: "100" } },
+      ),
+    );
+  });
   it("locks fields and owner while saving and after commit", async () => {
     let resolve!: (record: typeof savedRecord) => void;
     const api = recordApi({

@@ -109,6 +109,7 @@ enum DataScope {
 
 enum FieldAccess {
   EDIT
+  CREATE_ONLY
   READ_ONLY
   HIDDEN
 }

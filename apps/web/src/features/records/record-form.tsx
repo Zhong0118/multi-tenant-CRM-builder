@@ -34,9 +34,9 @@ export interface RecordFormProps {
 }
 
 /**
- * Builds a record from the published schema. Only `EDIT` fields ever reach the
- * payload — a read-only or hidden value is never sent, so the form cannot ask
- * the API to reject something the member could not have changed.
+ * Builds a record from the published schema. Payloads include EDIT fields and,
+ * during creation only, CREATE_ONLY fields. Read-only or hidden values are
+ * never submitted.
  *
  * A failed save keeps every entered value. A version conflict is surfaced with
  * an explicit reload rather than overwriting whoever saved first.
@@ -54,7 +54,10 @@ export function RecordForm({
   onDirtyChange,
 }: RecordFormProps) {
   const fields = recordFields(schema, record);
-  const editable = fields.filter((field) => field.access === "EDIT");
+  const editable = fields.filter(
+    (field) =>
+      field.access === "EDIT" || (!record && field.access === "CREATE_ONLY"),
+  );
   const [values, setValues] = useState<Record<string, unknown>>(() =>
     initialValues(schema, record),
   );
@@ -199,6 +202,7 @@ export function RecordForm({
         <div className={styles.formGrid}>
           {fields.map((field) => (
             <DynamicField
+              mode={mode}
               key={field.id}
               field={field}
               value={values[field.fieldKey] ?? null}
@@ -255,7 +259,11 @@ function initialValues(
   if (record) return { ...record.values };
   return Object.fromEntries(
     schema.fields
-      .filter((field) => field.access === "EDIT" && field.defaultValue !== null)
+      .filter(
+        (field) =>
+          (field.access === "EDIT" || field.access === "CREATE_ONLY") &&
+          field.defaultValue !== null,
+      )
       .map((field) => [field.fieldKey, field.defaultValue]),
   );
 }

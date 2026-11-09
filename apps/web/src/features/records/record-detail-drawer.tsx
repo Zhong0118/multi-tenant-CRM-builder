@@ -105,7 +105,7 @@ export function RecordDetailDrawer({
         <div key={field.id} className={styles.detailField}>
           <dt>
             {field.label}
-            {field.access === "READ_ONLY" ? (
+            {(field.access === "READ_ONLY" || field.access === "CREATE_ONLY") ? (
               <span className={styles.detailLock}>只读</span>
             ) : null}
           </dt>

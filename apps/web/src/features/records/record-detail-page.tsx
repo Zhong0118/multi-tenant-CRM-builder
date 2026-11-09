@@ -36,7 +36,11 @@ import {
   RecordOwner,
 } from "./record-display-value";
 import { RecordForm } from "./record-form";
-import { canEditRecord, canEditRecordFields, recordFields } from "./record-access";
+import {
+  canEditRecord,
+  canEditRecordFields,
+  recordFields,
+} from "./record-access";
 import { RecordOwnershipActions, RecordPoolStatus } from "./record-pool";
 import type { RecordPoolConfig } from "./record-pool-api";
 import { RecordRelationsPanel } from "./record-relations-panel";
@@ -234,7 +238,9 @@ export function RecordDetailPage({
       label: "跟进",
       children: (
         <FollowUpPanel
-          onCompleted={async () => { await refresh(); }}
+          onCompleted={async () => {
+            await refresh();
+          }}
           tenantCode={tenantCode}
           followUpId={followUpId}
           record={{
@@ -571,7 +577,8 @@ export function RecordDetailPage({
                     >
                       <dt>
                         {field.label}
-                        {field.access === "READ_ONLY" ? (
+                        {field.access === "READ_ONLY" ||
+                        field.access === "CREATE_ONLY" ? (
                           <Tooltip title="只读">
                             <LockOutlined
                               className={styles.fieldLock}

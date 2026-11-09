@@ -64,7 +64,9 @@ export function RecordImportDrawer({
   onCompleted,
 }: RecordImportDrawerProps) {
   const importable = schema.fields.filter(
-    (field) => field.access === "EDIT" && field.type !== "MEMBER",
+    (field) =>
+      (field.access === "EDIT" || field.access === "CREATE_ONLY") &&
+      field.type !== "MEMBER",
   );
   const [ownerMemberId, setOwnerMemberId] = useState<string>();
   const [importToPool, setImportToPool] = useState(

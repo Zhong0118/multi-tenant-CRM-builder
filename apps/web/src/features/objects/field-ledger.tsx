@@ -130,6 +130,7 @@ function DragHandle({
 
 const ACCESS_COLORS: Record<PublishedFieldAccess, string> = {
   EDIT: "green",
+  CREATE_ONLY: "cyan",
   READ_ONLY: "blue",
   HIDDEN: "red",
 };
