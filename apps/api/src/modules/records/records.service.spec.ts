@@ -550,6 +550,21 @@ class MemoryRecordsStore implements RecordsStore {
     return Promise.resolve({ items: [], page: 1, limit: 20, total: 0 });
   }
 
+  async latestActivities(
+    recordIds: string[],
+  ): Promise<Map<string, RecordActivity>> {
+    const result = new Map<string, RecordActivity>();
+    for (const id of recordIds) {
+      const { items } = await this.listActivities(id, { page: 1, limit: 1 });
+      if (items[0])
+        result.set(id, {
+          ...items[0],
+          content: items[0].content.slice(0, 240),
+        });
+    }
+    return result;
+  }
+
   listActivities(
     recordId: string,
     query: { page: number; limit: number },
@@ -798,6 +813,54 @@ async function create(
 }
 
 describe('RecordsService', () => {
+  it('adds only the newest activity to visible list rows, without exposing another owner or public-pool history', async () => {
+    const { service, store, publishedRepository } = fixture();
+    const mine = await create(service, employee, '本人');
+    const other = await create(service, admin, '他人', admin.memberId);
+    await service.createActivity(
+      employee,
+      'leads',
+      mine.id,
+      { activityType: 'NOTE', content: '旧记录' },
+      meta,
+    );
+    const latest = await service.createActivity(
+      employee,
+      'leads',
+      mine.id,
+      { activityType: 'MESSAGE', content: '最新沟通', outcome: 'CONNECTED' },
+      meta,
+    );
+    await service.createActivity(
+      admin,
+      'leads',
+      other.id,
+      { activityType: 'NOTE', content: '其他负责人秘密' },
+      meta,
+    );
+    const query = {
+      page: 1,
+      limit: 1000,
+      sort: 'recordNo',
+      direction: 'asc' as const,
+    };
+    const listed = await service.list(employee, 'leads', query);
+    expect(listed.items).toHaveLength(1);
+    expect(listed.items[0]).toMatchObject({
+      latestActivity: { id: latest.id, content: '最新沟通' },
+    });
+    expect(JSON.stringify(listed)).not.toContain('其他负责人秘密');
+    Object.assign(publishedRepository.record, { poolEnabled: true });
+    store.records.find((r) => r.id === other.id)!.inPublicPool = true;
+    const pool = await service.list(employee, 'leads', {
+      ...query,
+      scope: 'pool',
+    });
+    expect(pool.items).toHaveLength(1);
+    expect(pool.items[0]).not.toHaveProperty('latestActivity');
+    expect(JSON.stringify(pool)).not.toContain('其他负责人秘密');
+  });
+
   it('filters and exports unassigned records without including assigned rows or changing pool membership', async () => {
     const { service, store, publishedRepository } = fixture();
     Object.assign(publishedRepository.record, { poolEnabled: true });

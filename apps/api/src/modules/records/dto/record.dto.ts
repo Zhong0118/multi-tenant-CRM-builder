@@ -184,6 +184,13 @@ export class DeleteRecordDto {
 
 export class RecordResponseDto {
   @ApiPropertyOptional({
+    type: () => RecordActivityResponseDto,
+    nullable: true,
+    description:
+      'Latest communication preview (up to 240 characters). Omitted for restricted previews.',
+  })
+  latestActivity?: RecordActivityResponseDto | null;
+  @ApiPropertyOptional({
     type: 'object',
     additionalProperties: {
       type: 'string',

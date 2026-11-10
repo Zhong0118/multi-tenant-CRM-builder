@@ -176,6 +176,10 @@ class MemoryRecordsStore {
     );
   }
 
+  latestActivities(): Promise<Map<string, RecordActivity>> {
+    return Promise.resolve(new Map<string, RecordActivity>());
+  }
+
   listActivities(
     recordId: string,
     query: { page: number; limit: number },

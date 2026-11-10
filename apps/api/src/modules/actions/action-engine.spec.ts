@@ -304,6 +304,10 @@ class MemoryStore implements RecordsStore {
   softDeleteRecord(): Promise<boolean> {
     return Promise.resolve(false);
   }
+  latestActivities() {
+    return Promise.resolve(new Map());
+  }
+
   listActivities() {
     return Promise.resolve({ items: [], total: 0 });
   }

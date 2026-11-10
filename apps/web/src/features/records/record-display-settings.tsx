@@ -55,6 +55,19 @@ const DENSITY_TEXT_TYPES = new Set([
 ]);
 
 const OWNER_ID = systemColumnId("systemOwner");
+const OPTIONAL_SYSTEM = [
+  { id: OWNER_ID, preference: "ownerVisible", aria: "显示系统负责人" },
+  {
+    id: systemColumnId("latestActivity"),
+    preference: "activityVisible",
+    aria: "显示最近沟通",
+  },
+  {
+    id: systemColumnId("updatedAt"),
+    preference: "updatedAtVisible",
+    aria: "显示最近更新",
+  },
+] as const;
 
 /**
  * One place for how a member reads the table: reading density, header
@@ -86,7 +99,9 @@ export function RecordDisplaySettings({
   const hidden = fields.filter(
     (field) => !shownFields.includes(field.fieldKey),
   );
-  const ownerHidden = ownerChoice && !order.includes(OWNER_ID);
+  const hiddenSystem = OPTIONAL_SYSTEM.filter(
+    (item) => (item.id !== OWNER_ID || ownerChoice) && !order.includes(item.id),
+  );
   const field = (key: string) => fields.find((item) => item.fieldKey === key);
   const label = (id: string) => {
     const system = systemColumnKey(id);
@@ -96,7 +111,8 @@ export function RecordDisplaySettings({
     onChange({ order: next, columns: fieldKeysOf(next) });
   const hide = (id: string) => {
     const next = order.filter((item) => item !== id);
-    if (id === OWNER_ID) onChange({ ownerVisible: false, order: next });
+    const optional = OPTIONAL_SYSTEM.find((item) => item.id === id);
+    if (optional) onChange({ [optional.preference]: false, order: next });
     else reorder(next);
   };
   const showField = (key: string) => {
@@ -204,11 +220,12 @@ export function RecordDisplaySettings({
             ) : null;
           }}
           renderToggle={(id) => {
-            if (id === OWNER_ID)
+            const optional = OPTIONAL_SYSTEM.find((item) => item.id === id);
+            if (optional)
               return (
                 <Checkbox
                   checked
-                  aria-label="显示系统负责人"
+                  aria-label={optional.aria}
                   onChange={() => hide(id)}
                 >
                   {label(id)}
@@ -235,7 +252,7 @@ export function RecordDisplaySettings({
             );
           }}
         />
-        {hidden.length || ownerHidden ? (
+        {hidden.length || hiddenSystem.length ? (
           <>
             <h3 className={styles.displayHeading}>未显示</h3>
             <ul className={styles.displayColumns} aria-label="未显示的列">
@@ -250,18 +267,18 @@ export function RecordDisplaySettings({
                   </Checkbox>
                 </li>
               ))}
-              {ownerHidden ? (
-                <li>
+              {hiddenSystem.map((item) => (
+                <li key={item.id}>
                   <Checkbox
                     checked={false}
-                    aria-label="显示系统负责人"
-                    onChange={() => onChange({ ownerVisible: true })}
+                    aria-label={item.aria}
+                    onChange={() => onChange({ [item.preference]: true })}
                   >
-                    {label(OWNER_ID)}
+                    {label(item.id)}
                   </Checkbox>
                   <span className={styles.displaySystemTag}>系统</span>
                 </li>
-              ) : null}
+              ))}
             </ul>
           </>
         ) : null}
@@ -434,7 +451,9 @@ function SortableColumn({
         {toggle}
         {system ? (
           <span className={styles.displaySystemTag}>
-            {id === OWNER_ID ? "系统" : "系统 · 始终显示"}
+            {OPTIONAL_SYSTEM.some((item) => item.id === id)
+              ? "系统"
+              : "系统 · 始终显示"}
           </span>
         ) : null}
       </span>
