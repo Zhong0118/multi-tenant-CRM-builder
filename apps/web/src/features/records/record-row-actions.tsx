@@ -20,6 +20,7 @@ export interface RecordRowActionsProps extends Omit<OwnershipProps, "toast"> {
   canDelete: boolean;
   deleting: boolean;
   onView: () => void;
+  onActivity?: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
@@ -36,6 +37,7 @@ export function RecordRowActions({
   canDelete,
   deleting,
   onView,
+  onActivity,
   onEdit,
   onDelete,
   ...ownershipProps
@@ -47,6 +49,9 @@ export function RecordRowActions({
 
   const items: MenuProps["items"] = [
     { key: "view", label: "查看", onClick: onView },
+    ...(onActivity
+      ? [{ key: "activity", label: "查看动态", onClick: onActivity }]
+      : []),
     {
       key: "edit",
       label: editable ? "编辑" : `编辑（${editBlockedReason}）`,

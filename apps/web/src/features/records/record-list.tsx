@@ -54,7 +54,12 @@ import {
 import { toApiError } from "@/lib/api/api-error";
 
 import type { DynamicFieldMember } from "./dynamic-field";
-import { canEditRecordFields, queryFields, recordFields, visibleFields } from "./record-access";
+import {
+  canEditRecordFields,
+  queryFields,
+  recordFields,
+  visibleFields,
+} from "./record-access";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
 import {
   MAX_OWNER_ASSIGNMENT_RECORDS,
@@ -112,6 +117,10 @@ import {
   type RecordFilterValue,
   type RecordQuery,
 } from "./record-query-state";
+import {
+  RecordCommunicationDrawer,
+  RecordCommunicationPreview,
+} from "./record-communication-drawer";
 import { RecordRowActions } from "./record-row-actions";
 import { ResizableHeaderCell } from "./resizable-columns";
 import { SavedRecordFilters } from "./saved-record-filters";
@@ -247,7 +256,10 @@ export function RecordList({
   const [navigation, setNavigation] = useState(0);
   function apply(next: RecordQuery, fromSearch = false) {
     if (!fromSearch) setNavigation((count) => count + 1);
-    const search = recordQuerySearch(restrictRecordQuery(next, schema), queryDefaults);
+    const search = recordQuerySearch(
+      restrictRecordQuery(next, schema),
+      queryDefaults,
+    );
     go(search === "" ? listPath : `${listPath}?${search}`);
   }
 
@@ -269,6 +281,7 @@ export function RecordList({
   }
 
   const page = records.data ?? initialPage;
+  const [activityRecord, setActivityRecord] = useState<RecordSummary>();
   // The phone cards repeat every row and a desktop never shows them, so they
   // are only built on a narrow screen, after hydration. Until then a phone
   // shows the table (see .data:has(.cards) in the stylesheet).
@@ -429,6 +442,17 @@ export function RecordList({
           <RecordPoolStatus record={row} config={poolConfig} compact />
         ) : null,
     },
+    latestActivity: {
+      title: "最近沟通",
+      key: "latestActivity",
+      width: columnWidth("latestActivity"),
+      render: (_: unknown, row: RecordSummary) => (
+        <RecordCommunicationPreview
+          record={row}
+          onOpen={() => setActivityRecord(row)}
+        />
+      ),
+    },
     updatedAt: {
       title: "最近更新",
       key: "updatedAt",
@@ -451,7 +475,8 @@ export function RecordList({
     "recordNo",
     ...(showOwner ? (["systemOwner"] as const) : []),
     ...(poolConfig?.enabled ? (["poolStatus"] as const) : []),
-    "updatedAt",
+    ...(display.prefs.activityVisible ? (["latestActivity"] as const) : []),
+    ...(display.prefs.updatedAtVisible ? (["updatedAt"] as const) : []),
   ];
   const columnOrder = resolveColumnOrder(
     display.prefs.order,
@@ -564,6 +589,11 @@ export function RecordList({
         canDelete={schema.actions.canDelete}
         deleting={remove.isPending && remove.variables?.id === row.id}
         onView={() => go(recordPath(row.id))}
+        onActivity={
+          row.latestActivity !== undefined
+            ? () => setActivityRecord(row)
+            : undefined
+        }
         onEdit={() => go(recordPath(row.id, "edit"))}
         onDelete={() => remove.mutate(row)}
         tenantCode={tenantCode}
@@ -711,6 +741,24 @@ export function RecordList({
   return (
     <CellReaderProvider>
       <div className={rl.page}>
+        {activityRecord ? (
+          <RecordCommunicationDrawer
+            key={activityRecord.id}
+            tenantCode={tenantCode}
+            schema={schema}
+            record={activityRecord}
+            currentMemberId={currentMemberId}
+            isAdmin={canFilterByOwner}
+            api={api}
+            onClose={() => setActivityRecord(undefined)}
+            onCreated={async () => {
+              await queryClient.invalidateQueries(
+                { queryKey: ["workspace", tenantCode, "records", objectCode] },
+                { throwOnError: true },
+              );
+            }}
+          />
+        ) : null}
         {error ? (
           <Alert type="error" showIcon title={error} className={rl.alert} />
         ) : null}
@@ -1148,7 +1196,11 @@ export function RecordList({
             >
               {page.items.map((row) => {
                 const cardFields = recordCardFields(
-                  { ...schema, fields: recordFields(schema, row), groupFieldAccess: undefined },
+                  {
+                    ...schema,
+                    fields: recordFields(schema, row),
+                    groupFieldAccess: undefined,
+                  },
                   columnFieldKeys,
                 );
                 const ownerName = (
@@ -1222,6 +1274,12 @@ export function RecordList({
                         </div>
                       ))}
                     </dl>
+                    {display.prefs.activityVisible ? (
+                      <RecordCommunicationPreview
+                        record={row}
+                        onOpen={() => setActivityRecord(row)}
+                      />
+                    ) : null}
                     {poolConfig?.enabled ? (
                       <div className={rl.cardPool}>
                         <RecordPoolStatus record={row} config={poolConfig} />
@@ -1405,7 +1463,13 @@ export function RecordList({
             records={deletionRecords}
             api={api}
             onChanged={async () => {
-              const key = ["workspace", tenantCode, "records", objectCode, query];
+              const key = [
+                "workspace",
+                tenantCode,
+                "records",
+                objectCode,
+                query,
+              ];
               await queryClient.cancelQueries({ queryKey: key, exact: true });
               // A query refetch can pause indefinitely offline. This explicit
               // refresh must settle so deletion feedback remains dismissible.

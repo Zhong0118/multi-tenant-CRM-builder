@@ -1,9 +1,13 @@
 "use client";
 
 import { PlusOutlined } from "@ant-design/icons";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { Alert, Button, Form, Input, Select, Typography } from "antd";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { toApiError } from "@/lib/api/api-error";
 
@@ -18,7 +22,7 @@ import {
 
 import styles from "./records.module.css";
 
-const ACTIVITY_TYPE_LABELS: Record<MemberActivityType, string> = {
+export const ACTIVITY_TYPE_LABELS: Record<MemberActivityType, string> = {
   CALL: "电话",
   MESSAGE: "微信/消息",
   MEETING: "拜访",
@@ -26,7 +30,7 @@ const ACTIVITY_TYPE_LABELS: Record<MemberActivityType, string> = {
 };
 
 /** Worded per kind of activity: an unanswered call is not an unanswered visit. */
-const OUTCOME_LABELS: Record<
+export const OUTCOME_LABELS: Record<
   MemberActivityType,
   Partial<Record<ActivityOutcome, string>>
 > = {
@@ -47,6 +51,7 @@ export interface RecordActivityTimelineProps {
   canCreate: boolean;
   api: RecordApi;
   onCreated?: () => void | Promise<void>;
+  onDraftStateChange?: (state: { dirty: boolean; saving: boolean }) => void;
 }
 
 export function RecordActivityTimeline({
@@ -56,6 +61,7 @@ export function RecordActivityTimeline({
   canCreate,
   api,
   onCreated,
+  onDraftStateChange,
 }: RecordActivityTimelineProps) {
   const queryClient = useQueryClient();
   const [composing, setComposing] = useState(false);
@@ -73,9 +79,16 @@ export function RecordActivityTimeline({
     "activities",
   ];
 
-  const activities = useQuery({
-    queryKey,
-    queryFn: () => api.listActivities(tenantCode, objectCode, recordId),
+  const activities = useInfiniteQuery({
+    queryKey: [...queryKey, "history"],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) =>
+      api.listActivities(tenantCode, objectCode, recordId, {
+        page: pageParam,
+        limit: 20,
+      }),
+    getNextPageParam: (last) =>
+      last.page * last.limit < last.total ? last.page + 1 : undefined,
   });
 
   const create = useMutation({
@@ -103,6 +116,20 @@ export function RecordActivityTimeline({
       setError(`${apiError.message}（请求编号：${apiError.requestId}）`);
     },
   });
+
+  useEffect(() => {
+    onDraftStateChange?.({
+      dirty: content.trim() !== "",
+      saving: create.isPending,
+    });
+  }, [content, create.isPending, onDraftStateChange]);
+  const items = [
+    ...new Map(
+      (activities.data?.pages.flatMap((page) => page.items) ?? []).map(
+        (item) => [item.id, item],
+      ),
+    ).values(),
+  ];
 
   return (
     <section className={styles.timeline} aria-label="活动历史">
@@ -204,16 +231,40 @@ export function RecordActivityTimeline({
           type="error"
           showIcon
           title={toApiError(activities.error).message}
+          action={
+            <Button
+              size="small"
+              onClick={() =>
+                activities.isFetchNextPageError
+                  ? activities.fetchNextPage()
+                  : activities.refetch()
+              }
+            >
+              重试
+            </Button>
+          }
         />
       ) : null}
 
       <ol className={styles.timelineList}>
-        {(activities.data?.items ?? []).map((activity) => (
+        {items.map((activity) => (
           <TimelineItem key={activity.id} activity={activity} />
         ))}
       </ol>
 
-      {activities.isSuccess && activities.data.total === 0 ? (
+      {activities.isPending ? (
+        <Typography.Text type="secondary">正在加载沟通记录…</Typography.Text>
+      ) : null}
+      {activities.hasNextPage ? (
+        <Button
+          block
+          loading={activities.isFetchingNextPage}
+          onClick={() => activities.fetchNextPage()}
+        >
+          加载更多动态
+        </Button>
+      ) : null}
+      {activities.isSuccess && items.length === 0 ? (
         <Typography.Text type="secondary">还没有活动记录。</Typography.Text>
       ) : null}
     </section>
@@ -224,9 +275,14 @@ function TimelineItem({ activity }: { activity: RecordActivity }) {
   return (
     <li className={styles.timelineItem}>
       <div className={styles.timelineItemMeta}>
-        <strong>{ACTIVITY_TYPE_LABELS[activity.activityType]}</strong>
+        <span className={styles.activityType} data-kind={activity.activityType}>
+          {ACTIVITY_TYPE_LABELS[activity.activityType]}
+        </span>
         {activity.outcome ? (
-          <span className={styles.timelineOutcome}>
+          <span
+            className={styles.timelineOutcome}
+            data-outcome={activity.outcome}
+          >
             {OUTCOME_LABELS[activity.activityType][activity.outcome] ??
               activity.outcome}
           </span>

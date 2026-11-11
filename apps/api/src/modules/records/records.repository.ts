@@ -279,6 +279,7 @@ export interface RecordsStore {
     expectedVersion: number,
     deletedAt: string,
   ): Promise<boolean>;
+  latestActivities(recordIds: string[]): Promise<Map<string, RecordActivity>>;
   listActivities(
     recordId: string,
     query: { page: number; limit: number },
@@ -1068,6 +1069,45 @@ class PrismaRecordsStore implements RecordsStore {
       limit: query.limit,
       total,
     };
+  }
+
+  async latestActivities(
+    recordIds: string[],
+  ): Promise<Map<string, RecordActivity>> {
+    if (!recordIds.length) return new Map();
+    // One indexed lookup per visible record inside one SQL statement, not one HTTP/DB request per row.
+    const rows = await this.transaction.$queryRaw<
+      Array<
+        Omit<RecordActivity, 'createdAt' | 'nextActionAt'> & {
+          createdAt: Date;
+          nextActionAt: Date | null;
+        }
+      >
+    >(Prisma.sql`
+      SELECT a.id, a.record_id AS "recordId", a.activity_type AS "activityType",
+        left(a.content, 240) AS content, a.result_key AS outcome,
+        a.next_action_at AS "nextActionAt", a.actor_member_id AS "actorMemberId",
+        coalesce(m.display_name, u.display_name) AS "actorDisplayName", a.created_at AS "createdAt"
+      FROM unnest(${recordIds}::uuid[]) AS target(id)
+      JOIN LATERAL (
+        SELECT * FROM record_activities
+        WHERE tenant_id = ${this.context.tenantId}::uuid AND record_id = target.id
+          AND activity_type IN ('CALL', 'MESSAGE', 'MEETING', 'NOTE')
+        ORDER BY created_at DESC, id DESC LIMIT 1
+      ) a ON true
+      LEFT JOIN tenant_members m ON m.tenant_id = a.tenant_id AND m.id = a.actor_member_id
+      LEFT JOIN users u ON u.id = m.user_id
+    `);
+    return new Map(
+      rows.map((row) => [
+        row.recordId,
+        {
+          ...row,
+          createdAt: row.createdAt.toISOString(),
+          nextActionAt: row.nextActionAt?.toISOString() ?? null,
+        },
+      ]),
+    );
   }
 
   async listActivities(

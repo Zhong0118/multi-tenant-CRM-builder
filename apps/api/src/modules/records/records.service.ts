@@ -69,6 +69,7 @@ export const RECORDS_ID_GENERATOR = Symbol('RECORDS_ID_GENERATOR');
 type RequestMeta = RecordRequestMeta;
 
 export interface RecordResponse {
+  latestActivity?: RecordActivityResponse | null;
   fieldAccess?: Record<string, PublishedFieldAccess>;
   canEditFields?: boolean;
   poolStage?: PoolStage | null;
@@ -232,6 +233,14 @@ export class RecordsService {
         direction: input.direction,
       };
       const result = await store.listRecords(query);
+      // Public-pool previews do not expose the previous owner's communication history.
+      const activityRecordIds = result.items
+        .filter(
+          (record) => context.role === 'TENANT_ADMIN' || !record.inPublicPool,
+        )
+        .map((record) => record.id);
+      const latest = await store.latestActivities(activityRecordIds);
+      const activityVisible = new Set(activityRecordIds);
       const poolCounts = resolved.poolEnabled
         ? (Object.fromEntries(
             await Promise.all(
@@ -270,7 +279,16 @@ export class RecordsService {
         : undefined;
       return {
         ...(poolCounts ? { poolCounts } : {}),
-        items: result.items.map((record) => projectRecord(record, resolved)),
+        items: result.items.map((record) => ({
+          ...projectRecord(record, resolved),
+          ...(activityVisible.has(record.id)
+            ? {
+                latestActivity: latest.has(record.id)
+                  ? projectActivity(latest.get(record.id)!)
+                  : null,
+              }
+            : {}),
+        })),
         page,
         limit,
         total: result.total,

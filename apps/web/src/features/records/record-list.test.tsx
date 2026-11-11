@@ -1597,11 +1597,13 @@ describe("RecordList personal display settings", () => {
       "手机号",
       "评分",
       "负责人",
+      "最近沟通",
       "最近更新",
       "操作",
     ]);
 
     fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
+    fireEvent.click(screen.getByRole("button", { name: "上移 最近更新" }));
     fireEvent.click(screen.getByRole("button", { name: "上移 最近更新" }));
     fireEvent.click(screen.getByRole("button", { name: "上移 最近更新" }));
     fireEvent.click(screen.getByRole("button", { name: "下移 业务编号" }));
@@ -1613,6 +1615,7 @@ describe("RecordList personal display settings", () => {
       "最近更新",
       "评分",
       "负责人",
+      "最近沟通",
       "操作",
     ]);
     // The selection checkbox is still the first header cell.
@@ -1629,6 +1632,7 @@ describe("RecordList personal display settings", () => {
       "system:updatedAt",
       "score",
       "system:systemOwner",
+      "system:latestActivity",
     ]);
     expect(saved.columns).toEqual(["name", "lead_status", "phone", "score"]);
 
@@ -1704,7 +1708,7 @@ describe("RecordList personal display settings", () => {
       name: "拖动调整 最近更新 的位置",
     });
     fireEvent.keyDown(handle, { key: "ArrowUp" });
-    expect(headerTexts().slice(-3)).toEqual(["最近更新", "负责人", "操作"]);
+    expect(headerTexts().slice(-3)).toEqual(["最近更新", "最近沟通", "操作"]);
     expect(
       screen.getByRole("button", { name: "拖动调整 最近更新 的位置" }),
     ).toHaveFocus();
@@ -1795,6 +1799,7 @@ describe("RecordList personal display settings", () => {
       "客户名称",
       "手机号",
       "归属状态",
+      "最近沟通",
       "操作",
     ]);
     fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
@@ -2054,4 +2059,63 @@ it("renders hidden cells per row while allowing an explicitly editable teammate 
   expect(await screen.findByRole("menuitem", { name: "编辑" })).not.toHaveClass(
     "ant-dropdown-menu-item-disabled",
   );
+});
+
+it("opens communication without navigating away and keeps the menu entry when the column is hidden", async () => {
+  const navigate = vi.fn();
+  const activity = {
+    id: "act-1",
+    activityType: "MESSAGE" as const,
+    content: "客户希望下周报价",
+    outcome: "CONNECTED" as const,
+    actorDisplayName: "谷若雨",
+    actorMemberId: null,
+    nextActionAt: null,
+    createdAt: "2026-11-10T07:29:00Z",
+  };
+  const rows = {
+    ...page,
+    items: [{ ...page.items[0], latestActivity: activity }],
+  };
+  const api = {
+    list: vi.fn().mockResolvedValue(rows),
+    detail: vi.fn().mockResolvedValue(rows.items[0]),
+    listActivities: vi
+      .fn()
+      .mockResolvedValue({ items: [activity], page: 1, limit: 20, total: 1 }),
+  } as unknown as RecordApi;
+  renderList(
+    navigate,
+    { ...DEFAULT_RECORD_QUERY, page: 3 },
+    { api, page: rows, currentMemberId: "member-a" },
+  );
+  fireEvent.click(
+    (await screen.findAllByRole("button", { name: "查看动态 天际科技" }))[0],
+  );
+  const dialog = await screen.findByRole("dialog");
+  expect(
+    await within(dialog).findByText("客户希望下周报价"),
+  ).toBeInTheDocument();
+  expect(navigate).not.toHaveBeenCalled();
+  fireEvent.click(within(dialog).getByRole("button", { name: /close/i }));
+  await waitFor(() =>
+    expect(document.querySelector(".ant-drawer")).not.toBeInTheDocument(),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
+  fireEvent.click(
+    await screen.findByRole("checkbox", { name: "显示最近沟通" }),
+  );
+  fireEvent.click(screen.getByRole("checkbox", { name: "显示最近更新" }));
+  expect(
+    screen.queryByRole("columnheader", { name: "最近沟通" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("columnheader", { name: /最近更新/ }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(
+    screen.getAllByRole("button", { name: "更多操作 天际科技" })[0],
+  );
+  fireEvent.click(await screen.findByRole("menuitem", { name: "查看动态" }));
+  expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  expect(navigate).not.toHaveBeenCalled();
 });

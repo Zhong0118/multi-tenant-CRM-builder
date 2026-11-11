@@ -158,6 +158,8 @@ describe("record display preferences", () => {
       density: "comfortable",
       columnDensity: { notes: "full" },
       ownerVisible: true,
+      activityVisible: true,
+      updatedAtVisible: true,
       headerTone: "default",
     });
   });
@@ -187,6 +189,8 @@ describe("record display preferences", () => {
       density: "compact",
       columnDensity: {},
       ownerVisible: false,
+      activityVisible: true,
+      updatedAtVisible: true,
       headerTone: "default",
     });
   });
@@ -218,5 +222,20 @@ describe("record display preferences", () => {
     });
     act(() => again.result.current.reset());
     expect(again.result.current.prefs).toEqual(DEFAULT_DISPLAY_PREFS);
+  });
+});
+
+it("retains hidden communication/update columns and their mixed order", () => {
+  const parsed = parseDisplayPrefs(
+    JSON.stringify({
+      activityVisible: false,
+      updatedAtVisible: false,
+      order: ["system:latestActivity", "name", "system:updatedAt"],
+    }),
+  );
+  expect(parsed).toMatchObject({
+    activityVisible: false,
+    updatedAtVisible: false,
+    order: ["system:latestActivity", "name", "system:updatedAt"],
   });
 });

@@ -59,6 +59,8 @@ export interface RecordDisplayPrefs {
   /** Per-column overrides of `density`. */
   columnDensity: Record<string, ReadingDensity>;
   ownerVisible: boolean;
+  activityVisible: boolean;
+  updatedAtVisible: boolean;
   headerTone: HeaderTone;
 }
 
@@ -69,6 +71,8 @@ export const DEFAULT_DISPLAY_PREFS: RecordDisplayPrefs = {
   density: DEFAULT_DENSITY,
   columnDensity: {},
   ownerVisible: true,
+  activityVisible: true,
+  updatedAtVisible: true,
   headerTone: DEFAULT_HEADER_TONE,
 };
 
@@ -156,6 +160,8 @@ export function parseDisplayPrefs(
       density: isDensity(raw.density) ? raw.density : DEFAULT_DENSITY,
       columnDensity,
       ownerVisible: raw.ownerVisible !== false,
+      activityVisible: raw.activityVisible !== false,
+      updatedAtVisible: raw.updatedAtVisible !== false,
       headerTone: isHeaderTone(raw.headerTone)
         ? raw.headerTone
         : DEFAULT_HEADER_TONE,

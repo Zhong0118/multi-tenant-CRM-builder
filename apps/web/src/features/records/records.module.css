@@ -1267,3 +1267,32 @@
   align-items: center;
   justify-content: space-between;
 }
+
+.activityType {
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 12px;
+}
+.activityType[data-kind="CALL"] {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+.activityType[data-kind="MESSAGE"] {
+  background: #ecfdf5;
+  color: #047857;
+}
+.activityType[data-kind="MEETING"] {
+  background: #f5f3ff;
+  color: #6d28d9;
+}
+.timelineOutcome[data-outcome="CONNECTED"],
+.timelineOutcome[data-outcome="WECHAT_ADDED"] {
+  background: #ecfdf5;
+  color: #047857;
+}
+.timelineOutcome[data-outcome="NOT_REACHED"] {
+  background: #fff7ed;
+  color: #9a3412;
+}

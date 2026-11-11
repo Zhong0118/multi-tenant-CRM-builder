@@ -208,3 +208,37 @@ it("refreshes lifecycle metadata after an activity commits and warns if refresh 
   expect(await screen.findByRole("alert")).toHaveTextContent("活动已保存");
   expect(screen.getByLabelText("内容")).toHaveValue("");
 });
+
+it("loads older activities beyond the first twenty without losing the latest ones", async () => {
+  const api = recordApi({
+    listActivities: vi.fn().mockImplementation(async (_t, _o, _r, query) => ({
+      items:
+        query?.page === 2
+          ? [{ ...existing, id: "old", content: "第21条历史" }]
+          : Array.from({ length: 20 }, (_, i) => ({
+              ...existing,
+              id: `recent-${i}`,
+              content: `近期沟通${i}`,
+            })),
+      page: query?.page ?? 1,
+      limit: 20,
+      total: 21,
+    })),
+  });
+  renderTimeline(
+    <RecordActivityTimeline
+      tenantCode="northwind"
+      objectCode="customers"
+      recordId="record-1"
+      canCreate={false}
+      api={api}
+    />,
+  );
+  expect(await screen.findByText("近期沟通0")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: /加载更多/ }));
+  expect(await screen.findByText("第21条历史")).toBeInTheDocument();
+  expect(screen.getByText("近期沟通0")).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: /加载更多/ }),
+  ).not.toBeInTheDocument();
+});

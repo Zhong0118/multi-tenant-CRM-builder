@@ -35,6 +35,7 @@ export const SYSTEM_COLUMN_BOUNDS: Record<string, ColumnBounds> = {
   recordNo: { width: 108, min: 88, max: 200 },
   systemOwner: { width: 148, min: 112, max: 280 },
   poolStatus: { width: 220, min: 160, max: 360 },
+  latestActivity: { width: 280, min: 200, max: 440 },
   updatedAt: { width: 160, min: 140, max: 240 },
 };
 

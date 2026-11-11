@@ -3970,6 +3970,9 @@ export interface components {
       /** Format: uuid */
       id: string;
       inPublicPool: boolean;
+      /** @description Latest communication preview (up to 240 characters). Omitted for restricted previews. */
+      latestActivity?:
+        components["schemas"]["RecordActivityResponseDto"] | null;
       /** Format: uuid */
       ownerMemberId?: string | null;
       /** Format: date-time */
