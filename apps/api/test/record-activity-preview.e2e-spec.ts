@@ -4,6 +4,7 @@ import type {
   RecordActivityPageResponse,
 } from '../src/modules/records/records.service';
 import { randomUUID } from 'node:crypto';
+import { assertIsolatedTestDatabase } from './helpers/isolated-database';
 import {
   createCriticalHarness,
   closeCriticalHarness,
@@ -19,11 +20,10 @@ describe('record communication previews and history over HTTP', () => {
   const records = () =>
     `/api/v1/workspaces/${f.tenantA.code}/objects/${f.object.code}/records`;
   beforeAll(async () => {
-    for (const key of ['TEST_DATABASE_URL', 'TEST_DATABASE_ADMIN_URL']) {
-      const url = new URL(process.env[key] ?? '');
-      expect(['localhost', '127.0.0.1']).toContain(url.hostname);
-      expect(url.pathname).toMatch(/_test$/);
-    }
+    assertIsolatedTestDatabase(
+      process.env.TEST_DATABASE_URL,
+      process.env.TEST_DATABASE_ADMIN_URL,
+    );
     h = await createCriticalHarness();
     await h.app.listen(0, '127.0.0.1');
   });
