@@ -4,7 +4,6 @@ import {
   IsString,
   IsUUID,
   Matches,
-  MaxLength,
   MinLength,
 } from 'class-validator';
 
@@ -14,10 +13,9 @@ export class StartAiTurnDto {
   @IsUUID()
   conversationId?: string;
 
-  @ApiProperty({ minLength: 1, maxLength: 2000 })
+  @ApiProperty({ minLength: 1 })
   @IsString()
   @MinLength(1)
-  @MaxLength(2000)
   @Matches(/\S/)
   content!: string;
 }

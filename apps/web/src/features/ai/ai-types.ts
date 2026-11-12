@@ -58,5 +58,3 @@ export interface AiStreamTurnInput {
   conversationId?: string;
   content: string;
 }
-
-export const AI_MAX_INPUT = 2000;

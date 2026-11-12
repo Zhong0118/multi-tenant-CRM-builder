@@ -21,7 +21,6 @@ export function getFakeAiProviderCapturedToolResult(): unknown {
 }
 
 // Fake is 1-round by construction: at most one tool execute, then COMPLETED.
-// Production OpenAI uses stopWhen: stepCountIs(4). Tool counts are 6/3, not model rounds.
 export class FakeAiProvider implements AiProvider {
   readonly providerKey = 'fake';
   readonly modelKey = 'fake';

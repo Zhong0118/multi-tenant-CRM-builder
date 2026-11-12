@@ -31,6 +31,7 @@ export interface FollowUpScope {
 }
 
 export interface AiFollowUpReadInput {
+  page?: number;
   status?: 'OPEN' | 'DONE' | 'CANCELLED';
   dueFrom?: string;
   dueTo?: string;

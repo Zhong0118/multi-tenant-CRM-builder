@@ -3,7 +3,6 @@ import { z } from 'zod';
 import type { AiPublicStreamEvent } from '@crm/contracts';
 import { ApiException } from '../../common/errors/api.exception';
 import type { AiProviderTool } from './ai-provider';
-import { AiTurnBudget } from './ai-turn-budget';
 import {
   defaultAiToolCallbacks,
   wrapAiReadTool,
@@ -12,7 +11,6 @@ import {
 
 function callbacks(overrides: Partial<AiToolCallbacks> = {}) {
   const events: AiPublicStreamEvent[] = [];
-  const budget = overrides.budget ?? new AiTurnBudget();
   const abortSignal = overrides.abortSignal ?? new AbortController().signal;
   const toolSummaries = overrides.toolSummaries ?? [];
   const sources = overrides.sources ?? [];
@@ -22,7 +20,7 @@ function callbacks(overrides: Partial<AiToolCallbacks> = {}) {
     sources,
     callbacks: {
       emit: (event: AiPublicStreamEvent) => events.push(event),
-      budget,
+      usageCounter: { toolCalls: 0 },
       abortSignal,
       toolSummaries,
       sources,
@@ -129,27 +127,6 @@ describe('wrapAiReadTool', () => {
     expect(toolSummaries[0]?.detail).not.toMatch(
       /describe_object|stage|lost|key/,
     );
-  });
-
-  it('records safe budget rejections including timing without executing the domain tool', async () => {
-    const budget = new AiTurnBudget();
-    for (let i = 0; i < 6; i++) {
-      budget.beginTool();
-      budget.endTool();
-    }
-    const { callbacks: cb, toolSummaries } = callbacks({ budget });
-    const execute = jest.fn();
-    const result = await wrapAiReadTool(searchTool(execute), cb).execute(
-      { objectCode: 'leads' },
-      'over-budget',
-    );
-    expect(result).toMatchObject({ code: 'AI_TOOL_BUDGET_EXCEEDED' });
-    expect(toolSummaries[0]).toMatchObject({
-      status: 'FAILED',
-      errorCode: 'AI_TOOL_BUDGET_EXCEEDED',
-      durationMs: expect.any(Number),
-    });
-    expect(execute).not.toHaveBeenCalled();
   });
 
   it('emits business-Chinese tool.started, sources.updated, and tool.completed without raw values', async () => {
@@ -275,7 +252,7 @@ describe('wrapAiReadTool', () => {
     });
   });
 
-  it('returns DATA_UNAVAILABLE when a tool payload would exceed 80 KiB', async () => {
+  it('returns large authorized pages to the model without streaming raw values to the UI', async () => {
     const { events, callbacks: cb } = callbacks();
     const wrapped = wrapAiReadTool(
       searchTool(async () => ({
@@ -288,15 +265,13 @@ describe('wrapAiReadTool', () => {
     );
     await expect(
       wrapped.execute({ objectCode: 'leads' }, 'call-huge'),
-    ).resolves.toMatchObject({
-      unavailable: true,
-      code: 'AI_TOOL_PAYLOAD_LIMIT',
-    });
+    ).resolves.toHaveProperty('items.length', 50);
     expect(events.map((event) => event.event)).toEqual([
       'tool.started',
-      'tool.failed',
+      'sources.updated',
+      'tool.completed',
     ]);
-    expect(JSON.stringify(events)).not.toContain('"blob"');
+    expect(JSON.stringify(events)).not.toContain('x'.repeat(2000));
   });
 
   it('does not let prompt-injection text in record values change the tool schema', async () => {

@@ -1,4 +1,5 @@
 import request from 'supertest';
+import { AI_PROVIDER, type AiProvider } from '../src/modules/ai/ai-provider';
 import { ConfigService } from '@nestjs/config';
 
 import {
@@ -484,6 +485,65 @@ describe('Critical API E2E', () => {
       .expect(200);
 
     await first.get('/api/v1/me').expect(401);
+  });
+
+  it('keeps long chat text and pages through the employee’s authorized records', async () => {
+    const question = '查找小学英语，保留完整的要求。'.repeat(250);
+    const answer = '已核对匹配范围。'.repeat(300);
+    const seen: string[][] = [];
+    const provider = harness.app.get<AiProvider>(AI_PROVIDER);
+    const mock = jest
+      .spyOn(provider, 'streamTurn')
+      .mockImplementationOnce(async function* ({ messages, tools }) {
+        expect(messages.at(-1)?.content).toBe(question);
+        const search = tools.find((tool) => tool.name === 'search_records')!;
+        for (const page of [1, 2]) {
+          const result = await search.execute(
+            {
+              objectCode: fixture.object.code,
+              page,
+              limit: 1,
+              sort: 'recordNo',
+              direction: 'asc',
+            },
+            'search-page-' + page,
+          );
+          seen.push(capturedRecordIds(result));
+          expect(JSON.stringify(result)).not.toContain('hidden-owned');
+        }
+        yield { type: 'TEXT_DELTA', text: answer };
+        yield { type: 'COMPLETED' };
+      });
+    try {
+      const response = await request(harness.app.getHttpServer())
+        .post(`/api/v1/workspaces/${fixture.tenantA.code}/ai/turns`)
+        .set('Cookie', fixture.employee.cookie)
+        .set('Origin', 'http://localhost:3000')
+        .send({ content: question })
+        .expect(200);
+      const events = parseSse(response.text);
+      expect(events.at(-1)?.event).toBe('turn.completed');
+      expect(seen).toEqual([
+        [fixture.ownedRecord.id],
+        [fixture.workflowRecord.id],
+      ]);
+      const id = events.find((event) => event.event === 'conversation.ready')
+        ?.data.conversationId;
+      const history = await request(harness.app.getHttpServer())
+        .get(
+          `/api/v1/workspaces/${fixture.tenantA.code}/ai/conversations/${String(id)}/messages`,
+        )
+        .set('Cookie', fixture.employee.cookie)
+        .expect(200);
+      expect(history.body.items).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ role: 'USER', content: question }),
+          expect.objectContaining({ role: 'ASSISTANT', content: answer }),
+        ]),
+      );
+    } finally {
+      mock.mockRestore();
+    }
   });
 
   it('lets an employee search only owned leads and hides secret from the stream and captured tool result', async () => {

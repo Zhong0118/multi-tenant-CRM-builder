@@ -764,14 +764,20 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     });
 
     await expect(
-      fixture.repository.beginTurn(context, { content: '再问一句' }),
+      fixture.repository.beginTurn(context, {
+        conversationId: 'conv-live',
+        content: '再问一句',
+      }),
     ).rejects.toMatchObject({
       code: 'AI_MEMBER_TURN_IN_PROGRESS',
       status: 409,
     });
+    await expect(
+      fixture.repository.beginTurn(context, { content: '另一段对话' }),
+    ).resolves.toMatchObject({ assistant: { status: 'GENERATING' } });
   });
 
-  it('rate-limits the 21st new USER turn in five minutes', async () => {
+  it('accepts a 21st new turn in five minutes', async () => {
     const now = new Date('2026-09-18T12:00:00.000Z');
     jest.useFakeTimers({ now });
     const fixture = harness();
@@ -788,13 +794,13 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
 
     await expect(
       fixture.repository.beginTurn(context, { content: '第21问' }),
-    ).rejects.toMatchObject({ code: 'AI_RATE_LIMITED', status: 429 });
+    ).resolves.toMatchObject({ assistant: { status: 'GENERATING' } });
     expect(fixture.messages.filter((row) => row.role === 'USER')).toHaveLength(
-      20,
+      21,
     );
   });
 
-  it('counts extra retry attempts toward the same 20-per-5-minutes member budget', async () => {
+  it('accepts retry after twenty turns', async () => {
     const now = new Date('2026-09-18T12:00:00.000Z');
     jest.useFakeTimers({ now });
     const fixture = harness();
@@ -821,7 +827,7 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
 
     await expect(
       fixture.repository.retryTurn(context, last.turnId),
-    ).rejects.toMatchObject({ code: 'AI_RATE_LIMITED', status: 429 });
+    ).resolves.toMatchObject({ assistant: { status: 'GENERATING' } });
 
     const nineteenth = fixture.messages.find(
       (row) => row.role === 'USER' && row.content === '问题0',
@@ -829,7 +835,7 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     expect(nineteenth).toBeDefined();
   });
 
-  it('allows a retry when USER+extra attempts are still under 20, then blocks the next begin', async () => {
+  it('allows a new turn after a successful retry', async () => {
     const now = new Date('2026-09-18T12:00:00.000Z');
     jest.useFakeTimers({ now });
     const fixture = harness();
@@ -857,8 +863,8 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     });
 
     await expect(
-      fixture.repository.beginTurn(context, { content: '第20问应被拦住' }),
-    ).rejects.toMatchObject({ code: 'AI_RATE_LIMITED', status: 429 });
+      fixture.repository.beginTurn(context, { content: '重试后继续提问' }),
+    ).resolves.toMatchObject({ assistant: { status: 'GENERATING' } });
   });
 
   it('retry resets the existing assistant and does not duplicate the USER row', async () => {

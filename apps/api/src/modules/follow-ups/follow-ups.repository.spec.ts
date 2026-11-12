@@ -591,6 +591,7 @@ describe('FollowUpsRepository listForAi', () => {
       dueTo: '2026-09-30T00:00:00.000Z',
       recordId: RECORD_ID,
       limit: 7,
+      page: 3,
     });
 
     expect(fixture.tx.recordFollowUp.findMany).toHaveBeenCalledWith(
@@ -616,6 +617,7 @@ describe('FollowUpsRepository listForAi', () => {
             ],
           },
         },
+        skip: 14,
         take: 7,
       }),
     );

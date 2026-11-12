@@ -31,11 +31,12 @@ describe('search_records', () => {
     ).toBe(false);
   });
 
-  it('caps limit at 20 and defaults sort, direction, and limit', () => {
+  it('supports later pages and more than 20 results while preserving defaults', () => {
     const tool = createSearchRecordsTool({} as RecordsService, employee);
     expect(
-      tool.inputSchema.safeParse({ objectCode: 'leads', limit: 21 }).success,
-    ).toBe(false);
+      tool.inputSchema.safeParse({ objectCode: 'leads', limit: 50, page: 2 })
+        .success,
+    ).toBe(true);
     expect(tool.inputSchema.parse({ objectCode: 'leads' })).toMatchObject({
       sort: 'updatedAt',
       direction: 'desc',
@@ -70,6 +71,7 @@ describe('search_records', () => {
       {
         objectCode: 'leads',
         query: '自己',
+        page: 2,
         filters: { lead_status: ['new'] },
         sort: 'recordNo',
         direction: 'asc',
@@ -79,7 +81,7 @@ describe('search_records', () => {
     );
 
     expect(list).toHaveBeenCalledWith(employee, 'leads', {
-      page: 1,
+      page: 2,
       limit: 5,
       search: '自己',
       filters: JSON.stringify({ lead_status: ['new'] }),
@@ -106,6 +108,26 @@ describe('search_records', () => {
       limit: 5,
       total: 1,
     });
+  });
+
+  it('suggests narrower terms only when the entire compound search has no matches', async () => {
+    const list = jest
+      .fn()
+      .mockResolvedValueOnce({ page: 1, limit: 10, total: 0, items: [] })
+      .mockResolvedValueOnce({ page: 3, limit: 10, total: 14, items: [] });
+    const tool = createSearchRecordsTool(
+      { list } as unknown as RecordsService,
+      employee,
+    );
+    const query = { objectCode: 'leads', query: '小学英语' };
+    await expect(tool.execute(query, 'empty')).resolves.toMatchObject({
+      items: [],
+      total: 0,
+      suggestedQueries: ['小学', '英语'],
+    });
+    await expect(
+      tool.execute({ ...query, page: 3 }, 'past-end'),
+    ).resolves.not.toHaveProperty('suggestedQueries');
   });
 
   it('returns only OWN records and never exposes HIDDEN values', async () => {

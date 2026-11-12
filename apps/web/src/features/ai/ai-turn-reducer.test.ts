@@ -8,6 +8,12 @@ import {
 } from "./ai-turn-reducer";
 
 describe("aiTurnReducer", () => {
+  it("retains pasted questions beyond 2000 characters", () => {
+    const value = "比较小学英语与 G4。".repeat(250);
+    expect(
+      aiTurnReducer(initialAiTurnState, { type: "draft", value }).draft,
+    ).toBe(value);
+  });
   it("clears the previous proposal before a new or retried turn receives proposal.ready", () => {
     const withProposal = {
       ...initialAiTurnState,

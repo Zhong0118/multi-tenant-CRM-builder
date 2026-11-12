@@ -1009,7 +1009,7 @@ describe('AiOrchestrator.streamTurn', () => {
     );
   });
 
-  it('stops a seventh sequential tool without sending raw results', async () => {
+  it('permits a seventh sequential tool without sending raw results', async () => {
     const conversations = conversationMock();
     const results: unknown[] = [];
     const provider = providerWith(async function* (_signal, tools) {
@@ -1018,7 +1018,7 @@ describe('AiOrchestrator.streamTurn', () => {
           await tools[0]!.execute({ objectCode: 'leads' }, `seq-${index}`),
         );
       }
-      yield { type: 'TEXT_DELTA', text: '预算已达上限。' };
+      yield { type: 'TEXT_DELTA', text: '已完成查询。' };
       yield { type: 'COMPLETED' };
     });
     const orchestrator = new AiOrchestrator(
@@ -1033,25 +1033,22 @@ describe('AiOrchestrator.streamTurn', () => {
     const events = await collect(
       await orchestrator.streamTurn(
         context,
-        { content: '预算' },
+        { content: '继续查询' },
         new AbortController().signal,
       ),
     );
     expect(results[5]).toEqual({
       items: [{ id: '1', values: { secret: 'x' } }],
     });
-    expect(results[6]).toMatchObject({
-      unavailable: true,
-      code: 'AI_TOOL_BUDGET_EXCEEDED',
-    });
+    expect(results[6]).toEqual(results[5]);
     expect(
       events.filter((event) => event.event === 'tool.completed'),
-    ).toHaveLength(6);
+    ).toHaveLength(7);
     expect(JSON.stringify(events)).not.toContain('secret');
     expect(events.map((event) => event.event)).toContain('turn.completed');
   });
 
-  it('stops a fourth concurrent tool without sending raw results', async () => {
+  it('permits a fourth concurrent tool without sending raw results', async () => {
     const conversations = conversationMock();
     const provider = providerWith(async function* (_signal, tools) {
       const settled = await Promise.all([
@@ -1064,12 +1061,8 @@ describe('AiOrchestrator.streamTurn', () => {
         settled.filter(
           (item) => item && typeof item === 'object' && 'unavailable' in item,
         ),
-      ).toHaveLength(1);
-      expect(settled).toContainEqual({
-        unavailable: true,
-        code: 'DATA_UNAVAILABLE',
-      });
-      yield { type: 'TEXT_DELTA', text: '并行已达上限。' };
+      ).toHaveLength(0);
+      yield { type: 'TEXT_DELTA', text: '四个查询均已完成。' };
       yield { type: 'COMPLETED' };
     });
     const orchestrator = new AiOrchestrator(
@@ -1097,7 +1090,7 @@ describe('AiOrchestrator.streamTurn', () => {
     );
     expect(
       events.filter((event) => event.event === 'tool.started'),
-    ).toHaveLength(3);
+    ).toHaveLength(4);
     expect(JSON.stringify(events)).not.toContain('secret');
   });
 

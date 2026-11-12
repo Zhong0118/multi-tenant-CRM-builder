@@ -1,12 +1,11 @@
 import { AiSanitizer } from './ai-sanitizer';
 
 describe('AiSanitizer.sanitizeToolResult', () => {
-  it('truncates individual string values to 2000 Unicode code points', () => {
+  it('preserves the full value of long visible text fields', () => {
     const long = '你'.repeat(2005);
     const result = AiSanitizer.sanitizeToolResult({ note: long });
     expect(typeof result).toBe('object');
-    expect((result as { note: string }).note).toBe('你'.repeat(2000));
-    expect([...(result as { note: string }).note].length).toBe(2000);
+    expect((result as { note: string }).note).toBe(long);
   });
 
   it('keeps only plain JSON-safe values and drops functions, undefined, bigint, and NaN', () => {

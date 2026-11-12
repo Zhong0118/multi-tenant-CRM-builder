@@ -1,4 +1,4 @@
-import { streamText, tool, stepCountIs, InvalidToolInputError } from 'ai';
+import { streamText, tool, InvalidToolInputError } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 
 import type {
@@ -47,11 +47,8 @@ export class VercelOpenAiProvider implements AiProvider {
             }),
           ]),
         ),
-        // The fifth step is reserved for a final answer after up to four tool steps.
-        stopWhen: stepCountIs(5),
-        prepareStep: ({ stepNumber }) =>
-          stepNumber >= 4 ? { toolChoice: 'none' as const } : undefined,
-        maxOutputTokens: 2000,
+        // Continue while the model requests tools; an answer, cancellation or timeout ends the turn.
+        stopWhen: [],
         abortSignal: input.abortSignal,
         providerOptions: {
           openai: { store: false },

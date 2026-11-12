@@ -2,7 +2,6 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { AiComposer } from "./ai-composer";
-import { AI_MAX_INPUT } from "./ai-types";
 
 describe("AiComposer", () => {
   it("disables send for blank text and becomes Stop-only while streaming", () => {
@@ -18,7 +17,7 @@ describe("AiComposer", () => {
       />,
     );
     expect(screen.getByRole("button", { name: "发送" })).toBeDisabled();
-    expect(screen.getByText(`3/${AI_MAX_INPUT}`)).toBeInTheDocument();
+    expect(screen.getByRole("textbox")).not.toHaveAttribute("maxlength");
     rerender(
       <AiComposer
         value="问"

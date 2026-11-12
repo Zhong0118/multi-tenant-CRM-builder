@@ -10,11 +10,10 @@ import type {
 import type { AiProviderTool } from './ai-provider';
 import { AiSanitizer } from './ai-sanitizer';
 import { AiSourceBuilder } from './ai-source-builder';
-import { AiTurnBudget } from './ai-turn-budget';
 
 export interface AiToolCallbacks {
   emit(event: AiPublicStreamEvent): void;
-  budget: AiTurnBudget;
+  usageCounter: { toolCalls: number };
   abortSignal: AbortSignal;
   toolSummaries: AiToolSummary[];
   sources: AiSourceSummary[];
@@ -24,7 +23,7 @@ export interface AiToolCallbacks {
 export function defaultAiToolCallbacks(): AiToolCallbacks {
   return {
     emit: () => undefined,
-    budget: new AiTurnBudget(),
+    usageCounter: { toolCalls: 0 },
     abortSignal: new AbortController().signal,
     toolSummaries: [],
     sources: [],
@@ -71,7 +70,6 @@ export function wrapAiReadTool(
         throw error;
       }
 
-      let begun = false;
       const objectNames = (callbacks.objectNames ??= new Map<string, string>());
       const objectCode =
         isRecord(parsed) && typeof parsed.objectCode === 'string'
@@ -90,8 +88,7 @@ export function wrapAiReadTool(
         startedAt,
       };
       try {
-        callbacks.budget.beginTool();
-        begun = true;
+        callbacks.usageCounter.toolCalls += 1;
         upsertSummary(callbacks.toolSummaries, started);
         callbacks.emit({ event: 'tool.started', data: started });
 
@@ -105,7 +102,6 @@ export function wrapAiReadTool(
         }
 
         const sanitized = AiSanitizer.sanitizeToolResult(raw);
-        callbacks.budget.addPayload(AiSanitizer.serializedBytes(sanitized));
         // Learn names only from successful, sanitized, permission-filtered metadata.
         const metadata =
           tool.name === 'list_objects' && Array.isArray(sanitized)
@@ -164,8 +160,6 @@ export function wrapAiReadTool(
             : failure.detail,
         );
         return failure;
-      } finally {
-        if (begun) callbacks.budget.endTool();
       }
     },
   };
@@ -316,19 +310,6 @@ function safeToolFailure(error: unknown): {
         unavailable: true,
         code: 'ACCESS_RESTRICTED',
         detail: '当前成员无权执行此查询，请勿尝试绕过权限。',
-      };
-    }
-    if (
-      [
-        'AI_TOOL_BUDGET_EXCEEDED',
-        'AI_TOOL_PARALLEL_LIMIT',
-        'AI_TOOL_PAYLOAD_LIMIT',
-      ].includes(error.code)
-    ) {
-      return {
-        unavailable: true,
-        code: error.code,
-        detail: '查询预算已达到限制，请根据已有结果总结，并说明未完成的部分。',
       };
     }
   }

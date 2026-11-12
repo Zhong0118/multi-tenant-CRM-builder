@@ -5,7 +5,7 @@ import type { TextAreaRef } from "antd/es/input/TextArea";
 import type { RefObject } from "react";
 
 import styles from "./ai-assistant.module.css";
-import { AI_MAX_INPUT, type AiTurnPhase } from "./ai-types";
+import type { AiTurnPhase } from "./ai-types";
 
 export function AiComposer({
   value,
@@ -23,7 +23,6 @@ export function AiComposer({
   inputRef?: RefObject<TextAreaRef | null>;
 }) {
   const generating = phase === "SENDING" || phase === "STREAMING";
-  const trimmedLength = value.length;
   return (
     <div className={styles.composerDock}>
       <div className={styles.composer} aria-busy={generating}>
@@ -31,7 +30,6 @@ export function AiComposer({
         <Input.TextArea
           ref={inputRef}
           value={value}
-          maxLength={AI_MAX_INPUT}
           autoSize={{ minRows: 2, maxRows: 6 }}
           placeholder="基于当前权限，询问可访问的 CRM 数据"
           onChange={(event) => onChange(event.target.value)}
@@ -52,9 +50,6 @@ export function AiComposer({
           <div className={styles.composerMeta}>
             <span className={styles.composerHint}>
               {generating ? "Esc 停止生成" : "Enter 发送 · Shift+Enter 换行"}
-            </span>
-            <span className={styles.composerCount} aria-live="polite">
-              {trimmedLength}/{AI_MAX_INPUT}
             </span>
           </div>
           <div className={styles.composerActions}>

@@ -1,20 +1,15 @@
-const MAX_STRING_CODE_POINTS = 2000;
 const STRIP_KEY_RE = /^(tokenHash|passwordHash|session|cookie|apiKey)$/i;
 
 export class AiSanitizer {
   static sanitizeToolResult(result: unknown): unknown {
     return sanitizeValue(result);
   }
-
-  static serializedBytes(value: unknown): number {
-    return Buffer.byteLength(JSON.stringify(value ?? null), 'utf8');
-  }
 }
 
 function sanitizeValue(value: unknown): unknown {
   if (value === null) return null;
   if (typeof value === 'string') {
-    return [...value].slice(0, MAX_STRING_CODE_POINTS).join('');
+    return value;
   }
   if (typeof value === 'boolean') return value;
   if (typeof value === 'number') {
