@@ -31,8 +31,9 @@ describe('list_activities', () => {
         objectCode: 'leads',
         recordId: ownRecordId,
         limit: 21,
+        page: 2,
       }).success,
-    ).toBe(false);
+    ).toBe(true);
     expect(
       tool.inputSchema.parse({
         objectCode: 'leads',
@@ -66,7 +67,7 @@ describe('list_activities', () => {
 
     await expect(
       tool.execute(
-        { objectCode: 'leads', recordId: ownRecordId, limit: 5 },
+        { objectCode: 'leads', recordId: ownRecordId, page: 2, limit: 5 },
         'call-1',
       ),
     ).resolves.toEqual(page);
@@ -74,7 +75,7 @@ describe('list_activities', () => {
       employee,
       'leads',
       ownRecordId,
-      { page: 1, limit: 5 },
+      { page: 2, limit: 5 },
     );
   });
 

@@ -6610,7 +6610,6 @@
       "StartAiTurnDto": {
         "properties": {
           "content": {
-            "maxLength": 2000,
             "minLength": 1,
             "type": "string"
           },

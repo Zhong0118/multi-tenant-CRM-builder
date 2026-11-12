@@ -8,7 +8,8 @@ export const listActivitiesInput = z
   .object({
     objectCode: z.string().min(1).max(64),
     recordId: z.string().uuid(),
-    limit: z.number().int().min(1).max(20).default(20),
+    page: z.number().int().positive().default(1),
+    limit: z.number().int().positive().default(20),
   })
   .strict();
 
@@ -19,12 +20,13 @@ export function createListActivitiesTool(
   return {
     name: 'list_activities',
     description:
-      'List activities on a record the current actor can already read. Limit is 1-20.',
+      'List activities on a record the current actor can already read. Use page and limit to read older activities.',
     inputSchema: listActivitiesInput,
     async execute(input) {
-      const { objectCode, recordId, limit } = listActivitiesInput.parse(input);
+      const { objectCode, recordId, page, limit } =
+        listActivitiesInput.parse(input);
       return records.listActivities(context, objectCode, recordId, {
-        page: 1,
+        page,
         limit,
       });
     },

@@ -52,7 +52,7 @@ export function aiTurnReducer(
 ): AiTurnState {
   switch (action.type) {
     case "draft":
-      return { ...state, draft: action.value.slice(0, 2000) };
+      return { ...state, draft: action.value };
     case "hydrate":
       if (state.conversationId === action.conversationId) return state;
       return {

@@ -22,8 +22,6 @@ export const AI_STALE_GENERATING_GRACE_MS = 15_000;
 const DEFAULT_AI_TIMEOUT_MS = 45_000;
 const DEFAULT_PAGE_LIMIT = 30;
 const MAX_PAGE_LIMIT = 50;
-const NEW_TURN_WINDOW_MS = 5 * 60 * 1000;
-const NEW_TURN_LIMIT = 20;
 const TITLE_CODE_POINTS = 30;
 const TITLE_MAX_CHARS = 120;
 
@@ -230,6 +228,7 @@ async function failStaleGenerating(
 async function rejectInProgress(
   tx: Tx,
   context: TenantContext,
+  conversationId: string,
   exceptId?: string,
 ): Promise<void> {
   const inProgress = await tx.aiMessage.findFirst({
@@ -237,6 +236,7 @@ async function rejectInProgress(
       tenantId: context.tenantId,
       role: 'ASSISTANT',
       status: 'GENERATING',
+      conversationId,
       id: exceptId ? { not: exceptId } : undefined,
       conversation: memberConversationWhere(context),
     },
@@ -273,38 +273,6 @@ function withProviderAttempts(
   delete base.providerKey;
   delete base.modelKey;
   return { ...base, providerAttempts };
-}
-
-async function enforceMemberTurnBudget(
-  tx: Tx,
-  context: TenantContext,
-  now: Date,
-): Promise<void> {
-  const windowStart = new Date(now.getTime() - NEW_TURN_WINDOW_MS);
-  const userCount = await tx.aiMessage.count({
-    where: {
-      tenantId: context.tenantId,
-      role: 'USER',
-      createdAt: { gte: windowStart },
-      conversation: memberConversationWhere(context),
-    },
-  });
-  const assistants = await tx.aiMessage.findMany({
-    where: {
-      tenantId: context.tenantId,
-      role: 'ASSISTANT',
-      updatedAt: { gte: windowStart },
-      conversation: memberConversationWhere(context),
-    },
-    select: { providerUsage: true },
-  });
-  const extraRetries = assistants.reduce(
-    (sum, row) => sum + Math.max(0, providerAttemptsOf(row.providerUsage) - 1),
-    0,
-  );
-  if (userCount + extraRetries >= NEW_TURN_LIMIT) {
-    throw new ApiException('AI_RATE_LIMITED', 429);
-  }
 }
 
 async function requireOwnedConversation(
@@ -553,8 +521,7 @@ export class ConversationRepository {
       const existing = input.conversationId
         ? await requireOwnedConversation(tx, context, input.conversationId)
         : null;
-      await rejectInProgress(tx, context);
-      await enforceMemberTurnBudget(tx, context, now);
+      if (existing) await rejectInProgress(tx, context, existing.id);
 
       const conversation =
         existing ??
@@ -662,8 +629,12 @@ export class ConversationRepository {
       if (!user) {
         throw new ApiException('AI_TURN_NOT_FOUND', 404);
       }
-      await rejectInProgress(tx, context, assistant.id);
-      await enforceMemberTurnBudget(tx, context, now);
+      await rejectInProgress(
+        tx,
+        context,
+        assistant.conversationId,
+        assistant.id,
+      );
 
       const nextAttempts = providerAttemptsOf(assistant.providerUsage) + 1;
       const reset = await tx.aiMessage.update({

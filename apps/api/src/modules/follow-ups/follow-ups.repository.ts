@@ -403,6 +403,7 @@ export class FollowUpsRepository {
         where,
         include: followUpInclude,
         orderBy: [{ dueAt: 'asc' }, { id: 'asc' }],
+        skip: ((input.page ?? 1) - 1) * input.limit,
         take: input.limit,
       });
       return items.map((item) => ({

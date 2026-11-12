@@ -24,11 +24,11 @@ const ACTOR_OVERRIDE_KEYS = {
 };
 
 describe('list_followups', () => {
-  it('rejects assignee and actor-override keys and caps limit at 20', () => {
+  it('rejects assignee and actor-override keys and supports later pages', () => {
     const tool = createListFollowupsTool({} as FollowUpsService, employee);
     expect(tool.inputSchema.safeParse({}).success).toBe(true);
     expect(tool.inputSchema.parse({})).toMatchObject({ limit: 20 });
-    expect(tool.inputSchema.safeParse({ limit: 21 }).success).toBe(false);
+    expect(tool.inputSchema.safeParse({ page: 2, limit: 21 }).success).toBe(true);
     expect(tool.inputSchema.safeParse({ limit: 0 }).success).toBe(false);
     expect(
       tool.inputSchema.safeParse({ assigneeMemberId: 'member-other' }).success,

@@ -13,7 +13,6 @@ import type { AiProviderEvent } from './ai-provider';
 jest.mock('ai', () => ({
   streamText: jest.fn(),
   tool: jest.fn((definition: unknown) => definition),
-  stepCountIs: jest.fn((count: number) => count),
   InvalidToolInputError: {
     isInstance: (error: unknown) =>
       error instanceof Error && error.name === 'AI_InvalidToolInputError',
@@ -359,7 +358,7 @@ describe('VercelOpenAiProvider mapping', () => {
     expect(events.at(-1)).toEqual({ type: 'COMPLETED' });
   });
 
-  it('reserves a fifth tool-free synthesis step and rejects a final tool-call-only response', async () => {
+  it('can continue tool use beyond four steps and rejects a final tool-call-only response', async () => {
     (streamText as jest.Mock).mockReturnValue({
       fullStream: (async function* () {
         yield { type: 'text-delta', text: '我改用记录检索' };
@@ -377,11 +376,8 @@ describe('VercelOpenAiProvider mapping', () => {
       ),
     );
     const options = (streamText as jest.Mock).mock.calls[0][0];
-    expect(options.stopWhen).toBe(5);
-    expect(options.prepareStep({ stepNumber: 4 })).toMatchObject({
-      toolChoice: 'none',
-    });
-    expect(options.prepareStep({ stepNumber: 3 })).toBeUndefined();
+    expect(options.stopWhen).toEqual([]);
+    expect(options.prepareStep).toBeUndefined();
     expect(events.at(-1)).toEqual({ type: 'FAILED', code: 'AI_TURN_FAILED' });
     expect(events).not.toContainEqual({ type: 'COMPLETED' });
   });
@@ -502,6 +498,7 @@ describe('VercelOpenAiProvider mapping', () => {
       { type: 'USAGE', inputTokens: 11, outputTokens: 7 },
       { type: 'COMPLETED' },
     ]);
+    expect((streamText as jest.Mock).mock.calls[0][0]).not.toHaveProperty('maxOutputTokens');
     const serialized = JSON.stringify(events);
     expect(serialized).not.toContain('hidden-chain-of-thought');
     expect(serialized).not.toContain('sk-live-secret');
@@ -510,8 +507,7 @@ describe('VercelOpenAiProvider mapping', () => {
     expect(events.every((event) => !('rawValue' in event))).toBe(true);
     expect(streamText).toHaveBeenCalledWith(
       expect.objectContaining({
-        stopWhen: 5,
-        maxOutputTokens: 2000,
+        stopWhen: [],
       }),
     );
   });
