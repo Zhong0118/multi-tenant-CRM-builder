@@ -637,6 +637,33 @@
   font-size: 12px;
 }
 
+.timelineItem[data-deleting] {
+  opacity: 0.45;
+}
+
+.deleteActivity {
+  margin-inline-start: auto;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .timelineItem {
+    animation: poolEnter 150ms ease-out;
+    transition: opacity 150ms ease;
+  }
+
+  .deleteActivity {
+    transition: transform 150ms ease;
+  }
+
+  .deleteActivity:hover {
+    transform: scale(1.04);
+  }
+
+  .deleteActivity:active {
+    transform: scale(0.97);
+  }
+}
+
 .columnChooser {
   overflow: hidden;
   border: 1px solid var(--rule);

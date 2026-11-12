@@ -268,6 +268,7 @@ export function RecordDetailPage({
           objectCode={schema.object.code}
           recordId={record.id}
           canCreate={canOperate}
+          canDelete={canChooseOwner}
           api={api}
         />
       ),

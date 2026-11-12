@@ -1,14 +1,24 @@
 "use client";
 
-import { PlusOutlined } from "@ant-design/icons";
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   useInfiniteQuery,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Alert, Button, Form, Input, Select, Typography } from "antd";
-import { useEffect, useState } from "react";
+import {
+  Alert,
+  Button,
+  Form,
+  Input,
+  Popconfirm,
+  Select,
+  Typography,
+} from "antd";
+import { type ReactNode, useEffect, useState } from "react";
 
+import { followUpQueryKeys } from "@/features/follow-ups/follow-up-api";
+import { goalKeys } from "@/features/work/work-goals-api";
 import { toApiError } from "@/lib/api/api-error";
 
 import {
@@ -49,6 +59,7 @@ export interface RecordActivityTimelineProps {
   objectCode: string;
   recordId: string;
   canCreate: boolean;
+  canDelete?: boolean;
   api: RecordApi;
   onCreated?: () => void | Promise<void>;
   onDraftStateChange?: (state: { dirty: boolean; saving: boolean }) => void;
@@ -59,6 +70,7 @@ export function RecordActivityTimeline({
   objectCode,
   recordId,
   canCreate,
+  canDelete = false,
   api,
   onCreated,
   onDraftStateChange,
@@ -109,6 +121,38 @@ export function RecordActivityTimeline({
         setError(
           "活动已保存，但流转信息刷新失败，请刷新页面查看最新期限，不要重复提交",
         );
+      }
+    },
+    onError: (caught) => {
+      const apiError = toApiError(caught);
+      setError(`${apiError.message}（请求编号：${apiError.requestId}）`);
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: (activityId: string) =>
+      api.deleteActivity(tenantCode, objectCode, recordId, activityId),
+    onSuccess: async () => {
+      setError(undefined);
+      try {
+        await Promise.all(
+          [
+            queryKey,
+            ["workspace", tenantCode, "records", objectCode],
+            followUpQueryKeys.root(tenantCode),
+            ["workspace", tenantCode, "team-activity"],
+            ["workspace", tenantCode, "daily-report"],
+            ["workspace", tenantCode, "daily-reports"],
+            goalKeys.progress(tenantCode),
+          ].map((key) =>
+            queryClient.invalidateQueries(
+              { queryKey: key },
+              { throwOnError: true },
+            ),
+          ),
+        );
+      } catch {
+        setError("动态已删除，请刷新页面查看最新记录");
       }
     },
     onError: (caught) => {
@@ -248,7 +292,35 @@ export function RecordActivityTimeline({
 
       <ol className={styles.timelineList}>
         {items.map((activity) => (
-          <TimelineItem key={activity.id} activity={activity} />
+          <TimelineItem
+            key={activity.id}
+            activity={activity}
+            deleting={remove.isPending && remove.variables === activity.id}
+          >
+            {canDelete && canCreate && activity.actorMemberId && (
+              <Popconfirm
+                title="删除这条沟通动态？"
+                description="删除后无法恢复"
+                okText="确认删除"
+                cancelText="取消"
+                okButtonProps={{ danger: true }}
+                onConfirm={() => remove.mutate(activity.id)}
+              >
+                <Button
+                  size="small"
+                  type="text"
+                  danger
+                  aria-label="删除动态"
+                  className={styles.deleteActivity}
+                  icon={<DeleteOutlined aria-hidden />}
+                  disabled={remove.isPending}
+                  loading={remove.isPending && remove.variables === activity.id}
+                >
+                  删除
+                </Button>
+              </Popconfirm>
+            )}
+          </TimelineItem>
         ))}
       </ol>
 
@@ -271,9 +343,17 @@ export function RecordActivityTimeline({
   );
 }
 
-function TimelineItem({ activity }: { activity: RecordActivity }) {
+function TimelineItem({
+  activity,
+  deleting,
+  children,
+}: {
+  activity: RecordActivity;
+  deleting: boolean;
+  children: ReactNode;
+}) {
   return (
-    <li className={styles.timelineItem}>
+    <li className={styles.timelineItem} data-deleting={deleting || undefined}>
       <div className={styles.timelineItemMeta}>
         <span className={styles.activityType} data-kind={activity.activityType}>
           {ACTIVITY_TYPE_LABELS[activity.activityType]}
@@ -291,6 +371,7 @@ function TimelineItem({ activity }: { activity: RecordActivity }) {
         <time dateTime={activity.createdAt}>
           {formatActivityTime(activity.createdAt)}
         </time>
+        {children}
       </div>
       <p>{activity.content}</p>
     </li>
