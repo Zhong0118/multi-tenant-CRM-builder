@@ -15116,6 +15116,65 @@
         "tags": ["records"]
       }
     },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/activities/{activityId}": {
+      "delete": {
+        "operationId": "RecordsController_deleteActivity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "activityId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteRecordResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["records"]
+      }
+    },
     "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/attachments": {
       "get": {
         "operationId": "AttachmentsController_list",

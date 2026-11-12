@@ -33,6 +33,110 @@ describe('record communication previews and history over HTTP', () => {
   afterAll(async () => {
     if (h) await closeCriticalHarness(h);
   });
+  it('lets only a tenant admin remove employee communication from the correct record', async () => {
+    const older = await h.adminDatabase.recordActivity.create({
+      data: {
+        tenantId: f.tenantA.id,
+        recordId: f.ownedRecord.id,
+        activityType: 'NOTE',
+        actorMemberId: f.employee.memberId,
+        content: '保留的备注',
+        createdAt: new Date('2025-01-01'),
+      },
+    });
+    const row = await h.adminDatabase.recordActivity.create({
+      data: {
+        tenantId: f.tenantA.id,
+        recordId: f.ownedRecord.id,
+        activityType: 'NOTE',
+        actorMemberId: f.employee.memberId,
+        content: '填错的备注',
+        createdAt: new Date('2026-11-10T04:00:00Z'),
+      },
+    });
+    const task = await h.adminDatabase.recordFollowUp.create({
+      data: {
+        tenantId: f.tenantA.id,
+        recordId: row.recordId,
+        assigneeMemberId: f.employee.memberId,
+        title: '回访',
+        dueAt: new Date(),
+        completedAt: new Date(),
+        status: 'DONE',
+        completionActivityId: row.id,
+      },
+    });
+    const remove = (cookie: string, recordId = row.recordId, id = row.id) =>
+      request(h.app.getHttpServer())
+        .delete(`${records()}/${recordId}/activities/${id}`)
+        .set('Cookie', cookie)
+        .set('Origin', 'http://localhost:3000');
+    await remove(f.employee.cookie).expect(403);
+    // A runtime connection with employee context cannot delete even its own note.
+    const direct = await h.runtimeDatabase.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT set_config('app.tenant_id', ${f.tenantA.id}, true),
+        set_config('app.user_id', ${f.employee.userId}, true)`;
+      return tx.recordActivity.deleteMany({ where: { id: row.id } });
+    });
+    expect(direct.count).toBe(0);
+    expect([403, 404]).toContain((await remove(f.tenantBAdmin.cookie)).status);
+    await remove(f.admin.cookie, f.otherRecord.id).expect(404);
+    const system = await h.adminDatabase.recordActivity.create({
+      data: {
+        tenantId: f.tenantA.id,
+        recordId: row.recordId,
+        activityType: 'SYSTEM',
+        actorMemberId: f.admin.memberId,
+        content: '系统事件',
+      },
+    });
+    await remove(f.admin.cookie, row.recordId, system.id).expect(404);
+    const notes = async () => {
+      const stats = await request(h.app.getHttpServer())
+        .get(
+          `/api/v1/workspaces/${f.tenantA.code}/team-activity?from=2026-11-10&to=2026-11-10`,
+        )
+        .set('Cookie', f.admin.cookie)
+        .expect(200);
+      const { members } = stats.body as {
+        members: Array<{ memberId: string; notes: number }>;
+      };
+      return members.find((m) => m.memberId === f.employee.memberId)?.notes;
+    };
+    expect(await notes()).toBe(1);
+    await remove(f.admin.cookie).expect(200, { accepted: true });
+    expect(await notes()).toBe(0);
+    await remove(f.admin.cookie).expect(404);
+    const list = await request(h.app.getHttpServer())
+      .get(records())
+      .set('Cookie', f.admin.cookie)
+      .expect(200);
+    expect(
+      (list.body as RecordPageResponse).items.find((r) => r.id === row.recordId)
+        ?.latestActivity?.id,
+    ).toBe(older.id);
+    const history = await request(h.app.getHttpServer())
+      .get(`${records()}/${row.recordId}/activities`)
+      .set('Cookie', f.employee.cookie)
+      .expect(200);
+    expect(history.body).toMatchObject({ items: [{ id: older.id }], total: 1 });
+    expect(
+      await h.adminDatabase.recordFollowUp.findUniqueOrThrow({
+        where: { id: task.id },
+      }),
+    ).toMatchObject({ status: 'DONE', completionActivityId: null });
+    expect(
+      await h.adminDatabase.auditLog.count({
+        where: {
+          tenantId: f.tenantA.id,
+          actorId: f.admin.userId,
+          resourceId: row.id,
+          action: 'record.activity_deleted',
+        },
+      }),
+    ).toBe(1);
+  });
+
   it('serves newest bounded previews, preserves full paginated history, excludes other owners and denies other tenants', async () => {
     const now = new Date('2026-11-10T00:00:00Z');
     const activities = Array.from({ length: 25 }, (_, i) => ({

@@ -29,6 +29,7 @@ function recordApi(overrides: Partial<RecordApi> = {}): RecordApi {
       limit: 20,
       total: 1,
     }),
+    deleteActivity: vi.fn(),
     createActivity: vi.fn().mockResolvedValue({
       ...existing,
       id: "activity-2",
@@ -63,7 +64,47 @@ describe("RecordActivityTimeline", () => {
     );
 
     expect(await screen.findByText("第一次电话未接通。")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "删除动态" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("林晨")).toBeInTheDocument();
+  });
+
+  it("asks the administrator to confirm and refreshes the history after deletion", async () => {
+    const api = recordApi({
+      listActivities: vi
+        .fn()
+        .mockResolvedValueOnce({
+          items: [existing],
+          page: 1,
+          limit: 20,
+          total: 1,
+        })
+        .mockResolvedValue({ items: [], page: 1, limit: 20, total: 0 }),
+    });
+    renderTimeline(
+      <RecordActivityTimeline
+        tenantCode="northwind"
+        objectCode="customers"
+        recordId="record-1"
+        canCreate
+        canDelete
+        api={api}
+      />,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "删除动态" }));
+    fireEvent.click(await screen.findByRole("button", { name: /取\s*消/ }));
+    expect(api.deleteActivity).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "删除动态" }));
+    fireEvent.click(await screen.findByRole("button", { name: "确认删除" }));
+    await screen.findByText("还没有活动记录。");
+    expect(api.deleteActivity).toHaveBeenCalledWith(
+      "northwind",
+      "customers",
+      "record-1",
+      existing.id,
+    );
+    expect(screen.queryByText(existing.content)).not.toBeInTheDocument();
   });
 
   it("appends a new activity without offering an edit action", async () => {

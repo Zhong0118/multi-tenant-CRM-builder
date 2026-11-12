@@ -48,6 +48,7 @@ const COMPANY_ACTIONS = [
   "record.relation_added",
   "record.relation_removed",
   "record.activity_created",
+  "record.activity_deleted",
   "record.transition_executed",
   "attachment.created",
   "attachment.deleted",

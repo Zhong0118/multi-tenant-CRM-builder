@@ -170,6 +170,12 @@ export interface RecordApi {
     recordId: string,
     version: number,
   ): Promise<{ accepted: true }>;
+  deleteActivity(
+    tenantCode: string,
+    objectCode: string,
+    recordId: string,
+    activityId: string,
+  ): Promise<{ accepted: true }>;
   listActivities(
     tenantCode: string,
     objectCode: string,
@@ -265,6 +271,13 @@ export const recordApi: RecordApi = {
       await browserApiClient.DELETE(RECORD_PATH, {
         params: { path: { tenantCode, objectCode, recordId } },
         body: { version },
+      }),
+    );
+  },
+  async deleteActivity(tenantCode, objectCode, recordId, activityId) {
+    return dataOrThrow(
+      await browserApiClient.DELETE(`${ACTIVITIES_PATH}/{activityId}`, {
+        params: { path: { tenantCode, objectCode, recordId, activityId } },
       }),
     );
   },

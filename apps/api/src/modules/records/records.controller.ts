@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -164,6 +165,26 @@ export class RecordsController {
       objectCode,
       recordId,
       dto,
+      requestMeta(request),
+    );
+  }
+
+  @Delete(':recordId/activities/:activityId')
+  @ApiParam({ name: 'recordId', format: 'uuid' })
+  @ApiParam({ name: 'activityId', format: 'uuid' })
+  @ApiOkResponse({ type: DeleteRecordResponseDto })
+  deleteActivity(
+    @CurrentTenant() context: TenantContext,
+    @Param('objectCode') objectCode: string,
+    @Param('recordId', ParseUUIDPipe) recordId: string,
+    @Param('activityId', ParseUUIDPipe) activityId: string,
+    @Req() request: RequestWithId,
+  ) {
+    return this.records.deleteActivity(
+      context,
+      objectCode,
+      recordId,
+      activityId,
       requestMeta(request),
     );
   }

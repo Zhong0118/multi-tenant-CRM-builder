@@ -2069,7 +2069,7 @@ it("opens communication without navigating away and keeps the menu entry when th
     content: "客户希望下周报价",
     outcome: "CONNECTED" as const,
     actorDisplayName: "谷若雨",
-    actorMemberId: null,
+    actorMemberId: "member-a",
     nextActionAt: null,
     createdAt: "2026-11-10T07:29:00Z",
   };
@@ -2087,7 +2087,7 @@ it("opens communication without navigating away and keeps the menu entry when th
   renderList(
     navigate,
     { ...DEFAULT_RECORD_QUERY, page: 3 },
-    { api, page: rows, currentMemberId: "member-a" },
+    { api, page: rows, currentMemberId: "member-a", canFilterByOwner: true },
   );
   fireEvent.click(
     (await screen.findAllByRole("button", { name: "查看动态 天际科技" }))[0],
@@ -2095,6 +2095,9 @@ it("opens communication without navigating away and keeps the menu entry when th
   const dialog = await screen.findByRole("dialog");
   expect(
     await within(dialog).findByText("客户希望下周报价"),
+  ).toBeInTheDocument();
+  expect(
+    within(dialog).getByRole("button", { name: "删除动态" }),
   ).toBeInTheDocument();
   expect(navigate).not.toHaveBeenCalled();
   fireEvent.click(within(dialog).getByRole("button", { name: /close/i }));

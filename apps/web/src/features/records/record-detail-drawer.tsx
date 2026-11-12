@@ -327,6 +327,7 @@ export function RecordDetailDrawer({
             objectCode={schema.object.code}
             recordId={record.id}
             canCreate={canOperate}
+            canDelete={canChooseOwner}
             api={api}
           /> : null}
           <details className={styles.detailDisclosure}>

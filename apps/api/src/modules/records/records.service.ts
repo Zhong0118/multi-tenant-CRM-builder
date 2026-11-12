@@ -15,6 +15,7 @@ import {
   assertAssignableOwner,
   lockMembers,
   lockObject,
+  lockRecordActivityTarget,
 } from './record-ownership-locks';
 import {
   POOL_STAGES,
@@ -43,6 +44,7 @@ import {
   type RecordRequestMeta,
 } from './record-command';
 import {
+  MEMBER_ACTIVITY_TYPES,
   type ActivityOutcome,
   type MemberActivityType,
 } from './record-activity';
@@ -1015,6 +1017,63 @@ export class RecordsService {
         total: result.total,
       };
     });
+  }
+
+  async deleteActivity(
+    context: TenantContext,
+    objectCode: string,
+    recordId: string,
+    activityId: string,
+    meta: RequestMeta,
+  ): Promise<{ accepted: true }> {
+    if (context.role !== 'TENANT_ADMIN')
+      throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+    const schema = await this.publishedObjects.resolveRuntimeSchema(
+      context,
+      objectCode,
+    );
+    return this.repository.withTenantTransaction(
+      context,
+      async ({ tx, store }) => {
+        const resolved = await store.resolveCurrentObject(schema);
+        await lockRecordActivityTarget(tx, context, resolved, recordId);
+        await requireVisibleRecord(
+          store,
+          resolved,
+          context,
+          recordId,
+          'UPDATE',
+        );
+        const tenantId = context.tenantId;
+        // The follow-up stays completed when its result is removed.
+        await tx.recordFollowUp.updateMany({
+          where: { tenantId, recordId, completionActivityId: activityId },
+          data: { completionActivityId: null, version: { increment: 1 } },
+        });
+        const deleted = await tx.recordActivity.deleteMany({
+          where: {
+            tenantId,
+            recordId,
+            id: activityId,
+            actorMemberId: { not: null },
+            activityType: { in: [...MEMBER_ACTIVITY_TYPES] },
+          },
+        });
+        if (!deleted.count) throw new ApiException('RECORD_NOT_FOUND', 404);
+        await store.appendAudit({
+          tenantId: context.tenantId,
+          actorType: 'USER',
+          actorId: context.userId,
+          action: 'record.activity_deleted',
+          resourceType: 'record_activity',
+          resourceId: activityId,
+          before: { recordId },
+          requestId: meta.requestId,
+          ip: meta.ip,
+        });
+        return { accepted: true };
+      },
+    );
   }
 
   async createActivity(

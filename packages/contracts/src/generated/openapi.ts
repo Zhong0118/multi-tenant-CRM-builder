@@ -1652,6 +1652,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/activities/{activityId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations["RecordsController_deleteActivity"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/attachments": {
     parameters: {
       query?: never;
@@ -8048,6 +8064,30 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["RecordActivityResponseDto"];
+        };
+      };
+    };
+  };
+  RecordsController_deleteActivity: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        activityId: string;
+        objectCode: string;
+        recordId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DeleteRecordResponseDto"];
         };
       };
     };

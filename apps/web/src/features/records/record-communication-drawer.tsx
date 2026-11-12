@@ -155,6 +155,7 @@ export function RecordCommunicationDrawer({
             objectCode={schema.object.code}
             recordId={current.id}
             canCreate={canEditRecord(schema, current, currentMemberId, isAdmin)}
+            canDelete={isAdmin}
             api={api}
             onDraftStateChange={setDraft}
             onCreated={async () => {
