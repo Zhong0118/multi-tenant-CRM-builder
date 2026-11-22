@@ -1,10 +1,8 @@
 # Multi-tenant CRM Builder
 
-面向多家公司的可配置 CRM 平台。当前仓库采用 pnpm monorepo，Web、API、Worker 分进程部署；API 与 Worker 可以访问数据库包，Web 只调用 REST API。
+面向多家公司的可配置 CRM 平台。当前仓库采用 pnpm monorepo，Web、API、Worker 分进程部署；API 与 Worker 可以使用数据库包，Web 只调用 REST API。
 
-完整产品与架构设计见 [`docs/design/README.md`](docs/design/README.md)。**当前实现事实以 [`HANDOFF.md`](HANDOFF.md) 为准**，这里不重复维护状态。
-
-`docs/audits/` 下是历史验收记录，其中 [2026-09-09 三角色补齐与验证](docs/audits/2026-09-09/role-completion.md) 记录的是三角色功能补齐阶段；其后的修复与人工验收都已汇总进 `HANDOFF.md`。设计规格分别覆盖账号邀请、动态对象记录、平台模板和组件化工作台；旧设计索引可能落后于本地 `main`。
+从[接手说明](HANDOFF.md)查找当前模块、运行边界与验证入口，从[设计索引](docs/design/README.md)查找产品和交互规格。[验收记录](docs/audits/)按日期保留当时的基线和证据。
 
 ## 工程结构
 
@@ -27,7 +25,7 @@ apps/
 │       ├── common/              guard、filter、pipe、interceptor、decorator
 │       ├── infrastructure/      database、queue 等外部设施适配边界
 │       └── config/              API 配置边界
-└── worker/                      BullMQ/Redis 异步任务进程
+└── worker/                      Redis 连通性检查，预留任务进程
     └── src/
         ├── config/              Worker 配置
         ├── jobs/                任务定义
@@ -37,7 +35,7 @@ apps/
 packages/
 ├── database/                    Prisma 7 schema 与 PostgreSQL 客户端工厂
 ├── contracts/                   跨应用共享的通用平台契约
-└── tenant-templates/            通用模板与首家公司业务模板
+└── tenant-templates/            模板包占位，业务模板由 API 和数据库管理
 docs/                            产品、页面、数据模型和技术设计
 ```
 
@@ -47,7 +45,7 @@ Web 只通过 API 获取业务数据；`packages/database` 仅供 API 与 Worker
 
 - Node.js `>=24`（本地验证版本 24.19.0）。`@crm/database` 是 ESM 包而 `apps/api` 编译为 CJS，需要支持 `require(esm)` 的 Node；若要在 Node 22 LTS 上运行，先实测再放宽 `package.json` 的 `engines`。
 - pnpm `11.19.0`
-- PostgreSQL 15+（本机服务或 Docker 均可；当前本地验证使用 PostgreSQL 15）
+- PostgreSQL 18（与 Compose 一致，日期筛选和业务指标查询依赖数据库输入校验函数）
 - Redis 7.4（本机服务或 Docker 均可）
 - Docker Desktop 或兼容的 Docker Compose（可选，仅用于快速启动隔离基础设施）
 
@@ -155,10 +153,17 @@ set -a && source .env && set +a
 pnpm --filter @crm/database prisma:migrate:deploy
 ```
 
-集成测试与 API E2E 使用独立的测试库（`compose.test.yaml`，端口 5433），需要先启动：
+集成测试与 API E2E 使用独立的测试库（`compose.test.yaml`，端口 5433），按顺序执行。数据库集成会清理测试数据，只使用专用库：
 
 ```bash
-docker compose -f compose.test.yaml up -d
+docker compose -f compose.test.yaml up -d --wait
+export TEST_DATABASE_ADMIN_URL=postgresql://crm:crm@127.0.0.1:5433/crm_test
+export TEST_DATABASE_URL=postgresql://crm_app:crm_app@127.0.0.1:5433/crm_test
+export DATABASE_ADMIN_URL="$TEST_DATABASE_ADMIN_URL"
+pnpm --filter @crm/contracts --filter @crm/database build
+pnpm --filter @crm/database prisma:migrate:deploy
+pnpm --filter @crm/api test:e2e --runInBand
+pnpm --filter @crm/database test:integration
 ```
 
 停止本地基础设施：
@@ -171,7 +176,7 @@ docker compose down
 
 ## 租户管理员配置业务对象
 
-配置保存为草稿，只有**发布**后才影响成员当前使用的表单、权限和导航。
+对象设计保存为草稿，**发布**后影响运行时表单、默认权限和导航。成员访问页的授权单独保存，下一次请求即生效。
 
 1. 进入 `设置 → 业务对象 → 新建业务对象`，填写名称与小写代码（如 `customers`）。
 2. 在设计器的「字段」页添加字段。对象必须有一个必填标题字段，类型只能是 `TEXT`、`PHONE`、`EMAIL` 或 `SINGLE_SELECT`。
@@ -192,7 +197,7 @@ docker compose down
 
 ## 当前实现边界
 
-最新完成项与未完成项见 [`HANDOFF.md`](HANDOFF.md)。下面保留对象/记录切片的实现要点；其后又落地了平台模板、组件化多工作台、类型化记录筛选和公司生命周期 UX。
+模块入口见[接手说明](HANDOFF.md)。以下是对象和记录运行时的主要约束。
 
 已完成第一个“账号、邀请与工作空间”切片：手机号注册/登录/找回密码、服务端会话、平台管理员授权、租户开通、首位管理员邀请、成员邀请与停用、等待页、工作空间选择、租户隔离、OpenAPI 契约及对应页面。
 
@@ -200,15 +205,15 @@ docker compose down
 
 - 不可变对象发布快照（`object_publications`）与草稿乐观锁；发布只记录哪一版生效，不消耗草稿版本。
 - 12 种动态字段类型的服务端统一校验、标题派生、`MONEY` 定点字符串规范化。
-- 对象动作权限、`ALL/OWN/NONE` 数据范围、`EDIT/READ_ONLY/HIDDEN` 字段权限；隐藏字段不出现在 schema 与响应中，伪造写入被拒绝。
+- 对象动作权限、`ALL/OWN/NONE` 默认范围和成员 `GROUP` 读取范围、`EDIT/CREATE_ONLY/READ_ONLY/HIDDEN` 字段权限；隐藏字段不出现在 schema 与响应中，伪造写入被拒绝。
 - 成员对象覆盖实时生效，不改变发布快照中的字段权限。
 - 事务内行锁分配连续 `recordNo`、记录乐观锁、软删除、审计。
-- 配置账本对象设计器、动态记录列表/表单/详情抽屉、成员访问权限页、发布对象驱动的工作空间导航。
-- PostgreSQL RLS 强制租户隔离；跨租户对象与记录统一返回 not-found，不泄露资源存在性。
+- 配置账本对象设计器、动态记录列表、表单和独立详情页、成员访问权限页、发布对象驱动的工作空间导航。
+- 受限角色和 PostgreSQL RLS 约束租户数据访问，记录读取还需检查对象范围及当前成员的字段授权。
 
 自动化验证覆盖：Web 单元/组件测试、API 单元测试、PostgreSQL 集成测试（RLS、发布快照不可变、record counter 并发）、API E2E（配置→发布→运行时链路、记录权限、并发编号、版本冲突）、OpenAPI 契约漂移。当前不引入 Playwright。
 
-尚未实现（留待后续切片）：对象关系、记录转换与状态机、公式/汇总/查找字段、看板与日历、个人自定义视图、发布版本回滚。附件已支持内部试运行的私有单机存储路径；Tencent 短信适配器已实现但真实送达未验证。记录活动时间线、CSV 导入导出、批量修改和个人跟进待办（改期、完成、取消、逾期筛选）已实现。主动通知和团队派单尚未接入；AI Assistant 已完成受控读写能力，当前内部试运行要求配置真实 AI provider，但真实调用仍未验证。Dashboard 与图表已经以组件化工作台形式落地。首家公司线索、跟单、客户和期刊规则不得写死进通用平台核心。
+对象关系、工作流状态迁移、转换动作和跨表自动化已接入发布与执行链路。附件已支持内部试运行的私有单机存储路径；Tencent 短信适配器已实现但真实送达未验证。记录活动时间线、CSV 导入导出、批量修改和个人跟进待办（改期、完成、取消、逾期筛选）已实现。任务分派和团队活动入口见工作模块。AI Assistant 已完成受控读写能力，当前内部试运行要求配置真实 AI provider，但真实调用仍未验证。Dashboard 与图表已经以组件化工作台形式落地。首家公司线索、跟单、客户和期刊规则不得写死进通用平台核心。
 
 ## 人工验收清单
 
