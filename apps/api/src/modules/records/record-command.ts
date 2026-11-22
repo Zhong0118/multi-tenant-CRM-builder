@@ -191,11 +191,13 @@ export async function updateRecordCommand({
     expectedVersion: input.version,
     patch,
   });
-  await store.runFieldAutomations?.(resolved, current, updated, meta);
+  const final =
+    (await store.runFieldAutomations?.(resolved, current, updated, meta)) ??
+    updated;
   const auditId = await store.appendAudit(
     recordAudit(context, meta, 'record.updated', updated, current),
   );
-  return { record: projectRecord(updated, resolved), auditId };
+  return { record: projectRecord(final, resolved), auditId };
 }
 
 export interface CreateRecordActivityCommandInput {

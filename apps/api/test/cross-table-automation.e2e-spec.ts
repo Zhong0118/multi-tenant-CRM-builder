@@ -982,6 +982,38 @@ describe('cross-table automation (real PostgreSQL)', () => {
     });
   }
 
+  it.each(['MANUAL', 'FIELD_CHANGED'] as const)(
+    'uses the committed source version when %s automation also grants pool protection',
+    async (trigger) => {
+      await configureInvoiceProtection();
+      await rules([
+        {
+          ...baseRule,
+          trigger: trigger === 'MANUAL' ? { type: 'MANUAL' } : baseRule.trigger,
+        },
+      ]);
+      const result =
+        trigger === 'MANUAL'
+          ? await api('post', `${path()}/automations/${baseRule.key}/execute`, {
+              expectedVersion: 1,
+              requestId: randomUUID(),
+              inputs: {},
+            })
+          : await api('patch', path(), { version: 1, values: { name: 'won' } });
+      expect(result.status).toBe(trigger === 'MANUAL' ? 201 : 200);
+      expect(await targets()).toBe(1);
+      expect(await executions()).toBe(1);
+      const stored = await source();
+      expect(stored).toMatchObject({ poolStage: 'PROTECTED', version: 3 });
+      if (trigger === 'FIELD_CHANGED') {
+        expect(result.body).toMatchObject({
+          poolStage: stored.poolStage,
+          version: stored.version,
+        });
+      }
+    },
+  );
+
   it('commits the successful batch item when a sibling hits a database pool protection rule', async () => {
     await rules();
     await configureInvoiceProtection();

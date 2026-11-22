@@ -235,7 +235,7 @@ export interface RecordsStore {
     before: DynamicRecord,
     after: DynamicRecord,
     meta: RecordRequestMeta,
-  ): Promise<void>;
+  ): Promise<DynamicRecord>;
   withSavepoint?<T>(work: () => Promise<T>): Promise<T>;
   resolveCurrentObject(
     previous: ResolvedObjectSchema,
@@ -503,13 +503,13 @@ class PrismaRecordsStore implements RecordsStore {
     );
   }
 
-  async runFieldAutomations(
+  runFieldAutomations(
     resolved: ResolvedObjectSchema,
     before: DynamicRecord,
     after: DynamicRecord,
     meta: RecordRequestMeta,
-  ): Promise<void> {
-    await runFieldAutomations(
+  ): Promise<DynamicRecord> {
+    return runFieldAutomations(
       {
         tx: this.transaction,
         store: this,
