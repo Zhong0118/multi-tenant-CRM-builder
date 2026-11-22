@@ -1,3 +1,4 @@
+import { simulateAssistant } from './fake-assistant';
 import type { FilterProviderInput } from '../filter-generation';
 import type { CommunicationProviderInput } from '../communication-output';
 import type {
@@ -22,7 +23,7 @@ export function getFakeAiProviderCapturedToolResult(): unknown {
   return capturedToolResult;
 }
 
-// Fake is 1-round by construction: at most one tool execute, then COMPLETED.
+// Local scripted provider for deterministic integration and browser testing.
 export class FakeAiProvider implements AiProvider {
   readonly providerKey = 'fake';
   readonly modelKey = 'fake';
@@ -58,6 +59,17 @@ export class FakeAiProvider implements AiProvider {
             ],
           };
         break;
+      case '找我负责的、金额超过 10 万的客户':
+        if (amount)
+          return {
+            rules: [
+              rule([
+                own,
+                { fieldKey: amount.fieldKey, operator: 'gt', value: '100000' },
+              ]),
+            ],
+          };
+        break;
       case '再加上金额大于 10 万':
         if (amount && input.currentRule.match === 'all')
           return {
@@ -77,6 +89,19 @@ export class FakeAiProvider implements AiProvider {
             ),
           };
         break;
+      case '查看今天待跟进的客户':
+        return {
+          rules: [
+            rule([
+              {
+                fieldKey: '$followUp',
+                operator: 'dueThroughToday',
+                value: { assignee: '$me' },
+              },
+            ]),
+          ],
+        };
+      case '只看我负责的客户':
       case '换成我负责的客户':
         return { rules: [rule([own])] };
     }
@@ -152,6 +177,9 @@ export class FakeAiProvider implements AiProvider {
       const callId = 'fake-propose-change';
       const tool = input.tools.find((entry) => entry.name === 'propose_change');
       if (!tool || input.abortSignal.aborted) return;
+      await input.tools
+        .find((t) => t.name === 'get_record')
+        ?.execute({ objectCode: 'leads', recordId }, 'lookup-critical-target');
       const candidate =
         operationType === 'UPDATE_RECORD'
           ? {
@@ -186,8 +214,7 @@ export class FakeAiProvider implements AiProvider {
       yield { type: 'COMPLETED' };
       return;
     }
-    yield { type: 'TEXT_DELTA', text: '测试回答' };
-    yield { type: 'COMPLETED' };
+    yield* simulateAssistant(input);
   }
 
   private async *searchOwnLeads(input: {
