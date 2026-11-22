@@ -9,7 +9,8 @@ import type {
   RuntimeObjectSchema,
 } from "@/features/objects/object-types";
 import { toApiError } from "@/lib/api/api-error";
-import { canEditRecord } from "./record-access";
+import { CommunicationDraftAction } from "./communication-draft";
+import { canEditRecord, recordFields } from "./record-access";
 import type { RecordApi } from "./record-api";
 import {
   ACTIVITY_TYPE_LABELS,
@@ -156,6 +157,19 @@ export function RecordCommunicationDrawer({
             recordId={current.id}
             canCreate={canEditRecord(schema, current, currentMemberId, isAdmin)}
             canDelete={isAdmin}
+            action={
+              canEditRecord(schema, current, currentMemberId, isAdmin) ? (
+                <CommunicationDraftAction
+                  key={current.id}
+                  tenantCode={tenantCode}
+                  objectCode={schema.object.code}
+                  recordId={current.id}
+                  recordTitle={current.title}
+                  fields={recordFields(schema, current)}
+                  onSaved={onCreated}
+                />
+              ) : undefined
+            }
             api={api}
             onDraftStateChange={setDraft}
             onCreated={async () => {

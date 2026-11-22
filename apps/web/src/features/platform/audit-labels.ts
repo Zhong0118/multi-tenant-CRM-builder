@@ -61,6 +61,7 @@ const actionLabels: Record<string, string> = {
   "object.draft_deleted": "删除业务表草稿",
   "object.order_updated": "调整业务表顺序",
   "platform.admin.granted": "授予平台管理员",
+  "ai.communication_item_failed": "保存沟通建议失败",
   "record.activity_deleted": "删除沟通动态",
   "record.activity_created": "新增记录跟进",
   "record.exported": "导出业务记录",
@@ -96,6 +97,7 @@ const actionLabels: Record<string, string> = {
 };
 
 const resourceLabels: Record<string, string> = {
+  ai_record_draft: "沟通草稿",
   tenant: "公司",
   tenant_invitation: "成员邀请",
   tenant_member: "成员",

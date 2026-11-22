@@ -60,6 +60,7 @@ export interface RecordActivityTimelineProps {
   recordId: string;
   canCreate: boolean;
   canDelete?: boolean;
+  action?: ReactNode;
   api: RecordApi;
   onCreated?: () => void | Promise<void>;
   onDraftStateChange?: (state: { dirty: boolean; saving: boolean }) => void;
@@ -71,6 +72,7 @@ export function RecordActivityTimeline({
   recordId,
   canCreate,
   canDelete = false,
+  action,
   api,
   onCreated,
   onDraftStateChange,
@@ -182,6 +184,7 @@ export function RecordActivityTimeline({
         <Typography.Text type="secondary">
           按时间追加，已有记录不能修改。
         </Typography.Text>
+        {action}
         {canCreate && !composing ? (
           <Button
             size="small"

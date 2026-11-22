@@ -349,3 +349,92 @@ it("removes stale query fields after a group column permission change", async ()
     restrictRecordQuery(query, { ...schema, queryFieldKeys: undefined }),
   ).toBe(query);
 });
+describe("saved view and preview URLs", () => {
+  const viewId = "f5000000-0000-4000-8000-000000000001";
+  const filterRule = {
+    version: 1 as const,
+    match: "any" as const,
+    conditions: [
+      {
+        match: "all" as const,
+        conditions: [
+          { fieldKey: "$owner", operator: "in" as const, value: ["$me"] },
+        ],
+      },
+      { fieldKey: "$followUp", operator: "dueThroughToday" as const },
+    ],
+  };
+  it("serializes an authoritative saved view with pagination alone", () => {
+    const clean = {
+      ...DEFAULT_RECORD_QUERY,
+      viewId,
+      filterRule,
+      search: "draft",
+      page: 2,
+    };
+    const url = new URLSearchParams(recordQuerySearch(clean));
+    expect(Object.fromEntries(url)).toEqual({ viewId, page: "2" });
+    expect(
+      parseRecordQuery({
+        viewId,
+        page: "2",
+        search: "stale",
+        filters: "invalid",
+      }),
+    ).toEqual({ ...DEFAULT_RECORD_QUERY, viewId, page: 2 });
+  });
+  it("round-trips the nested preview, dirty reference and next follow-up sort", () => {
+    const dirty = {
+      ...DEFAULT_RECORD_QUERY,
+      filterRule,
+      baseViewId: viewId,
+      search: "客户",
+      sort: "nextFollowUpAt",
+    };
+    const url = new URLSearchParams(recordQuerySearch(dirty));
+    expect(url.get("filters")).toBe(JSON.stringify(filterRule));
+    expect(url.has("viewId")).toBe(false);
+    expect(parseRecordQuery(Object.fromEntries(url))).toEqual(dirty);
+  });
+  it("keeps a user with an unusable explicit preview from loading all rows", () => {
+    for (const params of [
+      { filters: '{"version":2,"match":"all","conditions":[]}' },
+      { filters: '{"version":1,"match":"any","conditions":[]}' },
+      { filters: '{"version":1,' },
+      { filters: '{"version":"1"}' },
+      { filters: '{"match":"any"}' },
+      { baseViewId: viewId },
+      { baseViewId: viewId, filters: "{}" },
+      { viewId: "" },
+    ])
+      expect(() => parseRecordQuery(params)).toThrow("该视图条件不可用");
+  });
+});
+
+it("fails closed on a nested preview when a group loses a query field", async () => {
+  const { restrictRecordQuery } = await import("./record-query-state");
+  const schema = {
+    fields: [],
+    scopes: { read: "GROUP" },
+    queryFieldKeys: ["public"],
+    defaultView: { sort: { field: "updatedAt" } },
+  } as unknown as import("@/features/objects/object-types").RuntimeObjectSchema;
+  expect(() =>
+    restrictRecordQuery(
+      {
+        ...DEFAULT_RECORD_QUERY,
+        filterRule: {
+          version: 1,
+          match: "any",
+          conditions: [
+            {
+              match: "all",
+              conditions: [{ fieldKey: "private", operator: "empty" }],
+            },
+          ],
+        },
+      },
+      schema,
+    ),
+  ).toThrow("该视图条件不可用");
+});

@@ -1,3 +1,8 @@
+import {
+  FILTER_FIELD_OPERATORS,
+  FILTER_OPERATORS,
+  RELATIVE_DATE_PRESETS,
+} from '@crm/contracts';
 import { z } from 'zod';
 
 import type { TenantContext } from '../../../common/tenancy/tenant-context';
@@ -6,12 +11,24 @@ import type { AiProviderTool } from '../ai-provider';
 
 const words = new Intl.Segmenter('zh', { granularity: 'word' });
 
-export const FILTER_FORMAT =
-  'Filters use at most 8 visible field keys from describe_object. SINGLE_SELECT/MULTI_SELECT: non-empty option key arrays (max 20), e.g. {"stage":["lost"]}, never a scalar or {eq:...}. MEMBER: UUID arrays (max 20). NUMBER/MONEY: {min: number, max: number}, either bound optional. DATE/DATETIME: {from:"YYYY-MM-DD",to:"YYYY-MM-DD"} or {relative:"today"|"this_week"|"this_month"|"past_7_days"|"past_30_days"}. BOOLEAN: true/false. Text: {contains:"text"}. Any field supports {presence:"empty"|"not_empty"}. Never guess hidden fields or options.';
+export const FILTER_FORMAT = [
+  'Use {version:1,match:"all"|"any",conditions:[{fieldKey,operator,value?}]} with visible fields from describe_object. Groups may nest up to 3 levels, 16 leaves total.',
+  Object.entries(FILTER_FIELD_OPERATORS)
+    .map(([type, operators]) => type + ': ' + operators.join('|'))
+    .join('; '),
+  Object.entries(FILTER_OPERATORS)
+    .map(([operator, entry]) => operator + '=' + entry.valueShape)
+    .join(', '),
+  'Lists are 1–20 active keys or member UUIDs/$me. Dates are YYYY-MM-DD, MONEY uses decimal strings, ranges use {from,to}, none omits value. Relative: ' +
+    RELATIVE_DATE_PRESETS.join('|') +
+    '.',
+  '$owner uses OWNER. $followUp uses FOLLOW_UP, optionally {assignee:"$me"|"any"}; defaults to own OPEN follow-ups due through today. Legacy flat filters such as {"stage":["lost"]} are also accepted.',
+].join(' ');
 
 export const searchRecordsInput = z
   .object({
     objectCode: z.string().min(1).max(64),
+    viewId: z.uuid().optional(),
     query: z.string().optional(),
     filters: z
       .record(z.string().max(64), z.unknown())
@@ -40,6 +57,7 @@ export function createSearchRecordsTool(
         page: parsed.page,
         limit: parsed.limit,
         search: parsed.query,
+        ...(parsed.viewId ? { viewId: parsed.viewId } : {}),
         filters: parsed.filters ? JSON.stringify(parsed.filters) : undefined,
         sort: parsed.sort,
         direction: parsed.direction,

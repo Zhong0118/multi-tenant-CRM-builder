@@ -86,10 +86,21 @@ export function ResizableHeaderCell({
       data-resizing={dragging ? "true" : undefined}
     >
       {children}
-      {/* A pointer affordance only: it stays out of the header's accessible
-          name, which assistive technology reads as the column's label. */}
       <span
-        aria-hidden
+        role="separator"
+        aria-orientation="vertical"
+        tabIndex={0}
+        aria-label={resizeLabel ?? "调整列宽"}
+        aria-valuemin={minWidth}
+        aria-valuemax={maxWidth}
+        aria-valuenow={width}
+        onKeyDown={(event) => {
+          if (!["ArrowLeft", "ArrowRight", "Home"].includes(event.key)) return;
+          event.stopPropagation();
+          event.preventDefault();
+          if (event.key === "Home") onResizeReset?.();
+          else commit(width + (event.key === "ArrowRight" ? 8 : -8));
+        }}
         title={resizeLabel ?? "拖动调整列宽，双击恢复"}
         className={styles.columnResizer}
         onClick={(event) => event.stopPropagation()}

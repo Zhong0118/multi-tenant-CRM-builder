@@ -15,9 +15,10 @@ it("preserves an unsaved communication draft when a background refresh fails and
   const record = { id: "r1", title: "客户甲", recordNo: "1" } as RecordSummary;
   const schema = {
     object: { code: "customers" },
+    fields: [],
     actions: { canUpdate: true },
     scopes: { update: "ALL" },
-  } as RuntimeObjectSchema;
+  } as unknown as RuntimeObjectSchema;
   const detail = vi.fn().mockResolvedValue(record);
   const api = {
     detail,

@@ -864,3 +864,17 @@ describe('single target atomic confirmation', () => {
     expect(followUpCommands.createFollowUpCommand).not.toHaveBeenCalled();
   });
 });
+
+describe('record draft item execution', () => {
+  it('denies a missing or foreign draft before preparing a proposal', async () => {
+    const { service, tx } = setup();
+    tx.$queryRaw.mockResolvedValueOnce([]);
+    await expect(
+      service.executeDraftItem(
+        context,
+        { draftId: id, itemKey: 'note', candidate: note, requestText: '原话' },
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'AI_TURN_NOT_FOUND' });
+  });
+});

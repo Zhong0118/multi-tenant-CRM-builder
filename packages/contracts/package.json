@@ -11,7 +11,7 @@
     "build": "tsc -p tsconfig.json",
     "generate": "node scripts/generate.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "node --test ../architecture-contract.test.mjs contract-drift.test.mjs"
+    "test": "node --test ../architecture-contract.test.mjs contract-drift.test.mjs record-filter.test.mjs"
   },
   "devDependencies": {
     "openapi-typescript": "^7.13.0"

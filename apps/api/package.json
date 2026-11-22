@@ -16,7 +16,7 @@
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
     "openapi:generate": "NODE_ENV=test DEV_VERIFICATION_CODE=000000 ts-node src/scripts/generate-openapi.ts",
     "typecheck": "tsc --noEmit",
-    "test": "jest",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",

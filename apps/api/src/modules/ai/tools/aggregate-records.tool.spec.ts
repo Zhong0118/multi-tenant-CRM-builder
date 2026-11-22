@@ -10,6 +10,18 @@ import {
 import { createAggregateRecordsTool } from './aggregate-records.tool';
 
 describe('aggregate_records', () => {
+  it('describes the v1 rule and accepts a view UUID without an actor override', () => {
+    const tool = createAggregateRecordsTool({} as RecordsService, employee);
+    expect(tool.description).toContain('dueThroughToday');
+    expect(
+      tool.inputSchema.safeParse({
+        objectCode: 'leads',
+        aggregation: 'COUNT',
+        viewId: '10000000-0000-4000-8000-000000000009',
+      }).success,
+    ).toBe(true);
+  });
+
   it('lets a model correct a scalar option filter without weakening actual service validation', async () => {
     const { records, store, publishedRepository } = recordToolFixture();
     const schema = publishedRepository.record

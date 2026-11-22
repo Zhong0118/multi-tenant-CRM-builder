@@ -13,6 +13,7 @@ export const SYSTEM_COLUMN_KEYS = [
   "systemOwner",
   "poolStatus",
   "latestActivity",
+  "nextFollowUpAt",
   "updatedAt",
 ] as const;
 
@@ -24,6 +25,7 @@ export const SYSTEM_COLUMN_LABELS: Record<SystemColumnKey, string> = {
   systemOwner: "负责人",
   poolStatus: "归属状态",
   latestActivity: "最近沟通",
+  nextFollowUpAt: "下次跟进",
   updatedAt: "最近更新",
 };
 
@@ -69,7 +71,15 @@ export function defaultColumnOrder(
   return [
     ...(present("recordNo") ? [systemColumnId("recordNo")] : []),
     ...fieldKeys,
-    ...(["systemOwner", "poolStatus", "latestActivity", "updatedAt"] as const)
+    ...(
+      [
+        "systemOwner",
+        "poolStatus",
+        "latestActivity",
+        "nextFollowUpAt",
+        "updatedAt",
+      ] as const
+    )
       .filter(present)
       .map(systemColumnId),
   ];

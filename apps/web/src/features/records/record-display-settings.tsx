@@ -63,6 +63,11 @@ const OPTIONAL_SYSTEM = [
     aria: "显示最近沟通",
   },
   {
+    id: systemColumnId("nextFollowUpAt"),
+    preference: "nextFollowUpVisible",
+    aria: "显示下次跟进",
+  },
+  {
     id: systemColumnId("updatedAt"),
     preference: "updatedAtVisible",
     aria: "显示最近更新",

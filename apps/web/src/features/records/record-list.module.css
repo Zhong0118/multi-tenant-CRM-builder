@@ -585,7 +585,18 @@ th[data-resizing="true"] .columnResizer::after {
     border-radius: var(--radius-panel) var(--radius-panel) 0 0;
   }
 
-  .viewRow,
+  .viewRow {
+    align-items: center;
+    gap: 5px;
+  }
+  .viewRow > .rowStart {
+    flex: 0 1 auto;
+  }
+  .viewRow > .rowEnd {
+    flex: 1;
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
   .conditionRow {
     flex-direction: column;
     align-items: stretch;
@@ -637,6 +648,22 @@ th[data-resizing="true"] .columnResizer::after {
     flex-wrap: wrap;
     justify-content: flex-end;
     width: 100%;
+  }
+}
+
+@media (max-width: 575px) {
+  .viewRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .viewRow .desktopOnly:global(.ant-btn) {
+    width: 32px;
+    padding-inline: 0;
+  }
+
+  .viewRow .desktopOnly > span:not(:global(.ant-btn-icon)) {
+    display: none;
   }
 }
 

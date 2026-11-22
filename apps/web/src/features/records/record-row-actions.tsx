@@ -19,6 +19,7 @@ export interface RecordRowActionsProps extends Omit<OwnershipProps, "toast"> {
   editBlockedReason: string;
   canDelete: boolean;
   deleting: boolean;
+  onCommunicate?: () => void;
   onView: () => void;
   onActivity?: () => void;
   onEdit: () => void;
@@ -36,6 +37,7 @@ export function RecordRowActions({
   editBlockedReason,
   canDelete,
   deleting,
+  onCommunicate,
   onView,
   onActivity,
   onEdit,
@@ -51,6 +53,15 @@ export function RecordRowActions({
     { key: "view", label: "查看", onClick: onView },
     ...(onActivity
       ? [{ key: "activity", label: "查看动态", onClick: onActivity }]
+      : []),
+    ...(onCommunicate
+      ? [
+          {
+            key: "communication",
+            label: "整理本次沟通",
+            onClick: onCommunicate,
+          },
+        ]
       : []),
     {
       key: "edit",

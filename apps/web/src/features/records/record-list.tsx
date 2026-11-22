@@ -1,5 +1,16 @@
 "use client";
 
+import { utcIsoToDatetimeLocal } from "@/features/dashboard/dashboard-timezone";
+import { legacyFiltersToRule, type FilterRule } from "@crm/contracts";
+import { CommunicationDraftDialog } from "./communication-draft";
+import { RecordColumnHeader } from "./record-column-header";
+import { RecordFilterPanel, RecordFilterChips } from "./record-filter-panel";
+import { RecordViewPicker } from "./record-views";
+import {
+  useRecordViews,
+  type RecordView,
+  type RecordViewDraft,
+} from "./record-view-api";
 import { canTransfer } from "@/features/objects/record-transfer-permissions";
 import {
   CloseOutlined,
@@ -33,13 +44,7 @@ import type { MenuProps, TableProps } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useRouter } from "next/navigation";
 import type React from "react";
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { ObjectIcon } from "@/components/navigation/object-icon";
@@ -55,6 +60,7 @@ import { toApiError } from "@/lib/api/api-error";
 
 import type { DynamicFieldMember } from "./dynamic-field";
 import {
+  canEditRecord,
   canEditRecordFields,
   queryFields,
   recordFields,
@@ -85,7 +91,10 @@ import {
   type SystemColumnKey,
 } from "./record-column-order";
 import { resolveRecordColumnKeys } from "./record-columns";
-import { useRecordDisplayPrefs } from "./record-display-prefs";
+import {
+  useRecordDisplayPrefs,
+  type RecordDisplayPrefs,
+} from "./record-display-prefs";
 import { RecordDisplaySettings } from "./record-display-settings";
 import {
   displayValue,
@@ -94,6 +103,7 @@ import {
 } from "./record-display-value";
 import {
   describeFilter,
+  quickFilterValues,
   DateQuickFilter,
   isDateFilterField,
   filterableFields,
@@ -111,6 +121,7 @@ import {
 } from "./record-pool-types";
 import {
   DEFAULT_RECORD_QUERY,
+  isPristineRecordQuery,
   recordQuerySearch,
   restrictRecordQuery,
   withFilter,
@@ -123,7 +134,7 @@ import {
 } from "./record-communication-drawer";
 import { RecordRowActions } from "./record-row-actions";
 import { ResizableHeaderCell } from "./resizable-columns";
-import { SavedRecordFilters } from "./saved-record-filters";
+
 import rl from "./record-list.module.css";
 import styles from "./records.module.css";
 import { memberSelectOptions } from "@/components/identity/member-identity";
@@ -167,7 +178,7 @@ export function RecordList({
 }: RecordListProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const query = restrictRecordQuery(requestedQuery, schema);
+  const route = restrictRecordQuery(requestedQuery, schema);
   const objectCode = schema.object.code;
   const listPath = `/workspace/${tenantCode}/objects/${objectCode}`;
   const queryDefaults: RecordQuery = {
@@ -176,6 +187,42 @@ export function RecordList({
     direction: schema.defaultView.sort.direction,
   };
   const go = navigate ?? ((path: string) => router.replace(path));
+  const viewQuery = useRecordViews(tenantCode, objectCode, currentMemberId);
+  const views = viewQuery.data ?? [];
+  const baseId = route.viewId ?? route.baseViewId;
+  const activeView = baseId
+    ? views.find((v) => v.id === baseId)
+    : views.find((v) => v.code === "all");
+  const pristine = isPristineRecordQuery(route, schema.defaultView.sort);
+  const useDefaultView = pristine && Boolean(activeView?.available);
+  const cleanView =
+    (route.viewId || useDefaultView) && activeView?.available
+      ? activeView
+      : undefined;
+  const request = useDefaultView ? { ...route, viewId: activeView!.id } : route;
+  const query: RecordQuery = cleanView
+    ? restrictRecordQuery(
+        {
+          ...route,
+          ...cleanView.queryOptions,
+          filterRule: cleanView.filterRule,
+          sort: cleanView.sort?.field ?? route.sort,
+          direction: cleanView.sort?.direction ?? route.direction,
+        },
+        schema,
+      )
+    : route;
+  const [layoutEdit, setLayoutEdit] = useState<{
+    viewId: string;
+    prefs: Partial<RecordDisplayPrefs>;
+  }>();
+  const layoutDraft =
+    layoutEdit && activeView?.id === layoutEdit.viewId
+      ? layoutEdit.prefs
+      : undefined;
+  const [editIndex, setEditIndex] = useState<number | null>(null);
+  const [communicationRecord, setCommunicationRecord] =
+    useState<RecordSummary>();
   const [error, setError] = useState<string>();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [columnsOpen, setColumnsOpen] = useState(false);
@@ -202,25 +249,123 @@ export function RecordList({
     currentMemberId,
     objectCode,
   );
-  const columnFieldKeys = useMemo(
-    () => resolveRecordColumnKeys(schema, display.prefs.columns),
-    [schema, display.prefs.columns],
+  const namedLayout = Boolean(
+    activeView?.available && activeView.code !== "all",
   );
+  const storedColumns = activeView?.available
+    ? activeView.columnFieldKeys
+    : undefined;
+  const useViewColumns = Boolean(
+    storedColumns && (namedLayout || !display.prefs.columns.length),
+  );
+  const storedOrder = storedColumns?.map((key) => {
+    if (key === "ownerMemberId") return "system:systemOwner";
+    return [
+      "updatedAt",
+      "nextFollowUpAt",
+      "recordNo",
+      "latestActivity",
+      "poolStatus",
+    ].includes(key)
+      ? "system:" + key
+      : key;
+  });
+  const viewWidths = { ...activeView?.columnWidths };
+  if (viewWidths.ownerMemberId !== undefined) {
+    viewWidths.systemOwner = viewWidths.ownerMemberId;
+    delete viewWidths.ownerMemberId;
+  }
+  const prefs = {
+    ...display.prefs,
+    columns:
+      useViewColumns && storedColumns ? storedColumns : display.prefs.columns,
+    order:
+      (namedLayout || !display.prefs.order.length ? storedOrder : undefined) ??
+      display.prefs.order,
+    activityVisible: namedLayout
+      ? storedColumns?.includes("latestActivity") === true
+      : display.prefs.activityVisible,
+    ownerVisible: namedLayout
+      ? storedColumns?.includes("ownerMemberId") === true
+      : display.prefs.ownerVisible,
+    updatedAtVisible: namedLayout
+      ? storedColumns?.includes("updatedAt") === true
+      : display.prefs.updatedAtVisible,
+    nextFollowUpVisible:
+      (namedLayout ? undefined : display.prefs.nextFollowUpVisible) ??
+      storedColumns?.includes("nextFollowUpAt") ??
+      false,
+    widths: namedLayout
+      ? { ...display.prefs.widths, ...viewWidths }
+      : { ...viewWidths, ...display.prefs.widths },
+    ...layoutDraft,
+  };
+  const { columns: preferredColumns } = prefs;
+  const columnFieldKeys = namedLayout
+    ? preferredColumns.filter((key) =>
+        visibleFields(schema).some((field) => field.fieldKey === key),
+      )
+    : resolveRecordColumnKeys(schema, preferredColumns);
 
+  let rule = query.filterRule;
+  if (!rule) {
+    try {
+      rule = legacyFiltersToRule(query.filters, queryFields(schema));
+    } catch {
+      /* The explicit legacy query continues to use the original record endpoint. */
+    }
+  }
+  const emptyRule: FilterRule = { version: 1, match: "all", conditions: [] };
+  const activeRule = rule ?? emptyRule;
+  const dirty = Boolean(
+    layoutDraft ||
+    route.baseViewId ||
+    (!cleanView &&
+      (route.search ||
+        route.scope ||
+        route.poolStage ||
+        route.poolQuality ||
+        route.ownerMemberId ||
+        rule?.conditions.length ||
+        route.sort !== queryDefaults.sort ||
+        route.direction !== queryDefaults.direction)),
+  );
+  const baseBlocked = Boolean(
+    (baseId && !activeView?.available) ||
+    (pristine && activeView && !activeView.available),
+  );
+  const viewReady = !baseBlocked && Boolean(rule);
+  const filterProps = {
+    schema,
+    members,
+    isAdmin: canFilterByOwner,
+    rule: activeRule,
+    editIndex,
+    onEditIndex: setEditIndex,
+    onApply: (filterRule: FilterRule) =>
+      apply({ ...query, filters: {}, filterRule, page: 1 }),
+  };
   const records = useQuery({
-    queryKey: ["workspace", tenantCode, "records", objectCode, query],
-    queryFn: () => api.list(tenantCode, objectCode, query),
+    queryKey: ["workspace", tenantCode, "records", objectCode, request],
+    queryFn: () => api.list(tenantCode, objectCode, request),
     enabled:
-      (query.scope !== "pool" &&
+      viewReady &&
+      ((query.scope !== "pool" &&
         query.poolStage !== "LEAD_POOL" &&
         query.poolStage !== "CUSTOMER_POOL") ||
-      poolConfig?.enabled !== false,
-    initialData: initialPage,
+        poolConfig?.enabled !== false),
+    initialData: baseBlocked || useDefaultView ? undefined : initialPage,
     staleTime: 0,
   });
   const exporting = useMutation({
     mutationFn: () =>
       api.export(tenantCode, objectCode, {
+        ...(request.viewId &&
+          !layoutDraft &&
+          (namedLayout || !display.prefs.columns.length) && {
+            viewId: request.viewId,
+          }),
+        ...(query.filterRule && { filterRule: query.filterRule }),
         search: query.search,
         scope: query.scope,
         poolStage: query.poolStage,
@@ -254,7 +399,28 @@ export function RecordList({
 
   // Any other navigation (sort, filter, page) drops a search still being typed.
   const [navigation, setNavigation] = useState(0);
+  function selectView(view: RecordView | undefined) {
+    setLayoutEdit(undefined);
+    setEditIndex(null);
+    navigateQuery({ ...queryDefaults, limit: route.limit, viewId: view?.id });
+  }
   function apply(next: RecordQuery, fromSearch = false) {
+    if (!viewReady) return;
+    navigateQuery(
+      {
+        ...next,
+        viewId: undefined,
+        ...(activeView && {
+          baseViewId: activeView.id,
+          filterRule:
+            next.filterRule ??
+            legacyFiltersToRule(next.filters, queryFields(schema)),
+        }),
+      },
+      fromSearch,
+    );
+  }
+  function navigateQuery(next: RecordQuery, fromSearch = false) {
     if (!fromSearch) setNavigation((count) => count + 1);
     const search = recordQuerySearch(
       restrictRecordQuery(next, schema),
@@ -270,17 +436,49 @@ export function RecordList({
     const filters = { ...query.filters };
     if (value === undefined) delete filters[fieldKey];
     else filters[fieldKey] = value;
-    apply(withFilter(query, { filters }));
+    if (query.filterRule) {
+      if (!quickFilterValues(query, fieldKey)) return;
+      const others = query.filterRule.conditions.filter(
+        (term) => !("fieldKey" in term && term.fieldKey === fieldKey),
+      );
+      const addition =
+        value === undefined
+          ? []
+          : legacyFiltersToRule({ [fieldKey]: value }, queryFields(schema))
+              .conditions;
+      apply({
+        ...query,
+        filters: {},
+        page: 1,
+        filterRule: {
+          version: 1,
+          match: "all",
+          conditions: [...others, ...addition],
+        },
+      });
+    } else apply(withFilter(query, { filters }));
   }
 
   function recordPath(recordId: string, mode?: "edit") {
-    const params = new URLSearchParams(recordQuerySearch(query, queryDefaults));
+    const params = new URLSearchParams(recordQuerySearch(route, queryDefaults));
     if (mode) params.set("mode", mode);
     const search = params.toString();
     return `${listPath}/${recordId}${search ? `?${search}` : ""}`;
   }
 
-  const page = records.data ?? initialPage;
+  const noRows = { ...initialPage, total: 0, items: [] };
+  const page =
+    !viewReady || records.isError
+      ? noRows
+      : (records.data ?? (useDefaultView ? noRows : initialPage));
+  function nextContact(value?: string | null) {
+    if (!value) return "—";
+    return page.timeZone
+      ? utcIsoToDatetimeLocal(value, page.timeZone)
+          .slice(0, 16)
+          .replace("T", " ")
+      : formatDateTime(value);
+  }
   const [activityRecord, setActivityRecord] = useState<RecordSummary>();
   // The phone cards repeat every row and a desktop never shows them, so they
   // are only built on a narrow screen, after hydration. Until then a phone
@@ -301,8 +499,8 @@ export function RecordList({
   const currentSelectedRowKeys = selectedRecords.map((item) => item.id);
   const owned = schema.scopes.read === "OWN";
   const groupRead = schema.scopes.read === "GROUP";
-  const showOwner = !owned && display.prefs.ownerVisible;
-  const visibleColumns = resolveRecordColumnKeys(schema, columnFieldKeys)
+  const showOwner = prefs.ownerVisible && (!owned || namedLayout);
+  const visibleColumns = columnFieldKeys
     .map((fieldKey) =>
       schema.fields.find((field) => field.fieldKey === fieldKey),
     )
@@ -343,13 +541,14 @@ export function RecordList({
   }
   const columnWidth = (key: string) => {
     const bounds = columnBounds[key];
-    return clampToBounds(display.prefs.widths[key] ?? bounds.width, bounds);
+    return clampToBounds(prefs.widths[key] ?? bounds.width, bounds);
   };
   const columnDensity = (key: string) =>
-    display.prefs.columnDensity[key] ?? display.prefs.density;
+    prefs.columnDensity[key] ?? prefs.density;
 
   const fieldColumn = (field: PublishedFieldView): RecordColumn => {
-    const sortable = canQueryField(field.fieldKey) &&
+    const sortable =
+      canQueryField(field.fieldKey) &&
       (SORTABLE_FIELD_TYPES as readonly string[]).includes(field.type);
     const sortOrder: "ascend" | "descend" | null =
       sortable && query.sort === field.fieldKey
@@ -360,7 +559,7 @@ export function RecordList({
     const width = columnWidth(field.fieldKey);
     const density = columnDensity(field.fieldKey);
     return {
-      title: field.label,
+      title: <RecordColumnHeader label={field.label} type={field.type} />,
       key: field.fieldKey,
       width,
       align:
@@ -442,6 +641,19 @@ export function RecordList({
           <RecordPoolStatus record={row} config={poolConfig} compact />
         ) : null,
     },
+    nextFollowUpAt: {
+      key: "nextFollowUpAt",
+      title: "下次跟进",
+      width: columnWidth("nextFollowUpAt"),
+      sorter: true,
+      sortOrder:
+        query.sort === "nextFollowUpAt"
+          ? query.direction === "asc"
+            ? "ascend"
+            : "descend"
+          : null,
+      render: (_, row) => nextContact(row.nextFollowUpAt),
+    },
     latestActivity: {
       title: "最近沟通",
       key: "latestActivity",
@@ -475,23 +687,26 @@ export function RecordList({
     "recordNo",
     ...(showOwner ? (["systemOwner"] as const) : []),
     ...(poolConfig?.enabled ? (["poolStatus"] as const) : []),
-    ...(display.prefs.activityVisible ? (["latestActivity"] as const) : []),
-    ...(display.prefs.updatedAtVisible ? (["updatedAt"] as const) : []),
+    ...(prefs.nextFollowUpVisible ? (["nextFollowUpAt"] as const) : []),
+    ...(prefs.activityVisible ? (["latestActivity"] as const) : []),
+    ...(prefs.updatedAtVisible ? (["updatedAt"] as const) : []),
   ];
   const columnOrder = resolveColumnOrder(
-    display.prefs.order,
+    prefs.order,
     visibleColumns.map((field) => field.fieldKey),
     shownSystemColumns,
   );
   // The selection checkbox (antd puts it first) and the row menu stay at the
   // two ends whatever the member's order.
   const columns: ColumnsType<RecordSummary> = [
-    ...columnOrder.map((id) => {
-      const system = systemColumnKey(id);
-      if (system) return systemColumns[system];
-      const field = visibleColumns.find((item) => item.fieldKey === id);
-      return field ? fieldColumn(field) : null;
-    }).filter((column): column is RecordColumn => column !== null),
+    ...columnOrder
+      .map((id) => {
+        const system = systemColumnKey(id);
+        if (system) return systemColumns[system];
+        const field = visibleColumns.find((item) => item.fieldKey === id);
+        return field ? fieldColumn(field) : null;
+      })
+      .filter((column): column is RecordColumn => column !== null),
     {
       // The header is read by assistive technology only; the menu button is self-explanatory.
       title: <span className={styles.visuallyHidden}>操作</span>,
@@ -525,10 +740,12 @@ export function RecordList({
     const sortableColumns = new Set([
       "recordNo",
       "updatedAt",
+      "nextFollowUpAt",
       ...visibleColumns
-        .filter((field) =>
-          canQueryField(field.fieldKey) &&
-          (SORTABLE_FIELD_TYPES as readonly string[]).includes(field.type),
+        .filter(
+          (field) =>
+            canQueryField(field.fieldKey) &&
+            (SORTABLE_FIELD_TYPES as readonly string[]).includes(field.type),
         )
         .map((field) => field.fieldKey),
     ]);
@@ -542,42 +759,45 @@ export function RecordList({
   };
 
   const filtered = Boolean(
+    query.filterRule?.conditions.length ||
     query.search ||
     query.ownerMemberId ||
     query.poolQuality ||
     Object.keys(query.filters).length > 0,
   );
 
-  const emptyState = records.isError ? null : (
-    <Empty
-      description={
-        filtered
-          ? "当前筛选条件没有匹配的记录。"
-          : query.scope === "pool"
-            ? "公共池暂无记录，可由负责人释放或管理员移入"
-            : schema.actions.canCreate
-              ? "还没有记录，新建第一条。"
-              : "还没有记录。"
-      }
-    >
-      {filtered ? (
-        <Button
-          onClick={() =>
-            apply({
-              ...query,
-              page: 1,
-              search: undefined,
-              ownerMemberId: undefined,
-              poolQuality: undefined,
-              filters: {},
-            })
-          }
-        >
-          清除条件
-        </Button>
-      ) : null}
-    </Empty>
-  );
+  const emptyState =
+    !viewReady || records.isError ? null : (
+      <Empty
+        description={
+          filtered
+            ? "当前筛选条件没有匹配的记录。"
+            : query.scope === "pool"
+              ? "公共池暂无记录，可由负责人释放或管理员移入"
+              : schema.actions.canCreate
+                ? "还没有记录，新建第一条。"
+                : "还没有记录。"
+        }
+      >
+        {filtered ? (
+          <Button
+            onClick={() =>
+              apply({
+                ...query,
+                page: 1,
+                search: undefined,
+                ownerMemberId: undefined,
+                poolQuality: undefined,
+                filterRule: query.filterRule ? emptyRule : undefined,
+                filters: {},
+              })
+            }
+          >
+            清除条件
+          </Button>
+        ) : null}
+      </Empty>
+    );
 
   function rowMenu(row: RecordSummary) {
     return (
@@ -589,6 +809,11 @@ export function RecordList({
         canDelete={schema.actions.canDelete}
         deleting={remove.isPending && remove.variables?.id === row.id}
         onView={() => go(recordPath(row.id))}
+        onCommunicate={
+          canEditRecord(schema, row, currentMemberId, canFilterByOwner)
+            ? () => setCommunicationRecord(row)
+            : undefined
+        }
         onActivity={
           row.latestActivity !== undefined
             ? () => setActivityRecord(row)
@@ -612,7 +837,15 @@ export function RecordList({
     );
   }
 
-  const quickFilterFields = optionFilterFields.slice(0, 3);
+  const shortcuts = new Map(
+    queryableFields.map((field) => [
+      field.fieldKey,
+      quickFilterValues(query, field.fieldKey),
+    ]),
+  );
+  const quickFilterFields = optionFilterFields
+    .filter((field) => shortcuts.get(field.fieldKey))
+    .slice(0, 3);
   const conditionFields = filterableFields(
     queryableFields,
     schema.object.titleFieldKey,
@@ -621,8 +854,12 @@ export function RecordList({
     conditionFields.find(
       (field) =>
         field.fieldKey === schema.defaultView.sort.field &&
-        isDateFilterField(field),
-    ) ?? conditionFields.find(isDateFilterField);
+        isDateFilterField(field) &&
+        shortcuts.get(field.fieldKey),
+    ) ??
+    conditionFields.find(
+      (field) => isDateFilterField(field) && shortcuts.get(field.fieldKey),
+    );
   const chipFilterKeys = Object.keys(query.filters).filter(
     (key) =>
       key !== dateQuickField?.fieldKey &&
@@ -630,11 +867,15 @@ export function RecordList({
   );
   const conditionCount = Object.keys(query.filters).length;
   const anyCondition = Boolean(
-    conditionCount || query.ownerMemberId || query.poolQuality,
+    conditionCount ||
+    query.filterRule?.conditions.length ||
+    query.ownerMemberId ||
+    query.poolQuality,
   );
   const clearConditions = () =>
     apply({
       ...withFilter(query, { filters: {}, ownerMemberId: undefined }),
+      filterRule: query.filterRule ? emptyRule : undefined,
       poolQuality: undefined,
     });
   const selectedCount = currentSelectedRowKeys.length;
@@ -645,13 +886,60 @@ export function RecordList({
     key in SYSTEM_COLUMN_LABELS
       ? SYSTEM_COLUMN_LABELS[key as SystemColumnKey]
       : (schema.fields.find((field) => field.fieldKey === key)?.label ?? key);
-  const setColumnWidth = (key: string, width: number | undefined) =>
-    display.update((current) => {
-      const widths = { ...current.widths };
-      if (width === undefined) delete widths[key];
-      else widths[key] = width;
-      return { widths };
-    });
+  function changeDisplay(change: Partial<RecordDisplayPrefs>) {
+    if (
+      activeView?.available &&
+      ("columns" in change ||
+        "order" in change ||
+        "widths" in change ||
+        "ownerVisible" in change ||
+        "activityVisible" in change ||
+        "nextFollowUpVisible" in change ||
+        "updatedAtVisible" in change)
+    ) {
+      setLayoutEdit({
+        viewId: activeView.id,
+        prefs: { ...layoutDraft, ...change },
+      });
+      if (namedLayout) return;
+    }
+    display.update(change);
+  }
+  function setColumnWidth(key: string, width: number | undefined) {
+    const widths = { ...prefs.widths };
+    if (width === undefined) delete widths[key];
+    else widths[key] = width;
+    changeDisplay({ widths });
+  }
+  const viewColumn = (id: string) => {
+    const system = systemColumnKey(id);
+    if (!system) return id;
+    if (system === "systemOwner") return "ownerMemberId";
+    return system;
+  };
+  const viewColumns = columnOrder
+    .map(viewColumn)
+    .filter((key): key is string => Boolean(key));
+  const draft: RecordViewDraft = {
+    filterRule: activeRule,
+    queryOptions: {
+      search: query.search,
+      scope: query.scope,
+      poolStage: query.poolStage,
+      poolQuality: query.poolQuality,
+      ownerMemberId: query.ownerMemberId,
+    },
+    sort: { field: query.sort, direction: query.direction },
+    columnFieldKeys: viewColumns,
+    columnWidths: Object.fromEntries(
+      Object.entries(prefs.widths).flatMap(([key, width]) => {
+        const stored = key === "systemOwner" ? "ownerMemberId" : key;
+        return viewColumns.includes(stored)
+          ? [[stored, Math.max(88, Math.min(640, width))]]
+          : [];
+      }),
+    ),
+  };
   const resizableColumns: ColumnsType<RecordSummary> = columns.map((column) => {
     const key = String(column.key);
     const bounds = columnBounds[key];
@@ -662,9 +950,10 @@ export function RecordList({
       ...column,
       onHeaderCell: () =>
         ({
+          "aria-label": columnLabel(key),
           width,
-          minWidth: bounds.min,
-          maxWidth: bounds.max,
+          minWidth: activeView ? Math.max(88, bounds.min) : bounds.min,
+          maxWidth: activeView ? Math.min(640, bounds.max) : bounds.max,
           resizeLabel: `拖动调整「${columnLabel(key)}」列宽，双击恢复`,
           onResize: (next: number) => setColumnWidth(key, next),
           onResizeReset: () => setColumnWidth(key, undefined),
@@ -722,10 +1011,10 @@ export function RecordList({
     <RecordDisplaySettings
       fields={choosableFields}
       order={columnOrder}
-      prefs={display.prefs}
-      ownerChoice={!owned}
+      prefs={prefs}
+      ownerChoice={!owned || namedLayout}
       onChange={(change) =>
-        display.update(
+        changeDisplay(
           change.columns
             ? {
                 ...change,
@@ -734,13 +1023,39 @@ export function RecordList({
             : change,
         )
       }
-      onReset={display.reset}
+      onReset={() => {
+        setLayoutEdit(undefined);
+        display.reset();
+      }}
     />
   );
 
   return (
     <CellReaderProvider>
       <div className={rl.page}>
+        {!rule || (baseBlocked && !viewQuery.isPending) ? (
+          <Alert
+            type="warning"
+            title="该视图条件不可用"
+            action={
+              <Button onClick={() => selectView(undefined)}>
+                返回全部记录
+              </Button>
+            }
+          />
+        ) : null}
+        {communicationRecord && (
+          <CommunicationDraftDialog
+            key={communicationRecord.id}
+            tenantCode={tenantCode}
+            objectCode={objectCode}
+            recordId={communicationRecord.id}
+            recordTitle={communicationRecord.title}
+            fields={recordFields(schema, communicationRecord)}
+            members={members}
+            onClose={() => setCommunicationRecord(undefined)}
+          />
+        )}
         {activityRecord ? (
           <RecordCommunicationDrawer
             key={activityRecord.id}
@@ -801,131 +1116,138 @@ export function RecordList({
           }
         />
 
+        {poolConfig?.enabled ? (
+          <Segmented
+            className={rl.scope}
+            aria-label="记录范围"
+            value={
+              poolConfig.lifecycleEnabled
+                ? (query.poolStage ?? "all")
+                : (query.scope ??
+                  (owned ? "mine" : groupRead ? "group" : "all"))
+            }
+            onChange={(value) => {
+              const view = String(value);
+              if (!poolConfig.lifecycleEnabled)
+                return apply({
+                  ...query,
+                  scope: view as RecordQuery["scope"],
+                  poolStage: undefined,
+                  page: 1,
+                  ownerMemberId: undefined,
+                });
+              const privateStage = [
+                "PENDING_CONTACT",
+                "FOLLOWING",
+                "PROTECTED",
+              ].includes(view);
+              const publicStage =
+                view === "LEAD_POOL" || view === "CUSTOMER_POOL";
+              apply({
+                ...query,
+                poolStage:
+                  view === "all" ? undefined : (view as PoolStageFilter),
+                scope: groupRead
+                  ? !publicStage && query.scope === "group"
+                    ? "group"
+                    : "mine"
+                  : privateStage && !canFilterByOwner
+                    ? "mine"
+                    : undefined,
+                page: 1,
+                ownerMemberId:
+                  groupRead && !publicStage ? query.ownerMemberId : undefined,
+              });
+            }}
+            options={
+              poolConfig.lifecycleEnabled
+                ? [
+                    ...POOL_STAGES.map((stage) => ({
+                      value: stage,
+                      label: (
+                        <span className={rl.scopeLabel}>
+                          <span>
+                            {
+                              {
+                                ...DEFAULT_POOL_LABELS,
+                                ...poolConfig.labels,
+                              }[POOL_LABEL_KEYS[stage]]
+                            }
+                          </span>{" "}
+                          {records.data?.poolCounts?.[stage] !== undefined ? (
+                            <span className={rl.scopeCount}>
+                              {records.data.poolCounts[stage]}
+                            </span>
+                          ) : null}
+                        </span>
+                      ),
+                    })),
+                    {
+                      value: "LEGACY",
+                      label: (
+                        <span className={rl.scopeLabel}>
+                          <span>旧记录</span>{" "}
+                          {records.data?.poolCounts?.LEGACY !== undefined ? (
+                            <span className={rl.scopeCount}>
+                              {records.data.poolCounts.LEGACY}
+                            </span>
+                          ) : null}
+                        </span>
+                      ),
+                    },
+                    {
+                      value: "all",
+                      label:
+                        canFilterByOwner || schema.scopes.read === "ALL"
+                          ? "全部记录"
+                          : "全部可见记录",
+                    },
+                  ]
+                : [
+                    { value: "mine", label: "我的记录" },
+                    { value: "pool", label: "公共池" },
+                    ...(groupRead
+                      ? [{ value: "group", label: "本组记录" }]
+                      : []),
+                    ...(schema.scopes.read === "ALL"
+                      ? [{ value: "all", label: "全部记录" }]
+                      : []),
+                  ]
+            }
+          />
+        ) : null}
         <div className={rl.viewRow}>
           <div className={rl.rowStart}>
-            {poolConfig?.enabled ? (
-              <Segmented
-                className={rl.scope}
-                aria-label="记录范围"
-                value={
-                  poolConfig.lifecycleEnabled
-                    ? (query.poolStage ?? "all")
-                    : (query.scope ??
-                      (owned ? "mine" : groupRead ? "group" : "all"))
-                }
-                onChange={(value) => {
-                  const view = String(value);
-                  if (!poolConfig.lifecycleEnabled)
-                    return apply({
-                      ...query,
-                      scope: view as RecordQuery["scope"],
-                      poolStage: undefined,
-                      page: 1,
-                      ownerMemberId: undefined,
-                    });
-                  const privateStage = [
-                    "PENDING_CONTACT",
-                    "FOLLOWING",
-                    "PROTECTED",
-                  ].includes(view);
-                  const publicStage =
-                    view === "LEAD_POOL" || view === "CUSTOMER_POOL";
-                  apply({
-                    ...query,
-                    poolStage:
-                      view === "all" ? undefined : (view as PoolStageFilter),
-                    scope: groupRead
-                      ? !publicStage && query.scope === "group"
-                        ? "group"
-                        : "mine"
-                      : privateStage && !canFilterByOwner
-                        ? "mine"
-                        : undefined,
-                    page: 1,
-                    ownerMemberId:
-                      groupRead && !publicStage ? query.ownerMemberId : undefined,
-                  });
-                }}
-                options={
-                  poolConfig.lifecycleEnabled
-                    ? [
-                        ...POOL_STAGES.map((stage) => ({
-                          value: stage,
-                          label: (
-                            <span className={rl.scopeLabel}>
-                              <span>
-                                {
-                                  {
-                                    ...DEFAULT_POOL_LABELS,
-                                    ...poolConfig.labels,
-                                  }[POOL_LABEL_KEYS[stage]]
-                                }
-                              </span>{" "}
-                              {records.data?.poolCounts?.[stage] !==
-                              undefined ? (
-                                <span className={rl.scopeCount}>
-                                  {records.data.poolCounts[stage]}
-                                </span>
-                              ) : null}
-                            </span>
-                          ),
-                        })),
-                        {
-                          value: "LEGACY",
-                          label: (
-                            <span className={rl.scopeLabel}>
-                              <span>旧记录</span>{" "}
-                              {records.data?.poolCounts?.LEGACY !==
-                              undefined ? (
-                                <span className={rl.scopeCount}>
-                                  {records.data.poolCounts.LEGACY}
-                                </span>
-                              ) : null}
-                            </span>
-                          ),
-                        },
-                        {
-                          value: "all",
-                          label:
-                            canFilterByOwner || schema.scopes.read === "ALL"
-                              ? "全部记录"
-                              : "全部可见记录",
-                        },
-                      ]
-                    : [
-                        { value: "mine", label: "我的记录" },
-                        { value: "pool", label: "公共池" },
-                        ...(groupRead
-                          ? [{ value: "group", label: "本组记录" }]
-                          : []),
-                        ...(schema.scopes.read === "ALL"
-                          ? [{ value: "all", label: "全部记录" }]
-                          : []),
-                      ]
-                }
-              />
-            ) : null}
             {currentMemberId ? (
-              <SavedRecordFilters
-                key={`${tenantCode}:${currentMemberId}:${objectCode}:views`}
+              <RecordViewPicker
                 tenantCode={tenantCode}
                 memberId={currentMemberId}
                 objectCode={objectCode}
-                query={query}
-                onApply={apply}
-                part="views"
+                schema={schema}
+                views={views}
+                current={activeView}
+                dirty={dirty}
+                draft={draft}
+                isAdmin={canFilterByOwner}
+                onSelect={selectView}
               />
             ) : null}
           </div>
           <div className={rl.rowEnd}>
             <RecordSearch
-              disabled={schema.queryFieldKeys !== undefined && searchFieldLabels.length === 0}
+              disabled={
+                schema.queryFieldKeys !== undefined &&
+                searchFieldLabels.length === 0
+              }
               label={searchLabel}
               placeholder={`搜索${schema.object.name}`}
               value={query.search ?? ""}
               resetSignal={navigation}
               onSearch={(search) => apply(withFilter(query, { search }), true)}
             />
+            {viewReady && (views.length || query.filterRule) ? (
+              <RecordFilterPanel {...filterProps} />
+            ) : null}
             <Popover
               trigger="click"
               placement="bottomRight"
@@ -1046,14 +1368,14 @@ export function RecordList({
               <OptionQuickFilter
                 key={field.fieldKey}
                 field={field}
-                filters={query.filters}
+                filters={shortcuts.get(field.fieldKey)!}
                 onChange={applyFieldFilter}
               />
             ))}
             {dateQuickField ? (
               <DateQuickFilter
                 field={dateQuickField}
-                filters={query.filters}
+                filters={shortcuts.get(dateQuickField.fieldKey)!}
                 onChange={applyFieldFilter}
               />
             ) : null}
@@ -1085,7 +1407,9 @@ export function RecordList({
                 </span>
               );
             })}
-            {conditionFields.length ? (
+            {views.length || query.filterRule ? (
+              <RecordFilterChips {...filterProps} />
+            ) : !baseBlocked && conditionFields.length ? (
               <RecordFilterPopover
                 fields={conditionFields}
                 filters={query.filters}
@@ -1117,17 +1441,6 @@ export function RecordList({
                 清除
               </Button>
             ) : null}
-            {currentMemberId ? (
-              <SavedRecordFilters
-                key={`${tenantCode}:${currentMemberId}:${objectCode}:save`}
-                tenantCode={tenantCode}
-                memberId={currentMemberId}
-                objectCode={objectCode}
-                query={query}
-                onApply={apply}
-                part="save"
-              />
-            ) : null}
           </div>
         </div>
 
@@ -1138,6 +1451,7 @@ export function RecordList({
             onChange={(sort) => apply({ ...query, sort, page: 1 })}
             options={[
               { value: "recordNo", label: "业务编号" },
+              { value: "nextFollowUpAt", label: "下次跟进" },
               { value: "createdAt", label: "创建时间" },
               { value: "updatedAt", label: "更新时间" },
               ...queryableFields
@@ -1247,6 +1561,12 @@ export function RecordList({
                       <span className={rl.cardMenu}>{rowMenu(row)}</span>
                     </div>
                     <dl className={rl.cardMeta}>
+                      {prefs.nextFollowUpVisible && (
+                        <div>
+                          <dt>下次跟进</dt>
+                          <dd>{nextContact(row.nextFollowUpAt)}</dd>
+                        </div>
+                      )}
                       <div>
                         <dt>业务编号</dt>
                         <dd className={styles.recordNo}>{row.recordNo}</dd>
@@ -1410,7 +1730,9 @@ export function RecordList({
                 value,
                 label: `${value} 条 / 页`,
               }))}
-              onChange={(limit) => apply({ ...query, limit, page: 1 })}
+              onChange={(limit) =>
+                navigateQuery({ ...request, limit, page: 1 })
+              }
             />
             <Pagination
               size="small"
@@ -1419,7 +1741,9 @@ export function RecordList({
               total={page.total}
               showSizeChanger={false}
               hideOnSinglePage={false}
-              onChange={(nextPage) => apply({ ...query, page: nextPage })}
+              onChange={(nextPage) =>
+                navigateQuery({ ...request, page: nextPage })
+              }
             />
           </div>
         </footer>

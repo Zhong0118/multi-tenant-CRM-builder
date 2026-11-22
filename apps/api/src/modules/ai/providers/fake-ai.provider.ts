@@ -1,3 +1,4 @@
+import type { CommunicationProviderInput } from '../communication-output';
 import type {
   AiProvider,
   AiProviderEvent,
@@ -24,6 +25,50 @@ export function getFakeAiProviderCapturedToolResult(): unknown {
 export class FakeAiProvider implements AiProvider {
   readonly providerKey = 'fake';
   readonly modelKey = 'fake';
+
+  generateCommunication(
+    { text, fields }: CommunicationProviderInput,
+    abortSignal: AbortSignal,
+  ): Promise<unknown> {
+    abortSignal.throwIfAborted();
+    if (text.includes('模拟服务不可用'))
+      return Promise.reject(new Error('Provider unavailable'));
+    const followUpClause = text
+      .split(/[。；;！!\n]/u)
+      .find((part) => /联系|回访|跟进|致电|拜访/u.test(part));
+    const fieldChanges = text.split(/[，,。；;！!\n]/u).flatMap((part) => {
+      const evidence = part.trim();
+      const pair = /^(.+?)[：:=]\s*(.+)$/u.exec(evidence);
+      if (!pair) return [];
+      const field = fields.find(
+        (f) => f.label === pair[1].trim() || f.fieldKey === pair[1].trim(),
+      );
+      if (!field) return [];
+      const raw = pair[2].trim();
+      const option = field.options?.find(
+        (option) => option.label === raw || option.key === raw,
+      );
+      const value = option
+        ? field.type === 'MULTI_SELECT'
+          ? [option.key]
+          : option.key
+        : field.type === 'NUMBER'
+          ? Number(raw)
+          : raw;
+      return [{ fieldKey: field.fieldKey, value, evidence }];
+    });
+    return Promise.resolve({
+      note: text.trim(),
+      followUp: followUpClause
+        ? {
+            title: '联系客户',
+            suggestedDate: null,
+            evidence: followUpClause.trim(),
+          }
+        : null,
+      fieldChanges,
+    });
+  }
 
   async *streamTurn(input: {
     messages: AiProviderMessage[];

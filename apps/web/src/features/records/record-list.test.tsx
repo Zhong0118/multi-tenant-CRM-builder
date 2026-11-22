@@ -21,7 +21,12 @@ import type {
 
 import type { RecordApi } from "./record-api";
 import { RecordList } from "./record-list";
-import { DEFAULT_RECORD_QUERY, type RecordQuery } from "./record-query-state";
+import { recordViewApi, type RecordView } from "./record-view-api";
+import {
+  DEFAULT_RECORD_QUERY,
+  parseRecordQuery,
+  type RecordQuery,
+} from "./record-query-state";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }),
@@ -1825,13 +1830,29 @@ describe("GROUP record scope controls", () => {
 
   it("selects a teammate by name, resets paging and keeps the other filters", async () => {
     const navigate = vi.fn();
-    renderList(navigate, { ...DEFAULT_RECORD_QUERY, page: 3, search: "客户", filters: { lead_status: ["new"] } }, {
-      schema: groupSchema, currentMemberId: "leader",
-      members: [{ id: "leader", displayName: "刘情" }, { id: "teammate", displayName: "钱宇" }],
-    });
-    fireEvent.mouseDown(screen.getByRole("combobox", { name: "按小组成员筛选" }));
+    renderList(
+      navigate,
+      {
+        ...DEFAULT_RECORD_QUERY,
+        page: 3,
+        search: "客户",
+        filters: { lead_status: ["new"] },
+      },
+      {
+        schema: groupSchema,
+        currentMemberId: "leader",
+        members: [
+          { id: "leader", displayName: "刘情" },
+          { id: "teammate", displayName: "钱宇" },
+        ],
+      },
+    );
+    fireEvent.mouseDown(
+      screen.getByRole("combobox", { name: "按小组成员筛选" }),
+    );
     fireEvent.click(await screen.findByText("钱宇"));
-    const params = new URL(navigate.mock.calls.at(-1)![0], "http://test").searchParams;
+    const params = new URL(navigate.mock.calls.at(-1)![0], "http://test")
+      .searchParams;
     expect(params.get("ownerMemberId")).toBe("teammate");
     expect(params.get("scope")).toBe("group");
     expect(params.has("page")).toBe(false);
@@ -1843,52 +1864,103 @@ describe("GROUP record scope controls", () => {
   it.each([
     ["刘情", "mine"],
     ["全部本组", "group"],
-  ])("switches a teammate selection to %s without retaining the previous owner", async (label, scope) => {
-    const navigate = vi.fn();
-    renderList(navigate, { ...DEFAULT_RECORD_QUERY, scope: "group", ownerMemberId: "teammate", page: 3 }, {
-      schema: groupSchema, currentMemberId: "leader",
-      members: [{ id: "leader", displayName: "刘情" }, { id: "teammate", displayName: "钱宇" }],
-    });
-    fireEvent.mouseDown(screen.getByRole("combobox", { name: "按小组成员筛选" }));
-    fireEvent.click(await screen.findByText(label, { selector: label === "全部本组" ? ".ant-select-item-option-content" : ".ant-select-item-option-content *" }));
-    const params = new URL(navigate.mock.calls.at(-1)![0], "http://test").searchParams;
-    expect(params.get("scope")).toBe(scope);
-    expect(params.has("ownerMemberId")).toBe(false);
-    expect(params.has("page")).toBe(false);
-  });
+  ])(
+    "switches a teammate selection to %s without retaining the previous owner",
+    async (label, scope) => {
+      const navigate = vi.fn();
+      renderList(
+        navigate,
+        {
+          ...DEFAULT_RECORD_QUERY,
+          scope: "group",
+          ownerMemberId: "teammate",
+          page: 3,
+        },
+        {
+          schema: groupSchema,
+          currentMemberId: "leader",
+          members: [
+            { id: "leader", displayName: "刘情" },
+            { id: "teammate", displayName: "钱宇" },
+          ],
+        },
+      );
+      fireEvent.mouseDown(
+        screen.getByRole("combobox", { name: "按小组成员筛选" }),
+      );
+      fireEvent.click(
+        await screen.findByText(label, {
+          selector:
+            label === "全部本组"
+              ? ".ant-select-item-option-content"
+              : ".ant-select-item-option-content *",
+        }),
+      );
+      const params = new URL(navigate.mock.calls.at(-1)![0], "http://test")
+        .searchParams;
+      expect(params.get("scope")).toBe(scope);
+      expect(params.has("ownerMemberId")).toBe(false);
+      expect(params.has("page")).toBe(false);
+    },
+  );
 
   it("keeps a selected teammate across private stages but clears the owner in public pools", () => {
     const navigate = vi.fn();
-    renderList(navigate, { ...DEFAULT_RECORD_QUERY, scope: "group", ownerMemberId: "teammate", page: 3 }, {
-      schema: groupSchema, currentMemberId: "leader",
-      poolConfig: { ...legacyPool, lifecycleEnabled: true },
-      members: [{ id: "leader", displayName: "刘情" }, { id: "teammate", displayName: "钱宇" }],
-    });
+    renderList(
+      navigate,
+      {
+        ...DEFAULT_RECORD_QUERY,
+        scope: "group",
+        ownerMemberId: "teammate",
+        page: 3,
+      },
+      {
+        schema: groupSchema,
+        currentMemberId: "leader",
+        poolConfig: { ...legacyPool, lifecycleEnabled: true },
+        members: [
+          { id: "leader", displayName: "刘情" },
+          { id: "teammate", displayName: "钱宇" },
+        ],
+      },
+    );
     fireEvent.click(screen.getByRole("radio", { name: "跟进中" }));
-    let params = new URL(navigate.mock.calls.at(-1)![0], "http://test").searchParams;
+    let params = new URL(navigate.mock.calls.at(-1)![0], "http://test")
+      .searchParams;
     expect(params.get("ownerMemberId")).toBe("teammate");
     expect(params.get("scope")).toBe("group");
     expect(params.get("poolStage")).toBe("FOLLOWING");
     fireEvent.click(screen.getByRole("radio", { name: "初始公共池" }));
-    params = new URL(navigate.mock.calls.at(-1)![0], "http://test").searchParams;
+    params = new URL(navigate.mock.calls.at(-1)![0], "http://test")
+      .searchParams;
     expect(params.has("ownerMemberId")).toBe(false);
     expect(params.get("scope")).toBe("mine");
     expect(params.get("poolStage")).toBe("LEAD_POOL");
   });
 
   it("hides the member picker in public pool views", () => {
-    renderList(vi.fn(), { ...DEFAULT_RECORD_QUERY, poolStage: "LEAD_POOL" }, {
-      schema: groupSchema, currentMemberId: "leader",
-      members: [{ id: "leader", displayName: "刘情" }],
-      poolConfig: { ...legacyPool, lifecycleEnabled: true },
-    });
-    expect(screen.queryByRole("combobox", { name: "按小组成员筛选" })).not.toBeInTheDocument();
+    renderList(
+      vi.fn(),
+      { ...DEFAULT_RECORD_QUERY, poolStage: "LEAD_POOL" },
+      {
+        schema: groupSchema,
+        currentMemberId: "leader",
+        members: [{ id: "leader", displayName: "刘情" }],
+        poolConfig: { ...legacyPool, lifecycleEnabled: true },
+      },
+    );
+    expect(
+      screen.queryByRole("combobox", { name: "按小组成员筛选" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the authorized teammate name on GROUP records without admin owner controls", () => {
     renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
       schema: groupSchema,
-      page: { ...page, items: [{ ...page.items[0], ownerMemberId: "teammate" }] },
+      page: {
+        ...page,
+        items: [{ ...page.items[0], ownerMemberId: "teammate" }],
+      },
       members: [{ id: "teammate", displayName: "钱宇" }],
       currentMemberId: "leader",
       canFilterByOwner: false,
@@ -1912,11 +1984,10 @@ describe("GROUP record scope controls", () => {
       screen.queryByRole("radio", { name: "全部记录" }),
     ).not.toBeInTheDocument();
     await waitFor(() =>
-      expect(list).toHaveBeenCalledWith(
-        "northwind",
-        "customers",
-        { ...DEFAULT_RECORD_QUERY, scope: "mine" },
-      ),
+      expect(list).toHaveBeenCalledWith("northwind", "customers", {
+        ...DEFAULT_RECORD_QUERY,
+        scope: "mine",
+      }),
     );
   });
 
@@ -1966,11 +2037,10 @@ describe("GROUP record scope controls", () => {
     });
     expect(screen.getByRole("radio", { name: "全部可见记录" })).toBeChecked();
     await waitFor(() =>
-      expect(list).toHaveBeenCalledWith(
-        "northwind",
-        "customers",
-        { ...DEFAULT_RECORD_QUERY, scope: "mine" },
-      ),
+      expect(list).toHaveBeenCalledWith("northwind", "customers", {
+        ...DEFAULT_RECORD_QUERY,
+        scope: "mine",
+      }),
     );
     for (const [label, stage] of [
       ["待联系 3", "PENDING_CONTACT"],
@@ -2121,4 +2191,271 @@ it("opens communication without navigating away and keeps the menu entry when th
   fireEvent.click(await screen.findByRole("menuitem", { name: "查看动态" }));
   expect(await screen.findByRole("dialog")).toBeInTheDocument();
   expect(navigate).not.toHaveBeenCalled();
+});
+
+const personalView: RecordView = {
+  id: "71950000-abcd-7000-a000-000000000001",
+  code: "personal_today",
+  name: "本组今日跟进",
+  scope: "PERSONAL",
+  revision: 1,
+  available: true,
+  canEdit: true,
+  columnFieldKeys: [
+    "name",
+    "latestActivity",
+    "nextFollowUpAt",
+    "poolStatus",
+    "recordNo",
+  ],
+  columnWidths: { name: 196, latestActivity: 300, poolStatus: 243 },
+  sort: { field: "nextFollowUpAt", direction: "asc" },
+  queryOptions: {},
+  filterRule: {
+    version: 1,
+    match: "all",
+    conditions: [{ fieldKey: "$followUp", operator: "dueThroughToday" }],
+  },
+};
+it("keeps a named view authoritative for paging, sorting next contact and resizing without hiding recent communication", async () => {
+  const stub = vi
+    .spyOn(recordViewApi, "list")
+    .mockResolvedValue([personalView]);
+  try {
+    const rows = {
+      ...page,
+      timeZone: "America/Los_Angeles",
+      total: 42,
+      items: [
+        {
+          ...page.items[0],
+          nextFollowUpAt: "2026-12-14T01:00:00Z",
+          latestActivity: null,
+        },
+      ],
+    };
+    const list = vi.fn().mockResolvedValue(rows);
+    const navigate = vi.fn();
+    renderList(
+      navigate,
+      { ...DEFAULT_RECORD_QUERY, viewId: personalView.id },
+      {
+        api: { list } as unknown as RecordApi,
+        currentMemberId: "leader",
+        page: rows,
+      },
+    );
+    await screen.findByRole("columnheader", { name: "下次跟进" });
+    expect(
+      screen.getByRole("columnheader", { name: "最近沟通" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("2026-12-13 17:00").length).toBeGreaterThan(0);
+    expect(screen.getByRole("separator", { name: /最近沟通/ })).toHaveAttribute(
+      "aria-valuenow",
+      "300",
+    );
+    expect(list).toHaveBeenCalledWith(
+      "northwind",
+      "customers",
+      expect.objectContaining({ viewId: personalView.id }),
+    );
+    const resize = screen.getByRole("separator", { name: /客户名称/ });
+    expect(resize).toHaveAttribute("aria-valuenow", "196");
+    fireEvent.keyDown(resize, { key: "ArrowRight" });
+    expect(resize).toHaveAttribute("aria-valuenow", "204");
+    expect(screen.getByLabelText("切换记录视图")).toHaveAccessibleDescription(
+      "本组今日跟进，已修改",
+    );
+    fireEvent.click(screen.getByTitle("2"));
+    const paging = new URL(navigate.mock.lastCall![0], "https://crm.invalid")
+      .searchParams;
+    expect(Object.fromEntries(paging)).toEqual({
+      page: "2",
+      viewId: personalView.id,
+    });
+  } finally {
+    stub.mockRestore();
+  }
+});
+it("never displays broad initial rows or fetches them for a restricted saved view", async () => {
+  const stub = vi
+    .spyOn(recordViewApi, "list")
+    .mockResolvedValue([
+      { ...personalView, available: false, filterRule: undefined },
+    ]);
+  try {
+    const list = vi.fn();
+    renderList(
+      vi.fn(),
+      { ...DEFAULT_RECORD_QUERY, viewId: personalView.id },
+      { api: { list } as unknown as RecordApi, currentMemberId: "leader" },
+    );
+    expect(await screen.findByText("该视图条件不可用")).toBeInTheDocument();
+    expect(screen.queryByText("天际科技")).toBeNull();
+    expect(list).not.toHaveBeenCalled();
+  } finally {
+    stub.mockRestore();
+  }
+});
+it("opens a communication draft alongside existing activity history from the row menu", async () => {
+  const rows = { ...page, items: [{ ...page.items[0], latestActivity: null }] };
+  renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+    currentMemberId: "leader",
+    page: rows,
+  });
+  const row = await screen.findByRole("row", { name: /天际科技/ });
+  fireEvent.click(
+    within(row).getByRole("button", { name: "更多操作 天际科技" }),
+  );
+  expect(
+    await screen.findByRole("menuitem", { name: "查看动态" }),
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("menuitem", { name: "整理本次沟通" }));
+  expect(await screen.findByLabelText("沟通原文")).toBeInTheDocument();
+});
+
+it("saves the main recent communication and pool-status widths and order into the named view", async () => {
+  const initial = {
+    ...personalView,
+    columnFieldKeys: [
+      "name",
+      "latestActivity",
+      "poolStatus",
+      "nextFollowUpAt",
+      "recordNo",
+    ],
+  };
+  const stub = vi.spyOn(recordViewApi, "list").mockResolvedValue([initial]);
+  const update = vi
+    .spyOn(recordViewApi, "update")
+    .mockResolvedValue({ ...initial, revision: 2 });
+  try {
+    renderList(
+      vi.fn(),
+      { ...DEFAULT_RECORD_QUERY, viewId: personalView.id },
+      {
+        currentMemberId: "leader",
+        poolConfig: { enabled: true, ownershipTtlHours: null, version: 1 },
+      },
+    );
+    await screen.findByRole("columnheader", { name: "下次跟进" });
+    const historyWidth = await screen.findByRole("separator", {
+      name: /最近沟通/,
+    });
+    const poolWidth = screen.getByRole("separator", { name: /归属状态/ });
+    expect(poolWidth).toHaveAttribute("aria-valuenow", "243");
+    const headers = screen
+      .getAllByRole("columnheader")
+      .map((el) => el.getAttribute("aria-label"))
+      .filter(Boolean);
+    expect(headers.indexOf("最近沟通")).toBeLessThan(
+      headers.indexOf("归属状态"),
+    );
+    expect(headers.indexOf("归属状态")).toBeLessThan(
+      headers.indexOf("下次跟进"),
+    );
+    fireEvent.keyDown(historyWidth, { key: "ArrowRight" });
+    fireEvent.keyDown(poolWidth, { key: "ArrowLeft" });
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith(
+        "northwind",
+        "customers",
+        personalView.id,
+        expect.objectContaining({
+          columnWidths: expect.objectContaining({
+            latestActivity: 308,
+            poolStatus: 235,
+          }),
+        }),
+      ),
+    );
+    expect(update.mock.calls[0][3].columnFieldKeys).toBeUndefined(); // unchanged layout remains inherited
+  } finally {
+    stub.mockRestore();
+    update.mockRestore();
+  }
+});
+
+it("clears a named v1 rule after zero matches and refetches the broader preview", async () => {
+  const stub = vi
+    .spyOn(recordViewApi, "list")
+    .mockResolvedValue([personalView]);
+  try {
+    const noRows = { ...page, items: [], total: 0 };
+    const navigate = vi.fn();
+    const list = vi.fn().mockResolvedValue(noRows);
+    const active = renderList(
+      navigate,
+      { ...DEFAULT_RECORD_QUERY, viewId: personalView.id },
+      {
+        currentMemberId: "leader",
+        page: noRows,
+        api: { list } as unknown as RecordApi,
+      },
+    );
+    await waitFor(() => expect(list).toHaveBeenCalled());
+    expect(
+      screen.getAllByText("当前筛选条件没有匹配的记录。").length,
+    ).toBeGreaterThan(0);
+    fireEvent.click(screen.getAllByRole("button", { name: "清除条件" })[0]);
+    const preview = parseRecordQuery(
+      Object.fromEntries(
+        new URL(navigate.mock.lastCall![0], "https://crm.invalid").searchParams,
+      ),
+    );
+    expect(preview).toMatchObject({
+      page: 1,
+      baseViewId: personalView.id,
+      filterRule: { version: 1, match: "all", conditions: [] },
+    });
+    active.unmount();
+    list.mockResolvedValue(page);
+    renderList(navigate, preview, {
+      currentMemberId: "leader",
+      api: { list } as unknown as RecordApi,
+    });
+    expect(
+      await screen.findByRole("row", { name: /天际科技/ }),
+    ).toBeInTheDocument();
+  } finally {
+    stub.mockRestore();
+  }
+});
+
+it("extends the existing v1 multi-select shortcut and leaves nested rules in their group editor", async () => {
+  const navigate = vi.fn();
+  const condition = {
+    fieldKey: "lead_status",
+    operator: "in" as const,
+    value: ["following"],
+  };
+  const active = renderList(navigate, {
+    ...DEFAULT_RECORD_QUERY,
+    filterRule: { version: 1, match: "all", conditions: [condition] },
+  });
+  const picker = screen.getByRole("combobox", { name: "按线索状态筛选" });
+  fireEvent.mouseDown(picker);
+  fireEvent.click(
+    await screen.findByText("待联系", {
+      selector: ".ant-select-item-option-content *",
+    }),
+  );
+  const url = new URL(navigate.mock.lastCall![0], "https://crm.invalid");
+  expect(JSON.parse(url.searchParams.get("filters")!).conditions).toEqual([
+    { ...condition, value: ["following", "new"] },
+  ]);
+  active.unmount();
+  renderList(vi.fn(), {
+    ...DEFAULT_RECORD_QUERY,
+    filterRule: {
+      version: 1,
+      match: "any",
+      conditions: [{ match: "all", conditions: [condition] }],
+    },
+  });
+  expect(screen.queryByRole("combobox", { name: "按线索状态筛选" })).toBeNull();
+  expect(
+    screen.getByRole("group", { name: "当前筛选条件" }),
+  ).toBeInTheDocument();
 });

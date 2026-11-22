@@ -1323,3 +1323,13 @@
   background: #fff7ed;
   color: #9a3412;
 }
+
+.columnHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.columnHeader :global(.anticon) {
+  font-size: 12px;
+  color: var(--ink-secondary);
+}

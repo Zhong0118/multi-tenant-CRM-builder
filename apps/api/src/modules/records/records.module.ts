@@ -8,6 +8,8 @@ import { ObjectsModule } from '../objects/objects.module';
 import { RecordPoolController } from './record-pool.controller';
 import { RecordPoolService } from './record-pool.service';
 import { RecordPoolScheduler } from './record-pool-scheduler';
+import { RecordViewsController } from '../views/record-views.controller';
+import { RecordViewsService } from '../views/record-views.service';
 import { RecordsController } from './records.controller';
 import { PrismaRecordsRepository } from './records.repository';
 import {
@@ -19,9 +21,10 @@ import {
 
 @Module({
   imports: [AuditModule, AuthModule, MembershipsModule, ObjectsModule],
-  controllers: [RecordsController, RecordPoolController],
+  controllers: [RecordsController, RecordPoolController, RecordViewsController],
   providers: [
     RecordsService,
+    RecordViewsService,
     RecordPoolService,
     RecordPoolScheduler,
     PrismaRecordsRepository,

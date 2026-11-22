@@ -239,6 +239,7 @@ class MemoryPublishedRepository implements PublishedObjectRepository {
 }
 
 class MemoryRecordsStore implements RecordsStore {
+  resolveRecordView: RecordsStore['resolveRecordView'] = jest.fn();
   resolveCurrentObject(
     previous: import('../objects/published-object.service').ResolvedObjectSchema,
   ) {
@@ -284,6 +285,9 @@ class MemoryRecordsStore implements RecordsStore {
     return Promise.resolve();
   }
 
+  getTenantTimezone() {
+    return Promise.resolve('UTC');
+  }
   records: DynamicRecord[] = [];
   activities: RecordActivity[] = [];
   members = new Set([admin.memberId, employee.memberId, otherMemberId]);
@@ -673,11 +677,28 @@ function matchesListFilter(
   record: DynamicRecord,
   filter: RecordListQuery['filters'][number],
 ): boolean {
-  const value = record.values[filter.fieldKey];
+  if (filter.mode === 'GROUP') {
+    const matches = (child: RecordListQuery['filters'][number]) =>
+      matchesListFilter(record, child);
+    return filter.match === 'all'
+      ? filter.conditions.every(matches)
+      : filter.conditions.some(matches);
+  }
+  if (filter.mode === 'FOLLOW_UP') return false;
+  const value =
+    filter.fieldKey === '$owner'
+      ? record.ownerMemberId
+      : record.values[filter.fieldKey];
+  if (filter.mode === 'TEXT_EQUALS') return value === filter.value;
+  if (filter.mode === 'NOT')
+    return (
+      !isEmptyFieldValue(value) && !matchesListFilter(record, filter.filter)
+    );
   if (filter.mode === 'DATE_RANGE') {
     if (typeof value !== 'string') return false;
     if (filter.from && value < filter.from) return false;
     if (filter.to && value > filter.to) return false;
+    if (filter.before && value >= filter.before) return false;
     return true;
   }
   if (filter.mode === 'NUMBER_RANGE') {
@@ -688,8 +709,10 @@ function matchesListFilter(
           ? Number(value)
           : Number.NaN;
     if (!Number.isFinite(numeric)) return false;
-    if (filter.min !== undefined && numeric < filter.min) return false;
-    if (filter.max !== undefined && numeric > filter.max) return false;
+    if (filter.gt !== undefined && numeric <= Number(filter.gt)) return false;
+    if (filter.lt !== undefined && numeric >= Number(filter.lt)) return false;
+    if (filter.min !== undefined && numeric < Number(filter.min)) return false;
+    if (filter.max !== undefined && numeric > Number(filter.max)) return false;
     return true;
   }
   if (filter.mode === 'BOOLEAN_EQUALS') {
@@ -734,10 +757,10 @@ function compareRecords(
 function compareSystemSort(
   left: DynamicRecord,
   right: DynamicRecord,
-  sort: 'updatedAt' | 'createdAt' | 'recordNo',
+  sort: 'updatedAt' | 'createdAt' | 'recordNo' | 'nextFollowUpAt',
 ): number {
-  const leftValue = sort === 'recordNo' ? left.recordNo : left[sort];
-  const rightValue = sort === 'recordNo' ? right.recordNo : right[sort];
+  const leftValue = sort === 'recordNo' ? left.recordNo : (left[sort] ?? '');
+  const rightValue = sort === 'recordNo' ? right.recordNo : (right[sort] ?? '');
   if (leftValue < rightValue) return -1;
   if (leftValue > rightValue) return 1;
   return 0;
@@ -813,6 +836,26 @@ async function create(
 }
 
 describe('RecordsService', () => {
+  it('returns the same tenant timezone used for follow-up boundaries with a single lookup', async () => {
+    const { service, store } = fixture();
+    const zone = jest
+      .spyOn(store, 'getTenantTimezone')
+      .mockResolvedValue('America/New_York');
+    const page = await service.list(employee, 'leads', {
+      page: 1,
+      limit: 10,
+      direction: 'asc',
+      sort: 'nextFollowUpAt',
+      filters: JSON.stringify({
+        version: 1,
+        match: 'all',
+        conditions: [{ fieldKey: '$followUp', operator: 'dueThroughToday' }],
+      }),
+    });
+    expect(page).toHaveProperty('timeZone', 'America/New_York');
+    expect(zone).toHaveBeenCalledTimes(1);
+  });
+
   it('adds only the newest activity to visible list rows, without exposing another owner or public-pool history', async () => {
     const { service, store, publishedRepository } = fixture();
     const mine = await create(service, employee, '本人');
@@ -859,6 +902,194 @@ describe('RecordsService', () => {
     expect(pool.items).toHaveLength(1);
     expect(pool.items[0]).not.toHaveProperty('latestActivity');
     expect(JSON.stringify(pool)).not.toContain('其他负责人秘密');
+  });
+
+  it('applies the stored view inside the transaction for list, CSV and aggregate', async () => {
+    const { service, store } = fixture();
+    const selected = await create(
+      service,
+      admin,
+      'Saved view match',
+      employee.memberId,
+    );
+    await create(service, admin, 'Different record', employee.memberId);
+    const resolveRecordView = jest.fn().mockResolvedValue({
+      filterRule: { version: 1, match: 'all', conditions: [] },
+      queryOptions: { search: 'Saved view match' },
+      sort: { field: 'recordNo', direction: 'asc' },
+      columnFieldKeys: ['name'],
+    });
+    Object.assign(store, { resolveRecordView });
+    const request = {
+      viewId: '00000000-0000-4000-8000-000000000999',
+      page: 1,
+      limit: 10,
+      search: 'Different record',
+      sort: 'updatedAt',
+      direction: 'desc' as const,
+    };
+    const list = await service.list(admin, 'leads', request);
+    expect(list.items.map((row) => row.id)).toEqual([selected.id]);
+    const csv = await service.exportCsv(admin, 'leads', request, meta);
+    expect(csv.csv).toContain('Saved view match');
+    expect(csv.csv).not.toContain('Different record');
+    await service.aggregate(admin, 'leads', {
+      viewId: request.viewId,
+      aggregation: 'COUNT',
+      limit: 10,
+    });
+    expect(store.lastAggregateQuery).toMatchObject({
+      search: 'Saved view match',
+    });
+    expect(resolveRecordView).toHaveBeenCalledTimes(3);
+  });
+
+  it('resolves follow-up scope at the transaction and shares one DST cutoff across nested rules', async () => {
+    const { store, service } = fixture();
+    Object.assign(store, {
+      getTenantTimezone: () => Promise.resolve('America/New_York'),
+    });
+    const dbQuery = jest.spyOn(store, 'listRecords');
+    const filters = JSON.stringify({
+      version: 1,
+      match: 'all',
+      conditions: [
+        {
+          fieldKey: '$followUp',
+          operator: 'dueThroughToday',
+          value: { assignee: 'any' },
+        },
+      ],
+    });
+    for (const actor of [employee, admin]) {
+      await service.list(actor, 'leads', {
+        page: 1,
+        limit: 1,
+        sort: 'nextFollowUpAt',
+        direction: 'desc',
+        filters,
+      });
+      expect(dbQuery.mock.lastCall?.[0]).toMatchObject({
+        filters: [
+          {
+            mode: 'FOLLOW_UP',
+            assigneeMemberId:
+              actor.role === 'TENANT_ADMIN' ? null : actor.memberId,
+            before: '2026-08-22T04:00:00.000Z',
+          },
+        ],
+      });
+    }
+  });
+  it('preserves nested OR within the actor scope for the list, aggregate and CSV', async () => {
+    const { service } = fixture();
+    await create(service, admin, '报价', employee.memberId, { score: 9 });
+    await create(service, admin, '备选', employee.memberId, { score: 3 });
+    await create(service, admin, '排除', employee.memberId, { score: 10 });
+    await create(service, admin, '权限外', admin.memberId, { score: 9 });
+    const rule = {
+      version: 1,
+      match: 'any',
+      conditions: [
+        { fieldKey: 'name', operator: 'eq', value: '备选' },
+        {
+          match: 'all',
+          conditions: [
+            { fieldKey: 'score', operator: 'gt', value: 8 },
+            { fieldKey: 'score', operator: 'lt', value: 10 },
+            { fieldKey: '$owner', operator: 'in', value: ['$me'] },
+          ],
+        },
+      ],
+    };
+    const query = {
+      filters: JSON.stringify(rule),
+      sort: 'recordNo',
+      direction: 'asc' as const,
+    };
+    const page = await service.list(employee, 'leads', {
+      ...query,
+      page: 1,
+      limit: 20,
+    });
+    expect(page.items.map((row) => row.title)).toEqual(['报价', '备选']);
+    expect(
+      await service.aggregate(employee, 'leads', {
+        aggregation: 'COUNT',
+        filters: rule,
+        limit: 5,
+      }),
+    ).toMatchObject({ value: '2' });
+    const csv = await service.exportCsv(employee, 'leads', query, meta);
+    expect(csv.rowCount).toBe(2);
+    expect(csv.csv).toContain('报价');
+    expect(csv.csv).not.toMatch(/排除|权限外/);
+  });
+
+  it('rejects inaccessible leaves even inside any groups, and inactive options', async () => {
+    const { service, publishedRepository } = fixture();
+    const schema = publishedRepository.record
+      .configuration as PublishedObjectSchema;
+    const status = schema.fields.find(
+      (field) => field.fieldKey === 'lead_status',
+    )!;
+    status.config.options = [{ key: 'old', label: '旧', status: 'INACTIVE' }];
+    for (const condition of [
+      { fieldKey: 'secret', operator: 'eq', value: '敏感' },
+      { fieldKey: 'lead_status', operator: 'in', value: ['old'] },
+      {
+        fieldKey: 'assignee',
+        operator: 'in',
+        value: ['10000000-0000-4000-8000-000000000009'],
+      },
+    ]) {
+      const query = {
+        version: 1,
+        match: 'any',
+        conditions: [{ fieldKey: 'name', operator: 'notEmpty' }, condition],
+      };
+      await expect(
+        service.list(employee, 'leads', {
+          page: 1,
+          limit: 2,
+          filters: JSON.stringify(query),
+          sort: 'recordNo',
+          direction: 'asc',
+        }),
+      ).rejects.toMatchObject({ code: 'RECORD_FILTER_INVALID' });
+    }
+  });
+
+  it('uses the tenant calendar equally for legacy and v1 date filters', async () => {
+    const { service, store } = fixture();
+    Object.assign(store, {
+      getTenantTimezone: () => Promise.resolve('Pacific/Kiritimati'),
+    });
+    await create(service, admin, 'UTC昨天', admin.memberId, {
+      follow_up_on: '2026-08-21',
+    });
+    await create(service, admin, '本地今天', admin.memberId, {
+      follow_up_on: '2026-08-22',
+    });
+    for (const filters of [
+      { follow_up_on: { relative: 'today' } },
+      {
+        version: 1,
+        match: 'all',
+        conditions: [
+          { fieldKey: 'follow_up_on', operator: 'relative', value: 'today' },
+        ],
+      },
+    ]) {
+      const page = await service.list(admin, 'leads', {
+        page: 1,
+        limit: 10,
+        filters: JSON.stringify(filters),
+        sort: 'recordNo',
+        direction: 'asc',
+      });
+      expect(page.items.map((row) => row.title)).toEqual(['本地今天']);
+    }
   });
 
   it('filters and exports unassigned records without including assigned rows or changing pool membership', async () => {
@@ -2061,7 +2292,7 @@ describe('RecordsService', () => {
     expect(empty.items.map((record) => record.title)).toEqual(['无邮箱']);
   });
 
-  it('delegates relative calendar windows with a fixed instant to the tenant-aware repository', async () => {
+  it('resolves relative calendar windows from the fixed instant in the tenant timezone', async () => {
     const { service, store } = fixture();
     const listed = jest.spyOn(store, 'listRecords');
     await service.list(admin, 'leads', {
@@ -2076,8 +2307,8 @@ describe('RecordsService', () => {
         fieldKey: 'follow_up_on',
         mode: 'DATE_RANGE',
         dateType: 'DATE',
-        relative: 'past_7_days',
-        asOf: '2026-08-21T10:30:00.000Z',
+        from: '2026-08-15',
+        before: '2026-08-22',
       },
     ]);
   });

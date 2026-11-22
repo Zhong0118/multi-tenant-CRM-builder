@@ -12,12 +12,25 @@ const runtime = vi.hoisted(() => ({
   loadPage: vi.fn(async () => ({ items: [], total: 0, page: 1, limit: 20 })),
 }));
 
-beforeEach(() => { runtime.schema.scopes.read = "OWN"; runtime.loadPage.mockClear(); });
+beforeEach(() => {
+  runtime.schema.scopes.read = "OWN";
+  runtime.loadPage.mockClear();
+});
 
 vi.mock("@/lib/auth/require-workspace", () => ({
   requireWorkspace: async () => ({ role: "EMPLOYEE", memberId: "member-1" }),
 }));
-vi.mock("@/lib/auth/load-runtime-object", () => ({
+vi.mock("server-only", () => ({}));
+vi.mock("@/lib/api/server-client", () => ({
+  createServerApiClient: async () => ({
+    GET: async () => ({
+      data: { items: [{ id: "default-id", code: "all", available: true }] },
+      response: new Response(null, { status: 200 }),
+    }),
+  }),
+}));
+vi.mock("@/lib/auth/load-runtime-object", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/auth/load-runtime-object")>()),
   loadRuntimeObject: async () => ({
     schema: runtime.schema,
     members: [],
@@ -57,17 +70,53 @@ describe("record detail deep link", () => {
   });
 });
 
-it.each([ObjectRecordsPage, RecordDetailPage])("loads own records on the server for a group leader's default list", async (Page) => {
-  runtime.schema.scopes.read = "GROUP";
-  await Page({ params: Promise.resolve({ tenantCode: "northwind", objectCode: "customers", recordId: "record-1" }), searchParams: Promise.resolve({}) });
-  expect(runtime.loadPage).toHaveBeenCalledWith("northwind", "customers", expect.objectContaining({ scope: "mine" }));
-});
+it.each([ObjectRecordsPage, RecordDetailPage])(
+  "loads own records on the server for a group leader's default list",
+  async (Page) => {
+    runtime.schema.scopes.read = "GROUP";
+    await Page({
+      params: Promise.resolve({
+        tenantCode: "northwind",
+        objectCode: "customers",
+        recordId: "record-1",
+      }),
+      searchParams: Promise.resolve({}),
+    });
+    expect(runtime.loadPage).toHaveBeenCalledWith(
+      "northwind",
+      "customers",
+      expect.objectContaining({ scope: "mine" }),
+    );
+  },
+);
 
-it.each([ObjectRecordsPage, RecordDetailPage])("keeps the selected teammate after refresh or opening a detail", async (Page) => {
-  runtime.schema.scopes.read = "GROUP";
-  await Page({ params: Promise.resolve({ tenantCode: "northwind", objectCode: "customers", recordId: "record-1" }), searchParams: Promise.resolve({ scope: "group", ownerMemberId: "teammate", page: "2" }) });
-  expect(runtime.loadPage).toHaveBeenCalledWith("northwind", "customers", expect.objectContaining({ scope: "group", ownerMemberId: "teammate", page: 2 }));
-});
+it.each([ObjectRecordsPage, RecordDetailPage])(
+  "keeps the selected teammate after refresh or opening a detail",
+  async (Page) => {
+    runtime.schema.scopes.read = "GROUP";
+    await Page({
+      params: Promise.resolve({
+        tenantCode: "northwind",
+        objectCode: "customers",
+        recordId: "record-1",
+      }),
+      searchParams: Promise.resolve({
+        scope: "group",
+        ownerMemberId: "teammate",
+        page: "2",
+      }),
+    });
+    expect(runtime.loadPage).toHaveBeenCalledWith(
+      "northwind",
+      "customers",
+      expect.objectContaining({
+        scope: "group",
+        ownerMemberId: "teammate",
+        page: 2,
+      }),
+    );
+  },
+);
 
 it.each([ObjectRecordsPage, RecordDetailPage])(
   "drops URL sorting on a field hidden in part of the record scope",

@@ -21,8 +21,8 @@ vi.mock("@/features/follow-ups/follow-up-panel", () => ({
   FollowUpPanel: () => <section aria-label="下一步跟进">安排下一步</section>,
 }));
 vi.mock("./record-activity-timeline", () => ({
-  RecordActivityTimeline: () => (
-    <section aria-label="活动历史">历史内容</section>
+  RecordActivityTimeline: ({ action }: { action?: React.ReactNode }) => (
+    <section aria-label="活动历史">历史内容{action}</section>
   ),
 }));
 vi.mock("./record-relations-panel", () => ({
@@ -500,4 +500,28 @@ it("does not expose editing or follow-up workflows in an employee pool preview",
   expect(
     screen.queryByRole("region", { name: "下一步跟进" }),
   ).not.toBeInTheDocument();
+});
+
+it("opens the communication draft in the current record activity area", async () => {
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <RecordDetailDrawer
+        tenantCode="northwind"
+        schema={{ ...schema, actions: { ...schema.actions, canUpdate: true } }}
+        record={record}
+        currentMemberId="m1"
+        onClose={vi.fn()}
+        onChanged={vi.fn()}
+      />
+    </QueryClientProvider>,
+  );
+  fireEvent.click(
+    within(screen.getByRole("region", { name: "活动历史" })).getByRole(
+      "button",
+      {
+        name: "整理本次沟通",
+      },
+    ),
+  );
+  expect(await screen.findByLabelText("沟通原文")).toBeInTheDocument();
 });

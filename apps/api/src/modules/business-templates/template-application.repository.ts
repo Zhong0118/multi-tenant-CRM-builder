@@ -498,6 +498,7 @@ class PrismaTemplateApplicationStore implements TemplateApplicationStore {
         await this.transaction.viewDefinition.create({
           data: {
             ...view,
+            scope: 'DEFAULT',
             columnFieldKeys: jsonInput(
               searchFieldKeys === undefined
                 ? view.columnFieldKeys

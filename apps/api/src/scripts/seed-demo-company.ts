@@ -239,6 +239,7 @@ async function main(): Promise<void> {
           await transaction.viewDefinition.create({
             data: {
               ...view,
+              scope: 'DEFAULT',
               columnFieldKeys: jsonInput(view.columnFieldKeys),
               sort: jsonInput(view.sort),
             },

@@ -217,6 +217,7 @@ interface PatchIntentInput {
  * workflow state and `version + 1` for the final source patch.
  */
 class MemoryStore implements RecordsStore {
+  resolveRecordView: RecordsStore['resolveRecordView'] = jest.fn();
   resolveCurrentObject(
     previous: import('../objects/published-object.service').ResolvedObjectSchema,
   ) {

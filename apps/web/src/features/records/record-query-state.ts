@@ -1,4 +1,9 @@
 import { parseImportDate } from "@/lib/import-date";
+import {
+  parseFilterRule,
+  type FilterRule,
+  type operations,
+} from "@crm/contracts";
 import type {
   RecordListSortField,
   RecordSortDirection,
@@ -9,9 +14,22 @@ import {
   SYSTEM_RECORD_SORT_FIELDS,
 } from "@/features/objects/object-types";
 
-import { POOL_STAGES, type PoolStageFilter, type PoolQuality } from "./record-pool-types";
+import {
+  POOL_STAGES,
+  type PoolStageFilter,
+  type PoolQuality,
+} from "./record-pool-types";
+
+export class RecordViewUnavailableError extends Error {
+  constructor(readonly fallback?: { id: string; name: string } | null) {
+    super("该视图条件不可用");
+  }
+}
 
 export interface RecordQuery {
+  viewId?: string;
+  baseViewId?: string;
+  filterRule?: FilterRule;
   poolStage?: PoolStageFilter;
   poolQuality?: PoolQuality;
   page: number;
@@ -86,9 +104,8 @@ const MAX_LIMIT = 1000;
 type RawParams = Record<string, string | string[] | undefined>;
 
 /**
- * Reads the list state out of the URL. Anything the API would reject falls back
- * to the default rather than being forwarded, so a hand-edited URL degrades to
- * a valid list instead of an error.
+ * A saved view is authoritative. A preview restores its explicit rule and
+ * editable options. Broken previews must never turn into an unrestricted list.
  */
 export function parseRecordQuery(
   params: RawParams,
@@ -103,9 +120,52 @@ export function parseRecordQuery(
       }
     : DEFAULT_RECORD_QUERY;
 
+  const paging = {
+    page: positiveInteger(single(params.page)) ?? defaults.page,
+    limit: Math.min(
+      positiveInteger(single(params.limit)) ?? defaults.limit,
+      MAX_LIMIT,
+    ),
+  };
+  const viewId = single(params.viewId);
+  if (viewId !== undefined) {
+    if (!viewId.trim()) throw new RecordViewUnavailableError();
+    return { ...defaults, ...paging, viewId };
+  }
+  const baseViewId = single(params.baseViewId);
+  const serialized = single(params.filters);
+  let filterRule: FilterRule | undefined;
+  if (serialized) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(serialized);
+    } catch {
+      if (
+        baseViewId !== undefined ||
+        /"(version|match|conditions)"\s*:/.test(serialized)
+      )
+        throw new RecordViewUnavailableError();
+    }
+    if (
+      isPlainObject(parsed) &&
+      (typeof parsed.version === "number" ||
+        typeof parsed.version === "string" ||
+        typeof parsed.match === "string" ||
+        ("conditions" in parsed && "match" in parsed))
+    ) {
+      try {
+        if (serialized.length > 4000) throw new RecordViewUnavailableError();
+        filterRule = parseFilterRule(parsed);
+      } catch {
+        throw new RecordViewUnavailableError();
+      }
+    }
+  }
+  if (baseViewId !== undefined && (!baseViewId.trim() || !filterRule))
+    throw new RecordViewUnavailableError();
   const search = single(params.search)?.trim();
   const ownerMemberId = single(params.ownerMemberId)?.trim();
-  const filters = parseOptionFilters(single(params.filters));
+  const filters = filterRule ? {} : parseOptionFilters(serialized);
   const allowedSorts = [
     ...SYSTEM_RECORD_SORT_FIELDS,
     ...sortableFieldKeys.filter((fieldKey) =>
@@ -114,11 +174,9 @@ export function parseRecordQuery(
   ];
 
   return {
-    page: positiveInteger(single(params.page)) ?? defaults.page,
-    limit: Math.min(
-      positiveInteger(single(params.limit)) ?? defaults.limit,
-      MAX_LIMIT,
-    ),
+    ...paging,
+    ...(filterRule ? { filterRule } : {}),
+    ...(baseViewId ? { baseViewId } : {}),
     search: search === "" ? undefined : search,
     ownerMemberId: ownerMemberId === "" ? undefined : ownerMemberId,
     filters,
@@ -129,6 +187,25 @@ export function parseRecordQuery(
     direction:
       member(single(params.direction), DIRECTIONS) ?? defaults.direction,
   };
+}
+
+export function isPristineRecordQuery(
+  query: RecordQuery,
+  sort: RuntimeObjectSchema["defaultView"]["sort"],
+) {
+  return (
+    !query.viewId &&
+    !query.baseViewId &&
+    !query.filterRule &&
+    !Object.keys(query.filters).length &&
+    !query.search &&
+    !query.scope &&
+    !query.poolStage &&
+    !query.poolQuality &&
+    !query.ownerMemberId &&
+    query.sort === sort.field &&
+    query.direction === sort.direction
+  );
 }
 
 /** Reopening a saved view or URL must respect the current shared query scope. */
@@ -146,6 +223,19 @@ export function restrictRecordQuery(
   }
   if (schema.queryFieldKeys === undefined) return query;
   const allowed = new Set(schema.queryFieldKeys);
+  function hasUnavailableField(group: Pick<FilterRule, "conditions">): boolean {
+    return group.conditions.some((term) =>
+      "conditions" in term
+        ? hasUnavailableField(term)
+        : !(
+            term.fieldKey === "$owner" ||
+            term.fieldKey === "$followUp" ||
+            allowed.has(term.fieldKey)
+          ),
+    );
+  }
+  if (query.filterRule && hasUnavailableField(query.filterRule))
+    throw new RecordViewUnavailableError();
   const searchable = schema.fields.some(
     (field) =>
       allowed.has(field.fieldKey) &&
@@ -177,18 +267,69 @@ export function recordQuerySearch(
   const params = new URLSearchParams();
   if (query.page !== defaults.page) params.set("page", String(query.page));
   if (query.limit !== defaults.limit) params.set("limit", String(query.limit));
+  if (query.viewId) {
+    params.set("viewId", query.viewId);
+    return params.toString();
+  }
+  if (query.baseViewId) params.set("baseViewId", query.baseViewId);
   if (query.search) params.set("search", query.search);
   if (query.scope) params.set("scope", query.scope);
   if (query.poolStage) params.set("poolStage", query.poolStage);
   if (query.poolQuality) params.set("poolQuality", query.poolQuality);
   if (query.ownerMemberId) params.set("ownerMemberId", query.ownerMemberId);
-  const filters = recordFilterParameter(query.filters);
+  const filters = query.filterRule
+    ? JSON.stringify(query.filterRule)
+    : recordFilterParameter(query.filters);
   if (filters) params.set("filters", filters);
-  if (query.sort !== defaults.sort) params.set("sort", query.sort);
-  if (query.direction !== defaults.direction) {
+  if (query.baseViewId || query.sort !== defaults.sort)
+    params.set("sort", query.sort);
+  if (query.baseViewId || query.direction !== defaults.direction) {
     params.set("direction", query.direction);
   }
   return params.toString();
+}
+
+/** The same transport for SSR, browser refreshes and CSV export. */
+export function recordRequestParameters(
+  query: Partial<RecordQuery> & { columns?: string[] },
+): NonNullable<operations["RecordsController_list"]["parameters"]["query"]> {
+  const {
+    page,
+    limit,
+    viewId,
+    filterRule,
+    filters,
+    search,
+    scope,
+    poolStage,
+    poolQuality,
+    ownerMemberId,
+    sort,
+    direction,
+    columns,
+  } = query;
+  const paging = {
+    ...(page !== undefined ? { page } : {}),
+    ...(limit !== undefined ? { limit } : {}),
+  };
+  if (viewId) return { ...paging, viewId };
+  const serialized = filterRule
+    ? JSON.stringify(filterRule)
+    : filters
+      ? recordFilterParameter(filters)
+      : "";
+  return {
+    ...paging,
+    ...(serialized ? { filters: serialized } : {}),
+    ...(search ? { search } : {}),
+    ...(scope ? { scope } : {}),
+    ...(poolStage ? { poolStage } : {}),
+    ...(poolQuality ? { poolQuality } : {}),
+    ...(ownerMemberId ? { ownerMemberId } : {}),
+    ...(sort ? { sort } : {}),
+    ...(direction ? { direction } : {}),
+    ...(columns ? { columns } : {}),
+  };
 }
 
 /** Changing a filter restarts paging; keeping the old page would show nothing. */

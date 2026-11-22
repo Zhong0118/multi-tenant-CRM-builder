@@ -9,6 +9,7 @@ import {
   runFieldAutomations,
   automationFailureAudit,
 } from '../automations/automation-runner';
+import { resolveRecordViewQuery } from '../views/record-views.service';
 import type { RecordRequestMeta } from './record-command';
 import { assertAssignableOwner } from './record-ownership-locks';
 import { lockRuntimeObjectConfiguration } from '../objects/object-configuration-lock';
@@ -34,6 +35,7 @@ import {
 } from './record-activity';
 
 export interface DynamicRecord {
+  nextFollowUpAt?: string | null;
   poolStage?: PoolStage | null;
   poolOrigin?: PoolOrigin | null;
   poolClaimedAt?: string | null;
@@ -72,13 +74,16 @@ export type RecordListDateFilter = {
   asOf?: string;
   from?: string;
   to?: string;
+  before?: string;
 };
 
 export type RecordListNumericFilter = {
   fieldKey: string;
   mode: 'NUMBER_RANGE';
-  min?: number;
-  max?: number;
+  min?: number | string;
+  max?: number | string;
+  gt?: number | string;
+  lt?: number | string;
 };
 
 export type RecordListBooleanFilter = {
@@ -105,6 +110,10 @@ export type RecordListPresenceFilter = {
 };
 
 export type RecordListFilter =
+  | { mode: 'GROUP'; match: 'all' | 'any'; conditions: RecordListFilter[] }
+  | { mode: 'FOLLOW_UP'; assigneeMemberId: string | null; before: string }
+  | { mode: 'NOT'; filter: RecordListFilter; fieldKey: string }
+  | { mode: 'TEXT_EQUALS'; fieldKey: string; value: string }
   | RecordListOptionFilter
   | RecordListDateFilter
   | RecordListNumericFilter
@@ -113,7 +122,8 @@ export type RecordListFilter =
   | RecordListTextFilter
   | RecordListPresenceFilter;
 
-export type RecordListSystemSort = 'updatedAt' | 'createdAt' | 'recordNo';
+export type RecordListSystemSort =
+  'updatedAt' | 'createdAt' | 'recordNo' | 'nextFollowUpAt';
 export type RecordListFieldSortKind =
   'TEXT' | 'NUMBER' | 'DATE' | 'DATETIME' | 'DATE_TEXT' | 'OPTION';
 export type RecordListFieldSort = {
@@ -123,6 +133,7 @@ export type RecordListFieldSort = {
 };
 
 export interface RecordListQuery {
+  followUpOwnerMemberId?: RecordOwnerFilter;
   poolStage?: PoolStage | 'LEGACY';
   poolQuality?: PoolQuality;
   inPublicPool?: boolean;
@@ -142,6 +153,7 @@ export type RecordReadPredicate = Pick<
   | 'objectId'
   | 'ownerMemberId'
   | 'filters'
+  | 'followUpOwnerMemberId'
   | 'search'
   | 'searchFieldKeys'
   | 'inPublicPool'
@@ -149,7 +161,15 @@ export type RecordReadPredicate = Pick<
   | 'poolQuality'
 >;
 
-export interface RecordAggregateQuery {
+export interface RecordAggregateQuery extends Pick<
+  RecordReadPredicate,
+  | 'search'
+  | 'inPublicPool'
+  | 'poolStage'
+  | 'poolQuality'
+  | 'followUpOwnerMemberId'
+> {
+  searchFieldKeys?: string[];
   objectId: string;
   ownerMemberId?: RecordOwnerFilter | null;
   filters: RecordListFilter[];
@@ -205,6 +225,11 @@ export interface ImportDuplicateQuery {
 }
 
 export interface RecordsStore {
+  getTenantTimezone?(): Promise<string | null>;
+  resolveRecordView(
+    resolved: ResolvedObjectSchema,
+    viewId: string,
+  ): ReturnType<typeof resolveRecordViewQuery>;
   runFieldAutomations?(
     resolved: ResolvedObjectSchema,
     before: DynamicRecord,
@@ -469,6 +494,15 @@ class PrismaRecordsStore implements RecordsStore {
     }));
   }
 
+  resolveRecordView(resolved: ResolvedObjectSchema, viewId: string) {
+    return resolveRecordViewQuery(
+      this.transaction,
+      this.context,
+      resolved,
+      viewId,
+    );
+  }
+
   async runFieldAutomations(
     resolved: ResolvedObjectSchema,
     before: DynamicRecord,
@@ -578,12 +612,24 @@ class PrismaRecordsStore implements RecordsStore {
     `;
   }
 
+  async getTenantTimezone(): Promise<string | null> {
+    return (
+      (
+        await this.transaction.tenant.findUnique({
+          where: { id: this.context.tenantId },
+          select: { timezone: true },
+        })
+      )?.timezone ?? null
+    );
+  }
+
   async memberExists(memberId: string): Promise<boolean> {
     const member = await this.transaction.tenantMember.findFirst({
       where: {
         id: memberId,
         tenantId: this.context.tenantId,
         status: 'ACTIVE',
+        user: { status: 'ACTIVE' },
       },
       select: { id: true },
     });
@@ -689,70 +735,28 @@ class PrismaRecordsStore implements RecordsStore {
     items: DynamicRecord[];
     total: number;
   }> {
-    if (
-      typeof query.sort === 'string' &&
-      !query.filters.some(
-        (filter) =>
-          filter.mode === 'DATE_RANGE' ||
-          filter.mode === 'NUMBER_RANGE' ||
-          filter.mode === 'EMPTY' ||
-          filter.mode === 'NOT_EMPTY',
-      )
-    ) {
-      const where: Prisma.RecordWhereInput = {
-        tenantId: this.context.tenantId,
-        objectId: query.objectId,
-        deletedAt: null,
-        ownerMemberId: query.ownerMemberId,
-        inPublicPool: query.inPublicPool,
-        ...(query.poolStage === undefined
-          ? {}
-          : {
-              poolStage: query.poolStage === 'LEGACY' ? null : query.poolStage,
-            }),
-        ...(query.poolQuality === undefined
-          ? {}
-          : { poolQuality: query.poolQuality }),
-        AND: [
-          ...searchConditions(query.search, query.searchFieldKeys),
-          ...query.filters.map(listFilterCondition),
-        ],
-      };
-      const [items, total] = await Promise.all([
-        this.transaction.record.findMany({
-          where,
-          orderBy: [{ [query.sort]: query.direction }, { id: query.direction }],
-          skip: (query.page - 1) * query.limit,
-          take: query.limit,
-        }),
-        this.transaction.record.count({ where }),
-      ]);
-      return {
-        items: await this.preserveStoredMoney(items.map(fromPrismaRecord)),
-        total,
-      };
-    }
-
     const direction =
       query.direction === 'asc' ? Prisma.sql`ASC` : Prisma.sql`DESC`;
-    const offset = (query.page - 1) * query.limit;
-    const filterSql = listWhereSql(this.context.tenantId, query, true);
+    const where = listWhereSql(this.context.tenantId, query);
+    const anyAssignee =
+      this.context.role === 'TENANT_ADMIN' && query.filters.some(teamFollowUps);
+    const tasks = openTasksSql(
+      anyAssignee ? null : this.context.memberId,
+      query.followUpOwnerMemberId,
+    );
+    const sort = recordSortExpression(query.sort);
     const [rows, counted] = await Promise.all([
       this.transaction.$queryRaw<
-        Array<{ id: string; version: number }>
+        Array<{ id: string; version: number; nextFollowUpAt: Date | null }>
       >(Prisma.sql`
-        SELECT r.id, r.version
-        FROM records r
-        WHERE ${filterSql}
-        ORDER BY ${recordSortExpression(query.sort)} ${direction} NULLS LAST, r.id ${direction}
-        OFFSET ${offset}
-        LIMIT ${query.limit}
+        SELECT r.id, r.version, (SELECT MIN(f.due_at) FROM record_follow_ups f WHERE ${tasks}) AS "nextFollowUpAt"
+        FROM records r WHERE ${where}
+        ORDER BY ${sort} ${direction} NULLS LAST, r.id ${direction}
+        OFFSET ${(query.page - 1) * query.limit} LIMIT ${query.limit}
       `),
-      this.transaction.$queryRaw<Array<{ count: number }>>(Prisma.sql`
-        SELECT COUNT(*)::int AS count
-        FROM records r
-        WHERE ${filterSql}
-      `),
+      this.transaction.$queryRaw<Array<{ count: number }>>(
+        Prisma.sql`SELECT COUNT(*)::int AS count FROM records r WHERE ${where}`,
+      ),
     ]);
     const total = counted[0]?.count ?? 0;
     if (rows.length === 0) return { items: [], total };
@@ -786,7 +790,14 @@ class PrismaRecordsStore implements RecordsStore {
       items: await this.preserveStoredMoney(
         rows.flatMap((row) => {
           const record = byId.get(row.id);
-          return record ? [fromPrismaRecord(record)] : [];
+          return record
+            ? [
+                {
+                  ...fromPrismaRecord(record),
+                  nextFollowUpAt: row.nextFollowUpAt?.toISOString() ?? null,
+                },
+              ]
+            : [];
         }),
       ),
       total,
@@ -798,12 +809,10 @@ class PrismaRecordsStore implements RecordsStore {
   ): Promise<RecordAggregateResult> {
     const limit = Math.min(20, Math.max(1, Math.trunc(query.limit)));
     const predicate: RecordReadPredicate = {
-      objectId: query.objectId,
-      ownerMemberId: query.ownerMemberId,
-      filters: query.filters,
-      searchFieldKeys: [],
+      ...query,
+      searchFieldKeys: query.searchFieldKeys ?? [],
     };
-    const filterSql = listWhereSql(this.context.tenantId, predicate, true);
+    const filterSql = listWhereSql(this.context.tenantId, predicate);
     const valueSql = aggregateValueSql(query);
     const totals = await this.transaction.$queryRaw<Array<{ value: string }>>(
       Prisma.sql`
@@ -1313,70 +1322,6 @@ function fromPrismaRecord(record: {
   };
 }
 
-function searchConditions(
-  search: string | undefined,
-  searchFieldKeys: string[],
-): Prisma.RecordWhereInput[] {
-  if (!search) return [];
-  return [
-    {
-      OR: [
-        { title: { contains: search, mode: 'insensitive' } },
-        ...searchFieldKeys.map((fieldKey) => ({
-          data: {
-            path: [fieldKey],
-            string_contains: search,
-            mode: 'insensitive' as const,
-          },
-        })),
-      ],
-    },
-  ];
-}
-
-function listFilterCondition(
-  filter: RecordListFilter,
-): Prisma.RecordWhereInput {
-  if (filter.mode === 'DATE_RANGE') {
-    throw new Error('Date filters require the SQL record query');
-  }
-  if (filter.mode === 'NUMBER_RANGE') {
-    throw new Error('Numeric filters require the SQL record query');
-  }
-  if (filter.mode === 'BOOLEAN_EQUALS') {
-    return {
-      data: { path: [filter.fieldKey], equals: filter.value },
-    };
-  }
-  if (filter.mode === 'MEMBER_EQUALS') {
-    return {
-      OR: filter.values.map((value) => ({
-        data: { path: [filter.fieldKey], equals: value },
-      })),
-    };
-  }
-  if (filter.mode === 'TEXT_CONTAINS') {
-    return {
-      data: {
-        path: [filter.fieldKey],
-        string_contains: filter.contains,
-        mode: 'insensitive',
-      },
-    };
-  }
-  if (filter.mode === 'EQUALS' || filter.mode === 'CONTAINS') {
-    return {
-      OR: filter.values.map((value) => ({
-        data:
-          filter.mode === 'CONTAINS'
-            ? { path: [filter.fieldKey], array_contains: value }
-            : { path: [filter.fieldKey], equals: value },
-      })),
-    };
-  }
-  throw new Error('Presence filters require the SQL record query');
-}
-
 function aggregateValueSql(query: RecordAggregateQuery): Prisma.Sql {
   if (query.aggregation === 'COUNT') return Prisma.sql`COUNT(*)::text`;
   const numeric = Prisma.sql`
@@ -1391,140 +1336,116 @@ function aggregateValueSql(query: RecordAggregateQuery): Prisma.Sql {
     : Prisma.sql`COALESCE(SUM(${numeric}), 0)::text`;
 }
 
+function openTasksSql(
+  assignee: string | null,
+  owner?: RecordOwnerFilter,
+): Prisma.Sql {
+  const conditions = [
+    Prisma.sql`f.tenant_id = r.tenant_id AND f.record_id = r.id AND f.status = 'OPEN'`,
+  ];
+  if (assignee)
+    conditions.push(Prisma.sql`f.assignee_member_id = ${assignee}::uuid`);
+  if (owner !== undefined)
+    conditions.push(recordOwnerSql(owner, Prisma.sql`r.owner_member_id`));
+  return Prisma.join(conditions, ' AND ');
+}
+
+function teamFollowUps(filter: RecordListFilter): boolean {
+  return filter.mode === 'GROUP'
+    ? filter.conditions.some(teamFollowUps)
+    : filter.mode === 'FOLLOW_UP' && filter.assigneeMemberId === null;
+}
+
 function listWhereSql(
   tenantId: string,
   query: RecordReadPredicate,
-  qualified: boolean,
 ): Prisma.Sql {
-  const parts: Prisma.Sql[] = [
-    Prisma.sql`${qualified ? Prisma.sql`r.tenant_id` : Prisma.sql`tenant_id`} = ${tenantId}::uuid`,
-    Prisma.sql`${qualified ? Prisma.sql`r.object_id` : Prisma.sql`object_id`} = ${query.objectId}::uuid`,
-    Prisma.sql`${qualified ? Prisma.sql`r.deleted_at` : Prisma.sql`deleted_at`} IS NULL`,
+  const parts = [
+    Prisma.sql`r.tenant_id = ${tenantId}::uuid`,
+    Prisma.sql`r.object_id = ${query.objectId}::uuid`,
+    Prisma.sql`r.deleted_at IS NULL`,
   ];
   if (query.ownerMemberId !== undefined)
     parts.push(
-      recordOwnerSql(
-        query.ownerMemberId,
-        qualified ? Prisma.sql`r.owner_member_id` : Prisma.sql`owner_member_id`,
-      ),
+      recordOwnerSql(query.ownerMemberId, Prisma.sql`r.owner_member_id`),
     );
-  if (query.inPublicPool !== undefined) {
-    parts.push(
-      Prisma.sql`${qualified ? Prisma.sql`r.in_public_pool` : Prisma.sql`in_public_pool`} = ${query.inPublicPool}`,
-    );
-  }
+  if (query.inPublicPool !== undefined)
+    parts.push(Prisma.sql`r.in_public_pool = ${query.inPublicPool}`);
   if (query.poolStage === 'LEGACY')
-    parts.push(
-      Prisma.sql`${qualified ? Prisma.sql`r.pool_stage` : Prisma.sql`pool_stage`} IS NULL`,
-    );
+    parts.push(Prisma.sql`r.pool_stage IS NULL`);
   else if (query.poolStage)
-    parts.push(
-      Prisma.sql`${qualified ? Prisma.sql`r.pool_stage` : Prisma.sql`pool_stage`} = ${query.poolStage}`,
-    );
+    parts.push(Prisma.sql`r.pool_stage = ${query.poolStage}`);
   if (query.poolQuality)
-    parts.push(
-      Prisma.sql`${qualified ? Prisma.sql`r.pool_quality` : Prisma.sql`pool_quality`} = ${query.poolQuality}`,
-    );
+    parts.push(Prisma.sql`r.pool_quality = ${query.poolQuality}`);
   if (query.search) {
-    parts.push(searchSql(query.search, query.searchFieldKeys, qualified));
+    const pattern = '%' + query.search + '%';
+    const fields = [
+      Prisma.sql`r.title`,
+      ...query.searchFieldKeys.map((key) => Prisma.sql`(r.data ->> ${key})`),
+    ];
+    parts.push(
+      Prisma.sql`(${Prisma.join(
+        fields.map((field) => Prisma.sql`${field} ILIKE ${pattern}`),
+        ' OR ',
+      )})`,
+    );
   }
-  for (const filter of query.filters) {
-    parts.push(filterSql(filter, qualified, tenantId));
-  }
+  for (const filter of query.filters)
+    parts.push(filterSql(filter, tenantId, query.followUpOwnerMemberId));
   return Prisma.join(parts, ' AND ');
-}
-
-function searchSql(
-  search: string,
-  searchFieldKeys: string[],
-  qualified: boolean,
-): Prisma.Sql {
-  const pattern = `%${search}%`;
-  const clauses = [
-    Prisma.sql`${qualified ? Prisma.sql`r.title` : Prisma.sql`title`} ILIKE ${pattern}`,
-    ...searchFieldKeys.map(
-      (fieldKey) =>
-        Prisma.sql`${jsonText(fieldKey, qualified)} ILIKE ${pattern}`,
-    ),
-  ];
-  return Prisma.sql`(${Prisma.join(clauses, ' OR ')})`;
 }
 
 function filterSql(
   filter: RecordListFilter,
-  qualified: boolean,
   tenantId: string,
+  followUpOwner?: RecordOwnerFilter,
 ): Prisma.Sql {
-  const text = jsonText(filter.fieldKey, qualified);
-  const json = jsonValue(filter.fieldKey, qualified);
-  if (filter.mode === 'DATE_RANGE') {
+  if (filter.mode === 'GROUP') {
+    const children = filter.conditions.map((c) =>
+      filterSql(c, tenantId, followUpOwner),
+    );
+    return Prisma.sql`(${Prisma.join(children, filter.match === 'all' ? ' AND ' : ' OR ')})`;
+  }
+  if (filter.mode === 'FOLLOW_UP')
+    return Prisma.sql`EXISTS (SELECT 1 FROM record_follow_ups f WHERE ${openTasksSql(filter.assigneeMemberId, followUpOwner)} AND f.due_at < ${filter.before}::timestamptz)`;
+  const key = filter.fieldKey;
+  const text =
+    key === '$owner'
+      ? Prisma.sql`r.owner_member_id::text`
+      : Prisma.sql`(r.data ->> ${key})`;
+  const json = Prisma.sql`(r.data -> ${key})`;
+  if (filter.mode === 'DATE_RANGE')
     return recordDatePredicate(text, filter, tenantId);
-  }
   if (filter.mode === 'NUMBER_RANGE') {
-    const bounds: Prisma.Sql[] = [
-      Prisma.sql`${text} ~ '^-?[0-9]+([.][0-9]+)?$'`,
-    ];
-    if (filter.min !== undefined) {
-      bounds.push(Prisma.sql`(${text})::numeric >= ${filter.min}`);
-    }
-    if (filter.max !== undefined) {
-      bounds.push(Prisma.sql`(${text})::numeric <= ${filter.max}`);
-    }
-    return Prisma.join(bounds, ' AND ');
+    const numeric = Prisma.sql`(CASE WHEN ${text} ~ '^-?[0-9]+([.][0-9]+)?$' THEN ${text}::numeric END)`;
+    const bounds: Prisma.Sql[] = [];
+    if (filter.min !== undefined)
+      bounds.push(Prisma.sql`${numeric} >= ${String(filter.min)}::numeric`);
+    if (filter.max !== undefined)
+      bounds.push(Prisma.sql`${numeric} <= ${String(filter.max)}::numeric`);
+    if (filter.gt !== undefined)
+      bounds.push(Prisma.sql`${numeric} > ${String(filter.gt)}::numeric`);
+    if (filter.lt !== undefined)
+      bounds.push(Prisma.sql`${numeric} < ${String(filter.lt)}::numeric`);
+    return Prisma.sql`(${Prisma.join(bounds, ' AND ')})`;
   }
-  if (filter.mode === 'BOOLEAN_EQUALS') {
-    return Prisma.sql`${text} = ${String(filter.value)}`;
-  }
-  if (filter.mode === 'MEMBER_EQUALS' || filter.mode === 'EQUALS') {
+  if (filter.mode === 'BOOLEAN_EQUALS')
+    return Prisma.sql`${json} = ${String(filter.value)}::jsonb`;
+  if (filter.mode === 'MEMBER_EQUALS' || filter.mode === 'EQUALS')
     return Prisma.sql`${text} IN (${Prisma.join(filter.values)})`;
-  }
-  if (filter.mode === 'CONTAINS') {
-    if (filter.values.length === 0) return Prisma.sql`FALSE`;
-    return Prisma.sql`
-      EXISTS (
-        SELECT 1
-        FROM jsonb_array_elements_text(
-          CASE WHEN jsonb_typeof(${json}) = 'array'
-            THEN ${json}
-            ELSE '[]'::jsonb
-          END
-        ) item(value)
-        WHERE item.value IN (${Prisma.join(filter.values)})
-      )
-    `;
-  }
-  if (filter.mode === 'TEXT_CONTAINS') {
-    return Prisma.sql`${text} ILIKE ${`%${filter.contains}%`}`;
-  }
-  return presenceSql(filter.fieldKey, filter.mode === 'EMPTY', qualified);
-}
-
-function presenceSql(
-  fieldKey: string,
-  empty: boolean,
-  qualified: boolean,
-): Prisma.Sql {
-  const json = jsonValue(fieldKey, qualified);
-  const text = jsonText(fieldKey, qualified);
-  const predicate = Prisma.sql`(
-    ${json} IS NULL
-    OR ${json} = 'null'::jsonb
-    OR (jsonb_typeof(${json}) = 'string' AND NULLIF(BTRIM(${text}), '') IS NULL)
-    OR (jsonb_typeof(${json}) = 'array' AND jsonb_array_length(${json}) = 0)
-  )`;
-  return empty ? predicate : Prisma.sql`NOT ${predicate}`;
-}
-
-function jsonText(fieldKey: string, qualified: boolean): Prisma.Sql {
-  return qualified
-    ? Prisma.sql`r.data ->> ${fieldKey}`
-    : Prisma.sql`data ->> ${fieldKey}`;
-}
-
-function jsonValue(fieldKey: string, qualified: boolean): Prisma.Sql {
-  return qualified
-    ? Prisma.sql`r.data -> ${fieldKey}`
-    : Prisma.sql`data -> ${fieldKey}`;
+  if (filter.mode === 'CONTAINS')
+    return Prisma.sql`(jsonb_typeof(${json}) = 'array' AND ${json} ?| ARRAY[${Prisma.join(filter.values)}]::text[])`;
+  if (filter.mode === 'TEXT_EQUALS')
+    return Prisma.sql`${text} = ${filter.value}`;
+  if (filter.mode === 'TEXT_CONTAINS')
+    return Prisma.sql`STRPOS(LOWER(${text}), LOWER(${filter.contains}::text)) > 0`;
+  const empty =
+    key === '$owner'
+      ? Prisma.sql`(r.owner_member_id IS NULL)`
+      : Prisma.sql`(${text} IS NULL OR BTRIM(${text}) = '' OR ${json} = '[]'::jsonb)`;
+  if (filter.mode === 'NOT')
+    return Prisma.sql`(NOT ${empty} AND NOT (${filterSql(filter.filter, tenantId, followUpOwner)}))`;
+  return filter.mode === 'EMPTY' ? empty : Prisma.sql`NOT ${empty}`;
 }
 
 function recordSortExpression(sort: RecordListQuery['sort']): Prisma.Sql {
@@ -1533,6 +1454,7 @@ function recordSortExpression(sort: RecordListQuery['sort']): Prisma.Sql {
       updatedAt: Prisma.sql`r.updated_at`,
       createdAt: Prisma.sql`r.created_at`,
       recordNo: Prisma.sql`r.record_no`,
+      nextFollowUpAt: Prisma.sql`"nextFollowUpAt"`,
     }[sort];
   }
   const value = Prisma.sql`r.data ->> ${sort.fieldKey}`;

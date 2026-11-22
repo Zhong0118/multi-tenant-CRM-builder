@@ -28,3 +28,25 @@ describe("runtime archived server rendering", () => {
     ).rejects.toBe(denial);
   });
 });
+
+it("offers an explicit switch to allowed rows after an unavailable preview", async () => {
+  const { parseRecordQuery } =
+    await import("@/features/records/record-query-state");
+  render(
+    await renderRuntimeObjectPage(
+      "northwind",
+      async () => {
+        parseRecordQuery({
+          filters: '{"version":1,"match":"any","conditions":[]}',
+        });
+        return <div>不应披露的记录</div>;
+      },
+      "customers",
+    ),
+  );
+  expect(screen.getByText("该视图条件不可用")).toBeInTheDocument();
+  expect(screen.queryByText("不应披露的记录")).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("link", { name: "切换到全部（按权限）" }),
+  ).toHaveAttribute("href", "/workspace/northwind/objects/customers");
+});

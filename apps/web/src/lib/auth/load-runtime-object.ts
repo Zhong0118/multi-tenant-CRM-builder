@@ -10,7 +10,12 @@ import {
 } from "@/features/objects/object-types";
 import type { DynamicFieldMember } from "@/features/records/dynamic-field";
 import type { RecordQuery } from "@/features/records/record-query-state";
-import { recordFilterParameter } from "@/features/records/record-query-state";
+import {
+  recordRequestParameters,
+  isPristineRecordQuery,
+  restrictRecordQuery,
+  RecordViewUnavailableError,
+} from "@/features/records/record-query-state";
 import { toApiError } from "@/lib/api/api-error";
 import { createServerApiClient } from "@/lib/api/server-client";
 
@@ -43,6 +48,11 @@ export async function loadRuntimeObject(
       "OBJECT_ARCHIVED"
     )
       throw new ArchivedObjectError();
+    if (
+      toApiError(result.error, result.response.status).code ===
+      "OBJECT_ACTION_FORBIDDEN"
+    )
+      throw new ObjectAccessRestrictedError();
     if (result.response.status < 500) notFound();
     throw asError(result.error, result.response.status);
   }
@@ -90,33 +100,61 @@ export async function loadRuntimeObject(
   };
 }
 
+/** Resolve the editable team default before the first server page so a restricted view cannot flash unrelated records. */
+export async function resolveInitialRecordQuery(
+  tenantCode: string,
+  objectCode: string,
+  query: RecordQuery,
+  schema: RuntimeObjectSchema,
+): Promise<RecordQuery> {
+  const authorized = restrictRecordQuery(query, schema);
+  if (!isPristineRecordQuery(authorized, schema.defaultView.sort)) return authorized;
+  const client = await createServerApiClient();
+  const result = await client.GET(
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/record-views",
+    { params: { path: { tenantCode, objectCode } } },
+  );
+  if (!result.data) {
+    if (result.response.status >= 500)
+      throw asError(result.error, result.response.status);
+    throw new RecordViewUnavailableError();
+  }
+  const preset = result.data.items.find((view) => view.code === "all");
+  if (!preset?.available) {
+    const next = result.data.items.find((view) => view.available);
+    throw new RecordViewUnavailableError(
+      next ? { id: next.id, name: next.name } : null,
+    );
+  }
+  return { ...query, viewId: preset.id };
+}
+
 export async function loadRecordPage(
   tenantCode: string,
   objectCode: string,
   query: RecordQuery,
 ): Promise<RecordPage> {
   const client = await createServerApiClient();
+  if (query.baseViewId && !query.viewId) {
+    const source = await client.GET(
+      "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/record-views/{viewId}",
+      {
+        params: { path: { tenantCode, objectCode, viewId: query.baseViewId } },
+      },
+    );
+    if (!source.data) {
+      if (source.response.status >= 500)
+        throw asError(source.error, source.response.status);
+      throw new RecordViewUnavailableError();
+    }
+    if (!source.data.available) throw new RecordViewUnavailableError();
+  }
   const result = await client.GET(
     "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records",
     {
       params: {
         path: { tenantCode, objectCode },
-        query: {
-          page: query.page,
-          limit: query.limit,
-          sort: query.sort,
-          direction: query.direction,
-          ...(query.search ? { search: query.search } : {}),
-          ...(query.scope ? { scope: query.scope } : {}),
-          ...(query.poolStage ? { poolStage: query.poolStage } : {}),
-          ...(query.poolQuality ? { poolQuality: query.poolQuality } : {}),
-          ...(query.ownerMemberId
-            ? { ownerMemberId: query.ownerMemberId }
-            : {}),
-          ...(recordFilterParameter(query.filters)
-            ? { filters: recordFilterParameter(query.filters) }
-            : {}),
-        },
+        query: recordRequestParameters(query),
       },
     },
   );
@@ -126,6 +164,17 @@ export async function loadRecordPage(
       "OBJECT_ARCHIVED"
     )
       throw new ArchivedObjectError();
+    const { code } = toApiError(result.error, result.response.status);
+    if (code === "OBJECT_ACTION_FORBIDDEN")
+      throw new ObjectAccessRestrictedError();
+    if (
+      (query.viewId || query.filterRule) &&
+      (code === "RECORD_FILTER_INVALID" ||
+        code === "RECORD_SORT_INVALID" ||
+        code === "VALIDATION_FAILED" ||
+        (code === "RECORD_NOT_FOUND" && query.viewId))
+    )
+      throw new RecordViewUnavailableError();
     if (result.response.status < 500) notFound();
     throw asError(result.error, result.response.status);
   }
@@ -163,5 +212,11 @@ export class ArchivedObjectError extends Error {
   readonly code = "OBJECT_ARCHIVED";
   constructor() {
     super("业务表已停用");
+  }
+}
+
+export class ObjectAccessRestrictedError extends Error {
+  constructor() {
+    super("访问受限");
   }
 }

@@ -15,6 +15,7 @@ import type { DynamicFieldMember } from "./dynamic-field";
 import { RecordAttachmentsPanel } from "@/features/attachments/record-attachments-panel";
 import { RecordRelationsPanel } from "./record-relations-panel";
 import { FollowUpPanel } from "@/features/follow-ups/follow-up-panel";
+import { CommunicationDraftDialog } from "./communication-draft";
 import { RecordActivityTimeline } from "./record-activity-timeline";
 import { RecordAutomationPanel } from "@/features/automations/record-automation-panel";
 import { RecordWorkflowPanel } from "./record-workflow-panel";
@@ -74,6 +75,8 @@ export function RecordDetailDrawer({
     currentMemberId,
     canChooseOwner,
   );
+  const canOrganize = canOperate;
+  const [organizing, setOrganizing] = useState(false);
   const [editing, setEditing] = useState(initialEditing && canEdit);
   const [editingRecord, setEditingRecord] = useState<RecordSummary | undefined>(
     initialEditing && canEdit ? record : undefined,
@@ -310,26 +313,70 @@ export function RecordDetailDrawer({
             onRecordChanged={() => api.detail(tenantCode, schema.object.code, record.id).then(onChanged)}
           /> : null}
 
-          {!poolPreview ? <FollowUpPanel
-            onCompleted={async () => { await onChanged(await api.detail(tenantCode, schema.object.code, record.id)); }}
-            tenantCode={tenantCode}
-            followUpId={followUpId}
-            record={{
-              id: record.id,
-              objectCode: schema.object.code,
-              canCreate: canOperate,
-            }}
-          /> : null}
+          {!poolPreview ? (
+            <FollowUpPanel
+              onCompleted={async () => {
+                await onChanged(
+                  await api.detail(tenantCode, schema.object.code, record.id),
+                );
+              }}
+              tenantCode={tenantCode}
+              followUpId={followUpId}
+              record={{
+                id: record.id,
+                objectCode: schema.object.code,
+                canCreate: canOperate,
+              }}
+            />
+          ) : null}
 
-          {!poolPreview ? <RecordActivityTimeline
-            onCreated={poolConfig?.lifecycleEnabled ? async () => { await onChanged(await api.detail(tenantCode, schema.object.code, record.id)); } : undefined}
-            tenantCode={tenantCode}
-            objectCode={schema.object.code}
-            recordId={record.id}
-            canCreate={canOperate}
-            canDelete={canChooseOwner}
-            api={api}
-          /> : null}
+          {organizing && canOrganize && (
+            <CommunicationDraftDialog
+              key={record.id}
+              tenantCode={tenantCode}
+              objectCode={schema.object.code}
+              recordId={record.id}
+              recordTitle={record.title}
+              fields={fields}
+              members={members}
+              onClose={() => setOrganizing(false)}
+              onSaved={async () =>
+                onChanged(
+                  await api.detail(tenantCode, schema.object.code, record.id),
+                )
+              }
+            />
+          )}
+          {!poolPreview ? (
+            <RecordActivityTimeline
+              action={
+                canOrganize ? (
+                  <Button onClick={() => setOrganizing(true)}>
+                    整理本次沟通
+                  </Button>
+                ) : undefined
+              }
+              onCreated={
+                poolConfig?.lifecycleEnabled
+                  ? async () => {
+                      await onChanged(
+                        await api.detail(
+                          tenantCode,
+                          schema.object.code,
+                          record.id,
+                        ),
+                      );
+                    }
+                  : undefined
+              }
+              tenantCode={tenantCode}
+              objectCode={schema.object.code}
+              recordId={record.id}
+              canCreate={canOperate}
+              canDelete={canChooseOwner}
+              api={api}
+            />
+          ) : null}
           <details className={styles.detailDisclosure}>
             <summary>完整业务字段</summary>
             {renderFields(fields)}

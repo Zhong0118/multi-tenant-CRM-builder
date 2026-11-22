@@ -28,6 +28,7 @@ import { RecordAttachmentsPanel } from "@/features/attachments/record-attachment
 import { FollowUpPanel } from "@/features/follow-ups/follow-up-panel";
 import { RecordAutomationPanel } from "@/features/automations/record-automation-panel";
 import type { DynamicFieldMember } from "./dynamic-field";
+import { CommunicationDraftAction } from "./communication-draft";
 import { RecordActivityTimeline } from "./record-activity-timeline";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
 import {
@@ -414,6 +415,18 @@ export function RecordDetailPage({
           <span className={styles.crumbCurrent}>#{record.recordNo}</span>
         </nav>
         <div className={styles.topActions}>
+          {canOperate && !deleted && (
+            <CommunicationDraftAction
+              key={record.id}
+              tenantCode={tenantCode}
+              objectCode={schema.object.code}
+              recordId={record.id}
+              recordTitle={record.title}
+              fields={recordFields(schema, record)}
+              members={members}
+              onSaved={refresh}
+            />
+          )}
           {position && position.total > 1 ? (
             <div className={styles.pager} role="group" aria-label="逐条查看">
               <Tooltip title="上一条">

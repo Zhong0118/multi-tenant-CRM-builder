@@ -1,3 +1,6 @@
+import { CommunicationDraftsService } from './communication-drafts.service';
+import { CommunicationDraftsController } from './communication-drafts.controller';
+import { CommunicationDraftGenerator } from './communication-draft-generator';
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -27,8 +30,10 @@ import { AiToolRegistry } from './tool-registry';
     RecordsModule,
     FollowUpsModule,
   ],
-  controllers: [AiController],
+  controllers: [AiController, CommunicationDraftsController],
   providers: [
+    CommunicationDraftsService,
+    CommunicationDraftGenerator,
     ConversationRepository,
     ConversationService,
     AiOperationRepository,

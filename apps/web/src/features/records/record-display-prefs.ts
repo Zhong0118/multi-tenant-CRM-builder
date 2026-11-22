@@ -61,6 +61,7 @@ export interface RecordDisplayPrefs {
   ownerVisible: boolean;
   activityVisible: boolean;
   updatedAtVisible: boolean;
+  nextFollowUpVisible?: boolean;
   headerTone: HeaderTone;
 }
 
@@ -162,6 +163,9 @@ export function parseDisplayPrefs(
       ownerVisible: raw.ownerVisible !== false,
       activityVisible: raw.activityVisible !== false,
       updatedAtVisible: raw.updatedAtVisible !== false,
+      ...(typeof raw.nextFollowUpVisible === "boolean"
+        ? { nextFollowUpVisible: raw.nextFollowUpVisible }
+        : {}),
       headerTone: isHeaderTone(raw.headerTone)
         ? raw.headerTone
         : DEFAULT_HEADER_TONE,

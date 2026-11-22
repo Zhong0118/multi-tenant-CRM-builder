@@ -33,6 +33,19 @@ export function recordDatePredicate(
 ): Prisma.Sql {
   const expression = recordDateExpression(value, filter.dateType ?? 'DATE');
   // Tenant-owned timezone is authoritative for relative dates and DATETIME boundaries.
+  // The unified compiler resolves an exclusive upper bound and tenant-local instants once per request.
+  if (filter.before || filter.from?.includes('T')) {
+    const bound = (value: string) =>
+      filter.dateType === 'DATETIME'
+        ? Prisma.sql`${value}::timestamptz`
+        : Prisma.sql`${value}::date`;
+    const bounds: Prisma.Sql[] = [];
+    if (filter.from)
+      bounds.push(Prisma.sql`${expression} >= ${bound(filter.from)}`);
+    if (filter.before)
+      bounds.push(Prisma.sql`${expression} < ${bound(filter.before)}`);
+    return Prisma.join(bounds, ' AND ');
+  }
   const timezone = Prisma.sql`(SELECT timezone FROM tenants WHERE id = ${tenantId}::uuid)`;
   let from = filter.from ? Prisma.sql`${filter.from}::date` : undefined;
   let to = filter.to ? Prisma.sql`${filter.to}::date` : undefined;
