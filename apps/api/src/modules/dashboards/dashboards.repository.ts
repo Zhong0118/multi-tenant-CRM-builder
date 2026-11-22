@@ -1,3 +1,4 @@
+import { escapeLikeText } from '../../infrastructure/database/like-pattern';
 import { DASHBOARD_CREATED_AT } from './dashboard.types';
 import { recordDateExpression } from '../records/record-date-query';
 import { recordOwnerSql } from '../objects/record-read-scope.sql';
@@ -948,7 +949,7 @@ function filterPredicate(
     return membershipPredicate(text, filter.operator, values.map(String));
   }
   if (filter.operator === 'CONTAINS') {
-    return Prisma.sql`${text} ILIKE ${`%${String(filter.value)}%`}`;
+    return Prisma.sql`${text} ILIKE ${`%${escapeLikeText(String(filter.value))}%`}`;
   }
   if (filter.operator === 'NOT_EMPTY') {
     return Prisma.sql`NULLIF(BTRIM(${text}), '') IS NOT NULL`;

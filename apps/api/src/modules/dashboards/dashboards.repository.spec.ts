@@ -407,7 +407,7 @@ describe('PrismaDashboardQueryExecutor', () => {
         'object-opportunities',
         'member-1',
         'name',
-        "%x%' OR TRUE --%",
+        "%x\\%' OR TRUE --%",
       ]),
     );
   });

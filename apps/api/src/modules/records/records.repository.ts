@@ -1,3 +1,4 @@
+import { escapeLikeText } from '../../infrastructure/database/like-pattern';
 import { recordDateExpression, recordDatePredicate } from './record-date-query';
 import {
   recordOwnerFilter,
@@ -1378,7 +1379,7 @@ function listWhereSql(
   if (query.poolQuality)
     parts.push(Prisma.sql`r.pool_quality = ${query.poolQuality}`);
   if (query.search) {
-    const pattern = '%' + query.search + '%';
+    const pattern = '%' + escapeLikeText(query.search) + '%';
     const fields = [
       Prisma.sql`r.title`,
       ...query.searchFieldKeys.map((key) => Prisma.sql`(r.data ->> ${key})`),

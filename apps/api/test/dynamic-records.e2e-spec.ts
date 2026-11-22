@@ -67,6 +67,33 @@ describe('Dynamic records API (e2e)', () => {
     fixture = await provision(adminDatabase);
   });
 
+  it('matches literal punctuation in keyword and contains searches on both sort paths', async () => {
+    const base = `/api/v1/workspaces/${tenantCode}/objects/${objectCode}/records`;
+    const match = await createRecord(fixture.adminCookie, {
+      values: { name: '50%_A\\B' },
+    });
+    await createRecord(fixture.adminCookie, { values: { name: 'Other' } });
+
+    for (const sort of ['recordNo', 'name']) {
+      for (const text of ['%', '_', '\\']) {
+        for (const query of [
+          { search: text },
+          { filters: JSON.stringify({ name: { contains: text } }) },
+        ]) {
+          const result = await request(app.getHttpServer())
+            .get(base)
+            .set('Cookie', fixture.adminCookie)
+            .query({ ...query, sort })
+            .expect(200);
+          expect(result.body).toMatchObject({
+            total: 1,
+            items: [{ id: match.id }],
+          });
+        }
+      }
+    }
+  });
+
   it('filters unassigned owners through both sort paths and export without widening employee access', async () => {
     const base = `/api/v1/workspaces/${tenantCode}/objects/${objectCode}/records`;
     const unassigned = await createRecord(fixture.adminCookie, {
