@@ -350,6 +350,7 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
   });
   it.each([
     { total: 21, targets: 20, publish: false },
+    { total: 37, targets: 20, publish: false },
     { total: 20, targets: 20, publish: true },
     { total: 21, targets: 19, publish: true },
   ])(
@@ -397,21 +398,89 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
           data: { text: claim },
         });
       } else {
+        const content = `共找到 ${total} 条，单次最多处理 20 条，请缩小范围后再试。`;
         expect(proposals.completeWithBatch).not.toHaveBeenCalled();
         expect(JSON.stringify(events)).not.toContain(claim);
         expect(events).toContainEqual({
           event: 'assistant.delta',
-          data: { text: expect.stringContaining('缩小范围') },
+          data: { text: content },
         });
         expect(conversations.finalizeAssistant).toHaveBeenCalledWith(
           context,
           begun.turnId,
           expect.objectContaining({
             status: 'COMPLETED',
-            content: expect.stringContaining('缩小范围'),
+            content,
           }),
         );
       }
+    },
+  );
+  it.each([
+    {
+      total: 37,
+      covered: true,
+      content: '共找到 37 条，单次最多处理 20 条，请缩小范围后再试。',
+    },
+    {
+      total: 20,
+      covered: true,
+      content: '共找到 20 条，一批最多可提议 20 项，请缩小范围后再试。',
+    },
+    {
+      total: 37,
+      covered: false,
+      content: '一批最多可提议 20 项，请缩小范围后再试。',
+    },
+  ])(
+    'reports the search total for 21 proposal calls only when every target is covered (total=$total, covered=$covered)',
+    async ({ total, covered, content }) => {
+      const conversations = conversationMock();
+      const proposals = proposalMock();
+      const items = Array.from({ length: 20 }, () => ({ id: randomUUID() }));
+      const query = searchTool(async () => ({ items, total }));
+      const provider = providerWith(async function* (_signal, tools) {
+        await tools
+          .find((tool) => tool.name === 'search_records')!
+          .execute({ objectCode: 'leads', limit: 20 }, 'search');
+        const write = tools.find((tool) => tool.name === 'propose_change')!;
+        for (const row of items)
+          await write.execute({ ...candidate, recordId: row.id }, row.id);
+        await write.execute(
+          {
+            ...candidate,
+            recordId: covered ? items[0].id : candidate.recordId,
+          },
+          'extra',
+        );
+        yield { type: 'TEXT_DELTA', text: '已生成提议' };
+        yield { type: 'COMPLETED' };
+      });
+      const events = await collect(
+        await new AiOrchestrator(
+          conversations,
+          provider,
+          registryWith([query]),
+          proposals,
+        ).streamTurn(
+          context,
+          { content: '备注' },
+          new AbortController().signal,
+        ),
+      );
+      expect(JSON.stringify(events)).not.toContain('已生成提议');
+      expect(events.at(-1)?.event).toBe('turn.completed');
+      expect(events).toContainEqual({
+        event: 'assistant.delta',
+        data: { text: content },
+      });
+      expect(conversations.finalizeAssistant).toHaveBeenCalledWith(
+        context,
+        begun.turnId,
+        expect.objectContaining({ content, status: 'COMPLETED' }),
+      );
+      expect(events.map((e) => e.event)).not.toContain('proposal.ready');
+      expect(proposals.completeWithBatch).not.toHaveBeenCalled();
     },
   );
   it('rejects a proposal about a visible but unseen target', async () => {

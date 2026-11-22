@@ -602,14 +602,18 @@ describe('Critical API E2E', () => {
       ).toBe(0);
       expect(events.map((e) => e.event)).not.toContain('proposal.ready');
       expect(response.text).not.toContain(claim);
-      expect(response.text).toContain('缩小范围');
+      const content = '共找到 21 条，单次最多处理 20 条，请缩小范围后再试。';
+      expect(events).toContainEqual({
+        event: 'assistant.delta',
+        data: { text: content },
+      });
       expect(
         await harness.adminDatabase.aiMessage.findFirstOrThrow({
           where: { turnId, role: 'ASSISTANT' },
         }),
       ).toMatchObject({
         status: 'COMPLETED',
-        content: expect.stringContaining('缩小范围'),
+        content,
       });
     } finally {
       mock.mockRestore();

@@ -28,7 +28,10 @@ const toolInput = z.strictObject({
 // happen after the provider finishes, in the orchestrator's tenant transaction.
 export class ProposalCollector {
   private readonly callIds = new Set<string>();
-  private readonly received = new Set<string>();
+  private readonly received = new Map<
+    string,
+    Pick<ProposalCandidate, 'objectCode' | 'recordId'>
+  >();
   private readonly items: ProposalCandidate[] = [];
   private failure:
     'PROPOSAL_LIMIT' | 'CONFLICTING_VALUES' | 'INVALID_PROPOSAL' | null = null;
@@ -43,6 +46,11 @@ export class ProposalCollector {
       this.failure ??
       (this.callIds.size !== this.received.size ? 'INVALID_PROPOSAL' : null)
     );
+  }
+  get requestedTargets() {
+    return this.callIds.size === this.received.size
+      ? [...this.received.values()]
+      : [];
   }
   get invalidated() {
     return this.failureCode !== null;
@@ -90,12 +98,16 @@ export class ProposalCollector {
     inputSchema: toolInput,
     execute: (input: unknown, callId: string) => {
       this.requested(callId);
-      if (!this.failure && !this.received.has(callId)) {
-        this.received.add(callId);
+      if (!this.received.has(callId)) {
         try {
-          this.collect(validateProposalCandidate(input));
+          const candidate = validateProposalCandidate(input);
+          this.received.set(callId, {
+            objectCode: candidate.objectCode,
+            recordId: candidate.recordId,
+          });
+          if (!this.failure) this.collect(candidate);
         } catch {
-          this.failure = 'INVALID_PROPOSAL';
+          this.failure ??= 'INVALID_PROPOSAL';
         }
       }
       return Promise.resolve(

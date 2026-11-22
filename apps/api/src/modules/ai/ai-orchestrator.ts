@@ -303,7 +303,10 @@ export class AiOrchestrator {
                 break;
               case 'TEXT_DELTA':
                 // A provider may announce a proposal before the batch is persisted.
-                if (isTruncatedBatch(search.coverage(collector.candidates)))
+                if (
+                  collector.failureCode === 'PROPOSAL_LIMIT' ||
+                  isTruncatedBatch(search.coverage(collector.candidates))
+                )
                   break;
                 buffer += event.text;
                 yield { event: 'assistant.delta', data: { text: event.text } };
@@ -381,7 +384,9 @@ export class AiOrchestrator {
           openQuestion === null
             ? '已追问三次，信息仍不足。请补充具体的客户、字段或期望值后再试。'
             : collector.failureCode === 'PROPOSAL_LIMIT'
-              ? '一批最多可提议 20 项，请缩小范围后再试。'
+              ? proposalLimitMessage(
+                  search.coverage(collector.requestedTargets)?.total,
+                )
               : (brief?.content ?? '');
         await this.finish(context, begun, latencyMs, {
           status: 'COMPLETED',
@@ -538,7 +543,7 @@ export class AiOrchestrator {
       const candidates = collector.candidates;
       const coverage = search.coverage(candidates);
       if (isTruncatedBatch(coverage)) {
-        const content = '范围超过 20 条，请缩小范围后再试。';
+        const content = proposalLimitMessage(coverage?.total);
         await this.finish(context, begun, latencyMs, { ...outcome, content });
         yield { event: 'assistant.reset', data: {} };
         yield { event: 'assistant.delta', data: { text: content } };
@@ -650,6 +655,15 @@ export class AiOrchestrator {
       latencyMs,
     });
   }
+}
+
+function proposalLimitMessage(total?: number) {
+  const matches = total === undefined ? '' : `共找到 ${total} 条，`;
+  const limit =
+    total !== undefined && total > 20
+      ? '单次最多处理 20 条'
+      : '一批最多可提议 20 项';
+  return `${matches}${limit}，请缩小范围后再试。`;
 }
 
 function isTruncatedBatch(coverage?: { total: number; targets: number }) {
