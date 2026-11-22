@@ -1,4 +1,7 @@
-import { communicationDueDate } from './communication-date';
+import {
+  communicationDueDate,
+  supportsFollowUpEvidence,
+} from './communication-date';
 
 const now = '2026-11-24T02:00:00.000Z'; // Tuesday, 10:00 in Shanghai
 const zone = 'Asia/Shanghai';
@@ -64,6 +67,19 @@ describe('quoted follow-up date in the tenant calendar', () => {
   ])('drops an incomplete date quote from %s', (quote, text) => {
     expect(communicationDueDate(quote, now, zone, text)).toBeNull();
   });
+
+  it.each<[string, string, boolean]>([
+    ['明天', '明天不需要再联系了，客户会主动发邮件', false],
+    ['回访', '周三的回访已取消', false],
+    ['过两天联系', '明天不用跟进，过两天联系', true],
+    ['下周', '不确定下周是否能联系', true],
+    ['周五', '周三回访', false],
+  ])(
+    'checks whether the quote %s belongs to a live plan',
+    (quote, source, expected) => {
+      expect(supportsFollowUpEvidence(quote, source)).toBe(expected);
+    },
+  );
 
   it('uses the local date after UTC midnight and across the month boundary', () => {
     // January 31 in Los Angeles although it is already February 1 UTC.

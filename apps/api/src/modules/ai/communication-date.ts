@@ -7,7 +7,7 @@ import {
 const clauseBoundary = /[，,。；;！？!?\n]/u;
 const uncertainPlan = /可能|不一定|不确定|待定|看情况|节后|假期后/u;
 const cancelledPlan =
-  /(?:不用|不必|不要|不能|暂不|不是|别|取消)(?:再|在|于|原定|了)?(?:[今明后]天|过两天|[上下本这]?(?:周|星期|礼拜)|月[末底]|联系|跟进|回电|打电话|致电|回访|安排)/u;
+  /(?:不需要|不用|不必|不要|不能|不再|暂不|不是|别|取消)(?:再|在|于|原定|了)?(?:[今明后]天|过两天|[上下本这]?(?:周|星期|礼拜)|月[末底]|联系|跟进|回电|打电话|致电|回访|安排)|(?:跟进|回访|电话|约定|会议|安排|预约)(?:已经|已)?取消/u;
 
 function clockNumber(value: string): number {
   if (/^\d+$/u.test(value)) return Number(value);
@@ -23,12 +23,7 @@ function clockNumber(value: string): number {
     : -1;
 }
 
-export function communicationDueDate(
-  evidence: string,
-  now: string,
-  timeZone: string,
-  source = evidence,
-): string | null {
+function followUpClause(evidence: string, source: string): string | null {
   // A short quote such as “明天跟进” can belong to the clause “不用明天跟进”.
   const at = source.indexOf(evidence);
   if (!evidence.trim() || at < 0) return null;
@@ -36,7 +31,24 @@ export function communicationDueDate(
     (source.slice(0, at).split(clauseBoundary).at(-1) ?? '') +
     evidence +
     source.slice(at + evidence.length).split(clauseBoundary, 1)[0];
-  if (uncertainPlan.test(clause) || cancelledPlan.test(clause)) return null;
+  return cancelledPlan.test(clause) ? null : clause;
+}
+
+export function supportsFollowUpEvidence(
+  evidence: string,
+  source: string,
+): boolean {
+  return followUpClause(evidence, source) !== null;
+}
+
+export function communicationDueDate(
+  evidence: string,
+  now: string,
+  timeZone: string,
+  source = evidence,
+): string | null {
+  const clause = followUpClause(evidence, source);
+  if (clause === null || uncertainPlan.test(clause)) return null;
   const due = quotedDate(evidence, now, timeZone);
   if (due && clause !== evidence && quotedDate(clause, now, timeZone) !== due)
     return null;
