@@ -10,7 +10,13 @@ it('declares an explicit JSON type for each DeepSeek union alternative', () => {
       'anyOf' in value &&
       Array.isArray(value.anyOf)
     )
-      for (const variant of value.anyOf) declared.push(variant.type);
+      for (const variant of value.anyOf as unknown[]) {
+        declared.push(
+          variant && typeof variant === 'object' && 'type' in variant
+            ? variant.type
+            : undefined,
+        );
+      }
     return value;
   });
   expect(declared.length).toBeGreaterThan(0);

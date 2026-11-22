@@ -27,8 +27,12 @@ export class FakeAiProvider implements AiProvider {
   readonly providerKey = 'fake';
   readonly modelKey = 'fake';
 
-  async generateFilter(input: FilterProviderInput, signal: AbortSignal) {
+  generateFilter(input: FilterProviderInput, signal: AbortSignal) {
     signal.throwIfAborted();
+    return Promise.resolve(this.demoFilter(input));
+  }
+
+  private demoFilter(input: FilterProviderInput) {
     // Fixed demo conversations only. All other requests explicitly abstain.
     const own = { fieldKey: '$owner', operator: 'in', value: ['$me'] };
     const rule = (conditions: unknown[]) => ({

@@ -245,7 +245,7 @@ export class FilterPreviewService {
           options.push({ id: String(options.length + 1), label, value: rule });
         }
         return options.length === 1
-          ? { kind: 'rule', rule: options[0]!.value }
+          ? { kind: 'rule', rule: options[0].value }
           : { kind: 'clarify', options };
       });
     } catch (error) {
