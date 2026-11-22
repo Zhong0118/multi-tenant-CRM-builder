@@ -42,11 +42,11 @@ after(async () => {
 
 const settings = (user, tenant) => ({ userId: user.id, tenantId: tenant.id });
 
-async function propose() {
+async function propose(itemKey) {
   const { users, tenantA, memberA, conversation, turnId } = fixture;
   return withSettings(runtime, settings(users[0], tenantA), (tx) => tx.aiOperation.create({ data: {
     tenantId: tenantA.id, conversationId: conversation.id, turnId,
-    requestedByMemberId: memberA.id, operationType: "ADD_ACTIVITY_NOTE", status: "PROPOSED",
+    requestedByMemberId: memberA.id, itemKey, operationType: "ADD_ACTIVITY_NOTE", status: "PROPOSED",
     requestText: "write a note", proposalJson: { objectCode: "demo", recordId: randomUUID(), content: "note" },
     displayChangesJson: { title: "note", changes: [] }, targetRefJson: { objectCode: "demo", recordId: randomUUID() }, expectedPublicationId: randomUUID(),
     expiresAt: new Date(Date.now() + 900_000),
@@ -168,10 +168,14 @@ test("expired state commits, while a failed business transaction rolls back befo
   assert.equal((await admin.aiOperation.findUnique({ where: { id: row.id } })).status, "FAILED");
 });
 
-test("one operation per turn regardless of terminal status", async () => {
+test("legacy proposals occupy slot one; later slots are unique per turn, including terminal operations", async () => {
   const row = await propose();
   await admin.aiOperation.update({ where: { id: row.id }, data: { status: "EXPIRED" } });
+  assert.equal(row.itemKey, 1);
+  assert.equal((await propose(2)).itemKey, 2);
   await assert.rejects(() => propose());
+  await assert.rejects(() => propose(2));
+  await assert.rejects(() => propose(21));
 });
 
 test("record drafts bind one member, object, publication and item, protecting successful operations", async () => {

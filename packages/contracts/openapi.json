@@ -62,6 +62,60 @@
       },
       "AiMessageResponseDto": {
         "properties": {
+          "action": {
+            "properties": {
+              "baseViewId": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "currentRule": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "draftId": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "kind": {
+                "enum": ["communication", "filter"],
+                "type": "string"
+              },
+              "objectCode": {
+                "type": "string"
+              },
+              "preview": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "recordId": {
+                "format": "uuid",
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "batch": {
+            "properties": {
+              "coverage": {
+                "properties": {
+                  "targets": {
+                    "type": "integer"
+                  },
+                  "total": {
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
+              "items": {
+                "items": {
+                  "$ref": "#/components/schemas/AiProposalResponseDto"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          },
           "completedAt": {
             "nullable": true,
             "type": "string"
@@ -94,6 +148,58 @@
             ],
             "nullable": true,
             "type": "object"
+          },
+          "questions": {
+            "items": {
+              "properties": {
+                "answer": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "fields": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "kind": {
+                  "enum": ["choose_record", "choose_option", "fill_fields"],
+                  "type": "string"
+                },
+                "options": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "prompt": {
+                  "type": "string"
+                },
+                "questionId": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "state": {
+                  "enum": [
+                    "OPEN",
+                    "ANSWERED",
+                    "CANCELLED",
+                    "SUPERSEDED",
+                    "EXPIRED"
+                  ],
+                  "type": "string"
+                },
+                "turnId": {
+                  "format": "uuid",
+                  "type": "string"
+                }
+              },
+              "required": ["questionId", "turnId", "kind", "state", "prompt"],
+              "type": "object"
+            },
+            "type": "array"
           },
           "role": {
             "type": "string"
@@ -157,6 +263,14 @@
           "changes": {
             "items": {
               "$ref": "#/components/schemas/AiProposalChangeDto"
+            },
+            "type": "array"
+          },
+          "editableFields": {
+            "items": {
+              "additionalProperties": true,
+              "required": ["key", "label", "type"],
+              "type": "object"
             },
             "type": "array"
           },
@@ -1733,6 +1847,32 @@
         "required": ["items", "page", "limit", "total", "timezone"],
         "type": "object"
       },
+      "ConfirmAiBatchDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ConfirmBatchItemDto"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": ["items"],
+        "type": "object"
+      },
+      "ConfirmAiBatchResultDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ConfirmBatchResultItemDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["items"],
+        "type": "object"
+      },
       "ConfirmAiProposalDto": {
         "properties": {
           "idempotencyKey": {
@@ -1741,6 +1881,54 @@
           }
         },
         "required": ["idempotencyKey"],
+        "type": "object"
+      },
+      "ConfirmBatchItemDto": {
+        "properties": {
+          "edits": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "idempotencyKey": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "proposalId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["proposalId", "idempotencyKey"],
+        "type": "object"
+      },
+      "ConfirmBatchResultItemDto": {
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/AiProposalChangeDto"
+            },
+            "type": "array"
+          },
+          "message": {
+            "type": "string"
+          },
+          "proposalId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "PROPOSED",
+              "REJECTED",
+              "EXPIRED",
+              "CONFLICTED",
+              "FAILED",
+              "EXECUTED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": ["proposalId", "status", "message", "changes"],
         "type": "object"
       },
       "ConfirmCommunicationDraftDto": {
@@ -7073,20 +7261,6 @@
         "required": ["id", "expiresAt", "isCurrent", "createdAt"],
         "type": "object"
       },
-      "StartAiTurnDto": {
-        "properties": {
-          "content": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "conversationId": {
-            "format": "uuid",
-            "type": "string"
-          }
-        },
-        "required": ["content"],
-        "type": "object"
-      },
       "TeamActivityCountsDto": {
         "properties": {
           "calls": {
@@ -11123,6 +11297,48 @@
         "tags": ["ai"]
       }
     },
+    "/api/v1/workspaces/{tenantCode}/ai/conversations/{id}/questions/{questionId}/cancel": {
+      "post": {
+        "operationId": "AiController_cancelQuestion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "questionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["ai"]
+      }
+    },
     "/api/v1/workspaces/{tenantCode}/ai/proposals/{proposalId}": {
       "get": {
         "operationId": "AiController_getProposal",
@@ -11276,7 +11492,177 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/StartAiTurnDto"
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "content": {
+                        "pattern": "\\S",
+                        "type": "string"
+                      },
+                      "context": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "objectCode": {
+                            "maxLength": 64,
+                            "pattern": "\\S",
+                            "type": "string"
+                          },
+                          "recordId": {
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          },
+                          "viewId": {
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          }
+                        },
+                        "required": ["objectCode"],
+                        "type": "object"
+                      },
+                      "conversationId": {
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                        "type": "string"
+                      },
+                      "filterDraft": {}
+                    },
+                    "required": ["content"],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "conversationId": {
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                        "type": "string"
+                      },
+                      "regenerateProposalId": {
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                        "type": "string"
+                      }
+                    },
+                    "required": ["conversationId", "regenerateProposalId"],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "answer": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "questionId": {
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          },
+                          "value": {
+                            "anyOf": [
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "kind": {
+                                    "enum": ["choose_record"],
+                                    "type": "string"
+                                  },
+                                  "optionId": {
+                                    "maxLength": 80,
+                                    "pattern": "\\S",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["kind", "optionId"],
+                                "type": "object"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "kind": {
+                                    "enum": ["choose_option"],
+                                    "type": "string"
+                                  },
+                                  "optionId": {
+                                    "maxLength": 80,
+                                    "pattern": "\\S",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["kind", "optionId"],
+                                "type": "object"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "kind": {
+                                    "enum": ["choose_option"],
+                                    "type": "string"
+                                  },
+                                  "otherText": {
+                                    "maxLength": 4000,
+                                    "pattern": "\\S",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["kind", "otherText"],
+                                "type": "object"
+                              },
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "kind": {
+                                    "enum": ["fill_fields"],
+                                    "type": "string"
+                                  },
+                                  "values": {
+                                    "additionalProperties": {},
+                                    "type": "object"
+                                  }
+                                },
+                                "required": ["kind", "values"],
+                                "type": "object"
+                              }
+                            ]
+                          }
+                        },
+                        "required": ["questionId", "value"],
+                        "type": "object"
+                      },
+                      "context": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "objectCode": {
+                            "maxLength": 64,
+                            "pattern": "\\S",
+                            "type": "string"
+                          },
+                          "recordId": {
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          },
+                          "viewId": {
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          }
+                        },
+                        "required": ["objectCode"],
+                        "type": "object"
+                      },
+                      "conversationId": {
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                        "type": "string"
+                      }
+                    },
+                    "required": ["conversationId", "answer"],
+                    "type": "object"
+                  }
+                ]
               }
             }
           },
@@ -11285,6 +11671,58 @@
         "responses": {
           "200": {
             "description": "AI turn SSE stream"
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["ai"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/ai/turns/{turnId}/proposals/confirm": {
+      "post": {
+        "operationId": "AiBatchController_confirm",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "turnId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmAiBatchDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmAiBatchResultDto"
+                }
+              }
+            },
+            "description": ""
           }
         },
         "security": [

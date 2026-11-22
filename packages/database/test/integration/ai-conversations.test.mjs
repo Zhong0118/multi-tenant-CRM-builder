@@ -480,3 +480,25 @@ function cleanupFixtures() {
     tenantCodes: fixtureTenantCodes,
   });
 }
+
+test("questions and evidence bind to the exact assistant message, member and turn under RLS", async () => {
+  const f = await createAiFixture();
+  const m = await admin.aiMessage.create({data:{
+    tenantId:f.tenantA.id, conversationId:f.conversationA.id, turnId:f.messageA.turnId,
+    role:"ASSISTANT", status:"COMPLETED",
+  }});
+  const scope = {tenantId:m.tenantId, conversationId:m.conversationId, memberId:f.memberA.id, messageId:m.id, turnId:m.turnId};
+  const q = {...scope, kind:"choose_option", prompt:"请选择", definition:{}, expiresAt:new Date(Date.now()+60000)};
+  const settings = {userId:f.userA.id,tenantId:m.tenantId};
+  const createQuestion = (data) => withSettings(runtime, settings, tx=>tx.aiQuestion.create({data}));
+  await createQuestion(q);
+  await assert.rejects(()=>createQuestion(q));
+  for (const forged of [{memberId:f.memberA2.id},{messageId:f.messageA.id},{turnId:randomUUID()},{conversationId:f.conversationB.id}])
+    await assert.rejects(()=>createQuestion({...q,state:"CANCELLED",...forged}));
+  await withSettings(runtime, settings, tx=>tx.aiRecordEvidence.create({data:{...scope,objectCode:"leads",recordId:randomUUID(),source:"tool"}}));
+  for (const user of [{userId:f.userA2.id,tenantId:m.tenantId},{userId:f.userB.id,tenantId:f.tenantB.id}])
+    await withSettings(runtime, user, async tx=>{
+      assert.deepEqual(await tx.aiQuestion.findMany(),[]);
+      assert.deepEqual(await tx.aiRecordEvidence.findMany(),[]);
+    });
+});

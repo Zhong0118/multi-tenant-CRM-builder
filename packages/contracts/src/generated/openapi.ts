@@ -644,6 +644,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/ai/conversations/{id}/questions/{questionId}/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AiController_cancelQuestion"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/ai/proposals/{proposalId}": {
     parameters: {
       query?: never;
@@ -702,6 +718,22 @@ export interface paths {
     get?: never;
     put?: never;
     post: operations["AiController_startTurn"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/ai/turns/{turnId}/proposals/confirm": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AiBatchController_confirm"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2155,6 +2187,30 @@ export interface components {
       nextBefore?: string;
     };
     AiMessageResponseDto: {
+      action?: {
+        /** Format: uuid */
+        baseViewId?: string;
+        currentRule?: {
+          [key: string]: unknown;
+        };
+        /** Format: uuid */
+        draftId?: string;
+        /** @enum {string} */
+        kind?: "communication" | "filter";
+        objectCode?: string;
+        preview?: {
+          [key: string]: unknown;
+        };
+        /** Format: uuid */
+        recordId?: string;
+      };
+      batch?: {
+        coverage?: {
+          targets?: number;
+          total?: number;
+        };
+        items?: components["schemas"]["AiProposalResponseDto"][];
+      };
       completedAt?: string | null;
       content: string;
       conversationId: string;
@@ -2163,6 +2219,26 @@ export interface components {
       errorCode?: string | null;
       id: string;
       proposal?: components["schemas"]["AiProposalResponseDto"] | null;
+      questions?: {
+        answer?: {
+          [key: string]: unknown;
+        };
+        fields?: {
+          [key: string]: unknown;
+        }[];
+        /** @enum {string} */
+        kind: "choose_record" | "choose_option" | "fill_fields";
+        options?: {
+          [key: string]: unknown;
+        }[];
+        prompt: string;
+        /** Format: uuid */
+        questionId: string;
+        /** @enum {string} */
+        state: "OPEN" | "ANSWERED" | "CANCELLED" | "SUPERSEDED" | "EXPIRED";
+        /** Format: uuid */
+        turnId: string;
+      }[];
       role: string;
       sourceSummary: {
         [key: string]: unknown;
@@ -2182,6 +2258,9 @@ export interface components {
       /** Format: uuid */
       auditId?: string | null;
       changes: components["schemas"]["AiProposalChangeDto"][];
+      editableFields?: {
+        [key: string]: unknown;
+      }[];
       /** Format: date-time */
       expiresAt: string;
       failureCode?: string | null;
@@ -2655,9 +2734,38 @@ export interface components {
       timezone: string;
       total: number;
     };
+    ConfirmAiBatchDto: {
+      items: components["schemas"]["ConfirmBatchItemDto"][];
+    };
+    ConfirmAiBatchResultDto: {
+      items: components["schemas"]["ConfirmBatchResultItemDto"][];
+    };
     ConfirmAiProposalDto: {
       /** Format: uuid */
       idempotencyKey: string;
+    };
+    ConfirmBatchItemDto: {
+      edits?: {
+        [key: string]: unknown;
+      };
+      /** Format: uuid */
+      idempotencyKey: string;
+      /** Format: uuid */
+      proposalId: string;
+    };
+    ConfirmBatchResultItemDto: {
+      changes: components["schemas"]["AiProposalChangeDto"][];
+      message: string;
+      /** Format: uuid */
+      proposalId: string;
+      /** @enum {string} */
+      status:
+        | "PROPOSED"
+        | "REJECTED"
+        | "EXPIRED"
+        | "CONFLICTED"
+        | "FAILED"
+        | "EXECUTED";
     };
     ConfirmCommunicationDraftDto: {
       items: components["schemas"]["DraftSelectionDto"][];
@@ -4476,11 +4584,6 @@ export interface components {
       /** Format: date-time */
       revokedAt?: string;
     };
-    StartAiTurnDto: {
-      content: string;
-      /** Format: uuid */
-      conversationId?: string;
-    };
     TeamActivityCountsDto: {
       /** @description Calls logged (电话 activities). */
       calls: number;
@@ -6261,6 +6364,27 @@ export interface operations {
       };
     };
   };
+  AiController_cancelQuestion: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        questionId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   AiController_getProposal: {
     parameters: {
       query?: never;
@@ -6342,7 +6466,64 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["StartAiTurnDto"];
+        "application/json":
+          | {
+              content: string;
+              context?: {
+                objectCode: string;
+                /** Format: uuid */
+                recordId?: string;
+                /** Format: uuid */
+                viewId?: string;
+              };
+              /** Format: uuid */
+              conversationId?: string;
+              filterDraft?: unknown;
+            }
+          | {
+              /** Format: uuid */
+              conversationId: string;
+              /** Format: uuid */
+              regenerateProposalId: string;
+            }
+          | {
+              answer: {
+                /** Format: uuid */
+                questionId: string;
+                value:
+                  | {
+                      /** @enum {string} */
+                      kind: "choose_record";
+                      optionId: string;
+                    }
+                  | {
+                      /** @enum {string} */
+                      kind: "choose_option";
+                      optionId: string;
+                    }
+                  | {
+                      /** @enum {string} */
+                      kind: "choose_option";
+                      otherText: string;
+                    }
+                  | {
+                      /** @enum {string} */
+                      kind: "fill_fields";
+                      values: {
+                        [key: string]: unknown;
+                      };
+                    };
+              };
+              context?: {
+                objectCode: string;
+                /** Format: uuid */
+                recordId?: string;
+                /** Format: uuid */
+                viewId?: string;
+              };
+              /** Format: uuid */
+              conversationId: string;
+            };
       };
     };
     responses: {
@@ -6352,6 +6533,32 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  AiBatchController_confirm: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tenantCode: string;
+        turnId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ConfirmAiBatchDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ConfirmAiBatchResultDto"];
+        };
       };
     };
   };

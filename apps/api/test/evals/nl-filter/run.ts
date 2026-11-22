@@ -316,7 +316,7 @@ async function main() {
       `Provider / 模型为 ${provider.providerKey} / ${provider.modelKey}。`,
       mode === 'fake'
         ? '模拟 provider 的分数仅衡量脚本覆盖的示例。真实模型语言理解能力未在此次运行中评估。'
-        : '使用同一模型与固定上下文分别运行两组语料。',
+        : '所选数据集使用固定上下文运行。',
       '',
       '样本角色为普通员工，租户时区为 Asia/Shanghai，时钟固定在 2026-11-22 16:00 UTC（当地次日零点）。留出集冻结于 3021158。',
       '',

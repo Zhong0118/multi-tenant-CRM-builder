@@ -1,3 +1,4 @@
+import { simulateAssistant } from './fake-assistant';
 import type { FilterProviderInput } from '../filter-generation';
 import type { CommunicationProviderInput } from '../communication-output';
 import type {
@@ -22,7 +23,7 @@ export function getFakeAiProviderCapturedToolResult(): unknown {
   return capturedToolResult;
 }
 
-// Fake is 1-round by construction: at most one tool execute, then COMPLETED.
+// Local scripted provider for deterministic integration and browser testing.
 export class FakeAiProvider implements AiProvider {
   readonly providerKey = 'fake';
   readonly modelKey = 'fake';
@@ -41,32 +42,90 @@ export class FakeAiProvider implements AiProvider {
       conditions,
     });
     const stage = input.fields.find((f) => f.label === '阶段');
-    const amount = input.fields.find((f) => f.label === '预计金额');
+    const amount = input.fields.find(
+      (f) =>
+        ['金额', '预计金额'].includes(f.label) &&
+        ['NUMBER', 'MONEY'].includes(f.type),
+    );
+    const over100k = amount && {
+      fieldKey: amount.fieldKey,
+      operator: 'gt',
+      value: amount.type === 'MONEY' ? '100000' : 100000,
+    };
     const stages = stage?.options
       ?.filter((o) => ['报价', '谈判'].includes(o.label))
       .map((o) => o.key);
     switch (input.text.trim()) {
       case '找我负责的、报价或谈判中、预计金额超过 10 万的客户':
-        if (stages?.length === 2 && stage && amount)
+        if (stages?.length === 2 && stage && over100k)
           return {
             rules: [
               rule([
                 own,
                 { fieldKey: stage.fieldKey, operator: 'in', value: stages },
-                { fieldKey: amount.fieldKey, operator: 'gt', value: '100000' },
+                over100k,
               ]),
             ],
           };
         break;
-      case '再加上金额大于 10 万':
-        if (amount && input.currentRule.match === 'all')
+      case '找本月签约的合同':
+        return {
+          rules: [
+            rule([
+              {
+                fieldKey: 'signedOn',
+                operator: 'relative',
+                value: 'this_month',
+              },
+            ]),
+          ],
+        };
+      case '筛选合同标签包含「续约」或「框架」的合同':
+        return {
+          rules: [
+            rule([
+              {
+                fieldKey: 'tags',
+                operator: 'in',
+                value: ['renewal', 'framework'],
+              },
+            ]),
+          ],
+        };
+      case '找法务经办人是我的合同':
+        return {
+          rules: [
+            rule([
+              { fieldKey: 'legalContact', operator: 'in', value: ['$me'] },
+            ]),
+          ],
+        };
+      case '找法务经办人是我且签约日期在 2026-12-01 到 2026-12-31 之间的合同':
+        return {
+          rules: [
+            rule([
+              { fieldKey: 'legalContact', operator: 'in', value: ['$me'] },
+              {
+                fieldKey: 'signedOn',
+                operator: 'between',
+                value: { from: '2026-12-01', to: '2026-12-31' },
+              },
+            ]),
+          ],
+        };
+      case '找金额超过 10 万的商机':
+        if (over100k) return { rules: [rule([over100k])] };
+        break;
+      case '找我负责的、金额超过 10 万的客户':
+        if (over100k)
           return {
-            rules: [
-              rule([
-                ...input.currentRule.conditions,
-                { fieldKey: amount.fieldKey, operator: 'gt', value: '100000' },
-              ]),
-            ],
+            rules: [rule([own, over100k])],
+          };
+        break;
+      case '再加上金额大于 10 万':
+        if (over100k && input.currentRule.match === 'all')
+          return {
+            rules: [rule([...input.currentRule.conditions, over100k])],
           };
         break;
       case '找值得优先跟进的客户':
@@ -77,8 +136,37 @@ export class FakeAiProvider implements AiProvider {
             ),
           };
         break;
+      case '跟进到期':
+      case '查看今天待跟进的客户':
+        return {
+          rules: [
+            rule([
+              {
+                fieldKey: '$followUp',
+                operator: 'dueThroughToday',
+                value: { assignee: '$me' },
+              },
+            ]),
+          ],
+        };
+      case '负责人是我':
+      case '只看我负责的客户':
       case '换成我负责的客户':
         return { rules: [rule([own])] };
+      default: {
+        const field = input.fields.find(
+          (f) =>
+            f.label + '有值' === input.text && f.operators.includes('notEmpty'),
+        );
+        if (field)
+          return {
+            rules: [
+              rule([
+                { fieldKey: field.fieldKey, operator: 'notEmpty', value: null },
+              ]),
+            ],
+          };
+      }
     }
     return { rules: [] };
   }
@@ -152,6 +240,9 @@ export class FakeAiProvider implements AiProvider {
       const callId = 'fake-propose-change';
       const tool = input.tools.find((entry) => entry.name === 'propose_change');
       if (!tool || input.abortSignal.aborted) return;
+      await input.tools
+        .find((t) => t.name === 'get_record')
+        ?.execute({ objectCode: 'leads', recordId }, 'lookup-critical-target');
       const candidate =
         operationType === 'UPDATE_RECORD'
           ? {
@@ -186,8 +277,7 @@ export class FakeAiProvider implements AiProvider {
       yield { type: 'COMPLETED' };
       return;
     }
-    yield { type: 'TEXT_DELTA', text: '测试回答' };
-    yield { type: 'COMPLETED' };
+    yield* simulateAssistant(input);
   }
 
   private async *searchOwnLeads(input: {

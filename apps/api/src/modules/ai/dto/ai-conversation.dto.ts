@@ -81,6 +81,68 @@ export class AiMessageResponseDto {
     string | null;
   @ApiPropertyOptional({ nullable: true, type: AiProposalResponseDto })
   proposal?: AiProposalResponseDto | null;
+  @ApiPropertyOptional({
+    type: 'array',
+    items: {
+      type: 'object',
+      required: ['questionId', 'turnId', 'kind', 'state', 'prompt'],
+      properties: {
+        questionId: { type: 'string', format: 'uuid' },
+        turnId: { type: 'string', format: 'uuid' },
+        kind: {
+          type: 'string',
+          enum: ['choose_record', 'choose_option', 'fill_fields'],
+        },
+        state: {
+          type: 'string',
+          enum: ['OPEN', 'ANSWERED', 'CANCELLED', 'SUPERSEDED', 'EXPIRED'],
+        },
+        prompt: { type: 'string' },
+        options: {
+          type: 'array',
+          items: { type: 'object', additionalProperties: true },
+        },
+        fields: {
+          type: 'array',
+          items: { type: 'object', additionalProperties: true },
+        },
+        answer: { type: 'object', additionalProperties: true },
+      },
+    },
+  })
+  questions?: unknown[];
+  @ApiPropertyOptional({
+    type: 'object',
+    required: ['items'],
+    properties: {
+      items: {
+        type: 'array',
+        items: { $ref: '#/components/schemas/AiProposalResponseDto' },
+      },
+      coverage: {
+        type: 'object',
+        properties: {
+          total: { type: 'integer' },
+          targets: { type: 'integer' },
+        },
+      },
+    },
+  })
+  batch?: object;
+  @ApiPropertyOptional({
+    type: 'object',
+    required: ['kind', 'objectCode'],
+    properties: {
+      kind: { type: 'string', enum: ['communication', 'filter'] },
+      objectCode: { type: 'string' },
+      recordId: { type: 'string', format: 'uuid' },
+      draftId: { type: 'string', format: 'uuid' },
+      baseViewId: { type: 'string', format: 'uuid' },
+      currentRule: { type: 'object', additionalProperties: true },
+      preview: { type: 'object', additionalProperties: true },
+    },
+  })
+  action?: object;
   @ApiPropertyOptional({ minimum: 0 }) durationMs?: number;
   @ApiProperty() createdAt!: string;
   @ApiPropertyOptional({ nullable: true, type: String }) completedAt!:

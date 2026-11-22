@@ -7,7 +7,7 @@ import type { AiProposalView } from "./ai-types";
 import styles from "./ai-assistant.module.css";
 import { ProposalReviewCard } from "./proposal-review-card";
 
-const statusLabels: Record<AiProposalView["status"], string> = {
+export const statusLabels: Record<AiProposalView["status"], string> = {
   PROPOSED: "待确认",
   REJECTED: "已拒绝",
   EXPIRED: "已过期",
@@ -16,7 +16,7 @@ const statusLabels: Record<AiProposalView["status"], string> = {
   EXECUTED: "已执行",
 };
 
-const operationLabels: Record<AiProposalView["operation"], string> = {
+export const operationLabels: Record<AiProposalView["operation"], string> = {
   UPDATE_RECORD: "更新记录",
   CREATE_FOLLOW_UP: "创建跟进",
   ADD_ACTIVITY_NOTE: "添加备注",
@@ -28,7 +28,7 @@ function safeIdentifier(value: unknown): value is string {
   );
 }
 
-function resultLink(
+export function resultLink(
   tenantCode: string,
   proposal: AiProposalView,
 ): { href: string; label: string } | null {
@@ -53,7 +53,7 @@ function resultLink(
   return { href: record, label: "查看记录" };
 }
 
-function failureMessage(proposal: AiProposalView): string | null {
+export function failureMessage(proposal: AiProposalView): string | null {
   if (
     [
       "FORBIDDEN",

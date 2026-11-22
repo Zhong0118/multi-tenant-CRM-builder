@@ -1,3 +1,9 @@
+import type {
+  AssistantQuestion,
+  AssistantAction,
+  AssistantBatch,
+} from "./assistant.js";
+
 export interface AiProposalView {
   proposalId: string;
   operation: "UPDATE_RECORD" | "CREATE_FOLLOW_UP" | "ADD_ACTIVITY_NOTE";
@@ -30,6 +36,8 @@ export interface AiToolSummary {
 export type AiSourceSummary =
   | {
       kind: "RECORDS";
+      briefKey?: "record";
+      recordId?: string;
       objectCode: string;
       objectName: string;
       count: number;
@@ -43,6 +51,7 @@ export type AiSourceSummary =
     }
   | {
       kind: "TIMELINE";
+      briefKey?: "activities" | "followups";
       objectCode: string;
       objectName: string;
       recordId?: string;
@@ -55,6 +64,11 @@ export type AiPublicStreamEvent =
       event: "conversation.ready";
       data: { conversationId: string; title: string; turnId: string };
     }
+  | {
+      event: "question.ready";
+      data: { turnId: string; question: AssistantQuestion };
+    }
+  | { event: "action.ready"; data: { turnId: string; action: AssistantAction } }
   | { event: "turn.started"; data: { turnId: string } }
   | { event: "tool.started"; data: AiToolSummary }
   | { event: "tool.completed"; data: AiToolSummary }
@@ -64,7 +78,7 @@ export type AiPublicStreamEvent =
   | { event: "sources.updated"; data: { sources: AiSourceSummary[] } }
   | {
       event: "proposal.ready";
-      data: { turnId: string; proposal: AiProposalView };
+      data: { turnId: string; batch: AssistantBatch };
     }
   | {
       event:
@@ -81,7 +95,12 @@ export type AiPublicStreamEvent =
     }
   | {
       event: "turn.failed";
-      data: { turnId: string; code: string; messageId: string; durationMs?: number };
+      data: {
+        turnId: string;
+        code: string;
+        messageId: string;
+        durationMs?: number;
+      };
     }
   | {
       event: "turn.cancelled";

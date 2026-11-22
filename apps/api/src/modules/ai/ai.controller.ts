@@ -5,6 +5,7 @@ import {
   Get,
   Header,
   HttpCode,
+  Optional,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -16,6 +17,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiCookieAuth,
+  ApiBody,
   ApiNoContentResponse,
   ApiOkResponse,
   ApiParam,
@@ -45,7 +47,8 @@ import {
   AiMessagePageDto,
   RenameAiConversationDto,
 } from './dto/ai-conversation.dto';
-import { StartAiTurnDto } from './dto/ai-turn.dto';
+import { assistantTurnOpenApi, parseAssistantTurn } from './dto/ai-turn.dto';
+import { AssistantQuestionsService } from './assistant-questions.service';
 
 @Controller('workspaces/:tenantCode/ai')
 @ApiTags('ai')
@@ -57,6 +60,7 @@ export class AiController {
     private readonly conversations: ConversationService,
     private readonly orchestrator: AiOrchestrator,
     private readonly proposals: AiProposalService,
+    @Optional() private readonly questions?: AssistantQuestionsService,
   ) {}
 
   @Get('conversations')
@@ -101,13 +105,29 @@ export class AiController {
     return this.conversations.remove(context, id);
   }
 
+  @Post('conversations/:id/questions/:questionId/cancel')
+  @HttpCode(204)
+  async cancelQuestion(
+    @CurrentTenant() actor: TenantContext,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('questionId', ParseUUIDPipe) questionId: string,
+  ) {
+    await this.questions!.cancel(actor, id, questionId);
+  }
+
   @Post('turns')
+  @ApiBody({
+    schema: assistantTurnOpenApi as Extract<
+      Parameters<typeof ApiBody>[0],
+      { schema: unknown }
+    >['schema'],
+  })
   @HttpCode(200)
   @ApiProduces('text/event-stream')
   @ApiOkResponse({ description: 'AI turn SSE stream' })
   async startTurn(
     @CurrentTenant() context: TenantContext,
-    @Body() dto: StartAiTurnDto,
+    @Body() dto: unknown,
     @Req() request: Request,
     @Res() response: Response,
   ) {
@@ -115,7 +135,7 @@ export class AiController {
     const abort = this.bindAbort(response);
     const events = await this.orchestrator.streamTurn(
       context,
-      dto,
+      parseAssistantTurn(dto),
       abort.signal,
     );
     await this.writeSse(response, events);

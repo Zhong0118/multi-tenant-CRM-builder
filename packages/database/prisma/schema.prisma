@@ -936,6 +936,10 @@ model AiConversation {
   messages  AiMessage[]
   operations AiOperation[]
 
+  questions AiQuestion[]
+  evidence AiRecordEvidence[]
+
+  @@unique([tenantId, id, createdByMemberId], map: "ai_conversations_question_owner")
   @@unique([tenantId, id])
   @@index([tenantId, createdByMemberId, lastMessageAt(sort: Desc), id])
   @@map("ai_conversations")
@@ -975,6 +979,7 @@ model AiOperation {
   requestedByMemberId    String            @map("requested_by_member_id") @db.Uuid
   confirmedByMemberId    String?           @map("confirmed_by_member_id") @db.Uuid
   draftId                String?           @map("draft_id") @db.Uuid
+  itemKey                Int               @default(1) @map("item_key")
   draftItemKey           String?           @map("draft_item_key") @db.VarChar(16)
   draft                  AiRecordDraft?    @relation(fields: [tenantId, draftId, requestedByMemberId], references: [tenantId, id, memberId], onDelete: Restrict)
   operationType          AiOperationType   @map("operation_type")
@@ -1000,7 +1005,7 @@ model AiOperation {
   confirmer              TenantMember?     @relation("AiOperationConfirmer", fields: [tenantId, confirmedByMemberId], references: [tenantId, id], onDelete: Restrict)
 
   @@unique([tenantId, id])
-  @@unique([tenantId, conversationId, turnId])
+  @@unique([tenantId, conversationId, turnId, itemKey])
   @@index([tenantId, requestedByMemberId, conversationId, createdAt(sort: Desc)])
   @@index([tenantId, status, expiresAt])
   @@unique([tenantId, draftId, draftItemKey])
@@ -1028,6 +1033,10 @@ model AiMessage {
   tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   conversation AiConversation @relation(fields: [tenantId, conversationId], references: [tenantId, id], onDelete: Restrict)
 
+  questions AiQuestion[]
+  evidence AiRecordEvidence[]
+
+  @@unique([tenantId, conversationId, id, turnId, role], map: "ai_messages_question_owner")
   @@unique([tenantId, conversationId, turnId, role])
   @@index([tenantId, conversationId, createdAt, id])
   @@index([tenantId, status, createdAt])
@@ -1129,4 +1138,44 @@ model WorkGoalRecipient {
   member TenantMember @relation(fields: [tenantId, memberId], references: [tenantId, id], onDelete: Cascade)
   @@id([tenantId, ruleId, memberId])
   @@map("work_goal_recipients")
+}
+
+model AiQuestion {
+  id             String @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId       String @map("tenant_id") @db.Uuid
+  memberId       String @map("member_id") @db.Uuid
+  conversationId String @map("conversation_id") @db.Uuid
+  messageId      String @map("message_id") @db.Uuid
+  turnId         String @map("turn_id") @db.Uuid
+  role           AiMessageRole @default(ASSISTANT)
+  kind           String @db.VarChar(16)
+  state          String @default("OPEN") @db.VarChar(16)
+  prompt         String
+  definition     Json @db.JsonB
+  answer         Json? @db.JsonB
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  resolvedAt     DateTime? @map("resolved_at") @db.Timestamptz(3)
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz(3)
+  conversation AiConversation @relation(fields: [tenantId, conversationId, memberId], references: [tenantId, id, createdByMemberId], onDelete: Cascade, onUpdate: Cascade)
+  message AiMessage @relation(fields: [tenantId, conversationId, messageId, turnId, role], references: [tenantId, conversationId, id, turnId, role], onDelete: Cascade, onUpdate: Cascade)
+  @@index([messageId, createdAt])
+  @@map("ai_questions")
+}
+
+model AiRecordEvidence {
+  id             String @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId       String @map("tenant_id") @db.Uuid
+  memberId       String @map("member_id") @db.Uuid
+  conversationId String @map("conversation_id") @db.Uuid
+  messageId      String @map("message_id") @db.Uuid
+  turnId         String @map("turn_id") @db.Uuid
+  role           AiMessageRole @default(ASSISTANT)
+  objectCode     String @map("object_code") @db.VarChar(64)
+  recordId       String @map("record_id") @db.Uuid
+  source         String @db.VarChar(8)
+  conversation AiConversation @relation(fields: [tenantId, conversationId, memberId], references: [tenantId, id, createdByMemberId], onDelete: Cascade, onUpdate: Cascade)
+  message AiMessage @relation(fields: [tenantId, conversationId, messageId, turnId, role], references: [tenantId, conversationId, id, turnId, role], onDelete: Cascade, onUpdate: Cascade)
+  @@unique([messageId, objectCode, recordId, source])
+  @@index([conversationId, objectCode, recordId])
+  @@map("ai_record_evidence")
 }

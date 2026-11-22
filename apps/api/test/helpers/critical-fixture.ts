@@ -623,6 +623,7 @@ export async function publishObject(
       key: string;
       label: string;
       type: string;
+      config?: Prisma.InputJsonObject;
       required: boolean;
       access: 'EDIT' | 'READ_ONLY' | 'HIDDEN';
     }>;
@@ -674,7 +675,7 @@ export async function publishObject(
       required: field.required,
       defaultValue: null,
       validation: {},
-      config: {},
+      config: field.config ?? {},
       sortOrder: index * 10,
       isSystem: false,
     })),

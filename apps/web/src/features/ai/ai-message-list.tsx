@@ -143,7 +143,7 @@ export function AiMessageList({
           </div>
         ) : (
           <AssistantMessage
-            key={message.id}
+            key={`assistant-${message.turnId}`}
             tenantCode={tenantCode}
             message={message}
             onRetry={streaming || phase === "SENDING" || phase === "STREAMING" || proposalBusy ? undefined : onRetry}

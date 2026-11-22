@@ -146,7 +146,7 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
       const ready = events.find((event) => event.event === 'proposal.ready');
       expect(ready).toBeDefined();
       expect(events.map((event) => event.event)).toContain('turn.completed');
-      const view = ready!.data.proposal;
+      const view = ready!.data.batch.items[0];
       expect(view).toMatchObject({ operation: type, status: 'PROPOSED' });
       const safeStream = JSON.stringify(events);
       for (const secret of [
@@ -277,7 +277,7 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
     );
     expect(proposalReady).toBeTruthy();
     expect(conversationReady).toBeTruthy();
-    const proposalView = JSON.parse(proposalReady![1]).proposal;
+    const proposalView = JSON.parse(proposalReady![1]).batch.items[0];
     const conversationId = JSON.parse(conversationReady![1]).conversationId;
 
     const confirmed = await request(harness.app.getHttpServer())
@@ -351,6 +351,7 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
       status: 'EXECUTED',
       auditId: confirmed.body.auditId,
       result: null,
+      changes: [],
     });
 
     const history = await request(harness.app.getHttpServer())
@@ -364,7 +365,11 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
       status: 'EXECUTED',
       auditId: confirmed.body.auditId,
       result: null,
+      changes: [],
     });
+
+    expect(assistant?.batch.items).toEqual([assistant.proposal]);
+    expect(assistant?.batch.coverage).toBeUndefined();
 
     await request(harness.app.getHttpServer())
       .get(`/api/v1/workspaces/${fixture.tenantA.code}/follow-ups`)
@@ -888,7 +893,7 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
       .expect(({ body }) => expect(body.status).toBe('EXPIRED'));
   });
 
-  it('makes concurrent duplicate HTTP confirms idempotent and failed stored input leaves no audit', async () => {
+  it('makes duplicate HTTP confirms idempotent and audits invalid stored input without creating a task', async () => {
     const view = await proposal('ADD_ACTIVITY_NOTE');
     const path = `/api/v1/workspaces/${fixture.tenantA.code}/ai/proposals/${view.proposalId}/confirm`;
     const [first, second] = await Promise.all(
@@ -926,7 +931,9 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
         },
       },
     });
-    const before = await harness.adminDatabase.auditLog.count();
+    const before = await harness.adminDatabase.recordFollowUp.count({
+      where: fixtureTenants,
+    });
     await request(harness.app.getHttpServer())
       .post(
         `/api/v1/workspaces/${fixture.tenantA.code}/ai/proposals/${failed.proposalId}/confirm`,
@@ -936,12 +943,24 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
       .send({ idempotencyKey: randomUUID() })
       .expect(200)
       .expect(({ body }) => expect(body.status).toBe('FAILED'));
-    expect(await harness.adminDatabase.auditLog.count()).toBe(before);
+    expect(
+      await harness.adminDatabase.recordFollowUp.count({
+        where: fixtureTenants,
+      }),
+    ).toBe(before);
+    const failures = await harness.adminDatabase.auditLog.findMany({
+      where: {
+        tenantId: context.tenantId,
+        resourceId: failed.proposalId,
+        action: 'ai.proposal_failed',
+      },
+    });
+    expect(failures).toHaveLength(1);
     expect(
       await harness.adminDatabase.aiOperation.findUniqueOrThrow({
         where: { id: failed.proposalId },
       }),
-    ).toMatchObject({ status: 'FAILED', auditId: null });
+    ).toMatchObject({ status: 'FAILED', auditId: failures[0].id });
   });
   it('binds retries to a draft item, denies its chat confirmation and preserves an external edit', async () => {
     const database = harness.adminDatabase;

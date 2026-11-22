@@ -1,3 +1,9 @@
+import {
+  actionSchema,
+  questionSchema,
+  assistantFields,
+} from "./assistant-card-schema";
+import type { AssistantBatch } from "@crm/contracts";
 import type {
   AiPublicStreamEvent,
   AiProposalView,
@@ -15,6 +21,8 @@ const PUBLIC_EVENTS = new Set<AiPublicStreamEvent["event"]>([
   "assistant.reset",
   "sources.updated",
   "proposal.ready",
+  "action.ready",
+  "question.ready",
   "proposal.rejected",
   "proposal.expired",
   "proposal.conflicted",
@@ -101,7 +109,8 @@ function parsePublicEvent(
     case "turn.started":
       return { event, data: { turnId: requiredString(data, "turnId") } };
     case "assistant.reset":
-      if (!isRecord(data) || Object.keys(data).length > 0) throw new AiStreamError();
+      if (!isRecord(data) || Object.keys(data).length > 0)
+        throw new AiStreamError();
       return { event, data: {} };
     case "assistant.delta":
       return { event, data: { text: requiredString(data, "text") } };
@@ -111,15 +120,26 @@ function parsePublicEvent(
       return { event, data: parseTool(data) };
     case "sources.updated":
       return { event, data: { sources: parseSources(data) } };
+    case "action.ready":
+    case "question.ready":
     case "proposal.ready": {
-      if (!isRecord(data)) throw new AiStreamError("AI 数据流无法解析。");
-      return {
-        event,
-        data: {
-          turnId: requiredString(data, "turnId"),
-          proposal: parseProposal(data.proposal),
-        },
-      };
+      if (!isRecord(data)) throw new AiStreamError();
+      const turnId = requiredString(data, "turnId");
+      try {
+        if (event === "question.ready") {
+          const question = questionSchema.parse(data.question);
+          if (question.turnId !== turnId) throw new AiStreamError();
+          return { event, data: { turnId, question } };
+        }
+        if (event === "action.ready")
+          return {
+            event,
+            data: { turnId, action: actionSchema.parse(data.action) },
+          };
+        return { event, data: { turnId, batch: parseBatch(data.batch) } };
+      } catch {
+        throw new AiStreamError();
+      }
     }
     case "proposal.rejected":
     case "proposal.expired":
@@ -164,15 +184,55 @@ function parseTool(data: unknown): AiToolSummary {
     status,
     ...(detail ? { detail } : {}),
     ...optionalDuration(data),
-    ...(optionalString(data, "startedAt") ? { startedAt: optionalString(data, "startedAt") } : {}),
-    ...(optionalString(data, "errorCode") ? { errorCode: optionalString(data, "errorCode") } : {}),
+    ...(optionalString(data, "startedAt")
+      ? { startedAt: optionalString(data, "startedAt") }
+      : {}),
+    ...(optionalString(data, "errorCode")
+      ? { errorCode: optionalString(data, "errorCode") }
+      : {}),
   };
+}
+
+export function parseBatch(value: unknown): AssistantBatch {
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.items) ||
+    value.items.length < 1 ||
+    value.items.length > 20
+  )
+    throw new AiStreamError();
+  const items = value.items.map((item) => {
+    if (!isRecord(item)) throw new AiStreamError();
+    const { editableFields, ...proposal } = item;
+    return {
+      ...parseProposal(proposal),
+      ...(editableFields
+        ? { editableFields: assistantFields.parse(editableFields) }
+        : {}),
+    };
+  });
+  if (new Set(items.map((item) => item.proposalId)).size !== items.length)
+    throw new AiStreamError();
+  const coverage = value.coverage;
+  if (!coverage) return { items };
+  const total = requiredNumber(coverage, "total"),
+    targets = requiredNumber(coverage, "targets");
+  if (
+    !Number.isInteger(total) ||
+    !Number.isInteger(targets) ||
+    targets < 1 ||
+    targets > items.length ||
+    total < targets
+  )
+    throw new AiStreamError();
+  return { items, coverage: { total, targets } };
 }
 
 export function parseProposal(value: unknown): AiProposalView {
   if (!isRecord(value)) throw new AiStreamError("AI 数据流无法解析。");
   const allowed = [
     "proposalId",
+    "editableFields",
     "operation",
     "title",
     "targetSummary",
@@ -287,7 +347,7 @@ export function parseProposal(value: unknown): AiProposalView {
     proposalId: requiredString(value, "proposalId"),
     operation: operation as AiProposalView["operation"],
     title: requiredString(value, "title").slice(0, 200),
-    targetSummary: requiredString(value, "targetSummary").slice(0, 300),
+    targetSummary: optionalString(value, "targetSummary")?.slice(0, 300) ?? "",
     changes: value.changes as AiProposalView["changes"],
     validationWarnings: value.validationWarnings as string[],
     ...(fieldErrors ? { fieldErrors } : {}),
@@ -317,7 +377,11 @@ function parseSource(value: unknown): AiSourceSummary {
   const objectCode = requiredString(value, "objectCode");
   const objectName = requiredString(value, "objectName");
   if (kind === "RECORDS") {
+    const recordId = optionalString(value, "recordId");
     return {
+      ...(recordId && isRecord(value) && value.briefKey === "record"
+        ? { recordId, briefKey: "record" as const }
+        : {}),
       kind,
       objectCode,
       objectName,
@@ -342,6 +406,10 @@ function parseSource(value: unknown): AiSourceSummary {
       objectName,
       count: requiredNumber(value, "count"),
       ...(recordId ? { recordId } : {}),
+      ...(isRecord(value) &&
+      (value.briefKey === "activities" || value.briefKey === "followups")
+        ? { briefKey: value.briefKey }
+        : {}),
       ...(recordTitle ? { recordTitle } : {}),
     };
   }

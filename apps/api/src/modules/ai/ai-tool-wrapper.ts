@@ -18,6 +18,8 @@ export interface AiToolCallbacks {
   toolSummaries: AiToolSummary[];
   sources: AiSourceSummary[];
   objectNames?: Map<string, string>;
+  enrichSource?: (name: string, args: unknown, source: AiSourceSummary) => void;
+  afterRead?: (name: string, args: unknown, result: unknown) => Promise<void>;
 }
 
 export function defaultAiToolCallbacks(): AiToolCallbacks {
@@ -119,6 +121,7 @@ export function wrapAiReadTool(
           )
             objectNames.set(item.code, item.name);
         }
+        await callbacks.afterRead?.(tool.name, parsed, sanitized);
         const source = AiSourceBuilder.fromTool({
           toolName: tool.name,
           input: parsed,
@@ -129,6 +132,7 @@ export function wrapAiReadTool(
             source.objectName =
               objectNames.get(source.objectCode) ?? source.objectName;
           }
+          callbacks.enrichSource?.(tool.name, parsed, source);
           callbacks.sources.push(source);
           callbacks.emit({
             event: 'sources.updated',

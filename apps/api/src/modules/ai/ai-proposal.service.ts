@@ -7,6 +7,10 @@ import {
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
+import {
+  API_ERROR_MESSAGES,
+  type ApiErrorCode,
+} from '../../common/errors/api-error-code';
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { AuditService } from '../audit/audit.service';
@@ -34,17 +38,27 @@ import { RECORDS_REPOSITORY } from '../records/records.service';
 import { AiOperationRepository } from './ai-operation.repository';
 import type {
   AiProposalView,
+  AiProposalBatch,
   AiOperationRow,
   AiFieldFailureCode,
   StoredAiProposalDisplay,
 } from './ai-operation.types';
+import { modelFields } from './model-fields';
+import type { ConfirmBatchItemDto } from './dto/ai-batch.dto';
 import type { AssistantFinalizeOutcome } from './ai.types';
 import {
   validateProposalCandidate,
+  applyProposalEdits,
   type ProposalCandidate,
 } from './ai-proposal.schema';
 
 type Tx = Prisma.TransactionClient;
+type Finalize = (
+  tx: Tx,
+  context: TenantContext,
+  turnId: string,
+  outcome: AssistantFinalizeOutcome,
+) => Promise<void>;
 type RequestMeta = { requestId: string; ip?: string };
 type DraftItemKey = 'note' | 'followUp' | 'fields';
 const draftOperations = {
@@ -174,28 +188,47 @@ export class AiProposalService {
   async completeWithProposal(
     context: TenantContext,
     turnId: string,
-    untrusted: unknown,
+    candidate: unknown,
     requestText: string,
     outcome: AssistantFinalizeOutcome,
-    finalize: (
-      tx: Tx,
-      context: TenantContext,
-      turnId: string,
-      outcome: AssistantFinalizeOutcome,
-    ) => Promise<void>,
+    finalize: Finalize,
   ): Promise<AiProposalView> {
-    let candidate: ProposalCandidate;
+    const batch = await this.completeWithBatch(
+      context,
+      turnId,
+      [candidate],
+      requestText,
+      outcome,
+      finalize,
+    );
+    return batch.items[0];
+  }
+
+  async completeWithBatch(
+    context: TenantContext,
+    turnId: string,
+    inputs: unknown[],
+    requestText: string,
+    outcome: AssistantFinalizeOutcome,
+    finalize: Finalize,
+    coverage?: AiProposalBatch['coverage'],
+  ): Promise<AiProposalBatch> {
+    if (
+      !Array.isArray(inputs) ||
+      inputs.length < 1 ||
+      inputs.length > 20 ||
+      typeof requestText !== 'string'
+    )
+      throw new ApiException('VALIDATION_FAILED', 400);
+    let candidates: ProposalCandidate[];
     try {
-      candidate = validateProposalCandidate(untrusted);
+      candidates = inputs.map(validateProposalCandidate);
     } catch {
       throw new ApiException('VALIDATION_FAILED', 400);
     }
-    if (typeof requestText !== 'string')
-      throw new ApiException('VALIDATION_FAILED', 400);
     return this.records.withTenantTransaction(
       context,
       async ({ tx, store }) => {
-        const snapshot = await this.snapshot(tx, store, context, candidate);
         const turn = await tx.aiMessage.findFirst({
           where: {
             tenantId: context.tenantId,
@@ -209,26 +242,56 @@ export class AiProposalService {
           select: { conversationId: true },
         });
         if (!turn) throw new ApiException('AI_TURN_NOT_FOUND', 404);
-        const view = await this.operations.createValidatedInTransaction(
+        const items: AiProposalView[] = [];
+        for (const candidate of candidates) {
+          const snapshot = await this.snapshot(tx, store, context, candidate);
+          if (!items.length && coverage) snapshot.display.coverage = coverage;
+          items.push(
+            await this.operations.createValidatedInTransaction(
+              tx,
+              context,
+              turnId,
+              {
+                itemKey: items.length + 1,
+                conversationId: turn.conversationId,
+                operationType: candidate.operationType,
+                requestText: requestText.slice(0, 4000),
+                proposal: candidate,
+                targetRef: {
+                  objectCode: candidate.objectCode,
+                  recordId: candidate.recordId,
+                },
+                expectedVersion: snapshot.record.version,
+                expectedPublicationId: snapshot.resolved.schema.publication.id,
+              },
+              snapshot.display,
+            ),
+          );
+        }
+        await finalize(tx, context, turnId, outcome);
+        return { items, ...(coverage ? { coverage } : {}) };
+      },
+    );
+  }
+
+  async retryCandidate(
+    context: TenantContext,
+    conversationId: string,
+    proposalId: string,
+  ) {
+    return this.records.withTenantTransaction(
+      context,
+      async ({ tx, store }) => {
+        const row = await this.operations.findFailedInConversation(
           tx,
           context,
-          turnId,
-          {
-            conversationId: turn.conversationId,
-            operationType: candidate.operationType,
-            requestText: requestText.slice(0, 4000),
-            proposal: candidate,
-            targetRef: {
-              objectCode: candidate.objectCode,
-              recordId: candidate.recordId,
-            },
-            expectedVersion: snapshot.record.version,
-            expectedPublicationId: snapshot.resolved.schema.publication.id,
-          },
-          snapshot.display,
+          conversationId,
+          proposalId,
         );
-        await finalize(tx, context, turnId, outcome);
-        return view;
+        if (!row) throw new ApiException('AI_TURN_NOT_FOUND', 404);
+        const candidate = validateProposalCandidate(row.proposalJson);
+        await this.snapshot(tx, store, context, candidate);
+        return candidate;
       },
     );
   }
@@ -296,6 +359,18 @@ export class AiProposalService {
     };
     try {
       if (candidate.operationType === 'UPDATE_RECORD') {
+        const allowed = new Set(
+          modelFields(resolved, resolved.access.fields).map(
+            ({ field }) => field.fieldKey,
+          ),
+        );
+        if (
+          Object.keys(candidate.values).some(
+            (key) =>
+              !allowed.has(key) && resolved.access.fields[key] === 'EDIT',
+          )
+        )
+          throw new ApiException('VALIDATION_FAILED', 400);
         const normalized = await validateRecordMutation({
           mode: 'UPDATE',
           schema: resolved.schema,
@@ -392,11 +467,64 @@ export class AiProposalService {
     return this.operations.projectInTransaction(tx, context, row);
   }
 
+  async confirmBatch(
+    context: TenantContext,
+    turnId: string,
+    items: ConfirmBatchItemDto[],
+    meta: RequestMeta,
+  ) {
+    if (
+      !Array.isArray(items) ||
+      !items.length ||
+      items.length > 20 ||
+      new Set(items.map((item) => item.proposalId.toLowerCase())).size !==
+        items.length
+    )
+      throw new ApiException('VALIDATION_FAILED', 400);
+    const count = await this.operations.countOwnedBatchItems(
+      context,
+      turnId,
+      items.map((item) => item.proposalId),
+    );
+    if (count !== items.length)
+      throw new ApiException('AI_TURN_NOT_FOUND', 404);
+    const results = [];
+    for (const item of items) {
+      const view = await this.confirm(
+        context,
+        item.proposalId,
+        item.idempotencyKey,
+        meta,
+        item.edits,
+      );
+      const messages = {
+        EXECUTED: '已执行',
+        PROPOSED: '待确认',
+        CONFLICTED: '目标已变化，请重新生成',
+        FAILED: '操作未完成，请重新生成',
+        EXPIRED: '提议已过期',
+        REJECTED: '提议已取消',
+      };
+      results.push({
+        proposalId: item.proposalId,
+        status: view.status,
+        message:
+          view.failureCode &&
+          Object.hasOwn(API_ERROR_MESSAGES, view.failureCode)
+            ? API_ERROR_MESSAGES[view.failureCode as ApiErrorCode]
+            : messages[view.status],
+        changes: view.changes,
+      });
+    }
+    return { items: results };
+  }
+
   async confirm(
     context: TenantContext,
     proposalId: string,
     idempotencyKey: string,
-    requestMeta: { requestId: string; ip?: string },
+    requestMeta: RequestMeta,
+    edits?: Record<string, unknown>,
   ): Promise<AiProposalView> {
     // Idempotency is by locked proposal ID, including attempts carrying a new key.
     if (
@@ -423,11 +551,28 @@ export class AiProposalService {
           if (locked.kind === 'NOT_FOUND')
             throw new ApiException('AI_TURN_NOT_FOUND', 404);
           if (locked.kind !== 'PROPOSED') return locked.view; // Expiration must COMMIT, not throw.
+          let row = locked.operation;
+          if (edits && Object.keys(edits).length) {
+            const candidate = applyProposalEdits(row.proposalJson, edits);
+            const snapshot = await this.snapshot(tx, store, context, candidate);
+            const original =
+              row.displayChangesJson as unknown as StoredAiProposalDisplay;
+            if (original.coverage)
+              snapshot.display.coverage = original.coverage;
+            row = await tx.aiOperation.update({
+              where: { id: proposalId },
+              data: {
+                proposalJson: candidate,
+                displayChangesJson:
+                  snapshot.display as unknown as Prisma.InputJsonObject,
+              },
+            });
+          }
           return this.executeOperation(
             { tx, store },
             context,
             proposalId,
-            locked.operation,
+            row,
             requestMeta,
             (codes) => {
               safeFieldCodes = codes;
@@ -455,6 +600,17 @@ export class AiProposalService {
         state,
         code,
         state === 'FAILED' ? safeFieldCodes : undefined,
+        (tx) =>
+          this.audit.appendReturningId(tx, {
+            tenantId: context.tenantId,
+            actorType: 'USER',
+            actorId: context.userId,
+            action: 'ai.proposal_failed',
+            resourceType: 'ai_operation',
+            resourceId: proposalId,
+            after: { code, attemptId: idempotencyKey },
+            ...requestMeta,
+          }),
       );
       if (!final) throw new ApiException('AI_TURN_NOT_FOUND', 404);
       return final;

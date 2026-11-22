@@ -9,6 +9,7 @@ import {
 } from "@crm/contracts";
 import { CommunicationDraftDialog } from "./communication-draft";
 import { previewRecordFilter } from "./filter-preview-api";
+import { ListAssistantButton } from "@/features/ai/assistant-panel-button";
 import { RecordFilterPanel, RecordFilterChips } from "./record-filter-panel";
 import { RecordViewPicker } from "./record-views";
 import {
@@ -678,6 +679,7 @@ export function RecordList({
           description={schema.object.description}
           extra={
             <>
+              <ListAssistantButton key={recordQuerySearch(route, queryDefaults)} tenantCode={tenantCode} memberId={currentMemberId} objectCode={objectCode} objectName={schema.object.name} view={activeView} ready={viewReady} filter={filterProps} />
               {overflowItems.length > 0 && (
                 <Dropdown
                   trigger={["click"]}

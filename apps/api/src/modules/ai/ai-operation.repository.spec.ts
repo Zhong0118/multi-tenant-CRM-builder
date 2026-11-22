@@ -202,12 +202,83 @@ describe('AiOperationRepository', () => {
     expect(view?.targetSummary).toBe('');
     expect(JSON.stringify(view)).not.toContain('titleFieldKey');
   });
+  it('renders current option labels for saved before/after keys and Chinese activity labels', async () => {
+    const { repo, tx } = setup();
+    const options = [
+      { key: 'quote', label: '报价' },
+      { key: 'win', label: '签约' },
+    ];
+    const fields = [
+      {
+        fieldKey: 'stage',
+        label: '当前阶段',
+        type: 'SINGLE_SELECT',
+        config: { options },
+      },
+      {
+        fieldKey: 'tags',
+        label: '标签',
+        type: 'MULTI_SELECT',
+        config: { options },
+      },
+    ];
+    jest
+      .mocked(resolvePublishedObjectInTransaction)
+      .mockResolvedValue({
+        ...resolved,
+        schema: {
+          ...resolved.schema,
+          fields: [...resolved.schema.fields, ...fields],
+        },
+        access: {
+          ...resolved.access,
+          fields: { ...resolved.access.fields, stage: 'READ', tags: 'READ' },
+        },
+      } as never);
+    tx.aiOperation.findFirst.mockResolvedValueOnce({
+      ...row,
+      operationType: 'UPDATE_RECORD',
+      status: 'EXECUTED',
+      displayChangesJson: {
+        ...row.displayChangesJson,
+        changes: [
+          { fieldKey: 'stage', label: '旧阶段', before: 'quote', after: 'win' },
+          {
+            fieldKey: 'tags',
+            label: '标签',
+            before: 'old-unpublished',
+            after: 'quote, win',
+          },
+          { fieldKey: 'phone', label: '隐藏', after: 'secret' },
+        ],
+      },
+    } as never);
+    expect((await repo.getOwned(context, id))?.changes).toEqual([
+      { label: '当前阶段', before: '报价', after: '签约' },
+      { label: '标签', before: '选项已不可用', after: '报价、签约' },
+    ]);
+    tx.aiOperation.findFirst.mockResolvedValueOnce({
+      ...row,
+      status: 'EXECUTED',
+      displayChangesJson: {
+        ...row.displayChangesJson,
+        changes: [{ label: 'NOTE', after: '回访完成' }],
+      },
+    } as never);
+    expect((await repo.getOwned(context, id))?.changes).toEqual([
+      { label: '沟通纪要', after: '回访完成' },
+    ]);
+  });
   it('does not replay a reassigned follow-up link when the record remains readable', async () => {
     const { repo, tx } = setup();
     tx.aiOperation.findFirst.mockResolvedValueOnce({
       ...row,
       operationType: 'CREATE_FOLLOW_UP',
       status: 'EXECUTED',
+      displayChangesJson: {
+        ...row.displayChangesJson,
+        changes: [{ label: '跟进', after: '原待办内容' }],
+      },
       resultJson: { objectCode: 'demo', recordId: id, followUpId: 'task-id' },
     } as never);
     tx.recordFollowUp.findMany.mockResolvedValue([]);
@@ -216,6 +287,7 @@ describe('AiOperationRepository', () => {
       status: 'EXECUTED',
       targetSummary: 'Record',
       result: null,
+      changes: [],
     });
     expect(tx.recordFollowUp.findMany).toHaveBeenCalledWith({
       where: {

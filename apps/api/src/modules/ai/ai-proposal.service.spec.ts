@@ -1,4 +1,7 @@
-import { validateProposalCandidate } from './ai-proposal.schema';
+import {
+  applyProposalEdits,
+  validateProposalCandidate,
+} from './ai-proposal.schema';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { ApiException } from '../../common/errors/api.exception';
 import type { RecordsRepository } from '../records/records.repository';
@@ -79,6 +82,39 @@ describe('strict proposal candidate boundary', () => {
   ])('rejects malformed or expanded operation input', (base, extra) => {
     expect(() => validateProposalCandidate({ ...base, ...extra })).toThrow();
   });
+  it.each([
+    [note, { recordId: id }],
+    [note, { operationType: 'UPDATE_RECORD' }],
+    [followUp, { assigneeMemberId: id }],
+    [followUp, { dueAt: 'not a date' }],
+    [update, { ownerMemberId: id }],
+    [update, { unlisted: 123 }],
+    [note, { content: '  ' }],
+  ])(
+    'limits review edits to the operation and its original field set',
+    (candidate, edits) => {
+      expect(() => applyProposalEdits(candidate, edits)).toThrow();
+    },
+  );
+  it.each([
+    [
+      followUp,
+      { title: '明天电话确认' },
+      { ...followUp, title: '明天电话确认' },
+    ],
+    [
+      update,
+      { name: '另一个名称' },
+      { ...update, values: { name: '另一个名称' } },
+    ],
+    [note, { content: '补充纪要' }, { ...note, content: '补充纪要' }],
+  ])(
+    'retains the original target when applying editable values',
+    (candidate, edits, expected) => {
+      expect(applyProposalEdits(candidate, edits)).toEqual(expected);
+    },
+  );
+
   it('rejects a batch in place of one proposal', () => {
     expect(() => validateProposalCandidate([update, update])).toThrow();
   });
@@ -202,6 +238,7 @@ function setup() {
       failureCode: 'RECORD_VERSION_CONFLICT',
     }),
     getOwned: jest.fn(),
+    countOwnedBatchItems: jest.fn(),
   };
   jest
     .mocked(publication.resolvePublishedObjectInTransaction)
@@ -728,6 +765,7 @@ describe('single target atomic confirmation', () => {
       'CONFLICTED',
       expect.any(String),
       undefined,
+      expect.any(Function),
     );
   });
   it('refuses a stale NOTE target before appending an activity', async () => {
@@ -768,6 +806,7 @@ describe('single target atomic confirmation', () => {
       'FAILED',
       'VALIDATION_FAILED',
       undefined,
+      expect.any(Function),
     );
     expect(operations.markExecuted).not.toHaveBeenCalled();
     expect(records.withTenantTransaction).toHaveBeenCalledTimes(1);
@@ -790,6 +829,7 @@ describe('single target atomic confirmation', () => {
       'FAILED',
       'FIELD_INVALID',
       { name: 'FIELD_INVALID' },
+      expect.any(Function),
     );
   });
   it.each(['secret', 'absent', '__proto__'])(
@@ -812,6 +852,7 @@ describe('single target atomic confirmation', () => {
         'FAILED',
         'FIELD_INVALID',
         undefined,
+        expect.any(Function),
       );
     },
   );
@@ -838,6 +879,7 @@ describe('single target atomic confirmation', () => {
       'FAILED',
       'INTERNAL_ERROR',
       undefined,
+      expect.any(Function),
     );
     expect(operations.markExecuted).not.toHaveBeenCalled();
   });
@@ -876,5 +918,49 @@ describe('record draft item execution', () => {
         meta,
       ),
     ).rejects.toMatchObject({ code: 'AI_TURN_NOT_FOUND' });
+  });
+});
+
+describe('chat proposal batches', () => {
+  it('creates all previews, then completes the assistant exactly once in the transaction', async () => {
+    const { service, records, operations } = setup();
+    const finalize = jest.fn();
+    const batch = await service.completeWithBatch(
+      context,
+      id,
+      [note, { ...note, content: 'another' }],
+      'notes',
+      { status: 'COMPLETED', content: '' },
+      finalize,
+    );
+    expect(batch.items).toHaveLength(2);
+    expect(finalize).toHaveBeenCalledTimes(1);
+    expect(records.withTenantTransaction).toHaveBeenCalledTimes(1);
+    expect(
+      operations.createValidatedInTransaction.mock.calls.map(
+        (call) => call[3].itemKey,
+      ),
+    ).toEqual([1, 2]);
+  });
+  it('rejects the whole confirmation before any writes when an item belongs to another turn', async () => {
+    const { service, operations } = setup();
+    operations.countOwnedBatchItems.mockResolvedValue(0);
+    await expect(
+      service.confirmBatch(
+        context,
+        id,
+        [{ proposalId: id, idempotencyKey: id }],
+        meta,
+      ),
+    ).rejects.toMatchObject({ code: 'AI_TURN_NOT_FOUND' });
+    expect(operations.lockOwned).not.toHaveBeenCalled();
+  });
+  it('rejects duplicates before preflight', async () => {
+    const { service, operations } = setup();
+    const item = { proposalId: id, idempotencyKey: id };
+    await expect(
+      service.confirmBatch(context, id, [item, item], meta),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    expect(operations.countOwnedBatchItems).not.toHaveBeenCalled();
   });
 });

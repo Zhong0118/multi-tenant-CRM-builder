@@ -105,3 +105,61 @@ describe("copying an answer", () => {
     expect(screen.queryByRole("button", { name: /复制回答/ })).not.toBeInTheDocument();
   });
 });
+
+it("links brief claims only to matching server-provided record sources", () => {
+  render(
+    <AssistantMessage
+      tenantCode="demo"
+      message={{
+        ...base,
+        toolSummary: [],
+        content: "## 概况\n- 已完成报价 【记录】\n- 尚待回访 【跟进】",
+        sourceSummary: [
+          {
+            kind: "RECORDS",
+            objectCode: "customers",
+            objectName: "客户",
+            count: 1,
+            briefKey: "record",
+            recordId: "r2",
+          },
+        ],
+      }}
+    />,
+  );
+  expect(screen.getByRole("link", { name: "【记录】" })).toHaveAttribute(
+    "href",
+    "/workspace/demo/objects/customers/r2",
+  );
+  expect(
+    screen.queryByRole("link", { name: "【跟进】" }),
+  ).not.toBeInTheDocument();
+});
+
+it("can retry a failed continuation after the persisted question was answered", () => {
+  const retry = vi.fn();
+  render(
+    <AssistantMessage
+      tenantCode="demo"
+      onRetry={retry}
+      message={{
+        ...base,
+        status: "FAILED",
+        toolSummary: [],
+        questions: [
+          {
+            questionId: "q",
+            turnId: "t",
+            kind: "choose_record",
+            state: "ANSWERED",
+            prompt: "选择客户",
+            options: [{ id: "one", label: "甲客户" }],
+            answer: { kind: "choose_record", optionId: "one" },
+          },
+        ],
+      }}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "重试" }));
+  expect(retry).toHaveBeenCalledWith("t");
+});

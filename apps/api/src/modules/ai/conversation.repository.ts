@@ -6,7 +6,10 @@ import type { Prisma } from '@crm/database';
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
-import { AiOperationRepository } from './ai-operation.repository';
+import {
+  AiOperationRepository,
+  groupProposalBatches,
+} from './ai-operation.repository';
 import type {
   AssistantFinalizeOutcome,
   BeginTurnInput,
@@ -120,6 +123,15 @@ function toPublicMessage(
       : '数据权限已变化，这条历史回答已隐藏。请重新提问获取当前可见的数据。',
     toolSummary: reusable ? row.toolSummary : [],
     sourceSummary: reusable ? row.sourceSummary : [],
+    ...(reusable &&
+    row.role === 'ASSISTANT' &&
+    isPlainObject(row.providerUsage) &&
+    isPlainObject(row.providerUsage.assistantAction)
+      ? {
+          action: row.providerUsage
+            .assistantAction as unknown as import('@crm/contracts').AssistantAction,
+        }
+      : {}),
     errorCode: row.errorCode,
     createdAt: row.createdAt.toISOString(),
     completedAt: row.completedAt?.toISOString() ?? null,
@@ -132,7 +144,7 @@ function toPublicMessage(
   };
 }
 
-function asTurnResult(
+export function asTurnResult(
   conversation: { id: string; title: string },
   user: {
     id: string;
@@ -178,7 +190,10 @@ function asTurnResult(
   };
 }
 
-async function lockActiveMember(tx: Tx, context: TenantContext): Promise<void> {
+export async function lockActiveMember(
+  tx: Tx,
+  context: TenantContext,
+): Promise<void> {
   const locked = await tx.$queryRaw<Array<{ id: string }>>`
     SELECT id
     FROM tenant_members
@@ -186,6 +201,9 @@ async function lockActiveMember(tx: Tx, context: TenantContext): Promise<void> {
       AND id = ${context.memberId}::uuid
       AND user_id = ${context.userId}::uuid
       AND status = 'ACTIVE'
+      AND role = ${context.role}::"MemberRole"
+      AND EXISTS (SELECT 1 FROM users WHERE users.id = tenant_members.user_id AND users.status = 'ACTIVE')
+      AND EXISTS (SELECT 1 FROM tenants WHERE tenants.id = tenant_members.tenant_id AND tenants.status = 'ACTIVE')
     FOR UPDATE
   `;
   if (locked.length !== 1) {
@@ -215,7 +233,7 @@ async function failStaleGenerating(
       tenantId: context.tenantId,
       role: 'ASSISTANT',
       status: 'GENERATING',
-      createdAt: { lt: cutoff },
+      updatedAt: { lt: cutoff },
       conversation: memberConversationWhere(context),
     },
     data: {
@@ -262,7 +280,7 @@ export function providerAttemptsOf(usage: unknown): number {
   return 1;
 }
 
-function withProviderAttempts(
+export function withProviderAttempts(
   usage: unknown,
   providerAttempts: number,
 ): Prisma.InputJsonValue {
@@ -445,16 +463,24 @@ export class ConversationRepository {
           (row) => authorizationRevisionOf(row.providerUsage) !== undefined,
         ),
       );
-      const proposals = new Map(
-        operations.map(({ turnId, view }) => [turnId, view]),
-      );
+      const batches = groupProposalBatches(operations);
       return {
-        items: chronological.map((row) => ({
-          ...toPublicMessage(row, authorizationRevision),
-          ...(row.role === 'ASSISTANT' && proposals.has(row.turnId)
-            ? { proposal: proposals.get(row.turnId) }
-            : {}),
-        })),
+        items: chronological.map((row) => {
+          const message = toPublicMessage(row, authorizationRevision);
+          const batch =
+            row.role === 'ASSISTANT' ? batches.get(row.turnId) : undefined;
+          if (!batch) return message;
+          // Item projection above rechecks each target. A cached query total can
+          // cover records outside the batch and needs its original scope.
+          const revision = authorizationRevisionOf(row.providerUsage);
+          message.batch =
+            revision !== undefined &&
+            revision === authorizationRevision?.revision
+              ? batch
+              : { items: batch.items };
+          if (batch.items.length === 1) message.proposal = batch.items[0];
+          return message;
+        }),
         nextBefore: hasMore ? chronological[0]?.id : undefined,
       };
     });
@@ -521,7 +547,18 @@ export class ConversationRepository {
       const existing = input.conversationId
         ? await requireOwnedConversation(tx, context, input.conversationId)
         : null;
-      if (existing) await rejectInProgress(tx, context, existing.id);
+      if (existing) {
+        await rejectInProgress(tx, context, existing.id);
+        await tx.aiQuestion.updateMany({
+          where: {
+            tenantId: context.tenantId,
+            memberId: context.memberId,
+            conversationId: existing.id,
+            state: 'OPEN',
+          },
+          data: { state: 'SUPERSEDED', resolvedAt: now },
+        });
+      }
 
       const conversation =
         existing ??
@@ -559,7 +596,13 @@ export class ConversationRepository {
           providerUsage: withProviderAttempts(
             usageWithAuthorization(
               {},
-              (await currentAuthorizationState(tx, context))?.revision,
+              (
+                await currentAuthorizationState(
+                  tx,
+                  context,
+                  input.protectedHistory,
+                )
+              )?.revision,
             ),
             1,
           ),
@@ -647,7 +690,14 @@ export class ConversationRepository {
           providerUsage: withProviderAttempts(
             usageWithAuthorization(
               {},
-              (await currentAuthorizationState(tx, context))?.revision,
+              (
+                await currentAuthorizationState(
+                  tx,
+                  context,
+                  authorizationRevisionOf(assistant.providerUsage) !==
+                    undefined,
+                )
+              )?.revision,
             ),
             nextAttempts,
           ),
@@ -707,6 +757,7 @@ export class ConversationRepository {
     const updated = await tx.aiMessage.updateMany({
       where: {
         id: assistant.id,
+        status: 'GENERATING',
         providerUsage: {
           equals: assistant.providerUsage as Prisma.InputJsonValue,
         },
@@ -777,12 +828,12 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-/** Only independent group-field conversations opt into replay protection.
+/** V2 turns and legacy group-field conversations use replay protection.
  * Revisions count atomic security audits rather than timestamps: concurrent
  * transactions may commit out of timestamp order. Ordinary value changes do
  * not invalidate history; ownership/pool changes can change the row's policy.
  */
-async function currentAuthorizationState(
+export async function currentAuthorizationState(
   tx: Tx,
   context: TenantContext,
   previouslyProtected = false,
@@ -804,7 +855,7 @@ async function currentAuthorizationState(
     ) AS configured,
     (SELECT count(*)::text FROM audit_logs a WHERE a.tenant_id=${context.tenantId}::uuid AND (
       a.action IN ('membership.status_changed', 'membership.role_changed', 'membership.admin_handoff', 'membership.offboarded', 'membership.object_access_changed',
-        'object.field_updated', 'object.permissions_updated', 'object.pool_config_updated', 'object.published', 'object.archived', 'object.restored', 'object.draft_deleted', 'record.deleted', 'platform.template.applied', 'platform.tenant.status_changed')
+        'object.field_updated', 'object.permissions_updated', 'object.pool_config_updated', 'object.published', 'object.archived', 'object.restored', 'object.draft_deleted', 'record.deleted', 'record.activity_deleted', 'follow_up.reassigned', 'platform.template.applied', 'platform.tenant.status_changed')
       OR a.action LIKE 'member_group.%'
       OR ((a.action IN ('record.updated', 'record.owner_assigned') OR a.action LIKE 'record.ownership_%') AND (
         (a.after ? 'ownerMemberId' AND a.before->'ownerMemberId' IS DISTINCT FROM a.after->'ownerMemberId')
@@ -816,7 +867,7 @@ async function currentAuthorizationState(
   return state.configured || previouslyProtected ? state : undefined;
 }
 
-function authorizationRevisionOf(usage: unknown): string | undefined {
+export function authorizationRevisionOf(usage: unknown): string | undefined {
   return isPlainObject(usage) && typeof usage.authorizationRevision === 'string'
     ? usage.authorizationRevision
     : undefined;

@@ -8,9 +8,9 @@ export default async function AiPage({
   params: Promise<{ tenantCode: string }>;
 }) {
   const { tenantCode } = await params;
-  await requireWorkspace(tenantCode);
+  const workspace = await requireWorkspace(tenantCode);
   const businessObjects = await requireRuntimeObjects(tenantCode);
   return (
-    <AiAssistantPage tenantCode={tenantCode} businessObjects={businessObjects} />
+    <AiAssistantPage tenantCode={tenantCode} businessObjects={businessObjects} memberId={workspace.memberId} />
   );
 }

@@ -3,6 +3,7 @@ import {
   type FilterOperator,
   type FilterRule,
 } from '@crm/contracts';
+import { Prisma } from '@crm/database';
 import { z } from 'zod';
 
 export interface FilterModelField {
@@ -58,15 +59,45 @@ export const filterModelSchema = group.extend({
     .nullable(),
 });
 
+// A provider may quote a NUMBER because the wire type also covers exact MONEY
+// decimals. Leave malformed or lossy values for the record validator to reject.
+function numberBound(value: string | number) {
+  if (
+    typeof value !== 'string' ||
+    value.length > 400 ||
+    !/^-?\d+(?:\.\d+)?$/.test(value)
+  )
+    return value;
+  const number = Number(value);
+  return Number.isFinite(number) &&
+    new Prisma.Decimal(value).equals(String(number))
+    ? number
+    : value;
+}
+
 export function editableFilterRules(
   output: z.infer<typeof filterModelSchema>,
   text: string,
+  fields: readonly FilterModelField[] = [],
 ) {
   const { match, clarification } = output;
+  function normalize(term: z.infer<typeof condition>) {
+    if (fields.find((f) => f.fieldKey === term.fieldKey)?.type !== 'NUMBER')
+      return term;
+    const { value } = term;
+    if (typeof value === 'string')
+      return { ...term, value: numberBound(value) };
+    if (value && typeof value === 'object' && 'from' in value)
+      return {
+        ...term,
+        value: { from: numberBound(value.from), to: numberBound(value.to) },
+      };
+    return term;
+  }
   const conditions: z.infer<typeof condition>[] = [];
   for (const term of output.conditions) {
     if ('conditions' in term) return { rules: [] };
-    conditions.push(term);
+    conditions.push(normalize(term));
   }
   const base = { version: 1 as const, match, conditions };
   if (!clarification) return { rules: conditions.length ? [base] : [] };
@@ -75,7 +106,7 @@ export function editableFilterRules(
   return {
     rules: clarification.interpretations.map((terms) => ({
       ...base,
-      conditions: [...conditions, ...terms],
+      conditions: [...conditions, ...terms.map(normalize)],
     })),
   };
 }

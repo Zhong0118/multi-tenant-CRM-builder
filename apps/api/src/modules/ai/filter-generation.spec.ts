@@ -99,3 +99,52 @@ it('declares an explicit JSON type for each DeepSeek union alternative', () => {
   expect(declared.length).toBeGreaterThan(0);
   expect(declared).not.toContain(undefined);
 });
+
+it('converts quoted NUMBER bounds from model output without rounding or changing MONEY', async () => {
+  const output = filterModelSchema.parse({
+    match: 'all',
+    conditions: [
+      own,
+      { fieldKey: 'amount', operator: 'gt', value: '100000' },
+      {
+        fieldKey: 'amount',
+        operator: 'between',
+        value: { from: '0.50', to: 2 },
+      },
+      { fieldKey: 'price', operator: 'gt', value: '100000.00' },
+      { fieldKey: 'amount', operator: 'lt', value: '9007199254740993' },
+      { fieldKey: 'amount', operator: 'lt', value: '0x10' },
+    ],
+    clarification: null,
+  });
+  (generateText as jest.Mock).mockResolvedValueOnce({ output });
+  const provider = new VercelOpenAiProvider({
+    apiKey: 'test',
+    modelKey: 'test',
+  });
+  const preview = await provider.generateFilter(
+    {
+      text: '找我负责的、金额超过 10 万的记录',
+      currentRule: { version: 1, match: 'all', conditions: [] },
+      fields: [
+        {
+          fieldKey: 'amount',
+          label: '金额',
+          type: 'NUMBER',
+          operators: ['gt', 'between', 'lt'],
+        },
+        { fieldKey: 'price', label: '价格', type: 'MONEY', operators: ['gt'] },
+      ],
+      relativeDates: [],
+      followUpAssignees: ['$me'],
+      today: '2026-11-23',
+    },
+    new AbortController().signal,
+  );
+  expect(preview.rules[0].conditions).toEqual([
+    own,
+    { fieldKey: 'amount', operator: 'gt', value: 100000 },
+    { fieldKey: 'amount', operator: 'between', value: { from: 0.5, to: 2 } },
+    ...output.conditions.slice(3),
+  ]);
+});

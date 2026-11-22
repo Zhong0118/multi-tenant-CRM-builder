@@ -1,3 +1,4 @@
+import type { AssistantField } from '@crm/contracts';
 import type { Prisma } from '@crm/database';
 
 export type AiOperationRow = Prisma.AiOperationGetPayload<
@@ -11,6 +12,7 @@ export type AiOperationState =
 // Only the server's strict proposal validator may construct this input. It
 // contains no actor selectors; the repository derives ownership from context.
 export interface ValidatedAiOperation {
+  itemKey?: number;
   conversationId: string;
   operationType: AiOperationKind;
   requestText: string;
@@ -32,12 +34,19 @@ export type AiFieldFailureCode =
   'FIELD_REQUIRED' | 'FIELD_INVALID' | 'FIELD_OPTION_INACTIVE';
 
 export interface StoredAiProposalDisplay extends AiProposalDisplay {
+  coverage?: AiProposalBatch['coverage'];
   titleFieldKey?: string;
   changes: Array<AiProposalDisplay['changes'][number] & { fieldKey?: string }>;
   failureFieldCodes?: Record<string, AiFieldFailureCode>;
 }
 
+export interface AiProposalBatch {
+  items: AiProposalView[];
+  coverage?: { total: number; targets: number };
+}
+
 export interface AiProposalView extends AiProposalDisplay {
+  editableFields?: AssistantField[];
   proposalId: string;
   operation: AiOperationKind;
   status: AiOperationState;

@@ -50,39 +50,42 @@ describe('ProposalCollector', () => {
     },
   );
 
-  it('invalidates a second distinct callId even when it is only requested', async () => {
+  it('deduplicates re-delivered calls and collects up to twenty proposals', async () => {
     const collector = new ProposalCollector();
-    collector.requested('call-1');
-    await collector.tool.execute(candidate, 'call-1');
-    collector.requested('call-2');
-
-    expect(collector.invalidated).toBe(true);
-    expect(collector.candidate).toBeNull();
-    expect(await collector.tool.execute(candidate, 'call-2')).toEqual({
-      accepted: false,
-      code: 'MULTIPLE_PROPOSALS',
-    });
+    for (let i = 0; i < 20; i++) {
+      const item = { ...candidate, content: String(i) };
+      await collector.tool.execute(item, String(i));
+      await collector.tool.execute(item, String(i));
+    }
+    expect(collector.candidates).toHaveLength(20);
+    collector.requested('21');
+    expect(collector.candidates).toEqual([]);
+    expect(collector.failureCode).toBe('PROPOSAL_LIMIT');
   });
 
-  it('counts an invalid first attempt before a valid second callId', async () => {
+  it('merges disjoint update keys and refuses conflicting values', async () => {
     const collector = new ProposalCollector();
-    collector.requested('invalid-call');
-    expect(
-      await collector.tool.execute(
-        { ...candidate, content: '' },
-        'invalid-call',
-      ),
-    ).toEqual({
-      accepted: false,
-      code: 'INVALID_PROPOSAL',
-    });
-    collector.requested('valid-call');
+    const update = {
+      operationType: 'UPDATE_RECORD',
+      objectCode: 'leads',
+      recordId: candidate.recordId,
+    };
+    await collector.tool.execute({ ...update, values: { name: 'a' } }, '1');
+    await collector.tool.execute({ ...update, values: { phone: '123' } }, '2');
+    expect(collector.candidates).toEqual([
+      { ...update, values: { name: 'a', phone: '123' } },
+    ]);
+    await collector.tool.execute({ ...update, values: { name: 'b' } }, '3');
+    expect(collector.failureCode).toBe('CONFLICTING_VALUES');
+    expect(collector.candidates).toEqual([]);
+  });
 
-    expect(await collector.tool.execute(candidate, 'valid-call')).toEqual({
-      accepted: false,
-      code: 'MULTIPLE_PROPOSALS',
-    });
-    expect(collector.invalidated).toBe(true);
-    expect(collector.candidate).toBeNull();
+  it('does not publish a subset after a malformed or unfinished tool call', async () => {
+    const collector = new ProposalCollector();
+    await collector.tool.execute(candidate, '1');
+    collector.requested('2');
+    expect(collector.candidates).toEqual([]);
+    await collector.tool.execute({ ...candidate, content: '' }, '2');
+    expect(collector.failureCode).toBe('INVALID_PROPOSAL');
   });
 });

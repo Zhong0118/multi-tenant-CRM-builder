@@ -30,6 +30,7 @@ import {
   selectOptions,
   type RuntimeObjectSchema,
 } from "@/features/objects/object-types";
+import { usePublishEditorDraft } from "@/features/ai/assistant-filter-draft";
 import { PreviewChoices } from "@/components/forms/preview-choices";
 import type { DynamicFieldMember } from "./dynamic-field";
 import { RELATIVE_DATE_PRESET_LABELS } from "./record-query-state";
@@ -127,6 +128,11 @@ function describeTerm(term: Term, fields: Field[], isAdmin: boolean): string {
   if (operator === "in") return `${field.label} · ${text}`;
   return `${field.label} · ${label}${text ? " " + text : ""}`;
 }
+export function describeRecordFilter(rule: FilterRule,props:RecordFilterPanelProps) {
+  const fields=availableFields(props);
+  return rule.conditions.map(term=>describeTerm(term,fields,props.isAdmin)).join(rule.match==="all" ? " 且 " : " 或 ") || "全部可见记录";
+}
+
 function removeAt(rule: FilterRule, index: number): FilterRule {
   const conditions = rule.conditions.filter((_, i) => i !== index);
   return { ...rule, conditions, match: conditions.length ? rule.match : "all" };
@@ -262,6 +268,7 @@ function FilterEditor(props: RecordFilterPanelProps) {
   const { isAdmin, onEditIndex, onApply, editIndex } = props;
   const fields = availableFields(props);
   const [draft, setDraft] = useState(props.rule);
+  usePublishEditorDraft(draft);
   const [text, setText] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");

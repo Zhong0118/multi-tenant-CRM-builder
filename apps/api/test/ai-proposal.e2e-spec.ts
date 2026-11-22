@@ -1,3 +1,4 @@
+import request from 'supertest';
 import { randomUUID } from 'node:crypto';
 import { assertIsolatedTestDatabase } from './helpers/isolated-database';
 import { AiProposalService } from '../src/modules/ai/ai-proposal.service';
@@ -364,7 +365,7 @@ describe('isolated AI proposal atomic confirmation', () => {
     ).toBe(0);
   });
   it.each(['UPDATE_RECORD', 'CREATE_FOLLOW_UP', 'ADD_ACTIVITY_NOTE'] as const)(
-    '%s conflicts on stale record without business/audit writes',
+    '%s conflicts on stale record and records only the failed attempt',
     async (operationType) => {
       const candidate =
         operationType === 'UPDATE_RECORD'
@@ -413,7 +414,7 @@ describe('isolated AI proposal atomic confirmation', () => {
           harness.adminDatabase.recordActivity.count(),
           harness.adminDatabase.auditLog.count(),
         ]),
-      ).toEqual(before);
+      ).toEqual([before[0], before[1], before[2] + 1]);
     },
   );
   it('revalidates member permissions after preview without leaking hidden fields', async () => {
@@ -445,7 +446,7 @@ describe('isolated AI proposal atomic confirmation', () => {
       (await service.confirm(context, view.proposalId, randomUUID(), meta))
         .status,
     ).toBe('CONFLICTED');
-    expect(await harness.adminDatabase.auditLog.count()).toBe(before);
+    expect(await harness.adminDatabase.auditLog.count()).toBe(before + 1);
     expect(
       (
         await harness.adminDatabase.record.findUniqueOrThrow({
@@ -544,7 +545,7 @@ describe('isolated AI proposal atomic confirmation', () => {
           where: { id: view.proposalId },
         })
       ).auditId,
-    ).toBeNull();
+    ).toEqual(expect.any(String));
     expect(
       await harness.adminDatabase.recordFollowUp.count({
         where: fixtureTenants,
@@ -552,9 +553,9 @@ describe('isolated AI proposal atomic confirmation', () => {
     ).toBe(0);
     expect(
       await harness.adminDatabase.auditLog.count({ where: fixtureTenants }),
-    ).toBe(0);
+    ).toBe(1);
   });
-  it('marks stale NOTE target conflicted with zero business/audit writes', async () => {
+  it('marks stale NOTE target conflicted and records a failed attempt', async () => {
     const view = await service.preview(
       context,
       await turn(),
@@ -575,11 +576,145 @@ describe('isolated AI proposal atomic confirmation', () => {
       (await service.confirm(context, view.proposalId, randomUUID(), meta))
         .status,
     ).toBe('CONFLICTED');
-    expect(await harness.adminDatabase.auditLog.count()).toBe(before);
+    expect(await harness.adminDatabase.auditLog.count()).toBe(before + 1);
     expect(
       await harness.adminDatabase.recordActivity.count({
         where: fixtureTenants,
       }),
     ).toBe(0);
+  });
+
+  it('confirms edited selections once, leaving an unchecked target and the conflicted target untouched', async () => {
+    const begun = await conversations.beginTurn(context, {
+      content: '各新增一条跟进',
+    });
+    const other = await harness.adminDatabase.record.create({
+      data: {
+        tenantId: context.tenantId,
+        objectId: fixture.object.id,
+        recordNo: 4,
+        ownerMemberId: context.memberId,
+        title: '另一条线索',
+        data: { name: '另一条线索' },
+      },
+    });
+    const targets = [fixture.ownedRecord, fixture.workflowRecord, other];
+    const candidates = targets.map(({ id }) => ({
+      operationType: 'CREATE_FOLLOW_UP',
+      objectCode: 'leads',
+      recordId: id,
+      title: '联系客户',
+      dueAt: '2026-11-30T10:00:00+08:00',
+    }));
+    const batch = await service.completeWithBatch(
+      context,
+      begun.turnId,
+      candidates,
+      begun.user.content,
+      { status: 'COMPLETED', content: '请核对' },
+      (tx, actor, id, outcome) =>
+        conversations.finalizeAssistantInTransaction(tx, actor, id, outcome),
+      { total: 3, targets: 3 },
+    );
+    const [success, unchecked, conflict] = batch.items;
+    expect(success.editableFields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: 'title', value: '联系客户' }),
+      ]),
+    );
+    await harness.adminDatabase.record.update({
+      where: { id: other.id },
+      data: { version: { increment: 1 } },
+    });
+    const items = [
+      {
+        proposalId: success.proposalId,
+        idempotencyKey: randomUUID(),
+        edits: { title: '再次联系' },
+      },
+      { proposalId: conflict.proposalId, idempotencyKey: randomUUID() },
+    ];
+    const post = (
+      pathId: string,
+      body: object,
+      cookie = fixture.employee.cookie,
+    ) =>
+      request(harness.app.getHttpServer())
+        .post(
+          `/api/v1/workspaces/${context.tenantCode}/ai/turns/${pathId}/proposals/confirm`,
+        )
+        .set('Cookie', cookie)
+        .set('Origin', 'http://localhost:3000')
+        .send(body);
+    await post(begun.turnId, { items: [items[0], items[0]] }).expect(400);
+    await post(begun.turnId, {
+      items: [
+        ...items,
+        { proposalId: randomUUID(), idempotencyKey: randomUUID() },
+      ],
+    }).expect(404);
+    await post(begun.turnId, { items }, fixture.otherEmployee.cookie).expect(
+      404,
+    );
+    expect(
+      await harness.adminDatabase.recordFollowUp.count({
+        where: fixtureTenants,
+      }),
+    ).toBe(0);
+    const confirmations = await Promise.all([
+      post(begun.turnId, { items }).expect(200),
+      post(begun.turnId, { items }).expect(200),
+    ]);
+    for (const response of confirmations)
+      expect(response.body.items).toMatchObject([
+        { proposalId: success.proposalId, status: 'EXECUTED' },
+        { proposalId: conflict.proposalId, status: 'CONFLICTED' },
+      ]);
+    expect(
+      await harness.adminDatabase.recordFollowUp.findMany({
+        where: fixtureTenants,
+        select: { recordId: true, title: true },
+      }),
+    ).toEqual([{ recordId: fixture.ownedRecord.id, title: '再次联系' }]);
+    const operations = await harness.adminDatabase.aiOperation.findMany({
+      where: { turnId: begun.turnId },
+      orderBy: { itemKey: 'asc' },
+    });
+    expect(operations.map(({ status }) => status)).toEqual([
+      'EXECUTED',
+      'PROPOSED',
+      'CONFLICTED',
+    ]);
+    expect(operations[1]).toMatchObject({
+      id: unchecked.proposalId,
+      auditId: null,
+    });
+    const audits = await harness.adminDatabase.auditLog.findMany({
+      where: fixtureTenants,
+    });
+    expect(audits).toHaveLength(2);
+    expect(
+      audits.find((row) => row.id === operations[0].auditId)?.after,
+    ).toMatchObject({ aiOperationId: success.proposalId });
+    expect(
+      audits.find((row) => row.id === operations[2].auditId),
+    ).toMatchObject({
+      action: 'ai.proposal_failed',
+      resourceId: conflict.proposalId,
+      after: {
+        code: 'RECORD_VERSION_CONFLICT',
+        attemptId: items[1].idempotencyKey,
+      },
+    });
+    await expect(
+      service.retryCandidate(context, begun.conversationId, success.proposalId),
+    ).rejects.toMatchObject({ code: 'AI_TURN_NOT_FOUND' });
+    await expect(
+      service.retryCandidate(
+        context,
+        begun.conversationId,
+        conflict.proposalId,
+      ),
+    ).resolves.toEqual(candidates[2]);
   });
 });

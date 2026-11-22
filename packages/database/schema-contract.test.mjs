@@ -223,7 +223,7 @@ test("persists owner-scoped AI operations with immutable per-turn identity and e
     assert.match(model, new RegExp(`\\b${field}\\b`));
   }
   assert.match(model, /@@unique\(\[tenantId, id\]\)/);
-  assert.match(model, /@@unique\(\[tenantId, conversationId, turnId\]\)/);
+  assert.match(model, /@@unique\(\[tenantId, conversationId, turnId, itemKey\]\)/);
   assert.match(model, /references: \[tenantId, id\]/);
   const migration = await readFile(new URL("./prisma/migrations/0020_ai_operations/migration.sql", import.meta.url), "utf8");
   assert.match(migration, /FOREIGN KEY \("tenant_id", "conversation_id"\) REFERENCES "ai_conversations"\("tenant_id", "id"\)/);

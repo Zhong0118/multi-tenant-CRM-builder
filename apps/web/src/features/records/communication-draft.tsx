@@ -92,6 +92,7 @@ export function CommunicationDraftDialog({
   onClose,
   onSaved,
   api = communicationDraftApi,
+  initialDraft,
 }: {
   tenantCode: string;
   objectCode: string;
@@ -102,15 +103,16 @@ export function CommunicationDraftDialog({
   onClose: () => void;
   onSaved?: () => void | Promise<void>;
   api?: CommunicationDraftApi;
+  initialDraft?: CommunicationDraft;
 }) {
   const client = useQueryClient();
   const [source, setSource] = useState("");
-  const [draft, setDraft] = useState<CommunicationDraft>();
-  const [note, setNote] = useState("");
-  const [title, setTitle] = useState("");
-  const [date, setDate] = useState("");
-  const [values, setValues] = useState<Record<string, unknown>>({});
-  const [selected, setSelected] = useState<string[]>([]);
+  const [draft, setDraft] = useState<CommunicationDraft | undefined>(initialDraft);
+  const [note, setNote] = useState(initialDraft?.status === "FALLBACK" ? initialDraft.text : initialDraft?.note ?? "");
+  const [title, setTitle] = useState(initialDraft?.followUp?.title ?? "");
+  const [date, setDate] = useState(initialDraft?.followUp?.suggestedDate ? utcIsoToDatetimeLocal(initialDraft.followUp.suggestedDate,initialDraft.timeZone) : "");
+  const [values, setValues] = useState<Record<string, unknown>>(()=>Object.fromEntries((initialDraft?.fieldChanges??[]).map(change=>[change.fieldKey,change.value])));
+  const [selected, setSelected] = useState<string[]>(initialDraft ? initialDraft.followUp ? ["note","followUp"] : ["note"] : []);
   const [submittedFields, setSubmittedFields] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -467,9 +469,9 @@ export function CommunicationDraftDialog({
         ) : draft.status === "PENDING" ? (
           <>
             <p role="status">正在整理沟通记录…</p>
-            <Button disabled={busy} loading={busy} onClick={generate}>
+            {!initialDraft && <Button disabled={busy} loading={busy} onClick={generate}>
               {busy ? "正在整理…" : "继续生成"}
-            </Button>
+            </Button>}
           </>
         ) : saved ? (
           <SavedCommunication

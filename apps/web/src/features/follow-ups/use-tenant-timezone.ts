@@ -13,8 +13,10 @@ import { followUpApi, followUpQueryKeys } from "./follow-up-api";
 export function useTenantTimezone(
   tenantCode: string,
   api: typeof followUpApi = followUpApi,
+  enabled = true,
 ): string {
   const query = useQuery({
+    enabled,
     queryKey: followUpQueryKeys.workbench(tenantCode),
     queryFn: () => api.workbench(tenantCode),
     staleTime: 5 * 60_000,

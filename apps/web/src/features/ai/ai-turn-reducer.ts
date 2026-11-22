@@ -17,6 +17,9 @@ export interface AiTurnState {
   tools: AiToolSummary[];
   sources: AiSourceSummary[];
   proposal?: AiProposalView | null;
+  questions?: AiMessage["questions"];
+  batch?: AiMessage["batch"];
+  action?: AiMessage["action"];
   errorCode?: string | null;
   errorMessage?: string;
   partial: boolean;
@@ -76,6 +79,9 @@ export function aiTurnReducer(
         partial: false,
         draft: "",
         proposal: null,
+        questions: [],
+        batch: null,
+        action: null,
         pendingUserContent: action.content,
       };
     case "beginRetryTurn":
@@ -92,6 +98,9 @@ export function aiTurnReducer(
         errorMessage: undefined,
         partial: false,
         proposal: null,
+        questions: [],
+        batch: null,
+        action: null,
         pendingUserContent: undefined,
       };
     case "cancel":
@@ -121,9 +130,7 @@ export function aiTurnReducer(
         tools: freezeRunningTools(state.tools),
         errorCode: action.code,
         errorMessage: userErrorMessage(action.code),
-        draft: state.turnId
-          ? state.draft
-          : (state.pendingUserContent ?? state.draft),
+        draft: state.draft || state.pendingUserContent || "",
       };
     case "event":
       return applyEvent(state, action.event);
@@ -165,8 +172,17 @@ function applyEvent(
       };
     case "sources.updated":
       return { ...state, sources: event.data.sources };
+    case "question.ready":
+      return {
+        ...state,
+        phase: "WAITING",
+        questions: [event.data.question],
+        durationMs: elapsed(state),
+      };
+    case "action.ready":
+      return { ...state, action: event.data.action };
     case "proposal.ready":
-      return { ...state, proposal: event.data.proposal };
+      return { ...state, batch: event.data.batch };
     case "proposal.rejected":
     case "proposal.expired":
     case "proposal.conflicted":
@@ -180,9 +196,7 @@ function applyEvent(
         durationMs: event.data.durationMs ?? elapsed(state),
         tools: freezeRunningTools(state.tools),
         pendingUserContent: undefined,
-        errorMessage: state.partial
-          ? "部分查询未成功，可展开查看"
-          : undefined,
+        errorMessage: state.partial ? "部分查询未成功，可展开查看" : undefined,
       };
     case "turn.failed":
       return {
@@ -191,6 +205,7 @@ function applyEvent(
         turnId: event.data.turnId,
         durationMs: event.data.durationMs ?? elapsed(state),
         tools: freezeRunningTools(state.tools),
+        draft: state.draft || state.pendingUserContent || "",
         errorCode: event.data.code,
         errorMessage: userErrorMessage(event.data.code),
       };
@@ -239,6 +254,7 @@ export function userErrorMessage(code?: string | null): string {
 export function toAssistantMessage(state: AiTurnState): AiMessage | null {
   if (!state.conversationId || !state.turnId) return null;
   if (
+    state.phase !== "WAITING" &&
     state.phase !== "COMPLETED" &&
     state.phase !== "PARTIAL_COMPLETED" &&
     state.phase !== "FAILED" &&
@@ -257,6 +273,9 @@ export function toAssistantMessage(state: AiTurnState): AiMessage | null {
     toolSummary: state.tools,
     sourceSummary: state.sources,
     proposal: state.proposal,
+    questions: state.questions,
+    batch: state.batch,
+    action: state.action,
     errorCode: state.errorCode,
     createdAt: new Date(state.startedAt ?? Date.now()).toISOString(),
     durationMs: state.durationMs,
@@ -264,14 +283,21 @@ export function toAssistantMessage(state: AiTurnState): AiMessage | null {
 }
 
 function elapsed(state: AiTurnState): number | undefined {
-  return state.startedAt === undefined ? undefined : Math.max(0, Date.now() - state.startedAt);
+  return state.startedAt === undefined
+    ? undefined
+    : Math.max(0, Date.now() - state.startedAt);
 }
 
 function freezeRunningTools(tools: AiToolSummary[]): AiToolSummary[] {
   const now = Date.now();
   return tools.map((tool) => {
     const start = tool.startedAt ? Date.parse(tool.startedAt) : NaN;
-    if (tool.status !== "RUNNING" || tool.durationMs !== undefined || !Number.isFinite(start)) return tool;
+    if (
+      tool.status !== "RUNNING" ||
+      tool.durationMs !== undefined ||
+      !Number.isFinite(start)
+    )
+      return tool;
     return { ...tool, durationMs: Math.max(0, now - start) };
   });
 }

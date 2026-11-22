@@ -3,6 +3,8 @@ import { z } from 'zod';
 import type { TenantContext } from '../../../common/tenancy/tenant-context';
 import type { JsonValue } from '../../objects/object-schema';
 import type { PublishedObjectService } from '../../objects/published-object.service';
+import { modelFields } from '../model-fields';
+import { optionLabel } from './assistant-question.tool';
 import type { AiProviderTool } from '../ai-provider';
 
 export const describeObjectInput = z
@@ -26,7 +28,16 @@ export function createDescribeObjectTool(
         context,
         objectCode,
       );
+      const directions = modelFields(resolved)
+        .filter(({ field }) => !field.required)
+        .map(({ field }) => field.label + '有值')
+        .filter((label) => optionLabel.safeParse(label).success);
       return {
+        filterDirections: [
+          ...[...new Set(directions)].slice(0, 2),
+          '负责人是我',
+          '跟进到期',
+        ],
         object: {
           code: resolved.visibleSchema.object.code,
           name: resolved.visibleSchema.object.name,
