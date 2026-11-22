@@ -68,6 +68,7 @@ export default async function RecordDetailPage({
           isAdmin={isAdmin}
           openRecord={record}
           initialEditing={initialEditing}
+          initialSection={rawSearchParams.section==="activity" || rawSearchParams.section==="followups" ? rawSearchParams.section : undefined}
           followUpId={followUpId}
           returnTo={validatedReturnTo(tenantCode, rawSearchParams.returnTo)}
         />

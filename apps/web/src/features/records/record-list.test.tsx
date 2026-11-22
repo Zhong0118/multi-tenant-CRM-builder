@@ -2710,3 +2710,8 @@ it("extends the existing v1 multi-select shortcut and leaves nested rules in the
     screen.getByRole("group", { name: "当前筛选条件" }),
   ).toBeInTheDocument();
 });
+
+it("opens the page assistant from the list header", async () => {
+  renderList(vi.fn());
+  expect(screen.getByRole("button", { name: "打开助手" })).toBeEnabled();
+});

@@ -1,0 +1,100 @@
+.card {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+  padding: 16px;
+  min-width: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--bg-surface);
+  overflow-wrap: anywhere;
+  animation: assistant-in 180ms ease-out;
+}
+.card h3,
+.card p,
+.card dl,
+.card dd {
+  margin: 0;
+}
+.card dl > div {
+  display: grid;
+  grid-template-columns: minmax(55px, 30%) 1fr;
+  gap: 10px;
+}
+.card dt,
+.card small,
+.meta {
+  color: var(--text-secondary);
+}
+.meta,
+.other {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.fields {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+}
+@keyframes assistant-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+  }
+}
+.panel {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  background: var(--bg-surface);
+  height: 100%;
+}
+.panel > section {
+  min-width: 0;
+}
+.panel header h1 {
+  display: block;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.contextBar {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 5px 16px;
+  border-bottom: 1px solid var(--border-default);
+}
+.contextTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.headerButtons {
+  display: flex;
+  align-items: center;
+}
+@media (max-width: 600px) {
+  .panel header h1 {
+    max-width: 52vw;
+  }
+  .panel {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

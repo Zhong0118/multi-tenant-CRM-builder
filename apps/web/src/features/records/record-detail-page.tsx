@@ -29,6 +29,7 @@ import { FollowUpPanel } from "@/features/follow-ups/follow-up-panel";
 import { RecordAutomationPanel } from "@/features/automations/record-automation-panel";
 import type { DynamicFieldMember } from "./dynamic-field";
 import { CommunicationDraftAction } from "./communication-draft";
+import { AssistantPanelButton } from "@/features/ai/assistant-panel-button";
 import { RecordActivityTimeline } from "./record-activity-timeline";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
 import {
@@ -61,6 +62,7 @@ export interface RecordDetailPageProps {
   initialEditing?: boolean;
   poolConfig?: RecordPoolConfig;
   followUpId?: string;
+  initialSection?:"activity"|"followups";
   returnTo?: string;
   /** Where this record sits in the list it was opened from, for ‹ 3/17 › paging. */
   position?: {
@@ -90,7 +92,7 @@ export function RecordDetailPage({
   canDelete = false,
   initialEditing = false,
   poolConfig,
-  followUpId,
+  followUpId,initialSection,
   position,
   api = defaultRecordApi,
   onClose,
@@ -217,13 +219,13 @@ export function RecordDetailPage({
     try {
       const stored = followUpId
         ? DEFAULT_TAB
-        : window.localStorage.getItem(tabKey);
+        : initialSection ?? window.localStorage.getItem(tabKey);
       // eslint-disable-next-line react-hooks/set-state-in-effect
       if (stored && TAB_KEYS.has(stored)) setActiveTab(stored);
     } catch {
       // A refused storage keeps the default tab.
     }
-  }, [tabKey, followUpId]);
+  }, [tabKey, followUpId,initialSection]);
   const chooseTab = (key: string) => {
     setActiveTab(key);
     try {
@@ -429,6 +431,7 @@ export function RecordDetailPage({
           <span className={styles.crumbCurrent}>#{record.recordNo}</span>
         </nav>
         <div className={styles.topActions}>
+          <AssistantPanelButton key={`assistant-${record.id}`} tenantCode={tenantCode} memberId={currentMemberId} objectCode={schema.object.code} objectName={schema.object.name} recordId={record.id} recordTitle={record.title}/>
           {activeTab !== "activity" && communicationAction}
           {position && position.total > 1 ? (
             <div className={styles.pager} role="group" aria-label="逐条查看">

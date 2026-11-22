@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -19,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   listMessages: vi.fn(),
   streamTurn: vi.fn(),
   retryTurn: vi.fn(),
+  confirmBatch:vi.fn(),
   confirmProposal: vi.fn(),
   rejectProposal: vi.fn(),
   getProposal: vi.fn(),
@@ -45,6 +47,7 @@ vi.mock("./ai-api", () => ({
     listMessages: (...args: unknown[]) => mocks.listMessages(...args),
     streamTurn: (...args: unknown[]) => mocks.streamTurn(...args),
     retryTurn: (...args: unknown[]) => mocks.retryTurn(...args),
+    confirmBatch: (...args: unknown[])=>mocks.confirmBatch(...args),
     confirmProposal: (...args: unknown[]) => mocks.confirmProposal(...args),
     rejectProposal: (...args: unknown[]) => mocks.rejectProposal(...args),
     getProposal: (...args: unknown[]) => mocks.getProposal(...args),
@@ -61,6 +64,7 @@ beforeEach(() => {
   mocks.conversation = undefined;
   mocks.listConversations.mockResolvedValue({ items: [] });
   mocks.listMessages.mockResolvedValue({ items: [] });
+  mocks.confirmBatch.mockReset();
   mocks.confirmProposal.mockReset();
   mocks.rejectProposal.mockReset();
   mocks.getProposal.mockReset();
@@ -333,19 +337,14 @@ describe("AiAssistantPage", () => {
       };
       yield {
         event: "proposal.ready",
-        data: { turnId: "t-live-field", proposal },
+        data: { turnId: "t-live-field", batch:{items:[proposal]} },
       };
       yield {
         event: "turn.completed",
         data: { turnId: "t-live-field", messageId: "m-live-field" },
       };
     });
-    mocks.confirmProposal.mockResolvedValue({
-      ...proposal,
-      status: "FAILED",
-      failureCode: "FIELD_INVALID",
-      fieldErrors: { secret: ["校验失败"] },
-    });
+    mocks.confirmBatch.mockResolvedValue({items:[{proposalId:proposal.proposalId,status:"FAILED",message:"校验失败"}]});
     const { client } = renderPage();
     fireEvent.change(
       screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
@@ -411,7 +410,7 @@ describe("AiAssistantPage", () => {
         event: "conversation.ready",
         data: { conversationId: "c1", title: "问", turnId: "t-live" },
       };
-      yield { event: "proposal.ready", data: { turnId: "t-live", proposal } };
+      yield { event: "proposal.ready", data: { turnId: "t-live", batch:{items:[proposal]} } };
       yield {
         event: "turn.completed",
         data: { turnId: "t-live", messageId: "m-live" },
@@ -459,17 +458,13 @@ describe("AiAssistantPage", () => {
         event: "conversation.ready",
         data: { conversationId: "c1", title: "问", turnId: "t-live" },
       };
-      yield { event: "proposal.ready", data: { turnId: "t-live", proposal } };
+      yield { event: "proposal.ready", data: { turnId: "t-live", batch:{items:[proposal]} } };
       yield {
         event: "turn.completed",
         data: { turnId: "t-live", messageId: "m-live" },
       };
     });
-    mocks.confirmProposal.mockResolvedValue({
-      ...proposal,
-      status: "CONFLICTED",
-      failureCode: "RECORD_VERSION_CONFLICT",
-    });
+    mocks.confirmBatch.mockResolvedValue({items:[{proposalId:proposal.proposalId,status:"CONFLICTED",message:"数据已变化，未覆盖最新内容"}]});
     renderPage();
     fireEvent.change(
       screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据"),
@@ -1316,7 +1311,8 @@ describe("AiAssistantPage", () => {
         1,
       ),
     );
-    const question = screen.getByText("这次会失败");
+    const question = within(screen.getByRole("region",{name:"AI 对话内容"})).getByText("这次会失败");
+    expect(screen.getByRole("textbox")).toHaveValue("这次会失败");
     const failure = screen.getByText("AI 服务暂时不可用，请稍后重试");
     expect(
       question.compareDocumentPosition(failure) &
@@ -1520,4 +1516,381 @@ describe("AiAssistantPage", () => {
       expect(screen.getAllByText("上周回款")).toHaveLength(1);
     });
   });
+});
+
+it("resumes a persisted question using its server option id without sending label text", async () => {
+  mocks.conversation = "c1";
+  mocks.listMessages.mockResolvedValue({
+    items: [
+      {
+        id: "m",
+        conversationId: "c1",
+        turnId: "t",
+        role: "ASSISTANT",
+        status: "WAITING",
+        content: "",
+        questions: [
+          {
+            kind: "choose_record",
+            state: "OPEN",
+            questionId: "q",
+            turnId: "t",
+            prompt: "是哪位客户？",
+            options: [{ id: "two", label: "远山科技", summary: "苏州" }],
+          },
+        ],
+        toolSummary: [],
+        sourceSummary: [],
+        createdAt: "2026-11-22T00:00:00Z",
+      },
+    ],
+  });
+  renderPage();
+  fireEvent.click(await screen.findByRole("button", { name: /远山科技/ }));
+  expect(mocks.streamTurn).toHaveBeenCalledWith(
+    "northwind",
+    {
+      conversationId: "c1",
+      answer: {
+        questionId: "q",
+        value: { kind: "choose_record", optionId: "two" },
+      },
+    },
+    expect.any(AbortSignal),
+  );
+});
+
+it("previews clarification choices without applying a list filter", async () => {
+  mocks.conversation = "c1";
+  const rule = { version: 1, match: "all", conditions: [] };
+  mocks.listMessages.mockResolvedValue({
+    items: [
+      {
+        id: "m",
+        conversationId: "c1",
+        turnId: "t",
+        role: "ASSISTANT",
+        status: "COMPLETED",
+        content: "",
+        action: {
+          kind: "filter",
+          objectCode: "customers",
+          currentRule: rule,
+          preview: {
+            kind: "clarify",
+            options: [{ id: "one", label: "我负责的", value: rule }],
+          },
+        },
+        toolSummary: [],
+        sourceSummary: [],
+        createdAt: "2026-11-22T00:00:00Z",
+      },
+    ],
+  });
+  renderPage();
+  fireEvent.click(await screen.findByRole("button", { name: "我负责的" }));
+  expect(mocks.replace).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: "在表格中应用" })).toBeEnabled();
+});
+
+it("removes both the current record and its prompt shortcuts before the next send", async () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const panel = {
+    conversationId: undefined,
+    page: {
+      hint: { objectCode: "customers", recordId: "r1" },
+      label: "客户 · 远山科技",
+    },
+    select: vi.fn(),
+    close: vi.fn(),
+  };
+  render(
+    <QueryClientProvider client={client}>
+      <AiAssistantPage
+        tenantCode="northwind"
+        memberId="sales"
+        businessObjects={[]}
+        panel={panel}
+      />
+    </QueryClientProvider>,
+  );
+  expect(
+    screen.getByRole("button", { name: "这个客户什么情况" }),
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "移除页面关联" }));
+  expect(
+    screen.queryByRole("button", { name: "这个客户什么情况" }),
+  ).not.toBeInTheDocument();
+  fireEvent.change(screen.getByRole("textbox"), {
+    target: { value: "看看记录" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "发送" }));
+  expect(mocks.streamTurn).toHaveBeenCalledWith(
+    "northwind",
+    { conversationId: undefined, content: "看看记录" },
+    expect.any(AbortSignal),
+  );
+  await waitFor(() => expect(panel.select).toHaveBeenCalledWith("c1"));
+});
+
+it("submits only selected batch items and reviewed edits", async () => {
+  mocks.conversation = "c1";
+  const item = {
+    operation: "ADD_ACTIVITY_NOTE",
+    title: "添加纪要",
+    changes: [{ label: "纪要", after: "旧内容" }],
+    editableFields: [
+      { key: "content", label: "纪要内容", type: "TEXT", value: "旧内容" },
+    ],
+    status: "PROPOSED",
+    expiresAt: "2999-01-01T00:00:00Z",
+    validationWarnings: [],
+  };
+  mocks.listMessages.mockResolvedValue({
+    items: [
+      {
+        id: "a",
+        conversationId: "c1",
+        turnId: "t",
+        role: "ASSISTANT",
+        status: "COMPLETED",
+        content: "",
+        toolSummary: [],
+        sourceSummary: [],
+        createdAt: "2026-11-22",
+        batch: {
+          items: [
+            { ...item, proposalId: "one", targetSummary: "甲客户" },
+            { ...item, proposalId: "two", targetSummary: "乙客户" },
+          ],
+        },
+      },
+    ],
+  });
+  mocks.confirmBatch.mockResolvedValue({
+    items: [{ proposalId: "one", status: "EXECUTED", message: "已保存" }],
+  });
+  renderPage();
+  fireEvent.click(await screen.findByRole("checkbox", { name: "选择乙客户" }));
+  fireEvent.change(screen.getAllByLabelText("纪要内容")[0], {
+    target: { value: "已联系采购" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "确认所选项" }));
+  await waitFor(() =>
+    expect(mocks.confirmBatch).toHaveBeenCalledWith("northwind", "t", {
+      items: [
+        {
+          proposalId: "one",
+          idempotencyKey: expect.any(String),
+          edits: { content: "已联系采购" },
+        },
+      ],
+    }),
+  );
+  expect(await screen.findByText("已保存")).toBeInTheDocument();
+  expect(
+    screen.getByRole("checkbox", { name: "选择乙客户" }),
+  ).not.toBeChecked();
+});
+
+it("rejects stale filter previews when a different view is now open", async () => {
+  const apply = vi.fn(),
+    rule = { version: 1 as const, match: "all" as const, conditions: [] };
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const panel = {
+    conversationId: "c2",
+    page: {
+      hint: { objectCode: "customers", viewId: "new-view" },
+      label: "我的客户",
+      filterDraft: rule,
+      applyFilter: apply,
+    },
+    select: vi.fn(),
+    close: vi.fn(),
+  };
+  mocks.listMessages.mockResolvedValue({
+    items: [
+      {
+        id: "a",
+        conversationId: "c2",
+        turnId: "t",
+        role: "ASSISTANT",
+        status: "COMPLETED",
+        content: "",
+        action: {
+          kind: "filter",
+          objectCode: "customers",
+          baseViewId: "old-view",
+          currentRule: rule,
+          preview: { kind: "rule", rule },
+        },
+        toolSummary: [],
+        sourceSummary: [],
+        createdAt: "2026-11-22",
+      },
+    ],
+  });
+  render(
+    <QueryClientProvider client={client}>
+      <AiAssistantPage
+        tenantCode="northwind"
+        memberId="sales"
+        businessObjects={[]}
+        panel={panel}
+      />
+    </QueryClientProvider>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "在表格中应用" }));
+  expect(screen.getByText(/页面或筛选条件已变化/)).toBeInTheDocument();
+  expect(apply).not.toHaveBeenCalled();
+});
+
+it("keeps the filled question available after a rejected answer", async () => {
+  mocks.conversation = "c-error";
+  mocks.listMessages.mockResolvedValue({
+    items: [
+      {
+        id: "q-row",
+        conversationId: "c-error",
+        turnId: "turn",
+        role: "ASSISTANT",
+        status: "WAITING",
+        content: "",
+        toolSummary: [],
+        sourceSummary: [],
+        createdAt: "2026-11-22",
+        questions: [
+          {
+            kind: "fill_fields",
+            questionId: "question",
+            turnId: "turn",
+            state: "OPEN",
+            prompt: "补充字段",
+            fields: [{ key: "name", label: "客户名称", type: "TEXT" }],
+          },
+        ],
+      },
+    ],
+  });
+  mocks.streamTurn.mockImplementation(async function* () {
+    throw {
+      code: "VALIDATION_FAILED",
+      message: "invalid",
+      requestId: "request",
+      status: 400,
+    };
+  });
+  renderPage();
+  fireEvent.change(await screen.findByRole("textbox", { name: "客户名称" }), {
+    target: { value: "保留的填写内容" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "提交填写内容" }));
+  await waitFor(() =>
+    expect(screen.getByRole("alert")).toHaveTextContent("请检查填写内容"),
+  );
+  expect(screen.getByRole("textbox", { name: "客户名称" })).toHaveValue(
+    "保留的填写内容",
+  );
+});
+
+it("renders a saved follow-up deadline in company time in batch history", async () => {
+  mocks.conversation = "c-time";
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const { followUpQueryKeys } =
+    await import("@/features/follow-ups/follow-up-api");
+  client.setQueryData(followUpQueryKeys.workbench("northwind"), {
+    timezone: "Asia/Shanghai",
+  });
+  mocks.listMessages.mockResolvedValue({
+    items: [
+      {
+        id: "a",
+        turnId: "t",
+        conversationId: "c-time",
+        role: "ASSISTANT",
+        status: "COMPLETED",
+        content: "",
+        toolSummary: [],
+        sourceSummary: [],
+        createdAt: "2026-11-22",
+        batch: {
+          items: [
+            {
+              operation: "CREATE_FOLLOW_UP",
+              proposalId: "p",
+              title: "创建跟进",
+              status: "EXECUTED",
+              targetSummary: "采购客户",
+              expiresAt: "2026-12-01",
+              validationWarnings: [],
+              changes: [
+                { label: "到期时间", after: "2026-11-23T01:00:00.000Z" },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  });
+  renderPage(client);
+  expect(await screen.findByText(/11月23日.*09:00/)).toBeVisible();
+  expect(
+    screen.queryByText("2026-11-23T01:00:00.000Z"),
+  ).not.toBeInTheDocument();
+});
+
+it("uses published select labels in a change preview", async () => {
+  mocks.conversation = "c-choice";
+  mocks.listMessages.mockResolvedValue({
+    items: [
+      {
+        id: "a",
+        turnId: "t",
+        conversationId: "c-choice",
+        role: "ASSISTANT",
+        status: "COMPLETED",
+        content: "",
+        toolSummary: [],
+        sourceSummary: [],
+        createdAt: "2026-11-22",
+        batch: {
+          items: [
+            {
+              operation: "UPDATE_RECORD",
+              proposalId: "p",
+              title: "更新阶段",
+              status: "PROPOSED",
+              targetSummary: "客户",
+              expiresAt: "2999-12-01",
+              validationWarnings: [],
+              changes: [
+                { label: "阶段", before: "discovery", after: "negotiation" },
+              ],
+              editableFields: [
+                {
+                  key: "stage",
+                  label: "阶段",
+                  type: "SINGLE_SELECT",
+                  value: "negotiation",
+                  options: [
+                    { id: "discovery", label: "初次接触" },
+                    { id: "negotiation", label: "谈判" },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  });
+  renderPage();
+  expect(await screen.findByText("初次接触 → 谈判")).toBeInTheDocument();
+  expect(screen.queryByText(/discovery → negotiation/)).not.toBeInTheDocument();
 });

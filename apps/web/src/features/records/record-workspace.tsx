@@ -17,6 +17,7 @@ import type {
 } from "@/features/objects/object-types";
 
 import type { DynamicFieldMember } from "./dynamic-field";
+import { AssistantFilterDraftProvider } from "@/features/ai/assistant-filter-draft";
 import { RecordDetailPage } from "./record-detail-page";
 import { RecordList } from "./record-list";
 import styles from "./record-list.module.css";
@@ -33,6 +34,7 @@ export interface RecordWorkspaceProps {
   openRecord?: RecordSummary;
   initialEditing?: boolean;
   followUpId?: string;
+  initialSection?:"activity"|"followups";
   returnTo?: string;
 }
 
@@ -46,7 +48,7 @@ let pendingListFocus: { path: string; until: number } | undefined;
  */
 export function RecordWorkspace(props: RecordWorkspaceProps) {
   const key = `${props.tenantCode}:${props.schema.object.code}:${props.openRecord?.id ?? "list"}:${props.initialEditing ? "edit" : "view"}:${props.followUpId ?? ""}`;
-  return <RecordWorkspaceSession key={key} {...props} />;
+  return <AssistantFilterDraftProvider key={key}><RecordWorkspaceSession {...props} /></AssistantFilterDraftProvider>;
 }
 
 function RecordWorkspaceSession({
@@ -59,7 +61,7 @@ function RecordWorkspaceSession({
   isAdmin,
   openRecord,
   initialEditing = false,
-  followUpId,
+  followUpId, initialSection,
   returnTo,
 }: RecordWorkspaceProps) {
   const router = useRouter();
@@ -169,6 +171,7 @@ function RecordWorkspaceSession({
               poolConfig={pool.data}
               canDelete={isAdmin && schema.actions.canDelete}
               initialEditing={initialEditing}
+              initialSection={initialSection}
               followUpId={followUpId}
               returnTo={returnTo}
               position={position}
