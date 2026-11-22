@@ -7,7 +7,7 @@ import {
   EditOutlined,
   TableOutlined,
 } from "@ant-design/icons";
-import { useQueryClient } from "@tanstack/react-query";
+import { hashKey, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   Button,
@@ -84,6 +84,14 @@ function ViewPickerSession({
   const [failures, setFailures] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
+  const filterChanged =
+    dirty &&
+    hashKey([draft.filterRule, draft.queryOptions]) !==
+      hashKey([
+        current?.filterRule ?? { version: 1, match: "all", conditions: [] },
+        current?.queryOptions ?? {},
+      ]);
+  const personalCopyOnly = !isAdmin && current?.scope === "SHARED";
   const clean = useRef(current);
   useEffect(() => {
     if (!dirty || current?.id !== clean.current?.id) clean.current = current;
@@ -104,14 +112,14 @@ function ViewPickerSession({
     }
   }, [legacyKey]);
   useEffect(() => {
-    if (!dirty) return;
+    if (!filterChanged) return;
     const guard = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", guard);
     return () => window.removeEventListener("beforeunload", guard);
-  }, [dirty]);
+  }, [filterChanged]);
 
   function remember(view: RecordView) {
     client.setQueryData<RecordView[]>(key, (old) => {
@@ -182,7 +190,7 @@ function ViewPickerSession({
   function switchTo(view: RecordView) {
     if (!view.available || view.id === current?.id) return;
     setError("");
-    if (!dirty) {
+    if (!filterChanged) {
       finish(view);
       return;
     }
@@ -296,7 +304,7 @@ function ViewPickerSession({
   if (dirty && current?.canEdit) items.push({ key: "save", label: "保存修改" });
   items.push({
     key: "create",
-    label: "另存为新视图",
+    label: personalCopyOnly ? "另存为个人视图" : "另存为新视图",
     onClick: () => openCreate(),
   });
   if (views.some((view) => view.canEdit))
@@ -389,7 +397,7 @@ function ViewPickerSession({
             disabled={busy}
             onClick={() => openCreate()}
           >
-            另存为
+            {personalCopyOnly ? "另存为个人视图" : "另存为"}
           </Button>
         </div>
       )}

@@ -89,7 +89,17 @@ afterEach(() => {
 });
 
 it("only offers save-as on a dirty shared view for an employee and lets them return to their edits", async () => {
-  mount({ dirty: true });
+  mount({
+    dirty: true,
+    draft: {
+      ...draft,
+      filterRule: {
+        version: 1,
+        match: "all",
+        conditions: [{ fieldKey: "name", operator: "contains", value: "林" }],
+      },
+    },
+  });
   expect(
     screen.queryByRole("button", { name: "保存" }),
   ).not.toBeInTheDocument();
@@ -104,6 +114,38 @@ it("only offers save-as on a dirty shared view for an employee and lets them ret
     within(await screen.findByRole("dialog")).getByText("放弃修改"),
   );
   expect(props.onSelect).toHaveBeenCalledWith(personal);
+});
+
+it("lets a salesperson leave display-only edits and keeps the personal save-as action available", async () => {
+  mount({
+    dirty: true,
+    draft: {
+      ...draft,
+      columnWidths: { name: 260 },
+      sort: { field: "createdAt", direction: "asc" },
+    },
+  });
+  expect(screen.getByLabelText("切换记录视图")).toHaveAccessibleDescription(
+    "全部（按权限），已修改",
+  );
+  const unload = new Event("beforeunload", { cancelable: true });
+  window.dispatchEvent(unload);
+  expect(unload.defaultPrevented).toBe(false);
+  expect(screen.getByRole("button", { name: "另存为个人视图" })).toBeVisible();
+  fireEvent.click(screen.getByLabelText("切换记录视图"));
+  fireEvent.click(await screen.findByText("重点客户"));
+  expect(props.onSelect).toHaveBeenCalledWith(personal);
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+it("asks before discarding a changed search even when the filter rule matches", async () => {
+  mount({ dirty: true, draft: { ...draft, queryOptions: { search: "采购" } } });
+  fireEvent.click(screen.getByLabelText("切换记录视图"));
+  fireEvent.click(await screen.findByText("重点客户"));
+  expect(
+    within(await screen.findByRole("dialog")).getByText("放弃修改"),
+  ).toBeInTheDocument();
+  expect(props.onSelect).not.toHaveBeenCalled();
 });
 
 it("saves the revision being edited, preserves the draft on conflict and allows a personal copy", async () => {
