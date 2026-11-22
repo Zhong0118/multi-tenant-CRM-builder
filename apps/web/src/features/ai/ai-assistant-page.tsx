@@ -757,6 +757,7 @@ export function AiAssistantPage({
             !messages.isError ? (
               <AiEmptyState
                 objects={businessObjects}
+                objectName={bound?.objectName}
                 pageKind={
                   bound ? (bound.hint.recordId ? "record" : "list") : undefined
                 }

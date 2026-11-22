@@ -8,21 +8,25 @@ export function AiEmptyState({
   objects,
   onPrompt,
   pageKind,
+  objectName,
 }: {
   objects: RuntimeObjectNavigation[];
+  objectName?: string;
   pageKind?: "record" | "list";
   onPrompt: (text: string) => void;
 }) {
   const named = objects.slice(0, 2);
   const prompts =
     pageKind === "record"
-      ? ["这个客户什么情况", "记录本次沟通"]
+      ? [`查看${objectName || "当前记录"}概况`, "记录本次沟通"]
       : pageKind === "list"
         ? ["帮我筛选", "这张表有哪些可用字段"]
         : [
-            named[0] ? `总结我负责的${named[0].name}` : "总结我负责的客户",
+            named[0] ? `总结我负责的${named[0].name}` : "总结我负责的记录",
             "最近有哪些需要跟进？",
-            named[1] ? `按阶段统计当前${named[1].name}` : "按阶段统计当前商机",
+            named[1] || named[0]
+              ? `统计${(named[1] ?? named[0]).name}的记录数`
+              : "我能查看哪些业务表",
             "总结某条记录的最近活动",
           ];
   return (

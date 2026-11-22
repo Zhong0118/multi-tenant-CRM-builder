@@ -1600,8 +1600,9 @@ it("removes both the current record and its prompt shortcuts before the next sen
   const panel = {
     conversationId: undefined,
     page: {
-      hint: { objectCode: "customers", recordId: "r1" },
-      label: "客户 · 远山科技",
+      hint: { objectCode: "contracts", recordId: "r1" },
+      label: "合同 · 续约协议",
+      objectName: "合同",
     },
     select: vi.fn(),
     close: vi.fn(),
@@ -1617,12 +1618,13 @@ it("removes both the current record and its prompt shortcuts before the next sen
     </QueryClientProvider>,
   );
   expect(
-    screen.getByRole("button", { name: "这个客户什么情况" }),
+    screen.getByRole("button", { name: "查看合同概况" }),
   ).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "移除页面关联" }));
   expect(
-    screen.queryByRole("button", { name: "这个客户什么情况" }),
+    screen.queryByRole("button", { name: "查看合同概况" }),
   ).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "我能查看哪些业务表" })).toBeVisible();
   fireEvent.change(screen.getByRole("textbox"), {
     target: { value: "看看记录" },
   });

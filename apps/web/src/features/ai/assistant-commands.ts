@@ -16,6 +16,7 @@ import type {
 export interface AssistantPageContext {
   hint: AssistantPageHint;
   label: string;
+  objectName?: string;
   listQuery?: string;
   filterDraft?: FilterRule;
   applyFilter?: (rule: FilterRule) => void;

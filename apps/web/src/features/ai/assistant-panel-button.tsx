@@ -83,6 +83,7 @@ export function AssistantPanelButton(props: PanelProps) {
       ...(recordId ? { recordId } : {}),
       ...(viewId ? { viewId } : {}),
     },
+    objectName,
     label: [objectName, recordTitle ?? viewName].filter(Boolean).join(" · "),
     filterDraft: snapshot ?? rule,
     applyFilter: onApply,
