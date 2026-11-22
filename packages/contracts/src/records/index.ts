@@ -389,3 +389,20 @@ export function legacyFiltersToRule(
   }
   return parseFilterRule({ version: 1, match: "all", conditions });
 }
+
+export interface FilterPreviewRequest {
+  text: string;
+  currentRule: FilterRule;
+  baseViewId?: string;
+}
+
+export interface PreviewChoice<T> {
+  id: string;
+  label: string;
+  value: T;
+}
+
+export type FilterPreview =
+  | { kind: "rule"; rule: FilterRule }
+  | { kind: "clarify"; options: PreviewChoice<FilterRule>[] }
+  | { kind: "unavailable" };

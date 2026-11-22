@@ -1588,6 +1588,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/filter-preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["FilterPreviewController_preview"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/pool-config": {
     parameters: {
       query?: never;
@@ -3239,6 +3255,14 @@ export interface components {
       min?: number;
       minLength?: number;
       scale?: number;
+    };
+    FilterPreviewBody: {
+      /** Format: uuid */
+      baseViewId?: string;
+      currentRule: {
+        [key: string]: unknown;
+      };
+      text: string;
     };
     FirstAdminInvitationResponseDto: {
       /** Format: date-time */
@@ -8057,6 +8081,54 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["RuntimeObjectNavigationResponseDto"][];
+        };
+      };
+    };
+  };
+  FilterPreviewController_preview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        tenantCode: unknown;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["FilterPreviewBody"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json":
+            | {
+                /** @enum {string} */
+                kind: "rule";
+                rule: {
+                  [key: string]: unknown;
+                };
+              }
+            | {
+                /** @enum {string} */
+                kind: "clarify";
+                options: {
+                  id: string;
+                  label: string;
+                  value: {
+                    [key: string]: unknown;
+                  };
+                }[];
+              }
+            | {
+                /** @enum {string} */
+                kind: "unavailable";
+              };
         };
       };
     };

@@ -3481,6 +3481,23 @@
         },
         "type": "object"
       },
+      "FilterPreviewBody": {
+        "properties": {
+          "baseViewId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "currentRule": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": ["text", "currentRule"],
+        "type": "object"
+      },
       "FirstAdminInvitationResponseDto": {
         "properties": {
           "expiresAt": {
@@ -14749,6 +14766,109 @@
           }
         ],
         "tags": ["object-definitions"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/filter-preview": {
+      "post": {
+        "operationId": "FilterPreviewController_preview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {}
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FilterPreviewBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "properties": {
+                        "kind": {
+                          "enum": ["rule"],
+                          "type": "string"
+                        },
+                        "rule": {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      },
+                      "required": ["kind", "rule"],
+                      "type": "object"
+                    },
+                    {
+                      "properties": {
+                        "kind": {
+                          "enum": ["clarify"],
+                          "type": "string"
+                        },
+                        "options": {
+                          "items": {
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "value": {
+                                "additionalProperties": true,
+                                "type": "object"
+                              }
+                            },
+                            "required": ["id", "label", "value"],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "required": ["kind", "options"],
+                      "type": "object"
+                    },
+                    {
+                      "properties": {
+                        "kind": {
+                          "enum": ["unavailable"],
+                          "type": "string"
+                        }
+                      },
+                      "required": ["kind"],
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["filter-preview"]
       }
     },
     "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/pool-config": {

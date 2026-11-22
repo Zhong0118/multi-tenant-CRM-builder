@@ -1,3 +1,5 @@
+import { FilterPreviewController } from './filter-preview.controller';
+import { FilterPreviewService } from './filter-preview.service';
 import { CommunicationDraftsService } from './communication-drafts.service';
 import { CommunicationDraftsController } from './communication-drafts.controller';
 import { CommunicationDraftGenerator } from './communication-draft-generator';
@@ -30,8 +32,13 @@ import { AiToolRegistry } from './tool-registry';
     RecordsModule,
     FollowUpsModule,
   ],
-  controllers: [AiController, CommunicationDraftsController],
+  controllers: [
+    FilterPreviewController,
+    AiController,
+    CommunicationDraftsController,
+  ],
   providers: [
+    FilterPreviewService,
     CommunicationDraftsService,
     CommunicationDraftGenerator,
     ConversationRepository,

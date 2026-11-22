@@ -1,3 +1,4 @@
+import type { FilterProviderInput } from '../filter-generation';
 import type { CommunicationProviderInput } from '../communication-output';
 import type {
   AiProvider,
@@ -25,6 +26,58 @@ export function getFakeAiProviderCapturedToolResult(): unknown {
 export class FakeAiProvider implements AiProvider {
   readonly providerKey = 'fake';
   readonly modelKey = 'fake';
+
+  async generateFilter(input: FilterProviderInput, signal: AbortSignal) {
+    signal.throwIfAborted();
+    // Fixed demo conversations only. All other requests explicitly abstain.
+    const own = { fieldKey: '$owner', operator: 'in', value: ['$me'] };
+    const rule = (conditions: unknown[]) => ({
+      version: 1,
+      match: 'all',
+      conditions,
+    });
+    const stage = input.fields.find((f) => f.label === '阶段');
+    const amount = input.fields.find((f) => f.label === '预计金额');
+    const stages = stage?.options
+      ?.filter((o) => ['报价', '谈判'].includes(o.label))
+      .map((o) => o.key);
+    switch (input.text.trim()) {
+      case '找我负责的、报价或谈判中、预计金额超过 10 万的客户':
+        if (stages?.length === 2 && stage && amount)
+          return {
+            rules: [
+              rule([
+                own,
+                { fieldKey: stage.fieldKey, operator: 'in', value: stages },
+                { fieldKey: amount.fieldKey, operator: 'gt', value: '100000' },
+              ]),
+            ],
+          };
+        break;
+      case '再加上金额大于 10 万':
+        if (amount && input.currentRule.match === 'all')
+          return {
+            rules: [
+              rule([
+                ...input.currentRule.conditions,
+                { fieldKey: amount.fieldKey, operator: 'gt', value: '100000' },
+              ]),
+            ],
+          };
+        break;
+      case '找值得优先跟进的客户':
+        if (stage && stages?.length === 2)
+          return {
+            rules: stages.map((k) =>
+              rule([{ fieldKey: stage.fieldKey, operator: 'in', value: [k] }]),
+            ),
+          };
+        break;
+      case '换成我负责的客户':
+        return { rules: [rule([own])] };
+    }
+    return { rules: [] };
+  }
 
   generateCommunication(
     { text, fields }: CommunicationProviderInput,

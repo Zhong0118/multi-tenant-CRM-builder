@@ -40,6 +40,10 @@ export type AiProviderEvent =
   | { type: 'FAILED'; code: string };
 
 export interface AiProvider {
+  generateFilter?(
+    input: import('./filter-generation').FilterProviderInput,
+    signal: AbortSignal,
+  ): Promise<unknown>;
   readonly providerKey: string;
   readonly modelKey: string | null;
   generateCommunication?(
