@@ -1,6 +1,6 @@
 # 对话助手评测
 
-开发集 30 条，冻结于 `1847273`。独立作者编写的留出集 15 条，冻结于 `327dc40`。本次使用 fake provider，开发集与留出集均独立运行。逐例输出见[开发集报告](../../../../../docs/audits/2026-11-22/assistant-v2/development.md)、[留出集报告](../../../../../docs/audits/2026-11-22/assistant-v2/holdout.md)及[质量抽查](../../../../../docs/audits/2026-11-22/assistant-v2/quality.md)。
+开发集 30 条，冻结于 `1847273`。独立作者编写的留出集 15 条，冻结于 `327dc40`。11 月 22 日的基线使用 fake provider，开发集与留出集均独立运行。逐例输出见[开发集报告](../../../../../docs/audits/2026-11-22/assistant-v2/development.md)、[留出集报告](../../../../../docs/audits/2026-11-22/assistant-v2/holdout.md)及[质量抽查](../../../../../docs/audits/2026-11-22/assistant-v2/quality.md)。
 
 ## 运行
 
@@ -18,7 +18,7 @@ pnpm --filter @crm/api eval:assistant --dataset development --strict
 pnpm --filter @crm/api eval:assistant --dataset holdout
 ```
 
-可加 `--report /absolute/path/report.md` 保存输出。默认使用模拟 provider。在本机设置 `ASSISTANT_EVAL_PROVIDER=real`、`AI_MODEL`、`AI_API_KEY` 后可运行真实模型；兼容端点可设置 `AI_BASE_URL`。CI 只运行模拟评测。当前真实模型效果未验证。
+可加 `--report /absolute/path/report.md` 保存输出。默认使用模拟 provider。在本机设置 `ASSISTANT_EVAL_PROVIDER=real`、`AI_MODEL`、`AI_API_KEY` 后可运行真实模型；兼容端点可设置 `AI_BASE_URL`。CI 只运行模拟评测。11 月 23 日使用 DeepSeek Flash 实测，开发集 19/30，独立留出集 12/15。[真实模型结果与失败分析](../../../../../docs/audits/2026-11-23/assistant-v2-deepseek/README.md)
 
 ## 判分
 
