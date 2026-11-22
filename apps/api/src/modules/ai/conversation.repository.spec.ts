@@ -233,6 +233,7 @@ function harness(options: { lockedMembers?: Array<{ id: string }> } = {}) {
       }
       throw new Error(`unexpected SQL: ${sql}`);
     }),
+    aiQuestion: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
     aiConversation: {
       create: jest.fn(({ data }: { data: Partial<ConversationRow> }) => {
         const now = new Date();

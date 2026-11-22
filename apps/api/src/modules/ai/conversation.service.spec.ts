@@ -192,6 +192,7 @@ function createService() {
           : [{ id: context.memberId }],
       ),
     ),
+    aiQuestion: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
     aiConversation: {
       create: ({ data }: { data: Partial<ConversationRow> }) => {
         const now = new Date();

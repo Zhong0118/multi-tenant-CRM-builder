@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
 
 import { ApiException } from '../../common/errors/api.exception';
@@ -17,11 +17,15 @@ import type {
   ConversationMessageQuery,
   PublicAiMessage,
 } from './ai.types';
+import { AssistantQuestionsService } from './assistant-questions.service';
 import { ConversationRepository } from './conversation.repository';
 
 @Injectable()
 export class ConversationService {
-  constructor(private readonly repository: ConversationRepository) {}
+  constructor(
+    private readonly repository: ConversationRepository,
+    @Optional() private readonly questions?: AssistantQuestionsService,
+  ) {}
 
   async timeContext(context: TenantContext) {
     const timezone = await this.repository.getTenantTimezone(context);
@@ -47,12 +51,24 @@ export class ConversationService {
     return this.repository.list(context, query);
   }
 
-  messages(
+  async messages(
     context: TenantContext,
     conversationId: string,
     query: ConversationMessageQuery,
   ): Promise<ConversationMessagePage> {
-    return this.repository.messages(context, conversationId, query);
+    const page = await this.repository.messages(context, conversationId, query);
+    const cards = await this.questions?.history(
+      context,
+      conversationId,
+      page.items.filter((m) => m.role === 'ASSISTANT').map((m) => m.id),
+    );
+    return {
+      ...page,
+      items: page.items.map((item) => ({
+        ...item,
+        questions: cards?.get(item.id) ?? [],
+      })),
+    };
   }
 
   contextMessages(

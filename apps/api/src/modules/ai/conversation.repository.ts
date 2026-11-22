@@ -6,7 +6,10 @@ import type { Prisma } from '@crm/database';
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { DatabaseContextRunner } from '../../infrastructure/database/context-runner';
-import { AiOperationRepository } from './ai-operation.repository';
+import {
+  AiOperationRepository,
+  groupProposalBatches,
+} from './ai-operation.repository';
 import type {
   AssistantFinalizeOutcome,
   BeginTurnInput,
@@ -120,6 +123,15 @@ function toPublicMessage(
       : '数据权限已变化，这条历史回答已隐藏。请重新提问获取当前可见的数据。',
     toolSummary: reusable ? row.toolSummary : [],
     sourceSummary: reusable ? row.sourceSummary : [],
+    ...(reusable &&
+    row.role === 'ASSISTANT' &&
+    isPlainObject(row.providerUsage) &&
+    isPlainObject(row.providerUsage.assistantAction)
+      ? {
+          action: row.providerUsage
+            .assistantAction as unknown as import('@crm/contracts').AssistantAction,
+        }
+      : {}),
     errorCode: row.errorCode,
     createdAt: row.createdAt.toISOString(),
     completedAt: row.completedAt?.toISOString() ?? null,
@@ -132,7 +144,7 @@ function toPublicMessage(
   };
 }
 
-function asTurnResult(
+export function asTurnResult(
   conversation: { id: string; title: string },
   user: {
     id: string;
@@ -178,7 +190,10 @@ function asTurnResult(
   };
 }
 
-async function lockActiveMember(tx: Tx, context: TenantContext): Promise<void> {
+export async function lockActiveMember(
+  tx: Tx,
+  context: TenantContext,
+): Promise<void> {
   const locked = await tx.$queryRaw<Array<{ id: string }>>`
     SELECT id
     FROM tenant_members
@@ -186,6 +201,9 @@ async function lockActiveMember(tx: Tx, context: TenantContext): Promise<void> {
       AND id = ${context.memberId}::uuid
       AND user_id = ${context.userId}::uuid
       AND status = 'ACTIVE'
+      AND role = ${context.role}::"MemberRole"
+      AND EXISTS (SELECT 1 FROM users WHERE users.id = tenant_members.user_id AND users.status = 'ACTIVE')
+      AND EXISTS (SELECT 1 FROM tenants WHERE tenants.id = tenant_members.tenant_id AND tenants.status = 'ACTIVE')
     FOR UPDATE
   `;
   if (locked.length !== 1) {
@@ -215,7 +233,7 @@ async function failStaleGenerating(
       tenantId: context.tenantId,
       role: 'ASSISTANT',
       status: 'GENERATING',
-      createdAt: { lt: cutoff },
+      updatedAt: { lt: cutoff },
       conversation: memberConversationWhere(context),
     },
     data: {
@@ -262,7 +280,7 @@ export function providerAttemptsOf(usage: unknown): number {
   return 1;
 }
 
-function withProviderAttempts(
+export function withProviderAttempts(
   usage: unknown,
   providerAttempts: number,
 ): Prisma.InputJsonValue {
@@ -445,14 +463,21 @@ export class ConversationRepository {
           (row) => authorizationRevisionOf(row.providerUsage) !== undefined,
         ),
       );
-      const proposals = new Map(
-        operations.map(({ turnId, view }) => [turnId, view]),
-      );
+      const batches = groupProposalBatches(operations);
       return {
         items: chronological.map((row) => ({
           ...toPublicMessage(row, authorizationRevision),
-          ...(row.role === 'ASSISTANT' && proposals.has(row.turnId)
-            ? { proposal: proposals.get(row.turnId) }
+          ...(row.role === 'ASSISTANT' &&
+          batches.has(row.turnId) &&
+          (authorizationRevisionOf(row.providerUsage) === undefined ||
+            authorizationRevisionOf(row.providerUsage) ===
+              authorizationRevision?.revision)
+            ? {
+                batch: batches.get(row.turnId),
+                ...(batches.get(row.turnId)!.items.length === 1
+                  ? { proposal: batches.get(row.turnId)!.items[0] }
+                  : {}),
+              }
             : {}),
         })),
         nextBefore: hasMore ? chronological[0]?.id : undefined,
@@ -521,7 +546,18 @@ export class ConversationRepository {
       const existing = input.conversationId
         ? await requireOwnedConversation(tx, context, input.conversationId)
         : null;
-      if (existing) await rejectInProgress(tx, context, existing.id);
+      if (existing) {
+        await rejectInProgress(tx, context, existing.id);
+        await tx.aiQuestion.updateMany({
+          where: {
+            tenantId: context.tenantId,
+            memberId: context.memberId,
+            conversationId: existing.id,
+            state: 'OPEN',
+          },
+          data: { state: 'SUPERSEDED', resolvedAt: now },
+        });
+      }
 
       const conversation =
         existing ??
@@ -559,7 +595,13 @@ export class ConversationRepository {
           providerUsage: withProviderAttempts(
             usageWithAuthorization(
               {},
-              (await currentAuthorizationState(tx, context))?.revision,
+              (
+                await currentAuthorizationState(
+                  tx,
+                  context,
+                  input.protectedHistory,
+                )
+              )?.revision,
             ),
             1,
           ),
@@ -647,7 +689,14 @@ export class ConversationRepository {
           providerUsage: withProviderAttempts(
             usageWithAuthorization(
               {},
-              (await currentAuthorizationState(tx, context))?.revision,
+              (
+                await currentAuthorizationState(
+                  tx,
+                  context,
+                  authorizationRevisionOf(assistant.providerUsage) !==
+                    undefined,
+                )
+              )?.revision,
             ),
             nextAttempts,
           ),
@@ -707,6 +756,7 @@ export class ConversationRepository {
     const updated = await tx.aiMessage.updateMany({
       where: {
         id: assistant.id,
+        status: 'GENERATING',
         providerUsage: {
           equals: assistant.providerUsage as Prisma.InputJsonValue,
         },
@@ -777,12 +827,12 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-/** Only independent group-field conversations opt into replay protection.
+/** V2 turns and legacy group-field conversations use replay protection.
  * Revisions count atomic security audits rather than timestamps: concurrent
  * transactions may commit out of timestamp order. Ordinary value changes do
  * not invalidate history; ownership/pool changes can change the row's policy.
  */
-async function currentAuthorizationState(
+export async function currentAuthorizationState(
   tx: Tx,
   context: TenantContext,
   previouslyProtected = false,
@@ -816,7 +866,7 @@ async function currentAuthorizationState(
   return state.configured || previouslyProtected ? state : undefined;
 }
 
-function authorizationRevisionOf(usage: unknown): string | undefined {
+export function authorizationRevisionOf(usage: unknown): string | undefined {
   return isPlainObject(usage) && typeof usage.authorizationRevision === 'string'
     ? usage.authorizationRevision
     : undefined;

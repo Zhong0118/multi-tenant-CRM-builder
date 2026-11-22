@@ -1,3 +1,8 @@
+import type {
+  AssistantAction,
+  AssistantQuestion,
+  AssistantBatch,
+} from '@crm/contracts';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import type { AiProposalView } from './ai-operation.types';
 
@@ -18,6 +23,7 @@ export interface ConversationMessageQuery {
 }
 
 export interface BeginTurnInput {
+  protectedHistory?: boolean;
   conversationId?: string;
   content: string;
 }
@@ -61,6 +67,9 @@ export interface PublicAiMessage {
   createdAt: string;
   completedAt: string | null;
   proposal?: AiProposalView | null;
+  batch?: AssistantBatch;
+  action?: AssistantAction;
+  questions?: AssistantQuestion[];
 }
 
 export interface ConversationMessagePage {
