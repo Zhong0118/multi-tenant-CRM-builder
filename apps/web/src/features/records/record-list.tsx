@@ -8,7 +8,6 @@ import {
   type FilterRule,
 } from "@crm/contracts";
 import { CommunicationDraftDialog } from "./communication-draft";
-import { RecordColumnHeader } from "./record-column-header";
 import { previewRecordFilter } from "./filter-preview-api";
 import { RecordFilterPanel, RecordFilterChips } from "./record-filter-panel";
 import { RecordViewPicker } from "./record-views";
@@ -44,12 +43,9 @@ import {
   Popover,
   Segmented,
   Select,
-  Table,
 } from "antd";
-import type { MenuProps, TableProps } from "antd";
-import type { ColumnsType } from "antd/es/table";
+import type { MenuProps } from "antd";
 import { useRouter } from "next/navigation";
-import type React from "react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -57,7 +53,6 @@ import { ObjectIcon } from "@/components/navigation/object-icon";
 import {
   SORTABLE_FIELD_TYPES,
   selectOptions,
-  type PublishedFieldView,
   type RecordPage,
   type RecordSummary,
   type RuntimeObjectSchema,
@@ -70,7 +65,6 @@ import {
   canEditRecordFields,
   queryFields,
   recordFields,
-  visibleFields,
 } from "./record-access";
 import { recordApi as defaultRecordApi, type RecordApi } from "./record-api";
 import {
@@ -84,29 +78,11 @@ import {
 } from "./record-batch-delete";
 import { recordCardFields } from "./record-card-fields";
 import { CellReaderProvider, RecordCellValue } from "./record-cell";
-import {
-  clampToBounds,
-  fieldColumnBounds,
-  SYSTEM_COLUMN_BOUNDS,
-  type ColumnBounds,
-} from "./record-column-layout";
-import {
-  resolveColumnOrder,
-  SYSTEM_COLUMN_LABELS,
-  systemColumnKey,
-  type SystemColumnKey,
-} from "./record-column-order";
-import { resolveRecordColumnKeys } from "./record-columns";
-import {
-  useRecordDisplayPrefs,
-  type RecordDisplayPrefs,
-} from "./record-display-prefs";
+import { RecordListTable } from "./record-list-table";
+import { useRecordListLayout } from "./use-record-list-layout";
+import { useRecordSelection } from "./use-record-selection";
 import { RecordDisplaySettings } from "./record-display-settings";
-import {
-  displayValue,
-  formatDateTime,
-  RecordOwner,
-} from "./record-display-value";
+import { displayValue, RecordOwner } from "./record-display-value";
 import {
   describeFilter,
   quickFilterValues,
@@ -139,7 +115,6 @@ import {
   RecordCommunicationPreview,
 } from "./record-communication-drawer";
 import { RecordRowActions } from "./record-row-actions";
-import { ResizableHeaderCell } from "./resizable-columns";
 
 import rl from "./record-list.module.css";
 import styles from "./records.module.css";
@@ -161,8 +136,6 @@ export interface RecordListProps {
 }
 
 const SEARCH_DEBOUNCE_MS = 300;
-
-type RecordColumn = ColumnsType<RecordSummary>[number];
 
 /**
  * The record register. Filters, sort and page live in the URL so returning from
@@ -218,101 +191,25 @@ export function RecordList({
         schema,
       )
     : route;
-  const [layoutEdit, setLayoutEdit] = useState<{
-    viewId: string;
-    prefs: Partial<RecordDisplayPrefs>;
+  const layout = useRecordListLayout(
+    tenantCode,
+    currentMemberId,
+    schema,
+    activeView,
+    Boolean(poolConfig?.enabled),
+  );
+  const queryScope = `${tenantCode}:${objectCode}:${recordQuerySearch(query, queryDefaults)}`;
+  const [filterEdit, setFilterEdit] = useState<{
+    scope: string;
+    index: number;
   }>();
-  const layoutDraft =
-    layoutEdit && activeView?.id === layoutEdit.viewId
-      ? layoutEdit.prefs
-      : undefined;
-  const [editIndex, setEditIndex] = useState<number | null>(null);
+  if (filterEdit && filterEdit.scope !== queryScope) setFilterEdit(undefined);
   const [communicationRecord, setCommunicationRecord] =
     useState<RecordSummary>();
   const [error, setError] = useState<string>();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [columnsOpen, setColumnsOpen] = useState(false);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
-  const [assignmentRecords, setAssignmentRecords] = useState<RecordSummary[]>();
-  const [deletionRecords, setDeletionRecords] = useState<RecordSummary[]>();
-  const [batchOpen, setBatchOpen] = useState(false);
-  const selectionScope = `${tenantCode}:${objectCode}:${recordQuerySearch(query, queryDefaults)}`;
-  const [previousSelectionScope, setPreviousSelectionScope] =
-    useState(selectionScope);
-  if (previousSelectionScope !== selectionScope) {
-    setPreviousSelectionScope(selectionScope);
-    setEditIndex(null);
-    setSelectedRowKeys([]);
-    setBatchOpen(false);
-    setAssignmentRecords(undefined);
-    setDeletionRecords(undefined);
-  }
   const [importOpen, setImportOpen] = useState(false);
-  // Columns, widths, order and reading density for this member and table.
-  // The first render uses the published defaults (as the server does) and the
-  // stored choice applies after mount, so hydration never disagrees.
-  const display = useRecordDisplayPrefs(
-    tenantCode,
-    currentMemberId,
-    objectCode,
-  );
-  const namedLayout = Boolean(
-    activeView?.available && activeView.code !== "all",
-  );
-  const storedColumns = activeView?.available
-    ? activeView.columnFieldKeys
-    : undefined;
-  const useViewColumns = Boolean(
-    storedColumns && (namedLayout || !display.prefs.columns.length),
-  );
-  const storedOrder = storedColumns?.map((key) => {
-    if (key === "ownerMemberId") return "system:systemOwner";
-    return [
-      "updatedAt",
-      "nextFollowUpAt",
-      "recordNo",
-      "latestActivity",
-      "poolStatus",
-    ].includes(key)
-      ? "system:" + key
-      : key;
-  });
-  const viewWidths = { ...activeView?.columnWidths };
-  if (viewWidths.ownerMemberId !== undefined) {
-    viewWidths.systemOwner = viewWidths.ownerMemberId;
-    delete viewWidths.ownerMemberId;
-  }
-  const prefs = {
-    ...display.prefs,
-    columns:
-      useViewColumns && storedColumns ? storedColumns : display.prefs.columns,
-    order:
-      (namedLayout || !display.prefs.order.length ? storedOrder : undefined) ??
-      display.prefs.order,
-    activityVisible: namedLayout
-      ? storedColumns?.includes("latestActivity") === true
-      : display.prefs.activityVisible,
-    ownerVisible: namedLayout
-      ? storedColumns?.includes("ownerMemberId") === true
-      : display.prefs.ownerVisible,
-    updatedAtVisible: namedLayout
-      ? storedColumns?.includes("updatedAt") === true
-      : display.prefs.updatedAtVisible,
-    nextFollowUpVisible:
-      (namedLayout ? undefined : display.prefs.nextFollowUpVisible) ??
-      storedColumns?.includes("nextFollowUpAt") ??
-      false,
-    widths: namedLayout
-      ? { ...display.prefs.widths, ...viewWidths }
-      : { ...viewWidths, ...display.prefs.widths },
-    ...layoutDraft,
-  };
-  const { columns: preferredColumns } = prefs;
-  const columnFieldKeys = namedLayout
-    ? preferredColumns.filter((key) =>
-        visibleFields(schema).some((field) => field.fieldKey === key),
-      )
-    : resolveRecordColumnKeys(schema, preferredColumns);
 
   let rule = query.filterRule;
   if (!rule) {
@@ -325,7 +222,7 @@ export function RecordList({
   const emptyRule: FilterRule = { version: 1, match: "all", conditions: [] };
   const activeRule = rule ?? emptyRule;
   const dirty = Boolean(
-    layoutDraft ||
+    layout.layoutDraft ||
     route.baseViewId ||
     (!cleanView &&
       (route.search ||
@@ -347,8 +244,9 @@ export function RecordList({
     members,
     isAdmin: canFilterByOwner,
     rule: activeRule,
-    editIndex,
-    onEditIndex: setEditIndex,
+    editIndex: filterEdit?.index ?? null,
+    onEditIndex: (index: number | null) =>
+      setFilterEdit(index === null ? undefined : { scope: queryScope, index }),
     onPreview: (input: FilterPreviewRequest, signal: AbortSignal) =>
       previewRecordFilter(
         tenantCode,
@@ -378,8 +276,8 @@ export function RecordList({
     mutationFn: () =>
       api.export(tenantCode, objectCode, {
         ...(request.viewId &&
-          !layoutDraft &&
-          (namedLayout || !display.prefs.columns.length) && {
+          !layout.layoutDraft &&
+          (layout.namedLayout || !layout.personalPrefs.columns.length) && {
             viewId: request.viewId,
           }),
         ...(query.filterRule && { filterRule: query.filterRule }),
@@ -391,7 +289,7 @@ export function RecordList({
         filters: query.filters,
         sort: query.sort,
         direction: query.direction,
-        columns: columnFieldKeys,
+        columns: layout.columnFieldKeys,
       }),
     onMutate: () => setError(undefined),
     onError: (caught) => {
@@ -417,8 +315,8 @@ export function RecordList({
   // Any other navigation (sort, filter, page) drops a search still being typed.
   const [navigation, setNavigation] = useState(0);
   function selectView(view: RecordView | undefined) {
-    setLayoutEdit(undefined);
-    setEditIndex(null);
+    layout.discardDraft();
+    setFilterEdit(undefined);
     navigateQuery({ ...queryDefaults, limit: route.limit, viewId: view?.id });
   }
   function apply(next: RecordQuery, fromSearch = false) {
@@ -514,26 +412,15 @@ export function RecordList({
   );
   const editableRecord = (row: RecordSummary) =>
     canEditRecordFields(schema, row, currentMemberId, canFilterByOwner);
-  const canSelect = schema.actions.canUpdate || schema.actions.canDelete;
-  const selectableRecord = (row: RecordSummary) =>
-    schema.actions.canDelete || editableRecord(row);
-  const selectedRecords = page.items.filter(
-    (item) => selectedRowKeys.includes(item.id) && selectableRecord(item),
+  const selection = useRecordSelection(
+    queryScope,
+    page.items,
+    schema.actions,
+    editableRecord,
   );
-  const currentSelectedRowKeys = selectedRecords.map((item) => item.id);
   const owned = schema.scopes.read === "OWN";
   const groupRead = schema.scopes.read === "GROUP";
-  const showOwner = prefs.ownerVisible && (!owned || namedLayout);
-  const choosableFields = visibleFields(schema);
-  const titleField = choosableFields.find(
-    (field) => field.fieldKey === schema.object.titleFieldKey,
-  );
-  const visibleColumns = choosableFields.filter(
-    (field) => field === titleField || columnFieldKeys.includes(field.fieldKey),
-  );
   const queryableFields = queryFields(schema);
-  const canQueryField = (key: string) =>
-    queryableFields.some((field) => field.fieldKey === key);
   const optionFilterFields = queryableFields.filter(
     (field) =>
       (field.type === "SINGLE_SELECT" || field.type === "MULTI_SELECT") &&
@@ -555,268 +442,8 @@ export function RecordList({
       ? `搜索${searchFieldLabels.join("、")}`
       : `搜索${schema.object.name}标题`;
 
-  const columnBounds: Record<string, ColumnBounds> = {
-    ...SYSTEM_COLUMN_BOUNDS,
-  };
-  for (const field of visibleColumns) {
-    columnBounds[field.fieldKey] = fieldColumnBounds(
-      field.type,
-      field.fieldKey === schema.object.titleFieldKey,
-    );
-  }
-  const columnWidth = (key: string) => {
-    const bounds = columnBounds[key];
-    return clampToBounds(prefs.widths[key] ?? bounds.width, bounds);
-  };
-  const columnDensity = (key: string) =>
-    prefs.columnDensity[key] ?? prefs.density;
-
   const canCommunicate = (row: RecordSummary) =>
     canEditRecord(schema, row, currentMemberId, canFilterByOwner);
-  function communicationButton(row: RecordSummary) {
-    return canCommunicate(row) ? (
-      <Button
-        size="small"
-        type="link"
-        className={rl.directAction}
-        onClick={() => setCommunicationRecord(row)}
-      >
-        整理沟通
-      </Button>
-    ) : null;
-  }
-
-  const fieldColumn = (field: PublishedFieldView): RecordColumn => {
-    const sortable =
-      canQueryField(field.fieldKey) &&
-      (SORTABLE_FIELD_TYPES as readonly string[]).includes(field.type);
-    const sortOrder: "ascend" | "descend" | null =
-      sortable && query.sort === field.fieldKey
-        ? query.direction === "asc"
-          ? "ascend"
-          : "descend"
-        : null;
-    const width = columnWidth(field.fieldKey);
-    const density = columnDensity(field.fieldKey);
-    return {
-      title: <RecordColumnHeader label={field.label} type={field.type} />,
-      key: field.fieldKey,
-      fixed: field === titleField ? "start" : undefined,
-      width,
-      align:
-        field.type === "MONEY" || field.type === "NUMBER"
-          ? ("right" as const)
-          : ("left" as const),
-      sorter: sortable || undefined,
-      sortOrder,
-      sortDirections: sortable
-        ? (["ascend", "descend"] as ("ascend" | "descend")[])
-        : undefined,
-      render: (_: unknown, row: RecordSummary) =>
-        !recordFields(schema, row).some(
-          (candidate) => candidate.fieldKey === field.fieldKey,
-        ) ? null : field === titleField ? (
-          <div className={rl.titleCell}>
-            <a
-              className={`${styles.recordTitle} ${rl.titleLink}`}
-              title={row.title}
-              href={recordPath(row.id)}
-              onClick={(event) => {
-                event.preventDefault();
-                go(recordPath(row.id));
-              }}
-            >
-              {row.title}
-            </a>
-            {communicationButton(row)}
-          </div>
-        ) : (
-          <div className={rl.boundedCell}>
-            <RecordCellValue
-              field={field}
-              value={row.values[field.fieldKey]}
-              members={members}
-              density={density}
-              tablePreview
-              width={width}
-              recordTitle={row.title}
-              currentMemberId={currentMemberId}
-            />
-          </div>
-        ),
-    };
-  };
-  // The record's own columns. Which of them show keeps its conditions (owner
-  // when the member can see others' records and chose to, pool status when
-  // the pool is on); the member's order only arranges them among the fields.
-  const systemColumns: Record<SystemColumnKey, RecordColumn> = {
-    recordNo: {
-      title: "业务编号",
-      key: "recordNo",
-      dataIndex: "recordNo",
-      width: columnWidth("recordNo"),
-      sorter: true,
-      sortOrder:
-        query.sort === "recordNo"
-          ? query.direction === "asc"
-            ? "ascend"
-            : "descend"
-          : null,
-      sortDirections: ["ascend", "descend"],
-      render: (recordNo: string) => (
-        <span className={styles.recordNo}>{recordNo}</span>
-      ),
-    },
-    systemOwner: {
-      title: "负责人",
-      key: "systemOwner",
-      width: columnWidth("systemOwner"),
-      render: (_: unknown, row: RecordSummary) => (
-        <RecordOwner
-          ownerMemberId={row.ownerMemberId}
-          members={members}
-          currentMemberId={currentMemberId}
-        />
-      ),
-    },
-    poolStatus: {
-      title: "归属状态",
-      key: "poolStatus",
-      width: columnWidth("poolStatus"),
-      render: (_: unknown, row: RecordSummary) =>
-        poolConfig ? (
-          <div className={rl.boundedCell}>
-            <RecordPoolStatus record={row} config={poolConfig} compact />
-          </div>
-        ) : null,
-    },
-    nextFollowUpAt: {
-      key: "nextFollowUpAt",
-      title: "下次跟进",
-      width: columnWidth("nextFollowUpAt"),
-      sorter: true,
-      sortOrder:
-        query.sort === "nextFollowUpAt"
-          ? query.direction === "asc"
-            ? "ascend"
-            : "descend"
-          : null,
-      render: (_, row) => nextContact(row.nextFollowUpAt),
-    },
-    latestActivity: {
-      title: "最近沟通",
-      key: "latestActivity",
-      width: columnWidth("latestActivity"),
-      render: (_: unknown, row: RecordSummary) => (
-        <RecordCommunicationPreview
-          record={row}
-          onOpen={() => setActivityRecord(row)}
-        />
-      ),
-    },
-    updatedAt: {
-      title: "最近更新",
-      key: "updatedAt",
-      dataIndex: "updatedAt",
-      width: columnWidth("updatedAt"),
-      sorter: true,
-      sortOrder:
-        query.sort === "updatedAt"
-          ? query.direction === "asc"
-            ? "ascend"
-            : "descend"
-          : null,
-      sortDirections: ["ascend", "descend"],
-      render: (updatedAt: string) => (
-        <span className={rl.noWrap}>{formatDateTime(updatedAt)}</span>
-      ),
-    },
-  };
-  const shownSystemColumns: SystemColumnKey[] = [
-    "recordNo",
-    ...(showOwner ? (["systemOwner"] as const) : []),
-    ...(poolConfig?.enabled ? (["poolStatus"] as const) : []),
-    ...(prefs.nextFollowUpVisible ? (["nextFollowUpAt"] as const) : []),
-    ...(prefs.activityVisible ? (["latestActivity"] as const) : []),
-    ...(prefs.updatedAtVisible ? (["updatedAt"] as const) : []),
-  ];
-  const columnOrder = resolveColumnOrder(
-    prefs.order,
-    columnFieldKeys,
-    shownSystemColumns,
-  );
-  // A saved layout may omit or move the name. Keep the visible identity pinned
-  // without rewriting that saved view when only another setting changes.
-  const tableOrder = titleField
-    ? [
-        titleField.fieldKey,
-        ...columnOrder.filter((id) => id !== titleField.fieldKey),
-      ]
-    : columnOrder;
-  const columns: ColumnsType<RecordSummary> = [
-    ...tableOrder
-      .map((id) => {
-        const system = systemColumnKey(id);
-        if (system) return systemColumns[system];
-        const field = visibleColumns.find((item) => item.fieldKey === id);
-        return field ? fieldColumn(field) : null;
-      })
-      .filter((column): column is RecordColumn => column !== null),
-    {
-      // The header is read by assistive technology only; the menu button is self-explanatory.
-      title: <span className={styles.visuallyHidden}>操作</span>,
-      key: "actions",
-      width: page.items.some(canCommunicate) ? 118 : 48,
-      fixed: "end",
-      align: "right",
-      render: (_, row) => (
-        <div className={rl.rowActions}>
-          {communicationButton(row)}
-          {rowMenu(row)}
-        </div>
-      ),
-    },
-  ];
-
-  const handleTableChange: TableProps<RecordSummary>["onChange"] = (
-    _pagination,
-    _filters,
-    sorter,
-    extra,
-  ) => {
-    if (extra.action !== "sort" || Array.isArray(sorter)) {
-      return;
-    }
-    if (!sorter.order) {
-      apply({
-        ...query,
-        page: 1,
-        sort: schema.defaultView.sort.field,
-        direction: schema.defaultView.sort.direction,
-      });
-      return;
-    }
-    const sort = String(sorter.columnKey ?? "");
-    const sortableColumns = new Set([
-      "recordNo",
-      "updatedAt",
-      "nextFollowUpAt",
-      ...visibleColumns
-        .filter(
-          (field) =>
-            canQueryField(field.fieldKey) &&
-            (SORTABLE_FIELD_TYPES as readonly string[]).includes(field.type),
-        )
-        .map((field) => field.fieldKey),
-    ]);
-    if (!sortableColumns.has(sort)) return;
-    apply({
-      ...query,
-      page: 1,
-      sort,
-      direction: sorter.order === "ascend" ? "asc" : "desc",
-    });
-  };
 
   const filtered = Boolean(
     query.filterRule?.conditions.length ||
@@ -936,48 +563,10 @@ export function RecordList({
       filterRule: query.filterRule ? emptyRule : undefined,
       poolQuality: undefined,
     });
-  const selectedCount = currentSelectedRowKeys.length;
+  const selectedCount = selection.records.length;
   const tooManyToEdit = selectedCount > 100;
   const tooManyToAssign = selectedCount > MAX_OWNER_ASSIGNMENT_RECORDS;
   const canAssign = canFilterByOwner && schema.actions.canUpdate;
-  const columnLabel = (key: string) =>
-    key in SYSTEM_COLUMN_LABELS
-      ? SYSTEM_COLUMN_LABELS[key as SystemColumnKey]
-      : (schema.fields.find((field) => field.fieldKey === key)?.label ?? key);
-  function changeDisplay(change: Partial<RecordDisplayPrefs>) {
-    if (
-      activeView?.available &&
-      ("columns" in change ||
-        "order" in change ||
-        "widths" in change ||
-        "ownerVisible" in change ||
-        "activityVisible" in change ||
-        "nextFollowUpVisible" in change ||
-        "updatedAtVisible" in change)
-    ) {
-      setLayoutEdit({
-        viewId: activeView.id,
-        prefs: { ...layoutDraft, ...change },
-      });
-      if (namedLayout) return;
-    }
-    display.update(change);
-  }
-  function setColumnWidth(key: string, width: number | undefined) {
-    const widths = { ...prefs.widths };
-    if (width === undefined) delete widths[key];
-    else widths[key] = width;
-    changeDisplay({ widths });
-  }
-  const viewColumn = (id: string) => {
-    const system = systemColumnKey(id);
-    if (!system) return id;
-    if (system === "systemOwner") return "ownerMemberId";
-    return system;
-  };
-  const viewColumns = columnOrder
-    .map(viewColumn)
-    .filter((key): key is string => Boolean(key));
   const draft: RecordViewDraft = {
     filterRule: activeRule,
     queryOptions: {
@@ -988,44 +577,8 @@ export function RecordList({
       ownerMemberId: query.ownerMemberId,
     },
     sort: { field: query.sort, direction: query.direction },
-    columnFieldKeys: viewColumns,
-    columnWidths: Object.fromEntries(
-      Object.entries(prefs.widths).flatMap(([key, width]) => {
-        const stored = key === "systemOwner" ? "ownerMemberId" : key;
-        return viewColumns.includes(stored)
-          ? [[stored, Math.max(88, Math.min(640, width))]]
-          : [];
-      }),
-    ),
+    ...layout.viewLayout,
   };
-  const resizableColumns: ColumnsType<RecordSummary> = columns.map((column) => {
-    const key = String(column.key);
-    const bounds = columnBounds[key];
-    if (key === "actions" || !bounds) return column;
-    const width =
-      typeof column.width === "number" ? column.width : bounds.width;
-    return {
-      ...column,
-      onHeaderCell: () =>
-        ({
-          "aria-label": columnLabel(key),
-          width,
-          minWidth: activeView ? Math.max(88, bounds.min) : bounds.min,
-          maxWidth: activeView ? Math.min(640, bounds.max) : bounds.max,
-          resizeLabel: `拖动调整「${columnLabel(key)}」列宽，双击恢复`,
-          onResize: (next: number) => setColumnWidth(key, next),
-          onResizeReset: () => setColumnWidth(key, undefined),
-        }) as React.HTMLAttributes<HTMLElement>,
-    };
-  });
-  // The table is exactly as wide as its columns: long values wrap inside
-  // their column instead of pushing the table wider.
-  const tableWidth =
-    resizableColumns.reduce(
-      (sum, column) =>
-        sum + (typeof column.width === "number" ? column.width : 0),
-      0,
-    ) + (canSelect ? 40 : 0);
 
   const policy = { ...schema.actions, readScope: schema.scopes.read };
   const canImport = canTransfer(policy, "canImport");
@@ -1064,30 +617,6 @@ export function RecordList({
         ]
       : []),
   ];
-
-  const columnChooser = (
-    <RecordDisplaySettings
-      fields={choosableFields}
-      order={tableOrder}
-      titleFieldKey={titleField?.fieldKey}
-      prefs={prefs}
-      ownerChoice={!owned || namedLayout}
-      onChange={(change) =>
-        changeDisplay(
-          change.columns
-            ? {
-                ...change,
-                columns: resolveRecordColumnKeys(schema, change.columns),
-              }
-            : change,
-        )
-      }
-      onReset={() => {
-        setLayoutEdit(undefined);
-        display.reset();
-      }}
-    />
-  );
 
   return (
     <CellReaderProvider>
@@ -1321,7 +850,7 @@ export function RecordList({
               arrow={false}
               open={columnsOpen}
               onOpenChange={setColumnsOpen}
-              content={columnChooser}
+              content={<RecordDisplaySettings {...layout.settings} />}
             >
               <Button
                 icon={<TableOutlined aria-hidden />}
@@ -1548,9 +1077,9 @@ export function RecordList({
           className={rl.data}
           aria-label={`${schema.object.name}记录表`}
           data-header-tone={
-            display.prefs.headerTone === "default"
+            layout.personalPrefs.headerTone === "default"
               ? undefined
-              : display.prefs.headerTone
+              : layout.personalPrefs.headerTone
           }
         >
           {records.isError ? (
@@ -1582,7 +1111,7 @@ export function RecordList({
                     fields: recordFields(schema, row),
                     groupFieldAccess: undefined,
                   },
-                  columnFieldKeys,
+                  layout.columnFieldKeys,
                 );
                 const ownerName = (
                   <RecordOwner
@@ -1594,19 +1123,8 @@ export function RecordList({
                 return (
                   <li key={row.id} className={rl.card}>
                     <div className={rl.cardHeader}>
-                      {canSelect ? (
-                        <Checkbox
-                          disabled={!selectableRecord(row)}
-                          aria-label={`选择卡片 ${row.title}`}
-                          checked={currentSelectedRowKeys.includes(row.id)}
-                          onChange={(event) =>
-                            setSelectedRowKeys((keys) =>
-                              event.target.checked
-                                ? [...keys, row.id]
-                                : keys.filter((key) => key !== row.id),
-                            )
-                          }
-                        />
+                      {selection.rowSelection ? (
+                        <Checkbox {...selection.cardCheckboxProps(row)} />
                       ) : null}
                       <a
                         className={styles.recordTitle}
@@ -1628,7 +1146,7 @@ export function RecordList({
                       <span className={rl.cardMenu}>{rowMenu(row)}</span>
                     </div>
                     <dl className={rl.cardMeta}>
-                      {prefs.nextFollowUpVisible && (
+                      {layout.prefs.nextFollowUpVisible && (
                         <div>
                           <dt>下次跟进</dt>
                           <dd>{nextContact(row.nextFollowUpAt)}</dd>
@@ -1638,7 +1156,7 @@ export function RecordList({
                         <dt>业务编号</dt>
                         <dd className={styles.recordNo}>{row.recordNo}</dd>
                       </div>
-                      {showOwner ? (
+                      {layout.showOwner ? (
                         <div>
                           <dt>负责人</dt>
                           <dd>{ownerName}</dd>
@@ -1661,7 +1179,7 @@ export function RecordList({
                         </div>
                       ))}
                     </dl>
-                    {display.prefs.activityVisible ? (
+                    {layout.personalPrefs.activityVisible ? (
                       <RecordCommunicationPreview
                         record={row}
                         onOpen={() => setActivityRecord(row)}
@@ -1694,34 +1212,26 @@ export function RecordList({
               })}
             </ul>
           )}
-          <Table
-            className={rl.table}
-            rowKey="id"
-            size="small"
-            columns={resizableColumns}
-            components={{ header: { cell: ResizableHeaderCell } }}
-            dataSource={page.items}
+          <RecordListTable
+            schema={schema}
+            layout={layout.table}
+            rows={page.items}
             loading={records.isFetching}
-            onChange={handleTableChange}
-            tableLayout="fixed"
-            scroll={{ x: tableWidth }}
-            rowSelection={
-              canSelect
-                ? {
-                    columnWidth: 40,
-                    fixed: true,
-                    selectedRowKeys: currentSelectedRowKeys,
-                    onChange: (keys) => setSelectedRowKeys(keys.map(String)),
-                    getCheckboxProps: (row) => ({
-                      "aria-label": `选择 ${row.title}`,
-                      disabled: !selectableRecord(row),
-                    }),
-                  }
-                : undefined
-            }
-            aria-label={`${schema.object.name}记录`}
-            locale={{ emptyText: emptyState }}
-            pagination={false}
+            members={members}
+            currentMemberId={currentMemberId}
+            poolConfig={poolConfig}
+            query={query}
+            queryableFields={queryableFields}
+            apply={apply}
+            rowSelection={selection.rowSelection}
+            emptyState={emptyState}
+            recordPath={recordPath}
+            go={go}
+            canCommunicate={canCommunicate}
+            onCommunicate={setCommunicationRecord}
+            onActivity={setActivityRecord}
+            rowMenu={rowMenu}
+            nextContact={nextContact}
           />
         </section>
 
@@ -1745,9 +1255,9 @@ export function RecordList({
                   icon={<EditOutlined aria-hidden />}
                   disabled={
                     tooManyToEdit ||
-                    selectedRecords.some((row) => !editableRecord(row))
+                    selection.records.some((row) => !editableRecord(row))
                   }
-                  onClick={() => setBatchOpen(true)}
+                  onClick={() => selection.open("edit")}
                 >
                   批量修改
                 </Button>
@@ -1758,7 +1268,7 @@ export function RecordList({
                   type="text"
                   icon={<UserSwitchOutlined aria-hidden />}
                   disabled={tooManyToAssign}
-                  onClick={() => setAssignmentRecords([...selectedRecords])}
+                  onClick={() => selection.open("assign")}
                 >
                   分配负责人
                 </Button>
@@ -1770,7 +1280,7 @@ export function RecordList({
                   danger
                   icon={<DeleteOutlined aria-hidden />}
                   disabled={selectedCount > MAX_DELETE_RECORDS}
-                  onClick={() => setDeletionRecords([...selectedRecords])}
+                  onClick={() => selection.open("delete")}
                 >
                   批量删除
                 </Button>
@@ -1781,7 +1291,7 @@ export function RecordList({
                 className={rl.bulkClear}
                 aria-label="取消选择"
                 icon={<CloseOutlined aria-hidden />}
-                onClick={() => setSelectedRowKeys([])}
+                onClick={selection.clear}
               />
             </div>
           ) : (
@@ -1832,27 +1342,24 @@ export function RecordList({
           />
         ) : null}
 
-        {assignmentRecords ? (
+        {selection.action?.kind === "assign" ? (
           <RecordBatchAssignDrawer
             tenantCode={tenantCode}
             objectCode={objectCode}
-            records={assignmentRecords}
+            records={selection.action.records}
             members={members}
-            onClose={() => {
-              setAssignmentRecords(undefined);
-              setSelectedRowKeys([]);
-            }}
+            onClose={selection.close}
             onChanged={async () => {
               await records.refetch();
               router.refresh();
             }}
           />
         ) : null}
-        {deletionRecords ? (
+        {selection.action?.kind === "delete" ? (
           <RecordBatchDeleteDrawer
             tenantCode={tenantCode}
             objectCode={objectCode}
-            records={deletionRecords}
+            records={selection.action.records}
             api={api}
             onChanged={async () => {
               const key = [
@@ -1870,24 +1377,22 @@ export function RecordList({
               router.refresh();
             }}
             onClose={() => {
-              setDeletionRecords(undefined);
-              setSelectedRowKeys([]);
+              selection.close();
               const lastPage = Math.max(1, Math.ceil(page.total / page.limit));
               if (query.page > lastPage) apply({ ...query, page: lastPage });
             }}
           />
         ) : null}
-        {batchOpen && selectedRecords.length > 0 ? (
+        {selection.action?.kind === "edit" && selectedCount > 0 ? (
           <RecordBatchEditDrawer
             tenantCode={tenantCode}
             schema={schema}
-            records={selectedRecords}
+            records={selection.records}
             members={members}
             api={api}
-            onClose={() => setBatchOpen(false)}
+            onClose={selection.close}
             onCompleted={async () => {
-              setBatchOpen(false);
-              setSelectedRowKeys([]);
+              selection.clear();
               await records.refetch();
               router.refresh();
             }}
