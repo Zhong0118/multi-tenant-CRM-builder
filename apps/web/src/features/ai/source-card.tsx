@@ -31,7 +31,7 @@ export function SourceCard({
       ? formatAggregate(source.value)
       : source.kind === "RECORDS"
         ? `${source.count} 条记录`
-        : `${source.count} 条活动`;
+        : `${source.count} 条${source.briefKey==="followups" ? "跟进":"活动"}`;
   const Glyph =
     source.kind === "AGGREGATE"
       ? BarChartOutlined

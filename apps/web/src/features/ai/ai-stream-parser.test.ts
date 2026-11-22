@@ -78,9 +78,9 @@ describe("AiStreamParser", () => {
     };
     expect(
       feed([
-        `event: proposal.ready\ndata: ${JSON.stringify({ turnId: "t1", proposal })}\n\n`,
+        `event: proposal.ready\ndata: ${JSON.stringify({ turnId: "t1", batch: { items: [proposal] } })}\n\n`,
       ]),
-    ).toEqual([{ event: "proposal.ready", data: { turnId: "t1", proposal } }]);
+    ).toEqual([{ event: "proposal.ready", data: { turnId: "t1", batch: { items: [proposal] } } }]);
   });
 
   it("rejects proposal.ready with executable-looking arbitrary values", () => {
@@ -169,4 +169,20 @@ it("preserves safe tool diagnostics and terminal duration", () => {
 
 it("parses an answer-step reset", () => {
   expect(feed(['event: assistant.reset\ndata: {}\n\n'])).toEqual([{ event: "assistant.reset", data: {} }]);
+});
+
+
+it("parses a pause as a structured question", () => {
+  const question = {
+    questionId: "q",
+    turnId: "t",
+    state: "OPEN",
+    prompt: "选择客户",
+    kind: "choose_record",
+    options: [{ id: "one", label: "远山科技" }],
+  };
+  const payload = { turnId: "t", question };
+  expect(
+    feed([`event: question.ready\ndata: ${JSON.stringify(payload)}\n\n`]),
+  ).toEqual([{ event: "question.ready", data: payload }]);
 });

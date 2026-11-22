@@ -2,7 +2,7 @@
 
 import { ClockCircleOutlined, CopyOutlined } from "@ant-design/icons";
 import { Button } from "antd";
-import { useState } from "react";
+import { useContext, useState } from "react";
 
 import { useToast } from "@/components/feedback/use-toast";
 
@@ -10,9 +10,14 @@ import { elapsedSince, formatDuration, useElapsedNow } from "./ai-elapsed";
 import styles from "./ai-assistant.module.css";
 import { AiErrorState } from "./ai-error-state";
 import { AnswerText } from "./ai-rich-text";
+import { sourceHref } from "./ai-copy";
 import { SourceCard } from "./source-card";
 import { ToolActivity } from "./tool-activity";
 import { userErrorMessage } from "./ai-turn-reducer";
+import { AssistantCommandContext } from "./assistant-commands";
+import { QuestionCard } from "./question-card";
+import { AssistantBatchCard } from "./assistant-batch-card";
+import { AssistantActionCard } from "./assistant-action-card";
 import { AiProposalCard } from "./ai-proposal-card";
 import type { AiMessage } from "./ai-types";
 
@@ -34,26 +39,59 @@ export function AssistantMessage({
   proposalError?: string | null;
 }) {
   const toast = useToast();
+  const commands = useContext(AssistantCommandContext);
   const [copyFailed, setCopyFailed] = useState(false);
-  const active = message.status === "STREAMING" || message.status === "GENERATING";
+  const active =
+    message.status === "STREAMING" || message.status === "GENERATING";
   const now = useElapsedNow(active);
   // Persisted GENERATING rows retain the original creation time on retries.
   // Only the local STREAMING projection has a current attempt start.
   const duration = active
-    ? message.status === "STREAMING" ? elapsedSince(message.createdAt, now) : undefined
-    : message.durationMs ?? (message.completedAt ? elapsedSince(message.createdAt, Date.parse(message.completedAt)) : undefined);
+    ? message.status === "STREAMING"
+      ? elapsedSince(message.createdAt, now)
+      : undefined
+    : (message.durationMs ??
+      (message.completedAt
+        ? elapsedSince(message.createdAt, Date.parse(message.completedAt))
+        : undefined));
   const partial =
     message.status === "PARTIAL_COMPLETED" ||
     (message.status === "COMPLETED" &&
       message.toolSummary.some((tool) => tool.status === "FAILED"));
-  const retryable = !active && !message.proposal && !proposalBusy &&
-    (message.status === "FAILED" || message.status === "CANCELLED" || partial) && onRetry;
-  const failedTools = message.toolSummary.filter((tool) => tool.status === "FAILED");
+  const retryable =
+    !active &&
+    !message.proposal &&
+    !message.batch &&
+    !message.action &&
+    !message.questions?.some((question) => question.state === "OPEN") &&
+    !proposalBusy &&
+    (message.status === "FAILED" ||
+      message.status === "CANCELLED" ||
+      partial) &&
+    onRetry;
+  const failedTools = message.toolSummary.filter(
+    (tool) => tool.status === "FAILED",
+  );
+  const citationLinks = Object.fromEntries(
+    message.sourceSummary.flatMap((source) => {
+      if (source.kind === "AGGREGATE" || !source.briefKey || !source.recordId)
+        return [];
+      const label = {
+        record: "【记录】",
+        activities: "【活动】",
+        followups: "【跟进】",
+      }[source.briefKey];
+      return [[label, sourceHref(tenantCode, source)]];
+    }),
+  );
   const waiting =
     (message.status === "STREAMING" || message.status === "GENERATING") &&
     !message.content &&
     message.toolSummary.length === 0 &&
-    !message.proposal;
+    !message.proposal &&
+    !message.batch &&
+    !message.action &&
+    !message.questions?.length;
   return (
     <article className={styles.assistantRow}>
       <div className={styles.avatar} aria-hidden>
@@ -61,13 +99,73 @@ export function AssistantMessage({
       </div>
       <div className={styles.assistantSurface}>
         <div className={styles.answerMeta}>
-          <span>{active ? "正在回答" : message.status === "FAILED" ? "回答未完成" : message.status === "CANCELLED" ? "已停止" : partial ? "回答含未成功的查询" : "AI 回答"}</span>
-          {duration !== undefined ? <span className={styles.turnDuration}><ClockCircleOutlined aria-hidden />{active ? "已用时" : "本轮用时"} {formatDuration(duration)}</span> : null}
+          <span>
+            {active
+              ? "正在回答"
+              : message.status === "FAILED"
+                ? "回答未完成"
+                : message.status === "CANCELLED"
+                  ? "已停止"
+                  : partial
+                    ? "回答含未成功的查询"
+                    : "AI 回答"}
+          </span>
+          {duration !== undefined ? (
+            <span className={styles.turnDuration}>
+              <ClockCircleOutlined aria-hidden />
+              {active ? "已用时" : "本轮用时"} {formatDuration(duration)}
+            </span>
+          ) : null}
         </div>
         {waiting ? <p className={styles.waiting}>正在整理回答…</p> : null}
-        <ToolActivity tools={message.toolSummary} running={active} now={active ? now : message.completedAt ? Date.parse(message.completedAt) : undefined} />
-        {message.proposal ? <AiProposalCard tenantCode={tenantCode} proposal={message.proposal} busy={proposalBusy} mutationError={proposalError} onConfirm={() => onConfirmProposal?.(message.proposal!.proposalId)} onReject={() => onRejectProposal?.(message.proposal!.proposalId)} /> : null}
-        {message.content ? <div className={styles.answerContent}><AnswerText content={message.content} /></div> : null}
+        <ToolActivity
+          tools={message.toolSummary}
+          running={active}
+          now={
+            active
+              ? now
+              : message.completedAt
+                ? Date.parse(message.completedAt)
+                : undefined
+          }
+        />
+        {message.questions?.map((question) => (
+          <QuestionCard
+            key={question.questionId}
+            question={question}
+            busy={!commands || commands.busy}
+            onAnswer={(value) => commands?.answer(question, value)}
+            onCancel={() => commands?.cancel(question)}
+          />
+        ))}
+        {message.batch && (
+          <AssistantBatchCard
+            tenantCode={tenantCode}
+            turnId={message.turnId}
+            batch={message.batch}
+          />
+        )}
+        {message.action && (
+          <AssistantActionCard
+            tenantCode={tenantCode}
+            action={message.action}
+          />
+        )}
+        {message.proposal && !message.batch ? (
+          <AiProposalCard
+            tenantCode={tenantCode}
+            proposal={message.proposal}
+            busy={proposalBusy}
+            mutationError={proposalError}
+            onConfirm={() => onConfirmProposal?.(message.proposal!.proposalId)}
+            onReject={() => onRejectProposal?.(message.proposal!.proposalId)}
+          />
+        ) : null}
+        {message.content ? (
+          <div className={styles.answerContent}>
+            <AnswerText content={message.content} links={citationLinks} />
+          </div>
+        ) : null}
         {message.content && !active && message.status !== "FAILED" ? (
           <div className={styles.answerActions}>
             <Button
@@ -93,9 +191,17 @@ export function AssistantMessage({
           </div>
         ) : null}
         {partial ? (
-          <AiErrorState message={failedTools.some((tool) => tool.detail || tool.errorCode) ? "查询未全部成功，请展开查看原因" : "部分查询未成功，可展开查看"} onRetry={retryable ? () => onRetry(message.turnId) : undefined} />
+          <AiErrorState
+            message={
+              failedTools.some((tool) => tool.detail || tool.errorCode)
+                ? "查询未全部成功，请展开查看原因"
+                : "部分查询未成功，可展开查看"
+            }
+            onRetry={retryable ? () => onRetry(message.turnId) : undefined}
+          />
         ) : null}
-        {!partial && (message.status === "FAILED" || message.status === "CANCELLED") ? (
+        {!partial &&
+        (message.status === "FAILED" || message.status === "CANCELLED") ? (
           <AiErrorState
             message={
               message.status === "CANCELLED"

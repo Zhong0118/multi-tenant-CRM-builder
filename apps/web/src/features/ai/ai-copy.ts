@@ -5,6 +5,10 @@ export function sourceHref(
   source: AiSourceSummary,
 ): string {
   const objectPath = `/workspace/${tenantCode}/objects/${encodeURIComponent(source.objectCode)}`;
+  if (source.kind!=="AGGREGATE" && source.briefKey && source.recordId) {
+    const tab=source.briefKey==="activities" ? "?section=activity" : source.briefKey==="followups" ? "?section=followups" : "";
+    return `${objectPath}/${encodeURIComponent(source.recordId)}${tab}`;
+  }
   if (source.kind === "TIMELINE" && source.recordId) {
     return `${objectPath}/${encodeURIComponent(source.recordId)}`;
   }

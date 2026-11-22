@@ -1,4 +1,12 @@
 import type {
+  AssistantQuestion,
+  AssistantAction,
+  AssistantBatch,
+  AssistantPageHint,
+  AssistantAnswerValue,
+  FilterRule,
+} from "@crm/contracts";
+import type {
   AiPublicStreamEvent,
   AiProposalView,
   AiSourceSummary,
@@ -13,6 +21,7 @@ export type {
 };
 
 export type AiTurnPhase =
+  | "WAITING"
   | "IDLE"
   | "SENDING"
   | "STREAMING"
@@ -43,6 +52,9 @@ export interface AiMessage {
   toolSummary: AiToolSummary[];
   sourceSummary: AiSourceSummary[];
   proposal?: AiProposalView | null;
+  questions?: AssistantQuestion[];
+  batch?: AssistantBatch | null;
+  action?: AssistantAction | null;
   errorCode?: string | null;
   createdAt: string;
   completedAt?: string | null;
@@ -54,7 +66,20 @@ export interface AiMessagePage {
   nextBefore?: string;
 }
 
-export interface AiStreamTurnInput {
-  conversationId?: string;
-  content: string;
-}
+export type AiStreamTurnInput =
+  | {
+      conversationId?: string;
+      content: string;
+      context?: AssistantPageHint;
+      filterDraft?: FilterRule;
+    }
+  | {
+      conversationId: string;
+      answer: { questionId: string; value: AssistantAnswerValue };
+      context?: AssistantPageHint;
+    }
+  | {
+      conversationId: string;
+      regenerateProposalId: string;
+      context?: AssistantPageHint;
+    };

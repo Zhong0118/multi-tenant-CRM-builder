@@ -225,3 +225,70 @@ it("freezes unfinished tools on every terminal event without replacing real tool
     expect(aiTurnReducer(terminal, { type: "network" }).tools).toEqual(terminal.tools);
   }
 });
+
+it("keeps questions answerable when the HTTP stream ends at a pause", () => {
+  const question = {
+    questionId: "q",
+    turnId: "t",
+    state: "OPEN",
+    prompt: "选择客户",
+    kind: "choose_record",
+    options: [{ id: "one", label: "远山科技" }],
+  } as const;
+  const paused = aiTurnReducer(
+    {
+      ...initialAiTurnState,
+      phase: "STREAMING",
+      conversationId: "c",
+      turnId: "t",
+    },
+    {
+      type: "event",
+      event: {
+        event: "question.ready",
+        data: {
+          turnId: "t",
+          question: { ...question, options: [...question.options] },
+        },
+      },
+    },
+  );
+  const ended = aiTurnReducer(paused, { type: "network" });
+  expect(ended.phase).toBe("WAITING");
+  expect(toAssistantMessage(ended)?.questions).toEqual([question]);
+});
+
+it.each(["transport", "provider"] as const)(
+  "restores the original prompt after %s failure on an identified turn",
+  (kind) => {
+    const sending = aiTurnReducer(initialAiTurnState, {
+      type: "beginNewTurn",
+      content: "帮我整理沟通",
+    });
+    const stream = aiTurnReducer(sending, {
+      type: "event",
+      event: {
+        event: "conversation.ready",
+        data: { turnId: "t", conversationId: "c", title: "沟通" },
+      },
+    });
+    const failure =
+      kind === "transport"
+        ? { type: "transportFailure" as const, code: "NETWORK" }
+        : {
+            type: "event" as const,
+            event: {
+              event: "turn.failed" as const,
+              data: {
+                turnId: "t",
+                messageId: "m",
+                code: "AI_PROVIDER_UNAVAILABLE",
+              },
+            },
+          };
+    expect(aiTurnReducer(stream, failure).draft).toBe("帮我整理沟通");
+    expect(aiTurnReducer({ ...stream, draft: "新问题" }, failure).draft).toBe(
+      "新问题",
+    );
+  },
+);

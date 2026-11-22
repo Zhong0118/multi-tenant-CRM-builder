@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
 
 import styles from "./ai-assistant.module.css";
@@ -187,10 +188,19 @@ export function parseAnswerBlocks(content: string): Block[] {
   return blocks;
 }
 
-const INLINE = /(`[^`\n]+`|\*\*[^*\n]+?\*\*)/g;
+const INLINE = /(【(?:记录|活动|跟进)】|`[^`\n]+`|\*\*[^*\n]+?\*\*)/g;
 
-export function renderInline(text: string): ReactNode[] {
+export function renderInline(
+  text: string,
+  links?: Record<string, string>,
+): ReactNode[] {
   return text.split(INLINE).map((part, index) => {
+    if (links && Object.hasOwn(links, part))
+      return (
+        <Link key={index} href={links[part]}>
+          {part}
+        </Link>
+      );
     if (part.length > 2 && part.startsWith("`") && part.endsWith("`")) {
       return <code key={index}>{part.slice(1, -1)}</code>;
     }
@@ -201,16 +211,25 @@ export function renderInline(text: string): ReactNode[] {
   });
 }
 
-function withBreaks(lines: string[]): ReactNode[] {
+function withBreaks(
+  lines: string[],
+  links?: Record<string, string>,
+): ReactNode[] {
   return lines.map((line, index) => (
     <Fragment key={index}>
       {index > 0 ? <br /> : null}
-      {renderInline(line)}
+      {renderInline(line, links)}
     </Fragment>
   ));
 }
 
-export function AnswerText({ content }: { content: string }) {
+export function AnswerText({
+  content,
+  links,
+}: {
+  content: string;
+  links?: Record<string, string>;
+}) {
   return (
     <>
       {parseAnswerBlocks(content).map((block, index) => {
@@ -227,20 +246,22 @@ export function AnswerText({ content }: { content: string }) {
                 {block.items.map((item, itemIndex) => (
                   // Keep the model's numbering even when it is not 1, 2, 3.
                   <li key={itemIndex} value={block.numbers[itemIndex]}>
-                    {renderInline(item)}
+                    {renderInline(item, links)}
                   </li>
                 ))}
               </ol>
             ) : (
               <ul key={index}>
                 {block.items.map((item, itemIndex) => (
-                  <li key={itemIndex}>{renderInline(item)}</li>
+                  <li key={itemIndex}>{renderInline(item, links)}</li>
                 ))}
               </ul>
             );
           case "quote":
             return (
-              <blockquote key={index}>{withBreaks(block.lines)}</blockquote>
+              <blockquote key={index}>
+                {withBreaks(block.lines, links)}
+              </blockquote>
             );
           case "code":
             return (
@@ -276,7 +297,7 @@ export function AnswerText({ content }: { content: string }) {
               </div>
             );
           default:
-            return <p key={index}>{withBreaks(block.lines)}</p>;
+            return <p key={index}>{withBreaks(block.lines, links)}</p>;
         }
       })}
     </>

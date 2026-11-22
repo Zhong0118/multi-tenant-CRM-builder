@@ -34,6 +34,7 @@ export interface DynamicFieldMember {
 }
 
 export interface DynamicFieldProps {
+  controlId?: string;
   field: PublishedFieldView;
   value: unknown;
   onChange: (value: unknown) => void;
@@ -61,13 +62,14 @@ export function DynamicField({
   error,
   disabled = false,
   mode = "UPDATE",
+  controlId: suppliedControlId,
 }: DynamicFieldProps) {
   if (field.access === "HIDDEN") return null;
 
   const writable =
     field.access === "EDIT" ||
     (field.access === "CREATE_ONLY" && mode === "CREATE");
-  const controlId = `dynamic-field-${field.fieldKey}`;
+  const controlId = suppliedControlId ?? `dynamic-field-${field.fieldKey}`;
   const errorId = `${controlId}-error`;
   const helpId = `${controlId}-help`;
   const help = field.config.help;
