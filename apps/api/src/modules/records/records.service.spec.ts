@@ -1295,6 +1295,42 @@ describe('RecordsService', () => {
     });
   });
 
+  it('places employee imports in the contact stage and audits creation only once on retry', async () => {
+    const { service, store } = fixture();
+    Object.assign(store, {
+      findPoolLifecycle: () =>
+        Promise.resolve({ contactTtlHours: 24, followUpTtlHours: 720 }),
+    });
+    const input = {
+      batchId: 'employee-import',
+      rows: [{ rowNumber: 2, values: { name: '导入线索' } }],
+    };
+    await service.importRows(employee, 'leads', input, meta);
+    const placement = {
+      ownerMemberId: employee.memberId,
+      inPublicPool: false,
+      poolStage: 'PENDING_CONTACT',
+      poolOrigin: 'LEAD_POOL',
+      poolClaimedAt: '2026-08-21T10:30:00.000Z',
+      ownershipExpiresAt: '2026-08-22T10:30:00.000Z',
+    };
+    expect(store.records).toHaveLength(1);
+    expect(store.records[0]).toMatchObject(placement);
+    expect(
+      await service.importRows(employee, 'leads', input, meta),
+    ).toMatchObject({
+      created: 0,
+      skipped: 1,
+    });
+    expect(store.audits).toHaveLength(1);
+    expect(store.audits[0]).toMatchObject({
+      tenantId: employee.tenantId,
+      actorId: employee.userId,
+      action: 'record.created',
+      after: placement,
+    });
+  });
+
   it('reuses successful import rows after a lost response while corrected failures can succeed', async () => {
     const { service, store } = fixture();
     const batchId = '2a7a955c-bf19-4a1d-8cdf-4a94a20bb082';

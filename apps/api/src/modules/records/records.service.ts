@@ -728,6 +728,22 @@ export class RecordsService {
               )?.toISOString() ?? null;
           }
         }
+        const placement =
+          context.role === 'EMPLOYEE' && !input.dryRun
+            ? await initialPoolPlacement(
+                store,
+                context,
+                objectCode,
+                undefined,
+                this.clock(),
+              )
+            : {
+                ownershipExpiresAt,
+                poolStage,
+                poolOrigin: poolStage ? ('LEAD_POOL' as const) : undefined,
+                poolClaimedAt,
+                inPublicPool: input.importToPool,
+              };
         const ownerMemberId = matchFields.length
           ? await resolveListOwner(context, resolved, store, undefined)
           : undefined;
@@ -827,11 +843,7 @@ export class RecordsService {
               context,
               values: row.values,
               ownerMemberId: input.ownerMemberId,
-              ownershipExpiresAt,
-              poolStage,
-              poolOrigin: poolStage ? 'LEAD_POOL' : undefined,
-              poolClaimedAt,
-              inPublicPool: input.importToPool,
+              ...placement,
               meta,
               clock: this.clock,
               idGenerator: this.idGenerator,
