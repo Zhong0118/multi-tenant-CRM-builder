@@ -84,7 +84,7 @@ function editableFields(
       {
         key: 'content',
         label: '备注',
-        type: 'LONG_TEXT',
+        type: 'TEXTAREA',
         value: candidate.content,
       },
     ];

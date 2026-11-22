@@ -354,6 +354,36 @@ export class AssistantQuestionsService {
           if (!page) return conflict();
         }
         const answer = await verifyAnswer(db, actor, row, value, revision);
+        answer.question = row.prompt;
+        const previous = await tx.aiQuestion.findMany({
+          where: {
+            messageId: row.messageId,
+            state: 'ANSWERED',
+            id: { not: row.id },
+          },
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        });
+        if (previous.length) {
+          answer.previous = [];
+          for (const old of previous) {
+            const parsed = answerSchema.safeParse(old.answer);
+            if (!parsed.success) return conflict();
+            const prior = await verifyAnswer(
+              db,
+              actor,
+              old,
+              parsed.data,
+              revision,
+            );
+            answer.previous.push({
+              ...prior,
+              question:
+                old.kind === 'choose_option'
+                  ? old.prompt
+                  : defaultPrompts[prior.kind],
+            });
+          }
+        }
         if (answer.objectCode && answer.recordId) {
           const ref = {
             objectCode: answer.objectCode,

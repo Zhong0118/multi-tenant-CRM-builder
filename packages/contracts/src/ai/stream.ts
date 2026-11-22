@@ -36,6 +36,8 @@ export interface AiToolSummary {
 export type AiSourceSummary =
   | {
       kind: "RECORDS";
+      briefKey?: "record";
+      recordId?: string;
       objectCode: string;
       objectName: string;
       count: number;
@@ -49,6 +51,7 @@ export type AiSourceSummary =
     }
   | {
       kind: "TIMELINE";
+      briefKey?: "activities" | "followups";
       objectCode: string;
       objectName: string;
       recordId?: string;

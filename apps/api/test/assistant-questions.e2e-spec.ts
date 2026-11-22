@@ -77,6 +77,7 @@ describe('assistant question lifecycle under current CRM permissions', () => {
     expect(results.find((r) => !r.replay)?.answer).toMatchObject({
       ...ref,
       label: '新名称',
+      question: question.prompt,
     });
     const history = await c.messages(actor, t.conversationId, {});
     expect(

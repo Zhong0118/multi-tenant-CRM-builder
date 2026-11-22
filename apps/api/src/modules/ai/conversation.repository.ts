@@ -854,7 +854,7 @@ export async function currentAuthorizationState(
     ) AS configured,
     (SELECT count(*)::text FROM audit_logs a WHERE a.tenant_id=${context.tenantId}::uuid AND (
       a.action IN ('membership.status_changed', 'membership.role_changed', 'membership.admin_handoff', 'membership.offboarded', 'membership.object_access_changed',
-        'object.field_updated', 'object.permissions_updated', 'object.pool_config_updated', 'object.published', 'object.archived', 'object.restored', 'object.draft_deleted', 'record.deleted', 'platform.template.applied', 'platform.tenant.status_changed')
+        'object.field_updated', 'object.permissions_updated', 'object.pool_config_updated', 'object.published', 'object.archived', 'object.restored', 'object.draft_deleted', 'record.deleted', 'record.activity_deleted', 'follow_up.reassigned', 'platform.template.applied', 'platform.tenant.status_changed')
       OR a.action LIKE 'member_group.%'
       OR ((a.action IN ('record.updated', 'record.owner_assigned') OR a.action LIKE 'record.ownership_%') AND (
         (a.after ? 'ownerMemberId' AND a.before->'ownerMemberId' IS DISTINCT FROM a.after->'ownerMemberId')

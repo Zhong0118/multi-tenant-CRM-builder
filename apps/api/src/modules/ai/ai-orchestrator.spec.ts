@@ -21,7 +21,7 @@ import { AiToolRegistry } from './tool-registry';
 import { wrapAiReadTool, type AiToolCallbacks } from './ai-tool-wrapper';
 import type { AiProposalService } from './ai-proposal.service';
 import type { AiProposalView } from './ai-operation.types';
-import { ProposalCollector } from './tools/propose-change.tool';
+import type { AssistantQuestionsService } from './assistant-questions.service';
 
 const context: TenantContext = {
   tenantId: '0198ad18-a74d-7b69-b81a-49a74f9a3e0d',
@@ -145,30 +145,6 @@ function searchTool(
 }
 
 describe('AiOrchestrator proposal candidate lifecycle', () => {
-  it('keeps distinct provider calls invalidated', async () => {
-    const collector = new ProposalCollector();
-    await collector.tool.execute(
-      {
-        operationType: 'ADD_ACTIVITY_NOTE',
-        objectCode: 'leads',
-        recordId: context.tenantId,
-        content: 'one',
-      },
-      'same-call',
-    );
-    await collector.tool.execute(
-      {
-        operationType: 'ADD_ACTIVITY_NOTE',
-        objectCode: 'leads',
-        recordId: context.tenantId,
-        content: 'two',
-      },
-      'second-call',
-    );
-    expect(collector.invalidated).toBe(true);
-    expect(collector.candidate).toBeNull();
-  });
-
   const candidate = {
     operationType: 'ADD_ACTIVITY_NOTE',
     objectCode: 'leads',
@@ -189,9 +165,13 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
     result: null,
     auditId: null,
   };
+  const knownTarget = {
+    seen: jest.fn().mockResolvedValue([candidate]),
+    resolvePage: jest.fn(),
+  } as unknown as AssistantQuestionsService;
   function proposalMock() {
     return {
-      completeWithProposal: jest.fn().mockResolvedValue(proposal),
+      completeWithBatch: jest.fn().mockResolvedValue({ items: [proposal] }),
     } as unknown as jest.Mocked<AiProposalService>;
   }
   it('does not persist a proposal when client aborts after provider completion', async () => {
@@ -212,9 +192,10 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
         provider,
         registryWith([]),
         proposals,
+        knownTarget,
       ).streamTurn(context, { content: 'note' }, abort.signal),
     );
-    expect(proposals.completeWithProposal).not.toHaveBeenCalled();
+    expect(proposals.completeWithBatch).not.toHaveBeenCalled();
     expect(events.map((event) => event.event)).not.toContain('proposal.ready');
   });
 
@@ -229,10 +210,10 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
         assistantStatus = outcome.status;
       },
     );
-    proposals.completeWithProposal.mockImplementation(() => {
+    proposals.completeWithBatch.mockImplementation(() => {
       assistantStatus = 'COMPLETED';
       operationStatus = 'PROPOSED';
-      const committed = Promise.resolve(proposal);
+      const committed = Promise.resolve({ items: [proposal] });
       committed.then(() => abort.abort());
       return committed;
     });
@@ -248,13 +229,14 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
         provider,
         registryWith([]),
         proposals,
+        knownTarget,
       ).streamTurn(context, { content: 'note' }, abort.signal),
     );
     expect(events.map((event) => event.event)).not.toContain('proposal.ready');
     expect(events.map((event) => event.event)).toContain('turn.completed');
     expect(events.map((event) => event.event)).not.toContain('turn.cancelled');
     expect(conversations.finalizeAssistant).not.toHaveBeenCalled();
-    expect(proposals.completeWithProposal).toHaveBeenCalledTimes(1);
+    expect(proposals.completeWithBatch).toHaveBeenCalledTimes(1);
     expect(assistantStatus).toBe('COMPLETED');
     expect(operationStatus).toBe('PROPOSED');
   });
@@ -264,7 +246,7 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
     process.env.AI_TIMEOUT_MS = '10';
     const conversations = conversationMock();
     const proposals = proposalMock();
-    proposals.completeWithProposal.mockImplementation(async () => {
+    proposals.completeWithBatch.mockImplementation(async () => {
       await new Promise((resolve) => setTimeout(resolve, 20));
       throw new Error('persistence timeout');
     });
@@ -281,6 +263,7 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
           provider,
           registryWith([]),
           proposals,
+          knownTarget,
         ).streamTurn(
           context,
           { content: 'note' },
@@ -318,23 +301,28 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
         provider,
         registryWith([]),
         proposals,
+        knownTarget,
       ).streamTurn(context, { content: 'note' }, new AbortController().signal),
     );
-    expect(proposals.completeWithProposal).toHaveBeenCalledWith(
+    expect(proposals.completeWithBatch).toHaveBeenCalledWith(
       context,
       begun.turnId,
-      candidate,
+      [candidate],
       begun.user.content,
       expect.objectContaining({ status: 'COMPLETED' }),
       expect.any(Function),
+      undefined,
     );
     expect(conversations.finalizeAssistant).not.toHaveBeenCalled();
     expect(events.filter((event) => event.event === 'proposal.ready')).toEqual([
-      { event: 'proposal.ready', data: { turnId: begun.turnId, proposal } },
+      {
+        event: 'proposal.ready',
+        data: { turnId: begun.turnId, batch: { items: [proposal] } },
+      },
     ]);
     expect(events.at(-1)?.event).toBe('turn.completed');
   });
-  it('invalidates both candidates after a second call and never publishes ready', async () => {
+  it('publishes both distinct proposals together', async () => {
     const conversations = conversationMock();
     const proposals = proposalMock();
     const provider = providerWith(async function* (_signal, tools) {
@@ -353,16 +341,56 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
         provider,
         registryWith([]),
         proposals,
+        knownTarget,
       ).streamTurn(context, { content: 'note' }, new AbortController().signal),
     );
-    expect(proposals.completeWithProposal).not.toHaveBeenCalled();
-    expect(events.map((event) => event.event)).not.toContain('proposal.ready');
-    expect(events.map((event) => event.event)).toContain('turn.failed');
-    expect(conversations.finalizeAssistant).toHaveBeenCalledWith(
-      context,
-      begun.turnId,
-      expect.objectContaining({ status: 'FAILED' }),
+    expect(proposals.completeWithBatch.mock.calls[0][2]).toHaveLength(2);
+    expect(events.map((event) => event.event)).toContain('proposal.ready');
+  });
+  it('rejects a proposal about a visible but unseen target', async () => {
+    const proposals = proposalMock();
+    const provider = providerWith(async function* (_signal, tools) {
+      await tools
+        .find((t) => t.name === 'propose_change')!
+        .execute(candidate, 'unseen');
+      yield { type: 'COMPLETED' };
+    });
+    const stream = await new AiOrchestrator(
+      conversationMock(),
+      provider,
+      registryWith([]),
+      proposals,
+    ).streamTurn(context, { content: 'update' }, new AbortController().signal);
+    expect((await collect(stream)).map((e) => e.event)).not.toContain(
+      'proposal.ready',
     );
+    expect(proposals.completeWithBatch).not.toHaveBeenCalled();
+  });
+  it('rejects a target proposed before the matching read, even if read later in the turn', async () => {
+    const proposals = proposalMock();
+    const provider = providerWith(async function* (_signal, tools) {
+      await tools
+        .find((t) => t.name === 'propose_change')!
+        .execute(candidate, 'first');
+      await tools
+        .find((t) => t.name === 'search_records')!
+        .execute({ objectCode: candidate.objectCode }, 'lookup');
+      yield { type: 'COMPLETED' };
+    });
+    const query = searchTool(async () => ({
+      items: [{ id: candidate.recordId }],
+      total: 1,
+    }));
+    const stream = await new AiOrchestrator(
+      conversationMock(),
+      provider,
+      registryWith([query]),
+      proposals,
+    ).streamTurn(context, { content: 'update' }, new AbortController().signal);
+    expect((await collect(stream)).map((e) => e.event)).not.toContain(
+      'proposal.ready',
+    );
+    expect(proposals.completeWithBatch).not.toHaveBeenCalled();
   });
   it('invalidates the first candidate when a second provider call has invalid override arguments', async () => {
     const conversations = conversationMock();
@@ -392,9 +420,10 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
         provider,
         registryWith([]),
         proposals,
+        knownTarget,
       ).streamTurn(context, { content: 'note' }, new AbortController().signal),
     );
-    expect(proposals.completeWithProposal).not.toHaveBeenCalled();
+    expect(proposals.completeWithBatch).not.toHaveBeenCalled();
     expect(events.map((event) => event.event)).not.toContain('proposal.ready');
   });
   it('rejects actor overrides at the provider schema without persisting a proposal', async () => {
@@ -414,9 +443,10 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
         provider,
         registryWith([]),
         proposals,
+        knownTarget,
       ).streamTurn(context, { content: 'note' }, new AbortController().signal),
     );
-    expect(proposals.completeWithProposal).not.toHaveBeenCalled();
+    expect(proposals.completeWithBatch).not.toHaveBeenCalled();
     expect(events.map((event) => event.event)).not.toContain('proposal.ready');
   });
   it('discards a candidate if the provider fails after calling the tool', async () => {
@@ -434,15 +464,16 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
         provider,
         registryWith([]),
         proposals,
+        knownTarget,
       ).streamTurn(context, { content: 'note' }, new AbortController().signal),
     );
-    expect(proposals.completeWithProposal).not.toHaveBeenCalled();
+    expect(proposals.completeWithBatch).not.toHaveBeenCalled();
     expect(events.map((event) => event.event)).not.toContain('proposal.ready');
   });
   it('fails separately when proposal persistence rejects without emitting ready or completing the turn', async () => {
     const conversations = conversationMock();
     const proposals = proposalMock();
-    proposals.completeWithProposal.mockRejectedValue(
+    proposals.completeWithBatch.mockRejectedValue(
       new Error('raw database details'),
     );
     const provider = providerWith(async function* (_signal, tools) {
@@ -457,6 +488,7 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
         provider,
         registryWith([]),
         proposals,
+        knownTarget,
       ).streamTurn(context, { content: 'note' }, new AbortController().signal),
     );
     expect(conversations.finalizeAssistant).toHaveBeenCalledWith(
@@ -922,15 +954,23 @@ describe('AiOrchestrator.streamTurn', () => {
         new AbortController().signal,
       ),
     );
-    expect(events.map((event) => event.event)).toEqual([
+    // Provider deltas and the public tool queue race; preserve ordering within each channel.
+    expect(
+      events
+        .filter((event) => event.event !== 'assistant.delta')
+        .map((event) => event.event),
+    ).toEqual([
       'conversation.ready',
       'turn.started',
       'tool.started',
-      'assistant.delta',
       'sources.updated',
       'tool.completed',
       'turn.completed',
     ]);
+    expect(events).toContainEqual({
+      event: 'assistant.delta',
+      data: { text: '有 1 条线索' },
+    });
     expect(
       events.find((event) => event.event === 'tool.started')?.data,
     ).toEqual({

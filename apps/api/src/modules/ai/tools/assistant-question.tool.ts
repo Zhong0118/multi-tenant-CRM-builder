@@ -8,7 +8,7 @@ const plainText = z
   .min(1)
   .refine(
     (value) =>
-      !/(?:[<>\x00-\x1f\x7f`*\[\]]|(?:https?:|www\.|mailto:|javascript:|\/workspaces?\/)|\b[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\b)/i.test(
+      !/(?:[<>\p{Cc}`*[\]]|(?:https?:|www\.|mailto:|javascript:|\/workspaces?\/)|\b[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\b)/iu.test(
         value,
       ),
   );

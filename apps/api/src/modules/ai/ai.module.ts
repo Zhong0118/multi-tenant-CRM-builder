@@ -1,3 +1,6 @@
+import { AssistantQuestionsService } from './assistant-questions.service';
+import { AssistantActionsService } from './assistant-actions';
+import { AiBatchController } from './ai-batch.controller';
 import { FilterPreviewController } from './filter-preview.controller';
 import { FilterPreviewService } from './filter-preview.service';
 import { CommunicationDraftsService } from './communication-drafts.service';
@@ -35,6 +38,7 @@ import { AiToolRegistry } from './tool-registry';
   controllers: [
     FilterPreviewController,
     AiController,
+    AiBatchController,
     CommunicationDraftsController,
   ],
   providers: [
@@ -46,6 +50,8 @@ import { AiToolRegistry } from './tool-registry';
     AiOperationRepository,
     AiProposalService,
     AiOrchestrator,
+    AssistantActionsService,
+    AssistantQuestionsService,
     AiToolRegistry,
     {
       provide: AI_PROVIDER,

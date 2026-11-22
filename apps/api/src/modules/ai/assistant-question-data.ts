@@ -53,6 +53,8 @@ export type QuestionDefinition = {
     }
 );
 export interface VerifiedAnswer {
+  question?: string;
+  previous?: VerifiedAnswer[];
   kind: AssistantAnswerValue['kind'];
   label?: string;
   objectCode?: string;
