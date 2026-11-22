@@ -29,7 +29,6 @@ describe('record views in the active workspace', () => {
   let records: string;
   beforeAll(async () => {
     harness = await createCriticalHarness();
-    await harness.app.listen(0, '127.0.0.1');
     fixture = await provisionCriticalFixture(harness);
     const objectPath = `/api/v1/workspaces/${fixture.tenantA.code}/objects/${fixture.object.code}`;
     path = objectPath + '/record-views';

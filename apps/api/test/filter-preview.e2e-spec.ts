@@ -20,7 +20,6 @@ describe('one-sentence filter preview with tenant permissions', () => {
   };
   beforeAll(async () => {
     h = await createCriticalHarness();
-    await h.app.listen(0, '127.0.0.1');
     f = await provisionCriticalFixture(h);
   });
   afterAll(async () => {

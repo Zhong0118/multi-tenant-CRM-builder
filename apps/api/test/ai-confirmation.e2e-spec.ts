@@ -57,7 +57,6 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
       process.env.TEST_DATABASE_ADMIN_URL,
     );
     harness = await createCriticalHarness();
-    await harness.app.listen(0, '127.0.0.1');
     proposals = harness.app.get(AiProposalService);
   });
 

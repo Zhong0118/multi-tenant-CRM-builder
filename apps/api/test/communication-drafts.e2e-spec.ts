@@ -24,7 +24,6 @@ describe('record communication drafts', () => {
       process.env.TEST_DATABASE_ADMIN_URL,
     );
     h = await createCriticalHarness();
-    await h.app.listen(0, '127.0.0.1');
     f = await provisionCriticalFixture(h);
     path = `/api/v1/workspaces/${f.tenantA.code}/objects/${f.object.code}/records/${f.ownedRecord.id}/communication-drafts`;
   });
