@@ -7,6 +7,7 @@ import type {
   AssistantField,
   AssistantQuestion,
 } from "@crm/contracts";
+import type { FieldErrors } from "@/lib/api/api-error";
 import { PreviewChoices } from "@/components/forms/preview-choices";
 import { PUBLISHED_FIELD_TYPES } from "@/features/objects/object-types";
 import { DraftFollowUpDate } from "@/features/records/draft-follow-up-date";
@@ -23,12 +24,14 @@ export function AssistantFieldControl({
   onChange,
   disabled,
   followUpZone,
+  error,
 }: {
   field: AssistantField;
   value: unknown;
   onChange: (value: unknown) => void;
   disabled?: boolean;
   followUpZone?: string;
+  error?: string;
 }) {
   const id = useId();
   const type = PUBLISHED_FIELD_TYPES.find((type) => type === field.type);
@@ -56,6 +59,7 @@ export function AssistantFieldControl({
   return (
     <DynamicField
       controlId={id}
+      error={error}
       value={value}
       onChange={onChange}
       disabled={disabled}
@@ -139,12 +143,19 @@ export function QuestionCard({
 }: {
   question: AssistantQuestion;
   busy: boolean;
-  onAnswer: (value: AssistantAnswerValue) => void;
+  onAnswer: (
+    value: AssistantAnswerValue,
+  ) => Promise<FieldErrors | undefined> | undefined;
   onCancel: () => void;
 }) {
   const [other, setOther] = useState(false);
   const [text, setText] = useState("");
   const [values, setValues] = useState<Record<string, unknown>>({});
+  const [errors, setErrors] = useState<FieldErrors>();
+  async function submit(answer: AssistantAnswerValue) {
+    setErrors(undefined);
+    setErrors(await onAnswer(answer));
+  }
   if (question.state !== "OPEN")
     return (
       <section className={styles.card}>
@@ -164,8 +175,21 @@ export function QuestionCard({
     );
   const present = (value: unknown) =>
     value != null &&
-    value !== "" &&
+    (typeof value !== "string" || value.trim() !== "") &&
     (!Array.isArray(value) || value.length > 0);
+  const fields = question.kind === "fill_fields" ? question.fields : [];
+  const submitted = Object.fromEntries(
+    Object.entries(values).filter(
+      ([key, value]) =>
+        present(value) && fields.some((field) => field.key === key),
+    ),
+  );
+  const visibleErrors = new Map(
+    Object.entries(errors ?? {}).filter(
+      ([key, messages]) =>
+        messages.length && fields.some((field) => field.key === key),
+    ),
+  );
   return (
     <section className={styles.card} aria-label="助手追问">
       <fieldset disabled={busy} className={styles.fields}>
@@ -176,7 +200,12 @@ export function QuestionCard({
               <AssistantFieldControl
                 key={field.key}
                 field={field}
-                value={values[field.key]}
+                value={
+                  Object.hasOwn(values, field.key)
+                    ? values[field.key]
+                    : undefined
+                }
+                error={visibleErrors.get(field.key)?.join(" ")}
                 disabled={busy}
                 onChange={(value) =>
                   setValues((old) => ({ ...old, [field.key]: value }))
@@ -186,19 +215,15 @@ export function QuestionCard({
             <Button
               disabled={
                 busy ||
-                !Object.values(values).some(present) ||
-                question.fields.some(
+                !Object.keys(submitted).length ||
+                fields.some(
                   (field) =>
-                    field.requiredForAnswer && !present(values[field.key]),
+                    field.requiredForAnswer &&
+                    !Object.hasOwn(submitted, field.key),
                 )
               }
               onClick={() =>
-                onAnswer({
-                  kind: "fill_fields",
-                  values: Object.fromEntries(
-                    Object.entries(values).filter(([, v]) => present(v)),
-                  ),
-                })
+                void submit({ kind: "fill_fields", values: submitted })
               }
             >
               提交填写内容
@@ -222,7 +247,7 @@ export function QuestionCard({
                   value: option.id,
                 }))}
               onSelect={(optionId) =>
-                onAnswer({ kind: question.kind, optionId })
+                void submit({ kind: question.kind, optionId })
               }
             />
             {question.kind === "choose_option" &&
@@ -237,7 +262,7 @@ export function QuestionCard({
                   <Button
                     disabled={busy || !text.trim()}
                     onClick={() =>
-                      onAnswer({
+                      void submit({
                         kind: "choose_option",
                         otherText: text.trim(),
                       })
@@ -250,6 +275,9 @@ export function QuestionCard({
                 <Button onClick={() => setOther(true)}>其他</Button>
               ))}
           </>
+        )}
+        {errors && !visibleErrors.size && (
+          <p role="alert">请核对当前问题的填写内容，再次提交</p>
         )}
         <Button size="small" type="text" onClick={onCancel}>
           取消问题

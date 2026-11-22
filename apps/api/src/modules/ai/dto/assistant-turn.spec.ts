@@ -18,6 +18,13 @@ describe('assistant turn protocol', () => {
     };
     expect(parse(resume)).toEqual(resume);
   });
+  it('passes an empty field answer to the current question for field-specific validation', () => {
+    const input = {
+      conversationId: id,
+      answer: { questionId: id, value: { kind: 'fill_fields', values: {} } },
+    };
+    expect(parse(input)).toEqual(input);
+  });
   it.each([
     { content: '  ' },
     { content: 'hi', context: { objectCode: 'leads', recordId: 'bad' } },
@@ -53,7 +60,7 @@ describe('assistant turn protocol', () => {
     },
     {
       conversationId: id,
-      answer: { questionId: id, value: { kind: 'fill_fields', values: {} } },
+      answer: { questionId: id, value: { kind: 'fill_fields', values: [] } },
     },
   ])('rejects malformed input', (input) =>
     expect(() => parse(input)).toThrow(

@@ -1,5 +1,6 @@
 "use client";
 
+import type { FieldErrors } from "@/lib/api/api-error";
 import { createContext } from "react";
 import type {
   AiProposalView,
@@ -22,7 +23,10 @@ export interface AssistantPageContext {
 }
 export interface AssistantCommands {
   busy: boolean;
-  answer: (question: AssistantQuestion, value: AssistantAnswerValue) => void;
+  answer: (
+    question: AssistantQuestion,
+    value: AssistantAnswerValue,
+  ) => Promise<FieldErrors | undefined> | undefined;
   cancel: (question: AssistantQuestion) => void;
   regenerate: (proposalId: string) => void;
   confirm: (

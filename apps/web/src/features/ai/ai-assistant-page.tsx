@@ -311,14 +311,13 @@ export function AiAssistantPage({
           : apiError.code;
       if (onResume && !received) {
         setCardBusy(false);
-        setCardError(
-          code === "VALIDATION_FAILED"
-            ? "请检查填写内容，再次提交"
-            : code === "AI_TURN_NOT_RETRYABLE"
-              ? "问题已变化，请核对当前会话"
-              : "暂时无法提交回答，填写内容已保留",
-        );
         void refreshHistory();
+        if (code === "VALIDATION_FAILED") return apiError.fieldErrors;
+        setCardError(
+          code === "AI_TURN_NOT_RETRYABLE"
+            ? "问题已变化，请核对当前会话"
+            : "暂时无法提交回答，填写内容已保留",
+        );
       } else dispatch({ type: "transportFailure", code });
     } finally {
       if (stillCurrent()) abortRef.current = null;
@@ -336,8 +335,9 @@ export function AiAssistantPage({
     const generation = generationRef.current;
     const abort = new AbortController();
     abortRef.current = abort;
-    void consume(factory(abort.signal), abort, generation, onResume);
-    queueMicrotask(() => composerRef.current?.focus?.());
+    const result = consume(factory(abort.signal), abort, generation, onResume);
+    if (!onResume) queueMicrotask(() => composerRef.current?.focus?.());
+    return result;
   }
 
   function send(content = state.draft) {
@@ -564,7 +564,7 @@ export function AiAssistantPage({
         );
         dispatch({ type: "beginRetryTurn", turnId: question.turnId });
       };
-      startTurn(
+      return startTurn(
         (signal) =>
           aiApi.streamTurn(
             tenantCode,

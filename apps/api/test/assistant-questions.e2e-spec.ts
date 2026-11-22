@@ -67,7 +67,7 @@ describe('assistant question lifecycle under current CRM permissions', () => {
     });
     const pick = {
       kind: 'choose_record' as const,
-      optionId: question.options[0]!.id,
+      optionId: question.options[0].id,
     };
     const results = await Promise.all([
       q.resume(actor, t.conversationId, question.questionId, pick),
@@ -160,10 +160,16 @@ describe('assistant question lifecycle under current CRM permissions', () => {
     await q.remember(actor, t, [ref], 'page');
     for (const keys of [['secret'], ['reviewCode'], ['ownerMemberId']])
       await expect(
-        q.open(actor, t, { kind: 'fill_fields', ...ref, fieldKeys: keys }),
+        q.open(actor, t, {
+          kind: 'fill_fields',
+          mode: 'pick_any',
+          ...ref,
+          fieldKeys: keys,
+        }),
       ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
     const card = await q.open(actor, t, {
       kind: 'fill_fields',
+      mode: 'pick_any',
       ...ref,
       fieldKeys: [],
     });
@@ -171,13 +177,22 @@ describe('assistant question lifecycle under current CRM permissions', () => {
       kind: 'fill_fields',
       fields: [{ key: 'name', label: '姓名', requiredForAnswer: false }],
     });
-    for (const values of [{ name: '预期', secret: '隐藏' }, { name: 266 }]) {
-      await expect(
-        q.resume(actor, t.conversationId, card!.questionId, {
-          kind: 'fill_fields',
-          values,
-        }),
-      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    for (const key of ['secret', 'reviewCode', 'forged']) {
+      const values = { name: '预期', [key]: '隐藏' };
+      const response = await request(h.app.getHttpServer())
+        .post('/api/v1/workspaces/' + f.tenantA.code + '/ai/turns')
+        .set('Origin', 'http://localhost:3000')
+        .set('Cookie', f.employee.cookie)
+        .send({
+          conversationId: t.conversationId,
+          answer: {
+            questionId: card!.questionId,
+            value: { kind: 'fill_fields', values },
+          },
+        })
+        .expect(400);
+      expect(response.body).toHaveProperty('fieldErrors', {});
+      expect(JSON.stringify(response.body)).not.toContain(key);
     }
     const row = await h.adminDatabase.record.findUniqueOrThrow({
       where: { id: ref.recordId },
@@ -204,6 +219,161 @@ describe('assistant question lifecycle under current CRM permissions', () => {
         })
       ).data,
     ).toEqual(row.data);
+  });
+  it.each(['missing', 'pick_any'] as const)(
+    'validates %s on the open card and accepts a corrected answer',
+    async (mode) => {
+      const admin: TenantContext = {
+        ...actor,
+        memberId: f.admin.memberId,
+        userId: f.admin.userId,
+        role: 'TENANT_ADMIN',
+      };
+      const ref = { objectCode: 'leads', recordId: f.ownedRecord.id };
+      const t = await c.beginTurn(admin, { content: '改一下' });
+      await q.remember(admin, t, [ref], 'page');
+      const card = await q.open(admin, t, {
+        kind: 'fill_fields',
+        mode,
+        ...ref,
+        fieldKeys: ['name', 'reviewCode'],
+      });
+      expect(card).toMatchObject({
+        fields: [
+          { key: 'name', requiredForAnswer: mode === 'missing' },
+          { key: 'reviewCode', requiredForAnswer: mode === 'missing' },
+        ],
+      });
+      const resume = (values: Record<string, unknown>) =>
+        q.resume(admin, t.conversationId, card!.questionId, {
+          kind: 'fill_fields',
+          values,
+        });
+      await expect(
+        resume({ name: 266, reviewCode: 'A' }),
+      ).rejects.toMatchObject({
+        code: 'VALIDATION_FAILED',
+        fieldErrors: { name: ['字段值格式不正确。'] },
+      });
+      if (mode === 'missing') {
+        await expect(resume({})).rejects.toMatchObject({
+          fieldErrors: {
+            name: ['请填写必填字段。'],
+            reviewCode: ['请填写必填字段。'],
+          },
+        });
+        for (const values of [
+          { name: '新名称' },
+          { name: '新名称', reviewCode: '   ' },
+          { name: '新名称', reviewCode: null },
+        ])
+          await expect(resume(values)).rejects.toMatchObject({
+            code: 'VALIDATION_FAILED',
+            fieldErrors: { reviewCode: ['请填写必填字段。'] },
+          });
+      } else {
+        await expect(resume({ reviewCode: null })).rejects.toMatchObject({
+          code: 'VALIDATION_FAILED',
+        });
+      }
+      expect(
+        await h.adminDatabase.aiQuestion.findUniqueOrThrow({
+          where: { id: card!.questionId },
+        }),
+      ).toMatchObject({ state: 'OPEN', answer: null });
+      const corrected =
+        mode === 'missing'
+          ? { name: '新名称', reviewCode: 'A' }
+          : { reviewCode: 'A' };
+      expect((await resume(corrected)).answer.values).toEqual(corrected);
+    },
+  );
+  it.each([true, false])(
+    'restores required=%s on pre-mode cards',
+    async (required) => {
+      const admin: TenantContext = {
+        ...actor,
+        memberId: f.admin.memberId,
+        userId: f.admin.userId,
+        role: 'TENANT_ADMIN',
+      };
+      const ref = { objectCode: 'leads', recordId: f.ownedRecord.id };
+      const t = await c.beginTurn(admin, { content: '补齐' });
+      await q.remember(admin, t, [ref], 'page');
+      const card = await q.open(admin, t, {
+        kind: 'fill_fields',
+        mode: 'pick_any',
+        ...ref,
+        fieldKeys: ['name', 'reviewCode'],
+      });
+      const where = { id: card!.questionId };
+      const row = await h.adminDatabase.aiQuestion.findUniqueOrThrow({ where });
+      const legacy = { ...(row.definition as Record<string, string>) };
+      delete legacy.mode;
+      const definition = { ...legacy, required };
+      await h.adminDatabase.aiQuestion.update({ where, data: { definition } });
+      const messages = await c.messages(admin, t.conversationId, {});
+      expect(messages.items.flatMap((m) => m.questions ?? [])).toMatchObject([
+        {
+          fields: [
+            { key: 'name', requiredForAnswer: required },
+            { key: 'reviewCode', requiredForAnswer: required },
+          ],
+        },
+      ]);
+      const partial = {
+        kind: 'fill_fields' as const,
+        values: { name: '新名称' },
+      };
+      const resume = q.resume(
+        admin,
+        t.conversationId,
+        card!.questionId,
+        partial,
+      );
+      if (required)
+        await expect(resume).rejects.toMatchObject({
+          fieldErrors: { reviewCode: ['请填写必填字段。'] },
+        });
+      else expect((await resume).answer.values).toEqual(partial.values);
+    },
+  );
+  it('can retry a previously accepted legacy answer that cleared an optional field', async () => {
+    const admin: TenantContext = {
+      ...actor,
+      memberId: f.admin.memberId,
+      userId: f.admin.userId,
+      role: 'TENANT_ADMIN',
+    };
+    const ref = { objectCode: 'leads', recordId: f.ownedRecord.id };
+    const t = await c.beginTurn(admin, { content: '改一下' });
+    await q.remember(admin, t, [ref], 'page');
+    const card = await q.open(admin, t, {
+      kind: 'fill_fields',
+      mode: 'pick_any',
+      ...ref,
+      fieldKeys: ['reviewCode'],
+    });
+    const where = { id: card!.questionId };
+    const row = await h.adminDatabase.aiQuestion.findUniqueOrThrow({ where });
+    const legacy = { ...(row.definition as Record<string, string>) };
+    delete legacy.mode;
+    const answer = { kind: 'fill_fields', values: { reviewCode: null } };
+    await h.adminDatabase.aiQuestion.update({
+      where,
+      data: {
+        definition: { ...legacy, required: false },
+        state: 'ANSWERED',
+        answer,
+      },
+    });
+    await h.adminDatabase.aiMessage.update({
+      where: { id: t.assistant.id },
+      data: { status: 'FAILED' },
+    });
+    expect((await q.retryAnswer(admin, t.turnId))?.answer.values).toEqual(
+      answer.values,
+    );
   });
   it('rejects HTTP answers sent to a different conversation, member, tenant, or forged option', async () => {
     const t = await c.beginTurn(actor, { content: '请说明' });

@@ -197,7 +197,7 @@ export class AssistantQuestionsService {
     });
     if (evidence.length !== recordIds.length) return invalid();
     if (input.kind === 'fill_fields')
-      return defineForm(db, actor, input, input.fieldKeys);
+      return defineForm(db, actor, input, input.fieldKeys, input.mode);
     const resolved = await resolveReadablePublishedObjectInTransaction(
       db.tx,
       actor,

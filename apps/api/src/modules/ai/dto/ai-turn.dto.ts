@@ -35,9 +35,7 @@ export const answerSchema = z.union([
   }),
   z.strictObject({
     kind: z.literal('fill_fields'),
-    values: z
-      .record(z.string(), z.unknown())
-      .refine((v) => Object.keys(v).length > 0),
+    values: z.record(z.string(), z.unknown()),
   }),
 ]);
 const hint = z.strictObject({

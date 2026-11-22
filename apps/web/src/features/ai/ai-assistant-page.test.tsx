@@ -1751,35 +1751,35 @@ it("rejects stale filter previews when a different view is now open", async () =
 
 it("keeps the filled question available after a rejected answer", async () => {
   mocks.conversation = "c-error";
-  mocks.listMessages.mockResolvedValue({
-    items: [
+  const historyRow = {
+    id: "q-row",
+    conversationId: "c-error",
+    turnId: "turn",
+    role: "ASSISTANT",
+    status: "WAITING",
+    content: "",
+    toolSummary: [],
+    sourceSummary: [],
+    createdAt: "2026-11-22",
+    questions: [
       {
-        id: "q-row",
-        conversationId: "c-error",
+        kind: "fill_fields",
+        questionId: "question",
         turnId: "turn",
-        role: "ASSISTANT",
-        status: "WAITING",
-        content: "",
-        toolSummary: [],
-        sourceSummary: [],
-        createdAt: "2026-11-22",
-        questions: [
-          {
-            kind: "fill_fields",
-            questionId: "question",
-            turnId: "turn",
-            state: "OPEN",
-            prompt: "补充字段",
-            fields: [{ key: "name", label: "客户名称", type: "TEXT" }],
-          },
-        ],
+        state: "OPEN",
+        prompt: "补充字段",
+        fields: [{ key: "name", label: "客户名称", type: "TEXT" }],
       },
     ],
-  });
+  };
+  mocks.listMessages
+    .mockResolvedValueOnce({ items: [{ ...historyRow, id: "stream-turn" }] })
+    .mockResolvedValue({ items: [historyRow] });
   mocks.streamTurn.mockImplementation(async function* () {
     throw {
       code: "VALIDATION_FAILED",
       message: "invalid",
+      fieldErrors: { name: ["字段值格式不正确。"], secret: ["隐藏错误"] },
       requestId: "request",
       status: 400,
     };
@@ -1790,10 +1790,35 @@ it("keeps the filled question available after a rejected answer", async () => {
   });
   fireEvent.click(screen.getByRole("button", { name: "提交填写内容" }));
   await waitFor(() =>
-    expect(screen.getByRole("alert")).toHaveTextContent("请检查填写内容"),
+    expect(
+      within(screen.getByRole("region", { name: "助手追问" })).getByRole(
+        "alert",
+      ),
+    ).toHaveTextContent("字段值格式不正确。"),
   );
+  expect(
+    screen.getByRole("textbox", { name: "客户名称" }),
+  ).toHaveAccessibleDescription("字段值格式不正确。");
+  expect(screen.queryByText(/隐藏错误/)).toBeNull();
   expect(screen.getByRole("textbox", { name: "客户名称" })).toHaveValue(
     "保留的填写内容",
+  );
+  fireEvent.change(screen.getByRole("textbox", { name: "客户名称" }), {
+    target: { value: "已修正" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "提交填写内容" }));
+  await waitFor(() =>
+    expect(mocks.streamTurn).toHaveBeenLastCalledWith(
+      "northwind",
+      {
+        conversationId: "c-error",
+        answer: {
+          questionId: "question",
+          value: { kind: "fill_fields", values: { name: "已修正" } },
+        },
+      },
+      expect.any(AbortSignal),
+    ),
   );
 });
 

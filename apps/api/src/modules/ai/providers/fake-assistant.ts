@@ -202,6 +202,7 @@ export async function* simulateAssistant(
         else
           await ask({
             kind: 'fill_fields',
+            mode: stage ? 'missing' : 'pick_any',
             objectCode,
             recordId,
             fieldKeys: stage ? [stage.fieldKey] : [],
@@ -212,7 +213,13 @@ export async function* simulateAssistant(
       /改一下|改一改|更新一下|修改客户|编辑这|帮我改/.test(text) &&
       recordId
     ) {
-      await ask({ kind: 'fill_fields', objectCode, recordId, fieldKeys: [] });
+      await ask({
+        kind: 'fill_fields',
+        mode: 'pick_any',
+        objectCode,
+        recordId,
+        fieldKeys: [],
+      });
     } else if (/预算|谈完|原话|记录.*[：:]|下周再联系/.test(text) && recordId) {
       await call('draft_communication', { text });
     } else if (

@@ -7,7 +7,11 @@ import type {
   FilterRule,
 } from '@crm/contracts';
 import type { Prisma } from '@crm/database';
-import { ApiException } from '../../common/errors/api.exception';
+import {
+  ApiException,
+  type FieldErrors,
+} from '../../common/errors/api.exception';
+import { API_ERROR_MESSAGES } from '../../common/errors/api-error-code';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { isGroupPeer, recordFieldAccess } from '../objects/effective-access';
 import {
@@ -31,6 +35,7 @@ export interface ResolvedAssistantPage extends AssistantPageHint {
   viewScope?: string;
 }
 export type RecordRef = { objectCode: string; recordId: string };
+type FormMode = 'missing' | 'pick_any';
 export type QuestionDefinition = {
   anchor?: AssistantPageHint;
   revision?: string;
@@ -49,7 +54,8 @@ export type QuestionDefinition = {
       recordId: string;
       publicationId: string;
       keys: string[];
-      required: boolean;
+      mode?: FormMode;
+      required?: boolean; // Stored by older versions.
     }
 );
 export interface VerifiedAnswer {
@@ -67,8 +73,8 @@ export const defaultPrompts = {
   choose_option: '你希望怎么处理？',
   fill_fields: '请填写要修改的字段',
 };
-export function invalid(): never {
-  throw new ApiException('VALIDATION_FAILED', 400);
+export function invalid(fieldErrors?: FieldErrors): never {
+  throw new ApiException('VALIDATION_FAILED', 400, { fieldErrors });
 }
 export function conflict(): never {
   throw new ApiException('AI_TURN_NOT_RETRYABLE', 409);
@@ -191,6 +197,7 @@ export async function defineForm(
   actor: TenantContext,
   ref: RecordRef,
   keys: string[],
+  mode: FormMode,
 ): Promise<QuestionDefinition> {
   const { resolved, fields } = await formData(db, actor, ref);
   if (!fields.length || keys.some((key) => !fields.some((f) => f.key === key)))
@@ -201,9 +208,15 @@ export async function defineForm(
     recordId: ref.recordId,
     publicationId: resolved.schema.publication.id,
     keys: keys.length ? keys : fields.map((f) => f.key),
-    required: keys.length > 0,
+    mode,
   };
 }
+function requiresAll(
+  def: Extract<QuestionDefinition, { kind: 'fill_fields' }>,
+) {
+  return def.mode ? def.mode === 'missing' : def.required === true;
+}
+
 export async function projectQuestion(
   db: RecordsTransaction,
   actor: TenantContext,
@@ -256,7 +269,7 @@ export async function projectQuestion(
   if (!target) return undefined;
   const fields = target.fields
     .filter((f) => def.keys.includes(f.key))
-    .map((f) => ({ ...f, requiredForAnswer: def.required }));
+    .map((f) => ({ ...f, requiredForAnswer: requiresAll(def) }));
   const values =
     answer?.kind === 'fill_fields' &&
     target.resolved.schema.publication.id === def.publicationId
@@ -305,15 +318,30 @@ export async function verifyAnswer(
     if (!target || target.resolved.schema.publication.id !== def.publicationId)
       return conflict();
     const keys = Object.keys(value.values);
-    if (
-      !keys.length ||
-      (def.required && def.keys.some((key) => !keys.includes(key))) ||
-      keys.some(
-        (key) =>
-          !def.keys.includes(key) || !target.fields.some((f) => f.key === key),
-      )
-    )
+    const editable = new Set(target.fields.map((field) => field.key));
+    if (keys.some((key) => !def.keys.includes(key) || !editable.has(key)))
       return invalid();
+    const required = requiresAll(def);
+    if (required && def.keys.some((key) => !editable.has(key)))
+      return conflict();
+    // Previously accepted cards could clear optional fields. Revalidate that saved value with the CRM engine.
+    const legacyAnswer = !def.mode && row.state === 'ANSWERED';
+    const empty = (value: unknown) =>
+      value == null ||
+      (typeof value === 'string' && !value.trim()) ||
+      (Array.isArray(value) && !value.length);
+    const missing = (required ? def.keys : keys).filter(
+      (key) =>
+        !Object.hasOwn(value.values, key) ||
+        (!legacyAnswer && empty(value.values[key])),
+    );
+    if (missing.length)
+      return invalid(
+        Object.fromEntries(
+          missing.map((key) => [key, [API_ERROR_MESSAGES.FIELD_REQUIRED]]),
+        ),
+      );
+    if (!keys.length) return invalid();
     try {
       const normalized = await validateRecordMutation({
         mode: 'UPDATE',
@@ -331,7 +359,14 @@ export async function verifyAnswer(
         values: Object.fromEntries(keys.map((k) => [k, normalized.values[k]])),
       };
     } catch (error) {
-      if (error instanceof RecordValueError) return invalid();
+      if (error instanceof RecordValueError) {
+        const key = error.fieldKey;
+        return invalid(
+          key && editable.has(key) && def.keys.includes(key)
+            ? { [key]: [error.message] }
+            : undefined,
+        );
+      }
       throw error;
     }
   }
