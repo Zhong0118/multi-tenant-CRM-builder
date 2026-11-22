@@ -9,6 +9,11 @@ import {
 } from './communication-output';
 
 const maxDays = 90;
+const periodClocks = new Map([
+  ['morning', '09:00'],
+  ['afternoon', '14:00'],
+  ['evening', '19:00'],
+]);
 
 export function communicationDueDate(
   expression: CommunicationDateExpression,
@@ -52,7 +57,10 @@ export function communicationDueDate(
   }
 
   // The last permitted minute is the same local clock time 90 calendar days later.
-  const time = expression.time ?? '09:00';
+  const time =
+    expression.time === null
+      ? '09:00'
+      : (periodClocks.get(expression.time) ?? expression.time);
   const lastMinute =
     addCalendarDays(today, maxDays) + 'T' + localNow.slice(11, 16);
   if (date < today || date + 'T' + time > lastMinute) return null;

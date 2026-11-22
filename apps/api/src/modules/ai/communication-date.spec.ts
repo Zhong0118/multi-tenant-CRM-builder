@@ -1,5 +1,7 @@
+import { z } from 'zod';
 import { communicationDueDate } from './communication-date';
 import {
+  communicationDateExpressionSchema,
   communicationWireSchema,
   type CommunicationDateExpression,
 } from './communication-output';
@@ -33,6 +35,22 @@ describe('follow-up dates in the tenant calendar', () => {
     [
       { kind: 'monthEnd', month: 'next', time: '00:00' },
       '2026-12-30T16:00:00.000Z',
+    ],
+    [
+      { kind: 'relativeDays', days: 1, time: 'morning' },
+      '2026-11-25T01:00:00.000Z',
+    ],
+    [
+      { kind: 'weekday', week: 'next', weekday: 4, time: 'afternoon' },
+      '2026-12-03T06:00:00.000Z',
+    ],
+    [
+      { kind: 'monthEnd', month: 'this', time: 'evening' },
+      '2026-11-30T11:00:00.000Z',
+    ],
+    [
+      { kind: 'relativeDays', days: 1, time: '20:30' },
+      '2026-11-25T12:30:00.000Z',
     ],
     [{ kind: 'unknown', time: null }, null],
     [{ kind: 'weekday', week: 'this', weekday: 1, time: '23:00' }, null],
@@ -96,6 +114,17 @@ describe('structured follow-up date contract', () => {
     followUp: { title: 'Call', evidence: 'Call in two days' },
     fieldChanges: [],
   };
+
+  it('exports strict provider objects with every key required in each date variant', () => {
+    const schema = z.toJSONSchema(communicationDateExpressionSchema);
+    expect(schema.anyOf).toHaveLength(5);
+    for (const variant of schema.anyOf!) {
+      expect(variant.additionalProperties).toBe(false);
+      expect(variant.required?.sort()).toEqual(
+        Object.keys(variant.properties!).sort(),
+      );
+    }
+  });
 
   it('accepts a typed expression with an explicitly absent time', () => {
     expect(
