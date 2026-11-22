@@ -18,6 +18,8 @@ import {
 } from '../objects/published-object.service';
 import { resolvePublishedObjectInTransaction } from '../objects/published-object-transaction';
 import { FollowUpsRepository } from '../follow-ups/follow-ups.repository';
+import type { PublishedField } from '../objects/object-schema';
+import { selectOptions } from '../records/record-value-engine';
 import { visibleRecordIdsInTransaction } from '../records/record-visibility';
 import type {
   AiOperationRow,
@@ -116,6 +118,20 @@ function editableFields(
     }));
 }
 
+function displayValue(value: string, field?: PublishedField): string {
+  if (
+    !value ||
+    (field?.type !== 'SINGLE_SELECT' && field?.type !== 'MULTI_SELECT')
+  )
+    return value;
+  const labels = new Map(
+    selectOptions(field).map((option) => [option.key, option.label]),
+  );
+  // Historical multi-select snapshots store comma-separated option keys.
+  const keys = field.type === 'MULTI_SELECT' ? value.split(/,\s*/) : [value];
+  return keys.map((key) => labels.get(key) ?? '选项已不可用').join('、');
+}
+
 function toView(
   row: AiOperationRow,
   resolved: ResolvedObjectSchema | null,
@@ -167,24 +183,38 @@ function toView(
       (field) => field.fieldKey === display.titleFieldKey,
     ) &&
     (resolved.access.fields[display.titleFieldKey] ?? 'HIDDEN') !== 'HIDDEN';
-  const changes = recordReadable
-    ? display.changes
-        .filter(
-          (change) =>
-            row.operationType !== 'UPDATE_RECORD' ||
-            (typeof change.fieldKey === 'string' &&
-              resolved?.schema.fields.some(
-                (field) => field.fieldKey === change.fieldKey,
-              ) &&
-              (resolved.access.fields[change.fieldKey] ?? 'HIDDEN') !==
-                'HIDDEN'),
-        )
-        .map((change) => ({
-          label: change.label,
-          ...(change.before === undefined ? {} : { before: change.before }),
-          ...(change.after === undefined ? {} : { after: change.after }),
-        }))
-    : [];
+  const changes =
+    recordReadable && followUpReadable
+      ? display.changes.flatMap((change) => {
+          const field =
+            row.operationType === 'UPDATE_RECORD' && change.fieldKey
+              ? resolved?.schema.fields.find(
+                  (f) => f.fieldKey === change.fieldKey,
+                )
+              : undefined;
+          if (
+            row.operationType === 'UPDATE_RECORD' &&
+            (!field ||
+              (resolved?.access.fields[field.fieldKey] ?? 'HIDDEN') ===
+                'HIDDEN')
+          )
+            return [];
+          return [
+            {
+              label:
+                row.operationType === 'ADD_ACTIVITY_NOTE'
+                  ? '沟通纪要'
+                  : (field?.label ?? change.label),
+              ...(change.before === undefined
+                ? {}
+                : { before: displayValue(change.before, field) }),
+              ...(change.after === undefined
+                ? {}
+                : { after: displayValue(change.after, field) }),
+            },
+          ];
+        })
+      : [];
   return {
     proposalId: row.id,
     ...(recordReadable &&

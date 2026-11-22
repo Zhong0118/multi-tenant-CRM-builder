@@ -946,6 +946,54 @@ describe('ConversationRepository member lock and turn lifecycle', () => {
     },
   );
 
+  it('replays freshly projected items but drops saved search totals when scope has changed', async () => {
+    const f = harness();
+    const turn = await f.repository.beginTurn(context, {
+      content: '更新',
+      protectedHistory: true,
+    });
+    await f.repository.finalizeAssistant(context, turn.turnId, {
+      status: 'COMPLETED',
+      content: '原来的回答',
+    });
+    const projection = {
+      turnId: turn.turnId,
+      coverage: { total: 17, targets: 1 },
+      view: {
+        proposalId: 'operation',
+        operation: 'ADD_ACTIVITY_NOTE' as const,
+        title: '纪要',
+        status: 'EXECUTED' as const,
+        changes: [{ label: '沟通纪要', after: '仍然可见' }],
+        targetSummary: '可见客户',
+        auditId: 'audit',
+        expiresAt: new Date().toISOString(),
+        fieldErrors: {},
+        failureCode: null,
+        validationWarnings: [],
+        result: null,
+      },
+    };
+    const spy = jest.spyOn(
+      AiOperationRepository.prototype,
+      'listForTurnsInTransaction',
+    );
+    try {
+      spy.mockResolvedValue([projection]);
+      const before = await f.service.messages(context, turn.conversationId, {});
+      expect(before.items.at(-1)?.batch?.coverage).toEqual(projection.coverage);
+      f.security.revision++;
+      const after = await f.service.messages(context, turn.conversationId, {});
+      expect(after.items.at(-1)).toMatchObject({
+        proposal: projection.view,
+        batch: { items: [projection.view] },
+      });
+      expect(after.items.at(-1)?.batch?.coverage).toBeUndefined();
+      expect(after.items.at(-1)?.content).not.toEqual('原来的回答');
+    } finally {
+      spy.mockRestore();
+    }
+  });
   it('restores only owned assistant proposals from the existing message transaction', async () => {
     const fixture = harness();
     const begun = await fixture.repository.beginTurn(context, {

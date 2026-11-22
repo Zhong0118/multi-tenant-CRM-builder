@@ -465,21 +465,22 @@ export class ConversationRepository {
       );
       const batches = groupProposalBatches(operations);
       return {
-        items: chronological.map((row) => ({
-          ...toPublicMessage(row, authorizationRevision),
-          ...(row.role === 'ASSISTANT' &&
-          batches.has(row.turnId) &&
-          (authorizationRevisionOf(row.providerUsage) === undefined ||
-            authorizationRevisionOf(row.providerUsage) ===
-              authorizationRevision?.revision)
-            ? {
-                batch: batches.get(row.turnId),
-                ...(batches.get(row.turnId)!.items.length === 1
-                  ? { proposal: batches.get(row.turnId)!.items[0] }
-                  : {}),
-              }
-            : {}),
-        })),
+        items: chronological.map((row) => {
+          const message = toPublicMessage(row, authorizationRevision);
+          const batch =
+            row.role === 'ASSISTANT' ? batches.get(row.turnId) : undefined;
+          if (!batch) return message;
+          // Item projection above rechecks each target. A cached query total can
+          // cover records outside the batch and needs its original scope.
+          const revision = authorizationRevisionOf(row.providerUsage);
+          message.batch =
+            revision !== undefined &&
+            revision === authorizationRevision?.revision
+              ? batch
+              : { items: batch.items };
+          if (batch.items.length === 1) message.proposal = batch.items[0];
+          return message;
+        }),
         nextBefore: hasMore ? chronological[0]?.id : undefined,
       };
     });

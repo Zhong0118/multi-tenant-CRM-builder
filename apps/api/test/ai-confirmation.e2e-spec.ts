@@ -351,6 +351,7 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
       status: 'EXECUTED',
       auditId: confirmed.body.auditId,
       result: null,
+      changes: [],
     });
 
     const history = await request(harness.app.getHttpServer())
@@ -364,7 +365,11 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
       status: 'EXECUTED',
       auditId: confirmed.body.auditId,
       result: null,
+      changes: [],
     });
+
+    expect(assistant?.batch.items).toEqual([assistant.proposal]);
+    expect(assistant?.batch.coverage).toBeUndefined();
 
     await request(harness.app.getHttpServer())
       .get(`/api/v1/workspaces/${fixture.tenantA.code}/follow-ups`)
