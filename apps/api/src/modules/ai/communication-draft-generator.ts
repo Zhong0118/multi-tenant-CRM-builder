@@ -18,11 +18,8 @@ import { RECORDS_REPOSITORY } from '../records/records.service';
 import { allowsProposalFieldKey } from './ai-proposal.schema';
 import { AI_PROVIDER, type AiProvider } from './ai-provider';
 import { AiSanitizer } from './ai-sanitizer';
-import { supportsCommunicationFieldChange } from './communication-field-evidence';
-import {
-  communicationDueDate,
-  supportsFollowUpEvidence,
-} from './communication-date';
+import { isQuotedNumber, isSourceQuote } from './communication-field-evidence';
+import { communicationDueDate } from './communication-date';
 import {
   communicationOutputSchema,
   type CommunicationProviderInput,
@@ -231,7 +228,11 @@ export class CommunicationDraftGenerator {
     const fieldChanges: NonNullable<CommunicationOutput['fieldChanges']> = [];
     for (const change of parsed.data.fieldChanges ?? []) {
       const field = ctx.fields.find((f) => f.fieldKey === change.fieldKey);
-      if (!field || fieldChanges.some((f) => f.fieldKey === field.fieldKey))
+      if (
+        !field ||
+        !isSourceQuote(change.evidence, content) ||
+        fieldChanges.some((f) => f.fieldKey === field.fieldKey)
+      )
         continue;
       try {
         const value = normalizeStaticFieldValue(
@@ -239,13 +240,8 @@ export class CommunicationDraftGenerator {
           change.value,
         );
         if (
-          !supportsCommunicationFieldChange(
-            field,
-            value,
-            change.evidence,
-            content,
-            ctx.fields,
-          )
+          (field.type === 'NUMBER' || field.type === 'MONEY') &&
+          !isQuotedNumber(value, change.evidence, content)
         )
           continue;
         if (
@@ -263,15 +259,15 @@ export class CommunicationDraftGenerator {
     }
     return {
       note,
-      ...(followUp && supportsFollowUpEvidence(followUp.evidence, content)
+      ...(followUp && isSourceQuote(followUp.evidence, content)
         ? {
             followUp: {
-              ...followUp,
+              title: followUp.title,
+              evidence: followUp.evidence,
               suggestedDate: communicationDueDate(
-                followUp.evidence,
+                followUp.dateExpression,
                 ctx.now,
                 ctx.timeZone,
-                content,
               ),
             },
           }

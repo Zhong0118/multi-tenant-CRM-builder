@@ -62,7 +62,10 @@ export class FakeAiProvider implements AiProvider {
       followUp: followUpClause
         ? {
             title: '联系客户',
-            suggestedDate: null,
+            // The local demo has one scripted appointment. Other simulated tasks have no date.
+            dateExpression: followUpClause.includes('下周再联系')
+              ? { kind: 'weekday', week: 'next', weekday: 1, time: null }
+              : { kind: 'unknown', time: null },
             evidence: followUpClause.trim(),
           }
         : null,
