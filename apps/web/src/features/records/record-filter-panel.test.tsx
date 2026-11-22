@@ -355,8 +355,9 @@ describe("natural-language filter previews", () => {
   });
 
   it("retains the input on failure and selects a complete clarification without another request", async () => {
+    const firstRequest = Promise.withResolvers<FilterPreview>();
     const preview = previewMock()
-      .mockRejectedValueOnce(new Error("internal"))
+      .mockReturnValueOnce(firstRequest.promise)
       .mockResolvedValue({
         kind: "clarify",
         options: [
@@ -367,11 +368,13 @@ describe("natural-language filter previews", () => {
     const save = mount(empty, false, preview);
     open();
     generate("重点客户");
+    await screen.findByRole("button", { name: /生成中/ });
+    await act(async () => firstRequest.reject(new Error("internal")));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "请调整描述或手动筛选",
     );
     expect(screen.getByLabelText("用一句话描述条件")).toHaveValue("重点客户");
-    fireEvent.click(screen.getByRole("button", { name: "生成条件" }));
+    fireEvent.click(await screen.findByRole("button", { name: "生成条件" }));
     fireEvent.click(
       await screen.findByRole("button", { name: "阶段或已签约" }),
     );
