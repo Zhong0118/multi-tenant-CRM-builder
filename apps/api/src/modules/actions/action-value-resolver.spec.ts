@@ -162,7 +162,7 @@ describe('resolveActionValue', () => {
     );
 
     expect(error).toBeInstanceOf(ActionValueError);
-    expect(error.reason).toContain('ghost');
+    expect(error.reason).toBe('来源字段不可用。');
   });
 
   it('reads SOURCE_META recordId, title and ownerMemberId from the snapshot', () => {

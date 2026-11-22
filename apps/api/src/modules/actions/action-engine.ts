@@ -201,10 +201,15 @@ export async function executeActions(
     source.resolved.schema.fields
       .filter(
         (field) =>
-          !source.resolved.access.groupFieldAccess ||
+          Object.hasOwn(sourceAccess, field.fieldKey) &&
           sourceAccess[field.fieldKey] !== 'HIDDEN',
       )
       .map((field) => [field.fieldKey, field]),
+  );
+  const readableValues = Object.fromEntries(
+    Object.entries(source.snapshot.values).filter(([key]) =>
+      sourceFields.has(key),
+    ),
   );
   let sourceValues: Record<string, unknown> = {};
   let pendingOwnerMemberId: string | undefined;
@@ -222,13 +227,7 @@ export async function executeActions(
       recordId: source.snapshot.id,
       title: source.snapshot.title,
       ownerMemberId: source.snapshot.ownerMemberId,
-      values: source.resolved.access.groupFieldAccess
-        ? Object.fromEntries(
-            Object.entries(source.snapshot.values).filter(
-              ([key]) => sourceAccess[key] && sourceAccess[key] !== 'HIDDEN',
-            ),
-          )
-        : source.snapshot.values,
+      values: readableValues,
       fields: sourceFields,
     },
     outputs,

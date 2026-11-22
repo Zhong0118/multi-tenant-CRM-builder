@@ -166,9 +166,8 @@ function readSourceField(
 ): unknown {
   const field = context.source.fields.get(fieldKey);
   if (!field) {
-    // §26 validates this at publish time; a frozen publication cannot drift,
-    // so reaching here means a hand-edited snapshot. Fail closed.
-    throw new ActionValueError(`当前记录不存在字段「${fieldKey}」。`);
+    // Live field permissions can change after the mapping was published.
+    throw new ActionValueError('来源字段不可用。');
   }
   if (
     options.temporalOnly &&
