@@ -129,6 +129,8 @@ void test('the configured SDK uses the structured Responses API and the evaluato
     const [row] = await evaluate(provider, [sample]);
     assert.equal(path, '/v1/responses');
     assert.match(requestBody, /json_schema/);
+    // DeepSeek rejects the JSON Schema date format before it runs the model.
+    assert.doesNotMatch(requestBody, /"format"\s*:\s*"date"/);
     assert.ok(requestBody.includes(sample.text));
     assert.deepEqual(row.failures, []);
     assert.deepEqual(row.modelOutput, raw);

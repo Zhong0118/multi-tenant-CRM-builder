@@ -12,9 +12,14 @@ const time = z
   .string()
   .regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/)
   .nullable();
+const isoDate = z.iso.date();
+const date = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((text) => isoDate.safeParse(text).success);
 const period = z.enum(['this', 'next']);
 export const communicationDateExpressionSchema = z.union([
-  z.strictObject({ date: z.iso.date(), kind: z.literal('absolute'), time }),
+  z.strictObject({ date, kind: z.literal('absolute'), time }),
   z.strictObject({
     days: z.number().int().nonnegative(),
     kind: z.literal('relativeDays'),
