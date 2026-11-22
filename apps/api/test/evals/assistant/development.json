@@ -621,5 +621,124 @@
         }
       }
     ]
+  },
+  {
+    "id": "contract-date",
+    "fixture": "contracts",
+    "actor": "sales",
+    "now": "2026-11-23T01:00:00Z",
+    "context": "list",
+    "steps": [
+      {
+        "say": "找本月签约的合同",
+        "expect": {
+          "kind": "filter",
+          "rule": {
+            "version": 1,
+            "match": "all",
+            "conditions": [
+              {
+                "fieldKey": "signedOn",
+                "operator": "relative",
+                "value": "this_month"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "contract-tags",
+    "fixture": "contracts",
+    "actor": "sales",
+    "now": "2026-11-23T01:00:00Z",
+    "context": "list",
+    "steps": [
+      {
+        "say": "筛选合同标签包含「续约」或「框架」的合同",
+        "expect": {
+          "kind": "filter",
+          "rule": {
+            "version": 1,
+            "match": "all",
+            "conditions": [
+              {
+                "fieldKey": "tags",
+                "operator": "in",
+                "value": [
+                  "renewal",
+                  "framework"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "contract-member",
+    "fixture": "contracts",
+    "actor": "sales",
+    "now": "2026-11-23T01:00:00Z",
+    "context": "list",
+    "steps": [
+      {
+        "say": "找法务经办人是我的合同",
+        "expect": {
+          "kind": "filter",
+          "rule": {
+            "version": 1,
+            "match": "all",
+            "conditions": [
+              {
+                "fieldKey": "legalContact",
+                "operator": "in",
+                "value": [
+                  "$me"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "contract-combined",
+    "fixture": "contracts",
+    "actor": "sales",
+    "now": "2026-11-23T01:00:00Z",
+    "context": "list",
+    "steps": [
+      {
+        "say": "找法务经办人是我且签约日期在 2026-12-01 到 2026-12-31 之间的合同",
+        "expect": {
+          "kind": "filter",
+          "rule": {
+            "version": 1,
+            "match": "all",
+            "conditions": [
+              {
+                "fieldKey": "legalContact",
+                "operator": "in",
+                "value": [
+                  "$me"
+                ]
+              },
+              {
+                "fieldKey": "signedOn",
+                "operator": "between",
+                "value": {
+                  "from": "2026-12-01",
+                  "to": "2026-12-31"
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
   }
 ]

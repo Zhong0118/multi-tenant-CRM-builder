@@ -68,6 +68,51 @@ export class FakeAiProvider implements AiProvider {
             ],
           };
         break;
+      case '找本月签约的合同':
+        return {
+          rules: [
+            rule([
+              {
+                fieldKey: 'signedOn',
+                operator: 'relative',
+                value: 'this_month',
+              },
+            ]),
+          ],
+        };
+      case '筛选合同标签包含「续约」或「框架」的合同':
+        return {
+          rules: [
+            rule([
+              {
+                fieldKey: 'tags',
+                operator: 'in',
+                value: ['renewal', 'framework'],
+              },
+            ]),
+          ],
+        };
+      case '找法务经办人是我的合同':
+        return {
+          rules: [
+            rule([
+              { fieldKey: 'legalContact', operator: 'in', value: ['$me'] },
+            ]),
+          ],
+        };
+      case '找法务经办人是我且签约日期在 2026-12-01 到 2026-12-31 之间的合同':
+        return {
+          rules: [
+            rule([
+              { fieldKey: 'legalContact', operator: 'in', value: ['$me'] },
+              {
+                fieldKey: 'signedOn',
+                operator: 'between',
+                value: { from: '2026-12-01', to: '2026-12-31' },
+              },
+            ]),
+          ],
+        };
       case '找金额超过 10 万的商机':
         if (over100k) return { rules: [rule([over100k])] };
         break;

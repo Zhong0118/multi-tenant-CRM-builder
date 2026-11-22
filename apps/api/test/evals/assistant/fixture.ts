@@ -20,38 +20,75 @@ export async function setupFixture(
     data: { timezone: tz },
   });
   const opportunities = spec.fixture === 'opportunities';
+  const contract = spec.fixture === 'contracts';
   const objectSchema = {
-    code: opportunities ? 'opportunities' : 'customers',
-    name: opportunities ? '跟单商机' : '客户',
+    code: contract
+      ? 'contracts'
+      : opportunities
+        ? 'opportunities'
+        : 'customers',
+    name: contract ? '合同' : opportunities ? '跟单商机' : '客户',
     fields: [
       {
         key: 'name',
-        label: opportunities ? '商机名称' : '客户名称',
+        label: contract ? '合同名称' : opportunities ? '商机名称' : '客户名称',
         type: 'TEXT',
         required: true,
         access: 'EDIT' as const,
       },
-      {
-        key: 'stage',
-        label: opportunities ? '商机阶段' : '阶段',
-        type: 'SINGLE_SELECT',
-        required: false,
-        access: 'EDIT' as const,
-        config: {
-          options: [
-            { key: 'quote', label: '报价' },
-            { key: 'negotiate', label: '谈判' },
-            { key: 'won', label: '已成交' },
-          ].map((o) => ({ ...o, status: 'ACTIVE' })),
-        },
-      },
-      {
-        key: 'amount',
-        label: opportunities ? '预计金额' : '金额',
-        type: opportunities ? 'MONEY' : 'NUMBER',
-        required: false,
-        access: 'EDIT' as const,
-      },
+      ...(contract
+        ? [
+            {
+              key: 'signedOn',
+              label: '签约日期',
+              type: 'DATE',
+              required: false,
+              access: 'EDIT' as const,
+            },
+            {
+              key: 'tags',
+              label: '合同标签',
+              type: 'MULTI_SELECT',
+              required: false,
+              access: 'EDIT' as const,
+              config: {
+                options: [
+                  { key: 'renewal', label: '续约', status: 'ACTIVE' },
+                  { key: 'framework', label: '框架', status: 'ACTIVE' },
+                ],
+              },
+            },
+            {
+              key: 'legalContact',
+              label: '法务经办人',
+              type: 'MEMBER',
+              required: false,
+              access: 'EDIT' as const,
+            },
+          ]
+        : [
+            {
+              key: 'stage',
+              label: opportunities ? '商机阶段' : '阶段',
+              type: 'SINGLE_SELECT',
+              required: false,
+              access: 'EDIT' as const,
+              config: {
+                options: [
+                  { key: 'quote', label: '报价' },
+                  { key: 'negotiate', label: '谈判' },
+                  { key: 'won', label: '已成交' },
+                ].map((o) => ({ ...o, status: 'ACTIVE' })),
+              },
+            },
+            {
+              key: 'amount',
+              label: opportunities ? '预计金额' : '金额',
+              type: opportunities ? 'MONEY' : 'NUMBER',
+              required: false,
+              access: 'EDIT' as const,
+            },
+          ]),
       {
         key: 'secretMargin',
         label: '私人利润率',
@@ -114,8 +151,22 @@ export async function setupFixture(
         recordNo: index + 1,
         data: {
           name: title,
-          stage: 'quote',
-          amount: opportunities ? (key === 'own' ? '150000' : '100000') : 12000,
+          ...(contract
+            ? {
+                signedOn: index % 2 ? '2026-12-10' : '2026-11-05',
+                tags: index % 2 ? ['framework'] : ['renewal'],
+                legalContact: cross
+                  ? base.tenantBAdmin.memberId
+                  : base.employee.memberId,
+              }
+            : {
+                stage: 'quote',
+                amount: opportunities
+                  ? key === 'own'
+                    ? '150000'
+                    : '100000'
+                  : 12000,
+              }),
           secretMargin: 'EVAL_PRIVATE_MARGIN',
         },
         createdAt: new Date(now.getTime() - 3600000 - index * 1000),
