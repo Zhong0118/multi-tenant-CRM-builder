@@ -304,7 +304,9 @@ export function CommunicationDraftDialog({
       items.push({
         key: "followUp",
         label: "下次跟进",
-        evidence: draft.followUp.evidence,
+        evidence: draft.followUp.evidence
+          ? `依据：${draft.followUp.evidence}`
+          : undefined,
         error:
           !title.trim() || !dueAt
             ? "请填写跟进标题，并选择有效的日期和时间"
