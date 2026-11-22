@@ -32,4 +32,11 @@ export default tseslint.config(
       'prettier/prettier': ['error', { endOfLine: 'auto' }],
     },
   },
+  {
+    files: ['src/infrastructure/database/**/*.ts'],
+    ignores: ['**/*.spec.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: ['**/modules/**'] }],
+    },
+  },
 );

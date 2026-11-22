@@ -1,4 +1,3 @@
-import { translatePoolTriggerError } from '../records/record-pool-error';
 import { isGroupPeer, recordFieldAccess } from '../objects/effective-access';
 import {
   recordOwnerFilter,
@@ -8,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 import type { Prisma } from '@crm/database';
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
+import { translatePoolTriggerError } from '../../infrastructure/database/pool-trigger-error';
 import { executeActions } from '../actions/action-engine';
 import { resolveActionValue } from '../actions/action-value-resolver';
 import type { AuditService } from '../audit/audit.service';

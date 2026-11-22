@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@crm/database';
 
-import { translatePoolTriggerError } from '../../modules/records/record-pool-error';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
 import { DatabaseService } from './database.service';
+import { translatePoolTriggerError } from './pool-trigger-error';
 
 const SET_USER = "SELECT set_config('app.user_id', $1, true)";
 const SET_TENANT = "SELECT set_config('app.tenant_id', $1, true)";
