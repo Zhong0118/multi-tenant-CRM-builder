@@ -1,6 +1,10 @@
 const STRIP_KEY_RE = /^(tokenHash|passwordHash|session|cookie|apiKey)$/i;
 
 export class AiSanitizer {
+  static allowsKey(key: string): boolean {
+    return !STRIP_KEY_RE.test(key);
+  }
+
   static sanitizeToolResult(result: unknown): unknown {
     return sanitizeValue(result);
   }
@@ -23,7 +27,7 @@ function sanitizeValue(value: unknown): unknown {
   if (value && typeof value === 'object') {
     const output: Record<string, unknown> = {};
     for (const [key, nested] of Object.entries(value)) {
-      if (STRIP_KEY_RE.test(key)) continue;
+      if (!AiSanitizer.allowsKey(key)) continue;
       const sanitized = sanitizeValue(nested);
       if (sanitized === undefined) continue;
       output[key] = sanitized;

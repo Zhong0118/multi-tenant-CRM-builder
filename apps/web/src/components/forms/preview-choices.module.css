@@ -1,0 +1,23 @@
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.choices legend {
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+.option:global(.ant-btn) {
+  max-width: 100%;
+  height: auto;
+  padding: 5px 10px;
+  text-align: start;
+  white-space: normal;
+}
+.option:active {
+  transform: scale(0.98);
+}

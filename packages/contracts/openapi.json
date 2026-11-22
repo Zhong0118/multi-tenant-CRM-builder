@@ -268,6 +268,15 @@
         "required": ["tenantId", "templateVersionId"],
         "type": "object"
       },
+      "ArchiveRecordViewDto": {
+        "properties": {
+          "expectedRevision": {
+            "minimum": 1,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
       "AttachmentDto": {
         "properties": {
           "byteSize": {
@@ -1355,6 +1364,189 @@
         "required": ["status"],
         "type": "object"
       },
+      "CommunicationDraftResponseDto": {
+        "properties": {
+          "errorCode": {
+            "type": "string"
+          },
+          "fieldChanges": {
+            "items": {
+              "$ref": "#/components/schemas/CommunicationFieldDto"
+            },
+            "type": "array"
+          },
+          "followUp": {
+            "$ref": "#/components/schemas/CommunicationFollowUpDto"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "requestId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/CommunicationResultDto"
+            },
+            "type": "array"
+          },
+          "status": {
+            "enum": ["PENDING", "READY", "FALLBACK"],
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "timeZone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "requestId",
+          "text",
+          "timeZone",
+          "status",
+          "note",
+          "fieldChanges",
+          "results"
+        ],
+        "type": "object"
+      },
+      "CommunicationFieldDto": {
+        "properties": {
+          "evidence": {
+            "type": "string"
+          },
+          "fieldKey": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "oldValue": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/CommunicationOptionDto"
+            },
+            "type": "array"
+          },
+          "type": {
+            "type": "string"
+          },
+          "value": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          }
+        },
+        "required": [
+          "fieldKey",
+          "label",
+          "type",
+          "oldValue",
+          "value",
+          "evidence"
+        ],
+        "type": "object"
+      },
+      "CommunicationFollowUpDto": {
+        "properties": {
+          "evidence": {
+            "type": "string"
+          },
+          "suggestedDate": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": ["title", "suggestedDate", "evidence"],
+        "type": "object"
+      },
+      "CommunicationOptionDto": {
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": ["key", "label"],
+        "type": "object"
+      },
+      "CommunicationResultDto": {
+        "properties": {
+          "activity": {
+            "$ref": "#/components/schemas/SavedActivityDto"
+          },
+          "auditId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "errorCode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "followUp": {
+            "$ref": "#/components/schemas/SavedFollowUpDto"
+          },
+          "itemKey": {
+            "enum": ["note", "followUp", "fields"],
+            "type": "string"
+          },
+          "status": {
+            "enum": ["EXECUTED", "FAILED"],
+            "type": "string"
+          }
+        },
+        "required": ["itemKey", "status"],
+        "type": "object"
+      },
       "CompanyAuditChangeDto": {
         "properties": {
           "after": {
@@ -1551,6 +1743,18 @@
         "required": ["idempotencyKey"],
         "type": "object"
       },
+      "ConfirmCommunicationDraftDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DraftSelectionDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["items"],
+        "type": "object"
+      },
       "CorrectFirstAdminPhoneDto": {
         "properties": {
           "firstAdminPhone": {
@@ -1579,6 +1783,20 @@
           }
         },
         "required": ["code", "name"],
+        "type": "object"
+      },
+      "CreateCommunicationDraftDto": {
+        "properties": {
+          "requestId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 4000,
+            "type": "string"
+          }
+        },
+        "required": ["requestId", "text"],
         "type": "object"
       },
       "CreateDashboardDto": {
@@ -1855,6 +2073,59 @@
           }
         },
         "required": ["objectCode", "recordId"],
+        "type": "object"
+      },
+      "CreateRecordViewDto": {
+        "properties": {
+          "columnFieldKeys": {
+            "description": "null 继承发布视图的列",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "columnWidths": {
+            "additionalProperties": {
+              "maximum": 640,
+              "minimum": 88,
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "filterRule": {
+            "additionalProperties": true,
+            "description": "版本化筛选规则 FilterRule",
+            "type": "object"
+          },
+          "importKey": {
+            "description": "本机个人筛选方案的稳定来源指纹",
+            "maxLength": 256,
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "queryOptions": {
+            "$ref": "#/components/schemas/RecordViewQueryOptionsDto"
+          },
+          "scope": {
+            "enum": ["PERSONAL", "SHARED"],
+            "type": "string"
+          },
+          "sort": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordViewSortDto"
+              }
+            ],
+            "description": "null 继承发布视图的排序",
+            "nullable": true,
+            "type": "object"
+          }
+        },
+        "required": ["name", "scope"],
         "type": "object"
       },
       "CreateWorkTaskDto": {
@@ -3003,6 +3274,27 @@
         "required": ["accepted"],
         "type": "object"
       },
+      "DraftSelectionDto": {
+        "properties": {
+          "editedValue": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            ]
+          },
+          "itemKey": {
+            "enum": ["note", "followUp", "fields"],
+            "type": "string"
+          }
+        },
+        "required": ["itemKey", "editedValue"],
+        "type": "object"
+      },
       "EmployeePermissionsDto": {
         "properties": {
           "canCreate": {
@@ -3187,6 +3479,23 @@
             "type": "number"
           }
         },
+        "type": "object"
+      },
+      "FilterPreviewBody": {
+        "properties": {
+          "baseViewId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "currentRule": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": ["text", "currentRule"],
         "type": "object"
       },
       "FirstAdminInvitationResponseDto": {
@@ -5763,6 +6072,10 @@
             },
             "type": "object"
           },
+          "timeZone": {
+            "description": "Tenant timezone used for record date and follow-up boundaries.",
+            "type": "string"
+          },
           "total": {
             "type": "number"
           }
@@ -5880,6 +6193,11 @@
             "nullable": true,
             "type": "object"
           },
+          "nextFollowUpAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
           "ownerMemberId": {
             "format": "uuid",
             "nullable": true,
@@ -5962,6 +6280,124 @@
           "createdAt",
           "updatedAt"
         ],
+        "type": "object"
+      },
+      "RecordViewListResponseDto": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecordViewResponseDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["items"],
+        "type": "object"
+      },
+      "RecordViewQueryOptionsDto": {
+        "properties": {
+          "ownerMemberId": {
+            "type": "string"
+          },
+          "poolQuality": {
+            "enum": ["INVALID", "DUPLICATE", "LOST"],
+            "type": "string"
+          },
+          "poolStage": {
+            "enum": [
+              "LEAD_POOL",
+              "CUSTOMER_POOL",
+              "PENDING_CONTACT",
+              "FOLLOWING",
+              "PROTECTED",
+              "LEGACY"
+            ],
+            "type": "string"
+          },
+          "scope": {
+            "enum": ["mine", "pool", "group", "all"],
+            "type": "string"
+          },
+          "search": {
+            "maxLength": 300,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RecordViewResponseDto": {
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "canEdit": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "columnFieldKeys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "columnWidths": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "filterRule": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "queryOptions": {
+            "$ref": "#/components/schemas/RecordViewQueryOptionsDto"
+          },
+          "revision": {
+            "type": "number"
+          },
+          "scope": {
+            "enum": ["PERSONAL", "SHARED"],
+            "type": "string"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/RecordViewSortDto"
+          },
+          "unavailableReason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "scope",
+          "revision",
+          "available",
+          "canEdit"
+        ],
+        "type": "object"
+      },
+      "RecordViewSortDto": {
+        "properties": {
+          "direction": {
+            "enum": ["asc", "desc"],
+            "type": "string"
+          },
+          "field": {
+            "type": "string"
+          }
+        },
+        "required": ["field", "direction"],
         "type": "object"
       },
       "RegisterDto": {
@@ -6510,6 +6946,36 @@
           "states",
           "transitions"
         ],
+        "type": "object"
+      },
+      "SavedActivityDto": {
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": ["id", "content"],
+        "type": "object"
+      },
+      "SavedFollowUpDto": {
+        "properties": {
+          "dueAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "title", "dueAt"],
         "type": "object"
       },
       "SelectOptionDto": {
@@ -8320,6 +8786,54 @@
           }
         },
         "required": ["enabled", "ownershipTtlHours", "version"],
+        "type": "object"
+      },
+      "UpdateRecordViewDto": {
+        "properties": {
+          "columnFieldKeys": {
+            "description": "null 继承发布视图的列",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "columnWidths": {
+            "additionalProperties": {
+              "maximum": 640,
+              "minimum": 88,
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "expectedRevision": {
+            "minimum": 1,
+            "type": "number"
+          },
+          "filterRule": {
+            "additionalProperties": true,
+            "description": "版本化筛选规则 FilterRule",
+            "type": "object"
+          },
+          "name": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "queryOptions": {
+            "$ref": "#/components/schemas/RecordViewQueryOptionsDto"
+          },
+          "sort": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordViewSortDto"
+              }
+            ],
+            "description": "null 继承发布视图的排序",
+            "nullable": true,
+            "type": "object"
+          }
+        },
+        "required": ["expectedRevision"],
         "type": "object"
       },
       "UpdateWorkTaskDto": {
@@ -14254,6 +14768,111 @@
         "tags": ["object-definitions"]
       }
     },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/filter-preview": {
+      "post": {
+        "operationId": "FilterPreviewController_preview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FilterPreviewBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "properties": {
+                        "kind": {
+                          "enum": ["rule"],
+                          "type": "string"
+                        },
+                        "rule": {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      },
+                      "required": ["kind", "rule"],
+                      "type": "object"
+                    },
+                    {
+                      "properties": {
+                        "kind": {
+                          "enum": ["clarify"],
+                          "type": "string"
+                        },
+                        "options": {
+                          "items": {
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "value": {
+                                "additionalProperties": true,
+                                "type": "object"
+                              }
+                            },
+                            "required": ["id", "label", "value"],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "required": ["kind", "options"],
+                      "type": "object"
+                    },
+                    {
+                      "properties": {
+                        "kind": {
+                          "enum": ["unavailable"],
+                          "type": "string"
+                        }
+                      },
+                      "required": ["kind"],
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["filter-preview"]
+      }
+    },
     "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/pool-config": {
       "get": {
         "operationId": "RecordPoolController_getConfig",
@@ -14344,6 +14963,252 @@
         "tags": ["records"]
       }
     },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/record-views": {
+      "get": {
+        "operationId": "RecordViewsController_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordViewListResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["record-views"]
+      },
+      "post": {
+        "operationId": "RecordViewsController_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRecordViewDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordViewResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["record-views"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/record-views/{viewId}": {
+      "delete": {
+        "operationId": "RecordViewsController_archive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "viewId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArchiveRecordViewDto"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["record-views"]
+      },
+      "get": {
+        "operationId": "RecordViewsController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "viewId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordViewResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["record-views"]
+      },
+      "patch": {
+        "operationId": "RecordViewsController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "viewId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRecordViewDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordViewResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["record-views"]
+      }
+    },
     "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records": {
       "get": {
         "operationId": "RecordsController_list",
@@ -14353,6 +15218,15 @@
             "name": "objectCode",
             "required": true,
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "viewId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
               "type": "string"
             }
           },
@@ -14440,7 +15314,7 @@
             }
           },
           {
-            "description": "按已发布字段筛选的 JSON 对象，支持选项、日期范围或相对时间、数值区间、是否、成员、文本包含，以及有值/空值。",
+            "description": "版本 1 筛选树，支持 all / any 分组及已发布字段。兼容原扁平筛选。",
             "in": "query",
             "name": "filters",
             "required": false,
@@ -14451,7 +15325,7 @@
             }
           },
           {
-            "description": "updatedAt、createdAt、recordNo，或当前业务表中可排序的已发布字段键。",
+            "description": "updatedAt、createdAt、recordNo、nextFollowUpAt，或当前业务表中可排序的已发布字段键。",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -14625,6 +15499,15 @@
           },
           {
             "in": "query",
+            "name": "viewId",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "poolStage",
             "required": false,
             "schema": {
@@ -14707,7 +15590,7 @@
             }
           },
           {
-            "description": "按已发布字段筛选的 JSON 对象，支持选项、日期范围或相对时间、数值区间、是否、成员、文本包含，以及有值/空值。",
+            "description": "版本 1 筛选树，支持 all / any 分组及已发布字段。兼容原扁平筛选。",
             "in": "query",
             "name": "filters",
             "required": false,
@@ -14718,7 +15601,7 @@
             }
           },
           {
-            "description": "updatedAt、createdAt、recordNo，或当前业务表中可排序的已发布字段键。",
+            "description": "updatedAt、createdAt、recordNo、nextFollowUpAt，或当前业务表中可排序的已发布字段键。",
             "in": "query",
             "name": "sort",
             "required": false,
@@ -15636,6 +16519,192 @@
           }
         ],
         "tags": ["automations"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/communication-drafts": {
+      "post": {
+        "operationId": "CommunicationDraftsController_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCommunicationDraftDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunicationDraftResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["communication-drafts"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/communication-drafts/{draftId}": {
+      "get": {
+        "operationId": "CommunicationDraftsController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draftId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunicationDraftResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["communication-drafts"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/communication-drafts/{draftId}/confirm": {
+      "post": {
+        "operationId": "CommunicationDraftsController_confirm",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "objectCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recordId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "draftId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmCommunicationDraftDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommunicationDraftResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["communication-drafts"]
       }
     },
     "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/ownership": {

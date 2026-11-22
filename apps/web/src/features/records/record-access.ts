@@ -65,7 +65,9 @@ export function visibleFields(
 }
 
 /** Only fields visible throughout the queried scope can power query controls. */
-export function queryFields(schema: RuntimeObjectSchema): PublishedFieldView[] {
+export function queryFields(
+  schema: Pick<RuntimeObjectSchema, "fields" | "queryFieldKeys">,
+): PublishedFieldView[] {
   return schema.queryFieldKeys === undefined
     ? schema.fields.filter((field) => field.access !== "HIDDEN")
     : schema.fields.filter((field) =>

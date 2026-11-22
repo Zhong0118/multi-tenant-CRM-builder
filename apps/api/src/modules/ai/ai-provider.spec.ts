@@ -12,6 +12,8 @@ import type { AiProviderEvent } from './ai-provider';
 
 jest.mock('ai', () => ({
   streamText: jest.fn(),
+  generateText: jest.fn(),
+  Output: { object: jest.fn((definition: unknown) => definition) },
   tool: jest.fn((definition: unknown) => definition),
   InvalidToolInputError: {
     isInstance: (error: unknown) =>
@@ -23,7 +25,7 @@ jest.mock('@ai-sdk/openai', () => ({
   createOpenAI: jest.fn(() => (modelKey: string) => ({ modelKey })),
 }));
 
-import { streamText } from 'ai';
+import { generateText, streamText } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 
 const streamInput = {
@@ -226,6 +228,36 @@ describe('createAiProvider factory', () => {
 });
 
 describe('VercelOpenAiProvider mapping', () => {
+  it('requests schema-validated communication output in one cancellable, tool-free call', async () => {
+    const output = { note: '草稿', followUp: null, fieldChanges: [] };
+    const input = {
+      text: '电话已沟通',
+      now: '2026-11-01T13:00:00Z',
+      timeZone: 'Asia/Shanghai',
+      fields: [],
+      recordContext: {},
+    };
+    const signal = new AbortController().signal;
+    (generateText as jest.Mock).mockResolvedValueOnce({ output });
+    const provider = new VercelOpenAiProvider({
+      apiKey: 'test',
+      modelKey: 'test-model',
+    });
+    await expect(
+      provider.generateCommunication(input, signal),
+    ).resolves.toEqual(output);
+    const [options] = jest.mocked(generateText).mock.lastCall ?? [];
+    expect(options).toMatchObject({
+      model: { modelKey: 'test-model' },
+      prompt: JSON.stringify(input),
+      output: { name: 'communication_draft' },
+      abortSignal: signal,
+      maxRetries: 0,
+      providerOptions: { openai: { store: false } },
+    });
+    expect(options).not.toHaveProperty('tools');
+  });
+
   it('resets previous-step narration before streaming the next step without losing final deltas', async () => {
     (streamText as jest.Mock).mockReturnValue({
       fullStream: (async function* () {

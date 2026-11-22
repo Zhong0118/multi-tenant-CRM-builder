@@ -5,8 +5,9 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { expect, it, vi } from "vitest";
 import type {
   RecordSummary,
@@ -20,7 +21,9 @@ vi.mock("@/features/follow-ups/follow-up-panel", () => ({
   FollowUpPanel: () => null,
 }));
 vi.mock("./record-activity-timeline", () => ({
-  RecordActivityTimeline: () => null,
+  RecordActivityTimeline: ({ action }: { action?: ReactNode }) => (
+    <section aria-label="活动历史">{action}</section>
+  ),
 }));
 vi.mock("./record-relations-panel", () => ({
   RecordRelationsPanel: () => null,
@@ -215,6 +218,20 @@ it("waits for contact confirmation and its refresh before opening an editor with
     </QueryClientProvider>,
   );
   try {
+    expect(screen.getByRole("button", { name: "整理本次沟通" })).toHaveClass(
+      "ant-btn-primary",
+    );
+    expect(screen.getByRole("button", { name: /^编\s*辑$/ })).not.toHaveClass(
+      "ant-btn-primary",
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "动态" }));
+    const timeline = await screen.findByRole("region", { name: "活动历史" });
+    expect(
+      within(timeline).getByRole("button", { name: "整理本次沟通" }),
+    ).toHaveClass("ant-btn-primary");
+    expect(
+      screen.getAllByRole("button", { name: "整理本次沟通" }),
+    ).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "确认已联系 客户甲" }));
     fireEvent.click(
       await screen.findByRole("button", { name: "确认建立联系" }),

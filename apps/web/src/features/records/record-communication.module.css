@@ -1,9 +1,8 @@
 .preview {
   width: 100%;
   display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 6px 8px;
+  align-items: center;
+  padding: 1px 4px;
   border: 1px solid transparent;
   border-radius: 8px;
   text-align: left;
@@ -71,7 +70,18 @@
   overflow: hidden;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
-  line-height: 1.5;
+  line-height: 18px;
+  line-clamp: 2;
+}
+.fullPreview {
+  display: grid;
+  gap: 6px;
+}
+.fullText {
+  max-height: min(40vh, 280px);
+  overflow: auto;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 .meta,
 .unavailable {

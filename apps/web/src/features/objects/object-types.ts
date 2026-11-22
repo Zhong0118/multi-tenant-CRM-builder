@@ -10,6 +10,7 @@ export type RecordListSortField = RecordSortField | string;
 export type RecordSortDirection = "asc" | "desc";
 
 export const SYSTEM_RECORD_SORT_FIELDS = [
+  "nextFollowUpAt",
   "updatedAt",
   "createdAt",
   "recordNo",

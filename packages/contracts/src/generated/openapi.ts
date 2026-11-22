@@ -1588,6 +1588,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/filter-preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["FilterPreviewController_preview"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/pool-config": {
     parameters: {
       query?: never;
@@ -1602,6 +1618,38 @@ export interface paths {
     options?: never;
     head?: never;
     patch: operations["RecordPoolController_updateConfig"];
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/record-views": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["RecordViewsController_list"];
+    put?: never;
+    post: operations["RecordViewsController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/record-views/{viewId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["RecordViewsController_get"];
+    put?: never;
+    post?: never;
+    delete: operations["RecordViewsController_archive"];
+    options?: never;
+    head?: never;
+    patch: operations["RecordViewsController_update"];
     trace?: never;
   };
   "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records": {
@@ -1758,6 +1806,54 @@ export interface paths {
     get: operations["AutomationRuntimeController_history"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/communication-drafts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["CommunicationDraftsController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/communication-drafts/{draftId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["CommunicationDraftsController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/workspaces/{tenantCode}/objects/{objectCode}/records/{recordId}/communication-drafts/{draftId}/confirm": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["CommunicationDraftsController_confirm"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2126,6 +2222,9 @@ export interface components {
       /** Format: uuid */
       tenantId: string;
     };
+    ArchiveRecordViewDto: {
+      expectedRevision?: number;
+    };
     AttachmentDto: {
       byteSize: number;
       /** Format: date-time */
@@ -2440,6 +2539,51 @@ export interface components {
       /** @enum {string} */
       status: "DRAFT" | "ACTIVE" | "SUSPENDED" | "CLOSED";
     };
+    CommunicationDraftResponseDto: {
+      errorCode?: string;
+      fieldChanges: components["schemas"]["CommunicationFieldDto"][];
+      followUp?: components["schemas"]["CommunicationFollowUpDto"];
+      /** Format: uuid */
+      id: string;
+      note: string;
+      /** Format: uuid */
+      requestId: string;
+      results: components["schemas"]["CommunicationResultDto"][];
+      /** @enum {string} */
+      status: "PENDING" | "READY" | "FALLBACK";
+      text: string;
+      timeZone: string;
+    };
+    CommunicationFieldDto: {
+      evidence: string;
+      fieldKey: string;
+      label: string;
+      oldValue: (string | number | boolean | string[]) | null;
+      options?: components["schemas"]["CommunicationOptionDto"][];
+      type: string;
+      value: (string | number | boolean | string[]) | null;
+    };
+    CommunicationFollowUpDto: {
+      evidence: string;
+      /** Format: date-time */
+      suggestedDate: string | null;
+      title: string;
+    };
+    CommunicationOptionDto: {
+      key: string;
+      label: string;
+    };
+    CommunicationResultDto: {
+      activity?: components["schemas"]["SavedActivityDto"];
+      /** Format: uuid */
+      auditId?: string | null;
+      errorCode?: string | null;
+      followUp?: components["schemas"]["SavedFollowUpDto"];
+      /** @enum {string} */
+      itemKey: "note" | "followUp" | "fields";
+      /** @enum {string} */
+      status: "EXECUTED" | "FAILED";
+    };
     CompanyAuditChangeDto: {
       after:
         | (
@@ -2515,6 +2659,9 @@ export interface components {
       /** Format: uuid */
       idempotencyKey: string;
     };
+    ConfirmCommunicationDraftDto: {
+      items: components["schemas"]["DraftSelectionDto"][];
+    };
     CorrectFirstAdminPhoneDto: {
       /** @example 13900139000 */
       firstAdminPhone: string;
@@ -2523,6 +2670,11 @@ export interface components {
       code: string;
       description?: string | null;
       name: string;
+    };
+    CreateCommunicationDraftDto: {
+      /** Format: uuid */
+      requestId: string;
+      text: string;
     };
     CreateDashboardDto: {
       /** @enum {string} */
@@ -2647,6 +2799,25 @@ export interface components {
       objectCode: string;
       /** Format: uuid */
       recordId: string;
+    };
+    CreateRecordViewDto: {
+      /** @description null 继承发布视图的列 */
+      columnFieldKeys?: string[] | null;
+      columnWidths?: {
+        [key: string]: number;
+      };
+      /** @description 版本化筛选规则 FilterRule */
+      filterRule?: {
+        [key: string]: unknown;
+      };
+      /** @description 本机个人筛选方案的稳定来源指纹 */
+      importKey?: string;
+      name: string;
+      queryOptions?: components["schemas"]["RecordViewQueryOptionsDto"];
+      /** @enum {string} */
+      scope: "PERSONAL" | "SHARED";
+      /** @description null 继承发布视图的排序 */
+      sort?: components["schemas"]["RecordViewSortDto"] | null;
     };
     CreateWorkTaskDto: {
       /**
@@ -3024,6 +3195,15 @@ export interface components {
       /** @enum {boolean} */
       accepted: true;
     };
+    DraftSelectionDto: {
+      editedValue:
+        | string
+        | {
+            [key: string]: unknown;
+          };
+      /** @enum {string} */
+      itemKey: "note" | "followUp" | "fields";
+    };
     EmployeePermissionsDto: {
       canCreate: boolean;
       /** @enum {boolean} */
@@ -3075,6 +3255,14 @@ export interface components {
       min?: number;
       minLength?: number;
       scale?: number;
+    };
+    FilterPreviewBody: {
+      /** Format: uuid */
+      baseViewId?: string;
+      currentRule: {
+        [key: string]: unknown;
+      };
+      text: string;
     };
     FirstAdminInvitationResponseDto: {
       /** Format: date-time */
@@ -3951,6 +4139,8 @@ export interface components {
       poolCounts?: {
         [key: string]: number;
       };
+      /** @description Tenant timezone used for record date and follow-up boundaries. */
+      timeZone?: string;
       total: number;
     };
     RecordPoolConfigResponseDto: {
@@ -3989,6 +4179,8 @@ export interface components {
       /** @description Latest communication preview (up to 240 characters). Omitted for restricted previews. */
       latestActivity?:
         components["schemas"]["RecordActivityResponseDto"] | null;
+      /** Format: date-time */
+      nextFollowUpAt?: string | null;
       /** Format: uuid */
       ownerMemberId?: string | null;
       /** Format: date-time */
@@ -4021,6 +4213,51 @@ export interface components {
         [key: string]: unknown;
       };
       version: number;
+    };
+    RecordViewListResponseDto: {
+      items: components["schemas"]["RecordViewResponseDto"][];
+    };
+    RecordViewQueryOptionsDto: {
+      ownerMemberId?: string;
+      /** @enum {string} */
+      poolQuality?: "INVALID" | "DUPLICATE" | "LOST";
+      /** @enum {string} */
+      poolStage?:
+        | "LEAD_POOL"
+        | "CUSTOMER_POOL"
+        | "PENDING_CONTACT"
+        | "FOLLOWING"
+        | "PROTECTED"
+        | "LEGACY";
+      /** @enum {string} */
+      scope?: "mine" | "pool" | "group" | "all";
+      search?: string;
+    };
+    RecordViewResponseDto: {
+      available: boolean;
+      canEdit: boolean;
+      code: string;
+      columnFieldKeys?: string[];
+      columnWidths?: {
+        [key: string]: number;
+      };
+      filterRule?: {
+        [key: string]: unknown;
+      };
+      /** Format: uuid */
+      id: string;
+      name: string;
+      queryOptions?: components["schemas"]["RecordViewQueryOptionsDto"];
+      revision: number;
+      /** @enum {string} */
+      scope: "PERSONAL" | "SHARED";
+      sort?: components["schemas"]["RecordViewSortDto"];
+      unavailableReason?: string;
+    };
+    RecordViewSortDto: {
+      /** @enum {string} */
+      direction: "asc" | "desc";
+      field: string;
     };
     RegisterDto: {
       /** @example 123456 */
@@ -4148,6 +4385,11 @@ export interface components {
       expectedVersion: number;
       name: string;
     };
+    SavedActivityDto: {
+      content: string;
+      /** Format: uuid */
+      id: string;
+    };
     SaveDailyReportDto: {
       completed: string;
       nextSteps: string;
@@ -4161,6 +4403,13 @@ export interface components {
         [key: string]: unknown;
       };
       expectedVersion: number;
+    };
+    SavedFollowUpDto: {
+      /** Format: date-time */
+      dueAt: string;
+      /** Format: uuid */
+      id: string;
+      title: string;
     };
     SaveWorkflowDraftDto: {
       expectedDraftRevision: number;
@@ -4795,6 +5044,22 @@ export interface components {
       ownershipTtlHours: number | null;
       protectionRules?: components["schemas"]["PoolProtectionRuleDto"][];
       version: number;
+    };
+    UpdateRecordViewDto: {
+      /** @description null 继承发布视图的列 */
+      columnFieldKeys?: string[] | null;
+      columnWidths?: {
+        [key: string]: number;
+      };
+      expectedRevision: number;
+      /** @description 版本化筛选规则 FilterRule */
+      filterRule?: {
+        [key: string]: unknown;
+      };
+      name?: string;
+      queryOptions?: components["schemas"]["RecordViewQueryOptionsDto"];
+      /** @description null 继承发布视图的排序 */
+      sort?: components["schemas"]["RecordViewSortDto"] | null;
     };
     UpdateWorkTaskDto: {
       /** Format: uuid */
@@ -7820,6 +8085,54 @@ export interface operations {
       };
     };
   };
+  FilterPreviewController_preview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["FilterPreviewBody"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json":
+            | {
+                /** @enum {string} */
+                kind: "rule";
+                rule: {
+                  [key: string]: unknown;
+                };
+              }
+            | {
+                /** @enum {string} */
+                kind: "clarify";
+                options: {
+                  id: string;
+                  label: string;
+                  value: {
+                    [key: string]: unknown;
+                  };
+                }[];
+              }
+            | {
+                /** @enum {string} */
+                kind: "unavailable";
+              };
+        };
+      };
+    };
+  };
   RecordPoolController_getConfig: {
     parameters: {
       query?: never;
@@ -7868,13 +8181,136 @@ export interface operations {
       };
     };
   };
+  RecordViewsController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecordViewListResponseDto"];
+        };
+      };
+    };
+  };
+  RecordViewsController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateRecordViewDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecordViewResponseDto"];
+        };
+      };
+    };
+  };
+  RecordViewsController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        tenantCode: string;
+        viewId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecordViewResponseDto"];
+        };
+      };
+    };
+  };
+  RecordViewsController_archive: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        tenantCode: string;
+        viewId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ArchiveRecordViewDto"];
+      };
+    };
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  RecordViewsController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        tenantCode: string;
+        viewId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateRecordViewDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RecordViewResponseDto"];
+        };
+      };
+    };
+  };
   RecordsController_list: {
     parameters: {
       query?: {
         /** @description Personal visible field keys for this list or export. Hidden fields are ignored. Omit to use the published default list columns. */
         columns?: string[];
         direction?: "asc" | "desc";
-        /** @description 按已发布字段筛选的 JSON 对象，支持选项、日期范围或相对时间、数值区间、是否、成员、文本包含，以及有值/空值。 */
+        /** @description 版本 1 筛选树，支持 all / any 分组及已发布字段。兼容原扁平筛选。 */
         filters?: string;
         limit?: number;
         /** @description 按负责人筛选；管理员可选公司成员，拥有本组查看权限的组长仅可选本组成员。unassigned 表示未指定负责人，仅管理员可选。 */
@@ -7890,8 +8326,9 @@ export interface operations {
           | "LEGACY";
         scope?: "mine" | "pool" | "group" | "all";
         search?: string;
-        /** @description updatedAt、createdAt、recordNo，或当前业务表中可排序的已发布字段键。 */
+        /** @description updatedAt、createdAt、recordNo、nextFollowUpAt，或当前业务表中可排序的已发布字段键。 */
         sort?: string;
+        viewId?: string;
       };
       header?: never;
       path: {
@@ -8293,6 +8730,85 @@ export interface operations {
       };
     };
   };
+  CommunicationDraftsController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        objectCode: string;
+        recordId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateCommunicationDraftDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CommunicationDraftResponseDto"];
+        };
+      };
+    };
+  };
+  CommunicationDraftsController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        draftId: string;
+        objectCode: string;
+        recordId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CommunicationDraftResponseDto"];
+        };
+      };
+    };
+  };
+  CommunicationDraftsController_confirm: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        draftId: string;
+        objectCode: string;
+        recordId: string;
+        tenantCode: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ConfirmCommunicationDraftDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CommunicationDraftResponseDto"];
+        };
+      };
+    };
+  };
   RecordPoolController_changeOwnership: {
     parameters: {
       query?: never;
@@ -8503,7 +9019,7 @@ export interface operations {
         /** @description Personal visible field keys for this list or export. Hidden fields are ignored. Omit to use the published default list columns. */
         columns?: string[];
         direction?: "asc" | "desc";
-        /** @description 按已发布字段筛选的 JSON 对象，支持选项、日期范围或相对时间、数值区间、是否、成员、文本包含，以及有值/空值。 */
+        /** @description 版本 1 筛选树，支持 all / any 分组及已发布字段。兼容原扁平筛选。 */
         filters?: string;
         limit?: number;
         /** @description 按负责人筛选；管理员可选公司成员，拥有本组查看权限的组长仅可选本组成员。unassigned 表示未指定负责人，仅管理员可选。 */
@@ -8519,8 +9035,9 @@ export interface operations {
           | "LEGACY";
         scope?: "mine" | "pool" | "group" | "all";
         search?: string;
-        /** @description updatedAt、createdAt、recordNo，或当前业务表中可排序的已发布字段键。 */
+        /** @description updatedAt、createdAt、recordNo、nextFollowUpAt，或当前业务表中可排序的已发布字段键。 */
         sort?: string;
+        viewId?: string;
       };
       header?: never;
       path: {

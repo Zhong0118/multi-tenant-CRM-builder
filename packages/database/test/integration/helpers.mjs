@@ -42,6 +42,7 @@ export async function resetTestData(admin) {
     admin.auditLog.deleteMany(),
     admin.aiMessage.deleteMany(),
     admin.aiOperation.deleteMany(),
+    admin.aiRecordDraft.deleteMany(),
     admin.aiConversation.deleteMany(),
     admin.recordTransitionHistory.deleteMany(),
     admin.workflowTransitionDefinition.deleteMany(),
@@ -110,6 +111,7 @@ export async function cleanupTestFixtures(
     await admin.aiOperation.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });
+    await admin.aiRecordDraft.deleteMany({ where: { tenantId: { in: tenantIds } } });
     await admin.aiConversation.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });

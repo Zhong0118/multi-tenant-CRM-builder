@@ -29,3 +29,8 @@ it("passes an unlabelled action through instead of inventing a translation", () 
     "object.never_seen_before",
   );
 });
+
+it("labels rejected communication draft items in the company audit", () => {
+  expect(actionLabel("ai.communication_item_failed")).toBe("保存沟通建议失败");
+  expect(resourceLabel("ai_record_draft")).toBe("沟通草稿");
+});

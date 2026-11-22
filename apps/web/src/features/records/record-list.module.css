@@ -194,16 +194,87 @@
   padding-left: 16px;
 }
 
-.table :global(.ant-table-tbody > tr > td) {
-  vertical-align: top;
+.table
+  :global(.ant-table.ant-table-small .ant-table-tbody > tr.ant-table-row > td) {
+  height: 50px;
+  padding-block: 4px;
+  vertical-align: middle;
+}
+
+.boundedCell {
+  max-height: 40px;
+  overflow: hidden;
+  line-height: 18px;
+}
+
+.boundedCell > .emptyValue {
+  display: block;
+  line-height: 20px;
+}
+
+/* Wrapped tags and pool indicators can exceed two lines; keep them reachable. */
+.boundedCell:has(> .tagValues, > :global(.ant-space)) {
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.titleCell,
+.rowActions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.rowActions {
+  justify-content: flex-end;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.directAction:global(.ant-btn) {
+  flex: none;
+  padding-inline: 4px;
+  font-size: 12px;
+}
+
+.titleCell .directAction:global(.ant-btn) {
+  max-width: 0;
+  padding-inline: 0;
+  overflow: hidden;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 140ms ease,
+    max-width 140ms ease,
+    padding 140ms ease;
+}
+
+.table
+  :global(.ant-table-row:is(:hover, :focus-within))
+  .titleCell
+  .directAction:global(.ant-btn) {
+  max-width: 72px;
+  padding-inline: 5px;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .titleCell .directAction:global(.ant-btn) {
+    transition: none;
+  }
 }
 
 .table :global(.ant-table-thead > tr > th) {
-  position: relative;
   color: var(--text-secondary);
   font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
+}
+
+.table :global(.ant-table-thead > tr > th:not(.ant-table-cell-fix)) {
+  position: relative;
 }
 
 .table :global(.ant-table-tbody > tr:not(.ant-table-row-selected):hover > td) {
@@ -585,7 +656,18 @@ th[data-resizing="true"] .columnResizer::after {
     border-radius: var(--radius-panel) var(--radius-panel) 0 0;
   }
 
-  .viewRow,
+  .viewRow {
+    align-items: center;
+    gap: 5px;
+  }
+  .viewRow > .rowStart {
+    flex: 0 1 auto;
+  }
+  .viewRow > .rowEnd {
+    flex: 1;
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
   .conditionRow {
     flex-direction: column;
     align-items: stretch;
@@ -640,6 +722,22 @@ th[data-resizing="true"] .columnResizer::after {
   }
 }
 
+@media (max-width: 575px) {
+  .viewRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .viewRow .desktopOnly:global(.ant-btn) {
+    width: 32px;
+    padding-inline: 0;
+  }
+
+  .viewRow .desktopOnly > span:not(:global(.ant-btn-icon)) {
+    display: none;
+  }
+}
+
 /* The list route's wrapper inside the app shell's scrolling main: a column
    that fills the main area, so a short list still has its footer at the bottom. */
 .workspace {
@@ -655,7 +753,7 @@ th[data-resizing="true"] .columnResizer::after {
 
 /* ---------- cells: reading density and value types ---------- */
 
-/* 紧凑 one line; 舒适 up to three lines; 完整 everything with line breaks.
+/* 紧凑 one line; 舒适 up to two lines; 完整 everything with line breaks.
    Long unbroken strings (URLs, codes) may break anywhere so they never push
    the column wider. */
 .cellText {
@@ -675,8 +773,8 @@ th[data-resizing="true"] .columnResizer::after {
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .cellText[data-density="full"] {
@@ -687,24 +785,13 @@ th[data-resizing="true"] .columnResizer::after {
   white-space: nowrap;
 }
 
-.titleLink {
+.titleCell .titleLink {
   display: block;
-  overflow-wrap: anywhere;
-  font-weight: 500;
-}
-
-.titleLink[data-density="compact"] {
+  min-width: 0;
   overflow: hidden;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.titleLink[data-density="comfortable"] {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
 }
 
 /* A cut-off value is a button: Enter, a click or a tap opens the reader. */
@@ -730,6 +817,10 @@ th[data-resizing="true"] .columnResizer::after {
 .cellButton:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+.boundedCell .cellButton:focus-visible {
+  outline-offset: -2px;
 }
 
 .emptyValue {

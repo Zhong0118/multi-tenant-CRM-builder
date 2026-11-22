@@ -102,13 +102,13 @@ export function followUpLocalDateTime(instant: Date, timeZone: string): string {
   return `${local}${offsetMinutes < 0 ? '-' : '+'}${hours}:${minutes}`;
 }
 
-function localDateAt(now: Date, timeZone: string): string {
+export function localDateAt(now: Date, timeZone: string): string {
   if (!Number.isFinite(now.getTime())) throw new Error('Invalid instant');
   const clock = wallClockAt(now, wallClockFormatter(timeZone));
   return `${clock.year}-${clock.month}-${clock.day}`;
 }
 
-function addCalendarDays(value: string, days: number): string {
+export function addCalendarDays(value: string, days: number): string {
   const [year, month, day] = value.split('-').map(Number);
   const date = new Date(Date.UTC(year, month - 1, day + days));
   return [
@@ -124,9 +124,35 @@ function addCalendarDays(value: string, days: number): string {
  * jump 00:00 → 01:00) the first instant that does exist on that day. Taking the
  * earliest candidate keeps the bucket boundaries monotone and non-overlapping.
  */
-function localMidnightUtc(dateText: string, timeZone: string): Date {
+export function localMidnightUtc(dateText: string, timeZone: string): Date {
+  const date = localClockCandidates(dateText, timeZone, '00:00')[0];
+  if (!date) throw new Error('Unable to resolve tenant midnight');
+  return date;
+}
+
+/** A unique local time. DST gaps and overlaps have no unambiguous instant. */
+export function localTimeUtc(
+  dateText: string,
+  timeZone: string,
+  time: string,
+): Date | undefined {
   const formatter = wallClockFormatter(timeZone);
-  const naiveEpoch = Date.parse(`${dateText}T00:00:00.000Z`);
+  const matches = localClockCandidates(dateText, timeZone, time).filter(
+    (candidate) => {
+      const clock = wallClockAt(candidate, formatter);
+      return clock.hour + ':' + clock.minute === time;
+    },
+  );
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
+function localClockCandidates(
+  dateText: string,
+  timeZone: string,
+  time: string,
+): Date[] {
+  const formatter = wallClockFormatter(timeZone);
+  const naiveEpoch = Date.parse(`${dateText}T${time}:00.000Z`);
   const offsets = new Set<number>();
 
   for (let distance = -48; distance <= 48; distance += 1) {
@@ -147,6 +173,5 @@ function localMidnightUtc(dateText: string, timeZone: string): Date {
     })
     .sort((left, right) => left.getTime() - right.getTime());
 
-  if (!candidates.length) throw new Error('Unable to resolve tenant midnight');
-  return candidates[0];
+  return candidates;
 }

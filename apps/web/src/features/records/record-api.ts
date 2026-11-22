@@ -3,8 +3,6 @@
 import { dataOrThrow } from "@/features/objects/object-api";
 import type {
   RecordPage,
-  RecordSortDirection,
-  RecordListSortField,
   RecordSummary,
 } from "@/features/objects/object-types";
 import { toApiError } from "@/lib/api/api-error";
@@ -12,23 +10,12 @@ import { browserApiOrigin } from "@/lib/api/api-origin";
 import { browserApiClient } from "@/lib/api/browser-client";
 
 import {
-  recordFilterParameter,
-  type RecordFilters,
+  recordRequestParameters,
+  type RecordQuery,
 } from "./record-query-state";
 
-export interface RecordListQuery {
-  poolStage?: import("./record-pool-api").PoolStageFilter;
-  poolQuality?: import("./record-pool-types").PoolQuality;
-  page: number;
-  limit: number;
-  search?: string;
-  ownerMemberId?: string;
-  scope?: "mine" | "pool" | "group" | "all";
-  filters?: RecordFilters;
-  sort?: RecordListSortField;
-  direction?: RecordSortDirection;
-  columns?: string[];
-}
+export type RecordListQuery = Partial<RecordQuery> &
+  Pick<RecordQuery, "page" | "limit"> & { columns?: string[] };
 
 export interface CreateRecordInput {
   values: Record<string, unknown>;
@@ -214,15 +201,11 @@ const IMPORT_PATH = `${RECORDS_PATH}/import` as const;
 
 export const recordApi: RecordApi = {
   async list(tenantCode, objectCode, query) {
-    const { filters, ...rest } = query;
     return dataOrThrow(
       await browserApiClient.GET(RECORDS_PATH, {
         params: {
           path: { tenantCode, objectCode },
-          query: definedEntries({
-            ...rest,
-            filters: filters ? recordFilterParameter(filters) : undefined,
-          }),
+          query: recordRequestParameters(query),
         },
       }),
     );
@@ -303,15 +286,9 @@ export const recordApi: RecordApi = {
     );
   },
   async export(tenantCode, objectCode, query) {
-    const { filters, ...rest } = query;
     const params = new URLSearchParams();
-    const { columns, ...queryRest } = rest;
-    for (const [key, value] of Object.entries(
-      definedEntries({
-        ...queryRest,
-        filters: filters ? recordFilterParameter(filters) : undefined,
-      }),
-    )) {
+    const { columns, ...rest } = recordRequestParameters(query);
+    for (const [key, value] of Object.entries(rest)) {
       if (value === undefined || value === null) continue;
       params.set(key, String(value));
     }

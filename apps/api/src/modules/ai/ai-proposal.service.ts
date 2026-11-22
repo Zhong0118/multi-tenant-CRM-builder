@@ -26,11 +26,16 @@ import {
   RecordValueError,
   validateRecordMutation,
 } from '../records/record-value-engine';
-import type { RecordsRepository } from '../records/records.repository';
+import type {
+  RecordsRepository,
+  RecordsTransaction,
+} from '../records/records.repository';
 import { RECORDS_REPOSITORY } from '../records/records.service';
 import { AiOperationRepository } from './ai-operation.repository';
 import type {
   AiProposalView,
+  AiOperationRow,
+  AiFieldFailureCode,
   StoredAiProposalDisplay,
 } from './ai-operation.types';
 import type { AssistantFinalizeOutcome } from './ai.types';
@@ -40,6 +45,13 @@ import {
 } from './ai-proposal.schema';
 
 type Tx = Prisma.TransactionClient;
+type RequestMeta = { requestId: string; ip?: string };
+type DraftItemKey = 'note' | 'followUp' | 'fields';
+const draftOperations = {
+  note: 'ADD_ACTIVITY_NOTE',
+  followUp: 'CREATE_FOLLOW_UP',
+  fields: 'UPDATE_RECORD',
+} as const;
 
 function requireReadable(resolved: ResolvedObjectSchema): void {
   if (!isReadable(resolved.schema, resolved.access))
@@ -411,180 +423,16 @@ export class AiProposalService {
           if (locked.kind === 'NOT_FOUND')
             throw new ApiException('AI_TURN_NOT_FOUND', 404);
           if (locked.kind !== 'PROPOSED') return locked.view; // Expiration must COMMIT, not throw.
-          await lockActor(tx, context);
-          const row = locked.operation;
-          let candidate: ProposalCandidate;
-          try {
-            candidate = validateProposalCandidate(row.proposalJson);
-          } catch {
-            throw new ApiException('VALIDATION_FAILED', 400);
-          }
-          if (row.operationType !== candidate.operationType)
-            throw new ApiException('VALIDATION_FAILED', 400);
-          // Stabilize publication and effective member override for the whole mutation.
-          await tx.$queryRaw`SELECT id FROM object_definitions WHERE tenant_id=${context.tenantId}::uuid AND code=${candidate.objectCode} FOR UPDATE`;
-          await tx.$queryRaw`SELECT id FROM object_permissions WHERE tenant_id=${context.tenantId}::uuid AND object_id=(SELECT id FROM object_definitions WHERE tenant_id=${context.tenantId}::uuid AND code=${candidate.objectCode}) AND subject_member_id=${context.memberId}::uuid FOR UPDATE`;
-          const resolved = await resolvePublishedObjectInTransaction(
-            tx,
-            context,
-            candidate.objectCode,
-          );
-          requireReadable(resolved);
-          requireUpdatable(
-            resolved,
-            candidate.operationType === 'UPDATE_RECORD',
-          );
-          if (resolved.schema.publication.id !== row.expectedPublicationId)
-            throw new ApiException('RECORD_VERSION_CONFLICT', 409);
-          const ownerMemberId = ownerFor(
-            resolved,
-            context,
-            candidate.operationType === 'UPDATE_RECORD',
-          );
-          const record = await store.lockRecord({
-            objectId: resolved.schema.object.id,
-            recordId: candidate.recordId,
-            ownerMemberId,
-          });
-          if (
-            !record ||
-            !recordOwnerMatches(
-              ownerMemberId ?? undefined,
-              record.ownerMemberId,
-            )
-          )
-            throw new ApiException('RECORD_NOT_FOUND', 404);
-          if (
-            !isGroupPeer(resolved.access, record) &&
-            !recordOwnerMatches(
-              recordOwnerFilter(resolved.access, context.memberId, true),
-              record.ownerMemberId,
-            )
-          )
-            throw new ApiException('RECORD_NOT_FOUND', 404);
-          resolved.access = {
-            ...resolved.access,
-            fields: recordFieldAccess(resolved.access, record),
-          };
-          if (record.version !== row.expectedVersion)
-            throw new ApiException('RECORD_VERSION_CONFLICT', 409);
-          const meta = {
-            ...requestMeta,
-            actionAudit: { aiOperationId: proposalId },
-          };
-          let auditId: string;
-          let result: Prisma.InputJsonObject;
-          try {
-            if (candidate.operationType === 'UPDATE_RECORD') {
-              const executed = await updateRecordCommand({
-                store,
-                resolved,
-                context,
-                recordId: candidate.recordId,
-                input: {
-                  version: row.expectedVersion,
-                  values: candidate.values,
-                },
-                meta,
-              });
-              auditId = executed.auditId;
-              result = {
-                objectCode: candidate.objectCode,
-                recordId: candidate.recordId,
-              };
-            } else if (candidate.operationType === 'ADD_ACTIVITY_NOTE') {
-              const executed = await createRecordActivityCommand({
-                store,
-                resolved,
-                context,
-                recordId: candidate.recordId,
-                input: { activityType: 'NOTE', content: candidate.content },
-                meta,
-                clock: () => new Date(),
-                idGenerator: randomUUID,
-              });
-              auditId = executed.auditId;
-              result = {
-                objectCode: candidate.objectCode,
-                recordId: candidate.recordId,
-                activityId: executed.activity.id,
-              };
-            } else {
-              const validated = validateCreateFollowUpInput(candidate);
-              let generatedAuditId: string | undefined;
-              const item = await createFollowUpCommand(
-                tx,
-                context,
-                { recordId: candidate.recordId, ...validated },
-                meta,
-                {
-                  objectId: resolved.schema.object.id,
-                  recordId: candidate.recordId,
-                  expectedRole: context.role,
-                  requiredOwnerMemberId: ownerMemberId ?? undefined,
-                },
-                {
-                  audit: this.audit,
-                  onAuditId: (id) => {
-                    generatedAuditId = id;
-                  },
-                },
-              );
-              if (!generatedAuditId)
-                throw new ApiException('INTERNAL_ERROR', 500);
-              auditId = generatedAuditId;
-              result = {
-                objectCode: candidate.objectCode,
-                recordId: candidate.recordId,
-                followUpId: item.id,
-              };
-            }
-          } catch (error) {
-            if (
-              candidate.operationType === 'UPDATE_RECORD' &&
-              error instanceof ApiException &&
-              [
-                'FIELD_REQUIRED',
-                'FIELD_INVALID',
-                'FIELD_OPTION_INACTIVE',
-              ].includes(error.code)
-            ) {
-              const keys = Object.keys(error.fieldErrors);
-              if (keys.length === 1) {
-                const key = keys[0];
-                if (
-                  key !== '__proto__' &&
-                  key !== 'constructor' &&
-                  key !== 'prototype' &&
-                  Object.hasOwn(candidate.values, key) &&
-                  resolved.schema.fields.some(
-                    (field) => field.fieldKey === key,
-                  ) &&
-                  Object.hasOwn(resolved.access.fields, key) &&
-                  resolved.access.fields[key] === 'EDIT'
-                )
-                  safeFieldCodes = {
-                    [key]: error.code as
-                      | 'FIELD_REQUIRED'
-                      | 'FIELD_INVALID'
-                      | 'FIELD_OPTION_INACTIVE',
-                  };
-              }
-            }
-            throw error;
-          }
-          await this.operations.markExecuted(
-            tx,
+          return this.executeOperation(
+            { tx, store },
             context,
             proposalId,
-            auditId,
-            result,
+            locked.operation,
+            requestMeta,
+            (codes) => {
+              safeFieldCodes = codes;
+            },
           );
-          return {
-            ...(await this.getAfterReject(tx, context, proposalId)),
-            status: 'EXECUTED',
-            auditId,
-          };
         },
       );
     } catch (error) {
@@ -611,6 +459,320 @@ export class AiProposalService {
       if (!final) throw new ApiException('AI_TURN_NOT_FOUND', 404);
       return final;
     }
+  }
+
+  async executeDraftItem(
+    context: TenantContext,
+    input: {
+      draftId: string;
+      itemKey: DraftItemKey;
+      candidate: unknown;
+      requestText: string;
+    },
+    meta: RequestMeta,
+  ): Promise<AiProposalView> {
+    if (!Object.hasOwn(draftOperations, input.itemKey))
+      throw new ApiException('VALIDATION_FAILED', 400);
+    return this.records.withTenantTransaction(context, async (session) => {
+      const { tx, store } = session;
+      // A draft is the lock for both absent items and their subsequent retries.
+      const [draft] = await tx.$queryRaw<
+        Array<{
+          id: string;
+          recordId: string;
+          objectCode: string;
+          expectedVersion: number;
+          publicationId: string;
+          expiresAt: Date;
+          ready: boolean;
+        }>
+      >`
+        SELECT d.id, d.record_id AS "recordId", o.code AS "objectCode", d.expected_version AS "expectedVersion",
+          d.publication_id AS "publicationId", d.expires_at AS "expiresAt", d.output IS NOT NULL AS ready
+        FROM ai_record_drafts d JOIN object_definitions o ON (o.tenant_id,o.id) = (d.tenant_id,d.object_id)
+        WHERE d.id=${input.draftId}::uuid AND d.tenant_id=${context.tenantId}::uuid
+          AND d.member_id=${context.memberId}::uuid
+        FOR UPDATE OF d`;
+      if (!draft) throw new ApiException('AI_TURN_NOT_FOUND', 404);
+      if (!draft.ready)
+        throw new ApiException('AI_MEMBER_TURN_IN_PROGRESS', 409);
+      const identity = {
+        tenantId: context.tenantId,
+        draftId: draft.id,
+        draftItemKey: input.itemKey,
+      };
+      const existing = await tx.aiOperation.findUnique({
+        where: { tenantId_draftId_draftItemKey: identity },
+      });
+      if (existing?.status === 'EXECUTED')
+        return this.operations.projectInTransaction(tx, context, existing);
+
+      const operationType = draftOperations[input.itemKey];
+      const row =
+        existing ??
+        (await tx.aiOperation.create({
+          data: {
+            ...identity,
+            requestedByMemberId: context.memberId,
+            operationType,
+            expectedVersion: draft.expectedVersion,
+            expectedPublicationId: draft.publicationId,
+            expiresAt: draft.expiresAt,
+            requestText: input.requestText.slice(0, 4000),
+            proposalJson: {},
+            targetRefJson: {
+              objectCode: draft.objectCode,
+              recordId: draft.recordId,
+            },
+            displayChangesJson: {
+              title: {
+                note: '添加备注',
+                followUp: '创建跟进',
+                fields: '修改记录',
+              }[input.itemKey],
+              changes: [],
+              targetSummary: '',
+            },
+          },
+        }));
+      if (!store.withSavepoint) throw new ApiException('INTERNAL_ERROR', 500);
+      try {
+        return await store.withSavepoint(async () => {
+          if (draft.expiresAt.getTime() <= Date.now())
+            throw new ApiException('AI_TURN_NOT_FOUND', 404);
+          let candidate: ProposalCandidate;
+          try {
+            candidate = validateProposalCandidate(input.candidate);
+          } catch {
+            throw new ApiException('VALIDATION_FAILED', 400);
+          }
+          if (
+            candidate.recordId !== draft.recordId ||
+            candidate.objectCode !== draft.objectCode ||
+            candidate.operationType !== operationType
+          )
+            throw new ApiException('VALIDATION_FAILED', 400);
+          const saved = await tx.aiOperation.update({
+            where: { id: row.id },
+            data: {
+              status: 'PROPOSED',
+              failureCode: null,
+              auditId: null,
+              proposalJson: candidate,
+            },
+          });
+          return this.executeOperation(session, context, row.id, saved, meta);
+        });
+      } catch (error) {
+        // The savepoint rolled back any business writes and success audit. The
+        // failed attempt commits under the same item lock with a safe reason.
+        const code =
+          error instanceof ApiException && error.getStatus() < 500
+            ? error.code
+            : 'INTERNAL_ERROR';
+        const status =
+          draft.expiresAt.getTime() <= Date.now()
+            ? 'EXPIRED'
+            : error instanceof ApiException &&
+                [403, 404, 409].includes(error.getStatus())
+              ? 'CONFLICTED'
+              : 'FAILED';
+        const auditId = await this.audit.appendReturningId(tx, {
+          tenantId: context.tenantId,
+          actorType: 'USER',
+          actorId: context.userId,
+          action: 'ai.communication_item_failed',
+          resourceType: 'ai_record_draft',
+          resourceId: draft.id,
+          reason: input.itemKey,
+          after: { code },
+          ...meta,
+        });
+        const failed = await tx.aiOperation.update({
+          where: { id: row.id },
+          data: {
+            status,
+            failureCode: code,
+            auditId,
+            confirmedByMemberId: context.memberId,
+            confirmedAt: new Date(),
+          },
+        });
+        return this.operations.projectInTransaction(tx, context, failed);
+      }
+    });
+  }
+
+  private async executeOperation(
+    { tx, store }: RecordsTransaction,
+    context: TenantContext,
+    proposalId: string,
+    row: AiOperationRow,
+    requestMeta: RequestMeta,
+    onFieldError?: (codes: Record<string, AiFieldFailureCode>) => void,
+  ): Promise<AiProposalView> {
+    await lockActor(tx, context);
+    let candidate: ProposalCandidate;
+    try {
+      candidate = validateProposalCandidate(row.proposalJson);
+    } catch {
+      throw new ApiException('VALIDATION_FAILED', 400);
+    }
+    if (row.operationType !== candidate.operationType)
+      throw new ApiException('VALIDATION_FAILED', 400);
+    // Stabilize publication and effective member override for the whole mutation.
+    await tx.$queryRaw`SELECT id FROM object_definitions WHERE tenant_id=${context.tenantId}::uuid AND code=${candidate.objectCode} FOR UPDATE`;
+    await tx.$queryRaw`SELECT id FROM object_permissions WHERE tenant_id=${context.tenantId}::uuid AND object_id=(SELECT id FROM object_definitions WHERE tenant_id=${context.tenantId}::uuid AND code=${candidate.objectCode}) AND subject_member_id=${context.memberId}::uuid FOR UPDATE`;
+    const resolved = await resolvePublishedObjectInTransaction(
+      tx,
+      context,
+      candidate.objectCode,
+    );
+    requireReadable(resolved);
+    requireUpdatable(resolved, candidate.operationType === 'UPDATE_RECORD');
+    if (resolved.schema.publication.id !== row.expectedPublicationId)
+      throw new ApiException('RECORD_VERSION_CONFLICT', 409);
+    const ownerMemberId = ownerFor(
+      resolved,
+      context,
+      candidate.operationType === 'UPDATE_RECORD',
+    );
+    const record = await store.lockRecord({
+      objectId: resolved.schema.object.id,
+      recordId: candidate.recordId,
+      ownerMemberId,
+    });
+    if (
+      !record ||
+      !recordOwnerMatches(ownerMemberId ?? undefined, record.ownerMemberId)
+    )
+      throw new ApiException('RECORD_NOT_FOUND', 404);
+    if (
+      !isGroupPeer(resolved.access, record) &&
+      !recordOwnerMatches(
+        recordOwnerFilter(resolved.access, context.memberId, true),
+        record.ownerMemberId,
+      )
+    )
+      throw new ApiException('RECORD_NOT_FOUND', 404);
+    resolved.access = {
+      ...resolved.access,
+      fields: recordFieldAccess(resolved.access, record),
+    };
+    if (row.draftId && row.expiresAt.getTime() <= Date.now())
+      throw new ApiException('AI_TURN_NOT_FOUND', 404);
+    if (record.version !== row.expectedVersion)
+      throw new ApiException('RECORD_VERSION_CONFLICT', 409);
+    const meta = {
+      ...requestMeta,
+      actionAudit: { aiOperationId: proposalId },
+    };
+    let auditId: string;
+    let result: Prisma.InputJsonObject;
+    try {
+      if (candidate.operationType === 'UPDATE_RECORD') {
+        const executed = await updateRecordCommand({
+          store,
+          resolved,
+          context,
+          recordId: candidate.recordId,
+          input: {
+            version: row.expectedVersion,
+            values: candidate.values,
+          },
+          meta,
+        });
+        auditId = executed.auditId;
+        result = {
+          objectCode: candidate.objectCode,
+          recordId: candidate.recordId,
+        };
+      } else if (candidate.operationType === 'ADD_ACTIVITY_NOTE') {
+        const executed = await createRecordActivityCommand({
+          store,
+          resolved,
+          context,
+          recordId: candidate.recordId,
+          input: { activityType: 'NOTE', content: candidate.content },
+          meta,
+          clock: () => new Date(),
+          idGenerator: randomUUID,
+        });
+        auditId = executed.auditId;
+        result = {
+          objectCode: candidate.objectCode,
+          recordId: candidate.recordId,
+          activityId: executed.activity.id,
+        };
+      } else {
+        const validated = validateCreateFollowUpInput(candidate);
+        let generatedAuditId: string | undefined;
+        const item = await createFollowUpCommand(
+          tx,
+          context,
+          { recordId: candidate.recordId, ...validated },
+          meta,
+          {
+            objectId: resolved.schema.object.id,
+            recordId: candidate.recordId,
+            expectedRole: context.role,
+            requiredOwnerMemberId: ownerMemberId ?? undefined,
+          },
+          {
+            audit: this.audit,
+            onAuditId: (id) => {
+              generatedAuditId = id;
+            },
+          },
+        );
+        if (!generatedAuditId) throw new ApiException('INTERNAL_ERROR', 500);
+        auditId = generatedAuditId;
+        result = {
+          objectCode: candidate.objectCode,
+          recordId: candidate.recordId,
+          followUpId: item.id,
+        };
+      }
+    } catch (error) {
+      if (
+        candidate.operationType === 'UPDATE_RECORD' &&
+        error instanceof ApiException &&
+        ['FIELD_REQUIRED', 'FIELD_INVALID', 'FIELD_OPTION_INACTIVE'].includes(
+          error.code,
+        )
+      ) {
+        const keys = Object.keys(error.fieldErrors);
+        if (keys.length === 1) {
+          const key = keys[0];
+          if (
+            key !== '__proto__' &&
+            key !== 'constructor' &&
+            key !== 'prototype' &&
+            Object.hasOwn(candidate.values, key) &&
+            resolved.schema.fields.some((field) => field.fieldKey === key) &&
+            Object.hasOwn(resolved.access.fields, key) &&
+            resolved.access.fields[key] === 'EDIT'
+          )
+            onFieldError?.({
+              [key]: error.code as
+                'FIELD_REQUIRED' | 'FIELD_INVALID' | 'FIELD_OPTION_INACTIVE',
+            });
+        }
+      }
+      throw error;
+    }
+    await this.operations.markExecuted(
+      tx,
+      context,
+      proposalId,
+      auditId,
+      result,
+    );
+    return {
+      ...(await this.getAfterReject(tx, context, proposalId)),
+      status: 'EXECUTED',
+      auditId,
+    };
   }
 
   private async conversationForTurn(

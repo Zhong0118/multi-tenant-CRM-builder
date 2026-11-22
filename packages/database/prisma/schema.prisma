@@ -90,6 +90,12 @@ enum ViewType {
   TABLE
 }
 
+enum ViewScope {
+  DEFAULT
+  PERSONAL
+  SHARED
+}
+
 enum ViewStatus {
   ACTIVE
   INACTIVE
@@ -202,6 +208,7 @@ model User {
 model Tenant {
   memberGroups MemberGroup[]
   workGoalRules WorkGoalRule[]
+  recordDrafts AiRecordDraft[]
   automationExecutions RecordAutomationExecution[]
   notifications MemberNotification[]
   memberFieldPermissions MemberFieldPermission[]
@@ -300,6 +307,7 @@ model TenantMember {
   group MemberGroup? @relation("GroupMembers", fields: [tenantId, groupId], references: [tenantId, id], onDelete: Restrict)
   ledGroups MemberGroup[] @relation("GroupLeader")
   workGoalRecipients WorkGoalRecipient[]
+  recordDrafts AiRecordDraft[]
   automationExecutions RecordAutomationExecution[]
   notifications MemberNotification[]
   memberFieldPermissions MemberFieldPermission[]
@@ -315,6 +323,7 @@ model TenantMember {
   updatedAt                 DateTime                     @updatedAt @map("updated_at") @db.Timestamptz(3)
   tenant                    Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   user                      User                         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  personalViews             ViewDefinition[]
   ownedRecords              Record[]                     @relation("RecordOwner")
   createdRecords            Record[]                     @relation("RecordCreator")
   recordActivities          RecordActivity[]             @relation("RecordActivityActor")
@@ -416,6 +425,7 @@ model Session {
 }
 
 model ObjectDefinition {
+  recordDrafts AiRecordDraft[]
   notifications MemberNotification[]
   memberFieldPermissions MemberFieldPermission[]
   poolLifecycleEnabled Boolean @default(false) @map("pool_lifecycle_enabled")
@@ -554,6 +564,7 @@ model FieldDefinition {
 }
 
 model ObjectPublication {
+  recordDrafts AiRecordDraft[]
   automationExecutions RecordAutomationExecution[]
   id                  String                    @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId            String                    @map("tenant_id") @db.Uuid
@@ -573,6 +584,7 @@ model ObjectPublication {
   @@unique([tenantId, objectId, publicationNo])
   @@unique([tenantId, id])
   @@index([tenantId, objectId, publishedAt(sort: Desc)])
+  @@unique([tenantId, objectId, id], map: "object_publications_tenant_object_id_key")
   @@map("object_publications")
 }
 
@@ -582,14 +594,21 @@ model ViewDefinition {
   objectId        String           @map("object_id") @db.Uuid
   code            String           @db.VarChar(64)
   name            String           @db.VarChar(100)
+  scope           ViewScope        @default(DEFAULT)
+  ownerMemberId   String?          @map("owner_member_id") @db.Uuid
   type            ViewType         @default(TABLE)
   columnFieldKeys Json             @map("column_field_keys") @db.JsonB
   sort            Json             @db.JsonB
+  filterRule      Json             @default("{\"version\":1,\"match\":\"all\",\"conditions\":[]}") @map("filter_rule") @db.JsonB
+  columnWidths    Json             @default("{}") @map("column_widths") @db.JsonB
+  queryOptions    Json             @default("{}") @map("query_options") @db.JsonB
+  revision        Int              @default(1)
   status          ViewStatus       @default(ACTIVE)
   createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
   tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   object          ObjectDefinition @relation(fields: [tenantId, objectId], references: [tenantId, id], onDelete: Restrict)
+  owner           TenantMember?    @relation(fields: [tenantId, ownerMemberId], references: [tenantId, id], onDelete: Restrict)
 
   @@unique([tenantId, objectId, code])
   @@index([tenantId, objectId, status])
@@ -652,6 +671,7 @@ model RecordCounter {
 }
 
 model Record {
+  recordDrafts AiRecordDraft[]
   sourceAutomations RecordAutomationExecution[] @relation("AutomationSource")
   targetAutomations RecordAutomationExecution[] @relation("AutomationTarget")
   notifications MemberNotification[]
@@ -921,13 +941,42 @@ model AiConversation {
   @@map("ai_conversations")
 }
 
+model AiRecordDraft {
+  id              String            @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
+  tenantId        String            @map("tenant_id") @db.Uuid
+  memberId        String            @map("member_id") @db.Uuid
+  objectId        String            @map("object_id") @db.Uuid
+  recordId        String            @map("record_id") @db.Uuid
+  publicationId   String            @map("publication_id") @db.Uuid
+  expectedVersion Int               @map("expected_version")
+  requestId       String            @map("request_id") @db.Uuid
+  text            String            @db.Text
+  output          Json?             @db.JsonB
+  expiresAt       DateTime          @map("expires_at") @db.Timestamptz(3)
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+  tenant          Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  member          TenantMember      @relation(fields: [tenantId, memberId], references: [tenantId, id], onDelete: Restrict)
+  object          ObjectDefinition  @relation(fields: [tenantId, objectId], references: [tenantId, id], onDelete: Restrict)
+  record          Record            @relation(fields: [tenantId, objectId, recordId], references: [tenantId, objectId, id], onDelete: Restrict)
+  publication     ObjectPublication @relation(fields: [tenantId, objectId, publicationId], references: [tenantId, objectId, id], onDelete: Restrict)
+  operations      AiOperation[]
+
+  @@unique([tenantId, id, memberId])
+  @@unique([tenantId, memberId, recordId, requestId], map: "ai_record_drafts_owner_request_key")
+  @@map("ai_record_drafts")
+}
+
 model AiOperation {
   id                     String            @id @default(dbgenerated("crm_uuid_v7()")) @db.Uuid
   tenantId               String            @map("tenant_id") @db.Uuid
-  conversationId         String            @map("conversation_id") @db.Uuid
-  turnId                 String            @map("turn_id") @db.Uuid
+  conversationId         String?           @map("conversation_id") @db.Uuid
+  turnId                 String?           @map("turn_id") @db.Uuid
   requestedByMemberId    String            @map("requested_by_member_id") @db.Uuid
   confirmedByMemberId    String?           @map("confirmed_by_member_id") @db.Uuid
+  draftId                String?           @map("draft_id") @db.Uuid
+  draftItemKey           String?           @map("draft_item_key") @db.VarChar(16)
+  draft                  AiRecordDraft?    @relation(fields: [tenantId, draftId, requestedByMemberId], references: [tenantId, id, memberId], onDelete: Restrict)
   operationType          AiOperationType   @map("operation_type")
   status                 AiOperationStatus @default(PROPOSED)
   requestText            String            @map("request_text") @db.Text
@@ -946,7 +995,7 @@ model AiOperation {
   executedAt             DateTime?         @map("executed_at") @db.Timestamptz(3)
 
   tenant                 Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  conversation           AiConversation    @relation(fields: [tenantId, conversationId], references: [tenantId, id], onDelete: Restrict)
+  conversation           AiConversation?   @relation(fields: [tenantId, conversationId], references: [tenantId, id], onDelete: Restrict)
   requester              TenantMember      @relation("AiOperationRequester", fields: [tenantId, requestedByMemberId], references: [tenantId, id], onDelete: Restrict)
   confirmer              TenantMember?     @relation("AiOperationConfirmer", fields: [tenantId, confirmedByMemberId], references: [tenantId, id], onDelete: Restrict)
 
@@ -954,6 +1003,7 @@ model AiOperation {
   @@unique([tenantId, conversationId, turnId])
   @@index([tenantId, requestedByMemberId, conversationId, createdAt(sort: Desc)])
   @@index([tenantId, status, expiresAt])
+  @@unique([tenantId, draftId, draftItemKey])
   @@map("ai_operations")
 }
 

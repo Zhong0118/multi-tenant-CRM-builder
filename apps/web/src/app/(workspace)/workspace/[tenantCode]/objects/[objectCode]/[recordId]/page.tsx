@@ -61,20 +61,22 @@ export default async function RecordDetailPage({
       loadRecord(tenantCode, objectCode, recordId),
     ]);
 
-    return (
-      <RecordWorkspace
-        currentMemberId={workspace.memberId}
-        tenantCode={tenantCode}
-        schema={schema}
-        query={query}
-        initialPage={initialPage}
-        members={members}
-        isAdmin={isAdmin}
-        openRecord={record}
-        initialEditing={initialEditing}
-        followUpId={followUpId}
-        returnTo={validatedReturnTo(tenantCode, rawSearchParams.returnTo)}
-      />
-    );
-  });
+      return (
+        <RecordWorkspace
+          currentMemberId={workspace.memberId}
+          tenantCode={tenantCode}
+          schema={schema}
+          query={query}
+          initialPage={initialPage}
+          members={members}
+          isAdmin={isAdmin}
+          openRecord={record}
+          initialEditing={initialEditing}
+          followUpId={followUpId}
+          returnTo={validatedReturnTo(tenantCode, rawSearchParams.returnTo)}
+        />
+      );
+    },
+    objectCode,
+  );
 }

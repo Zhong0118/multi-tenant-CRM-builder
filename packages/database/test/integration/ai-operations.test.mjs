@@ -173,3 +173,38 @@ test("one operation per turn regardless of terminal status", async () => {
   await admin.aiOperation.update({ where: { id: row.id }, data: { status: "EXPIRED" } });
   await assert.rejects(() => propose());
 });
+
+test("record drafts bind one member, object, publication and item, protecting successful operations", async () => {
+  const { users, tenantA, memberA, memberOther, tenantB, conversation, turnId } = fixture;
+  await admin.tenant.update({ where: { id: tenantA.id }, data: { status: "ACTIVE" } });
+  const objects = await Promise.all(["draft_customers", "draft_other"].map(code =>
+    admin.objectDefinition.create({ data: { tenantId: tenantA.id, code, name: code, titleFieldKey: "title" } })));
+  const publications = await Promise.all(objects.map(object => admin.objectPublication.create({ data: {
+    tenantId: tenantA.id, objectId: object.id, publicationNo: 1, sourceDraftVersion: 1, configuration: {},
+    changeSummary: {}, publishedByMemberId: memberA.id,
+  } })));
+  const record = await admin.record.create({ data: {
+    tenantId: tenantA.id, objectId: objects[0].id, recordNo: 1, title: "Draft", ownerMemberId: memberA.id,
+  } });
+  const approved = { tenantId: tenantA.id, objectId: objects[0].id, recordId: record.id, memberId: memberA.id,
+    publicationId: publications[0].id, expectedVersion: 1, requestId: randomUUID(), text: "跟进",
+    expiresAt: new Date(Date.now() + 900000) };
+  const own = work => withSettings(runtime, settings(users[0], tenantA), work);
+  const draft = await own(tx => tx.aiRecordDraft.create({ data: approved }));
+  await assert.rejects(() => own(tx => tx.aiRecordDraft.create({ data: approved })), { code: "P2002" });
+  await assert.rejects(() => admin.aiRecordDraft.create({ data: { ...approved, requestId: randomUUID(), publicationId: publications[1].id } }), { code: "P2003" });
+  await assert.rejects(() => own(tx => tx.aiRecordDraft.update({ where: { id: draft.id }, data: { expectedVersion: 99 } })));
+  const op = { tenantId: tenantA.id, requestedByMemberId: memberA.id, draftId: draft.id, draftItemKey: "note",
+    operationType: "ADD_ACTIVITY_NOTE", requestText: "note", proposalJson: {}, targetRefJson: {}, displayChangesJson: {},
+    expiresAt: approved.expiresAt, expectedVersion: 1, expectedPublicationId: approved.publicationId };
+  const first = await own(tx => tx.aiOperation.create({ data: op }));
+  await assert.rejects(() => own(tx => tx.aiOperation.create({ data: op })), { code: "P2002" });
+  await assert.rejects(() => admin.aiOperation.create({ data: { ...op, draftItemKey: "fields", conversationId: conversation.id, turnId } }));
+  await assert.rejects(() => admin.aiOperation.create({ data: { ...op, draftItemKey: "fields", requestedByMemberId: memberOther.id } }));
+  for (const denied of [settings(users[1], tenantA), settings(users[2], tenantB), settings(users[0], tenantB)]) {
+    assert.deepEqual(await withSettings(runtime, denied, tx => tx.aiRecordDraft.findMany({ where: { id: draft.id } })), []);
+    assert.deepEqual(await withSettings(runtime, denied, tx => tx.aiOperation.findMany({ where: { id: first.id } })), []);
+  }
+  await own(tx => tx.aiOperation.update({ where: { id: first.id }, data: { status: "EXECUTED", auditId: randomUUID() } }));
+  await assert.rejects(() => own(tx => tx.aiOperation.update({ where: { id: first.id }, data: { status: "PROPOSED" } })));
+});

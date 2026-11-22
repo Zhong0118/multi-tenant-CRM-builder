@@ -184,3 +184,116 @@ it.each([403, 404])(
     ).rejects.toThrow("NEXT_HTTP_ERROR_FALLBACK;404");
   },
 );
+
+describe("server record view access", () => {
+  const base = {
+    page: 2,
+    limit: 20,
+    filters: {},
+    sort: "recordNo",
+    direction: "asc" as const,
+  };
+  const viewId = "f5000000-0000-4000-8000-000000000001";
+  it("sends only saved identity and pagination to the records endpoint", async () => {
+    mocks.get
+      .mockReset()
+      .mockResolvedValue(ok({ items: [], total: 0, page: 2, limit: 20 }));
+    await loadRecordPage("northwind", "customers", {
+      ...base,
+      viewId,
+      search: "stale",
+    });
+    expect(mocks.get.mock.lastCall?.[1].params.query).toEqual({
+      page: 2,
+      limit: 20,
+      viewId,
+    });
+  });
+  it.each([
+    ["RECORD_NOT_FOUND", 404],
+    ["RECORD_FILTER_INVALID", 400],
+  ] as const)(
+    "uses a safe recoverable view state on %s",
+    async (code, status) => {
+      mocks.get.mockReset().mockResolvedValue({
+        error: { code, status, message: "private field", requestId: "r" },
+        response: new Response(null, { status }),
+      });
+      await expect(
+        loadRecordPage("northwind", "customers", { ...base, viewId }),
+      ).rejects.toMatchObject({ message: "该视图条件不可用" });
+      expect(mocks.get).toHaveBeenCalledTimes(1);
+    },
+  );
+  it("shows an object-level permission state when access to the table is revoked", async () => {
+    mocks.get.mockReset().mockResolvedValue({
+      error: {
+        code: "OBJECT_ACTION_FORBIDDEN",
+        status: 403,
+        message: "无权读取",
+        requestId: "r",
+      },
+      response: new Response(null, { status: 403 }),
+    });
+    await expect(
+      loadRuntimeObject("northwind", "customers", "EMPLOYEE"),
+    ).rejects.toMatchObject({ message: "访问受限" });
+  });
+});
+
+it("does not request preview rows after a source view has been revoked", async () => {
+  mocks.get.mockReset().mockResolvedValueOnce(ok({ available: false }));
+  await expect(
+    loadRecordPage("northwind", "customers", {
+      page: 1,
+      limit: 20,
+      sort: "recordNo",
+      direction: "asc",
+      filters: {},
+      baseViewId: "private-id",
+      filterRule: { version: 1, match: "all", conditions: [] },
+    }),
+  ).rejects.toThrow("该视图条件不可用");
+  expect(mocks.get).toHaveBeenCalledTimes(1);
+  expect(mocks.get.mock.calls[0][0]).toMatch(/record-views/);
+});
+
+it("resolves an untouched table through its permission-projected default view before loading rows", async () => {
+  const { resolveInitialRecordQuery } = await import("./load-runtime-object");
+  mocks.get.mockReset().mockResolvedValueOnce(
+    ok({
+      items: [
+        { code: "all", id: "team-view", available: false },
+        {
+          code: "my_records",
+          id: "my-view",
+          name: "我负责的",
+          available: true,
+        },
+      ],
+    }),
+  );
+  const query = {
+    page: 1,
+    limit: 20,
+    sort: "updatedAt",
+    direction: "desc" as const,
+    filters: {},
+  };
+  const schema = {
+    scopes: { read: "ALL" },
+    defaultView: { sort: { field: "updatedAt", direction: "desc" } },
+  } as unknown as import("@/features/objects/object-types").RuntimeObjectSchema;
+  await expect(
+    resolveInitialRecordQuery("northwind", "customers", query, schema),
+  ).rejects.toMatchObject({
+    message: "该视图条件不可用",
+    fallback: { id: "my-view", name: "我负责的" },
+  });
+  mocks.get.mockResolvedValueOnce(
+    ok({ items: [{ code: "all", id: "team-view", available: true }] }),
+  );
+  await expect(
+    resolveInitialRecordQuery("northwind", "customers", query, schema),
+  ).resolves.toEqual({ ...query, viewId: "team-view" });
+});

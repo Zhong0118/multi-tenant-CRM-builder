@@ -18,6 +18,10 @@ const forbiddenFieldKeys = new Set([
   'includeHidden',
   'bypassPermission',
 ]);
+export function allowsProposalFieldKey(key: string) {
+  return !forbiddenFieldKeys.has(key);
+}
+
 const scalar = z.union([
   z.string().max(10_000),
   z.number().finite(),
@@ -35,7 +39,7 @@ export const candidateSchema = z.discriminatedUnion('operationType', [
         (values) =>
           Object.keys(values).length > 0 &&
           Object.keys(values).length <= 50 &&
-          Object.keys(values).every((key) => !forbiddenFieldKeys.has(key)),
+          Object.keys(values).every(allowsProposalFieldKey),
       ),
   }),
   z.strictObject({

@@ -11,6 +11,17 @@ import {
 import { createSearchRecordsTool } from './search-records.tool';
 
 describe('search_records', () => {
+  it('describes the v1 rule and accepts a view UUID without an actor override', () => {
+    const tool = createSearchRecordsTool({} as RecordsService, employee);
+    expect(tool.description).toContain('dueThroughToday');
+    expect(
+      tool.inputSchema.safeParse({
+        objectCode: 'leads',
+        viewId: '10000000-0000-4000-8000-000000000009',
+      }).success,
+    ).toBe(true);
+  });
+
   it('requires objectCode and rejects actor-override and owner keys', () => {
     const tool = createSearchRecordsTool({} as RecordsService, employee);
     expect(tool.inputSchema.safeParse({ objectCode: 'leads' }).success).toBe(

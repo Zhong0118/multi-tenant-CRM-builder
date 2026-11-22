@@ -5,6 +5,7 @@ import { Button, Tag } from "antd";
 import { useEffect, useState } from "react";
 import type { AiProposalView } from "./ai-types";
 import styles from "./ai-assistant.module.css";
+import { ProposalReviewCard } from "./proposal-review-card";
 
 const statusLabels: Record<AiProposalView["status"], string> = {
   PROPOSED: "待确认",
@@ -128,33 +129,55 @@ export function AiProposalCard({
       {proposal.operation === "UPDATE_RECORD" ? (
         <p className={styles.proposalTarget}>{proposal.targetSummary}</p>
       ) : null}
-      {proposal.changes.length > 0 || proposal.operation !== "UPDATE_RECORD" ? (
-        <dl className={styles.proposalChanges}>
-          {proposal.operation !== "UPDATE_RECORD" ? (
-            <div>
-              <dt>关联 Record</dt>
-              <dd>{proposal.targetSummary}</dd>
-            </div>
-          ) : null}
-          {proposal.changes.map((change) => (
-            <div key={change.label}>
-              <dt>{change.label}</dt>
-              <dd>
-                {change.before !== undefined
-                  ? `${change.before || "—"} → `
-                  : ""}
-                {change.after ?? "—"}
-              </dd>
-            </div>
-          ))}
-          {proposal.operation === "CREATE_FOLLOW_UP" ? (
-            <div>
-              <dt>负责人</dt>
-              <dd>当前执行人</dd>
-            </div>
-          ) : null}
-        </dl>
-      ) : null}
+      <ProposalReviewCard
+        items={[
+          {
+            key: proposal.proposalId,
+            label: proposal.title,
+            render: () =>
+              proposal.changes.length > 0 ||
+              proposal.operation !== "UPDATE_RECORD" ? (
+                <dl className={styles.proposalChanges}>
+                  {proposal.operation !== "UPDATE_RECORD" ? (
+                    <div>
+                      <dt>关联 Record</dt>
+                      <dd>{proposal.targetSummary}</dd>
+                    </div>
+                  ) : null}
+                  {proposal.changes.map((change) => (
+                    <div key={change.label}>
+                      <dt>{change.label}</dt>
+                      <dd>
+                        {change.before !== undefined
+                          ? `${change.before || "—"} → `
+                          : ""}
+                        {change.after ?? "—"}
+                      </dd>
+                    </div>
+                  ))}
+                  {proposal.operation === "CREATE_FOLLOW_UP" ? (
+                    <div>
+                      <dt>负责人</dt>
+                      <dd>当前执行人</dd>
+                    </div>
+                  ) : null}
+                </dl>
+              ) : null,
+          },
+        ]}
+        selectedKeys={[proposal.proposalId]}
+        itemResults={{}}
+        busy={busy}
+        confirmLabel="确认执行"
+        onConfirm={actionable ? () => void onConfirm?.() : undefined}
+        extraActions={
+          actionable ? (
+            <Button disabled={busy} onClick={() => void onReject?.()}>
+              拒绝
+            </Button>
+          ) : undefined
+        }
+      />
       {proposal.validationWarnings.map((warning) => (
         <p role="status" className={styles.proposalWarning} key={warning}>
           {warning}
@@ -169,20 +192,6 @@ export function AiProposalCard({
             </div>
           ))}
         </dl>
-      ) : null}
-      {actionable ? (
-        <div className={styles.proposalActions} aria-label="提案操作">
-          <Button
-            type="primary"
-            disabled={busy}
-            onClick={() => void onConfirm?.()}
-          >
-            确认执行
-          </Button>
-          <Button disabled={busy} onClick={() => void onReject?.()}>
-            拒绝
-          </Button>
-        </div>
       ) : null}
       {expired && proposal.status === "PROPOSED" ? (
         <p role="status" className={styles.proposalStatus}>

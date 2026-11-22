@@ -28,6 +28,11 @@ import {
 } from 'class-validator';
 
 export class RecordListQueryDto {
+  @ApiPropertyOptional({ type: String, format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  viewId?: string;
+
   @ApiPropertyOptional({ enum: [...POOL_STAGES, 'LEGACY'] })
   @IsOptional()
   @IsIn([...POOL_STAGES, 'LEGACY'])
@@ -78,7 +83,7 @@ export class RecordListQueryDto {
   @ApiPropertyOptional({
     maxLength: 4000,
     description:
-      '按已发布字段筛选的 JSON 对象，支持选项、日期范围或相对时间、数值区间、是否、成员、文本包含，以及有值/空值。',
+      '版本 1 筛选树，支持 all / any 分组及已发布字段。兼容原扁平筛选。',
     example: '{"lead_status":["new","following"]}',
   })
   @IsOptional()
@@ -90,7 +95,7 @@ export class RecordListQueryDto {
     type: String,
     default: 'updatedAt',
     description:
-      'updatedAt、createdAt、recordNo，或当前业务表中可排序的已发布字段键。',
+      'updatedAt、createdAt、recordNo、nextFollowUpAt，或当前业务表中可排序的已发布字段键。',
   })
   @IsOptional()
   @IsString()
@@ -199,6 +204,8 @@ export class RecordResponseDto {
   })
   fieldAccess?: Record<string, 'EDIT' | 'CREATE_ONLY' | 'READ_ONLY' | 'HIDDEN'>;
   @ApiPropertyOptional() canEditFields?: boolean;
+  @ApiPropertyOptional({ type: String, format: 'date-time', nullable: true })
+  nextFollowUpAt?: string | null;
   @ApiPropertyOptional({ enum: POOL_STAGES, nullable: true })
   poolStage?: PoolStage | null;
   @ApiPropertyOptional({ enum: ['LEAD_POOL', 'CUSTOMER_POOL'], nullable: true })
@@ -232,6 +239,12 @@ export class RecordResponseDto {
 }
 
 export class RecordPageResponseDto {
+  @ApiPropertyOptional({
+    type: String,
+    description:
+      'Tenant timezone used for record date and follow-up boundaries.',
+  })
+  timeZone?: string;
   @ApiPropertyOptional({
     type: 'object',
     additionalProperties: { type: 'integer' },

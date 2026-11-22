@@ -339,7 +339,7 @@ class PrismaObjectsStore implements ObjectsStore {
           orderBy: [{ sortOrder: 'asc' }, { fieldKey: 'asc' }],
         },
         views: {
-          where: { code: 'default', status: 'ACTIVE' },
+          where: { scope: 'DEFAULT', code: 'default', status: 'ACTIVE' },
           take: 1,
         },
         permissions: {
@@ -567,6 +567,7 @@ class PrismaObjectsStore implements ObjectsStore {
           tenantId: this.context.tenantId,
           objectId: draft.object.id,
           code: 'default',
+          scope: 'DEFAULT',
           name: draft.defaultView.name,
           columnFieldKeys: toPrismaJson(viewColumnsJson(draft.defaultView)),
           sort: toPrismaJson(draft.defaultView.sort),
@@ -759,7 +760,9 @@ class PrismaObjectsStore implements ObjectsStore {
     });
     await this.transaction.fieldPermission.deleteMany({ where: { objectId } });
     await this.transaction.objectPermission.deleteMany({ where: { objectId } });
-    await this.transaction.viewDefinition.deleteMany({ where: { objectId } });
+    await this.transaction.viewDefinition.deleteMany({
+      where: { objectId, scope: 'DEFAULT' },
+    });
     await this.transaction.fieldDefinition.deleteMany({ where: { objectId } });
     await this.transaction.objectDefinition.delete({ where: { id: objectId } });
     return true;

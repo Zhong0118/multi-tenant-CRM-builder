@@ -420,7 +420,7 @@ export class AiOperationRepository {
       ),
     );
     return rows.map((row, index) => ({
-      turnId: row.turnId,
+      turnId: row.turnId!,
       view: views[index],
     }));
   }
@@ -494,7 +494,15 @@ export class AiOperationRepository {
         tenantId: context.tenantId,
         requestedByMemberId: context.memberId,
         status: 'PROPOSED',
-        conversation: { deletedAt: null, createdByMemberId: context.memberId },
+        OR: [
+          {
+            conversation: {
+              deletedAt: null,
+              createdByMemberId: context.memberId,
+            },
+          },
+          { draft: { memberId: context.memberId, tenantId: context.tenantId } },
+        ],
       },
       data: {
         status: 'EXECUTED',

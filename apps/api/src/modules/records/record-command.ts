@@ -421,6 +421,9 @@ export function projectRecord(
       : {}),
     id: record.id,
     recordNo: record.recordNo.toString(),
+    ...(record.nextFollowUpAt !== undefined
+      ? { nextFollowUpAt: record.nextFollowUpAt }
+      : {}),
     ownerMemberId: record.ownerMemberId,
     inPublicPool: record.inPublicPool ?? false,
     ownershipExpiresAt: record.ownershipExpiresAt ?? null,

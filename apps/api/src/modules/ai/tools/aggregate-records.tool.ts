@@ -8,6 +8,7 @@ import type { AiProviderTool } from '../ai-provider';
 export const aggregateRecordsInput = z
   .object({
     objectCode: z.string().min(1).max(64),
+    viewId: z.uuid().optional(),
     filters: z
       .record(z.string().max(64), z.unknown())
       .describe(FILTER_FORMAT)
@@ -32,6 +33,7 @@ export function createAggregateRecordsTool(
     async execute(input) {
       const parsed = aggregateRecordsInput.parse(input);
       return records.aggregate(context, parsed.objectCode, {
+        ...(parsed.viewId ? { viewId: parsed.viewId } : {}),
         filters: parsed.filters,
         aggregation: parsed.aggregation,
         valueFieldKey: parsed.valueFieldKey,

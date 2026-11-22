@@ -74,6 +74,14 @@ describe("RecordCellValue", () => {
     expect(dialog.textContent).toContain("看样品，\n同时");
   });
 
+  it("opens the reader when a third line is clipped in a comfortable row", async () => {
+    cell("第一行\n第二行\n第三行", "TEXTAREA", "comfortable", 240);
+    fireEvent.click(screen.getByRole("button", { name: /查看全文/ }));
+    expect((await screen.findByRole("dialog")).textContent).toContain(
+      "第一行\n第二行\n第三行",
+    );
+  });
+
   it("does not offer the reader when everything already shows", () => {
     cell(LONG_NOTE, "TEXTAREA", "full", 200);
     expect(

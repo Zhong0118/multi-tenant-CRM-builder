@@ -526,6 +526,9 @@ async function cleanupCriticalData(database: PrismaClient): Promise<void> {
     await database.aiOperation.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });
+    await database.aiRecordDraft.deleteMany({
+      where: { tenantId: { in: tenantIds } },
+    });
     await database.aiMessage.deleteMany({
       where: { tenantId: { in: tenantIds } },
     });

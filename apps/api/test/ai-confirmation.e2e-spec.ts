@@ -56,6 +56,7 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
       process.env.TEST_DATABASE_ADMIN_URL,
     );
     harness = await createCriticalHarness();
+    await harness.app.listen(0, '127.0.0.1');
     proposals = harness.app.get(AiProposalService);
   });
 
@@ -589,6 +590,8 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
         proposalId: view.proposalId,
         status: 'PROPOSED',
       });
+      // Supertest connects to IPv4. The fixture must still own that listener for confirm.
+      expect(new URL(await harness.app.getUrl()).hostname).toBe('127.0.0.1');
       expect(
         await Promise.all([
           harness.adminDatabase.record.findUniqueOrThrow({
@@ -663,6 +666,8 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
         where: { id: view.proposalId },
       },
     );
+    if (!operation.conversationId || !operation.turnId)
+      throw new Error('Expected a chat proposal');
     await harness.adminDatabase.aiMessage.create({
       data: {
         tenantId: context.tenantId,
@@ -725,6 +730,8 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
     const operation = await harness.adminDatabase.aiOperation.findUniqueOrThrow(
       { where: { id: view.proposalId } },
     );
+    if (!operation.conversationId || !operation.turnId)
+      throw new Error('Expected a chat proposal');
     await harness.adminDatabase.aiMessage.create({
       data: {
         tenantId: context.tenantId,
@@ -902,5 +909,101 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
         where: { id: failed.proposalId },
       }),
     ).toMatchObject({ status: 'FAILED', auditId: null });
+  });
+  it('binds retries to a draft item, denies its chat confirmation and preserves an external edit', async () => {
+    const database = harness.adminDatabase;
+    const object = await database.objectDefinition.findUniqueOrThrow({
+      where: { id: fixture.object.id },
+    });
+    const draft = await database.aiRecordDraft.create({
+      data: {
+        tenantId: context.tenantId,
+        memberId: context.memberId,
+        objectId: object.id,
+        recordId: fixture.ownedRecord.id,
+        publicationId: object.activePublicationId!,
+        expectedVersion: fixture.ownedRecord.version,
+        requestId: randomUUID(),
+        text: '联系',
+        output: { content: { note: '联系' } },
+        expiresAt: new Date(Date.now() + 60000),
+      },
+    });
+    const attempt = (key: 'note' | 'fields', edited: unknown) =>
+      proposals.executeDraftItem(
+        context,
+        {
+          draftId: draft.id,
+          itemKey: key,
+          requestText: draft.text,
+          candidate: edited,
+        },
+        { requestId: randomUUID() },
+      );
+    const rejected = await attempt(
+      'note',
+      candidate('ADD_ACTIVITY_NOTE', fixture.otherRecord.id),
+    );
+    expect(rejected).toMatchObject({
+      status: 'FAILED',
+      failureCode: 'VALIDATION_FAILED',
+    });
+    expect(typeof rejected.auditId).toBe('string');
+    await request(harness.app.getHttpServer())
+      .post(
+        `/api/v1/workspaces/${context.tenantCode}/ai/proposals/${rejected.proposalId}/confirm`,
+      )
+      .set('Origin', 'http://localhost:3000')
+      .set('Cookie', fixture.employee.cookie)
+      .send({ idempotencyKey: randomUUID() })
+      .expect(404);
+    const before = await database.recordActivity.count({
+      where: { recordId: draft.recordId },
+    });
+    const note = candidate('ADD_ACTIVITY_NOTE', draft.recordId);
+    const saved = await Promise.all([
+      attempt('note', note),
+      attempt('note', note),
+    ]);
+    expect(saved[0]).toMatchObject({
+      proposalId: rejected.proposalId,
+      status: 'EXECUTED',
+    });
+    expect(typeof saved[0].auditId).toBe('string');
+    expect(saved[1].auditId).toEqual(saved[0].auditId);
+    expect(
+      await database.recordActivity.count({
+        where: { recordId: draft.recordId },
+      }),
+    ).toBe(before + 1);
+    await database.record.update({
+      where: { id: draft.recordId },
+      data: { version: { increment: 1 }, title: '外部修改' },
+    });
+    const fields = await attempt(
+      'fields',
+      candidate('UPDATE_RECORD', draft.recordId),
+    );
+    expect(fields).toMatchObject({
+      status: 'CONFLICTED',
+      failureCode: 'RECORD_VERSION_CONFLICT',
+    });
+    expect(
+      await database.record.findUniqueOrThrow({
+        where: { id: draft.recordId },
+      }),
+    ).toMatchObject({ title: '外部修改' });
+    const failures = await database.auditLog.findMany({
+      where: { resourceId: draft.id, action: 'ai.communication_item_failed' },
+    });
+    expect(failures.map((row) => row.reason).sort()).toEqual([
+      'fields',
+      'note',
+    ]);
+    expect(
+      failures.every(
+        (row) => Object.keys(row.after as object).join(',') === 'code',
+      ),
+    ).toBe(true);
   });
 });

@@ -293,3 +293,72 @@ describe("recordApi failures", () => {
     ).rejects.toMatchObject({ code: "INTERNAL_ERROR", status: 504 });
   });
 });
+
+it("uses only the saved ID for a named list and submits explicit preview rules without the UI reference", async () => {
+  const viewId = "f5000000-0000-4000-8000-000000000001";
+  const filterRule = {
+    version: 1 as const,
+    match: "any" as const,
+    conditions: [
+      { fieldKey: "$followUp", operator: "dueThroughToday" as const },
+    ],
+  };
+  mocks.GET.mockResolvedValue(ok({ items: [], page: 2, limit: 20, total: 0 }));
+  await recordApi.list("northwind", "customers", {
+    viewId,
+    page: 2,
+    limit: 20,
+    filterRule,
+    search: "ignore",
+    direction: "asc",
+  });
+  expect(mocks.GET.mock.lastCall?.[1].params.query).toEqual({
+    viewId,
+    page: 2,
+    limit: 20,
+  });
+  await recordApi.list("northwind", "customers", {
+    baseViewId: viewId,
+    page: 1,
+    limit: 20,
+    filterRule,
+    search: "麦",
+  });
+  expect(mocks.GET.mock.lastCall?.[1].params.query).toEqual({
+    page: 1,
+    limit: 20,
+    filters: JSON.stringify(filterRule),
+    search: "麦",
+  });
+});
+
+it("exports a dirty view using the exact list rule and excludes the UI reference", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValue({ ok: false, status: 503, json: async () => ({}) });
+  vi.stubGlobal("fetch", fetchMock);
+  try {
+    const filterRule = {
+      version: 1 as const,
+      match: "all" as const,
+      conditions: [],
+    };
+    await expect(
+      recordApi.export("northwind", "customers", {
+        baseViewId: "a",
+        filterRule,
+        columns: ["name"],
+        sort: "nextFollowUpAt",
+      }),
+    ).rejects.toMatchObject({ status: 503 });
+    const params = new URL(fetchMock.mock.calls[0][0], "http://localhost")
+      .searchParams;
+    expect(Object.fromEntries(params)).toEqual({
+      filters: JSON.stringify(filterRule),
+      columns: "name",
+      sort: "nextFollowUpAt",
+    });
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});

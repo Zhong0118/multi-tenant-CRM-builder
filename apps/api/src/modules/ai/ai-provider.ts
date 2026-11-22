@@ -1,5 +1,6 @@
 import { createRequire } from 'node:module';
 
+import type { CommunicationProviderInput } from './communication-output';
 import type { z } from 'zod';
 
 import { FakeAiProvider } from './providers/fake-ai.provider';
@@ -39,8 +40,16 @@ export type AiProviderEvent =
   | { type: 'FAILED'; code: string };
 
 export interface AiProvider {
+  generateFilter?(
+    input: import('./filter-generation').FilterProviderInput,
+    signal: AbortSignal,
+  ): Promise<unknown>;
   readonly providerKey: string;
   readonly modelKey: string | null;
+  generateCommunication?(
+    input: CommunicationProviderInput,
+    abortSignal: AbortSignal,
+  ): Promise<unknown>;
   streamTurn(input: {
     messages: AiProviderMessage[];
     system: string;

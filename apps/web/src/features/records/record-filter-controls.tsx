@@ -43,6 +43,7 @@ import {
   textContainsFilterValue,
   type RecordFilterValue,
   type RecordFilters,
+  type RecordQuery,
 } from "./record-query-state";
 import styles from "./record-list.module.css";
 import { memberSelectOptions } from "@/components/identity/member-identity";
@@ -121,6 +122,41 @@ export function describeFilter(
 }
 
 /** A quick filter for one option field: a borderless select named after the field. */
+/** A one-field shortcut can only edit a single compatible clause of an AND rule. */
+export function quickFilterValues(
+  query: RecordQuery,
+  key: string,
+): RecordFilters | undefined {
+  if (!query.filterRule) return query.filters;
+  const { match, conditions } = query.filterRule;
+  if (match !== "all" || conditions.some((term) => "conditions" in term))
+    return undefined;
+  const terms = conditions.filter(
+    (term) => "fieldKey" in term && term.fieldKey === key,
+  );
+  if (!terms.length) return {};
+  const term = terms[0];
+  if (terms.length !== 1 || !("fieldKey" in term)) return undefined;
+  const value = term.value;
+  if (term.operator === "in" && Array.isArray(value)) return { [key]: value };
+  if (term.operator === "relative") {
+    const preset = RELATIVE_DATE_PRESETS.find((preset) => preset === value);
+    if (preset) return { [key]: { relative: preset } };
+  }
+  if (term.operator === "on" && typeof value === "string")
+    return { [key]: { from: value, to: value } };
+  if (
+    term.operator === "between" &&
+    value &&
+    typeof value === "object" &&
+    "from" in value &&
+    typeof value.from === "string" &&
+    typeof value.to === "string"
+  )
+    return { [key]: { from: value.from, to: value.to } };
+  return undefined;
+}
+
 export function OptionQuickFilter({
   field,
   filters,

@@ -8,6 +8,7 @@ import {
   recordOwnerMatches,
   type RecordOwnerFilter,
 } from '../objects/record-read-scope';
+import { parseListFilters, parseListSort, queryFields } from './record-filter';
 import { Inject, Injectable } from '@nestjs/common';
 
 import { initialPoolPlacement } from './record-pool-placement';
@@ -56,10 +57,7 @@ import {
 } from './record-export';
 import type {
   RecordAggregateResult,
-  RecordListFieldSort,
-  RecordListFilter,
   RecordListQuery,
-  RecordListSystemSort,
   RecordsRepository,
   RecordsStore,
 } from './records.repository';
@@ -74,6 +72,7 @@ export interface RecordResponse {
   latestActivity?: RecordActivityResponse | null;
   fieldAccess?: Record<string, PublishedFieldAccess>;
   canEditFields?: boolean;
+  nextFollowUpAt?: string | null;
   poolStage?: PoolStage | null;
   poolOrigin?: PoolOrigin | null;
   poolClaimedAt?: string | null;
@@ -95,6 +94,7 @@ export interface RecordResponse {
 }
 
 export interface RecordPageResponse {
+  timeZone?: string;
   poolCounts?: Record<PoolStage | 'LEGACY', number>;
   items: RecordResponse[];
   page: number;
@@ -102,7 +102,37 @@ export interface RecordPageResponse {
   total: number;
 }
 
+interface RecordViewQueryInput {
+  viewId?: string;
+  search?: string;
+  scope?: 'mine' | 'pool' | 'group' | 'all';
+  poolStage?: PoolStage | 'LEGACY';
+  poolQuality?: PoolQuality;
+  ownerMemberId?: string;
+  filters?: string;
+  sort: string;
+  direction: 'asc' | 'desc';
+  columns?: string[];
+}
+
+async function resolveViewInput(
+  store: RecordsStore,
+  resolved: ResolvedObjectSchema,
+  request: RecordViewQueryInput,
+): Promise<RecordViewQueryInput> {
+  if (!request.viewId) return request;
+  const view = await store.resolveRecordView(resolved, request.viewId);
+  return {
+    ...view.queryOptions,
+    filters: JSON.stringify(view.filterRule),
+    sort: view.sort.field,
+    direction: view.sort.direction,
+    columns: view.columnFieldKeys,
+  };
+}
+
 export interface RecordAggregateInput {
+  viewId?: string;
   filters?: Record<string, unknown>;
   aggregation: 'COUNT' | 'SUM' | 'AVG';
   valueFieldKey?: string;
@@ -189,27 +219,17 @@ export class RecordsService {
   async list(
     context: TenantContext,
     objectCode: string,
-    input: {
-      page: number;
-      limit: number;
-      search?: string;
-      scope?: 'mine' | 'pool' | 'group' | 'all';
-      poolStage?: PoolStage | 'LEGACY';
-      poolQuality?: PoolQuality;
-      ownerMemberId?: string;
-      filters?: string;
-      sort: string;
-      direction: 'asc' | 'desc';
-    },
+    request: RecordViewQueryInput & { page: number; limit: number },
   ): Promise<RecordPageResponse> {
     let resolved = await this.publishedObjects.resolveRuntimeSchema(
       context,
       objectCode,
     );
-    const page = Math.max(1, Math.trunc(input.page));
-    const limit = Math.min(1000, Math.max(1, Math.trunc(input.limit)));
+    const page = Math.max(1, Math.trunc(request.page));
+    const limit = Math.min(1000, Math.max(1, Math.trunc(request.limit)));
     return this.repository.withTenant(context, async (store) => {
       resolved = await store.resolveCurrentObject(resolved);
+      const input = await resolveViewInput(store, resolved, request);
       const ownerMemberId = await resolveListOwner(
         context,
         resolved,
@@ -217,8 +237,13 @@ export class RecordsService {
         input.ownerMemberId,
         poolQueryScope(input.poolStage, input.scope),
       );
+      const timeZone = (await store.getTenantTimezone?.()) ?? null;
       const query: RecordListQuery = {
         objectId: resolved.schema.object.id,
+        followUpOwnerMemberId: recordOwnerFilter(
+          resolved.access,
+          context.memberId,
+        ),
         page,
         limit,
         search: input.search?.trim() || undefined,
@@ -230,7 +255,14 @@ export class RecordsService {
         poolStage: input.poolStage,
         poolQuality: input.poolQuality,
         ownerMemberId,
-        filters: parseListFilters(input.filters, resolved, this.clock()),
+        filters: await parseListFilters(
+          input.filters,
+          resolved,
+          context,
+          store,
+          this.clock(),
+          timeZone,
+        ),
         sort: parseListSort(input.sort, resolved),
         direction: input.direction,
       };
@@ -280,6 +312,7 @@ export class RecordsService {
           ) as Record<PoolStage | 'LEGACY', number>)
         : undefined;
       return {
+        ...(timeZone ? { timeZone } : {}),
         ...(poolCounts ? { poolCounts } : {}),
         items: result.items.map((record) => ({
           ...projectRecord(record, resolved),
@@ -322,18 +355,40 @@ export class RecordsService {
         input.groupByFieldKey,
       );
 
+      const view = input.viewId
+        ? await store.resolveRecordView(resolved, input.viewId)
+        : undefined;
+      const options = view?.queryOptions;
+      const viewFilters = view
+        ? JSON.stringify(view.filterRule)
+        : input.filters
+          ? JSON.stringify(input.filters)
+          : undefined;
+      const scope = poolQueryScope(options?.poolStage, options?.scope);
       const ownerMemberId = await resolveListOwner(
         context,
         resolved,
         store,
-        undefined,
+        options?.ownerMemberId,
+        scope,
       );
       const result = await store.aggregateRecords({
         objectId: resolved.schema.object.id,
+        followUpOwnerMemberId: recordOwnerFilter(
+          resolved.access,
+          context.memberId,
+        ),
         ownerMemberId,
-        filters: parseListFilters(
-          input.filters ? JSON.stringify(input.filters) : undefined,
+        search: options?.search,
+        searchFieldKeys: searchableFieldKeys(resolved),
+        inPublicPool: scope === 'pool' ? true : undefined,
+        poolStage: options?.poolStage,
+        poolQuality: options?.poolQuality,
+        filters: await parseListFilters(
+          viewFilters,
           resolved,
+          context,
+          store,
           this.clock(),
         ),
         aggregation: input.aggregation,
@@ -355,17 +410,7 @@ export class RecordsService {
   async exportCsv(
     context: TenantContext,
     objectCode: string,
-    input: {
-      search?: string;
-      scope?: 'mine' | 'pool' | 'group' | 'all';
-      poolStage?: PoolStage | 'LEGACY';
-      poolQuality?: PoolQuality;
-      ownerMemberId?: string;
-      filters?: string;
-      sort: string;
-      direction: 'asc' | 'desc';
-      columns?: string[];
-    },
+    request: RecordViewQueryInput,
     meta: RequestMeta,
   ): Promise<RecordExportFile> {
     let resolved = await this.publishedObjects.resolveRuntimeSchema(
@@ -378,6 +423,7 @@ export class RecordsService {
         throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403, {
           message: '没有下载此业务表数据的权限。',
         });
+      const input = await resolveViewInput(store, resolved, request);
       const ownerMemberId = await resolveListOwner(
         context,
         resolved,
@@ -387,6 +433,10 @@ export class RecordsService {
       );
       const query: RecordListQuery = {
         objectId: resolved.schema.object.id,
+        followUpOwnerMemberId: recordOwnerFilter(
+          resolved.access,
+          context.memberId,
+        ),
         page: 1,
         limit: RECORD_EXPORT_MAX_ROWS + 1,
         search: input.search?.trim() || undefined,
@@ -398,7 +448,13 @@ export class RecordsService {
         poolStage: input.poolStage,
         poolQuality: input.poolQuality,
         ownerMemberId,
-        filters: parseListFilters(input.filters, resolved, this.clock()),
+        filters: await parseListFilters(
+          input.filters,
+          resolved,
+          context,
+          store,
+          this.clock(),
+        ),
         sort: parseListSort(input.sort, resolved),
         direction: input.direction,
       };
@@ -412,7 +468,11 @@ export class RecordsService {
           },
         });
       }
-      const visibleFields = resolveExportFields(resolved, input.columns);
+      const visibleFields = resolveExportFields(
+        resolved,
+        input.columns,
+        request.viewId !== undefined,
+      );
       const memberIds = [
         ...new Set(
           result.items.flatMap((record) => {
@@ -1132,333 +1192,6 @@ function searchableFieldKeys(resolved: ResolvedObjectSchema): string[] {
   ];
 }
 
-function parseListFilters(
-  serialized: string | undefined,
-  resolved: ResolvedObjectSchema,
-  now: Date,
-): RecordListFilter[] {
-  if (!serialized) return [];
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(serialized);
-  } catch {
-    throw invalidRecordFilter();
-  }
-  if (!isPlainObject(parsed)) throw invalidRecordFilter();
-  const entries = Object.entries(parsed);
-  if (entries.length > 8) throw invalidRecordFilter();
-
-  const visibleFields = new Map(
-    queryFields(resolved).map((field) => [field.fieldKey, field]),
-  );
-  const filters: RecordListFilter[] = [];
-  for (const [fieldKey, rawValue] of entries) {
-    const field = visibleFields.get(fieldKey);
-    if (!field) throw invalidRecordFilter();
-    if (isPresenceFilterValue(rawValue)) {
-      filters.push(parsePresenceFilter(field.fieldKey, rawValue));
-      continue;
-    }
-    if (field.type === 'SINGLE_SELECT' || field.type === 'MULTI_SELECT') {
-      filters.push(parseOptionFilter(field, rawValue));
-      continue;
-    }
-    if (
-      field.type === 'DATE' ||
-      field.type === 'DATETIME' ||
-      (field.type === 'TEXT' &&
-        field.config.dateInterpretation === true &&
-        !(isPlainObject(rawValue) && typeof rawValue.contains === 'string'))
-    ) {
-      filters.push(
-        parseDateFilter(
-          field.fieldKey,
-          rawValue,
-          field.type === 'TEXT' ? 'DATE_TEXT' : field.type,
-          now,
-        ),
-      );
-      continue;
-    }
-    if (field.type === 'NUMBER' || field.type === 'MONEY') {
-      filters.push(parseNumericFilter(field.fieldKey, rawValue));
-      continue;
-    }
-    if (field.type === 'BOOLEAN') {
-      filters.push(parseBooleanFilter(field.fieldKey, rawValue));
-      continue;
-    }
-    if (field.type === 'MEMBER') {
-      filters.push(parseMemberFilter(field.fieldKey, rawValue));
-      continue;
-    }
-    if (isSearchableFieldType(field.type)) {
-      filters.push(parseTextContainsFilter(field.fieldKey, rawValue));
-      continue;
-    }
-    throw invalidRecordFilter();
-  }
-  return filters;
-}
-
-function parseOptionFilter(
-  field: ResolvedObjectSchema['visibleSchema']['fields'][number],
-  rawValues: unknown,
-): RecordListFilter {
-  if (
-    !Array.isArray(rawValues) ||
-    rawValues.length === 0 ||
-    rawValues.length > 20 ||
-    rawValues.some(
-      (value) =>
-        typeof value !== 'string' || value.length === 0 || value.length > 100,
-    )
-  ) {
-    throw invalidRecordFilter();
-  }
-  const optionKeys = new Set(
-    Array.isArray(field.config.options)
-      ? field.config.options.flatMap((option) => {
-          if (!isPlainObject(option) || typeof option.key !== 'string') {
-            return [];
-          }
-          return [option.key];
-        })
-      : [],
-  );
-  const values = [...new Set(rawValues as string[])];
-  if (values.some((value) => !optionKeys.has(value))) {
-    throw invalidRecordFilter();
-  }
-  return {
-    fieldKey: field.fieldKey,
-    mode: field.type === 'MULTI_SELECT' ? 'CONTAINS' : 'EQUALS',
-    values,
-  };
-}
-
-const RECORD_DATE_PRESETS = new Set([
-  'today',
-  'yesterday',
-  'this_week',
-  'this_month',
-  'last_month',
-  'past_7_days',
-  'past_30_days',
-]);
-
-function isCalendarDate(value: unknown): value is string {
-  if (
-    typeof value !== 'string' ||
-    !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
-    value.startsWith('0000')
-  )
-    return false;
-  const parsed = new Date(`${value}T00:00:00Z`);
-  return (
-    Number.isFinite(parsed.getTime()) &&
-    parsed.toISOString().slice(0, 10) === value
-  );
-}
-
-function parseDateFilter(
-  fieldKey: string,
-  rawValue: unknown,
-  type: 'DATE' | 'DATETIME' | 'DATE_TEXT',
-  now: Date,
-): RecordListFilter {
-  if (!isPlainObject(rawValue)) throw invalidRecordFilter();
-  if (typeof rawValue.relative === 'string') {
-    if (
-      !RECORD_DATE_PRESETS.has(rawValue.relative) ||
-      rawValue.from !== undefined ||
-      rawValue.to !== undefined
-    ) {
-      throw invalidRecordFilter();
-    }
-    return {
-      fieldKey,
-      mode: 'DATE_RANGE',
-      dateType: type,
-      relative: rawValue.relative,
-      asOf: now.toISOString(),
-    };
-  }
-  const from = optionalDateBound(rawValue.from);
-  const to = optionalDateBound(rawValue.to);
-  if (!from && !to) throw invalidRecordFilter();
-  if (from && to && from > to) throw invalidRecordFilter();
-  return dateRangeFilter(fieldKey, from, to, type);
-}
-
-function dateRangeFilter(
-  fieldKey: string,
-  from: string | undefined,
-  to: string | undefined,
-  type: 'DATE' | 'DATETIME' | 'DATE_TEXT',
-): RecordListFilter {
-  return {
-    fieldKey,
-    mode: 'DATE_RANGE',
-    dateType: type,
-    ...(from ? { from } : {}),
-    ...(to ? { to } : {}),
-  };
-}
-
-function isPresenceFilterValue(
-  value: unknown,
-): value is { presence: 'empty' | 'not_empty' } {
-  return (
-    isPlainObject(value) &&
-    (value.presence === 'empty' || value.presence === 'not_empty')
-  );
-}
-
-function parsePresenceFilter(
-  fieldKey: string,
-  rawValue: { presence: 'empty' | 'not_empty' },
-): RecordListFilter {
-  return {
-    fieldKey,
-    mode: rawValue.presence === 'empty' ? 'EMPTY' : 'NOT_EMPTY',
-  };
-}
-
-function parseNumericFilter(
-  fieldKey: string,
-  rawValue: unknown,
-): RecordListFilter {
-  if (!isPlainObject(rawValue)) throw invalidRecordFilter();
-  const min = optionalNumericBound(rawValue.min);
-  const max = optionalNumericBound(rawValue.max);
-  if (min === undefined && max === undefined) throw invalidRecordFilter();
-  if (min !== undefined && max !== undefined && min > max) {
-    throw invalidRecordFilter();
-  }
-  return {
-    fieldKey,
-    mode: 'NUMBER_RANGE',
-    ...(min !== undefined ? { min } : {}),
-    ...(max !== undefined ? { max } : {}),
-  };
-}
-
-function parseBooleanFilter(
-  fieldKey: string,
-  rawValue: unknown,
-): RecordListFilter {
-  if (typeof rawValue !== 'boolean') throw invalidRecordFilter();
-  return { fieldKey, mode: 'BOOLEAN_EQUALS', value: rawValue };
-}
-
-const MEMBER_ID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function parseMemberFilter(
-  fieldKey: string,
-  rawValues: unknown,
-): RecordListFilter {
-  if (
-    !Array.isArray(rawValues) ||
-    rawValues.length === 0 ||
-    rawValues.length > 20 ||
-    rawValues.some(
-      (value) => typeof value !== 'string' || !MEMBER_ID.test(value),
-    )
-  ) {
-    throw invalidRecordFilter();
-  }
-  return {
-    fieldKey,
-    mode: 'MEMBER_EQUALS',
-    values: [...new Set(rawValues as string[])],
-  };
-}
-
-function parseTextContainsFilter(
-  fieldKey: string,
-  rawValue: unknown,
-): RecordListFilter {
-  if (!isPlainObject(rawValue) || typeof rawValue.contains !== 'string') {
-    throw invalidRecordFilter();
-  }
-  const contains = rawValue.contains.trim();
-  if (contains.length === 0 || contains.length > 100) {
-    throw invalidRecordFilter();
-  }
-  return { fieldKey, mode: 'TEXT_CONTAINS', contains };
-}
-
-const SYSTEM_SORTS = new Set<RecordListSystemSort>([
-  'updatedAt',
-  'createdAt',
-  'recordNo',
-]);
-const SORTABLE_FIELD_KINDS: Record<string, RecordListFieldSort['kind']> = {
-  TEXT: 'TEXT',
-  PHONE: 'TEXT',
-  EMAIL: 'TEXT',
-  NUMBER: 'NUMBER',
-  MONEY: 'NUMBER',
-  DATE: 'DATE',
-  DATETIME: 'DATETIME',
-  SINGLE_SELECT: 'OPTION',
-};
-
-function parseListSort(
-  sort: string,
-  resolved: ResolvedObjectSchema,
-): RecordListQuery['sort'] {
-  if (SYSTEM_SORTS.has(sort as RecordListSystemSort)) {
-    return sort as RecordListSystemSort;
-  }
-  const field = queryFields(resolved).find(
-    (candidate) => candidate.fieldKey === sort,
-  );
-  const kind =
-    field?.type === 'TEXT' && field.config.dateInterpretation === true
-      ? 'DATE_TEXT'
-      : field
-        ? SORTABLE_FIELD_KINDS[field.type]
-        : undefined;
-  if (!field || !kind) {
-    throw new ApiException('RECORD_SORT_INVALID', 400, {
-      fieldErrors: { sort: ['请选择当前业务表中可排序的字段。'] },
-    });
-  }
-  if (kind !== 'OPTION') return { fieldKey: field.fieldKey, kind };
-  const optionKeys = Array.isArray(field.config.options)
-    ? field.config.options.flatMap((option) => {
-        if (!isPlainObject(option) || typeof option.key !== 'string') return [];
-        return [option.key];
-      })
-    : [];
-  return { fieldKey: field.fieldKey, kind, optionKeys };
-}
-
-function optionalDateBound(value: unknown): string | undefined {
-  if (value === undefined) return undefined;
-  if (!isCalendarDate(value)) {
-    throw invalidRecordFilter();
-  }
-  return value;
-}
-
-function optionalNumericBound(value: unknown): number | undefined {
-  if (value === undefined) return undefined;
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw invalidRecordFilter();
-  }
-  return value;
-}
-
-function invalidRecordFilter(): ApiException {
-  return new ApiException('RECORD_FILTER_INVALID', 400, {
-    fieldErrors: { filters: ['请检查筛选条件、有效日期及字段权限。'] },
-  });
-}
-
 function invalidAggregate(): ApiException {
   return new ApiException('VALIDATION_FAILED', 400);
 }
@@ -1595,6 +1328,7 @@ async function resolveListOwner(
 function resolveExportFields(
   resolved: ResolvedObjectSchema,
   requested: string[] | undefined,
+  namedView: boolean,
 ) {
   const visible = new Map(
     resolved.visibleSchema.fields.map((field) => [field.fieldKey, field]),
@@ -1603,7 +1337,7 @@ function resolveExportFields(
     const field = visible.get(fieldKey);
     return field ? [field] : [];
   });
-  if (selected.length > 0) return selected;
+  if (namedView || selected.length > 0) return selected;
   return resolved.visibleSchema.defaultView.columnFieldKeys.flatMap(
     (fieldKey) => {
       const field = visible.get(fieldKey);
@@ -1619,12 +1353,4 @@ function poolQueryScope(
   if (stage !== undefined && stage !== 'LEGACY' && !POOL_STAGES.includes(stage))
     throw new ApiException('VALIDATION_FAILED', 400);
   return stage === 'LEAD_POOL' || stage === 'CUSTOMER_POOL' ? 'pool' : scope;
-}
-
-function queryFields(resolved: ResolvedObjectSchema) {
-  return resolved.visibleSchema.fields.filter(
-    (field) =>
-      resolved.visibleSchema.queryFieldKeys === undefined ||
-      resolved.visibleSchema.queryFieldKeys.includes(field.fieldKey),
-  );
 }

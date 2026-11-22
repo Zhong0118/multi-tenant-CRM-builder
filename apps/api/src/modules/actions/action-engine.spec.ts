@@ -220,6 +220,7 @@ function resolved(
  * prove the engine never writes it (§14) and never moves `version`.
  */
 class MemoryStore implements RecordsStore {
+  resolveRecordView: RecordsStore['resolveRecordView'] = jest.fn();
   resolveCurrentObject(
     previous: import('../objects/published-object.service').ResolvedObjectSchema,
   ) {
