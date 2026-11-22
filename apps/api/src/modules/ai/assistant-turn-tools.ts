@@ -65,7 +65,9 @@ export async function createAssistantTurnTools(
     }
   }
   const readCallbacks: AiToolCallbacks = {
-    objectNames: page ? new Map([[page.objectCode, page.objectName]]) : undefined,
+    objectNames: page
+      ? new Map([[page.objectCode, page.objectName]])
+      : undefined,
     enrichSource: (name, args, source) => {
       if (
         !page?.recordId ||
