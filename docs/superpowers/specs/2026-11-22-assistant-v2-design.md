@@ -17,18 +17,19 @@
 
 ## 2. 页面上下文与会话归属
 
-现有 `POST /workspaces/:tenantCode/ai/turns` 接受 `{conversationId?,content}`。保留该用法，为新消息增加可选的 `context`。回答问题使用同一路径的另一种严格请求体。两种请求互斥，身份均由 WorkspaceGuard 和服务端会话取得。
+现有 `POST /workspaces/:tenantCode/ai/turns` 接受 `{conversationId?,content}`。保留该用法，为新消息增加可选的 `context`。回答问题使用同一路径的另一种严格请求体。新消息、回答和失败项重新生成的请求互斥，身份均由 WorkspaceGuard 和服务端会话取得。
 
 ```ts
 type PageHint = { objectCode: string; recordId?: UUID; viewId?: UUID }
+type Regenerate = { conversationId: UUID; regenerateProposalId: UUID }
 type Start = { conversationId?: UUID; content: string; context?: PageHint; filterDraft?: FilterRule }
 type Resume = { conversationId: UUID; answer: { questionId: UUID; value: AnswerValue }; context?: PageHint }
 ```
 
 - 每次请求重新解析当前成员、已发布对象、可读范围、记录级有效字段与视图。视图必须属于同租户同对象，满足个人/共享可见性，筛选须通过主线的视图解析器。带有不可见条件的视图整体不可用。
 - 客户端给出的名称、人员身份、权限、摘要或来源均不采信。合法格式但任一指定引用不存在、不可见或错配时，整份 hint 归空；与省略 hint 使用同一模型输入、公开事件和提示。畸形协议可统一报参数错误。数据库或网络故障按服务异常处理。
-- 消息的系统提示以固定指令包住单独的、经过 sanitizer 的结构化数据，只含已解析对象名称/代码、可见记录标题与引用、视图名及种类。字段值、标题、原话、记录里的命令都是数据。记录标题不可读时采用权限允许的安全显示方式。服务端验证成功的上下文记录直接登记为已见目标；需要事实时重新读取。
-- 当前记录指代直接路由到该记录。从列表发起时，如筛选面板已有未保存规则，前端把当前规则作为 `filterDraft` 传入；服务端只在列表上下文验证后使用。规则不合法则拒绝本次筛选预览，不会退成空筛选。应用前比较对象、基准视图和草稿是否还一致；用户已换视图或编辑时提示重新生成。
+- 消息的系统提示以固定指令包住单独的、经过权限裁剪和字段白名单投影的结构化数据，只含已解析对象名称/代码、可见记录标题与引用、视图名及种类。字段值、标题、原话、记录里的命令都是数据。记录标题不可读时采用权限允许的安全显示方式。服务端验证成功的上下文记录直接登记为已见目标；需要事实时重新读取。
+- 当前记录指代直接路由到该记录。从列表发起时，如筛选面板已有未保存规则，前端把当前规则作为 `filterDraft` 传入；服务端在绑定的列表动作里再次校验后使用。规则不合法则拒绝本次筛选预览，不会退成空筛选。应用前比较对象、基准视图和草稿是否还一致；用户已换视图或编辑时提示重新生成。
 - 面板和完整页用同一会话 ID、消息查询和流处理。完整页沿用 `?conversation=…`。页签上的 × 立即清掉上下文和筛选草稿；仅在前端 sessionStorage 按成员、租户和会话记住解绑状态，关闭面板、刷新和打开完整页都维持，用户可显式「关联当前页面」。每轮以本次发送的 hint 为准；模型不能把历史页签当作当前指代。导航替换记录时丢弃上一页未发送的上下文。待回答的问题仍锚定原目标，页面变化不会重定向原提议。
 
 ## 3. 工具证据和追问协议
@@ -54,18 +55,30 @@ type Resume = { conversationId: UUID; answer: { questionId: UUID; value: AnswerV
 
 - **发布。** 扩展现有保存提议与结束消息的事务，批次 ID 采用 turnId。每项独立 `AiOperation` 携带稳定 itemKey、操作、目标、预览快照、预期版本和发布 ID，成功持久化后每轮只发一次 `proposal.ready {turnId,batch:{items:[…]}}`。单项也发送单元素批次；迁移将既有会话操作编号为第一项，以 `(tenantId,conversationId,turnId,itemKey)` 替换现有一轮一操作的唯一索引，保留沟通草稿自己的唯一约束。新接口、流契约与历史读取同时升级；旧单项确认仍可使用。
 - **卡片。** 每项提供稳定 ID、操作类型、目标、字段级旧/新值或跟进内容、可编辑控件描述、有效期及状态。复用 `ProposalReviewCard` 支持勾选、编辑与确认；受限字段不投影。可编辑的只是卡上已有的业务值，不能替换目标、操作、期望版本、字段集合或成员。
-- **确认。** 新增 `POST /workspaces/:tenantCode/ai/turns/:turnId/proposals/confirm`，请求 `{items:[{proposalId,idempotencyKey,edits?}]}`，只提交勾选项。先拒绝重复 ID、越界项数和混入其他批次/成员的请求。逐项校验编辑后的候选并走原有 `AiProposalService.confirm` 的锁、身份重验、领域命令与审计路径，将有限编辑的校验纳入同一项事务。返回逐项 `{proposalId,status,message,changes?}`，未选项维持原状。一次成功写入对应一条领域审计和操作关联；失败沿用操作失败记录，业务执行失败时沿用独立失败事务，按操作与尝试标识幂等写一条脱敏失败审计，并与成功审计区分。
+- **确认。** 新增 `POST /workspaces/:tenantCode/ai/turns/:turnId/proposals/confirm`，请求 `{items:[{proposalId,idempotencyKey,edits?}]}`，只提交勾选项。先拒绝重复 ID、越界项数和混入其他批次/成员的请求。逐项校验编辑后的候选并走原有 `AiProposalService.confirm` 的锁、身份重验、领域命令与审计路径，将有限编辑的校验纳入同一项事务。返回逐项 `{proposalId,status,message}`，未选项维持原状。一次成功写入对应一条领域审计和操作关联；失败沿用操作失败记录，业务执行失败时沿用独立失败事务，按操作与尝试标识幂等写一条脱敏失败审计，并与成功审计区分。
 - **重新生成这一项。** 失败项显示原因。点击按钮携带原失败项引用开始新轮次，服务端按现权限重读目标和版本，让销售再次核对和确认。原失败操作保留终态；不维护替代项关系。成功项不能通过该按钮再执行。
 
 ## 5. 调用已有动作与客户简报
 
-| 入口与模型工具 | 服务端 I/O 与用户看到的结果 |
-| --- | --- |
-| 记录页 `draft_communication({text})` | 目标绑定已解析记录；原话来自当前用户消息或已验答案，模型不得改写原话再传入。只有「帮我记一下」而无原话时，用 choose_option 提供「只记纪要」「纪要并建议跟进」和可填写原话的「其他」；选中做法后原输入框提示贴原话，再发送才生成草稿。复用 `CommunicationDraftsService.create(actor,code,id,{requestId,text})`，按本轮稳定 requestId 去重。发 `action.ready {turnId,kind:"communication",draftId}`，历史按权限取现有草稿卡；选中项通过现有草稿确认接口，避免同时再发聊天提议。模型失败保留原文，沿用「直接存为纪要」的显式确认。 |
-| 列表页 `preview_filter({text})` | 服务端组装 `{text,currentRule,baseViewId?}`，调用现有 `FilterPreviewService.preview`；结果为 `rule / clarify / unavailable`。发 `action.ready {turnId,kind:"filter",preview,…}`，候选标签和值来自原服务，复用选项卡。只读预览，接收、选择、刷新历史均不触发列表查询或保存视图。点击「在表格中应用」才走现有筛选应用入口，按当前权限再校验；完整页可显式进入对应表并应用。 |
-| 记录页「这个客户什么情况」 | 直接调用 `get_record`、按当前记录限定的 `list_activities` / `list_followups`。以概况、当前进展、风险、建议下一步四段显示。每条事实注明来源，风险与建议注明推断；缺依据显示「暂无可见依据」。为本轮成功读取建立短来源键，在现有 sources 上增加可选键与服务端构造的记录/活动/跟进入口，禁止模型自写链接或引用其他记录。简报按「段落、结论、来源键」暂存本轮输出，校验键和目标后再交给消息组件渲染；无效引用的结论不向用户展示。仅引用已返回的来源；跟进仅覆盖当前成员能看的任务。简报作为普通助手消息保存正文与来源，刷新可回看。报告没有单独实体、缓存或定时任务；回放重新检查支撑引用及权限，事实失去可见依据时隐藏对应结论。 |
+### 整理沟通
 
-`action.ready` 的持久引用从所属消息投影，不采信客户端取回的草稿目标或筛选卡。沟通草稿和筛选预览共享原裁剪/校验路径。新提示词规定「指代不明、关键信息不足、多种合理做法」走卡片，证据充分直接答或预览；用户自由输入、业务文本和工具结果都不能授予权限或代替确认。禁止编造选项、成员、金额、阈值、来源与成功结果；重复调用、超限和工具故障如实说明。禁止行为以服务端测试为准。
+- 记录页提供 `draft_communication({text})`。服务端绑定已核验的当前记录，检查传入原话来自用户输入。
+- 复用 `CommunicationDraftsService.create`，使用本轮 turnId 作为 requestId。用户编辑草稿并确认后，原有接口逐项保存。
+- 只有「帮我记一下」时先提供做法选项。选择做法后还需贴入原话，销售也可直接在「其他」里填写。
+- 验收时检查草稿出现前后业务记录数、原话保留以及确认后的纪要和跟进。
+
+### 筛选预览
+
+- 列表页提供 `preview_filter({text})`。服务端把用户原话或已选意图、当前条件、基准视图交给 `FilterPreviewService.preview`。
+- 收到规则直接展示，含糊项沿用筛选服务的候选卡。点击「在表格中应用」才改变列表。
+- 验收时比较点选前后的记录数，并检查适用的对象、视图和草稿。
+
+### 客户简报
+
+- 读取当前记录、活动和当前成员可见的跟进。每段结论只能引用本轮已成功读取的对应来源。
+- 以「概况、当前进展、风险、建议下一步」展示。风险与建议标「推断」。无法核实某段时显示「暂无可见依据」。
+- 结论中的来源键由服务端检查并关联到页面入口。外部链接和未经核验的来源会被丢弃。
+- 简报正文与来源按普通会话消息保存，刷新后恢复。可见范围变化时隐藏旧回答，用户可重问以获得当前可见的简报。
 
 ### 单一流协议草案（packages/contracts）
 
@@ -86,7 +99,7 @@ type Question = {questionId:string;turnId:string;state:QuestionStatus;prompt:str
 type BatchItem = AiProposalView & {editableFields?:Field[]}
 type Batch = {items:BatchItem[];coverage?:{total:number;targets:number}}
 type Action = {kind:"communication";draftId:string;objectCode:string;recordId:string}
-  | {kind:"filter";objectCode:string;baseViewId?:string;preview:FilterPreview}
+  | {kind:"filter";objectCode:string;baseViewId?:string;currentRule:FilterRule;preview:FilterPreview}
 type AddedEvent = {event:"question.ready";data:{turnId:string;question:Question}}
   | {event:"proposal.ready";data:{turnId:string;batch:Batch}}
   | {event:"action.ready";data:{turnId:string;action:Action}}
@@ -121,6 +134,6 @@ type ConfirmResult = {items:{proposalId:string;status:AiProposalView["status"];m
 
 每条 fixture 固定租户及对照租户、角色、发布字段/有效选项、可见记录、时钟和工具故障注入点。点选用 fixture 语义键匹配实际下发的选项，再提交服务端给的 ID。开发集 30 条，独立作者编写留出集 15 条，在试跑前提交冻结；标记版本并分开报告。覆盖同名歧义、缺字段、多个合理选择、无需追问、批量边界 20/21、页上下文越权、原话夹指令、转交请求、两种动作及工具失败。允许合理的读取顺序，判断时机、卡型、操作、目标、值和实际副作用。任何越权写、隐藏字段披露、伪造候选、未见目标提议或未经确认的写入均为交付阻断。
 
-质量采用人工抽查，在开发集与留出集各抽取简报、澄清与失败答复，分别检查忠实、有来源、下一步可执行（三项各 0/1）。报告列出实际样本和模型、逐组分子/分母、失败实例与限制。默认模拟 provider；真实模型由显式开关启用，Key 仅读本机环境，报告和日志不写密钥。未跑的模型或检查标「未验证」。
+质量抽查注明评阅者。本次由 Codex 评阅，真人复审及真实模型均未验证。在开发集与留出集各抽取简报、澄清与失败答复，分别检查忠实、有来源、下一步可执行（三项各 0/1）。报告列出实际样本和模型、逐组分子/分母、失败实例与限制。默认模拟 provider；真实模型由显式开关启用，Key 仅读本机环境，报告和日志不写密钥。未跑的模型或检查标「未验证」。
 
 实施各批先写回归，再运行全仓类型检查、相关单测、E2E 和数据库集成。数据库覆盖复合归属、RLS、旧消息/单提议迁移、并发回答与重复确认；API 对比隐藏/不存在上下文、错会话/成员/租户、伪造选项和表单、撤权、冲突、部分成功的审计。浏览器以赵晨账号在桌面和手机走第 1 节的批量正反例，以及有来源的简报、同名点选、可编辑表单、显式应用筛选、沟通草稿、故障保留输入。模拟 provider 主流程前后各 3–5 张截图，保存于 `docs/audits/<验收日期>/assistant-v2/`。细节文案、动效打磨与少见故障的交互优化列入待办。
