@@ -130,17 +130,20 @@ export function localMidnightUtc(dateText: string, timeZone: string): Date {
   return date;
 }
 
-/** An exact local time. A nonexistent time during a DST gap has no candidate. */
+/** A unique local time. DST gaps and overlaps have no unambiguous instant. */
 export function localTimeUtc(
   dateText: string,
   timeZone: string,
   time: string,
 ): Date | undefined {
   const formatter = wallClockFormatter(timeZone);
-  return localClockCandidates(dateText, timeZone, time).find((candidate) => {
-    const clock = wallClockAt(candidate, formatter);
-    return clock.hour + ':' + clock.minute === time;
-  });
+  const matches = localClockCandidates(dateText, timeZone, time).filter(
+    (candidate) => {
+      const clock = wallClockAt(candidate, formatter);
+      return clock.hour + ':' + clock.minute === time;
+    },
+  );
+  return matches.length === 1 ? matches[0] : undefined;
 }
 
 function localClockCandidates(

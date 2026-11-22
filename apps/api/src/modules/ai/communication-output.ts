@@ -8,13 +8,38 @@ const value = z.union([
   z.array(z.string().max(300)).max(100),
   z.null(),
 ]);
+const time = z
+  .string()
+  .regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/)
+  .nullable();
+const period = z.enum(['this', 'next']);
+export const communicationDateExpressionSchema = z.union([
+  z.strictObject({ date: z.iso.date(), kind: z.literal('absolute'), time }),
+  z.strictObject({
+    days: z.number().int().nonnegative(),
+    kind: z.literal('relativeDays'),
+    time,
+  }),
+  z.strictObject({
+    week: period,
+    kind: z.literal('weekday'),
+    weekday: z.number().int().min(1).max(7),
+    time,
+  }),
+  z.strictObject({ month: period, kind: z.literal('monthEnd'), time }),
+  z.strictObject({ kind: z.literal('unknown'), time: z.null() }),
+]);
+export type CommunicationDateExpression = z.infer<
+  typeof communicationDateExpressionSchema
+>;
+
 // Structured output providers require every key; null and [] represent absent suggestions.
 export const communicationWireSchema = z.strictObject({
   note: z.string().trim().min(1).max(4000),
   followUp: z
     .strictObject({
       title: z.string().trim().min(1).max(200),
-      suggestedDate: z.string().max(100).nullable(),
+      dateExpression: communicationDateExpressionSchema,
       evidence: quotation,
     })
     .nullable(),

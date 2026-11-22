@@ -1,94 +1,130 @@
+import { communicationDueDate } from './communication-date';
 import {
-  communicationDueDate,
-  supportsFollowUpEvidence,
-} from './communication-date';
+  communicationWireSchema,
+  type CommunicationDateExpression,
+} from './communication-output';
 
 const now = '2026-11-24T02:00:00.000Z'; // Tuesday, 10:00 in Shanghai
 const zone = 'Asia/Shanghai';
 
-describe('quoted follow-up date in the tenant calendar', () => {
-  it.each([
-    ['周三下午三点再打', '2026-11-25T07:00:00.000Z'],
-    ['周一上午十点半联系', '2026-11-30T02:30:00.000Z'],
-    ['星期二下午三点半致电', '2026-11-24T07:30:00.000Z'],
-    ['下周一上午十一点十五分联系', '2026-11-30T03:15:00.000Z'],
-    ['过两天再联系', '2026-11-26T01:00:00.000Z'],
-    ['月底前给答复', '2026-11-30T01:00:00.000Z'],
-    ['预算还没批，下周再联系', '2026-11-30T01:00:00.000Z'],
-    ['下周三再联系，参照今天的方案确认数量', '2026-12-02T01:00:00.000Z'],
-  ])('%s', (evidence, expectedUtc) => {
-    expect(communicationDueDate(evidence, now, zone)).toBe(expectedUtc);
+describe('follow-up dates in the tenant calendar', () => {
+  it.each<[CommunicationDateExpression, string | null]>([
+    [
+      { kind: 'absolute', date: '2026-12-01', time: null },
+      '2026-12-01T01:00:00.000Z',
+    ],
+    [{ kind: 'relativeDays', days: 2, time: null }, '2026-11-26T01:00:00.000Z'],
+    [
+      { kind: 'weekday', week: 'this', weekday: 3, time: '15:30' },
+      '2026-11-25T07:30:00.000Z',
+    ],
+    [
+      { kind: 'weekday', week: 'next', weekday: 1, time: '10:15' },
+      '2026-11-30T02:15:00.000Z',
+    ],
+    [
+      { kind: 'weekday', week: 'this', weekday: 7, time: '23:59' },
+      '2026-11-29T15:59:00.000Z',
+    ],
+    [
+      { kind: 'monthEnd', month: 'this', time: null },
+      '2026-11-30T01:00:00.000Z',
+    ],
+    [
+      { kind: 'monthEnd', month: 'next', time: '00:00' },
+      '2026-12-30T16:00:00.000Z',
+    ],
+    [{ kind: 'unknown', time: null }, null],
+    [{ kind: 'weekday', week: 'this', weekday: 1, time: '23:00' }, null],
+    [{ kind: 'absolute', date: '2026-11-24', time: '09:59' }, null],
+    [{ kind: 'relativeDays', days: 0, time: null }, null],
+    [{ kind: 'relativeDays', days: 0, time: '10:00' }, now],
+    [{ kind: 'absolute', date: '2026-11-31', time: null }, null],
+    [{ kind: 'relativeDays', days: -1, time: null }, null],
+    [{ kind: 'relativeDays', days: 1.5, time: null }, null],
+    [{ kind: 'relativeDays', days: 91, time: null }, null],
+    [{ kind: 'relativeDays', days: 3, time: '24:00' }, null],
+    [{ kind: 'absolute', date: '2027-03-01', time: '00:00' }, null],
+  ])('resolves %j', (expression, expected) => {
+    expect(communicationDueDate(expression, now, zone)).toBe(expected);
   });
 
-  it.each([
-    '周二早上八点再打', // bare weekday is today but the time has passed
-    '节后再约',
-    '最近再说',
-    '有需要再找你们',
-    '上周五联系过',
-    '下周末联系',
-    '下周可能再联系',
-    '先别下周联系',
-    '明天不用跟进',
-    '月底或者节后再约',
-    '周三或周五再联系',
-    '周三下午再打', // no specific hour
-    '周三早上再联系',
-    '明天致电，参考今天的清单后天跟进',
-  ])('leaves the date open for %s', (evidence) => {
-    expect(communicationDueDate(evidence, now, zone)).toBeNull();
-  });
-
-  it('checks if a quoted date came from a cancelled plan', () => {
+  it('bases month end on the local month and respects leap years', () => {
+    // February 1 UTC is still January 31 in Los Angeles.
     expect(
       communicationDueDate(
-        '明天跟进',
-        now,
-        zone,
-        '客户说不用明天跟进，等他回电',
+        { kind: 'monthEnd', month: 'next', time: null },
+        '2028-02-01T02:30:00.000Z',
+        'America/Los_Angeles',
       ),
-    ).toBeNull();
-  });
-
-  it('can quote a replacement plan in a separate clause', () => {
-    expect(
-      communicationDueDate(
-        '过两天再联系',
-        now,
-        zone,
-        '明天不用跟进，过两天再联系',
-      ),
-    ).toBe('2026-11-26T01:00:00.000Z');
+    ).toBe('2028-02-29T17:00:00.000Z');
   });
 
   it.each([
-    ['明天', '明天或者后天再联系'],
-    ['周三', '周三下午三点再打'],
-  ])('drops an incomplete date quote from %s', (quote, text) => {
-    expect(communicationDueDate(quote, now, zone, text)).toBeNull();
-  });
-
-  it.each<[string, string, boolean]>([
-    ['明天', '明天不需要再联系了，客户会主动发邮件', false],
-    ['回访', '周三的回访已取消', false],
-    ['过两天联系', '明天不用跟进，过两天联系', true],
-    ['下周', '不确定下周是否能联系', true],
-    ['周五', '周三回访', false],
+    ['09:00', '2026-11-08T14:00:00.000Z'],
+    ['09:01', null],
   ])(
-    'checks whether the quote %s belongs to a live plan',
-    (quote, source, expected) => {
-      expect(supportsFollowUpEvidence(quote, source)).toBe(expected);
+    'bounds day 90 at the original local clock across a DST change (%s)',
+    (time, expected) => {
+      expect(
+        communicationDueDate(
+          { kind: 'relativeDays', days: 90, time },
+          '2026-08-10T13:00:00.000Z',
+          'America/New_York',
+        ),
+      ).toBe(expected);
     },
   );
 
-  it('uses the local date after UTC midnight and across the month boundary', () => {
-    // January 31 in Los Angeles although it is already February 1 UTC.
+  it.each([
+    ['2026-03-08', '02:30', '2026-03-01T00:00:00Z'], // spring gap
+    ['2026-11-01', '01:30', '2026-10-20T00:00:00Z'], // autumn overlap
+  ])('leaves non-unique local time %s %s open', (date, time, reference) => {
     expect(
       communicationDueDate(
-        '过两天回电',
-        '2027-02-01T02:30:00.000Z',
-        'America/Los_Angeles',
+        { kind: 'absolute', date, time },
+        reference,
+        'America/New_York',
       ),
-    ).toBe('2027-02-02T17:00:00.000Z');
+    ).toBeNull();
   });
+});
+
+describe('structured follow-up date contract', () => {
+  const draft = {
+    note: 'Customer requested a call.',
+    followUp: { title: 'Call', evidence: 'Call in two days' },
+    fieldChanges: [],
+  };
+
+  it('accepts a typed expression with an explicitly absent time', () => {
+    expect(
+      communicationWireSchema.safeParse({
+        ...draft,
+        followUp: {
+          ...draft.followUp,
+          dateExpression: { kind: 'relativeDays', days: 2, time: null },
+        },
+      }).success,
+    ).toBe(true);
+  });
+
+  it.each([
+    { kind: 'relativeDays', days: 2 },
+    { kind: 'relativeDays', days: -1, time: null },
+    { kind: 'weekday', week: 'next', weekday: 8, time: null },
+    { kind: 'monthEnd', month: 'this', time: '9am' },
+    { kind: 'unknown', date: '2026-11-25', time: null },
+    { kind: 'unknown', time: '09:00' },
+  ])(
+    'rejects an incomplete or inconsistent expression %j',
+    (dateExpression) => {
+      expect(
+        communicationWireSchema.safeParse({
+          ...draft,
+          followUp: { ...draft.followUp, dateExpression },
+        }).success,
+      ).toBe(false);
+    },
+  );
 });
