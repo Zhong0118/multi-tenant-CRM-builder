@@ -19,6 +19,7 @@ import request from 'supertest';
 import { hashSessionToken } from '../src/modules/auth/session.service';
 import type { BusinessTemplateConfiguration } from '../src/modules/business-templates/business-template.schema';
 import type { PublishedObjectSchema } from '../src/modules/objects/object-schema';
+import { assertIsolatedTestDatabase } from './helpers/isolated-database';
 import {
   closeCriticalHarness,
   createCriticalHarness,
@@ -388,25 +389,10 @@ async function initialization(f: Awaited<ReturnType<typeof fixture>>) {
 }
 describe('portable workflow templates (HTTP + PostgreSQL)', () => {
   beforeAll(async () => {
-    // Dedicated local databases or the same ephemeral CI databases used by the critical fixture.
-    const url = new URL(process.env.TEST_DATABASE_ADMIN_URL ?? '');
-    const local =
-      ['localhost', '127.0.0.1'].includes(url.hostname) &&
-      url.port === '55433' &&
-      url.pathname === '/crm_templates_api_1026' &&
-      url.username === 'crm';
-    const ci =
-      process.env.CI === 'true' &&
-      ['localhost', '127.0.0.1', 'postgres'].includes(url.hostname) &&
-      url.port === '5432' &&
-      url.pathname === '/crm' &&
-      url.username === 'crm';
-    const localTest =
-      ['localhost', '127.0.0.1'].includes(url.hostname) &&
-      url.port === '5432' &&
-      /^\/crm_[a-z0-9_]*_test_[0-9]+$/.test(url.pathname);
-    if (!local && !localTest && !ci)
-      throw new Error('Use isolated template API database');
+    assertIsolatedTestDatabase(
+      process.env.TEST_DATABASE_URL,
+      process.env.TEST_DATABASE_ADMIN_URL,
+    );
     h = await createCriticalHarness();
     await h.app.listen(0, '127.0.0.1');
   });

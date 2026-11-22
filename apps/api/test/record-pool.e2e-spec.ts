@@ -327,7 +327,10 @@ describe('Record pool HTTP and database integration', () => {
         version: body<OwnershipResult>(released).version,
         values: { name: 'Must claim first' },
       })
-      .expect(404);
+      .expect(403)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({ code: 'OBJECT_ACTION_FORBIDDEN' });
+      });
     await ownership(
       original.id,
       'CLAIM',
