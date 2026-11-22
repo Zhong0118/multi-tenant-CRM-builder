@@ -56,6 +56,7 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
       process.env.TEST_DATABASE_ADMIN_URL,
     );
     harness = await createCriticalHarness();
+    await harness.app.listen(0, '127.0.0.1');
     proposals = harness.app.get(AiProposalService);
   });
 
@@ -589,6 +590,8 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
         proposalId: view.proposalId,
         status: 'PROPOSED',
       });
+      // Supertest connects to IPv4. The fixture must still own that listener for confirm.
+      expect(new URL(await harness.app.getUrl()).hostname).toBe('127.0.0.1');
       expect(
         await Promise.all([
           harness.adminDatabase.record.findUniqueOrThrow({
