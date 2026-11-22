@@ -1,6 +1,6 @@
 # 对话助手评测
 
-开发集 30 条，冻结于 `1847273`。独立作者编写的留出集 15 条，冻结于 `327dc40`。11 月 22 日的基线使用 fake provider，开发集与留出集均独立运行。逐例输出见[开发集报告](../../../../../docs/audits/2026-11-22/assistant-v2/development.md)、[留出集报告](../../../../../docs/audits/2026-11-22/assistant-v2/holdout.md)及[质量抽查](../../../../../docs/audits/2026-11-22/assistant-v2/quality.md)。
+开发集 30 条冻结于 `1847273`，独立留出集 15 条冻结于 `327dc40`。DeepSeek Flash 第一次实测开发集 19/30、留出集 12/15。[真实模型报告](../../../../../docs/audits/2026-11-23/assistant-v2-deepseek/README.md)
 
 ## 运行
 
@@ -18,7 +18,7 @@ pnpm --filter @crm/api eval:assistant --dataset development --strict
 pnpm --filter @crm/api eval:assistant --dataset holdout
 ```
 
-可加 `--report /absolute/path/report.md` 保存输出。默认使用模拟 provider。在本机设置 `ASSISTANT_EVAL_PROVIDER=real`、`AI_MODEL`、`AI_API_KEY` 后可运行真实模型；兼容端点可设置 `AI_BASE_URL`。CI 只运行模拟评测。11 月 23 日使用 DeepSeek Flash 实测，开发集 19/30，独立留出集 12/15。[真实模型结果与失败分析](../../../../../docs/audits/2026-11-23/assistant-v2-deepseek/README.md)
+可加 `--report /absolute/path/report.md` 保存输出。默认使用模拟 provider。在本机设置 `ASSISTANT_EVAL_PROVIDER=real`、`AI_MODEL`、`AI_API_KEY` 后可运行真实模型；兼容端点可设置 `AI_BASE_URL`。CI 只运行模拟评测。
 
 ## 判分
 
@@ -27,3 +27,7 @@ pnpm --filter @crm/api eval:assistant --dataset holdout
 运行器记录实际工具调用、公开事件和数据库提议。逐步比较卡型、目标集合、操作和值，并核对确认前业务数据和审计。超限拒绝须有搜索总数支撑。故障样本须实际触发预设故障。问答文本和拒绝文本以公开输出归类，中文拒绝采用短语匹配，简报另查四段及呈现工具。自动分数衡量该协议与有限意图覆盖，文意和来源质量另行抽查。
 
 发生隐藏数据泄露、未经查看的目标、越权提议或未确认的业务写入时，命令始终返回非零。样本运行错误也返回非零。`--strict` 将所有意图或字段偏差计为命令失败；留出集报告保留逐例未命中情况。
+
+## 链路检查
+
+模拟 provider 按预设演示措辞调用真实编排与工具，11 月 22 日基线开发集 30/30、留出集 6/15。这组数字用于检查服务端和界面流程。[开发集](../../../../../docs/audits/2026-11-22/assistant-v2/development.md) · [留出集](../../../../../docs/audits/2026-11-22/assistant-v2/holdout.md)
