@@ -1,6 +1,6 @@
 # 多租户 CRM Builder 接手说明
 
-截至 2026-11-22，主线参照 `848280b`。本地架构修复和验证见[独立复核](docs/audits/2026-11-22/architecture-reliability.md)。接手时用 `git status -sb` 和 `git log -1` 确认当前工作树与版本。2026-10-08 及以前的交接全文可用 `git show 848280b:HANDOFF.md` 查看，其中的 PR 状态、演示环境和临时授权均有日期。
+截至 2026-11-22，集成基线为销售跟进 PR #82 的合并提交 `7228fc4`。架构修复和验证见[独立复核](docs/audits/2026-11-22/architecture-reliability.md)。接手时用 `git status -sb` 和 `git log -1` 确认当前工作树与版本。2026-10-08 及以前的交接全文可用 `git show 848280b:HANDOFF.md` 查看，其中的 PR 状态、演示环境和临时授权均有日期。
 
 ## 从业务入口找到实现
 
@@ -11,7 +11,7 @@
 | 对象与发布 | `objects` 管理草稿、发布分析、不可变快照和有效权限。业务对象按公司和对象代码定位，字段键在对象内唯一。成员读写使用当前发布，管理员通过设计入口管理草稿。 |
 | 记录与公海 | `records` 管理列表、聚合、导入导出、编辑和归属。动态详情路由使用 `RecordDetailPage`。公海保护、编号、幂等和并发版本需要真实 PostgreSQL 验证。 |
 | 跨表写入 | `workflows`、`actions`、`automations` 和 `record-relations` 共用动作与事务边界。改写入时一起检查业务行、版本、关系与审计。 |
-| 工作台、工作和 AI | `dashboards` 管理组件配置与汇总，`work` 管理任务、目标和团队活动，`follow-ups` 管理记录跟进。AI 查询复用领域服务，AI 提议须在确认时重验权限并执行领域命令。 |
+| 工作台、工作和 AI | `dashboards` 管理组件配置与汇总，`work` 管理任务、目标和团队活动，`follow-ups` 管理记录跟进。沟通草稿确认时重验权限并执行领域命令。一句话筛选在预览前后校验当前成员权限，只在用户应用时查询记录。 |
 
 Web 通过 REST 调用 API。API 用受限角色和事务内租户上下文访问 PostgreSQL。数据库迁移使用单独的管理员连接。`apps/worker` 当前检查 Redis 连通性，业务写入及其审计在 API 事务链路完成。
 
