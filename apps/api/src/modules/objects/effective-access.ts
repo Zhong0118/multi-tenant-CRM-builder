@@ -60,6 +60,13 @@ export interface AccessibleObjectSchema {
   employeeAccess?: NonNullable<PublishedObjectSchema['employeeAccess']> | null;
 }
 
+function configuredFieldAccess(
+  fields: Record<string, PublishedFieldAccess> | null | undefined,
+  key: string,
+): PublishedFieldAccess | undefined {
+  return fields && Object.hasOwn(fields, key) ? fields[key] : undefined;
+}
+
 export function resolveEffectiveAccess(input: {
   schema: AccessibleObjectSchema;
   role: 'TENANT_ADMIN' | 'EMPLOYEE';
@@ -120,8 +127,11 @@ export function resolveEffectiveAccess(input: {
         field.fieldKey,
         field.isSystem
           ? 'READ_ONLY'
-          : (input.memberFieldOverrides?.[field.fieldKey] ??
-            employeeAccess.fields[field.fieldKey] ??
+          : (configuredFieldAccess(
+              input.memberFieldOverrides,
+              field.fieldKey,
+            ) ??
+            configuredFieldAccess(employeeAccess.fields, field.fieldKey) ??
             'EDIT'),
       ]),
     ),
@@ -134,12 +144,10 @@ export function resolveEffectiveAccess(input: {
     access.memberId = input.memberId;
     access.groupFieldAccess = Object.fromEntries(
       input.schema.fields.map((field) => {
-        const configured = Object.hasOwn(
-          objectPolicy.groupFieldAccess!,
+        const configured = configuredFieldAccess(
+          objectPolicy.groupFieldAccess,
           field.fieldKey,
-        )
-          ? objectPolicy.groupFieldAccess![field.fieldKey]
-          : undefined;
+        );
         const fallback =
           access.fields[field.fieldKey] === 'HIDDEN' ? 'HIDDEN' : 'READ_ONLY';
         const value = configured ?? fallback;

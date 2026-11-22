@@ -38,6 +38,19 @@ describe('record ownership', () => {
     ).toThrow(new ApiException('RECORD_NOT_FOUND', 404));
   });
 
+  it('requires the pool title to be readable before claiming a record', () => {
+    const groupAccess: EffectiveObjectAccess = {
+      ...access,
+      readScope: 'GROUP',
+      groupOwnerMemberIds: [employee.memberId, 'peer'],
+      ownTitleHidden: true,
+      groupTitleHidden: false,
+    };
+    expect(() =>
+      ownershipChange(employee, groupAccess, config, pool, claim, now),
+    ).toThrow(new ApiException('RECORD_NOT_FOUND', 404));
+  });
+
   it('claims an explicit pool record and starts the current TTL', () => {
     expect(ownershipChange(employee, access, config, pool, claim, now)).toEqual(
       {
