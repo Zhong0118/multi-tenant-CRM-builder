@@ -1,5 +1,7 @@
 # 整理本次沟通 · 评测记录
 
+后续返工采用结构化日历表达并新增冻结留出集。下文保留返工前的结果。[返工验收与分组评测](rework.md)
+
 2026-11-22。30 条脱敏样本覆盖 6 类销售对话。每条固定原话、当前时间、公司时区、已有阶段、活动、可编辑字段及选项。通过实际的草稿生成器调用 provider，并对销售收到的草稿评分。全部样本使用合成上下文，运行无需登录或连接业务库。[评测集](../../../../apps/api/test/evals/communication-drafts/cases.ts)
 
 真实评测使用 DeepSeek 官方 `deepseek-flash`，通过 CRM 生产适配器调用 `https://api.deepseek.com/responses`，启用 JSON Schema 结构化输出。各轮使用相同的 30 条样本和评分器，每条样本每轮请求一次。模拟回归使用仓库中的 `FakeAiProvider`。[官方接口说明](https://api-docs.deepseek.com/guides/responses_api/)
