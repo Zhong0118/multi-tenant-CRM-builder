@@ -56,6 +56,10 @@ export async function* simulateAssistant(
   const choose = (options: string[]) => ask({ kind: 'choose_option', options });
   const propose = (args: Data) =>
     call('propose_change', { objectCode, recordId, ...args });
+  const requestsFieldChange =
+    /改成|改为|设成|设为|设置为|更新为|换成|调整为|(?:^|请|帮我)(?:修改|编辑|更新|设置|调整).*字段|字段.*清空/.test(
+      text,
+    );
   let output = '';
   try {
     if (/模拟服务不可用/.test(text)) {
@@ -162,7 +166,7 @@ export async function* simulateAssistant(
             dueAt,
           });
     } else if (
-      (/张三/.test(text) && /改|设|调/.test(text)) ||
+      (/张三/.test(text) && /阶段|谈判/.test(text) && /改|设|调/.test(text)) ||
       /阶段.{0,4}(改|设|调)|改成谈判/.test(text)
     ) {
       if (!recordId) {
@@ -204,6 +208,7 @@ export async function* simulateAssistant(
           });
       } else output = '没有可用的目标记录。';
     } else if (
+      !requestsFieldChange &&
       /改一下|改一改|更新一下|修改客户|编辑这|帮我改/.test(text) &&
       recordId
     ) {
@@ -222,6 +227,8 @@ export async function* simulateAssistant(
       else if (text === '帮我筛选')
         await choose(['只看我负责的客户', '查看今天待跟进的客户']);
       else await call('preview_filter', { text });
+    } else if (requestsFieldChange) {
+      output = '当前没有可用的修改项，请核对可编辑字段。';
     } else if (/字段/.test(text) && page.objectCode) {
       output =
         '可用字段：' +
