@@ -302,6 +302,9 @@ export class AiOrchestrator {
                 yield { event: 'assistant.reset', data: {} };
                 break;
               case 'TEXT_DELTA':
+                // A provider may announce a proposal before the batch is persisted.
+                if (isTruncatedBatch(search.coverage(collector.candidates)))
+                  break;
                 buffer += event.text;
                 yield { event: 'assistant.delta', data: { text: event.text } };
                 break;
@@ -532,7 +535,14 @@ export class AiOrchestrator {
         providerKey: this.provider.providerKey,
         modelKey: this.provider.modelKey,
       };
-      if (collector.candidates.length && this.proposals) {
+      const candidates = collector.candidates;
+      const coverage = search.coverage(candidates);
+      if (isTruncatedBatch(coverage)) {
+        const content = '范围超过 20 条，请缩小范围后再试。';
+        await this.finish(context, begun, latencyMs, { ...outcome, content });
+        yield { event: 'assistant.reset', data: {} };
+        yield { event: 'assistant.delta', data: { text: content } };
+      } else if (candidates.length && this.proposals) {
         if (clientAbort.aborted || timeout.aborted)
           throw new Error(
             clientAbort.aborted ? 'AI_TURN_CANCELLED' : 'AI_PROVIDER_TIMEOUT',
@@ -540,7 +550,7 @@ export class AiOrchestrator {
         const batch = await this.proposals.completeWithBatch(
           context,
           begun.turnId,
-          collector.candidates,
+          candidates,
           begun.user.content,
           outcome,
           (tx, actor, turnId, final) =>
@@ -550,7 +560,7 @@ export class AiOrchestrator {
               turnId,
               final,
             ),
-          search.coverage(collector.candidates),
+          coverage,
         );
         // The proposal transaction also completes the assistant atomically. An
         // abort observed after it resolves cannot safely re-finalize the turn.
@@ -640,6 +650,12 @@ export class AiOrchestrator {
       latencyMs,
     });
   }
+}
+
+function isTruncatedBatch(coverage?: { total: number; targets: number }) {
+  return (
+    coverage !== undefined && coverage.total > 20 && coverage.targets === 20
+  );
 }
 
 export async function* mergeProviderAndPublicEvents(

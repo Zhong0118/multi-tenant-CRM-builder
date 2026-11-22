@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
 import {
@@ -347,6 +348,72 @@ describe('AiOrchestrator proposal candidate lifecycle', () => {
     expect(proposals.completeWithBatch.mock.calls[0][2]).toHaveLength(2);
     expect(events.map((event) => event.event)).toContain('proposal.ready');
   });
+  it.each([
+    { total: 21, targets: 20, publish: false },
+    { total: 20, targets: 20, publish: true },
+    { total: 21, targets: 19, publish: true },
+  ])(
+    'handles 20 requests for $targets distinct targets out of $total matches',
+    async ({ total, targets, publish }) => {
+      const conversations = conversationMock();
+      const proposals = proposalMock();
+      const items = Array.from({ length: 20 }, () => ({ id: randomUUID() }));
+      const query = searchTool(async () => ({ items, total }));
+      const claim = '已生成 20 项提议';
+      const provider = providerWith(async function* (_signal, tools) {
+        await tools
+          .find((tool) => tool.name === 'search_records')!
+          .execute({ objectCode: 'leads', limit: 20 }, 'lookup');
+        const write = tools.find((tool) => tool.name === 'propose_change')!;
+        for (let i = 0; i < 20; i++)
+          await write.execute(
+            { ...candidate, recordId: items[i % targets].id },
+            'note-' + i,
+          );
+        yield { type: 'TEXT_DELTA', text: claim };
+        yield { type: 'COMPLETED' };
+      });
+      const events = await collect(
+        await new AiOrchestrator(
+          conversations,
+          provider,
+          registryWith([query]),
+          proposals,
+        ).streamTurn(
+          context,
+          { content: '记录备注' },
+          new AbortController().signal,
+        ),
+      );
+      expect(events.at(-1)?.event).toBe('turn.completed');
+      expect(events.some((e) => e.event === 'proposal.ready')).toBe(publish);
+      if (publish) {
+        expect(proposals.completeWithBatch.mock.calls[0][6]).toEqual({
+          targets,
+          total,
+        });
+        expect(events).toContainEqual({
+          event: 'assistant.delta',
+          data: { text: claim },
+        });
+      } else {
+        expect(proposals.completeWithBatch).not.toHaveBeenCalled();
+        expect(JSON.stringify(events)).not.toContain(claim);
+        expect(events).toContainEqual({
+          event: 'assistant.delta',
+          data: { text: expect.stringContaining('缩小范围') },
+        });
+        expect(conversations.finalizeAssistant).toHaveBeenCalledWith(
+          context,
+          begun.turnId,
+          expect.objectContaining({
+            status: 'COMPLETED',
+            content: expect.stringContaining('缩小范围'),
+          }),
+        );
+      }
+    },
+  );
   it('rejects a proposal about a visible but unseen target', async () => {
     const proposals = proposalMock();
     const provider = providerWith(async function* (_signal, tools) {

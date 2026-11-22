@@ -546,6 +546,76 @@ describe('Critical API E2E', () => {
     }
   });
 
+  it('publishes zero operations when the provider silently truncates 21 matches to 20', async () => {
+    await harness.adminDatabase.record.createMany({
+      data: Array.from({ length: 21 }, (_, i) => ({
+        tenantId: fixture.tenantA.id,
+        objectId: fixture.object.id,
+        recordNo: 10 + i,
+        ownerMemberId: fixture.employee.memberId,
+        title: '批量上限' + i,
+        data: { name: '批量上限' + i },
+      })),
+    });
+    const provider = harness.app.get<AiProvider>(AI_PROVIDER);
+    const claim = '已生成 20 项提议';
+    const mock = jest
+      .spyOn(provider, 'streamTurn')
+      .mockImplementationOnce(async function* ({ tools }) {
+        const result = await tools
+          .find((t) => t.name === 'search_records')!
+          .execute(
+            { objectCode: fixture.object.code, query: '批量上限', limit: 20 },
+            'search',
+          );
+        expect(result).toMatchObject({ total: 21 });
+        const ids = capturedRecordIds(result);
+        expect(ids).toHaveLength(20);
+        const write = tools.find((t) => t.name === 'propose_change')!;
+        for (const id of ids)
+          expect(
+            await write.execute(
+              {
+                operationType: 'ADD_ACTIVITY_NOTE',
+                objectCode: fixture.object.code,
+                recordId: id,
+                content: '跟进',
+              },
+              id,
+            ),
+          ).toMatchObject({ accepted: true });
+        yield { type: 'TEXT_DELTA', text: claim };
+        yield { type: 'COMPLETED' };
+      });
+    try {
+      const response = await request(harness.app.getHttpServer())
+        .post(`/api/v1/workspaces/${fixture.tenantA.code}/ai/turns`)
+        .set('Cookie', fixture.employee.cookie)
+        .set('Origin', 'http://localhost:3000')
+        .send({ content: '给所有批量上限客户添加跟进备注' })
+        .expect(200);
+      const events = parseSse(response.text);
+      expect(events.at(-1)?.event).toBe('turn.completed');
+      const turnId = events.at(-1)!.data.turnId as string;
+      expect(
+        await harness.adminDatabase.aiOperation.count({ where: { turnId } }),
+      ).toBe(0);
+      expect(events.map((e) => e.event)).not.toContain('proposal.ready');
+      expect(response.text).not.toContain(claim);
+      expect(response.text).toContain('缩小范围');
+      expect(
+        await harness.adminDatabase.aiMessage.findFirstOrThrow({
+          where: { turnId, role: 'ASSISTANT' },
+        }),
+      ).toMatchObject({
+        status: 'COMPLETED',
+        content: expect.stringContaining('缩小范围'),
+      });
+    } finally {
+      mock.mockRestore();
+    }
+  });
+
   it('lets an employee search only owned leads and hides secret from the stream and captured tool result', async () => {
     const fetchSpy = jest.spyOn(globalThis, 'fetch');
     const response = await request(harness.app.getHttpServer())
