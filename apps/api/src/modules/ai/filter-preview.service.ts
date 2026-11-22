@@ -2,6 +2,8 @@ import {
   FILTER_FIELD_OPERATORS,
   FILTER_OPERATORS,
   recordFilterFieldType,
+  parseFilterRule,
+  validateFilterCondition,
   RELATIVE_DATE_PRESETS,
   type FilterCondition,
   type FilterFieldType,
@@ -9,6 +11,8 @@ import {
   type FilterPreviewRequest,
   type FilterRule,
 } from '@crm/contracts';
+import type { Prisma } from '@crm/database';
+import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
@@ -24,7 +28,7 @@ import { validateRecordFilterRule } from '../records/record-filter';
 import { RECORDS_REPOSITORY } from '../records/records.service';
 import type { RecordsRepository } from '../records/records.repository';
 import { AI_PROVIDER, type AiProvider } from './ai-provider';
-import { MembershipsService } from '../memberships/memberships.service';
+import { recordOwnerFilter } from '../objects/record-read-scope';
 import { modelFields } from './model-fields';
 import { filterWireSchema, type FilterModelField } from './filter-generation';
 import { isQuotedNumber } from './communication-field-evidence';
@@ -40,17 +44,8 @@ const relativeLabels: Record<(typeof RELATIVE_DATE_PRESETS)[number], string> = {
   past_30_days: '近 30 天',
 };
 
-function fieldsFor(
-  resolved: ResolvedObjectSchema,
-  adminMembers: { key: string; label: string }[],
-): FilterModelField[] {
-  const members = [
-    { key: '$me', label: '我' },
-    ...adminMembers,
-    ...(resolved.visibleSchema.ownerMembers ?? [])
-      .filter((m) => m.status === 'ACTIVE')
-      .map((m) => ({ key: m.id, label: m.displayName })),
-  ];
+function fieldsFor(resolved: ResolvedObjectSchema): FilterModelField[] {
+  const members = [{ key: '$me', label: '我' }];
   return [
     ...modelFields(resolved).map(({ field, metadata }) => ({
       ...metadata,
@@ -74,12 +69,87 @@ function fieldsFor(
   ];
 }
 
-function choiceLabel(c: FilterCondition, field: FilterModelField) {
+function invalid(): never {
+  throw new ApiException('RECORD_FILTER_INVALID', 400);
+}
+
+function mapMembers(
+  rule: FilterRule,
+  fields: FilterModelField[],
+  map: (ref: string) => string,
+): FilterRule {
+  return {
+    ...rule,
+    conditions: rule.conditions.map((c) => {
+      if (!('fieldKey' in c)) return invalid();
+      const type = fields.find((f) => f.fieldKey === c.fieldKey)?.type;
+      return (type === 'MEMBER' || type === 'OWNER') && Array.isArray(c.value)
+        ? { ...c, value: c.value.map(map) }
+        : c;
+    }),
+  };
+}
+
+// IDs come only from a validated draft or its request-local handles. Names
+// come only from the user's text. All lookups use the current CRM scope.
+async function lookupMembers(
+  tx: Prisma.TransactionClient,
+  actor: TenantContext,
+  resolved: ResolvedObjectSchema,
+  ids: Set<string>,
+  names: Set<string>,
+) {
+  if (!ids.size && !names.size) return [];
+  const scope =
+    actor.role === 'TENANT_ADMIN'
+      ? undefined
+      : resolved.access.readScope === 'GROUP'
+        ? recordOwnerFilter(resolved.access, actor.memberId)
+        : actor.memberId;
+  const whereName = { in: [...names] };
+  const rows = await tx.tenantMember.findMany({
+    where: {
+      tenantId: actor.tenantId,
+      id: scope,
+      status: 'ACTIVE',
+      user: { status: 'ACTIVE' },
+      OR: [
+        { id: { in: [...ids] } },
+        { displayName: whereName },
+        { displayName: null, user: { displayName: whereName } },
+      ],
+    },
+    select: {
+      id: true,
+      displayName: true,
+      user: { select: { displayName: true } },
+    },
+    take: ids.size + names.size + 1,
+  });
+  if (rows.length > ids.size + names.size) return invalid();
+  return rows.map((m) => ({
+    id: m.id,
+    name: m.displayName ?? m.user.displayName,
+  }));
+}
+
+function choiceLabel(
+  c: FilterCondition,
+  field: FilterModelField,
+  memberLabels: Map<string, string>,
+) {
   const v = c.value;
   let label = '';
   if (Array.isArray(v))
     label = v
-      .map((k) => field.options?.find((o) => o.key === k)?.label ?? k)
+      .map(
+        (k) =>
+          (field.type === 'MEMBER' || field.type === 'OWNER'
+            ? memberLabels.get(k)
+            : undefined) ??
+          field.options?.find((o) => o.key === k)?.label ??
+          k,
+      )
       .join('、');
   else if (v && typeof v === 'object')
     label =
@@ -103,7 +173,6 @@ export class FilterPreviewService {
     @Inject(RECORDS_REPOSITORY) private readonly records: RecordsRepository,
     private readonly objects: PublishedObjectService,
     @Inject(AI_PROVIDER) private readonly provider: AiProvider,
-    private readonly memberships: MembershipsService,
   ) {}
 
   async preview(
@@ -112,77 +181,121 @@ export class FilterPreviewService {
     req: FilterPreviewRequest,
   ): Promise<FilterPreview> {
     const initial = await this.objects.resolveRuntimeSchema(actor, code);
-    const adminMembers = async () => {
-      const options: { key: string; label: string }[] = [];
-      if (actor.role === 'TENANT_ADMIN') {
-        for (let page = 1; ; page++) {
-          const batch = await this.memberships.listMembers(actor, {
-            page,
-            limit: 100,
-            status: 'ACTIVE',
-          });
-          for (const m of batch.items) {
-            if (m.status === 'ACTIVE' && m.displayName)
-              options.push({ key: m.id, label: m.displayName });
-          }
-          if (!batch.items.length || page * 100 >= batch.total) break;
-        }
-      }
-      return options;
-    };
+    const idByHandle = new Map<string, string>();
+    const handleById = new Map<string, string>();
     const withMetadata = <T>(
       fn: (
         fields: FilterModelField[],
-        validate: (rule: unknown) => Promise<FilterRule>,
+        validate: (raw: unknown, fromModel?: boolean) => Promise<FilterRule>,
         today: string,
+        memberLabels: Map<string, string>,
       ) => Promise<T>,
     ) =>
-      adminMembers().then((roster) =>
-        this.records.withTenant(actor, async (store) => {
-          const resolved = await store.resolveCurrentObject(initial);
-          if (req.baseViewId)
-            await store.resolveRecordView(resolved, req.baseViewId);
-          const zone = await store.getTenantTimezone?.();
-          if (!isValidFollowUpTimeZone(zone ?? null))
-            throw new ApiException('INTERNAL_ERROR', 500);
-          const fields = fieldsFor(resolved, roster);
-          const validate = async (raw: unknown) => {
-            const rule = await validateRecordFilterRule(
-              raw,
-              resolved,
-              actor,
-              (id) => store.memberExists(id),
-            );
+      this.records.withTenantTransaction(actor, async ({ tx, store }) => {
+        const activeActor = await tx.tenantMember.findFirst({
+          where: {
+            id: actor.memberId,
+            tenantId: actor.tenantId,
+            userId: actor.userId,
+            tenant: { status: 'ACTIVE' },
+            role: actor.role,
+            status: 'ACTIVE',
+            user: { status: 'ACTIVE' },
+          },
+          select: { id: true },
+        });
+        if (!activeActor) return invalid();
+        const resolved = await store.resolveCurrentObject(initial);
+        if (req.baseViewId)
+          await store.resolveRecordView(resolved, req.baseViewId);
+        const zone = await store.getTenantTimezone?.();
+        if (!isValidFollowUpTimeZone(zone ?? null))
+          throw new ApiException('INTERNAL_ERROR', 500);
+        const fields = fieldsFor(resolved);
+        const memberLabels = new Map<string, string>();
+        const validate = async (raw: unknown, fromModel = false) => {
+          const ids = new Set<string>();
+          const names = new Set<string>();
+          let rule: FilterRule;
+          try {
+            rule = parseFilterRule(raw);
             for (const c of rule.conditions) {
-              const field =
-                'fieldKey' in c &&
-                fields.find((f) => f.fieldKey === c.fieldKey);
+              if (!('fieldKey' in c)) return invalid();
+              const field = fields.find((f) => f.fieldKey === c.fieldKey);
               if (
                 !field ||
-                !('fieldKey' in c) ||
-                (c.fieldKey === '$followUp' &&
+                (field.type === 'FOLLOW_UP' &&
                   typeof c.value === 'object' &&
                   c.value &&
                   'assignee' in c.value &&
                   c.value.assignee === 'any' &&
-                  actor.role !== 'TENANT_ADMIN') ||
-                ((field.type === 'MEMBER' || field.type === 'OWNER') &&
-                  Array.isArray(c.value) &&
-                  c.value.some((k) => !field.options?.some((o) => o.key === k)))
+                  actor.role !== 'TENANT_ADMIN')
               )
-                throw new ApiException('RECORD_FILTER_INVALID', 400);
+                return invalid();
+              if (field.type !== 'MEMBER' && field.type !== 'OWNER') continue;
+              if (!fromModel) validateFilterCondition(c, field.type);
+              if (!Array.isArray(c.value)) continue;
+              for (const ref of c.value) {
+                if (ref === '$me') continue;
+                const id = fromModel ? idByHandle.get(ref) : ref;
+                if (id) ids.add(id);
+                else if (
+                  ref.length <= 100 &&
+                  !ref.includes('\0') &&
+                  req.text.includes(ref)
+                )
+                  names.add(ref);
+                else return invalid();
+              }
             }
-            return rule;
-          };
-          return fn(fields, validate, localDateAt(new Date(), zone!));
-        }),
-      );
+          } catch {
+            return invalid();
+          }
+          const members = await lookupMembers(tx, actor, resolved, ids, names);
+          const idByName = new Map<string, string>();
+          for (const { id, name } of members) {
+            memberLabels.set(id, name);
+            if (!names.has(name)) continue;
+            if (idByName.has(name)) return invalid();
+            idByName.set(name, id);
+          }
+          const memberIds = new Set(members.map((m) => m.id));
+          rule = mapMembers(rule, fields, (ref) => {
+            if (ref === '$me') return ref;
+            const id = fromModel
+              ? (idByHandle.get(ref) ?? idByName.get(ref))
+              : ref;
+            return id && memberIds.has(id) ? id : invalid();
+          });
+          return validateRecordFilterRule(rule, resolved, actor, (id) =>
+            Promise.resolve(memberIds.has(id)),
+          );
+        };
+        return fn(
+          fields,
+          validate,
+          localDateAt(new Date(), zone!),
+          memberLabels,
+        );
+      });
     try {
       const input = await withMetadata(async (fields, validate, today) => ({
         fields,
         today,
         text: req.text,
-        currentRule: await validate(req.currentRule),
+        currentRule: mapMembers(
+          await validate(req.currentRule),
+          fields,
+          (id) => {
+            if (id === '$me') return id;
+            const existing = handleById.get(id);
+            if (existing) return existing;
+            const handle = `$selected-${randomUUID()}`;
+            idByHandle.set(handle, id);
+            handleById.set(id, handle);
+            return handle;
+          },
+        ),
         relativeDates: RELATIVE_DATE_PRESETS,
         followUpAssignees:
           actor.role === 'TENANT_ADMIN' ? ['$me', 'any'] : ['$me'],
@@ -203,51 +316,63 @@ export class FilterPreviewService {
       }
       const wire = filterWireSchema.safeParse(output);
       if (!wire.success || !wire.data.rules.length) return unavailable;
-      return await withMetadata(async (fields, validate) => {
-        await validate(input.currentRule);
-        const options: { id: string; label: string; value: FilterRule }[] = [];
-        for (const item of wire.data.rules) {
-          const rule = await validate({
-            ...item,
-            conditions: item.conditions.map((c) =>
-              c.value === null
-                ? { fieldKey: c.fieldKey, operator: c.operator }
-                : c,
-            ),
-          });
-          if (!rule.conditions.length) return unavailable;
-          const labels = [];
-          for (const term of rule.conditions as FilterCondition[]) {
-            const f = fields.find((field) => field.fieldKey === term.fieldKey)!;
-            if (
-              ['MONEY', 'NUMBER'].includes(f.type) &&
-              term.value !== undefined &&
-              !input.currentRule.conditions.some(
-                (c) =>
-                  'fieldKey' in c &&
-                  c.fieldKey === term.fieldKey &&
-                  JSON.stringify(c.value) === JSON.stringify(term.value),
-              )
-            ) {
-              const values =
-                typeof term.value === 'object'
-                  ? Object.values(term.value)
-                  : [term.value];
-              if (!values.every((v) => isQuotedNumber(v, req.text, req.text)))
-                return unavailable;
+      return await withMetadata(
+        async (fields, validate, _today, memberLabels) => {
+          await validate(req.currentRule);
+          const options: { id: string; label: string; value: FilterRule }[] =
+            [];
+          for (const item of wire.data.rules) {
+            const rule = await validate(
+              {
+                ...item,
+                conditions: item.conditions.map((c) =>
+                  c.value === null
+                    ? { fieldKey: c.fieldKey, operator: c.operator }
+                    : c,
+                ),
+              },
+              true,
+            );
+            if (!rule.conditions.length) return unavailable;
+            const labels = [];
+            for (const term of rule.conditions as FilterCondition[]) {
+              const f = fields.find(
+                (field) => field.fieldKey === term.fieldKey,
+              )!;
+              if (
+                ['MONEY', 'NUMBER'].includes(f.type) &&
+                term.value !== undefined &&
+                !input.currentRule.conditions.some(
+                  (c) =>
+                    'fieldKey' in c &&
+                    c.fieldKey === term.fieldKey &&
+                    JSON.stringify(c.value) === JSON.stringify(term.value),
+                )
+              ) {
+                const values =
+                  typeof term.value === 'object'
+                    ? Object.values(term.value)
+                    : [term.value];
+                if (!values.every((v) => isQuotedNumber(v, req.text, req.text)))
+                  return unavailable;
+              }
+              labels.push(choiceLabel(term, f, memberLabels));
             }
-            labels.push(choiceLabel(term, f));
+            const label = labels
+              .sort()
+              .join(rule.match === 'all' ? ' 且 ' : ' 或 ');
+            if (options.some((o) => o.label === label)) return unavailable;
+            options.push({
+              id: String(options.length + 1),
+              label,
+              value: rule,
+            });
           }
-          const label = labels
-            .sort()
-            .join(rule.match === 'all' ? ' 且 ' : ' 或 ');
-          if (options.some((o) => o.label === label)) return unavailable;
-          options.push({ id: String(options.length + 1), label, value: rule });
-        }
-        return options.length === 1
-          ? { kind: 'rule', rule: options[0].value }
-          : { kind: 'clarify', options };
-      });
+          return options.length === 1
+            ? { kind: 'rule', rule: options[0].value }
+            : { kind: 'clarify', options };
+        },
+      );
     } catch (error) {
       if (
         error instanceof ApiException &&

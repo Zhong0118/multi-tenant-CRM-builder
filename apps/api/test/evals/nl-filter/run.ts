@@ -11,7 +11,6 @@ import {
 } from '../../../src/modules/ai/ai-provider';
 import { FilterPreviewService } from '../../../src/modules/ai/filter-preview.service';
 import type { FilterProviderInput } from '../../../src/modules/ai/filter-generation';
-import { MembershipsService } from '../../../src/modules/memberships/memberships.service';
 import { PublishedObjectService } from '../../../src/modules/objects/published-object.service';
 import { RECORDS_REPOSITORY } from '../../../src/modules/records/records.service';
 import { runDataset } from '../run-dataset';
@@ -57,14 +56,22 @@ export async function evaluate(generate: Generate, samples: Sample[]) {
     providers: [
       FilterPreviewService,
       { provide: PublishedObjectService, useValue: objects },
-      { provide: MembershipsService, useValue: {} },
       {
         provide: RECORDS_REPOSITORY,
         useValue: {
-          withTenant: (
+          withTenantTransaction: (
             _actor: unknown,
-            read: (fixture: typeof store) => unknown,
-          ) => read(store),
+            read: (fixture: { store: typeof store; tx: unknown }) => unknown,
+          ) =>
+            read({
+              store,
+              tx: {
+                tenantMember: {
+                  findFirst: () => Promise.resolve({ id: actor.memberId }),
+                  findMany: () => Promise.resolve([]),
+                },
+              },
+            }),
         },
       },
       {
