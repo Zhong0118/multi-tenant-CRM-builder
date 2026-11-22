@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createRequire } from 'node:module';
-import type { AiPublicStreamEvent } from '@crm/contracts';
+import type { AiPublicStreamEvent, FilterRule } from '@crm/contracts';
 import { AiOrchestrator } from '../../../src/modules/ai/ai-orchestrator';
 import { report } from './run';
 import { createAiProvider } from '../../../src/modules/ai/ai-provider';
@@ -133,24 +133,27 @@ void test('does not credit accidental failures or a guessed limit', () => {
   ]);
 });
 
+const needsDatabase = {
+  skip: !process.env.TEST_DATABASE_URL && !process.env.TEST_DATABASE_ADMIN_URL,
+};
+
+function evaluationHarness() {
+  assertIsolatedTestDatabase(
+    process.env.TEST_DATABASE_URL,
+    process.env.TEST_DATABASE_ADMIN_URL,
+  );
+  process.env.NODE_ENV = 'test';
+  process.env.DEV_VERIFICATION_CODE = '123456';
+  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
+  process.env.WEB_ORIGIN = 'http://localhost:3000';
+  return createRequire(__filename)('./evaluate') as typeof import('./evaluate');
+}
+
 void test(
   'keeps the question and failed answer in the report when validation throws',
-  {
-    skip:
-      !process.env.TEST_DATABASE_URL && !process.env.TEST_DATABASE_ADMIN_URL,
-  },
+  needsDatabase,
   async (t) => {
-    assertIsolatedTestDatabase(
-      process.env.TEST_DATABASE_URL,
-      process.env.TEST_DATABASE_ADMIN_URL,
-    );
-    process.env.NODE_ENV = 'test';
-    process.env.DEV_VERIFICATION_CODE = '123456';
-    process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
-    process.env.WEB_ORIGIN = 'http://localhost:3000';
-    const { evaluate } = createRequire(__filename)(
-      './evaluate',
-    ) as typeof import('./evaluate');
+    const { evaluate } = evaluationHarness();
     const provider = createAiProvider({ nodeEnv: 'test', provider: 'fake' });
     // eslint-disable-next-line @typescript-eslint/unbound-method -- The wrapper forwards the Nest instance as the receiver.
     const original = AiOrchestrator.prototype.streamTurn;
@@ -224,6 +227,135 @@ void test(
     assert.doesNotMatch(
       JSON.stringify(failed) + faultReport,
       /PRIVATE_REQUEST|PRIVATE_EXCEPTION|EVAL_PRIVATE_MARGIN/,
+    );
+  },
+);
+
+void test('filter directions need an earlier successful description and every complete option must be authorized', () => {
+  const directionCase: EvalCase = {
+    ...sample,
+    steps: [
+      {
+        say: '帮我筛选',
+        expect: { kind: 'choose_option', filterDirections: true },
+      },
+    ],
+  };
+  const valid: Observation = {
+    ...observation,
+    kind: 'choose_option',
+    tools: ['describe_object', 'ask_user'],
+    describedDirections: ['金额有值', '负责人是我', '跟进到期'],
+    choices: ['金额有值', '负责人是我'],
+  };
+  assert.deepEqual(score(directionCase, [valid]), []);
+  for (const bad of [
+    { describedDirections: undefined },
+    { choices: [] },
+    { choices: ['按金额或地区筛选', '负责人是我'] },
+    { choices: ['金额有值', '私人利润率有值'] },
+  ])
+    assert.notDeepEqual(score(directionCase, [{ ...valid, ...bad }]), []);
+});
+
+void test('concrete filter requests need the complete rule, regardless of condition order', () => {
+  const rule: FilterRule = {
+    version: 1,
+    match: 'all',
+    conditions: [
+      { fieldKey: '$owner', operator: 'in', value: ['$me'] },
+      { fieldKey: 'amount', operator: 'gt', value: 100000 },
+    ],
+  };
+  const filterCase: EvalCase = {
+    ...sample,
+    steps: [
+      {
+        say: '找我负责的、金额超过 10 万的客户',
+        expect: { kind: 'filter', rule },
+      },
+    ],
+  };
+  const valid: Observation = {
+    ...observation,
+    kind: 'filter',
+    preview: {
+      kind: 'rule',
+      rule: { ...rule, conditions: [...rule.conditions].reverse() },
+    },
+  };
+  assert.deepEqual(score(filterCase, [valid]), []);
+  for (const preview of [
+    { kind: 'unavailable' as const },
+    {
+      kind: 'rule' as const,
+      rule: { ...rule, conditions: [rule.conditions[0]] },
+    },
+    {
+      kind: 'rule' as const,
+      rule: {
+        ...rule,
+        conditions: [
+          rule.conditions[0],
+          { fieldKey: 'amount', operator: 'gte' as const, value: 100000 },
+        ],
+      },
+    },
+    {
+      kind: 'rule' as const,
+      rule: {
+        ...rule,
+        conditions: [
+          rule.conditions[0],
+          { fieldKey: 'amount', operator: 'gt' as const, value: 10 },
+        ],
+      },
+    },
+  ])
+    assert.notDeepEqual(score(filterCase, [{ ...valid, preview }]), []);
+});
+
+void test(
+  'sales can select a filter direction on a table with a hidden margin field',
+  needsDatabase,
+  async () => {
+    const { evaluate } = evaluationHarness();
+    const provider = createAiProvider({ nodeEnv: 'test', provider: 'fake' });
+    const [row] = await evaluate(provider, [
+      {
+        ...sample,
+        id: 'list-filter-visible-only',
+        context: 'list',
+        steps: [
+          {
+            say: '这张表怎么筛选',
+            expect: { kind: 'choose_option', filterDirections: true },
+          },
+          {
+            pick: 'last',
+            expect: {
+              kind: 'filter',
+              rule: {
+                version: 1,
+                match: 'all',
+                conditions: [
+                  {
+                    fieldKey: '$followUp',
+                    operator: 'dueThroughToday',
+                    value: { assignee: '$me' },
+                  },
+                ],
+              },
+            },
+          },
+        ],
+      },
+    ]);
+    assert.deepEqual(row.failures, []);
+    assert.deepEqual(row.draft?.[0].tools, ['describe_object', 'ask_user']);
+    assert.doesNotMatch(
+      JSON.stringify(row.draft?.[0].choices),
+      /secretMargin|私人利润率/,
     );
   },
 );

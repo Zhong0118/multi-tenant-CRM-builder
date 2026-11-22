@@ -169,10 +169,7 @@ function resolvedSchema(): ResolvedObjectSchema {
 
 describe('describe_object', () => {
   it('requires objectCode and rejects actor-override keys', () => {
-    const tool = createDescribeObjectTool(
-      publishedObjects(jest.fn()),
-      context,
-    );
+    const tool = createDescribeObjectTool(publishedObjects(jest.fn()), context);
     expect(tool.inputSchema.safeParse({ objectCode: 'leads' }).success).toBe(
       true,
     );
@@ -188,7 +185,9 @@ describe('describe_object', () => {
   });
 
   it('projects only visible fields for the injected actor', async () => {
-    const resolveRuntimeSchema = jest.fn().mockResolvedValue(resolvedSchema());
+    const resolved = resolvedSchema();
+    resolved.visibleSchema.queryFieldKeys = ['stage'];
+    const resolveRuntimeSchema = jest.fn().mockResolvedValue(resolved);
     const tool = createDescribeObjectTool(
       publishedObjects(resolveRuntimeSchema),
       context,
@@ -199,6 +198,7 @@ describe('describe_object', () => {
     expect(resolveRuntimeSchema).toHaveBeenCalledWith(context, 'leads');
     expect(result).toEqual({
       object: { code: 'leads', name: '线索' },
+      filterDirections: ['阶段有值', '负责人是我', '跟进到期'],
       fields: [
         { fieldKey: 'name', label: '姓名', type: 'TEXT', required: true },
         {

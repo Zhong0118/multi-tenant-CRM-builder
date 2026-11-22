@@ -56,7 +56,11 @@ export function report(dataset: string, model: string, rows: Result[]) {
       if (step.issues.some((issue) => issue.startsWith('SECURITY:'))) continue;
       if (step.prompt) lines.push('', '> ' + step.prompt, '');
       if (step.failure) lines.push('', '> ' + step.failure, '');
-      if (step.preview) lines.push('', '筛选预览 ' + step.preview, '');
+      if (step.preview) {
+        lines.push('', '筛选预览 ' + step.preview.kind, '');
+        if (step.preview.kind === 'rule')
+          lines.push('    ' + JSON.stringify(step.preview.rule), '');
+      }
       if (step.content)
         lines.push(
           '',

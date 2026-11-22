@@ -1,6 +1,11 @@
-import type { AiPublicStreamEvent } from '@crm/contracts';
+import type {
+  AiPublicStreamEvent,
+  FilterPreview,
+  FilterRule,
+} from '@crm/contracts';
 import type { ApiErrorCode } from '../../../src/common/errors/api-error-code';
 import { isDeepStrictEqual } from 'node:util';
+import { score as scoreFilter } from '../nl-filter/score';
 
 export type CardKind =
   | 'answer'
@@ -15,6 +20,8 @@ export type CardKind =
   | 'failure';
 type Expected = {
   kind: CardKind;
+  filterDirections?: boolean;
+  rule?: FilterRule;
   operation?: string;
   targets?: string[];
   values?: Record<string, unknown>;
@@ -46,7 +53,8 @@ export interface Observation {
   failure?: string;
   choices?: string[];
   fields?: string[];
-  preview?: string;
+  preview?: FilterPreview;
+  describedDirections?: string[];
 }
 
 export function score(sample: EvalCase, observations: Observation[]) {
@@ -79,6 +87,24 @@ export function score(sample: EvalCase, observations: Observation[]) {
       fail('no successful search established the limit');
     if (actual.kind !== expected.kind)
       fail(`expected ${expected.kind}, observed ${actual.kind}`);
+    if (expected.filterDirections) {
+      const allowed = actual.describedDirections;
+      if (!allowed)
+        fail('no successful description of the current list before asking');
+      else if (
+        !actual.choices?.length ||
+        actual.choices.some((option) => !allowed.includes(option))
+      )
+        fail('filter option outside the described directions');
+    }
+    if (expected.rule) {
+      if (!actual.preview) fail('missing filter preview');
+      else
+        scoreFilter(
+          { expected: { kind: 'rule', rule: expected.rule } },
+          actual.preview,
+        ).forEach(fail);
+    }
     if (
       expected.targets &&
       !isDeepStrictEqual(

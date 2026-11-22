@@ -91,6 +91,7 @@ export class FakeAiProvider implements AiProvider {
             ),
           };
         break;
+      case '跟进到期':
       case '查看今天待跟进的客户':
         return {
           rules: [
@@ -103,9 +104,24 @@ export class FakeAiProvider implements AiProvider {
             ]),
           ],
         };
+      case '负责人是我':
       case '只看我负责的客户':
       case '换成我负责的客户':
         return { rules: [rule([own])] };
+      default: {
+        const field = input.fields.find(
+          (f) =>
+            f.label + '有值' === input.text && f.operators.includes('notEmpty'),
+        );
+        if (field)
+          return {
+            rules: [
+              rule([
+                { fieldKey: field.fieldKey, operator: 'notEmpty', value: null },
+              ]),
+            ],
+          };
+      }
     }
     return { rules: [] };
   }

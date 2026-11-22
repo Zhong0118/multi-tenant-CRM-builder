@@ -102,6 +102,9 @@ export async function evaluate(provider: AiProvider, samples: EvalCase[]) {
   let tools: string[] = [];
   let publicReadResults: string[] = [];
   let toolSeen = new Set<string>();
+  let pageObjectCode: string | undefined;
+  let directions: string[] | undefined;
+  let directionsAtQuestion: string[] | undefined;
   const observedProvider: AiProvider = {
     providerKey: provider.providerKey,
     modelKey: provider.modelKey,
@@ -114,7 +117,22 @@ export async function evaluate(provider: AiProvider, samples: EvalCase[]) {
           ...tool,
           execute: async (args, callId) => {
             tools.push(tool.name);
+            const beforeQuestion = directions;
             const result = await tool.execute(args, callId);
+            if (
+              tool.name === 'describe_object' &&
+              object(object(result).object).code === pageObjectCode &&
+              pageObjectCode
+            ) {
+              const labels = object(result).filterDirections;
+              if (
+                Array.isArray(labels) &&
+                labels.every((v): v is string => typeof v === 'string')
+              )
+                directions = labels;
+            }
+            if (tool.name === 'ask_user' && object(result).accepted === true)
+              directionsAtQuestion = beforeQuestion;
             const total = object(result).total;
             if (tool.name === 'search_records' && typeof total === 'number')
               searchTotal = total;
@@ -226,6 +244,7 @@ export async function evaluate(provider: AiProvider, samples: EvalCase[]) {
                   ? {}
                   : { recordId: ids[sample.context] }),
               };
+        pageObjectCode = hint?.objectCode;
         const previous = await businessSnapshot(db, tenants);
         const observations: Observation[] = [];
         for (const { say, pick } of sample.steps) {
@@ -234,6 +253,8 @@ export async function evaluate(provider: AiProvider, samples: EvalCase[]) {
           faultReached = false;
           searchTotal = undefined;
           publicReadResults = [];
+          directions = undefined;
+          directionsAtQuestion = undefined;
           const issues: string[] = [];
           try {
             const choice = answer(question, pick, optionRecords);
@@ -307,9 +328,12 @@ export async function evaluate(provider: AiProvider, samples: EvalCase[]) {
                     obs.targets.push(key);
                   }
                 }
-            } else if (question?.kind === 'choose_option')
-              obs.choices = question.options.map((o) => o.label);
-            else if (question?.kind === 'fill_fields') {
+            } else if (question?.kind === 'choose_option') {
+              obs.choices = question.options
+                .filter((option) => option.id !== 'other')
+                .map((option) => option.label);
+              obs.describedDirections = directionsAtQuestion;
+            } else if (question?.kind === 'fill_fields') {
               obs.fields = question.fields.map((f) => f.key);
               const row = await db.aiQuestion.findUniqueOrThrow({
                 where: { id: question.questionId },
@@ -368,7 +392,11 @@ export async function evaluate(provider: AiProvider, samples: EvalCase[]) {
             }
             const action = events.find((e) => e.event === 'action.ready')?.data
               .action;
-            if (action?.kind === 'filter') obs.preview = action.preview.kind;
+            if (action?.kind === 'filter') {
+              obs.preview = action.preview;
+              if (action.objectCode !== objectCode)
+                obs.issues.push('filter preview targeted a different table');
+            }
             if (action?.kind === 'communication') {
               const row = await db.aiRecordDraft.findUniqueOrThrow({
                 where: { id: action.draftId },

@@ -231,11 +231,23 @@ export async function* simulateAssistant(
       if (answer.label) output = '请贴入沟通原话。';
       else await choose(['仅记纪要', '整理纪要并建议跟进']);
     } else if (/找|筛选|筛出|列出/.test(text) && page.objectCode && !recordId) {
-      if (text === '帮我筛选' && typeof answer.label === 'string')
+      const asksForDirections =
+        /^(?:帮我|请|这张表)?(?:怎么|如何)?筛选(?:一下)?[？?。]?$/.test(
+          text.trim(),
+        );
+      if (asksForDirections && typeof answer.label === 'string')
         await call('preview_filter', { text: answer.label });
-      else if (text === '帮我筛选')
-        await choose(['只看我负责的客户', '查看今天待跟进的客户']);
-      else await call('preview_filter', { text });
+      else if (asksForDirections) {
+        const { filterDirections } = data(
+          await call('describe_object', { objectCode }),
+        );
+        if (Array.isArray(filterDirections))
+          await choose(
+            filterDirections.filter(
+              (option): option is string => typeof option === 'string',
+            ),
+          );
+      } else await call('preview_filter', { text });
     } else if (requestsFieldChange) {
       output = '当前没有可用的修改项，请核对可编辑字段。';
     } else if (/字段/.test(text) && page.objectCode) {

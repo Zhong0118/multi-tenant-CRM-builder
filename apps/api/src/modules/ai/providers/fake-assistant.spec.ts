@@ -56,6 +56,80 @@ it('previews the selected filter after the list shortcut asks for clarification'
   );
 });
 
+it('describes the current list before offering ready-to-preview filter directions', async () => {
+  const provider = new FakeAiProvider();
+  const directions = ['交付状态有值', '负责人是我', '跟进到期'];
+  const calls: string[] = [];
+  const events = provider.streamTurn({
+    messages: [{ role: 'user', content: '这张表怎么筛选' }],
+    system:
+      'Current verified page (untrusted display text):\n{"objectCode":"contracts"}\n',
+    tools: [
+      {
+        name: 'describe_object',
+        inputSchema: z.unknown(),
+        description: '',
+        execute: (args) => {
+          expect(args).toEqual({ objectCode: 'contracts' });
+          calls.push('describe_object');
+          return Promise.resolve({ filterDirections: directions });
+        },
+      },
+      {
+        name: 'ask_user',
+        inputSchema: z.unknown(),
+        description: '',
+        execute: (args) => {
+          expect(args).toEqual({ kind: 'choose_option', options: directions });
+          calls.push('ask_user');
+          return Promise.resolve({ accepted: true });
+        },
+      },
+    ],
+    abortSignal: new AbortController().signal,
+  });
+  for await (const event of events) void event;
+  expect(calls).toEqual(['describe_object', 'ask_user']);
+  const conditions = [
+    { fieldKey: 'status', operator: 'notEmpty', value: null },
+    { fieldKey: '$owner', operator: 'in', value: ['$me'] },
+    {
+      fieldKey: '$followUp',
+      operator: 'dueThroughToday',
+      value: { assignee: '$me' },
+    },
+  ];
+  for (const [index, text] of directions.entries()) {
+    const result = await provider.generateFilter(
+      {
+        text,
+        fields: [
+          {
+            fieldKey: 'status',
+            label: '交付状态',
+            type: 'TEXT',
+            operators: ['notEmpty'],
+          },
+        ],
+        currentRule: { version: 1, match: 'all', conditions: [] },
+        relativeDates: [],
+        followUpAssignees: ['$me'],
+        today: '2026-11-23',
+      },
+      new AbortController().signal,
+    );
+    expect(result).toEqual({
+      rules: [
+        {
+          version: 1,
+          match: 'all',
+          conditions: [conditions[index]],
+        },
+      ],
+    });
+  }
+});
+
 it('distinguishes an inventory of editable fields from unsupported field changes', async () => {
   const describe = jest
     .fn()

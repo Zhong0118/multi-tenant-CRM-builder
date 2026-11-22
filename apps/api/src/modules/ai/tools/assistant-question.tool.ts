@@ -12,6 +12,7 @@ const plainText = z
         value,
       ),
   );
+export const optionLabel = plainText.max(40).refine((v) => v !== '其他');
 const prompt = plainText.max(240).optional();
 const objectCode = z.string().regex(OBJECT_CODE_REFERENCE_PATTERN);
 const distinct = (values: string[]) => new Set(values).size === values.length;
@@ -25,11 +26,7 @@ export const questionInput = z.discriminatedUnion('kind', [
   z.strictObject({
     kind: z.literal('choose_option'),
     prompt,
-    options: z
-      .array(plainText.max(40).refine((v) => v !== '其他'))
-      .min(2)
-      .max(4)
-      .refine(distinct),
+    options: z.array(optionLabel).min(2).max(4).refine(distinct),
   }),
   z
     .strictObject({
