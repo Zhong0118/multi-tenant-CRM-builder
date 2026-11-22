@@ -1,0 +1,338 @@
+[
+  {
+    "id": "holdout-01",
+    "category": "multi",
+    "text": "保留现在的阶段条件，再要求负责人是我、预计金额至少 87654.32 元。",
+    "currentRule": {
+      "version": 1,
+      "match": "all",
+      "conditions": [
+        {
+          "fieldKey": "stage",
+          "operator": "in",
+          "value": [
+            "quote",
+            "negotiation"
+          ]
+        }
+      ]
+    },
+    "expected": {
+      "kind": "rule",
+      "rule": {
+        "version": 1,
+        "match": "all",
+        "conditions": [
+          {
+            "fieldKey": "stage",
+            "operator": "in",
+            "value": [
+              "quote",
+              "negotiation"
+            ]
+          },
+          {
+            "fieldKey": "$owner",
+            "operator": "in",
+            "value": [
+              "$me"
+            ]
+          },
+          {
+            "fieldKey": "amount",
+            "operator": "gte",
+            "value": "87654.32"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "holdout-02",
+    "category": "multi",
+    "text": "把现有筛选换成只看已成交、预计金额不到三万元的客户。",
+    "currentRule": {
+      "version": 1,
+      "match": "all",
+      "conditions": [
+        {
+          "fieldKey": "size",
+          "operator": "in",
+          "value": [
+            "large"
+          ]
+        }
+      ]
+    },
+    "expected": {
+      "kind": "rule",
+      "rule": {
+        "version": 1,
+        "match": "all",
+        "conditions": [
+          {
+            "fieldKey": "stage",
+            "operator": "in",
+            "value": [
+              "won"
+            ]
+          },
+          {
+            "fieldKey": "amount",
+            "operator": "lt",
+            "value": "30000"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "holdout-03",
+    "category": "or",
+    "text": "满足下面任一项就显示：客户规模选了大型，或者阶段选了成交。",
+    "currentRule": {
+      "version": 1,
+      "match": "all",
+      "conditions": []
+    },
+    "expected": {
+      "kind": "rule",
+      "rule": {
+        "version": 1,
+        "match": "any",
+        "conditions": [
+          {
+            "fieldKey": "size",
+            "operator": "in",
+            "value": [
+              "large"
+            ]
+          },
+          {
+            "fieldKey": "stage",
+            "operator": "in",
+            "value": [
+              "won"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "holdout-04",
+    "category": "or",
+    "text": "只看我负责的客户，其中已成交的都要，尚未成交的只有预计金额超过九万元才要。",
+    "currentRule": {
+      "version": 1,
+      "match": "all",
+      "conditions": [
+        {
+          "fieldKey": "$owner",
+          "operator": "in",
+          "value": [
+            "$me"
+          ]
+        }
+      ]
+    },
+    "expected": {
+      "kind": "unavailable"
+    }
+  },
+  {
+    "id": "holdout-05",
+    "category": "date",
+    "text": "调出上个自然月联系过的客户。",
+    "currentRule": {
+      "version": 1,
+      "match": "all",
+      "conditions": []
+    },
+    "expected": {
+      "kind": "rule",
+      "rule": {
+        "version": 1,
+        "match": "all",
+        "conditions": [
+          {
+            "fieldKey": "contacted",
+            "operator": "relative",
+            "value": "last_month"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "holdout-06",
+    "category": "date",
+    "text": "只看昨天联系过且阶段为谈判的客户。",
+    "currentRule": {
+      "version": 1,
+      "match": "all",
+      "conditions": []
+    },
+    "expected": {
+      "kind": "rule",
+      "rule": {
+        "version": 1,
+        "match": "all",
+        "conditions": [
+          {
+            "fieldKey": "contacted",
+            "operator": "relative",
+            "value": "yesterday"
+          },
+          {
+            "fieldKey": "stage",
+            "operator": "in",
+            "value": [
+              "negotiation"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "holdout-07",
+    "category": "missing",
+    "text": "报价阶段的客户里，只看注册地址在厦门的。",
+    "currentRule": {
+      "version": 1,
+      "match": "all",
+      "conditions": []
+    },
+    "expected": {
+      "kind": "unavailable"
+    }
+  },
+  {
+    "id": "holdout-08",
+    "category": "restricted",
+    "text": "限定为我负责的客户，还要内部毛利率（secretMargin）大于 15%。",
+    "currentRule": {
+      "version": 1,
+      "match": "all",
+      "conditions": [
+        {
+          "fieldKey": "$owner",
+          "operator": "in",
+          "value": [
+            "$me"
+          ]
+        }
+      ]
+    },
+    "expected": {
+      "kind": "unavailable"
+    }
+  },
+  {
+    "id": "holdout-09",
+    "category": "ambiguous",
+    "text": "报价阶段里，最近联系过的有哪些？",
+    "currentRule": {
+      "version": 1,
+      "match": "all",
+      "conditions": []
+    },
+    "expected": {
+      "kind": "clarify",
+      "candidates": [
+        {
+          "version": 1,
+          "match": "all",
+          "conditions": [
+            {
+              "fieldKey": "stage",
+              "operator": "in",
+              "value": [
+                "quote"
+              ]
+            },
+            {
+              "fieldKey": "contacted",
+              "operator": "relative",
+              "value": "past_7_days"
+            }
+          ]
+        },
+        {
+          "version": 1,
+          "match": "all",
+          "conditions": [
+            {
+              "fieldKey": "stage",
+              "operator": "in",
+              "value": [
+                "quote"
+              ]
+            },
+            {
+              "fieldKey": "contacted",
+              "operator": "relative",
+              "value": "past_30_days"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "holdout-10",
+    "category": "ambiguous",
+    "text": "从已成交的客户里挑出大客户。",
+    "currentRule": {
+      "version": 1,
+      "match": "all",
+      "conditions": []
+    },
+    "expected": {
+      "kind": "clarify",
+      "candidates": [
+        {
+          "version": 1,
+          "match": "all",
+          "conditions": [
+            {
+              "fieldKey": "stage",
+              "operator": "in",
+              "value": [
+                "won"
+              ]
+            },
+            {
+              "fieldKey": "size",
+              "operator": "in",
+              "value": [
+                "large"
+              ]
+            }
+          ]
+        },
+        {
+          "version": 1,
+          "match": "all",
+          "conditions": [
+            {
+              "fieldKey": "stage",
+              "operator": "in",
+              "value": [
+                "won"
+              ]
+            },
+            {
+              "fieldKey": "level",
+              "operator": "in",
+              "value": [
+                "a"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+]
