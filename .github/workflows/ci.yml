@@ -127,6 +127,11 @@ jobs:
       - name: Run workspace tests
         run: pnpm test
 
+      - name: Check natural language filter scoring and preview permissions
+        run: |
+          pnpm --filter @crm/api eval:nl-filter:test
+          pnpm --filter @crm/api eval:nl-filter
+
   build:
     name: Build
     runs-on: ubuntu-24.04
