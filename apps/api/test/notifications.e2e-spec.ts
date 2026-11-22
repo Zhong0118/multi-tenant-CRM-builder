@@ -128,7 +128,6 @@ describe('in-app notifications HTTP with real PostgreSQL and crm_app RLS', () =>
         role: 'crm_app',
       },
     ]);
-    await h.app.listen(0, '127.0.0.1');
   });
   beforeEach(async () => {
     await cleanNotifications();

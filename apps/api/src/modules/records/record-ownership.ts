@@ -100,11 +100,12 @@ export function ownershipChange(
   }
   if (
     !admin &&
-    !record.inPublicPool &&
-    !recordOwnerMatches(
-      recordOwnerFilter(access, context.memberId),
-      record.ownerMemberId,
-    )
+    (record.inPublicPool
+      ? access.ownTitleHidden
+      : !recordOwnerMatches(
+          recordOwnerFilter(access, context.memberId),
+          record.ownerMemberId,
+        ))
   ) {
     throw new ApiException('RECORD_NOT_FOUND', 404);
   }

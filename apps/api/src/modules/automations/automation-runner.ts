@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 import type { Prisma } from '@crm/database';
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
+import { translatePoolTriggerError } from '../../infrastructure/database/pool-trigger-error';
 import { executeActions } from '../actions/action-engine';
 import { resolveActionValue } from '../actions/action-value-resolver';
 import type { AuditService } from '../audit/audit.service';
@@ -229,7 +230,10 @@ export async function executeAutomation(
 ): Promise<AutomationExecution> {
   try {
     return await executeAutomationSteps(session, rule, inputs, dedupKey, meta);
-  } catch (error: unknown) {
+  } catch (cause: unknown) {
+    // Attach the audit to the domain error before either the batch savepoint
+    // or the enclosing transaction rolls the failed operation back.
+    const error = translatePoolTriggerError(cause);
     if (error && typeof error === 'object')
       failureAudits.set(error, {
         tenantId: session.context.tenantId,
@@ -299,13 +303,28 @@ async function executeAutomationSteps(
           { source: 'LITERAL', value: value as AutomationValue },
         ]),
     );
+  // Creating the relation can protect the source and increment its version.
+  // Take the manual command's version increment first, inside the same transaction.
+  const snapshot =
+    rule.trigger.type === 'MANUAL'
+      ? await applySourceRecordPatch({
+          store: session.store,
+          recordId: session.source.id,
+          expectedVersion: session.source.version,
+          patch: {
+            values: session.source.values,
+            title: session.source.title,
+            ownerMemberId: session.source.ownerMemberId,
+          },
+        })
+      : session.source;
   const result = await executeActions({
     tx: session.tx,
     context: session.context,
     source: {
       objectCode: session.resolved.schema.object.code,
       resolved: session.resolved,
-      snapshot: session.source,
+      snapshot,
     },
     actions,
     execution: {
@@ -328,18 +347,6 @@ async function executeAutomationSteps(
   const created = result.outputs.get('create');
   if (created?.type !== 'CREATE_RECORD')
     throw new Error('Automation create output missing');
-  if (rule.trigger.type === 'MANUAL') {
-    await applySourceRecordPatch({
-      store: session.store,
-      recordId: session.source.id,
-      expectedVersion: session.source.version,
-      patch: {
-        values: session.source.values,
-        title: session.source.title,
-        ownerMemberId: session.source.ownerMemberId,
-      },
-    });
-  }
   const execution: AutomationExecution = {
     id,
     ruleKey: rule.key,
@@ -363,7 +370,8 @@ export async function runFieldAutomations(
   session: AutomationSession,
   before: DynamicRecord,
   meta: RecordRequestMeta,
-): Promise<void> {
+): Promise<DynamicRecord> {
+  let executed = false;
   for (const rule of session.resolved.schema.automations ?? []) {
     if (!matchesFieldChange(rule, before.values, session.source.values))
       continue;
@@ -395,7 +403,16 @@ export async function runFieldAutomations(
     )
       throw new ApiException('FIELD_HIDDEN', 403);
     await executeAutomation(session, rule, {}, 'field:first', meta);
+    executed = true;
   }
+  if (!executed) return session.source;
+  // Relation triggers can change the source after the ordinary update.
+  const fresh = await session.store.findRecord(
+    session.resolved.schema.object.id,
+    session.source.id,
+  );
+  if (!fresh) throw new ApiException('RECORD_NOT_FOUND', 404);
+  return fresh;
 }
 
 const failureAudits = new WeakMap<

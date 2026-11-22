@@ -89,7 +89,6 @@ describe('generic record pool lifecycle HTTP', () => {
   }
   beforeAll(async () => {
     h = await createCriticalHarness();
-    await h.app.listen(0, '127.0.0.1');
   });
   beforeEach(async () => {
     f = await provisionCriticalFixture(h);
@@ -148,6 +147,50 @@ describe('generic record pool lifecycle HTTP', () => {
       expect(attempts.filter((r) => r.status === 201)).toHaveLength(1);
     }
   });
+  it('enrolls an employee import in the contact deadline once, including concurrent retries', async () => {
+    await configure();
+    const input = {
+      batchId: '907771b9-be97-4c3b-9d73-af83b28afbb9',
+      rows: [{ rowNumber: 2, values: { name: 'Imported lead' } }],
+    };
+    const results = await Promise.all([
+      post('/records/import', input, f.employee).expect(201),
+      post('/records/import', input, f.employee).expect(201),
+    ]);
+    const items = results.map((result) => json<Imported>(result).items[0]);
+    expect(items.map((item) => item.status).sort()).toEqual([
+      'CREATED',
+      'SKIPPED',
+    ]);
+    const id = items.find((item) => item.status === 'CREATED')!.record.id;
+    const row = await state(id);
+    expect(row).toMatchObject({
+      tenantId: f.tenantA.id,
+      ownerMemberId: f.employee.memberId,
+      poolStage: 'PENDING_CONTACT',
+      poolOrigin: 'LEAD_POOL',
+      inPublicPool: false,
+    });
+    expect(
+      row.ownershipExpiresAt!.getTime() - row.poolClaimedAt!.getTime(),
+    ).toBe(24 * 3600_000);
+    const audits = await h.adminDatabase.auditLog.findMany({
+      where: {
+        tenantId: f.tenantA.id,
+        resourceId: id,
+        action: 'record.created',
+      },
+    });
+    expect(audits).toHaveLength(1);
+    expect(audits[0]).toMatchObject({
+      actorId: f.employee.userId,
+      after: {
+        poolStage: 'PENDING_CONTACT',
+        ownershipExpiresAt: row.ownershipExpiresAt!.toISOString(),
+      },
+    });
+  });
+
   it('starts an employee record waiting for contact and moves it only on an explicit contact outcome', async () => {
     await configure();
     const created = json<Row>(

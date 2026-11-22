@@ -17,7 +17,6 @@ describe('Large record pages', () => {
   let fixture: CriticalFixture;
   beforeAll(async () => {
     harness = await createCriticalHarness();
-    await harness.app.listen(0, '127.0.0.1');
     fixture = await provisionCriticalFixture(harness);
     await harness.adminDatabase.record.createMany({
       data: Array.from({ length: 1001 }, (_, index) => ({

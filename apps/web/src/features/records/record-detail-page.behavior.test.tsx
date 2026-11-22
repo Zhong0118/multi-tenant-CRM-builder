@@ -12,7 +12,8 @@ import type {
   RecordSummary,
   RuntimeObjectSchema,
 } from "@/features/objects/object-types";
-import { RecordDetailDrawer } from "./record-detail-drawer";
+import { recordApi } from "./record-api";
+import { RecordDetailPage } from "./record-detail-page";
 
 vi.mock("./record-workflow-panel", () => ({
   RecordWorkflowPanel: () => <section aria-label="工作流">执行工作流</section>,
@@ -77,6 +78,13 @@ const schema: RuntimeObjectSchema = {
   },
   scopes: { read: "ALL", update: "ALL" },
 };
+const editableSchema = {
+  ...schema,
+  fields: schema.fields.map((entry) =>
+    entry.fieldKey === "name" ? { ...entry, access: "EDIT" as const } : entry,
+  ),
+  actions: { ...schema.actions, canUpdate: true },
+};
 const record: RecordSummary = {
   id: "r1",
   recordNo: "1",
@@ -95,13 +103,12 @@ const record: RecordSummary = {
   updatedAt: "2026-10-01",
 };
 
-describe("record detail reading hierarchy", () => {
+describe("record detail page", () => {
   it("reports a committed deletion separately when its refresh callback rejects", async () => {
-    const { recordApi } = await import("./record-api");
     const api = { ...recordApi, remove: vi.fn().mockResolvedValue(undefined) };
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <RecordDetailDrawer
+        <RecordDetailPage
           tenantCode="northwind"
           schema={schema}
           record={record}
@@ -114,33 +121,24 @@ describe("record detail reading hierarchy", () => {
         />
       </QueryClientProvider>,
     );
-    fireEvent.click(screen.getByRole("button", { name: /^删\s*除$/ }));
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "删除记录" }));
     fireEvent.click(await screen.findByRole("button", { name: "删除记录" }));
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(
       "记录已删除，但刷新暂时失败。请返回列表重新载入，不要重复删除。",
     );
     expect(api.remove).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("button", { name: /^删\s*除$/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "更多操作" })).toBeDisabled();
   });
   it("keeps a saved-record refresh warning visible after leaving edit mode", async () => {
-    const { recordApi } = await import("./record-api");
     const api = {
       ...recordApi,
       update: vi.fn().mockResolvedValue({ ...record, version: 8 }),
     };
-    const editableSchema = {
-      ...schema,
-      fields: schema.fields.map((entry) =>
-        entry.fieldKey === "name"
-          ? { ...entry, access: "EDIT" as const }
-          : entry,
-      ),
-      actions: { ...schema.actions, canUpdate: true },
-    };
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <RecordDetailDrawer
+        <RecordDetailPage
           tenantCode="northwind"
           schema={editableSchema}
           record={record}
@@ -162,19 +160,9 @@ describe("record detail reading hierarchy", () => {
     ).not.toBeInTheDocument();
   });
   it("does not close a new edit session when the previous refresh finishes", async () => {
-    const { recordApi } = await import("./record-api");
     const api = {
       ...recordApi,
       update: vi.fn().mockResolvedValue({ ...record, version: 8 }),
-    };
-    const editableSchema = {
-      ...schema,
-      fields: schema.fields.map((entry) =>
-        entry.fieldKey === "name"
-          ? { ...entry, access: "EDIT" as const }
-          : entry,
-      ),
-      actions: { ...schema.actions, canUpdate: true },
     };
     let rejectRefresh!: (error: Error) => void;
     const refresh = new Promise<void>((_, reject) => {
@@ -182,7 +170,7 @@ describe("record detail reading hierarchy", () => {
     });
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <RecordDetailDrawer
+        <RecordDetailPage
           tenantCode="northwind"
           schema={editableSchema}
           record={record}
@@ -222,7 +210,6 @@ describe("record detail reading hierarchy", () => {
   });
 
   it("keeps the new edit input when an old HTTP save returns before a failed refresh", async () => {
-    const { recordApi } = await import("./record-api");
     let resolveUpdate!: (saved: RecordSummary) => void;
     const api = {
       ...recordApi,
@@ -232,18 +219,9 @@ describe("record detail reading hierarchy", () => {
         }),
       ),
     };
-    const editableSchema = {
-      ...schema,
-      fields: schema.fields.map((entry) =>
-        entry.fieldKey === "name"
-          ? { ...entry, access: "EDIT" as const }
-          : entry,
-      ),
-      actions: { ...schema.actions, canUpdate: true },
-    };
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <RecordDetailDrawer
+        <RecordDetailPage
           tenantCode="northwind"
           schema={editableSchema}
           record={record}
@@ -280,7 +258,6 @@ describe("record detail reading hierarchy", () => {
   });
 
   it("keeps the new draft when an old HTTP save successfully updates the parent record", async () => {
-    const { recordApi } = await import("./record-api");
     let resolveUpdate!: (saved: RecordSummary) => void;
     const api = {
       ...recordApi,
@@ -290,20 +267,11 @@ describe("record detail reading hierarchy", () => {
         }),
       ),
     };
-    const editableSchema = {
-      ...schema,
-      fields: schema.fields.map((entry) =>
-        entry.fieldKey === "name"
-          ? { ...entry, access: "EDIT" as const }
-          : entry,
-      ),
-      actions: { ...schema.actions, canUpdate: true },
-    };
     const client = new QueryClient();
     let currentRecord = record;
     const view = () => (
       <QueryClientProvider client={client}>
-        <RecordDetailDrawer
+        <RecordDetailPage
           tenantCode="northwind"
           schema={editableSchema}
           record={currentRecord}
@@ -345,7 +313,6 @@ describe("record detail reading hierarchy", () => {
   });
 
   it("keeps a new edit session open when a save cancelled mid-request resolves later", async () => {
-    const { recordApi } = await import("./record-api");
     let resolveUpdate!: (saved: RecordSummary) => void;
     const api = {
       ...recordApi,
@@ -356,18 +323,9 @@ describe("record detail reading hierarchy", () => {
       ),
     };
     const onChanged = vi.fn().mockResolvedValue(undefined);
-    const editableSchema = {
-      ...schema,
-      fields: schema.fields.map((entry) =>
-        entry.fieldKey === "name"
-          ? { ...entry, access: "EDIT" as const }
-          : entry,
-      ),
-      actions: { ...schema.actions, canUpdate: true },
-    };
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <RecordDetailDrawer
+        <RecordDetailPage
           tenantCode="northwind"
           schema={editableSchema}
           record={record}
@@ -404,7 +362,7 @@ describe("record detail reading hierarchy", () => {
   it("does not claim an assigned owner is unassigned when the roster is unavailable", () => {
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <RecordDetailDrawer
+        <RecordDetailPage
           tenantCode="northwind"
           schema={schema}
           record={record}
@@ -413,13 +371,17 @@ describe("record detail reading hierarchy", () => {
         />
       </QueryClientProvider>,
     );
-    expect(screen.getByText("负责人：其他成员")).toBeVisible();
+    expect(
+      within(screen.getByRole("region", { name: "负责人与流转" })).getByText(
+        "其他成员",
+      ),
+    ).toBeVisible();
   });
 
   it("tells a member without the roster that they own the record", () => {
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <RecordDetailDrawer
+        <RecordDetailPage
           tenantCode="northwind"
           schema={schema}
           record={record}
@@ -429,9 +391,14 @@ describe("record detail reading hierarchy", () => {
         />
       </QueryClientProvider>,
     );
-    expect(screen.getByText("负责人：我")).toBeVisible();
+    expect(
+      within(screen.getByRole("region", { name: "负责人与流转" })).getByText(
+        "我",
+        { ignore: '[aria-hidden="true"]' },
+      ),
+    ).toBeVisible();
   });
-  it("prioritizes published summary and tasks while keeping full fields and secondary content discoverable", () => {
+  it("shows visible fields and the owner alongside workflow and counted activity tabs", () => {
     const client = new QueryClient();
     client.setQueryData(
       ["relations", "northwind", "customers", "r1"],
@@ -440,7 +407,7 @@ describe("record detail reading hierarchy", () => {
     client.setQueryData(["attachments", "northwind", "customers", "r1"], []);
     render(
       <QueryClientProvider client={client}>
-        <RecordDetailDrawer
+        <RecordDetailPage
           tenantCode="northwind"
           schema={schema}
           record={record}
@@ -450,20 +417,24 @@ describe("record detail reading hierarchy", () => {
         />
       </QueryClientProvider>,
     );
-    const summary = screen.getByRole("region", { name: "记录摘要" });
-    expect(within(summary).getByText("洽谈中")).toBeVisible();
-    expect(within(summary).getByText(/负责人：林晨/)).toBeVisible();
-    expect(screen.queryByText("不可见")).not.toBeInTheDocument();
+    const info = screen.getByRole("region", { name: "记录信息" });
+    expect(within(info).getByText("洽谈中")).toBeVisible();
+    expect(within(info).getByText("长业务说明")).toBeVisible();
+    expect(within(info).queryByText("不可见")).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole("region", { name: "负责人与流转" })).getByText(
+        "林晨",
+      ),
+    ).toBeVisible();
     expect(screen.getByRole("region", { name: "工作流" })).toBeVisible();
     expect(screen.getByRole("region", { name: "下一步跟进" })).toBeVisible();
-    expect(screen.getByRole("region", { name: "活动历史" })).toBeVisible();
-    expect(screen.getByText("长业务说明")).not.toBeVisible();
-    fireEvent.click(screen.getByText("完整业务字段"));
-    expect(screen.getByText("长业务说明")).toBeVisible();
-    expect(screen.getByText("关联业务记录（1）")).toBeVisible();
-    expect(screen.getByText("附件（暂无附件）")).toBeVisible();
+    expect(screen.getByRole("tab", { name: /关联.*1/ })).toBeVisible();
+    expect(screen.getByRole("tab", { name: /附件.*0/ })).toBeVisible();
     expect(screen.getByText("关联内容")).not.toBeVisible();
-    expect(screen.getByText("附件内容")).not.toBeVisible();
+    fireEvent.click(screen.getByRole("tab", { name: /关联/ }));
+    expect(screen.getByText("关联内容")).toBeVisible();
+    fireEvent.click(screen.getByRole("tab", { name: /附件/ }));
+    expect(screen.getByText("附件内容")).toBeVisible();
     expect(
       screen.queryByRole("button", { name: "编辑" }),
     ).not.toBeInTheDocument();
@@ -473,7 +444,7 @@ describe("record detail reading hierarchy", () => {
 it("does not expose editing or follow-up workflows in an employee pool preview", () => {
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <RecordDetailDrawer
+      <RecordDetailPage
         tenantCode="northwind"
         schema={{ ...schema, actions: { ...schema.actions, canUpdate: true } }}
         record={{
@@ -505,7 +476,7 @@ it("does not expose editing or follow-up workflows in an employee pool preview",
 it("opens the communication draft in the current record activity area", async () => {
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <RecordDetailDrawer
+      <RecordDetailPage
         tenantCode="northwind"
         schema={{ ...schema, actions: { ...schema.actions, canUpdate: true } }}
         record={record}
@@ -515,6 +486,7 @@ it("opens the communication draft in the current record activity area", async ()
       />
     </QueryClientProvider>,
   );
+  fireEvent.click(screen.getByRole("tab", { name: "动态" }));
   fireEvent.click(
     within(screen.getByRole("region", { name: "活动历史" })).getByRole(
       "button",

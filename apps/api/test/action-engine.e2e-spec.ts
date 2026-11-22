@@ -4,7 +4,7 @@ import type { Prisma, PrismaClient } from '@crm/database';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 
-import { createApp } from '../src/bootstrap';
+import { createHttpTestApp } from './helpers/http-app';
 // Static and extensionless, like `../src/bootstrap` above: `apps/api` is
 // CommonJS (no `"type": "module"`), so a static relative import resolves by the
 // CJS rules `nodenext` applies here. A dynamic `import()` of the same path is
@@ -138,7 +138,7 @@ describe('Action Engine V1 atomicity and tenant safety (e2e, real PostgreSQL)', 
     runtimeDatabase = createDatabaseClient(
       requiredEnvironment('TEST_DATABASE_URL'),
     );
-    app = (await createApp()) as INestApplication<App>;
+    app = await createHttpTestApp();
   });
 
   beforeEach(async () => {

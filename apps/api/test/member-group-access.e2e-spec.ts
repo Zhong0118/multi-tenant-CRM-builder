@@ -56,7 +56,6 @@ describe('GROUP read boundaries over HTTP', () => {
     expect(runtime.username).toBe('crm_app');
     expect(['crm', userInfo().username]).toContain(admin.username);
     h = await createCriticalHarness();
-    await h.app.listen(0, '127.0.0.1');
   });
   beforeEach(async () => {
     f = await provisionCriticalFixture(h);
@@ -909,7 +908,7 @@ describe('GROUP read boundaries over HTTP', () => {
         `/api/v1/workspaces/${f.tenantB.code}/objects/leads/records`,
       ).expect(403);
     });
-    it('applies canUpdate, membership changes and field retirement immediately', async () => {
+    it('checks current membership and permissions even while field retirement is a draft', async () => {
       await configure({ reviewCode: 'EDIT' }, false).expect(200);
       await patch(`${records()}/${f.otherRecord.id}`, {
         version: 1,
@@ -932,17 +931,30 @@ describe('GROUP read boundaries over HTTP', () => {
         where: { objectId: f.object.id, fieldKey: 'reviewCode' },
         data: { status: 'INACTIVE' },
       });
-      await configure({ reviewCode: 'EDIT' }).expect(400);
+      await configure({ reviewCode: 'EDIT' }).expect(200);
       expect((await get(schemaPath()).expect(200)).body).toHaveProperty(
         'fields',
-        expect.not.arrayContaining([
+        expect.arrayContaining([
           expect.objectContaining({ fieldKey: 'reviewCode' }),
         ]),
       );
-      await patch(`${records()}/${f.otherRecord.id}`, {
+      const peer = `${records()}/${f.otherRecord.id}`;
+      await patch(peer, {
         version: 1,
-        values: { reviewCode: 'blocked' },
-      }).expect(400);
+        values: { reviewCode: 'still published' },
+      }).expect(200);
+      expect((await get(peer).expect(200)).body).toHaveProperty(
+        'values.reviewCode',
+        'still published',
+      );
+      await configure({ reviewCode: 'HIDDEN' }).expect(200);
+      expect((await get(peer).expect(200)).body).not.toHaveProperty(
+        'values.reviewCode',
+      );
+      await patch(peer, {
+        version: 2,
+        values: { reviewCode: 'revoked' },
+      }).expect(403);
       await h.adminDatabase.memberGroup.update({
         where: { id: groupId },
         data: { leaderMemberId: null },

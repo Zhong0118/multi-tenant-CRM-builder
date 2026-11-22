@@ -23,10 +23,6 @@ export interface RecordDetailPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-/**
- * A record deep link renders the list behind the detail drawer, so closing it
- * lands back on the same filters and page instead of an empty list.
- */
 export default async function RecordDetailPage({
   params,
   searchParams,

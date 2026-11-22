@@ -1,3 +1,4 @@
+import { escapeLikeText } from '../../infrastructure/database/like-pattern';
 import { recordDateExpression, recordDatePredicate } from './record-date-query';
 import {
   recordOwnerFilter,
@@ -235,7 +236,7 @@ export interface RecordsStore {
     before: DynamicRecord,
     after: DynamicRecord,
     meta: RecordRequestMeta,
-  ): Promise<void>;
+  ): Promise<DynamicRecord>;
   withSavepoint?<T>(work: () => Promise<T>): Promise<T>;
   resolveCurrentObject(
     previous: ResolvedObjectSchema,
@@ -503,13 +504,13 @@ class PrismaRecordsStore implements RecordsStore {
     );
   }
 
-  async runFieldAutomations(
+  runFieldAutomations(
     resolved: ResolvedObjectSchema,
     before: DynamicRecord,
     after: DynamicRecord,
     meta: RecordRequestMeta,
-  ): Promise<void> {
-    await runFieldAutomations(
+  ): Promise<DynamicRecord> {
+    return runFieldAutomations(
       {
         tx: this.transaction,
         store: this,
@@ -1378,7 +1379,7 @@ function listWhereSql(
   if (query.poolQuality)
     parts.push(Prisma.sql`r.pool_quality = ${query.poolQuality}`);
   if (query.search) {
-    const pattern = '%' + query.search + '%';
+    const pattern = '%' + escapeLikeText(query.search) + '%';
     const fields = [
       Prisma.sql`r.title`,
       ...query.searchFieldKeys.map((key) => Prisma.sql`(r.data ->> ${key})`),

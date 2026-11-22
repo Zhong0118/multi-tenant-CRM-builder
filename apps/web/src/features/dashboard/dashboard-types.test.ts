@@ -170,6 +170,15 @@ describe("unfinished dashboard draft round trip", () => {
     },
   );
 
+  it("reopens a saved scalar filter containing a legacy array so the admin can repair it", () => {
+    const draft = incompleteDraft({
+      ...incompleteWidgets[0],
+      filters: [{ fieldKey: "amount", operator: "EQ", value: [1, 2, 3] }],
+    });
+
+    expect(parseDraft(draft)).toEqual(draft);
+  });
+
   it("still rejects a non-string draft binding", () => {
     expect(() =>
       parseDraft(incompleteDraft({ ...incompleteWidgets[0], objectCode: 42 })),

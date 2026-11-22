@@ -47,6 +47,7 @@ function candidate(type: OperationType, recordId: string) {
 describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
   let harness: CriticalHarness;
   let fixture: CriticalFixture;
+  let fixtureTenants: { tenantId: { in: string[] } };
   let proposals: AiProposalService;
   let context: TenantContext;
 
@@ -56,12 +57,14 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
       process.env.TEST_DATABASE_ADMIN_URL,
     );
     harness = await createCriticalHarness();
-    await harness.app.listen(0, '127.0.0.1');
     proposals = harness.app.get(AiProposalService);
   });
 
   beforeEach(async () => {
     fixture = await provisionCriticalFixture(harness);
+    fixtureTenants = {
+      tenantId: { in: [fixture.tenantA.id, fixture.tenantB.id] },
+    };
     context = {
       tenantId: fixture.tenantA.id,
       tenantCode: fixture.tenantA.code,
@@ -224,7 +227,11 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
           data: expect.objectContaining({ name: 'HTTP confirmed' }),
         });
       } else if (type === 'CREATE_FOLLOW_UP') {
-        expect(await harness.adminDatabase.recordFollowUp.findMany()).toEqual([
+        expect(
+          await harness.adminDatabase.recordFollowUp.findMany({
+            where: fixtureTenants,
+          }),
+        ).toEqual([
           expect.objectContaining({
             tenantId: fixture.tenantA.id,
             recordId: fixture.ownedRecord.id,
@@ -233,7 +240,11 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
           }),
         ]);
       } else {
-        expect(await harness.adminDatabase.recordActivity.findMany()).toEqual([
+        expect(
+          await harness.adminDatabase.recordActivity.findMany({
+            where: fixtureTenants,
+          }),
+        ).toEqual([
           expect.objectContaining({
             tenantId: fixture.tenantA.id,
             recordId: fixture.ownedRecord.id,
@@ -394,9 +405,17 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
       .expect(200);
     expect(second.text).toContain('event: turn.completed');
     expect(second.text).not.toContain('event: proposal.ready');
-    expect(await harness.adminDatabase.aiOperation.count()).toBe(1);
-    expect(await harness.adminDatabase.recordActivity.count()).toBe(0);
-    expect(await harness.adminDatabase.auditLog.count()).toBe(0);
+    expect(
+      await harness.adminDatabase.aiOperation.count({ where: fixtureTenants }),
+    ).toBe(1);
+    expect(
+      await harness.adminDatabase.recordActivity.count({
+        where: fixtureTenants,
+      }),
+    ).toBe(0);
+    expect(
+      await harness.adminDatabase.auditLog.count({ where: fixtureTenants }),
+    ).toBe(0);
   });
 
   it('rejects an HTTP proposal without writing any business data', async () => {
@@ -485,8 +504,12 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
     expect(turn.text).not.toContain('initial-review-code');
     expect(turn.text).not.toContain('hidden-owned');
     expect(turn.text).not.toContain('"secret"');
-    expect(await harness.adminDatabase.aiOperation.count()).toBe(0);
-    expect(await harness.adminDatabase.auditLog.count()).toBe(0);
+    expect(
+      await harness.adminDatabase.aiOperation.count({ where: fixtureTenants }),
+    ).toBe(0);
+    expect(
+      await harness.adminDatabase.auditLog.count({ where: fixtureTenants }),
+    ).toBe(0);
     expect(
       await harness.adminDatabase.record.findUniqueOrThrow({
         where: { id: fixture.ownedRecord.id },
@@ -515,8 +538,12 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
       expect(turn.text).not.toContain('内部备注');
       expect(turn.text).not.toContain('"secret"');
     }
-    expect(await harness.adminDatabase.aiOperation.count()).toBe(0);
-    expect(await harness.adminDatabase.auditLog.count()).toBe(0);
+    expect(
+      await harness.adminDatabase.aiOperation.count({ where: fixtureTenants }),
+    ).toBe(0);
+    expect(
+      await harness.adminDatabase.auditLog.count({ where: fixtureTenants }),
+    ).toBe(0);
     expect(
       await harness.adminDatabase.record.findUniqueOrThrow({
         where: { id: fixture.ownedRecord.id },
@@ -877,8 +904,14 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
     expect(second.status).toBe(200);
     expect(first.body.status).toBe('EXECUTED');
     expect(second.body.status).toBe('EXECUTED');
-    expect(await harness.adminDatabase.recordActivity.count()).toBe(1);
-    expect(await harness.adminDatabase.auditLog.count()).toBe(1);
+    expect(
+      await harness.adminDatabase.recordActivity.count({
+        where: fixtureTenants,
+      }),
+    ).toBe(1);
+    expect(
+      await harness.adminDatabase.auditLog.count({ where: fixtureTenants }),
+    ).toBe(1);
 
     const failed = await proposal('CREATE_FOLLOW_UP');
     await harness.adminDatabase.aiOperation.update({

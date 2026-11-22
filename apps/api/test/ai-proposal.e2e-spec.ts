@@ -16,6 +16,7 @@ jest.setTimeout(180_000);
 describe('isolated AI proposal atomic confirmation', () => {
   let harness: CriticalHarness;
   let fixture: CriticalFixture;
+  let fixtureTenants: { tenantId: { in: string[] } };
   let service: AiProposalService;
   let conversations: ConversationService;
   let context: TenantContext;
@@ -30,6 +31,9 @@ describe('isolated AI proposal atomic confirmation', () => {
   });
   beforeEach(async () => {
     fixture = await provisionCriticalFixture(harness);
+    fixtureTenants = {
+      tenantId: { in: [fixture.tenantA.id, fixture.tenantB.id] },
+    };
     context = {
       tenantId: fixture.tenantA.id,
       tenantCode: fixture.tenantA.code,
@@ -355,7 +359,9 @@ describe('isolated AI proposal atomic confirmation', () => {
         'other',
       ),
     ).rejects.toMatchObject({ code: 'RECORD_NOT_FOUND' });
-    expect(await harness.adminDatabase.aiOperation.count()).toBe(0);
+    expect(
+      await harness.adminDatabase.aiOperation.count({ where: fixtureTenants }),
+    ).toBe(0);
   });
   it.each(['UPDATE_RECORD', 'CREATE_FOLLOW_UP', 'ADD_ACTIVITY_NOTE'] as const)(
     '%s conflicts on stale record without business/audit writes',
@@ -494,8 +500,14 @@ describe('isolated AI proposal atomic confirmation', () => {
       'EXECUTED',
       'EXECUTED',
     ]);
-    expect(await harness.adminDatabase.recordActivity.count()).toBe(1);
-    expect(await harness.adminDatabase.auditLog.count()).toBe(1);
+    expect(
+      await harness.adminDatabase.recordActivity.count({
+        where: fixtureTenants,
+      }),
+    ).toBe(1);
+    expect(
+      await harness.adminDatabase.auditLog.count({ where: fixtureTenants }),
+    ).toBe(1);
   });
   it('rolls back invalid stored candidate then conditionally commits FAILED', async () => {
     const view = await service.preview(
@@ -533,8 +545,14 @@ describe('isolated AI proposal atomic confirmation', () => {
         })
       ).auditId,
     ).toBeNull();
-    expect(await harness.adminDatabase.recordFollowUp.count()).toBe(0);
-    expect(await harness.adminDatabase.auditLog.count()).toBe(0);
+    expect(
+      await harness.adminDatabase.recordFollowUp.count({
+        where: fixtureTenants,
+      }),
+    ).toBe(0);
+    expect(
+      await harness.adminDatabase.auditLog.count({ where: fixtureTenants }),
+    ).toBe(0);
   });
   it('marks stale NOTE target conflicted with zero business/audit writes', async () => {
     const view = await service.preview(
@@ -558,6 +576,10 @@ describe('isolated AI proposal atomic confirmation', () => {
         .status,
     ).toBe('CONFLICTED');
     expect(await harness.adminDatabase.auditLog.count()).toBe(before);
-    expect(await harness.adminDatabase.recordActivity.count()).toBe(0);
+    expect(
+      await harness.adminDatabase.recordActivity.count({
+        where: fixtureTenants,
+      }),
+    ).toBe(0);
   });
 });

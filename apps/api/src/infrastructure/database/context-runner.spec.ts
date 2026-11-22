@@ -82,10 +82,14 @@ describe('pool protection transaction failures', () => {
   ])(
     'maps %s to a safe actionable domain error',
     async (marker, code, status, message) => {
-      const failure = Object.assign(
-        new Error(`Database write failed: ${marker}`),
-        { code: 'P2010' },
-      );
+      const failure = Object.assign(new Error('Database write failed'), {
+        code: 'P2010',
+        meta: {
+          driverAdapterError: {
+            cause: { originalCode: 'P0001', originalMessage: marker },
+          },
+        },
+      });
       const database = {
         transaction: () => Promise.reject(failure),
       } as unknown as DatabaseService;
@@ -98,8 +102,20 @@ describe('pool protection transaction failures', () => {
       ).rejects.toHaveProperty('status', status);
     },
   );
-  it('keeps unrelated database failures intact', async () => {
-    const failure = new Error('unrelated failure');
+  it.each([
+    new Error('unrelated failure'),
+    new Error('An unrelated diagnostic mentions POOL_PROTECTION_FORBIDDEN'),
+    Object.assign(new Error('POOL_PROTECTION_FORBIDDEN'), {
+      meta: {
+        driverAdapterError: {
+          cause: {
+            originalCode: '40001',
+            originalMessage: 'POOL_PROTECTION_FORBIDDEN',
+          },
+        },
+      },
+    }),
+  ])('keeps unrelated failures intact', async (failure) => {
     const database = {
       transaction: () => Promise.reject(failure),
     } as unknown as DatabaseService;

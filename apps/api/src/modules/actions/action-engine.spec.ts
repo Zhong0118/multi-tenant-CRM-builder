@@ -911,6 +911,18 @@ describe('UPDATE_RECORD and ASSIGN_OWNER accumulate one source patch (§13, §14
     );
   });
 
+  it('rechecks the source field permission before applying a published mapping', async () => {
+    const { run, store, source } = fixture();
+    source.resolved.access.fields.companyName = 'HIDDEN';
+    const error = await rejection(
+      run([CREATE_CUSTOMER], { context: employee, source }),
+    );
+    expect(error.code).toBe('ACTION_EXECUTION_FAILED');
+    expect(JSON.stringify(error.fieldErrors)).not.toContain('companyName');
+    expect(store.records).toHaveLength(1);
+    expect(store.audits).toHaveLength(0);
+  });
+
   it('validates the patch through the shared prepareSourceRecordPatch', async () => {
     const { run, store } = fixture();
 

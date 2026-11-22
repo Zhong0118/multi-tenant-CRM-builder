@@ -2286,6 +2286,61 @@ it("previews against the base view without reading records or navigating until a
   }
 });
 
+it("clears a pending batch deletion on a saved view change even when both views show the same record", async () => {
+  const otherView = {
+    ...personalView,
+    id: "71950000-abcd-7000-a000-000000000002",
+    code: "other",
+    name: "其他跟进",
+  };
+  const stub = vi
+    .spyOn(recordViewApi, "list")
+    .mockResolvedValue([personalView, otherView]);
+  try {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const api = {
+      list: vi.fn().mockResolvedValue(page),
+      remove: vi.fn(),
+    } as unknown as RecordApi;
+    const view = (viewId: string) => (
+      <QueryClientProvider client={client}>
+        <RecordList
+          tenantCode="northwind"
+          currentMemberId="leader"
+          schema={{
+            ...schema,
+            actions: { ...schema.actions, canDelete: true },
+          }}
+          query={{ ...DEFAULT_RECORD_QUERY, viewId }}
+          initialPage={page}
+          api={api}
+        />
+      </QueryClientProvider>
+    );
+
+    const { rerender } = render(view(personalView.id));
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: "选择 天际科技" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "批量删除" }));
+    expect(
+      screen.getByRole("button", { name: "确认删除 1 条" }),
+    ).toBeInTheDocument();
+    rerender(view(otherView.id));
+    expect(
+      await screen.findByRole("checkbox", { name: "选择 天际科技" }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "选择卡片 天际科技" }),
+    ).not.toBeChecked();
+    expect(screen.queryByRole("button", { name: "确认删除 1 条" })).toBeNull();
+    expect(api.remove).not.toHaveBeenCalled();
+  } finally {
+    stub.mockRestore();
+  }
+});
 it("keeps a named view authoritative for paging, sorting next contact and resizing without hiding recent communication", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-11-25T08:30:00Z"));

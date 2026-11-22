@@ -6,7 +6,6 @@ import type {
   RuntimeObjectSchema,
 } from "@/features/objects/object-types";
 import { RecordDetailPage } from "./record-detail-page";
-import { RecordDetailDrawer } from "./record-detail-drawer";
 
 vi.mock("@/features/follow-ups/follow-up-panel", () => ({
   FollowUpPanel: () => null,
@@ -65,35 +64,29 @@ const record: RecordSummary = {
   updatedAt: "2026-10-28T00:00:00Z",
 };
 
-for (const [name, Component] of [
-  ["page", RecordDetailPage],
-  ["drawer", RecordDetailDrawer],
-] as const) {
-  it.each([false, true, undefined])(
-    `${name}: mounts workflow queries only when enabled or talking to an older API (%s)`,
-    (workflowEnabled) => {
-      const client = new QueryClient({
-        defaultOptions: { queries: { retry: false } },
-      });
-      const view = render(
-        <QueryClientProvider client={client}>
-          <Component
-            tenantCode="northwind"
-            schema={{ ...schema, workflowEnabled }}
-            record={record}
-            currentMemberId="me"
-            onClose={vi.fn()}
-            onChanged={vi.fn()}
-          />
-        </QueryClientProvider>,
-      );
-      expect(screen.queryByLabelText("工作流请求入口") !== null).toBe(
-        workflowEnabled !== false,
-      );
-      if (name === "page")
-        expect(screen.getByLabelText("业务活动")).toBeInTheDocument();
-      view.unmount();
-      client.clear();
-    },
-  );
-}
+it.each([false, true, undefined])(
+  "mounts workflow queries only when enabled or talking to an older API (%s)",
+  (workflowEnabled) => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const view = render(
+      <QueryClientProvider client={client}>
+        <RecordDetailPage
+          tenantCode="northwind"
+          schema={{ ...schema, workflowEnabled }}
+          record={record}
+          currentMemberId="me"
+          onClose={vi.fn()}
+          onChanged={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+    expect(screen.queryByLabelText("工作流请求入口") !== null).toBe(
+      workflowEnabled !== false,
+    );
+    expect(screen.getByLabelText("业务活动")).toBeInTheDocument();
+    view.unmount();
+    client.clear();
+  },
+);

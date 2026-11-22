@@ -43,20 +43,7 @@ import {
   FieldValidationDto,
 } from '../../objects/dto/object.dto';
 
-const FIELD_TYPES = [
-  'TEXT',
-  'TEXTAREA',
-  'PHONE',
-  'EMAIL',
-  'NUMBER',
-  'MONEY',
-  'DATE',
-  'DATETIME',
-  'SINGLE_SELECT',
-  'MULTI_SELECT',
-  'MEMBER',
-  'BOOLEAN',
-] as const;
+import { PUBLISHED_FIELD_TYPES } from '../../objects/object-schema';
 
 const JSON_VALUE_SCHEMA: ApiPropertyOptions = {
   oneOf: [
@@ -244,9 +231,9 @@ export class TemplateFieldDraftDto {
   @MaxLength(100)
   label!: string;
 
-  @ApiProperty({ type: String, enum: FIELD_TYPES })
-  @IsIn(FIELD_TYPES)
-  type!: (typeof FIELD_TYPES)[number];
+  @ApiProperty({ type: String, enum: PUBLISHED_FIELD_TYPES })
+  @IsIn(PUBLISHED_FIELD_TYPES)
+  type!: (typeof PUBLISHED_FIELD_TYPES)[number];
 
   @ApiProperty({ type: Boolean }) @IsBoolean() required!: boolean;
   @ApiProperty(JSON_VALUE_SCHEMA)
@@ -421,8 +408,8 @@ export class TemplateFieldResponseDto extends TemplateFieldDraftDto {
   @ApiProperty({ type: String, nullable: true })
   publishedFieldKey!: string | null;
 
-  @ApiProperty({ type: String, enum: FIELD_TYPES, nullable: true })
-  publishedType!: (typeof FIELD_TYPES)[number] | null;
+  @ApiProperty({ type: String, enum: PUBLISHED_FIELD_TYPES, nullable: true })
+  publishedType!: (typeof PUBLISHED_FIELD_TYPES)[number] | null;
 }
 
 export class TemplateObjectResponseDto extends TemplateObjectDraftDto {

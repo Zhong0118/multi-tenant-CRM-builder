@@ -336,6 +336,81 @@ test("pure source stop and restore preserve existing protection and review metad
   }
 });
 
+test("protection follows the published title while member permissions change immediately", async () => {
+  const f = await fixture({ employee: true });
+  const field = await admin.fieldDefinition.create({
+    data: {
+      tenantId: f.tenant.id,
+      objectId: f.target.id,
+      fieldKey: "name",
+      label: "Name",
+      type: "TEXT",
+      sortOrder: 1,
+      status: "INACTIVE",
+    },
+  });
+  const canProtect = async () => {
+    const [row] = await f.run(
+      (tx) => tx.$queryRaw`SELECT public.record_pool_can_protect(r) AS allowed
+        FROM public.records r WHERE r.id=${f.record.id}::uuid`,
+    );
+    return row.allowed;
+  };
+  assert.equal(await canProtect(), true, "the draft retirement is unpublished");
+  const override = await admin.memberFieldPermission.create({
+    data: {
+      tenantId: f.tenant.id,
+      objectId: f.target.id,
+      fieldId: field.id,
+      memberId: f.member.id,
+      access: "HIDDEN",
+    },
+  });
+  assert.equal(
+    await canProtect(),
+    false,
+    "live revocation applies to the published title",
+  );
+  await admin.memberFieldPermission.update({
+    where: { id: override.id },
+    data: { access: "READ_ONLY" },
+  });
+  assert.equal(await canProtect(), true);
+
+  const previous = await admin.objectPublication.findFirstOrThrow({
+    where: { tenantId: f.tenant.id, objectId: f.target.id },
+  });
+  const schema = previous.configuration;
+  const next = await admin.objectPublication.create({
+    data: {
+      tenantId: f.tenant.id,
+      objectId: f.target.id,
+      publicationNo: 2,
+      sourceDraftVersion: 2,
+      publishedByMemberId: f.member.id,
+      changeSummary: {},
+      configuration: {
+        ...schema,
+        object: { ...schema.object, titleFieldKey: "reference" },
+        fields: [{ fieldKey: "reference", isSystem: false }],
+        employeeAccess: {
+          ...schema.employeeAccess,
+          fields: { reference: "HIDDEN" },
+        },
+      },
+    },
+  });
+  await admin.objectDefinition.update({
+    where: { id: f.target.id },
+    data: { activePublicationId: next.id },
+  });
+  assert.equal(
+    await canProtect(),
+    false,
+    "the new publication hides its replacement title",
+  );
+});
+
 test("target OWN scope, hidden title and member override remain authoritative", async () => {
   const otherOwner = await fixture({ employee: true });
   await otherOwner.link();

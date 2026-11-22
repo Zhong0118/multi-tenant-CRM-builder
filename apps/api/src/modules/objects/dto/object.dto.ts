@@ -29,22 +29,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-import type { JsonValue } from '../object-schema';
-
-const FIELD_TYPES = [
-  'TEXT',
-  'TEXTAREA',
-  'PHONE',
-  'EMAIL',
-  'NUMBER',
-  'MONEY',
-  'DATE',
-  'DATETIME',
-  'SINGLE_SELECT',
-  'MULTI_SELECT',
-  'MEMBER',
-  'BOOLEAN',
-] as const;
+import { PUBLISHED_FIELD_TYPES, type JsonValue } from '../object-schema';
 
 export class ExpectedVersionDto {
   @ApiProperty({ minimum: 1 })
@@ -326,9 +311,9 @@ export class CreateFieldDefinitionDto extends ExpectedVersionDto {
   @MaxLength(100)
   label!: string;
 
-  @ApiProperty({ enum: FIELD_TYPES })
-  @IsIn(FIELD_TYPES)
-  type!: (typeof FIELD_TYPES)[number];
+  @ApiProperty({ enum: PUBLISHED_FIELD_TYPES })
+  @IsIn(PUBLISHED_FIELD_TYPES)
+  type!: (typeof PUBLISHED_FIELD_TYPES)[number];
 
   @ApiProperty()
   @IsBoolean()
@@ -353,7 +338,9 @@ export class CreateFieldDefinitionDto extends ExpectedVersionDto {
   isSystem = false;
 }
 
-const INITIAL_FIELD_TYPES = FIELD_TYPES.filter((type) => type !== 'MEMBER');
+const INITIAL_FIELD_TYPES = PUBLISHED_FIELD_TYPES.filter(
+  (type) => type !== 'MEMBER',
+);
 
 export class InitialFieldDefinitionDto extends OmitType(
   CreateFieldDefinitionDto,
@@ -377,10 +364,10 @@ export class UpdateFieldDefinitionDto extends ExpectedVersionDto {
   @MaxLength(100)
   label?: string;
 
-  @ApiPropertyOptional({ enum: FIELD_TYPES })
+  @ApiPropertyOptional({ enum: PUBLISHED_FIELD_TYPES })
   @IsOptional()
-  @IsIn(FIELD_TYPES)
-  type?: (typeof FIELD_TYPES)[number];
+  @IsIn(PUBLISHED_FIELD_TYPES)
+  type?: (typeof PUBLISHED_FIELD_TYPES)[number];
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -524,7 +511,7 @@ export class PublishedFieldResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() fieldKey!: string;
   @ApiProperty() label!: string;
-  @ApiProperty({ enum: FIELD_TYPES }) type!: string;
+  @ApiProperty({ enum: PUBLISHED_FIELD_TYPES }) type!: string;
   @ApiProperty() required!: boolean;
   @ApiProperty(JSON_VALUE_SCHEMA) defaultValue!: unknown;
   @ApiProperty({ type: 'object', additionalProperties: true })
@@ -612,7 +599,7 @@ export class ObjectDraftFieldResponseDto {
   @ApiProperty({ format: 'uuid' }) id!: string;
   @ApiProperty() fieldKey!: string;
   @ApiProperty() label!: string;
-  @ApiProperty({ enum: FIELD_TYPES }) type!: string;
+  @ApiProperty({ enum: PUBLISHED_FIELD_TYPES }) type!: string;
   @ApiProperty() required!: boolean;
   @ApiProperty(JSON_VALUE_SCHEMA) defaultValue!: unknown;
   @ApiProperty({ type: 'object', additionalProperties: true })
@@ -622,7 +609,7 @@ export class ObjectDraftFieldResponseDto {
   @ApiProperty() isSystem!: boolean;
   @ApiProperty({ enum: ['ACTIVE', 'INACTIVE'] })
   status!: 'ACTIVE' | 'INACTIVE';
-  @ApiProperty({ type: String, enum: FIELD_TYPES, nullable: true })
+  @ApiProperty({ type: String, enum: PUBLISHED_FIELD_TYPES, nullable: true })
   publishedType!: string | null;
   @ApiProperty({ enum: ['EDIT', 'CREATE_ONLY', 'READ_ONLY', 'HIDDEN'] })
   employeeAccess!: 'EDIT' | 'CREATE_ONLY' | 'READ_ONLY' | 'HIDDEN';

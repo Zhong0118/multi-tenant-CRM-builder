@@ -92,6 +92,7 @@ describe('independent group fields', () => {
       },
       role: 'EMPLOYEE',
       memberId: 'me',
+      memberFieldOverrides: {},
       groupOwnerMemberIds: ['me', 'peer'],
       memberOverride: {
         ...schema.employeeAccess,
@@ -99,6 +100,7 @@ describe('independent group fields', () => {
         groupFieldAccess: {},
       },
     });
+    expect(access.fields.constructor).toBe('HIDDEN');
     expect(
       recordFieldAccess(access, { ownerMemberId: 'peer' }).constructor,
     ).toBe('HIDDEN');

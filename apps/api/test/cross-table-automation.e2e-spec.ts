@@ -955,6 +955,113 @@ describe('cross-table automation (real PostgreSQL)', () => {
     expect(await targets()).toBe(1);
     expect(await executions()).toBe(1);
   });
+  async function configureInvoiceProtection() {
+    await republish(f.rollbackTargetObject.id, (schema) => {
+      schema.workflow = {
+        initialStateKey: 'confirmed',
+        states: [
+          {
+            key: 'confirmed',
+            label: '已确认',
+            sortOrder: 10,
+            isTerminal: true,
+          },
+        ],
+        transitions: [],
+      };
+    });
+    await h.adminDatabase.objectDefinition.update({
+      where: { id: f.object.id },
+      data: {
+        poolEnabled: true,
+        poolLifecycleEnabled: true,
+        poolProtectionRules: [
+          { sourceObjectCode: 'invoices', statusKeys: ['confirmed'] },
+        ],
+      },
+    });
+  }
+
+  it.each(['MANUAL', 'FIELD_CHANGED'] as const)(
+    'uses the committed source version when %s automation also grants pool protection',
+    async (trigger) => {
+      await configureInvoiceProtection();
+      await rules([
+        {
+          ...baseRule,
+          trigger: trigger === 'MANUAL' ? { type: 'MANUAL' } : baseRule.trigger,
+        },
+      ]);
+      const result =
+        trigger === 'MANUAL'
+          ? await api('post', `${path()}/automations/${baseRule.key}/execute`, {
+              expectedVersion: 1,
+              requestId: randomUUID(),
+              inputs: {},
+            })
+          : await api('patch', path(), { version: 1, values: { name: 'won' } });
+      expect(result.status).toBe(trigger === 'MANUAL' ? 201 : 200);
+      expect(await targets()).toBe(1);
+      expect(await executions()).toBe(1);
+      const stored = await source();
+      expect(stored).toMatchObject({ poolStage: 'PROTECTED', version: 3 });
+      if (trigger === 'FIELD_CHANGED') {
+        expect(result.body).toMatchObject({
+          poolStage: stored.poolStage,
+          version: stored.version,
+        });
+      }
+    },
+  );
+
+  it('commits the successful batch item when a sibling hits a database pool protection rule', async () => {
+    await rules();
+    await configureInvoiceProtection();
+    await h.adminDatabase.record.update({
+      where: { id: f.ownedRecord.id },
+      data: { ownerMemberId: null },
+    });
+    const response = await api(
+      'post',
+      '/api/v1/workspaces/critical-a/objects/leads/records/batch',
+      {
+        items: [
+          { recordId: f.otherRecord.id, version: 1 },
+          { recordId: f.ownedRecord.id, version: 1 },
+        ],
+        values: { name: 'won' },
+      },
+    );
+    expect(response.status).toBe(201);
+    expect(response.body).toMatchObject({
+      updated: 1,
+      failed: 1,
+      items: [
+        { recordId: f.otherRecord.id, status: 'UPDATED' },
+        {
+          recordId: f.ownedRecord.id,
+          status: 'FAILED',
+          error: { code: 'VALIDATION_FAILED' },
+        },
+      ],
+    });
+    expect((await source()).version).toBe(1);
+    expect(await targets()).toBe(1);
+    expect(await executions()).toBe(1);
+    const failure = await h.adminDatabase.auditLog.findMany({
+      where: {
+        tenantId: f.tenantA.id,
+        resourceId: f.ownedRecord.id,
+        action: 'automation.execution_failed',
+      },
+    });
+    expect(failure).toHaveLength(1);
+    expect(failure[0].after).toMatchObject({
+      code: 'VALIDATION_FAILED',
+      ruleKey: baseRule.key,
+    });
+  });
+
   it('isolates batch failures with savepoints and shares the command used by AI updates', async () => {
     await republish(f.object.id, (schema) => {
       schema.fields.push({

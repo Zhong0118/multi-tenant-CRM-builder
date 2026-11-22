@@ -3,7 +3,7 @@ import type { PrismaClient } from '@crm/database';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 
-import { createApp } from '../src/bootstrap';
+import { createHttpTestApp } from './helpers/http-app';
 import { hashSessionToken } from '../src/modules/auth/session.service';
 
 const origin = 'http://localhost:3000';
@@ -85,7 +85,7 @@ describe('Object publication chain (e2e)', () => {
     adminDatabase = createDatabaseClient(
       requiredEnvironment('TEST_DATABASE_ADMIN_URL'),
     );
-    app = (await createApp()) as INestApplication<App>;
+    app = await createHttpTestApp();
   });
 
   beforeEach(async () => {
@@ -100,6 +100,7 @@ describe('Object publication chain (e2e)', () => {
   });
 
   it('configures, publishes and then serves an object employees can use', async () => {
+    expect(new URL(await app.getUrl()).hostname).toBe('127.0.0.1');
     const server = app.getHttpServer();
     const base = `/api/v1/workspaces/${tenantCode}`;
     const admin = (method: 'post' | 'put' | 'get' | 'patch', url: string) =>
@@ -345,6 +346,12 @@ describe('Object publication chain (e2e)', () => {
         'amount',
       );
     }
+    await employee(
+      'patch',
+      `${base}/objects/customers/records/${createdRecord.id}`,
+    )
+      .send({ version: createdRecord.version, values: { amount: '8.00' } })
+      .expect(400);
     const retiredDraft = await admin(
       'get',
       `${base}/object-definitions/${objectId}`,

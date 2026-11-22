@@ -390,6 +390,13 @@ describe('object configuration policy', () => {
       },
     },
     {
+      name: 'a DATETIME default with an impossible calendar date',
+      mutate: (field: PublicationDraftField) => {
+        field.type = 'DATETIME';
+        field.defaultValue = '2026-02-31T00:00:00Z';
+      },
+    },
+    {
       name: 'a DATETIME default without a time-zone offset',
       mutate: (field: PublicationDraftField) => {
         field.type = 'DATETIME';
@@ -520,29 +527,25 @@ describe('object configuration policy', () => {
     },
   );
 
-  it('treats a non-empty MEMBER default as materializable, because no database is reachable here', () => {
+  it('requires a UUID-shaped MEMBER default and defers existence to record writes', () => {
     const input = validObjectConfiguration();
     input.fields[1] = {
       ...input.fields[1],
       type: 'MEMBER',
       required: true,
-      defaultValue: 'member-1',
+      defaultValue: '018f47a2-4b5c-7d8e-9f01-23456789abcd',
       validation: {},
       config: {},
     };
     input.employeeAccess!.fields.email = 'HIDDEN';
 
-    // The engine checks the id's shape and existence against the database on
-    // every write, and `analyzeObjectConfiguration` runs before any such lookup,
-    // so this rule cannot mirror it. Only a default that is not a non-empty
-    // string is rejected; a stale-but-well-formed id is left to write time.
     expect(
       analyzeObjectConfiguration(input).blocking.filter(
         (issue) => issue.code === 'REQUIRED_FIELD_HIDDEN',
       ),
     ).toEqual([]);
 
-    input.fields[1] = { ...input.fields[1], defaultValue: '' };
+    input.fields[1] = { ...input.fields[1], defaultValue: 'member-1' };
     expect(
       analyzeObjectConfiguration(input).blocking.find(
         (issue) => issue.code === 'REQUIRED_FIELD_HIDDEN',

@@ -253,7 +253,6 @@ describe('lifecycle runtime transaction boundary', () => {
   }
   beforeAll(async () => {
     h = await helpers.createCriticalHarness();
-    await h.app.listen(0, '127.0.0.1');
   });
   beforeEach(async () => {
     f = await helpers.provisionCriticalFixture(h);

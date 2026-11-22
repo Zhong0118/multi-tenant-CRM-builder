@@ -281,6 +281,12 @@ async function expectInvalid(
 }
 
 describe('dynamic record values', () => {
+  it('fails explicitly when the value engine has no normalizer for a field type', async () => {
+    await expect(
+      validate(field('UNIMPLEMENTED' as PublishedFieldType), 'sample'),
+    ).rejects.toThrow('Unsupported published field type: UNIMPLEMENTED');
+  });
+
   it.each([
     '2026-02-31T00:00:00Z',
     '2026-02-29T10:00:00+08:00',

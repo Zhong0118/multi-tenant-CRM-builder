@@ -3,12 +3,13 @@ import {
   recordTransferActions,
 } from '../objects/effective-access';
 import type { PublishedFieldAccess } from '../objects/object-schema';
+import { parseListSort, queryFields } from './record-filter';
 import {
-  recordOwnerFilter,
-  recordOwnerMatches,
-  type RecordOwnerFilter,
-} from '../objects/record-read-scope';
-import { parseListFilters, parseListSort, queryFields } from './record-filter';
+  resolveListOwner,
+  resolveRecordReadPredicate,
+  resolveStoredViewInput,
+  type RecordViewQueryInput,
+} from './record-list-query';
 import { Inject, Injectable } from '@nestjs/common';
 
 import { initialPoolPlacement } from './record-pool-placement';
@@ -29,7 +30,6 @@ import { createHash } from 'node:crypto';
 
 import { ApiException } from '../../common/errors/api.exception';
 import type { TenantContext } from '../../common/tenancy/tenant-context';
-import { isSearchableFieldType } from '../objects/object-schema';
 import type { ResolvedObjectSchema } from '../objects/published-object.service';
 import { PublishedObjectService } from '../objects/published-object.service';
 import {
@@ -100,35 +100,6 @@ export interface RecordPageResponse {
   page: number;
   limit: number;
   total: number;
-}
-
-interface RecordViewQueryInput {
-  viewId?: string;
-  search?: string;
-  scope?: 'mine' | 'pool' | 'group' | 'all';
-  poolStage?: PoolStage | 'LEGACY';
-  poolQuality?: PoolQuality;
-  ownerMemberId?: string;
-  filters?: string;
-  sort: string;
-  direction: 'asc' | 'desc';
-  columns?: string[];
-}
-
-async function resolveViewInput(
-  store: RecordsStore,
-  resolved: ResolvedObjectSchema,
-  request: RecordViewQueryInput,
-): Promise<RecordViewQueryInput> {
-  if (!request.viewId) return request;
-  const view = await store.resolveRecordView(resolved, request.viewId);
-  return {
-    ...view.queryOptions,
-    filters: JSON.stringify(view.filterRule),
-    sort: view.sort.field,
-    direction: view.sort.direction,
-    columns: view.columnFieldKeys,
-  };
 }
 
 export interface RecordAggregateInput {
@@ -229,40 +200,21 @@ export class RecordsService {
     const limit = Math.min(1000, Math.max(1, Math.trunc(request.limit)));
     return this.repository.withTenant(context, async (store) => {
       resolved = await store.resolveCurrentObject(resolved);
-      const input = await resolveViewInput(store, resolved, request);
-      const ownerMemberId = await resolveListOwner(
-        context,
-        resolved,
-        store,
-        input.ownerMemberId,
-        poolQueryScope(input.poolStage, input.scope),
-      );
+      const input =
+        (await resolveStoredViewInput(store, resolved, request.viewId)) ??
+        request;
       const timeZone = (await store.getTenantTimezone?.()) ?? null;
       const query: RecordListQuery = {
-        objectId: resolved.schema.object.id,
-        followUpOwnerMemberId: recordOwnerFilter(
-          resolved.access,
-          context.memberId,
-        ),
-        page,
-        limit,
-        search: input.search?.trim() || undefined,
-        searchFieldKeys: searchableFieldKeys(resolved),
-        inPublicPool:
-          poolQueryScope(input.poolStage, input.scope) === 'pool'
-            ? true
-            : undefined,
-        poolStage: input.poolStage,
-        poolQuality: input.poolQuality,
-        ownerMemberId,
-        filters: await parseListFilters(
-          input.filters,
-          resolved,
+        ...(await resolveRecordReadPredicate(
           context,
+          resolved,
           store,
+          input,
           this.clock(),
           timeZone,
-        ),
+        )),
+        page,
+        limit,
         sort: parseListSort(input.sort, resolved),
         direction: input.direction,
       };
@@ -355,42 +307,18 @@ export class RecordsService {
         input.groupByFieldKey,
       );
 
-      const view = input.viewId
-        ? await store.resolveRecordView(resolved, input.viewId)
-        : undefined;
-      const options = view?.queryOptions;
-      const viewFilters = view
-        ? JSON.stringify(view.filterRule)
-        : input.filters
-          ? JSON.stringify(input.filters)
-          : undefined;
-      const scope = poolQueryScope(options?.poolStage, options?.scope);
-      const ownerMemberId = await resolveListOwner(
+      const view = await resolveStoredViewInput(store, resolved, input.viewId);
+      const predicate = await resolveRecordReadPredicate(
         context,
         resolved,
         store,
-        options?.ownerMemberId,
-        scope,
+        view ?? {
+          filters: input.filters ? JSON.stringify(input.filters) : undefined,
+        },
+        this.clock(),
       );
       const result = await store.aggregateRecords({
-        objectId: resolved.schema.object.id,
-        followUpOwnerMemberId: recordOwnerFilter(
-          resolved.access,
-          context.memberId,
-        ),
-        ownerMemberId,
-        search: options?.search,
-        searchFieldKeys: searchableFieldKeys(resolved),
-        inPublicPool: scope === 'pool' ? true : undefined,
-        poolStage: options?.poolStage,
-        poolQuality: options?.poolQuality,
-        filters: await parseListFilters(
-          viewFilters,
-          resolved,
-          context,
-          store,
-          this.clock(),
-        ),
+        ...predicate,
         aggregation: input.aggregation,
         valueFieldKey,
         groupByFieldKey: groupByField?.fieldKey,
@@ -423,38 +351,19 @@ export class RecordsService {
         throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403, {
           message: '没有下载此业务表数据的权限。',
         });
-      const input = await resolveViewInput(store, resolved, request);
-      const ownerMemberId = await resolveListOwner(
-        context,
-        resolved,
-        store,
-        input.ownerMemberId,
-        poolQueryScope(input.poolStage, input.scope),
-      );
+      const input =
+        (await resolveStoredViewInput(store, resolved, request.viewId)) ??
+        request;
       const query: RecordListQuery = {
-        objectId: resolved.schema.object.id,
-        followUpOwnerMemberId: recordOwnerFilter(
-          resolved.access,
-          context.memberId,
-        ),
+        ...(await resolveRecordReadPredicate(
+          context,
+          resolved,
+          store,
+          input,
+          this.clock(),
+        )),
         page: 1,
         limit: RECORD_EXPORT_MAX_ROWS + 1,
-        search: input.search?.trim() || undefined,
-        searchFieldKeys: searchableFieldKeys(resolved),
-        inPublicPool:
-          poolQueryScope(input.poolStage, input.scope) === 'pool'
-            ? true
-            : undefined,
-        poolStage: input.poolStage,
-        poolQuality: input.poolQuality,
-        ownerMemberId,
-        filters: await parseListFilters(
-          input.filters,
-          resolved,
-          context,
-          store,
-          this.clock(),
-        ),
         sort: parseListSort(input.sort, resolved),
         direction: input.direction,
       };
@@ -728,6 +637,22 @@ export class RecordsService {
               )?.toISOString() ?? null;
           }
         }
+        const placement =
+          context.role === 'EMPLOYEE' && !input.dryRun
+            ? await initialPoolPlacement(
+                store,
+                context,
+                objectCode,
+                undefined,
+                this.clock(),
+              )
+            : {
+                ownershipExpiresAt,
+                poolStage,
+                poolOrigin: poolStage ? ('LEAD_POOL' as const) : undefined,
+                poolClaimedAt,
+                inPublicPool: input.importToPool,
+              };
         const ownerMemberId = matchFields.length
           ? await resolveListOwner(context, resolved, store, undefined)
           : undefined;
@@ -827,11 +752,7 @@ export class RecordsService {
               context,
               values: row.values,
               ownerMemberId: input.ownerMemberId,
-              ownershipExpiresAt,
-              poolStage,
-              poolOrigin: poolStage ? 'LEAD_POOL' : undefined,
-              poolClaimedAt,
-              inPublicPool: input.importToPool,
+              ...placement,
               meta,
               clock: this.clock,
               idGenerator: this.idGenerator,
@@ -1173,25 +1094,6 @@ export class RecordsService {
   }
 }
 
-function searchableFieldKeys(resolved: ResolvedObjectSchema): string[] {
-  const titleFieldKey = resolved.schema.object.titleFieldKey;
-  const extras =
-    resolved.visibleSchema.defaultView.searchFieldKeys ??
-    resolved.visibleSchema.defaultView.columnFieldKeys;
-  return [
-    ...new Set(
-      queryFields(resolved)
-        .filter(
-          (field) =>
-            isSearchableFieldType(field.type) &&
-            extras.includes(field.fieldKey) &&
-            field.fieldKey !== titleFieldKey,
-        )
-        .map((field) => field.fieldKey),
-    ),
-  ];
-}
-
 function invalidAggregate(): ApiException {
   return new ApiException('VALIDATION_FAILED', 400);
 }
@@ -1275,56 +1177,6 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-async function resolveListOwner(
-  context: TenantContext,
-  resolved: ResolvedObjectSchema,
-  store: RecordsStore,
-  requested: string | undefined,
-  scope?: 'mine' | 'pool' | 'group' | 'all',
-): Promise<RecordOwnerFilter | null | undefined> {
-  if (scope !== undefined && !['mine', 'pool', 'group', 'all'].includes(scope))
-    throw new ApiException('VALIDATION_FAILED', 400);
-  if (scope === 'pool') {
-    if (
-      !resolved.poolEnabled ||
-      resolved.access.ownTitleHidden ||
-      !resolved.access.canRead ||
-      resolved.access.readScope === 'NONE'
-    )
-      throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
-    return undefined;
-  }
-  if (scope === 'all' && resolved.access.readScope !== 'ALL')
-    throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
-  if (scope === 'group' && resolved.access.readScope !== 'GROUP')
-    throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
-  if (scope === 'mine')
-    return recordOwnerMatches(
-      recordOwnerFilter(resolved.access, context.memberId),
-      context.memberId,
-    )
-      ? context.memberId
-      : { in: [] };
-  if (resolved.access.readScope === 'GROUP') {
-    const owners = recordOwnerFilter(resolved.access, context.memberId);
-    if (!requested) return owners;
-    if (!resolved.access.groupOwnerMemberIds?.includes(requested))
-      throw new ApiException('OWNER_INVALID', 400);
-    return recordOwnerMatches(owners, requested) ? requested : { in: [] };
-  }
-  if (resolved.access.readScope === 'OWN')
-    return recordOwnerFilter(resolved.access, context.memberId);
-  if (resolved.access.readScope === 'NONE') {
-    throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
-  }
-  if (context.role !== 'TENANT_ADMIN' || !requested) return undefined;
-  if (requested === 'unassigned') return null;
-  if (!(await store.memberExists(requested))) {
-    throw new ApiException('OWNER_INVALID', 400);
-  }
-  return requested;
-}
-
 function resolveExportFields(
   resolved: ResolvedObjectSchema,
   requested: string[] | undefined,
@@ -1344,13 +1196,4 @@ function resolveExportFields(
       return field ? [field] : [];
     },
   );
-}
-
-function poolQueryScope(
-  stage: PoolStage | 'LEGACY' | undefined,
-  scope?: 'mine' | 'pool' | 'group' | 'all',
-) {
-  if (stage !== undefined && stage !== 'LEGACY' && !POOL_STAGES.includes(stage))
-    throw new ApiException('VALIDATION_FAILED', 400);
-  return stage === 'LEAD_POOL' || stage === 'CUSTOMER_POOL' ? 'pool' : scope;
 }
