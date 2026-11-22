@@ -22,7 +22,7 @@ export const FILTER_FORMAT = [
   'Lists are 1–20 active keys or member UUIDs/$me. Dates are YYYY-MM-DD, MONEY uses decimal strings, ranges use {from,to}, none omits value. Relative: ' +
     RELATIVE_DATE_PRESETS.join('|') +
     '.',
-  '$owner uses OWNER. $followUp uses FOLLOW_UP, optionally {assignee:"$me"|"any"}; defaults to own OPEN follow-ups due through today. Legacy flat filters such as {"stage":["lost"]} are also accepted.',
+  '“我负责的” is {fieldKey:"$owner",operator:"in",value:["$me"]}, even when describe_object lists no owner field. $followUp uses FOLLOW_UP, optionally {assignee:"$me"|"any"}; defaults to own OPEN follow-ups due through today. Legacy flat filters such as {"stage":["lost"]} are also accepted.',
 ].join(' ');
 
 export const searchRecordsInput = z
@@ -48,7 +48,7 @@ export function createSearchRecordsTool(
   return {
     name: 'search_records',
     description:
-      'Search records the current actor can read. Use page and limit for subsequent pages; the service returns the effective page size. If a compound keyword has no matches, use suggestedQueries for individual searches in the same table with the original filters, unless an exact-only match was requested. Only report broader matches as such; never pass owner or actor overrides. Results are a limited page, never a complete total. ' +
+      'Read visible rows for facts, disambiguation or proposal targets. For a list-page request to find or filter customers for display, use preview_filter. Use page and limit for subsequent pages; the service returns the effective page size. If a compound keyword has no matches, use suggestedQueries for individual searches in the same table with the original filters, unless an exact-only match was requested. Only report broader matches as such; never pass owner or actor overrides. Results are a limited page, never a complete total. ' +
       FILTER_FORMAT,
     inputSchema: searchRecordsInput,
     async execute(input) {
