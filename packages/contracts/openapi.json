@@ -14784,7 +14784,9 @@
             "in": "path",
             "name": "tenantCode",
             "required": true,
-            "schema": {}
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {

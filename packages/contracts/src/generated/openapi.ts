@@ -8091,7 +8091,7 @@ export interface operations {
       header?: never;
       path: {
         objectCode: string;
-        tenantCode: unknown;
+        tenantCode: string;
       };
       cookie?: never;
     };

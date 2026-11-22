@@ -43,7 +43,7 @@ const ruleSchema = { type: 'object', additionalProperties: true } as const;
 @Controller('workspaces/:tenantCode/objects/:objectCode/filter-preview')
 @ApiTags('filter-preview')
 @ApiCookieAuth('crm_session')
-@ApiParam({ name: 'tenantCode' })
+@ApiParam({ name: 'tenantCode', type: String })
 @ApiParam({ name: 'objectCode' })
 @UseGuards(SessionAuthGuard, WorkspaceGuard)
 export class FilterPreviewController {
