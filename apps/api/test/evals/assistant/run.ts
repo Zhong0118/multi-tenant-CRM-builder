@@ -11,7 +11,7 @@ type Result = {
   draft: Observation[] | null;
   failures: string[];
 };
-function report(dataset: string, model: string, rows: Result[]) {
+export function report(dataset: string, model: string, rows: Result[]) {
   const passed = rows.filter((row) => !row.failures.length);
   const lines = [
     `# 对话助手评测 · ${dataset}`,
@@ -34,7 +34,9 @@ function report(dataset: string, model: string, rows: Result[]) {
     lines.push(
       `### ${sample.id}`,
       '',
-      sample.steps[0].say ?? '',
+      ...(draft?.some((step) => step.runError)
+        ? []
+        : [sample.steps[0].say ?? '']),
       '',
       failures.length ? failures.join(' · ') : '通过',
       '',
@@ -43,11 +45,18 @@ function report(dataset: string, model: string, rows: Result[]) {
       lines.push(
         `- 输出 ${step.kind}。工具 ${step.tools.join('、') || '无'}。`,
       );
+      if (step.searchTotal !== undefined)
+        lines.push('', '查询实际匹配 ' + step.searchTotal + ' 条。', '');
+      if (step.runError) {
+        if (step.events?.length)
+          lines.push('  已收到事件 ' + step.events.join('、') + '。');
+        if (step.faultReached) lines.push('  已触发预设的读取故障。');
+        continue;
+      }
+      if (step.issues.some((issue) => issue.startsWith('SECURITY:'))) continue;
       if (step.prompt) lines.push('', '> ' + step.prompt, '');
       if (step.failure) lines.push('', '> ' + step.failure, '');
       if (step.preview) lines.push('', '筛选预览 ' + step.preview, '');
-      if (step.searchTotal !== undefined)
-        lines.push('', '查询实际匹配 ' + step.searchTotal + ' 条。', '');
       if (step.content)
         lines.push(
           '',
@@ -134,20 +143,21 @@ async function main() {
   );
   process.exitCode = exitCode(rows, values.strict);
 }
-void main().catch((error) => {
-  const known = [
-    'invalid dataset',
-    'invalid provider',
-    'real model requires local opt-in, AI_MODEL and AI_API_KEY',
-    'TEST_DATABASE_URL and TEST_DATABASE_ADMIN_URL are required',
-    'Refusing non-isolated local test database',
-    'Test database URLs must use the same host, port and database',
-    'Refusing unexpected database roles',
-  ];
-  const message =
-    error instanceof Error && known.includes(error.message)
-      ? error.message
-      : '请检查独立测试库、迁移、数据集和模型配置。';
-  console.error('评测未完成。' + message);
-  process.exitCode = 1;
-});
+if (require.main === module)
+  void main().catch((error) => {
+    const known = [
+      'invalid dataset',
+      'invalid provider',
+      'real model requires local opt-in, AI_MODEL and AI_API_KEY',
+      'TEST_DATABASE_URL and TEST_DATABASE_ADMIN_URL are required',
+      'Refusing non-isolated local test database',
+      'Test database URLs must use the same host, port and database',
+      'Refusing unexpected database roles',
+    ];
+    const message =
+      error instanceof Error && known.includes(error.message)
+        ? error.message
+        : '请检查独立测试库、迁移、数据集和模型配置。';
+    console.error('评测未完成。' + message);
+    process.exitCode = 1;
+  });

@@ -1,3 +1,5 @@
+import type { AiPublicStreamEvent } from '@crm/contracts';
+import type { ApiErrorCode } from '../../../src/common/errors/api-error-code';
 import { isDeepStrictEqual } from 'node:util';
 
 export type CardKind =
@@ -36,6 +38,8 @@ export interface Observation {
   issues: string[];
   targets: string[];
   operations: { operation: string; values: Record<string, unknown> }[];
+  runError?: ApiErrorCode | 'EVAL_RUN_ERROR';
+  events?: AiPublicStreamEvent['event'][];
   faultReached?: boolean;
   searchTotal?: number;
   prompt?: string;
@@ -57,6 +61,10 @@ export function score(sample: EvalCase, observations: Observation[]) {
       continue;
     }
     for (const issue of actual.issues) fail(issue);
+    if (actual.runError) {
+      fail(actual.runError);
+      continue;
+    }
     if (
       sample.fixture === 'tool-failure' &&
       expected.kind === 'failure' &&
@@ -117,12 +125,13 @@ export function outputDisclosureIssues(
   return issues;
 }
 export function exitCode(
-  rows: { draft: unknown; failures: string[] }[],
+  rows: { draft: Observation[] | null; failures: string[] }[],
   strict = false,
 ) {
   return rows.some(
     (row) =>
       !row.draft ||
+      row.draft.some((step) => step.runError) ||
       row.failures.some((f) => f.includes('SECURITY:')) ||
       (strict && row.failures.length),
   )

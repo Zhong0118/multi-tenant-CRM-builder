@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { createRequire } from 'node:module';
+import type { AiPublicStreamEvent } from '@crm/contracts';
+import { AiOrchestrator } from '../../../src/modules/ai/ai-orchestrator';
+import { report } from './run';
+import { createAiProvider } from '../../../src/modules/ai/ai-provider';
+import { assertIsolatedTestDatabase } from '../../helpers/isolated-database';
 import {
   outputDisclosureIssues,
   exitCode,
@@ -126,3 +132,98 @@ void test('does not credit accidental failures or a guessed limit', () => {
     'step 1: no successful search established the limit',
   ]);
 });
+
+void test(
+  'keeps the question and failed answer in the report when validation throws',
+  {
+    skip:
+      !process.env.TEST_DATABASE_URL && !process.env.TEST_DATABASE_ADMIN_URL,
+  },
+  async (t) => {
+    assertIsolatedTestDatabase(
+      process.env.TEST_DATABASE_URL,
+      process.env.TEST_DATABASE_ADMIN_URL,
+    );
+    process.env.NODE_ENV = 'test';
+    process.env.DEV_VERIFICATION_CODE = '123456';
+    process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
+    process.env.WEB_ORIGIN = 'http://localhost:3000';
+    const { evaluate } = createRequire(__filename)(
+      './evaluate',
+    ) as typeof import('./evaluate');
+    const provider = createAiProvider({ nodeEnv: 'test', provider: 'fake' });
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- The wrapper forwards the Nest instance as the receiver.
+    const original = AiOrchestrator.prototype.streamTurn;
+    t.mock.method(
+      AiOrchestrator.prototype,
+      'streamTurn',
+      async function (
+        this: AiOrchestrator,
+        ...args: Parameters<AiOrchestrator['streamTurn']>
+      ) {
+        const stream = await original.apply(this, args);
+        const dto = args[1];
+        if (!('content' in dto) || !dto.content.includes('PRIVATE_REQUEST'))
+          return stream;
+        return (async function* (): AsyncIterable<AiPublicStreamEvent> {
+          yield* stream;
+          yield {
+            event: 'assistant.delta',
+            data: { text: 'EVAL_PRIVATE_MARGIN' },
+          };
+          throw new Error('PRIVATE_EXCEPTION');
+        })();
+      },
+    );
+    const [row, interrupted] = await evaluate(provider, [
+      {
+        ...sample,
+        steps: [
+          { say: '帮我改一下这个客户', expect: { kind: 'fill_fields' } },
+          {
+            pick: { values: { amount: 'PRIVATE_ANSWER' } },
+            expect: { kind: 'failure' },
+          },
+        ],
+      },
+      {
+        ...sample,
+        id: 'interrupted-fault',
+        fixture: 'tool-failure',
+        steps: [
+          { say: '这个客户概况 PRIVATE_REQUEST', expect: { kind: 'failure' } },
+        ],
+      },
+    ]);
+    assert.equal(row.draft?.length, 2);
+    assert.equal(row.draft[0].kind, 'fill_fields');
+    assert.ok(row.draft[0].tools.includes('ask_user'));
+    assert.equal(row.draft[1].runError, 'VALIDATION_FAILED');
+    assert.deepEqual(row.draft[1].tools, []);
+    assert.deepEqual(row.draft[1].events, []);
+    assert.deepEqual(row.failures, ['step 2: VALIDATION_FAILED']);
+    assert.equal(exitCode([row]), 1);
+    const rendered = report('synthetic', 'fake', [row]);
+    assert.match(rendered, /fill_fields.*ask_user/);
+    assert.match(rendered, /step 2: VALIDATION_FAILED/);
+    assert.doesNotMatch(rendered, /PRIVATE_ANSWER/);
+    assert.equal(interrupted.draft?.length, 1);
+    const [failed] = interrupted.draft;
+    assert.equal(failed.runError, 'EVAL_RUN_ERROR');
+    assert.equal(failed.faultReached, true);
+    assert.ok(failed.tools.includes('get_record'));
+    assert.ok(failed.events?.includes('assistant.delta'));
+    assert.ok(
+      interrupted.failures.includes('step 1: SECURITY: hidden data disclosed'),
+    );
+    assert.ok(interrupted.failures.includes('step 1: EVAL_RUN_ERROR'));
+    assert.equal(exitCode([interrupted]), 1);
+    const faultReport = report('synthetic', 'fake', [interrupted]);
+    assert.match(faultReport, /assistant.delta/);
+    assert.match(faultReport, /get_record/);
+    assert.doesNotMatch(
+      JSON.stringify(failed) + faultReport,
+      /PRIVATE_REQUEST|PRIVATE_EXCEPTION|EVAL_PRIVATE_MARGIN/,
+    );
+  },
+);
