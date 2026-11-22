@@ -59,6 +59,11 @@ const assistantTurn = z.union([
     context: hint.optional(),
   }),
 ]);
+export const assistantTurnOpenApi = z.toJSONSchema(assistantTurn, {
+  target: 'openapi-3.0',
+  io: 'input',
+});
+
 export function parseAssistantTurn(value: unknown) {
   const result = assistantTurn.safeParse(value);
   if (!result.success) throw new ApiException('VALIDATION_FAILED', 400);

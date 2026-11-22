@@ -31,6 +31,15 @@ export class AiProposalResponseDto {
   })
   status!: string;
   @ApiProperty() title!: string;
+  @ApiPropertyOptional({
+    type: 'array',
+    items: {
+      type: 'object',
+      required: ['key', 'label', 'type'],
+      additionalProperties: true,
+    },
+  })
+  editableFields?: object[];
   @ApiProperty() targetSummary!: string;
   @ApiProperty({ type: AiProposalChangeDto, isArray: true })
   changes!: AiProposalChangeDto[];
