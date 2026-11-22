@@ -233,8 +233,16 @@ function section(title: string, rows: Row[]) {
     `模型主动弃答 ${abstained} 条，服务端拦截输出 ${blocked} 条，调用或执行故障 ${faults} 条。`,
     '',
   );
-  for (const { sample, failures } of rows.filter((r) => r.failures.length)) {
-    lines.push(`- ${sample.id}（${sample.category}） ${failures.join('，')}。`);
+  for (const { sample, failures, draft, audit } of rows.filter(
+    (r) => r.failures.length,
+  )) {
+    lines.push(
+      `- ${sample.id}（${sample.category}） ${failures.join('，')}。`,
+      '  输入：' + sample.text,
+      '  期望：' + JSON.stringify(sample.expected),
+      '  模型输出：' + JSON.stringify(audit.output),
+      '  预览：' + JSON.stringify(draft),
+    );
   }
   return lines.join('\n');
 }
@@ -272,6 +280,12 @@ async function main() {
     (!process.env.AI_MODEL?.trim() || !process.env.AI_API_KEY?.trim())
   )
     throw new Error('真实评测需要设置 AI_MODEL 和 AI_API_KEY');
+  if (
+    mode === 'real' &&
+    process.env.CI &&
+    !['0', 'false'].includes(process.env.CI)
+  )
+    throw new Error('真实评测需要本机运行');
   const provider = createAiProvider(
     mode === 'fake'
       ? { nodeEnv: 'test', provider: 'fake' }
@@ -319,8 +333,12 @@ async function main() {
       'NL_FILTER_EVAL_PROVIDER=real pnpm --filter @crm/api eval:nl-filter --report /tmp/nl-filter-real.md',
       '```',
     ].join('\n') + '\n';
-  if (values.report) await writeFile(values.report, report);
-  else process.stdout.write(report);
+  const safeReport = process.env.AI_API_KEY
+    ? report.replaceAll(process.env.AI_API_KEY, '[redacted]')
+    : report;
+  if (values.report)
+    await writeFile(values.report, safeReport, { mode: 0o600 });
+  else process.stdout.write(safeReport);
   const rows = [...dev, ...holdout, ...probes];
   if (
     rows.some(blocksDelivery) ||
