@@ -18,7 +18,11 @@ import { RECORDS_REPOSITORY } from '../records/records.service';
 import { allowsProposalFieldKey } from './ai-proposal.schema';
 import { AI_PROVIDER, type AiProvider } from './ai-provider';
 import { AiSanitizer } from './ai-sanitizer';
-import { communicationDueDate } from './communication-date';
+import { supportsCommunicationFieldChange } from './communication-field-evidence';
+import {
+  communicationDueDate,
+  supportsFollowUpEvidence,
+} from './communication-date';
 import {
   communicationOutputSchema,
   type CommunicationProviderInput,
@@ -227,18 +231,23 @@ export class CommunicationDraftGenerator {
     const fieldChanges: NonNullable<CommunicationOutput['fieldChanges']> = [];
     for (const change of parsed.data.fieldChanges ?? []) {
       const field = ctx.fields.find((f) => f.fieldKey === change.fieldKey);
-      if (
-        !field ||
-        !change.evidence.trim() ||
-        !content.includes(change.evidence) ||
-        fieldChanges.some((f) => f.fieldKey === field.fieldKey)
-      )
+      if (!field || fieldChanges.some((f) => f.fieldKey === field.fieldKey))
         continue;
       try {
         const value = normalizeStaticFieldValue(
           { ...field, config: field.options ? { options: field.options } : {} },
           change.value,
         );
+        if (
+          !supportsCommunicationFieldChange(
+            field,
+            value,
+            change.evidence,
+            content,
+            ctx.fields,
+          )
+        )
+          continue;
         if (
           field.type === 'MEMBER' &&
           typeof value === 'string' &&
@@ -254,9 +263,7 @@ export class CommunicationDraftGenerator {
     }
     return {
       note,
-      ...(followUp &&
-      followUp.evidence.trim() &&
-      content.includes(followUp.evidence)
+      ...(followUp && supportsFollowUpEvidence(followUp.evidence, content)
         ? {
             followUp: {
               ...followUp,
@@ -264,6 +271,7 @@ export class CommunicationDraftGenerator {
                 followUp.evidence,
                 ctx.now,
                 ctx.timeZone,
+                content,
               ),
             },
           }
