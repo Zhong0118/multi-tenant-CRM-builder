@@ -2,9 +2,14 @@
 
 import { DueLabel } from "@/components/workbench/due-label";
 import { useNow } from "@/lib/format/use-now";
-import { legacyFiltersToRule, type FilterRule } from "@crm/contracts";
+import {
+  legacyFiltersToRule,
+  type FilterPreviewRequest,
+  type FilterRule,
+} from "@crm/contracts";
 import { CommunicationDraftDialog } from "./communication-draft";
 import { RecordColumnHeader } from "./record-column-header";
+import { previewRecordFilter } from "./filter-preview-api";
 import { RecordFilterPanel, RecordFilterChips } from "./record-filter-panel";
 import { RecordViewPicker } from "./record-views";
 import {
@@ -236,6 +241,7 @@ export function RecordList({
     useState(selectionScope);
   if (previousSelectionScope !== selectionScope) {
     setPreviousSelectionScope(selectionScope);
+    setEditIndex(null);
     setSelectedRowKeys([]);
     setBatchOpen(false);
     setAssignmentRecords(undefined);
@@ -343,6 +349,16 @@ export function RecordList({
     rule: activeRule,
     editIndex,
     onEditIndex: setEditIndex,
+    onPreview: (input: FilterPreviewRequest, signal: AbortSignal) =>
+      previewRecordFilter(
+        tenantCode,
+        objectCode,
+        {
+          ...input,
+          ...(activeView?.available && { baseViewId: activeView.id }),
+        },
+        signal,
+      ),
     onApply: (filterRule: FilterRule) =>
       apply({ ...query, filters: {}, filterRule, page: 1 }),
   };
@@ -1289,7 +1305,15 @@ export function RecordList({
               onSearch={(search) => apply(withFilter(query, { search }), true)}
             />
             {viewReady && (views.length || query.filterRule) ? (
-              <RecordFilterPanel {...filterProps} />
+              <RecordFilterPanel
+                key={JSON.stringify([
+                  tenantCode,
+                  currentMemberId,
+                  objectCode,
+                  activeView?.id,
+                ])}
+                {...filterProps}
+              />
             ) : null}
             <Popover
               trigger="click"

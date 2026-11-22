@@ -1,6 +1,12 @@
 "use client";
 
-import { CloseOutlined, FilterOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  CloseOutlined,
+  FilterOutlined,
+  PlusOutlined,
+  UndoOutlined,
+  ThunderboltOutlined,
+} from "@ant-design/icons";
 import { Button, Popover, Select } from "antd";
 import {
   FILTER_FIELD_OPERATORS,
@@ -10,6 +16,9 @@ import {
   parseFilterRule,
   validateFilterCondition,
   type FilterCondition,
+  type FilterPreview,
+  type FilterPreviewRequest,
+  type PreviewChoice,
   type FilterFieldType,
   type FilterGroup,
   type FilterOperator,
@@ -21,6 +30,7 @@ import {
   selectOptions,
   type RuntimeObjectSchema,
 } from "@/features/objects/object-types";
+import { PreviewChoices } from "@/components/forms/preview-choices";
 import type { DynamicFieldMember } from "./dynamic-field";
 import { RELATIVE_DATE_PRESET_LABELS } from "./record-query-state";
 import { queryFields } from "./record-access";
@@ -31,6 +41,10 @@ export interface RecordFilterPanelProps {
   members: DynamicFieldMember[];
   rule: FilterRule;
   onApply: (rule: FilterRule) => void;
+  onPreview: (
+    request: FilterPreviewRequest,
+    signal: AbortSignal,
+  ) => Promise<FilterPreview>;
   isAdmin: boolean;
   editIndex: number | null;
   onEditIndex: (index: number | null) => void;
@@ -221,10 +235,99 @@ function isReady(rule: FilterRule, fields: Field[]): boolean {
     return false;
   }
 }
+function conditionKey(term: Term, fields: Field[]) {
+  if ("conditions" in term) return JSON.stringify(term);
+  const money =
+    fields.find((field) => field.key === term.fieldKey)?.type === "MONEY";
+  function scalar(value: unknown) {
+    if (!money || typeof value !== "string" || !/^-?\d+(?:\.\d+)?$/.test(value))
+      return value;
+    const [units, fraction] = value.split(".");
+    const whole = BigInt(units).toString();
+    const cents = fraction?.replace(/0+$/, "");
+    return cents
+      ? (whole === "0" && value.startsWith("-") ? "-0" : whole) + "." + cents
+      : whole;
+  }
+  const value = term.value;
+  const normalized = Array.isArray(value)
+    ? [...value].sort()
+    : value && typeof value === "object" && "from" in value
+      ? [scalar(value.from), scalar(value.to)]
+      : scalar(value);
+  return JSON.stringify([term.fieldKey, term.operator, normalized]);
+}
+
 function FilterEditor(props: RecordFilterPanelProps) {
   const { isAdmin, onEditIndex, onApply, editIndex } = props;
   const fields = availableFields(props);
   const [draft, setDraft] = useState(props.rule);
+  const [text, setText] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const [choices, setChoices] = useState<PreviewChoice<FilterRule>[]>([]);
+  const [before, setBefore] = useState<FilterRule>();
+  const [edited, setEdited] = useState(false);
+  const request = useRef<AbortController | null>(null);
+  useEffect(() => () => request.current?.abort(), []);
+  const ready = isReady(draft, fields);
+  const nested = draft.conditions.some((term) => "conditions" in term);
+  const remaining =
+    before?.conditions.map((term) => ({
+      term,
+      key: conditionKey(term, fields),
+    })) ?? [];
+  const added = draft.conditions.map((term) => {
+    if (!before) return false;
+    const index = remaining.findIndex(
+      (old) => old.key === conditionKey(term, fields),
+    );
+    if (index < 0) return true;
+    remaining.splice(index, 1);
+    return false;
+  });
+  function cancelRequest() {
+    request.current?.abort();
+    request.current = null;
+    setPending(false);
+    setChoices([]);
+    setError("");
+  }
+  function edit(next: FilterRule) {
+    cancelRequest();
+    setDraft(next);
+    setEdited(true);
+  }
+  function showRule(next: FilterRule) {
+    setBefore(draft);
+    setDraft(next);
+    setChoices([]);
+    setEdited(false);
+  }
+  async function generate() {
+    cancelRequest();
+    const controller = new AbortController();
+    request.current = controller;
+    setPending(true);
+    try {
+      const result = await props.onPreview(
+        { text: text.trim(), currentRule: draft },
+        controller.signal,
+      );
+      if (controller.signal.aborted) return;
+      if (result.kind === "rule") showRule(result.rule);
+      else if (result.kind === "clarify") setChoices(result.options);
+      else setError("无法生成可用条件，请调整描述或手动筛选");
+    } catch {
+      if (!controller.signal.aborted)
+        setError("无法生成可用条件，请调整描述或手动筛选");
+    } finally {
+      if (!controller.signal.aborted) {
+        setPending(false);
+        request.current = null;
+      }
+    }
+  }
   const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (editIndex === null) return;
@@ -237,12 +340,12 @@ function FilterEditor(props: RecordFilterPanelProps) {
     target?.focus();
   }, [editIndex]);
   function replace(index: number, term: FilterCondition) {
-    setDraft((current) => ({
-      ...current,
-      conditions: current.conditions.map((node, i) =>
+    edit({
+      ...draft,
+      conditions: draft.conditions.map((node, i) =>
         i === index ? term : node,
       ),
-    }));
+    });
   }
   return (
     <div
@@ -261,13 +364,62 @@ function FilterEditor(props: RecordFilterPanelProps) {
         onEditIndex(null);
       }}
     >
+      <div className={styles.prompt}>
+        <label htmlFor="filter-preview-text">用一句话描述条件</label>
+        <div className={styles.promptLine}>
+          <input
+            id="filter-preview-text"
+            placeholder="例如：我负责的、预计金额超过 10 万的客户"
+            maxLength={2000}
+            value={text}
+            disabled={nested}
+            onChange={(event) => {
+              cancelRequest();
+              setText(event.target.value);
+            }}
+            onKeyDown={(event) => {
+              if (
+                event.key === "Enter" &&
+                !event.nativeEvent.isComposing &&
+                !pending &&
+                ready &&
+                text.trim()
+              )
+                void generate();
+            }}
+          />
+          <Button
+            icon={<ThunderboltOutlined aria-hidden />}
+            loading={pending}
+            disabled={nested || !ready || !text.trim()}
+            onClick={() => void generate()}
+          >
+            {pending ? "生成中" : "生成条件"}
+          </Button>
+        </div>
+        {nested && (
+          <span className={styles.hint}>当前面板无法完整表达这组条件</span>
+        )}
+        {error && (
+          <span role="alert" className={styles.hint}>
+            {error}
+          </span>
+        )}
+        {choices.length > 0 && (
+          <PreviewChoices
+            prompt="请选择你想表达的条件"
+            options={choices}
+            onSelect={showRule}
+          />
+        )}
+      </div>
       <div className={styles.header}>
         <strong>筛选条件</strong>
         <select
           aria-label="匹配方式"
           value={draft.match}
           onChange={(event) =>
-            setDraft({ ...draft, match: event.target.value as "any" | "all" })
+            edit({ ...draft, match: event.target.value as "any" | "all" })
           }
         >
           <option value="all">满足所有条件</option>
@@ -282,65 +434,68 @@ function FilterEditor(props: RecordFilterPanelProps) {
               : undefined;
           const label = `条件 ${index + 1}`;
           return (
-            <div data-term={index} className={styles.row} key={index}>
-              {"conditions" in term || !field ? (
-                <span data-primary tabIndex={-1} className={styles.group}>
-                  {describeTerm(term, fields, isAdmin)}
-                </span>
-              ) : (
-                <>
-                  <select
-                    data-primary
-                    aria-label={label + " 字段"}
-                    value={field.key}
-                    onChange={(e) =>
-                      replace(
-                        index,
-                        newCondition(
-                          fields.find((f) => f.key === e.target.value)!,
-                        ),
-                      )
-                    }
-                  >
-                    {fields.map((f) => (
-                      <option value={f.key} key={f.key}>
-                        {f.label}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    aria-label={label + " 比较方式"}
-                    value={term.operator}
-                    onChange={(e) =>
-                      replace(
-                        index,
-                        newCondition(field, e.target.value as FilterOperator),
-                      )
-                    }
-                  >
-                    {FILTER_FIELD_OPERATORS[field.type].map((op) => (
-                      <option value={op} key={op}>
-                        {FILTER_OPERATORS[op].label}
-                      </option>
-                    ))}
-                  </select>
-                  <ValueControl
-                    label={label}
-                    field={field}
-                    condition={term}
-                    isAdmin={isAdmin}
-                    onChange={(value) => replace(index, { ...term, value })}
-                  />
-                </>
-              )}
-              <Button
-                type="text"
-                size="small"
-                className={styles.delete}
-                icon={<CloseOutlined />}
-                aria-label={`删除${label}`}
-                onClick={() => setDraft(removeAt(draft, index))}
-              />
+            <div className={styles.rowWrap} key={index}>
+              {added[index] && <span className={styles.newTag}>新</span>}
+              <div data-term={index} className={styles.row}>
+                {"conditions" in term || !field ? (
+                  <span data-primary tabIndex={-1} className={styles.group}>
+                    {describeTerm(term, fields, isAdmin)}
+                  </span>
+                ) : (
+                  <>
+                    <select
+                      data-primary
+                      aria-label={label + " 字段"}
+                      value={field.key}
+                      onChange={(e) =>
+                        replace(
+                          index,
+                          newCondition(
+                            fields.find((f) => f.key === e.target.value)!,
+                          ),
+                        )
+                      }
+                    >
+                      {fields.map((f) => (
+                        <option value={f.key} key={f.key}>
+                          {f.label}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      aria-label={label + " 比较方式"}
+                      value={term.operator}
+                      onChange={(e) =>
+                        replace(
+                          index,
+                          newCondition(field, e.target.value as FilterOperator),
+                        )
+                      }
+                    >
+                      {FILTER_FIELD_OPERATORS[field.type].map((op) => (
+                        <option value={op} key={op}>
+                          {FILTER_OPERATORS[op].label}
+                        </option>
+                      ))}
+                    </select>
+                    <ValueControl
+                      label={label}
+                      field={field}
+                      condition={term}
+                      isAdmin={isAdmin}
+                      onChange={(value) => replace(index, { ...term, value })}
+                    />
+                  </>
+                )}
+                <Button
+                  type="text"
+                  size="small"
+                  className={styles.delete}
+                  icon={<CloseOutlined />}
+                  aria-label={`删除${label}`}
+                  onClick={() => edit(removeAt(draft, index))}
+                />
+              </div>
             </div>
           );
         })}
@@ -350,7 +505,7 @@ function FilterEditor(props: RecordFilterPanelProps) {
           icon={<PlusOutlined />}
           disabled={leafCount(draft) >= 16}
           onClick={() =>
-            setDraft({
+            edit({
               ...draft,
               conditions: [...draft.conditions, newCondition(fields[0]!)],
             })
@@ -359,6 +514,32 @@ function FilterEditor(props: RecordFilterPanelProps) {
           添加条件
         </Button>
       </div>
+      {remaining.length > 0 && (
+        <div className={styles.removed}>
+          <strong>将移除</strong>
+          {remaining.map(({ term }, index) => (
+            <span key={index}>{describeTerm(term, fields, isAdmin)}</span>
+          ))}
+        </div>
+      )}
+      {before && (
+        <div className={styles.previewStatus}>
+          <span role="status">{edited ? "已编辑" : "已生成"} · 尚未应用</span>
+          <Button
+            type="text"
+            size="small"
+            icon={<UndoOutlined aria-hidden />}
+            onClick={() => {
+              cancelRequest();
+              setDraft(before);
+              setBefore(undefined);
+              setEdited(false);
+            }}
+          >
+            撤销生成
+          </Button>
+        </div>
+      )}
       <div className={styles.footer}>
         <Button autoInsertSpace={false} onClick={() => onEditIndex(null)}>
           取消
@@ -366,13 +547,13 @@ function FilterEditor(props: RecordFilterPanelProps) {
         <Button
           autoInsertSpace={false}
           type="primary"
-          disabled={!isReady(draft, fields)}
+          disabled={!ready || pending || choices.length > 0}
           onClick={() => {
             onApply(draft);
             onEditIndex(null);
           }}
         >
-          应用
+          {remaining.length ? "应用并替换条件" : "应用"}
         </Button>
       </div>
     </div>

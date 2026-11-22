@@ -20,6 +20,7 @@ import type {
 } from "@/features/objects/object-types";
 
 import type { RecordApi } from "./record-api";
+import * as filterPreviewApi from "./filter-preview-api";
 import { RecordList } from "./record-list";
 import { recordViewApi, type RecordView } from "./record-view-api";
 import {
@@ -2220,6 +2221,71 @@ const personalView: RecordView = {
     conditions: [{ fieldKey: "$followUp", operator: "dueThroughToday" }],
   },
 };
+it("previews against the base view without reading records or navigating until apply", async () => {
+  const view = vi
+    .spyOn(recordViewApi, "list")
+    .mockResolvedValue([personalView]);
+  const request = vi
+    .spyOn(filterPreviewApi, "previewRecordFilter")
+    .mockResolvedValue({
+      kind: "rule",
+      rule: {
+        version: 1,
+        match: "all",
+        conditions: [{ fieldKey: "name", operator: "contains", value: "华东" }],
+      },
+    });
+  try {
+    const list = vi.fn().mockResolvedValue({ ...page, total: 50 });
+    const navigate = vi.fn();
+    renderList(
+      navigate,
+      { ...DEFAULT_RECORD_QUERY, page: 2, viewId: personalView.id },
+      {
+        api: { list } as unknown as RecordApi,
+        currentMemberId: "leader",
+      },
+    );
+    const trigger = await screen.findByRole("button", { name: "筛选 1" });
+    await waitFor(() => expect(list).toHaveBeenCalled());
+    const reads = list.mock.calls.length;
+    fireEvent.click(trigger);
+    fireEvent.change(screen.getByLabelText("用一句话描述条件"), {
+      target: { value: "换成华东客户" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "生成条件" }));
+    await screen.findByText("已生成 · 尚未应用");
+    expect(request).toHaveBeenCalledWith(
+      "northwind",
+      "customers",
+      {
+        text: "换成华东客户",
+        baseViewId: personalView.id,
+        currentRule: personalView.filterRule,
+      },
+      expect.any(AbortSignal),
+    );
+    expect(list).toHaveBeenCalledTimes(reads);
+    expect(navigate).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("移除条件 待跟进")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("条件 1 值"), {
+      target: { value: "华南" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "应用并替换条件" }));
+    const search = new URL(navigate.mock.lastCall![0], "https://crm.invalid")
+      .searchParams;
+    const applied = parseRecordQuery(Object.fromEntries(search));
+    expect(applied.page).toBe(1);
+    expect(applied.baseViewId).toBe(personalView.id);
+    expect(applied.filterRule?.conditions).toEqual([
+      { fieldKey: "name", operator: "contains", value: "华南" },
+    ]);
+  } finally {
+    view.mockRestore();
+    request.mockRestore();
+  }
+});
+
 it("keeps a named view authoritative for paging, sorting next contact and resizing without hiding recent communication", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-11-25T08:30:00Z"));

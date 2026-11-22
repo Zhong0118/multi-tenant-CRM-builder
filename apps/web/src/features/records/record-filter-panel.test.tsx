@@ -1,5 +1,10 @@
-import type { FilterRule } from "@crm/contracts";
+import type {
+  FilterRule,
+  FilterPreviewRequest,
+  FilterPreview,
+} from "@crm/contracts";
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -57,13 +62,23 @@ const members = [
   { id: "01950000-abcd-7000-a000-000000000001", displayName: "陈林" },
 ];
 
-function mount(initial: FilterRule = empty, isAdmin = false) {
+function mount(
+  initial: FilterRule = empty,
+  isAdmin = false,
+  onPreview = vi.fn<
+    (
+      request: FilterPreviewRequest,
+      signal: AbortSignal,
+    ) => Promise<FilterPreview>
+  >(),
+) {
   const applied = vi.fn();
   function Host() {
     const [rule, setRule] = useState(initial);
     const [editIndex, onEditIndex] = useState<number | null>(null);
     const props = {
       schema: { fields },
+      onPreview,
       members,
       rule,
       onApply(next: FilterRule) {
@@ -280,4 +295,110 @@ it("offers both textual and calendar operations on interpreted date text", () =>
   expect(
     within(values).getByRole("option", { name: "上月" }),
   ).toBeInTheDocument();
+});
+
+describe("natural-language filter previews", () => {
+  const initial: FilterRule = {
+    ...empty,
+    conditions: [
+      { fieldKey: "amount", operator: "gt", value: "100.00" },
+      { fieldKey: "stage", operator: "in", value: ["neg", "quote"] },
+    ],
+  };
+  const next: FilterRule = {
+    ...empty,
+    match: "any",
+    conditions: [
+      { fieldKey: "stage", operator: "in", value: ["quote", "neg"] },
+      { fieldKey: "won", operator: "eq", value: true },
+    ],
+  };
+  const previewMock = () =>
+    vi.fn<
+      (
+        request: FilterPreviewRequest,
+        signal: AbortSignal,
+      ) => Promise<FilterPreview>
+    >();
+  function generate(text = "换成已签约或谈判中的客户") {
+    change("用一句话描述条件", text);
+    fireEvent.click(screen.getByRole("button", { name: "生成条件" }));
+  }
+
+  it("compares against the manual draft, restores it on undo, and applies only after edits", async () => {
+    const preview = previewMock().mockResolvedValue({
+      kind: "rule",
+      rule: next,
+    });
+    const save = mount(initial, false, preview);
+    open();
+    change("条件 1 值", "105.00");
+    generate();
+    await screen.findByText("已生成 · 尚未应用");
+    expect(preview.mock.calls[0][0].currentRule.conditions[0]).toMatchObject({
+      value: "105.00",
+    });
+    expect(screen.getAllByText("新")).toHaveLength(1);
+    expect(screen.getByText(/预计金额.*105.00/)).toBeInTheDocument();
+    expect(screen.getByLabelText("匹配方式")).toHaveValue("any");
+    expect(save).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "撤销生成" }));
+    expect(screen.getByLabelText("条件 1 值")).toHaveValue("105.00");
+    expect(screen.queryByText("将移除")).toBeNull();
+    generate();
+    await screen.findByText("已生成 · 尚未应用");
+    change("条件 2 值", "false");
+    expect(screen.getByText("已编辑 · 尚未应用")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "应用并替换条件" }));
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(save.mock.calls[0][0].conditions[1]).toMatchObject({ value: false });
+  });
+
+  it("retains the input on failure and selects a complete clarification without another request", async () => {
+    const preview = previewMock()
+      .mockRejectedValueOnce(new Error("internal"))
+      .mockResolvedValue({
+        kind: "clarify",
+        options: [
+          { id: "one", label: "阶段为报价或谈判", value: initial },
+          { id: "two", label: "阶段或已签约", value: next },
+        ],
+      });
+    const save = mount(empty, false, preview);
+    open();
+    generate("重点客户");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "请调整描述或手动筛选",
+    );
+    expect(screen.getByLabelText("用一句话描述条件")).toHaveValue("重点客户");
+    fireEvent.click(screen.getByRole("button", { name: "生成条件" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "阶段或已签约" }),
+    );
+    expect(screen.getByLabelText("条件 2 字段")).toHaveValue("won");
+    expect(preview).toHaveBeenCalledTimes(2);
+    fireEvent.click(screen.getByRole("button", { name: "取消" }));
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("discards delayed results after a manual edit and after closing the editor", async () => {
+    const outstanding: ((result: FilterPreview) => void)[] = [];
+    const preview = previewMock().mockImplementation(
+      () => new Promise((resolve) => outstanding.push(resolve)),
+    );
+    mount(initial, false, preview);
+    open();
+    generate();
+    change("条件 1 值", "150");
+    expect(preview.mock.calls[0][1].aborted).toBe(true);
+    await act(async () => outstanding[0]({ kind: "rule", rule: next }));
+    expect(screen.getByLabelText("条件 1 值")).toHaveValue("150");
+    generate();
+    fireEvent.click(screen.getByRole("button", { name: "取消" }));
+    await waitFor(() => expect(preview.mock.calls[1][1].aborted).toBe(true));
+    open();
+    await act(async () => outstanding[1]({ kind: "rule", rule: next }));
+    expect(screen.getByLabelText("条件 1 值")).toHaveValue("100.00");
+    expect(screen.queryByText("已生成 · 尚未应用")).toBeNull();
+  });
 });
