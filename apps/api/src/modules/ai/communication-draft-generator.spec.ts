@@ -219,6 +219,24 @@ describe('communication draft generation', () => {
     },
   );
 
+  it.each([
+    ['双方确认合同金额十二万元。', '120000', '120000.00'],
+    ['双方确认合同金额叁万陆仟元整。', '36000', '36000.00'],
+  ])(
+    'keeps an exact normalized MONEY suggestion for %s',
+    async (text, value, expected) => {
+      const { service, provider } = fixture();
+      const ctx = await service.context(employee, 'leads', ownRecordId);
+      jest.spyOn(provider, 'generateCommunication').mockResolvedValue({
+        note: '合同金额已确认',
+        fieldChanges: [{ fieldKey: 'amount', value, evidence: text }],
+      });
+      expect((await service.generate(ctx, text)).fieldChanges).toEqual([
+        { fieldKey: 'amount', value: expected, evidence: text },
+      ]);
+    },
+  );
+
   it('uses the model’s semantic interpretation and validates numeric and option values independently', async () => {
     const { service, provider } = fixture();
     const ctx = await service.context(employee, 'leads', ownRecordId);

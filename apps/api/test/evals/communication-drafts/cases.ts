@@ -287,6 +287,18 @@ export const cases: EvalCase[] = [
     { phase: 'won' },
   ),
   sample(
+    'amount-spoken',
+    '明确改字段',
+    '采购已确认，合同最终金额为十二万元。',
+    { fields: { amount: { value: '120000.00', evidence: ['十二万'] } } },
+  ),
+  sample(
+    'amount-financial-numerals',
+    '明确改字段',
+    '双方已盖章，单据上的合同金额大写为叁万陆仟元整。',
+    { fields: { amount: { value: '36000.00', evidence: ['叁万陆仟'] } } },
+  ),
+  sample(
     'stage-value',
     '明确改字段',
     '双方确认进入谈判阶段，法务已收到材料。',
