@@ -11,11 +11,10 @@ import {
   normalizeStaticFieldValue,
   projectVisibleValues,
   RecordValueError,
-  selectOptions,
 } from '../records/record-value-engine';
 import type { RecordsRepository } from '../records/records.repository';
 import { RECORDS_REPOSITORY } from '../records/records.service';
-import { allowsProposalFieldKey } from './ai-proposal.schema';
+import { modelFields } from './model-fields';
 import { AI_PROVIDER, type AiProvider } from './ai-provider';
 import { AiSanitizer } from './ai-sanitizer';
 import { isQuotedNumber, isSourceQuote } from './communication-field-evidence';
@@ -97,32 +96,14 @@ export class CommunicationDraftGenerator {
         { ...resolved.access, fields: fieldAccess },
         record.values,
       );
-      const fields = visibleFields
-        .filter(
-          (field) =>
-            fieldAccess[field.fieldKey] === 'EDIT' &&
-            !field.isSystem &&
-            AiSanitizer.allowsKey(field.fieldKey) &&
-            allowsProposalFieldKey(field.fieldKey) &&
-            !['workflowStateKey', 'workflow_state_key'].includes(
-              field.fieldKey,
-            ),
-        )
-        .map((field) => ({
-          fieldKey: field.fieldKey,
-          label: field.label,
-          type: field.type,
+      const fields = modelFields(resolved, fieldAccess).map(
+        ({ field, metadata }) => ({
+          ...metadata,
           required: field.required,
           validation: field.validation,
           oldValue: values[field.fieldKey] ?? null,
-          ...(field.type === 'SINGLE_SELECT' || field.type === 'MULTI_SELECT'
-            ? {
-                options: selectOptions(field)
-                  .filter((option) => option.status === 'ACTIVE')
-                  .map(({ key, label }) => ({ key, label })),
-              }
-            : {}),
-        }));
+        }),
+      );
       const activity = await store.listActivities(recordId, {
         page: 1,
         limit: 10,

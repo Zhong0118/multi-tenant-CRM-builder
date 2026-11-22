@@ -1,7 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { Test } from '@nestjs/testing';
-import { ApiException } from '../../../src/common/errors/api.exception';
+import { runDataset } from '../run-dataset';
 import {
   AI_PROVIDER,
   createAiProvider,
@@ -62,22 +62,13 @@ export async function evaluate(
       },
     ],
   }).compile();
-  const rows: CaseResult[] = [];
   try {
     const generator = module.get(CommunicationDraftGenerator);
-    for (const sample of samples) {
-      modelOutput = null;
-      const row: CaseResult = {
-        id: sample.id,
-        category: sample.category,
-        text: sample.text,
-        expected: sample.expected,
-        modelOutput: null,
-        draft: null,
-        failures: [],
-      };
-      try {
-        row.draft = await generator.generate(
+    const rows = await runDataset(
+      samples,
+      async (sample) => {
+        modelOutput = null;
+        return generator.generate(
           {
             actor,
             objectId: 'eval-object',
@@ -92,17 +83,17 @@ export async function evaluate(
           },
           sample.text,
         );
-        row.failures = score(sample, row.draft);
-      } catch (err) {
-        // SDK errors may contain headers or request bodies. Publish only stable API codes.
-        row.failures = [
-          err instanceof ApiException ? err.code : 'EVAL_RUN_ERROR',
-        ];
-      }
-      row.modelOutput = modelOutput;
-      rows.push(row);
-    }
-    return rows;
+      },
+      score,
+      () => modelOutput,
+    );
+    return rows.map(({ sample, ...row }) => ({
+      ...row,
+      id: sample.id,
+      category: sample.category,
+      text: sample.text,
+      expected: sample.expected,
+    }));
   } finally {
     await module.close();
   }
