@@ -1,8 +1,14 @@
+import type { components } from "@crm/contracts";
 import type {
   FieldConfigView,
   FieldValidationView,
 } from "@/features/objects/object-types";
-import type { components } from "@crm/contracts";
+import {
+  decodeDashboardFilter,
+  type DashboardFilter,
+} from "@crm/contracts/dashboard-filter";
+
+export type { DashboardFilter } from "@crm/contracts/dashboard-filter";
 
 export type DashboardWidgetType =
   "METRIC" | "STATUS_DISTRIBUTION" | "TREND" | "LEADERBOARD" | "RECORD_LIST";
@@ -21,30 +27,6 @@ export type DashboardFieldType =
   | "MULTI_SELECT"
   | "MEMBER"
   | "BOOLEAN";
-export interface DashboardFilter {
-  fieldKey: string;
-  operator:
-    | "IN"
-    | "NOT_IN"
-    | "EQ"
-    | "GT"
-    | "GTE"
-    | "LT"
-    | "LTE"
-    | "BETWEEN"
-    | "DASHBOARD_PERIOD"
-    | "TODAY"
-    | "THIS_WEEK"
-    | "THIS_MONTH"
-    | "PAST_N_DAYS"
-    | "NEXT_N_DAYS"
-    | "CURRENT_USER"
-    | "RECORD_OWNER"
-    | "CONTAINS"
-    | "NOT_EMPTY";
-  value?:
-    string | number | boolean | string[] | [string | number, string | number];
-}
 interface Base {
   id: string;
   type: DashboardWidgetType;
@@ -485,98 +467,7 @@ function widget(value: unknown): DashboardWidgetDraft {
   }
 }
 export function parseDashboardFilter(value: unknown): DashboardFilter {
-  const root = object(value);
-  const operator = one(root.operator, [
-    "IN",
-    "NOT_IN",
-    "EQ",
-    "GT",
-    "GTE",
-    "LT",
-    "LTE",
-    "BETWEEN",
-    "DASHBOARD_PERIOD",
-    "TODAY",
-    "THIS_WEEK",
-    "THIS_MONTH",
-    "PAST_N_DAYS",
-    "NEXT_N_DAYS",
-    "CURRENT_USER",
-    "RECORD_OWNER",
-    "CONTAINS",
-    "NOT_EMPTY",
-  ] as const);
-  const filter: DashboardFilter = {
-    fieldKey: draftText(root.fieldKey),
-    operator,
-  };
-  if (root.value !== undefined) filter.value = filterValue(root.value);
-  validateFilterValueShape(filter);
-  return filter;
-}
-function filterValue(value: unknown): DashboardFilter["value"] {
-  if (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  )
-    return value;
-  if (Array.isArray(value) && value.every((item) => typeof item === "string"))
-    return value;
-  if (
-    Array.isArray(value) &&
-    value.length === 2 &&
-    value.every((item) => typeof item === "string" || typeof item === "number")
-  )
-    return value as [string | number, string | number];
-  return invalid();
-}
-function validateFilterValueShape(filter: DashboardFilter) {
-  const hasValue = filter.value !== undefined;
-  if (
-    [
-      "DASHBOARD_PERIOD",
-      "TODAY",
-      "THIS_WEEK",
-      "THIS_MONTH",
-      "CURRENT_USER",
-      "RECORD_OWNER",
-      "NOT_EMPTY",
-    ].includes(filter.operator)
-  ) {
-    if (hasValue) invalid();
-    return;
-  }
-  if (filter.operator === "IN" || filter.operator === "NOT_IN") {
-    if (
-      !Array.isArray(filter.value) ||
-      filter.value.some((value) => typeof value !== "string")
-    )
-      invalid();
-    return;
-  }
-  if (filter.operator === "PAST_N_DAYS" || filter.operator === "NEXT_N_DAYS") {
-    if (typeof filter.value !== "number") invalid();
-    return;
-  }
-  if (filter.operator === "BETWEEN") {
-    if (
-      !Array.isArray(filter.value) ||
-      filter.value.length !== 2 ||
-      filter.value.some(
-        (value) => typeof value !== "string" && typeof value !== "number",
-      )
-    )
-      invalid();
-    return;
-  }
-  if (
-    !hasValue ||
-    (typeof filter.value !== "string" &&
-      typeof filter.value !== "number" &&
-      typeof filter.value !== "boolean")
-  )
-    invalid();
+  return decodeDashboardFilter(object(value), "stored") ?? invalid();
 }
 function parseRuntimeWidget(value: unknown): DashboardRuntimeWidget {
   const root = object(value);

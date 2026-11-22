@@ -202,6 +202,30 @@ describe('dashboard definition v2', () => {
     ]);
   });
 
+  it('rejects an array for a scalar operator in a submitted draft', () => {
+    const input = reportDraft({
+      filters: [{ fieldKey: 'amount', operator: 'EQ', value: [1, 2, 3] }],
+    });
+
+    expect(() => parseDashboardDraft(input)).toThrow(
+      'Invalid dashboard definition',
+    );
+  });
+
+  it('reopens the original values of a previously saved invalid filter and blocks publication', () => {
+    const filter = { fieldKey: 'amount', operator: 'EQ', value: [1, 2, 3] };
+    const saved = migrateLegacyDashboard(reportDraft({ filters: [filter] }));
+
+    expect(saved.widgets[0].filters).toEqual([filter]);
+    expect(validateDashboardDraft(saved, [opportunity])).toContainEqual(
+      expect.objectContaining({
+        code: 'FILTER_VALUE_INVALID',
+        path: 'widgets[0].filters[0].value',
+      }),
+    );
+    expect(() => compileDashboardPublication(saved, [opportunity])).toThrow();
+  });
+
   it('rejects duplicate widget IDs', () => {
     expect(() =>
       parseDashboardDraft({

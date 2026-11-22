@@ -1,4 +1,10 @@
+import type { DashboardFilter } from '@crm/contracts/dashboard-filter';
 import type { PublishedObjectSchema } from '../objects/object-schema';
+
+export type {
+  DashboardFilter,
+  DashboardFilterOperator,
+} from '@crm/contracts/dashboard-filter';
 
 // Business field keys cannot contain '$'; a custom field can never shadow this source.
 export const DASHBOARD_CREATED_AT = {
@@ -22,33 +28,6 @@ export type DashboardAudience = 'ALL' | 'TENANT_ADMIN' | 'EMPLOYEE';
 export type DashboardWidgetWidth = 'QUARTER' | 'HALF' | 'FULL';
 export type DashboardAggregation = 'COUNT' | 'SUM' | 'AVG';
 export type DashboardDisplayFormat = 'NUMBER' | 'MONEY' | 'PERCENT';
-export type DashboardFilterOperator =
-  | 'IN'
-  | 'NOT_IN'
-  | 'EQ'
-  | 'GT'
-  | 'GTE'
-  | 'LT'
-  | 'LTE'
-  | 'BETWEEN'
-  | 'DASHBOARD_PERIOD'
-  | 'TODAY'
-  | 'THIS_WEEK'
-  | 'THIS_MONTH'
-  | 'PAST_N_DAYS'
-  | 'NEXT_N_DAYS'
-  | 'CURRENT_USER'
-  | 'RECORD_OWNER'
-  | 'CONTAINS'
-  | 'NOT_EMPTY';
-
-export interface DashboardFilter {
-  fieldKey: string;
-  operator: DashboardFilterOperator;
-  value?:
-    string | number | boolean | string[] | [string | number, string | number];
-}
-
 export interface DashboardWidgetBase {
   id: string;
   type: DashboardWidgetType;

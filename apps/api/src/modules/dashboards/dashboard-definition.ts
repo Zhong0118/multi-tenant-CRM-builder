@@ -1,3 +1,4 @@
+import { decodeDashboardFilter } from '@crm/contracts/dashboard-filter';
 import { DASHBOARD_CREATED_AT } from './dashboard.types';
 import type {
   DashboardAggregation,
@@ -21,36 +22,25 @@ import type {
 } from './dashboard.types';
 
 const MAX_WIDGETS = 24;
-const FILTER_OPERATORS = new Set<DashboardFilterOperator>([
-  'IN',
-  'NOT_IN',
-  'EQ',
-  'GT',
-  'GTE',
-  'LT',
-  'LTE',
-  'BETWEEN',
-  'DASHBOARD_PERIOD',
-  'TODAY',
-  'THIS_WEEK',
-  'THIS_MONTH',
-  'PAST_N_DAYS',
-  'NEXT_N_DAYS',
-  'CURRENT_USER',
-  'RECORD_OWNER',
-  'CONTAINS',
-  'NOT_EMPTY',
-]);
 const NUMERIC_FIELD_TYPES = new Set(['NUMBER', 'MONEY']);
 const DATE_FIELD_TYPES = new Set(['DATE', 'DATETIME']);
 const TEXT_FIELD_TYPES = new Set(['TEXT', 'TEXTAREA', 'PHONE', 'EMAIL']);
 const MAX_RELATIVE_DAYS = 3660;
 
 export function parseDashboardDraft(value: unknown): DashboardDefinitionV2 {
+  return parseDefinition(value, 'submitted');
+}
+
+function parseDefinition(
+  value: unknown,
+  source: 'submitted' | 'stored',
+): DashboardDefinitionV2 {
   try {
     const root = exactObject(value, ['schemaVersion', 'title', 'widgets']);
     if (root.schemaVersion !== 2) invalid();
-    const widgets = array(root.widgets).map(parseWidget);
+    const widgets = array(root.widgets).map((widget) =>
+      parseWidget(widget, source),
+    );
     if (widgets.length > MAX_WIDGETS) invalid();
     if (new Set(widgets.map((widget) => widget.id)).size !== widgets.length) {
       invalid();
@@ -64,7 +54,12 @@ export function parseDashboardDraft(value: unknown): DashboardDefinitionV2 {
 export function normalizeDashboardDraft(
   value: DashboardDefinitionV2,
 ): DashboardDefinitionV2 {
-  const parsed = parseDashboardDraft(value);
+  return normalizeParsedDraft(parseDashboardDraft(value));
+}
+
+function normalizeParsedDraft(
+  parsed: DashboardDefinitionV2,
+): DashboardDefinitionV2 {
   return {
     ...parsed,
     widgets: parsed.widgets
@@ -82,7 +77,8 @@ export function normalizeDashboardDraft(
 }
 
 export function migrateLegacyDashboard(value: unknown): DashboardDefinitionV2 {
-  if (isV2(value)) return normalizeDashboardDraft(parseDashboardDraft(value));
+  if (isV2(value))
+    return normalizeParsedDraft(parseDefinition(value, 'stored'));
 
   const root = exactObject(value, ['opportunity', 'lead', 'activity']);
   const legacy = exactObject(root.opportunity, [
@@ -248,51 +244,34 @@ export function compileDashboardPublication(
   };
 }
 
-function parseWidget(value: unknown): DashboardWidgetDraft {
-  const type = text(
-    exactObject(value, [
-      'id',
-      'type',
-      'title',
-      'description',
-      'audience',
-      'objectCode',
-      'width',
-      'sortOrder',
-      'filters',
-      'aggregation',
-      'valueFieldKey',
-      'displayFormat',
-      'workReport',
-      'groupByFieldKey',
-      'optionKeys',
-      'display',
-      'dateFieldKey',
-      'granularity',
-      'memberSource',
-      'memberFieldKey',
-      'limit',
-      'fieldKeys',
-      'sort',
-    ]).type,
-  );
-  switch (type) {
+type WidgetBase = Omit<DashboardWidgetBase, 'type'>;
+
+function parseWidget(
+  value: unknown,
+  source: 'submitted' | 'stored',
+): DashboardWidgetDraft {
+  if (!isRecord(value)) invalid();
+  const base = parseBase(value, source);
+  switch (value.type) {
     case 'METRIC':
-      return parseMetric(value);
+      return parseMetric(value, base);
     case 'STATUS_DISTRIBUTION':
-      return parseDistribution(value);
+      return parseDistribution(value, base);
     case 'TREND':
-      return parseTrend(value);
+      return parseTrend(value, base);
     case 'LEADERBOARD':
-      return parseLeaderboard(value);
+      return parseLeaderboard(value, base);
     case 'RECORD_LIST':
-      return parseRecordList(value);
+      return parseRecordList(value, base);
     default:
       invalid();
   }
 }
 
-function parseMetric(value: unknown): DashboardMetricWidgetDraft {
+function parseMetric(
+  value: unknown,
+  base: WidgetBase,
+): DashboardMetricWidgetDraft {
   const root = exactObject(
     value,
     baseKeys.concat([
@@ -303,7 +282,8 @@ function parseMetric(value: unknown): DashboardMetricWidgetDraft {
     ]),
   );
   return {
-    ...parseBase(root, 'METRIC'),
+    ...base,
+    type: 'METRIC',
     ...(root.workReport === undefined
       ? {}
       : {
@@ -332,6 +312,7 @@ function parseMetric(value: unknown): DashboardMetricWidgetDraft {
 
 function parseDistribution(
   value: unknown,
+  base: WidgetBase,
 ): DashboardStatusDistributionWidgetDraft {
   const root = exactObject(
     value,
@@ -344,7 +325,8 @@ function parseDistribution(
     ]),
   );
   return {
-    ...parseBase(root, 'STATUS_DISTRIBUTION'),
+    ...base,
+    type: 'STATUS_DISTRIBUTION',
     groupByFieldKey: text(root.groupByFieldKey),
     optionKeys: textArray(root.optionKeys),
     display: enumValue(root.display, ['FUNNEL', 'BAR', 'DONUT']),
@@ -355,7 +337,10 @@ function parseDistribution(
   };
 }
 
-function parseTrend(value: unknown): DashboardTrendWidgetDraft {
+function parseTrend(
+  value: unknown,
+  base: WidgetBase,
+): DashboardTrendWidgetDraft {
   const root = exactObject(
     value,
     baseKeys.concat([
@@ -366,7 +351,8 @@ function parseTrend(value: unknown): DashboardTrendWidgetDraft {
     ]),
   );
   return {
-    ...parseBase(root, 'TREND'),
+    ...base,
+    type: 'TREND',
     dateFieldKey: text(root.dateFieldKey),
     granularity: enumValue(root.granularity, ['DAY', 'WEEK', 'MONTH', 'AUTO']),
     aggregation: enumValue(root.aggregation, ['COUNT', 'SUM']),
@@ -376,7 +362,10 @@ function parseTrend(value: unknown): DashboardTrendWidgetDraft {
   };
 }
 
-function parseLeaderboard(value: unknown): DashboardLeaderboardWidgetDraft {
+function parseLeaderboard(
+  value: unknown,
+  base: WidgetBase,
+): DashboardLeaderboardWidgetDraft {
   const root = exactObject(
     value,
     baseKeys.concat([
@@ -389,7 +378,8 @@ function parseLeaderboard(value: unknown): DashboardLeaderboardWidgetDraft {
   );
   const memberSource = enumValue(root.memberSource, ['RECORD_OWNER', 'FIELD']);
   return {
-    ...parseBase(root, 'LEADERBOARD'),
+    ...base,
+    type: 'LEADERBOARD',
     memberSource,
     ...(root.memberFieldKey === undefined
       ? {}
@@ -402,7 +392,10 @@ function parseLeaderboard(value: unknown): DashboardLeaderboardWidgetDraft {
   };
 }
 
-function parseRecordList(value: unknown): DashboardRecordListWidgetDraft {
+function parseRecordList(
+  value: unknown,
+  base: WidgetBase,
+): DashboardRecordListWidgetDraft {
   const root = exactObject(
     value,
     baseKeys.concat(['fieldKeys', 'sort', 'limit']),
@@ -412,7 +405,8 @@ function parseRecordList(value: unknown): DashboardRecordListWidgetDraft {
   if (fieldKeys.length > 8 || new Set(fieldKeys).size !== fieldKeys.length)
     invalid();
   return {
-    ...parseBase(root, 'RECORD_LIST'),
+    ...base,
+    type: 'RECORD_LIST',
     fieldKeys,
     sort: {
       field: text(sort.field),
@@ -434,13 +428,12 @@ const baseKeys = [
   'filters',
 ];
 
-function parseBase<T extends DashboardWidgetBase['type']>(
+function parseBase(
   root: Record<string, unknown>,
-  type: T,
-): Omit<DashboardWidgetBase, 'type'> & { type: T } {
+  source: 'submitted' | 'stored',
+): WidgetBase {
   return {
     id: text(root.id),
-    type,
     title: text(root.title),
     ...(root.description === undefined
       ? {}
@@ -449,17 +442,11 @@ function parseBase<T extends DashboardWidgetBase['type']>(
     objectCode: text(root.objectCode),
     width: enumValue(root.width, ['QUARTER', 'HALF', 'FULL']),
     sortOrder: integer(root.sortOrder),
-    filters: array(root.filters).map(parseFilter),
+    filters: array(root.filters).map((value) => {
+      const filter = exactObject(value, ['fieldKey', 'operator', 'value']);
+      return decodeDashboardFilter(filter, source) ?? invalid();
+    }),
   };
-}
-
-function parseFilter(value: unknown): DashboardFilter {
-  const root = exactObject(value, ['fieldKey', 'operator', 'value']);
-  const operator = enumValue(root.operator, [...FILTER_OPERATORS]);
-  const filter: DashboardFilter = { fieldKey: text(root.fieldKey), operator };
-  if (root.value !== undefined) filter.value = parseFilterValue(root.value);
-  validateFilterValueShape(filter);
-  return filter;
 }
 
 function validateFilters(
@@ -767,48 +754,6 @@ function operatorsFor(type: string): ReadonlySet<DashboardFilterOperator> {
   return new Set();
 }
 
-function validateFilterValueShape(filter: DashboardFilter) {
-  const hasValue = filter.value !== undefined;
-  if (
-    [
-      'DASHBOARD_PERIOD',
-      'TODAY',
-      'THIS_WEEK',
-      'THIS_MONTH',
-      'CURRENT_USER',
-      'RECORD_OWNER',
-      'NOT_EMPTY',
-    ].includes(filter.operator)
-  ) {
-    if (hasValue) invalid();
-    return;
-  }
-  if (filter.operator === 'IN' || filter.operator === 'NOT_IN') {
-    if (
-      !Array.isArray(filter.value) ||
-      filter.value.some((value) => typeof value !== 'string')
-    )
-      invalid();
-    return;
-  }
-  if (filter.operator === 'PAST_N_DAYS' || filter.operator === 'NEXT_N_DAYS') {
-    if (typeof filter.value !== 'number') invalid();
-    return;
-  }
-  if (filter.operator === 'BETWEEN') {
-    if (
-      !Array.isArray(filter.value) ||
-      filter.value.length !== 2 ||
-      filter.value.some(
-        (item) => typeof item !== 'string' && typeof item !== 'number',
-      )
-    )
-      invalid();
-    return;
-  }
-  if (!hasValue) invalid();
-}
-
 function isValidFilterValue(
   filter: DashboardFilter,
   fieldType: string,
@@ -1074,22 +1019,6 @@ function parseSortDirection(value: unknown): 'ASC' | 'DESC' {
   if (value === 'ASC' || value === 'DESC') return value;
   if (value === 'asc') return 'ASC';
   if (value === 'desc') return 'DESC';
-  invalid();
-}
-function parseFilterValue(value: unknown): DashboardFilter['value'] {
-  if (
-    typeof value === 'string' ||
-    typeof value === 'number' ||
-    typeof value === 'boolean'
-  )
-    return value;
-  if (
-    Array.isArray(value) &&
-    value.every(
-      (entry) => typeof entry === 'string' || typeof entry === 'number',
-    )
-  )
-    return value as DashboardFilter['value'];
   invalid();
 }
 function isRecord(value: unknown): value is Record<string, unknown> {
