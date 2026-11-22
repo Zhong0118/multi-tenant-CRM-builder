@@ -28,18 +28,59 @@ const toolInput = z.strictObject({
 // happen after the provider finishes, in the orchestrator's tenant transaction.
 export class ProposalCollector {
   private readonly callIds = new Set<string>();
-  private captured: ProposalCandidate | null = null;
+  private readonly received = new Set<string>();
+  private readonly items: ProposalCandidate[] = [];
+  private failure:
+    'PROPOSAL_LIMIT' | 'CONFLICTING_VALUES' | 'INVALID_PROPOSAL' | null = null;
 
   requested(callId: string): void {
     this.callIds.add(callId);
-    if (this.invalidated) this.captured = null;
+    if (this.callIds.size > 20) this.failure = 'PROPOSAL_LIMIT';
   }
 
-  get invalidated(): boolean {
-    return this.callIds.size > 1;
+  get failureCode() {
+    return (
+      this.failure ??
+      (this.callIds.size !== this.received.size ? 'INVALID_PROPOSAL' : null)
+    );
   }
-  get candidate(): ProposalCandidate | null {
-    return this.invalidated ? null : this.captured;
+  get invalidated() {
+    return this.failureCode !== null;
+  }
+  get candidates(): ProposalCandidate[] {
+    return this.invalidated ? [] : [...this.items];
+  }
+  get candidate() {
+    return this.candidates[0] ?? null;
+  }
+
+  private collect(candidate: ProposalCandidate) {
+    const previous =
+      candidate.operationType === 'UPDATE_RECORD' &&
+      this.items.find(
+        (item) =>
+          item.operationType === 'UPDATE_RECORD' &&
+          item.recordId === candidate.recordId &&
+          item.objectCode === candidate.objectCode,
+      );
+    if (
+      previous &&
+      previous.operationType === 'UPDATE_RECORD' &&
+      candidate.operationType === 'UPDATE_RECORD'
+    ) {
+      for (const [key, value] of Object.entries(candidate.values)) {
+        if (
+          Object.hasOwn(previous.values, key) &&
+          JSON.stringify(previous.values[key]) !== JSON.stringify(value)
+        ) {
+          this.failure = 'CONFLICTING_VALUES';
+          return;
+        }
+      }
+      previous.values = { ...previous.values, ...candidate.values };
+    } else {
+      this.items.push(candidate);
+    }
   }
 
   readonly tool: AiProviderTool = {
@@ -49,16 +90,19 @@ export class ProposalCollector {
     inputSchema: toolInput,
     execute: (input: unknown, callId: string) => {
       this.requested(callId);
-      if (this.invalidated) {
-        this.captured = null;
-        return Promise.resolve({ accepted: false, code: 'MULTIPLE_PROPOSALS' });
+      if (!this.failure && !this.received.has(callId)) {
+        this.received.add(callId);
+        try {
+          this.collect(validateProposalCandidate(input));
+        } catch {
+          this.failure = 'INVALID_PROPOSAL';
+        }
       }
-      try {
-        this.captured = validateProposalCandidate(input);
-        return Promise.resolve({ accepted: true, code: 'CANDIDATE_RECEIVED' });
-      } catch {
-        return Promise.resolve({ accepted: false, code: 'INVALID_PROPOSAL' });
-      }
+      return Promise.resolve(
+        this.failure
+          ? { accepted: false, code: this.failure }
+          : { accepted: true, code: 'CANDIDATE_RECEIVED' },
+      );
     },
   };
 }

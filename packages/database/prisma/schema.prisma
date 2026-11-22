@@ -975,6 +975,7 @@ model AiOperation {
   requestedByMemberId    String            @map("requested_by_member_id") @db.Uuid
   confirmedByMemberId    String?           @map("confirmed_by_member_id") @db.Uuid
   draftId                String?           @map("draft_id") @db.Uuid
+  itemKey                Int               @default(1) @map("item_key")
   draftItemKey           String?           @map("draft_item_key") @db.VarChar(16)
   draft                  AiRecordDraft?    @relation(fields: [tenantId, draftId, requestedByMemberId], references: [tenantId, id, memberId], onDelete: Restrict)
   operationType          AiOperationType   @map("operation_type")
@@ -1000,7 +1001,7 @@ model AiOperation {
   confirmer              TenantMember?     @relation("AiOperationConfirmer", fields: [tenantId, confirmedByMemberId], references: [tenantId, id], onDelete: Restrict)
 
   @@unique([tenantId, id])
-  @@unique([tenantId, conversationId, turnId])
+  @@unique([tenantId, conversationId, turnId, itemKey])
   @@index([tenantId, requestedByMemberId, conversationId, createdAt(sort: Desc)])
   @@index([tenantId, status, expiresAt])
   @@unique([tenantId, draftId, draftItemKey])

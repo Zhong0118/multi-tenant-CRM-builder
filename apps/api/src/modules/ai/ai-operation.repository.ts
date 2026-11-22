@@ -1,4 +1,6 @@
-import { recordFieldAccess } from '../objects/effective-access';
+import { modelFields } from './model-fields';
+import { validateProposalCandidate } from './ai-proposal.schema';
+import { isGroupPeer, recordFieldAccess } from '../objects/effective-access';
 import {
   recordOwnerFilter,
   recordOwnerMatches,
@@ -19,6 +21,7 @@ import { FollowUpsRepository } from '../follow-ups/follow-ups.repository';
 import { visibleRecordIdsInTransaction } from '../records/record-visibility';
 import type {
   AiOperationRow,
+  AiProposalBatch,
   StoredAiProposalDisplay,
   AiProposalView,
   LockedAiOperation,
@@ -43,6 +46,74 @@ function ownedWhere(context: TenantContext) {
       status: 'ACTIVE' as const,
     },
   };
+}
+
+type HistoryItem = {
+  turnId: string;
+  view: AiProposalView;
+  coverage?: AiProposalBatch['coverage'];
+};
+
+export function groupProposalBatches(rows: HistoryItem[]) {
+  const batches = new Map<string, AiProposalBatch>();
+  for (const { turnId, view, coverage } of rows) {
+    const batch = batches.get(turnId) ?? { items: [] };
+    batch.items.push(view);
+    if (coverage) batch.coverage = coverage;
+    batches.set(turnId, batch);
+  }
+  // A previously visible target may now be redacted. Avoid replaying old counts.
+  for (const batch of batches.values()) {
+    if (batch.items.some((item) => !item.changes.length)) delete batch.coverage;
+  }
+  return batches;
+}
+
+function editableFields(
+  row: AiOperationRow,
+  resolved: ResolvedObjectSchema,
+): AiProposalView['editableFields'] {
+  let candidate;
+  try {
+    candidate = validateProposalCandidate(row.proposalJson);
+  } catch {
+    return [];
+  }
+  if (candidate.operationType === 'ADD_ACTIVITY_NOTE')
+    return [
+      {
+        key: 'content',
+        label: '备注',
+        type: 'LONG_TEXT',
+        value: candidate.content,
+      },
+    ];
+  if (candidate.operationType === 'CREATE_FOLLOW_UP')
+    return [
+      { key: 'title', label: '标题', type: 'TEXT', value: candidate.title },
+      {
+        key: 'dueAt',
+        label: '到期时间',
+        type: 'DATETIME',
+        value: candidate.dueAt,
+      },
+    ];
+  return modelFields(resolved, resolved.access.fields)
+    .filter(({ field }) => Object.hasOwn(candidate.values, field.fieldKey))
+    .map(({ metadata }) => ({
+      key: metadata.fieldKey,
+      label: metadata.label,
+      type: metadata.type,
+      value: candidate.values[metadata.fieldKey],
+      ...(metadata.options
+        ? {
+            options: metadata.options.map(({ key, label }) => ({
+              id: key,
+              label,
+            })),
+          }
+        : {}),
+    }));
 }
 
 function toView(
@@ -116,6 +187,12 @@ function toView(
     : [];
   return {
     proposalId: row.id,
+    ...(recordReadable &&
+    recordEditable &&
+    resolved &&
+    row.status === 'PROPOSED'
+      ? { editableFields: editableFields(row, resolved) }
+      : {}),
     operation: row.operationType,
     title: display.title,
     targetSummary: titleReadable ? display.targetSummary : '',
@@ -164,6 +241,7 @@ export class AiOperationRepository {
         recordIds: Set<string>;
         editableIds: Set<string>;
         recordAccess: Map<string, ResolvedObjectSchema>;
+        peerIds: Set<string>;
       }
     >();
     for (const objectCode of new Set(
@@ -193,6 +271,7 @@ export class AiOperationRepository {
         .map((target) => target.recordId)
         .filter((id): id is string => typeof id === 'string');
       const recordAccess = new Map<string, ResolvedObjectSchema>();
+      const peerIds = new Set<string>();
       let recordIds: string[];
       if (resolved.access.groupFieldAccess) {
         const ownerFilter = recordOwnerFilter(
@@ -213,6 +292,7 @@ export class AiOperationRepository {
         for (const record of records) {
           if (!recordOwnerMatches(ownerFilter, record.ownerMemberId)) continue;
           recordIds.push(record.id);
+          if (isGroupPeer(resolved.access, record)) peerIds.add(record.id);
           recordAccess.set(record.id, {
             ...resolved,
             access: {
@@ -244,6 +324,7 @@ export class AiOperationRepository {
               )
             : recordIds;
       visibility.set(objectCode, {
+        peerIds,
         recordAccess,
         resolved,
         recordIds: new Set(recordIds),
@@ -285,7 +366,10 @@ export class AiOperationRepository {
           visible.recordIds.has(target.recordId),
         !!visible &&
           typeof target.recordId === 'string' &&
-          visible.editableIds.has(target.recordId),
+          (visible.editableIds.has(target.recordId) ||
+            (row.operationType === 'UPDATE_RECORD' &&
+              visible.resolved.access.canUpdate &&
+              visible.peerIds.has(target.recordId))),
         row.operationType !== 'CREATE_FOLLOW_UP' ||
           row.status !== 'EXECUTED' ||
           (!!row.resultJson &&
@@ -356,6 +440,7 @@ export class AiOperationRepository {
         conversationId: candidate.conversationId,
         turnId,
         requestedByMemberId: context.memberId,
+        itemKey: candidate.itemKey ?? 1,
         operationType: candidate.operationType,
         requestText: candidate.requestText,
         proposalJson: candidate.proposal,
@@ -401,7 +486,7 @@ export class AiOperationRepository {
     context: TenantContext,
     conversationId: string,
     turnIds: string[],
-  ): Promise<Array<{ turnId: string; view: AiProposalView }>> {
+  ): Promise<HistoryItem[]> {
     if (turnIds.length === 0) return [];
     const rows = await tx.aiOperation.findMany({
       where: {
@@ -409,6 +494,7 @@ export class AiOperationRepository {
         conversationId,
         turnId: { in: turnIds },
       },
+      orderBy: { itemKey: 'asc' },
     });
     const views = await this.projectRowsInTransaction(
       tx,
@@ -422,7 +508,33 @@ export class AiOperationRepository {
     return rows.map((row, index) => ({
       turnId: row.turnId!,
       view: views[index],
+      coverage: (row.displayChangesJson as unknown as StoredAiProposalDisplay)
+        .coverage,
     }));
+  }
+
+  countOwnedBatchItems(context: TenantContext, turnId: string, ids: string[]) {
+    return this.runner.withTenant(context, (tx) =>
+      tx.aiOperation.count({
+        where: { ...ownedWhere(context), turnId, id: { in: ids } },
+      }),
+    );
+  }
+
+  findFailedInConversation(
+    tx: Tx,
+    context: TenantContext,
+    conversationId: string,
+    id: string,
+  ) {
+    return tx.aiOperation.findFirst({
+      where: {
+        ...ownedWhere(context),
+        conversationId,
+        id,
+        status: { in: ['FAILED', 'CONFLICTED'] },
+      },
+    });
   }
 
   async lockOwned(
@@ -522,6 +634,7 @@ export class AiOperationRepository {
     state: 'CONFLICTED' | 'FAILED' | 'REJECTED',
     code: string,
     fieldErrors?: Record<string, AiFieldFailureCode>,
+    appendFailureAudit?: (tx: Tx) => Promise<string>,
   ): Promise<AiProposalView | null> {
     return this.runner.withTenant(context, async (tx) => {
       const current = fieldErrors
@@ -552,7 +665,7 @@ export class AiOperationRepository {
         }
       }
       const display = current?.displayChangesJson;
-      await tx.aiOperation.updateMany({
+      const changed = await tx.aiOperation.updateMany({
         where: {
           id,
           status: 'PROPOSED',
@@ -567,11 +680,7 @@ export class AiOperationRepository {
           Object.keys(safeCodes).length
             ? {
                 displayChangesJson: {
-                  title: display.title,
-                  titleFieldKey: display.titleFieldKey,
-                  targetSummary: display.targetSummary,
-                  changes: display.changes,
-                  validationWarnings: display.validationWarnings,
+                  ...display,
                   failureFieldCodes: safeCodes,
                 },
               }
@@ -580,6 +689,10 @@ export class AiOperationRepository {
           confirmedAt: new Date(),
         },
       });
+      if (changed.count === 1 && appendFailureAudit) {
+        const auditId = await appendFailureAudit(tx);
+        await tx.aiOperation.update({ where: { id }, data: { auditId } });
+      }
       // A competing confirm/reject may have committed first: return its actual
       // terminal status rather than pretending our conditional update won.
       const row = await tx.aiOperation.findFirst({

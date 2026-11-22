@@ -1,3 +1,4 @@
+import { ApiException } from '../../common/errors/api.exception';
 import { z } from 'zod';
 import { OBJECT_CODE_REFERENCE_PATTERN } from '../objects/object-code';
 
@@ -69,4 +70,28 @@ export function validateProposalCandidate(input: unknown): ProposalCandidate {
     ]);
   }
   return parsed;
+}
+
+export function applyProposalEdits(
+  original: unknown,
+  edits: Record<string, unknown>,
+): ProposalCandidate {
+  const candidate = validateProposalCandidate(original);
+  const allowed =
+    candidate.operationType === 'UPDATE_RECORD'
+      ? Object.keys(candidate.values)
+      : candidate.operationType === 'CREATE_FOLLOW_UP'
+        ? ['title', 'dueAt']
+        : ['content'];
+  if (Object.keys(edits).some((key) => !allowed.includes(key)))
+    throw new ApiException('VALIDATION_FAILED', 400);
+  try {
+    return validateProposalCandidate(
+      candidate.operationType === 'UPDATE_RECORD'
+        ? { ...candidate, values: { ...candidate.values, ...edits } }
+        : { ...candidate, ...edits },
+    );
+  } catch {
+    throw new ApiException('VALIDATION_FAILED', 400);
+  }
 }
