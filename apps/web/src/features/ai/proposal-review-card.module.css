@@ -71,9 +71,6 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.dialog time {
-  font-variant-numeric: tabular-nums;
-}
 .dialog,
 .item {
   animation: appear 160ms ease both;
@@ -106,25 +103,33 @@
 }
 
 .saved {
-  border-inline-start: 3px solid var(--color-primary);
-  padding: 2px 12px;
-  animation: appear 160ms ease both;
-}
-.saved h3 {
-  margin: 0 0 4px;
-  font-size: 14px;
-}
-.saved p {
   margin: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.saved time {
-  color: var(--text-secondary);
-  font-size: 13px;
+  border-inline-start: 3px solid var(--color-primary);
+  padding: 4px 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  animation: appear 160ms ease both;
 }
 @media (prefers-reduced-motion: reduce) {
   .saved {
     animation: none;
   }
+}
+.dateLabel,
+.shortcuts,
+.savedItem {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.dateLabel small,
+.savedItem span {
+  color: var(--text-secondary);
+}
+.savedItem {
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-default);
+  margin: 0;
+  padding: 8px 0;
 }

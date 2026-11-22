@@ -2,6 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, Input, Modal } from "antd";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ProposalReviewCard,
@@ -14,8 +15,13 @@ import {
   datetimeLocalToUtcIso,
 } from "@/features/dashboard/dashboard-timezone";
 import { followUpQueryKeys } from "@/features/follow-ups/follow-up-api";
-import type { PublishedFieldView } from "@/features/objects/object-types";
+import {
+  selectOptions,
+  type PublishedFieldView,
+} from "@/features/objects/object-types";
 import { DynamicField, type DynamicFieldMember } from "./dynamic-field";
+import { sourceRecordHref } from "./source-navigation";
+import { DraftFollowUpDate, savedFollowUpLabel } from "./draft-follow-up-date";
 import { displayValue } from "./record-display-value";
 import {
   communicationDraftApi,
@@ -26,8 +32,7 @@ import {
 } from "./communication-draft-api";
 
 function resultMessage(result: DraftResult): string {
-  if (result.status === "EXECUTED")
-    return result.auditId ? `已保存 · 审计编号 ${result.auditId}` : "已保存";
+  if (result.status === "EXECUTED") return "已保存";
   if (/CONFLICT|VERSION|STALE/.test(result.errorCode ?? ""))
     return "记录已变更，请核对最新内容";
   if (
@@ -36,7 +41,13 @@ function resultMessage(result: DraftResult): string {
     return "当前权限无法保存此项";
   if (/EXPIRED/.test(result.errorCode ?? ""))
     return "草稿已过期，请重新整理沟通";
-  return "此项保存失败，请检查内容后重试";
+  if (result.errorCode === "VALIDATION_FAILED")
+    return {
+      note: "纪要内容无效，请修改后重试",
+      followUp: "跟进标题或时间无效，请修改后重试",
+      fields: "客户资料未通过校验，请修改后重试",
+    }[result.itemKey];
+  return "暂时无法保存此项，请稍后重试";
 }
 
 function toInstant(value: string, zone: string, preferred?: string | null) {
@@ -48,13 +59,20 @@ function toInstant(value: string, zone: string, preferred?: string | null) {
   }
 }
 
-export function CommunicationDraftAction(
-  props: Omit<Parameters<typeof CommunicationDraftDialog>[0], "onClose">,
-) {
+export function CommunicationDraftAction({
+  buttonType = "default",
+  ...props
+}: Omit<Parameters<typeof CommunicationDraftDialog>[0], "onClose"> & {
+  buttonType?: "default" | "primary";
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button size="small" onClick={() => setOpen(true)}>
+      <Button
+        type={buttonType}
+        size={buttonType === "primary" ? "middle" : "small"}
+        onClick={() => setOpen(true)}
+      >
         整理本次沟通
       </Button>
       {open && (
@@ -237,9 +255,32 @@ export function CommunicationDraftDialog({
         !entry.isSystem,
     );
     if (!field) return [];
-    const published = change.options
-      ? { ...field, config: { ...field.config, options: change.options } }
-      : field;
+    let published = field;
+    const options = change.options;
+    if (options) {
+      const known = selectOptions(field);
+      const keys = [change.oldValue, change.value]
+        .flat()
+        .filter((key): key is string => typeof key === "string");
+      const removed = [...new Set(keys)].filter(
+        (key) => !options.some((option) => option.key === key),
+      );
+      published = {
+        ...field,
+        config: {
+          ...field.config,
+          options: [
+            ...options,
+            ...removed.map((key) => ({
+              key,
+              label:
+                known.find((option) => option.key === key)?.label ?? "原选项",
+              status: "INACTIVE",
+            })),
+          ],
+        },
+      };
+    }
     return [{ field: published, change }];
   });
   if (draft && draft.status !== "PENDING") {
@@ -251,7 +292,7 @@ export function CommunicationDraftDialog({
         <Input.TextArea
           aria-label="纪要内容"
           value={note}
-          rows={3}
+          autoSize={{ minRows: 2, maxRows: 12 }}
           maxLength={4000}
           disabled={disabled}
           onChange={(event) => edit(event.target.value)}
@@ -266,7 +307,7 @@ export function CommunicationDraftDialog({
         evidence: draft.followUp.evidence,
         error:
           !title.trim() || !dueAt
-            ? "请填写跟进标题，并选择有效的租户日期和时间"
+            ? "请填写跟进标题，并选择有效的日期和时间"
             : undefined,
         render: (edit, disabled) => (
           <>
@@ -279,21 +320,12 @@ export function CommunicationDraftDialog({
                 onChange={(event) => edit({ title: event.target.value })}
               />
             </label>
-            <label>
-              建议日期（{draft.timeZone}）
-              <Input
-                type="datetime-local"
-                aria-label="建议日期"
-                value={date}
-                disabled={disabled}
-                onChange={(event) => edit({ date: event.target.value })}
-              />
-            </label>
-            {byKey("followUp")?.status === "EXECUTED" && dueAt && (
-              <time dateTime={dueAt}>
-                {date.slice(0, 16).replace("T", " ")} · {draft.timeZone}
-              </time>
-            )}
+            <DraftFollowUpDate
+              value={date}
+              timeZone={draft.timeZone}
+              disabled={disabled}
+              onChange={(date) => edit({ date })}
+            />
           </>
         ),
       });
@@ -302,6 +334,18 @@ export function CommunicationDraftDialog({
     for (const { field, change } of changes) {
       const key = `field:${field.fieldKey}`;
       const value = values[field.fieldKey];
+      const fieldMembers =
+        field.type === "MEMBER" &&
+        typeof value === "string" &&
+        !members.some((member) => member.id === value)
+          ? [
+              ...members,
+              {
+                id: value,
+                displayName: "其他成员",
+              },
+            ]
+          : members;
       items.push({
         key,
         operationKey: "fields",
@@ -318,13 +362,13 @@ export function CommunicationDraftDialog({
         render: (edit, disabled) => (
           <>
             <p>
-              旧值 {displayValue(field, change.oldValue, members)} →{" "}
-              {displayValue(field, value, members)}
+              旧值 <span>{displayValue(field, change.oldValue, members)}</span>{" "}
+              → <span>{displayValue(field, value, members)}</span>
             </p>
             <DynamicField
               field={field}
               value={value}
-              members={members}
+              members={fieldMembers}
               disabled={disabled}
               onChange={edit}
             />
@@ -375,6 +419,11 @@ export function CommunicationDraftDialog({
       await accept(next);
     }, "尚未核实保存结果，请重新读取");
   }
+  const saved =
+    draft &&
+    draft.results.some((result) => result.status === "EXECUTED") &&
+    selected.length > 0 &&
+    selected.every((key) => itemResults[key]?.status === "EXECUTED");
   return (
     <Modal
       open
@@ -396,7 +445,7 @@ export function CommunicationDraftDialog({
                 maxLength={4000}
                 showCount
                 disabled={busy}
-                placeholder="粘贴本次通话、消息或拜访记录"
+                placeholder="例如：预算还没批，客户让下周再联系"
                 value={source}
                 onChange={(event) => setSource(event.target.value)}
               />
@@ -405,21 +454,27 @@ export function CommunicationDraftDialog({
               <Button
                 type="primary"
                 loading={busy}
-                aria-label="生成草稿"
-                disabled={!source.trim()}
+                aria-label={busy ? "正在整理…" : "生成草稿"}
+                disabled={busy || !source.trim()}
                 onClick={generate}
               >
-                生成草稿
+                {busy ? "正在整理…" : "生成草稿"}
               </Button>
             </div>
           </>
         ) : draft.status === "PENDING" ? (
           <>
             <p role="status">正在整理沟通记录…</p>
-            <Button disabled={busy} onClick={generate}>
-              继续生成
+            <Button disabled={busy} loading={busy} onClick={generate}>
+              {busy ? "正在整理…" : "继续生成"}
             </Button>
           </>
+        ) : saved ? (
+          <SavedCommunication
+            draft={draft}
+            customerHref={sourceRecordHref(tenantCode, objectCode, recordId)}
+            onClose={onClose}
+          />
         ) : (
           <>
             {draft.status === "FALLBACK" && (
@@ -453,13 +508,16 @@ export function CommunicationDraftDialog({
                   if (edit.date !== undefined) setDate(edit.date);
                 } else setValues((old) => ({ ...old, [key.slice(6)]: value }));
               }}
-              onConfirm={confirm}
-              onRetry={confirm}
+              onConfirm={needsRecovery ? undefined : confirm}
+              onRetry={needsRecovery ? undefined : confirm}
               confirmLabel={
-                draft.status === "FALLBACK" ? "直接存为纪要" : "确认所选项"
+                busy
+                  ? "正在保存…"
+                  : draft.status === "FALLBACK"
+                    ? "直接存为纪要"
+                    : "确认所选项"
               }
             />
-            <SavedCommunication draft={draft} />
             {needsRecovery && (
               <Button
                 disabled={busy}
@@ -480,33 +538,55 @@ export function CommunicationDraftDialog({
   );
 }
 
-function SavedCommunication({ draft }: { draft: CommunicationDraft }) {
-  const note = draft.results.find(
-    (result) => result.itemKey === "note" && result.status === "EXECUTED",
-  )?.activity;
-  const task = draft.results.find(
-    (result) => result.itemKey === "followUp" && result.status === "EXECUTED",
-  )?.followUp;
+function SavedCommunication({
+  draft,
+  customerHref,
+  onClose,
+}: {
+  draft: CommunicationDraft;
+  customerHref: string;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const results = draft.results.filter(
+    (result) => result.status === "EXECUTED",
+  );
+  const note = results.some((result) => result.itemKey === "note");
+  const task = results.find((result) => result.itemKey === "followUp");
+  const reminder = task?.followUp
+    ? `${savedFollowUpLabel(task.followUp.dueAt, draft.timeZone)} 提醒你跟进`
+    : task
+      ? "已添加跟进提醒"
+      : "";
+  const summary = [
+    note
+      ? "已记录本次沟通"
+      : results.some((result) => result.itemKey === "fields")
+        ? "已更新客户资料"
+        : "",
+    reminder,
+  ]
+    .filter(Boolean)
+    .join("，");
   return (
     <>
-      {note && (
-        <section aria-label="活动历史" className={styles.saved}>
-          <h3>活动历史</h3>
-          <p>{note.content}</p>
-        </section>
-      )}
-      {task && (
-        <section aria-label="跟进待办" className={styles.saved}>
-          <h3>跟进待办</h3>
-          <p>{task.title}</p>
-          <time dateTime={task.dueAt}>
-            {utcIsoToDatetimeLocal(task.dueAt, draft.timeZone)
-              .slice(0, 16)
-              .replace("T", " ")}{" "}
-            · {draft.timeZone}
-          </time>
-        </section>
-      )}
+      <p className={styles.saved} role="status">
+        {summary}
+      </p>
+      <div className={styles.actions}>
+        <Button type="primary" onClick={onClose}>
+          完成
+        </Button>
+        <Button
+          onClick={() => {
+            onClose();
+            if (pathname !== customerHref) router.push(customerHref);
+          }}
+        >
+          查看客户
+        </Button>
+      </div>
     </>
   );
 }
