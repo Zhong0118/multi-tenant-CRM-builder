@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
     branches:
       - main
@@ -51,6 +52,11 @@ jobs:
 
       - name: Build internal prerequisites
         run: pnpm --filter @crm/contracts --filter @crm/database build
+
+      - name: Lint API production sources and Web
+        run: |
+          pnpm --filter @crm/api exec eslint 'src/**/*.ts' --ignore-pattern '**/*.spec.ts'
+          pnpm --filter @crm/web lint
 
       - name: Typecheck
         run: pnpm typecheck
@@ -284,12 +290,17 @@ jobs:
           DATABASE_ADMIN_URL: postgresql://crm:crm@localhost:5432/crm_api_test_1?schema=public
         run: pnpm --filter @crm/database prisma:migrate:deploy
 
-      - name: Run Critical API E2E
+      - name: Run API E2E
         env:
           DATABASE_ADMIN_URL: postgresql://crm:crm@localhost:5432/crm_api_test_1?schema=public
           TEST_DATABASE_ADMIN_URL: postgresql://crm:crm@localhost:5432/crm_api_test_1?schema=public
           TEST_DATABASE_URL: postgresql://crm_app:crm_app@localhost:5432/crm_api_test_1?schema=public
-        run: pnpm --filter @crm/api test:e2e:critical
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            pnpm --filter @crm/api test:e2e --runInBand
+          else
+            pnpm --filter @crm/api test:e2e:critical
+          fi
 
       - name: Show PostgreSQL logs on failure
         if: failure()
