@@ -41,9 +41,8 @@ export interface RecordWorkspaceProps {
 let pendingListFocus: { path: string; until: number } | undefined;
 
 /**
- * Holds the list and the deep-linked detail together. A record URL renders the
- * list behind its drawer, so closing the drawer returns to the same filters and
- * page the member arrived with.
+ * A record URL shows the detail page. Closing it returns to the source
+ * or to the list with the same filters and pagination.
  */
 export function RecordWorkspace(props: RecordWorkspaceProps) {
   const key = `${props.tenantCode}:${props.schema.object.code}:${props.openRecord?.id ?? "list"}:${props.initialEditing ? "edit" : "view"}:${props.followUpId ?? ""}`;
@@ -70,7 +69,7 @@ function RecordWorkspaceSession({
   const poolKey = ["workspace", tenantCode, "pool-config", schema.object.code];
   const pool = useQuery({ queryKey: poolKey, queryFn: () => recordPoolApi.getConfig(tenantCode, schema.object.code), staleTime: 0 });
   // A refreshed server render carries the same record at a newer version. It
-  // updates the open drawer in place, so an edit started after an earlier save
+  // updates the detail page in place, so an edit started after an earlier save
   // keeps its draft; a different record changes the session key instead.
   const [serverRecord, setServerRecord] = useState(openRecord);
   if (serverRecord !== openRecord) {

@@ -407,34 +407,6 @@
   gap: 0 24px;
 }
 
-/* The record drawer is one reading column of flat sections: a hairline above
-   each, one heading size, no boxes inside boxes. */
-.detailMask {
-  background: rgb(20 28 36 / 28%) !important;
-}
-
-.detailHeader:global(.ant-drawer-header) {
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border-hairline);
-}
-
-.detailHeader :global(.ant-drawer-title) {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.detailBody:global(.ant-drawer-body) {
-  padding: 20px;
-}
-
-.detailOwnership {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-  margin-bottom: 16px;
-}
-
 .detailSection {
   display: flex;
   flex-direction: column;
@@ -471,45 +443,6 @@
 
 .detailSection :global(.ant-empty-image) {
   height: 32px;
-}
-
-.detailDisclosure {
-  margin-top: 20px;
-  border-top: 1px solid var(--border-hairline);
-}
-
-.detailDisclosure + .detailDisclosure {
-  margin-top: 0;
-}
-
-.detailDisclosure summary {
-  padding: 12px 0;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-/* The summary already names the panel, so the panel's own heading would repeat it. */
-.detailDisclosure h2 {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
-
-.detailDisclosure summary:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-.detailTitle {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  overflow-wrap: anywhere;
-  align-items: baseline;
 }
 
 /* Label on the left, value on the right: a property sheet that scans down. */
@@ -554,24 +487,6 @@
     grid-template-columns: minmax(0, 1fr);
     gap: 0;
   }
-}
-
-.detailLock {
-  color: var(--review-amber);
-  font-size: 12px;
-}
-
-.detailSummary {
-  margin-bottom: 0;
-}
-
-.detailMeta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-  margin-top: 12px;
-  color: var(--text-secondary);
-  font-size: 13px;
 }
 
 .timeline {
@@ -716,19 +631,13 @@
   text-align: left;
 }
 
-/* Below the tablet breakpoint a 640px drawer would be wider than the screen. */
 @media (max-width: 767px) {
   .detailFields {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .detailDisclosure summary,
   .timeline button {
     min-height: 44px;
-  }
-
-  .detailDrawer :global(.ant-drawer-content-wrapper) {
-    width: 100vw !important;
   }
 
   .searchInput,

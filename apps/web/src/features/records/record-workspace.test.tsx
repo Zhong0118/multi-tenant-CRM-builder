@@ -24,10 +24,10 @@ vi.mock("@/features/attachments/record-attachments-panel", () => ({ RecordAttach
 vi.mock("./record-detail-page", async (importOriginal) => {
   const original = await importOriginal<typeof import("./record-detail-page")>();
   return {
-  RecordDetailPage: (props: import("./record-detail-page").RecordDetailPageProps) => composition.real ? <original.RecordDetailPage {...props} /> : <MockDrawer {...props} />,
+  RecordDetailPage: (props: import("./record-detail-page").RecordDetailPageProps) => composition.real ? <original.RecordDetailPage {...props} /> : <MockDetailPage {...props} />,
 };
 });
-const MockDrawer = ({
+const MockDetailPage = ({
     record,
     initialEditing,
     followUpId,
@@ -40,7 +40,7 @@ const MockDrawer = ({
     onClose: () => void;
     onChanged: (record: RecordSummary | null) => void;
   }) => (
-    <div role="dialog">
+    <section aria-label="记录信息">
       <span>{record.title}</span>
       <span>{initialEditing ? "编辑模式" : "查看模式"}</span>
       {followUpId && <span>定位跟进：{followUpId}</span>}
@@ -53,7 +53,7 @@ const MockDrawer = ({
       >
         保存
       </button>
-    </div>
+    </section>
   );
 const record: RecordSummary = {
   id: "record-a",
@@ -224,7 +224,7 @@ describe("record workspace navigation", () => {
     expect(router.refresh).not.toHaveBeenCalled();
     if (action === "save") {
       expect(update).toHaveBeenCalledTimes(1);
-      // The drawer shows the saved record, not the stale one.
+      // The detail page shows the committed record.
       expect(screen.getAllByText(formatDateTime("2026-09-10T02:30:00.000Z"))[0]).toBeVisible();
       expect(screen.queryByRole("button", { name: "保存修改" })).not.toBeInTheDocument();
     } else {
@@ -260,14 +260,14 @@ describe("record workspace navigation", () => {
     render(
       <RecordWorkspace {...props} openRecord={record} followUpId="task-1" />,
     );
-    expect(screen.getByRole("dialog")).toHaveTextContent("定位跟进：task-1");
+    expect(screen.getByRole("region", { name: "记录信息" })).toHaveTextContent("定位跟进：task-1");
   });
   it("closes to the filtered list and reopens the same record after the list route arrives", () => {
     const { rerender } = render(
       <RecordWorkspace {...props} openRecord={record} />,
     );
     fireEvent.click(screen.getByRole("button", { name: "关闭" }));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "记录信息" })).not.toBeInTheDocument();
     const url = new URL(
       router.replace.mock.calls.at(-1)![0],
       "http://localhost",
@@ -277,21 +277,21 @@ describe("record workspace navigation", () => {
     expect(url.searchParams.get("page")).toBe("2");
     rerender(<RecordWorkspace {...props} />);
     rerender(<RecordWorkspace {...props} openRecord={record} />);
-    expect(screen.getByRole("dialog")).toHaveTextContent("客户 A");
+    expect(screen.getByRole("region", { name: "记录信息" })).toHaveTextContent("客户 A");
   });
-  it.each(["关闭", "删除"])("keeps the drawer shut when a refresh lands after %s but before the route change", async (action) => {
+  it.each(["关闭", "删除"])("keeps the detail page closed when a refresh lands after %s but before the route change", async (action) => {
     const { rerender } = render(<RecordWorkspace {...props} openRecord={record} />);
     fireEvent.click(screen.getByRole("button", { name: action }));
     await waitFor(() => expect(router.replace).toHaveBeenCalled());
     rerender(<RecordWorkspace {...props} openRecord={{ ...record, version: 2 }} />);
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "记录信息" })).not.toBeInTheDocument();
   });
   it("follows the URL to another record and adopts its newer server version", () => {
     const { rerender } = render(
       <RecordWorkspace {...props} openRecord={record} />,
     );
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
-    expect(screen.getByRole("dialog")).toHaveTextContent("已保存");
+    expect(screen.getByRole("region", { name: "记录信息" })).toHaveTextContent("已保存");
     rerender(
       <RecordWorkspace
         {...props}
@@ -299,8 +299,8 @@ describe("record workspace navigation", () => {
         initialEditing
       />,
     );
-    expect(screen.getByRole("dialog")).toHaveTextContent("客户 B");
-    expect(screen.getByRole("dialog")).toHaveTextContent("编辑模式");
+    expect(screen.getByRole("region", { name: "记录信息" })).toHaveTextContent("客户 B");
+    expect(screen.getByRole("region", { name: "记录信息" })).toHaveTextContent("编辑模式");
     rerender(
       <RecordWorkspace
         {...props}
@@ -313,7 +313,7 @@ describe("record workspace navigation", () => {
         initialEditing
       />,
     );
-    expect(screen.getByRole("dialog")).toHaveTextContent("服务器更新");
+    expect(screen.getByRole("region", { name: "记录信息" })).toHaveTextContent("服务器更新");
   });
 
   it("synchronizes refreshed server values in reading mode", async () => {
@@ -483,7 +483,7 @@ describe("record workspace navigation", () => {
   });
 });
 
-it("preserves public pool scope when closing a detail drawer", async () => {
+it("preserves public pool scope when closing the detail page", async () => {
   render(<RecordWorkspace {...props} query={{ ...props.query, scope: "pool" }} openRecord={record} />);
   fireEvent.click(screen.getByRole("button", { name: "关闭" }));
   await waitFor(() => expect(router.replace).toHaveBeenCalled());
