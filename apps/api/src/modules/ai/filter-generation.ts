@@ -31,7 +31,8 @@ const condition = z.strictObject({
     Object.keys(FILTER_OPERATORS) as [FilterOperator, ...FilterOperator[]],
   ),
   value: z.union([
-    scalar,
+    z.number(),
+    z.string(),
     z.boolean(),
     z.array(z.string()),
     z.strictObject({ from: scalar, to: scalar }),
