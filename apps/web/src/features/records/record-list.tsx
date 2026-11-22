@@ -621,6 +621,7 @@ export function RecordList({
               value={row.values[field.fieldKey]}
               members={members}
               density={density}
+              tablePreview
               width={width}
               recordTitle={row.title}
               currentMemberId={currentMemberId}

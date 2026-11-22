@@ -26,7 +26,7 @@ export const READING_DENSITIES: {
   {
     value: "full",
     label: "完整",
-    hint: "保留全部内容和换行，长内容可在单元格内滚动",
+    hint: "文本可点开查看全文，多选标签全部保留",
   },
 ];
 

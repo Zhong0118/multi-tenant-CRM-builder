@@ -2360,6 +2360,43 @@ it.each(["name", "actions"])(
   },
 );
 
+it.each([
+  ["line breaks", "第一行\n第二行\n第三行"],
+  ["wide glyphs", "W".repeat(55)],
+])(
+  "keeps a full-density desktop note bounded and opens its complete value (%s)",
+  async (_example, notes) => {
+    const prefsKey = "crm.records.display.v2.northwind.leader.customers";
+    window.localStorage.setItem(
+      prefsKey,
+      JSON.stringify({
+        columns: ["name", "notes"],
+        widths: { notes: 280 },
+        columnDensity: { notes: "full" },
+      }),
+    );
+    renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+      currentMemberId: "leader",
+      page: {
+        ...page,
+        items: [{ ...page.items[0], values: { name: "天际科技", notes } }],
+      },
+    });
+    const trigger = within(screen.getByRole("table")).getByRole("button", {
+      name: /查看全文$/,
+    });
+    expect(trigger.firstElementChild).toHaveAttribute(
+      "data-density",
+      "comfortable",
+    );
+    fireEvent.click(trigger);
+    expect((await screen.findByRole("dialog")).textContent).toContain(notes);
+    expect(
+      JSON.parse(window.localStorage.getItem(prefsKey)!).columnDensity.notes,
+    ).toBe("full");
+  },
+);
+
 it("keeps both draft shortcuts off pool and field-only teammate rows", async () => {
   renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
     currentMemberId: "leader",

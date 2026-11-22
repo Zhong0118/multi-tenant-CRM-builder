@@ -135,6 +135,7 @@ export const RecordCellValue = memo(function RecordCellValue({
   value,
   members,
   density,
+  tablePreview = false,
   width,
   recordTitle,
   currentMemberId,
@@ -143,6 +144,7 @@ export const RecordCellValue = memo(function RecordCellValue({
   value: unknown;
   members: DynamicFieldMember[];
   density: ReadingDensity;
+  tablePreview?: boolean;
   width: number;
   recordTitle: string;
   currentMemberId?: string;
@@ -219,20 +221,26 @@ export const RecordCellValue = memo(function RecordCellValue({
 
   if (TEXT_TYPES.has(field.type) && typeof value === "string") {
     const copyable = field.type === "PHONE" || field.type === "EMAIL";
-    const cut =
+    const textDensity =
+      tablePreview && density === "full" ? "comfortable" : density;
+    // Actual wrapping depends on the font and the resized column. A table
+    // preview always opens the original text, even when an estimate would fit.
+    const readable =
       !NO_WRAP_TYPES.has(field.type) &&
-      estimateLines(value, width) > VISIBLE_LINES[density];
-    const text = cut ? (
+      (tablePreview ||
+        estimateLines(value, width) > VISIBLE_LINES[textDensity]);
+    const text = readable ? (
       <button
         type="button"
         className={styles.cellButton}
-        data-density={density}
+        data-density={textDensity}
+        title={tablePreview ? value : undefined}
         aria-label={`${field.label}：${value.length > 40 ? `${value.slice(0, 40)}…` : value}，查看全文`}
         onClick={() =>
           openReader({ fieldLabel: field.label, recordTitle, text: value })
         }
       >
-        <span className={styles.cellText} data-density={density}>
+        <span className={styles.cellText} data-density={textDensity}>
           {value}
         </span>
       </button>
