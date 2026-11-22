@@ -44,6 +44,17 @@ describe('Platform tenant API (e2e)', () => {
     await regular.get('/api/v1/platform/tenants').expect(403);
     await platform.get('/api/v1/platform/tenants').expect(200);
 
+    const byStatus = await adminDatabase.tenant.groupBy({
+      by: ['status'],
+      _count: true,
+    });
+    const counts = new Map(
+      byStatus.map(({ status, _count }) => [status, _count]),
+    );
+    const total = byStatus.reduce((sum, row) => sum + row._count, 0);
+    const draft = counts.get('DRAFT') ?? 0;
+    const active = counts.get('ACTIVE') ?? 0;
+
     const created = await platform
       .post('/api/v1/platform/tenants')
       .set('Origin', origin)
@@ -70,11 +81,11 @@ describe('Platform tenant API (e2e)', () => {
       .get('/api/v1/platform/tenants/summary')
       .expect(200);
     expect(summary.body).toMatchObject({
-      total: 1,
-      draft: 1,
-      active: 0,
-      suspended: 0,
-      closed: 0,
+      total: total + 1,
+      draft: draft + 1,
+      active,
+      suspended: counts.get('SUSPENDED') ?? 0,
+      closed: counts.get('CLOSED') ?? 0,
     });
     await regular.get('/api/v1/platform/tenants/summary').expect(403);
 
@@ -148,11 +159,11 @@ describe('Platform tenant API (e2e)', () => {
       .get('/api/v1/platform/tenants/summary')
       .expect(200);
     expect(activeSummary.body).toMatchObject({
-      total: 1,
-      draft: 0,
-      active: 1,
-      suspended: 0,
-      closed: 0,
+      total: total + 1,
+      draft,
+      active: active + 1,
+      suspended: counts.get('SUSPENDED') ?? 0,
+      closed: counts.get('CLOSED') ?? 0,
     });
 
     await firstAdmin.get(`/api/v1/workspaces/${tenantCode}/audit`).expect(200);
