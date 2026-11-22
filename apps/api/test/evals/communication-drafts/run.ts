@@ -12,6 +12,7 @@ import { FollowUpsService } from '../../../src/modules/follow-ups/follow-ups.ser
 import { PublishedObjectService } from '../../../src/modules/objects/published-object.service';
 import { RECORDS_REPOSITORY } from '../../../src/modules/records/records.service';
 import { cases, type EvalCase } from './cases';
+import { holdoutCases } from './holdout';
 import { score } from './score';
 import { providerSettings, renderReport, type CaseResult } from './report';
 
@@ -109,8 +110,18 @@ export async function evaluate(
 
 async function main() {
   const { values } = parseArgs({
-    options: { report: { type: 'string' }, strict: { type: 'boolean' } },
+    options: {
+      dataset: { type: 'string', default: 'development' },
+      report: { type: 'string' },
+      strict: { type: 'boolean' },
+    },
   });
+  const dataset = values.dataset;
+  if (dataset !== 'development' && dataset !== 'holdout') {
+    console.error('--dataset 仅接受 development 或 holdout');
+    process.exitCode = 1;
+    return;
+  }
   let settings;
   try {
     settings = providerSettings(process.env);
@@ -121,11 +132,15 @@ async function main() {
     return;
   }
   const provider = createAiProvider(settings);
-  const rows = await evaluate(provider, cases);
+  const rows = await evaluate(
+    provider,
+    dataset === 'holdout' ? holdoutCases : cases,
+  );
   const report = renderReport(
     `${provider.providerKey} / ${provider.modelKey}`,
     rows,
     process.env.AI_API_KEY,
+    dataset,
   );
   if (values.report) {
     await writeFile(values.report, report, { mode: 0o600 });

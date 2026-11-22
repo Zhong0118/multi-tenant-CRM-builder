@@ -74,7 +74,7 @@ void test('the configured SDK uses the structured Responses API and the evaluato
     note: '预算待批，下周联系。',
     followUp: {
       title: '回访',
-      suggestedDate: '2099-01-01',
+      dateExpression: { kind: 'weekday', week: 'next', weekday: 1, time: null },
       evidence: '下周再联系',
     },
     fieldChanges: [],
@@ -157,24 +157,31 @@ void test('a fresh report also surfaces passing notes for a repeatable qualitati
     assert.ok(report.includes(term), term);
 });
 
-void test('offline regression allows only the measured fake extraction gaps', async () => {
-  const knownGaps: Record<string, string[]> = {
-    'wednesday-call': ['缺少跟进建议'],
-    'signed-amount': ['缺少字段建议 phase', '缺少字段建议 amount'],
-    'revised-amount': ['缺少字段建议 amount'],
-    'stage-value': ['缺少字段建议 phase'],
-    'read-only-amount': ['缺少字段建议 phase'],
-    'long-visit': [
-      '跟进时间应为 2026-11-25T01:00:00.000Z',
-      '跟进依据缺少相应的原话',
-    ],
-  };
+void test('the offline development run exercises the complete generator and preserves the scripted local sale', async () => {
   const rows = await evaluate(
     createAiProvider({ nodeEnv: 'test', provider: 'fake' }),
     cases,
   );
+  assert.equal(rows.length, 30);
   for (const row of rows) {
-    for (const reason of row.failures)
-      assert.ok(knownGaps[row.id]?.includes(reason), row.id + ' ' + reason);
+    assert.ok(row.modelOutput && row.draft, row.id);
+    const follow = row.draft.followUp;
+    if (follow) assert.ok(row.text.includes(follow.evidence), row.id);
   }
+  assert.deepEqual(rows.find((row) => row.id === 'next-week')?.failures, []);
+});
+
+void test('holdout reports identify the set and choose review samples independent of development IDs', () => {
+  const rows = Array.from({ length: 20 }, (_, i) => ({
+    id: 'new-' + i,
+    category: '新样本',
+    text: '原话 ' + i,
+    expected: {},
+    modelOutput: null,
+    draft: { note: '纪要 ' + i },
+    failures: [],
+  }));
+  const report = renderReport('offline', rows, undefined, 'holdout');
+  assert.match(report, /留出集/);
+  for (const i of [0, 4, 8, 12, 16]) assert.ok(report.includes('纪要 ' + i));
 });

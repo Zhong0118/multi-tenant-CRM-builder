@@ -223,6 +223,7 @@ export const cases: EvalCase[] = [
     'price-objection',
     '阶段判断',
     '老板觉得有点贵，让我把两版方案的差异说明白。',
+    { followUp: 'optional', evidence: ['差异'] },
   ),
   sample(
     'unconfirmed-deal',

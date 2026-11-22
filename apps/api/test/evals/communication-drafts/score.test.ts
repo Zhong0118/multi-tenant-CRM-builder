@@ -123,3 +123,22 @@ void test('every hand-labelled case has a consistent reference output and a boun
     assert.deepEqual(score(c, reference), [], c.id);
   }
 });
+
+void test('a price objection can prompt an undated explanation without changing stage', () => {
+  const sampleCase = sample('price-objection');
+  const followUp = {
+    title: '说明方案差异',
+    evidence: '让我把两版方案的差异说明白',
+    suggestedDate: null,
+  };
+  const draft = { note: '客户要求解释差异。', followUp };
+  assert.deepEqual(score(sampleCase, draft), []);
+  assert.deepEqual(score(sampleCase, { note: draft.note }), []);
+  assert.notDeepEqual(
+    score(sampleCase, {
+      ...draft,
+      followUp: { ...followUp, suggestedDate: '2026-11-23T01:00:00Z' },
+    }),
+    [],
+  );
+});

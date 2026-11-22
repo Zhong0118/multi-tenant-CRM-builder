@@ -38,10 +38,11 @@ export function renderReport(
   model: string,
   rows: CaseResult[],
   secret?: string,
+  dataset: 'development' | 'holdout' = 'development',
 ): string {
   const passed = rows.filter((row) => !row.failures.length);
   const lines = [
-    '# 沟通草稿结构化评测',
+    '# 沟通草稿结构化评测 · ' + (dataset === 'holdout' ? '留出集' : '开发集'),
     '',
     'Provider / 模型为 ' +
       model +
@@ -88,16 +89,23 @@ export function renderReport(
     '',
     '## 纪要抽查',
     '',
-    '固定选取短约定、注入指令、自然签约、长拜访和中英混杂各一条。逐条按忠实、简洁、无编造三个维度各记 0 或 1，另记评阅者类型。此表不计入结构化通过率。',
+    (dataset === 'holdout'
+      ? '自第一条起每四条抽取一条。'
+      : '固定选取短约定、注入指令、自然签约、长拜访和中英混杂各一条。') +
+      '逐条按忠实、简洁、无编造三个维度各记 0 或 1，另记评阅者类型。此表不计入结构化通过率。',
     '',
   );
-  for (const id of [
-    'next-week',
-    'model-directive',
-    'signed-amount',
-    'long-visit',
-    'mixed-language',
-  ]) {
+  const reviewIds =
+    dataset === 'holdout'
+      ? rows.filter((_, index) => index % 4 === 0).map((row) => row.id)
+      : [
+          'next-week',
+          'model-directive',
+          'signed-amount',
+          'long-visit',
+          'mixed-language',
+        ];
+  for (const id of reviewIds) {
     const row = rows.find((r) => r.id === id);
     if (!row) continue;
     if (row.failures.length) {
