@@ -37,7 +37,9 @@ function sample(
   category: string,
   text: string,
   expected: EvalCase['expected'],
-  overrides: Partial<Pick<EvalCase, 'now' | 'timeZone' | 'fields' | 'recordContext'>> = {},
+  overrides: Partial<
+    Pick<EvalCase, 'now' | 'timeZone' | 'fields' | 'recordContext'>
+  > = {},
 ): EvalCase {
   return {
     id,
@@ -63,19 +65,34 @@ export const holdoutCases: EvalCase[] = [
     'holdout-02',
     '口语周初约定',
     '采购说约在下个礼拜头。我问周一成不成，他说成，周一就把两版报价发给他。',
-    { followUp: 'required', date: '2026-06-15T01:00:00.000Z', evidence: ['两版报价'], fields: {} },
+    {
+      followUp: 'required',
+      date: '2026-06-15T01:00:00.000Z',
+      evidence: ['两版报价'],
+      fields: {},
+    },
   ),
   sample(
     'holdout-03',
     '未定月中日期',
     '采购约我月中再碰一次，把样机退换条款捋清楚。具体哪天得看那阵子的排班。',
-    { followUp: 'required', date: null, evidence: ['样机退换条款'], fields: {} },
+    {
+      followUp: 'required',
+      date: null,
+      evidence: ['样机退换条款'],
+      fields: {},
+    },
   ),
   sample(
     'holdout-04',
     '等待出差归来',
     '现场尺寸还差一组。说好了等他出差回来，我再找他拿尺寸，他自己都还没买回程票。',
-    { followUp: 'required', date: null, evidence: ['再找他拿尺寸'], fields: {} },
+    {
+      followUp: 'required',
+      date: null,
+      evidence: ['再找他拿尺寸'],
+      fields: {},
+    },
   ),
   sample(
     'holdout-05',
@@ -93,21 +110,36 @@ export const holdoutCases: EvalCase[] = [
     'holdout-06',
     '闰日默认时刻',
     '师傅把闰日留给我们了。二月二十九号我带客户去看样，车间的名额已经占上。',
-    { followUp: 'required', date: '2028-02-29T01:00:00.000Z', evidence: ['带客户去看样'], fields: {} },
+    {
+      followUp: 'required',
+      date: '2028-02-29T01:00:00.000Z',
+      evidence: ['带客户去看样'],
+      fields: {},
+    },
     { now: '2028-02-28T06:15:00.000Z' },
   ),
   sample(
     'holdout-07',
     '夏令时切换',
     '这边周六晚上才接通。明天我得给经销商补发装箱清单，原来那版漏了一箱。',
-    { followUp: 'required', date: '2027-03-14T16:00:00.000Z', evidence: ['补发装箱清单'], fields: {} },
+    {
+      followUp: 'required',
+      date: '2027-03-14T16:00:00.000Z',
+      evidence: ['补发装箱清单'],
+      fields: {},
+    },
     { now: '2027-03-14T05:40:00.000Z', timeZone: 'America/Los_Angeles' },
   ),
   sample(
     'holdout-08',
     '跨年改约',
     '元旦那场演示挪了，改到一月二号下午两点，我来开线上演示会。客户那边已经回了好。',
-    { followUp: 'required', date: '2027-01-02T06:00:00.000Z', evidence: ['开线上演示会'], fields: {} },
+    {
+      followUp: 'required',
+      date: '2027-01-02T06:00:00.000Z',
+      evidence: ['开线上演示会'],
+      fields: {},
+    },
     {
       now: '2026-12-31T03:00:00.000Z',
       recordContext: {
@@ -124,7 +156,9 @@ export const holdoutCases: EvalCase[] = [
     {
       recordContext: {
         ...recordContext,
-        followUps: [{ title: '联系仓库补寄样品', dueAt: '2026-06-09T01:00:00.000Z' }],
+        followUps: [
+          { title: '联系仓库补寄样品', dueAt: '2026-06-09T01:00:00.000Z' },
+        ],
       },
     },
   ),
@@ -156,7 +190,12 @@ export const holdoutCases: EvalCase[] = [
     'holdout-12',
     '未定预算与可选动作',
     '对方估摸要三到五万，还没报批。他说我有空可以发份小规格的案例给他作参考。',
-    { followUp: 'optional', date: null, evidence: ['小规格的案例'], fields: {} },
+    {
+      followUp: 'optional',
+      date: null,
+      evidence: ['小规格的案例'],
+      fields: {},
+    },
   ),
   sample(
     'holdout-13',
@@ -185,14 +224,24 @@ export const holdoutCases: EvalCase[] = [
     'holdout-16',
     '无可编辑字段',
     '单子已经签约，订单总额敲定七万。法务请我周五上午十点把盖章扫描件补给他们。',
-    { followUp: 'required', date: '2026-06-12T02:00:00.000Z', evidence: ['盖章扫描件'], fields: {} },
+    {
+      followUp: 'required',
+      date: '2026-06-12T02:00:00.000Z',
+      evidence: ['盖章扫描件'],
+      fields: {},
+    },
     { fields: [] },
   ),
   sample(
     'holdout-17',
     '回拨冬令时后明确约时',
     '客户人在新加坡，我们约的是按我们巴黎这边的钟，十月二十六号上午十点一起核对首批数量。',
-    { followUp: 'required', date: '2026-10-26T09:00:00.000Z', evidence: ['核对首批数量'], fields: {} },
+    {
+      followUp: 'required',
+      date: '2026-10-26T09:00:00.000Z',
+      evidence: ['核对首批数量'],
+      fields: {},
+    },
     { now: '2026-10-22T08:00:00.000Z', timeZone: 'Europe/Paris' },
   ),
   sample(
@@ -228,11 +277,13 @@ export const holdoutCases: EvalCase[] = [
     {
       recordContext: {
         ...recordContext,
-        activities: [{
-          activityType: 'NOTE',
-          content: '采购草拟的订单按九万元测算。',
-          createdAt: '2026-06-05T08:00:00.000Z',
-        }],
+        activities: [
+          {
+            activityType: 'NOTE',
+            content: '采购草拟的订单按九万元测算。',
+            createdAt: '2026-06-05T08:00:00.000Z',
+          },
+        ],
       },
     },
   ),
