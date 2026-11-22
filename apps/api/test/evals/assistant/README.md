@@ -1,6 +1,6 @@
 # 对话助手评测
 
-开发集由 30 条原始样本和 1 条自建商机表的样本组成。终审使用 DeepSeek Flash，31/31 通过。筛选预览按实际规则逐条件评分，筛选方向逐项与当前表的可见方向比对。独立留出集 15 条冻结于 `327dc40`，上次为 14/15（第二次运行），本轮未重跑。[终审复测](../../../../../docs/audits/2026-11-23/assistant-v2-final-review/README.md) · [历史结果](../../../../../docs/audits/2026-11-23/assistant-v2-deepseek/README.md)
+开发集现有 35 条，覆盖客户、跟单商机和合同。最近一轮 DeepSeek Flash 严格评分为 33/35，新增合同样本为 3/4。独立留出集 15 条冻结于 `327dc40`，上次为 14/15（第二次运行），本轮未重跑。[合同测试与逐例输出](../../../../../docs/audits/2026-11-23/assistant-shortcuts/README.md) · [上一轮终审复测](../../../../../docs/audits/2026-11-23/assistant-v2-final-review/README.md)
 
 ## 运行
 
