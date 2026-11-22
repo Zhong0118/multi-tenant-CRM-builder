@@ -3,7 +3,7 @@ import type { INestApplication } from '@nestjs/common';
 import type { Prisma, PrismaClient } from '@crm/database';
 import type { App } from 'supertest/types';
 
-import { createApp } from '../../src/bootstrap';
+import { createHttpTestApp } from './http-app';
 import { hashSessionToken } from '../../src/modules/auth/session.service';
 import { resetFakeAiProviderCapture } from '../../src/modules/ai/providers/fake-ai.provider';
 
@@ -64,7 +64,7 @@ export async function createCriticalHarness(): Promise<CriticalHarness> {
   const runtimeDatabase = createDatabaseClient(
     requiredEnvironment('TEST_DATABASE_URL'),
   );
-  const app = (await createApp()) as INestApplication<App>;
+  const app = await createHttpTestApp();
   return { app, adminDatabase, runtimeDatabase };
 }
 

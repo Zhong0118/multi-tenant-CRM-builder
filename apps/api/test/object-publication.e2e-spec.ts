@@ -3,7 +3,7 @@ import type { PrismaClient } from '@crm/database';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 
-import { createApp } from '../src/bootstrap';
+import { createHttpTestApp } from './helpers/http-app';
 import { hashSessionToken } from '../src/modules/auth/session.service';
 
 const origin = 'http://localhost:3000';
@@ -85,8 +85,7 @@ describe('Object publication chain (e2e)', () => {
     adminDatabase = createDatabaseClient(
       requiredEnvironment('TEST_DATABASE_ADMIN_URL'),
     );
-    app = (await createApp()) as INestApplication<App>;
-    await app.listen(0, '127.0.0.1');
+    app = await createHttpTestApp();
   });
 
   beforeEach(async () => {

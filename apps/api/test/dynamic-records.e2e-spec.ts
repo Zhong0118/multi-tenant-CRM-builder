@@ -7,7 +7,7 @@ import type { App } from 'supertest/types';
 import { FollowUpsRepository } from '../src/modules/follow-ups/follow-ups.repository';
 import { PublishedObjectService } from '../src/modules/objects/published-object.service';
 import type { RecordImportResponse } from '../src/modules/records/records.service';
-import { createApp } from '../src/bootstrap';
+import { createHttpTestApp } from './helpers/http-app';
 import { hashSessionToken } from '../src/modules/auth/session.service';
 
 const origin = 'http://localhost:3000';
@@ -59,7 +59,7 @@ describe('Dynamic records API (e2e)', () => {
     adminDatabase = createDatabaseClient(
       requiredEnvironment('TEST_DATABASE_ADMIN_URL'),
     );
-    app = (await createApp()) as INestApplication<App>;
+    app = await createHttpTestApp();
   });
 
   beforeEach(async () => {

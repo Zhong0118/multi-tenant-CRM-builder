@@ -3,7 +3,7 @@ import type { PrismaClient } from '@crm/database';
 import request, { type Agent } from 'supertest';
 import type { App } from 'supertest/types';
 
-import { createApp } from '../src/bootstrap';
+import { createHttpTestApp } from './helpers/http-app';
 import { PrismaMembershipsRepository } from '../src/modules/memberships/memberships.repository';
 import { InvitationsService } from '../src/modules/invitations/invitations.service';
 
@@ -30,7 +30,7 @@ describe('Invitation and workspace onboarding (e2e)', () => {
     admin = createDatabaseClient(
       requiredEnvironment('TEST_DATABASE_ADMIN_URL'),
     );
-    app = (await createApp()) as INestApplication<App>;
+    app = await createHttpTestApp();
   });
 
   beforeEach(() => cleanup(admin));

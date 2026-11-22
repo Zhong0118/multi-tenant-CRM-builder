@@ -64,7 +64,6 @@ describe('create-only field permissions over HTTP', () => {
       expect(url.pathname).toMatch(/^\/[a-z0-9_]*test[a-z0-9_]*$/i);
     }
     h = await createCriticalHarness();
-    await h.app.listen(0, '127.0.0.1');
   });
   beforeEach(async () => {
     f = await provisionCriticalFixture(h);

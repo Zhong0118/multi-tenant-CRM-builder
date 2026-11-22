@@ -89,7 +89,6 @@ describe('generic record pool lifecycle HTTP', () => {
   }
   beforeAll(async () => {
     h = await createCriticalHarness();
-    await h.app.listen(0, '127.0.0.1');
   });
   beforeEach(async () => {
     f = await provisionCriticalFixture(h);

@@ -56,7 +56,6 @@ describe('GROUP read boundaries over HTTP', () => {
     expect(runtime.username).toBe('crm_app');
     expect(['crm', userInfo().username]).toContain(admin.username);
     h = await createCriticalHarness();
-    await h.app.listen(0, '127.0.0.1');
   });
   beforeEach(async () => {
     f = await provisionCriticalFixture(h);

@@ -3,7 +3,7 @@ import type { PrismaClient } from '@crm/database';
 import request, { type Agent } from 'supertest';
 import type { App } from 'supertest/types';
 
-import { createApp } from '../src/bootstrap';
+import { createHttpTestApp } from './helpers/http-app';
 
 const origin = 'http://localhost:3000';
 const verificationCode = '123456';
@@ -92,7 +92,7 @@ describe('Business template HTTP workflow (e2e)', () => {
     adminDatabase = createDatabaseClient(
       requiredEnvironment('TEST_DATABASE_ADMIN_URL'),
     );
-    app = (await createApp()) as INestApplication<App>;
+    app = await createHttpTestApp();
   });
 
   beforeEach(async () => {

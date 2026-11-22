@@ -2,7 +2,7 @@ import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 
-import { createApp } from '../src/bootstrap';
+import { createHttpTestApp } from './helpers/http-app';
 import { DatabaseService } from '../src/infrastructure/database/database.service';
 
 const origin = 'http://localhost:3000';
@@ -18,7 +18,7 @@ describe('Auth API (e2e)', () => {
     process.env.DEV_VERIFICATION_CODE = code;
     process.env.WEB_ORIGIN = origin;
     process.env.DATABASE_URL = requiredEnvironment('TEST_DATABASE_URL');
-    app = (await createApp()) as INestApplication<App>;
+    app = await createHttpTestApp();
     database = app.get(DatabaseService);
   });
 

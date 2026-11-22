@@ -394,7 +394,6 @@ describe('portable workflow templates (HTTP + PostgreSQL)', () => {
       process.env.TEST_DATABASE_ADMIN_URL,
     );
     h = await createCriticalHarness();
-    await h.app.listen(0, '127.0.0.1');
   });
   afterAll(async () => {
     if (h) await closeCriticalHarness(h);

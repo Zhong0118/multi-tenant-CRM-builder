@@ -1,7 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { createApp } from './../src/bootstrap';
+import { createHttpTestApp } from './helpers/http-app';
 
 describe('Health API (e2e)', () => {
   let app: INestApplication<App>;
@@ -9,7 +9,7 @@ describe('Health API (e2e)', () => {
   beforeEach(async () => {
     process.env.NODE_ENV = 'test';
     process.env.DEV_VERIFICATION_CODE = '123456';
-    app = (await createApp()) as INestApplication<App>;
+    app = await createHttpTestApp();
   });
 
   it('/api/v1/health (GET)', () => {

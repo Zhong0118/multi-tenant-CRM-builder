@@ -71,7 +71,6 @@ describe('Record pool HTTP and database integration', () => {
   beforeAll(async () => {
     harness = await createCriticalHarness();
     // Keep concurrent requests on one server instead of Supertest closing it per request.
-    await harness.app.listen(0, '127.0.0.1');
   });
   beforeEach(async () => {
     fixture = await provisionCriticalFixture(harness);
