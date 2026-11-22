@@ -161,10 +161,6 @@ export function parsePublishedObjectRecord(
     if (schema.object.id !== record.id || schema.object.code !== record.code) {
       throw new Error('Published snapshot does not match active object');
     }
-    if (record.inactiveFieldKeys)
-      schema.fields = schema.fields.filter(
-        (field) => !record.inactiveFieldKeys!.includes(field.fieldKey),
-      );
     return schema;
   } catch {
     logger.error(

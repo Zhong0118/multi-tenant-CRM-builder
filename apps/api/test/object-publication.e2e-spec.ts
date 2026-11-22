@@ -345,6 +345,12 @@ describe('Object publication chain (e2e)', () => {
         'amount',
       );
     }
+    await employee(
+      'patch',
+      `${base}/objects/customers/records/${createdRecord.id}`,
+    )
+      .send({ version: createdRecord.version, values: { amount: '8.00' } })
+      .expect(400);
     const retiredDraft = await admin(
       'get',
       `${base}/object-definitions/${objectId}`,

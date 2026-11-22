@@ -20,7 +20,6 @@ export interface PublishedObjectRecord {
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
   sortOrder: number;
   configuration: unknown;
-  inactiveFieldKeys?: string[];
   memberOverride?: ObjectAccessPolicy;
   memberId?: string;
   groupOwnerMemberIds?: string[];
@@ -50,7 +49,6 @@ export class PrismaPublishedObjectRepository implements PublishedObjectRepositor
         },
         include: {
           activePublication: { select: { configuration: true } },
-          fields: { where: { status: 'INACTIVE' }, select: { fieldKey: true } },
           memberFieldPermissions: {
             where: { memberId: context.memberId },
             select: { access: true, field: { select: { fieldKey: true } } },
@@ -106,7 +104,6 @@ export async function findPublishedObjectInTransaction(
     where: { tenantId: context.tenantId, code },
     include: {
       activePublication: { select: { configuration: true } },
-      fields: { where: { status: 'INACTIVE' }, select: { fieldKey: true } },
       memberFieldPermissions: {
         where: { memberId: context.memberId },
         select: { access: true, field: { select: { fieldKey: true } } },
@@ -143,7 +140,6 @@ function toPublishedRecord(object: {
   status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
   sortOrder: number;
   activePublication: { configuration: unknown } | null;
-  fields?: { fieldKey: string }[];
   memberFieldPermissions: Array<{
     access: PublishedFieldAccess;
     field: { fieldKey: string };
@@ -169,7 +165,6 @@ function toPublishedRecord(object: {
     status: object.status,
     sortOrder: object.sortOrder,
     configuration: object.activePublication?.configuration ?? null,
-    inactiveFieldKeys: object.fields?.map((field) => field.fieldKey),
     memberFieldOverrides: Object.fromEntries(
       object.memberFieldPermissions.map((permission) => [
         permission.field.fieldKey,

@@ -438,7 +438,7 @@ class PrismaMembershipStore implements MembershipStore {
       },
       include: {
         activePublication: { select: { configuration: true } },
-        fields: { where: { status: 'ACTIVE' }, select: { id: true } },
+        fields: { select: { id: true } },
         memberFieldPermissions: { where: { memberId } },
         permissions: {
           where: {
