@@ -86,6 +86,7 @@ describe('Object publication chain (e2e)', () => {
       requiredEnvironment('TEST_DATABASE_ADMIN_URL'),
     );
     app = (await createApp()) as INestApplication<App>;
+    await app.listen(0, '127.0.0.1');
   });
 
   beforeEach(async () => {
@@ -100,6 +101,7 @@ describe('Object publication chain (e2e)', () => {
   });
 
   it('configures, publishes and then serves an object employees can use', async () => {
+    expect(new URL(await app.getUrl()).hostname).toBe('127.0.0.1');
     const server = app.getHttpServer();
     const base = `/api/v1/workspaces/${tenantCode}`;
     const admin = (method: 'post' | 'put' | 'get' | 'patch', url: string) =>
