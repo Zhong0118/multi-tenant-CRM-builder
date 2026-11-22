@@ -203,8 +203,18 @@
 
 .boundedCell {
   max-height: 40px;
-  overflow: auto;
+  overflow: hidden;
   line-height: 18px;
+}
+
+.boundedCell > .emptyValue {
+  display: block;
+  line-height: 20px;
+}
+
+/* Wrapped tags and pool indicators can exceed two lines; keep them reachable. */
+.boundedCell:has(> .tagValues, > :global(.ant-space)) {
+  overflow: auto;
   scrollbar-width: thin;
 }
 
@@ -807,6 +817,10 @@ th[data-resizing="true"] .columnResizer::after {
 .cellButton:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+.boundedCell .cellButton:focus-visible {
+  outline-offset: -2px;
 }
 
 .emptyValue {
