@@ -1,4 +1,4 @@
-import { describeDue } from "@/lib/format/due";
+import { describeDue, type DueFormat } from "@/lib/format/due";
 
 import styles from "./due-label.module.css";
 
@@ -12,6 +12,7 @@ export function DueLabel({
   timeZone,
   now,
   settled = false,
+  format,
   prefix,
 }: {
   dueAt: string;
@@ -19,9 +20,10 @@ export function DueLabel({
   now: number;
   /** Done or cancelled: no urgency colour, no 已逾期. */
   settled?: boolean;
+  format?: DueFormat;
   prefix?: string;
 }) {
-  const due = describeDue(dueAt, timeZone, settled ? 0 : now);
+  const due = describeDue(dueAt, timeZone, settled ? 0 : now, format);
   const label = settled ? due.full.replace(/（.*）$/, "") : due.label;
   return (
     <time

@@ -1,6 +1,7 @@
 "use client";
 
-import { utcIsoToDatetimeLocal } from "@/features/dashboard/dashboard-timezone";
+import { DueLabel } from "@/components/workbench/due-label";
+import { useNow } from "@/lib/format/use-now";
 import { legacyFiltersToRule, type FilterRule } from "@crm/contracts";
 import { CommunicationDraftDialog } from "./communication-draft";
 import { RecordColumnHeader } from "./record-column-header";
@@ -471,13 +472,20 @@ export function RecordList({
     !viewReady || records.isError
       ? noRows
       : (records.data ?? (useDefaultView ? noRows : initialPage));
+  const now = useNow();
+  const timeZone =
+    page.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   function nextContact(value?: string | null) {
-    if (!value) return "—";
-    return page.timeZone
-      ? utcIsoToDatetimeLocal(value, page.timeZone)
-          .slice(0, 16)
-          .replace("T", " ")
-      : formatDateTime(value);
+    return value ? (
+      <DueLabel
+        dueAt={value}
+        timeZone={timeZone}
+        now={now}
+        format="dateAndWeekday"
+      />
+    ) : (
+      "—"
+    );
   }
   const [activityRecord, setActivityRecord] = useState<RecordSummary>();
   // The phone cards repeat every row and a desktop never shows them, so they
@@ -500,12 +508,13 @@ export function RecordList({
   const owned = schema.scopes.read === "OWN";
   const groupRead = schema.scopes.read === "GROUP";
   const showOwner = prefs.ownerVisible && (!owned || namedLayout);
-  const visibleColumns = columnFieldKeys
-    .map((fieldKey) =>
-      schema.fields.find((field) => field.fieldKey === fieldKey),
-    )
-    .filter((field): field is PublishedFieldView => field !== undefined);
   const choosableFields = visibleFields(schema);
+  const titleField = choosableFields.find(
+    (field) => field.fieldKey === schema.object.titleFieldKey,
+  );
+  const visibleColumns = choosableFields.filter(
+    (field) => field === titleField || columnFieldKeys.includes(field.fieldKey),
+  );
   const queryableFields = queryFields(schema);
   const canQueryField = (key: string) =>
     queryableFields.some((field) => field.fieldKey === key);
@@ -546,6 +555,21 @@ export function RecordList({
   const columnDensity = (key: string) =>
     prefs.columnDensity[key] ?? prefs.density;
 
+  const canCommunicate = (row: RecordSummary) =>
+    canEditRecord(schema, row, currentMemberId, canFilterByOwner);
+  function communicationButton(row: RecordSummary) {
+    return canCommunicate(row) ? (
+      <Button
+        size="small"
+        type="link"
+        className={rl.directAction}
+        onClick={() => setCommunicationRecord(row)}
+      >
+        整理沟通
+      </Button>
+    ) : null;
+  }
+
   const fieldColumn = (field: PublishedFieldView): RecordColumn => {
     const sortable =
       canQueryField(field.fieldKey) &&
@@ -561,6 +585,7 @@ export function RecordList({
     return {
       title: <RecordColumnHeader label={field.label} type={field.type} />,
       key: field.fieldKey,
+      fixed: field === titleField ? "start" : undefined,
       width,
       align:
         field.type === "MONEY" || field.type === "NUMBER"
@@ -574,28 +599,33 @@ export function RecordList({
       render: (_: unknown, row: RecordSummary) =>
         !recordFields(schema, row).some(
           (candidate) => candidate.fieldKey === field.fieldKey,
-        ) ? null : field.fieldKey === schema.object.titleFieldKey ? (
-          <a
-            className={`${styles.recordTitle} ${rl.titleLink}`}
-            data-density={density}
-            href={recordPath(row.id)}
-            onClick={(event) => {
-              event.preventDefault();
-              go(recordPath(row.id));
-            }}
-          >
-            {row.title}
-          </a>
+        ) ? null : field === titleField ? (
+          <div className={rl.titleCell}>
+            <a
+              className={`${styles.recordTitle} ${rl.titleLink}`}
+              title={row.title}
+              href={recordPath(row.id)}
+              onClick={(event) => {
+                event.preventDefault();
+                go(recordPath(row.id));
+              }}
+            >
+              {row.title}
+            </a>
+            {communicationButton(row)}
+          </div>
         ) : (
-          <RecordCellValue
-            field={field}
-            value={row.values[field.fieldKey]}
-            members={members}
-            density={density}
-            width={width}
-            recordTitle={row.title}
-            currentMemberId={currentMemberId}
-          />
+          <div className={rl.boundedCell}>
+            <RecordCellValue
+              field={field}
+              value={row.values[field.fieldKey]}
+              members={members}
+              density={density}
+              width={width}
+              recordTitle={row.title}
+              currentMemberId={currentMemberId}
+            />
+          </div>
         ),
     };
   };
@@ -638,7 +668,9 @@ export function RecordList({
       width: columnWidth("poolStatus"),
       render: (_: unknown, row: RecordSummary) =>
         poolConfig ? (
-          <RecordPoolStatus record={row} config={poolConfig} compact />
+          <div className={rl.boundedCell}>
+            <RecordPoolStatus record={row} config={poolConfig} compact />
+          </div>
         ) : null,
     },
     nextFollowUpAt: {
@@ -693,13 +725,19 @@ export function RecordList({
   ];
   const columnOrder = resolveColumnOrder(
     prefs.order,
-    visibleColumns.map((field) => field.fieldKey),
+    columnFieldKeys,
     shownSystemColumns,
   );
-  // The selection checkbox (antd puts it first) and the row menu stay at the
-  // two ends whatever the member's order.
+  // A saved layout may omit or move the name. Keep the visible identity pinned
+  // without rewriting that saved view when only another setting changes.
+  const tableOrder = titleField
+    ? [
+        titleField.fieldKey,
+        ...columnOrder.filter((id) => id !== titleField.fieldKey),
+      ]
+    : columnOrder;
   const columns: ColumnsType<RecordSummary> = [
-    ...columnOrder
+    ...tableOrder
       .map((id) => {
         const system = systemColumnKey(id);
         if (system) return systemColumns[system];
@@ -711,10 +749,15 @@ export function RecordList({
       // The header is read by assistive technology only; the menu button is self-explanatory.
       title: <span className={styles.visuallyHidden}>操作</span>,
       key: "actions",
-      width: 56,
-      fixed: "right",
-      align: "center",
-      render: (_, row) => rowMenu(row),
+      width: page.items.some(canCommunicate) ? 118 : 48,
+      fixed: "end",
+      align: "right",
+      render: (_, row) => (
+        <div className={rl.rowActions}>
+          {communicationButton(row)}
+          {rowMenu(row)}
+        </div>
+      ),
     },
   ];
 
@@ -810,9 +853,7 @@ export function RecordList({
         deleting={remove.isPending && remove.variables?.id === row.id}
         onView={() => go(recordPath(row.id))}
         onCommunicate={
-          canEditRecord(schema, row, currentMemberId, canFilterByOwner)
-            ? () => setCommunicationRecord(row)
-            : undefined
+          canCommunicate(row) ? () => setCommunicationRecord(row) : undefined
         }
         onActivity={
           row.latestActivity !== undefined
@@ -1010,7 +1051,8 @@ export function RecordList({
   const columnChooser = (
     <RecordDisplaySettings
       fields={choosableFields}
-      order={columnOrder}
+      order={tableOrder}
+      titleFieldKey={titleField?.fieldKey}
       prefs={prefs}
       ownerChoice={!owned || namedLayout}
       onChange={(change) =>
@@ -1642,6 +1684,7 @@ export function RecordList({
               canSelect
                 ? {
                     columnWidth: 40,
+                    fixed: true,
                     selectedRowKeys: currentSelectedRowKeys,
                     onChange: (keys) => setSelectedRowKeys(keys.map(String)),
                     getCheckboxProps: (row) => ({

@@ -123,7 +123,7 @@ export function estimateLines(text: string, columnWidth: number): number {
 
 const VISIBLE_LINES: Record<ReadingDensity, number> = {
   compact: 1,
-  comfortable: 3,
+  comfortable: 2,
   full: Number.POSITIVE_INFINITY,
 };
 

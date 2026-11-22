@@ -3,6 +3,7 @@
  * follow-ups and tasks. Days are counted on the company calendar (its time
  * zone), never the browser's, so "今天" means the same day everywhere.
  */
+export type DueFormat = "relative" | "dateAndWeekday";
 export type DueTone = "danger" | "warning" | "info" | "neutral";
 
 export interface DueDescription {
@@ -56,6 +57,7 @@ export function describeDue(
   dueAt: string,
   timeZone: string,
   now: number,
+  format: DueFormat = "relative",
 ): DueDescription {
   const due = parts(new Date(dueAt), timeZone);
   const today = parts(new Date(now), timeZone);
@@ -78,6 +80,13 @@ export function describeDue(
   }
   if (days === 0)
     return { label: `今天 ${due.time}`, tone: "warning", overdue: false, full };
+  if (format === "dateAndWeekday")
+    return {
+      label: `${dateText} 周${weekday} ${due.time}`,
+      tone: "neutral",
+      overdue: false,
+      full,
+    };
   if (days === 1)
     return { label: `明天 ${due.time}`, tone: "info", overdue: false, full };
   if (days < 7)

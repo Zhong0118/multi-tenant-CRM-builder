@@ -6,7 +6,10 @@ import type {
   RuntimeObjectSchema,
 } from "@/features/objects/object-types";
 import type { RecordApi } from "./record-api";
-import { RecordCommunicationDrawer } from "./record-communication-drawer";
+import {
+  RecordCommunicationDrawer,
+  RecordCommunicationPreview,
+} from "./record-communication-drawer";
 
 it("preserves an unsaved communication draft when a background refresh fails and is retried", async () => {
   const client = new QueryClient({
@@ -61,4 +64,28 @@ it("preserves an unsaved communication draft when a background refresh fails and
   expect(screen.getByLabelText("内容")).toHaveValue("还没有保存的沟通内容");
   fireEvent.click(screen.getByRole("button", { name: /重\s*试/ }));
   expect(screen.getByLabelText("内容")).toHaveValue("还没有保存的沟通内容");
+});
+
+it("reveals the complete latest communication on focus without opening history", async () => {
+  const onOpen = vi.fn();
+  const content = "需要补充报价单\n采购确认以后再安排会议\n最后一行保留";
+  const record = {
+    title: "客户甲",
+    latestActivity: {
+      activityType: "CALL",
+      content,
+      outcome: "CONNECTED",
+      actorDisplayName: "小李",
+      createdAt: "2026-11-24T13:00:00Z",
+    },
+  } as RecordSummary;
+  render(<RecordCommunicationPreview record={record} onOpen={onOpen} />);
+  const preview = screen.getByRole("button", { name: "查看动态 客户甲" });
+  fireEvent.focus(preview);
+  const tooltip = await screen.findByRole("tooltip");
+  expect(tooltip.textContent).toContain(content);
+  expect(tooltip).toHaveTextContent("小李");
+  expect(onOpen).not.toHaveBeenCalled();
+  fireEvent.click(preview);
+  expect(onOpen).toHaveBeenCalledTimes(1);
 });

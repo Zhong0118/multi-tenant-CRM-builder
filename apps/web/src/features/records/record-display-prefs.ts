@@ -11,7 +11,7 @@ import { isColumnOrderId } from "./record-column-order";
  * default view or what a member may see, so nothing is published.
  *
  * - 紧凑 `compact`: one line, cut with an ellipsis, for scanning many rows.
- * - 舒适 `comfortable`: up to three lines (the default).
+ * - 舒适 `comfortable`: up to two lines (the default).
  * - 完整 `full`: everything, keeping line breaks.
  */
 export type ReadingDensity = "compact" | "comfortable" | "full";
@@ -22,8 +22,12 @@ export const READING_DENSITIES: {
   hint: string;
 }[] = [
   { value: "compact", label: "紧凑", hint: "单行，超出部分省略" },
-  { value: "comfortable", label: "舒适", hint: "最多三行" },
-  { value: "full", label: "完整", hint: "显示全部内容和换行" },
+  { value: "comfortable", label: "舒适", hint: "最多两行" },
+  {
+    value: "full",
+    label: "完整",
+    hint: "保留全部内容和换行，长内容可在单元格内滚动",
+  },
 ];
 
 export const DEFAULT_DENSITY: ReadingDensity = "comfortable";

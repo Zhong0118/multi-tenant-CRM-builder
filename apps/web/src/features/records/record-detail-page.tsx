@@ -418,6 +418,7 @@ export function RecordDetailPage({
           {canOperate && !deleted && (
             <CommunicationDraftAction
               key={record.id}
+              buttonType="primary"
               tenantCode={tenantCode}
               objectCode={schema.object.code}
               recordId={record.id}
@@ -470,7 +471,7 @@ export function RecordDetailPage({
           {canEdit && !editing && !deleted ? (
             <Button
               disabled={ownershipPending}
-              type="primary"
+              type={canOperate ? "default" : "primary"}
               onClick={() => {
                 setEditingRecord(record);
                 setEditing(true);

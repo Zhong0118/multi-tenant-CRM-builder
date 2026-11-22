@@ -85,6 +85,7 @@ const OPTIONAL_SYSTEM = [
 export function RecordDisplaySettings({
   fields,
   order,
+  titleFieldKey,
   prefs,
   ownerChoice,
   onChange,
@@ -94,6 +95,7 @@ export function RecordDisplaySettings({
   fields: PublishedFieldView[];
   /** The shown columns in display order: field keys and `system:` ids. */
   order: string[];
+  titleFieldKey?: string;
   prefs: RecordDisplayPrefs;
   /** Whether the system owner column can be shown at all. */
   ownerChoice: boolean;
@@ -193,12 +195,17 @@ export function RecordDisplaySettings({
           显示的列与顺序
         </h3>
         <p className={styles.displayHint}>
-          拖动把手或用上下箭头调整顺序。表格最左的选择框和最右的操作按钮位置固定。
+          {titleFieldKey
+            ? `选择框和${label(titleFieldKey)}固定在左侧，`
+            : "选择框固定在左侧，"}
+          操作固定在右侧。拖动把手或用箭头调整其余列。
         </p>
         <SortableColumns
-          order={order}
+          order={order.filter((id) => id !== titleFieldKey)}
           label={label}
-          onReorder={reorder}
+          onReorder={(next) =>
+            reorder(titleFieldKey ? [titleFieldKey, ...next] : next)
+          }
           renderTools={(id) => {
             const type = field(id)?.type;
             return DENSITY_TEXT_TYPES.has(type ?? "") ? (

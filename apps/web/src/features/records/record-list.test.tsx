@@ -1596,8 +1596,8 @@ describe("RecordList personal display settings", () => {
       canFilterByOwner: true,
     });
     expect(headerTexts().slice(1)).toEqual([
-      "业务编号",
       "客户名称",
+      "业务编号",
       "线索状态",
       "手机号",
       "评分",
@@ -1611,7 +1611,10 @@ describe("RecordList personal display settings", () => {
     fireEvent.click(screen.getByRole("button", { name: "上移 最近更新" }));
     fireEvent.click(screen.getByRole("button", { name: "上移 最近更新" }));
     fireEvent.click(screen.getByRole("button", { name: "上移 最近更新" }));
-    fireEvent.click(screen.getByRole("button", { name: "下移 业务编号" }));
+    expect(screen.queryByRole("button", { name: "下移 客户名称" })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "上移 业务编号" }),
+    ).toBeDisabled();
     expect(headerTexts().slice(1)).toEqual([
       "客户名称",
       "业务编号",
@@ -1799,9 +1802,9 @@ describe("RecordList personal display settings", () => {
     // Only the member's own records: no owner column; the pool keeps its
     // column. Columns the saved order never mentioned take their usual place.
     expect(headerTexts().slice(1)).toEqual([
+      "客户名称",
       "业务编号",
       "最近更新",
-      "客户名称",
       "手机号",
       "归属状态",
       "最近沟通",
@@ -2218,6 +2221,8 @@ const personalView: RecordView = {
   },
 };
 it("keeps a named view authoritative for paging, sorting next contact and resizing without hiding recent communication", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-11-25T08:30:00Z"));
   const stub = vi
     .spyOn(recordViewApi, "list")
     .mockResolvedValue([personalView]);
@@ -2232,6 +2237,16 @@ it("keeps a named view authoritative for paging, sorting next contact and resizi
           nextFollowUpAt: "2026-12-14T01:00:00Z",
           latestActivity: null,
         },
+        ...[
+          "2026-11-24T07:00:00Z",
+          "2026-11-25T08:00:00Z",
+          "2026-11-25T17:00:00Z",
+          "2027-01-02T17:00:00Z",
+        ].map((nextFollowUpAt) => ({
+          ...page.items[0],
+          id: nextFollowUpAt,
+          nextFollowUpAt,
+        })),
       ],
     };
     const list = vi.fn().mockResolvedValue(rows);
@@ -2249,7 +2264,16 @@ it("keeps a named view authoritative for paging, sorting next contact and resizi
     expect(
       screen.getByRole("columnheader", { name: "最近沟通" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("2026-12-13 17:00").length).toBeGreaterThan(0);
+    const table = within(screen.getByRole("table"));
+    for (const label of [
+      "12月13日 周日 17:00",
+      "已逾期 2 天",
+      "已逾期 · 今天 00:00",
+      "今天 09:00",
+      "2027年1月2日 周六 09:00",
+    ]) {
+      expect(table.getByText(label)).toBeInTheDocument();
+    }
     expect(screen.getByRole("separator", { name: /最近沟通/ })).toHaveAttribute(
       "aria-valuenow",
       "300",
@@ -2275,6 +2299,7 @@ it("keeps a named view authoritative for paging, sorting next contact and resizi
     });
   } finally {
     stub.mockRestore();
+    vi.useRealTimers();
   }
 });
 it("never displays broad initial rows or fetches them for a restricted saved view", async () => {
@@ -2297,6 +2322,74 @@ it("never displays broad initial rows or fetches them for a restricted saved vie
     stub.mockRestore();
   }
 });
+it.each(["name", "actions"])(
+  "starts a draft directly from the pinned %s cell",
+  async (entry) => {
+    const navigate = vi.fn();
+    window.localStorage.setItem(
+      "crm.records.display.v2.northwind.leader.customers",
+      JSON.stringify({
+        columns: ["phone", "score"],
+        order: ["system:recordNo", "phone", "score"],
+      }),
+    );
+    renderList(navigate, DEFAULT_RECORD_QUERY, { currentMemberId: "leader" });
+    const row = within(screen.getByRole("table"))
+      .getByRole("button", { name: "更多操作 天际科技" })
+      .closest("tr")!;
+    const cells = within(row).getAllByRole("cell");
+    expect(within(cells[0]).getByRole("checkbox")).toBeInTheDocument();
+    expect(
+      within(cells[1]).getByRole("link", { name: "天际科技" }),
+    ).toBeInTheDocument();
+    expect(cells[0]).toHaveClass("ant-table-cell-fix-start");
+    expect(cells[1]).toHaveClass("ant-table-cell-fix-start");
+    expect(
+      cells
+        .slice(2, -1)
+        .every((cell) => !cell.classList.contains("ant-table-cell-fix")),
+    ).toBe(true);
+    expect(cells.at(-1)).toHaveClass("ant-table-cell-fix-end");
+    fireEvent.click(
+      within(entry === "name" ? cells[1] : cells.at(-1)!).getByRole("button", {
+        name: "整理沟通",
+      }),
+    );
+    expect(await screen.findByLabelText("沟通原文")).toBeInTheDocument();
+    expect(navigate).not.toHaveBeenCalled();
+  },
+);
+
+it("keeps both draft shortcuts off pool and field-only teammate rows", async () => {
+  renderList(vi.fn(), DEFAULT_RECORD_QUERY, {
+    currentMemberId: "leader",
+    schema: { ...schema, scopes: { read: "GROUP", update: "OWN" } },
+    page: {
+      ...page,
+      items: [
+        {
+          ...page.items[0],
+          id: "team",
+          title: "同组客户",
+          ownerMemberId: "peer",
+          canEditFields: true,
+        },
+        {
+          ...page.items[0],
+          id: "pool",
+          title: "公池客户",
+          ownerMemberId: "leader",
+          inPublicPool: true,
+        },
+      ],
+    },
+  });
+  for (const name of ["同组客户", "公池客户"]) {
+    const row = await screen.findByRole("row", { name: new RegExp(name) });
+    expect(within(row).queryByRole("button", { name: "整理沟通" })).toBeNull();
+  }
+});
+
 it("opens a communication draft alongside existing activity history from the row menu", async () => {
   const rows = { ...page, items: [{ ...page.items[0], latestActivity: null }] };
   renderList(vi.fn(), DEFAULT_RECORD_QUERY, {

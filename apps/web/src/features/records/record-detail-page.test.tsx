@@ -215,6 +215,12 @@ it("waits for contact confirmation and its refresh before opening an editor with
     </QueryClientProvider>,
   );
   try {
+    expect(screen.getByRole("button", { name: "整理本次沟通" })).toHaveClass(
+      "ant-btn-primary",
+    );
+    expect(screen.getByRole("button", { name: /^编\s*辑$/ })).not.toHaveClass(
+      "ant-btn-primary",
+    );
     fireEvent.click(screen.getByRole("button", { name: "确认已联系 客户甲" }));
     fireEvent.click(
       await screen.findByRole("button", { name: "确认建立联系" }),

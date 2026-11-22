@@ -2,7 +2,7 @@
 
 import { CommentOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Button, Drawer, Modal } from "antd";
+import { Alert, Button, Drawer, Modal, Tooltip } from "antd";
 import { useState } from "react";
 import type {
   RecordSummary,
@@ -31,37 +31,50 @@ export function RecordCommunicationPreview({
   if (activity === undefined)
     return <span className={styles.unavailable}>—</span>;
   return (
-    <button
-      type="button"
-      className={styles.preview}
-      onClick={onOpen}
-      aria-label={`查看动态 ${record.title}`}
-    >
-      {activity ? (
-        <>
-          <span className={styles.tags}>
-            <span className={styles.kind} data-kind={activity.activityType}>
-              {ACTIVITY_TYPE_LABELS[activity.activityType]}
-            </span>
-            {activity.outcome && (
-              <span className={styles.outcome} data-outcome={activity.outcome}>
-                {OUTCOME_LABELS[activity.activityType][activity.outcome]}
+    <Tooltip
+      trigger={["hover", "focus"]}
+      zIndex={990}
+      title={
+        activity && (
+          <div className={styles.fullPreview}>
+            <span className={styles.tags}>
+              <span className={styles.kind} data-kind={activity.activityType}>
+                {ACTIVITY_TYPE_LABELS[activity.activityType]}
               </span>
-            )}
-          </span>
+              {activity.outcome && (
+                <span
+                  className={styles.outcome}
+                  data-outcome={activity.outcome}
+                >
+                  {OUTCOME_LABELS[activity.activityType][activity.outcome]}
+                </span>
+              )}
+            </span>
+            <div className={styles.fullText}>{activity.content}</div>
+            <small>
+              {activity.actorDisplayName ?? "未知成员"} ·{" "}
+              {formatDateTime(activity.createdAt)}
+            </small>
+          </div>
+        )
+      }
+    >
+      <button
+        type="button"
+        className={styles.preview}
+        onClick={onOpen}
+        aria-label={`查看动态 ${record.title}`}
+      >
+        {activity ? (
           <span className={styles.excerpt}>{activity.content}</span>
-          <span className={styles.meta}>
-            {activity.actorDisplayName ?? "未知成员"} ·{" "}
-            {formatDateTime(activity.createdAt)}
+        ) : (
+          <span className={styles.empty}>
+            <CommentOutlined aria-hidden />
+            暂无沟通记录<span className={styles.openHint}>查看</span>
           </span>
-        </>
-      ) : (
-        <span className={styles.empty}>
-          <CommentOutlined aria-hidden />
-          暂无沟通记录<span className={styles.openHint}>查看</span>
-        </span>
-      )}
-    </button>
+        )}
+      </button>
+    </Tooltip>
   );
 }
 
