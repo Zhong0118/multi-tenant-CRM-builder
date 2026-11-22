@@ -1,3 +1,4 @@
+import { translatePoolTriggerError } from '../records/record-pool-error';
 import { isGroupPeer, recordFieldAccess } from '../objects/effective-access';
 import {
   recordOwnerFilter,
@@ -229,7 +230,10 @@ export async function executeAutomation(
 ): Promise<AutomationExecution> {
   try {
     return await executeAutomationSteps(session, rule, inputs, dedupKey, meta);
-  } catch (error: unknown) {
+  } catch (cause: unknown) {
+    // Attach the audit to the domain error before either the batch savepoint
+    // or the enclosing transaction rolls the failed operation back.
+    const error = translatePoolTriggerError(cause);
     if (error && typeof error === 'object')
       failureAudits.set(error, {
         tenantId: session.context.tenantId,
