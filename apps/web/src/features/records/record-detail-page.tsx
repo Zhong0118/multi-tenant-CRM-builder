@@ -233,6 +233,19 @@ export function RecordDetailPage({
     }
   };
 
+  const communicationAction = canOperate && !deleted && (
+    <CommunicationDraftAction
+      key={record.id}
+      buttonType="primary"
+      tenantCode={tenantCode}
+      objectCode={schema.object.code}
+      recordId={record.id}
+      recordTitle={record.title}
+      fields={recordFields(schema, record)}
+      members={members}
+      onSaved={refresh}
+    />
+  );
   const tabs = [
     {
       key: "followups",
@@ -258,6 +271,7 @@ export function RecordDetailPage({
       label: "动态",
       children: (
         <RecordActivityTimeline
+          action={activeTab === "activity" && communicationAction}
           onCreated={
             poolConfig?.lifecycleEnabled
               ? async () => {
@@ -415,19 +429,7 @@ export function RecordDetailPage({
           <span className={styles.crumbCurrent}>#{record.recordNo}</span>
         </nav>
         <div className={styles.topActions}>
-          {canOperate && !deleted && (
-            <CommunicationDraftAction
-              key={record.id}
-              buttonType="primary"
-              tenantCode={tenantCode}
-              objectCode={schema.object.code}
-              recordId={record.id}
-              recordTitle={record.title}
-              fields={recordFields(schema, record)}
-              members={members}
-              onSaved={refresh}
-            />
-          )}
+          {activeTab !== "activity" && communicationAction}
           {position && position.total > 1 ? (
             <div className={styles.pager} role="group" aria-label="逐条查看">
               <Tooltip title="上一条">
