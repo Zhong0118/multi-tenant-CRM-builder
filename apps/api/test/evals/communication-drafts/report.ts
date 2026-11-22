@@ -84,6 +84,35 @@ export function renderReport(
     }
   }
   if (rows.length === passed.length) lines.push('全部通过。', '');
+  lines.push(
+    '',
+    '## 纪要抽查',
+    '',
+    '固定选取短约定、注入指令、自然签约、长拜访和中英混杂各一条。逐条按忠实、简洁、无编造三个维度各记 0 或 1，另记评阅者类型。此表不计入结构化通过率。',
+    '',
+  );
+  for (const id of [
+    'next-week',
+    'model-directive',
+    'signed-amount',
+    'long-visit',
+    'mixed-language',
+  ]) {
+    const row = rows.find((r) => r.id === id);
+    if (!row) continue;
+    if (row.failures.length) {
+      lines.push('- [' + id + ' 的原话与草稿](#' + id + ')');
+    } else {
+      lines.push(
+        '- ' + id,
+        '',
+        '    原话 ' + row.text.replaceAll('\n', '\n    '),
+        '',
+        '    纪要 ' + (row.draft?.note ?? '').replaceAll('\n', '\n    '),
+        '',
+      );
+    }
+  }
   const report = lines.join('\n');
   return secret ? report.replaceAll(secret, '[REDACTED]') : report;
 }

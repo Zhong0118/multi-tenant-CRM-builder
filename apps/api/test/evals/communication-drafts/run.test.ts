@@ -140,3 +140,41 @@ void test('the configured SDK uses the structured Responses API and the evaluato
     );
   }
 });
+
+void test('a fresh report also surfaces passing notes for a repeatable qualitative review', () => {
+  const report = renderReport('fake', [
+    {
+      id: 'next-week',
+      category: '明确时间',
+      text: '客户预算还没批，下周再联系。',
+      draft: { note: '预算待批，约定下周回访。' },
+      modelOutput: null,
+      expected: {},
+      failures: [],
+    },
+  ]);
+  for (const term of ['忠实', '简洁', '编造', '预算待批，约定下周回访。'])
+    assert.ok(report.includes(term), term);
+});
+
+void test('offline regression allows only the measured fake extraction gaps', async () => {
+  const knownGaps: Record<string, string[]> = {
+    'wednesday-call': ['缺少跟进建议'],
+    'signed-amount': ['缺少字段建议 phase', '缺少字段建议 amount'],
+    'revised-amount': ['缺少字段建议 amount'],
+    'stage-value': ['缺少字段建议 phase'],
+    'read-only-amount': ['缺少字段建议 phase'],
+    'long-visit': [
+      '跟进时间应为 2026-11-25T01:00:00.000Z',
+      '跟进依据缺少相应的原话',
+    ],
+  };
+  const rows = await evaluate(
+    createAiProvider({ nodeEnv: 'test', provider: 'fake' }),
+    cases,
+  );
+  for (const row of rows) {
+    for (const reason of row.failures)
+      assert.ok(knownGaps[row.id]?.includes(reason), row.id + ' ' + reason);
+  }
+});
