@@ -48,7 +48,7 @@ export function createSearchRecordsTool(
   return {
     name: 'search_records',
     description:
-      'Read visible rows for facts, disambiguation or proposal targets. For a list-page request to find or filter customers for display, use preview_filter. Use page and limit for subsequent pages; the service returns the effective page size. If a compound keyword has no matches, use suggestedQueries for individual searches in the same table with the original filters, unless an exact-only match was requested. Only report broader matches as such; never pass owner or actor overrides. Results are a limited page, never a complete total. ' +
+      'Read visible rows for facts, disambiguation or proposal targets. For a list-page request to find or filter records for display, use preview_filter. Use page and limit for subsequent pages; the service returns the effective page size. If a compound keyword has no matches, use suggestedQueries for individual searches in the same table with the original filters, unless an exact-only match was requested. Only report broader matches as such; never pass owner or actor overrides. Results are a limited page, never a complete total. ' +
       FILTER_FORMAT,
     inputSchema: searchRecordsInput,
     async execute(input) {

@@ -42,43 +42,45 @@ export class FakeAiProvider implements AiProvider {
       conditions,
     });
     const stage = input.fields.find((f) => f.label === '阶段');
-    const amount = input.fields.find((f) => f.label === '预计金额');
+    const amount = input.fields.find(
+      (f) =>
+        ['金额', '预计金额'].includes(f.label) &&
+        ['NUMBER', 'MONEY'].includes(f.type),
+    );
+    const over100k = amount && {
+      fieldKey: amount.fieldKey,
+      operator: 'gt',
+      value: amount.type === 'MONEY' ? '100000' : 100000,
+    };
     const stages = stage?.options
       ?.filter((o) => ['报价', '谈判'].includes(o.label))
       .map((o) => o.key);
     switch (input.text.trim()) {
       case '找我负责的、报价或谈判中、预计金额超过 10 万的客户':
-        if (stages?.length === 2 && stage && amount)
+        if (stages?.length === 2 && stage && over100k)
           return {
             rules: [
               rule([
                 own,
                 { fieldKey: stage.fieldKey, operator: 'in', value: stages },
-                { fieldKey: amount.fieldKey, operator: 'gt', value: '100000' },
+                over100k,
               ]),
             ],
           };
         break;
+      case '找金额超过 10 万的商机':
+        if (over100k) return { rules: [rule([over100k])] };
+        break;
       case '找我负责的、金额超过 10 万的客户':
-        if (amount)
+        if (over100k)
           return {
-            rules: [
-              rule([
-                own,
-                { fieldKey: amount.fieldKey, operator: 'gt', value: '100000' },
-              ]),
-            ],
+            rules: [rule([own, over100k])],
           };
         break;
       case '再加上金额大于 10 万':
-        if (amount && input.currentRule.match === 'all')
+        if (over100k && input.currentRule.match === 'all')
           return {
-            rules: [
-              rule([
-                ...input.currentRule.conditions,
-                { fieldKey: amount.fieldKey, operator: 'gt', value: '100000' },
-              ]),
-            ],
+            rules: [rule([...input.currentRule.conditions, over100k])],
           };
         break;
       case '找值得优先跟进的客户':

@@ -68,7 +68,7 @@ export class AssistantActionsService {
       {
         name: 'preview_filter',
         description:
-          'First tool for finding, filtering or listing matching customers on this list (找、筛选、列出). Pass the user’s request verbatim. The filter service resolves fields and criteria; only the user can apply the preview.',
+          'First tool for finding, filtering or listing matching records in the current table (找、筛选、列出). Pass the user’s request verbatim. The filter service resolves fields and criteria; only the user can apply the preview.',
         inputSchema: textInput,
         execute: async (input) => {
           const preview = await this.filters.preview(actor, objectCode, {

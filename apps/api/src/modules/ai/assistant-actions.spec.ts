@@ -1,3 +1,5 @@
+import { AI_SYSTEM_PROMPT } from './ai-orchestrator';
+import { createSearchRecordsTool } from './tools/search-records.tool';
 import { AssistantActionsService } from './assistant-actions';
 
 describe('assistant action routing', () => {
@@ -31,6 +33,33 @@ describe('assistant action routing', () => {
       requestId: 'turn',
       text: '预算还没批',
     });
+  });
+  it('offers neutral routing instructions and forwards the original request on a custom table', async () => {
+    const request = '找金额超过 10 万的商机';
+    const [preview] = actions.forPage(
+      actor,
+      { objectCode: 'opportunities' },
+      'turn',
+      request,
+      undefined,
+    );
+    const search = createSearchRecordsTool({} as never, actor);
+    for (const instructions of [
+      AI_SYSTEM_PROMPT,
+      preview.description,
+      search.description,
+    ])
+      expect(instructions).not.toMatch(/客户|\bcustomers?\b|\bclient brief\b/i);
+    const action = await preview.execute({ text: request }, 'call');
+    expect(action).toMatchObject({
+      kind: 'filter',
+      objectCode: 'opportunities',
+    });
+    expect(filters.preview).toHaveBeenCalledWith(
+      actor,
+      'opportunities',
+      expect.objectContaining({ text: request }),
+    );
   });
   it('gives list filters the current draft, without changing it', async () => {
     const currentRule = { version: 1, match: 'any', conditions: [] } as const;

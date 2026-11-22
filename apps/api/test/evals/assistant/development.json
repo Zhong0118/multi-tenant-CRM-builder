@@ -54,7 +54,51 @@
       {
         "say": "找我负责的、金额超过 10 万的客户",
         "expect": {
-          "kind": "filter"
+          "kind": "filter",
+          "rule": {
+            "version": 1,
+            "match": "all",
+            "conditions": [
+              {
+                "fieldKey": "$owner",
+                "operator": "in",
+                "value": [
+                  "$me"
+                ]
+              },
+              {
+                "fieldKey": "amount",
+                "operator": "gt",
+                "value": 100000
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "opportunity-amount",
+    "fixture": "opportunities",
+    "actor": "sales",
+    "now": "2026-11-23T01:00:00Z",
+    "context": "list",
+    "steps": [
+      {
+        "say": "找金额超过 10 万的商机",
+        "expect": {
+          "kind": "filter",
+          "rule": {
+            "version": 1,
+            "match": "all",
+            "conditions": [
+              {
+                "fieldKey": "amount",
+                "operator": "gt",
+                "value": "100000"
+              }
+            ]
+          }
         }
       }
     ]
@@ -69,7 +113,8 @@
       {
         "say": "帮我筛选",
         "expect": {
-          "kind": "choose_option"
+          "kind": "choose_option",
+          "filterDirections": true
         }
       }
     ]
@@ -84,7 +129,33 @@
       {
         "say": "找我负责的、报价或谈判中、预计金额超过 10 万的客户",
         "expect": {
-          "kind": "filter"
+          "kind": "filter",
+          "rule": {
+            "version": 1,
+            "match": "all",
+            "conditions": [
+              {
+                "fieldKey": "$owner",
+                "operator": "in",
+                "value": [
+                  "$me"
+                ]
+              },
+              {
+                "fieldKey": "stage",
+                "operator": "in",
+                "value": [
+                  "quote",
+                  "negotiate"
+                ]
+              },
+              {
+                "fieldKey": "amount",
+                "operator": "gt",
+                "value": 100000
+              }
+            ]
+          }
         }
       }
     ]

@@ -198,7 +198,10 @@ export async function evaluate(provider: AiProvider, samples: EvalCase[]) {
       samples,
       async (sample) => {
         // Generation receives user inputs and fixture parameters only. Expected outcomes enter only score().
-        const { ids, actor, tenants } = await setupFixture(harness, sample);
+        const { ids, actor, tenants, objectCode } = await setupFixture(
+          harness,
+          sample,
+        );
         const keyById = new Map(
           Object.entries(ids).map(([key, id]) => [id, key]),
         );
@@ -218,7 +221,7 @@ export async function evaluate(provider: AiProvider, samples: EvalCase[]) {
           sample.context === 'none'
             ? undefined
             : {
-                objectCode: 'customers',
+                objectCode,
                 ...(sample.context === 'list'
                   ? {}
                   : { recordId: ids[sample.context] }),

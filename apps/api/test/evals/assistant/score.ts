@@ -25,7 +25,7 @@ export type TurnInput = {
 };
 export type EvalCase = {
   id: string;
-  fixture: 'sales' | 'team20' | 'team21' | 'tool-failure';
+  fixture: 'sales' | 'opportunities' | 'team20' | 'team21' | 'tool-failure';
   actor: 'sales' | 'admin';
   now: string;
   context: 'none' | 'list' | 'own' | 'hidden';

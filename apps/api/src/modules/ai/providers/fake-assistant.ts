@@ -37,7 +37,7 @@ export async function* simulateAssistant(
   const text =
     typeof answer.otherText === 'string' ? answer.otherText : original;
   const objectCode =
-    typeof page.objectCode === 'string' ? page.objectCode : 'customers';
+    typeof page.objectCode === 'string' ? page.objectCode : undefined;
   let recordId =
     typeof answer.recordId === 'string'
       ? answer.recordId
@@ -90,7 +90,7 @@ export async function* simulateAssistant(
       await call('present_brief', {
         overview: [
           claim(
-            typeof record.title === 'string' ? record.title : '当前客户',
+            typeof record.title === 'string' ? record.title : '当前记录',
             'record',
           ),
         ],
@@ -115,6 +115,7 @@ export async function* simulateAssistant(
         ],
       });
     } else if (
+      objectCode &&
       /各|每个|每位|批量|全部|都/.test(text) &&
       /跟进/.test(text) &&
       /新增|新建|创建|添加|安排|各建/.test(text)
@@ -162,12 +163,13 @@ export async function* simulateAssistant(
           await propose({
             recordId: row.id,
             operationType: 'CREATE_FOLLOW_UP',
-            title: '联系客户',
+            title: '后续联系',
             dueAt,
           });
     } else if (
-      (/张三/.test(text) && /阶段|谈判/.test(text) && /改|设|调/.test(text)) ||
-      /阶段.{0,4}(改|设|调)|改成谈判/.test(text)
+      objectCode &&
+      ((/张三/.test(text) && /阶段|谈判/.test(text) && /改|设|调/.test(text)) ||
+        /阶段.{0,4}(改|设|调)|改成谈判/.test(text))
     ) {
       if (!recordId) {
         const rows = list(
@@ -243,7 +245,7 @@ export async function* simulateAssistant(
           .map((f) => f.label)
           .join('、');
     } else if (/这个客户|这条记录/.test(text) && !recordId) {
-      await choose(['按名称查找客户', '打开客户详情后继续']);
+      await choose(['按名称查找记录', '打开记录详情后继续']);
     } else if (/哪|怎么|几种|两种/.test(text) && !answer.label) {
       await choose(['查询当前情况', '整理沟通后再决定']);
     } else output = '测试回答';

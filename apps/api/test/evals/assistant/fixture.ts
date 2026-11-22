@@ -19,20 +19,21 @@ export async function setupFixture(
     where: { id: base.tenantA.id },
     data: { timezone: tz },
   });
+  const opportunities = spec.fixture === 'opportunities';
   const objectSchema = {
-    code: 'customers',
-    name: '客户',
+    code: opportunities ? 'opportunities' : 'customers',
+    name: opportunities ? '跟单商机' : '客户',
     fields: [
       {
         key: 'name',
-        label: '客户名称',
+        label: opportunities ? '商机名称' : '客户名称',
         type: 'TEXT',
         required: true,
         access: 'EDIT' as const,
       },
       {
         key: 'stage',
-        label: '阶段',
+        label: opportunities ? '商机阶段' : '阶段',
         type: 'SINGLE_SELECT',
         required: false,
         access: 'EDIT' as const,
@@ -46,8 +47,8 @@ export async function setupFixture(
       },
       {
         key: 'amount',
-        label: '金额',
-        type: 'NUMBER',
+        label: opportunities ? '预计金额' : '金额',
+        type: opportunities ? 'MONEY' : 'NUMBER',
         required: false,
         access: 'EDIT' as const,
       },
@@ -88,9 +89,13 @@ export async function setupFixture(
     const cross = key === 'cross';
     const title =
       key === 'own'
-        ? '远山科技'
+        ? opportunities
+          ? '远山设备续约'
+          : '远山科技'
         : key.startsWith('twin-')
-          ? '张三'
+          ? opportunities
+            ? '华东采购项目'
+            : '张三'
           : key === 'hidden'
             ? '私有客户甲'
             : cross
@@ -110,7 +115,7 @@ export async function setupFixture(
         data: {
           name: title,
           stage: 'quote',
-          amount: 12000,
+          amount: opportunities ? (key === 'own' ? '150000' : '100000') : 12000,
           secretMargin: 'EVAL_PRIVATE_MARGIN',
         },
         createdAt: new Date(now.getTime() - 3600000 - index * 1000),
@@ -146,7 +151,13 @@ export async function setupFixture(
     userId: member.userId,
     role: spec.actor === 'admin' ? 'TENANT_ADMIN' : 'EMPLOYEE',
   };
-  return { actor, ids, tz, tenants: [base.tenantA.id, base.tenantB.id] };
+  return {
+    actor,
+    ids,
+    tz,
+    objectCode: objectSchema.code,
+    tenants: [base.tenantA.id, base.tenantB.id],
+  };
 }
 
 export async function businessSnapshot(db: PrismaClient, tenants: string[]) {

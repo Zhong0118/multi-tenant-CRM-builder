@@ -91,3 +91,38 @@ it('distinguishes an inventory of editable fields from unsupported field changes
   expect(describe).not.toHaveBeenCalled();
   expect(await run('这张表有哪些可编辑字段')).toContain('可用字段：名称');
 });
+
+it.each([
+  ['找金额超过 10 万的商机', '预计金额', 'MONEY', '100000', []],
+  [
+    '找我负责的、金额超过 10 万的客户',
+    '金额',
+    'NUMBER',
+    100000,
+    [{ fieldKey: '$owner', operator: 'in', value: ['$me'] }],
+  ],
+] as const)(
+  'uses the published amount field and its wire type for %s',
+  async (text, label, type, value, shared) => {
+    const output = await new FakeAiProvider().generateFilter(
+      {
+        text,
+        fields: [{ fieldKey: 'total', label, type, operators: ['gt'] }],
+        currentRule: { version: 1, match: 'all', conditions: [] },
+        relativeDates: [],
+        followUpAssignees: ['$me'],
+        today: '2026-11-23',
+      },
+      new AbortController().signal,
+    );
+    expect(output).toEqual({
+      rules: [
+        {
+          version: 1,
+          match: 'all',
+          conditions: [...shared, { fieldKey: 'total', operator: 'gt', value }],
+        },
+      ],
+    });
+  },
+);
