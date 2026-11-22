@@ -164,7 +164,10 @@ void test('the offline development run exercises the complete generator and pres
     createAiProvider({ nodeEnv: 'test', provider: 'fake' }),
     cases,
   );
-  assert.equal(rows.length, 30);
+  assert.deepEqual(
+    rows.map((row) => row.id),
+    cases.map((sample) => sample.id),
+  );
   for (const row of rows) {
     assert.ok(row.modelOutput && row.draft, row.id);
     const follow = row.draft.followUp;
