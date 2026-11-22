@@ -69,6 +69,7 @@ export class AssistantBrief {
             )
             .map(
               (c) =>
+                (key === 'risks' || key === 'next' ? '推断 · ' : '') +
                 c.text +
                 ' 【' +
                 { record: '记录', activities: '活动', followups: '跟进' }[

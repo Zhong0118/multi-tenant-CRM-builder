@@ -18,11 +18,12 @@ describe('record brief references', () => {
         overview: [claim],
         progress: [],
         risks: [{ text: '不可显示', source: 'followups' }],
-        next: [],
+        next: [{ text: '优先核实预算', source: 'record' }],
       },
       'one',
     );
     expect(brief.content).toContain('客户处于报价阶段');
+    expect(brief.content).toContain('推断 · 优先核实预算 【记录】');
     expect(brief.content).not.toContain('不可显示');
     expect(brief.content).toContain('暂无可见依据');
   });
