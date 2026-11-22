@@ -278,6 +278,10 @@ export function normalizeStaticFieldValue(
     case 'BOOLEAN':
       if (typeof value !== 'boolean') invalid(field);
       return value;
+    default:
+      throw new Error(
+        `Unsupported published field type: ${String(field.type satisfies never)}`,
+      );
   }
 }
 

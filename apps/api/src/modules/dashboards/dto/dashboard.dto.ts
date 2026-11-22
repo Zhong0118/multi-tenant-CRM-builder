@@ -22,6 +22,8 @@ import {
   getSchemaPath,
 } from '@nestjs/swagger';
 
+import { PUBLISHED_FIELD_TYPES } from '../../objects/object-schema';
+
 export class DashboardConfigurationIssueDto {
   @ApiProperty() code!: string;
   @ApiProperty() path!: string;
@@ -284,22 +286,7 @@ export class DashboardPublishedFieldDto {
   validation?: Record<string, unknown>;
   @ApiProperty() fieldKey!: string;
   @ApiProperty() label!: string;
-  @ApiProperty({
-    enum: [
-      'TEXT',
-      'TEXTAREA',
-      'PHONE',
-      'EMAIL',
-      'NUMBER',
-      'MONEY',
-      'DATE',
-      'DATETIME',
-      'SINGLE_SELECT',
-      'MULTI_SELECT',
-      'MEMBER',
-      'BOOLEAN',
-    ],
-  })
+  @ApiProperty({ enum: PUBLISHED_FIELD_TYPES })
   type!: string;
 }
 
