@@ -40,14 +40,42 @@ const condition = z.strictObject({
     z.null(),
   ]),
 });
-export const filterWireSchema = z.strictObject({
-  rules: z
-    .array(
-      z.strictObject({
-        version: z.literal(1),
-        match: z.enum(['all', 'any']),
-        conditions: z.array(condition).max(16),
-      }),
-    )
-    .max(4),
+const group = z.strictObject({
+  match: z.enum(['all', 'any']),
+  conditions: z.array(condition).max(16),
 });
+export const filterWireSchema = z.strictObject({
+  rules: z.array(group.extend({ version: z.literal(1) })).max(4),
+});
+
+export const filterModelSchema = group.extend({
+  conditions: z.array(z.union([condition, group])).max(16),
+  clarification: z
+    .strictObject({
+      phrase: z.string(),
+      interpretations: z.array(z.array(condition).min(1).max(16)).min(2).max(4),
+    })
+    .nullable(),
+});
+
+export function editableFilterRules(
+  output: z.infer<typeof filterModelSchema>,
+  text: string,
+) {
+  const { match, clarification } = output;
+  const conditions: z.infer<typeof condition>[] = [];
+  for (const term of output.conditions) {
+    if ('conditions' in term) return { rules: [] };
+    conditions.push(term);
+  }
+  const base = { version: 1 as const, match, conditions };
+  if (!clarification) return { rules: conditions.length ? [base] : [] };
+  const phrase = clarification.phrase.trim();
+  if (!phrase || !text.includes(phrase)) return { rules: [] };
+  return {
+    rules: clarification.interpretations.map((terms) => ({
+      ...base,
+      conditions: [...conditions, ...terms],
+    })),
+  };
+}
