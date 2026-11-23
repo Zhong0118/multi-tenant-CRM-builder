@@ -12,8 +12,6 @@ export type Plan =
 export type Feature = Plan["features"][number];
 export type Summary =
   paths["/api/v1/platform/tenants/{id}/ai"]["get"]["responses"][200]["content"]["application/json"];
-export type Settings =
-  paths["/api/v1/platform/ai-settings"]["get"]["responses"][200]["content"]["application/json"];
 export const names: Record<Feature, string> = {
   assistant: "对话助手",
   write_proposal: "AI 写入提议",
@@ -35,7 +33,7 @@ export function tokenAmount(input: string) {
   if (!/^\d{1,15}(\.\d{1,4})?$/.test(input)) return null;
   const [a, b = ""] = input.split(".");
   const n = BigInt(a) * BigInt(10000) + BigInt(b.padEnd(4, "0"));
-  return n <= BigInt(9223372036854775807) ? n.toString() : null;
+  return n <= BigInt("9223372036854775807") ? n.toString() : null;
 }
 export async function result<T>(
   request: Promise<{ data?: T; error?: unknown; response: Response }>,
