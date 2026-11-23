@@ -1,0 +1,59 @@
+[
+  {
+    "id": "dev-21",
+    "failures": [],
+    "violations": [],
+    "kind": "blueprint",
+    "tables": [
+      "藏品",
+      "修复方案",
+      "修复工序"
+    ],
+    "admitted": true
+  },
+  {
+    "id": "dev-22",
+    "failures": [
+      "无可确认方案"
+    ],
+    "violations": [],
+    "kind": "blueprint",
+    "tables": [
+      "设备",
+      "备件",
+      "巡检单",
+      "领料单"
+    ],
+    "admitted": false
+  },
+  {
+    "id": "dev-23",
+    "failures": [],
+    "violations": [],
+    "kind": "blueprint",
+    "tables": [
+      "客户",
+      "合同",
+      "项目",
+      "回款",
+      "开票"
+    ],
+    "admitted": true
+  },
+  {
+    "id": "holdout-08",
+    "failures": [],
+    "violations": [],
+    "kind": "blueprint",
+    "tables": [
+      "职位",
+      "候选人",
+      "推荐单",
+      "面试",
+      "录用通知",
+      "到岗登记",
+      "保用期回访"
+    ],
+    "admitted": false
+  }
+]
