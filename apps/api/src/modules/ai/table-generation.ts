@@ -1,16 +1,19 @@
 import { randomUUID } from 'node:crypto';
 import type {
   FieldPlan,
+  TableBlueprint,
   TableBuilderAnswer,
   TableBuilderResult,
   TableBuilderTarget,
   TablePlan,
 } from '@crm/contracts';
 import { z } from 'zod';
+import { normalizeOmissions } from './table-omissions';
 import { ApiException } from '../../common/errors/api.exception';
 import { isPublishedFieldType } from '../objects/object-schema';
 import type { AiProvider } from './ai-provider';
 import {
+  allocateSuggestedCode,
   builtInReason,
   blueprintCode,
   canonicalName,
@@ -83,18 +86,21 @@ export interface TableGenerationInput {
   existing: BlueprintMetadata[];
   answers?: TableBuilderAnswer[];
   table?: TablePlan;
+  omitted?: TableBlueprint['omitted'];
   target?: TableBuilderTarget;
 }
 // For refinements the provider receives only these editable properties. Even the
 // target table's database ID and existing field keys stay outside the prompt.
-function modelTable(t: TablePlan): ModelTable {
+function modelTable(t: TablePlan, codeSuggestion: string): ModelTable {
   return {
     name: t.name,
+    codeSuggestion,
     description: t.description ?? null,
     icon: t.icon ?? null,
     reason: t.reason,
     fields: t.fields.map((f) => ({
       ref: f.id,
+      fieldKeySuggestion: f.fieldKey,
       label: f.label,
       type: f.type,
       required: f.required,
@@ -118,10 +124,13 @@ function modelTable(t: TablePlan): ModelTable {
     titleRef: t.titleFieldId || null,
     columnRefs: t.view.columnIds,
     viewReason: t.view.reason,
-    employeeIntent: t.employeeIntent.map(({ request, reason }) => ({
-      request,
-      reason,
-    })),
+    employeeIntent: t.employeeIntent.map(
+      ({ request, reason, recommendation }) => ({
+        request,
+        reason,
+        recommendation: recommendation ?? null,
+      }),
+    ),
   };
 }
 function providerInput(
@@ -142,9 +151,11 @@ function providerInput(
         definitions[i].options.find((o) => o.id === a.choiceId)!.label,
     })),
     existing: [],
-    mayAsk: input.mode === 'create' && answers.length < definitions.length,
+    mayAsk: input.mode === 'create' && answers.length === 0,
     ...(dest ? { targetName: dest.name } : {}),
-    ...(input.table ? { table: modelTable(input.table) } : {}),
+    ...(input.table
+      ? { table: modelTable(input.table, dest ? '' : input.table.code) }
+      : {}),
   };
   const scope = canonicalName(
     [
@@ -234,25 +245,25 @@ export async function generateTablePlan(
       '模型返回的方案格式有误，请重新生成。',
     );
   const output = parsed.data;
-  if (output.needsDetails) {
+  if (output.needsDetails && !output.tables.length && !output.omitted.length) {
     if (!request.mayAsk)
       invalid('needsDetails', '模型未完成方案，请重试或补充说明。');
     return { kind: 'question', ...definitions[request.answers.length] };
   }
   if ((dest || input.mode === 'refine') && output.tables.length !== 1)
     invalid('tables', '模型应仅返回所选表，请重试。');
-  const omitted = output.omitted.map(({ request, reason, alternative }) => ({
-    request,
-    reason,
-    ...(alternative ? { alternative } : {}),
-  }));
-  function omit(request: string, reason: string, alternative: string) {
-    if (
-      !omitted.some((o) => canonicalName(o.request) === canonicalName(request))
-    )
-      omitted.push({ request, reason, alternative });
+  const omissions = [...output.omitted];
+  function omit(
+    request: string,
+    reason: string,
+    alternative: string,
+    tableName: string | null = null,
+    manualField: (typeof omissions)[number]['manualField'] = null,
+  ) {
+    omissions.push({ request, reason, alternative, tableName, manualField });
   }
   const tables: TablePlan[] = [];
+  const usedCodes = new Set(input.existing.map((o) => o.code));
   for (const [ti, t] of output.tables.entries()) {
     const path = 'tables.' + ti;
     if (
@@ -275,6 +286,13 @@ export async function generateTablePlan(
     const seen = new Set<string>();
     const fieldIds = new Map<string, string>();
     const fields: FieldPlan[] = [];
+    const retainedRefs = new Set(t.fields.map((f) => f.ref));
+    const usedKeys = new Set([
+      ...(dest?.fields.map((f) => f.fieldKey) ?? []),
+      ...(previous?.fields
+        .filter((f) => retainedRefs.has(f.id))
+        .map((f) => f.fieldKey) ?? []),
+    ]);
     for (const [fi, f] of t.fields.entries()) {
       const fieldPath = path + '.fields.' + fi;
       const old = previous?.fields.find((p) => p.id === f.ref);
@@ -288,6 +306,10 @@ export async function generateTablePlan(
           f.label,
           platform ? '平台已提供这项能力。' : '本版不支持此字段类型。',
           (platform ?? alternative)!,
+          t.name,
+          !platform && !['ATTACHMENT', 'FILE'].includes(f.type.toUpperCase())
+            ? { label: f.label, fieldKey: f.fieldKeySuggestion, type: 'TEXT' }
+            : null,
         );
         continue;
       }
@@ -317,7 +339,14 @@ export async function generateTablePlan(
       });
       fields.push({
         id: fieldId,
-        fieldKey: old?.fieldKey ?? blueprintCode(fieldId, 'field'),
+        fieldKey:
+          old?.fieldKey ??
+          allocateSuggestedCode(
+            f.fieldKeySuggestion,
+            fieldId,
+            'field',
+            usedKeys,
+          ),
         label: f.label,
         type: f.type,
         required: f.required,
@@ -337,7 +366,10 @@ export async function generateTablePlan(
         invalid(path + '.view', '模型返回了无效的标题或视图字段引用，请重试。');
     tables.push({
       id,
-      code: dest?.code ?? previous?.code ?? blueprintCode(id, 'object'),
+      code:
+        dest?.code ??
+        previous?.code ??
+        allocateSuggestedCode(t.codeSuggestion, id, 'object', usedCodes),
       name: t.name,
       ...(t.description !== null ? { description: t.description } : {}),
       ...(t.icon !== null ? { icon: t.icon } : {}),
@@ -353,6 +385,13 @@ export async function generateTablePlan(
       employeeIntent: t.employeeIntent,
     });
   }
+  const omitted = normalizeOmissions(
+    omissions,
+    tables,
+    input.omitted,
+    input.table,
+    dest?.fields.map((f) => f.fieldKey),
+  );
   return {
     kind: 'blueprint',
     blueprint: { version: 1, tables, assumptions: output.assumptions, omitted },

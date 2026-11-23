@@ -1,6 +1,10 @@
-import { caseFold } from 'unicode-case-folding';
+import {
+  FIELD_KEY_PATTERN,
+  NEW_OBJECT_CODE_PATTERN,
+} from '../objects/object-code';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import { TABLE_EMPLOYEE_PRESETS } from '@crm/contracts';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import {
@@ -63,27 +67,33 @@ export const blueprintSchema = z.strictObject({
         request: reason,
         reason,
         alternative: reason.optional(),
+        tableId: id.optional(),
+        manualField: fieldSchema.optional(),
       }),
     )
     .max(300),
-  tables: z
-    .array(
-      z.strictObject({
-        id,
-        code: assigned,
-        name: label,
-        description: z.string().max(2000).optional(),
-        icon: z.string().max(64).optional(),
-        reason,
-        fields: z.array(fieldSchema).max(40),
-        titleFieldId: z.union([id, z.literal('')]),
-        view: z.strictObject({ columnIds: z.array(id).max(40), reason }),
-        employeeIntent: z
-          .array(z.strictObject({ request: reason, reason }))
-          .max(40),
-      }),
-    )
-    .max(12),
+  tables: z.array(
+    z.strictObject({
+      id,
+      code: assigned,
+      name: label,
+      description: z.string().max(2000).optional(),
+      icon: z.string().max(64).optional(),
+      reason,
+      fields: z.array(fieldSchema).max(40),
+      titleFieldId: z.union([id, z.literal('')]),
+      view: z.strictObject({ columnIds: z.array(id).max(40), reason }),
+      employeeIntent: z
+        .array(
+          z.strictObject({
+            request: reason,
+            reason,
+            recommendation: z.enum(TABLE_EMPLOYEE_PRESETS).nullish(),
+          }),
+        )
+        .max(40),
+    }),
+  ),
 });
 export const targetSchema = z.strictObject({
   objectId: id,
@@ -98,8 +108,34 @@ export function blueprintCode(
     (kind === 'object' ? 'obj-' : kind === 'field' ? 'field_' : 'opt_') + digest
   );
 }
+export function allocateSuggestedCode(
+  suggestion: string,
+  id: string,
+  kind: 'object' | 'field',
+  used: Set<string>,
+) {
+  const pattern =
+    kind === 'object' ? NEW_OBJECT_CODE_PATTERN : FIELD_KEY_PATTERN;
+  let code = suggestion;
+  if (code.length > 64 || !pattern.test(code) || used.has(code)) {
+    const base = blueprintCode(id, kind);
+    const separator = kind === 'object' ? '-' : '_';
+    code = base;
+    let suffix = 2;
+    while (used.has(code)) code = base + separator + suffix++;
+  }
+  used.add(code);
+  return code;
+}
+function isFallbackCode(code: string, id: string, kind: 'object' | 'field') {
+  const base = blueprintCode(id, kind);
+  return (
+    code === base ||
+    code.replace(kind === 'object' ? /-[0-9]+$/ : /_[0-9]+$/, '') === base
+  );
+}
 export const canonicalName = (s: string) =>
-  caseFold(s.normalize('NFKC').trim().replace(/\s+/gu, ' '));
+  s.normalize('NFKC').trim().replace(/\s+/gu, ' ').toLowerCase();
 const platformFeatures = [
   {
     names: [
@@ -237,11 +273,7 @@ export function validateBlueprint(
   if (blueprint.tables.length > 6)
     add(
       'TABLE_COUNT',
-      '最多可创建 6 张，请选择或分批：' +
-        blueprint.tables
-          .slice(6)
-          .map((t) => t.name)
-          .join('、'),
+      `一次最多创建 6 张，请移除 ${blueprint.tables.length - 6} 张`,
       'tables',
     );
   if (dest?.status === 'ARCHIVED')
@@ -252,6 +284,7 @@ export function validateBlueprint(
       ...(o.publishedName ? [canonicalName(o.publishedName)] : []),
     ]),
   );
+  const codes = new Set(existing.map((o) => o.code));
   const ids = new Set<string>();
   for (const t of blueprint.tables) {
     const fail = (
@@ -266,13 +299,30 @@ export function validateBlueprint(
       ids.add(value);
     };
     track(t.id);
-    t.code = dest?.code ?? blueprintCode(t.id, 'object');
-    if (
-      !dest &&
-      (names.has(canonicalName(t.name)) ||
-        existing.some((o) => o.code === t.code))
-    )
-      fail('NAME_IN_USE', '业务表名称或编码已占用。', 'name');
+    if (dest && t.code !== dest.code)
+      fail('TARGET_CHANGED', '补字段不能修改原表编码。', 'code');
+    if (!dest) {
+      if (!NEW_OBJECT_CODE_PATTERN.test(t.code))
+        fail(
+          'CODE_INVALID',
+          '表编码须以小写英文字母开头，仅支持小写字母、数字和单个连字符。',
+          'code',
+        );
+      else if (codes.has(t.code))
+        fail('NAME_IN_USE', '表编码已占用，请修改。', 'code');
+      else if (isFallbackCode(t.code, t.id, 'object'))
+        add(
+          'CODE_FALLBACK',
+          '编码建议无效或已占用，已使用备用表编码，可在此修改。',
+          'code',
+          t.id,
+          undefined,
+          false,
+        );
+      codes.add(t.code);
+      if (names.has(canonicalName(t.name)))
+        fail('NAME_IN_USE', '业务表名称已占用。', 'name');
+    }
     if (
       dest &&
       (t.name !== dest.name ||
@@ -295,15 +345,31 @@ export function validateBlueprint(
         'fields',
       );
     const fieldNames = new Set(dest?.fields.map((f) => canonicalName(f.label)));
+    const fieldKeys = new Set(dest?.fields.map((f) => f.fieldKey));
     for (const f of t.fields) {
       track(f.id);
-      f.fieldKey = blueprintCode(f.id, 'field');
+      if (!FIELD_KEY_PATTERN.test(f.fieldKey))
+        fail(
+          'CODE_INVALID',
+          '字段键须以小写英文字母开头，仅支持小写字母、数字和单个下划线。',
+          'fieldKey',
+          f.id,
+        );
+      else if (fieldKeys.has(f.fieldKey))
+        fail('NAME_IN_USE', '字段键已占用，请修改。', 'fieldKey', f.id);
+      else if (isFallbackCode(f.fieldKey, f.id, 'field'))
+        add(
+          'CODE_FALLBACK',
+          '编码建议无效或已占用，已使用备用字段键，可在此修改。',
+          'fieldKey',
+          t.id,
+          f.id,
+          false,
+        );
+      fieldKeys.add(f.fieldKey);
       if (!f.label) fail('FIELD_NAME', '请填写字段名称。', 'label', f.id);
-      if (
-        fieldNames.has(canonicalName(f.label)) ||
-        dest?.fields.some((d) => d.fieldKey === f.fieldKey)
-      )
-        fail('NAME_IN_USE', '已有同名字段或字段键。', 'label', f.id);
+      if (fieldNames.has(canonicalName(f.label)))
+        fail('NAME_IN_USE', '已有同名字段。', 'label', f.id);
       fieldNames.add(canonicalName(f.label));
       const builtin = builtInReason(f.label);
       if (builtin)
@@ -422,7 +488,20 @@ export function validateBlueprint(
         ),
       },
     });
+    if (
+      dest &&
+      analysis.blocking.some((i) => i.code === 'REQUIRED_FIELD_HIDDEN')
+    )
+      add(
+        'APPENDED_REQUIRED_FIELDS_HIDDEN',
+        '新增必填字段的员工权限尚未配置',
+        'fields',
+        t.id,
+        undefined,
+        false,
+      );
     for (const issue of analysis.blocking) {
+      if (issue.code === 'REQUIRED_FIELD_HIDDEN') continue;
       if (dest && issue.code === 'TITLE_FIELD_REQUIRED') continue;
       add(
         issue.code,
@@ -430,9 +509,17 @@ export function validateBlueprint(
         issue.fieldKey ? 'fields' : 'table',
         t.id,
         t.fields.find((f) => f.fieldKey === issue.fieldKey)?.id,
-        issue.code !== 'REQUIRED_FIELD_HIDDEN',
       );
     }
   }
+  if (!dest && blueprint.tables.length)
+    add(
+      'EMPLOYEE_ACCESS_UNCONFIGURED',
+      '员工权限尚未配置',
+      'employeePresets',
+      undefined,
+      undefined,
+      false,
+    );
   return { blueprint, issues };
 }

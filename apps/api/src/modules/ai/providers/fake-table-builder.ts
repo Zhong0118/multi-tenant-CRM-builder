@@ -14,6 +14,7 @@ function field(
 ): ModelField {
   return {
     ref: 'new:' + ref,
+    fieldKeySuggestion: ref,
     label,
     type,
     reason,
@@ -26,10 +27,16 @@ function field(
     })),
   };
 }
-function table(name: string, fields: ModelField[], reason: string): ModelTable {
+function table(
+  name: string,
+  codeSuggestion: string,
+  fields: ModelField[],
+  reason: string,
+): ModelTable {
   fields[0].required = true;
   return {
     name,
+    codeSuggestion,
     fields,
     description: null,
     icon: null,
@@ -44,6 +51,7 @@ function rentalTables(): ModelTable[] {
   return [
     table(
       '客户',
+      'customers',
       [
         field('name', '客户名称', 'TEXT', '用于识别客户。'),
         field('phone', '联系电话', 'PHONE', '联系客户时使用。'),
@@ -53,6 +61,7 @@ function rentalTables(): ModelTable[] {
     ),
     table(
       '合同',
+      'rental-contracts',
       [
         field('name', '合同名称', 'TEXT', '用于识别合同。'),
         field('rent', '租金', 'MONEY', '登记约定的租赁金额。'),
@@ -68,6 +77,7 @@ function rentalTables(): ModelTable[] {
     ),
     table(
       '设备',
+      'equipment',
       [
         field('name', '设备名称', 'TEXT', '用于识别出租设备。'),
         field('model', '设备型号', 'TEXT', '标明具体设备规格。'),
@@ -81,6 +91,7 @@ function rentalTables(): ModelTable[] {
     ),
     table(
       '回款',
+      'payments',
       [
         field('name', '回款名称', 'TEXT', '识别收款记录。'),
         field('amount', '回款金额', 'MONEY', '核对实际收到的金额。'),
@@ -93,6 +104,7 @@ function rentalTables(): ModelTable[] {
 const englishCustomer = () =>
   table(
     'Customers',
+    'customers',
     [
       field('name', 'Customer name', 'TEXT', 'Identifies the customer.'),
       field('phone', 'Phone', 'PHONE', 'Stores the customer contact number.'),
@@ -122,7 +134,7 @@ export function fakeTableBlueprint(
       !updated.fields.some((f) => f.label === '签约日期')
     )
       updated.fields.push(
-        field('signed', '签约日期', 'DATE', '记录双方签订合同的日期。'),
+        field('sign_date', '签约日期', 'DATE', '记录双方签订合同的日期。'),
       );
     if (/(?:去掉|删除|移除)(?:字段)?[「“]?备注/.test(text))
       updated.fields = updated.fields.filter((f) => f.label !== '备注');
@@ -156,6 +168,7 @@ export function fakeTableBlueprint(
     output.tables = [
       {
         name: input.targetName,
+        codeSuggestion: '',
         description: null,
         icon: null,
         reason: '补充目标表需要采集的信息。',
@@ -172,15 +185,10 @@ export function fakeTableBlueprint(
     (a) => a.key === 'entities',
   )?.label;
   const vague =
-    /^(?:请|帮我|想|我想|我们想|用AI|用 AI )*(?:建表|建个表|搭个系统|管理业务|管理客户业务|做一个CRM|建一个CRM|建一个业务管理系统|建一张业务表|建个业务表|搭建CRM|建一个系统)[。！!？? ]*$/iu.test(
+    /^(?:请|帮我|想|我想|我们想|用AI|用 AI )*(?:建表|建个表|搭个系统|管理业务|做一个CRM|建一?个\s*CRM|建一个业务管理系统|建一张业务表|建个业务表|搭建CRM|建一个系统)[。！!？? ]*$/iu.test(
       text,
     );
-  if (
-    input.mayAsk &&
-    (vague ||
-      (!/租赁|客户|合同|设备|回款|customers?/iu.test(text) &&
-        !explicitEntities))
-  ) {
+  if (input.mayAsk && vague) {
     output.needsDetails = true;
     return output;
   }
@@ -191,6 +199,7 @@ export function fakeTableBlueprint(
       : [
           table(
             explicitEntities,
+            'records',
             [field('name', '名称', 'TEXT', '作为业务记录的标题。')],
             '管理所选业务资料。',
           ),
@@ -198,6 +207,20 @@ export function fakeTableBlueprint(
     output.assumptions = [
       '先按所选主要实体建立一张表，可在确认前补充其他字段。',
     ];
+  } else if (input.answers.some((a) => a.key === 'industry')) {
+    const industry = input.answers.find((a) => a.key === 'industry')!.label;
+    output.tables =
+      industry === '设备租赁'
+        ? rentalTables()
+        : [
+            table(
+              '项目',
+              'projects',
+              [field('name', '项目名称', 'TEXT', '识别业务项目。')],
+              '登记业务项目。',
+            ),
+          ];
+    output.assumptions = ['先按所选行业提供可编辑的常用业务表。'];
   } else if (/customers?/i.test(text)) {
     output.tables = [englishCustomer()];
   } else if (
@@ -212,6 +235,7 @@ export function fakeTableBlueprint(
     for (const t of output.tables)
       t.employeeIntent.push({
         request: '销售只能看自己的记录',
+        recommendation: 'CREATE_OWN',
         reason: '草稿默认隐藏全部字段，管理员可在发布前配置员工权限。',
       });
   const capabilities = [
@@ -239,12 +263,16 @@ export function fakeTableBlueprint(
         request: entry.request,
         reason: '使用已有平台能力或手动配置。',
         alternative: entry.alternative,
+        tableName: null,
+        manualField: null,
       });
   if (!output.tables.length && !output.omitted.length)
     output.omitted.push({
       request: text.slice(0, 1000),
       reason: '本地模拟器未提供该业务的示例方案。',
       alternative: null,
+      tableName: null,
+      manualField: null,
     });
   return output;
 }

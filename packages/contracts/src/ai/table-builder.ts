@@ -1,3 +1,5 @@
+import type { TableEmployeePreset } from "./table-employee-presets.js";
+
 export type BlueprintFieldType =
   | "TEXT"
   | "TEXTAREA"
@@ -38,13 +40,23 @@ export interface TablePlan {
   fields: FieldPlan[];
   titleFieldId: string;
   view: { columnIds: string[]; reason: string };
-  employeeIntent: { request: string; reason: string }[];
+  employeeIntent: {
+    request: string;
+    reason: string;
+    recommendation?: TableEmployeePreset | null;
+  }[];
 }
 export interface TableBlueprint {
   version: 1;
   tables: TablePlan[];
   assumptions: string[];
-  omitted: { request: string; reason: string; alternative?: string }[];
+  omitted: {
+    request: string;
+    reason: string;
+    alternative?: string;
+    tableId?: string;
+    manualField?: FieldPlan;
+  }[];
 }
 export interface TableBuilderIssue {
   tableId?: string;
