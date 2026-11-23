@@ -341,6 +341,55 @@
         ],
         "type": "object"
       },
+      "AnalyzeDraftGroupDto": {
+        "properties": {
+          "objectIds": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 6,
+            "type": "array"
+          }
+        },
+        "required": ["objectIds"],
+        "type": "object"
+      },
+      "AnalyzedDraftObjectDto": {
+        "properties": {
+          "analysis": {
+            "$ref": "#/components/schemas/PublicationAnalysisResponseDto"
+          },
+          "code": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nextPublicationNumber": {
+            "type": "number"
+          },
+          "poolConfigVersion": {
+            "type": "number"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "code",
+          "version",
+          "poolConfigVersion",
+          "nextPublicationNumber",
+          "analysis"
+        ],
+        "type": "object"
+      },
       "ApiErrorResponseDto": {
         "properties": {
           "code": {
@@ -3462,6 +3511,49 @@
         "required": ["accepted"],
         "type": "object"
       },
+      "DraftGroupAnalysisDto": {
+        "properties": {
+          "blocking": {
+            "items": {
+              "$ref": "#/components/schemas/DraftGroupBlockingIssueDto"
+            },
+            "type": "array"
+          },
+          "objects": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyzedDraftObjectDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["objects", "blocking"],
+        "type": "object"
+      },
+      "DraftGroupBlockingIssueDto": {
+        "properties": {
+          "actionKey": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "fieldKey": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "objectId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "transitionKey": {
+            "type": "string"
+          }
+        },
+        "required": ["code", "message", "objectId"],
+        "type": "object"
+      },
       "DraftSelectionDto": {
         "properties": {
           "editedValue": {
@@ -5748,6 +5840,19 @@
         "required": ["expectedVersion"],
         "type": "object"
       },
+      "PublishDraftGroupDto": {
+        "properties": {
+          "objects": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateInitializationExpectedObjectDto"
+            },
+            "maxItems": 6,
+            "type": "array"
+          }
+        },
+        "required": ["objects"],
+        "type": "object"
+      },
       "PublishTemplateInitializationDto": {
         "properties": {
           "objects": {
@@ -7259,6 +7364,260 @@
           }
         },
         "required": ["id", "expiresAt", "isCurrent", "createdAt"],
+        "type": "object"
+      },
+      "TableBlueprint": {
+        "additionalProperties": false,
+        "properties": {
+          "assumptions": {
+            "items": {
+              "maxLength": 1000,
+              "type": "string"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "omitted": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "alternative": {
+                  "maxLength": 1000,
+                  "type": "string"
+                },
+                "reason": {
+                  "maxLength": 1000,
+                  "type": "string"
+                },
+                "request": {
+                  "maxLength": 1000,
+                  "type": "string"
+                }
+              },
+              "required": ["request", "reason"],
+              "type": "object"
+            },
+            "maxItems": 300,
+            "type": "array"
+          },
+          "tables": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                "description": {
+                  "maxLength": 2000,
+                  "type": "string"
+                },
+                "employeeIntent": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "reason": {
+                        "maxLength": 1000,
+                        "type": "string"
+                      },
+                      "request": {
+                        "maxLength": 1000,
+                        "type": "string"
+                      }
+                    },
+                    "required": ["request", "reason"],
+                    "type": "object"
+                  },
+                  "maxItems": 40,
+                  "type": "array"
+                },
+                "fields": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "fieldKey": {
+                        "maxLength": 64,
+                        "type": "string"
+                      },
+                      "id": {
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                        "type": "string"
+                      },
+                      "label": {
+                        "maxLength": 100,
+                        "type": "string"
+                      },
+                      "options": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "id": {
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                              "type": "string"
+                            },
+                            "key": {
+                              "maxLength": 64,
+                              "type": "string"
+                            },
+                            "label": {
+                              "maxLength": 100,
+                              "type": "string"
+                            },
+                            "reason": {
+                              "maxLength": 1000,
+                              "type": "string"
+                            }
+                          },
+                          "required": ["id", "key", "label", "reason"],
+                          "type": "object"
+                        },
+                        "maxItems": 100,
+                        "type": "array"
+                      },
+                      "reason": {
+                        "maxLength": 1000,
+                        "type": "string"
+                      },
+                      "required": {
+                        "type": "boolean"
+                      },
+                      "type": {
+                        "enum": [
+                          "TEXT",
+                          "TEXTAREA",
+                          "PHONE",
+                          "EMAIL",
+                          "NUMBER",
+                          "MONEY",
+                          "DATE",
+                          "DATETIME",
+                          "SINGLE_SELECT",
+                          "MULTI_SELECT",
+                          "MEMBER",
+                          "BOOLEAN"
+                        ],
+                        "type": "string"
+                      },
+                      "validation": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "country": {
+                            "maxLength": 16,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "max": {
+                            "type": "number"
+                          },
+                          "maxLength": {
+                            "maximum": 10000,
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          "min": {
+                            "type": "number"
+                          },
+                          "minLength": {
+                            "maximum": 10000,
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          "scale": {
+                            "maximum": 12,
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "fieldKey",
+                      "label",
+                      "type",
+                      "required",
+                      "reason"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 40,
+                  "type": "array"
+                },
+                "icon": {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                "id": {
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                  "type": "string"
+                },
+                "name": {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                "reason": {
+                  "maxLength": 1000,
+                  "type": "string"
+                },
+                "titleFieldId": {
+                  "anyOf": [
+                    {
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                      "type": "string"
+                    },
+                    {
+                      "enum": [""],
+                      "type": "string"
+                    }
+                  ]
+                },
+                "view": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "columnIds": {
+                      "items": {
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                        "type": "string"
+                      },
+                      "maxItems": 40,
+                      "type": "array"
+                    },
+                    "reason": {
+                      "maxLength": 1000,
+                      "type": "string"
+                    }
+                  },
+                  "required": ["columnIds", "reason"],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "id",
+                "code",
+                "name",
+                "reason",
+                "fields",
+                "titleFieldId",
+                "view",
+                "employeeIntent"
+              ],
+              "type": "object"
+            },
+            "maxItems": 12,
+            "type": "array"
+          },
+          "version": {
+            "enum": [1],
+            "type": "number"
+          }
+        },
+        "required": ["version", "assumptions", "omitted", "tables"],
         "type": "object"
       },
       "TeamActivityCountsDto": {
@@ -11475,6 +11834,568 @@
         "tags": ["ai"]
       }
     },
+    "/api/v1/workspaces/{tenantCode}/ai/table-builder/confirm": {
+      "post": {
+        "operationId": "TableBuilderController_confirm",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "blueprint": {
+                    "$ref": "#/components/schemas/TableBlueprint"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "expectedVersion": {
+                        "maximum": 9007199254740991,
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "objectId": {
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                        "type": "string"
+                      }
+                    },
+                    "required": ["objectId", "expectedVersion"],
+                    "type": "object"
+                  }
+                },
+                "required": ["blueprint"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "objects": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "code": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "type": "string"
+                          },
+                          "version": {
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "type": "integer"
+                          }
+                        },
+                        "required": ["id", "code", "version"],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": ["objects"],
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["ai-table-builder"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/ai/table-builder/preview": {
+      "post": {
+        "operationId": "TableBuilderController_preview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "answers": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "choiceId": {
+                          "maxLength": 40,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "key": {
+                          "enum": ["industry", "entities"],
+                          "type": "string"
+                        },
+                        "otherText": {
+                          "maxLength": 300,
+                          "type": "string"
+                        }
+                      },
+                      "required": ["key", "choiceId"],
+                      "type": "object"
+                    },
+                    "maxItems": 2,
+                    "type": "array"
+                  },
+                  "description": {
+                    "maxLength": 4000,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "expectedVersion": {
+                        "maximum": 9007199254740991,
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "objectId": {
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                        "type": "string"
+                      }
+                    },
+                    "required": ["objectId", "expectedVersion"],
+                    "type": "object"
+                  }
+                },
+                "required": ["description"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "blueprint": {
+                          "$ref": "#/components/schemas/TableBlueprint"
+                        },
+                        "issues": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "blocking": {
+                                "type": "boolean"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "fieldId": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "path": {
+                                "type": "string"
+                              },
+                              "tableId": {
+                                "type": "string"
+                              }
+                            },
+                            "required": ["path", "code", "message", "blocking"],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "kind": {
+                          "enum": ["blueprint"],
+                          "type": "string"
+                        }
+                      },
+                      "required": ["kind", "blueprint", "issues"],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "key": {
+                          "enum": ["industry", "entities"],
+                          "type": "string"
+                        },
+                        "kind": {
+                          "enum": ["question"],
+                          "type": "string"
+                        },
+                        "options": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              }
+                            },
+                            "required": ["id", "label"],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "prompt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["kind", "key", "prompt", "options"],
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["ai-table-builder"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/ai/table-builder/refine": {
+      "post": {
+        "operationId": "TableBuilderController_refine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "blueprint": {
+                    "$ref": "#/components/schemas/TableBlueprint"
+                  },
+                  "description": {
+                    "maxLength": 4000,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "tableId": {
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "type": "string"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "expectedVersion": {
+                        "maximum": 9007199254740991,
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "objectId": {
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                        "type": "string"
+                      }
+                    },
+                    "required": ["objectId", "expectedVersion"],
+                    "type": "object"
+                  }
+                },
+                "required": ["blueprint", "tableId", "description"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "blueprint": {
+                          "$ref": "#/components/schemas/TableBlueprint"
+                        },
+                        "issues": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "blocking": {
+                                "type": "boolean"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "fieldId": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "path": {
+                                "type": "string"
+                              },
+                              "tableId": {
+                                "type": "string"
+                              }
+                            },
+                            "required": ["path", "code", "message", "blocking"],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "kind": {
+                          "enum": ["blueprint"],
+                          "type": "string"
+                        }
+                      },
+                      "required": ["kind", "blueprint", "issues"],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "key": {
+                          "enum": ["industry", "entities"],
+                          "type": "string"
+                        },
+                        "kind": {
+                          "enum": ["question"],
+                          "type": "string"
+                        },
+                        "options": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              }
+                            },
+                            "required": ["id", "label"],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "prompt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["kind", "key", "prompt", "options"],
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["ai-table-builder"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/ai/table-builder/validate": {
+      "post": {
+        "operationId": "TableBuilderController_validate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "blueprint": {
+                    "$ref": "#/components/schemas/TableBlueprint"
+                  },
+                  "target": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "expectedVersion": {
+                        "maximum": 9007199254740991,
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "objectId": {
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                        "type": "string"
+                      }
+                    },
+                    "required": ["objectId", "expectedVersion"],
+                    "type": "object"
+                  }
+                },
+                "required": ["blueprint"],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "blueprint": {
+                          "$ref": "#/components/schemas/TableBlueprint"
+                        },
+                        "issues": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "blocking": {
+                                "type": "boolean"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "fieldId": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "path": {
+                                "type": "string"
+                              },
+                              "tableId": {
+                                "type": "string"
+                              }
+                            },
+                            "required": ["path", "code", "message", "blocking"],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "kind": {
+                          "enum": ["blueprint"],
+                          "type": "string"
+                        }
+                      },
+                      "required": ["kind", "blueprint", "issues"],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "key": {
+                          "enum": ["industry", "entities"],
+                          "type": "string"
+                        },
+                        "kind": {
+                          "enum": ["question"],
+                          "type": "string"
+                        },
+                        "options": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              }
+                            },
+                            "required": ["id", "label"],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "prompt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["kind", "key", "prompt", "options"],
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["ai-table-builder"]
+      }
+    },
     "/api/v1/workspaces/{tenantCode}/ai/turns": {
       "post": {
         "operationId": "AiController_startTurn",
@@ -13959,6 +14880,92 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ObjectDraftResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/draft-group/analysis": {
+      "post": {
+        "operationId": "ObjectsController_analyzeDraftGroup",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeDraftGroupDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftGroupAnalysisDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "crm_session": []
+          }
+        ],
+        "tags": ["object-definitions"]
+      }
+    },
+    "/api/v1/workspaces/{tenantCode}/object-definitions/draft-group/publications": {
+      "post": {
+        "operationId": "ObjectsController_publishDraftGroup",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenantCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishDraftGroupDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateInitializationPublishedResponseDto"
                 }
               }
             },
