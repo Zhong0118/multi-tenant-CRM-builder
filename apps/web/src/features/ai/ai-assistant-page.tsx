@@ -1,6 +1,6 @@
 "use client";
 
-import { useAiFeature } from "@/features/ai-governance/access";
+import { useAiFeature, useQuotaExhausted } from "@/features/ai-governance/access";
 import {
   CloseOutlined,
   ExpandOutlined,
@@ -64,6 +64,8 @@ export function AiAssistantPage({
 }) {
   const router = useRouter();
   const assistantAllowed = useAiFeature("assistant");
+  const quotaExhausted = useQuotaExhausted();
+  const canSend = assistantAllowed && !quotaExhausted;
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const conversationId = panel
@@ -347,7 +349,7 @@ export function AiAssistantPage({
 
   function send(content = state.draft) {
     const text = content.trim();
-    if (!assistantAllowed || !text || requestBusy()) return;
+    if (!canSend || !text || requestBusy()) return;
     setRetriedRow(null);
     dispatch({ type: "beginNewTurn", content: text });
     startTurn((signal) =>
@@ -758,7 +760,7 @@ export function AiAssistantPage({
           <div className={styles.canvas} data-testid="ai-conversation-canvas">
             {shown.length === 0 &&
             state.phase === "IDLE" &&
-            !conversationId && assistantAllowed &&
+            !conversationId && canSend &&
             !messages.isError ? (
               <AiEmptyState
                 objects={businessObjects}
@@ -825,6 +827,7 @@ export function AiAssistantPage({
             ) : null}
             {cardError && <p role="alert">{cardError}</p>}
             <AiComposer
+              disabled={quotaExhausted}
               value={state.draft}
               phase={state.phase}
               inputRef={composerRef}

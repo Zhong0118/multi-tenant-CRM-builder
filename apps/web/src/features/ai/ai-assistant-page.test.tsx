@@ -10,6 +10,8 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AiAccessContext } from "@/features/ai-governance/access";
+import type { Capabilities } from "@/features/ai-governance/workspace-api";
 import { AiAssistantPage } from "./ai-assistant-page";
 
 const mocks = vi.hoisted(() => ({
@@ -100,6 +102,32 @@ function renderPage(client?: QueryClient) {
 }
 
 describe("AiAssistantPage", () => {
+  it("keeps a draft but blocks sending and quick prompts until the company quota recovers", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const caps: Capabilities = { features: ["assistant"], disabled: false, allocation: "shared", restoresAt: "2026-11-30T16:00:00Z", notice: null, percent: null, remainingTokens: null };
+    const page = (value: Capabilities) => (
+      <QueryClientProvider client={client}>
+        <AiAccessContext.Provider value={value}>
+          <AiAssistantPage tenantCode="northwind" businessObjects={[]} />
+        </AiAccessContext.Provider>
+      </QueryClientProvider>
+    );
+    const view = render(page(caps));
+    const input = screen.getByPlaceholderText("基于当前权限，询问可访问的 CRM 数据");
+    fireEvent.change(input, { target: { value: "查询记录" } });
+    expect(await screen.findByRole("button", {name:"最近有哪些需要跟进？"})).toBeEnabled();
+    view.rerender(page({...caps, notice:"company_exhausted",percent:100}));
+    expect(input).toBeDisabled();
+    expect(screen.getByRole("button",{name:"发送"})).toBeDisabled();
+    expect(screen.queryByRole("button",{name:"最近有哪些需要跟进？"})).toBeNull();
+    expect(screen.getByText(/恢复。如需增加，请联系管理员/)).toBeVisible();
+    expect(mocks.streamTurn).not.toHaveBeenCalled();
+    view.rerender(page(caps));
+    expect(input).toHaveValue("查询记录");
+    expect(input).toBeEnabled();
+    expect(screen.getByRole("button",{name:"最近有哪些需要跟进？"})).toBeEnabled();
+  });
+
   it("shows mutation recovery feedback and restores the server proposal after confirm timeout", async () => {
     const proposal = {
       proposalId: "p1",

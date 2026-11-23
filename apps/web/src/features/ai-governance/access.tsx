@@ -75,6 +75,13 @@ export function CurrentQuotaNotice() {
   const caps = useContext(AiAccessContext);
   return caps?.disabled ? null : <QuotaNotice capabilities={caps} />;
 }
+function quotaExhausted(c: Capabilities | null | undefined) {
+  return c?.notice === "company_exhausted" ||
+    (c?.notice === "personal" && c.percent !== null && c.percent >= 100);
+}
+export function useQuotaExhausted() {
+  return quotaExhausted(useContext(AiAccessContext));
+}
 export function QuotaNotice({
   capabilities: c,
 }: {
@@ -85,18 +92,16 @@ export function QuotaNotice({
   const d = new Date(c.restoresAt);
   if (d.getUTCDate() > 1) d.setUTCDate(d.getUTCDate() + 1);
   const date = d.getUTCMonth() + 1 + "月1日";
-  const exhausted =
-    c.notice === "company_exhausted" ||
-    (c.notice === "personal" && Number(c.percent) >= 100);
+  const exhausted = quotaExhausted(c);
   const message = c.disabled
     ? "AI 功能暂不可用"
     : exhausted
       ? (c.notice === "personal"
           ? "你本月的 AI 份额已用完"
-          : "公司本月 AI 额度已用完") +
+          : "本月 AI 额度已用完") +
         "，" +
         date +
-        "恢复"
+        (c.notice === "company_exhausted" ? "恢复。如需增加，请联系管理员" : "恢复")
       : c.notice === "personal"
         ? "本人本月已用 " +
           (c.percent ?? 0) +
