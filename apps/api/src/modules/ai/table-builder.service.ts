@@ -12,7 +12,10 @@ import {
   validateBlueprint,
   type BlueprintMetadata,
 } from './table-blueprint';
-import { assertBlueprintFitsRequest } from './table-builder-payload';
+import {
+  assertBlueprintFitsRequest,
+  TABLE_BUILDER_GENERATION_TIMEOUT_MS,
+} from './table-builder-payload';
 import { generateTablePlan, validateAnswers } from './table-generation';
 
 function validateEditableBlueprint(
@@ -217,7 +220,7 @@ export class TableBuilderService {
     input: Parameters<typeof generateTablePlan>[1],
     clientSignal?: AbortSignal,
   ) {
-    const timeout = AbortSignal.timeout(60_000);
+    const timeout = AbortSignal.timeout(TABLE_BUILDER_GENERATION_TIMEOUT_MS);
     const signal = clientSignal
       ? AbortSignal.any([clientSignal, timeout])
       : timeout;

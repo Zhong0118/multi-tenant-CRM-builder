@@ -14,6 +14,7 @@ import {
   builderBodies,
 } from '../../../src/modules/ai/table-builder.service';
 import { validateBlueprint } from '../../../src/modules/ai/table-blueprint';
+import { TABLE_BUILDER_GENERATION_TIMEOUT_MS } from '../../../src/modules/ai/table-builder-payload';
 import { tableModelSchema } from '../../../src/modules/ai/table-model';
 import type { ObjectDraftBatchService } from '../../../src/modules/objects/object-draft-batch.service';
 import { runDataset } from '../run-dataset';
@@ -26,7 +27,7 @@ import {
 
 type Generate = NonNullable<AiProvider['generateTableBlueprint']>;
 type Dataset = 'development' | 'holdout';
-const timeoutMs = 90000;
+
 const admin: TenantContext = {
   tenantId: 'eval',
   tenantCode: 'eval',
@@ -101,7 +102,7 @@ export async function evaluate(generate: Generate, samples: Sample[]) {
             answers: sample.answers,
             existing,
           },
-          AbortSignal.timeout(timeoutMs),
+          AbortSignal.timeout(TABLE_BUILDER_GENERATION_TIMEOUT_MS),
         );
         if (candidate.kind === 'question') return candidate;
         const checked = validateBlueprint(candidate.blueprint, existing);
