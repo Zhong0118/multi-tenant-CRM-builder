@@ -1,4 +1,7 @@
 import {
+  AnalyzeDraftGroupDto,
+  DraftGroupAnalysisDto,
+  PublishDraftGroupDto,
   TemplateInitializationResponseDto,
   PublishTemplateInitializationDto,
   TemplateInitializationPublishedResponseDto,
@@ -144,6 +147,27 @@ export class ObjectsController {
       dto,
       requestMeta(request),
     );
+  }
+
+  @Post('object-definitions/draft-group/analysis')
+  @HttpCode(200)
+  @ApiOkResponse({ type: DraftGroupAnalysisDto })
+  analyzeDraftGroup(
+    @CurrentTenant() context: TenantContext,
+    @Body() dto: AnalyzeDraftGroupDto,
+  ) {
+    return this.objects.analyzeDraftGroup(context, dto);
+  }
+
+  @Post('object-definitions/draft-group/publications')
+  @HttpCode(200)
+  @ApiOkResponse({ type: TemplateInitializationPublishedResponseDto })
+  publishDraftGroup(
+    @CurrentTenant() context: TenantContext,
+    @Body() dto: PublishDraftGroupDto,
+    @Req() request: RequestWithId,
+  ) {
+    return this.objects.publishDraftGroup(context, dto, requestMeta(request));
   }
 
   @Get('object-definitions/:objectId')

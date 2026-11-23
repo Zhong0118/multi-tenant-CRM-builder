@@ -1,7 +1,11 @@
 import { transferSettings } from './effective-access';
 import { analyzePoolProtectionSources } from '../records/record-pool-config';
 import type { ActionPublicationTarget } from '../actions/action-publication.policy';
-import type { PublishTemplateInitializationDto } from './dto/template-initialization.dto';
+import type {
+  AnalyzeDraftGroupDto,
+  PublishDraftGroupDto,
+  PublishTemplateInitializationDto,
+} from './dto/template-initialization.dto';
 import { analyzeAutomationDependencies } from '../automations/automation-publication';
 import { Inject, Injectable } from '@nestjs/common';
 
@@ -158,97 +162,56 @@ export class ObjectsService {
     input: PublishTemplateInitializationDto,
     meta: RequestMeta,
   ) {
+    return this.publishGroup(context, input, meta, input.templateVersionId);
+  }
+
+  analyzeDraftGroup(context: TenantContext, input: AnalyzeDraftGroupDto) {
     assertTenantAdmin(context);
     return this.repository.withTenant(context, async (store) => {
-      await store.lockLifecycleConfiguration();
-      const initial = (
-        await store.listTemplateInitializationCandidates!()
-      ).filter((o) => o.templateVersionId === input.templateVersionId);
-      for (const object of [...initial].sort((a, b) =>
-        a.id.localeCompare(b.id),
-      ))
-        await store.lockObject(object.id);
-      const candidates = (
-        await store.listTemplateInitializationCandidates!()
-      ).filter((o) => o.templateVersionId === input.templateVersionId);
-      const expected = new Map(input.objects.map((o) => [o.id, o]));
-      if (
-        !candidates.length ||
-        expected.size !== input.objects.length ||
-        expected.size !== candidates.length ||
-        candidates.some(
-          (o) =>
-            expected.get(o.id)?.expectedVersion !== o.version ||
-            expected.get(o.id)?.expectedPoolConfigVersion !==
-              o.poolConfigVersion,
-        )
-      )
-        throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
-      const drafts: ObjectDraft[] = [];
-      const targets = new Map<string, ActionPublicationTarget>();
-      const existing = await store.listPublishedPoolConfigurations!();
-      for (const object of existing)
-        targets.set(object.code, {
+      const drafts = await this.loadGroup(store, input.objectIds);
+      const { analyses, blocking } = await this.analyzeGroup(store, drafts);
+      return {
+        objects: drafts.map(({ object, pool }, index) => ({
+          id: object.id,
+          name: object.name,
           code: object.code,
-          status: 'ACTIVE',
-          schema: object.schema,
-        });
-      for (const object of candidates) {
-        const draft = await requireDraft(store, object.id);
-        draft.workflow = await store.findWorkflowDraft(object.id);
-        drafts.push(draft);
-        targets.set(draft.object.code, {
-          code: draft.object.code,
-          status: 'ACTIVE',
-          schema: {
-            fields: draft.fields.flatMap((f) =>
-              f.status === 'ACTIVE' && isPublishedFieldType(f.type)
-                ? [{ ...f, type: f.type }]
-                : [],
-            ),
-            employeeAccess: draft.employeeAccess,
-          },
-        });
-      }
-      const states = new Map(
-        existing.map((o) => [
-          o.code,
-          o.schema.workflow?.states.map((s) => s.key) ?? [],
-        ]),
-      );
-      for (const draft of drafts)
-        states.set(
-          draft.object.code,
-          draft.workflow?.isEnabled
-            ? draft.workflow.states.map((s) => s.key)
-            : [],
-        );
-      const objects = await store.listObjects();
-      const analyses = drafts.map((draft) => {
-        draft.actionTargets = targets;
-        const analysis = analyzePublication(draft);
-        analysis.blocking.push(
-          ...analyzeAutomationDependencies(draft, objects),
-        );
-        if (draft.pool)
-          analysis.blocking.push(
-            ...analyzePoolProtectionSources(draft.pool, states),
-          );
-        return analysis;
-      });
-      const blocking = analyses.flatMap((analysis, index) =>
-        analysis.blocking.map((issue) => ({
-          ...issue,
-          objectId: drafts[index].object.id,
+          version: object.version,
+          poolConfigVersion: pool?.version ?? 1,
+          analysis: analyses[index],
         })),
+        blocking,
+      };
+    });
+  }
+
+  publishDraftGroup(
+    context: TenantContext,
+    input: PublishDraftGroupDto,
+    meta: RequestMeta,
+  ) {
+    return this.publishGroup(context, input, meta);
+  }
+
+  private publishGroup(
+    context: TenantContext,
+    input: PublishDraftGroupDto,
+    meta: RequestMeta,
+    templateVersionId?: string,
+  ) {
+    assertTenantAdmin(context);
+    return this.repository.withTenant(context, async (store) => {
+      const drafts = await this.loadGroup(
+        store,
+        input.objects.map((o) => o.id),
+        templateVersionId,
       );
-      for (const object of existing)
-        blocking.push(
-          ...analyzePoolProtectionSources(object.pool, states).map((issue) => ({
-            ...issue,
-            objectId: object.schema.object.id,
-          })),
-        );
+      for (const [index, draft] of drafts.entries()) {
+        const expected = input.objects[index];
+        assertVersion(draft, expected.expectedVersion);
+        if ((draft.pool?.version ?? 1) !== expected.expectedPoolConfigVersion)
+          throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
+      }
+      const { analyses, blocking } = await this.analyzeGroup(store, drafts);
       if (blocking.length)
         throw new ApiException('PUBLICATION_BLOCKED', 422, {
           message: blocking.map((issue) => issue.message).join('；'),
@@ -275,6 +238,105 @@ export class ObjectsService {
         })),
       };
     });
+  }
+
+  private async loadGroup(
+    store: ObjectsStore,
+    ids: string[],
+    templateVersionId?: string,
+  ) {
+    if (!ids.length || new Set(ids).size !== ids.length)
+      throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
+    await store.lockLifecycleConfiguration();
+    await store.assertActiveAdmin();
+    for (const id of [...ids].sort()) await store.lockObject(id);
+    const templates = await store.listTemplateInitializationCandidates!();
+    const selected = new Set(ids);
+    if (templateVersionId !== undefined) {
+      const group = templates.filter(
+        (o) => o.templateVersionId === templateVersionId,
+      );
+      if (group.length !== ids.length || group.some((o) => !selected.has(o.id)))
+        throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
+    } else if (templates.some((o) => selected.has(o.id))) {
+      throw validationError('objectIds', '请从模板初始化页面发布完整模板。');
+    }
+    const drafts: ObjectDraft[] = [];
+    for (const id of ids) {
+      const draft = await requireDraft(store, id);
+      assertNotArchived(draft);
+      if (!toObjectDraftResponse(draft).object.hasUnpublishedChanges)
+        throw new ApiException('CONFIG_VERSION_CONFLICT', 409);
+      drafts.push(draft);
+    }
+    return drafts;
+  }
+
+  private async analyzeGroup(store: ObjectsStore, drafts: ObjectDraft[]) {
+    const targets = new Map<string, ActionPublicationTarget>();
+    const existing = await store.listPublishedPoolConfigurations!();
+    for (const object of existing)
+      targets.set(object.code, {
+        code: object.code,
+        status: 'ACTIVE',
+        schema: object.schema,
+      });
+    for (const draft of drafts) {
+      draft.workflow = await store.findWorkflowDraft(draft.object.id);
+      draft.workflowStateRecordCounts = await store.countRecordsByWorkflowState(
+        draft.object.id,
+      );
+      targets.set(draft.object.code, {
+        code: draft.object.code,
+        status: 'ACTIVE',
+        schema: {
+          fields: draft.fields.flatMap((f) =>
+            f.status === 'ACTIVE' && isPublishedFieldType(f.type)
+              ? [{ ...f, type: f.type }]
+              : [],
+          ),
+          employeeAccess: draft.employeeAccess,
+        },
+      });
+    }
+    const states = new Map(
+      existing.map((o) => [
+        o.code,
+        o.schema.workflow?.states.map((s) => s.key) ?? [],
+      ]),
+    );
+    for (const draft of drafts)
+      states.set(
+        draft.object.code,
+        draft.workflow?.isEnabled
+          ? draft.workflow.states.map((s) => s.key)
+          : [],
+      );
+    const objects = await store.listObjects();
+    const analyses = drafts.map((draft) => {
+      draft.actionTargets = targets;
+      const analysis = analyzePublication(draft);
+      analysis.blocking.push(...analyzeAutomationDependencies(draft, objects));
+      if (draft.pool)
+        analysis.blocking.push(
+          ...analyzePoolProtectionSources(draft.pool, states),
+        );
+      return analysis;
+    });
+    const blocking = analyses.flatMap((analysis, index) =>
+      analysis.blocking.map((issue) => ({
+        ...issue,
+        objectId: drafts[index].object.id,
+      })),
+    );
+    for (const object of existing)
+      blocking.push(
+        ...analyzePoolProtectionSources(object.pool, states).map((issue) => ({
+          ...issue,
+          objectId: object.schema.object.id,
+        })),
+      );
+    return { analyses, blocking };
   }
 
   list(context: TenantContext): Promise<ObjectDraft[]> {

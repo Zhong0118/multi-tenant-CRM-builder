@@ -37,6 +37,13 @@ class MemoryObjectsStore implements ObjectsStore {
   objects: ObjectDraft[] = [];
   publications = new Map<string, ObjectPublicationSummary[]>();
   audits: Array<{ action: string; after?: Record<string, unknown> }> = [];
+  async assertActiveAdmin() {}
+  async listTemplateInitializationCandidates() {
+    return [];
+  }
+  async listPublishedPoolConfigurations() {
+    return [];
+  }
   onLock?: (objectId: string) => void;
   lifecycleBlockers: LifecycleBlocker[] = [];
   expiredCount = 0;
@@ -1688,5 +1695,20 @@ describe('whole table lifecycle', () => {
     expect(toObjectDraftResponse(restored).object.hasUnpublishedChanges).toBe(
       true,
     );
+  });
+});
+
+describe('explicit draft group', () => {
+  it('analyzes blocked drafts and rejects duplicate selections without publishing', async () => {
+    const { service, store } = fixture();
+    const first = await createObject(service);
+    const id = first.object.id;
+    const result = await service.analyzeDraftGroup(admin, { objectIds: [id] });
+    expect(result.objects[0]).toMatchObject({ id, version: 1 });
+    expect(result.blocking.length).toBeGreaterThan(0);
+    expect(store.publications.size).toBe(0);
+    await expect(
+      service.analyzeDraftGroup(admin, { objectIds: [id, id] }),
+    ).rejects.toThrow();
   });
 });

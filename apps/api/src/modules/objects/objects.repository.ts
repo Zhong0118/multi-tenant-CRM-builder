@@ -53,6 +53,7 @@ export interface TemplateInitializationCandidate {
 }
 
 export interface ObjectsStore {
+  assertActiveAdmin(): Promise<void>;
   listTemplateInitializationCandidates?(): Promise<
     TemplateInitializationCandidate[]
   >;
@@ -145,6 +146,17 @@ class PrismaObjectsStore implements ObjectsStore {
     private readonly audit: AuditService,
     private readonly context: TenantContext,
   ) {}
+
+  async assertActiveAdmin(): Promise<void> {
+    const { memberId, tenantId, userId } = this.context;
+    const rows = await this.transaction.$queryRaw<{ id: string }[]>`
+      SELECT m.id FROM tenant_members m JOIN tenants t ON t.id = m.tenant_id
+      WHERE m.id = ${memberId}::uuid AND m.tenant_id = ${tenantId}::uuid
+        AND m.user_id = ${userId}::uuid AND m.status = 'ACTIVE'
+        AND m.role = 'TENANT_ADMIN' AND t.status = 'ACTIVE'
+      FOR SHARE OF m, t`;
+    if (!rows.length) throw new ApiException('OBJECT_ACTION_FORBIDDEN', 403);
+  }
 
   async listTemplateInitializationCandidates(): Promise<
     TemplateInitializationCandidate[]

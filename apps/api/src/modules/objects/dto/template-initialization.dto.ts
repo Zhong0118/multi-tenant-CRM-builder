@@ -1,7 +1,13 @@
+import {
+  PublicationAnalysisResponseDto,
+  PublicationIssueResponseDto,
+} from './object.dto';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import {
   ArrayMinSize,
+  ArrayMaxSize,
+  ArrayUnique,
   IsArray,
   IsInt,
   IsUUID,
@@ -52,4 +58,46 @@ export class TemplateInitializationPublishedResponseDto {
     isArray: true,
   })
   published!: TemplateInitializationPublishedObjectDto[];
+}
+
+export class AnalyzeDraftGroupDto {
+  @ApiProperty({ type: String, isArray: true, maxItems: 6 })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(6)
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
+  objectIds!: string[];
+}
+
+export class PublishDraftGroupDto {
+  @ApiProperty({
+    type: TemplateInitializationExpectedObjectDto,
+    isArray: true,
+    maxItems: 6,
+  })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(6)
+  @ValidateNested({ each: true })
+  @Type(() => TemplateInitializationExpectedObjectDto)
+  objects!: TemplateInitializationExpectedObjectDto[];
+}
+
+export class AnalyzedDraftObjectDto extends TemplateInitializationObjectDto {
+  @ApiProperty({ type: PublicationAnalysisResponseDto })
+  analysis!: PublicationAnalysisResponseDto;
+}
+
+export class DraftGroupBlockingIssueDto extends PublicationIssueResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  objectId!: string;
+}
+
+export class DraftGroupAnalysisDto {
+  @ApiProperty({ type: AnalyzedDraftObjectDto, isArray: true })
+  objects!: AnalyzedDraftObjectDto[];
+
+  @ApiProperty({ type: DraftGroupBlockingIssueDto, isArray: true })
+  blocking!: DraftGroupBlockingIssueDto[];
 }
