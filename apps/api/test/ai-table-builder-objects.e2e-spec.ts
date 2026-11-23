@@ -295,7 +295,7 @@ describe('AI table builder transactions over HTTP with PostgreSQL RLS', () => {
         employeeAccess: object;
       };
       expect(detail.employeeAccess).toMatchObject({
-        canCreate: i === 0,
+        canCreate: true,
         canRead: true,
         canUpdate: true,
         canDelete: false,
@@ -319,7 +319,7 @@ describe('AI table builder transactions over HTTP with PostgreSQL RLS', () => {
       .expect(201);
     await api('post', '/objects/' + objects[1].code + '/records', f.employee)
       .send({ values: { [plan.tables[1].fields[0].fieldKey]: '设备登记' } })
-      .expect(403);
+      .expect(201);
   });
 
   it('publishes only after manual grants and group checks, then appends hidden fields without changing the active schema', async () => {

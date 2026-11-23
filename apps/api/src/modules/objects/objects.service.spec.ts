@@ -1895,7 +1895,7 @@ describe('blueprint draft confirmation', () => {
     );
     expect(repository.transactions).toBe(1);
     expect(store.objects[0].employeeAccess).toEqual({
-      canCreate: false,
+      canCreate: true,
       canRead: true,
       canUpdate: true,
       canDelete: false,

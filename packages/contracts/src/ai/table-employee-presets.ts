@@ -10,7 +10,7 @@ export type TableEmployeePreset = (typeof TABLE_EMPLOYEE_PRESETS)[number];
 export function tableEmployeePresetAccess(preset: TableEmployeePreset) {
   const enabled = preset === "CREATE_OWN" || preset === "READ_ALL_UPDATE_OWN";
   return {
-    canCreate: preset === "CREATE_OWN",
+    canCreate: enabled,
     canRead: enabled,
     canUpdate: enabled,
     canDelete: false,

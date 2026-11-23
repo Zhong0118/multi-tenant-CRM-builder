@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import type { TableBlueprint, TablePlan } from '@crm/contracts';
-import { ApiException } from '../../common/errors/api.exception';
 import {
   allocateSuggestedCode,
   builtInReason,
@@ -93,11 +92,23 @@ export function normalizeOmissions(
       matches.length > 1 ||
       (item.manualField && !matches.length && scope.length !== 1) ||
       (item.tableName && !scope.length && matchingFields(item, tables).length)
-    )
-      throw new ApiException('VALIDATION_FAILED', 400, {
-        message: '未采纳字段无法对应到唯一的业务表或字段，请重新生成。',
-        fieldErrors: { omitted: ['请核对未采纳字段的名称和所属业务表。'] },
-      });
+    ) {
+      const alternative = '可能有替代字段，所属表或字段不明确，请确认。';
+      if (
+        !omitted.some(
+          (o) =>
+            !o.tableId &&
+            o.request === item.request &&
+            o.alternative === alternative,
+        )
+      )
+        omitted.push({
+          request: item.request,
+          reason: item.reason,
+          alternative,
+        });
+      continue;
+    }
     const found = matches[0];
     const table =
       found?.table ??

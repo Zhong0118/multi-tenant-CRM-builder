@@ -219,24 +219,56 @@ it('recognizes the requested label in prose even if the suggested target is wron
   expect(omitted[1].manualField).toBeUndefined();
 });
 
-it('rejects an ambiguous unscoped target instead of silently dropping a same-named field from another table', () => {
+it('flags an ambiguous unscoped target instead of silently dropping a same-named field from another table', () => {
   const tables = [
     table('Quote', { Margin: 'MONEY' }),
     table('Invoice', { Margin: 'MONEY' }),
   ];
-  expect(() =>
-    normalizeOmissions(
-      [
-        {
-          request: 'Margin',
-          reason: 'No formulas',
-          alternative: null,
-          tableName: null,
-          manualField: null,
-        },
-      ],
-      tables,
-    ),
-  ).toThrow('唯一');
+  const omitted = normalizeOmissions(
+    [
+      {
+        request: 'Margin',
+        reason: 'No formulas',
+        alternative: null,
+        tableName: null,
+        manualField: null,
+      },
+    ],
+    tables,
+  );
+  expect(omitted).toHaveLength(1);
+  expect(omitted[0].alternative).toContain('请确认');
+  expect(omitted[0].reason).toBe('No formulas');
+  expect(omitted[0].manualField).toBeUndefined();
   expect(tables.every((t) => t.fields.length === 1)).toBe(true);
+});
+
+it('keeps a tableless manual suggestion informational while processing a separate, resolvable omission', () => {
+  const quote = table('Quote', { Name: 'TEXT', Tax: 'MONEY' });
+  const invoice = table('Invoice', { Name: 'TEXT' });
+  const ambiguous: RawOmission = {
+    request: 'Discount',
+    reason: 'Calculated',
+    tableName: null,
+    alternative: null,
+    manualField: { label: 'Discount', fieldKey: 'discount', type: 'MONEY' },
+  };
+  const omitted = normalizeOmissions(
+    [
+      ambiguous,
+      {
+        request: 'Tax',
+        reason: 'Calculated',
+        tableName: 'Quote',
+        alternative: null,
+        manualField: null,
+      },
+    ],
+    [quote, invoice],
+  );
+  expect(omitted[0].alternative).toContain('请确认');
+  expect(omitted[0].manualField).toBeUndefined();
+  expect(omitted[1].manualField?.label).toBe('Tax');
+  expect(quote.fields.map((f) => f.label)).toEqual(['Name']);
+  expect(invoice.fields.map((f) => f.label)).toEqual(['Name']);
 });

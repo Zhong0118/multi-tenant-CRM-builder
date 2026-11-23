@@ -10,7 +10,7 @@ import styles from "./table-builder.module.css";
 const names: Record<TableEmployeePreset, string> = {
   CLOSED: "暂不开放",
   CREATE_OWN: "可新建，只看和改自己负责的",
-  READ_ALL_UPDATE_OWN: "可查看全部，只改自己负责的",
+  READ_ALL_UPDATE_OWN: "可新建、查看全部，只改自己负责的",
 };
 
 function describe(preset: TableEmployeePreset) {
