@@ -6,6 +6,7 @@ import type {
   TableBuilderIssue,
   TableBuilderResult,
   TablePlan,
+  TableEmployeePreset,
 } from "@crm/contracts";
 import {
   DeleteOutlined,
@@ -27,6 +28,7 @@ import {
   type BuilderApi,
   type DraftResult,
 } from "./builder-api";
+import { EmployeePresets } from "./employee-presets";
 import { DraftGroup } from "./draft-group";
 import { TableDiff } from "./table-diff";
 import { Issues, TableEditor } from "./table-editor";
@@ -60,6 +62,25 @@ export function TableBuilder({
   const [other, setOther] = useState<string>();
   const [blueprint, setBlueprint] = useState<TableBlueprint>();
   const [issues, setIssues] = useState<TableBuilderIssue[]>([]);
+  const [presetOverrides, setPresetOverrides] = useState<
+    Record<string, TableEmployeePreset>
+  >({});
+  const employeePresets = Object.fromEntries(
+    (blueprint?.tables ?? []).map((t) => [
+      t.id,
+      presetOverrides[t.id] ?? "CLOSED",
+    ]),
+  );
+  const opensAccess = Object.values(employeePresets).some(
+    (preset) => preset !== "CLOSED",
+  );
+  const hasClosedTable = Object.values(employeePresets).includes("CLOSED");
+  const [batchChoices, setBatchChoices] = useState<
+    {
+      table: TablePlan;
+      omitted: TableBlueprint["omitted"];
+    }[]
+  >([]);
   const [selected, setSelected] = useState("");
   const table =
     blueprint?.tables.find((t) => t.id === selected) ?? blueprint?.tables[0];
@@ -72,12 +93,16 @@ export function TableBuilder({
   }>();
   const [result, setResult] = useState<DraftResult>();
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [operation, setOperation] = useState<"generating" | "saving" | null>(
+    null,
+  );
+  const busy = operation !== null;
   const [checking, setChecking] = useState(false);
   const [needsCheck, setNeedsCheck] = useState(false);
   const [regenerate, setRegenerate] = useState(false);
   const request = useRef(0);
   const working = useRef(false);
+  const generation = useRef<AbortController | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const dirty = !result && Boolean(description.trim() || blueprint);
   useEffect(() => {
@@ -119,32 +144,56 @@ export function TableBuilder({
   }, [dirty]);
   useEffect(
     () => () => {
+      generation.current?.abort();
       clearTimeout(timer.current);
       request.current++;
     },
     [],
   );
-  async function run(action: () => Promise<void>) {
+  async function run(
+    action: () => Promise<void>,
+    controller?: AbortController,
+  ) {
     if (working.current) return;
     working.current = true;
-    setBusy(true);
+    setOperation(controller ? "generating" : "saving");
     setError("");
     try {
       await action();
     } catch (e) {
-      setError(builderError(e));
+      if (!controller?.signal.aborted) setError(builderError(e));
     } finally {
-      working.current = false;
-      setBusy(false);
+      if (!controller?.signal.aborted) {
+        generation.current = null;
+        working.current = false;
+        setOperation(null);
+      }
     }
   }
+  function runGeneration(action: (signal: AbortSignal) => Promise<void>) {
+    if (working.current) return;
+    const controller = new AbortController();
+    generation.current = controller;
+    return run(() => action(controller.signal), controller);
+  }
+  function cancelGeneration() {
+    generation.current?.abort();
+    generation.current = null;
+    working.current = false;
+    setOperation(null);
+  }
   function generate(nextAnswers: TableBuilderAnswer[]) {
-    void run(async () => {
-      const next = await api.preview(tenantCode, {
-        description,
-        answers: nextAnswers,
-        target,
-      });
+    void runGeneration(async (signal) => {
+      const next = await api.preview(
+        tenantCode,
+        {
+          description,
+          answers: nextAnswers,
+          target,
+        },
+        signal,
+      );
+      if (signal.aborted) return;
       setAnswers(nextAnswers);
       setOther(undefined);
       if (next.kind === "question") {
@@ -155,6 +204,12 @@ export function TableBuilder({
       setIssues(next.issues);
       setQuestion(undefined);
       setSelected(next.blueprint.tables[0]?.id ?? "");
+      setPresetOverrides({});
+      setBatchChoices(
+        next.blueprint.tables.length > 6
+          ? next.blueprint.tables.map((table) => ({ table, omitted: [] }))
+          : [],
+      );
       setCandidate(undefined);
       setNeedsCheck(false);
       setInstruction("");
@@ -199,6 +254,32 @@ export function TableBuilder({
         tables: blueprint.tables.map((t) => (t.id === next.id ? next : t)),
       });
   }
+  function toggleTable(t: TablePlan, included: boolean) {
+    if (!blueprint) return;
+    if (!included) {
+      const omitted = blueprint.omitted.filter((o) => o.tableId === t.id);
+      setBatchChoices((choices) =>
+        choices.map((c) => (c.table.id === t.id ? { table: t, omitted } : c)),
+      );
+      edit({
+        ...blueprint,
+        tables: blueprint.tables.filter((x) => x.id !== t.id),
+        omitted: blueprint.omitted.filter((o) => o.tableId !== t.id),
+      });
+      return;
+    }
+    const tables = batchChoices.flatMap((choice) =>
+      choice.table.id === t.id
+        ? [t]
+        : blueprint.tables.filter((x) => x.id === choice.table.id),
+    );
+    const restored = batchChoices.find((choice) => choice.table.id === t.id)!;
+    edit({
+      ...blueprint,
+      tables,
+      omitted: [...blueprint.omitted, ...restored.omitted],
+    });
+  }
   const blocked =
     busy ||
     needsCheck ||
@@ -234,6 +315,12 @@ export function TableBuilder({
           />
         ) : (
           <>
+            {operation === "generating" && (
+              <div className={styles.actions}>
+                <span role="status">正在生成方案，通常需要半分钟左右</span>
+                <Button onClick={cancelGeneration}>取消生成</Button>
+              </div>
+            )}
             <fieldset disabled={busy} className={styles.canvas}>
               <section className={styles.composer}>
                 <label htmlFor="builder-description">业务描述</label>
@@ -319,7 +406,15 @@ export function TableBuilder({
                         {draft ? "目标业务表" : "方案中的表"}{" "}
                         <span>{blueprint.tables.length}</span>
                       </h2>
-                      {blueprint.tables.map((t) => (
+                      {(batchChoices.length
+                        ? batchChoices.map(
+                            ({ table: choice }) =>
+                              blueprint.tables.find(
+                                (t) => t.id === choice.id,
+                              ) ?? choice,
+                          )
+                        : blueprint.tables
+                      ).map((t) => (
                         <div
                           className={styles.tab}
                           key={t.id}
@@ -327,6 +422,9 @@ export function TableBuilder({
                         >
                           <button
                             type="button"
+                            disabled={
+                              !blueprint.tables.some((x) => x.id === t.id)
+                            }
                             aria-current={
                               table?.id === t.id ? "true" : undefined
                             }
@@ -349,19 +447,22 @@ export function TableBuilder({
                               </small>
                             </span>
                           </button>
-                          {!draft && (
+                          {batchChoices.length > 0 && (
+                            <input
+                              type="checkbox"
+                              aria-label={`本次创建 ${t.name}`}
+                              checked={blueprint.tables.some(
+                                (x) => x.id === t.id,
+                              )}
+                              onChange={(e) => toggleTable(t, e.target.checked)}
+                            />
+                          )}
+                          {!draft && !batchChoices.length && (
                             <Button
                               type="text"
                               aria-label={`移除表 ${t.name}`}
                               icon={<DeleteOutlined />}
-                              onClick={() =>
-                                edit({
-                                  ...blueprint,
-                                  tables: blueprint.tables.filter(
-                                    (x) => x.id !== t.id,
-                                  ),
-                                })
-                              }
+                              onClick={() => toggleTable(t, false)}
                             />
                           )}
                         </div>
@@ -393,13 +494,18 @@ export function TableBuilder({
                                 !instruction.trim() || needsCheck || !!candidate
                               }
                               onClick={() =>
-                                void run(async () => {
-                                  const next = await api.refine(tenantCode, {
-                                    blueprint,
-                                    tableId: table.id,
-                                    description: instruction,
-                                    target,
-                                  });
+                                void runGeneration(async (signal) => {
+                                  const next = await api.refine(
+                                    tenantCode,
+                                    {
+                                      blueprint,
+                                      tableId: table.id,
+                                      description: instruction,
+                                      target,
+                                    },
+                                    signal,
+                                  );
+                                  if (signal.aborted) return;
                                   const proposed = next.blueprint.tables.find(
                                     (t) => t.id === table.id,
                                   );
@@ -476,8 +582,10 @@ export function TableBuilder({
                   <Issues
                     items={issues.filter(
                       (i) =>
-                        !i.tableId ||
-                        !blueprint.tables.some((t) => t.id === i.tableId),
+                        (i.code !== "EMPLOYEE_ACCESS_UNCONFIGURED" ||
+                          hasClosedTable) &&
+                        (!i.tableId ||
+                          !blueprint.tables.some((t) => t.id === i.tableId)),
                     )}
                   />
                   {blueprint.assumptions.length > 0 && (
@@ -492,6 +600,18 @@ export function TableBuilder({
                       </ul>
                     </details>
                   )}
+                  {!draft && blueprint.tables.length > 0 && (
+                    <EmployeePresets
+                      tables={blueprint.tables}
+                      selections={employeePresets}
+                      onSelect={(id, preset) =>
+                        setPresetOverrides((values) => ({
+                          ...values,
+                          [id]: preset,
+                        }))
+                      }
+                    />
+                  )}
                   <footer className={styles.footer}>
                     <details>
                       <summary>
@@ -499,12 +619,46 @@ export function TableBuilder({
                       </summary>
                       {blueprint.omitted.length ? (
                         <ul>
-                          {blueprint.omitted.map((o, n) => (
-                            <li key={n}>
-                              <strong>{o.request}</strong> · {o.reason}
-                              {o.alternative && <p>{o.alternative}</p>}
-                            </li>
-                          ))}
+                          {blueprint.omitted.map((o, n) => {
+                            const owner = blueprint.tables.find(
+                              (t) => t.id === o.tableId,
+                            );
+                            const manual = o.manualField;
+                            const added =
+                              manual &&
+                              owner?.fields.some((f) => f.id === manual.id);
+                            return (
+                              <li key={n}>
+                                <strong>{o.request}</strong> · {o.reason}
+                                {o.alternative && <p>{o.alternative}</p>}
+                                {owner && manual && (
+                                  <p>
+                                    {owner.name} · {manual.label}{" "}
+                                    <Button
+                                      size="small"
+                                      disabled={
+                                        !!added ||
+                                        owner.fields.length >= 40 ||
+                                        !!candidate
+                                      }
+                                      onClick={() => {
+                                        updateTable({
+                                          ...owner,
+                                          fields: [...owner.fields, manual],
+                                        });
+                                        setSelected(owner.id);
+                                        setInstruction("");
+                                      }}
+                                    >
+                                      {added
+                                        ? "已添加手填字段"
+                                        : "作为手填字段添加"}
+                                    </Button>
+                                  </p>
+                                )}
+                              </li>
+                            );
+                          })}
                         </ul>
                       ) : (
                         <p>没有未采纳项</p>
@@ -536,6 +690,7 @@ export function TableBuilder({
                                 await api.confirm(tenantCode, {
                                   blueprint,
                                   target,
+                                  ...(!draft && { employeePresets }),
                                 }),
                               );
                               refreshObjects();
@@ -544,7 +699,9 @@ export function TableBuilder({
                       >
                         {draft
                           ? `确认追加 ${table?.fields.length ?? 0} 个字段`
-                          : `确认创建 ${blueprint.tables.length} 张草稿`}
+                          : opensAccess
+                            ? `确认员工权限并创建 ${blueprint.tables.length} 张草稿`
+                            : `确认创建 ${blueprint.tables.length} 张草稿`}
                       </Button>
                     </div>
                   </footer>

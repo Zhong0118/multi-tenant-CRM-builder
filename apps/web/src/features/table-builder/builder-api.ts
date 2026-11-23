@@ -6,6 +6,7 @@ import type {
   TableBuilderAnswer,
   TableBuilderResult,
   TableBuilderTarget,
+  TableEmployeePreset,
 } from "@crm/contracts";
 import { toApiError } from "@/lib/api/api-error";
 import { browserApiClient } from "@/lib/api/browser-client";
@@ -22,7 +23,11 @@ type PreviewInput = {
   target?: TableBuilderTarget;
 };
 export interface BuilderApi {
-  preview(tenant: string, body: PreviewInput): Promise<TableBuilderResult>;
+  preview(
+    tenant: string,
+    body: PreviewInput,
+    signal?: AbortSignal,
+  ): Promise<TableBuilderResult>;
   validate(
     tenant: string,
     body: EditedInput,
@@ -30,8 +35,14 @@ export interface BuilderApi {
   refine(
     tenant: string,
     body: EditedInput & { tableId: string; description: string },
+    signal?: AbortSignal,
   ): Promise<Extract<TableBuilderResult, { kind: "blueprint" }>>;
-  confirm(tenant: string, body: EditedInput): Promise<DraftResult>;
+  confirm(
+    tenant: string,
+    body: EditedInput & {
+      employeePresets?: Record<string, TableEmployeePreset>;
+    },
+  ): Promise<DraftResult>;
   analyze(
     tenant: string,
     body: { objectIds: string[] },
@@ -57,9 +68,10 @@ function checked(result: TableBuilderResult) {
 const base = "/api/v1/workspaces/{tenantCode}/ai/table-builder";
 const group = "/api/v1/workspaces/{tenantCode}/object-definitions/draft-group";
 export const builderApi: BuilderApi = {
-  async preview(tenantCode, body) {
+  async preview(tenantCode, body, signal) {
     return dataOrThrow(
       await browserApiClient.POST(`${base}/preview`, {
+        signal,
         params: { path: { tenantCode } },
         body,
       }),
@@ -75,10 +87,11 @@ export const builderApi: BuilderApi = {
       ),
     );
   },
-  async refine(tenantCode, body) {
+  async refine(tenantCode, body, signal) {
     return checked(
       await dataOrThrow(
         await browserApiClient.POST(`${base}/refine`, {
+          signal,
           params: { path: { tenantCode } },
           body,
         }),

@@ -13,6 +13,15 @@ import {
 } from "@/features/objects/object-types";
 import styles from "./table-builder.module.css";
 
+const validationLabels: Record<string, string> = {
+  minLength: "最少字符",
+  maxLength: "最多字符",
+  min: "最小值",
+  max: "最大值",
+  scale: "小数位",
+  country: "国家或地区",
+};
+
 export function Issues({ items }: { items: TableBuilderIssue[] }) {
   return items.length ? (
     <ul className={styles.issues}>
@@ -56,7 +65,7 @@ export function TableEditor({
       <section className={styles.section}>
         <div className={styles.sectionHead}>
           <h2>{target ? "目标业务表" : "业务表设置"}</h2>
-          <code>{table.code}</code>
+          {target && <code>{table.code}</code>}
         </div>
         {target ? (
           <>
@@ -84,22 +93,31 @@ export function TableEditor({
                 />
               </label>
               <label>
-                记录标题
-                <select
-                  value={table.titleFieldId}
-                  onChange={(e) => patch({ titleFieldId: e.target.value })}
-                >
-                  {!names.has(table.titleFieldId) && (
-                    <option value={table.titleFieldId}>请选择标题字段</option>
-                  )}
-                  {fields.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.label}
-                    </option>
-                  ))}
-                </select>
+                表编码
+                <input
+                  value={table.code}
+                  maxLength={64}
+                  spellCheck={false}
+                  onChange={(e) => patch({ code: e.target.value })}
+                />
               </label>
             </div>
+            <label>
+              记录标题
+              <select
+                value={table.titleFieldId}
+                onChange={(e) => patch({ titleFieldId: e.target.value })}
+              >
+                {!names.has(table.titleFieldId) && (
+                  <option value={table.titleFieldId}>请选择标题字段</option>
+                )}
+                {fields.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label>
               表说明
               <textarea
@@ -173,9 +191,19 @@ export function TableEditor({
                 }
               />
             </div>
-            <small>
-              <code>{f.fieldKey}</code> · {f.reason}
-            </small>
+            <label>
+              字段键
+              <input
+                aria-label={`字段键 ${index + 1}`}
+                value={f.fieldKey}
+                maxLength={64}
+                spellCheck={false}
+                onChange={(e) =>
+                  replaceField(f.id, { fieldKey: e.target.value })
+                }
+              />
+            </label>
+            <small>{f.reason}</small>
             {f.options?.length ||
             f.type === "SINGLE_SELECT" ||
             f.type === "MULTI_SELECT" ? (
@@ -236,7 +264,7 @@ export function TableEditor({
               <div className={styles.options}>
                 {Object.entries(f.validation ?? {}).map(([k, v]) => (
                   <label key={k}>
-                    {k}
+                    {validationLabels[k]}
                     <input
                       value={String(v)}
                       onChange={(e) => {
@@ -336,19 +364,12 @@ export function TableEditor({
           )}
         </section>
       )}
-      <section className={styles.section}>
-        <h2>员工权限</h2>
-        <p>
-          {target
-            ? "新增字段对员工隐藏。已有字段与员工权限沿用当前配置。"
-            : "草稿默认关闭员工新增、查看、编辑和删除。读写范围均为无，所有字段对员工隐藏。"}
-        </p>
-        {table.employeeIntent.map((i, n) => (
-          <p key={n}>
-            待配置 · {i.request} · {i.reason}
-          </p>
-        ))}
-      </section>
+      {target && (
+        <section className={styles.section}>
+          <h2>员工权限</h2>
+          <p>新增字段对员工隐藏。已有字段与员工权限沿用当前配置。</p>
+        </section>
+      )}
     </>
   );
 }

@@ -69,7 +69,7 @@ export function DraftGroup({
       <p>
         {published !== undefined
           ? "员工可按已发布的权限使用业务表。"
-          : "可打开员工权限编辑器配置授权，保存后返回此页重新分析。"}
+          : "检查整组草稿后即可确认发布。需要调整授权时，可打开对应表的员工权限编辑器。"}
       </p>
       <ul className={styles.objects}>
         {result.objects.map((item) => {
