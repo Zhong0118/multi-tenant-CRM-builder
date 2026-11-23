@@ -88,12 +88,6 @@ export function PlatformOperationsView({ data }: { data: OperationPage }) {
   );
 }
 
-/**
- * Nothing on this page can be changed here: services are configured on the
- * server and account policies ship with the release. The page says so once,
- * then shows what is running (checked when the page opened) apart from the
- * policies in force.
- */
 export function PlatformSettingsView({
   status,
   checkedAt,

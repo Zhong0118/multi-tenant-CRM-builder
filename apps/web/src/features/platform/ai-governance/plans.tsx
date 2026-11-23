@@ -10,6 +10,7 @@ import {
   Modal,
   Select,
   Space,
+  Switch,
   Table,
   Tag,
 } from "antd";
@@ -280,13 +281,12 @@ export function PlatformPlans() {
           >
             <Input inputMode="decimal" />
           </Form.Item>
-          <Form.Item label="分配状态" name="assignable">
-            <Select
-              options={[
-                { value: true, label: "可分配" },
-                { value: false, label: "停止分配" },
-              ]}
-            />
+          <Form.Item
+            label="允许分配给新公司"
+            name="assignable"
+            valuePropName="checked"
+          >
+            <Switch checkedChildren="可分配" unCheckedChildren="停止分配" />
           </Form.Item>
           {replace && (
             <Form.Item name="replacement" label="新的默认套餐">

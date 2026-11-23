@@ -6,6 +6,7 @@ import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { StatusTag } from "@/components/workbench/status-tag";
 import { DataPanel } from "@/components/workbench/surface";
 
 import { maskPhone } from "./mask-phone";
@@ -121,10 +122,20 @@ export function TenantTable({
                 <span>{tenant.aiPlanName ?? "未开通"}</span>
                 {tenant.aiPercent != null && (
                   <small>
-                    {tenant.aiPercent.toLocaleString("zh-CN", {
-                      maximumFractionDigits: 1,
-                    })}
-                    %
+                    <StatusTag
+                      tone={
+                        tenant.aiPercent >= 100
+                          ? "danger"
+                          : tenant.aiPercent >= 80
+                            ? "warning"
+                            : "neutral"
+                      }
+                    >
+                      {tenant.aiPercent.toLocaleString("zh-CN", {
+                        maximumFractionDigits: 1,
+                      })}
+                      %
+                    </StatusTag>
                   </small>
                 )}
               </span>
