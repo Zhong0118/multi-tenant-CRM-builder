@@ -8,12 +8,11 @@ const value = z.union([
   z.array(z.string().max(300)).max(100),
   z.null(),
 ]);
-const time = z
-  .union([
-    z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
-    z.enum(['morning', 'afternoon', 'evening']),
-  ])
-  .nullable();
+const time = z.union([
+  z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+  z.enum(['morning', 'afternoon', 'evening']),
+  z.null(),
+]);
 const isoDate = z.iso.date();
 const date = z
   .string()
