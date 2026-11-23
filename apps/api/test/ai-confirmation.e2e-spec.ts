@@ -939,14 +939,21 @@ describe('AI confirmation API acceptance (isolated HTTP + DB)', () => {
         .get(`${base}/conversations/${operation.conversationId}/messages`)
         .set('Cookie', fixture.employee.cookie)
         .expect(200);
+    const replay = await request(harness.app.getHttpServer())
+      .post(base + '/turns/' + operation.turnId + '/proposals/confirm')
+      .set('Cookie', fixture.employee.cookie)
+      .set('Origin', 'http://localhost:3000')
+      .send({items: [{proposalId: view.proposalId, idempotencyKey: randomUUID()}]})
+      .expect(200);
+    expect(replay.body.items[0].message).toBe('姓名：字段值格式不正确。');
     expect((await get()).body.fieldErrors).toEqual({
-      name: ['字段值格式不正确。'],
+      name: ['姓名：字段值格式不正确。'],
     });
     expect(
       (await history()).body.items.find(
         (item: { role: string }) => item.role === 'ASSISTANT',
       ).proposal.fieldErrors,
-    ).toEqual({ name: ['字段值格式不正确。'] });
+    ).toEqual({ name: ['姓名：字段值格式不正确。'] });
     await harness.adminDatabase.objectPermission.create({
       data: {
         tenantId: context.tenantId,

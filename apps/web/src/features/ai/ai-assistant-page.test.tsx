@@ -1824,11 +1824,11 @@ it("keeps the filled question available after a rejected answer", async () => {
       within(screen.getByRole("region", { name: "助手追问" })).getByRole(
         "alert",
       ),
-    ).toHaveTextContent("字段值格式不正确。"),
+    ).toHaveTextContent("客户名称：字段值格式不正确。"),
   );
   expect(
     screen.getByRole("textbox", { name: "客户名称" }),
-  ).toHaveAccessibleDescription("字段值格式不正确。");
+  ).toHaveAccessibleDescription("客户名称：字段值格式不正确。");
   expect(screen.queryByText(/隐藏错误/)).toBeNull();
   expect(screen.getByRole("textbox", { name: "客户名称" })).toHaveValue(
     "保留的填写内容",

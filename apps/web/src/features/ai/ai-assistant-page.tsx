@@ -33,6 +33,8 @@ import {
 import panelStyles from "./assistant-panel.module.css";
 import { aiApi, aiQueryKeys } from "./ai-api";
 import styles from "./ai-assistant.module.css";
+import { assistantHistory, rowFingerprint } from "./assistant-history";
+import { useAssistantProposals } from "./use-assistant-proposals";
 import { AiComposer } from "./ai-composer";
 import { AiEmptyState } from "./ai-empty-state";
 import { AiErrorState } from "./ai-error-state";
@@ -40,7 +42,6 @@ import { AiMessageList } from "./ai-message-list";
 import {
   aiTurnReducer,
   initialAiTurnState,
-  toAssistantMessage,
   userErrorMessage,
 } from "./ai-turn-reducer";
 import { ConversationRail } from "./conversation-rail";
@@ -102,10 +103,7 @@ export function AiAssistantPage({
   const generationRef = useRef(0);
   const stateRef = useRef(state);
   const [railOpen, setRailOpen] = useState(false);
-  const [proposalUpdates, setProposalUpdates] = useState<
-    Record<string, import("./ai-types").AiProposalView>
-  >({});
-  const [proposalError, setProposalError] = useState<string | null>(null);
+  const {proposalUpdates, proposalError, confirmProposal, rejectProposal} = useAssistantProposals(tenantCode, conversationId);
   // The persisted row of the attempt being retried. The server rewrites that
   // row (same turnId) once the retry starts, so until it changes it describes
   // the old attempt and must not hide this attempt's stream or failure.
@@ -165,86 +163,7 @@ export function AiAssistantPage({
     const pages = messages.data?.pages ?? [];
     return [...pages].reverse().flatMap((page) => page.items) as AiMessage[];
   }, [messages.data]);
-  const history = retriedRow
-    ? fullHistory.filter(
-        (item) =>
-          !(
-            item.role === "ASSISTANT" &&
-            item.turnId === retriedRow.turnId &&
-            rowFingerprint(item) === retriedRow.fingerprint
-          ),
-      )
-    : fullHistory;
-  const liveMessage = toAssistantMessage(state);
-  // Once an authoritative server row exists for the finished turn, discard
-  // the SSE snapshot; permission revocation may have redacted its Proposal.
-  // A GENERATING row is only a placeholder, so the live stream stays visible.
-  const live =
-    liveMessage &&
-    history.some(
-      (item) =>
-        item.role === "ASSISTANT" &&
-        item.turnId === liveMessage.turnId &&
-        item.status !== "GENERATING",
-    )
-      ? null
-      : liveMessage;
-  const historyHasPendingUser =
-    !!state.turnId &&
-    history.some(
-      (item) => item.role === "USER" && item.turnId === state.turnId,
-    );
-  const pendingUser: AiMessage | null =
-    state.pendingUserContent && state.conversationId
-      ? {
-          id: `pending-${state.turnId ?? "new"}`,
-          conversationId: state.conversationId,
-          turnId: state.turnId ?? "pending",
-          role: "USER",
-          status: "COMPLETED",
-          content: state.pendingUserContent,
-          toolSummary: [],
-          sourceSummary: [],
-          createdAt: new Date().toISOString(),
-        }
-      : state.pendingUserContent
-        ? {
-            id: "pending-new",
-            conversationId: "pending",
-            turnId: "pending",
-            role: "USER",
-            status: "COMPLETED",
-            content: state.pendingUserContent,
-            toolSummary: [],
-            sourceSummary: [],
-            createdAt: new Date().toISOString(),
-          }
-        : null;
-  // The persisted question keeps its place in history; the optimistic copy is
-  // only shown until the server row arrives, so the answer always follows it.
-  const shown = [
-    ...history.filter(
-      (item) => !(live && item.turnId === live.turnId && item.role !== "USER"),
-    ),
-    ...(pendingUser && !historyHasPendingUser ? [pendingUser] : []),
-    ...(live ? [live] : []),
-  ].map((item) => {
-    const update = item.proposal
-      ? proposalUpdates[item.proposal.proposalId]
-      : undefined;
-    if (!update || item.proposal?.status !== "PROPOSED") return item;
-    return {
-      ...item,
-      proposal: {
-        ...update,
-        // The server projection remains authoritative for permission-sensitive data.
-        targetSummary: item.proposal?.targetSummary ?? "",
-        changes: item.proposal?.changes ?? [],
-        result: item.proposal?.result ?? null,
-        fieldErrors: update.fieldErrors ?? {},
-      },
-    };
-  });
+  const shown = assistantHistory(fullHistory, retriedRow, state, proposalUpdates);
 
   async function consume(
     iterable: AsyncIterable<import("./ai-types").AiPublicStreamEvent>,
@@ -430,60 +349,6 @@ export function AiAssistantPage({
       client.invalidateQueries({
         queryKey: aiQueryKeys.conversations(tenantCode),
       }),
-  });
-  const confirmProposal = useMutation({
-    mutationFn: async (proposalId: string) => {
-      const key = crypto.randomUUID();
-      try {
-        return await aiApi.confirmProposal(tenantCode, proposalId, key);
-      } catch (error) {
-        // A lost response is uncertain: reconcile first and never auto-repeat execution.
-        const current = await aiApi.getProposal(tenantCode, proposalId);
-        if (current.status === "PROPOSED") throw error;
-        return current;
-      }
-    },
-    onSuccess: (view) => {
-      setProposalError(null);
-      setProposalUpdates((current) => ({
-        ...current,
-        [view.proposalId]: view,
-      }));
-      if (conversationId)
-        void client.invalidateQueries({
-          queryKey: aiQueryKeys.messages(tenantCode, conversationId),
-        });
-    },
-    onError: (error) =>
-      setProposalError(
-        error instanceof Error ? error.message : "提案执行失败，请稍后重试。",
-      ),
-  });
-  const rejectProposal = useMutation({
-    mutationFn: async (proposalId: string) => {
-      try {
-        return await aiApi.rejectProposal(tenantCode, proposalId);
-      } catch (error) {
-        const current = await aiApi.getProposal(tenantCode, proposalId);
-        if (current.status === "PROPOSED") throw error;
-        return current;
-      }
-    },
-    onSuccess: (view) => {
-      setProposalError(null);
-      setProposalUpdates((current) => ({
-        ...current,
-        [view.proposalId]: view,
-      }));
-      if (conversationId)
-        void client.invalidateQueries({
-          queryKey: aiQueryKeys.messages(tenantCode, conversationId),
-        });
-    },
-    onError: (error) =>
-      setProposalError(
-        error instanceof Error ? error.message : "提案拒绝失败，请稍后重试。",
-      ),
   });
   const remove = useMutation({
     mutationFn: (id: string) => aiApi.remove(tenantCode, id),
@@ -840,14 +705,4 @@ export function AiAssistantPage({
       </div>
     </AssistantCommandContext.Provider>
   );
-}
-
-function rowFingerprint(item: AiMessage) {
-  return [
-    item.status,
-    item.completedAt ?? "",
-    item.errorCode ?? "",
-    item.content,
-    JSON.stringify(item.questions ?? []),
-  ].join("\u0000");
 }
